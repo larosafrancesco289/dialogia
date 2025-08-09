@@ -1,0 +1,182 @@
+/* francesco-bootstrap.css — Tailwind v4, single-file design starter
+   Drop this file into your repo and import it near the top of your global CSS:
+     @import "tailwindcss";
+     @import "./styles/francesco-bootstrap.css";
+   Dark mode: toggle the `dark` class on <html>.
+*/
+
+/* Define tokens directly on :root to avoid relying on Tailwind plugin transforms */
+:root {
+  /* Typography */
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Radius & Elevation */
+  --radius-2xl: 16px;
+  --shadow-card: 0 10px 25px rgba(0,0,0,.10);
+
+  /* ===== Imperial Archive (Light) ===== */
+  --color-canvas: #f4f1ec;   /* page background */
+  --color-surface: #fdfbf8;  /* cards/panels */
+  --color-muted: #f1ede7;    /* subtle surfaces */
+  --color-fg: #1E1C18;       /* body text */
+  --color-fg-muted: #5B534B; /* secondary text */
+  --color-accent: #B9975B;   /* gold */
+  --color-accent-2: #6D2A8A; /* imperial purple */
+  --color-border: #d5cfc4;   /* strokes/dividers */
+}
+
+:root { color-scheme: light; }
+
+/* ===== Deep Court (Dark) ===== */
+.dark {
+  color-scheme: dark;
+
+  --color-canvas: #08070a;
+  --color-surface: #121017;
+  --color-muted: #17131e;
+  --color-fg: #F1EFEF;
+  --color-fg-muted: #C8C3D1;
+  --color-accent: #D4AF37;
+  --color-accent-2: #5B2C6F;
+  --color-border: #2E2533;
+
+  --shadow-card: 0 8px 24px rgba(0,0,0,.45);
+}
+
+/* ===== Base reset & globals ===== */
+html, body { height: 100%; }
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+::selection { background: color-mix(in oklab, var(--color-accent) 30%, transparent); }
+
+/* Links */
+a { color: var(--color-accent); text-underline-offset: 4px; }
+a:hover { text-decoration: underline; }
+
+/* Small text helpers */
+.muted { color: var(--color-fg-muted); }
+
+/* ===== Primitive components (utility-first, tokenized) ===== */
+
+/* Card */
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
+}
+
+/* Buttons */
+.btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-2xl);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  outline: none;
+  background: var(--color-accent);
+  color: #0b0b0b;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent); }
+
+.btn-outline {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-2xl);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-fg);
+}
+.btn-outline:hover { background: var(--color-muted); }
+.btn-outline:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent); }
+
+.btn-ghost {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-2xl);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-fg);
+  background: transparent;
+}
+.btn-ghost:hover { background: var(--color-muted); }
+.btn-ghost:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent); }
+
+/* Inputs */
+.input {
+  height: 40px;
+  width: 100%;
+  padding: 0 12px;
+  border-radius: var(--radius-2xl);
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  color: var(--color-fg);
+}
+.input::placeholder { color: var(--color-fg-muted); }
+.input:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent); }
+
+/* Badges / Chips */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-muted);
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--color-fg-muted);
+}
+.badge-accent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  background: var(--color-accent);
+  color: #0b0b0b;
+}
+
+/* Table */
+.table { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 14px; }
+.table thead th { text-align: left; color: var(--color-fg-muted); padding: 8px 12px; }
+.table tbody tr { background: var(--color-muted); border: 1px solid var(--color-border); }
+.table tbody td { padding: 8px 12px; }
+.table tbody tr td:first-child { border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
+.table tbody tr td:last-child  { border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
+
+/* Code / Pre */
+pre, code { font-family: var(--font-mono); }
+pre { background: var(--color-muted); border: 1px solid var(--color-border); border-radius: var(--radius-2xl); padding: 16px; overflow: auto; }
+
+/* Chart container (use tokens in your chart lib) */
+.chart-surface { background: var(--color-muted); border: 1px solid var(--color-border); border-radius: var(--radius-2xl); }
+/* Example CSS variables you can read in charts */
+.chart-surface {
+  --chart-grid: var(--color-border);
+  --chart-series: var(--color-accent);
+  --chart-fill: color-mix(in oklab, var(--color-accent) 28%, transparent);
+}
+
+/* Focus ring fallbacks for non-TW elements */
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* ===== Layout helpers (optional) ===== */
+.container-std { max-width: 64rem; margin-left: auto; margin-right: auto; padding-left: 1.25rem; padding-right: 1.25rem; }
+.section-gap { margin-top: 1.5rem; margin-bottom: 1.5rem; }

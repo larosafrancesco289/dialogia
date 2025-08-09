@@ -1,0 +1,46 @@
+@import "tailwindcss";
+@import "../styles/francesco-bootstrap.css";
+
+html, body, #__next {
+  height: 100%;
+}
+
+/* Semantic color helpers (Tailwind-like names mapped to tokens) */
+.bg-surface { background-color: var(--color-surface); }
+.bg-muted { background-color: var(--color-muted); }
+.bg-canvas { background-color: var(--color-canvas); }
+.text-fg { color: var(--color-fg); }
+.text-fg-muted, .text-muted-foreground { color: var(--color-fg-muted); }
+.border-border { border-color: var(--color-border); }
+
+/* App layout helpers */
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width, 320px) 1fr;
+  height: 100dvh;
+}
+
+.sidebar {
+  overflow: hidden;
+}
+
+.content { overflow: hidden; position: relative; display: flex; flex-direction: column; }
+
+.scroll-area {
+  overflow: auto;
+}
+
+/* Ensure the main content scrolls behind a sticky composer */
+.content > .flex-1 { min-height: 0; }
+
+/* Landing gradient similar to blurred GPT hero, but in our palette */
+.hero-gradient::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(60% 60% at 50% 40%, rgba(185,151,91,.25), transparent 60%),
+              radial-gradient(40% 40% at 70% 60%, rgba(109,42,138,.22), transparent 60%),
+              radial-gradient(35% 35% at 30% 65%, rgba(212,175,55,.18), transparent 60%);
+  filter: blur(50px);
+}
+
