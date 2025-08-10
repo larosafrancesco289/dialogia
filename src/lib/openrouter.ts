@@ -31,7 +31,8 @@ export async function fetchModels(apiKey: string): Promise<ORModel[]> {
 export type StreamCallbacks = {
   onStart?: () => void;
   onToken?: (delta: string) => void;
-  onDone?: (full: string) => void;
+  onReasoningToken?: (delta: string) => void;
+  onDone?: (full: string, extras?: { usage?: any }) => void;
   onError?: (err: Error) => void;
 };
 
@@ -42,15 +43,25 @@ export async function streamChatCompletion(params: {
   temperature?: number;
   top_p?: number;
   max_tokens?: number;
+  // Reasoning configuration (optional)
+  reasoning_effort?: "none" | "low" | "medium" | "high";
+  reasoning_tokens?: number;
+  signal?: AbortSignal;
   callbacks?: StreamCallbacks;
 }) {
-  const { apiKey, model, messages, temperature, top_p, max_tokens, callbacks } = params;
+  const { apiKey, model, messages, temperature, top_p, max_tokens, reasoning_effort, reasoning_tokens, signal, callbacks } = params;
 
   // Build body with only provided optional fields so OpenRouter can apply model defaults
-  const body: any = { model, messages, stream: true };
+  const body: any = { model, messages, stream: true, stream_options: { include_usage: true } };
   if (typeof temperature === "number") body.temperature = temperature;
   if (typeof top_p === "number") body.top_p = top_p;
   if (typeof max_tokens === "number") body.max_tokens = max_tokens;
+  if (reasoning_effort && reasoning_effort !== "none") {
+    body.reasoning = { effort: reasoning_effort } as any;
+    if (typeof reasoning_tokens === "number") {
+      body.reasoning.max_tokens = reasoning_tokens;
+    }
+  }
 
   const res = await fetch(`${OR_BASE}/chat/completions`, {
     method: "POST",
@@ -61,6 +72,7 @@ export async function streamChatCompletion(params: {
       "X-Title": "Byzantine Chat",
     },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (res.status === 401 || res.status === 403) throw new Error("unauthorized");
@@ -72,6 +84,8 @@ export async function streamChatCompletion(params: {
   const decoder = new TextDecoder();
   let buffer = "";
   let full = "";
+  let reasoning = "";
+  let usage: any | undefined;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -83,23 +97,39 @@ export async function streamChatCompletion(params: {
       const trimmed = line.trim();
       if (!trimmed.startsWith("data:")) continue;
       const data = trimmed.slice(5).trim();
-      if (data === "[DONE]") {
-        callbacks?.onDone?.(full);
+        if (data === "[DONE]") {
+          callbacks?.onDone?.(full, { usage });
         return;
       }
       try {
         const json = JSON.parse(data);
-        const delta: string = json.choices?.[0]?.delta?.content ?? "";
-        if (delta) {
-          full += delta;
-          callbacks?.onToken?.(delta);
+        const choice = json.choices?.[0] ?? {};
+        // Prefer delta fields during streaming; fall back to message.* if provider sends final chunk as full message
+        let deltaContent: string = "";
+        if (choice?.delta && typeof choice.delta.content === "string") deltaContent = choice.delta.content;
+        else if (choice?.message && typeof choice.message.content === "string") deltaContent = choice.message.content;
+
+        let deltaReasoning: string = "";
+        if (choice?.delta && typeof choice.delta.reasoning === "string") deltaReasoning = choice.delta.reasoning;
+        else if (choice?.message && typeof choice.message.reasoning === "string") deltaReasoning = choice.message.reasoning;
+
+        if (deltaReasoning) {
+          reasoning += deltaReasoning;
+          callbacks?.onReasoningToken?.(deltaReasoning);
+        }
+        if (deltaContent) {
+          full += deltaContent;
+          callbacks?.onToken?.(deltaContent);
+        }
+        if (json.usage) {
+          usage = json.usage;
         }
       } catch (e) {
         // ignore malformed line
       }
     }
   }
-  callbacks?.onDone?.(full);
+  callbacks?.onDone?.(full, { usage });
 }
 
 

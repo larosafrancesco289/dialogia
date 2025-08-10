@@ -74,7 +74,7 @@ a:hover { text-decoration: underline; }
 
 /* Buttons */
 .btn {
-  height: 40px;
+  height: 44px;
   padding: 0 16px;
   border-radius: var(--radius-2xl);
   display: inline-flex;
@@ -90,7 +90,7 @@ a:hover { text-decoration: underline; }
 .btn:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent); }
 
 .btn-outline {
-  height: 40px;
+  height: 44px;
   padding: 0 16px;
   border-radius: var(--radius-2xl);
   display: inline-flex;
@@ -105,7 +105,7 @@ a:hover { text-decoration: underline; }
 .btn-outline:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent); }
 
 .btn-ghost {
-  height: 40px;
+  height: 44px;
   padding: 0 16px;
   border-radius: var(--radius-2xl);
   display: inline-flex;

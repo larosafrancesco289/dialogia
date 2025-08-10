@@ -39,12 +39,17 @@ type StoreState = {
   toggleFavoriteModel: (id: string) => void;
 
   sendUserMessage: (content: string) => Promise<void>;
+  stopStreaming: () => void;
+  regenerateAssistantMessage: (messageId: string, opts?: { modelId?: string }) => Promise<void>;
 };
 
 const defaultSettings: ChatSettings = {
   model: "openai/gpt-5-chat",
   // temperature/top_p/max_tokens omitted by default; OpenRouter will use model defaults
   system: "You are a helpful assistant.",
+  reasoning_effort: "low",
+  show_thinking_by_default: true,
+  show_stats: true,
 };
 
 export const useChatStore = create<StoreState>()(
@@ -56,6 +61,7 @@ export const useChatStore = create<StoreState>()(
       models: [],
       favoriteModelIds: [],
       ui: { showSettings: false, isStreaming: false, sidebarCollapsed: false },
+      _controller: undefined as AbortController | undefined,
 
       initializeApp: async () => {
         const compareMessages = (a: Message, b: Message) => {
@@ -165,7 +171,16 @@ export const useChatStore = create<StoreState>()(
           // Ensure assistant message sorts after the user message even if timestamps are equal
           createdAt: now + 1,
           model: chat.settings.model,
+          reasoning: "",
         };
+         // Build the LLM payload using prior conversation and this new user message
+         const priorList = get().messages[chatId] ?? [];
+         const msgs = buildChatCompletionMessages({
+           chat,
+           priorMessages: priorList,
+           models: get().models,
+           newUserContent: content,
+         });
         set((s) => ({
           messages: {
             ...s.messages,
@@ -181,12 +196,11 @@ export const useChatStore = create<StoreState>()(
           await get().renameChat(chat.id, draft || "New Chat");
         }
 
-        const msgs = [
-          chat.settings.system ? { role: "system" as const, content: chat.settings.system } : undefined,
-          { role: "user" as const, content },
-        ].filter(Boolean) as { role: "system" | "user"; content: string }[];
-
         try {
+          const controller = new AbortController();
+          set((s) => ({ ...s, _controller: controller as any } as any));
+          const tStart = performance.now();
+          let tFirst: number | undefined;
           await streamChatCompletion({
             apiKey: key,
             model: chat.settings.model,
@@ -194,29 +208,177 @@ export const useChatStore = create<StoreState>()(
             temperature: chat.settings.temperature,
             top_p: chat.settings.top_p,
             max_tokens: chat.settings.max_tokens,
+            reasoning_effort: chat.settings.reasoning_effort,
+            reasoning_tokens: chat.settings.reasoning_tokens,
+            signal: controller.signal,
             callbacks: {
               onToken: (delta) => {
+                if (tFirst == null) tFirst = performance.now();
                 set((s) => {
                   const list = s.messages[chatId] ?? [];
                   const updated = list.map((m) =>
-                    m.id === assistantMsg.id ? { ...m, content: m.content + delta } : m
+                    m.id === assistantMsg.id
+                      ? { ...m, content: m.content + delta }
+                      : m
                   );
                   return { messages: { ...s.messages, [chatId]: updated } };
                 });
               },
-              onDone: async (full) => {
+              onReasoningToken: (delta) => {
+                if (tFirst == null) tFirst = performance.now();
+                set((s) => {
+                  const list = s.messages[chatId] ?? [];
+                  const updated = list.map((m) =>
+                    m.id === assistantMsg.id ? { ...m, reasoning: (m.reasoning || "") + delta } : m
+                  );
+                  return { messages: { ...s.messages, [chatId]: updated } };
+                });
+              },
+              onDone: async (full, extras) => {
                 set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
-                const final = { ...assistantMsg, content: full };
+                const current = get().messages[chatId]?.find((m) => m.id === assistantMsg.id);
+                const tEnd = performance.now();
+                const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
+                const completionMs = Math.max(0, Math.round(tEnd - tStart));
+                const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
+                const completionTokens = extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
+                const tokensPerSec = completionTokens && completionMs
+                  ? +(completionTokens / (completionMs / 1000)).toFixed(2)
+                  : undefined;
+                const final = {
+                  ...assistantMsg,
+                  content: full,
+                  reasoning: current?.reasoning,
+                  metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
+                  tokensIn: promptTokens,
+                  tokensOut: completionTokens,
+                };
+                // Update in-memory list immediately so stats show without reload
+                set((s) => {
+                  const list = s.messages[chatId] ?? [];
+                  const updated = list.map((m) => (m.id === assistantMsg.id ? final : m));
+                  return { messages: { ...s.messages, [chatId]: updated } };
+                });
                 await saveMessage(final);
+                set((s) => ({ ...s, _controller: undefined } as any));
               },
               onError: (err) => {
                 set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: err.message } }));
+                set((s) => ({ ...s, _controller: undefined } as any));
               },
             },
           });
         } catch (e: any) {
           if (e?.message === "unauthorized") set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: "Invalid API key" } }));
           if (e?.message === "rate_limited") set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: "Rate limited. Retry later." } }));
+          set((s) => ({ ...s, _controller: undefined } as any));
+        }
+      },
+
+      stopStreaming: () => {
+        const controller = (get() as any)._controller as AbortController | undefined;
+        controller?.abort();
+        set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
+        set((s) => ({ ...s, _controller: undefined } as any));
+      },
+
+      regenerateAssistantMessage: async (messageId, opts) => {
+        const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
+        if (!key) return set((s) => ({ ui: { ...s.ui, notice: "Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env" } }));
+        const chatId = get().selectedChatId!;
+        const chat = get().chats.find((c) => c.id === chatId)!;
+        const list = get().messages[chatId] ?? [];
+        const idx = list.findIndex((m) => m.id === messageId);
+        if (idx === -1) return;
+         // Build payload using all messages prior to the assistant message being regenerated
+         const payloadBefore = buildChatCompletionMessages({
+           chat,
+           priorMessages: list.slice(0, idx),
+           models: get().models,
+         });
+        // Prepare a new assistant message to stream into, replacing the old one in-place
+        const replacement: Message = {
+          id: messageId,
+          chatId,
+          role: "assistant",
+          content: "",
+          createdAt: list[idx].createdAt,
+          model: opts?.modelId || chat.settings.model,
+          reasoning: "",
+        };
+        set((s) => ({
+          messages: { ...s.messages, [chatId]: list.map((m) => (m.id === messageId ? replacement : m)) },
+          ui: { ...s.ui, isStreaming: true },
+        }));
+         const msgs = payloadBefore;
+        try {
+          const controller = new AbortController();
+          set((s) => ({ ...s, _controller: controller as any } as any));
+          const tStart = performance.now();
+          let tFirst: number | undefined;
+          await streamChatCompletion({
+            apiKey: key,
+            model: replacement.model!,
+            messages: msgs,
+            temperature: chat.settings.temperature,
+            top_p: chat.settings.top_p,
+            max_tokens: chat.settings.max_tokens,
+            reasoning_effort: chat.settings.reasoning_effort,
+            reasoning_tokens: chat.settings.reasoning_tokens,
+            signal: controller.signal,
+            callbacks: {
+              onToken: (delta) => {
+                if (tFirst == null) tFirst = performance.now();
+                set((s) => {
+                  const list2 = s.messages[chatId] ?? [];
+                  const updated = list2.map((m) => (m.id === replacement.id ? { ...m, content: m.content + delta } : m));
+                  return { messages: { ...s.messages, [chatId]: updated } };
+                });
+              },
+              onReasoningToken: (delta) => {
+                set((s) => {
+                  const list2 = s.messages[chatId] ?? [];
+                  const updated = list2.map((m) => (m.id === replacement.id ? { ...m, reasoning: (m.reasoning || "") + delta } : m));
+                  return { messages: { ...s.messages, [chatId]: updated } };
+                });
+              },
+              onDone: async (full, extras) => {
+                set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
+                const current = get().messages[chatId]?.find((m) => m.id === replacement.id);
+                const tEnd = performance.now();
+                const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
+                const completionMs = Math.max(0, Math.round(tEnd - tStart));
+                const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
+                const completionTokens = extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
+                const tokensPerSec = completionTokens && completionMs
+                  ? +(completionTokens / (completionMs / 1000)).toFixed(2)
+                  : undefined;
+                const final = {
+                  ...replacement,
+                  content: full,
+                  reasoning: current?.reasoning,
+                  metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
+                  tokensIn: promptTokens,
+                  tokensOut: completionTokens,
+                };
+                set((s) => {
+                  const list = s.messages[chatId] ?? [];
+                  const updated = list.map((m) => (m.id === replacement.id ? final : m));
+                  return { messages: { ...s.messages, [chatId]: updated } };
+                });
+                await saveMessage(final);
+                set((s) => ({ ...s, _controller: undefined } as any));
+              },
+              onError: (err) => {
+                set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: err.message } }));
+                set((s) => ({ ...s, _controller: undefined } as any));
+              },
+            },
+          });
+        } catch (e: any) {
+          if (e?.message === "unauthorized") set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: "Invalid API key" } }));
+          if (e?.message === "rate_limited") set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: "Rate limited. Retry later." } }));
+          set((s) => ({ ...s, _controller: undefined } as any));
         }
       },
     }),
@@ -229,5 +391,62 @@ export const useChatStore = create<StoreState>()(
     }
   )
 );
+
+// Construct the message payload for the LLM from prior conversation, with a simple token window
+function buildChatCompletionMessages(params: {
+  chat: Chat;
+  priorMessages: Message[];
+  models: ORModel[];
+  newUserContent?: string;
+}): { role: "system" | "user" | "assistant"; content: string }[] {
+  const { chat, priorMessages, models, newUserContent } = params;
+  const modelInfo = models.find((m) => m.id === chat.settings.model);
+  const contextLimit = modelInfo?.context_length ?? 8000;
+  const reservedForCompletion =
+    typeof chat.settings.max_tokens === "number" ? chat.settings.max_tokens : 1024;
+  const maxPromptTokens = Math.max(512, contextLimit - reservedForCompletion);
+
+  // Convert prior messages into OpenAI-style messages, excluding empty placeholders
+  const history: { role: "user" | "assistant"; content: string }[] = [];
+  for (const m of priorMessages) {
+    if (m.role === "system") continue; // prefer current chat.settings.system
+    if (!m.content) continue;
+    if (m.role === "user" || m.role === "assistant") {
+      history.push({ role: m.role, content: m.content });
+    }
+  }
+  if (typeof newUserContent === "string") {
+    history.push({ role: "user", content: newUserContent });
+  }
+
+  // Keep most recent messages within the token budget
+  const historyWithTokens = history.map((msg) => ({
+    ...msg,
+    tokens: estimateTokens(msg.content) ?? 1,
+  }));
+  let running = 0;
+  const kept: { role: "user" | "assistant"; content: string }[] = [];
+  for (let i = historyWithTokens.length - 1; i >= 0; i--) {
+    const t = historyWithTokens[i].tokens as number;
+    if (running + t > maxPromptTokens) break;
+    kept.push({ role: historyWithTokens[i].role, content: historyWithTokens[i].content });
+    running += t;
+  }
+  kept.reverse();
+
+  const finalMsgs: { role: "system" | "user" | "assistant"; content: string }[] = [];
+  if (chat.settings.system && chat.settings.system.trim()) {
+    finalMsgs.push({ role: "system", content: chat.settings.system });
+  }
+  finalMsgs.push(...kept);
+  return finalMsgs;
+}
+
+// Naive token estimator (rough approx: 4 chars per token)
+function estimateTokens(text: string | undefined): number | undefined {
+  if (!text) return undefined;
+  const chars = text.length;
+  return Math.max(1, Math.round(chars / 4));
+}
 
 

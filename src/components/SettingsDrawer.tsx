@@ -12,6 +12,10 @@ export default function SettingsDrawer() {
   const [max_tokens, setMaxTokens] = useState<number | undefined>(chat.settings.max_tokens);
   const [customModel, setCustomModel] = useState("");
   const [query, setQuery] = useState("");
+  const [reasoningEffort, setReasoningEffort] = useState<string | undefined>(chat.settings.reasoning_effort);
+  const [reasoningTokens, setReasoningTokens] = useState<number | undefined>(chat.settings.reasoning_tokens);
+  const [showThinking, setShowThinking] = useState<boolean>(chat.settings.show_thinking_by_default ?? true);
+  const [showStats, setShowStats] = useState<boolean>(chat.settings.show_stats ?? true);
 
   // Prevent background scroll while drawer is open
   useEffect(() => {
@@ -102,6 +106,59 @@ export default function SettingsDrawer() {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <label className="text-sm">Reasoning effort</label>
+            <select
+              className="input w-full"
+              value={reasoningEffort ?? "low"}
+              onChange={(e) => setReasoningEffort(e.target.value as any)}
+            >
+              <option value="none">none</option>
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm flex items-center justify-between">
+              <span>Reasoning tokens</span>
+              <button className="btn btn-ghost text-xs" onClick={() => setReasoningTokens(undefined)}>Auto</button>
+            </label>
+            <input
+              className="input w-full"
+              type="number"
+              step="1"
+              min="1"
+              value={reasoningTokens ?? ""}
+              placeholder="auto"
+              onChange={(e) => setReasoningTokens(e.target.value === "" ? undefined : parseInt(e.target.value))}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm">Show thinking by default</label>
+            <div>
+              <button
+                className={`btn ${showThinking ? '' : 'btn-outline'}`}
+                onClick={() => setShowThinking(!showThinking)}
+              >
+                {showThinking ? 'On' : 'Off'}
+              </button>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm">Show stats</label>
+            <div>
+              <button
+                className={`btn ${showStats ? '' : 'btn-outline'}`}
+                onClick={() => setShowStats(!showStats)}
+              >
+                {showStats ? 'On' : 'Off'}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-2 pt-2">
           <label className="text-sm">Add custom model ID</label>
           <div className="flex gap-2">
@@ -160,7 +217,7 @@ export default function SettingsDrawer() {
         <button
           className="btn"
           onClick={() => {
-            updateChatSettings({ system, temperature, top_p, max_tokens });
+            updateChatSettings({ system, temperature, top_p, max_tokens, reasoning_effort: reasoningEffort as any, reasoning_tokens: reasoningTokens, show_thinking_by_default: showThinking, show_stats: showStats });
             setUI({ showSettings: false });
           }}
         >

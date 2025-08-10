@@ -52,6 +52,22 @@ html, body, #__next {
   border-top: 1px solid var(--color-border);
   z-index: 10; /* below sticky header (30) and drawer (50) */
 }
+/* Minimal icon button for floating controls */
+.icon-button {
+  height: 28px;
+  width: 28px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklab, var(--color-surface) 85%, transparent);
+  color: var(--color-fg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+.icon-button:hover { background: var(--color-muted); }
+.icon-button:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent); }
+
 
 .scroll-area {
   overflow: auto;
@@ -70,5 +86,37 @@ html, body, #__next {
               radial-gradient(40% 40% at 70% 60%, rgba(109,42,138,.22), transparent 60%),
               radial-gradient(35% 35% at 30% 65%, rgba(212,175,55,.18), transparent 60%);
   filter: blur(50px);
+}
+
+/* Thinking panel effect */
+.thinking-panel {
+  position: relative;
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(141, 115, 68, 0.08), rgba(141, 115, 68, 0.04));
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+.thinking-panel:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 50% at 10% 10%, rgba(212,175,55,0.08), transparent 55%),
+              radial-gradient(120% 60% at 90% 20%, rgba(109,42,138,0.08), transparent 60%);
+}
+.thinking-shimmer {
+  position: absolute;
+  left: -40%;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.07), rgba(255,255,255,0));
+  animation: thinking-scan 2.2s ease-in-out infinite;
+}
+@keyframes thinking-scan {
+  0% { transform: translateX(0%); opacity: 0.3; }
+  50% { transform: translateX(220%); opacity: 0.7; }
+  100% { transform: translateX(220%); opacity: 0; }
 }
 

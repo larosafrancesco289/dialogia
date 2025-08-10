@@ -4,6 +4,11 @@ export type ChatSettings = {
   top_p?: number;
   max_tokens?: number;
   system?: string;
+  // OpenRouter reasoning controls (for thinking models)
+  reasoning_effort?: "none" | "low" | "medium" | "high";
+  reasoning_tokens?: number; // max reasoning tokens (optional)
+  show_thinking_by_default?: boolean; // UI preference only
+  show_stats?: boolean; // UI preference only
 };
 
 export type Message = {
@@ -15,6 +20,17 @@ export type Message = {
   tokensIn?: number;
   tokensOut?: number;
   model?: string;
+  // For thinking models; accumulated via streaming
+  reasoning?: string;
+  metrics?: MessageMetrics;
+};
+
+export type MessageMetrics = {
+  ttftMs?: number; // time to first token (ms)
+  completionMs?: number; // total time until done (ms)
+  promptTokens?: number;
+  completionTokens?: number;
+  tokensPerSec?: number; // actual throughput when usage present
 };
 
 export type Chat = {
