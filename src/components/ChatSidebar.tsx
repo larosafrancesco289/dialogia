@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useChatStore } from "@/lib/store";
-import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+// Settings gear moved to the top header
 
 export default function ChatSidebar() {
   const {
@@ -14,8 +14,7 @@ export default function ChatSidebar() {
     loadModels,
   } = useChatStore();
   const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
-  const setUI = useChatStore((s) => s.setUI);
-  const isSettingsOpen = useChatStore((s) => s.ui.showSettings);
+  // Settings button removed from sidebar header
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
 
@@ -30,16 +29,6 @@ export default function ChatSidebar() {
     <div className={"h-full flex flex-col w-full"}>
       <div className="app-header bg-surface">
         <div className="font-semibold">{collapsed ? 'Dg' : 'Dialogia'}</div>
-        <div className="flex items-center gap-2 ml-auto">
-          <button
-            className="btn btn-ghost"
-            aria-label="Toggle settings"
-            aria-pressed={isSettingsOpen}
-            onClick={() => setUI({ showSettings: !isSettingsOpen })}
-          >
-            <Cog6ToothIcon className="h-5 w-5" />
-          </button>
-        </div>
       </div>
 
       <div className="px-4 py-3 flex gap-2">

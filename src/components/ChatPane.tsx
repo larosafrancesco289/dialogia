@@ -2,11 +2,10 @@
 import { useChatStore } from "@/lib/store";
 import MessageList from "@/components/MessageList";
 import Composer from "@/components/Composer";
-import SettingsDrawer from "@/components/SettingsDrawer";
 import WelcomeHero from "@/components/WelcomeHero";
 
 export default function ChatPane() {
-  const { chats, selectedChatId, renameChat, ui, setUI } = useChatStore();
+  const { chats, selectedChatId } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
   if (!chat) return <WelcomeHero />;
 
@@ -18,7 +17,7 @@ export default function ChatPane() {
       <div className="border-t border-border">
         <Composer />
       </div>
-      {ui.showSettings && <SettingsDrawer />}
+      {/* Settings drawer is rendered at the app level so it's available on the welcome page too */}
     </div>
   );
 }
