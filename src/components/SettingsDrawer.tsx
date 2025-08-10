@@ -3,6 +3,16 @@ import { useChatStore } from "@/lib/store";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 
+// Define Section at module scope so it doesn't remount on every render.
+function Section(props: { title: string; children: ReactNode }) {
+  return (
+    <div className="card p-4 space-y-3">
+      <div className="text-xs font-medium text-muted-foreground tracking-wide uppercase">{props.title}</div>
+      {props.children}
+    </div>
+  );
+}
+
 export default function SettingsDrawer() {
   const { chats, selectedChatId, updateChatSettings, setUI, loadModels, toggleFavoriteModel, favoriteModelIds, models } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
@@ -10,10 +20,23 @@ export default function SettingsDrawer() {
   const [temperature, setTemperature] = useState<number | undefined>(chat?.settings.temperature);
   const [top_p, setTopP] = useState<number | undefined>(chat?.settings.top_p);
   const [max_tokens, setMaxTokens] = useState<number | undefined>(chat?.settings.max_tokens);
+  // Local string mirrors to avoid type=number focus/validation quirks
+  const [temperatureStr, setTemperatureStr] = useState<string>(
+    chat?.settings.temperature != null ? String(chat.settings.temperature) : ""
+  );
+  const [topPStr, setTopPStr] = useState<string>(
+    chat?.settings.top_p != null ? String(chat.settings.top_p) : ""
+  );
+  const [maxTokensStr, setMaxTokensStr] = useState<string>(
+    chat?.settings.max_tokens != null ? String(chat.settings.max_tokens) : ""
+  );
   const [customModel, setCustomModel] = useState("");
   const [query, setQuery] = useState("");
   const [reasoningEffort, setReasoningEffort] = useState<string | undefined>(chat?.settings.reasoning_effort);
   const [reasoningTokens, setReasoningTokens] = useState<number | undefined>(chat?.settings.reasoning_tokens);
+  const [reasoningTokensStr, setReasoningTokensStr] = useState<string>(
+    chat?.settings.reasoning_tokens != null ? String(chat.settings.reasoning_tokens) : ""
+  );
   const [showThinking, setShowThinking] = useState<boolean>(chat?.settings.show_thinking_by_default ?? true);
   const [showStats, setShowStats] = useState<boolean>(chat?.settings.show_stats ?? true);
 
@@ -39,15 +62,6 @@ export default function SettingsDrawer() {
       .slice(0, 50)
       .map((m) => ({ id: m.id, name: m.name }));
   }, [models, normalizedQuery]);
-
-  function Section(props: { title: string; children: ReactNode }) {
-    return (
-      <div className="card p-4 space-y-3">
-        <div className="text-xs font-medium text-muted-foreground tracking-wide uppercase">{props.title}</div>
-        {props.children}
-      </div>
-    );
-  }
 
   return (
     <>
@@ -76,6 +90,7 @@ export default function SettingsDrawer() {
                 placeholder="You are a helpful assistant."
                 value={system}
                 onChange={(e) => setSystem(e.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
               />
             </div>
           </Section>
@@ -86,48 +101,76 @@ export default function SettingsDrawer() {
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
                   <span>Temperature</span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setTemperature(undefined)}>Reset</button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setTemperature(undefined); setTemperatureStr(""); }}
+                  >
+                    Reset
+                  </button>
                 </label>
                 <input
                   className="input w-full"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="2"
-                  value={temperature ?? ""}
+                  inputMode="decimal"
                   placeholder="model default"
-                  onChange={(e) => setTemperature(e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                  value={temperatureStr}
+                  onChange={(e) => setTemperatureStr(e.target.value)}
+                  onBlur={() => {
+                    const v = temperatureStr.trim();
+                    if (v === "") { setTemperature(undefined); return; }
+                    const n = Number(v);
+                    if (!Number.isNaN(n)) setTemperature(n);
+                  }}
+                  onKeyDown={(e) => e.stopPropagation()}
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
                   <span>Top_p</span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setTopP(undefined)}>Reset</button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setTopP(undefined); setTopPStr(""); }}
+                  >
+                    Reset
+                  </button>
                 </label>
                 <input
                   className="input w-full"
-                  type="number"
-                  step="0.05"
-                  min="0"
-                  max="1"
-                  value={top_p ?? ""}
+                  inputMode="decimal"
                   placeholder="model default"
-                  onChange={(e) => setTopP(e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                  value={topPStr}
+                  onChange={(e) => setTopPStr(e.target.value)}
+                  onBlur={() => {
+                    const v = topPStr.trim();
+                    if (v === "") { setTopP(undefined); return; }
+                    const n = Number(v);
+                    if (!Number.isNaN(n)) setTopP(n);
+                  }}
+                  onKeyDown={(e) => e.stopPropagation()}
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
                   <span>Max tokens</span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setMaxTokens(undefined)}>Auto</button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setMaxTokens(undefined); setMaxTokensStr(""); }}
+                  >
+                    Auto
+                  </button>
                 </label>
                 <input
                   className="input w-full"
-                  type="number"
-                  step="1"
-                  min="1"
-                  value={max_tokens ?? ""}
+                  inputMode="numeric"
                   placeholder="auto"
-                  onChange={(e) => setMaxTokens(e.target.value === "" ? undefined : parseInt(e.target.value))}
+                  value={maxTokensStr}
+                  onChange={(e) => setMaxTokensStr(e.target.value)}
+                  onBlur={() => {
+                    const v = maxTokensStr.trim();
+                    if (v === "") { setMaxTokens(undefined); return; }
+                    const n = Number(v);
+                    if (!Number.isNaN(n)) setMaxTokens(Math.floor(n));
+                  }}
+                  onKeyDown={(e) => e.stopPropagation()}
                 />
               </div>
             </div>
@@ -155,16 +198,26 @@ export default function SettingsDrawer() {
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
                   <span>Reasoning tokens</span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setReasoningTokens(undefined)}>Auto</button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setReasoningTokens(undefined); setReasoningTokensStr(""); }}
+                  >
+                    Auto
+                  </button>
                 </label>
                 <input
                   className="input w-full"
-                  type="number"
-                  step="1"
-                  min="1"
-                  value={reasoningTokens ?? ""}
+                  inputMode="numeric"
                   placeholder="auto"
-                  onChange={(e) => setReasoningTokens(e.target.value === "" ? undefined : parseInt(e.target.value))}
+                  value={reasoningTokensStr}
+                  onChange={(e) => setReasoningTokensStr(e.target.value)}
+                  onBlur={() => {
+                    const v = reasoningTokensStr.trim();
+                    if (v === "") { setReasoningTokens(undefined); return; }
+                    const n = Number(v);
+                    if (!Number.isNaN(n)) setReasoningTokens(Math.floor(n));
+                  }}
+                  onKeyDown={(e) => e.stopPropagation()}
                 />
               </div>
             </div>
@@ -196,7 +249,13 @@ export default function SettingsDrawer() {
               <div className="space-y-2">
                 <label className="text-sm">Add custom model ID</label>
                 <div className="flex gap-2">
-                  <input className="input flex-1" placeholder="provider/model-id" value={customModel} onChange={(e) => setCustomModel(e.target.value)} />
+                  <input
+                    className="input flex-1"
+                    placeholder="provider/model-id"
+                    value={customModel}
+                    onChange={(e) => setCustomModel(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
                   <button
                     className="btn btn-outline"
                     onClick={() => {
@@ -222,6 +281,7 @@ export default function SettingsDrawer() {
                   placeholder="Search OpenRouter models (e.g. openai, anthropic, llama)"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}
                 />
                 {normalizedQuery && (
                   <div className="absolute left-0 right-0 top-full mt-2 card p-2 max-h-72 overflow-auto z-10">
@@ -261,7 +321,7 @@ export default function SettingsDrawer() {
         </div>
 
         {/* Sticky footer */}
-        <div className="px-6 py-4 border-t border-border sticky bottom-0 bg-surface">
+        <div className="px-6 h-[88px] flex items-center border-t border-border sticky bottom-0 bg-surface">
           <button
             className="btn"
             onClick={() => {
@@ -281,5 +341,3 @@ export default function SettingsDrawer() {
     </>
   );
 }
-
-

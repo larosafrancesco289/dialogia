@@ -41,7 +41,7 @@ export default function Composer() {
 
   return (
     <div className="p-5 sticky bottom-0 bg-surface">
-      <div className="flex items-end gap-3">
+      <div className="flex items-center gap-3">
         <textarea
           ref={taRef}
           className="textarea flex-1 text-base"
@@ -57,14 +57,14 @@ export default function Composer() {
         />
         {isStreaming ? (
           <button
-            className="btn btn-outline"
+            className="btn btn-outline self-center"
             onClick={() => { stop(); setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0); }}
             aria-label="Stop"
           >
             <StopIcon className="h-4 w-4" />
           </button>
         ) : (
-          <button className="btn" onClick={onSend} aria-label="Send">Send</button>
+          <button className="btn self-center" onClick={onSend} aria-label="Send">Send</button>
         )}
       </div>
       {/* Simplified footer: remove model and hotkey hints for a cleaner composer */}

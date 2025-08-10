@@ -98,7 +98,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
             </div>
           ) : (
             <div className="p-4">
-              <pre className="whitespace-pre-wrap">{m.content}</pre>
+              <Markdown content={m.content} />
             </div>
           )}
         </div>

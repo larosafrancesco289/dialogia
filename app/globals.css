@@ -120,3 +120,83 @@ html, body, #__next {
   100% { transform: translateX(220%); opacity: 0; }
 }
 
+/* Markdown typography */
+.markdown {
+  line-height: 1.65;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+.markdown p { margin: 0.5rem 0 0.75rem; }
+.markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6 {
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1.2rem 0 0.6rem;
+}
+.markdown h1 { font-size: 1.6rem; }
+.markdown h2 { font-size: 1.35rem; }
+.markdown h3 { font-size: 1.15rem; }
+.markdown h4 { font-size: 1.05rem; }
+.markdown h5, .markdown h6 { font-size: 1rem; }
+.markdown ul, .markdown ol { margin: 0.5rem 0 0.9rem 1.35rem; }
+.markdown li { margin: 0.2rem 0; }
+.markdown blockquote {
+  margin: 0.9rem 0;
+  padding: 0.35rem 0.9rem;
+  border-left: 3px solid var(--color-border);
+  color: var(--color-fg-muted);
+  background: color-mix(in oklab, var(--color-muted) 60%, transparent);
+  border-radius: 8px;
+}
+.markdown hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1rem 0;
+}
+.markdown code {
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.1rem 0.35rem;
+}
+.markdown pre { position: relative; }
+.markdown pre code { background: transparent; border: none; padding: 0; }
+.markdown pre[data-wrap="true"] { white-space: pre-wrap; word-break: break-word; }
+.markdown pre[data-wrap="false"] { white-space: pre; }
+.markdown table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.95em; }
+.markdown thead th { text-align: left; color: var(--color-fg-muted); border-bottom: 1px solid var(--color-border); padding: 6px 8px; }
+.markdown tbody td { border-top: 1px solid var(--color-border); padding: 6px 8px; }
+.markdown img { max-width: 100%; border-radius: 10px; }
+
+/* Heading anchors (rehype-slug + autolink) */
+.markdown .heading-anchor {
+  color: inherit;
+  text-decoration: none;
+}
+.markdown .heading-anchor:hover { text-decoration: underline; text-decoration-style: dotted; }
+
+/* Pre toolbar container gets a subtle backdrop to separate from code */
+.pre-toolbar {
+  pointer-events: none; /* let buttons be clickable only */
+}
+.pre-toolbar > * { pointer-events: auto; }
+
+/* Fading mask when content is clipped */
+.pre-fade {
+  position: sticky;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0), var(--color-muted));
+}
+
+/* Mermaid diagram container */
+.mermaid-diagram {
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 12px;
+  overflow: auto;
+}
+
+
