@@ -13,8 +13,8 @@ export default function HomePage() {
   }, [initialize]);
 
   return (
-    <div className="app-shell" style={{ ['--sidebar-width' as any]: collapsed ? '56px' : '320px' }}>
-      <aside className="sidebar border-r border-border bg-surface">
+    <div className="app-shell" style={{ ['--sidebar-width' as any]: collapsed ? '0px' : '320px' }}>
+      <aside className={`sidebar bg-surface ${collapsed ? '' : 'border-r border-border'}`}>
         <ChatSidebar />
       </aside>
       <main className="content">

@@ -1,6 +1,7 @@
 "use client";
 import { useChatStore } from "@/lib/store";
 import { useState } from "react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function SettingsDrawer() {
   const { chats, selectedChatId, updateChatSettings, setUI, loadModels } = useChatStore();
@@ -13,9 +14,12 @@ export default function SettingsDrawer() {
 
   return (
     <div className="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-surface border-l border-border p-4 space-y-3 shadow-[var(--shadow-card)]">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Chat Settings</h3>
-        <button className="btn btn-ghost" onClick={() => setUI({ showSettings: false })}>Close</button>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-semibold">Settings</h3>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <button className="btn btn-ghost" onClick={() => setUI({ showSettings: false })}>Close</button>
+        </div>
       </div>
       <div className="space-y-2">
         <label className="text-sm">System prompt</label>

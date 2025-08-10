@@ -1,13 +1,26 @@
 "use client";
 import ModelPicker from "@/components/ModelPicker";
 import { useChatStore } from "@/lib/store";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
 export default function TopHeader() {
   const { chats, selectedChatId, renameChat, setUI } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
+  const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
 
   return (
-    <div className="border-b border-border px-4 py-3 flex items-center gap-3">
+    <div className="app-header bg-surface gap-3">
+      <button
+        className="btn btn-ghost"
+        aria-label="Toggle sidebar"
+        onClick={() => setUI({ sidebarCollapsed: !collapsed })}
+      >
+        {collapsed ? (
+          <ChevronRightIcon className="h-5 w-5" />
+        ) : (
+          <ChevronLeftIcon className="h-5 w-5" />
+        )}
+      </button>
       <div className="relative">
         <ModelPicker />
       </div>
