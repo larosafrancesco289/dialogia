@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useChatStore } from "@/lib/store";
 
 export default function ModelPicker() {
-  const { models, updateChatSettings, chats, selectedChatId, ui, setUI } = useChatStore() as any;
+  const { updateChatSettings, chats, selectedChatId, ui, setUI, favoriteModelIds } = useChatStore() as any;
   const chat = chats.find((c: any) => c.id === selectedChatId);
   const curated = [
     { id: "openai/gpt-5-chat", name: "GPT-5" },
@@ -11,12 +11,13 @@ export default function ModelPicker() {
     { id: "x-ai/grok-4", name: "Grok 4" },
     { id: "google/gemini-2.5-pro", name: "Gemini 2.5 Pro" },
   ];
+  const customOptions = useMemo(() => (favoriteModelIds || []).map((id: string) => ({ id, name: id })), [favoriteModelIds]);
   const options = useMemo(() => {
-    return [...curated, ...(models || [])].reduce((acc: any[], m: any) => {
+    return [...curated, ...customOptions].reduce((acc: any[], m: any) => {
       if (!acc.find((x) => x.id === m.id)) acc.push(m);
       return acc;
     }, []);
-  }, [models]);
+  }, [customOptions]);
   const [open, setOpen] = useState(false);
   const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
   const current = options.find((o) => o.id === selectedId) || options[0];

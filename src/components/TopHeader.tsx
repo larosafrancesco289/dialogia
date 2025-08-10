@@ -2,6 +2,7 @@
 import ModelPicker from "@/components/ModelPicker";
 import { useChatStore } from "@/lib/store";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function TopHeader() {
   const { chats, selectedChatId, renameChat, setUI } = useChatStore();
@@ -32,7 +33,7 @@ export default function TopHeader() {
         />
       )}
       <div className="ml-auto" />
-      <button className="btn btn-outline" onClick={() => setUI({ showSettings: true })}>Settings</button>
+      <ThemeToggle />
     </div>
   );
 }

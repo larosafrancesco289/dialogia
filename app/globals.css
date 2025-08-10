@@ -50,6 +50,7 @@ html, body, #__next {
   top: var(--header-height);
   height: 0;
   border-top: 1px solid var(--color-border);
+  z-index: 10; /* below sticky header (30) and drawer (50) */
 }
 
 .scroll-area {

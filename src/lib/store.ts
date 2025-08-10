@@ -58,12 +58,22 @@ export const useChatStore = create<StoreState>()(
       ui: { showSettings: false, isStreaming: false, sidebarCollapsed: false },
 
       initializeApp: async () => {
+        const compareMessages = (a: Message, b: Message) => {
+          if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
+          const rolePriority: Record<Message["role"], number> = { system: 0, user: 1, assistant: 2 };
+          if (rolePriority[a.role] !== rolePriority[b.role]) return rolePriority[a.role] - rolePriority[b.role];
+          return a.id.localeCompare(b.id);
+        };
         const chats = await db.chats.toArray();
         const messagesArray = await db.messages.toArray();
         const messages: Record<string, Message[]> = {};
         for (const m of messagesArray) {
           if (!messages[m.chatId]) messages[m.chatId] = [];
           messages[m.chatId].push(m);
+        }
+        // Ensure consistent chronological ordering for each chat
+        for (const key of Object.keys(messages)) {
+          messages[key] = messages[key].slice().sort(compareMessages);
         }
         let selectedChatId = get().selectedChatId;
         if (chats.length && !selectedChatId) {
@@ -139,19 +149,21 @@ export const useChatStore = create<StoreState>()(
         if (!key) return set((s) => ({ ui: { ...s.ui, notice: "Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env" } }));
         const chatId = get().selectedChatId!;
         const chat = get().chats.find((c) => c.id === chatId)!;
+        const now = Date.now();
         const userMsg: Message = {
           id: uuidv4(),
           chatId,
           role: "user",
           content,
-          createdAt: Date.now(),
+          createdAt: now,
         };
         const assistantMsg: Message = {
           id: uuidv4(),
           chatId,
           role: "assistant",
           content: "",
-          createdAt: Date.now(),
+          // Ensure assistant message sorts after the user message even if timestamps are equal
+          createdAt: now + 1,
           model: chat.settings.model,
         };
         set((s) => ({
