@@ -19,7 +19,9 @@ export default function HomePage() {
       </aside>
       <main className="content">
         <TopHeader />
-        <ChatPane />
+        <div className="flex-1 min-h-0">
+          <ChatPane />
+        </div>
       </main>
     </div>
   );

@@ -35,6 +35,10 @@ html, body, #__next {
   padding-right: 16px;
   display: flex;
   align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--color-surface);
 }
 
 /* Single separator line spanning both columns */
@@ -50,6 +54,7 @@ html, body, #__next {
 
 .scroll-area {
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 /* Ensure the main content scrolls behind a sticky composer */
