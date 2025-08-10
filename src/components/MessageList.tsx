@@ -8,10 +8,17 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const messages = useChatStore((s) => s.messages[chatId] ?? []);
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const models = useChatStore((s) => s.models);
+  const isStreaming = useChatStore((s) => s.ui.isStreaming);
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
   const showStats = chat?.settings.show_stats ?? true;
   const endRef = useRef<HTMLDivElement>(null);
+  // Scroll when a new message is added
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
+  // Also keep scrolling during streaming as content grows
+  const lastLen = (messages[messages.length - 1]?.content?.length ?? 0) + (messages[messages.length - 1]?.reasoning?.length ?? 0);
+  useEffect(() => {
+    if (isStreaming) endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [lastLen, isStreaming]);
   const showByDefault = chat?.settings.show_thinking_by_default ?? true;
   const [expandedReasoningIds, setExpandedReasoningIds] = useState<Record<string, boolean>>({});
   const toggle = (id: string) => setExpandedReasoningIds((s) => ({ ...s, [id]: !s[id] }));
@@ -53,6 +60,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     const promptRate = modelInfo?.pricing?.prompt; // per 1M tokens
                     const completionRate = modelInfo?.pricing?.completion; // per 1M tokens
                     let cost: string | undefined;
+                     let ctxPct: number | undefined;
                     if (showStats && m.metrics) {
                       const pt = m.metrics.promptTokens ?? m.tokensIn;
                       const ct = m.metrics.completionTokens ?? m.tokensOut;
@@ -60,6 +68,14 @@ export default function MessageList({ chatId }: { chatId: string }) {
                       const cCost = completionRate != null && ct != null ? (completionRate / 1_000_000) * ct : 0;
                       const total = pCost + cCost;
                       cost = total > 0 ? `${currency} ${total.toFixed(5)}` : undefined;
+
+                       // Compute context window fullness based on model context and reserved completion tokens
+                       const contextLimit = modelInfo?.context_length ?? 8000;
+                       const reservedForCompletion = typeof chat?.settings.max_tokens === "number" ? chat.settings.max_tokens! : 1024;
+                       const maxPromptTokens = Math.max(512, contextLimit - reservedForCompletion);
+                       if (pt != null && maxPromptTokens > 0) {
+                         ctxPct = Math.max(0, Math.min(100, Math.round((pt / maxPromptTokens) * 100)));
+                       }
                     }
                     return (
                       <>
@@ -70,6 +86,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                             {m.metrics.promptTokens != null && <span> · in {m.metrics.promptTokens}</span>}
                             {m.metrics.completionTokens != null && <span> · out {m.metrics.completionTokens}</span>}
                             {m.metrics.tokensPerSec != null && <span> · {m.metrics.tokensPerSec} tok/s</span>}
+                             {ctxPct != null && <span title="Context window fullness"> · ctx {ctxPct}%</span>}
                             {cost && <span> · {cost}</span>}
                           </>
                         )}

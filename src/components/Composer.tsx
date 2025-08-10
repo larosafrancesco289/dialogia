@@ -16,8 +16,21 @@ export default function Composer() {
     const value = text.trim();
     if (!value) return;
     setText("");
+    // Keep the caret in the box so the user can continue typing immediately
+    taRef.current?.focus();
     await send(value);
   };
+
+  // Autofocus on mount and when chat changes or streaming stops
+  useEffect(() => {
+    taRef.current?.focus({ preventScroll: true } as any);
+  }, []);
+  useEffect(() => {
+    taRef.current?.focus({ preventScroll: true } as any);
+  }, [selectedChatId]);
+  useEffect(() => {
+    if (!isStreaming) taRef.current?.focus({ preventScroll: true } as any);
+  }, [isStreaming]);
 
   useEffect(() => {
     const el = taRef.current;
@@ -31,22 +44,23 @@ export default function Composer() {
       <div className="flex items-end gap-3">
         <textarea
           ref={taRef}
-          className="input flex-1 min-h-14 text-base"
+          className="textarea flex-1 text-base"
           rows={1}
           placeholder="Type a message..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
+            if (isStreaming) return; // allow typing while streaming, but do not send
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") onSend();
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              onSend();
-            }
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); }
           }}
-          disabled={isStreaming}
         />
         {isStreaming ? (
-          <button className="btn btn-outline" onClick={stop} aria-label="Stop">
+          <button
+            className="btn btn-outline"
+            onClick={() => { stop(); setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0); }}
+            aria-label="Stop"
+          >
             <StopIcon className="h-4 w-4" />
           </button>
         ) : (
