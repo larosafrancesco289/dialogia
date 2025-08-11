@@ -17,6 +17,14 @@ Dialogia is a local-first chat UI for OpenRouter models.
 - Basic cost estimate when pricing metadata is available
 - Local persistence via Dexie (IndexedDB)
 
+### Screenshots
+
+![Front page](assets/frontpage.png)
+
+![Model selection](assets/model-selection.png)
+
+![Settings](assets/settings.png)
+
 ### Setup
 
 Create `.env.local` at the project root:
