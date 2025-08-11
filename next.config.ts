@@ -1,13 +1,11 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {
     typedRoutes: true,
-    optimizePackageImports: ["zustand"],
+    optimizePackageImports: ['zustand'],
   },
 };
 
 export default nextConfig;
-
-

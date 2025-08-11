@@ -1,17 +1,32 @@
-@import "tailwindcss";
-@import "../styles/francesco-bootstrap.css";
+@import 'tailwindcss';
+@import '../styles/francesco-bootstrap.css';
 
-html, body, #__next {
+html,
+body,
+#__next {
   height: 100%;
 }
 
 /* Semantic color helpers (Tailwind-like names mapped to tokens) */
-.bg-surface { background-color: var(--color-surface); }
-.bg-muted { background-color: var(--color-muted); }
-.bg-canvas { background-color: var(--color-canvas); }
-.text-fg { color: var(--color-fg); }
-.text-fg-muted, .text-muted-foreground { color: var(--color-fg-muted); }
-.border-border { border-color: var(--color-border); }
+.bg-surface {
+  background-color: var(--color-surface);
+}
+.bg-muted {
+  background-color: var(--color-muted);
+}
+.bg-canvas {
+  background-color: var(--color-canvas);
+}
+.text-fg {
+  color: var(--color-fg);
+}
+.text-fg-muted,
+.text-muted-foreground {
+  color: var(--color-fg-muted);
+}
+.border-border {
+  border-color: var(--color-border);
+}
 
 /* App layout helpers */
 .app-shell {
@@ -26,7 +41,12 @@ html, body, #__next {
   overflow: hidden;
 }
 
-.content { overflow: hidden; position: relative; display: flex; flex-direction: column; }
+.content {
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
 
 /* Unified header bar to keep borders aligned across sidebar and content */
 .app-header {
@@ -43,7 +63,7 @@ html, body, #__next {
 
 /* Single separator line spanning both columns */
 .app-shell::after {
-  content: "";
+  content: '';
   position: absolute;
   left: 0;
   right: 0;
@@ -63,11 +83,14 @@ html, body, #__next {
   border: 1px solid var(--color-border);
   background: color-mix(in oklab, var(--color-surface) 85%, transparent);
   color: var(--color-fg);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
-.icon-button:hover { background: var(--color-muted); }
-.icon-button:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent); }
-
+.icon-button:hover {
+  background: var(--color-muted);
+}
+.icon-button:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent);
+}
 
 .scroll-area {
   overflow: auto;
@@ -75,16 +98,19 @@ html, body, #__next {
 }
 
 /* Ensure the main content scrolls behind a sticky composer */
-.content > .flex-1 { min-height: 0; }
+.content > .flex-1 {
+  min-height: 0;
+}
 
 /* Landing gradient similar to blurred GPT hero, but in our palette */
 .hero-gradient::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: -20%;
-  background: radial-gradient(60% 60% at 50% 40%, rgba(185,151,91,.25), transparent 60%),
-              radial-gradient(40% 40% at 70% 60%, rgba(109,42,138,.22), transparent 60%),
-              radial-gradient(35% 35% at 30% 65%, rgba(212,175,55,.18), transparent 60%);
+  background:
+    radial-gradient(60% 60% at 50% 40%, rgba(185, 151, 91, 0.25), transparent 60%),
+    radial-gradient(40% 40% at 70% 60%, rgba(109, 42, 138, 0.22), transparent 60%),
+    radial-gradient(35% 35% at 30% 65%, rgba(212, 175, 55, 0.18), transparent 60%);
   filter: blur(50px);
 }
 
@@ -98,12 +124,13 @@ html, body, #__next {
   overflow: hidden;
 }
 .thinking-panel:before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(120% 50% at 10% 10%, rgba(212,175,55,0.08), transparent 55%),
-              radial-gradient(120% 60% at 90% 20%, rgba(109,42,138,0.08), transparent 60%);
+  background:
+    radial-gradient(120% 50% at 10% 10%, rgba(212, 175, 55, 0.08), transparent 55%),
+    radial-gradient(120% 60% at 90% 20%, rgba(109, 42, 138, 0.08), transparent 60%);
 }
 .thinking-shimmer {
   position: absolute;
@@ -111,13 +138,27 @@ html, body, #__next {
   top: 0;
   bottom: 0;
   width: 40%;
-  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.07), rgba(255,255,255,0));
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.07),
+    rgba(255, 255, 255, 0)
+  );
   animation: thinking-scan 2.2s ease-in-out infinite;
 }
 @keyframes thinking-scan {
-  0% { transform: translateX(0%); opacity: 0.3; }
-  50% { transform: translateX(220%); opacity: 0.7; }
-  100% { transform: translateX(220%); opacity: 0; }
+  0% {
+    transform: translateX(0%);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateX(220%);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateX(220%);
+    opacity: 0;
+  }
 }
 
 /* Markdown typography */
@@ -126,19 +167,42 @@ html, body, #__next {
   word-wrap: break-word;
   overflow-wrap: anywhere;
 }
-.markdown p { margin: 0.5rem 0 0.75rem; }
-.markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6 {
+.markdown p {
+  margin: 0.5rem 0 0.75rem;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
   font-weight: 700;
   line-height: 1.25;
   margin: 1.2rem 0 0.6rem;
 }
-.markdown h1 { font-size: 1.6rem; }
-.markdown h2 { font-size: 1.35rem; }
-.markdown h3 { font-size: 1.15rem; }
-.markdown h4 { font-size: 1.05rem; }
-.markdown h5, .markdown h6 { font-size: 1rem; }
-.markdown ul, .markdown ol { margin: 0.5rem 0 0.9rem 1.35rem; }
-.markdown li { margin: 0.2rem 0; }
+.markdown h1 {
+  font-size: 1.6rem;
+}
+.markdown h2 {
+  font-size: 1.35rem;
+}
+.markdown h3 {
+  font-size: 1.15rem;
+}
+.markdown h4 {
+  font-size: 1.05rem;
+}
+.markdown h5,
+.markdown h6 {
+  font-size: 1rem;
+}
+.markdown ul,
+.markdown ol {
+  margin: 0.5rem 0 0.9rem 1.35rem;
+}
+.markdown li {
+  margin: 0.2rem 0;
+}
 .markdown blockquote {
   margin: 0.9rem 0;
   padding: 0.35rem 0.9rem;
@@ -158,27 +222,59 @@ html, body, #__next {
   border-radius: 8px;
   padding: 0.1rem 0.35rem;
 }
-.markdown pre { position: relative; }
-.markdown pre code { background: transparent; border: none; padding: 0; }
-.markdown pre[data-wrap="true"] { white-space: pre-wrap; word-break: break-word; }
-.markdown pre[data-wrap="false"] { white-space: pre; }
-.markdown table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.95em; }
-.markdown thead th { text-align: left; color: var(--color-fg-muted); border-bottom: 1px solid var(--color-border); padding: 6px 8px; }
-.markdown tbody td { border-top: 1px solid var(--color-border); padding: 6px 8px; }
-.markdown img { max-width: 100%; border-radius: 10px; }
+.markdown pre {
+  position: relative;
+}
+.markdown pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+.markdown pre[data-wrap='true'] {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.markdown pre[data-wrap='false'] {
+  white-space: pre;
+}
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.95em;
+}
+.markdown thead th {
+  text-align: left;
+  color: var(--color-fg-muted);
+  border-bottom: 1px solid var(--color-border);
+  padding: 6px 8px;
+}
+.markdown tbody td {
+  border-top: 1px solid var(--color-border);
+  padding: 6px 8px;
+}
+.markdown img {
+  max-width: 100%;
+  border-radius: 10px;
+}
 
 /* Heading anchors (rehype-slug + autolink) */
 .markdown .heading-anchor {
   color: inherit;
   text-decoration: none;
 }
-.markdown .heading-anchor:hover { text-decoration: underline; text-decoration-style: dotted; }
+.markdown .heading-anchor:hover {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
 
 /* Pre toolbar container gets a subtle backdrop to separate from code */
 .pre-toolbar {
   pointer-events: none; /* let buttons be clickable only */
 }
-.pre-toolbar > * { pointer-events: auto; }
+.pre-toolbar > * {
+  pointer-events: auto;
+}
 
 /* Fading mask when content is clipped */
 .pre-fade {
@@ -187,7 +283,7 @@ html, body, #__next {
   left: 0;
   right: 0;
   height: 48px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0), var(--color-muted));
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--color-muted));
 }
 
 /* Mermaid diagram container */
@@ -198,5 +294,3 @@ html, body, #__next {
   padding: 12px;
   overflow: auto;
 }
-
-
