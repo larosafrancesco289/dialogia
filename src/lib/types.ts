@@ -5,7 +5,7 @@ export type ChatSettings = {
   max_tokens?: number;
   system?: string;
   // OpenRouter reasoning controls (for thinking models)
-  reasoning_effort?: "none" | "low" | "medium" | "high";
+  reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
   reasoning_tokens?: number; // max reasoning tokens (optional)
   show_thinking_by_default?: boolean; // UI preference only
   show_stats?: boolean; // UI preference only
@@ -14,7 +14,7 @@ export type ChatSettings = {
 export type Message = {
   id: string;
   chatId: string;
-  role: "system" | "user" | "assistant";
+  role: 'system' | 'user' | 'assistant';
   content: string;
   createdAt: number;
   tokensIn?: number;
@@ -53,5 +53,3 @@ export type KVRecord = {
   key: string;
   value: any;
 };
-
-

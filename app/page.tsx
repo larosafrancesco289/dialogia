@@ -1,10 +1,10 @@
-"use client";
-import ChatSidebar from "@/components/ChatSidebar";
-import ChatPane from "@/components/ChatPane";
-import SettingsDrawer from "@/components/SettingsDrawer";
-import TopHeader from "@/components/TopHeader";
-import { useEffect } from "react";
-import { useChatStore } from "@/lib/store";
+'use client';
+import ChatSidebar from '@/components/ChatSidebar';
+import ChatPane from '@/components/ChatPane';
+import SettingsDrawer from '@/components/SettingsDrawer';
+import TopHeader from '@/components/TopHeader';
+import { useEffect } from 'react';
+import { useChatStore } from '@/lib/store';
 
 export default function HomePage() {
   const initialize = useChatStore((s) => s.initializeApp);
@@ -29,5 +29,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-

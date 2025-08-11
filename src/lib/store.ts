@@ -1,13 +1,13 @@
-"use client";
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { v4 as uuidv4 } from "uuid";
-import { db, saveChat, saveMessage, kvGet, kvSet } from "@/lib/db";
-import type { Chat, ChatSettings, Message, ORModel } from "@/lib/types";
-import { encryptString, decryptString } from "@/lib/crypto";
-import { fetchModels, streamChatCompletion } from "@/lib/openrouter";
+'use client';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { v4 as uuidv4 } from 'uuid';
+import { db, saveChat, saveMessage } from '@/lib/db';
+import type { Chat, ChatSettings, Message, ORModel } from '@/lib/types';
+// crypto helpers are available in `@/lib/crypto` if encrypted storage is added later
+import { fetchModels, streamChatCompletion } from '@/lib/openrouter';
 
-type StorageMode = "memory" | "encrypted";
+type StorageMode = 'memory' | 'encrypted';
 
 type UIState = {
   showSettings: boolean;
@@ -44,10 +44,10 @@ type StoreState = {
 };
 
 const defaultSettings: ChatSettings = {
-  model: "openai/gpt-5-chat",
+  model: 'openai/gpt-5-chat',
   // temperature/top_p/max_tokens omitted by default; OpenRouter will use model defaults
-  system: "You are a helpful assistant.",
-  reasoning_effort: "low",
+  system: 'You are a helpful assistant.',
+  reasoning_effort: 'low',
   show_thinking_by_default: true,
   show_stats: true,
 };
@@ -66,8 +66,13 @@ export const useChatStore = create<StoreState>()(
       initializeApp: async () => {
         const compareMessages = (a: Message, b: Message) => {
           if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
-          const rolePriority: Record<Message["role"], number> = { system: 0, user: 1, assistant: 2 };
-          if (rolePriority[a.role] !== rolePriority[b.role]) return rolePriority[a.role] - rolePriority[b.role];
+          const rolePriority: Record<Message['role'], number> = {
+            system: 0,
+            user: 1,
+            assistant: 2,
+          };
+          if (rolePriority[a.role] !== rolePriority[b.role])
+            return rolePriority[a.role] - rolePriority[b.role];
           return a.id.localeCompare(b.id);
         };
         const chats = await db.chats.toArray();
@@ -93,7 +98,7 @@ export const useChatStore = create<StoreState>()(
         const now = Date.now();
         const chat: Chat = {
           id,
-          title: "New Chat",
+          title: 'New Chat',
           createdAt: now,
           updatedAt: now,
           settings: { ...defaultSettings, model: get().ui.nextModel ?? defaultSettings.model },
@@ -106,11 +111,11 @@ export const useChatStore = create<StoreState>()(
         set((s) => ({
           chats: s.chats.map((c) => (c.id === id ? { ...c, title, updatedAt: Date.now() } : c)),
         }));
-        const chat = (get().chats.find((c) => c.id === id))!;
+        const chat = get().chats.find((c) => c.id === id)!;
         await saveChat(chat);
       },
       deleteChat: async (id) => {
-        await db.transaction("rw", db.chats, db.messages, async () => {
+        await db.transaction('rw', db.chats, db.messages, async () => {
           await db.chats.delete(id);
           await db.messages.where({ chatId: id }).delete();
         });
@@ -126,7 +131,9 @@ export const useChatStore = create<StoreState>()(
         if (!id) return;
         set((s) => ({
           chats: s.chats.map((c) =>
-            c.id === id ? { ...c, settings: { ...c.settings, ...partial }, updatedAt: Date.now() } : c
+            c.id === id
+              ? { ...c, settings: { ...c.settings, ...partial }, updatedAt: Date.now() }
+              : c,
           ),
         }));
         const chat = get().chats.find((c) => c.id === id)!;
@@ -136,51 +143,59 @@ export const useChatStore = create<StoreState>()(
 
       loadModels: async () => {
         const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
-        if (!key) return set((s) => ({ ui: { ...s.ui, notice: "Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env" } }));
+        if (!key)
+          return set((s) => ({
+            ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
+          }));
         try {
           const models = await fetchModels(key);
           set({ models });
         } catch (e: any) {
-          if (e?.message === "unauthorized") set((s) => ({ ui: { ...s.ui, notice: "Invalid API key" } }));
+          if (e?.message === 'unauthorized')
+            set((s) => ({ ui: { ...s.ui, notice: 'Invalid API key' } }));
         }
       },
-      toggleFavoriteModel: (id) => set((s) => ({
-        favoriteModelIds: s.favoriteModelIds.includes(id)
-          ? s.favoriteModelIds.filter((m) => m !== id)
-          : [id, ...s.favoriteModelIds],
-      })),
+      toggleFavoriteModel: (id) =>
+        set((s) => ({
+          favoriteModelIds: s.favoriteModelIds.includes(id)
+            ? s.favoriteModelIds.filter((m) => m !== id)
+            : [id, ...s.favoriteModelIds],
+        })),
 
       sendUserMessage: async (content: string) => {
         const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
-        if (!key) return set((s) => ({ ui: { ...s.ui, notice: "Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env" } }));
+        if (!key)
+          return set((s) => ({
+            ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
+          }));
         const chatId = get().selectedChatId!;
         const chat = get().chats.find((c) => c.id === chatId)!;
         const now = Date.now();
         const userMsg: Message = {
           id: uuidv4(),
           chatId,
-          role: "user",
+          role: 'user',
           content,
           createdAt: now,
         };
         const assistantMsg: Message = {
           id: uuidv4(),
           chatId,
-          role: "assistant",
-          content: "",
+          role: 'assistant',
+          content: '',
           // Ensure assistant message sorts after the user message even if timestamps are equal
           createdAt: now + 1,
           model: chat.settings.model,
-          reasoning: "",
+          reasoning: '',
         };
-         // Build the LLM payload using prior conversation and this new user message
-         const priorList = get().messages[chatId] ?? [];
-         const msgs = buildChatCompletionMessages({
-           chat,
-           priorMessages: priorList,
-           models: get().models,
-           newUserContent: content,
-         });
+        // Build the LLM payload using prior conversation and this new user message
+        const priorList = get().messages[chatId] ?? [];
+        const msgs = buildChatCompletionMessages({
+          chat,
+          priorMessages: priorList,
+          models: get().models,
+          newUserContent: content,
+        });
         set((s) => ({
           messages: {
             ...s.messages,
@@ -191,14 +206,14 @@ export const useChatStore = create<StoreState>()(
         await saveMessage(userMsg);
         await saveMessage(assistantMsg);
         // auto-name chat if default title
-        if (chat.title === "New Chat") {
+        if (chat.title === 'New Chat') {
           const draft = content.trim().slice(0, 40);
-          await get().renameChat(chat.id, draft || "New Chat");
+          await get().renameChat(chat.id, draft || 'New Chat');
         }
 
         try {
           const controller = new AbortController();
-          set((s) => ({ ...s, _controller: controller as any } as any));
+          set((s) => ({ ...s, _controller: controller as any }) as any);
           const tStart = performance.now();
           let tFirst: number | undefined;
           await streamChatCompletion({
@@ -217,9 +232,7 @@ export const useChatStore = create<StoreState>()(
                 set((s) => {
                   const list = s.messages[chatId] ?? [];
                   const updated = list.map((m) =>
-                    m.id === assistantMsg.id
-                      ? { ...m, content: m.content + delta }
-                      : m
+                    m.id === assistantMsg.id ? { ...m, content: m.content + delta } : m,
                   );
                   return { messages: { ...s.messages, [chatId]: updated } };
                 });
@@ -229,7 +242,7 @@ export const useChatStore = create<StoreState>()(
                 set((s) => {
                   const list = s.messages[chatId] ?? [];
                   const updated = list.map((m) =>
-                    m.id === assistantMsg.id ? { ...m, reasoning: (m.reasoning || "") + delta } : m
+                    m.id === assistantMsg.id ? { ...m, reasoning: (m.reasoning || '') + delta } : m,
                   );
                   return { messages: { ...s.messages, [chatId]: updated } };
                 });
@@ -241,10 +254,12 @@ export const useChatStore = create<StoreState>()(
                 const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
                 const completionMs = Math.max(0, Math.round(tEnd - tStart));
                 const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
-                const completionTokens = extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
-                const tokensPerSec = completionTokens && completionMs
-                  ? +(completionTokens / (completionMs / 1000)).toFixed(2)
-                  : undefined;
+                const completionTokens =
+                  extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
+                const tokensPerSec =
+                  completionTokens && completionMs
+                    ? +(completionTokens / (completionMs / 1000)).toFixed(2)
+                    : undefined;
                 const final = {
                   ...assistantMsg,
                   content: full,
@@ -260,18 +275,22 @@ export const useChatStore = create<StoreState>()(
                   return { messages: { ...s.messages, [chatId]: updated } };
                 });
                 await saveMessage(final);
-                set((s) => ({ ...s, _controller: undefined } as any));
+                set((s) => ({ ...s, _controller: undefined }) as any);
               },
               onError: (err) => {
                 set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: err.message } }));
-                set((s) => ({ ...s, _controller: undefined } as any));
+                set((s) => ({ ...s, _controller: undefined }) as any);
               },
             },
           });
         } catch (e: any) {
-          if (e?.message === "unauthorized") set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: "Invalid API key" } }));
-          if (e?.message === "rate_limited") set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: "Rate limited. Retry later." } }));
-          set((s) => ({ ...s, _controller: undefined } as any));
+          if (e?.message === 'unauthorized')
+            set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Invalid API key' } }));
+          if (e?.message === 'rate_limited')
+            set((s) => ({
+              ui: { ...s.ui, isStreaming: false, notice: 'Rate limited. Retry later.' },
+            }));
+          set((s) => ({ ...s, _controller: undefined }) as any);
         }
       },
 
@@ -279,41 +298,47 @@ export const useChatStore = create<StoreState>()(
         const controller = (get() as any)._controller as AbortController | undefined;
         controller?.abort();
         set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
-        set((s) => ({ ...s, _controller: undefined } as any));
+        set((s) => ({ ...s, _controller: undefined }) as any);
       },
 
       regenerateAssistantMessage: async (messageId, opts) => {
         const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
-        if (!key) return set((s) => ({ ui: { ...s.ui, notice: "Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env" } }));
+        if (!key)
+          return set((s) => ({
+            ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
+          }));
         const chatId = get().selectedChatId!;
         const chat = get().chats.find((c) => c.id === chatId)!;
         const list = get().messages[chatId] ?? [];
         const idx = list.findIndex((m) => m.id === messageId);
         if (idx === -1) return;
-         // Build payload using all messages prior to the assistant message being regenerated
-         const payloadBefore = buildChatCompletionMessages({
-           chat,
-           priorMessages: list.slice(0, idx),
-           models: get().models,
-         });
+        // Build payload using all messages prior to the assistant message being regenerated
+        const payloadBefore = buildChatCompletionMessages({
+          chat,
+          priorMessages: list.slice(0, idx),
+          models: get().models,
+        });
         // Prepare a new assistant message to stream into, replacing the old one in-place
         const replacement: Message = {
           id: messageId,
           chatId,
-          role: "assistant",
-          content: "",
+          role: 'assistant',
+          content: '',
           createdAt: list[idx].createdAt,
           model: opts?.modelId || chat.settings.model,
-          reasoning: "",
+          reasoning: '',
         };
         set((s) => ({
-          messages: { ...s.messages, [chatId]: list.map((m) => (m.id === messageId ? replacement : m)) },
+          messages: {
+            ...s.messages,
+            [chatId]: list.map((m) => (m.id === messageId ? replacement : m)),
+          },
           ui: { ...s.ui, isStreaming: true },
         }));
-         const msgs = payloadBefore;
+        const msgs = payloadBefore;
         try {
           const controller = new AbortController();
-          set((s) => ({ ...s, _controller: controller as any } as any));
+          set((s) => ({ ...s, _controller: controller as any }) as any);
           const tStart = performance.now();
           let tFirst: number | undefined;
           await streamChatCompletion({
@@ -331,14 +356,18 @@ export const useChatStore = create<StoreState>()(
                 if (tFirst == null) tFirst = performance.now();
                 set((s) => {
                   const list2 = s.messages[chatId] ?? [];
-                  const updated = list2.map((m) => (m.id === replacement.id ? { ...m, content: m.content + delta } : m));
+                  const updated = list2.map((m) =>
+                    m.id === replacement.id ? { ...m, content: m.content + delta } : m,
+                  );
                   return { messages: { ...s.messages, [chatId]: updated } };
                 });
               },
               onReasoningToken: (delta) => {
                 set((s) => {
                   const list2 = s.messages[chatId] ?? [];
-                  const updated = list2.map((m) => (m.id === replacement.id ? { ...m, reasoning: (m.reasoning || "") + delta } : m));
+                  const updated = list2.map((m) =>
+                    m.id === replacement.id ? { ...m, reasoning: (m.reasoning || '') + delta } : m,
+                  );
                   return { messages: { ...s.messages, [chatId]: updated } };
                 });
               },
@@ -349,10 +378,12 @@ export const useChatStore = create<StoreState>()(
                 const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
                 const completionMs = Math.max(0, Math.round(tEnd - tStart));
                 const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
-                const completionTokens = extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
-                const tokensPerSec = completionTokens && completionMs
-                  ? +(completionTokens / (completionMs / 1000)).toFixed(2)
-                  : undefined;
+                const completionTokens =
+                  extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
+                const tokensPerSec =
+                  completionTokens && completionMs
+                    ? +(completionTokens / (completionMs / 1000)).toFixed(2)
+                    : undefined;
                 const final = {
                   ...replacement,
                   content: full,
@@ -367,29 +398,33 @@ export const useChatStore = create<StoreState>()(
                   return { messages: { ...s.messages, [chatId]: updated } };
                 });
                 await saveMessage(final);
-                set((s) => ({ ...s, _controller: undefined } as any));
+                set((s) => ({ ...s, _controller: undefined }) as any);
               },
               onError: (err) => {
                 set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: err.message } }));
-                set((s) => ({ ...s, _controller: undefined } as any));
+                set((s) => ({ ...s, _controller: undefined }) as any);
               },
             },
           });
         } catch (e: any) {
-          if (e?.message === "unauthorized") set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: "Invalid API key" } }));
-          if (e?.message === "rate_limited") set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: "Rate limited. Retry later." } }));
-          set((s) => ({ ...s, _controller: undefined } as any));
+          if (e?.message === 'unauthorized')
+            set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Invalid API key' } }));
+          if (e?.message === 'rate_limited')
+            set((s) => ({
+              ui: { ...s.ui, isStreaming: false, notice: 'Rate limited. Retry later.' },
+            }));
+          set((s) => ({ ...s, _controller: undefined }) as any);
         }
       },
     }),
     {
-      name: "dialogia-ui",
+      name: 'dialogia-ui',
       partialize: (s) => ({
         selectedChatId: s.selectedChatId,
         favoriteModelIds: s.favoriteModelIds,
       }),
-    }
-  )
+    },
+  ),
 );
 
 // Construct the message payload for the LLM from prior conversation, with a simple token window
@@ -398,25 +433,25 @@ function buildChatCompletionMessages(params: {
   priorMessages: Message[];
   models: ORModel[];
   newUserContent?: string;
-}): { role: "system" | "user" | "assistant"; content: string }[] {
+}): { role: 'system' | 'user' | 'assistant'; content: string }[] {
   const { chat, priorMessages, models, newUserContent } = params;
   const modelInfo = models.find((m) => m.id === chat.settings.model);
   const contextLimit = modelInfo?.context_length ?? 8000;
   const reservedForCompletion =
-    typeof chat.settings.max_tokens === "number" ? chat.settings.max_tokens : 1024;
+    typeof chat.settings.max_tokens === 'number' ? chat.settings.max_tokens : 1024;
   const maxPromptTokens = Math.max(512, contextLimit - reservedForCompletion);
 
   // Convert prior messages into OpenAI-style messages, excluding empty placeholders
-  const history: { role: "user" | "assistant"; content: string }[] = [];
+  const history: { role: 'user' | 'assistant'; content: string }[] = [];
   for (const m of priorMessages) {
-    if (m.role === "system") continue; // prefer current chat.settings.system
+    if (m.role === 'system') continue; // prefer current chat.settings.system
     if (!m.content) continue;
-    if (m.role === "user" || m.role === "assistant") {
+    if (m.role === 'user' || m.role === 'assistant') {
       history.push({ role: m.role, content: m.content });
     }
   }
-  if (typeof newUserContent === "string") {
-    history.push({ role: "user", content: newUserContent });
+  if (typeof newUserContent === 'string') {
+    history.push({ role: 'user', content: newUserContent });
   }
 
   // Keep most recent messages within the token budget
@@ -425,7 +460,7 @@ function buildChatCompletionMessages(params: {
     tokens: estimateTokens(msg.content) ?? 1,
   }));
   let running = 0;
-  const kept: { role: "user" | "assistant"; content: string }[] = [];
+  const kept: { role: 'user' | 'assistant'; content: string }[] = [];
   for (let i = historyWithTokens.length - 1; i >= 0; i--) {
     const t = historyWithTokens[i].tokens as number;
     if (running + t > maxPromptTokens) break;
@@ -434,9 +469,9 @@ function buildChatCompletionMessages(params: {
   }
   kept.reverse();
 
-  const finalMsgs: { role: "system" | "user" | "assistant"; content: string }[] = [];
+  const finalMsgs: { role: 'system' | 'user' | 'assistant'; content: string }[] = [];
   if (chat.settings.system && chat.settings.system.trim()) {
-    finalMsgs.push({ role: "system", content: chat.settings.system });
+    finalMsgs.push({ role: 'system', content: chat.settings.system });
   }
   finalMsgs.push(...kept);
   return finalMsgs;
@@ -448,5 +483,3 @@ function estimateTokens(text: string | undefined): number | undefined {
   const chars = text.length;
   return Math.max(1, Math.round(chars / 4));
 }
-
-

@@ -1,22 +1,15 @@
-"use client";
-import { useEffect, useState } from "react";
-import { useChatStore } from "@/lib/store";
+'use client';
+import { useEffect, useState } from 'react';
+import { useChatStore } from '@/lib/store';
 // Settings gear moved to the top header
 
 export default function ChatSidebar() {
-  const {
-    chats,
-    selectedChatId,
-    selectChat,
-    newChat,
-    renameChat,
-    deleteChat,
-    loadModels,
-  } = useChatStore();
+  const { chats, selectedChatId, selectChat, newChat, renameChat, deleteChat, loadModels } =
+    useChatStore();
   const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
   // Settings button removed from sidebar header
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState("");
+  const [editTitle, setEditTitle] = useState('');
 
   useEffect(() => {
     loadModels();
@@ -26,19 +19,24 @@ export default function ChatSidebar() {
 
   // Fill the aside; width is controlled by grid column in `app-shell`
   return (
-    <div className={"h-full flex flex-col w-full"}>
+    <div className={'h-full flex flex-col w-full'}>
       <div className="app-header bg-surface">
         <div className="font-semibold">{collapsed ? 'Dg' : 'Dialogia'}</div>
       </div>
 
       <div className="px-4 py-3 flex gap-2">
-        <button className="btn w-full" onClick={() => newChat()}>{collapsed ? '+' : 'New Chat'}</button>
+        <button className="btn w-full" onClick={() => newChat()}>
+          {collapsed ? '+' : 'New Chat'}
+        </button>
       </div>
 
       {!collapsed && <div className="px-4 text-xs text-muted-foreground">Chats</div>}
       <div className={`scroll-area ${collapsed ? 'px-2' : 'px-4'} pb-3 space-y-2 flex-1`}>
         {chats.map((c) => (
-          <div key={c.id} className={`card p-3 cursor-pointer ${selectedChatId === c.id ? "ring-2 ring-primary" : ""}`}>
+          <div
+            key={c.id}
+            className={`card p-3 cursor-pointer ${selectedChatId === c.id ? 'ring-2 ring-primary' : ''}`}
+          >
             {editingId === c.id ? (
               <div className="flex items-center gap-2">
                 <input
@@ -61,8 +59,25 @@ export default function ChatSidebar() {
                 <div className="flex-1 truncate">{collapsed ? '•' : c.title}</div>
                 {!collapsed && (
                   <>
-                    <button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); setEditingId(c.id); setEditTitle(c.title); }}>Rename</button>
-                    <button className="btn btn-outline" onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }}>Delete</button>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingId(c.id);
+                        setEditTitle(c.title);
+                      }}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      className="btn btn-outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteChat(c.id);
+                      }}
+                    >
+                      Delete
+                    </button>
                   </>
                 )}
               </div>
@@ -73,4 +88,3 @@ export default function ChatSidebar() {
     </div>
   );
 }
-

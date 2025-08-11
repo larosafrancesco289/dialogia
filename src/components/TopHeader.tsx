@@ -1,9 +1,9 @@
-"use client";
-import ModelPicker from "@/components/ModelPicker";
-import { useChatStore } from "@/lib/store";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import ThemeToggle from "@/components/ThemeToggle";
-import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+'use client';
+import ModelPicker from '@/components/ModelPicker';
+import { useChatStore } from '@/lib/store';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import ThemeToggle from '@/components/ThemeToggle';
+import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 
 export default function TopHeader() {
   const { chats, selectedChatId, renameChat, setUI } = useChatStore();
@@ -47,5 +47,3 @@ export default function TopHeader() {
     </div>
   );
 }
-
-

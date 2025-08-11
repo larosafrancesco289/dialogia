@@ -1,13 +1,13 @@
-"use client";
-import { useEffect, useRef, useState } from "react";
-import { useChatStore } from "@/lib/store";
-import { StopIcon } from "@heroicons/react/24/outline";
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import { useChatStore } from '@/lib/store';
+import { StopIcon } from '@heroicons/react/24/outline';
 
 export default function Composer() {
   const send = useChatStore((s) => s.sendUserMessage);
   const { chats, selectedChatId } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
-  const [text, setText] = useState("");
+  const [text, setText] = useState('');
   const taRef = useRef<HTMLTextAreaElement>(null);
   const isStreaming = useChatStore((s) => s.ui.isStreaming);
   const stop = useChatStore((s) => s.stopStreaming);
@@ -15,7 +15,7 @@ export default function Composer() {
   const onSend = async () => {
     const value = text.trim();
     if (!value) return;
-    setText("");
+    setText('');
     // Keep the caret in the box so the user can continue typing immediately
     taRef.current?.focus();
     await send(value);
@@ -35,8 +35,8 @@ export default function Composer() {
   useEffect(() => {
     const el = taRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
   }, [text]);
 
   return (
@@ -51,25 +51,31 @@ export default function Composer() {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (isStreaming) return; // allow typing while streaming, but do not send
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") onSend();
-            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend();
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              onSend();
+            }
           }}
         />
         {isStreaming ? (
           <button
             className="btn btn-outline self-center"
-            onClick={() => { stop(); setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0); }}
+            onClick={() => {
+              stop();
+              setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0);
+            }}
             aria-label="Stop"
           >
             <StopIcon className="h-4 w-4" />
           </button>
         ) : (
-          <button className="btn self-center" onClick={onSend} aria-label="Send">Send</button>
+          <button className="btn self-center" onClick={onSend} aria-label="Send">
+            Send
+          </button>
         )}
       </div>
       {/* Simplified footer: remove model and hotkey hints for a cleaner composer */}
     </div>
   );
 }
-
-

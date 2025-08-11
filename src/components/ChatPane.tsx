@@ -1,8 +1,8 @@
-"use client";
-import { useChatStore } from "@/lib/store";
-import MessageList from "@/components/MessageList";
-import Composer from "@/components/Composer";
-import WelcomeHero from "@/components/WelcomeHero";
+'use client';
+import { useChatStore } from '@/lib/store';
+import MessageList from '@/components/MessageList';
+import Composer from '@/components/Composer';
+import WelcomeHero from '@/components/WelcomeHero';
 
 export default function ChatPane() {
   const { chats, selectedChatId } = useChatStore();
@@ -21,4 +21,3 @@ export default function ChatPane() {
     </div>
   );
 }
-
