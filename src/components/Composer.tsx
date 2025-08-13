@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import { StopIcon } from '@heroicons/react/24/outline';
+import { StopIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
 export default function Composer() {
   const send = useChatStore((s) => s.sendUserMessage);
@@ -11,6 +12,7 @@ export default function Composer() {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const isStreaming = useChatStore((s) => s.ui.isStreaming);
   const stop = useChatStore((s) => s.stopStreaming);
+  const updateSettings = useChatStore((s) => s.updateChatSettings);
 
   const onSend = async () => {
     const value = text.trim();
@@ -70,9 +72,25 @@ export default function Composer() {
             <StopIcon className="h-4 w-4" />
           </button>
         ) : (
-          <button className="btn self-center" onClick={onSend} aria-label="Send">
-            Send
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              className={`btn self-center ${chat?.settings.search_with_brave ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => updateSettings({ search_with_brave: !chat?.settings.search_with_brave })}
+              title="Use web search (Brave) to augment the next message"
+              aria-label="Toggle Brave Search"
+              aria-pressed={!!chat?.settings.search_with_brave}
+            >
+              <MagnifyingGlassIcon className="h-4 w-4" />
+            </button>
+            <button
+              className="btn btn-outline self-center"
+              onClick={onSend}
+              aria-label="Send"
+              title="Send"
+            >
+              <PaperAirplaneIcon className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
       {/* Simplified footer: remove model and hotkey hints for a cleaner composer */}

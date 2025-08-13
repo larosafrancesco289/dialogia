@@ -1,11 +1,15 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
 export default function WelcomeHero() {
   const [query, setQuery] = useState('');
   const newChat = useChatStore((s) => s.newChat);
   const send = useChatStore((s) => s.sendUserMessage);
+  const ui = useChatStore((s) => s.ui);
+  const setUI = useChatStore((s) => s.setUI);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   const start = async () => {
@@ -46,9 +50,25 @@ export default function WelcomeHero() {
               }
             }}
           />
-          <button className="btn self-center pressable" onClick={start} aria-label="Go">
-            Send
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              className="btn btn-outline self-center"
+              onClick={() => setUI({ nextSearchWithBrave: !ui.nextSearchWithBrave })}
+              title="Use web search (Brave) to augment the first message"
+              aria-label="Toggle Brave Search"
+              aria-pressed={!!ui.nextSearchWithBrave}
+            >
+              <MagnifyingGlassIcon className="h-4 w-4" />
+            </button>
+            <button
+              className="btn btn-outline self-center"
+              onClick={start}
+              aria-label="Send"
+              title="Send"
+            >
+              <PaperAirplaneIcon className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <div className="text-xs text-muted-foreground">
           Press Enter to start · Shift+Enter for newline

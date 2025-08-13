@@ -36,6 +36,67 @@ export type StreamCallbacks = {
   onError?: (err: Error) => void;
 };
 
+// OpenAI-compatible non-streaming chat completion with optional tool support
+export async function chatCompletion(params: {
+  apiKey: string;
+  model: string;
+  // Allow tool-bearing roles by loosening the type here
+  messages: Array<
+    | { role: 'system' | 'user' | 'assistant'; content: string | null }
+    | { role: 'tool'; content: string; tool_call_id?: string; name?: string }
+  >;
+  temperature?: number;
+  top_p?: number;
+  max_tokens?: number;
+  reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
+  reasoning_tokens?: number;
+  tools?: any[];
+  tool_choice?: 'auto' | { type: 'function'; function: { name: string } };
+  signal?: AbortSignal;
+}) {
+  const {
+    apiKey,
+    model,
+    messages,
+    temperature,
+    top_p,
+    max_tokens,
+    reasoning_effort,
+    reasoning_tokens,
+    tools,
+    tool_choice,
+    signal,
+  } = params;
+
+  const body: any = { model, messages, stream: false };
+  if (typeof temperature === 'number') body.temperature = temperature;
+  if (typeof top_p === 'number') body.top_p = top_p;
+  if (typeof max_tokens === 'number') body.max_tokens = max_tokens;
+  const reasoningConfig: any = {};
+  if (typeof reasoning_effort === 'string') reasoningConfig.effort = reasoning_effort;
+  if (typeof reasoning_tokens === 'number') reasoningConfig.max_tokens = reasoning_tokens;
+  if (Object.keys(reasoningConfig).length > 0) body.reasoning = reasoningConfig;
+  if (Array.isArray(tools) && tools.length > 0) body.tools = tools;
+  if (tool_choice) body.tool_choice = tool_choice;
+
+  const res = await fetch(`${OR_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'http://localhost:3000',
+      'X-Title': 'Dialogia',
+    },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (res.status === 401 || res.status === 403) throw new Error('unauthorized');
+  if (res.status === 429) throw new Error('rate_limited');
+  if (!res.ok) throw new Error(`chat_failed_${res.status}`);
+  const json = await res.json();
+  return json;
+}
+
 export async function streamChatCompletion(params: {
   apiKey: string;
   model: string;
