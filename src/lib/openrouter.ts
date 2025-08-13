@@ -67,12 +67,12 @@ export async function streamChatCompletion(params: {
   if (typeof temperature === 'number') body.temperature = temperature;
   if (typeof top_p === 'number') body.top_p = top_p;
   if (typeof max_tokens === 'number') body.max_tokens = max_tokens;
-  if (reasoning_effort && reasoning_effort !== 'none') {
-    body.reasoning = { effort: reasoning_effort } as any;
-    if (typeof reasoning_tokens === 'number') {
-      body.reasoning.max_tokens = reasoning_tokens;
-    }
-  }
+  // Include reasoning block whenever the user provided effort (including 'none')
+  // or a reasoning token budget, so models don't silently fall back to defaults.
+  const reasoningConfig: any = {};
+  if (typeof reasoning_effort === 'string') reasoningConfig.effort = reasoning_effort;
+  if (typeof reasoning_tokens === 'number') reasoningConfig.max_tokens = reasoning_tokens;
+  if (Object.keys(reasoningConfig).length > 0) body.reasoning = reasoningConfig;
 
   const res = await fetch(`${OR_BASE}/chat/completions`, {
     method: 'POST',
