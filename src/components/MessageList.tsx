@@ -2,13 +2,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { Markdown } from '@/lib/markdown';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 
 export default function MessageList({ chatId }: { chatId: string }) {
   const messages = useChatStore((s) => s.messages[chatId] ?? []);
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const models = useChatStore((s) => s.models);
   const isStreaming = useChatStore((s) => s.ui.isStreaming);
+  const braveByMessageId = useChatStore((s) => s.ui.braveByMessageId || {});
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
   const showStats = chat?.settings.show_stats ?? true;
   const endRef = useRef<HTMLDivElement>(null);
@@ -27,6 +28,9 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const [expandedReasoningIds, setExpandedReasoningIds] = useState<Record<string, boolean>>({});
   const toggle = (id: string) => setExpandedReasoningIds((s) => ({ ...s, [id]: !s[id] }));
   const isExpanded = (id: string) => expandedReasoningIds[id] ?? showByDefault;
+  const [expandedSourcesIds, setExpandedSourcesIds] = useState<Record<string, boolean>>({});
+  const toggleSources = (id: string) => setExpandedSourcesIds((s) => ({ ...s, [id]: !s[id] }));
+  const isSourcesExpanded = (id: string) => expandedSourcesIds[id] ?? true;
   return (
     <div className="scroll-area p-4 space-y-3 h-full" style={{ background: 'var(--color-canvas)' }}>
       {messages.map((m) => (
@@ -36,19 +40,111 @@ export default function MessageList({ chatId }: { chatId: string }) {
               <div className="absolute top-2 right-2 z-30">
                 <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
               </div>
-              {/* Thinking header with shimmer and toggle if reasoning exists or streaming */}
+              {/* Brave search UX block attached to this assistant message */}
+              {(() => {
+                const brave = braveByMessageId[m.id];
+                if (!brave) return null;
+                if (brave.status === 'loading') {
+                  return (
+                    <div className="px-4 pt-3">
+                      <div className="thinking-panel">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="loading-dot" aria-hidden />
+                          <span>Searching the web with Brave…</span>
+                        </div>
+                        <div className="thinking-shimmer" aria-hidden />
+                      </div>
+                    </div>
+                  );
+                }
+                if (brave.status === 'done' && (brave.results || []).length > 0) {
+                  return (
+                    <div className="px-4 pt-3">
+                      <div className="thinking-panel">
+                         <div className="flex items-center justify-between mb-1">
+                           <div className="text-xs text-muted-foreground">Web search results (Brave)</div>
+                           <button
+                             className="icon-button"
+                             aria-label={isSourcesExpanded(m.id) ? 'Hide sources' : 'Show sources'}
+                             onClick={() => toggleSources(m.id)}
+                             aria-pressed={isSourcesExpanded(m.id)}
+                           >
+                             {isSourcesExpanded(m.id) ? (
+                               <ChevronUpIcon className="h-4 w-4" />
+                             ) : (
+                               <ChevronDownIcon className="h-4 w-4" />
+                             )}
+                           </button>
+                         </div>
+                        {isSourcesExpanded(m.id) && (
+                          <ol className="text-sm space-y-1 pl-5 list-decimal">
+                            {(brave.results || []).map((r, i) => (
+                              <li key={i}>
+                                <a className="underline" href={r.url} target="_blank" rel="noreferrer">
+                                  {r.title || r.url || `Result ${i + 1}`}
+                                </a>
+                                {r.description && (
+                                  <div className="text-xs text-muted-foreground">{r.description}</div>
+                                )}
+                              </li>
+                            ))}
+                          </ol>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+                if (brave.status === 'done' && (!brave.results || brave.results.length === 0)) {
+                  return (
+                    <div className="px-4 pt-3">
+                      <div className="thinking-panel">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="loading-dot" aria-hidden />
+                          <span>No web results found</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                if (brave.status === 'error') {
+                  return (
+                    <div className="px-4 pt-3">
+                      <div className="thinking-panel">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="loading-dot" aria-hidden />
+                          <span>{brave.error || 'Web search failed'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              {/* Thinking block styled like sources, inline header with icon toggle */}
               {typeof m.reasoning === 'string' && m.reasoning.length > 0 && (
-                <div className="px-4 pt-3 pb-1">
-                  <button className="btn btn-ghost text-xs" onClick={() => toggle(m.id)}>
-                    {isExpanded(m.id) ? 'Hide thinking' : 'Show thinking'}
-                  </button>
-                </div>
-              )}
-              {typeof m.reasoning === 'string' && m.reasoning.length > 0 && isExpanded(m.id) && (
-                <div className="px-4 pb-2 mt-2">
+                <div className="px-4 pt-3">
                   <div className="thinking-panel">
-                    <pre className="whitespace-pre-wrap text-sm opacity-90 leading-relaxed">{m.reasoning}</pre>
-                    <div className="thinking-shimmer" aria-hidden />
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-xs text-muted-foreground">Thinking</div>
+                      <button
+                        className="icon-button"
+                        aria-label={isExpanded(m.id) ? 'Hide thinking' : 'Show thinking'}
+                        onClick={() => toggle(m.id)}
+                        aria-pressed={isExpanded(m.id)}
+                      >
+                        {isExpanded(m.id) ? (
+                          <ChevronUpIcon className="h-4 w-4" />
+                        ) : (
+                          <ChevronDownIcon className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    {isExpanded(m.id) && (
+                      <>
+                        <pre className="whitespace-pre-wrap text-sm opacity-90 leading-relaxed">{m.reasoning}</pre>
+                        <div className="thinking-shimmer" aria-hidden />
+                      </>
+                    )}
                   </div>
                 </div>
               )}

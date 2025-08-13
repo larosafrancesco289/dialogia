@@ -9,6 +9,8 @@ export type ChatSettings = {
   reasoning_tokens?: number; // max reasoning tokens (optional)
   show_thinking_by_default?: boolean; // UI preference only
   show_stats?: boolean; // UI preference only
+  // Optional web search augmentation using Brave Search API
+  search_with_brave?: boolean;
 };
 
 export type Message = {

@@ -414,6 +414,31 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   );
   animation: thinking-scan 2.4s ease-in-out infinite;
 }
+/* Subtle animated dot used for loading indicators */
+.loading-dot::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow:
+    -12px 0 0 color-mix(in oklab, var(--color-accent) 45%, transparent),
+    12px 0 0 color-mix(in oklab, var(--color-accent) 45%, transparent);
+  animation: loading-dots 1.2s ease-in-out infinite;
+}
+@keyframes loading-dots {
+  0%, 100% {
+    box-shadow:
+      -12px 0 0 color-mix(in oklab, var(--color-accent) 45%, transparent),
+      12px 0 0 color-mix(in oklab, var(--color-accent) 45%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 color-mix(in oklab, var(--color-accent) 45%, transparent),
+      0 0 0 color-mix(in oklab, var(--color-accent) 45%, transparent);
+  }
+}
 @keyframes thinking-scan {
   0% {
     transform: translateX(0%);
