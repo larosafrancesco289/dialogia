@@ -12,7 +12,7 @@ export default function TopHeader() {
   const isSettingsOpen = useChatStore((s) => s.ui.showSettings);
 
   return (
-    <div className="app-header bg-surface gap-3">
+    <div className="app-header gap-3">
       <button
         className="btn btn-ghost"
         aria-label="Toggle sidebar"

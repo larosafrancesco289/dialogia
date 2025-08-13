@@ -1,6 +1,7 @@
 'use client';
 import { useChatStore } from '@/lib/store';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import ThemeToggle from '@/components/ThemeToggle';
 
 // Define Section at module scope so it doesn't remount on every render.
@@ -25,6 +26,8 @@ export default function SettingsDrawer() {
     toggleFavoriteModel,
     favoriteModelIds,
     models,
+    hiddenModelIds,
+    resetHiddenModels,
   } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
   const [system, setSystem] = useState(chat?.settings.system ?? '');
@@ -56,6 +59,24 @@ export default function SettingsDrawer() {
     chat?.settings.show_thinking_by_default ?? true,
   );
   const [showStats, setShowStats] = useState<boolean>(chat?.settings.show_stats ?? true);
+  const [closing, setClosing] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
+
+  const closeWithAnim = () => {
+    setClosing(true);
+    window.setTimeout(() => setUI({ showSettings: false }), 190);
+  };
+
+  // Keep local state in sync when switching chats or reopening the drawer
+  useEffect(() => {
+    setReasoningEffort(chat?.settings.reasoning_effort);
+  }, [chat?.id, chat?.settings.reasoning_effort]);
 
   // Prevent background scroll while drawer is open
   useEffect(() => {
@@ -84,22 +105,38 @@ export default function SettingsDrawer() {
       .map((m) => ({ id: m.id, name: m.name }));
   }, [models, normalizedQuery]);
 
+  // Position the dropdown using fixed coordinates so it is never clipped
+  useLayoutEffect(() => {
+    const update = () => {
+      if (!normalizedQuery) return setDropdownPos(null);
+      const el = searchRef.current;
+      if (!el) return setDropdownPos(null);
+      const r = el.getBoundingClientRect();
+      const margin = 8;
+      const footer = 88; // sticky footer height
+      const viewportH = window.innerHeight;
+      const available = Math.max(120, viewportH - footer - margin - r.bottom);
+      setDropdownPos({ left: r.left, top: r.bottom + margin, width: r.width, maxHeight: available });
+    };
+    update();
+    window.addEventListener('resize', update, { passive: true });
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update as any);
+      window.removeEventListener('scroll', update as any, true as any);
+    };
+  }, [normalizedQuery]);
+
   return (
     <>
-      <div
-        className="fixed inset-0 bg-black/30 z-40"
-        onClick={() => setUI({ showSettings: false })}
-      />
-      <div className="fixed inset-y-0 right-0 w-full sm:w-[520px] bg-surface border-l border-border shadow-[var(--shadow-card)] z-50 overflow-y-auto will-change-transform">
+      <div className={`fixed inset-0 bg-black/30 z-[70] settings-overlay${closing ? ' is-closing' : ''}`} onClick={closeWithAnim} />
+      <div className={`fixed inset-y-0 right-0 w-full sm:w-[520px] glass-panel border-l border-border shadow-[var(--shadow-card)] z-[80] overflow-y-auto will-change-transform settings-drawer${closing ? ' is-closing' : ''}`} style={{ overscrollBehavior: 'contain' }}>
         {/* Header */}
-        <div
-          className="flex items-center gap-3 border-b border-border sticky top-0 bg-surface z-10 px-4"
-          style={{ height: 'var(--header-height)' }}
-        >
+        <div className="flex items-center gap-3 border-b border-border sticky top-0 glass z-10 px-4" style={{ height: 'var(--header-height)' }}>
           <h3 className="font-semibold">Settings</h3>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
-            <button className="btn btn-ghost" onClick={() => setUI({ showSettings: false })}>
+            <button className="btn btn-ghost" onClick={closeWithAnim}>
               Close
             </button>
           </div>
@@ -235,9 +272,10 @@ export default function SettingsDrawer() {
                 </label>
                 <select
                   className="input w-full"
-                  value={reasoningEffort ?? 'low'}
-                  onChange={(e) => setReasoningEffort(e.target.value as any)}
+                  value={reasoningEffort ?? ''}
+                  onChange={(e) => setReasoningEffort((e.target.value || undefined) as any)}
                 >
+                  <option value="">model default</option>
                   <option value="none">none</option>
                   <option value="low">low</option>
                   <option value="medium">medium</option>
@@ -282,37 +320,17 @@ export default function SettingsDrawer() {
           <Section title="Display">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-sm">Show thinking by default</label>
-                <div className="flex gap-2">
-                  <button
-                    className={`btn btn-sm ${showThinking ? '' : 'btn-outline'}`}
-                    onClick={() => setShowThinking(true)}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={`btn btn-sm ${!showThinking ? '' : 'btn-outline'}`}
-                    onClick={() => setShowThinking(false)}
-                  >
-                    Off
-                  </button>
+                <label className="text-sm block">Show thinking by default</label>
+                <div className="segmented">
+                  <button className={`segment ${showThinking ? 'is-active' : ''}`} onClick={() => setShowThinking(true)}>On</button>
+                  <button className={`segment ${!showThinking ? 'is-active' : ''}`} onClick={() => setShowThinking(false)}>Off</button>
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-sm">Show stats</label>
-                <div className="flex gap-2">
-                  <button
-                    className={`btn btn-sm ${showStats ? '' : 'btn-outline'}`}
-                    onClick={() => setShowStats(true)}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={`btn btn-sm ${!showStats ? '' : 'btn-outline'}`}
-                    onClick={() => setShowStats(false)}
-                  >
-                    Off
-                  </button>
+                <label className="text-sm block">Show stats</label>
+                <div className="segmented">
+                  <button className={`segment ${showStats ? 'is-active' : ''}`} onClick={() => setShowStats(true)}>On</button>
+                  <button className={`segment ${!showStats ? 'is-active' : ''}`} onClick={() => setShowStats(false)}>Off</button>
                 </div>
               </div>
             </div>
@@ -352,56 +370,78 @@ export default function SettingsDrawer() {
 
               <div className="relative">
                 <input
+                  ref={searchRef}
                   className="input w-full"
                   placeholder="Search OpenRouter models (e.g. openai, anthropic, llama)"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.stopPropagation()}
                 />
-                {normalizedQuery && (
-                  <div className="absolute left-0 right-0 top-full mt-2 card p-2 max-h-72 overflow-auto z-10">
-                    {filtered.length === 0 && (
-                      <div className="p-2 text-sm text-muted-foreground">No matches</div>
-                    )}
-                    {filtered.map((m) => (
-                      <div
-                        key={m.id}
-                        className="p-2 rounded hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
-                      >
-                        <div>
-                          <div className="font-medium text-sm">{m.name || m.id}</div>
-                          {m.name && <div className="text-xs text-muted-foreground">{m.id}</div>}
-                        </div>
-                        <button
-                          className="btn btn-outline text-sm"
-                          onClick={() => {
-                            if (!favoriteModelIds.includes(m.id)) toggleFavoriteModel(m.id);
-                            if (chat) {
-                              updateChatSettings({ model: m.id });
-                            } else {
-                              setUI({ nextModel: m.id });
-                            }
-                            setQuery('');
-                          }}
+                {dropdownPos &&
+                  createPortal(
+                    <div
+                      className="fixed card p-2 overflow-auto z-[90]"
+                      style={{
+                        left: dropdownPos.left,
+                        top: dropdownPos.top,
+                        width: dropdownPos.width,
+                        maxHeight: dropdownPos.maxHeight,
+                        overscrollBehavior: 'contain',
+                      }}
+                    >
+                      {filtered.length === 0 && (
+                        <div className="p-2 text-sm text-muted-foreground">No matches</div>
+                      )}
+                      {filtered.map((m) => (
+                        <div
+                          key={m.id}
+                          className="p-2 rounded hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
                         >
-                          Add
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                          <div>
+                            <div className="font-medium text-sm">{m.name || m.id}</div>
+                            {m.name && <div className="text-xs text-muted-foreground">{m.id}</div>}
+                          </div>
+                          <button
+                            className="btn btn-outline text-sm"
+                            onClick={() => {
+                              if (!favoriteModelIds.includes(m.id)) toggleFavoriteModel(m.id);
+                              if (chat) {
+                                updateChatSettings({ model: m.id });
+                              } else {
+                                setUI({ nextModel: m.id });
+                              }
+                              setQuery('');
+                            }}
+                          >
+                            Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>,
+                    document.body,
+                  )}
               </div>
               <div>
                 <button className="btn btn-ghost" onClick={() => loadModels()}>
                   Refresh model list
                 </button>
               </div>
+              {hiddenModelIds && hiddenModelIds.length > 0 && (
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <div className="text-muted-foreground">
+                    {hiddenModelIds.length} hidden {hiddenModelIds.length === 1 ? 'model' : 'models'}
+                  </div>
+                  <button className="btn btn-outline btn-sm" onClick={() => resetHiddenModels()}>
+                    Reset hidden
+                  </button>
+                </div>
+              )}
             </div>
           </Section>
         </div>
 
         {/* Sticky footer */}
-        <div className="px-6 h-[88px] flex items-center border-t border-border sticky bottom-0 bg-surface">
+        <div className="px-6 h-[88px] flex items-center border-t border-border sticky bottom-0 glass">
           <button
             className="btn"
             onClick={() => {
@@ -411,7 +451,7 @@ export default function SettingsDrawer() {
                   temperature,
                   top_p,
                   max_tokens,
-                  reasoning_effort: reasoningEffort as any,
+                  reasoning_effort: (reasoningEffort || undefined) as any,
                   reasoning_tokens: reasoningTokens,
                   show_thinking_by_default: showThinking,
                   show_stats: showStats,
@@ -420,7 +460,7 @@ export default function SettingsDrawer() {
                 // No chat yet, persist defaults for the next chat
                 setUI({ nextModel: undefined });
               }
-              setUI({ showSettings: false });
+              closeWithAnim();
             }}
           >
             Save

@@ -24,6 +24,7 @@ type StoreState = {
 
   models: ORModel[];
   favoriteModelIds: string[];
+  hiddenModelIds: string[];
 
   ui: UIState;
 
@@ -37,6 +38,10 @@ type StoreState = {
 
   loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
   toggleFavoriteModel: (id: string) => void;
+  hideModel: (id: string) => void;
+  unhideModel: (id: string) => void;
+  resetHiddenModels: () => void;
+  removeModelFromDropdown: (id: string) => void;
 
   sendUserMessage: (content: string) => Promise<void>;
   stopStreaming: () => void;
@@ -47,7 +52,7 @@ const defaultSettings: ChatSettings = {
   model: 'openai/gpt-5-chat',
   // temperature/top_p/max_tokens omitted by default; OpenRouter will use model defaults
   system: 'You are a helpful assistant.',
-  reasoning_effort: 'low',
+  reasoning_effort: undefined,
   show_thinking_by_default: true,
   show_stats: true,
 };
@@ -60,6 +65,7 @@ export const useChatStore = create<StoreState>()(
       selectedChatId: undefined,
       models: [],
       favoriteModelIds: [],
+      hiddenModelIds: [],
       ui: { showSettings: false, isStreaming: false, sidebarCollapsed: false },
       _controller: undefined as AbortController | undefined,
 
@@ -161,6 +167,34 @@ export const useChatStore = create<StoreState>()(
             ? s.favoriteModelIds.filter((m) => m !== id)
             : [id, ...s.favoriteModelIds],
         })),
+
+      hideModel: (id) =>
+        set((s) => {
+          const PINNED_MODEL_ID = 'openai/gpt-5-chat';
+          if (id === PINNED_MODEL_ID) return {};
+          return {
+            hiddenModelIds: s.hiddenModelIds.includes(id)
+              ? s.hiddenModelIds
+              : [id, ...s.hiddenModelIds],
+          };
+        }),
+
+      unhideModel: (id) =>
+        set((s) => ({ hiddenModelIds: s.hiddenModelIds.filter((m) => m !== id) })),
+
+      resetHiddenModels: () => set({ hiddenModelIds: [] }),
+
+      removeModelFromDropdown: (id) =>
+        set((s) => {
+          const PINNED_MODEL_ID = 'openai/gpt-5-chat';
+          if (id === PINNED_MODEL_ID) return {};
+          const isFavorite = s.favoriteModelIds.includes(id);
+          if (isFavorite) {
+            return { favoriteModelIds: s.favoriteModelIds.filter((m) => m !== id) };
+          }
+          if (s.hiddenModelIds.includes(id)) return {};
+          return { hiddenModelIds: [id, ...s.hiddenModelIds] };
+        }),
 
       sendUserMessage: async (content: string) => {
         const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
@@ -422,6 +456,7 @@ export const useChatStore = create<StoreState>()(
       partialize: (s) => ({
         selectedChatId: s.selectedChatId,
         favoriteModelIds: s.favoriteModelIds,
+        hiddenModelIds: s.hiddenModelIds,
       }),
     },
   ),
