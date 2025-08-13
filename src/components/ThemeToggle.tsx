@@ -14,7 +14,7 @@ export default function ThemeToggle() {
     setDark(root.classList.contains('dark'));
   };
   return (
-    <button className="btn btn-ghost" onClick={toggle} aria-label="Toggle theme">
+    <button className="btn btn-ghost" onClick={toggle} aria-label="Toggle theme" aria-pressed={dark}>
       {dark ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
     </button>
   );

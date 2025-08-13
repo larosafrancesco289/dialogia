@@ -20,12 +20,12 @@ export default function ChatSidebar() {
   // Fill the aside; width is controlled by grid column in `app-shell`
   return (
     <div className={'h-full flex flex-col w-full'}>
-      <div className="app-header bg-surface">
+      <div className="app-header">
         <div className="font-semibold">{collapsed ? 'Dg' : 'Dialogia'}</div>
       </div>
 
       <div className="px-4 py-3 flex gap-2">
-        <button className="btn w-full" onClick={() => newChat()}>
+        <button className="btn w-full pressable" onClick={() => newChat()}>
           {collapsed ? '+' : 'New Chat'}
         </button>
       </div>
@@ -33,10 +33,7 @@ export default function ChatSidebar() {
       {!collapsed && <div className="px-4 text-xs text-muted-foreground">Chats</div>}
       <div className={`scroll-area ${collapsed ? 'px-2' : 'px-4'} pb-3 space-y-2 flex-1`}>
         {chats.map((c) => (
-          <div
-            key={c.id}
-            className={`card p-3 cursor-pointer ${selectedChatId === c.id ? 'ring-2 ring-primary' : ''}`}
-          >
+          <div key={c.id} className={`card p-3 chat-item ${selectedChatId === c.id ? 'selected' : ''}`}>
             {editingId === c.id ? (
               <div className="flex items-center gap-2">
                 <input
@@ -60,7 +57,7 @@ export default function ChatSidebar() {
                 {!collapsed && (
                   <>
                     <button
-                      className="btn btn-ghost"
+                      className="btn btn-outline"
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditingId(c.id);

@@ -30,7 +30,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
   return (
     <div className="scroll-area p-4 space-y-3 h-full" style={{ background: 'var(--color-canvas)' }}>
       {messages.map((m) => (
-        <div key={m.id} className={`card p-0`}>
+        <div key={m.id} className={`card p-0 message-card`}>
           {m.role === 'assistant' ? (
             <div className="relative">
               <div className="absolute top-2 right-2 z-30">
@@ -38,21 +38,21 @@ export default function MessageList({ chatId }: { chatId: string }) {
               </div>
               {/* Thinking header with shimmer and toggle if reasoning exists or streaming */}
               {typeof m.reasoning === 'string' && m.reasoning.length > 0 && (
-                <div className="px-4 pt-3">
+                <div className="px-4 pt-3 pb-1">
                   <button className="btn btn-ghost text-xs" onClick={() => toggle(m.id)}>
                     {isExpanded(m.id) ? 'Hide thinking' : 'Show thinking'}
                   </button>
                 </div>
               )}
               {typeof m.reasoning === 'string' && m.reasoning.length > 0 && isExpanded(m.id) && (
-                <div className="px-4 pb-2">
+                <div className="px-4 pb-2 mt-2">
                   <div className="thinking-panel">
-                    <pre className="whitespace-pre-wrap text-sm opacity-90">{m.reasoning}</pre>
+                    <pre className="whitespace-pre-wrap text-sm opacity-90 leading-relaxed">{m.reasoning}</pre>
                     <div className="thinking-shimmer" aria-hidden />
                   </div>
                 </div>
               )}
-              <div className="p-4 pt-2">
+              <div className="p-4 pt-3">
                 <Markdown content={m.content} />
               </div>
               <div className="px-4 pb-3 -mt-2">
@@ -159,17 +159,14 @@ function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => void }) 
         <ArrowPathIcon className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 z-40 card p-2 w-56">
+              <div className="absolute right-0 top-full mt-2 z-40 card p-2 w-56 popover">
           <div className="text-xs text-muted-foreground px-1 pb-1">Choose model</div>
           {options.map((o) => (
-            <div
-              key={o.id}
-              className="p-2 rounded hover:bg-muted cursor-pointer text-sm"
-              onClick={() => {
+                  <div key={o.id} className="menu-item text-sm" onClick={() => {
                 onChoose(o.id);
                 setOpen(false);
               }}
-            >
+                  >
               {o.name || o.id}
             </div>
           ))}

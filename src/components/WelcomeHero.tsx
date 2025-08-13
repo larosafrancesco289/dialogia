@@ -31,7 +31,7 @@ export default function WelcomeHero() {
         <p className="text-sm text-muted-foreground">
           Ask anything. Your prompts stay local, and you control the model.
         </p>
-        <div className="card p-2 flex items-center gap-2">
+        <div className="card p-2 flex items-center gap-2 glass-panel">
           <textarea
             ref={taRef}
             className="textarea flex-1 text-base"
@@ -46,7 +46,7 @@ export default function WelcomeHero() {
               }
             }}
           />
-          <button className="btn self-center" onClick={start} aria-label="Go">
+          <button className="btn self-center pressable" onClick={start} aria-label="Go">
             Send
           </button>
         </div>
