@@ -75,7 +75,9 @@ export default function Composer() {
           <div className="flex items-center gap-2">
             <button
               className={`btn self-center ${chat?.settings.search_with_brave ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => updateSettings({ search_with_brave: !chat?.settings.search_with_brave })}
+              onClick={() =>
+                updateSettings({ search_with_brave: !chat?.settings.search_with_brave })
+              }
               title="Use web search (Brave) to augment the next message"
               aria-label="Toggle Brave Search"
               aria-pressed={!!chat?.settings.search_with_brave}

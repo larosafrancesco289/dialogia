@@ -213,7 +213,10 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 
 /* Micro-interactions for segmented control */
 .segment {
-  transition: background-color 180ms ease, color 180ms ease, transform 140ms ease;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 140ms ease;
 }
 .segment:active {
   transform: translateY(0.5px);
@@ -315,8 +318,12 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 
 /* Smooth motion defaults */
 * {
-  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease,
-    box-shadow 150ms ease, transform 120ms ease;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 150ms ease,
+    transform 120ms ease;
 }
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -428,7 +435,8 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   animation: loading-dots 1.2s ease-in-out infinite;
 }
 @keyframes loading-dots {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow:
       -12px 0 0 color-mix(in oklab, var(--color-accent) 45%, transparent),
       12px 0 0 color-mix(in oklab, var(--color-accent) 45%, transparent);

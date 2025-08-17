@@ -49,5 +49,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: err?.message || 'unknown_error' }, { status: 500 });
   }
 }
-
-
