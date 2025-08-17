@@ -58,6 +58,11 @@ type StoreState = {
   sendUserMessage: (content: string) => Promise<void>;
   stopStreaming: () => void;
   regenerateAssistantMessage: (messageId: string, opts?: { modelId?: string }) => Promise<void>;
+  editUserMessage: (
+    messageId: string,
+    newContent: string,
+    opts?: { rerun?: boolean },
+  ) => Promise<void>;
 };
 
 const defaultSettings: ChatSettings = {
@@ -287,11 +292,9 @@ export const useChatStore = create<StoreState>()(
         const toolPreambleText =
           'You have access to a function tool named "web_search" that retrieves up-to-date web results.\n\nWhen you need current, factual, or source-backed information, call the tool first. If you call a tool, respond with ONLY tool_calls (no user-facing text). After the tool returns, write the final answer that cites sources inline as [n] using the numbering provided.\n\nweb_search(args): { query: string, count?: integer 1-10 }. Choose a focused query and a small count, and avoid unnecessary calls.';
         const combinedSystemForThisTurn = attemptToolUse
-          ? (
-              (chat.settings.system && chat.settings.system.trim())
-                ? `${toolPreambleText}\n\n${chat.settings.system}`
-                : toolPreambleText
-            )
+          ? chat.settings.system && chat.settings.system.trim()
+            ? `${toolPreambleText}\n\n${chat.settings.system}`
+            : toolPreambleText
           : undefined;
         if (attemptToolUse) {
           try {
@@ -323,7 +326,10 @@ export const useChatStore = create<StoreState>()(
             // First planning call allowing tools
             // Provide a single system message combining tool instructions and any user-configured system prompt
             const planningSystem = { role: 'system', content: combinedSystemForThisTurn! } as const;
-            const planningMessages: any[] = [planningSystem, ...msgs.filter((m) => m.role !== 'system')];
+            const planningMessages: any[] = [
+              planningSystem,
+              ...msgs.filter((m) => m.role !== 'system'),
+            ];
             let convo = planningMessages.slice();
             let calls = 0; // executed tool calls
             let rounds = 0; // assistant response rounds
@@ -331,7 +337,9 @@ export const useChatStore = create<StoreState>()(
             let finalContent: string | null = null;
             let finalUsage: any | undefined = undefined;
 
-            const extractInlineWebSearchArgs = (text: string): { query: string; count?: number } | null => {
+            const extractInlineWebSearchArgs = (
+              text: string,
+            ): { query: string; count?: number } | null => {
               try {
                 const candidates: Array<Record<string, any>> = [];
                 const jsonMatches = text.match(/\{[\s\S]*?\}/g) || [];
@@ -345,7 +353,9 @@ export const useChatStore = create<StoreState>()(
                   if (typeof c.query === 'string') {
                     const q = String(c.query).trim();
                     if (q) {
-                      const cnt = Number.isFinite(c.count) ? Math.max(1, Math.min(10, Math.floor(c.count))) : undefined;
+                      const cnt = Number.isFinite(c.count)
+                        ? Math.max(1, Math.min(10, Math.floor(c.count)))
+                        : undefined;
                       return { query: q, count: cnt };
                     }
                   }
@@ -355,14 +365,18 @@ export const useChatStore = create<StoreState>()(
                       try {
                         const inner = JSON.parse(arg);
                         if (inner && typeof inner.query === 'string' && inner.query.trim()) {
-                          const cnt = Number.isFinite(inner.count) ? Math.max(1, Math.min(10, Math.floor(inner.count))) : undefined;
+                          const cnt = Number.isFinite(inner.count)
+                            ? Math.max(1, Math.min(10, Math.floor(inner.count)))
+                            : undefined;
                           return { query: inner.query.trim(), count: cnt };
                         }
                       } catch {}
                     } else if (arg && typeof arg === 'object' && typeof arg.query === 'string') {
                       const q = String(arg.query).trim();
                       if (q) {
-                        const cnt = Number.isFinite(arg.count) ? Math.max(1, Math.min(10, Math.floor(arg.count))) : undefined;
+                        const cnt = Number.isFinite(arg.count)
+                          ? Math.max(1, Math.min(10, Math.floor(arg.count)))
+                          : undefined;
                         return { query: q, count: cnt };
                       }
                     }
@@ -384,26 +398,29 @@ export const useChatStore = create<StoreState>()(
                 reasoning_tokens: chat.settings.reasoning_tokens,
                 tools: toolDefinition as any,
                 // Force the very first request to produce a web_search tool call when enabled
-                tool_choice: firstTurn ? ({ type: 'function', function: { name: 'web_search' } } as any) : 'auto',
+                tool_choice: firstTurn
+                  ? ({ type: 'function', function: { name: 'web_search' } } as any)
+                  : 'auto',
                 signal: controller.signal,
               });
               finalUsage = resp?.usage;
               const choice = resp?.choices?.[0];
               const message = choice?.message || {};
-              let toolCalls = Array.isArray(message?.tool_calls) && message.tool_calls.length > 0
-                ? message.tool_calls
-                : message?.function_call
-                ? [
-                    {
-                      id: 'call_0',
-                      type: 'function',
-                      function: {
-                        name: message.function_call.name,
-                        arguments: message.function_call.arguments,
-                      },
-                    },
-                  ]
-                : [];
+              let toolCalls =
+                Array.isArray(message?.tool_calls) && message.tool_calls.length > 0
+                  ? message.tool_calls
+                  : message?.function_call
+                    ? [
+                        {
+                          id: 'call_0',
+                          type: 'function',
+                          function: {
+                            name: message.function_call.name,
+                            arguments: message.function_call.arguments,
+                          },
+                        },
+                      ]
+                    : [];
               // If the provider returned the tool call inline as text, try to parse it
               if ((!toolCalls || toolCalls.length === 0) && typeof message?.content === 'string') {
                 const inline = extractInlineWebSearchArgs(message.content);
@@ -514,7 +531,10 @@ export const useChatStore = create<StoreState>()(
                 } catch {}
                 if (name !== 'web_search') continue;
                 let rawQuery = String(args?.query || '').trim();
-                const count = Math.min(Math.max(parseInt(String(args?.count || '5'), 10) || 5, 1), 10);
+                const count = Math.min(
+                  Math.max(parseInt(String(args?.count || '5'), 10) || 5, 1),
+                  10,
+                );
                 // Fall back to the user's latest message as the query if the model omitted it
                 if (!rawQuery) rawQuery = content.trim().slice(0, 256);
                 // Try to reuse prefetch results when the query matches the original content
@@ -535,12 +555,15 @@ export const useChatStore = create<StoreState>()(
                     },
                   }));
                   try {
-                    const res = await fetch(`/api/brave?q=${encodeURIComponent(rawQuery)}&count=${count}`, {
-                      method: 'GET',
-                      headers: { Accept: 'application/json' },
-                      cache: 'no-store',
-                      signal: controller.signal,
-                    } as any);
+                    const res = await fetch(
+                      `/api/brave?q=${encodeURIComponent(rawQuery)}&count=${count}`,
+                      {
+                        method: 'GET',
+                        headers: { Accept: 'application/json' },
+                        cache: 'no-store',
+                        signal: controller.signal,
+                      } as any,
+                    );
                     if (res.ok) {
                       const data: any = await res.json();
                       results = (data?.results || []) as any[];
@@ -566,7 +589,10 @@ export const useChatStore = create<StoreState>()(
                               query: rawQuery,
                               status: 'error',
                               results: [],
-                              error: res.status === 400 ? 'Missing BRAVE_SEARCH_API_KEY' : 'Search failed',
+                              error:
+                                res.status === 400
+                                  ? 'Missing BRAVE_SEARCH_API_KEY'
+                                  : 'Search failed',
                             },
                           },
                         },
@@ -594,7 +620,12 @@ export const useChatStore = create<StoreState>()(
                   query: rawQuery,
                   results: (results || []).slice(0, count),
                 });
-                convo.push({ role: 'tool', name: 'web_search', tool_call_id: tc.id, content: toolPayload });
+                convo.push({
+                  role: 'tool',
+                  name: 'web_search',
+                  tool_call_id: tc.id,
+                  content: toolPayload,
+                });
               }
               rounds++;
               // After executing tools, continue the loop; model may produce final response or request more tools
@@ -609,7 +640,13 @@ export const useChatStore = create<StoreState>()(
                 ...assistantMsg,
                 content: finalContent,
                 reasoning: undefined,
-                metrics: { ttftMs: undefined, completionMs: undefined, promptTokens: tokensIn, completionTokens: tokensOut, tokensPerSec: undefined },
+                metrics: {
+                  ttftMs: undefined,
+                  completionMs: undefined,
+                  promptTokens: tokensIn,
+                  completionTokens: tokensOut,
+                  tokensPerSec: undefined,
+                },
                 tokensIn,
                 tokensOut,
               } as any;
@@ -628,7 +665,9 @@ export const useChatStore = create<StoreState>()(
             if (e?.message === 'unauthorized')
               set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Invalid API key' } }));
             if (e?.message === 'rate_limited')
-              set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Rate limited. Retry later.' } }));
+              set((s) => ({
+                ui: { ...s.ui, isStreaming: false, notice: 'Rate limited. Retry later.' },
+              }));
             set((s) => ({ ...s, _controller: undefined }) as any);
             // Fall through to streaming fallback
           }
@@ -680,7 +719,11 @@ export const useChatStore = create<StoreState>()(
                           ...s.ui,
                           braveByMessageId: {
                             ...(s.ui.braveByMessageId || {}),
-                            [assistantMsg.id]: { query: content, status: 'done', results: fbResults },
+                            [assistantMsg.id]: {
+                              query: content,
+                              status: 'done',
+                              results: fbResults,
+                            },
                           },
                         },
                       }));
@@ -698,7 +741,10 @@ export const useChatStore = create<StoreState>()(
                               query: content,
                               status: 'error',
                               results: [],
-                              error: res.status === 400 ? 'Missing BRAVE_SEARCH_API_KEY' : 'Search failed',
+                              error:
+                                res.status === 400
+                                  ? 'Missing BRAVE_SEARCH_API_KEY'
+                                  : 'Search failed',
                             },
                           },
                         },
@@ -725,7 +771,10 @@ export const useChatStore = create<StoreState>()(
                 if (fbResults && fbResults.length > 0) {
                   const lines = fbResults
                     .slice(0, 5)
-                    .map((r, i) => `${i + 1}. ${(r.title || r.url || 'Result').toString()} — ${r.url || ''}${r.description ? ` — ${r.description}` : ''}`)
+                    .map(
+                      (r, i) =>
+                        `${i + 1}. ${(r.title || r.url || 'Result').toString()} — ${r.url || ''}${r.description ? ` — ${r.description}` : ''}`,
+                    )
                     .join('\n');
                   const fallbackBlock = `\n\nWeb search results (fallback):\n${lines}\n\nInstructions: Use these results to answer the user. Cite sources inline as [n].`;
                   augmented = augmented + fallbackBlock;
@@ -809,7 +858,9 @@ export const useChatStore = create<StoreState>()(
                 if (!startedStreamingContent) {
                   leadingBuffer += delta;
                   // Only attempt strip when we have some structure or the buffer is reasonably long
-                  const hasStructure = leadingBuffer.trimStart().startsWith('{') || leadingBuffer.trimStart().startsWith('```');
+                  const hasStructure =
+                    leadingBuffer.trimStart().startsWith('{') ||
+                    leadingBuffer.trimStart().startsWith('```');
                   if (hasStructure) {
                     const ok = tryStripJsonPrefix();
                     // If after stripping there is remaining content that doesn't look like JSON, start streaming it
@@ -914,7 +965,10 @@ export const useChatStore = create<StoreState>()(
                             if (ch === '{') depth++;
                             else if (ch === '}') {
                               depth--;
-                              if (depth === 0) { endIdx = i + 1; break; }
+                              if (depth === 0) {
+                                endIdx = i + 1;
+                                break;
+                              }
                             }
                           }
                         }
@@ -966,6 +1020,41 @@ export const useChatStore = create<StoreState>()(
         controller?.abort();
         set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
         set((s) => ({ ...s, _controller: undefined }) as any);
+      },
+
+      editUserMessage: async (messageId, newContent, opts) => {
+        const chatId = get().selectedChatId!;
+        const list = get().messages[chatId] ?? [];
+        const idx = list.findIndex((m) => m.id === messageId);
+        if (idx === -1) return;
+        const target = list[idx];
+        if (target.role !== 'user') return;
+        const updated = { ...target, content: newContent };
+        // Update in-memory state
+        set((s) => ({
+          messages: {
+            ...s.messages,
+            [chatId]: (s.messages[chatId] ?? []).map((m) => (m.id === messageId ? updated : m)),
+          },
+        }));
+        // Persist to IndexedDB
+        await saveMessage(updated);
+        // Optionally re-run the immediate following assistant message
+        if (opts?.rerun) {
+          // If currently streaming, stop first
+          if (get().ui.isStreaming) {
+            get().stopStreaming();
+          }
+          const nextAssistant = (get().messages[chatId] ?? [])
+            .slice(idx + 1)
+            .find((m) => m.role === 'assistant');
+          if (nextAssistant) {
+            // Fire-and-forget to avoid blocking the caller/UI edit state
+            get()
+              .regenerateAssistantMessage(nextAssistant.id)
+              .catch(() => void 0);
+          }
+        }
       },
 
       regenerateAssistantMessage: async (messageId, opts) => {

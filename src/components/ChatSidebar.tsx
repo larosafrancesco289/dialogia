@@ -33,7 +33,10 @@ export default function ChatSidebar() {
       {!collapsed && <div className="px-4 text-xs text-muted-foreground">Chats</div>}
       <div className={`scroll-area ${collapsed ? 'px-2' : 'px-4'} pb-3 space-y-2 flex-1`}>
         {chats.map((c) => (
-          <div key={c.id} className={`card p-3 chat-item ${selectedChatId === c.id ? 'selected' : ''}`}>
+          <div
+            key={c.id}
+            className={`card p-3 chat-item ${selectedChatId === c.id ? 'selected' : ''}`}
+          >
             {editingId === c.id ? (
               <div className="flex items-center gap-2">
                 <input

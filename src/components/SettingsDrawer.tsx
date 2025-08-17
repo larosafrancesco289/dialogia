@@ -116,7 +116,12 @@ export default function SettingsDrawer() {
       const footer = 88; // sticky footer height
       const viewportH = window.innerHeight;
       const available = Math.max(120, viewportH - footer - margin - r.bottom);
-      setDropdownPos({ left: r.left, top: r.bottom + margin, width: r.width, maxHeight: available });
+      setDropdownPos({
+        left: r.left,
+        top: r.bottom + margin,
+        width: r.width,
+        maxHeight: available,
+      });
     };
     update();
     window.addEventListener('resize', update, { passive: true });
@@ -129,10 +134,19 @@ export default function SettingsDrawer() {
 
   return (
     <>
-      <div className={`fixed inset-0 bg-black/30 z-[70] settings-overlay${closing ? ' is-closing' : ''}`} onClick={closeWithAnim} />
-      <div className={`fixed inset-y-0 right-0 w-full sm:w-[520px] glass-panel border-l border-border shadow-[var(--shadow-card)] z-[80] overflow-y-auto will-change-transform settings-drawer${closing ? ' is-closing' : ''}`} style={{ overscrollBehavior: 'contain' }}>
+      <div
+        className={`fixed inset-0 bg-black/30 z-[70] settings-overlay${closing ? ' is-closing' : ''}`}
+        onClick={closeWithAnim}
+      />
+      <div
+        className={`fixed inset-y-0 right-0 w-full sm:w-[520px] glass-panel border-l border-border shadow-[var(--shadow-card)] z-[80] overflow-y-auto will-change-transform settings-drawer${closing ? ' is-closing' : ''}`}
+        style={{ overscrollBehavior: 'contain' }}
+      >
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-border sticky top-0 glass z-10 px-4" style={{ height: 'var(--header-height)' }}>
+        <div
+          className="flex items-center gap-3 border-b border-border sticky top-0 glass z-10 px-4"
+          style={{ height: 'var(--header-height)' }}
+        >
           <h3 className="font-semibold">Settings</h3>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
@@ -322,15 +336,35 @@ export default function SettingsDrawer() {
               <div className="space-y-1">
                 <label className="text-sm block">Show thinking by default</label>
                 <div className="segmented">
-                  <button className={`segment ${showThinking ? 'is-active' : ''}`} onClick={() => setShowThinking(true)}>On</button>
-                  <button className={`segment ${!showThinking ? 'is-active' : ''}`} onClick={() => setShowThinking(false)}>Off</button>
+                  <button
+                    className={`segment ${showThinking ? 'is-active' : ''}`}
+                    onClick={() => setShowThinking(true)}
+                  >
+                    On
+                  </button>
+                  <button
+                    className={`segment ${!showThinking ? 'is-active' : ''}`}
+                    onClick={() => setShowThinking(false)}
+                  >
+                    Off
+                  </button>
                 </div>
               </div>
               <div className="space-y-1">
                 <label className="text-sm block">Show stats</label>
                 <div className="segmented">
-                  <button className={`segment ${showStats ? 'is-active' : ''}`} onClick={() => setShowStats(true)}>On</button>
-                  <button className={`segment ${!showStats ? 'is-active' : ''}`} onClick={() => setShowStats(false)}>Off</button>
+                  <button
+                    className={`segment ${showStats ? 'is-active' : ''}`}
+                    onClick={() => setShowStats(true)}
+                  >
+                    On
+                  </button>
+                  <button
+                    className={`segment ${!showStats ? 'is-active' : ''}`}
+                    onClick={() => setShowStats(false)}
+                  >
+                    Off
+                  </button>
                 </div>
               </div>
             </div>
@@ -429,7 +463,8 @@ export default function SettingsDrawer() {
               {hiddenModelIds && hiddenModelIds.length > 0 && (
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <div className="text-muted-foreground">
-                    {hiddenModelIds.length} hidden {hiddenModelIds.length === 1 ? 'model' : 'models'}
+                    {hiddenModelIds.length} hidden{' '}
+                    {hiddenModelIds.length === 1 ? 'model' : 'models'}
                   </div>
                   <button className="btn btn-outline btn-sm" onClick={() => resetHiddenModels()}>
                     Reset hidden
