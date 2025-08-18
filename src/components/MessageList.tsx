@@ -19,18 +19,66 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const braveByMessageId = useChatStore((s) => s.ui.braveByMessageId || {});
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
   const showStats = chat?.settings.show_stats ?? true;
+  const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  // Scroll when a new message is added
+  const [atBottom, setAtBottom] = useState(true);
+  const [showJump, setShowJump] = useState(false);
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === 'undefined' || !('matchMedia' in window)) return false;
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // Track whether user is near the bottom to enable smart autoscroll
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = containerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const threshold = 100; // px
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+      setAtBottom(nearBottom);
+      if (nearBottom) setShowJump(false);
+    };
+    // Initialize state in case content already overflows
+    onScroll();
+    el.addEventListener('scroll', onScroll, { passive: true } as any);
+    return () => el.removeEventListener('scroll', onScroll as any);
+  }, []);
+
+  const scrollToBottom = (behavior: ScrollBehavior) => {
+    endRef.current?.scrollIntoView({ behavior, block: 'end' });
+  };
+
+  // Scroll when a new message is added, but only if at bottom or if user sent the last message
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    const lastRole = last?.role;
+    if (messages.length === 0) return;
+    if (atBottom || lastRole === 'user') {
+      scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
+    } else {
+      setShowJump(true);
+    }
   }, [messages.length]);
   // Also keep scrolling during streaming as content grows
   const lastLen =
     (messages[messages.length - 1]?.content?.length ?? 0) +
     (messages[messages.length - 1]?.reasoning?.length ?? 0);
+  const lastScrollTsRef = useRef(0);
   useEffect(() => {
-    if (isStreaming) endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [lastLen, isStreaming]);
+    if (isStreaming && atBottom) {
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (now - lastScrollTsRef.current > 160) {
+        // During streaming, avoid smooth animation to reduce jitter
+        scrollToBottom('auto');
+        lastScrollTsRef.current = now;
+      }
+    }
+    if (!isStreaming) lastScrollTsRef.current = 0;
+  }, [lastLen, isStreaming, atBottom]);
   const showByDefault = chat?.settings.show_thinking_by_default ?? true;
   const [expandedReasoningIds, setExpandedReasoningIds] = useState<Record<string, boolean>>({});
   const toggle = (id: string) => setExpandedReasoningIds((s) => ({ ...s, [id]: !s[id] }));
@@ -52,7 +100,11 @@ export default function MessageList({ chatId }: { chatId: string }) {
     editUserMessage(messageId, payload, { rerun: true }).catch(() => void 0);
   };
   return (
-    <div className="scroll-area p-4 space-y-3 h-full" style={{ background: 'var(--color-canvas)' }}>
+    <div
+      ref={containerRef}
+      className="scroll-area p-4 space-y-3 h-full"
+      style={{ background: 'var(--color-canvas)' }}
+    >
       {messages.map((m) => (
         <div key={m.id} className={`card p-0 message-card`}>
           {m.role === 'assistant' ? (
@@ -312,6 +364,30 @@ export default function MessageList({ chatId }: { chatId: string }) {
           )}
         </div>
       ))}
+      {showJump && (
+        <div
+          style={{
+            position: 'sticky',
+            bottom: 12,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            zIndex: 50,
+          }}
+        >
+          <button
+            className="btn btn-outline btn-sm"
+            aria-label="Jump to latest"
+            onClick={() => {
+              scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
+              setShowJump(false);
+              setAtBottom(true);
+            }}
+          >
+            <ChevronDownIcon className="h-4 w-4" />
+            <span style={{ marginLeft: 6 }}>Jump to latest</span>
+          </button>
+        </div>
+      )}
       <div ref={endRef} />
     </div>
   );
