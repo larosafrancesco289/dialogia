@@ -52,8 +52,8 @@ function PreWithTools(
   props: React.HTMLAttributes<HTMLPreElement> & { children?: React.ReactNode },
 ) {
   const preRef = useRef<HTMLPreElement>(null);
-  const [wrap, setWrap] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  // Remove wrap control; default to expanded blocks
+  const [expanded, setExpanded] = useState(true);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const language = useMemo(() => detectLanguageFromPreChildren(props.children), [props.children]);
   const codeText = useMemo(() => extractCodeText(props.children), [props.children]);
@@ -73,26 +73,17 @@ function PreWithTools(
       ro.disconnect();
       clearTimeout(tid);
     };
-  }, [wrap, expanded, props.children]);
+  }, [expanded, props.children]);
 
   return (
     <pre
       ref={preRef}
       className={`rounded-2xl bg-muted p-4 pt-12 overflow-auto relative ${props.className ?? ''}`}
       style={{ maxHeight: expanded ? 'none' : 480 }}
-      data-wrap={wrap ? 'true' : 'false'}
       data-expanded={expanded ? 'true' : 'false'}
     >
       <div className="pre-toolbar absolute left-3 top-2 right-3 flex items-center justify-end gap-2">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="btn-outline btn-sm"
-            onClick={() => setWrap((v) => !v)}
-            title={wrap ? 'Disable wrap' : 'Enable wrap'}
-          >
-            {wrap ? 'Unwrap' : 'Wrap'}
-          </button>
           {isOverflowing && (
             <button
               type="button"

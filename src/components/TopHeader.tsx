@@ -3,10 +3,11 @@ import ModelPicker from '@/components/ModelPicker';
 import { useChatStore } from '@/lib/store';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import ThemeToggle from '@/components/ThemeToggle';
+import { Squares2X2Icon } from '@heroicons/react/24/outline';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 
 export default function TopHeader() {
-  const { chats, selectedChatId, renameChat, setUI } = useChatStore();
+  const { chats, selectedChatId, renameChat, setUI, openCompare } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
   const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
   const isSettingsOpen = useChatStore((s) => s.ui.showSettings);
@@ -36,6 +37,14 @@ export default function TopHeader() {
       )}
       <div className="ml-auto" />
       <ThemeToggle />
+      <button
+        className="btn btn-ghost"
+        aria-label="Open compare"
+        onClick={() => openCompare()}
+        title="Compare models"
+      >
+        <Squares2X2Icon className="h-5 w-5" />
+      </button>
       <button
         className="btn btn-ghost"
         aria-label="Open settings"

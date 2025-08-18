@@ -44,7 +44,7 @@ export default function SettingsDrawer() {
   const [maxTokensStr, setMaxTokensStr] = useState<string>(
     chat?.settings.max_tokens != null ? String(chat.settings.max_tokens) : '',
   );
-  const [customModel, setCustomModel] = useState('');
+  // Removed manual custom model input; use search below
   const [query, setQuery] = useState('');
   const [reasoningEffort, setReasoningEffort] = useState<string | undefined>(
     chat?.settings.reasoning_effort,
@@ -67,6 +67,7 @@ export default function SettingsDrawer() {
     width: number;
     maxHeight: number;
   } | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const closeWithAnim = () => {
     setClosing(true);
@@ -130,6 +131,22 @@ export default function SettingsDrawer() {
       window.removeEventListener('resize', update as any);
       window.removeEventListener('scroll', update as any, true as any);
     };
+  }, [normalizedQuery]);
+
+  // Close the search dropdown when clicking outside
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      if (!normalizedQuery) return;
+      const target = e.target as Node | null;
+      const inputEl = searchRef.current;
+      const dropEl = dropdownRef.current;
+      if (inputEl && target && inputEl.contains(target)) return;
+      if (dropEl && target && dropEl.contains(target)) return;
+      setQuery('');
+      setDropdownPos(null);
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
   }, [normalizedQuery]);
 
   return (
@@ -373,35 +390,6 @@ export default function SettingsDrawer() {
           {/* Models */}
           <Section title="Models">
             <div className="space-y-3">
-              <div className="space-y-2">
-                <label className="text-sm">Add custom model ID</label>
-                <div className="flex gap-2">
-                  <input
-                    className="input flex-1"
-                    placeholder="provider/model-id"
-                    value={customModel}
-                    onChange={(e) => setCustomModel(e.target.value)}
-                    onKeyDown={(e) => e.stopPropagation()}
-                  />
-                  <button
-                    className="btn btn-outline"
-                    onClick={() => {
-                      const id = customModel.trim();
-                      if (!id) return;
-                      if (!favoriteModelIds.includes(id)) toggleFavoriteModel(id);
-                      if (chat) {
-                        updateChatSettings({ model: id });
-                      } else {
-                        setUI({ nextModel: id });
-                      }
-                      setCustomModel('');
-                    }}
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-
               <div className="relative">
                 <input
                   ref={searchRef}
@@ -415,6 +403,7 @@ export default function SettingsDrawer() {
                   createPortal(
                     <div
                       className="fixed card p-2 overflow-auto z-[90]"
+                      ref={dropdownRef}
                       style={{
                         left: dropdownPos.left,
                         top: dropdownPos.top,
