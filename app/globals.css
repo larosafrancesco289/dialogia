@@ -606,3 +606,73 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   padding: 12px;
   overflow: auto;
 }
+
+/* PrismJS syntax highlighting (colors only; layout handled by components) */
+/* Token color variables for light mode */
+:root {
+  --syntax-comment: #6a737d;
+  --syntax-punctuation: var(--color-fg-muted);
+  --syntax-keyword: var(--color-accent-2);
+  --syntax-string: #22863a;
+  --syntax-function: #005cc5;
+  --syntax-number: #0b63c8;
+  --syntax-operator: color-mix(in oklab, var(--color-accent) 60%, #444);
+  --syntax-property: #0b63c8;
+  --syntax-class: #6f42c1;
+  --syntax-variable: #e36209;
+  --syntax-regex: #e36209;
+}
+/* Token color variables for dark mode */
+.dark {
+  --syntax-comment: #8b949e;
+  --syntax-punctuation: #c9d1d9;
+  --syntax-keyword: #c38fff; /* purple-ish for keywords */
+  --syntax-string: #7ee787; /* green */
+  --syntax-function: #d2a8ff; /* purple */
+  --syntax-number: #79c0ff; /* blue */
+  --syntax-operator: #e3b341; /* gold */
+  --syntax-property: #7aa2f7; /* blue */
+  --syntax-class: #d2a8ff;
+  --syntax-variable: #ffa657; /* orange */
+  --syntax-regex: #ffab70;
+}
+
+/* Apply token colors within rendered markdown only */
+.markdown code[class*='language-'],
+.markdown pre[class*='language-'] {
+  text-shadow: none;
+}
+.markdown .token.comment,
+.markdown .token.prolog,
+.markdown .token.doctype,
+.markdown .token.cdata {
+  color: var(--syntax-comment);
+}
+.markdown .token.punctuation { color: var(--syntax-punctuation); }
+.markdown .token.property,
+.markdown .token.tag,
+.markdown .token.constant,
+.markdown .token.symbol,
+.markdown .token.deleted {
+  color: var(--syntax-property);
+}
+.markdown .token.boolean,
+.markdown .token.number { color: var(--syntax-number); }
+.markdown .token.selector,
+.markdown .token.attr-name,
+.markdown .token.string,
+.markdown .token.char,
+.markdown .token.builtin,
+.markdown .token.inserted { color: var(--syntax-string); }
+.markdown .token.operator,
+.markdown .token.entity,
+.markdown .token.url { color: var(--syntax-operator); }
+.markdown .token.atrule,
+.markdown .token.keyword { color: var(--syntax-keyword); }
+.markdown .token.function { color: var(--syntax-function); }
+.markdown .token.class-name { color: var(--syntax-class); }
+.markdown .token.regex,
+.markdown .token.important,
+.markdown .token.variable { color: var(--syntax-regex); }
+.markdown .token.bold { font-weight: 700; }
+.markdown .token.italic { font-style: italic; }

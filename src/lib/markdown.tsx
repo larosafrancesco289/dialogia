@@ -49,14 +49,24 @@ function extractCodeText(children: React.ReactNode): string {
 }
 
 function PreWithTools(
-  props: React.HTMLAttributes<HTMLPreElement> & { children?: React.ReactNode },
+  props: React.HTMLAttributes<HTMLPreElement> & {
+    children?: React.ReactNode;
+    language?: string;
+    rawText?: string;
+  },
 ) {
   const preRef = useRef<HTMLPreElement>(null);
   // Remove wrap control; default to expanded blocks
   const [expanded, setExpanded] = useState(true);
   const [isOverflowing, setIsOverflowing] = useState(false);
-  const language = useMemo(() => detectLanguageFromPreChildren(props.children), [props.children]);
-  const codeText = useMemo(() => extractCodeText(props.children), [props.children]);
+  const language = useMemo(
+    () => props.language ?? detectLanguageFromPreChildren(props.children),
+    [props.language, props.children],
+  );
+  const codeText = useMemo(
+    () => props.rawText ?? extractCodeText(props.children),
+    [props.rawText, props.children],
+  );
 
   useEffect(() => {
     const el = preRef.current;
@@ -129,41 +139,117 @@ function MermaidBlock({ code }: { code: string }) {
   return <div className="mermaid-diagram" ref={ref} />;
 }
 
-export function Markdown({ content }: { content: string }) {
+// Escapes raw text to safe HTML when highlighting is not yet ready
+function escapeHtml(str: string) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function normalizeLanguage(lang?: string): string | undefined {
+  if (!lang) return undefined;
+  const l = lang.toLowerCase();
+  if (l === 'js') return 'javascript';
+  if (l === 'ts') return 'typescript';
+  if (l === 'sh' || l === 'shell') return 'bash';
+  if (l === 'yml') return 'yaml';
+  if (l === 'md') return 'markdown';
+  if (l === 'html' || l === 'xml' || l === 'svg') return 'markup';
+  return l;
+}
+
+async function ensurePrismLanguage(lang?: string) {
+  const PrismLib = (await import('prismjs')).default;
+  (window as any).Prism = PrismLib;
+  const l = normalizeLanguage(lang);
+  // Always have a baseline markup grammar for safety
+  await import('prismjs/components/prism-markup');
+  if (!l) return PrismLib;
+  try {
+    switch (l) {
+      case 'javascript':
+        await import('prismjs/components/prism-javascript');
+        break;
+      case 'jsx':
+        await import('prismjs/components/prism-jsx');
+        break;
+      case 'typescript':
+        await import('prismjs/components/prism-typescript');
+        break;
+      case 'tsx':
+        await import('prismjs/components/prism-tsx');
+        break;
+      case 'json':
+        await import('prismjs/components/prism-json');
+        break;
+      case 'markdown':
+        await import('prismjs/components/prism-markdown');
+        break;
+      case 'bash':
+        await import('prismjs/components/prism-bash');
+        break;
+      case 'python':
+        await import('prismjs/components/prism-python');
+        break;
+      case 'go':
+        await import('prismjs/components/prism-go');
+        break;
+      case 'rust':
+        await import('prismjs/components/prism-rust');
+        break;
+      case 'java':
+        await import('prismjs/components/prism-java');
+        break;
+      case 'sql':
+        await import('prismjs/components/prism-sql');
+        break;
+      case 'yaml':
+        await import('prismjs/components/prism-yaml');
+        break;
+      case 'toml':
+        await import('prismjs/components/prism-toml');
+        break;
+      case 'diff':
+        await import('prismjs/components/prism-diff');
+        break;
+      default:
+        // Best-effort: no extra import
+        break;
+    }
+  } catch {
+    // ignore missing language modules
+  }
+  return PrismLib;
+}
+
+function CodeBlock({ code, language }: { code: string; language?: string }) {
+  const [html, setHtml] = useState<string | null>(null);
+  const lang = normalizeLanguage(language);
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (typeof window === 'undefined') return;
       try {
-        const PrismLib = (await import('prismjs')).default;
-        // Some Prism language components depend on others. Load sequentially.
-        (window as any).Prism = PrismLib;
-        await import('prismjs/components/prism-markup');
-        await import('prismjs/components/prism-javascript');
-        await import('prismjs/components/prism-jsx');
-        await import('prismjs/components/prism-typescript');
-        await import('prismjs/components/prism-tsx');
-        await import('prismjs/components/prism-json');
-        await import('prismjs/components/prism-markdown');
-        await import('prismjs/components/prism-bash');
-        await import('prismjs/components/prism-python');
-        await import('prismjs/components/prism-go');
-        await import('prismjs/components/prism-rust');
-        await import('prismjs/components/prism-java');
-        await import('prismjs/components/prism-sql');
-        await import('prismjs/components/prism-yaml');
-        await import('prismjs/components/prism-toml');
-        await import('prismjs/components/prism-diff');
-        if (!cancelled) PrismLib.highlightAll();
-      } catch (e) {
-        // swallow highlighting errors so they don't crash the UI
-        console.error('Prism init failed', e);
+        const Prism = await ensurePrismLanguage(lang);
+        const grammar = (lang && Prism.languages[lang]) || Prism.languages.markup;
+        const h = Prism.highlight(code, grammar, (lang as string) || 'markup');
+        if (!cancelled) setHtml(h);
+      } catch {
+        if (!cancelled) setHtml(null);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [content]);
+  }, [code, lang]);
+  const cls = `language-${lang ?? 'markup'}`;
+  return <code className={cls} dangerouslySetInnerHTML={{ __html: html ?? escapeHtml(code) }} />;
+}
+
+export function Markdown({ content }: { content: string }) {
+  // Prism highlighting is handled per-block to avoid React clobbering DOM
 
   // Attach medium-zoom to images inside markdown for a better reading experience
   useEffect(() => {
@@ -202,16 +288,19 @@ export function Markdown({ content }: { content: string }) {
               const code = extractCodeText(children);
               return <MermaidBlock code={code} />;
             }
-            return <PreWithTools {...preProps}>{children}</PreWithTools>;
+            const code = extractCodeText(children);
+            return (
+              <PreWithTools {...preProps} language={lang} rawText={code}>
+                <CodeBlock code={code} language={lang} />
+              </PreWithTools>
+            );
           },
           code({ inline, className, children, ...props }: any) {
             // Only style inline code; block code is handled by the <pre> wrapper above
             if (!inline) {
-              return (
-                <code className={className} {...props}>
-                  {children}
-                </code>
-              );
+              const lang = (className || '').replace(/(^|.*language-)([\w-]+).*/, '$2');
+              const text = Array.isArray(children) ? children.join('') : String(children || '');
+              return <CodeBlock code={text} language={lang} />;
             }
             return (
               <code className={`bg-muted rounded px-1 py-0.5 ${className || ''}`} {...props}>
