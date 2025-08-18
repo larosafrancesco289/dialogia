@@ -87,6 +87,7 @@ type StoreState = {
     newContent: string,
     opts?: { rerun?: boolean },
   ) => Promise<void>;
+  editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
 };
 
 const defaultSettings: ChatSettings = {
@@ -1388,6 +1389,24 @@ export const useChatStore = create<StoreState>()(
               .catch(() => void 0);
           }
         }
+      },
+
+      // Directly edit the content of an assistant message in-place
+      editAssistantMessage: async (messageId, newContent) => {
+        const chatId = get().selectedChatId!;
+        const list = get().messages[chatId] ?? [];
+        const idx = list.findIndex((m) => m.id === messageId);
+        if (idx === -1) return;
+        const target = list[idx];
+        if (target.role !== 'assistant') return;
+        const updated = { ...target, content: newContent } as Message;
+        set((s) => ({
+          messages: {
+            ...s.messages,
+            [chatId]: (s.messages[chatId] ?? []).map((m) => (m.id === messageId ? updated : m)),
+          },
+        }));
+        await saveMessage(updated);
       },
 
       regenerateAssistantMessage: async (messageId, opts) => {
