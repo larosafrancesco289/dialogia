@@ -2,6 +2,7 @@
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatPane from '@/components/ChatPane';
 import SettingsDrawer from '@/components/SettingsDrawer';
+import CompareDrawer from '@/components/CompareDrawer';
 import TopHeader from '@/components/TopHeader';
 import { useEffect } from 'react';
 import { useChatStore } from '@/lib/store';
@@ -10,6 +11,7 @@ export default function HomePage() {
   const initialize = useChatStore((s) => s.initializeApp);
   const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
   const isSettingsOpen = useChatStore((s) => s.ui.showSettings);
+  const isCompareOpen = useChatStore((s) => s.ui.compare?.isOpen ?? false);
   useEffect(() => {
     initialize();
   }, [initialize]);
@@ -25,6 +27,7 @@ export default function HomePage() {
           <ChatPane />
         </div>
         {isSettingsOpen && <SettingsDrawer />}
+        {isCompareOpen && <CompareDrawer />}
       </main>
     </div>
   );

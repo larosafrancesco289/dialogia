@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { db, saveChat, saveMessage } from '@/lib/db';
-import type { Chat, ChatSettings, Message, ORModel } from '@/lib/types';
+import type { Chat, ChatSettings, Message, ORModel, MessageMetrics } from '@/lib/types';
 // crypto helpers are available in `@/lib/crypto` if encrypted storage is added later
 import { fetchModels, streamChatCompletion, chatCompletion } from '@/lib/openrouter';
 
@@ -27,6 +27,24 @@ type UIState = {
       error?: string;
     }
   >;
+  // Ephemeral compare drawer state
+  compare?: {
+    isOpen: boolean;
+    prompt: string;
+    selectedModelIds: string[];
+    runs: Record<
+      string,
+      {
+        status: 'idle' | 'running' | 'done' | 'error' | 'aborted';
+        content: string;
+        reasoning?: string;
+        metrics?: MessageMetrics;
+        tokensIn?: number;
+        tokensOut?: number;
+        error?: string;
+      }
+    >;
+  };
 };
 
 type StoreState = {
@@ -47,6 +65,12 @@ type StoreState = {
   deleteChat: (id: string) => Promise<void>;
   updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
   setUI: (partial: Partial<UIState>) => void;
+  // Compare drawer controls
+  openCompare: () => void;
+  closeCompare: () => void;
+  setCompare: (partial: Partial<NonNullable<UIState['compare']>>) => void;
+  runCompare: (prompt: string, modelIds: string[]) => Promise<void>;
+  stopCompare: () => void;
 
   loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
   toggleFavoriteModel: (id: string) => void;
@@ -90,8 +114,10 @@ export const useChatStore = create<StoreState>()(
         sidebarCollapsed: false,
         nextSearchWithBrave: false,
         braveByMessageId: {},
+        compare: { isOpen: false, prompt: '', selectedModelIds: [], runs: {} },
       },
       _controller: undefined as AbortController | undefined,
+      _compareControllers: {} as Record<string, AbortController>,
 
       initializeApp: async () => {
         const compareMessages = (a: Message, b: Message) => {
@@ -175,6 +201,313 @@ export const useChatStore = create<StoreState>()(
         await saveChat(chat);
       },
       setUI: (partial) => set((s) => ({ ui: { ...s.ui, ...partial } })),
+
+      // Compare drawer: basic open/close and state updates
+      openCompare: () => {
+        set((s) => {
+          const chatId = get().selectedChatId;
+          const chat = chatId ? get().chats.find((c) => c.id === chatId) : undefined;
+          const fallback = s.ui.nextModel || 'openai/gpt-5-chat';
+          const currentModel = chat?.settings.model || fallback;
+          const existing = s.ui.compare?.selectedModelIds || [];
+          const initial = existing.length > 0 ? existing : [currentModel].filter(Boolean);
+          return {
+            ui: {
+              ...s.ui,
+              compare: {
+                isOpen: true,
+                prompt: s.ui.compare?.prompt || '',
+                selectedModelIds: initial,
+                runs: {},
+              },
+            },
+          };
+        });
+        // Opportunistically refresh models each time the drawer opens
+        get()
+          .loadModels()
+          .catch(() => void 0);
+      },
+      closeCompare: () =>
+        set((s) => ({
+          ui: {
+            ...s.ui,
+            compare: {
+              ...(s.ui.compare || ({} as any)),
+              isOpen: false,
+              runs: s.ui.compare?.runs || {},
+            },
+          },
+        })),
+      setCompare: (partial) =>
+        set((s) => {
+          const prev = s.ui.compare || {
+            isOpen: false,
+            prompt: '',
+            selectedModelIds: [],
+            runs: {},
+          };
+          const willChangeSelection = Object.prototype.hasOwnProperty.call(
+            partial,
+            'selectedModelIds',
+          );
+          return {
+            ui: {
+              ...s.ui,
+              compare: {
+                ...prev,
+                ...partial,
+                runs: willChangeSelection ? {} : prev.runs,
+              },
+            },
+          };
+        }),
+
+      runCompare: async (prompt, modelIds) => {
+        const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
+        if (!key)
+          return set((s) => ({
+            ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
+          }));
+        const chatId = get().selectedChatId;
+        const chat = chatId ? get().chats.find((c) => c.id === chatId)! : undefined;
+        const prior = chatId ? (get().messages[chatId] ?? []) : [];
+
+        // Reset runs
+        set((s) => ({
+          ui: {
+            ...s.ui,
+            compare: {
+              ...(s.ui.compare || { isOpen: true, prompt, selectedModelIds: modelIds, runs: {} }),
+              isOpen: true,
+              prompt,
+              selectedModelIds: modelIds,
+              runs: Object.fromEntries(
+                modelIds.map((id) => [id, { status: 'running', content: '' as string }]),
+              ),
+            },
+          },
+        }));
+
+        // Abort any previous compare run
+        const prev = (get() as any)._compareControllers as Record<string, AbortController>;
+        Object.values(prev || {}).forEach((c) => c.abort());
+        set((s) => ({ ...(s as any), _compareControllers: {} as any }) as any);
+
+        // Launch parallel streams
+        const controllers: Record<string, AbortController> = {};
+        await Promise.all(
+          modelIds.map(async (modelId) => {
+            const controller = new AbortController();
+            controllers[modelId] = controller;
+            const tStart = performance.now();
+            let tFirst: number | undefined;
+            try {
+              // Build payload per model to respect different context windows
+              const msgs = buildChatCompletionMessages({
+                chat: chat
+                  ? { ...chat, settings: { ...chat.settings, model: modelId } }
+                  : {
+                      id: 'tmp',
+                      title: 'Compare',
+                      createdAt: Date.now(),
+                      updatedAt: Date.now(),
+                      settings: {
+                        model: modelId,
+                        system: 'You are a helpful assistant.',
+                        show_thinking_by_default: true,
+                        show_stats: true,
+                        search_with_brave: false,
+                        reasoning_effort: undefined,
+                      },
+                    },
+                priorMessages: prior,
+                models: get().models,
+                newUserContent: prompt,
+              });
+              await streamChatCompletion({
+                apiKey: key,
+                model: modelId,
+                messages: msgs,
+                temperature: chat?.settings.temperature,
+                top_p: chat?.settings.top_p,
+                max_tokens: chat?.settings.max_tokens,
+                reasoning_effort: chat?.settings.reasoning_effort,
+                reasoning_tokens: chat?.settings.reasoning_tokens,
+                signal: controller.signal,
+                callbacks: {
+                  onToken: (delta) => {
+                    if (tFirst == null) tFirst = performance.now();
+                    set((s) => ({
+                      ui: {
+                        ...s.ui,
+                        compare: {
+                          ...(s.ui.compare || {
+                            isOpen: true,
+                            prompt,
+                            selectedModelIds: modelIds,
+                            runs: {},
+                          }),
+                          isOpen: true,
+                          prompt: s.ui.compare?.prompt ?? prompt,
+                          selectedModelIds: modelIds,
+                          runs: {
+                            ...(s.ui.compare?.runs || {}),
+                            [modelId]: {
+                              ...((s.ui.compare?.runs || {})[modelId] || {
+                                status: 'running',
+                                content: '',
+                              }),
+                              status: 'running',
+                              content: `${(s.ui.compare?.runs || {})[modelId]?.content || ''}${delta}`,
+                            },
+                          },
+                        },
+                      },
+                    }));
+                  },
+                  onReasoningToken: (delta) => {
+                    set((s) => ({
+                      ui: {
+                        ...s.ui,
+                        compare: {
+                          ...(s.ui.compare || {
+                            isOpen: true,
+                            prompt,
+                            selectedModelIds: modelIds,
+                            runs: {},
+                          }),
+                          runs: {
+                            ...(s.ui.compare?.runs || {}),
+                            [modelId]: {
+                              ...((s.ui.compare?.runs || {})[modelId] || {
+                                status: 'running',
+                                content: '',
+                              }),
+                              reasoning: `${(s.ui.compare?.runs || {})[modelId]?.reasoning || ''}${delta}`,
+                            },
+                          },
+                        },
+                      },
+                    }));
+                  },
+                  onDone: (full, extras) => {
+                    const tEnd = performance.now();
+                    const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
+                    const completionMs = Math.max(0, Math.round(tEnd - tStart));
+                    const promptTokens =
+                      extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
+                    const completionTokens =
+                      extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
+                    const tokensPerSec =
+                      completionTokens && completionMs
+                        ? +(completionTokens / (completionMs / 1000)).toFixed(2)
+                        : undefined;
+                    set((s) => ({
+                      ui: {
+                        ...s.ui,
+                        compare: {
+                          ...(s.ui.compare || {
+                            isOpen: true,
+                            prompt,
+                            selectedModelIds: modelIds,
+                            runs: {},
+                          }),
+                          runs: {
+                            ...(s.ui.compare?.runs || {}),
+                            [modelId]: {
+                              ...((s.ui.compare?.runs || {})[modelId] || {
+                                status: 'running',
+                                content: '',
+                              }),
+                              status: 'done',
+                              content: full,
+                              metrics: {
+                                ttftMs,
+                                completionMs,
+                                promptTokens,
+                                completionTokens,
+                                tokensPerSec,
+                              },
+                              tokensIn: promptTokens,
+                              tokensOut: completionTokens,
+                            },
+                          },
+                        },
+                      },
+                    }));
+                  },
+                  onError: (err) => {
+                    set((s) => ({
+                      ui: {
+                        ...s.ui,
+                        compare: {
+                          ...(s.ui.compare || {
+                            isOpen: true,
+                            prompt,
+                            selectedModelIds: modelIds,
+                            runs: {},
+                          }),
+                          runs: {
+                            ...(s.ui.compare?.runs || {}),
+                            [modelId]: {
+                              ...((s.ui.compare?.runs || {})[modelId] || {
+                                status: 'running',
+                                content: '',
+                              }),
+                              status: 'error',
+                              error: err?.message || 'Error',
+                            },
+                          },
+                        },
+                      },
+                    }));
+                  },
+                },
+              });
+            } catch (e: any) {
+              if (e?.name === 'AbortError') {
+                set((s) => ({
+                  ui: {
+                    ...s.ui,
+                    compare: {
+                      ...(s.ui.compare || {
+                        isOpen: true,
+                        prompt,
+                        selectedModelIds: modelIds,
+                        runs: {},
+                      }),
+                      runs: {
+                        ...(s.ui.compare?.runs || {}),
+                        [modelId]: {
+                          ...((s.ui.compare?.runs || {})[modelId] || {
+                            status: 'running',
+                            content: '',
+                          }),
+                          status: 'aborted',
+                        },
+                      },
+                    },
+                  },
+                }));
+              } else if (e?.message === 'unauthorized') {
+                set((s) => ({ ui: { ...s.ui, notice: 'Invalid API key' } }));
+              } else if (e?.message === 'rate_limited') {
+                set((s) => ({ ui: { ...s.ui, notice: 'Rate limited. Retry later.' } }));
+              } else {
+                set((s) => ({ ui: { ...s.ui, notice: e?.message || 'Compare failed' } }));
+              }
+            }
+          }),
+        );
+        set((s) => ({ ...(s as any), _compareControllers: controllers as any }) as any);
+      },
+
+      stopCompare: () => {
+        const map = (get() as any)._compareControllers as Record<string, AbortController>;
+        Object.values(map || {}).forEach((c) => c.abort());
+        set((s) => ({ ...(s as any), _compareControllers: {} as any }) as any);
+      },
 
       loadModels: async () => {
         const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
