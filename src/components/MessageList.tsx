@@ -87,6 +87,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const toggleSources = (id: string) => setExpandedSourcesIds((s) => ({ ...s, [id]: !s[id] }));
   const isSourcesExpanded = (id: string) => expandedSourcesIds[id] ?? true;
   const editUserMessage = useChatStore((s) => s.editUserMessage);
+  const editAssistantMessage = useChatStore((s) => s.editAssistantMessage);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const saveEdit = (messageId: string) => {
@@ -96,8 +97,14 @@ export default function MessageList({ chatId }: { chatId: string }) {
     const payload = draft;
     setEditingId(null);
     setDraft('');
-    // Fire-and-forget; store will kick off regeneration
-    editUserMessage(messageId, payload, { rerun: true }).catch(() => void 0);
+    // Dispatch to appropriate editor depending on role
+    const role = messages.find((mm) => mm.id === messageId)?.role;
+    if (role === 'assistant') {
+      editAssistantMessage(messageId, payload).catch(() => void 0);
+    } else {
+      // Fire-and-forget; store will kick off regeneration for user messages
+      editUserMessage(messageId, payload, { rerun: true }).catch(() => void 0);
+    }
   };
   return (
     <div
@@ -110,7 +117,46 @@ export default function MessageList({ chatId }: { chatId: string }) {
           {m.role === 'assistant' ? (
             <div className="relative">
               <div className="absolute top-2 right-2 z-30">
-                <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
+                {editingId === m.id ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      className="icon-button"
+                      aria-label="Save edit"
+                      title="Save edit"
+                      onClick={() => saveEdit(m.id)}
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="icon-button"
+                      aria-label="Cancel edit"
+                      title="Cancel edit"
+                      onClick={() => {
+                        setEditingId(null);
+                        setDraft('');
+                      }}
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    {!isStreaming && (
+                      <button
+                        className="icon-button"
+                        aria-label="Edit message"
+                        title="Edit message"
+                        onClick={() => {
+                          setEditingId(m.id);
+                          setDraft(m.content || '');
+                        }}
+                      >
+                        <PencilSquareIcon className="h-4 w-4" />
+                      </button>
+                    )}
+                    <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
+                  </div>
+                )}
               </div>
               {/* Brave search UX block attached to this assistant message */}
               {(() => {
@@ -232,7 +278,27 @@ export default function MessageList({ chatId }: { chatId: string }) {
                 </div>
               )}
               <div className="p-4 pt-3">
-                <Markdown content={m.content} />
+                {editingId === m.id ? (
+                  <textarea
+                    className="textarea w-full text-sm"
+                    rows={Math.min(8, Math.max(3, Math.ceil((draft.length || 1) / 60)))}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        saveEdit(m.id);
+                      }
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        saveEdit(m.id);
+                      }
+                    }}
+                    placeholder="Edit assistant message..."
+                  />
+                ) : (
+                  <Markdown content={m.content} />
+                )}
               </div>
               <div className="px-4 pb-3 -mt-2">
                 <div className="text-xs text-muted-foreground">
