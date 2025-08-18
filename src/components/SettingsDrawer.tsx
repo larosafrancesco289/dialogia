@@ -3,6 +3,13 @@ import { useChatStore } from '@/lib/store';
 import { useEffect, useMemo, useState, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import ThemeToggle from '@/components/ThemeToggle';
+import {
+  getSystemPresets,
+  addSystemPreset,
+  updateSystemPreset,
+  deleteSystemPreset,
+  type SystemPreset,
+} from '@/lib/presets';
 
 // Define Section at module scope so it doesn't remount on every render.
 function Section(props: { title: string; children: ReactNode }) {
@@ -61,6 +68,9 @@ export default function SettingsDrawer() {
   const [showStats, setShowStats] = useState<boolean>(chat?.settings.show_stats ?? true);
   const [closing, setClosing] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  // System prompt presets
+  const [presets, setPresets] = useState<SystemPreset[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>('');
   const [dropdownPos, setDropdownPos] = useState<{
     left: number;
     top: number;
@@ -92,6 +102,21 @@ export default function SettingsDrawer() {
   useEffect(() => {
     loadModels();
   }, [loadModels]);
+
+  // Load saved system prompt presets on mount
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const list = await getSystemPresets();
+      if (!mounted) return;
+      // Sort alphabetically for stable UI
+      const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
+      setPresets(sorted);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const normalizedQuery = query.trim().toLowerCase().replace(/\s+/g, ' ');
   const filtered = useMemo(() => {
@@ -178,6 +203,85 @@ export default function SettingsDrawer() {
           <Section title="General">
             <div className="space-y-2">
               <label className="text-sm">System prompt</label>
+              {/* Presets controls */}
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  className="input"
+                  value={selectedPresetId}
+                  onChange={(e) => setSelectedPresetId(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <option value="">Select a preset…</option>
+                  {presets.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn btn-outline"
+                  disabled={!selectedPresetId}
+                  onClick={async () => {
+                    const p = presets.find((x) => x.id === selectedPresetId);
+                    if (!p) return;
+                    // Update textarea immediately for visibility
+                    setSystem(p.system);
+                    // Also persist to current chat so users don't need to click Save
+                    if (chat) {
+                      await updateChatSettings({ system: p.system });
+                    }
+                  }}
+                >
+                  Apply
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  onClick={async () => {
+                    const name = window.prompt('Preset name?');
+                    if (name == null) return; // cancelled
+                    const p = await addSystemPreset(name, system);
+                    setSelectedPresetId(p.id);
+                    const list = await getSystemPresets();
+                    const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
+                    setPresets(sorted);
+                  }}
+                >
+                  Save as preset
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  disabled={!selectedPresetId}
+                  onClick={async () => {
+                    const p = presets.find((x) => x.id === selectedPresetId);
+                    if (!p) return;
+                    const next = window.prompt('Rename preset', p.name);
+                    if (next == null) return;
+                    await updateSystemPreset(p.id, { name: next.trim() || p.name });
+                    const list = await getSystemPresets();
+                    const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
+                    setPresets(sorted);
+                  }}
+                >
+                  Rename
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  disabled={!selectedPresetId}
+                  onClick={async () => {
+                    const p = presets.find((x) => x.id === selectedPresetId);
+                    if (!p) return;
+                    const ok = window.confirm(`Delete preset "${p.name}"?`);
+                    if (!ok) return;
+                    await deleteSystemPreset(p.id);
+                    const list = await getSystemPresets();
+                    const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
+                    setPresets(sorted);
+                    setSelectedPresetId('');
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
               <textarea
                 className="textarea w-full"
                 rows={5}
