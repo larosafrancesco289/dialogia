@@ -6,6 +6,9 @@ import { db, saveChat, saveMessage, saveFolder } from '@/lib/db';
 import type { Chat, ChatSettings, Message, ORModel, MessageMetrics, Folder } from '@/lib/types';
 // crypto helpers are available in `@/lib/crypto` if encrypted storage is added later
 import { fetchModels, streamChatCompletion, chatCompletion } from '@/lib/openrouter';
+import { buildChatCompletionMessages } from '@/lib/agent/conversation';
+import { stripLeadingToolJson } from '@/lib/agent/streaming';
+import { DEFAULT_MODEL_ID, PINNED_MODEL_ID, MAX_FALLBACK_RESULTS } from '@/lib/constants';
 
 type StorageMode = 'memory' | 'encrypted';
 
@@ -99,7 +102,7 @@ type StoreState = {
 };
 
 const defaultSettings: ChatSettings = {
-  model: 'openai/gpt-5-chat',
+  model: DEFAULT_MODEL_ID,
   // temperature/top_p/max_tokens omitted by default; OpenRouter will use model defaults
   system: 'You are a helpful assistant.',
   reasoning_effort: undefined,
@@ -287,7 +290,7 @@ export const useChatStore = create<StoreState>()(
         set((s) => {
           const chatId = get().selectedChatId;
           const chat = chatId ? get().chats.find((c) => c.id === chatId) : undefined;
-          const fallback = s.ui.nextModel || 'openai/gpt-5-chat';
+          const fallback = s.ui.nextModel || DEFAULT_MODEL_ID;
           const currentModel = chat?.settings.model || fallback;
           const existing = s.ui.compare?.selectedModelIds || [];
           const initial = existing.length > 0 ? existing : [currentModel].filter(Boolean);
@@ -612,7 +615,6 @@ export const useChatStore = create<StoreState>()(
 
       hideModel: (id) =>
         set((s) => {
-          const PINNED_MODEL_ID = 'openai/gpt-5-chat';
           if (id === PINNED_MODEL_ID) return {};
           return {
             hiddenModelIds: s.hiddenModelIds.includes(id)
@@ -628,7 +630,6 @@ export const useChatStore = create<StoreState>()(
 
       removeModelFromDropdown: (id) =>
         set((s) => {
-          const PINNED_MODEL_ID = 'openai/gpt-5-chat';
           if (id === PINNED_MODEL_ID) return {};
           const isFavorite = s.favoriteModelIds.includes(id);
           if (isFavorite) {
@@ -869,66 +870,7 @@ export const useChatStore = create<StoreState>()(
               firstTurn = false;
               if (!toolCalls || toolCalls.length === 0) {
                 const text = typeof message?.content === 'string' ? message.content : '';
-                const stripLeadingJsonObjects = (input: string): string => {
-                  let s = input || '';
-                  // Remove one or more leading JSON blobs, including fenced code blocks,
-                  // typically echoed function-call args from the provider.
-                  while (true) {
-                    const trimmed = s.trimStart();
-                    // Handle fenced code blocks first: ```{...}``` or ```json {...}```
-                    if (trimmed.startsWith('```')) {
-                      const fenceEnd = trimmed.indexOf('```', 3);
-                      if (fenceEnd > 0) {
-                        const fenced = trimmed.slice(3, fenceEnd).trim();
-                        // Remove only if the fenced block looks like our tool-call JSON
-                        if (/\{[\s\S]*\}/.test(fenced) && /"(query|name)"\s*:/.test(fenced)) {
-                          s = trimmed.slice(fenceEnd + 3);
-                          continue;
-                        }
-                      }
-                      break;
-                    }
-                    if (trimmed.startsWith('{')) {
-                      // Only strip if this looks like our tool-call JSON
-                      if (!/"(query|name)"\s*:/.test(trimmed.slice(0, 200))) break;
-                      let depth = 0;
-                      let inString = false;
-                      let escaped = false;
-                      let end = -1;
-                      for (let i = 0; i < trimmed.length; i++) {
-                        const ch = trimmed[i];
-                        if (escaped) {
-                          escaped = false;
-                          continue;
-                        }
-                        if (ch === '\\') {
-                          escaped = true;
-                          continue;
-                        }
-                        if (ch === '"') {
-                          inString = !inString;
-                          continue;
-                        }
-                        if (!inString) {
-                          if (ch === '{') depth++;
-                          else if (ch === '}') {
-                            depth--;
-                            if (depth === 0) {
-                              end = i + 1;
-                              break;
-                            }
-                          }
-                        }
-                      }
-                      if (end === -1) break;
-                      s = trimmed.slice(end);
-                      continue;
-                    }
-                    break;
-                  }
-                  return s.trimStart();
-                };
-                finalContent = stripLeadingJsonObjects(text);
+                finalContent = stripLeadingToolJson(text);
                 break;
               }
               // Execute tool calls serially; concatenate results into one tool message per call
@@ -1183,7 +1125,7 @@ export const useChatStore = create<StoreState>()(
                 }
                 if (fbResults && fbResults.length > 0) {
                   const lines = fbResults
-                    .slice(0, 5)
+                    .slice(0, MAX_FALLBACK_RESULTS)
                     .map(
                       (r, i) =>
                         `${i + 1}. ${(r.title || r.url || 'Result').toString()} — ${r.url || ''}${r.description ? ` — ${r.description}` : ''}`,
@@ -1200,61 +1142,6 @@ export const useChatStore = create<StoreState>()(
           // Streaming with JSON prefix sanitizer for models that echo tool-call JSON
           let startedStreamingContent = attemptToolUse ? false : true;
           let leadingBuffer = '';
-          const tryStripJsonPrefix = () => {
-            // Try to remove leading JSON blobs or fenced JSON blocks from leadingBuffer
-            while (true) {
-              const trimmed = leadingBuffer.trimStart();
-              // Fenced block
-              if (trimmed.startsWith('```')) {
-                const end = trimmed.indexOf('```', 3);
-                if (end > 0) {
-                  const fenced = trimmed.slice(3, end).trim();
-                  if (/\{[\s\S]*\}/.test(fenced) && /"(query|name)"\s*:/.test(fenced)) {
-                    leadingBuffer = trimmed.slice(end + 3);
-                    continue;
-                  }
-                }
-                break;
-              }
-              if (trimmed.startsWith('{')) {
-                if (!/"(query|name)"\s*:/.test(trimmed.slice(0, 200))) break;
-                let depth = 0;
-                let inString = false;
-                let escaped = false;
-                let endIdx = -1;
-                for (let i = 0; i < trimmed.length; i++) {
-                  const ch = trimmed[i];
-                  if (escaped) {
-                    escaped = false;
-                    continue;
-                  }
-                  if (ch === '\\') {
-                    escaped = true;
-                    continue;
-                  }
-                  if (ch === '"') {
-                    inString = !inString;
-                    continue;
-                  }
-                  if (!inString) {
-                    if (ch === '{') depth++;
-                    else if (ch === '}') {
-                      depth--;
-                      if (depth === 0) {
-                        endIdx = i + 1;
-                        break;
-                      }
-                    }
-                  }
-                }
-                if (endIdx === -1) return false; // need more tokens
-                leadingBuffer = trimmed.slice(endIdx);
-                continue;
-              }
-              break;
-            }
-            return true;
-          };
           await streamChatCompletion({
             apiKey: key,
             model: chat.settings.model,
@@ -1275,12 +1162,11 @@ export const useChatStore = create<StoreState>()(
                     leadingBuffer.trimStart().startsWith('{') ||
                     leadingBuffer.trimStart().startsWith('```');
                   if (hasStructure) {
-                    const ok = tryStripJsonPrefix();
-                    // If after stripping there is remaining content that doesn't look like JSON, start streaming it
-                    const rest = leadingBuffer.trimStart();
-                    if (ok && rest && !(rest.startsWith('{') || rest.startsWith('```'))) {
+                    const stripped = stripLeadingToolJson(leadingBuffer);
+                    const rest = stripped.trimStart();
+                    if (rest && !(rest.startsWith('{') || rest.startsWith('```'))) {
                       startedStreamingContent = true;
-                      const toEmit = leadingBuffer;
+                      const toEmit = stripped;
                       leadingBuffer = '';
                       set((s) => {
                         const list = s.messages[chatId] ?? [];
@@ -1289,6 +1175,8 @@ export const useChatStore = create<StoreState>()(
                         );
                         return { messages: { ...s.messages, [chatId]: updated } };
                       });
+                    } else {
+                      // Keep buffering until we have enough to strip fully
                     }
                   } else if (leadingBuffer.length > 512) {
                     // Give up sanitizing if no JSON-like structure appears
@@ -1336,65 +1224,7 @@ export const useChatStore = create<StoreState>()(
                   completionTokens && completionMs
                     ? +(completionTokens / (completionMs / 1000)).toFixed(2)
                     : undefined;
-                const finalContentStream = (() => {
-                  const base = full || '';
-                  // Also sanitize the full string in case buffering missed anything
-                  const stripLeading = (input: string) => {
-                    let s = input || '';
-                    while (true) {
-                      const trimmed = s.trimStart();
-                      if (trimmed.startsWith('```')) {
-                        const end = trimmed.indexOf('```', 3);
-                        if (end > 0) {
-                          const fenced = trimmed.slice(3, end).trim();
-                          if (/\{[\s\S]*\}/.test(fenced) && /"(query|name)"\s*:/.test(fenced)) {
-                            s = trimmed.slice(end + 3);
-                            continue;
-                          }
-                        }
-                        break;
-                      }
-                      if (trimmed.startsWith('{')) {
-                        if (!/"(query|name)"\s*:/.test(trimmed.slice(0, 200))) break;
-                        let depth = 0;
-                        let inString = false;
-                        let escaped = false;
-                        let endIdx = -1;
-                        for (let i = 0; i < trimmed.length; i++) {
-                          const ch = trimmed[i];
-                          if (escaped) {
-                            escaped = false;
-                            continue;
-                          }
-                          if (ch === '\\') {
-                            escaped = true;
-                            continue;
-                          }
-                          if (ch === '"') {
-                            inString = !inString;
-                            continue;
-                          }
-                          if (!inString) {
-                            if (ch === '{') depth++;
-                            else if (ch === '}') {
-                              depth--;
-                              if (depth === 0) {
-                                endIdx = i + 1;
-                                break;
-                              }
-                            }
-                          }
-                        }
-                        if (endIdx === -1) break;
-                        s = trimmed.slice(endIdx);
-                        continue;
-                      }
-                      break;
-                    }
-                    return s.trimStart();
-                  };
-                  return stripLeading(base);
-                })();
+                const finalContentStream = stripLeadingToolJson(full || '');
                 const final = {
                   ...assistantMsg,
                   content: finalContentStream,
@@ -1615,59 +1445,4 @@ export const useChatStore = create<StoreState>()(
   ),
 );
 
-// Construct the message payload for the LLM from prior conversation, with a simple token window
-function buildChatCompletionMessages(params: {
-  chat: Chat;
-  priorMessages: Message[];
-  models: ORModel[];
-  newUserContent?: string;
-}): { role: 'system' | 'user' | 'assistant'; content: string }[] {
-  const { chat, priorMessages, models, newUserContent } = params;
-  const modelInfo = models.find((m) => m.id === chat.settings.model);
-  const contextLimit = modelInfo?.context_length ?? 8000;
-  const reservedForCompletion =
-    typeof chat.settings.max_tokens === 'number' ? chat.settings.max_tokens : 1024;
-  const maxPromptTokens = Math.max(512, contextLimit - reservedForCompletion);
-
-  // Convert prior messages into OpenAI-style messages, excluding empty placeholders
-  const history: { role: 'user' | 'assistant'; content: string }[] = [];
-  for (const m of priorMessages) {
-    if (m.role === 'system') continue; // prefer current chat.settings.system
-    if (!m.content) continue;
-    if (m.role === 'user' || m.role === 'assistant') {
-      history.push({ role: m.role, content: m.content });
-    }
-  }
-  if (typeof newUserContent === 'string') {
-    history.push({ role: 'user', content: newUserContent });
-  }
-
-  // Keep most recent messages within the token budget
-  const historyWithTokens = history.map((msg) => ({
-    ...msg,
-    tokens: estimateTokens(msg.content) ?? 1,
-  }));
-  let running = 0;
-  const kept: { role: 'user' | 'assistant'; content: string }[] = [];
-  for (let i = historyWithTokens.length - 1; i >= 0; i--) {
-    const t = historyWithTokens[i].tokens as number;
-    if (running + t > maxPromptTokens) break;
-    kept.push({ role: historyWithTokens[i].role, content: historyWithTokens[i].content });
-    running += t;
-  }
-  kept.reverse();
-
-  const finalMsgs: { role: 'system' | 'user' | 'assistant'; content: string }[] = [];
-  if (chat.settings.system && chat.settings.system.trim()) {
-    finalMsgs.push({ role: 'system', content: chat.settings.system });
-  }
-  finalMsgs.push(...kept);
-  return finalMsgs;
-}
-
-// Naive token estimator (rough approx: 4 chars per token)
-function estimateTokens(text: string | undefined): number | undefined {
-  if (!text) return undefined;
-  const chars = text.length;
-  return Math.max(1, Math.round(chars / 4));
-}
+// buildChatCompletionMessages moved to '@/lib/agent/conversation'

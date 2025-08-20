@@ -2,6 +2,8 @@
 import { useMemo, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { CURATED_MODELS } from '@/data/curatedModels';
+import { PINNED_MODEL_ID } from '@/lib/constants';
 
 export default function ModelPicker() {
   const {
@@ -15,13 +17,7 @@ export default function ModelPicker() {
     removeModelFromDropdown,
   } = useChatStore() as any;
   const chat = chats.find((c: any) => c.id === selectedChatId);
-  const curated = [
-    { id: 'openai/gpt-5-chat', name: 'GPT-5' },
-    { id: 'moonshotai/kimi-k2', name: 'Kimi K2' },
-    { id: 'x-ai/grok-4', name: 'Grok 4' },
-    { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-  ];
-  const PINNED_MODEL_ID = 'openai/gpt-5-chat';
+  const curated = CURATED_MODELS;
   const customOptions = useMemo(
     () => (favoriteModelIds || []).map((id: string) => ({ id, name: id })),
     [favoriteModelIds],

@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
 import { useChatStore } from '@/lib/store';
 import { Markdown } from '@/lib/markdown';
 import { createPortal } from 'react-dom';
+import { CURATED_MODELS } from '@/data/curatedModels';
+import { PINNED_MODEL_ID } from '@/lib/constants';
 
 export default function CompareDrawer() {
   // Subscribe to precise store slices to avoid stale values
@@ -26,15 +28,7 @@ export default function CompareDrawer() {
   const chat = chats.find((c) => c.id === selectedChatId);
 
   // Curated + favorites list for quick selection (use model metadata when available)
-  const curated = useMemo(
-    () => [
-      { id: 'openai/gpt-5-chat', name: 'GPT-5' },
-      { id: 'moonshotai/kimi-k2', name: 'Kimi K2' },
-      { id: 'x-ai/grok-4', name: 'Grok 4' },
-      { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-    ],
-    [],
-  );
+  const curated = useMemo(() => CURATED_MODELS, []);
   const favoriteOptions = useMemo(() => {
     const nameById = new Map((models || []).map((m) => [m.id, m.name as string | undefined]));
     return (favoriteModelIds || [])
@@ -54,7 +48,7 @@ export default function CompareDrawer() {
   const allOptions = useMemo(() => {
     // Show current model + favorites + currently selected (even if not favorite)
     const list: { id: string; name?: string }[] = [];
-    const PINNED_MODEL_ID = 'openai/gpt-5-chat';
+    const PINNED_MODEL_ID_LOCAL = PINNED_MODEL_ID;
     const hidden = new Set(hiddenModelIds || []);
     if (currentModelId)
       list.push({
@@ -62,10 +56,10 @@ export default function CompareDrawer() {
         name: models.find((m) => m.id === currentModelId)?.name || currentModelId,
       });
     // Add curated defaults for quick access, respecting hidden
-    list.push(...curated.filter((o) => o.id === PINNED_MODEL_ID || !hidden.has(o.id)));
+    list.push(...curated.filter((o) => o.id === PINNED_MODEL_ID_LOCAL || !hidden.has(o.id)));
     // Add user favorites, respecting hidden
     list.push(
-      ...(favoriteOptions || []).filter((o) => o.id === PINNED_MODEL_ID || !hidden.has(o.id)),
+      ...(favoriteOptions || []).filter((o) => o.id === PINNED_MODEL_ID_LOCAL || !hidden.has(o.id)),
     );
     list.push(...selectedOptions);
     return list.reduce((acc: any[], m: any) => {

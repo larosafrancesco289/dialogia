@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { StopIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
+import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
 
 export default function Composer() {
   const send = useChatStore((s) => s.sendUserMessage);
@@ -34,12 +35,7 @@ export default function Composer() {
     if (!isStreaming) taRef.current?.focus({ preventScroll: true } as any);
   }, [isStreaming]);
 
-  useEffect(() => {
-    const el = taRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-  }, [text]);
+  useAutogrowTextarea(taRef, [text]);
 
   return (
     <div className="p-5 composer-chrome">
