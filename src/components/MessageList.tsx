@@ -4,6 +4,9 @@ import { useChatStore } from '@/lib/store';
 import { Markdown } from '@/lib/markdown';
 import { ArrowPathIcon, ChevronDownIcon, ChevronUpIcon, PencilSquareIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import RegenerateMenu from '@/components/RegenerateMenu';
+import { MessageMeta } from '@/components/message/MessageMeta';
+import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
+import { ReasoningPanel } from '@/components/message/ReasoningPanel';
 
 export default function MessageList({ chatId }: { chatId: string }) {
   const messages = useChatStore((s) => s.messages[chatId] ?? []);
@@ -156,120 +159,17 @@ export default function MessageList({ chatId }: { chatId: string }) {
               {(() => {
                 const brave = braveByMessageId[m.id];
                 if (!brave) return null;
-                if (brave.status === 'loading') {
-                  return (
-                    <div className="px-4 pt-3">
-                      <div className="thinking-panel">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="loading-dot" aria-hidden />
-                          <span>Searching the web with Brave…</span>
-                        </div>
-                        <div className="thinking-shimmer" aria-hidden />
-                      </div>
-                    </div>
-                  );
-                }
-                if (brave.status === 'done' && (brave.results || []).length > 0) {
-                  return (
-                    <div className="px-4 pt-3">
-                      <div className="thinking-panel">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="text-xs text-muted-foreground">
-                            Web search results (Brave)
-                          </div>
-                          <button
-                            className="icon-button"
-                            aria-label={isSourcesExpanded(m.id) ? 'Hide sources' : 'Show sources'}
-                            onClick={() => toggleSources(m.id)}
-                            aria-pressed={isSourcesExpanded(m.id)}
-                          >
-                            {isSourcesExpanded(m.id) ? (
-                              <ChevronUpIcon className="h-4 w-4" />
-                            ) : (
-                              <ChevronDownIcon className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
-                        {isSourcesExpanded(m.id) && (
-                          <ol className="text-sm space-y-1 pl-5 list-decimal">
-                            {(brave.results || []).map((r, i) => (
-                              <li key={i}>
-                                <a
-                                  className="underline"
-                                  href={r.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  {r.title || r.url || `Result ${i + 1}`}
-                                </a>
-                                {r.description && (
-                                  <div className="text-xs text-muted-foreground">
-                                    {r.description}
-                                  </div>
-                                )}
-                              </li>
-                            ))}
-                          </ol>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-                if (brave.status === 'done' && (!brave.results || brave.results.length === 0)) {
-                  return (
-                    <div className="px-4 pt-3">
-                      <div className="thinking-panel">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="loading-dot" aria-hidden />
-                          <span>No web results found</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-                if (brave.status === 'error') {
-                  return (
-                    <div className="px-4 pt-3">
-                      <div className="thinking-panel">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="loading-dot" aria-hidden />
-                          <span>{brave.error || 'Web search failed'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
+                return (
+                  <BraveSourcesPanel
+                    data={brave as any}
+                    expanded={isSourcesExpanded(m.id)}
+                    onToggle={() => toggleSources(m.id)}
+                  />
+                );
               })()}
               {/* Thinking block styled like sources, inline header with icon toggle */}
               {typeof m.reasoning === 'string' && m.reasoning.length > 0 && (
-                <div className="px-4 pt-3">
-                  <div className="thinking-panel">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="text-xs text-muted-foreground">Thinking</div>
-                      <button
-                        className="icon-button"
-                        aria-label={isExpanded(m.id) ? 'Hide thinking' : 'Show thinking'}
-                        onClick={() => toggle(m.id)}
-                        aria-pressed={isExpanded(m.id)}
-                      >
-                        {isExpanded(m.id) ? (
-                          <ChevronUpIcon className="h-4 w-4" />
-                        ) : (
-                          <ChevronDownIcon className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                    {isExpanded(m.id) && (
-                      <>
-                        <pre className="whitespace-pre-wrap text-sm opacity-90 leading-relaxed">
-                          {m.reasoning}
-                        </pre>
-                        <div className="thinking-shimmer" aria-hidden />
-                      </>
-                    )}
-                  </div>
-                </div>
+                <ReasoningPanel reasoning={m.reasoning} expanded={isExpanded(m.id)} onToggle={() => toggle(m.id)} />
               )}
               <div className="p-4 pt-3">
                 {editingId === m.id ? (
@@ -298,60 +198,14 @@ export default function MessageList({ chatId }: { chatId: string }) {
                 <div className="text-xs text-muted-foreground">
                   {(() => {
                     const modelId = m.model || chat?.settings.model || 'unknown';
-                    const modelInfo = models.find((x) => x.id === modelId);
-                    const currency = modelInfo?.pricing?.currency || 'USD';
-                    const promptRate = modelInfo?.pricing?.prompt; // per 1M tokens
-                    const completionRate = modelInfo?.pricing?.completion; // per 1M tokens
-                    let cost: string | undefined;
-                    let ctxPct: number | undefined;
-                    if (showStats && m.metrics) {
-                      const pt = m.metrics.promptTokens ?? m.tokensIn;
-                      const ct = m.metrics.completionTokens ?? m.tokensOut;
-                      const pCost =
-                        promptRate != null && pt != null ? (promptRate / 1_000_000) * pt : 0;
-                      const cCost =
-                        completionRate != null && ct != null
-                          ? (completionRate / 1_000_000) * ct
-                          : 0;
-                      const total = pCost + cCost;
-                      cost = total > 0 ? `${currency} ${total.toFixed(5)}` : undefined;
-
-                      // Compute context window fullness based on model context and reserved completion tokens
-                      const contextLimit = modelInfo?.context_length ?? 8000;
-                      const reservedForCompletion =
-                        typeof chat?.settings.max_tokens === 'number'
-                          ? chat.settings.max_tokens!
-                          : 1024;
-                      const maxPromptTokens = Math.max(512, contextLimit - reservedForCompletion);
-                      if (pt != null && maxPromptTokens > 0) {
-                        ctxPct = Math.max(
-                          0,
-                          Math.min(100, Math.round((pt / maxPromptTokens) * 100)),
-                        );
-                      }
-                    }
                     return (
-                      <>
-                        Generated by <span className="badge">{modelId}</span>
-                        {showStats && m.metrics && (
-                          <>
-                            <span> · TTFT {m.metrics.ttftMs ?? '–'} ms</span>
-                            {m.metrics.promptTokens != null && (
-                              <span> · in {m.metrics.promptTokens}</span>
-                            )}
-                            {m.metrics.completionTokens != null && (
-                              <span> · out {m.metrics.completionTokens}</span>
-                            )}
-                            {m.metrics.tokensPerSec != null && (
-                              <span> · {m.metrics.tokensPerSec} tok/s</span>
-                            )}
-                            {ctxPct != null && (
-                              <span title="Context window fullness"> · ctx {ctxPct}%</span>
-                            )}
-                            {cost && <span> · {cost}</span>}
-                          </>
-                        )}
-                      </>
+                      <MessageMeta
+                        message={m}
+                        modelId={modelId}
+                        chatSettings={chat!.settings}
+                        models={models}
+                        showStats={showStats}
+                      />
                     );
                   })()}
                 </div>

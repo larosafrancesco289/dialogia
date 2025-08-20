@@ -1,16 +1,19 @@
 import type { ORModel } from '@/lib/types';
+const USE_PROXY = process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
 
 const OR_BASE = 'https://openrouter.ai/api/v1' as const;
 
 export async function fetchModels(apiKey: string): Promise<ORModel[]> {
-  const res = await fetch(`${OR_BASE}/models`, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'http://localhost:3000',
-      'X-Title': 'Dialogia',
-    },
-  });
+  const url = USE_PROXY ? '/api/openrouter/models' : `${OR_BASE}/models`;
+  const headers: Record<string, string> = USE_PROXY
+    ? { 'Content-Type': 'application/json' }
+    : {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'http://localhost:3000',
+        'X-Title': 'Dialogia',
+      };
+  const res = await fetch(url, { headers, cache: 'no-store' as any });
   if (res.status === 401 || res.status === 403) {
     throw new Error('unauthorized');
   }
@@ -79,13 +82,18 @@ export async function chatCompletion(params: {
   if (Array.isArray(tools) && tools.length > 0) body.tools = tools;
   if (tool_choice) body.tool_choice = tool_choice;
 
-  const res = await fetch(`${OR_BASE}/chat/completions`, {
+  const url = USE_PROXY ? '/api/openrouter/chat/completions' : `${OR_BASE}/chat/completions`;
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'http://localhost:3000',
-      'X-Title': 'Dialogia',
+      ...(USE_PROXY
+        ? { 'Content-Type': 'application/json' }
+        : {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'http://localhost:3000',
+            'X-Title': 'Dialogia',
+          }),
     },
     body: JSON.stringify(body),
     signal,
@@ -135,13 +143,18 @@ export async function streamChatCompletion(params: {
   if (typeof reasoning_tokens === 'number') reasoningConfig.max_tokens = reasoning_tokens;
   if (Object.keys(reasoningConfig).length > 0) body.reasoning = reasoningConfig;
 
-  const res = await fetch(`${OR_BASE}/chat/completions`, {
+  const url2 = USE_PROXY ? '/api/openrouter/chat/completions' : `${OR_BASE}/chat/completions`;
+  const res = await fetch(url2, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'http://localhost:3000',
-      'X-Title': 'Dialogia',
+      ...(USE_PROXY
+        ? { 'Content-Type': 'application/json' }
+        : {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'http://localhost:3000',
+            'X-Title': 'Dialogia',
+          }),
     },
     body: JSON.stringify(body),
     signal,
