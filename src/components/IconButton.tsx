@@ -19,7 +19,7 @@ export default function IconButton({
   className = '',
   disabled = false,
 }: IconButtonProps) {
-  const baseClasses = 'inline-flex items-center justify-center border-none cursor-pointer transition-all duration-200 rounded-lg';
+  const baseClasses = 'inline-flex items-center justify-center border-none cursor-pointer transition-all duration-200 rounded-full shadow-sm';
   
   const variantClasses = {
     ghost: 'bg-transparent hover:bg-muted active:bg-border text-muted-foreground hover:text-fg',
@@ -27,8 +27,8 @@ export default function IconButton({
   };
   
   const sizeClasses = {
-    sm: 'w-6 h-6 text-sm',
-    md: 'w-8 h-8',
+    sm: 'w-7 h-7 text-sm',
+    md: 'w-9 h-9',
   };
   
   const disabledClasses = disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : '';

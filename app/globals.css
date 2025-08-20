@@ -96,6 +96,11 @@ body,
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent);
 }
 
+/* Sidebar header actions spacing */
+.app-header .traffic-lights + .font-semibold {
+  margin-left: 2px;
+}
+
 /* Rotate settings gear when drawer is open */
 button[aria-label='Open settings'][aria-pressed='true'] > svg {
   transform: rotate(90deg);

@@ -28,6 +28,7 @@ export default function TopHeader() {
         className="btn btn-ghost"
         aria-label="Toggle sidebar"
         onClick={() => setUI({ sidebarCollapsed: !collapsed })}
+        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         {collapsed ? (
           <ChevronRightIcon className="h-5 w-5" />
