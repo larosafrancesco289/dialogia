@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
+import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
 
 export default function WelcomeHero() {
   const [query, setQuery] = useState('');
@@ -20,12 +21,7 @@ export default function WelcomeHero() {
   };
 
   // Auto-grow textarea height similar to the Composer
-  useEffect(() => {
-    const el = taRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-  }, [query]);
+  useAutogrowTextarea(taRef, [query]);
 
   return (
     <div className="h-full flex items-center justify-center relative">

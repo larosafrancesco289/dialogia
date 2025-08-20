@@ -206,3 +206,4 @@ export function FolderPlusIcon({ size = 16, className = '' }: IconProps) {
     </svg>
   );
 }
+
