@@ -5,12 +5,22 @@ import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import ThemeToggle from '@/components/ThemeToggle';
 import { Squares2X2Icon } from '@heroicons/react/24/outline';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { useEffect, useState } from 'react';
+import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
 
 export default function TopHeader() {
   const { chats, selectedChatId, renameChat, setUI, openCompare } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
   const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
   const isSettingsOpen = useChatStore((s) => s.ui.showSettings);
+  const [title, setTitle] = useState(chat?.title || '');
+  useEffect(() => setTitle(chat?.title || ''), [chat?.id]);
+  const save = useDebouncedCallback((text: string) => {
+    if (!chat) return;
+    const t = (text || '').trim();
+    if (!t || t === chat.title) return;
+    renameChat(chat.id, t);
+  }, 400);
 
   return (
     <div className="app-header gap-3">
@@ -31,8 +41,12 @@ export default function TopHeader() {
       {chat && (
         <input
           className="input flex-1 max-w-xl"
-          value={chat.title}
-          onChange={(e) => renameChat(chat.id, e.target.value)}
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            save(e.target.value);
+          }}
+          onBlur={() => (save as any).flush?.(title)}
         />
       )}
       <div className="ml-auto" />

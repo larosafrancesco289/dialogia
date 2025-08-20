@@ -6,3 +6,6 @@ export function hasBraveKey(): boolean {
   return Boolean(process.env.BRAVE_SEARCH_API_KEY);
 }
 
+export function useOpenRouterProxy(): boolean {
+  return process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
+}
