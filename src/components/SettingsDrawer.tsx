@@ -3,6 +3,8 @@ import { useChatStore } from '@/lib/store';
 import { useEffect, useMemo, useState, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import ThemeToggle from '@/components/ThemeToggle';
+import IconButton from '@/components/IconButton';
+import { CloseCircleIcon } from '@/components/icons/Icons';
 import {
   getSystemPresets,
   addSystemPreset,
@@ -190,11 +192,11 @@ export default function SettingsDrawer() {
           style={{ height: 'var(--header-height)' }}
         >
           <h3 className="font-semibold">Settings</h3>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
-            <button className="btn btn-ghost" onClick={closeWithAnim}>
-              Close
-            </button>
+            <IconButton title="Close" onClick={closeWithAnim}>
+              <CloseCircleIcon size={18} />
+            </IconButton>
           </div>
         </div>
 

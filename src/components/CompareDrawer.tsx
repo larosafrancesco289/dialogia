@@ -5,6 +5,8 @@ import { Markdown } from '@/lib/markdown';
 import { createPortal } from 'react-dom';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID } from '@/lib/constants';
+import IconButton from '@/components/IconButton';
+import { CloseCircleIcon, StopSquareIcon } from '@/components/icons/Icons';
 
 export default function CompareDrawer() {
   // Subscribe to precise store slices to avoid stale values
@@ -198,13 +200,13 @@ export default function CompareDrawer() {
           <h3 className="font-semibold">Compare Models</h3>
           <div className="ml-auto flex items-center gap-2">
             {isRunning ? (
-              <button className="btn btn-outline" onClick={() => stopCompare()}>
-                Stop
-              </button>
+              <IconButton title="Stop" onClick={() => stopCompare()}>
+                <StopSquareIcon size={18} />
+              </IconButton>
             ) : (
-              <button className="btn btn-outline" onClick={closeWithAnim}>
-                Close
-              </button>
+              <IconButton title="Close" onClick={closeWithAnim}>
+                <CloseCircleIcon size={18} />
+              </IconButton>
             )}
           </div>
         </div>
@@ -307,7 +309,7 @@ export default function CompareDrawer() {
                 <div className="text-xs text-muted-foreground">
                   Uses current chat’s system prompt and context.
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                   <button
                     className="btn"
                     onClick={onRun}
@@ -320,9 +322,9 @@ export default function CompareDrawer() {
                     {isRunning ? 'Running…' : 'Run Compare'}
                   </button>
                   {isRunning && (
-                    <button className="btn btn-outline" onClick={() => stopCompare()}>
-                      Stop
-                    </button>
+                    <IconButton title="Stop" onClick={() => stopCompare()}>
+                      <StopSquareIcon size={18} />
+                    </IconButton>
                   )}
                 </div>
               </div>

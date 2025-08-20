@@ -142,7 +142,7 @@ export function TrashIcon({ size = 16, className = '' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -178,7 +178,7 @@ export function XIcon({ size = 16, className = '' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -196,7 +196,7 @@ export function FolderPlusIcon({ size = 16, className = '' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -207,3 +207,40 @@ export function FolderPlusIcon({ size = 16, className = '' }: IconProps) {
   );
 }
 
+// Generic close and stop icons for drawers
+export function CloseCircleIcon({ size = 16, className = '' }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M15 9l-6 6M9 9l6 6" />
+    </svg>
+  );
+}
+
+export function StopSquareIcon({ size = 16, className = '' }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <rect x="6.5" y="6.5" width="11" height="11" rx="2" />
+    </svg>
+  );
+}

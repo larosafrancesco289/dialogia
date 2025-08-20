@@ -4,7 +4,15 @@ import { useChatStore } from '@/lib/store';
 import { useDragAndDrop, setCurrentDragData, getCurrentDragData } from '@/lib/dragDrop';
 import FolderItem from './FolderItem';
 import IconButton from './IconButton';
-import { PlusIcon, FolderPlusIcon, MessageIcon, EditIcon, TrashIcon, CheckIcon, XIcon } from './icons/Icons';
+import {
+  PlusIcon,
+  FolderPlusIcon,
+  ChatBubbleLeftRightIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  CheckIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import type { Chat } from '@/lib/types';
 // Settings gear moved to the top header
 
@@ -48,29 +56,26 @@ export default function ChatSidebar() {
   // Fill the aside; width is controlled by grid column in `app-shell`
   return (
     <div className={'h-full flex flex-col w-full'}>
-      <div className="app-header">
-        <div className="font-semibold">{collapsed ? 'Dg' : 'Dialogia'}</div>
-      </div>
-
-      <div className="sidebar-section py-3 flex gap-2 justify-center">
-        <IconButton
-          onClick={() => newChat()}
-          title="New Chat"
-          variant="subtle"
-          className="h-9 w-9 bg-muted/70 hover:bg-muted text-fg"
-        >
-          <PlusIcon size={14} />
-        </IconButton>
-        {!collapsed && (
+      <div className="app-header justify-between">
+        <div className="flex items-center gap-2 font-semibold">{collapsed ? 'Dg' : 'Dialogia'}</div>
+        <div className="flex items-center gap-2">
           <IconButton
-            onClick={() => setShowCreateFolder(true)}
-            title="Create folder"
+            onClick={() => newChat()}
+            title="New Chat"
             variant="ghost"
-            className="h-9 w-9"
           >
-            <FolderPlusIcon size={14} />
+            <PlusIcon className="h-3.5 w-3.5" />
           </IconButton>
-        )}
+          {!collapsed && (
+            <IconButton
+              onClick={() => setShowCreateFolder(true)}
+              title="Create folder"
+              variant="ghost"
+            >
+              <FolderPlusIcon className="h-3.5 w-3.5" />
+            </IconButton>
+          )}
+        </div>
       </div>
 
       {/* Create folder input */}
@@ -92,7 +97,7 @@ export default function ChatSidebar() {
               autoFocus
             />
             <IconButton size="sm" onClick={handleCreateFolder} title="Create folder">
-              <CheckIcon size={14} />
+              <CheckIcon className="h-3.5 w-3.5" />
             </IconButton>
             <IconButton 
               size="sm" 
@@ -102,7 +107,7 @@ export default function ChatSidebar() {
               }}
               title="Cancel"
             >
-              <XIcon size={14} />
+              <XMarkIcon className="h-3.5 w-3.5" />
             </IconButton>
           </div>
         </div>
@@ -198,7 +203,7 @@ function RootChatItem({
       >
         {/* Chat Icon */}
         <div className="w-4 h-4 flex items-center justify-center text-muted-foreground">
-          <MessageIcon size={14} />
+          <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />
         </div>
 
         {/* Chat Title */}
@@ -233,7 +238,7 @@ function RootChatItem({
               }}
               title="Rename chat"
             >
-              <EditIcon size={12} />
+              <PencilSquareIcon className="h-3 w-3" />
             </IconButton>
             <IconButton
               size="sm"
@@ -245,7 +250,7 @@ function RootChatItem({
               }}
               title="Delete chat"
             >
-              <TrashIcon size={12} />
+              <TrashIcon className="h-3 w-3" />
             </IconButton>
           </div>
         )}
