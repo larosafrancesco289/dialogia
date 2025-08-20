@@ -41,6 +41,16 @@ export type Chat = {
   createdAt: number;
   updatedAt: number;
   settings: ChatSettings;
+  folderId?: string; // Optional folder association
+};
+
+export type Folder = {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  isExpanded: boolean;
+  parentId?: string; // Optional for nested folders
 };
 
 export type ORModel = {

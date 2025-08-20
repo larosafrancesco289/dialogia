@@ -2,8 +2,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { db, saveChat, saveMessage } from '@/lib/db';
-import type { Chat, ChatSettings, Message, ORModel, MessageMetrics } from '@/lib/types';
+import { db, saveChat, saveMessage, saveFolder } from '@/lib/db';
+import type { Chat, ChatSettings, Message, ORModel, MessageMetrics, Folder } from '@/lib/types';
 // crypto helpers are available in `@/lib/crypto` if encrypted storage is added later
 import { fetchModels, streamChatCompletion, chatCompletion } from '@/lib/openrouter';
 
@@ -49,6 +49,7 @@ type UIState = {
 
 type StoreState = {
   chats: Chat[];
+  folders: Folder[];
   messages: Record<string, Message[]>; // chatId -> messages
   selectedChatId?: string;
 
@@ -64,6 +65,13 @@ type StoreState = {
   renameChat: (id: string, title: string) => Promise<void>;
   deleteChat: (id: string) => Promise<void>;
   updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
+  moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
+  
+  // Folder management
+  createFolder: (name: string, parentId?: string) => Promise<void>;
+  renameFolder: (id: string, name: string) => Promise<void>;
+  deleteFolder: (id: string) => Promise<void>;
+  toggleFolderExpanded: (id: string) => Promise<void>;
   setUI: (partial: Partial<UIState>) => void;
   // Compare drawer controls
   openCompare: () => void;
@@ -104,6 +112,7 @@ export const useChatStore = create<StoreState>()(
   persist(
     (set, get) => ({
       chats: [],
+      folders: [],
       messages: {},
       selectedChatId: undefined,
       models: [],
@@ -133,6 +142,7 @@ export const useChatStore = create<StoreState>()(
           return a.id.localeCompare(b.id);
         };
         const chats = await db.chats.toArray();
+        const folders = await db.folders.toArray();
         const messagesArray = await db.messages.toArray();
         const messages: Record<string, Message[]> = {};
         for (const m of messagesArray) {
@@ -147,7 +157,7 @@ export const useChatStore = create<StoreState>()(
         if (chats.length && !selectedChatId) {
           selectedChatId = chats[0].id;
         }
-        set({ chats, messages, selectedChatId });
+        set({ chats, folders, messages, selectedChatId });
       },
 
       newChat: async () => {
@@ -200,6 +210,75 @@ export const useChatStore = create<StoreState>()(
         }));
         const chat = get().chats.find((c) => c.id === id)!;
         await saveChat(chat);
+      },
+
+      moveChatToFolder: async (chatId, folderId) => {
+        set((s) => ({
+          chats: s.chats.map((c) =>
+            c.id === chatId ? { ...c, folderId, updatedAt: Date.now() } : c,
+          ),
+        }));
+        const chat = get().chats.find((c) => c.id === chatId)!;
+        await saveChat(chat);
+      },
+
+      createFolder: async (name, parentId) => {
+        const id = uuidv4();
+        const now = Date.now();
+        const folder: Folder = {
+          id,
+          name,
+          createdAt: now,
+          updatedAt: now,
+          isExpanded: true,
+          parentId,
+        };
+        await saveFolder(folder);
+        set((s) => ({ folders: [...s.folders, folder] }));
+      },
+
+      renameFolder: async (id, name) => {
+        set((s) => ({
+          folders: s.folders.map((f) => 
+            f.id === id ? { ...f, name, updatedAt: Date.now() } : f
+          ),
+        }));
+        const folder = get().folders.find((f) => f.id === id)!;
+        await saveFolder(folder);
+      },
+
+      deleteFolder: async (id) => {
+        // Move chats in this folder to the root level
+        const chatsInFolder = get().chats.filter((c) => c.folderId === id);
+        for (const chat of chatsInFolder) {
+          await get().moveChatToFolder(chat.id, undefined);
+        }
+        
+        // Move child folders to root level
+        const childFolders = get().folders.filter((f) => f.parentId === id);
+        for (const childFolder of childFolders) {
+          set((s) => ({
+            folders: s.folders.map((f) => 
+              f.id === childFolder.id ? { ...f, parentId: undefined, updatedAt: Date.now() } : f
+            ),
+          }));
+          const updatedFolder = get().folders.find((f) => f.id === childFolder.id)!;
+          await saveFolder(updatedFolder);
+        }
+
+        // Delete the folder
+        await db.folders.delete(id);
+        set((s) => ({ folders: s.folders.filter((f) => f.id !== id) }));
+      },
+
+      toggleFolderExpanded: async (id) => {
+        set((s) => ({
+          folders: s.folders.map((f) => 
+            f.id === id ? { ...f, isExpanded: !f.isExpanded, updatedAt: Date.now() } : f
+          ),
+        }));
+        const folder = get().folders.find((f) => f.id === id)!;
+        await saveFolder(folder);
       },
       setUI: (partial) => set((s) => ({ ui: { ...s.ui, ...partial } })),
 
