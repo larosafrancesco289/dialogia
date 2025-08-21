@@ -4,4 +4,3 @@ export const CURATED_MODELS: { id: string; name: string }[] = [
   { id: 'x-ai/grok-4', name: 'Grok 4' },
   { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
 ];
-

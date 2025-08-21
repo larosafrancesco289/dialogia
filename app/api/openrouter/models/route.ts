@@ -26,4 +26,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: e?.message || 'proxy_error' }, { status: 500 });
   }
 }
-

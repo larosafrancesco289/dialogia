@@ -3,7 +3,15 @@ import { useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop, setCurrentDragData, getCurrentDragData } from '@/lib/dragDrop';
 import IconButton from './IconButton';
-import { FolderIcon, FolderOpenIcon, ChevronRightIcon, ChevronDownIcon, MessageIcon, EditIcon, TrashIcon } from './icons/Icons';
+import {
+  FolderIcon,
+  FolderOpenIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  MessageIcon,
+  EditIcon,
+  TrashIcon,
+} from './icons/Icons';
 import type { Folder, Chat } from '@/lib/types';
 
 interface FolderItemProps {
@@ -11,29 +19,26 @@ interface FolderItemProps {
   depth?: number;
 }
 
-export default function FolderItem({ 
-  folder, 
-  depth = 0
-}: FolderItemProps) {
-  const { 
-    chats, 
-    folders, 
-    selectedChatId, 
-    selectChat, 
-    renameFolder, 
-    deleteFolder, 
-    toggleFolderExpanded 
+export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
+  const {
+    chats,
+    folders,
+    selectedChatId,
+    selectChat,
+    renameFolder,
+    deleteFolder,
+    toggleFolderExpanded,
   } = useChatStore();
-  
+
   const { handleDragOver, handleDrop } = useDragAndDrop();
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(folder.name);
   const [isDragOver, setIsDragOver] = useState(false);
 
   // Get chats and subfolders for this folder
-  const folderChats = chats.filter(chat => chat.folderId === folder.id);
-  const subFolders = folders.filter(f => f.parentId === folder.id);
+  const folderChats = chats.filter((chat) => chat.folderId === folder.id);
+  const subFolders = folders.filter((f) => f.parentId === folder.id);
 
   const handleToggleExpanded = () => {
     toggleFolderExpanded(folder.id);
@@ -120,7 +125,7 @@ export default function FolderItem({
             />
           </div>
         ) : (
-          <div 
+          <div
             className="flex-1 text-sm truncate font-medium text-muted-foreground"
             onClick={handleToggleExpanded}
           >
@@ -161,11 +166,7 @@ export default function FolderItem({
         <div>
           {/* Sub-folders */}
           {subFolders.map((subFolder) => (
-            <FolderItem
-              key={subFolder.id}
-              folder={subFolder}
-              depth={depth + 1}
-            />
+            <FolderItem key={subFolder.id} folder={subFolder} depth={depth + 1} />
           ))}
 
           {/* Chats in this folder */}
@@ -247,9 +248,7 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
           />
         </div>
       ) : (
-        <div className="flex-1 text-sm truncate">
-          {chat.title}
-        </div>
+        <div className="flex-1 text-sm truncate">{chat.title}</div>
       )}
 
       {/* Action Buttons */}

@@ -15,7 +15,7 @@ export default function ModelPicker() {
     favoriteModelIds,
     hiddenModelIds,
     removeModelFromDropdown,
-  } = useChatStore() as any;
+  } = useChatStore();
   const chat = chats.find((c: any) => c.id === selectedChatId);
   const curated = CURATED_MODELS;
   const customOptions = useMemo(

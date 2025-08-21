@@ -97,4 +97,3 @@ export type StoreState = {
   ) => Promise<void>;
   editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
 };
-

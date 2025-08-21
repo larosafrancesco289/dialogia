@@ -1,10 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef } from 'react';
 
-export function useDebouncedCallback<T extends (...args: any[]) => void>(
-  fn: T,
-  delayMs: number,
-) {
+export function useDebouncedCallback<T extends (...args: any[]) => void>(fn: T, delayMs: number) {
   const ref = useRef(fn);
   useEffect(() => {
     ref.current = fn;
@@ -22,4 +19,3 @@ export function useDebouncedCallback<T extends (...args: any[]) => void>(
     return wrapped as T & { flush: (...args: Parameters<T>) => void };
   }, [delayMs]);
 }
-

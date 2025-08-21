@@ -18,44 +18,77 @@ export function createCompareSlice(
         return {
           ui: {
             ...s.ui,
-            compare: { isOpen: true, prompt: s.ui.compare?.prompt || '', selectedModelIds: initial, runs: {} },
+            compare: {
+              isOpen: true,
+              prompt: s.ui.compare?.prompt || '',
+              selectedModelIds: initial,
+              runs: {},
+            },
           },
         } as any;
       });
-      get().loadModels().catch(() => void 0);
+      get()
+        .loadModels()
+        .catch(() => void 0);
     },
     closeCompare() {
-      set((s) => ({
-        ui: { ...s.ui, compare: { ...(s.ui.compare || ({} as any)), isOpen: false, runs: s.ui.compare?.runs || {} } },
-      } as any));
+      set(
+        (s) =>
+          ({
+            ui: {
+              ...s.ui,
+              compare: {
+                ...(s.ui.compare || ({} as any)),
+                isOpen: false,
+                runs: s.ui.compare?.runs || {},
+              },
+            },
+          }) as any,
+      );
     },
     setCompare(partial) {
       set((s) => {
         const prev = s.ui.compare || { isOpen: false, prompt: '', selectedModelIds: [], runs: {} };
-        const willChangeSelection = Object.prototype.hasOwnProperty.call(partial, 'selectedModelIds');
-        return { ui: { ...s.ui, compare: { ...prev, ...partial, runs: willChangeSelection ? {} : prev.runs } } } as any;
+        const willChangeSelection = Object.prototype.hasOwnProperty.call(
+          partial,
+          'selectedModelIds',
+        );
+        return {
+          ui: {
+            ...s.ui,
+            compare: { ...prev, ...partial, runs: willChangeSelection ? {} : prev.runs },
+          },
+        } as any;
       });
     },
     async runCompare(prompt: string, modelIds: string[]) {
       const useProxy = process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
       const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
-      if (!key && !useProxy) return set((s) => ({ ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' } }));
+      if (!key && !useProxy)
+        return set((s) => ({
+          ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
+        }));
       const chatId = get().selectedChatId;
       const chat = chatId ? get().chats.find((c) => c.id === chatId)! : undefined;
       const prior = chatId ? (get().messages[chatId] ?? []) : [];
 
-      set((s) => ({
-        ui: {
-          ...s.ui,
-          compare: {
-            ...(s.ui.compare || { isOpen: true, prompt, selectedModelIds: modelIds, runs: {} }),
-            isOpen: true,
-            prompt,
-            selectedModelIds: modelIds,
-            runs: Object.fromEntries(modelIds.map((id) => [id, { status: 'running', content: '' as string }])),
-          },
-        },
-      } as any));
+      set(
+        (s) =>
+          ({
+            ui: {
+              ...s.ui,
+              compare: {
+                ...(s.ui.compare || { isOpen: true, prompt, selectedModelIds: modelIds, runs: {} }),
+                isOpen: true,
+                prompt,
+                selectedModelIds: modelIds,
+                runs: Object.fromEntries(
+                  modelIds.map((id) => [id, { status: 'running', content: '' as string }]),
+                ),
+              },
+            },
+          }) as any,
+      );
 
       const prev = (get() as any)._compareControllers as Record<string, AbortController>;
       Object.values(prev || {}).forEach((c) => c.abort());
@@ -103,107 +136,172 @@ export function createCompareSlice(
               callbacks: {
                 onToken: (delta) => {
                   if (tFirst == null) tFirst = performance.now();
-                  set((s) => ({
-                    ui: {
-                      ...s.ui,
-                      compare: {
-                        ...(s.ui.compare || { isOpen: true, prompt, selectedModelIds: modelIds, runs: {} }),
-                        isOpen: true,
-                        prompt: s.ui.compare?.prompt ?? prompt,
-                        selectedModelIds: modelIds,
-                        runs: {
-                          ...(s.ui.compare?.runs || {}),
-                          [modelId]: {
-                            ...((s.ui.compare?.runs || {})[modelId] || { status: 'running', content: '' }),
-                            status: 'running',
-                            content: `${(s.ui.compare?.runs || {})[modelId]?.content || ''}${delta}`,
+                  set(
+                    (s) =>
+                      ({
+                        ui: {
+                          ...s.ui,
+                          compare: {
+                            ...(s.ui.compare || {
+                              isOpen: true,
+                              prompt,
+                              selectedModelIds: modelIds,
+                              runs: {},
+                            }),
+                            isOpen: true,
+                            prompt: s.ui.compare?.prompt ?? prompt,
+                            selectedModelIds: modelIds,
+                            runs: {
+                              ...(s.ui.compare?.runs || {}),
+                              [modelId]: {
+                                ...((s.ui.compare?.runs || {})[modelId] || {
+                                  status: 'running',
+                                  content: '',
+                                }),
+                                status: 'running',
+                                content: `${(s.ui.compare?.runs || {})[modelId]?.content || ''}${delta}`,
+                              },
+                            },
                           },
                         },
-                      },
-                    },
-                  } as any));
+                      }) as any,
+                  );
                 },
                 onReasoningToken: (delta) => {
-                  set((s) => ({
-                    ui: {
-                      ...s.ui,
-                      compare: {
-                        ...(s.ui.compare || { isOpen: true, prompt, selectedModelIds: modelIds, runs: {} }),
-                        runs: {
-                          ...(s.ui.compare?.runs || {}),
-                          [modelId]: {
-                            ...((s.ui.compare?.runs || {})[modelId] || { status: 'running', content: '' }),
-                            reasoning: `${(s.ui.compare?.runs || {})[modelId]?.reasoning || ''}${delta}`,
+                  set(
+                    (s) =>
+                      ({
+                        ui: {
+                          ...s.ui,
+                          compare: {
+                            ...(s.ui.compare || {
+                              isOpen: true,
+                              prompt,
+                              selectedModelIds: modelIds,
+                              runs: {},
+                            }),
+                            runs: {
+                              ...(s.ui.compare?.runs || {}),
+                              [modelId]: {
+                                ...((s.ui.compare?.runs || {})[modelId] || {
+                                  status: 'running',
+                                  content: '',
+                                }),
+                                reasoning: `${(s.ui.compare?.runs || {})[modelId]?.reasoning || ''}${delta}`,
+                              },
+                            },
                           },
                         },
-                      },
-                    },
-                  } as any));
+                      }) as any,
+                  );
                 },
                 onDone: (full, extras) => {
                   const tEnd = performance.now();
                   const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
                   const completionMs = Math.max(0, Math.round(tEnd - tStart));
                   const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
-                  const completionTokens = extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
-                  const tokensPerSec = completionTokens && completionMs ? +(completionTokens / (completionMs / 1000)).toFixed(2) : undefined;
-                  set((s) => ({
-                    ui: {
-                      ...s.ui,
-                      compare: {
-                        ...(s.ui.compare || { isOpen: true, prompt, selectedModelIds: modelIds, runs: {} }),
-                        runs: {
-                          ...(s.ui.compare?.runs || {}),
-                          [modelId]: {
-                            ...((s.ui.compare?.runs || {})[modelId] || { status: 'running', content: '' }),
-                            status: 'done',
-                            content: full,
-                            metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
-                            tokensIn: promptTokens,
-                            tokensOut: completionTokens,
+                  const completionTokens =
+                    extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
+                  const tokensPerSec =
+                    completionTokens && completionMs
+                      ? +(completionTokens / (completionMs / 1000)).toFixed(2)
+                      : undefined;
+                  set(
+                    (s) =>
+                      ({
+                        ui: {
+                          ...s.ui,
+                          compare: {
+                            ...(s.ui.compare || {
+                              isOpen: true,
+                              prompt,
+                              selectedModelIds: modelIds,
+                              runs: {},
+                            }),
+                            runs: {
+                              ...(s.ui.compare?.runs || {}),
+                              [modelId]: {
+                                ...((s.ui.compare?.runs || {})[modelId] || {
+                                  status: 'running',
+                                  content: '',
+                                }),
+                                status: 'done',
+                                content: full,
+                                metrics: {
+                                  ttftMs,
+                                  completionMs,
+                                  promptTokens,
+                                  completionTokens,
+                                  tokensPerSec,
+                                },
+                                tokensIn: promptTokens,
+                                tokensOut: completionTokens,
+                              },
+                            },
                           },
                         },
-                      },
-                    },
-                  } as any));
+                      }) as any,
+                  );
                 },
                 onError: (err) => {
-                  set((s) => ({
-                    ui: {
-                      ...s.ui,
-                      compare: {
-                        ...(s.ui.compare || { isOpen: true, prompt, selectedModelIds: modelIds, runs: {} }),
-                        runs: {
-                          ...(s.ui.compare?.runs || {}),
-                          [modelId]: {
-                            ...((s.ui.compare?.runs || {})[modelId] || { status: 'running', content: '' }),
-                            status: 'error',
-                            error: err?.message || 'Error',
+                  set(
+                    (s) =>
+                      ({
+                        ui: {
+                          ...s.ui,
+                          compare: {
+                            ...(s.ui.compare || {
+                              isOpen: true,
+                              prompt,
+                              selectedModelIds: modelIds,
+                              runs: {},
+                            }),
+                            runs: {
+                              ...(s.ui.compare?.runs || {}),
+                              [modelId]: {
+                                ...((s.ui.compare?.runs || {})[modelId] || {
+                                  status: 'running',
+                                  content: '',
+                                }),
+                                status: 'error',
+                                error: err?.message || 'Error',
+                              },
+                            },
                           },
                         },
-                      },
-                    },
-                  } as any));
+                      }) as any,
+                  );
                 },
               },
             });
           } catch (e: any) {
             if (e?.name === 'AbortError') {
-              set((s) => ({
-                ui: {
-                  ...s.ui,
-                  compare: {
-                    ...(s.ui.compare || { isOpen: true, prompt, selectedModelIds: modelIds, runs: {} }),
-                    runs: {
-                      ...(s.ui.compare?.runs || {}),
-                      [modelId]: {
-                        ...((s.ui.compare?.runs || {})[modelId] || { status: 'running', content: '' }),
-                        status: 'aborted',
+              set(
+                (s) =>
+                  ({
+                    ui: {
+                      ...s.ui,
+                      compare: {
+                        ...(s.ui.compare || {
+                          isOpen: true,
+                          prompt,
+                          selectedModelIds: modelIds,
+                          runs: {},
+                        }),
+                        runs: {
+                          ...(s.ui.compare?.runs || {}),
+                          [modelId]: {
+                            ...((s.ui.compare?.runs || {})[modelId] || {
+                              status: 'running',
+                              content: '',
+                            }),
+                            status: 'aborted',
+                          },
+                        },
                       },
                     },
-                  },
-                },
-              } as any));
+                  }) as any,
+              );
             } else if (e?.message === 'unauthorized') {
               set((s) => ({ ui: { ...s.ui, notice: 'Invalid API key' } }));
             } else if (e?.message === 'rate_limited') {

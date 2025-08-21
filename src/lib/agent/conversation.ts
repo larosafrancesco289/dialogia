@@ -11,7 +11,8 @@ export function buildChatCompletionMessages(params: {
   const { chat, priorMessages, models, newUserContent } = params;
   const modelInfo = models.find((m) => m.id === chat.settings.model);
   const contextLimit = modelInfo?.context_length ?? 8000;
-  const reservedForCompletion = typeof chat.settings.max_tokens === 'number' ? chat.settings.max_tokens : 1024;
+  const reservedForCompletion =
+    typeof chat.settings.max_tokens === 'number' ? chat.settings.max_tokens : 1024;
   const maxPromptTokens = Math.max(512, contextLimit - reservedForCompletion);
 
   // Convert prior messages into OpenAI-style messages, excluding empty placeholders
@@ -28,7 +29,10 @@ export function buildChatCompletionMessages(params: {
   }
 
   // Keep most recent messages within the token budget
-  const historyWithTokens = history.map((msg) => ({ ...msg, tokens: estimateTokens(msg.content) ?? 1 }));
+  const historyWithTokens = history.map((msg) => ({
+    ...msg,
+    tokens: estimateTokens(msg.content) ?? 1,
+  }));
   let running = 0;
   const kept: { role: 'user' | 'assistant'; content: string }[] = [];
   for (let i = historyWithTokens.length - 1; i >= 0; i--) {
@@ -46,4 +50,3 @@ export function buildChatCompletionMessages(params: {
   finalMsgs.push(...kept);
   return finalMsgs;
 }
-

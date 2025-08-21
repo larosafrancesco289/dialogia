@@ -17,19 +17,19 @@ import type { Chat } from '@/lib/types';
 // Settings gear moved to the top header
 
 export default function ChatSidebar() {
-  const { 
-    chats, 
-    folders, 
-    selectedChatId, 
-    selectChat, 
-    newChat, 
-    renameChat, 
-    deleteChat, 
+  const {
+    chats,
+    folders,
+    selectedChatId,
+    selectChat,
+    newChat,
+    renameChat,
+    deleteChat,
     loadModels,
-    createFolder 
+    createFolder,
   } = useChatStore();
   const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
-  
+
   const { handleDragOver, handleDrop } = useDragAndDrop();
   // Settings button removed from sidebar header
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -42,8 +42,8 @@ export default function ChatSidebar() {
   }, [loadModels]);
 
   // Get top-level folders and root-level chats
-  const rootFolders = folders.filter(f => !f.parentId);
-  const rootChats = chats.filter(c => !c.folderId);
+  const rootFolders = folders.filter((f) => !f.parentId);
+  const rootChats = chats.filter((c) => !c.folderId);
 
   const handleCreateFolder = async () => {
     if (newFolderName.trim()) {
@@ -59,11 +59,7 @@ export default function ChatSidebar() {
       <div className="app-header justify-between">
         <div className="flex items-center gap-2 font-semibold">{collapsed ? 'Dg' : 'Dialogia'}</div>
         <div className="flex items-center gap-2">
-          <IconButton
-            onClick={() => newChat()}
-            title="New Chat"
-            variant="ghost"
-          >
+          <IconButton onClick={() => newChat()} title="New Chat" variant="ghost">
             <PlusIcon className="h-3.5 w-3.5" />
           </IconButton>
           {!collapsed && (
@@ -99,8 +95,8 @@ export default function ChatSidebar() {
             <IconButton size="sm" onClick={handleCreateFolder} title="Create folder">
               <CheckIcon className="h-3.5 w-3.5" />
             </IconButton>
-            <IconButton 
-              size="sm" 
+            <IconButton
+              size="sm"
               onClick={() => {
                 setShowCreateFolder(false);
                 setNewFolderName('');
@@ -113,10 +109,14 @@ export default function ChatSidebar() {
         </div>
       )}
 
-      {!collapsed && <div className="sidebar-section text-xs text-muted-foreground font-medium uppercase tracking-wider pb-2">Chats</div>}
-      
+      {!collapsed && (
+        <div className="sidebar-section text-xs text-muted-foreground font-medium uppercase tracking-wider pb-2">
+          Chats
+        </div>
+      )}
+
       {/* Drop zone for root level */}
-      <div 
+      <div
         className={`scroll-area flex-1 sidebar-section`}
         onDragOver={handleDragOver}
         onDrop={async (e) => {
@@ -176,18 +176,18 @@ interface RootChatItemProps {
   onEditTitleChange: (title: string) => void;
 }
 
-function RootChatItem({ 
-  chat, 
-  collapsed, 
-  isSelected, 
-  isEditing, 
-  editTitle, 
-  onSelect, 
-  onStartEdit, 
-  onSaveEdit, 
-  onCancelEdit, 
-  onDelete, 
-  onEditTitleChange 
+function RootChatItem({
+  chat,
+  collapsed,
+  isSelected,
+  isEditing,
+  editTitle,
+  onSelect,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onDelete,
+  onEditTitleChange,
 }: RootChatItemProps) {
   return (
     <div className="pb-1">
@@ -222,9 +222,7 @@ function RootChatItem({
             />
           </div>
         ) : (
-                  <div className="flex-1 text-sm truncate">
-          {collapsed ? '' : chat.title}
-        </div>
+          <div className="flex-1 text-sm truncate">{collapsed ? '' : chat.title}</div>
         )}
 
         {/* Action Buttons */}

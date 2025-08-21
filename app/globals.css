@@ -653,7 +653,9 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 .markdown .token.cdata {
   color: var(--syntax-comment);
 }
-.markdown .token.punctuation { color: var(--syntax-punctuation); }
+.markdown .token.punctuation {
+  color: var(--syntax-punctuation);
+}
 .markdown .token.property,
 .markdown .token.tag,
 .markdown .token.constant,
@@ -662,22 +664,40 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   color: var(--syntax-property);
 }
 .markdown .token.boolean,
-.markdown .token.number { color: var(--syntax-number); }
+.markdown .token.number {
+  color: var(--syntax-number);
+}
 .markdown .token.selector,
 .markdown .token.attr-name,
 .markdown .token.string,
 .markdown .token.char,
 .markdown .token.builtin,
-.markdown .token.inserted { color: var(--syntax-string); }
+.markdown .token.inserted {
+  color: var(--syntax-string);
+}
 .markdown .token.operator,
 .markdown .token.entity,
-.markdown .token.url { color: var(--syntax-operator); }
+.markdown .token.url {
+  color: var(--syntax-operator);
+}
 .markdown .token.atrule,
-.markdown .token.keyword { color: var(--syntax-keyword); }
-.markdown .token.function { color: var(--syntax-function); }
-.markdown .token.class-name { color: var(--syntax-class); }
+.markdown .token.keyword {
+  color: var(--syntax-keyword);
+}
+.markdown .token.function {
+  color: var(--syntax-function);
+}
+.markdown .token.class-name {
+  color: var(--syntax-class);
+}
 .markdown .token.regex,
 .markdown .token.important,
-.markdown .token.variable { color: var(--syntax-regex); }
-.markdown .token.bold { font-weight: 700; }
-.markdown .token.italic { font-style: italic; }
+.markdown .token.variable {
+  color: var(--syntax-regex);
+}
+.markdown .token.bold {
+  font-weight: 700;
+}
+.markdown .token.italic {
+  font-style: italic;
+}

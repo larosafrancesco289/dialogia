@@ -8,7 +8,7 @@ export interface DragData {
 
 export function useDragAndDrop() {
   const { moveChatToFolder } = useChatStore();
-  
+
   // Handle drag start
   const handleDragStart = (id: string, type: 'folder' | 'chat') => {
     const dragData: DragData = { id, type };
@@ -24,7 +24,11 @@ export function useDragAndDrop() {
   };
 
   // Handle drop
-  const handleDrop = async (targetFolderId: string | undefined, draggedId: string, draggedType: 'folder' | 'chat') => {
+  const handleDrop = async (
+    targetFolderId: string | undefined,
+    draggedId: string,
+    draggedType: 'folder' | 'chat',
+  ) => {
     if (draggedType === 'chat') {
       // Move chat to folder (or root if targetFolderId is undefined)
       await moveChatToFolder(draggedId, targetFolderId);

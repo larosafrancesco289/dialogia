@@ -58,4 +58,3 @@ export function stripLeadingToolJson(input: string): string {
   }
   return s.trimStart();
 }
-

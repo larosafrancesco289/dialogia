@@ -16,12 +16,15 @@ export function createModelSlice(
       const useProxy = useOpenRouterProxy();
       const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
       if (!key && !useProxy)
-        return set((s) => ({ ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' } }));
+        return set((s) => ({
+          ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
+        }));
       try {
         const models = await fetchModels(key || '');
         set({ models } as any);
       } catch (e: any) {
-        if (e?.message === 'unauthorized') set((s) => ({ ui: { ...s.ui, notice: 'Invalid API key' } }));
+        if (e?.message === 'unauthorized')
+          set((s) => ({ ui: { ...s.ui, notice: 'Invalid API key' } }));
       }
     },
 
@@ -36,7 +39,9 @@ export function createModelSlice(
     hideModel(id: string) {
       if (id === PINNED_MODEL_ID) return;
       set((s) => ({
-        hiddenModelIds: s.hiddenModelIds.includes(id) ? s.hiddenModelIds : [id, ...s.hiddenModelIds],
+        hiddenModelIds: s.hiddenModelIds.includes(id)
+          ? s.hiddenModelIds
+          : [id, ...s.hiddenModelIds],
       }));
     },
 

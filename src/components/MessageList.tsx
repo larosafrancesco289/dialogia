@@ -2,7 +2,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { Markdown } from '@/lib/markdown';
-import { ArrowPathIcon, ChevronDownIcon, ChevronUpIcon, PencilSquareIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowPathIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PencilSquareIcon,
+  CheckIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import RegenerateMenu from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
@@ -169,7 +176,11 @@ export default function MessageList({ chatId }: { chatId: string }) {
               })()}
               {/* Thinking block styled like sources, inline header with icon toggle */}
               {typeof m.reasoning === 'string' && m.reasoning.length > 0 && (
-                <ReasoningPanel reasoning={m.reasoning} expanded={isExpanded(m.id)} onToggle={() => toggle(m.id)} />
+                <ReasoningPanel
+                  reasoning={m.reasoning}
+                  expanded={isExpanded(m.id)}
+                  onToggle={() => toggle(m.id)}
+                />
               )}
               <div className="p-4 pt-3">
                 {editingId === m.id ? (

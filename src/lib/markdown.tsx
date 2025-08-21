@@ -122,7 +122,8 @@ function MermaidBlock({ code }: { code: string }) {
     (async () => {
       try {
         const mermaid = (await import('mermaid')).default;
-        mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'loose' });
+        // Use strict security level to reduce risk from untrusted diagram content
+        mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict' });
         const { svg } = await mermaid.render(`m_${id}`, code);
         if (!cancelled && ref.current) ref.current.innerHTML = svg;
       } catch (e) {

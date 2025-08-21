@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 
 export type BraveData = {
@@ -61,8 +61,17 @@ export function BraveSourcesPanel({
         <div className="thinking-panel">
           <div className="flex items-center justify-between mb-1">
             <div className="text-xs text-muted-foreground">Web search results (Brave)</div>
-            <button className="icon-button" aria-label={expanded ? 'Hide sources' : 'Show sources'} onClick={onToggle} aria-pressed={expanded}>
-              {expanded ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
+            <button
+              className="icon-button"
+              aria-label={expanded ? 'Hide sources' : 'Show sources'}
+              onClick={onToggle}
+              aria-pressed={expanded}
+            >
+              {expanded ? (
+                <ChevronUpIcon className="h-4 w-4" />
+              ) : (
+                <ChevronDownIcon className="h-4 w-4" />
+              )}
             </button>
           </div>
           {expanded && (
@@ -72,7 +81,9 @@ export function BraveSourcesPanel({
                   <a className="underline" href={r.url} target="_blank" rel="noreferrer">
                     {r.title || r.url || `Result ${i + 1}`}
                   </a>
-                  {r.description && <div className="text-xs text-muted-foreground">{r.description}</div>}
+                  {r.description && (
+                    <div className="text-xs text-muted-foreground">{r.description}</div>
+                  )}
                 </li>
               ))}
             </ol>
@@ -83,4 +94,3 @@ export function BraveSourcesPanel({
   }
   return null;
 }
-
