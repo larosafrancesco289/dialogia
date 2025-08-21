@@ -96,9 +96,10 @@ export function createMessageSlice(
           ];
           let convo = planningMessages.slice();
           let rounds = 0;
-          let firstTurn = true;
           let finalContent: string | null = null;
           let finalUsage: any | undefined = undefined;
+          let usedTool = false;
+          let aggregatedResults: { title?: string; url?: string; description?: string }[] = [];
           const extractInlineWebSearchArgs = (
             text: string,
           ): { query: string; count?: number } | null => {
@@ -157,9 +158,8 @@ export function createMessageSlice(
               reasoning_effort: chat.settings.reasoning_effort,
               reasoning_tokens: chat.settings.reasoning_tokens,
               tools: toolDefinition as any,
-              tool_choice: firstTurn
-                ? ({ type: 'function', function: { name: 'web_search' } } as any)
-                : 'auto',
+              // Let the model decide whether to call the tool
+              tool_choice: 'auto' as any,
               signal: controller.signal,
             });
             finalUsage = resp?.usage;
@@ -192,22 +192,10 @@ export function createMessageSlice(
                 ];
             }
             if (toolCalls && toolCalls.length > 0) {
+              usedTool = true;
               convo.push({ role: 'assistant', content: null, tool_calls: toolCalls } as any);
             }
-            if (firstTurn && (!toolCalls || toolCalls.length === 0)) {
-              toolCalls = [
-                {
-                  id: 'call_0',
-                  type: 'function',
-                  function: {
-                    name: 'web_search',
-                    arguments: JSON.stringify({ query: content, count: 5 }),
-                  },
-                },
-              ];
-              convo.push({ role: 'assistant', content: null, tool_calls: toolCalls } as any);
-            }
-            firstTurn = false;
+            // Do not force tool calls; only proceed when the model chooses to call tools
             if (!toolCalls || toolCalls.length === 0) {
               const text = typeof message?.content === 'string' ? message.content : '';
               finalContent = stripLeadingToolJson(text);
@@ -266,6 +254,7 @@ export function createMessageSlice(
                       },
                     },
                   }));
+                  aggregatedResults = results;
                   const lines = results
                     .slice(0, MAX_FALLBACK_RESULTS)
                     .map(
@@ -318,34 +307,104 @@ export function createMessageSlice(
             } as any);
             rounds++;
           }
-          if (finalContent != null) {
-            set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
-            const tokensIn = finalUsage?.prompt_tokens ?? finalUsage?.input_tokens;
-            const tokensOut = finalUsage?.completion_tokens ?? finalUsage?.output_tokens;
-            const final = {
-              ...assistantMsg,
-              content: finalContent,
-              reasoning: undefined,
-              metrics: {
-                ttftMs: undefined,
-                completionMs: undefined,
-                promptTokens: tokensIn,
-                completionTokens: tokensOut,
-                tokensPerSec: undefined,
+          // Stream the final answer using planning context (optionally including search results)
+          const baseSystem = combinedSystemForThisTurn || chat.settings.system || 'You are a helpful assistant.';
+          const linesForSystem = (aggregatedResults || [])
+            .slice(0, MAX_FALLBACK_RESULTS)
+            .map((r, i) => `${i + 1}. ${(r.title || r.url || 'Result').toString()} — ${r.url || ''}${r.description ? ` — ${r.description}` : ''}`)
+            .join('\n');
+          const sourcesBlock = usedTool && linesForSystem
+            ? `\n\nWeb search results (Brave):\n${linesForSystem}\n\nInstructions: Use these results to answer and cite sources inline as [n].`
+            : '';
+          const finalSystem = `${baseSystem}${sourcesBlock}`;
+          const streamingMessages = ([{ role: 'system', content: finalSystem } as const] as any[]).concat(
+            msgs.filter((m) => m.role !== 'system'),
+          );
+
+          const tStartPlan = performance.now();
+          let tFirstPlan: number | undefined;
+          let startedStreamingContentPlan = true; // content should be user-facing now
+          let leadingBufferPlan = '';
+          await streamChatCompletion({
+            apiKey: key || '',
+            model: chat.settings.model,
+            messages: streamingMessages,
+            temperature: chat.settings.temperature,
+            top_p: chat.settings.top_p,
+            max_tokens: chat.settings.max_tokens,
+            reasoning_effort: chat.settings.reasoning_effort,
+            reasoning_tokens: chat.settings.reasoning_tokens,
+            signal: controller.signal,
+            callbacks: {
+              onToken: (delta) => {
+                if (tFirstPlan == null) tFirstPlan = performance.now();
+                if (!startedStreamingContentPlan) {
+                  leadingBufferPlan += delta;
+                  const hasStructure = leadingBufferPlan.trimStart().startsWith('{') || leadingBufferPlan.trimStart().startsWith('```');
+                  if (hasStructure) {
+                    const stripped = stripLeadingToolJson(leadingBufferPlan);
+                    const rest = stripped.trimStart();
+                    if (rest && !(rest.startsWith('{') || rest.startsWith('```'))) {
+                      startedStreamingContentPlan = true;
+                      const toEmit = stripped;
+                      leadingBufferPlan = '';
+                      set((s) => {
+                        const list = s.messages[chatId] ?? [];
+                        const updated = list.map((m) => (m.id === assistantMsg.id ? { ...m, content: m.content + toEmit } : m));
+                        return { messages: { ...s.messages, [chatId]: updated } } as any;
+                      });
+                    }
+                  } else if (leadingBufferPlan.length > 512) {
+                    startedStreamingContentPlan = true;
+                    const toEmit = leadingBufferPlan;
+                    leadingBufferPlan = '';
+                    set((s) => {
+                      const list = s.messages[chatId] ?? [];
+                      const updated = list.map((m) => (m.id === assistantMsg.id ? { ...m, content: m.content + toEmit } : m));
+                      return { messages: { ...s.messages, [chatId]: updated } } as any;
+                    });
+                  }
+                } else {
+                  set((s) => {
+                    const list = s.messages[chatId] ?? [];
+                    const updated = list.map((m) => (m.id === assistantMsg.id ? { ...m, content: m.content + delta } : m));
+                    return { messages: { ...s.messages, [chatId]: updated } } as any;
+                  });
+                }
               },
-              tokensIn,
-              tokensOut,
-            } as any;
-            set((s) => {
-              const list = s.messages[chatId] ?? [];
-              const updated = list.map((m) => (m.id === assistantMsg.id ? final : m));
-              return { messages: { ...s.messages, [chatId]: updated } } as any;
-            });
-            await saveMessage(final);
-            set((s) => ({ ...s, _controller: undefined }) as any);
-            return;
-          }
-          set((s) => ({ ...s, _controller: undefined }) as any);
+              onReasoningToken: (delta) => {
+                if (tFirstPlan == null) tFirstPlan = performance.now();
+                set((s) => {
+                  const list = s.messages[chatId] ?? [];
+                  const updated = list.map((m) => (m.id === assistantMsg.id ? { ...m, reasoning: (m.reasoning || '') + delta } : m));
+                  return { messages: { ...s.messages, [chatId]: updated } } as any;
+                });
+              },
+              onDone: async (full, extras) => {
+                set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
+                const current = get().messages[chatId]?.find((m) => m.id === assistantMsg.id);
+                const tEnd = performance.now();
+                const ttftMs = tFirstPlan ? Math.max(0, Math.round(tFirstPlan - tStartPlan)) : undefined;
+                const completionMs = Math.max(0, Math.round(tEnd - tStartPlan));
+                const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
+                const completionTokens = extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
+                const tokensPerSec = completionTokens && completionMs ? +(completionTokens / (completionMs / 1000)).toFixed(2) : undefined;
+                const finalMsg = { ...assistantMsg, content: stripLeadingToolJson(full || ''), reasoning: current?.reasoning, metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec }, tokensIn: promptTokens, tokensOut: completionTokens } as any;
+                set((s) => {
+                  const list = s.messages[chatId] ?? [];
+                  const updated = list.map((m) => (m.id === assistantMsg.id ? finalMsg : m));
+                  return { messages: { ...s.messages, [chatId]: updated } } as any;
+                });
+                await saveMessage(finalMsg);
+                set((s) => ({ ...s, _controller: undefined }) as any);
+              },
+              onError: (err) => {
+                set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: err.message } }));
+                set((s) => ({ ...s, _controller: undefined }) as any);
+              },
+            },
+          });
+          return;
         } catch (e: any) {
           if (e?.message === 'unauthorized')
             set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Invalid API key' } }));
@@ -354,6 +413,7 @@ export function createMessageSlice(
               ui: { ...s.ui, isStreaming: false, notice: 'Rate limited. Retry later.' },
             }));
           set((s) => ({ ...s, _controller: undefined }) as any);
+          return;
         }
       }
 
@@ -362,102 +422,8 @@ export function createMessageSlice(
         set((s) => ({ ...s, _controller: controller as any }) as any);
         const tStart = performance.now();
         let tFirst: number | undefined;
-        const streamingMessages = await (async () => {
-          if (combinedSystemForThisTurn) {
-            const rest = msgs.filter((m) => m.role !== 'system');
-            let augmented = combinedSystemForThisTurn;
-            let fbResults: { title?: string; url?: string; description?: string }[] | undefined;
-            const pre = get().ui.braveByMessageId?.[assistantMsg.id];
-            if (pre && pre.status === 'done' && pre.query === content)
-              fbResults = pre.results || [];
-            if (!fbResults || fbResults.length === 0) {
-              set((s) => ({
-                ui: {
-                  ...s.ui,
-                  braveByMessageId: {
-                    ...(s.ui.braveByMessageId || {}),
-                    [assistantMsg.id]: { query: content, status: 'loading' },
-                  },
-                },
-              }));
-              try {
-                const fetchController = new AbortController();
-                const onAbort = () => fetchController.abort();
-                controller.signal.addEventListener('abort', onAbort);
-                const to = setTimeout(() => fetchController.abort(), 20000);
-                const res = await fetch(`/api/brave?q=${encodeURIComponent(content)}&count=5`, {
-                  method: 'GET',
-                  headers: { Accept: 'application/json' },
-                  cache: 'no-store',
-                  signal: fetchController.signal,
-                } as any);
-                clearTimeout(to);
-                controller.signal.removeEventListener('abort', onAbort);
-                if (res.ok) {
-                  const data: any = await res.json();
-                  fbResults = (data?.results || []) as any[];
-                  set((s) => ({
-                    ui: {
-                      ...s.ui,
-                      braveByMessageId: {
-                        ...(s.ui.braveByMessageId || {}),
-                        [assistantMsg.id]: { query: content, status: 'done', results: fbResults },
-                      },
-                    },
-                  }));
-                } else {
-                  if (res.status === 400)
-                    set((s) => ({ ui: { ...s.ui, notice: 'Missing BRAVE_SEARCH_API_KEY' } }));
-                  fbResults = [];
-                  set((s) => ({
-                    ui: {
-                      ...s.ui,
-                      braveByMessageId: {
-                        ...(s.ui.braveByMessageId || {}),
-                        [assistantMsg.id]: {
-                          query: content,
-                          status: 'error',
-                          results: [],
-                          error:
-                            res.status === 400 ? 'Missing BRAVE_SEARCH_API_KEY' : 'Search failed',
-                        },
-                      },
-                    },
-                  }));
-                }
-              } catch {
-                fbResults = [];
-                set((s) => ({
-                  ui: {
-                    ...s.ui,
-                    braveByMessageId: {
-                      ...(s.ui.braveByMessageId || {}),
-                      [assistantMsg.id]: {
-                        query: content,
-                        status: 'error',
-                        results: [],
-                        error: 'Network error',
-                      },
-                    },
-                  },
-                }));
-              }
-            }
-            if (fbResults && fbResults.length > 0) {
-              const lines = fbResults
-                .slice(0, MAX_FALLBACK_RESULTS)
-                .map(
-                  (r, i) =>
-                    `${i + 1}. ${(r.title || r.url || 'Result').toString()} — ${r.url || ''}${r.description ? ` — ${r.description}` : ''}`,
-                )
-                .join('\n');
-              const fallbackBlock = `\n\nWeb search results (fallback):\n${lines}\n\nInstructions: Use these results to answer the user. Cite sources inline as [n].`;
-              augmented = augmented + fallbackBlock;
-            }
-            return [{ role: 'system', content: augmented } as const, ...rest];
-          }
-          return msgs;
-        })();
+        // No automatic fallback web search; the model will call the tool when necessary
+        const streamingMessages = msgs;
         let startedStreamingContent = attemptToolUse ? false : true;
         let leadingBuffer = '';
         await streamChatCompletion({
