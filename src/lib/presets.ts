@@ -47,4 +47,3 @@ export async function deleteSystemPreset(id: string): Promise<void> {
   const next = current.filter((p) => p.id !== id);
   await setSystemPresets(next);
 }
-

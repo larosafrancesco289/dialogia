@@ -13,7 +13,15 @@ export async function fetchModels(apiKey: string): Promise<ORModel[]> {
         'HTTP-Referer': 'http://localhost:3000',
         'X-Title': 'Dialogia',
       };
-  const res = await fetch(url, { headers, cache: 'no-store' as any });
+  // Add a conservative timeout to avoid hung UI if the network stalls
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  let res: Response;
+  try {
+    res = await fetch(url, { headers, cache: 'no-store' as any, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
   if (res.status === 401 || res.status === 403) {
     throw new Error('unauthorized');
   }

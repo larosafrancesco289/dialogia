@@ -16,7 +16,9 @@ export function createMessageSlice(
       const useProxy = process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
       const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
       if (!key && !useProxy)
-        return set((s) => ({ ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' } }));
+        return set((s) => ({
+          ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
+        }));
       const chatId = get().selectedChatId!;
       const chat = get().chats.find((c) => c.id === chatId)!;
       const now = Date.now();
@@ -31,11 +33,22 @@ export function createMessageSlice(
         reasoning: '',
       };
       const priorList = get().messages[chatId] ?? [];
-      set((s) => ({ messages: { ...s.messages, [chatId]: [...(s.messages[chatId] ?? []), userMsg, assistantMsg] }, ui: { ...s.ui, isStreaming: true } }));
+      set((s) => ({
+        messages: {
+          ...s.messages,
+          [chatId]: [...(s.messages[chatId] ?? []), userMsg, assistantMsg],
+        },
+        ui: { ...s.ui, isStreaming: true },
+      }));
       await saveMessage(userMsg);
       await saveMessage(assistantMsg);
 
-      const msgs = buildChatCompletionMessages({ chat, priorMessages: priorList, models: get().models, newUserContent: content });
+      const msgs = buildChatCompletionMessages({
+        chat,
+        priorMessages: priorList,
+        models: get().models,
+        newUserContent: content,
+      });
       if (chat.title === 'New Chat') {
         const draft = content.trim().slice(0, 40);
         await get().renameChat(chat.id, draft || 'New Chat');
@@ -77,24 +90,33 @@ export function createMessageSlice(
             },
           ];
           const planningSystem = { role: 'system', content: combinedSystemForThisTurn! } as const;
-          const planningMessages: any[] = [planningSystem, ...msgs.filter((m) => m.role !== 'system')];
+          const planningMessages: any[] = [
+            planningSystem,
+            ...msgs.filter((m) => m.role !== 'system'),
+          ];
           let convo = planningMessages.slice();
           let rounds = 0;
           let firstTurn = true;
           let finalContent: string | null = null;
           let finalUsage: any | undefined = undefined;
-          const extractInlineWebSearchArgs = (text: string): { query: string; count?: number } | null => {
+          const extractInlineWebSearchArgs = (
+            text: string,
+          ): { query: string; count?: number } | null => {
             try {
               const candidates: Array<Record<string, any>> = [];
               const jsonMatches = text.match(/\{[\s\S]*?\}/g) || [];
               for (const m of jsonMatches) {
-                try { candidates.push(JSON.parse(m)); } catch {}
+                try {
+                  candidates.push(JSON.parse(m));
+                } catch {}
               }
               for (const c of candidates) {
                 if (typeof c.query === 'string') {
                   const q = String(c.query).trim();
                   if (q) {
-                    const cnt = Number.isFinite(c.count) ? Math.max(1, Math.min(10, Math.floor(c.count))) : undefined;
+                    const cnt = Number.isFinite(c.count)
+                      ? Math.max(1, Math.min(10, Math.floor(c.count)))
+                      : undefined;
                     return { query: q, count: cnt };
                   }
                 }
@@ -104,14 +126,18 @@ export function createMessageSlice(
                     try {
                       const inner = JSON.parse(arg);
                       if (inner && typeof inner.query === 'string' && inner.query.trim()) {
-                        const cnt = Number.isFinite(inner.count) ? Math.max(1, Math.min(10, Math.floor(inner.count))) : undefined;
+                        const cnt = Number.isFinite(inner.count)
+                          ? Math.max(1, Math.min(10, Math.floor(inner.count)))
+                          : undefined;
                         return { query: inner.query.trim(), count: cnt };
                       }
                     } catch {}
                   } else if (arg && typeof arg === 'object' && typeof arg.query === 'string') {
                     const q = String(arg.query).trim();
                     if (q) {
-                      const cnt = Number.isFinite(arg.count) ? Math.max(1, Math.min(10, Math.floor(arg.count))) : undefined;
+                      const cnt = Number.isFinite(arg.count)
+                        ? Math.max(1, Math.min(10, Math.floor(arg.count)))
+                        : undefined;
                       return { query: q, count: cnt };
                     }
                   }
@@ -131,7 +157,9 @@ export function createMessageSlice(
               reasoning_effort: chat.settings.reasoning_effort,
               reasoning_tokens: chat.settings.reasoning_tokens,
               tools: toolDefinition as any,
-              tool_choice: firstTurn ? ({ type: 'function', function: { name: 'web_search' } } as any) : 'auto',
+              tool_choice: firstTurn
+                ? ({ type: 'function', function: { name: 'web_search' } } as any)
+                : 'auto',
               signal: controller.signal,
             });
             finalUsage = resp?.usage;
@@ -141,17 +169,42 @@ export function createMessageSlice(
               Array.isArray(message?.tool_calls) && message.tool_calls.length > 0
                 ? message.tool_calls
                 : message?.function_call
-                  ? [ { id: 'call_0', type: 'function', function: { name: message.function_call.name, arguments: message.function_call.arguments } } ]
+                  ? [
+                      {
+                        id: 'call_0',
+                        type: 'function',
+                        function: {
+                          name: message.function_call.name,
+                          arguments: message.function_call.arguments,
+                        },
+                      },
+                    ]
                   : [];
             if ((!toolCalls || toolCalls.length === 0) && typeof message?.content === 'string') {
               const inline = extractInlineWebSearchArgs(message.content);
-              if (inline) toolCalls = [ { id: 'call_0', type: 'function', function: { name: 'web_search', arguments: JSON.stringify(inline) } } ];
+              if (inline)
+                toolCalls = [
+                  {
+                    id: 'call_0',
+                    type: 'function',
+                    function: { name: 'web_search', arguments: JSON.stringify(inline) },
+                  },
+                ];
             }
             if (toolCalls && toolCalls.length > 0) {
               convo.push({ role: 'assistant', content: null, tool_calls: toolCalls } as any);
             }
             if (firstTurn && (!toolCalls || toolCalls.length === 0)) {
-              toolCalls = [ { id: 'call_0', type: 'function', function: { name: 'web_search', arguments: JSON.stringify({ query: content, count: 5 }) } } ];
+              toolCalls = [
+                {
+                  id: 'call_0',
+                  type: 'function',
+                  function: {
+                    name: 'web_search',
+                    arguments: JSON.stringify({ query: content, count: 5 }),
+                  },
+                },
+              ];
               convo.push({ role: 'assistant', content: null, tool_calls: toolCalls } as any);
             }
             firstTurn = false;
@@ -170,37 +223,119 @@ export function createMessageSlice(
               } catch {}
               if (name !== 'web_search') continue;
               let rawQuery = String(args?.query || '').trim();
-              const count = Math.min(Math.max(parseInt(String(args?.count || '5'), 10) || 5, 1), 10);
+              const count = Math.min(
+                Math.max(parseInt(String(args?.count || '5'), 10) || 5, 1),
+                10,
+              );
               if (!rawQuery) rawQuery = content.trim().slice(0, 256);
-              set((s) => ({ ui: { ...s.ui, braveByMessageId: { ...(s.ui.braveByMessageId || {}), [assistantMsg.id]: { query: rawQuery, status: 'loading' } } } }));
+              set((s) => ({
+                ui: {
+                  ...s.ui,
+                  braveByMessageId: {
+                    ...(s.ui.braveByMessageId || {}),
+                    [assistantMsg.id]: { query: rawQuery, status: 'loading' },
+                  },
+                },
+              }));
               try {
-                const res = await fetch(`/api/brave?q=${encodeURIComponent(rawQuery)}&count=${count}`, { method: 'GET', headers: { Accept: 'application/json' }, cache: 'no-store', signal: controller.signal } as any);
+                // Per-request controller with timeout, tied to the main controller as well
+                const fetchController = new AbortController();
+                const onAbort = () => fetchController.abort();
+                controller.signal.addEventListener('abort', onAbort);
+                const to = setTimeout(() => fetchController.abort(), 20000);
+                const res = await fetch(
+                  `/api/brave?q=${encodeURIComponent(rawQuery)}&count=${count}`,
+                  {
+                    method: 'GET',
+                    headers: { Accept: 'application/json' },
+                    cache: 'no-store',
+                    signal: fetchController.signal,
+                  } as any,
+                );
+                clearTimeout(to);
+                controller.signal.removeEventListener('abort', onAbort);
                 if (res.ok) {
                   const data: any = await res.json();
                   const results = (data?.results || []) as any[];
-                  set((s) => ({ ui: { ...s.ui, braveByMessageId: { ...(s.ui.braveByMessageId || {}), [assistantMsg.id]: { query: rawQuery, status: 'done', results } } } }));
+                  set((s) => ({
+                    ui: {
+                      ...s.ui,
+                      braveByMessageId: {
+                        ...(s.ui.braveByMessageId || {}),
+                        [assistantMsg.id]: { query: rawQuery, status: 'done', results },
+                      },
+                    },
+                  }));
                   const lines = results
                     .slice(0, MAX_FALLBACK_RESULTS)
-                    .map((r, i) => `${i + 1}. ${(r.title || r.url || 'Result').toString()} — ${r.url || ''}${r.description ? ` — ${r.description}` : ''}`)
+                    .map(
+                      (r, i) =>
+                        `${i + 1}. ${(r.title || r.url || 'Result').toString()} — ${r.url || ''}${r.description ? ` — ${r.description}` : ''}`,
+                    )
                     .join('\n');
-                  convo.push({ role: 'tool', name: 'web_search', tool_call_id: tc.id, content: `Web search results for: ${rawQuery}\n\n${lines}` } as any);
+                  convo.push({
+                    role: 'tool',
+                    name: 'web_search',
+                    tool_call_id: tc.id,
+                    content: `Web search results for: ${rawQuery}\n\n${lines}`,
+                  } as any);
                 } else {
-                  if (res.status === 400) set((s) => ({ ui: { ...s.ui, notice: 'Missing BRAVE_SEARCH_API_KEY' } }));
-                  convo.push({ role: 'tool', name: 'web_search', tool_call_id: tc.id, content: 'No results' } as any);
+                  if (res.status === 400)
+                    set((s) => ({ ui: { ...s.ui, notice: 'Missing BRAVE_SEARCH_API_KEY' } }));
+                  convo.push({
+                    role: 'tool',
+                    name: 'web_search',
+                    tool_call_id: tc.id,
+                    content: 'No results',
+                  } as any);
                 }
               } catch {
-                set((s) => ({ ui: { ...s.ui, braveByMessageId: { ...(s.ui.braveByMessageId || {}), [assistantMsg.id]: { query: rawQuery, status: 'error', results: [], error: 'Network error' } } } }));
-                convo.push({ role: 'tool', name: 'web_search', tool_call_id: tc.id, content: 'No results' } as any);
+                set((s) => ({
+                  ui: {
+                    ...s.ui,
+                    braveByMessageId: {
+                      ...(s.ui.braveByMessageId || {}),
+                      [assistantMsg.id]: {
+                        query: rawQuery,
+                        status: 'error',
+                        results: [],
+                        error: 'Network error',
+                      },
+                    },
+                  },
+                }));
+                convo.push({
+                  role: 'tool',
+                  name: 'web_search',
+                  tool_call_id: tc.id,
+                  content: 'No results',
+                } as any);
               }
             }
-            convo.push({ role: 'user', content: 'Write the final answer. Cite sources inline as [n].' } as any);
+            convo.push({
+              role: 'user',
+              content: 'Write the final answer. Cite sources inline as [n].',
+            } as any);
             rounds++;
           }
           if (finalContent != null) {
             set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
             const tokensIn = finalUsage?.prompt_tokens ?? finalUsage?.input_tokens;
             const tokensOut = finalUsage?.completion_tokens ?? finalUsage?.output_tokens;
-            const final = { ...assistantMsg, content: finalContent, reasoning: undefined, metrics: { ttftMs: undefined, completionMs: undefined, promptTokens: tokensIn, completionTokens: tokensOut, tokensPerSec: undefined }, tokensIn, tokensOut } as any;
+            const final = {
+              ...assistantMsg,
+              content: finalContent,
+              reasoning: undefined,
+              metrics: {
+                ttftMs: undefined,
+                completionMs: undefined,
+                promptTokens: tokensIn,
+                completionTokens: tokensOut,
+                tokensPerSec: undefined,
+              },
+              tokensIn,
+              tokensOut,
+            } as any;
             set((s) => {
               const list = s.messages[chatId] ?? [];
               const updated = list.map((m) => (m.id === assistantMsg.id ? final : m));
@@ -212,8 +347,12 @@ export function createMessageSlice(
           }
           set((s) => ({ ...s, _controller: undefined }) as any);
         } catch (e: any) {
-          if (e?.message === 'unauthorized') set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Invalid API key' } }));
-          if (e?.message === 'rate_limited') set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Rate limited. Retry later.' } }));
+          if (e?.message === 'unauthorized')
+            set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Invalid API key' } }));
+          if (e?.message === 'rate_limited')
+            set((s) => ({
+              ui: { ...s.ui, isStreaming: false, notice: 'Rate limited. Retry later.' },
+            }));
           set((s) => ({ ...s, _controller: undefined }) as any);
         }
       }
@@ -229,27 +368,89 @@ export function createMessageSlice(
             let augmented = combinedSystemForThisTurn;
             let fbResults: { title?: string; url?: string; description?: string }[] | undefined;
             const pre = get().ui.braveByMessageId?.[assistantMsg.id];
-            if (pre && pre.status === 'done' && pre.query === content) fbResults = pre.results || [];
+            if (pre && pre.status === 'done' && pre.query === content)
+              fbResults = pre.results || [];
             if (!fbResults || fbResults.length === 0) {
-              set((s) => ({ ui: { ...s.ui, braveByMessageId: { ...(s.ui.braveByMessageId || {}), [assistantMsg.id]: { query: content, status: 'loading' } } } }));
+              set((s) => ({
+                ui: {
+                  ...s.ui,
+                  braveByMessageId: {
+                    ...(s.ui.braveByMessageId || {}),
+                    [assistantMsg.id]: { query: content, status: 'loading' },
+                  },
+                },
+              }));
               try {
-                const res = await fetch(`/api/brave?q=${encodeURIComponent(content)}&count=5`, { method: 'GET', headers: { Accept: 'application/json' }, cache: 'no-store', signal: controller.signal } as any);
+                const fetchController = new AbortController();
+                const onAbort = () => fetchController.abort();
+                controller.signal.addEventListener('abort', onAbort);
+                const to = setTimeout(() => fetchController.abort(), 20000);
+                const res = await fetch(`/api/brave?q=${encodeURIComponent(content)}&count=5`, {
+                  method: 'GET',
+                  headers: { Accept: 'application/json' },
+                  cache: 'no-store',
+                  signal: fetchController.signal,
+                } as any);
+                clearTimeout(to);
+                controller.signal.removeEventListener('abort', onAbort);
                 if (res.ok) {
                   const data: any = await res.json();
                   fbResults = (data?.results || []) as any[];
-                  set((s) => ({ ui: { ...s.ui, braveByMessageId: { ...(s.ui.braveByMessageId || {}), [assistantMsg.id]: { query: content, status: 'done', results: fbResults } } } }));
+                  set((s) => ({
+                    ui: {
+                      ...s.ui,
+                      braveByMessageId: {
+                        ...(s.ui.braveByMessageId || {}),
+                        [assistantMsg.id]: { query: content, status: 'done', results: fbResults },
+                      },
+                    },
+                  }));
                 } else {
-                  if (res.status === 400) set((s) => ({ ui: { ...s.ui, notice: 'Missing BRAVE_SEARCH_API_KEY' } }));
+                  if (res.status === 400)
+                    set((s) => ({ ui: { ...s.ui, notice: 'Missing BRAVE_SEARCH_API_KEY' } }));
                   fbResults = [];
-                  set((s) => ({ ui: { ...s.ui, braveByMessageId: { ...(s.ui.braveByMessageId || {}), [assistantMsg.id]: { query: content, status: 'error', results: [], error: res.status === 400 ? 'Missing BRAVE_SEARCH_API_KEY' : 'Search failed' } } } }));
+                  set((s) => ({
+                    ui: {
+                      ...s.ui,
+                      braveByMessageId: {
+                        ...(s.ui.braveByMessageId || {}),
+                        [assistantMsg.id]: {
+                          query: content,
+                          status: 'error',
+                          results: [],
+                          error:
+                            res.status === 400 ? 'Missing BRAVE_SEARCH_API_KEY' : 'Search failed',
+                        },
+                      },
+                    },
+                  }));
                 }
               } catch {
                 fbResults = [];
-                set((s) => ({ ui: { ...s.ui, braveByMessageId: { ...(s.ui.braveByMessageId || {}), [assistantMsg.id]: { query: content, status: 'error', results: [], error: 'Network error' } } } }));
+                set((s) => ({
+                  ui: {
+                    ...s.ui,
+                    braveByMessageId: {
+                      ...(s.ui.braveByMessageId || {}),
+                      [assistantMsg.id]: {
+                        query: content,
+                        status: 'error',
+                        results: [],
+                        error: 'Network error',
+                      },
+                    },
+                  },
+                }));
               }
             }
             if (fbResults && fbResults.length > 0) {
-              const lines = fbResults.slice(0, MAX_FALLBACK_RESULTS).map((r, i) => `${i + 1}. ${(r.title || r.url || 'Result').toString()} — ${r.url || ''}${r.description ? ` — ${r.description}` : ''}`).join('\n');
+              const lines = fbResults
+                .slice(0, MAX_FALLBACK_RESULTS)
+                .map(
+                  (r, i) =>
+                    `${i + 1}. ${(r.title || r.url || 'Result').toString()} — ${r.url || ''}${r.description ? ` — ${r.description}` : ''}`,
+                )
+                .join('\n');
               const fallbackBlock = `\n\nWeb search results (fallback):\n${lines}\n\nInstructions: Use these results to answer the user. Cite sources inline as [n].`;
               augmented = augmented + fallbackBlock;
             }
@@ -274,7 +475,9 @@ export function createMessageSlice(
               if (tFirst == null) tFirst = performance.now();
               if (!startedStreamingContent) {
                 leadingBuffer += delta;
-                const hasStructure = leadingBuffer.trimStart().startsWith('{') || leadingBuffer.trimStart().startsWith('```');
+                const hasStructure =
+                  leadingBuffer.trimStart().startsWith('{') ||
+                  leadingBuffer.trimStart().startsWith('```');
                 if (hasStructure) {
                   const stripped = stripLeadingToolJson(leadingBuffer);
                   const rest = stripped.trimStart();
@@ -284,7 +487,9 @@ export function createMessageSlice(
                     leadingBuffer = '';
                     set((s) => {
                       const list = s.messages[chatId] ?? [];
-                      const updated = list.map((m) => (m.id === assistantMsg.id ? { ...m, content: m.content + toEmit } : m));
+                      const updated = list.map((m) =>
+                        m.id === assistantMsg.id ? { ...m, content: m.content + toEmit } : m,
+                      );
                       return { messages: { ...s.messages, [chatId]: updated } } as any;
                     });
                   }
@@ -294,14 +499,18 @@ export function createMessageSlice(
                   leadingBuffer = '';
                   set((s) => {
                     const list = s.messages[chatId] ?? [];
-                    const updated = list.map((m) => (m.id === assistantMsg.id ? { ...m, content: m.content + toEmit } : m));
+                    const updated = list.map((m) =>
+                      m.id === assistantMsg.id ? { ...m, content: m.content + toEmit } : m,
+                    );
                     return { messages: { ...s.messages, [chatId]: updated } } as any;
                   });
                 }
               } else {
                 set((s) => {
                   const list = s.messages[chatId] ?? [];
-                  const updated = list.map((m) => (m.id === assistantMsg.id ? { ...m, content: m.content + delta } : m));
+                  const updated = list.map((m) =>
+                    m.id === assistantMsg.id ? { ...m, content: m.content + delta } : m,
+                  );
                   return { messages: { ...s.messages, [chatId]: updated } } as any;
                 });
               }
@@ -310,7 +519,9 @@ export function createMessageSlice(
               if (tFirst == null) tFirst = performance.now();
               set((s) => {
                 const list = s.messages[chatId] ?? [];
-                const updated = list.map((m) => (m.id === assistantMsg.id ? { ...m, reasoning: (m.reasoning || '') + delta } : m));
+                const updated = list.map((m) =>
+                  m.id === assistantMsg.id ? { ...m, reasoning: (m.reasoning || '') + delta } : m,
+                );
                 return { messages: { ...s.messages, [chatId]: updated } } as any;
               });
             },
@@ -321,9 +532,20 @@ export function createMessageSlice(
               const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
               const completionMs = Math.max(0, Math.round(tEnd - tStart));
               const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
-              const completionTokens = extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
-              const tokensPerSec = completionTokens && completionMs ? +(completionTokens / (completionMs / 1000)).toFixed(2) : undefined;
-              const final = { ...assistantMsg, content: stripLeadingToolJson(full || ''), reasoning: current?.reasoning, metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec }, tokensIn: promptTokens, tokensOut: completionTokens } as any;
+              const completionTokens =
+                extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
+              const tokensPerSec =
+                completionTokens && completionMs
+                  ? +(completionTokens / (completionMs / 1000)).toFixed(2)
+                  : undefined;
+              const final = {
+                ...assistantMsg,
+                content: stripLeadingToolJson(full || ''),
+                reasoning: current?.reasoning,
+                metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
+                tokensIn: promptTokens,
+                tokensOut: completionTokens,
+              } as any;
               set((s) => {
                 const list = s.messages[chatId] ?? [];
                 const updated = list.map((m) => (m.id === assistantMsg.id ? final : m));
@@ -339,8 +561,12 @@ export function createMessageSlice(
           },
         });
       } catch (e: any) {
-        if (e?.message === 'unauthorized') set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Invalid API key' } }));
-        if (e?.message === 'rate_limited') set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Rate limited. Retry later.' } }));
+        if (e?.message === 'unauthorized')
+          set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Invalid API key' } }));
+        if (e?.message === 'rate_limited')
+          set((s) => ({
+            ui: { ...s.ui, isStreaming: false, notice: 'Rate limited. Retry later.' },
+          }));
         set((s) => ({ ...s, _controller: undefined }) as any);
       }
     },
@@ -360,12 +586,22 @@ export function createMessageSlice(
       const target = list[idx];
       if (target.role !== 'user') return;
       const updated = { ...target, content: newContent };
-      set((s) => ({ messages: { ...s.messages, [chatId]: (s.messages[chatId] ?? []).map((m) => (m.id === messageId ? updated : m)) } }));
+      set((s) => ({
+        messages: {
+          ...s.messages,
+          [chatId]: (s.messages[chatId] ?? []).map((m) => (m.id === messageId ? updated : m)),
+        },
+      }));
       await saveMessage(updated);
       if (opts?.rerun) {
         if (get().ui.isStreaming) get().stopStreaming();
-        const nextAssistant = (get().messages[chatId] ?? []).slice(idx + 1).find((m) => m.role === 'assistant');
-        if (nextAssistant) get().regenerateAssistantMessage(nextAssistant.id).catch(() => void 0);
+        const nextAssistant = (get().messages[chatId] ?? [])
+          .slice(idx + 1)
+          .find((m) => m.role === 'assistant');
+        if (nextAssistant)
+          get()
+            .regenerateAssistantMessage(nextAssistant.id)
+            .catch(() => void 0);
       }
     },
 
@@ -377,7 +613,12 @@ export function createMessageSlice(
       const target = list[idx];
       if (target.role !== 'assistant') return;
       const updated = { ...target, content: newContent } as Message;
-      set((s) => ({ messages: { ...s.messages, [chatId]: (s.messages[chatId] ?? []).map((m) => (m.id === messageId ? updated : m)) } }));
+      set((s) => ({
+        messages: {
+          ...s.messages,
+          [chatId]: (s.messages[chatId] ?? []).map((m) => (m.id === messageId ? updated : m)),
+        },
+      }));
       await saveMessage(updated);
     },
 
@@ -385,15 +626,35 @@ export function createMessageSlice(
       const useProxy = process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
       const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
       if (!key && !useProxy)
-        return set((s) => ({ ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' } }));
+        return set((s) => ({
+          ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
+        }));
       const chatId = get().selectedChatId!;
       const chat = get().chats.find((c) => c.id === chatId)!;
       const list = get().messages[chatId] ?? [];
       const idx = list.findIndex((m) => m.id === messageId);
       if (idx === -1) return;
-      const payloadBefore = buildChatCompletionMessages({ chat, priorMessages: list.slice(0, idx), models: get().models });
-      const replacement: Message = { id: messageId, chatId, role: 'assistant', content: '', createdAt: list[idx].createdAt, model: opts?.modelId || chat.settings.model, reasoning: '' };
-      set((s) => ({ messages: { ...s.messages, [chatId]: list.map((m) => (m.id === messageId ? replacement : m)) }, ui: { ...s.ui, isStreaming: true } }));
+      const payloadBefore = buildChatCompletionMessages({
+        chat,
+        priorMessages: list.slice(0, idx),
+        models: get().models,
+      });
+      const replacement: Message = {
+        id: messageId,
+        chatId,
+        role: 'assistant',
+        content: '',
+        createdAt: list[idx].createdAt,
+        model: opts?.modelId || chat.settings.model,
+        reasoning: '',
+      };
+      set((s) => ({
+        messages: {
+          ...s.messages,
+          [chatId]: list.map((m) => (m.id === messageId ? replacement : m)),
+        },
+        ui: { ...s.ui, isStreaming: true },
+      }));
       const msgs = payloadBefore;
       try {
         const controller = new AbortController();
@@ -415,14 +676,18 @@ export function createMessageSlice(
               if (tFirst == null) tFirst = performance.now();
               set((s) => {
                 const list2 = s.messages[chatId] ?? [];
-                const updated = list2.map((m) => (m.id === replacement.id ? { ...m, content: m.content + delta } : m));
+                const updated = list2.map((m) =>
+                  m.id === replacement.id ? { ...m, content: m.content + delta } : m,
+                );
                 return { messages: { ...s.messages, [chatId]: updated } } as any;
               });
             },
             onReasoningToken: (delta) => {
               set((s) => {
                 const list2 = s.messages[chatId] ?? [];
-                const updated = list2.map((m) => (m.id === replacement.id ? { ...m, reasoning: (m.reasoning || '') + delta } : m));
+                const updated = list2.map((m) =>
+                  m.id === replacement.id ? { ...m, reasoning: (m.reasoning || '') + delta } : m,
+                );
                 return { messages: { ...s.messages, [chatId]: updated } } as any;
               });
             },
@@ -433,9 +698,20 @@ export function createMessageSlice(
               const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
               const completionMs = Math.max(0, Math.round(tEnd - tStart));
               const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
-              const completionTokens = extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
-              const tokensPerSec = completionTokens && completionMs ? +(completionTokens / (completionMs / 1000)).toFixed(2) : undefined;
-              const final = { ...replacement, content: full, reasoning: current?.reasoning, metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec }, tokensIn: promptTokens, tokensOut: completionTokens } as any;
+              const completionTokens =
+                extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
+              const tokensPerSec =
+                completionTokens && completionMs
+                  ? +(completionTokens / (completionMs / 1000)).toFixed(2)
+                  : undefined;
+              const final = {
+                ...replacement,
+                content: full,
+                reasoning: current?.reasoning,
+                metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
+                tokensIn: promptTokens,
+                tokensOut: completionTokens,
+              } as any;
               set((s) => {
                 const list3 = s.messages[chatId] ?? [];
                 const updated = list3.map((m) => (m.id === replacement.id ? final : m));
@@ -451,8 +727,12 @@ export function createMessageSlice(
           },
         });
       } catch (e: any) {
-        if (e?.message === 'unauthorized') set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Invalid API key' } }));
-        if (e?.message === 'rate_limited') set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Rate limited. Retry later.' } }));
+        if (e?.message === 'unauthorized')
+          set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Invalid API key' } }));
+        if (e?.message === 'rate_limited')
+          set((s) => ({
+            ui: { ...s.ui, isStreaming: false, notice: 'Rate limited. Retry later.' },
+          }));
         set((s) => ({ ...s, _controller: undefined }) as any);
       }
     },

@@ -4,4 +4,3 @@ export function estimateTokens(text: string | undefined): number | undefined {
   const chars = text.length;
   return Math.max(1, Math.round(chars / 4));
 }
-

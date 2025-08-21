@@ -7,4 +7,3 @@ export const HEADER_HEIGHT_PX = 56;
 // Streaming / UI tuning
 export const STREAM_SCROLL_THROTTLE_MS = 160;
 export const MAX_FALLBACK_RESULTS = 5;
-

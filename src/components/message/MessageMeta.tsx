@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import type { Message, Chat, ORModel } from '@/lib/types';
 import { computeCost } from '@/lib/cost';
 
@@ -21,10 +21,15 @@ export function MessageMeta({
   if (showStats && message.metrics) {
     const pt = message.metrics.promptTokens ?? message.tokensIn;
     const ct = message.metrics.completionTokens ?? message.tokensOut;
-    const { currency, total } = computeCost({ model: modelInfo, promptTokens: pt, completionTokens: ct });
+    const { currency, total } = computeCost({
+      model: modelInfo,
+      promptTokens: pt,
+      completionTokens: ct,
+    });
     cost = total && total > 0 ? `${currency} ${total.toFixed(5)}` : undefined;
     const contextLimit = modelInfo?.context_length ?? 8000;
-    const reservedForCompletion = typeof chatSettings.max_tokens === 'number' ? chatSettings.max_tokens! : 1024;
+    const reservedForCompletion =
+      typeof chatSettings.max_tokens === 'number' ? chatSettings.max_tokens! : 1024;
     const maxPromptTokens = Math.max(512, contextLimit - reservedForCompletion);
     if (pt != null && maxPromptTokens > 0) {
       ctxPct = Math.max(0, Math.min(100, Math.round((pt / maxPromptTokens) * 100)));
@@ -37,9 +42,15 @@ export function MessageMeta({
       {showStats && message.metrics && (
         <>
           <span> · TTFT {message.metrics.ttftMs ?? '–'} ms</span>
-          {message.metrics.promptTokens != null && <span> · in {message.metrics.promptTokens}</span>}
-          {message.metrics.completionTokens != null && <span> · out {message.metrics.completionTokens}</span>}
-          {message.metrics.tokensPerSec != null && <span> · {message.metrics.tokensPerSec} tok/s</span>}
+          {message.metrics.promptTokens != null && (
+            <span> · in {message.metrics.promptTokens}</span>
+          )}
+          {message.metrics.completionTokens != null && (
+            <span> · out {message.metrics.completionTokens}</span>
+          )}
+          {message.metrics.tokensPerSec != null && (
+            <span> · {message.metrics.tokensPerSec} tok/s</span>
+          )}
           {ctxPct != null && <span title="Context window fullness"> · ctx {ctxPct}%</span>}
           {cost && <span> · {cost}</span>}
         </>
@@ -47,4 +58,3 @@ export function MessageMeta({
     </>
   );
 }
-

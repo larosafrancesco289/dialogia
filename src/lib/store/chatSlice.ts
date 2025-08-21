@@ -61,7 +61,9 @@ export function createChatSlice(
     },
 
     async renameChat(id: string, title: string) {
-      set((s) => ({ chats: s.chats.map((c) => (c.id === id ? { ...c, title, updatedAt: Date.now() } : c)) }));
+      set((s) => ({
+        chats: s.chats.map((c) => (c.id === id ? { ...c, title, updatedAt: Date.now() } : c)),
+      }));
       const chat = get().chats.find((c) => c.id === id)!;
       await saveChat(chat);
     },
@@ -83,14 +85,22 @@ export function createChatSlice(
       const id = get().selectedChatId;
       if (!id) return;
       set((s) => ({
-        chats: s.chats.map((c) => (c.id === id ? { ...c, settings: { ...c.settings, ...partial }, updatedAt: Date.now() } : c)),
+        chats: s.chats.map((c) =>
+          c.id === id
+            ? { ...c, settings: { ...c.settings, ...partial }, updatedAt: Date.now() }
+            : c,
+        ),
       }));
       const chat = get().chats.find((c) => c.id === id)!;
       await saveChat(chat);
     },
 
     async moveChatToFolder(chatId: string, folderId?: string) {
-      set((s) => ({ chats: s.chats.map((c) => (c.id === chatId ? { ...c, folderId, updatedAt: Date.now() } : c)) }));
+      set((s) => ({
+        chats: s.chats.map((c) =>
+          c.id === chatId ? { ...c, folderId, updatedAt: Date.now() } : c,
+        ),
+      }));
       const chat = get().chats.find((c) => c.id === chatId)!;
       await saveChat(chat);
     },
@@ -98,13 +108,22 @@ export function createChatSlice(
     async createFolder(name: string, parentId?: string) {
       const id = uuidv4();
       const now = Date.now();
-      const folder: Folder = { id, name, createdAt: now, updatedAt: now, isExpanded: true, parentId };
+      const folder: Folder = {
+        id,
+        name,
+        createdAt: now,
+        updatedAt: now,
+        isExpanded: true,
+        parentId,
+      };
       await saveFolder(folder);
       set((s) => ({ folders: [...s.folders, folder] }));
     },
 
     async renameFolder(id: string, name: string) {
-      set((s) => ({ folders: s.folders.map((f) => (f.id === id ? { ...f, name, updatedAt: Date.now() } : f)) }));
+      set((s) => ({
+        folders: s.folders.map((f) => (f.id === id ? { ...f, name, updatedAt: Date.now() } : f)),
+      }));
       const folder = get().folders.find((f) => f.id === id)!;
       await saveFolder(folder);
     },
@@ -115,7 +134,11 @@ export function createChatSlice(
 
       const childFolders = get().folders.filter((f) => f.parentId === id);
       for (const childFolder of childFolders) {
-        set((s) => ({ folders: s.folders.map((f) => (f.id === childFolder.id ? { ...f, parentId: undefined, updatedAt: Date.now() } : f)) }));
+        set((s) => ({
+          folders: s.folders.map((f) =>
+            f.id === childFolder.id ? { ...f, parentId: undefined, updatedAt: Date.now() } : f,
+          ),
+        }));
         const updatedFolder = get().folders.find((f) => f.id === childFolder.id)!;
         await saveFolder(updatedFolder);
       }
@@ -125,10 +148,13 @@ export function createChatSlice(
     },
 
     async toggleFolderExpanded(id: string) {
-      set((s) => ({ folders: s.folders.map((f) => (f.id === id ? { ...f, isExpanded: !f.isExpanded, updatedAt: Date.now() } : f)) }));
+      set((s) => ({
+        folders: s.folders.map((f) =>
+          f.id === id ? { ...f, isExpanded: !f.isExpanded, updatedAt: Date.now() } : f,
+        ),
+      }));
       const folder = get().folders.find((f) => f.id === id)!;
       await saveFolder(folder);
     },
   } satisfies Partial<StoreState>;
 }
-

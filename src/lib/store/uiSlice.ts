@@ -21,4 +21,3 @@ export function createUiSlice(
     },
   } satisfies Partial<StoreState>;
 }
-

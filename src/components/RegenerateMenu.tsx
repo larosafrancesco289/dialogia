@@ -81,4 +81,3 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
     </div>
   );
 }
-
