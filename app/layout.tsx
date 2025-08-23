@@ -10,6 +10,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="bg-surface text-fg">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => { try { var m = localStorage.getItem('theme') || 'auto'; var d = window.matchMedia('(prefers-color-scheme: dark)').matches; var dark = m === 'dark' || (m === 'auto' && d); document.documentElement.classList.toggle('dark', dark); } catch (_) {} })();`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

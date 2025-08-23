@@ -53,7 +53,19 @@ export default function MessageList({ chatId }: { chatId: string }) {
   }, []);
 
   const scrollToBottom = (behavior: ScrollBehavior) => {
-    endRef.current?.scrollIntoView({ behavior, block: 'end' });
+    const el = containerRef.current;
+    if (!el) return;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distance <= 1) return; // already at bottom; avoid redundant scrolls
+    // Schedule after layout to avoid fighting with Resize/Mutation updates
+    requestAnimationFrame(() => {
+      try {
+        el.scrollTo({ top: el.scrollHeight, behavior });
+      } catch {
+        // Fallback for older browsers
+        el.scrollTop = el.scrollHeight;
+      }
+    });
   };
 
   // Scroll when a new message is added, but only if at bottom or if user sent the last message
@@ -117,10 +129,10 @@ export default function MessageList({ chatId }: { chatId: string }) {
       style={{ background: 'var(--color-canvas)' }}
     >
       {messages.map((m) => (
-        <div key={m.id} className={`card p-0 message-card`}>
+        <div key={m.id} className={`card p-0 message-card group`}>
           {m.role === 'assistant' ? (
             <div className="relative">
-              <div className="absolute top-2 right-2 z-30">
+              <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                 {editingId === m.id ? (
                   <div className="flex items-center gap-1">
                     <button
@@ -225,7 +237,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
           ) : (
             <div className="relative">
               {/* Edit control for user messages */}
-              <div className="absolute top-2 right-2 z-30">
+              <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                 {editingId === m.id ? (
                   <div className="flex items-center gap-1">
                     <button
