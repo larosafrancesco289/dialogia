@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useLayoutEffect, useRef, type ReactNode }
 import { createPortal } from 'react-dom';
 import ThemeToggle from '@/components/ThemeToggle';
 import IconButton from '@/components/IconButton';
-import { CloseCircleIcon } from '@/components/icons/Icons';
+import { CloseCircleIcon, CheckIcon, EditIcon, TrashIcon, PlusIcon } from '@/components/icons/Icons';
 import {
   getSystemPresets,
   addSystemPreset,
@@ -17,9 +17,7 @@ import {
 function Section(props: { title: string; children: ReactNode }) {
   return (
     <div className="card p-4 space-y-3">
-      <div className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
-        {props.title}
-      </div>
+      <div className="text-sm font-medium text-muted-foreground">{props.title}</div>
       {props.children}
     </div>
   );
@@ -181,17 +179,27 @@ export default function SettingsDrawer() {
       <div
         className={`fixed inset-0 bg-black/30 z-[70] settings-overlay${closing ? ' is-closing' : ''}`}
         onClick={closeWithAnim}
+        aria-hidden
       />
       <div
         className={`fixed inset-y-0 right-0 w-full sm:w-[520px] glass-panel border-l border-border shadow-[var(--shadow-card)] z-[80] overflow-y-auto will-change-transform settings-drawer${closing ? ' is-closing' : ''}`}
         style={{ overscrollBehavior: 'contain' }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        tabIndex={-1}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') closeWithAnim();
+        }}
       >
         {/* Header */}
         <div
           className="flex items-center gap-3 border-b border-border sticky top-0 glass z-10 px-4"
           style={{ height: 'var(--header-height)' }}
         >
-          <h3 className="font-semibold">Settings</h3>
+          <h3 id="settings-title" className="font-semibold">
+            Settings
+          </h3>
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
             <IconButton title="Close" onClick={closeWithAnim}>
@@ -200,7 +208,7 @@ export default function SettingsDrawer() {
           </div>
         </div>
 
-        <div className="px-4 py-4 space-y-4">
+        <div className="px-4 py-4 space-y-4 pb-8">
           {/* General */}
           <Section title="General">
             <div className="space-y-2">
@@ -220,84 +228,85 @@ export default function SettingsDrawer() {
                     </option>
                   ))}
                 </select>
-                <button
-                  className="btn btn-outline"
-                  disabled={!selectedPresetId}
-                  onClick={async () => {
-                    const p = presets.find((x) => x.id === selectedPresetId);
-                    if (!p) return;
-                    // Update textarea immediately for visibility
-                    setSystem(p.system);
-                    // Also persist to current chat so users don't need to click Save
-                    if (chat) {
-                      await updateChatSettings({ system: p.system });
-                    }
-                  }}
-                >
-                  Apply
-                </button>
-                <button
-                  className="btn btn-ghost"
-                  onClick={async () => {
-                    const name = window.prompt('Preset name?');
-                    if (name == null) return; // cancelled
-                    const p = await addSystemPreset(name, system);
-                    setSelectedPresetId(p.id);
-                    const list = await getSystemPresets();
-                    const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
-                    setPresets(sorted);
-                  }}
-                >
-                  Save as preset
-                </button>
-                <button
-                  className="btn btn-ghost"
-                  disabled={!selectedPresetId}
-                  onClick={async () => {
-                    const p = presets.find((x) => x.id === selectedPresetId);
-                    if (!p) return;
-                    const next = window.prompt('Rename preset', p.name);
-                    if (next == null) return;
-                    await updateSystemPreset(p.id, { name: next.trim() || p.name });
-                    const list = await getSystemPresets();
-                    const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
-                    setPresets(sorted);
-                  }}
-                >
-                  Rename
-                </button>
-                <button
-                  className="btn btn-ghost"
-                  disabled={!selectedPresetId}
-                  onClick={async () => {
-                    const p = presets.find((x) => x.id === selectedPresetId);
-                    if (!p) return;
-                    const ok = window.confirm(`Delete preset "${p.name}"?`);
-                    if (!ok) return;
-                    await deleteSystemPreset(p.id);
-                    const list = await getSystemPresets();
-                    const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
-                    setPresets(sorted);
-                    setSelectedPresetId('');
-                  }}
-                >
-                  Delete
-                </button>
+                <div className="flex items-center gap-1">
+                  <IconButton
+                    title="Apply preset"
+                    onClick={async () => {
+                      const p = presets.find((x) => x.id === selectedPresetId);
+                      if (!p) return;
+                      setSystem(p.system);
+                      if (chat) await updateChatSettings({ system: p.system });
+                    }}
+                    disabled={!selectedPresetId}
+                  >
+                    <CheckIcon />
+                  </IconButton>
+                  <IconButton
+                    title="Save as preset"
+                    onClick={async () => {
+                      const name = window.prompt('Preset name?');
+                      if (name == null) return;
+                      const p = await addSystemPreset(name, system);
+                      setSelectedPresetId(p.id);
+                      const list = await getSystemPresets();
+                      const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
+                      setPresets(sorted);
+                    }}
+                  >
+                    <PlusIcon />
+                  </IconButton>
+                  <IconButton
+                    title="Rename preset"
+                    onClick={async () => {
+                      const p = presets.find((x) => x.id === selectedPresetId);
+                      if (!p) return;
+                      const next = window.prompt('Rename preset', p.name);
+                      if (next == null) return;
+                      await updateSystemPreset(p.id, { name: next.trim() || p.name });
+                      const list = await getSystemPresets();
+                      const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
+                      setPresets(sorted);
+                    }}
+                    disabled={!selectedPresetId}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    title="Delete preset"
+                    onClick={async () => {
+                      const p = presets.find((x) => x.id === selectedPresetId);
+                      if (!p) return;
+                      const ok = window.confirm(`Delete preset "${p.name}"?`);
+                      if (!ok) return;
+                      await deleteSystemPreset(p.id);
+                      const list = await getSystemPresets();
+                      const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
+                      setPresets(sorted);
+                      setSelectedPresetId('');
+                    }}
+                    disabled={!selectedPresetId}
+                  >
+                    <TrashIcon />
+                  </IconButton>
+                </div>
               </div>
-              <textarea
-                className="textarea w-full"
-                rows={5}
-                placeholder="You are a helpful assistant."
-                value={system}
-                onChange={(e) => setSystem(e.target.value)}
-                onKeyDown={(e) => e.stopPropagation()}
-              />
+              <div className="text-xs text-muted-foreground">Choose, apply, save, or manage reusable system prompts.</div>
+              <div className="soft-divider" />
+                <textarea
+                  className="textarea w-full"
+                  rows={5}
+                  placeholder="You are a helpful assistant."
+                  value={system}
+                  onChange={(e) => setSystem(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}
+                />
+                <div className="text-xs text-muted-foreground">This is sent at the start of the chat to steer behavior.</div>
             </div>
           </Section>
 
           {/* Generation */}
           <Section title="Generation">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
                   <span>Temperature</span>
@@ -328,6 +337,7 @@ export default function SettingsDrawer() {
                   }}
                   onKeyDown={(e) => e.stopPropagation()}
                 />
+                <div className="text-xs text-muted-foreground">Higher = more creative. Leave blank for model default.</div>
               </div>
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
@@ -359,6 +369,7 @@ export default function SettingsDrawer() {
                   }}
                   onKeyDown={(e) => e.stopPropagation()}
                 />
+                <div className="text-xs text-muted-foreground">Nucleus sampling. 1.0 ≈ off. Leave blank for default.</div>
               </div>
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
@@ -390,13 +401,14 @@ export default function SettingsDrawer() {
                   }}
                   onKeyDown={(e) => e.stopPropagation()}
                 />
+                <div className="text-xs text-muted-foreground">Upper bound on output length. Leave blank to auto-select.</div>
               </div>
             </div>
           </Section>
 
           {/* Reasoning */}
           <Section title="Reasoning">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
                   <span>Reasoning effort</span>
@@ -418,6 +430,7 @@ export default function SettingsDrawer() {
                   <option value="medium">medium</option>
                   <option value="high">high</option>
                 </select>
+                <div className="text-xs text-muted-foreground">Request model reasoning depth (if supported).</div>
               </div>
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
@@ -449,13 +462,14 @@ export default function SettingsDrawer() {
                   }}
                   onKeyDown={(e) => e.stopPropagation()}
                 />
+                <div className="text-xs text-muted-foreground">Budget for chain‑of‑thought tokens (supported models only).</div>
               </div>
             </div>
           </Section>
 
           {/* Display */}
           <Section title="Display">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-sm block">Show thinking by default</label>
                 <div className="segmented">
@@ -472,7 +486,9 @@ export default function SettingsDrawer() {
                     Off
                   </button>
                 </div>
+                <div className="text-xs text-muted-foreground">Expand the reasoning panel automatically for new messages.</div>
               </div>
+              <div className="soft-divider" />
               <div className="space-y-1">
                 <label className="text-sm block">Show stats</label>
                 <div className="segmented">
@@ -489,6 +505,7 @@ export default function SettingsDrawer() {
                     Off
                   </button>
                 </div>
+                <div className="text-xs text-muted-foreground">Display model, timing, and cost info under messages.</div>
               </div>
             </div>
           </Section>
