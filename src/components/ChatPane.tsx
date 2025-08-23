@@ -14,9 +14,7 @@ export default function ChatPane() {
       <div className="flex-1 min-h-0">
         <MessageList chatId={chat.id} />
       </div>
-      <div className="border-t border-border">
-        <Composer />
-      </div>
+      <Composer />
       {/* Settings drawer is rendered at the app level so it's available on the welcome page too */}
     </div>
   );

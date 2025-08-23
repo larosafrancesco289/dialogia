@@ -36,6 +36,7 @@ export default function TopHeader() {
           <ChevronLeftIcon className="h-5 w-5" />
         )}
       </button>
+      {/* brand text not needed in unified header */}
       <div className="relative">
         <ModelPicker />
       </div>

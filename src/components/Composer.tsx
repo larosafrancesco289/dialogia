@@ -38,7 +38,7 @@ export default function Composer() {
   useAutogrowTextarea(taRef, [text]);
 
   return (
-    <div className="p-5 composer-chrome">
+    <div className="composer-chrome">
       <div className="flex items-center gap-3">
         <textarea
           ref={taRef}
