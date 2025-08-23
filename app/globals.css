@@ -148,6 +148,8 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 /* Settings drawer + overlay animations */
 .settings-overlay {
   animation: fade-in 180ms ease-out;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
 }
 @keyframes fade-in {
   from {
@@ -170,13 +172,20 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 }
 .settings-drawer {
   animation: drawer-in var(--duration-slow) var(--ease-standard);
+  border-top-left-radius: 22px;
+  border-bottom-left-radius: 22px;
+  overflow-x: hidden; /* allow vertical scrolling while clipping rounded corners */
 }
 @keyframes drawer-in {
-  from {
+  0% {
     transform: translateX(8%);
     opacity: 0.6;
   }
-  to {
+  70% {
+    transform: translateX(-1.5%);
+    opacity: 1;
+  }
+  100% {
     transform: translateX(0%);
     opacity: 1;
   }
@@ -185,12 +194,16 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   animation: drawer-out 200ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 @keyframes drawer-out {
-  from {
+  0% {
     transform: translateX(0%);
     opacity: 1;
   }
-  to {
+  80% {
     transform: translateX(6%);
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateX(8%);
     opacity: 0;
   }
 }
@@ -263,6 +276,13 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 }
 .menu-item:hover {
   background: var(--color-muted);
+}
+
+/* Soft divider for sheet sections */
+.soft-divider {
+  height: 1px;
+  background: color-mix(in oklab, var(--color-border) 85%, transparent);
+  margin: var(--space-3) 0;
 }
 
 /* Chat list item */
