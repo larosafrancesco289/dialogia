@@ -1,6 +1,7 @@
 import type { StoreState } from '@/lib/store/types';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { streamChatCompletion } from '@/lib/openrouter';
+import { findModelById, isReasoningSupported } from '@/lib/models';
 
 export function createCompareSlice(
   set: (fn: (s: StoreState) => Partial<StoreState> | void) => void,
@@ -123,157 +124,162 @@ export function createCompareSlice(
               models: get().models,
               newUserContent: prompt,
             });
-            await streamChatCompletion({
-              apiKey: key || '',
-              model: modelId,
-              messages: msgs,
-              temperature: chat?.settings.temperature,
-              top_p: chat?.settings.top_p,
-              max_tokens: chat?.settings.max_tokens,
-              reasoning_effort: chat?.settings.reasoning_effort,
-              reasoning_tokens: chat?.settings.reasoning_tokens,
-              signal: controller.signal,
-              callbacks: {
-                onToken: (delta) => {
-                  if (tFirst == null) tFirst = performance.now();
-                  set(
-                    (s) =>
-                      ({
-                        ui: {
-                          ...s.ui,
-                          compare: {
-                            ...(s.ui.compare || {
+            {
+              const modelMeta = findModelById(get().models, modelId);
+              const supportsReasoning = isReasoningSupported(modelMeta);
+              await streamChatCompletion({
+                apiKey: key || '',
+                model: modelId,
+                messages: msgs,
+                temperature: chat?.settings.temperature,
+                top_p: chat?.settings.top_p,
+                max_tokens: chat?.settings.max_tokens,
+                reasoning_effort: supportsReasoning ? chat?.settings.reasoning_effort : undefined,
+                reasoning_tokens: supportsReasoning ? chat?.settings.reasoning_tokens : undefined,
+                signal: controller.signal,
+                callbacks: {
+                  onToken: (delta) => {
+                    if (tFirst == null) tFirst = performance.now();
+                    set(
+                      (s) =>
+                        ({
+                          ui: {
+                            ...s.ui,
+                            compare: {
+                              ...(s.ui.compare || {
+                                isOpen: true,
+                                prompt,
+                                selectedModelIds: modelIds,
+                                runs: {},
+                              }),
                               isOpen: true,
-                              prompt,
+                              prompt: s.ui.compare?.prompt ?? prompt,
                               selectedModelIds: modelIds,
-                              runs: {},
-                            }),
-                            isOpen: true,
-                            prompt: s.ui.compare?.prompt ?? prompt,
-                            selectedModelIds: modelIds,
-                            runs: {
-                              ...(s.ui.compare?.runs || {}),
-                              [modelId]: {
-                                ...((s.ui.compare?.runs || {})[modelId] || {
+                              runs: {
+                                ...(s.ui.compare?.runs || {}),
+                                [modelId]: {
+                                  ...((s.ui.compare?.runs || {})[modelId] || {
+                                    status: 'running',
+                                    content: '',
+                                  }),
                                   status: 'running',
-                                  content: '',
-                                }),
-                                status: 'running',
-                                content: `${(s.ui.compare?.runs || {})[modelId]?.content || ''}${delta}`,
-                              },
-                            },
-                          },
-                        },
-                      }) as any,
-                  );
-                },
-                onReasoningToken: (delta) => {
-                  set(
-                    (s) =>
-                      ({
-                        ui: {
-                          ...s.ui,
-                          compare: {
-                            ...(s.ui.compare || {
-                              isOpen: true,
-                              prompt,
-                              selectedModelIds: modelIds,
-                              runs: {},
-                            }),
-                            runs: {
-                              ...(s.ui.compare?.runs || {}),
-                              [modelId]: {
-                                ...((s.ui.compare?.runs || {})[modelId] || {
-                                  status: 'running',
-                                  content: '',
-                                }),
-                                reasoning: `${(s.ui.compare?.runs || {})[modelId]?.reasoning || ''}${delta}`,
-                              },
-                            },
-                          },
-                        },
-                      }) as any,
-                  );
-                },
-                onDone: (full, extras) => {
-                  const tEnd = performance.now();
-                  const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
-                  const completionMs = Math.max(0, Math.round(tEnd - tStart));
-                  const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
-                  const completionTokens =
-                    extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
-                  const tokensPerSec =
-                    completionTokens && completionMs
-                      ? +(completionTokens / (completionMs / 1000)).toFixed(2)
-                      : undefined;
-                  set(
-                    (s) =>
-                      ({
-                        ui: {
-                          ...s.ui,
-                          compare: {
-                            ...(s.ui.compare || {
-                              isOpen: true,
-                              prompt,
-                              selectedModelIds: modelIds,
-                              runs: {},
-                            }),
-                            runs: {
-                              ...(s.ui.compare?.runs || {}),
-                              [modelId]: {
-                                ...((s.ui.compare?.runs || {})[modelId] || {
-                                  status: 'running',
-                                  content: '',
-                                }),
-                                status: 'done',
-                                content: full,
-                                metrics: {
-                                  ttftMs,
-                                  completionMs,
-                                  promptTokens,
-                                  completionTokens,
-                                  tokensPerSec,
+                                  content: `${(s.ui.compare?.runs || {})[modelId]?.content || ''}${delta}`,
                                 },
-                                tokensIn: promptTokens,
-                                tokensOut: completionTokens,
                               },
                             },
                           },
-                        },
-                      }) as any,
-                  );
-                },
-                onError: (err) => {
-                  set(
-                    (s) =>
-                      ({
-                        ui: {
-                          ...s.ui,
-                          compare: {
-                            ...(s.ui.compare || {
-                              isOpen: true,
-                              prompt,
-                              selectedModelIds: modelIds,
-                              runs: {},
-                            }),
-                            runs: {
-                              ...(s.ui.compare?.runs || {}),
-                              [modelId]: {
-                                ...((s.ui.compare?.runs || {})[modelId] || {
-                                  status: 'running',
-                                  content: '',
-                                }),
-                                status: 'error',
-                                error: err?.message || 'Error',
+                        }) as any,
+                    );
+                  },
+                  onReasoningToken: (delta) => {
+                    set(
+                      (s) =>
+                        ({
+                          ui: {
+                            ...s.ui,
+                            compare: {
+                              ...(s.ui.compare || {
+                                isOpen: true,
+                                prompt,
+                                selectedModelIds: modelIds,
+                                runs: {},
+                              }),
+                              runs: {
+                                ...(s.ui.compare?.runs || {}),
+                                [modelId]: {
+                                  ...((s.ui.compare?.runs || {})[modelId] || {
+                                    status: 'running',
+                                    content: '',
+                                  }),
+                                  reasoning: `${(s.ui.compare?.runs || {})[modelId]?.reasoning || ''}${delta}`,
+                                },
                               },
                             },
                           },
-                        },
-                      }) as any,
-                  );
+                        }) as any,
+                    );
+                  },
+                  onDone: (full, extras) => {
+                    const tEnd = performance.now();
+                    const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
+                    const completionMs = Math.max(0, Math.round(tEnd - tStart));
+                    const promptTokens =
+                      extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
+                    const completionTokens =
+                      extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
+                    const tokensPerSec =
+                      completionTokens && completionMs
+                        ? +(completionTokens / (completionMs / 1000)).toFixed(2)
+                        : undefined;
+                    set(
+                      (s) =>
+                        ({
+                          ui: {
+                            ...s.ui,
+                            compare: {
+                              ...(s.ui.compare || {
+                                isOpen: true,
+                                prompt,
+                                selectedModelIds: modelIds,
+                                runs: {},
+                              }),
+                              runs: {
+                                ...(s.ui.compare?.runs || {}),
+                                [modelId]: {
+                                  ...((s.ui.compare?.runs || {})[modelId] || {
+                                    status: 'running',
+                                    content: '',
+                                  }),
+                                  status: 'done',
+                                  content: full,
+                                  metrics: {
+                                    ttftMs,
+                                    completionMs,
+                                    promptTokens,
+                                    completionTokens,
+                                    tokensPerSec,
+                                  },
+                                  tokensIn: promptTokens,
+                                  tokensOut: completionTokens,
+                                },
+                              },
+                            },
+                          },
+                        }) as any,
+                    );
+                  },
+                  onError: (err) => {
+                    set(
+                      (s) =>
+                        ({
+                          ui: {
+                            ...s.ui,
+                            compare: {
+                              ...(s.ui.compare || {
+                                isOpen: true,
+                                prompt,
+                                selectedModelIds: modelIds,
+                                runs: {},
+                              }),
+                              runs: {
+                                ...(s.ui.compare?.runs || {}),
+                                [modelId]: {
+                                  ...((s.ui.compare?.runs || {})[modelId] || {
+                                    status: 'running',
+                                    content: '',
+                                  }),
+                                  status: 'error',
+                                  error: err?.message || 'Error',
+                                },
+                              },
+                            },
+                          },
+                        }) as any,
+                    );
+                  },
                 },
-              },
-            });
+              });
+            }
           } catch (e: any) {
             if (e?.name === 'AbortError') {
               set(

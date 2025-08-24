@@ -7,6 +7,7 @@ export type UIState = {
   sidebarCollapsed?: boolean;
   nextModel?: string;
   nextSearchWithBrave?: boolean;
+  nextReasoningEffort?: 'none' | 'low' | 'medium' | 'high';
   braveByMessageId?: Record<
     string,
     {

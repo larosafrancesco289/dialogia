@@ -4,6 +4,7 @@ import { useChatStore } from '@/lib/store';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
+import ReasoningEffortMenu from '@/components/ReasoningEffortMenu';
 
 export default function WelcomeHero() {
   const [query, setQuery] = useState('');
@@ -56,6 +57,8 @@ export default function WelcomeHero() {
             >
               <MagnifyingGlassIcon className="h-4 w-4" />
             </button>
+            {/* Reasoning effort picker visible on hero when model supports it */}
+            <ReasoningEffortMenu />
             <button
               className="btn btn-outline self-center"
               onClick={start}

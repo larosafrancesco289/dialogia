@@ -46,7 +46,7 @@ export function createChatSlice(
         settings: {
           model: get().ui.nextModel ?? DEFAULT_MODEL_ID,
           system: 'You are a helpful assistant.',
-          reasoning_effort: undefined,
+          reasoning_effort: get().ui.nextReasoningEffort ?? undefined,
           show_thinking_by_default: true,
           show_stats: true,
           search_with_brave: get().ui.nextSearchWithBrave ?? false,

@@ -4,6 +4,7 @@ import { useChatStore } from '@/lib/store';
 import { StopIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
+import ReasoningEffortMenu from '@/components/ReasoningEffortMenu';
 
 export default function Composer() {
   const send = useChatStore((s) => s.sendUserMessage);
@@ -80,6 +81,8 @@ export default function Composer() {
             >
               <MagnifyingGlassIcon className="h-4 w-4" />
             </button>
+            {/* Show reasoning effort picker only for reasoning-capable models */}
+            <ReasoningEffortMenu />
             <button
               className="btn btn-outline self-center"
               onClick={onSend}
