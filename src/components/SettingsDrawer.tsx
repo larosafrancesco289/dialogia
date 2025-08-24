@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState, useLayoutEffect, useRef, type ReactNode }
 import { createPortal } from 'react-dom';
 import ThemeToggle from '@/components/ThemeToggle';
 import IconButton from '@/components/IconButton';
-import { CloseCircleIcon, CheckIcon, EditIcon, TrashIcon, PlusIcon } from '@/components/icons/Icons';
+import {
+  CloseCircleIcon,
+  CheckIcon,
+  EditIcon,
+  TrashIcon,
+  PlusIcon,
+} from '@/components/icons/Icons';
 import {
   getSystemPresets,
   addSystemPreset,
@@ -290,17 +296,21 @@ export default function SettingsDrawer() {
                   </IconButton>
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground">Choose, apply, save, or manage reusable system prompts.</div>
+              <div className="text-xs text-muted-foreground">
+                Choose, apply, save, or manage reusable system prompts.
+              </div>
               <div className="soft-divider" />
-                <textarea
-                  className="textarea w-full"
-                  rows={5}
-                  placeholder="You are a helpful assistant."
-                  value={system}
-                  onChange={(e) => setSystem(e.target.value)}
-                  onKeyDown={(e) => e.stopPropagation()}
-                />
-                <div className="text-xs text-muted-foreground">This is sent at the start of the chat to steer behavior.</div>
+              <textarea
+                className="textarea w-full"
+                rows={5}
+                placeholder="You are a helpful assistant."
+                value={system}
+                onChange={(e) => setSystem(e.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+              <div className="text-xs text-muted-foreground">
+                This is sent at the start of the chat to steer behavior.
+              </div>
             </div>
           </Section>
 
@@ -337,7 +347,9 @@ export default function SettingsDrawer() {
                   }}
                   onKeyDown={(e) => e.stopPropagation()}
                 />
-                <div className="text-xs text-muted-foreground">Higher = more creative. Leave blank for model default.</div>
+                <div className="text-xs text-muted-foreground">
+                  Higher = more creative. Leave blank for model default.
+                </div>
               </div>
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
@@ -369,7 +381,9 @@ export default function SettingsDrawer() {
                   }}
                   onKeyDown={(e) => e.stopPropagation()}
                 />
-                <div className="text-xs text-muted-foreground">Nucleus sampling. 1.0 ≈ off. Leave blank for default.</div>
+                <div className="text-xs text-muted-foreground">
+                  Nucleus sampling. 1.0 ≈ off. Leave blank for default.
+                </div>
               </div>
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
@@ -401,7 +415,9 @@ export default function SettingsDrawer() {
                   }}
                   onKeyDown={(e) => e.stopPropagation()}
                 />
-                <div className="text-xs text-muted-foreground">Upper bound on output length. Leave blank to auto-select.</div>
+                <div className="text-xs text-muted-foreground">
+                  Upper bound on output length. Leave blank to auto-select.
+                </div>
               </div>
             </div>
           </Section>
@@ -430,7 +446,9 @@ export default function SettingsDrawer() {
                   <option value="medium">medium</option>
                   <option value="high">high</option>
                 </select>
-                <div className="text-xs text-muted-foreground">Request model reasoning depth (if supported).</div>
+                <div className="text-xs text-muted-foreground">
+                  Request model reasoning depth (if supported).
+                </div>
               </div>
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
@@ -462,7 +480,9 @@ export default function SettingsDrawer() {
                   }}
                   onKeyDown={(e) => e.stopPropagation()}
                 />
-                <div className="text-xs text-muted-foreground">Budget for chain‑of‑thought tokens (supported models only).</div>
+                <div className="text-xs text-muted-foreground">
+                  Budget for chain‑of‑thought tokens (supported models only).
+                </div>
               </div>
             </div>
           </Section>
@@ -486,7 +506,9 @@ export default function SettingsDrawer() {
                     Off
                   </button>
                 </div>
-                <div className="text-xs text-muted-foreground">Expand the reasoning panel automatically for new messages.</div>
+                <div className="text-xs text-muted-foreground">
+                  Expand the reasoning panel automatically for new messages.
+                </div>
               </div>
               <div className="soft-divider" />
               <div className="space-y-1">
@@ -505,7 +527,9 @@ export default function SettingsDrawer() {
                     Off
                   </button>
                 </div>
-                <div className="text-xs text-muted-foreground">Display model, timing, and cost info under messages.</div>
+                <div className="text-xs text-muted-foreground">
+                  Display model, timing, and cost info under messages.
+                </div>
               </div>
             </div>
           </Section>

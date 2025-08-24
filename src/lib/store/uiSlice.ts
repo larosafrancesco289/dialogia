@@ -10,6 +10,7 @@ export function createUiSlice(
     sidebarCollapsed: false,
     nextModel: undefined,
     nextSearchWithBrave: false,
+    nextReasoningEffort: undefined,
     braveByMessageId: {},
     compare: { isOpen: false, prompt: '', selectedModelIds: [], runs: {} },
   };
