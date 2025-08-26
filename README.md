@@ -19,6 +19,7 @@ Dialogia is a local-first chat UI for OpenRouter models.
 - Optional Brave web search augmentation for source-grounded answers
 - Basic cost estimate when pricing metadata is available
 - Local persistence via Dexie (IndexedDB)
+ - Privacy-first: ZDR-only model filtering (default on)
 
 ### Screenshots
 
@@ -97,6 +98,10 @@ Security notes:
 - Prefer server‑side proxy (`NEXT_PUBLIC_USE_OR_PROXY=true`) so API keys stay on the server.
 - Avoid storing provider secrets in `NEXT_PUBLIC_*` variables whenever possible.
 - The Brave Search integration runs only on the server via `/api/brave` and requires `BRAVE_SEARCH_API_KEY`.
+ - By default, Dialogia limits model discovery to OpenRouter providers that advertise a Zero Data
+   Retention (ZDR) policy, fetched from `https://openrouter.ai/api/endpoints/zdr`. You can toggle
+   this in Settings → Privacy. To change the default, set `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=false` in
+   `.env.local`. Using an API key restricted to ZDR providers also works seamlessly.
 
 Code tree:
 

@@ -3,6 +3,92 @@ const USE_PROXY = process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
 
 const OR_BASE = 'https://openrouter.ai/api/v1' as const;
 
+// Fetch provider identifiers for endpoints that are Zero Data Retention (ZDR)
+// Returns a set of provider prefixes (e.g., 'moonshotai') to match against model ids
+export async function fetchZdrProviderIds(): Promise<Set<string>> {
+  const url = USE_PROXY
+    ? '/api/openrouter/endpoints/zdr'
+    : 'https://openrouter.ai/api/v1/endpoints/zdr';
+  try {
+    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' as any });
+    if (!res.ok) throw new Error(`zdr_failed_${res.status}`);
+    const data = await res.json();
+    const items: any[] = Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data)
+        ? data
+        : Array.isArray(data?.endpoints)
+          ? data.endpoints
+          : [];
+    const providers = new Set<string>();
+    for (const ep of items) {
+      const tryAdd = (val: unknown) => {
+        if (typeof val === 'string' && val.trim()) providers.add(val.trim());
+      };
+      // Prefer explicit provider identifiers if present
+      tryAdd((ep && (ep.provider || ep.provider_id || ep.slug || ep.id)) as any);
+      // If models list is present, derive prefixes from model ids
+      const models: any[] = Array.isArray(ep?.models) ? ep.models : [];
+      for (const m of models) {
+        const id: string | undefined = typeof m === 'string' ? m : m?.id;
+        if (id && id.includes('/')) tryAdd(id.split('/')[0]);
+      }
+      // If id looks like 'provider/model', derive provider
+      const eid: string | undefined = ep?.id;
+      if (eid && eid.includes('/')) tryAdd(eid.split('/')[0]);
+      // Normalize some known host->provider mappings if a URL is present
+      const urlStr: string | undefined = ep?.url || ep?.endpoint || ep?.base_url;
+      if (typeof urlStr === 'string') {
+        const u = urlStr.toLowerCase();
+        if (u.includes('moonshot')) providers.add('moonshotai');
+        if (u.includes('mistral')) providers.add('mistralai');
+        if (u.includes('perplexity')) providers.add('perplexity');
+        if (u.includes('openai')) providers.add('openai');
+      }
+    }
+    return providers;
+  } catch (_e) {
+    // No fallback providers in strict mode
+    return new Set();
+  }
+}
+
+// Fetch a set of model ids that are explicitly ZDR-enabled, when provided by the endpoint
+export async function fetchZdrModelIds(): Promise<Set<string>> {
+  const url = USE_PROXY
+    ? '/api/openrouter/endpoints/zdr'
+    : 'https://openrouter.ai/api/v1/endpoints/zdr';
+  try {
+    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' as any });
+    if (!res.ok) throw new Error(`zdr_failed_${res.status}`);
+    const data = await res.json();
+    const items: any[] = Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data)
+        ? data
+        : Array.isArray(data?.endpoints)
+          ? data.endpoints
+          : [];
+    const modelIds = new Set<string>();
+    for (const ep of items) {
+      // Preferred: parse from `name` pattern "Provider | provider/model"
+      if (typeof ep?.name === 'string' && ep.name.includes('|')) {
+        const rhs = ep.name.split('|')[1]?.trim();
+        if (rhs && rhs.includes('/')) modelIds.add(rhs);
+      }
+      // Fallbacks: some entries may include explicit models arrays
+      const models: any[] = Array.isArray(ep?.models) ? ep.models : [];
+      for (const m of models) {
+        const id = typeof m === 'string' ? m : typeof m?.id === 'string' ? m.id : undefined;
+        if (id && id.includes('/')) modelIds.add(id);
+      }
+    }
+    return modelIds;
+  } catch (_e) {
+    return new Set();
+  }
+}
+
 export async function fetchModels(apiKey: string): Promise<ORModel[]> {
   const url = USE_PROXY ? '/api/openrouter/models' : `${OR_BASE}/models`;
   const headers: Record<string, string> = USE_PROXY
@@ -64,6 +150,7 @@ export async function chatCompletion(params: {
   tools?: any[];
   tool_choice?: 'auto' | { type: 'function'; function: { name: string } };
   signal?: AbortSignal;
+  providerSort?: 'price' | 'throughput';
 }) {
   const {
     apiKey,
@@ -77,6 +164,7 @@ export async function chatCompletion(params: {
     tools,
     tool_choice,
     signal,
+    providerSort,
   } = params;
 
   const body: any = { model, messages, stream: false };
@@ -89,6 +177,9 @@ export async function chatCompletion(params: {
   if (Object.keys(reasoningConfig).length > 0) body.reasoning = reasoningConfig;
   if (Array.isArray(tools) && tools.length > 0) body.tools = tools;
   if (tool_choice) body.tool_choice = tool_choice;
+  if (providerSort === 'price' || providerSort === 'throughput') {
+    body.provider = { ...(body.provider || {}), sort: providerSort };
+  }
 
   const url = USE_PROXY ? '/api/openrouter/chat/completions' : `${OR_BASE}/chat/completions`;
   const res = await fetch(url, {
@@ -125,6 +216,7 @@ export async function streamChatCompletion(params: {
   reasoning_tokens?: number;
   signal?: AbortSignal;
   callbacks?: StreamCallbacks;
+  providerSort?: 'price' | 'throughput';
 }) {
   const {
     apiKey,
@@ -137,6 +229,7 @@ export async function streamChatCompletion(params: {
     reasoning_tokens,
     signal,
     callbacks,
+    providerSort,
   } = params;
 
   // Build body with only provided optional fields so OpenRouter can apply model defaults
@@ -150,6 +243,9 @@ export async function streamChatCompletion(params: {
   if (typeof reasoning_effort === 'string') reasoningConfig.effort = reasoning_effort;
   if (typeof reasoning_tokens === 'number') reasoningConfig.max_tokens = reasoning_tokens;
   if (Object.keys(reasoningConfig).length > 0) body.reasoning = reasoningConfig;
+  if (providerSort === 'price' || providerSort === 'throughput') {
+    body.provider = { ...(body.provider || {}), sort: providerSort };
+  }
 
   const url2 = USE_PROXY ? '/api/openrouter/chat/completions' : `${OR_BASE}/chat/completions`;
   const res = await fetch(url2, {

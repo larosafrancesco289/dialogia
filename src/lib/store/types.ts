@@ -8,6 +8,10 @@ export type UIState = {
   nextModel?: string;
   nextSearchWithBrave?: boolean;
   nextReasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  // Privacy preference: only allow/show Zero Data Retention endpoints
+  zdrOnly?: boolean;
+  // Routing preference: prioritize speed or cost
+  routePreference?: 'speed' | 'cost';
   braveByMessageId?: Record<
     string,
     {
@@ -45,6 +49,8 @@ export type StoreState = {
   models: ORModel[];
   favoriteModelIds: string[];
   hiddenModelIds: string[];
+  // Cached ZDR model ids (ephemeral; not persisted)
+  zdrModelIds?: string[];
 
   ui: UIState;
 

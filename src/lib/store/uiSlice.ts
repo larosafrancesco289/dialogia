@@ -1,4 +1,5 @@
 import type { StoreState, UIState } from '@/lib/store/types';
+import { defaultZdrOnly } from '@/lib/env';
 
 export function createUiSlice(
   set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
@@ -11,6 +12,8 @@ export function createUiSlice(
     nextModel: undefined,
     nextSearchWithBrave: false,
     nextReasoningEffort: undefined,
+    zdrOnly: defaultZdrOnly(),
+    routePreference: 'speed',
     braveByMessageId: {},
     compare: { isOpen: false, prompt: '', selectedModelIds: [], runs: {} },
   };

@@ -9,3 +9,10 @@ export function hasBraveKey(): boolean {
 export function useOpenRouterProxy(): boolean {
   return process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
 }
+
+// Default for the ZDR-only preference; on unless explicitly disabled
+export function defaultZdrOnly(): boolean {
+  const v = process.env.NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT;
+  if (v == null) return true;
+  return String(v).toLowerCase() !== 'false';
+}

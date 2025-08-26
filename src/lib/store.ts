@@ -39,6 +39,8 @@ export const useChatStore = create<StoreState>()(
           sidebarCollapsed: s.ui.sidebarCollapsed,
           nextModel: s.ui.nextModel,
           nextSearchWithBrave: s.ui.nextSearchWithBrave,
+          zdrOnly: s.ui.zdrOnly,
+          routePreference: s.ui.routePreference,
         },
       }),
     },

@@ -4,7 +4,7 @@ import type { Message } from '@/lib/types';
 import { saveMessage } from '@/lib/db';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { stripLeadingToolJson } from '@/lib/agent/streaming';
-import { streamChatCompletion, chatCompletion } from '@/lib/openrouter';
+import { streamChatCompletion, chatCompletion, fetchZdrModelIds } from '@/lib/openrouter';
 import { isReasoningSupported, findModelById } from '@/lib/models';
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 
@@ -22,6 +22,25 @@ export function createMessageSlice(
         }));
       const chatId = get().selectedChatId!;
       const chat = get().chats.find((c) => c.id === chatId)!;
+      // Strict ZDR enforcement: block sending to non-ZDR models when enabled
+      if (get().ui.zdrOnly !== false) {
+        let allowed = new Set(get().zdrModelIds || []);
+        if (allowed.size === 0) {
+          try {
+            allowed = await fetchZdrModelIds();
+            set({ zdrModelIds: Array.from(allowed) } as any);
+          } catch {}
+        }
+        const modelId = chat.settings.model;
+        if (!allowed.has(modelId)) {
+          return set((s) => ({
+            ui: {
+              ...s.ui,
+              notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not ZDR. Choose a ZDR model in Settings.`,
+            },
+          }));
+        }
+      }
       const now = Date.now();
       const userMsg: Message = { id: uuidv4(), chatId, role: 'user', content, createdAt: now };
       const assistantMsg: Message = {
@@ -56,6 +75,7 @@ export function createMessageSlice(
       }
 
       const attemptToolUse = !!chat.settings.search_with_brave;
+      const providerSort = get().ui.routePreference === 'cost' ? 'price' : 'throughput';
       const toolPreambleText =
         'You have access to a function tool named "web_search" that retrieves up-to-date web results.\n\nWhen you need current, factual, or source-backed information, call the tool first. If you call a tool, respond with ONLY tool_calls (no user-facing text). After the tool returns, write the final answer that cites sources inline as [n] using the numbering provided.\n\nweb_search(args): { query: string, count?: integer 1-10 }. Choose a focused query and a small count, and avoid unnecessary calls.';
       const combinedSystemForThisTurn = attemptToolUse
@@ -151,20 +171,21 @@ export function createMessageSlice(
           while (rounds < 3) {
             const modelMeta = findModelById(get().models, chat.settings.model);
             const supportsReasoning = isReasoningSupported(modelMeta);
-            const resp = await chatCompletion({
-              apiKey: key || '',
-              model: chat.settings.model,
-              messages: convo as any,
-              temperature: chat.settings.temperature,
-              top_p: chat.settings.top_p,
-              max_tokens: chat.settings.max_tokens,
-              reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-              reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-              tools: toolDefinition as any,
-              // Let the model decide whether to call the tool
-              tool_choice: 'auto' as any,
-              signal: controller.signal,
-            });
+          const resp = await chatCompletion({
+            apiKey: key || '',
+            model: chat.settings.model,
+            messages: convo as any,
+            temperature: chat.settings.temperature,
+            top_p: chat.settings.top_p,
+            max_tokens: chat.settings.max_tokens,
+            reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
+            reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+            tools: toolDefinition as any,
+            // Let the model decide whether to call the tool
+            tool_choice: 'auto' as any,
+            signal: controller.signal,
+            providerSort,
+          });
             finalUsage = resp?.usage;
             const choice = resp?.choices?.[0];
             const message = choice?.message || {};
@@ -346,6 +367,7 @@ export function createMessageSlice(
               reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
               reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
               signal: controller.signal,
+              providerSort,
               callbacks: {
                 onToken: (delta) => {
                   if (tFirstPlan == null) tFirstPlan = performance.now();
@@ -476,6 +498,7 @@ export function createMessageSlice(
             reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
             reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
             signal: controller.signal,
+            providerSort,
             callbacks: {
               onToken: (delta) => {
                 if (tFirst == null) tFirst = performance.now();
@@ -638,6 +661,25 @@ export function createMessageSlice(
         }));
       const chatId = get().selectedChatId!;
       const chat = get().chats.find((c) => c.id === chatId)!;
+      // Strict ZDR enforcement for regenerate
+      if (get().ui.zdrOnly !== false) {
+        let allowed = new Set(get().zdrModelIds || []);
+        if (allowed.size === 0) {
+          try {
+            allowed = await fetchZdrModelIds();
+            set({ zdrModelIds: Array.from(allowed) } as any);
+          } catch {}
+        }
+        const modelId = opts?.modelId || chat.settings.model;
+        if (!allowed.has(modelId)) {
+          return set((s) => ({
+            ui: {
+              ...s.ui,
+              notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not ZDR. Choose a ZDR model in Settings.`,
+            },
+          }));
+        }
+      }
       const list = get().messages[chatId] ?? [];
       const idx = list.findIndex((m) => m.id === messageId);
       if (idx === -1) return;

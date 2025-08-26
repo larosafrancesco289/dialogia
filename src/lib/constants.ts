@@ -1,4 +1,4 @@
-export const DEFAULT_MODEL_ID = 'openai/gpt-5-chat';
+export const DEFAULT_MODEL_ID = 'moonshotai/kimi-k2';
 export const PINNED_MODEL_ID = DEFAULT_MODEL_ID;
 
 // UI layout constants

@@ -1,7 +1,8 @@
 import type { StoreState } from '@/lib/store/types';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
-import { streamChatCompletion } from '@/lib/openrouter';
+import { streamChatCompletion, fetchZdrModelIds } from '@/lib/openrouter';
 import { findModelById, isReasoningSupported } from '@/lib/models';
+import { DEFAULT_MODEL_ID } from '@/lib/constants';
 
 export function createCompareSlice(
   set: (fn: (s: StoreState) => Partial<StoreState> | void) => void,
@@ -12,7 +13,7 @@ export function createCompareSlice(
       set((s) => {
         const chatId = get().selectedChatId;
         const chat = chatId ? get().chats.find((c) => c.id === chatId) : undefined;
-        const fallback = s.ui.nextModel || 'openai/gpt-5-chat';
+        const fallback = s.ui.nextModel || DEFAULT_MODEL_ID;
         const currentModel = chat?.settings.model || fallback;
         const existing = s.ui.compare?.selectedModelIds || [];
         const initial = existing.length > 0 ? existing : [currentModel].filter(Boolean);
@@ -69,6 +70,30 @@ export function createCompareSlice(
         return set((s) => ({
           ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
         }));
+      // Strict ZDR enforcement for compare: filter out non-ZDR models
+      if (get().ui.zdrOnly !== false) {
+        let allowed = new Set(get().zdrModelIds || []);
+        if (allowed.size === 0) {
+          try {
+            allowed = await fetchZdrModelIds();
+            set({ zdrModelIds: Array.from(allowed) } as any);
+          } catch {}
+        }
+        const filtered = (modelIds || []).filter((id) => allowed.has(id));
+        if (filtered.length === 0) {
+          return set((s) => {
+            const prev = s.ui.compare || { isOpen: false, prompt: '', selectedModelIds: [], runs: {} };
+            return {
+              ui: {
+                ...s.ui,
+                notice: 'ZDR-only is enabled. None of the selected models are ZDR.',
+                compare: { ...prev, selectedModelIds: [] },
+              },
+            } as any;
+          });
+        }
+        modelIds = filtered;
+      }
       const chatId = get().selectedChatId;
       const chat = chatId ? get().chats.find((c) => c.id === chatId)! : undefined;
       const prior = chatId ? (get().messages[chatId] ?? []) : [];
@@ -127,6 +152,7 @@ export function createCompareSlice(
             {
               const modelMeta = findModelById(get().models, modelId);
               const supportsReasoning = isReasoningSupported(modelMeta);
+              const providerSort = get().ui.routePreference === 'cost' ? 'price' : 'throughput';
               await streamChatCompletion({
                 apiKey: key || '',
                 model: modelId,
@@ -137,6 +163,7 @@ export function createCompareSlice(
                 reasoning_effort: supportsReasoning ? chat?.settings.reasoning_effort : undefined,
                 reasoning_tokens: supportsReasoning ? chat?.settings.reasoning_tokens : undefined,
                 signal: controller.signal,
+                providerSort,
                 callbacks: {
                   onToken: (delta) => {
                     if (tFirst == null) tFirst = performance.now();
