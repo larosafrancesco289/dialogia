@@ -35,6 +35,7 @@ export default function SettingsDrawer() {
     selectedChatId,
     updateChatSettings,
     setUI,
+    ui,
     loadModels,
     toggleFavoriteModel,
     favoriteModelIds,
@@ -74,6 +75,9 @@ export default function SettingsDrawer() {
   const [showStats, setShowStats] = useState<boolean>(chat?.settings.show_stats ?? true);
   const [closing, setClosing] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [routePref, setRoutePref] = useState<'speed' | 'cost'>(
+    (useChatStore.getState().ui.routePreference as any) || 'speed',
+  );
   // System prompt presets
   const [presets, setPresets] = useState<SystemPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
@@ -311,8 +315,72 @@ export default function SettingsDrawer() {
               <div className="text-xs text-muted-foreground">
                 This is sent at the start of the chat to steer behavior.
               </div>
+        </div>
+      </Section>
+
+      {/* Privacy */}
+      <Section title="Privacy">
+        <div className="space-y-2">
+          <label className="text-sm flex items-center justify-between">
+            <span>Zero Data Retention (ZDR) only</span>
+            <div className="segmented">
+              <button
+                className={`segment ${ui?.zdrOnly !== false ? 'is-active' : ''}`}
+                onClick={() => {
+                  setUI({ zdrOnly: true });
+                  loadModels();
+                }}
+              >
+                On
+              </button>
+              <button
+                className={`segment ${ui?.zdrOnly === false ? 'is-active' : ''}`}
+                onClick={() => {
+                  setUI({ zdrOnly: false });
+                  loadModels();
+                }}
+              >
+                Off
+              </button>
             </div>
-          </Section>
+          </label>
+          <div className="text-xs text-muted-foreground">
+            When enabled, model search results are limited to providers with a Zero Data
+            Retention policy (fetched from OpenRouter). Curated defaults also follow this.
+          </div>
+        </div>
+      </Section>
+
+      {/* Routing */}
+      <Section title="Routing">
+        <div className="space-y-2">
+          <label className="text-sm block">Route preference</label>
+          <div className="segmented">
+            <button
+              className={`segment ${routePref === 'speed' ? 'is-active' : ''}`}
+              onClick={() => {
+                setRoutePref('speed');
+                setUI({ routePreference: 'speed' });
+              }}
+            >
+              Speed
+            </button>
+            <button
+              className={`segment ${routePref === 'cost' ? 'is-active' : ''}`}
+              onClick={() => {
+                setRoutePref('cost');
+                setUI({ routePreference: 'cost' });
+              }}
+            >
+              Cost
+            </button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Speed sorts by provider throughput; Cost sorts by price. OpenRouter routing uses this
+            hint when selecting a provider for the chosen model.
+          </div>
+        </div>
+      </Section>
 
           {/* Generation */}
           <Section title="Generation">

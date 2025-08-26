@@ -15,13 +15,17 @@ export default function ModelPicker() {
     favoriteModelIds,
     hiddenModelIds,
     removeModelFromDropdown,
+    models,
   } = useChatStore();
   const chat = chats.find((c: any) => c.id === selectedChatId);
   const curated = CURATED_MODELS;
-  const customOptions = useMemo(
-    () => (favoriteModelIds || []).map((id: string) => ({ id, name: id })),
-    [favoriteModelIds],
-  );
+  const allowedSet = useMemo(() => new Set((models || []).map((m: any) => m.id)), [models]);
+  const customOptions = useMemo(() => {
+    const allowed = new Set((models || []).map((m: any) => m.id));
+    return (favoriteModelIds || [])
+      .filter((id: string) => allowed.has(id))
+      .map((id: string) => ({ id, name: id }));
+  }, [favoriteModelIds, models]);
   const allOptions = useMemo(() => {
     return [...curated, ...customOptions].reduce((acc: any[], m: any) => {
       if (!acc.find((x) => x.id === m.id)) acc.push(m);
@@ -34,9 +38,13 @@ export default function ModelPicker() {
   }, [allOptions, hiddenModelIds]);
   const [open, setOpen] = useState(false);
   const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
+  const allowedIds = new Set((models || []).map((m: any) => m.id));
+  const effectiveSelectedId = ui?.zdrOnly !== false && selectedId && !allowedIds.has(selectedId)
+    ? undefined
+    : selectedId;
   const current =
-    allOptions.find((o) => o.id === selectedId) ||
-    (selectedId ? { id: selectedId, name: selectedId } : undefined) ||
+    allOptions.find((o) => o.id === effectiveSelectedId) ||
+    (effectiveSelectedId ? { id: effectiveSelectedId, name: effectiveSelectedId } : undefined) ||
     options[0];
   const choose = (modelId: string) => {
     if (chat) {

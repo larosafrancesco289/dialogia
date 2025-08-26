@@ -4,7 +4,7 @@ import { useChatStore } from '@/lib/store';
 import { Markdown } from '@/lib/markdown';
 import { createPortal } from 'react-dom';
 import { CURATED_MODELS } from '@/data/curatedModels';
-import { PINNED_MODEL_ID } from '@/lib/constants';
+import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
 import IconButton from '@/components/IconButton';
 import { CloseCircleIcon, StopSquareIcon } from '@/components/icons/Icons';
 
@@ -33,11 +33,12 @@ export default function CompareDrawer() {
   const curated = useMemo(() => CURATED_MODELS, []);
   const favoriteOptions = useMemo(() => {
     const nameById = new Map((models || []).map((m) => [m.id, m.name as string | undefined]));
+    const allowed = new Set((models || []).map((m) => m.id));
     return (favoriteModelIds || [])
-      .filter((id): id is string => Boolean(id && typeof id === 'string'))
+      .filter((id): id is string => Boolean(id && typeof id === 'string' && allowed.has(id)))
       .map((id) => ({ id, name: nameById.get(id) || id }));
   }, [favoriteModelIds, models]);
-  const currentModelId = chat?.settings.model || ui.nextModel || 'openai/gpt-5-chat';
+  const currentModelId = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
   const selectedOptions = useMemo(() => {
     const map = new Map<string, { id: string; name?: string }>();
     const fromModels = new Map((models || []).map((m) => [m.id, m.name as string | undefined]));
