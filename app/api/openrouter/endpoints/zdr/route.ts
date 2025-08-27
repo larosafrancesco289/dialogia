@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
     const body = await res.text();
     return new Response(body, {
       status: res.status,
-      headers: { 'Content-Type': res.headers.get('content-type') || 'application/json' },
+      headers: {
+        'Content-Type': res.headers.get('content-type') || 'application/json',
+        'Cache-Control': 'no-store',
+      },
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'proxy_error' }, { status: 500 });

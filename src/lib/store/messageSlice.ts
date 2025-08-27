@@ -4,7 +4,7 @@ import type { Message } from '@/lib/types';
 import { saveMessage } from '@/lib/db';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { stripLeadingToolJson } from '@/lib/agent/streaming';
-import { streamChatCompletion, chatCompletion, fetchZdrModelIds } from '@/lib/openrouter';
+import { streamChatCompletion, chatCompletion, fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
 import { isReasoningSupported, findModelById } from '@/lib/models';
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 
@@ -24,21 +24,41 @@ export function createMessageSlice(
       const chat = get().chats.find((c) => c.id === chatId)!;
       // Strict ZDR enforcement: block sending to non-ZDR models when enabled
       if (get().ui.zdrOnly !== false) {
-        let allowed = new Set(get().zdrModelIds || []);
-        if (allowed.size === 0) {
+        const modelId = chat.settings.model;
+        let allowedModelIds = new Set(get().zdrModelIds || []);
+        if (allowedModelIds.size === 0) {
           try {
-            allowed = await fetchZdrModelIds();
-            set({ zdrModelIds: Array.from(allowed) } as any);
+            allowedModelIds = await fetchZdrModelIds();
+            set({ zdrModelIds: Array.from(allowedModelIds) } as any);
           } catch {}
         }
-        const modelId = chat.settings.model;
-        if (!allowed.has(modelId)) {
-          return set((s) => ({
-            ui: {
-              ...s.ui,
-              notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not ZDR. Choose a ZDR model in Settings.`,
-            },
-          }));
+        if (allowedModelIds.size > 0) {
+          if (!allowedModelIds.has(modelId)) {
+            return set((s) => ({
+              ui: {
+                ...s.ui,
+                notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not ZDR. Choose a ZDR model in Settings.`,
+              },
+            }));
+          }
+        } else {
+          // Fallback to provider-based allowance when explicit list unavailable
+          let providers = new Set(get().zdrProviderIds || []);
+          if (providers.size === 0) {
+            try {
+              providers = await fetchZdrProviderIds();
+              set({ zdrProviderIds: Array.from(providers) } as any);
+            } catch {}
+          }
+          const providerPrefix = (modelId || '').split('/')[0];
+          if (!providerPrefix || !providers.has(providerPrefix)) {
+            return set((s) => ({
+              ui: {
+                ...s.ui,
+                notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not from a ZDR provider. Choose a ZDR model in Settings.`,
+              },
+            }));
+          }
         }
       }
       const now = Date.now();
@@ -661,23 +681,42 @@ export function createMessageSlice(
         }));
       const chatId = get().selectedChatId!;
       const chat = get().chats.find((c) => c.id === chatId)!;
-      // Strict ZDR enforcement for regenerate
+      // ZDR enforcement for regenerate with provider fallback
       if (get().ui.zdrOnly !== false) {
-        let allowed = new Set(get().zdrModelIds || []);
-        if (allowed.size === 0) {
+        const modelId = opts?.modelId || chat.settings.model;
+        let allowedModelIds = new Set(get().zdrModelIds || []);
+        if (allowedModelIds.size === 0) {
           try {
-            allowed = await fetchZdrModelIds();
-            set({ zdrModelIds: Array.from(allowed) } as any);
+            allowedModelIds = await fetchZdrModelIds();
+            set({ zdrModelIds: Array.from(allowedModelIds) } as any);
           } catch {}
         }
-        const modelId = opts?.modelId || chat.settings.model;
-        if (!allowed.has(modelId)) {
-          return set((s) => ({
-            ui: {
-              ...s.ui,
-              notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not ZDR. Choose a ZDR model in Settings.`,
-            },
-          }));
+        if (allowedModelIds.size > 0) {
+          if (!allowedModelIds.has(modelId)) {
+            return set((s) => ({
+              ui: {
+                ...s.ui,
+                notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not ZDR. Choose a ZDR model in Settings.`,
+              },
+            }));
+          }
+        } else {
+          let providers = new Set(get().zdrProviderIds || []);
+          if (providers.size === 0) {
+            try {
+              providers = await fetchZdrProviderIds();
+              set({ zdrProviderIds: Array.from(providers) } as any);
+            } catch {}
+          }
+          const providerPrefix = (modelId || '').split('/')[0];
+          if (!providerPrefix || !providers.has(providerPrefix)) {
+            return set((s) => ({
+              ui: {
+                ...s.ui,
+                notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not from a ZDR provider. Choose a ZDR model in Settings.`,
+              },
+            }));
+          }
         }
       }
       const list = get().messages[chatId] ?? [];

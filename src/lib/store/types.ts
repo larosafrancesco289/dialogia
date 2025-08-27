@@ -8,6 +8,13 @@ export type UIState = {
   nextModel?: string;
   nextSearchWithBrave?: boolean;
   nextReasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  nextReasoningTokens?: number;
+  nextSystem?: string;
+  nextTemperature?: number;
+  nextTopP?: number;
+  nextMaxTokens?: number;
+  nextShowThinking?: boolean;
+  nextShowStats?: boolean;
   // Privacy preference: only allow/show Zero Data Retention endpoints
   zdrOnly?: boolean;
   // Routing preference: prioritize speed or cost
@@ -51,6 +58,8 @@ export type StoreState = {
   hiddenModelIds: string[];
   // Cached ZDR model ids (ephemeral; not persisted)
   zdrModelIds?: string[];
+  // Cached ZDR provider ids (ephemeral; not persisted)
+  zdrProviderIds?: string[];
 
   ui: UIState;
 

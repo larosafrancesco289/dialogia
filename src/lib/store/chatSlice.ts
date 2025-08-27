@@ -45,10 +45,14 @@ export function createChatSlice(
         updatedAt: now,
         settings: {
           model: get().ui.nextModel ?? DEFAULT_MODEL_ID,
-          system: 'You are a helpful assistant.',
+          system: get().ui.nextSystem ?? 'You are a helpful assistant.',
+          temperature: get().ui.nextTemperature ?? undefined,
+          top_p: get().ui.nextTopP ?? undefined,
+          max_tokens: get().ui.nextMaxTokens ?? undefined,
           reasoning_effort: get().ui.nextReasoningEffort ?? undefined,
-          show_thinking_by_default: true,
-          show_stats: true,
+          reasoning_tokens: get().ui.nextReasoningTokens ?? undefined,
+          show_thinking_by_default: get().ui.nextShowThinking ?? true,
+          show_stats: get().ui.nextShowStats ?? true,
           search_with_brave: get().ui.nextSearchWithBrave ?? false,
         },
       };

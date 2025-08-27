@@ -26,7 +26,7 @@ export function createModelSlice(
           fetchZdrModelIds(),
           fetchZdrProviderIds(),
         ]);
-        set({ zdrModelIds: Array.from(modelIds) } as any);
+        set({ zdrModelIds: Array.from(modelIds), zdrProviderIds: Array.from(providers) } as any);
         // If user prefers ZDR-only, restrict models to explicit ZDR ids first, provider fallback second
         const zdrOnly = get().ui.zdrOnly !== false; // default to true
         if (zdrOnly) {

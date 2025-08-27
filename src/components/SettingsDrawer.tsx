@@ -96,8 +96,22 @@ export default function SettingsDrawer() {
 
   // Keep local state in sync when switching chats or reopening the drawer
   useEffect(() => {
+    // When switching chats, sync drawer fields from the selected chat
+    setSystem(chat?.settings.system ?? '');
+    setTemperature(chat?.settings.temperature);
+    setTopP(chat?.settings.top_p);
+    setMaxTokens(chat?.settings.max_tokens);
+    setTemperatureStr(chat?.settings.temperature != null ? String(chat.settings.temperature) : '');
+    setTopPStr(chat?.settings.top_p != null ? String(chat.settings.top_p) : '');
+    setMaxTokensStr(chat?.settings.max_tokens != null ? String(chat.settings.max_tokens) : '');
     setReasoningEffort(chat?.settings.reasoning_effort);
-  }, [chat?.id, chat?.settings.reasoning_effort]);
+    setReasoningTokens(chat?.settings.reasoning_tokens);
+    setReasoningTokensStr(
+      chat?.settings.reasoning_tokens != null ? String(chat.settings.reasoning_tokens) : '',
+    );
+    setShowThinking(chat?.settings.show_thinking_by_default ?? true);
+    setShowStats(chat?.settings.show_stats ?? true);
+  }, [chat?.id]);
 
   // Prevent background scroll while drawer is open
   useEffect(() => {
@@ -696,8 +710,17 @@ export default function SettingsDrawer() {
                   show_stats: showStats,
                 });
               } else {
-                // No chat yet, persist defaults for the next chat
-                setUI({ nextModel: undefined });
+                // Persist defaults for the next chat when no chat exists
+                setUI({
+                  nextSystem: system,
+                  nextTemperature: temperature,
+                  nextTopP: top_p,
+                  nextMaxTokens: max_tokens,
+                  nextReasoningEffort: (reasoningEffort || undefined) as any,
+                  nextReasoningTokens: reasoningTokens,
+                  nextShowThinking: showThinking,
+                  nextShowStats: showStats,
+                });
               }
               closeWithAnim();
             }}

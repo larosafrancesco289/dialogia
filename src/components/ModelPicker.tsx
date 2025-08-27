@@ -19,7 +19,6 @@ export default function ModelPicker() {
   } = useChatStore();
   const chat = chats.find((c: any) => c.id === selectedChatId);
   const curated = CURATED_MODELS;
-  const allowedSet = useMemo(() => new Set((models || []).map((m: any) => m.id)), [models]);
   const customOptions = useMemo(() => {
     const allowed = new Set((models || []).map((m: any) => m.id));
     return (favoriteModelIds || [])
@@ -34,8 +33,15 @@ export default function ModelPicker() {
   }, [customOptions]);
   const options = useMemo(() => {
     const hidden = new Set(hiddenModelIds || []);
-    return allOptions.filter((m: any) => m.id === PINNED_MODEL_ID || !hidden.has(m.id));
-  }, [allOptions, hiddenModelIds]);
+    const allowedIds = new Set((models || []).map((m: any) => m.id));
+    return allOptions.filter((m: any) => {
+      if (m.id === PINNED_MODEL_ID) return true;
+      if (hidden.has(m.id)) return false;
+      // When ZDR-only is on, restrict to models currently allowed/listed
+      if (ui?.zdrOnly !== false) return allowedIds.has(m.id);
+      return true;
+    });
+  }, [allOptions, hiddenModelIds, models, ui?.zdrOnly]);
   const [open, setOpen] = useState(false);
   const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
   const allowedIds = new Set((models || []).map((m: any) => m.id));

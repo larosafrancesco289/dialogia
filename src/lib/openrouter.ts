@@ -96,7 +96,6 @@ export async function fetchModels(apiKey: string): Promise<ORModel[]> {
     : {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost:3000',
         'X-Title': 'Dialogia',
       };
   // Add a conservative timeout to avoid hung UI if the network stalls
@@ -190,7 +189,6 @@ export async function chatCompletion(params: {
         : {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'http://localhost:3000',
             'X-Title': 'Dialogia',
           }),
     },
@@ -256,7 +254,6 @@ export async function streamChatCompletion(params: {
         : {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'http://localhost:3000',
             'X-Title': 'Dialogia',
           }),
     },

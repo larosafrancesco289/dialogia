@@ -23,7 +23,10 @@ export async function POST(req: NextRequest) {
     const contentType = res.headers.get('content-type') || 'application/json';
     return new Response(res.body, {
       status: res.status,
-      headers: { 'Content-Type': contentType },
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'no-store',
+      },
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'proxy_error' }, { status: 500 });
