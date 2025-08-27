@@ -1,6 +1,6 @@
 import type { StoreState } from '@/lib/store/types';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
-import { streamChatCompletion, fetchZdrModelIds } from '@/lib/openrouter';
+import { streamChatCompletion, fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
 import { findModelById, isReasoningSupported } from '@/lib/models';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 
@@ -70,16 +70,28 @@ export function createCompareSlice(
         return set((s) => ({
           ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
         }));
-      // Strict ZDR enforcement for compare: filter out non-ZDR models
+      // ZDR enforcement for compare: use provider fallback if explicit ZDR list is unavailable
       if (get().ui.zdrOnly !== false) {
-        let allowed = new Set(get().zdrModelIds || []);
-        if (allowed.size === 0) {
+        let allowedModelIds = new Set(get().zdrModelIds || []);
+        if (allowedModelIds.size === 0) {
           try {
-            allowed = await fetchZdrModelIds();
-            set({ zdrModelIds: Array.from(allowed) } as any);
+            allowedModelIds = await fetchZdrModelIds();
+            set({ zdrModelIds: Array.from(allowedModelIds) } as any);
           } catch {}
         }
-        const filtered = (modelIds || []).filter((id) => allowed.has(id));
+        let filtered: string[] = [];
+        if (allowedModelIds.size > 0) {
+          filtered = (modelIds || []).filter((id) => allowedModelIds.has(id));
+        } else {
+          let providers = new Set(get().zdrProviderIds || []);
+          if (providers.size === 0) {
+            try {
+              providers = await fetchZdrProviderIds();
+              set({ zdrProviderIds: Array.from(providers) } as any);
+            } catch {}
+          }
+          filtered = (modelIds || []).filter((id) => providers.has(String(id).split('/')[0]));
+        }
         if (filtered.length === 0) {
           return set((s) => {
             const prev = s.ui.compare || { isOpen: false, prompt: '', selectedModelIds: [], runs: {} };
