@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const OR_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OR_RERANK_URL = 'https://openrouter.ai/api/v1/rerank';
 
 export async function POST(req: NextRequest) {
   const serverKey = process.env.OPENROUTER_API_KEY;
@@ -10,29 +10,22 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.text();
-    const res = await fetch(OR_CHAT_URL, {
+    const res = await fetch(OR_RERANK_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${serverKey}`,
         'Content-Type': 'application/json',
-        // App attribution headers recommended by OpenRouter
         'HTTP-Referer': req.headers.get('origin') || 'http://localhost:3000',
         'X-Title': 'Dialogia',
       },
       body,
       cache: 'no-store',
     });
-
-    // Stream or JSON passthrough
     return new Response(res.body, {
       status: res.status,
       headers: {
         'Content-Type': res.headers.get('content-type') || 'application/json',
         'Cache-Control': 'no-store',
-        // Preserve SSE semantics if present
-        ...(res.headers.get('content-type')?.includes('text/event-stream')
-          ? { Connection: 'keep-alive', 'Transfer-Encoding': 'chunked' }
-          : {}),
       },
     });
   } catch (e: any) {
