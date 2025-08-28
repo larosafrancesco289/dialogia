@@ -1,26 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const OR_MODELS_URL = 'https://openrouter.ai/api/v1/models';
+const OR_BASE = 'https://openrouter.ai/api/v1';
 
 export async function GET(req: NextRequest) {
-  const serverKey = process.env.OPENROUTER_API_KEY;
-  if (!serverKey) {
-    return NextResponse.json({ error: 'Missing OPENROUTER_API_KEY' }, { status: 400 });
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: 'Missing OPENROUTER_API_KEY (server)' }, { status: 500 });
   }
-
   try {
-    const res = await fetch(OR_MODELS_URL, {
-      method: 'GET',
+    const res = await fetch(`${OR_BASE}/models`, {
       headers: {
-        Authorization: `Bearer ${serverKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        // Required by OpenRouter for client apps
         'HTTP-Referer': req.headers.get('origin') || 'http://localhost:3000',
         'X-Title': 'Dialogia',
       },
       cache: 'no-store',
     });
-
     const body = await res.text();
     return new Response(body, {
       status: res.status,
@@ -33,4 +29,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: e?.message || 'proxy_error' }, { status: 500 });
   }
 }
-

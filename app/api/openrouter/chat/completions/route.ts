@@ -1,42 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const OR_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OR_BASE = 'https://openrouter.ai/api/v1';
 
 export async function POST(req: NextRequest) {
-  const serverKey = process.env.OPENROUTER_API_KEY;
-  if (!serverKey) {
-    return NextResponse.json({ error: 'Missing OPENROUTER_API_KEY' }, { status: 400 });
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: 'Missing OPENROUTER_API_KEY (server)' }, { status: 500 });
   }
-
   try {
     const body = await req.text();
-    const res = await fetch(OR_CHAT_URL, {
+    const res = await fetch(`${OR_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${serverKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        // App attribution headers recommended by OpenRouter
         'HTTP-Referer': req.headers.get('origin') || 'http://localhost:3000',
         'X-Title': 'Dialogia',
       },
       body,
-      cache: 'no-store',
     });
-
-    // Stream or JSON passthrough
+    // Pass through streaming or JSON response as-is
+    const contentType = res.headers.get('content-type') || 'application/json';
     return new Response(res.body, {
       status: res.status,
       headers: {
-        'Content-Type': res.headers.get('content-type') || 'application/json',
+        'Content-Type': contentType,
         'Cache-Control': 'no-store',
-        // Preserve SSE semantics if present
-        ...(res.headers.get('content-type')?.includes('text/event-stream')
-          ? { Connection: 'keep-alive', 'Transfer-Encoding': 'chunked' }
-          : {}),
       },
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'proxy_error' }, { status: 500 });
   }
 }
-
