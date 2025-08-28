@@ -132,6 +132,14 @@ export type StreamCallbacks = {
   onError?: (err: Error) => void;
 };
 
+export type ProviderSort = 'price' | 'throughput' | 'latency';
+
+export type JsonSchema = {
+  name?: string;
+  schema: Record<string, any>;
+  strict?: boolean;
+};
+
 // OpenAI-compatible non-streaming chat completion with optional tool support
 export async function chatCompletion(params: {
   apiKey: string;
@@ -149,7 +157,9 @@ export async function chatCompletion(params: {
   tools?: any[];
   tool_choice?: 'auto' | { type: 'function'; function: { name: string } };
   signal?: AbortSignal;
-  providerSort?: 'price' | 'throughput';
+  providerSort?: ProviderSort;
+  response_format?: { type: 'json_object' } | { type: 'json_schema'; json_schema: JsonSchema };
+  plugins?: Array<{ id: string }>;
 }) {
   const {
     apiKey,
@@ -176,9 +186,11 @@ export async function chatCompletion(params: {
   if (Object.keys(reasoningConfig).length > 0) body.reasoning = reasoningConfig;
   if (Array.isArray(tools) && tools.length > 0) body.tools = tools;
   if (tool_choice) body.tool_choice = tool_choice;
-  if (providerSort === 'price' || providerSort === 'throughput') {
+  if (providerSort === 'price' || providerSort === 'throughput' || providerSort === 'latency') {
     body.provider = { ...(body.provider || {}), sort: providerSort };
   }
+  if (params.response_format) body.response_format = params.response_format as any;
+  if (params.plugins && params.plugins.length > 0) body.plugins = params.plugins;
 
   const url = USE_PROXY ? '/api/openrouter/chat/completions' : `${OR_BASE}/chat/completions`;
   const res = await fetch(url, {
@@ -214,7 +226,9 @@ export async function streamChatCompletion(params: {
   reasoning_tokens?: number;
   signal?: AbortSignal;
   callbacks?: StreamCallbacks;
-  providerSort?: 'price' | 'throughput';
+  providerSort?: ProviderSort;
+  response_format?: { type: 'json_object' } | { type: 'json_schema'; json_schema: JsonSchema };
+  plugins?: Array<{ id: string }>;
 }) {
   const {
     apiKey,
@@ -241,9 +255,11 @@ export async function streamChatCompletion(params: {
   if (typeof reasoning_effort === 'string') reasoningConfig.effort = reasoning_effort;
   if (typeof reasoning_tokens === 'number') reasoningConfig.max_tokens = reasoning_tokens;
   if (Object.keys(reasoningConfig).length > 0) body.reasoning = reasoningConfig;
-  if (providerSort === 'price' || providerSort === 'throughput') {
+  if (providerSort === 'price' || providerSort === 'throughput' || providerSort === 'latency') {
     body.provider = { ...(body.provider || {}), sort: providerSort };
   }
+  if (params.response_format) body.response_format = params.response_format as any;
+  if (params.plugins && params.plugins.length > 0) body.plugins = params.plugins;
 
   const url2 = USE_PROXY ? '/api/openrouter/chat/completions' : `${OR_BASE}/chat/completions`;
   const res = await fetch(url2, {
@@ -320,4 +336,86 @@ export async function streamChatCompletion(params: {
     }
   }
   callbacks?.onDone?.(full, { usage });
+}
+
+// Convenience helper for structured outputs (JSON)
+export async function chatCompletionJson<T>(params: Omit<Parameters<typeof chatCompletion>[0], 'response_format'> & {
+  schema?: JsonSchema | Record<string, any>;
+}): Promise<{ content: T; raw: any }> {
+  const rf = params.schema
+    ? 'schema' in params.schema
+      ? { type: 'json_schema', json_schema: params.schema as JsonSchema }
+      : { type: 'json_schema', json_schema: { name: 'Schema', schema: params.schema as any } }
+    : ({ type: 'json_object' } as const);
+  const resp = await chatCompletion({ ...(params as any), response_format: rf });
+  const text = resp?.choices?.[0]?.message?.content || '{}';
+  let parsed: any = {};
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // Best‑effort fallback
+  }
+  return { content: parsed as T, raw: resp };
+}
+
+// Build OpenAI-style multimodal message content parts from simple inputs
+export function buildMultimodalContent(args: {
+  text?: string;
+  images?: Array<{ url?: string; data?: string; mimeType?: string }>;
+}): Array<any> {
+  const parts: any[] = [];
+  if (args.text) parts.push({ type: 'text', text: args.text });
+  for (const img of args.images || []) {
+    if (img.url) parts.push({ type: 'image_url', image_url: { url: img.url } });
+    else if (img.data) parts.push({ type: 'input_image', mime_type: img.mimeType || 'image/png', data: img.data });
+  }
+  return parts;
+}
+
+// Embeddings API wrapper
+export async function createEmbeddings(params: {
+  apiKey: string;
+  model: string;
+  input: string | string[];
+  signal?: AbortSignal;
+}) {
+  const url = USE_PROXY ? '/api/openrouter/embeddings' : `${OR_BASE}/embeddings`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      ...(USE_PROXY
+        ? { 'Content-Type': 'application/json' }
+        : { Authorization: `Bearer ${params.apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'Dialogia' }),
+    },
+    body: JSON.stringify({ model: params.model, input: params.input }),
+    signal: params.signal,
+  });
+  if (res.status === 401 || res.status === 403) throw new Error('unauthorized');
+  if (!res.ok) throw new Error(`embeddings_failed_${res.status}`);
+  return res.json();
+}
+
+// Rerank API wrapper
+export async function rerankDocuments(params: {
+  apiKey: string;
+  model: string;
+  query: string;
+  documents: string[];
+  top_k?: number;
+  signal?: AbortSignal;
+}) {
+  const url = USE_PROXY ? '/api/openrouter/rerank' : `${OR_BASE}/rerank`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      ...(USE_PROXY
+        ? { 'Content-Type': 'application/json' }
+        : { Authorization: `Bearer ${params.apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'Dialogia' }),
+    },
+    body: JSON.stringify({ model: params.model, query: params.query, documents: params.documents, top_n: params.top_k }),
+    signal: params.signal,
+  });
+  if (res.status === 401 || res.status === 403) throw new Error('unauthorized');
+  if (!res.ok) throw new Error(`rerank_failed_${res.status}`);
+  return res.json();
 }
