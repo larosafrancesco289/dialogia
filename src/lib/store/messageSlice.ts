@@ -13,6 +13,27 @@ export function createMessageSlice(
   get: () => StoreState,
 ) {
   return {
+    async appendAssistantMessage(content: string, opts?: { modelId?: string }) {
+      const chatId = get().selectedChatId!;
+      const chat = get().chats.find((c) => c.id === chatId)!;
+      const now = Date.now();
+      const assistantMsg: Message = {
+        id: uuidv4(),
+        chatId,
+        role: 'assistant',
+        content,
+        createdAt: now,
+        model: opts?.modelId || chat.settings.model,
+        reasoning: '',
+      };
+      set((s) => ({
+        messages: {
+          ...s.messages,
+          [chatId]: [...(s.messages[chatId] ?? []), assistantMsg],
+        },
+      }));
+      await saveMessage(assistantMsg);
+    },
     async sendUserMessage(content: string) {
       const useProxy = process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
       const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;

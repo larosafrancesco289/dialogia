@@ -15,6 +15,12 @@ export function isReasoningSupported(model?: ORModel | null): boolean {
   return false;
 }
 
+export function isVisionSupported(model?: ORModel | null): boolean {
+  const supported = getSupportedParameters(model);
+  // Heuristics: many providers list 'vision' or 'image' in supported parameters
+  return supported.includes('vision') || supported.includes('image') || supported.includes('images');
+}
+
 export function findModelById(models: ORModel[] | undefined, id?: string): ORModel | undefined {
   if (!models || !id) return undefined;
   return models.find((m) => m.id === id);

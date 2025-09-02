@@ -104,6 +104,9 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const isSourcesExpanded = (id: string) => expandedSourcesIds[id] ?? true;
   const editUserMessage = useChatStore((s) => s.editUserMessage);
   const editAssistantMessage = useChatStore((s) => s.editAssistantMessage);
+  const [expandedStatsIds, setExpandedStatsIds] = useState<Record<string, boolean>>({});
+  const toggleStats = (id: string) => setExpandedStatsIds((s) => ({ ...s, [id]: !s[id] }));
+  const isStatsExpanded = (id: string) => expandedStatsIds[id] ?? false;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const saveEdit = (messageId: string) => {
@@ -217,22 +220,35 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   <Markdown content={m.content} />
                 )}
               </div>
-              <div className="px-4 pb-3 -mt-2">
-                <div className="text-xs text-muted-foreground">
-                  {(() => {
-                    const modelId = m.model || chat?.settings.model || 'unknown';
-                    return (
-                      <MessageMeta
-                        message={m}
-                        modelId={modelId}
-                        chatSettings={chat!.settings}
-                        models={models}
-                        showStats={showStats}
-                      />
-                    );
-                  })()}
+              {showStats && (
+                <div className="px-4 pb-3 -mt-2">
+                  {isStatsExpanded(m.id) ? (
+                    <div className="text-xs text-muted-foreground">
+                      {(() => {
+                        const modelId = m.model || chat?.settings.model || 'unknown';
+                        return (
+                          <MessageMeta
+                            message={m}
+                            modelId={modelId}
+                            chatSettings={chat!.settings}
+                            models={models}
+                            showStats={true}
+                          />
+                        );
+                      })()}
+                      <div className="mt-1">
+                        <button className="badge" onClick={() => toggleStats(m.id)}>
+                          Hide stats
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button className="badge" onClick={() => toggleStats(m.id)}>
+                      stats
+                    </button>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             <div className="relative">

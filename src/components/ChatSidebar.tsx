@@ -36,6 +36,7 @@ export default function ChatSidebar() {
   const [editTitle, setEditTitle] = useState('');
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     loadModels();
@@ -44,6 +45,21 @@ export default function ChatSidebar() {
   // Get top-level folders and root-level chats
   const rootFolders = folders.filter((f) => !f.parentId);
   const rootChats = chats.filter((c) => !c.folderId);
+
+  // Simple name matcher
+  const match = (text?: string) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return (text || '').toLowerCase().includes(q);
+  };
+  const folderMatches = (folderId: string): boolean => {
+    const f = folders.find((x) => x.id === folderId);
+    if (!f) return false;
+    if (match(f.name)) return true;
+    const subFolders = folders.filter((x) => x.parentId === folderId);
+    const hasChat = chats.some((c) => c.folderId === folderId && match(c.title));
+    return hasChat || subFolders.some((sf) => folderMatches(sf.id));
+  };
 
   const handleCreateFolder = async () => {
     if (newFolderName.trim()) {
@@ -109,6 +125,18 @@ export default function ChatSidebar() {
         </div>
       )}
 
+      {/* Search */}
+      {!collapsed && (
+        <div className="sidebar-section pb-2">
+          <input
+            className="input w-full text-sm"
+            placeholder="Search chats"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      )}
+
       {!collapsed && (
         <div className="sidebar-section text-xs text-muted-foreground font-medium uppercase tracking-wider pb-2">
           Chats
@@ -129,12 +157,16 @@ export default function ChatSidebar() {
         }}
       >
         {/* Root folders */}
-        {rootFolders.map((folder) => (
-          <FolderItem key={folder.id} folder={folder} />
-        ))}
+        {rootFolders
+          .filter((folder) => (query ? folderMatches(folder.id) : true))
+          .map((folder) => (
+            <FolderItem key={folder.id} folder={folder} />
+          ))}
 
         {/* Root chats */}
-        {rootChats.map((chat) => (
+        {rootChats
+          .filter((chat) => (query ? match(chat.title) : true))
+          .map((chat) => (
           <RootChatItem
             key={chat.id}
             chat={chat}
@@ -155,7 +187,7 @@ export default function ChatSidebar() {
             onDelete={() => deleteChat(chat.id)}
             onEditTitleChange={setEditTitle}
           />
-        ))}
+          ))}
       </div>
     </div>
   );

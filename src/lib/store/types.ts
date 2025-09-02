@@ -112,4 +112,6 @@ export type StoreState = {
     opts?: { rerun?: boolean },
   ) => Promise<void>;
   editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
+  // utility for UI features (e.g., compare drawer inserting a result)
+  appendAssistantMessage: (content: string, opts?: { modelId?: string }) => Promise<void>;
 };

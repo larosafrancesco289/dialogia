@@ -22,12 +22,14 @@ export default function CompareDrawer() {
   const selectedChatId = useChatStore((s) => s.selectedChatId);
   const loadModels = useChatStore((s) => s.loadModels);
   const compare = ui.compare || { isOpen: false, prompt: '', selectedModelIds: [], runs: {} };
+  const updateChatSettings = useChatStore((s) => s.updateChatSettings);
   const [closing, setClosing] = useState(false);
   const closeWithAnim = () => {
     setClosing(true);
     window.setTimeout(() => closeCompare(), 190);
   };
   const chat = chats.find((c) => c.id === selectedChatId);
+  const appendAssistantMessage = useChatStore((s) => s.appendAssistantMessage);
 
   // Curated + favorites list for quick selection (use model metadata when available)
   const curated = useMemo(() => CURATED_MODELS, []);
@@ -350,6 +352,44 @@ export default function CompareDrawer() {
                           {title}
                         </div>
                         <div className="text-xs text-muted-foreground">{run?.status || 'idle'}</div>
+                      </div>
+                      <div className="px-3 py-2 flex items-center gap-2 justify-end">
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={async () => {
+                            const text = (run?.content || '').trim();
+                            if (!text) return;
+                            try {
+                              await navigator.clipboard.writeText(text);
+                            } catch {}
+                          }}
+                          title="Copy result to clipboard"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={async () => {
+                            const text = (run?.content || '').trim();
+                            if (!text || !chat) return;
+                            await appendAssistantMessage(text, { modelId: id });
+                            closeWithAnim();
+                          }}
+                          title="Insert result into chat"
+                        >
+                          Insert to chat
+                        </button>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={() => {
+                            if (chat) updateChatSettings({ model: id });
+                            else setCompare({});
+                            closeWithAnim();
+                          }}
+                          title="Use this model in chat"
+                        >
+                          Use model
+                        </button>
                       </div>
                       {run?.reasoning && run.reasoning.length > 0 && (
                         <div className="px-3 pt-3">
