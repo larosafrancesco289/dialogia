@@ -387,6 +387,13 @@ a:hover {
   font-size: 12px;
   color: var(--color-fg-muted);
 }
+.badge:hover {
+  background: color-mix(in oklab, var(--color-muted) 70%, transparent);
+}
+button.badge,
+a.badge {
+  cursor: pointer;
+}
 .badge-accent {
   display: inline-flex;
   align-items: center;
