@@ -153,6 +153,7 @@ export async function chatCompletion(params: {
   tool_choice?: 'auto' | { type: 'function'; function: { name: string } };
   signal?: AbortSignal;
   providerSort?: 'price' | 'throughput';
+  plugins?: any[];
 }) {
   const {
     apiKey,
@@ -181,6 +182,9 @@ export async function chatCompletion(params: {
   if (tool_choice) body.tool_choice = tool_choice;
   if (providerSort === 'price' || providerSort === 'throughput') {
     body.provider = { ...(body.provider || {}), sort: providerSort };
+  }
+  if (Array.isArray(params.plugins) && params.plugins.length > 0) {
+    body.plugins = params.plugins;
   }
 
   const url = USE_PROXY ? '/api/openrouter/chat/completions' : `${OR_BASE}/chat/completions`;
@@ -219,6 +223,7 @@ export async function streamChatCompletion(params: {
   signal?: AbortSignal;
   callbacks?: StreamCallbacks;
   providerSort?: 'price' | 'throughput';
+  plugins?: any[];
 }) {
   const {
     apiKey,
@@ -247,6 +252,9 @@ export async function streamChatCompletion(params: {
   if (Object.keys(reasoningConfig).length > 0) body.reasoning = reasoningConfig;
   if (providerSort === 'price' || providerSort === 'throughput') {
     body.provider = { ...(body.provider || {}), sort: providerSort };
+  }
+  if (Array.isArray(params.plugins) && params.plugins.length > 0) {
+    body.plugins = params.plugins;
   }
 
   const url2 = USE_PROXY ? '/api/openrouter/chat/completions' : `${OR_BASE}/chat/completions`;

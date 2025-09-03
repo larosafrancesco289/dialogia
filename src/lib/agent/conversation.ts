@@ -1,6 +1,5 @@
 import type { Chat, Message, ORModel, Attachment } from '@/lib/types';
 import { estimateTokens } from '@/lib/tokenEstimate';
-import { selectExcerptsFromPdfText } from '@/lib/pdfRag';
 
 // Construct the message payload for the LLM from prior conversation, with a simple token window
 export function buildChatCompletionMessages(params: {
@@ -57,37 +56,20 @@ export function buildChatCompletionMessages(params: {
   for (const k of kept) {
     if (k.role === 'user' && Array.isArray(k.attachments) && k.attachments.length > 0) {
       const blocks: any[] = [];
-      // If any PDF attachments exist with extracted text, add a short preface block
-      const pdfs = k.attachments.filter((a) => a.kind === 'pdf' && a.text && a.text.trim());
-      if (pdfs.length > 0) {
-        const budgetPerPdf = Math.max(300, Math.floor((estimateTokens(k.content) || 600) * 2));
-        const parts: string[] = [];
-        for (const p of pdfs) {
-          const excerpt = selectExcerptsFromPdfText({
-            text: p.text || '',
-            query: k.content || '',
-            tokenBudget: budgetPerPdf,
-            chunkChars: 2500,
-          });
-          if (excerpt) {
-            parts.push(
-              `Document: ${p.name || 'PDF'}${p.pageCount ? ` (pages: ${p.pageCount})` : ''}\n\n${excerpt}`,
-            );
-          }
-        }
-        if (parts.length > 0) {
-          blocks.push({
-            type: 'text',
-            text:
-              'Use the following document excerpts to answer the user. Prefer citing specific sections.\n\n' +
-              parts.join('\n\n---\n\n'),
-          });
-        }
-      }
       if (k.content && k.content.trim()) blocks.push({ type: 'text', text: k.content });
       for (const a of k.attachments) {
         if (a.kind === 'image' && a.dataURL) {
           blocks.push({ type: 'image_url', image_url: { url: a.dataURL } });
+        } else if (a.kind === 'pdf' && a.dataURL) {
+          // Send PDFs via OpenRouter file blocks. `dataURL` should be a
+          // data:application/pdf;base64,... string prepared before calling.
+          blocks.push({
+            type: 'file',
+            file: {
+              filename: a.name || 'document.pdf',
+              file_data: a.dataURL,
+            },
+          });
         }
       }
       finalMsgs.push({ role: 'user', content: blocks });

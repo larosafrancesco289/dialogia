@@ -54,9 +54,30 @@ export function createMessageSlice(
       // If attachments provided but model lacks vision support, drop them and inform
       const modelMetaVisionCheck = findModelById(get().models, chat.settings.model);
       const canVision = isVisionSupported(modelMetaVisionCheck);
-      const attachments = (opts?.attachments || [])
-        .filter((a) => (a.kind === 'image' ? canVision : a.kind === 'pdf'))
-        .map((a) => ({ ...a, file: undefined }));
+      const rawAttachments = (opts?.attachments || []).filter((a) =>
+        a.kind === 'image' ? canVision : a.kind === 'pdf',
+      );
+      // Convert PDF Files to data URLs on-the-fly for OpenRouter file blocks.
+      const toDataUrl = (file: File): Promise<string> =>
+        new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(String(fr.result || ''));
+          fr.onerror = () => reject(fr.error);
+          fr.readAsDataURL(file);
+        });
+      const attachments = await Promise.all(
+        rawAttachments.map(async (a) => {
+          if (a.kind === 'pdf' && a.file && !a.dataURL) {
+            try {
+              const dataURL = await toDataUrl(a.file);
+              return { ...a, dataURL };
+            } catch {
+              return a;
+            }
+          }
+          return a;
+        }),
+      );
       // Strict ZDR enforcement: block sending to non-ZDR models when enabled
       if (get().ui.zdrOnly !== false) {
         const modelId = chat.settings.model;
@@ -103,7 +124,15 @@ export function createMessageSlice(
         role: 'user',
         content,
         createdAt: now,
-        attachments: attachments.length ? attachments : undefined,
+        // Persist without heavy/binary fields for PDFs
+        attachments:
+          attachments.length
+            ? attachments.map((a) =>
+                a.kind === 'pdf'
+                  ? { id: a.id, kind: 'pdf', name: a.name, mime: a.mime, size: a.size }
+                  : a,
+              )
+            : undefined,
       };
       const assistantMsg: Message = {
         id: uuidv4(),
@@ -132,6 +161,9 @@ export function createMessageSlice(
         newUserContent: content,
         newUserAttachments: attachments,
       });
+      // Enable OpenRouter PDF parsing when PDFs are attached
+      const hasPdf = attachments.some((a) => a.kind === 'pdf');
+      const plugins = hasPdf ? [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }] : undefined;
       if (chat.title === 'New Chat') {
         const draft = content.trim().slice(0, 40);
         await get().renameChat(chat.id, draft || 'New Chat');
@@ -248,6 +280,7 @@ export function createMessageSlice(
               tool_choice: 'auto' as any,
               signal: controller.signal,
               providerSort,
+              plugins,
             });
             finalUsage = resp?.usage;
             const choice = resp?.choices?.[0];
@@ -420,18 +453,19 @@ export function createMessageSlice(
           {
             const modelMeta = findModelById(get().models, chat.settings.model);
             const supportsReasoning = isReasoningSupported(modelMeta);
-            await streamChatCompletion({
-              apiKey: key || '',
-              model: chat.settings.model,
-              messages: streamingMessages,
-              temperature: chat.settings.temperature,
-              top_p: chat.settings.top_p,
-              max_tokens: chat.settings.max_tokens,
-              reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-              reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-              signal: controller.signal,
-              providerSort,
-              callbacks: {
+      await streamChatCompletion({
+        apiKey: key || '',
+        model: chat.settings.model,
+        messages: streamingMessages,
+        temperature: chat.settings.temperature,
+        top_p: chat.settings.top_p,
+        max_tokens: chat.settings.max_tokens,
+        reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
+        reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+        signal: controller.signal,
+        providerSort,
+        plugins,
+        callbacks: {
                 onToken: (delta) => {
                   if (tFirstPlan == null) tFirstPlan = performance.now();
                   if (!startedStreamingContentPlan) {
@@ -562,6 +596,7 @@ export function createMessageSlice(
             reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
             signal: controller.signal,
             providerSort,
+            plugins,
             callbacks: {
               onToken: (delta) => {
                 if (tFirst == null) tFirst = performance.now();
