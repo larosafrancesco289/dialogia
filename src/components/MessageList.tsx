@@ -110,6 +110,14 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const isStatsExpanded = (id: string) => expandedStatsIds[id] ?? false;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  // Subtle indicator for long time-to-first-token
+  const waitingForFirstToken = useMemo(() => {
+    if (!isStreaming) return false;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== 'assistant') return false;
+    const hasText = (last.content || '').length > 0 || (last.reasoning || '').length > 0;
+    return !hasText;
+  }, [isStreaming, messages]);
   const saveEdit = (messageId: string) => {
     const text = draft.trim();
     if (!text) return;
@@ -396,6 +404,15 @@ export default function MessageList({ chatId }: { chatId: string }) {
             <ChevronDownIcon className="h-4 w-4" />
             <span style={{ marginLeft: 6 }}>Jump to latest</span>
           </button>
+        </div>
+      )}
+      {waitingForFirstToken && (
+        <div className="px-4 pb-6 pt-2">
+          <div className="typing-indicator" aria-live="polite" aria-label="Generating">
+            <span className="typing-dot" />
+            <span className="typing-dot" />
+            <span className="typing-dot" />
+          </div>
         </div>
       )}
       <div ref={endRef} />
