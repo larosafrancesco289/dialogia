@@ -256,7 +256,7 @@ a:hover {
 /* Folder and chat item visual enhancements - Apple-like */
 .folder-item {
   transition: all 0.15s ease-out;
-  border-radius: 6px;
+  border-radius: 10px;
   margin: 2px 0;
 }
 
@@ -266,8 +266,8 @@ a:hover {
 
 .chat-item {
   transition: all 0.15s ease-out;
-  border-radius: 6px;
-  margin: 1px 0;
+  border-radius: 12px;
+  margin: 2px 0;
   position: relative;
   border: 1px solid transparent;
 }
@@ -283,7 +283,7 @@ a:hover {
 
 /* Apple-like sidebar styling */
 .sidebar-section {
-  padding: 0 8px;
+  padding: 0 10px;
 }
 
 .sidebar-section + .sidebar-section {
