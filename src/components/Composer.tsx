@@ -4,7 +4,6 @@ import { useChatStore } from '@/lib/store';
 import {
   StopIcon,
   MagnifyingGlassIcon,
-  PhotoIcon,
   PaperClipIcon,
   XMarkIcon,
   DocumentTextIcon,
@@ -14,12 +13,14 @@ import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
 import ReasoningEffortMenu from '@/components/ReasoningEffortMenu';
 import { estimateTokens } from '@/lib/tokenEstimate';
 import { computeCost } from '@/lib/cost';
-import { findModelById, isVisionSupported } from '@/lib/models';
+import { findModelById, isReasoningSupported, isVisionSupported } from '@/lib/models';
 import type { Attachment } from '@/lib/types';
+import { DEFAULT_MODEL_ID } from '@/lib/constants';
 // PDFs are sent directly to OpenRouter as file blocks; no local parsing.
 
-export default function Composer() {
+export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 'hero' }) {
   const send = useChatStore((s) => s.sendUserMessage);
+  const newChat = useChatStore((s) => s.newChat);
   const { chats, selectedChatId } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
   const models = useChatStore((s) => s.models);
@@ -31,15 +32,101 @@ export default function Composer() {
   const stop = useChatStore((s) => s.stopStreaming);
   const updateSettings = useChatStore((s) => s.updateChatSettings);
   const setUI = useChatStore((s) => s.setUI);
+  const ui = useChatStore((s) => s.ui);
+  const [focused, setFocused] = useState(false);
+  const [slashIndex, setSlashIndex] = useState(0);
+
+  // Slash commands: /model id, /search on|off|toggle, /reasoning none|low|medium|high
+  const trySlashCommand = async (raw: string): Promise<boolean> => {
+    const s = (raw || '').trim();
+    if (!s.startsWith('/')) return false;
+    const parts = s.slice(1).split(/\s+/);
+    const cmd = (parts.shift() || '').toLowerCase();
+    const arg = parts.join(' ').trim();
+    const applyToChat = !!chat;
+
+    const currentModelId = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
+    const currentModel = findModelById(models, currentModelId);
+
+    const setNotice = (msg: string) => setUI({ notice: msg });
+
+    if (cmd === 'search' || cmd === 'web') {
+      let on: boolean | undefined;
+      if (arg === 'on') on = true;
+      else if (arg === 'off') on = false;
+      else if (arg === 'toggle' || arg === '') on = undefined; // toggle
+      else return false;
+      if (applyToChat) {
+        const next = on == null ? !chat!.settings.search_with_brave : on;
+        await updateSettings({ search_with_brave: next });
+        setNotice(`Web search: ${next ? 'On' : 'Off'}`);
+      } else {
+        const prev = !!ui.nextSearchWithBrave;
+        const next = on == null ? !prev : on;
+        setUI({ nextSearchWithBrave: next });
+        setNotice(`Web search (next): ${next ? 'On' : 'Off'}`);
+      }
+      return true;
+    }
+
+    if (cmd === 'reasoning' || cmd === 'think') {
+      const allowed = ['none', 'low', 'medium', 'high'] as const;
+      const pick = (arg || '').toLowerCase();
+      if (!allowed.includes(pick as any)) return false;
+      const supported = isReasoningSupported(currentModel);
+      if (!supported) {
+        setNotice('Reasoning not supported by current model');
+        return true;
+      }
+      if (applyToChat) await updateSettings({ reasoning_effort: pick as any });
+      else setUI({ nextReasoningEffort: pick as any });
+      setNotice(`Reasoning effort: ${pick}`);
+      return true;
+    }
+
+    if (cmd === 'model' || cmd === 'm') {
+      const id = arg.trim();
+      if (!id) return false;
+      // Accept exact id or exact name match (case-insensitive)
+      const byId = findModelById(models, id);
+      const byName = models.find((m) => m.name?.toLowerCase() === id.toLowerCase());
+      const chosen = byId || byName;
+      if (!chosen) {
+        setNotice(`Unknown model: ${id}`);
+        return true;
+      }
+      if (applyToChat) await updateSettings({ model: chosen.id });
+      else setUI({ nextModel: chosen.id });
+      setNotice(`Model set to ${chosen.name || chosen.id}`);
+      return true;
+    }
+
+    if (cmd === 'help') {
+      setNotice('Slash: /model <id>, /search on|off|toggle, /reasoning none|low|medium|high');
+      return true;
+    }
+
+    return false;
+  };
 
   const onSend = async () => {
     const value = text.trim();
     if (!value) return;
+    // Handle slash commands locally
+    if (value.startsWith('/')) {
+      const handled = await trySlashCommand(value);
+      if (handled) {
+        setText('');
+        taRef.current?.focus();
+        return;
+      }
+    }
     setText('');
     const toSend = attachments.slice();
     setAttachments([]);
     // Keep the caret in the box so the user can continue typing immediately
     taRef.current?.focus();
+    if (!chat) await newChat();
     await send(value, { attachments: toSend });
   };
 
@@ -59,13 +146,88 @@ export default function Composer() {
   // Lightweight, live prompt token and cost estimate
   const tokenAndCost = useMemo(() => {
     const promptTokens = estimateTokens(text) || 0;
-    const modelMeta = findModelById(models, chat?.settings.model);
+    const mid = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
+    const modelMeta = findModelById(models, mid);
     const cost = computeCost({ model: modelMeta, promptTokens });
     return { promptTokens, currency: cost.currency, total: cost.total };
-  }, [text, chat?.settings.model, models]);
+  }, [text, chat?.settings.model, ui.nextModel, models]);
 
-  const modelMeta = findModelById(models, chat?.settings.model);
+  const modelId = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
+  const modelMeta = findModelById(models, modelId);
   const canVision = isVisionSupported(modelMeta);
+  const searchEnabled = chat ? !!chat.settings.search_with_brave : !!ui.nextSearchWithBrave;
+
+  // Build slash command suggestions
+  type Suggestion = { title: string; insert: string; subtitle?: string };
+  const slashSuggestions: Suggestion[] = useMemo(() => {
+    const s = (text || '').trimStart();
+    if (!s.startsWith('/')) return [];
+    // avoid multi-line triggering
+    if (s.includes('\n')) return [];
+    const after = s.slice(1);
+    const [rawCmd = '', ...rest] = after.split(/\s+/);
+    const cmd = rawCmd.toLowerCase();
+    const arg = rest.join(' ').trim();
+    const list: Suggestion[] = [];
+    const push = (t: string, i: string, sub?: string) => list.push({ title: t, insert: i, subtitle: sub });
+    const starts = (a: string, b: string) => a.startsWith(b);
+
+    const allCmds: Array<{ key: string; label: string; help?: string }> = [
+      { key: 'model', label: 'model', help: 'Set model by id or name' },
+      { key: 'search', label: 'search', help: 'Toggle web search (on/off/toggle)' },
+      { key: 'reasoning', label: 'reasoning', help: 'Set reasoning effort' },
+      { key: 'help', label: 'help', help: 'Show slash command help' },
+    ];
+
+    if (!cmd) {
+      for (const c of allCmds) push(`/${c.label}`, `/${c.key} `, c.help);
+      return list;
+    }
+
+    const matched = allCmds.filter((c) => starts(c.key, cmd));
+    if (matched.length > 1 && arg === '') {
+      for (const c of matched) push(`/${c.label}`, `/${c.key} `, c.help);
+      return list;
+    }
+
+    if (cmd === 'search') {
+      const opts = ['on', 'off', 'toggle'];
+      const filt = opts.filter((o) => o.startsWith(arg.toLowerCase()));
+      for (const o of filt) push(`/search ${o}`, `/search ${o}`);
+      if (list.length === 0) for (const o of opts) push(`/search ${o}`, `/search ${o}`);
+      return list;
+    }
+
+    if (cmd === 'reasoning') {
+      const opts = ['none', 'low', 'medium', 'high'];
+      const filt = opts.filter((o) => o.startsWith(arg.toLowerCase()));
+      for (const o of filt) push(`/reasoning ${o}`, `/reasoning ${o}`);
+      if (list.length === 0) for (const o of opts) push(`/reasoning ${o}`, `/reasoning ${o}`);
+      return list;
+    }
+
+    if (cmd === 'model') {
+      const q = arg.toLowerCase();
+      const choices = models
+        .filter((m) => !q || m.id.toLowerCase().includes(q) || (m.name || '').toLowerCase().includes(q))
+        .slice(0, 8);
+      for (const m of choices) push(m.name || m.id, `/model ${m.id}`, m.id);
+      if (list.length === 0 && arg === '') push('Type a model id…', `/model `);
+      return list;
+    }
+
+    if ('help'.startsWith(cmd)) {
+      push('/help', '/help', 'List supported slash commands');
+      return list;
+    }
+    // Unknown -> suggest base commands again
+    for (const c of allCmds) push(`/${c.label}`, `/${c.key} `, c.help);
+    return list;
+  }, [text, models]);
+
+  useEffect(() => {
+    setSlashIndex(0);
+  }, [text]);
 
   const onFilesChosen = async (files: FileList | File[]) => {
     if (!canVision) return;
@@ -161,8 +323,10 @@ export default function Composer() {
     }
   };
 
+  const wrapperClass = variant === 'hero' ? 'composer-hero' : 'composer-chrome';
+
   return (
-    <div className="composer-chrome" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
+    <div className={wrapperClass} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
       {attachments.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
           {attachments.map((a) => (
@@ -205,9 +369,35 @@ export default function Composer() {
           placeholder="Type a message..."
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           onPaste={onPaste}
           onKeyDown={(e) => {
             if (isStreaming) return; // allow typing while streaming, but do not send
+            const hasSuggestions = focused && slashSuggestions.length > 0;
+            if (hasSuggestions) {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSlashIndex((i) => (i + 1) % slashSuggestions.length);
+                return;
+              }
+              if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSlashIndex((i) => (i - 1 + slashSuggestions.length) % slashSuggestions.length);
+                return;
+              }
+              if (e.key === 'Tab' || e.key === 'Enter') {
+                e.preventDefault();
+                const pick = slashSuggestions[slashIndex] || slashSuggestions[0];
+                if (pick) setText(pick.insert + (pick.insert.endsWith(' ') ? '' : ' '));
+                return;
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                setSlashIndex(0);
+                return;
+              }
+            }
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend();
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -215,6 +405,29 @@ export default function Composer() {
             }
           }}
         />
+        {/* Slash suggestions popover */}
+        {focused && slashSuggestions.length > 0 && (
+          <div className="absolute right-3 bottom-full mb-2 z-40 card p-1 popover max-w-sm">
+            <div className="max-h-60 overflow-auto">
+              {slashSuggestions.map((sug, idx) => (
+                <div
+                  key={sug.title + idx}
+                  className={`menu-item text-sm ${idx === slashIndex ? 'font-semibold' : ''}`}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setText(sug.insert + (sug.insert.endsWith(' ') ? '' : ' '));
+                    setSlashIndex(0);
+                    taRef.current?.focus();
+                  }}
+                  title={sug.subtitle || undefined}
+                >
+                  {sug.title}
+                  {sug.subtitle ? <span className="ml-2 text-xs text-muted-foreground">{sug.subtitle}</span> : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {isStreaming ? (
           <button
             className="btn btn-outline self-center"
@@ -229,49 +442,42 @@ export default function Composer() {
         ) : (
           <div className="flex items-center gap-2">
             <label
-              className={`btn self-center cursor-pointer ${canVision ? '' : 'opacity-50 pointer-events-none'}`}
-              title={canVision ? 'Attach images' : 'This model does not support images'}
-              aria-disabled={!canVision}
+              className={`btn self-center cursor-pointer`}
+              title={
+                canVision
+                  ? 'Attach images or PDFs'
+                  : 'Attach PDFs. Images are not supported by this model'
+              }
             >
               <input
                 type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
+                accept="image/png,image/jpeg,image/webp,image/gif,application/pdf"
                 multiple
                 className="hidden"
                 onChange={async (e) => {
                   const inputEl = e.currentTarget;
                   const files = inputEl?.files;
-                  if (files) await onFilesChosen(files);
-                  // reset input value to allow re-choosing same files
-                  if (inputEl) inputEl.value = '';
-                }}
-                disabled={!canVision}
-              />
-              <PhotoIcon className="h-4 w-4" />
-            </label>
-            <label className="btn self-center cursor-pointer" title="Attach PDF(s)">
-              <input
-                type="file"
-                accept="application/pdf"
-                multiple
-                className="hidden"
-                onChange={async (e) => {
-                  const inputEl = e.currentTarget;
-                  const files = inputEl?.files;
-                  if (files) await onPdfChosen(files);
+                  if (files) {
+                    const arr = Array.from(files);
+                    const pdfs = arr.filter((f) => f.type === 'application/pdf');
+                    const imgs = arr.filter((f) => f.type.startsWith('image/'));
+                    if (pdfs.length) await onPdfChosen(pdfs);
+                    if (imgs.length && canVision) await onFilesChosen(imgs);
+                  }
                   if (inputEl) inputEl.value = '';
                 }}
               />
               <PaperClipIcon className="h-4 w-4" />
             </label>
             <button
-              className={`btn self-center ${chat?.settings.search_with_brave ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() =>
-                updateSettings({ search_with_brave: !chat?.settings.search_with_brave })
-              }
+              className={`btn self-center ${searchEnabled ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => {
+                if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
+                else setUI({ nextSearchWithBrave: !ui.nextSearchWithBrave });
+              }}
               title="Use web search (Brave) to augment the next message"
               aria-label="Toggle Brave Search"
-              aria-pressed={!!chat?.settings.search_with_brave}
+              aria-pressed={!!searchEnabled}
             >
               <MagnifyingGlassIcon className="h-4 w-4" />
             </button>
@@ -290,13 +496,13 @@ export default function Composer() {
       </div>
       {/* Helper chips row: current model, reasoning, web search, token estimate */}
       <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
-        {chat && (
+        {(
           <button
             className="badge"
             title="Change model (opens Settings)"
             onClick={() => setUI({ showSettings: true })}
           >
-            {findModelById(models, chat.settings.model)?.name || chat.settings.model}
+            {findModelById(models, modelId)?.name || modelId}
           </button>
         )}
         {canVision && (
@@ -307,14 +513,18 @@ export default function Composer() {
             Vision supported
           </span>
         )}
-        {chat && (
+        {(
           <button
             className="badge"
             title="Toggle Brave web search for next message"
-            onClick={() => updateSettings({ search_with_brave: !chat?.settings.search_with_brave })}
-            aria-pressed={!!chat?.settings.search_with_brave}
+            onClick={() => {
+              if (chat)
+                updateSettings({ search_with_brave: !chat.settings.search_with_brave });
+              else setUI({ nextSearchWithBrave: !ui.nextSearchWithBrave });
+            }}
+            aria-pressed={!!searchEnabled}
           >
-            {chat?.settings.search_with_brave ? 'Web search: On' : 'Web search: Off'}
+            {searchEnabled ? 'Web search: On' : 'Web search: Off'}
           </button>
         )}
         {chat?.settings.reasoning_effort && (
