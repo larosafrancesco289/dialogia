@@ -19,8 +19,10 @@ export default function HomePage() {
 
   return (
     <div className="app-shell" style={{ ['--sidebar-width' as any]: collapsed ? '0px' : '320px' }}>
-      <aside className={`sidebar bg-surface ${collapsed ? '' : 'border-r border-border'}`}>
-        <ChatSidebar />
+      <aside
+        className={`sidebar ${collapsed ? '' : 'glass-panel border border-border rounded-2xl p-2'}`}
+      >
+        {!collapsed && <ChatSidebar />}
       </aside>
       <main className="content">
         <TopHeader />

@@ -36,7 +36,7 @@ body,
   height: 100dvh;
   position: relative;
   transition: grid-template-columns var(--duration-slow) var(--ease-standard);
-  column-gap: var(--space-2);
+  column-gap: var(--space-3);
   padding: var(--space-2);
 }
 
@@ -60,12 +60,16 @@ body,
   display: flex;
   align-items: center;
   position: sticky;
+  /* Keep flush with the top for maximum headroom */
   top: 0;
+  margin: 0 var(--space-2) var(--space-2);
   z-index: 30;
-  /* Apple-like translucent chrome */
   background: var(--glass-surface-bg);
   -webkit-backdrop-filter: var(--glass-saturate) var(--glass-blur-surface);
   backdrop-filter: var(--glass-saturate) var(--glass-blur-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-1);
 }
 
 /* Removed rigid full-width header divider for a softer look */
@@ -103,6 +107,19 @@ body,
 button[aria-label='Open settings'][aria-pressed='true'] > svg {
   transform: rotate(90deg);
   transition: transform 200ms ease;
+}
+
+/* Make header icon buttons feel like soft chips */
+.app-header .btn-ghost {
+  height: var(--control-md);
+  padding: 0 var(--space-3);
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--color-surface) 65%, transparent);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-1);
+}
+.app-header .btn-ghost:hover {
+  background: var(--color-muted);
 }
 
 .scroll-area {
@@ -429,7 +446,7 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   border: 1px solid var(--color-border);
   border-radius: 18px;
   box-shadow: var(--shadow-card);
-  width: min(980px, calc(100% - var(--space-8)));
+  width: min(1120px, calc(100% - var(--space-8)));
   z-index: 60;
 }
 
