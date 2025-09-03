@@ -94,7 +94,12 @@ export function createCompareSlice(
         }
         if (filtered.length === 0) {
           return set((s) => {
-            const prev = s.ui.compare || { isOpen: false, prompt: '', selectedModelIds: [], runs: {} };
+            const prev = s.ui.compare || {
+              isOpen: false,
+              prompt: '',
+              selectedModelIds: [],
+              runs: {},
+            };
             return {
               ui: {
                 ...s.ui,

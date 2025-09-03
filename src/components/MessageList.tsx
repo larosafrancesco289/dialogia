@@ -14,6 +14,7 @@ import RegenerateMenu from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
 import { ReasoningPanel } from '@/components/message/ReasoningPanel';
+import type { Attachment } from '@/lib/types';
 
 export default function MessageList({ chatId }: { chatId: string }) {
   const messages = useChatStore((s) => s.messages[chatId] ?? []);
@@ -197,6 +198,34 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   onToggle={() => toggle(m.id)}
                 />
               )}
+              {/* Attachments (assistant-visible images; PDFs shown as chips) */}
+              {Array.isArray(m.attachments) && m.attachments.length > 0 && (
+                <div className="px-4 pt-3 flex flex-wrap gap-2">
+                  {m.attachments
+                    .filter((a: Attachment) => a.kind === 'image')
+                    .map((a: Attachment) => (
+                      <a key={a.id} href={a.dataURL} target="_blank" rel="noreferrer">
+                        <img
+                          src={a.dataURL}
+                          alt={a.name || 'image'}
+                          className="h-24 w-24 object-cover rounded border border-border"
+                        />
+                      </a>
+                    ))}
+                  {m.attachments
+                    .filter((a: Attachment) => a.kind === 'pdf')
+                    .map((a: Attachment) => (
+                      <span
+                        key={a.id}
+                        className="badge"
+                        title={`${a.name || 'PDF'}${a.pageCount ? ` • ${a.pageCount} pages` : ''}`}
+                      >
+                        {a.name || 'PDF'}
+                        {a.pageCount ? ` (${a.pageCount}p)` : ''}
+                      </span>
+                    ))}
+                </div>
+              )}
               <div className="p-4 pt-3">
                 {editingId === m.id ? (
                   <textarea
@@ -290,6 +319,34 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   </button>
                 )}
               </div>
+              {/* Attachments (user) */}
+              {Array.isArray(m.attachments) && m.attachments.length > 0 && (
+                <div className="px-4 pt-3 flex flex-wrap gap-2">
+                  {m.attachments
+                    .filter((a: Attachment) => a.kind === 'image')
+                    .map((a: Attachment) => (
+                      <a key={a.id} href={a.dataURL} target="_blank" rel="noreferrer">
+                        <img
+                          src={a.dataURL}
+                          alt={a.name || 'image'}
+                          className="h-24 w-24 object-cover rounded border border-border"
+                        />
+                      </a>
+                    ))}
+                  {m.attachments
+                    .filter((a: Attachment) => a.kind === 'pdf')
+                    .map((a: Attachment) => (
+                      <span
+                        key={a.id}
+                        className="badge"
+                        title={`${a.name || 'PDF'}${a.pageCount ? ` • ${a.pageCount} pages` : ''}`}
+                      >
+                        {a.name || 'PDF'}
+                        {a.pageCount ? ` (${a.pageCount}p)` : ''}
+                      </span>
+                    ))}
+                </div>
+              )}
               <div className="p-4 pt-3">
                 {editingId === m.id ? (
                   <textarea

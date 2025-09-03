@@ -75,20 +75,25 @@ export default function WelcomeHero() {
         {/* Model indicator and quick suggestions */}
         <div className="flex items-center justify-center gap-3 flex-wrap">
           <div className="text-xs text-muted-foreground">
-            Using {findModelById(models, ui.nextModel || DEFAULT_MODEL_ID)?.name || ui.nextModel || DEFAULT_MODEL_ID}
+            Using{' '}
+            {findModelById(models, ui.nextModel || DEFAULT_MODEL_ID)?.name ||
+              ui.nextModel ||
+              DEFAULT_MODEL_ID}
           </div>
           <div className="hidden sm:block text-xs text-muted-foreground">•</div>
           <div className="flex gap-2 flex-wrap">
-            {['Summarize a link', 'Write an email', 'Explain code', 'Create a study plan'].map((s) => (
-              <button
-                key={s}
-                className="badge"
-                onClick={() => setQuery(s + '…')}
-                title="Insert suggestion"
-              >
-                {s}
-              </button>
-            ))}
+            {['Summarize a link', 'Write an email', 'Explain code', 'Create a study plan'].map(
+              (s) => (
+                <button
+                  key={s}
+                  className="badge"
+                  onClick={() => setQuery(s + '…')}
+                  title="Insert suggestion"
+                >
+                  {s}
+                </button>
+              ),
+            )}
           </div>
         </div>
         <div className="text-xs text-muted-foreground">

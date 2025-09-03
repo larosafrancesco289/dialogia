@@ -16,20 +16,22 @@
     "medium-zoom": "^1.1.0",
     "mermaid": "^10.9.2",
     "next": "^15.0.0",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^5.4.149",
     "prismjs": "^1.29.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.3",
-    "rehype-katex": "^7.0.1",
     "rehype-autolink-headings": "^7.1.0",
+    "rehype-katex": "^7.0.1",
     "rehype-slug": "^6.0.0",
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
+    "tesseract.js": "^6.0.1",
     "uuid": "^9.0.1",
     "zustand": "^4.5.2"
   },
   "devDependencies": {
-    "prettier": "^3.3.3",
     "@tailwindcss/postcss": "^4.1.11",
     "@types/node": "^20.11.19",
     "@types/prismjs": "^1.26.5",
@@ -38,6 +40,7 @@
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
+    "prettier": "^3.3.3",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.4.5"
   }
