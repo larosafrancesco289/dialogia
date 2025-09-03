@@ -10,7 +10,10 @@ export async function fetchZdrProviderIds(): Promise<Set<string>> {
     ? '/api/openrouter/endpoints/zdr'
     : 'https://openrouter.ai/api/v1/endpoints/zdr';
   try {
-    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' as any });
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store' as any,
+    });
     if (!res.ok) throw new Error(`zdr_failed_${res.status}`);
     const data = await res.json();
     const items: any[] = Array.isArray(data?.data)
@@ -59,7 +62,10 @@ export async function fetchZdrModelIds(): Promise<Set<string>> {
     ? '/api/openrouter/endpoints/zdr'
     : 'https://openrouter.ai/api/v1/endpoints/zdr';
   try {
-    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' as any });
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store' as any,
+    });
     if (!res.ok) throw new Error(`zdr_failed_${res.status}`);
     const data = await res.json();
     const items: any[] = Array.isArray(data?.data)
@@ -136,11 +142,8 @@ export type StreamCallbacks = {
 export async function chatCompletion(params: {
   apiKey: string;
   model: string;
-  // Allow tool-bearing roles by loosening the type here
-  messages: Array<
-    | { role: 'system' | 'user' | 'assistant'; content: string | null }
-    | { role: 'tool'; content: string; tool_call_id?: string; name?: string }
-  >;
+  // Loosen type to allow multimodal content arrays and tool roles
+  messages: any[];
   temperature?: number;
   top_p?: number;
   max_tokens?: number;
@@ -205,7 +208,8 @@ export async function chatCompletion(params: {
 export async function streamChatCompletion(params: {
   apiKey: string;
   model: string;
-  messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
+  // Allow multimodal content arrays
+  messages: any[];
   temperature?: number;
   top_p?: number;
   max_tokens?: number;

@@ -18,6 +18,7 @@ import {
   deleteSystemPreset,
   type SystemPreset,
 } from '@/lib/presets';
+import { isReasoningSupported, isVisionSupported, findModelById } from '@/lib/models';
 
 // Define Section at module scope so it doesn't remount on every render.
 function Section(props: { title: string; children: ReactNode }) {
@@ -329,72 +330,72 @@ export default function SettingsDrawer() {
               <div className="text-xs text-muted-foreground">
                 This is sent at the start of the chat to steer behavior.
               </div>
-        </div>
-      </Section>
-
-      {/* Privacy */}
-      <Section title="Privacy">
-        <div className="space-y-2">
-          <label className="text-sm flex items-center justify-between">
-            <span>Zero Data Retention (ZDR) only</span>
-            <div className="segmented">
-              <button
-                className={`segment ${ui?.zdrOnly !== false ? 'is-active' : ''}`}
-                onClick={() => {
-                  setUI({ zdrOnly: true });
-                  loadModels();
-                }}
-              >
-                On
-              </button>
-              <button
-                className={`segment ${ui?.zdrOnly === false ? 'is-active' : ''}`}
-                onClick={() => {
-                  setUI({ zdrOnly: false });
-                  loadModels();
-                }}
-              >
-                Off
-              </button>
             </div>
-          </label>
-          <div className="text-xs text-muted-foreground">
-            When enabled, model search results are limited to providers with a Zero Data
-            Retention policy (fetched from OpenRouter). Curated defaults also follow this.
-          </div>
-        </div>
-      </Section>
+          </Section>
 
-      {/* Routing */}
-      <Section title="Routing">
-        <div className="space-y-2">
-          <label className="text-sm block">Route preference</label>
-          <div className="segmented">
-            <button
-              className={`segment ${routePref === 'speed' ? 'is-active' : ''}`}
-              onClick={() => {
-                setRoutePref('speed');
-                setUI({ routePreference: 'speed' });
-              }}
-            >
-              Speed
-            </button>
-            <button
-              className={`segment ${routePref === 'cost' ? 'is-active' : ''}`}
-              onClick={() => {
-                setRoutePref('cost');
-                setUI({ routePreference: 'cost' });
-              }}
-            >
-              Cost
-            </button>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Speed sorts by provider throughput; Cost sorts by price. OpenRouter routing uses this
-            hint when selecting a provider for the chosen model.
-          </div>
-        </div>
-      </Section>
+          {/* Privacy */}
+          <Section title="Privacy">
+            <div className="space-y-2">
+              <label className="text-sm flex items-center justify-between">
+                <span>Zero Data Retention (ZDR) only</span>
+                <div className="segmented">
+                  <button
+                    className={`segment ${ui?.zdrOnly !== false ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setUI({ zdrOnly: true });
+                      loadModels();
+                    }}
+                  >
+                    On
+                  </button>
+                  <button
+                    className={`segment ${ui?.zdrOnly === false ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setUI({ zdrOnly: false });
+                      loadModels();
+                    }}
+                  >
+                    Off
+                  </button>
+                </div>
+              </label>
+              <div className="text-xs text-muted-foreground">
+                When enabled, model search results are limited to providers with a Zero Data
+                Retention policy (fetched from OpenRouter). Curated defaults also follow this.
+              </div>
+            </div>
+          </Section>
+
+          {/* Routing */}
+          <Section title="Routing">
+            <div className="space-y-2">
+              <label className="text-sm block">Route preference</label>
+              <div className="segmented">
+                <button
+                  className={`segment ${routePref === 'speed' ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setRoutePref('speed');
+                    setUI({ routePreference: 'speed' });
+                  }}
+                >
+                  Speed
+                </button>
+                <button
+                  className={`segment ${routePref === 'cost' ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setRoutePref('cost');
+                    setUI({ routePreference: 'cost' });
+                  }}
+                >
+                  Cost
+                </button>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Speed sorts by provider throughput; Cost sorts by price. OpenRouter routing uses
+                this hint when selecting a provider for the chosen model.
+              </div>
+            </div>
+          </Section>
 
           {/* Generation */}
           <Section title="Generation">
@@ -644,31 +645,42 @@ export default function SettingsDrawer() {
                       {filtered.length === 0 && (
                         <div className="p-2 text-sm text-muted-foreground">No matches</div>
                       )}
-                      {filtered.map((m) => (
-                        <div
-                          key={m.id}
-                          className="p-2 rounded hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
-                        >
-                          <div>
-                            <div className="font-medium text-sm">{m.name || m.id}</div>
-                            {m.name && <div className="text-xs text-muted-foreground">{m.id}</div>}
-                          </div>
-                          <button
-                            className="btn btn-outline text-sm"
-                            onClick={() => {
-                              if (!favoriteModelIds.includes(m.id)) toggleFavoriteModel(m.id);
-                              if (chat) {
-                                updateChatSettings({ model: m.id });
-                              } else {
-                                setUI({ nextModel: m.id });
-                              }
-                              setQuery('');
-                            }}
+                      {filtered.map((m) => {
+                        const meta = findModelById(models, m.id);
+                        const canReason = isReasoningSupported(meta);
+                        const canSee = isVisionSupported(meta);
+                        return (
+                          <div
+                            key={m.id}
+                            className="p-2 rounded hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
                           >
-                            Add
-                          </button>
-                        </div>
-                      ))}
+                            <div>
+                              <div className="font-medium text-sm flex items-center gap-2">
+                                <span>{m.name || m.id}</span>
+                                {canReason && <span className="badge">Reasoning</span>}
+                                {canSee && <span className="badge">Vision</span>}
+                              </div>
+                              {m.name && (
+                                <div className="text-xs text-muted-foreground">{m.id}</div>
+                              )}
+                            </div>
+                            <button
+                              className="btn btn-outline text-sm"
+                              onClick={() => {
+                                if (!favoriteModelIds.includes(m.id)) toggleFavoriteModel(m.id);
+                                if (chat) {
+                                  updateChatSettings({ model: m.id });
+                                } else {
+                                  setUI({ nextModel: m.id });
+                                }
+                                setQuery('');
+                              }}
+                            >
+                              Add
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>,
                     document.body,
                   )}

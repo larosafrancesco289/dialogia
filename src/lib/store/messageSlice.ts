@@ -4,8 +4,13 @@ import type { Message } from '@/lib/types';
 import { saveMessage } from '@/lib/db';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { stripLeadingToolJson } from '@/lib/agent/streaming';
-import { streamChatCompletion, chatCompletion, fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
-import { isReasoningSupported, findModelById } from '@/lib/models';
+import {
+  streamChatCompletion,
+  chatCompletion,
+  fetchZdrModelIds,
+  fetchZdrProviderIds,
+} from '@/lib/openrouter';
+import { isReasoningSupported, findModelById, isVisionSupported } from '@/lib/models';
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 
 export function createMessageSlice(
@@ -34,7 +39,10 @@ export function createMessageSlice(
       }));
       await saveMessage(assistantMsg);
     },
-    async sendUserMessage(content: string) {
+    async sendUserMessage(
+      content: string,
+      opts?: { attachments?: import('@/lib/types').Attachment[] },
+    ) {
       const useProxy = process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
       const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
       if (!key && !useProxy)
@@ -43,6 +51,12 @@ export function createMessageSlice(
         }));
       const chatId = get().selectedChatId!;
       const chat = get().chats.find((c) => c.id === chatId)!;
+      // If attachments provided but model lacks vision support, drop them and inform
+      const modelMetaVisionCheck = findModelById(get().models, chat.settings.model);
+      const canVision = isVisionSupported(modelMetaVisionCheck);
+      const attachments = (opts?.attachments || [])
+        .filter((a) => (a.kind === 'image' ? canVision : a.kind === 'pdf'))
+        .map((a) => ({ ...a, file: undefined }));
       // Strict ZDR enforcement: block sending to non-ZDR models when enabled
       if (get().ui.zdrOnly !== false) {
         const modelId = chat.settings.model;
@@ -83,7 +97,14 @@ export function createMessageSlice(
         }
       }
       const now = Date.now();
-      const userMsg: Message = { id: uuidv4(), chatId, role: 'user', content, createdAt: now };
+      const userMsg: Message = {
+        id: uuidv4(),
+        chatId,
+        role: 'user',
+        content,
+        createdAt: now,
+        attachments: attachments.length ? attachments : undefined,
+      };
       const assistantMsg: Message = {
         id: uuidv4(),
         chatId,
@@ -109,6 +130,7 @@ export function createMessageSlice(
         priorMessages: priorList,
         models: get().models,
         newUserContent: content,
+        newUserAttachments: attachments,
       });
       if (chat.title === 'New Chat') {
         const draft = content.trim().slice(0, 40);
@@ -212,21 +234,21 @@ export function createMessageSlice(
           while (rounds < 3) {
             const modelMeta = findModelById(get().models, chat.settings.model);
             const supportsReasoning = isReasoningSupported(modelMeta);
-          const resp = await chatCompletion({
-            apiKey: key || '',
-            model: chat.settings.model,
-            messages: convo as any,
-            temperature: chat.settings.temperature,
-            top_p: chat.settings.top_p,
-            max_tokens: chat.settings.max_tokens,
-            reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-            reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-            tools: toolDefinition as any,
-            // Let the model decide whether to call the tool
-            tool_choice: 'auto' as any,
-            signal: controller.signal,
-            providerSort,
-          });
+            const resp = await chatCompletion({
+              apiKey: key || '',
+              model: chat.settings.model,
+              messages: convo as any,
+              temperature: chat.settings.temperature,
+              top_p: chat.settings.top_p,
+              max_tokens: chat.settings.max_tokens,
+              reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
+              reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+              tools: toolDefinition as any,
+              // Let the model decide whether to call the tool
+              tool_choice: 'auto' as any,
+              signal: controller.signal,
+              providerSort,
+            });
             finalUsage = resp?.usage;
             const choice = resp?.choices?.[0];
             const message = choice?.message || {};

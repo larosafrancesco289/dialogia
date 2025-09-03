@@ -35,8 +35,10 @@ export default function ReasoningEffortMenu() {
     <div className="relative">
       <button
         className={`btn self-center ${active ? 'btn-primary' : 'btn-outline'}`}
-        onClick={supportsReasoning ? (() => setOpen((v) => !v)) : undefined}
-        title={supportsReasoning ? 'Set reasoning effort' : 'Reasoning not supported by current model'}
+        onClick={supportsReasoning ? () => setOpen((v) => !v) : undefined}
+        title={
+          supportsReasoning ? 'Set reasoning effort' : 'Reasoning not supported by current model'
+        }
         aria-label="Set reasoning effort"
         aria-expanded={open}
         disabled={!supportsReasoning}

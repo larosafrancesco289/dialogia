@@ -103,7 +103,10 @@ export type StoreState = {
   removeModelFromDropdown: (id: string) => void;
 
   // messaging
-  sendUserMessage: (content: string) => Promise<void>;
+  sendUserMessage: (
+    content: string,
+    opts?: { attachments?: import('@/lib/types').Attachment[] },
+  ) => Promise<void>;
   stopStreaming: () => void;
   regenerateAssistantMessage: (messageId: string, opts?: { modelId?: string }) => Promise<void>;
   editUserMessage: (

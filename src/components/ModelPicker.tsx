@@ -48,9 +48,8 @@ export default function ModelPicker() {
   const [open, setOpen] = useState(false);
   const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
   const allowedIds = new Set((models || []).map((m: any) => m.id));
-  const effectiveSelectedId = ui?.zdrOnly !== false && selectedId && !allowedIds.has(selectedId)
-    ? undefined
-    : selectedId;
+  const effectiveSelectedId =
+    ui?.zdrOnly !== false && selectedId && !allowedIds.has(selectedId) ? undefined : selectedId;
   const current =
     allOptions.find((o) => o.id === effectiveSelectedId) ||
     (effectiveSelectedId ? { id: effectiveSelectedId, name: effectiveSelectedId } : undefined) ||

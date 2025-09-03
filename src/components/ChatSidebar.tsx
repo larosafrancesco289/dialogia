@@ -167,26 +167,26 @@ export default function ChatSidebar() {
         {rootChats
           .filter((chat) => (query ? match(chat.title) : true))
           .map((chat) => (
-          <RootChatItem
-            key={chat.id}
-            chat={chat}
-            collapsed={collapsed}
-            isSelected={selectedChatId === chat.id}
-            isEditing={editingId === chat.id}
-            editTitle={editTitle}
-            onSelect={() => selectChat(chat.id)}
-            onStartEdit={() => {
-              setEditingId(chat.id);
-              setEditTitle(chat.title);
-            }}
-            onSaveEdit={async () => {
-              await renameChat(chat.id, editTitle || chat.title);
-              setEditingId(null);
-            }}
-            onCancelEdit={() => setEditingId(null)}
-            onDelete={() => deleteChat(chat.id)}
-            onEditTitleChange={setEditTitle}
-          />
+            <RootChatItem
+              key={chat.id}
+              chat={chat}
+              collapsed={collapsed}
+              isSelected={selectedChatId === chat.id}
+              isEditing={editingId === chat.id}
+              editTitle={editTitle}
+              onSelect={() => selectChat(chat.id)}
+              onStartEdit={() => {
+                setEditingId(chat.id);
+                setEditTitle(chat.title);
+              }}
+              onSaveEdit={async () => {
+                await renameChat(chat.id, editTitle || chat.title);
+                setEditingId(null);
+              }}
+              onCancelEdit={() => setEditingId(null)}
+              onDelete={() => deleteChat(chat.id)}
+              onEditTitleChange={setEditTitle}
+            />
           ))}
       </div>
     </div>

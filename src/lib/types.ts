@@ -25,6 +25,8 @@ export type Message = {
   // For thinking models; accumulated via streaming
   reasoning?: string;
   metrics?: MessageMetrics;
+  // Optional attachments (currently images) associated to the message
+  attachments?: Attachment[];
 };
 
 export type MessageMetrics = {
@@ -64,4 +66,24 @@ export type ORModel = {
 export type KVRecord = {
   key: string;
   value: any;
+};
+
+// Attachments supported by the UI (phase 1: images only)
+export type Attachment = {
+  id: string;
+  kind: 'image' | 'pdf';
+  name?: string;
+  mime: string; // e.g., image/png, image/jpeg, image/webp, application/pdf
+  size?: number; // bytes
+  // image-only
+  width?: number;
+  height?: number;
+  // image data URL (for image kind)
+  dataURL?: string;
+  // pdf-only
+  pageCount?: number;
+  // extracted plain text (pdf); trimmed/selected later for prompt
+  text?: string;
+  // ephemeral: original file handle available in composer before sending (not relied on for persistence)
+  file?: File;
 };

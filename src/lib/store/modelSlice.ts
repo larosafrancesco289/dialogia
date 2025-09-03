@@ -37,7 +37,13 @@ export function createModelSlice(
           } else {
             // Strict: if we cannot determine ZDR set, show none and notify
             models = [];
-            set((s) => ({ ui: { ...s.ui, notice: 'Could not fetch ZDR list; enable internet or disable ZDR-only to list all.' } }));
+            set((s) => ({
+              ui: {
+                ...s.ui,
+                notice:
+                  'Could not fetch ZDR list; enable internet or disable ZDR-only to list all.',
+              },
+            }));
           }
         }
         set({ models } as any);
