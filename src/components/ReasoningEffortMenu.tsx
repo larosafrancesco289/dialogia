@@ -31,21 +31,20 @@ export default function ReasoningEffortMenu() {
     setOpen(false);
   };
 
+  if (!supportsReasoning) return null;
+
   return (
     <div className="relative">
       <button
         className={`btn self-center ${active ? 'btn-primary' : 'btn-outline'}`}
-        onClick={supportsReasoning ? () => setOpen((v) => !v) : undefined}
-        title={
-          supportsReasoning ? 'Set reasoning effort' : 'Reasoning not supported by current model'
-        }
+        onClick={() => setOpen((v) => !v)}
+        title={'Set reasoning effort'}
         aria-label="Set reasoning effort"
         aria-expanded={open}
-        disabled={!supportsReasoning}
       >
         <LightBulbIcon className="h-4 w-4" />
       </button>
-      {supportsReasoning && open && (
+      {open && (
         <div className="absolute right-0 bottom-full mb-2 z-40 card p-2 w-44 popover">
           <div className="text-xs text-muted-foreground px-1 pb-1">Reasoning effort</div>
           {(

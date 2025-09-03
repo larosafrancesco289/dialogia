@@ -418,6 +418,21 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   padding-bottom: calc(var(--space-3) + max(0px, env(safe-area-inset-bottom)));
 }
 
+/* Hero composer (welcome page): centered, non-sticky */
+.composer-hero {
+  position: relative;
+  margin: 0 auto;
+  padding: var(--space-3);
+  background: var(--glass-panel-bg);
+  -webkit-backdrop-filter: var(--glass-saturate) blur(16px);
+  backdrop-filter: var(--glass-saturate) blur(16px);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card);
+  width: min(980px, calc(100% - var(--space-8)));
+  z-index: 60;
+}
+
 /* Smoother auto-resize for message textarea */
 .textarea {
   transition: height 120ms ease;
