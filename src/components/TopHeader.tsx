@@ -13,6 +13,14 @@ export default function TopHeader() {
   const chat = chats.find((c) => c.id === selectedChatId);
   const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
   const isSettingsOpen = useChatStore((s) => s.ui.showSettings);
+  const waitingForFirstToken = useChatStore((s) => {
+    const id = s.selectedChatId;
+    const list = (id && s.messages[id]) || [];
+    const last = list[list.length - 1];
+    if (!s.ui.isStreaming || !last || last.role !== 'assistant') return false;
+    const hasAny = (last.content || '').length > 0 || (last.reasoning || '').length > 0;
+    return !hasAny;
+  });
   const [title, setTitle] = useState(chat?.title || '');
   useEffect(() => setTitle(chat?.title || ''), [chat?.id]);
   const save = useDebouncedCallback((text: string) => {
@@ -24,6 +32,8 @@ export default function TopHeader() {
 
   return (
     <div className="app-header gap-3">
+      {/* Slim activity shimmer when waiting for first token */}
+      {waitingForFirstToken && <div className="header-activity is-active" aria-hidden />}
       <button
         className="btn btn-ghost"
         aria-label="Toggle sidebar"

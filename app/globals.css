@@ -70,6 +70,46 @@ body,
   border: 1px solid var(--color-border);
   border-radius: 18px;
   box-shadow: var(--shadow-1);
+  }
+
+/* Slim shimmer bar shown only while waiting for first token */
+.header-activity {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 6px;
+  height: 2px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--color-border) 70%, transparent);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.header-activity.is-active {
+  opacity: 1;
+}
+.header-activity.is-active::before {
+  content: '';
+  position: absolute;
+  left: -30%;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    color-mix(in oklab, var(--color-accent) 65%, transparent),
+    rgba(255, 255, 255, 0)
+  );
+  animation: header-shimmer 1.2s linear infinite;
+}
+@keyframes header-shimmer {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(330%);
+  }
 }
 
 /* Removed rigid full-width header divider for a softer look */
@@ -453,6 +493,50 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 /* Smoother auto-resize for message textarea */
 .textarea {
   transition: height 120ms ease;
+}
+
+/* Typing indicator (3 dots) used before first token) */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--glass-panel-bg);
+  box-shadow: var(--shadow-1);
+}
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-fg-muted) 80%, transparent);
+  animation: typing-bounce 900ms var(--ease-standard) infinite;
+}
+.typing-dot:nth-child(2) {
+  animation-delay: 150ms;
+}
+.typing-dot:nth-child(3) {
+  animation-delay: 300ms;
+}
+@keyframes typing-bounce {
+  0% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing-dot {
+    animation: none;
+  }
 }
 
 /* Landing gradient similar to blurred GPT hero, but in our palette */
