@@ -16,8 +16,7 @@ import { estimateTokens } from '@/lib/tokenEstimate';
 import { computeCost } from '@/lib/cost';
 import { findModelById, isVisionSupported } from '@/lib/models';
 import type { Attachment } from '@/lib/types';
-import { extractPdfTextViaApi } from '@/lib/pdf';
-import { ocrPdfFile } from '@/lib/ocr';
+// PDFs are sent directly to OpenRouter as file blocks; no local parsing.
 
 export default function Composer() {
   const send = useChatStore((s) => s.sendUserMessage);
@@ -26,7 +25,7 @@ export default function Composer() {
   const models = useChatStore((s) => s.models);
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [pdfBusyIds, setPdfBusyIds] = useState<Record<string, boolean>>({});
+  // No local PDF parsing; keep state simple
   const taRef = useRef<HTMLTextAreaElement>(null);
   const isStreaming = useChatStore((s) => s.ui.isStreaming);
   const stop = useChatStore((s) => s.stopStreaming);
@@ -124,37 +123,13 @@ export default function Composer() {
       if (!accepted.includes(f.type)) continue;
       if (f.size > 15 * 1024 * 1024) continue; // 15MB per pdf
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      setPdfBusyIds((s) => ({ ...s, [id]: true }));
       setAttachments((prev) => [
         ...prev,
         { id, kind: 'pdf', name: f.name, mime: f.type, size: f.size, file: f },
       ]);
-      const res = await extractPdfTextViaApi(f);
-      setPdfBusyIds((s) => ({ ...s, [id]: false }));
-      setAttachments((prev) =>
-        prev.map((a) =>
-          a.id === id ? { ...a, text: res?.text || '', pageCount: res?.pageCount } : a,
-        ),
-      );
     }
   };
 
-  const runOcrFor = async (id: string) => {
-    const att = attachments.find((a) => a.id === id && a.kind === 'pdf');
-    if (!att || !att.file) return;
-    setPdfBusyIds((s) => ({ ...s, [id]: true }));
-    try {
-      const text = await ocrPdfFile(att.file, {
-        pages: 3,
-        targetWidth: 1200,
-        lang: 'eng',
-        onProgress: () => void 0,
-      });
-      setAttachments((prev) => prev.map((a) => (a.id === id ? { ...a, text } : a)));
-    } finally {
-      setPdfBusyIds((s) => ({ ...s, [id]: false }));
-    }
-  };
 
   const onPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData?.items || [];
@@ -205,25 +180,9 @@ export default function Composer() {
                     <div className="text-xs font-medium truncate" title={a.name || 'PDF'}>
                       {a.name || 'PDF'}
                     </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      {pdfBusyIds[a.id]
-                        ? 'Extracting…'
-                        : a.text && a.text.length > 0
-                          ? a.pageCount
-                            ? `${a.pageCount} pages`
-                            : 'Text extracted'
-                          : 'No text found'}
-                    </div>
+                  <div className="text-[11px] text-muted-foreground">Attached (parsed by OpenRouter)</div>
                   </div>
-                  {!pdfBusyIds[a.id] && (!a.text || a.text.length === 0) && (
-                    <button
-                      className="btn btn-outline btn-xs ml-auto"
-                      title="Run OCR on first pages"
-                      onClick={() => runOcrFor(a.id)}
-                    >
-                      OCR
-                    </button>
-                  )}
+                  {/* No local OCR; handled downstream */}
                 </div>
               )}
               <button
