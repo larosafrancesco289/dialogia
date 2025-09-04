@@ -10,7 +10,7 @@ import {
   fetchZdrModelIds,
   fetchZdrProviderIds,
 } from '@/lib/openrouter';
-import { isReasoningSupported, findModelById, isVisionSupported } from '@/lib/models';
+import { isReasoningSupported, findModelById, isVisionSupported, isToolCallingSupported } from '@/lib/models';
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 
 export function createMessageSlice(
@@ -266,6 +266,7 @@ export function createMessageSlice(
           while (rounds < 3) {
             const modelMeta = findModelById(get().models, chat.settings.model);
             const supportsReasoning = isReasoningSupported(modelMeta);
+            const supportsTools = isToolCallingSupported(modelMeta);
             const resp = await chatCompletion({
               apiKey: key || '',
               model: chat.settings.model,
@@ -275,9 +276,9 @@ export function createMessageSlice(
               max_tokens: chat.settings.max_tokens,
               reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
               reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-              tools: toolDefinition as any,
-              // Let the model decide whether to call the tool
-              tool_choice: 'auto' as any,
+              tools: supportsTools ? (toolDefinition as any) : undefined,
+              // Let the model decide whether to call the tool when supported
+              tool_choice: supportsTools ? ('auto' as any) : undefined,
               signal: controller.signal,
               providerSort,
               plugins,
@@ -375,18 +376,19 @@ export function createMessageSlice(
                     },
                   }));
                   aggregatedResults = results;
-                  const lines = results
-                    .slice(0, MAX_FALLBACK_RESULTS)
-                    .map(
-                      (r, i) =>
-                        `${i + 1}. ${(r.title || r.url || 'Result').toString()} — ${r.url || ''}${r.description ? ` — ${r.description}` : ''}`,
-                    )
-                    .join('\n');
+                  // Provide structured JSON tool output per OpenRouter function-calling docs
+                  const jsonPayload = JSON.stringify(
+                    results.slice(0, MAX_FALLBACK_RESULTS).map((r: any) => ({
+                      title: r?.title,
+                      url: r?.url,
+                      description: r?.description,
+                    })),
+                  );
                   convo.push({
                     role: 'tool',
                     name: 'web_search',
                     tool_call_id: tc.id,
-                    content: `Web search results for: ${rawQuery}\n\n${lines}`,
+                    content: jsonPayload,
                   } as any);
                 } else {
                   if (res.status === 400)
@@ -453,7 +455,8 @@ export function createMessageSlice(
           {
             const modelMeta = findModelById(get().models, chat.settings.model);
             const supportsReasoning = isReasoningSupported(modelMeta);
-      await streamChatCompletion({
+            const supportsTools = isToolCallingSupported(modelMeta);
+            await streamChatCompletion({
         apiKey: key || '',
         model: chat.settings.model,
         messages: streamingMessages,
@@ -463,6 +466,9 @@ export function createMessageSlice(
         reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
         reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
         signal: controller.signal,
+        // Include tool schema for validation on follow-up call; disable further tool use
+        tools: supportsTools ? (toolDefinition as any) : undefined,
+        tool_choice: supportsTools ? ('none' as any) : undefined,
         providerSort,
         plugins,
         callbacks: {

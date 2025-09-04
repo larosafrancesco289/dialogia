@@ -15,6 +15,11 @@ export function isReasoningSupported(model?: ORModel | null): boolean {
   return false;
 }
 
+export function isToolCallingSupported(model?: ORModel | null): boolean {
+  const supported = getSupportedParameters(model);
+  return supported.includes('tools');
+}
+
 export function isVisionSupported(model?: ORModel | null): boolean {
   const supported = getSupportedParameters(model);
   // Primary signal from OpenRouter metadata
