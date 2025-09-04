@@ -220,6 +220,9 @@ export async function streamChatCompletion(params: {
   // Reasoning configuration (optional)
   reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
   reasoning_tokens?: number;
+  // Tool calling (optional)
+  tools?: any[];
+  tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
   signal?: AbortSignal;
   callbacks?: StreamCallbacks;
   providerSort?: 'price' | 'throughput';
@@ -250,6 +253,9 @@ export async function streamChatCompletion(params: {
   if (typeof reasoning_effort === 'string') reasoningConfig.effort = reasoning_effort;
   if (typeof reasoning_tokens === 'number') reasoningConfig.max_tokens = reasoning_tokens;
   if (Object.keys(reasoningConfig).length > 0) body.reasoning = reasoningConfig;
+  // Tools (optional). Always include when provided so the router can validate schemas.
+  if (Array.isArray(params.tools) && params.tools.length > 0) body.tools = params.tools;
+  if (params.tool_choice) body.tool_choice = params.tool_choice as any;
   if (providerSort === 'price' || providerSort === 'throughput') {
     body.provider = { ...(body.provider || {}), sort: providerSort };
   }
