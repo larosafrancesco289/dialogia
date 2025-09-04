@@ -118,6 +118,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
     const hasText = (last.content || '').length > 0 || (last.reasoning || '').length > 0;
     return !hasText;
   }, [isStreaming, messages]);
+  const lastMessageId = useMemo(() => messages[messages.length - 1]?.id, [messages]);
   const saveEdit = (messageId: string) => {
     const text = draft.trim();
     if (!text) return;
@@ -253,11 +254,17 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     }}
                     placeholder="Edit assistant message..."
                   />
+                ) : waitingForFirstToken && m.id === lastMessageId ? (
+                  <div className="typing-indicator" aria-live="polite" aria-label="Generating">
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                  </div>
                 ) : (
                   <Markdown content={m.content} />
                 )}
               </div>
-              {showStats && (
+              {showStats && !(waitingForFirstToken && m.id === lastMessageId) && (
                 <div className="px-4 pb-3 -mt-2">
                   {isStatsExpanded(m.id) ? (
                     <div className="text-xs text-muted-foreground">
@@ -406,15 +413,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
           </button>
         </div>
       )}
-      {waitingForFirstToken && (
-        <div className="px-4 pb-6 pt-2">
-          <div className="typing-indicator" aria-live="polite" aria-label="Generating">
-            <span className="typing-dot" />
-            <span className="typing-dot" />
-            <span className="typing-dot" />
-          </div>
-        </div>
-      )}
+      {/* Typing indicator is now rendered inline within the latest assistant message */}
       <div ref={endRef} />
     </div>
   );

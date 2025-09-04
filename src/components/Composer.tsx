@@ -155,6 +155,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
   const modelId = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
   const modelMeta = findModelById(models, modelId);
   const canVision = isVisionSupported(modelMeta);
+  const supportsReasoning = isReasoningSupported(modelMeta);
   const searchEnabled = chat ? !!chat.settings.search_with_brave : !!ui.nextSearchWithBrave;
 
   // Build slash command suggestions
@@ -527,11 +528,16 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             {searchEnabled ? 'Web search: On' : 'Web search: Off'}
           </button>
         )}
-        {chat?.settings.reasoning_effort && (
-          <span className="badge" title="Reasoning effort for this chat">
-            Reasoning: {chat.settings.reasoning_effort}
-          </span>
-        )}
+        {(() => {
+          const effort = chat?.settings.reasoning_effort ?? ui.nextReasoningEffort;
+          if (!supportsReasoning) return null;
+          if (!effort || effort === 'none') return null;
+          return (
+            <span className="badge" title="Reasoning effort for this chat">
+              Reasoning: {effort}
+            </span>
+          );
+        })()}
         {tokenAndCost.promptTokens > 0 && (
           <span className="badge" title="Approximate tokens and prompt cost">
             ≈ {tokenAndCost.promptTokens} tok
