@@ -28,10 +28,17 @@ export function isVisionSupported(model?: ORModel | null): boolean {
   const caps = Array.isArray(raw?.capabilities)
     ? raw.capabilities.map((c: any) => String(c).toLowerCase())
     : [];
-  const modalityStr = String(raw?.modality || '').toLowerCase();
+  // OpenRouter typically nests modality info under `architecture` for many models
+  const modalityStr = String((raw?.modality ?? raw?.architecture?.modality) || '')
+    .toLowerCase();
   const modalities = Array.isArray(raw?.modalities)
     ? raw.modalities.map((m: any) => String(m).toLowerCase())
     : [];
+  const inputModalities = Array.isArray(raw?.input_modalities)
+    ? raw.input_modalities.map((m: any) => String(m).toLowerCase())
+    : Array.isArray(raw?.architecture?.input_modalities)
+      ? raw.architecture.input_modalities.map((m: any) => String(m).toLowerCase())
+      : [];
   if (caps.some((c: string) => c.includes('vision') || c.includes('image'))) return true;
   if (
     modalityStr.includes('vision') ||
@@ -39,6 +46,7 @@ export function isVisionSupported(model?: ORModel | null): boolean {
     modalityStr.includes('multi')
   )
     return true;
+  if (inputModalities.some((m: string) => m.includes('image'))) return true;
   if (modalities.some((m: string) => m.includes('image') || m.includes('vision'))) return true;
   // Last-resort name/id hints for popular vision families
   if (/\b(vision|4o|omni)\b/.test(hay)) return true;

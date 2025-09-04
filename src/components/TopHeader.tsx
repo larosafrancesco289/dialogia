@@ -32,8 +32,6 @@ export default function TopHeader() {
 
   return (
     <div className="app-header gap-3">
-      {/* Slim activity shimmer when waiting for first token */}
-      {waitingForFirstToken && <div className="header-activity is-active" aria-hidden />}
       <button
         className="btn btn-ghost"
         aria-label="Toggle sidebar"
