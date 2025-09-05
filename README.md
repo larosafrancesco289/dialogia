@@ -1,26 +1,17 @@
 ### Dialogia
 
-Dialogia is a local-first chat UI for OpenRouter models.
+Local-first, privacy-focused multi-model chat UI for OpenRouter.
 
-### Why
+### Highlights
 
-- Keep prompts and history in the browser using IndexedDB
-- Choose any OpenRouter model without vendor lock-in
-- Simple UI with reasoning visibility and basic cost metrics
-
-### Features
-
-- Multi-chat sessions with rename and delete
-- Folders with nested structure; drag & drop chat organization
-- Model picker with curated and custom model ids
-- Streaming responses with time-to-first-token and tokens per second
-- Optional reasoning display for thinking models
-- Compare drawer: run the same prompt across multiple models with metrics
-- Optional Brave web search augmentation for source-grounded answers
-- PDF attachments: attach PDFs directly (as file blocks via OpenRouter); downstream models can read them without local parsing
-- Basic cost estimate when pricing metadata is available
-- Local persistence via Dexie (IndexedDB)
-- Privacy-first: ZDR-only model filtering (default on)
+- Local storage: Chats, messages, folders persisted in-browser via IndexedDB (Dexie).
+- ZDR-first: Lists and enforces Zero Data Retention models by default; toggleable.
+- Model control: Curated picker, favorites, hide-from-dropdown, and custom IDs.
+- Rich I/O: Images (vision), audio input (mp3/wav), PDFs; image generation output supported.
+- Reasoning: Optional “thinking” stream for reasoning-capable models with effort control.
+- Streaming + metrics: TTFT, token counts, tokens/sec; basic cost estimate when pricing is known.
+- Compare drawer: Run one prompt across multiple models; copy, insert to chat, or switch model.
+- Web search: Optional Brave Search augmentation for source-grounded answers.
 
 ### Screenshots
 
@@ -32,18 +23,22 @@ Dialogia is a local-first chat UI for OpenRouter models.
 
 ### Setup
 
-Create `.env.local` at the project root. Recommended proxy mode (keeps keys on the server):
+Create `/.env.local`. Recommended proxy mode (keeps keys on the server):
 
 ```
-# Route OpenRouter requests through Next.js API routes using a server key
+# Route OpenRouter via Next.js API with server key
 NEXT_PUBLIC_USE_OR_PROXY=true
 OPENROUTER_API_KEY=sk-or-v1_your_server_key_here
 
-# Optional: Brave Search for web augmentation
+# Optional: Brave Search (server-side only)
 BRAVE_SEARCH_API_KEY=brave_your_key_here
+
+# Optional: default ZDR behavior (true if unset)
+# Set to false to list all models by default
+NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=true
 ```
 
-Alternatively, if you prefer client‑side requests (not recommended), set:
+Client-side mode (not recommended):
 
 ```
 NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-v1_your_client_key_here
@@ -55,90 +50,74 @@ Install dependencies:
 npm install
 ```
 
-### Quickstart
+### Run
 
-Development server:
+- Dev server: `npm run dev` → http://localhost:3000
+- Build: `npm run build`
+- Start (prod): `npm start`
+- Format: `npm run format`
+- Type check: `npm run lint:types`
 
-```
-npm run dev
-```
-
-Build and start:
-
-```
-npm run build
-npm start
-```
-
-Format and type-check:
-
-```
-npm run format
-npm run lint:types
-```
+Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/start.sh`.
 
 ### Usage
 
-1. Start the dev server
-2. Open `http://localhost:3000`
-3. Use the model picker in the header to select a model
-4. Type in the composer and press Enter to send
-5. Open Settings to adjust temperature, top_p, max_tokens, and reasoning options
-6. Toggle Brave web search in the composer to ground answers with sources
-7. Attach images (vision models) or PDFs in the composer; PDFs are processed to include relevant excerpts
+- Pick a model in the top header. Favorites and hide actions personalize the list.
+- Compose and send with Enter; Shift+Enter inserts a newline.
+- Attachments:
+  - Images: shown inline when the model supports vision.
+  - Audio (mp3/wav): sent as input_audio content to audio-capable models.
+  - PDFs: sent as OpenRouter file blocks (parsed downstream; no local OCR).
+- Reasoning: toggle effort in the composer for thinking models; view “Thinking” panel per message.
+- Web search: toggle the Brave icon to ground the next reply with sources.
+- Compare: click the grid icon in the header to run a prompt across multiple models and review metrics.
+- Slash commands:
+  - `/model <id|name>` — set the model.
+  - `/search on|off|toggle` — toggle Brave web search.
+  - `/reasoning none|low|medium|high` — set reasoning effort.
+  - `/help` — list supported commands.
 
 ### Architecture
 
-- Framework: Next.js App Router with React 18
-- State: Zustand with local persistence
-- Storage: Dexie (IndexedDB)
-- UI: lightweight CSS tokens and Tailwind v4 base
-- Markdown: react-markdown with Prism, KaTeX, Mermaid
+- Framework: Next.js App Router (React 18)
+- State: Zustand with local persistence; Dexie for IndexedDB tables
+- API proxy: `/api/openrouter/*` for models/completions; `/api/brave` for web search
+- Markdown: `react-markdown` + GFM, Prism, KaTeX, Mermaid
+- Styles: Tailwind v4 base + `styles/francesco-bootstrap.css` tokens; `app/globals.css` layout
+- Capabilities: Derived from OpenRouter model metadata (vision, audio input, image output, reasoning)
+- PDFs: Routed with OpenRouter’s file parser plugin — no local parsing required
 
 Security notes:
 
-- Prefer server‑side proxy (`NEXT_PUBLIC_USE_OR_PROXY=true`) so API keys stay on the server.
-- Avoid storing provider secrets in `NEXT_PUBLIC_*` variables whenever possible.
-- The Brave Search integration runs only on the server via `/api/brave` and requires `BRAVE_SEARCH_API_KEY`.
-- By default, Dialogia limits model discovery to OpenRouter providers that advertise a Zero Data
-  Retention (ZDR) policy, fetched from `https://openrouter.ai/api/endpoints/zdr`. You can toggle
-  this in Settings → Privacy. To change the default, set `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=false` in
-  `.env.local`. Using an API key restricted to ZDR providers also works seamlessly.
+- Prefer proxy mode (`NEXT_PUBLIC_USE_OR_PROXY=true`) to keep provider keys server-side.
+- Avoid placing secrets in `NEXT_PUBLIC_*` env vars when possible.
+- Brave Search runs only server-side and requires `BRAVE_SEARCH_API_KEY`.
+- ZDR-only: Model listing and sends default to ZDR-only. Override default with `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=false`.
 
-Code tree:
+### Project Structure
 
 ```
-dialogia/
-  app/
-    layout.tsx
-    page.tsx
-    globals.css
-  src/
-    components/
-      ChatPane.tsx
-      ChatSidebar.tsx
-      Composer.tsx
-      MessageList.tsx
-      ModelPicker.tsx
-      SettingsDrawer.tsx
-      ThemeToggle.tsx
-      TopHeader.tsx
-      WelcomeHero.tsx
-    data/
-      presets.ts
-    lib/
-      crypto.ts
-      db.ts
-      markdown.tsx
-      openrouter.ts
-      store.ts
-      types.ts
-    types/
-      prism.d.ts
-  styles/
-    francesco-bootstrap.css
+app/                    # Next.js App Router entry (layout, page, globals)
+src/components/         # React components (PascalCase .tsx)
+src/components/message/ # Message subcomponents (meta, reasoning, sources)
+src/lib/                # Utilities, API client, state slices
+src/data/               # Curated models and presets
+src/types/              # Type augmentations
+public/                 # Static assets served by Next
+assets/                 # Screenshots
+styles/                 # Global CSS tokens (francesco-bootstrap.css)
+scripts/                # Helper scripts (dev/build/start)
 ```
+
+### Development
+
+- Language: TypeScript + React 18; Next.js App Router
+- Formatting: Prettier (`.prettierrc`) — single quotes, semicolons, trailing commas=all, width=100
+- Naming: PascalCase components in `src/components/`; named exports favored
+- Type safety: run `npm run lint:types` before pushing
+- Testing: none configured; validate via UI. If adding tests, prefer colocated `*.test.ts(x)` and discuss framework (Jest+RTL or Playwright).
 
 ### License
 
 MIT
+

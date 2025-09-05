@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import { XMarkIcon, EyeIcon, LightBulbIcon, MicrophoneIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, EyeIcon, LightBulbIcon, MicrophoneIcon, ShieldCheckIcon, PhotoIcon } from '@heroicons/react/24/outline';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
 import {
@@ -9,6 +9,7 @@ import {
   isReasoningSupported,
   isVisionSupported,
   isAudioInputSupported,
+  isImageOutputSupported,
 } from '@/lib/models';
 
 export default function ModelPicker() {
@@ -148,6 +149,7 @@ export default function ModelPicker() {
             const canReason = isReasoningSupported(meta);
             const canSee = isVisionSupported(meta);
             const canAudio = isAudioInputSupported(meta);
+            const canImageOut = isImageOutputSupported(meta);
             const provider = String(o.id).split('/')[0];
             const isZdr = Boolean(
               (zdrModelIds && zdrModelIds.includes(o.id)) ||
@@ -181,6 +183,13 @@ export default function ModelPicker() {
                         className="h-4 w-4"
                         aria-label="Audio input"
                         title="Audio input"
+                      />
+                    )}
+                    {canImageOut && (
+                      <PhotoIcon
+                        className="h-4 w-4"
+                        aria-label="Image generation"
+                        title="Image generation"
                       />
                     )}
                     {isZdr && (
