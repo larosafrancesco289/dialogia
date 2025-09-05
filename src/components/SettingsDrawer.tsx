@@ -61,9 +61,9 @@ export default function SettingsDrawer() {
   );
   // Removed manual custom model input; use search below
   const [query, setQuery] = useState('');
-  const [reasoningEffort, setReasoningEffort] = useState<string | undefined>(
-    chat?.settings.reasoning_effort,
-  );
+  const [reasoningEffort, setReasoningEffort] = useState<
+    'none' | 'low' | 'medium' | 'high' | undefined
+  >(chat?.settings.reasoning_effort);
   const [reasoningTokens, setReasoningTokens] = useState<number | undefined>(
     chat?.settings.reasoning_tokens,
   );

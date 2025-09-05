@@ -17,7 +17,7 @@ Dialogia is a local-first chat UI for OpenRouter models.
 - Optional reasoning display for thinking models
 - Compare drawer: run the same prompt across multiple models with metrics
 - Optional Brave web search augmentation for source-grounded answers
-- PDF attachments: extract text client-side via server route and include relevant excerpts in prompts
+- PDF attachments: attach PDFs directly (as file blocks via OpenRouter); downstream models can read them without local parsing
 - Basic cost estimate when pricing metadata is available
 - Local persistence via Dexie (IndexedDB)
 - Privacy-first: ZDR-only model filtering (default on)

@@ -103,6 +103,10 @@ export async function fetchModels(apiKey: string): Promise<ORModel[]> {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'X-Title': 'Dialogia',
+        'HTTP-Referer':
+          typeof window !== 'undefined' && window.location?.origin
+            ? window.location.origin
+            : 'http://localhost:3000',
       };
   // Add a conservative timeout to avoid hung UI if the network stalls
   const controller = new AbortController();
@@ -202,6 +206,10 @@ export async function chatCompletion(params: {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
             'X-Title': 'Dialogia',
+            'HTTP-Referer':
+              typeof window !== 'undefined' && window.location?.origin
+                ? window.location.origin
+                : 'http://localhost:3000',
           }),
     },
     body: JSON.stringify(body),
@@ -282,6 +290,10 @@ export async function streamChatCompletion(params: {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
             'X-Title': 'Dialogia',
+            'HTTP-Referer':
+              typeof window !== 'undefined' && window.location?.origin
+                ? window.location.origin
+                : 'http://localhost:3000',
           }),
     },
     body: JSON.stringify(body),

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { CURATED_MODELS } from '@/data/curatedModels';
-import { PINNED_MODEL_ID } from '@/lib/constants';
+import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
 import {
   findModelById,
   isReasoningSupported,
@@ -34,11 +34,17 @@ export default function ModelPicker() {
       .map((id: string) => ({ id, name: id }));
   }, [favoriteModelIds, models]);
   const allOptions = useMemo(() => {
-    return [...curated, ...customOptions].reduce((acc: any[], m: any) => {
+    // Ensure DEFAULT_MODEL_ID is always present as a selectable option
+    const injectedDefault = (() => {
+      const meta = findModelById(models, DEFAULT_MODEL_ID);
+      const display = meta?.name || DEFAULT_MODEL_ID;
+      return [{ id: DEFAULT_MODEL_ID, name: display }];
+    })();
+    return [...injectedDefault, ...curated, ...customOptions].reduce((acc: any[], m: any) => {
       if (!acc.find((x) => x.id === m.id)) acc.push(m);
       return acc;
     }, []);
-  }, [customOptions]);
+  }, [customOptions, models]);
   const options = useMemo(() => {
     const hidden = new Set(hiddenModelIds || []);
     const allowedIds = new Set((models || []).map((m: any) => m.id));
@@ -52,6 +58,7 @@ export default function ModelPicker() {
   }, [allOptions, hiddenModelIds, models, ui?.zdrOnly]);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
   const allowedIds = new Set((models || []).map((m: any) => m.id));
   const effectiveSelectedId =
@@ -81,14 +88,62 @@ export default function ModelPicker() {
     return () => document.removeEventListener('pointerdown', onPointerDown, true);
   }, [open]);
 
+  // When opening, initialize highlighted index to current selection
+  useEffect(() => {
+    if (open) {
+      const idx = Math.max(0, options.findIndex((o) => o.id === (current?.id || '')));
+      setHighlightedIndex(idx === -1 ? 0 : idx);
+    }
+  }, [open, options, current?.id]);
+
   return (
     <div className="relative" ref={rootRef}>
-      <button className="btn btn-outline" onClick={() => setOpen(!open)}>
-        {current?.name || current?.id}
+      <button
+        className="btn btn-outline"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        title={current?.name || current?.id || 'Pick model'}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown' || e.key === 'Enter') {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+      >
+        {current?.name || current?.id || 'Pick model'}
       </button>
       {open && (
-        <div className="absolute z-20 mt-2 w-72 card p-2 max-h-80 overflow-auto popover">
-          {options.map((o) => {
+        <div
+          className="absolute z-20 mt-2 w-72 card p-2 max-h-80 overflow-auto popover"
+          role="listbox"
+          aria-label="Select a model"
+          tabIndex={-1}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setOpen(false);
+              return;
+            }
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setHighlightedIndex((i) => (i + 1) % Math.max(1, options.length));
+              return;
+            }
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setHighlightedIndex((i) => (i - 1 + Math.max(1, options.length)) % Math.max(1, options.length));
+              return;
+            }
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const target = options[highlightedIndex];
+              if (target) choose(target.id);
+              return;
+            }
+          }}
+        >
+          {options.map((o, idx) => {
             const meta = findModelById(models, o.id);
             const canReason = isReasoningSupported(meta);
             const canSee = isVisionSupported(meta);
@@ -101,7 +156,11 @@ export default function ModelPicker() {
             return (
               <div
                 key={o.id}
-                className={`menu-item flex items-center justify-between gap-2 ${o.id === selectedId ? 'bg-muted' : ''}`}
+                role="option"
+                aria-selected={o.id === selectedId}
+                className={`menu-item flex items-center justify-between gap-2 ${
+                  o.id === selectedId ? 'bg-muted' : ''
+                } ${idx === highlightedIndex ? 'ring-1 ring-border' : ''}`}
                 onClick={() => choose(o.id)}
               >
                 <div className="min-w-0">
