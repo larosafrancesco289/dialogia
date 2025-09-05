@@ -9,18 +9,15 @@ import { useEffect, useState } from 'react';
 import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
 
 export default function TopHeader() {
-  const { chats, selectedChatId, renameChat, setUI, openCompare } = useChatStore();
+  // Use granular selectors to avoid unnecessary re-renders
+  const chats = useChatStore((s) => s.chats);
+  const selectedChatId = useChatStore((s) => s.selectedChatId);
+  const renameChat = useChatStore((s) => s.renameChat);
+  const setUI = useChatStore((s) => s.setUI);
+  const openCompare = useChatStore((s) => s.openCompare);
   const chat = chats.find((c) => c.id === selectedChatId);
   const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
   const isSettingsOpen = useChatStore((s) => s.ui.showSettings);
-  const waitingForFirstToken = useChatStore((s) => {
-    const id = s.selectedChatId;
-    const list = (id && s.messages[id]) || [];
-    const last = list[list.length - 1];
-    if (!s.ui.isStreaming || !last || last.role !== 'assistant') return false;
-    const hasAny = (last.content || '').length > 0 || (last.reasoning || '').length > 0;
-    return !hasAny;
-  });
   const [title, setTitle] = useState(chat?.title || '');
   useEffect(() => setTitle(chat?.title || ''), [chat?.id]);
   const save = useDebouncedCallback((text: string) => {
@@ -51,12 +48,14 @@ export default function TopHeader() {
       {chat && (
         <input
           className="input flex-1 max-w-xl"
+          aria-label="Chat title"
+          placeholder="Untitled chat"
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
             save(e.target.value);
           }}
-          onBlur={() => (save as any).flush?.(title)}
+          onBlur={() => save.flush(title)}
         />
       )}
       <div className="ml-auto" />

@@ -5,7 +5,8 @@ import Composer from '@/components/Composer';
 import WelcomeHero from '@/components/WelcomeHero';
 
 export default function ChatPane() {
-  const { chats, selectedChatId } = useChatStore();
+  const chats = useChatStore((s) => s.chats);
+  const selectedChatId = useChatStore((s) => s.selectedChatId);
   const chat = chats.find((c) => c.id === selectedChatId);
   if (!chat) return <WelcomeHero />;
 
