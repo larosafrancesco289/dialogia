@@ -228,64 +228,64 @@ function RootChatItem({
     <>
       <div className="pb-1">
         <div
-        className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item ${
-          isSelected ? 'selected' : ''
-        }`}
-        draggable
-        onDragStart={() => {
-          setCurrentDragData({ id: chat.id, type: 'chat' });
-        }}
-        onClick={!isEditing ? onSelect : undefined}
-      >
-        {/* Chat Icon */}
-        <div className="w-4 h-4 flex items-center justify-center text-muted-foreground">
-          <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />
-        </div>
-
-        {/* Chat Title */}
-        {isEditing ? (
-          <div className="flex items-center gap-2 flex-1">
-            <input
-              className="input flex-1 text-sm"
-              value={editTitle}
-              onChange={(e) => onEditTitleChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') onSaveEdit();
-                if (e.key === 'Escape') onCancelEdit();
-              }}
-              onBlur={onSaveEdit}
-              autoFocus
-            />
+          className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item ${
+            isSelected ? 'selected' : ''
+          }`}
+          draggable
+          onDragStart={() => {
+            setCurrentDragData({ id: chat.id, type: 'chat' });
+          }}
+          onClick={!isEditing ? onSelect : undefined}
+        >
+          {/* Chat Icon */}
+          <div className="w-4 h-4 flex items-center justify-center text-muted-foreground">
+            <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />
           </div>
-        ) : (
-          <div className="flex-1 text-sm truncate">{collapsed ? '' : chat.title}</div>
-        )}
 
-        {/* Action Buttons */}
-        {!isEditing && !collapsed && (
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-            <IconButton
-              size="sm"
-              onClick={(e) => {
-                e?.stopPropagation();
-                onStartEdit();
-              }}
-              title="Rename chat"
-            >
-              <PencilSquareIcon className="h-3 w-3" />
-            </IconButton>
-            <IconButton
-              size="sm"
-              onClick={(e) => {
-                e?.stopPropagation();
-                setShowConfirm(true);
-              }}
-              title="Delete chat"
-            >
-              <TrashIcon className="h-3 w-3" />
-            </IconButton>
-          </div>
-        )}
+          {/* Chat Title */}
+          {isEditing ? (
+            <div className="flex items-center gap-2 flex-1">
+              <input
+                className="input flex-1 text-sm"
+                value={editTitle}
+                onChange={(e) => onEditTitleChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onSaveEdit();
+                  if (e.key === 'Escape') onCancelEdit();
+                }}
+                onBlur={onSaveEdit}
+                autoFocus
+              />
+            </div>
+          ) : (
+            <div className="flex-1 text-sm truncate">{collapsed ? '' : chat.title}</div>
+          )}
+
+          {/* Action Buttons */}
+          {!isEditing && !collapsed && (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+              <IconButton
+                size="sm"
+                onClick={(e) => {
+                  e?.stopPropagation();
+                  onStartEdit();
+                }}
+                title="Rename chat"
+              >
+                <PencilSquareIcon className="h-3 w-3" />
+              </IconButton>
+              <IconButton
+                size="sm"
+                onClick={(e) => {
+                  e?.stopPropagation();
+                  setShowConfirm(true);
+                }}
+                title="Delete chat"
+              >
+                <TrashIcon className="h-3 w-3" />
+              </IconButton>
+            </div>
+          )}
         </div>
       </div>
 

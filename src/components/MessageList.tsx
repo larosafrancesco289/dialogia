@@ -214,7 +214,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   onToggle={() => toggle(m.id)}
                 />
               )}
-              {/* Attachments (assistant-visible images; PDFs shown as chips) */}
+              {/* Attachments (assistant-visible images/audio; PDFs shown as chips) */}
               {Array.isArray(m.attachments) && m.attachments.length > 0 && (
                 <div className="px-4 pt-3 flex flex-wrap gap-2">
                   {m.attachments
@@ -239,6 +239,25 @@ export default function MessageList({ chatId }: { chatId: string }) {
                           className="h-36 w-36 object-cover rounded border border-border"
                         />
                       </button>
+                    ))}
+                  {m.attachments
+                    .filter((a: Attachment) => a.kind === 'audio')
+                    .map((a: Attachment) => (
+                      <div
+                        key={a.id}
+                        className="h-16 min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
+                      >
+                        {a.dataURL ? (
+                          <audio controls src={a.dataURL} className="h-10" />
+                        ) : (
+                          <span className="text-xs">Audio attached</span>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
+                            {a.name || 'Audio'}
+                          </div>
+                        </div>
+                      </div>
                     ))}
                   {m.attachments
                     .filter((a: Attachment) => a.kind === 'pdf')
@@ -353,7 +372,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   </button>
                 )}
               </div>
-              {/* Attachments (user) */}
+              {/* Attachments (user: images/audio/PDFs) */}
               {Array.isArray(m.attachments) && m.attachments.length > 0 && (
                 <div className="px-4 pt-3 flex flex-wrap gap-2">
                   {m.attachments
@@ -378,6 +397,25 @@ export default function MessageList({ chatId }: { chatId: string }) {
                           className="h-36 w-36 object-cover rounded border border-border"
                         />
                       </button>
+                    ))}
+                  {m.attachments
+                    .filter((a: Attachment) => a.kind === 'audio')
+                    .map((a: Attachment) => (
+                      <div
+                        key={a.id}
+                        className="h-16 min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
+                      >
+                        {a.dataURL ? (
+                          <audio controls src={a.dataURL} className="h-10" />
+                        ) : (
+                          <span className="text-xs">Audio attached</span>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
+                            {a.name || 'Audio'}
+                          </div>
+                        </div>
+                      </div>
                     ))}
                   {m.attachments
                     .filter((a: Attachment) => a.kind === 'pdf')

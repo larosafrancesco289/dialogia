@@ -17,6 +17,7 @@ import {
   findModelById,
   isReasoningSupported,
   isVisionSupported,
+  isAudioInputSupported,
   isImageOutputSupported,
 } from '@/lib/models';
 import type { Attachment } from '@/lib/types';
@@ -161,6 +162,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
   const modelId = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
   const modelMeta = findModelById(models, modelId);
   const canVision = isVisionSupported(modelMeta);
+  const canAudio = isAudioInputSupported(modelMeta);
   const supportsReasoning = isReasoningSupported(modelMeta);
   const canImageOut = isImageOutputSupported(modelMeta);
   const searchEnabled = chat ? !!chat.settings.search_with_brave : !!ui.nextSearchWithBrave;
@@ -328,9 +330,51 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
       const arr = Array.from(files);
       const pdfs = arr.filter((f) => f.type === 'application/pdf');
       const imgs = arr.filter((f) => f.type.startsWith('image/'));
+      const auds = arr.filter(
+        (f) =>
+          f.type === 'audio/wav' ||
+          f.type === 'audio/mpeg' ||
+          f.name.toLowerCase().endsWith('.wav') ||
+          f.name.toLowerCase().endsWith('.mp3'),
+      );
       if (imgs.length && canVision) await onFilesChosen(imgs);
       if (pdfs.length) await onPdfChosen(pdfs);
+      if (auds.length && canAudio) await onAudioChosen(auds);
     }
+  };
+
+  const onAudioChosen = async (files: FileList | File[]) => {
+    const arr = Array.from(files || []);
+    const accepted = ['audio/wav', 'audio/mpeg'];
+    const maxAud = 1; // keep it simple: one audio per message
+    const existingAud = attachments.filter((a) => a.kind === 'audio').length;
+    const remain = Math.max(0, maxAud - existingAud);
+    const toProcess = arr.slice(0, remain);
+    const next: Attachment[] = [];
+    for (const f of toProcess) {
+      const isAccepted =
+        accepted.includes(f.type) ||
+        f.name.toLowerCase().endsWith('.wav') ||
+        f.name.toLowerCase().endsWith('.mp3');
+      if (!isAccepted) continue;
+      if (f.size > 15 * 1024 * 1024) continue; // 15MB cap for audio
+      const dataURL: string = await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result || ''));
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(f);
+      });
+      next.push({
+        id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        kind: 'audio',
+        name: f.name,
+        mime: f.type || (f.name.toLowerCase().endsWith('.wav') ? 'audio/wav' : 'audio/mpeg'),
+        size: f.size,
+        dataURL,
+        file: f,
+      });
+    }
+    if (next.length) setAttachments((prev) => [...prev, ...next]);
   };
 
   const wrapperClass = variant === 'hero' ? 'composer-hero' : 'composer-chrome';
@@ -347,6 +391,16 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
                   alt={a.name || 'attachment'}
                   className="h-16 w-16 object-cover rounded border border-border"
                 />
+              ) : a.kind === 'audio' && a.dataURL ? (
+                <div className="h-16 min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2">
+                  <audio controls src={a.dataURL} className="h-10" />
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
+                      {a.name || 'Audio'}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">Attached (mp3/wav)</div>
+                  </div>
+                </div>
               ) : (
                 <div className="h-16 min-w-40 max-w-64 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2">
                   <DocumentTextIcon className="h-5 w-5" />
@@ -458,14 +512,18 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             <label
               className={`btn self-center cursor-pointer`}
               title={
-                canVision
-                  ? 'Attach images or PDFs'
-                  : 'Attach PDFs. Images are not supported by this model'
+                canVision && canAudio
+                  ? 'Attach images, audio (mp3/wav), or PDFs'
+                  : canVision
+                    ? 'Attach images or PDFs'
+                    : canAudio
+                      ? 'Attach audio (mp3/wav) or PDFs'
+                      : 'Attach PDFs'
               }
             >
               <input
                 type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif,application/pdf"
+                accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,audio/wav,audio/mpeg"
                 multiple
                 className="hidden"
                 onChange={async (e) => {
@@ -475,8 +533,16 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
                     const arr = Array.from(files);
                     const pdfs = arr.filter((f) => f.type === 'application/pdf');
                     const imgs = arr.filter((f) => f.type.startsWith('image/'));
+                    const auds = arr.filter(
+                      (f) =>
+                        f.type === 'audio/wav' ||
+                        f.type === 'audio/mpeg' ||
+                        f.name.toLowerCase().endsWith('.wav') ||
+                        f.name.toLowerCase().endsWith('.mp3'),
+                    );
                     if (pdfs.length) await onPdfChosen(pdfs);
                     if (imgs.length && canVision) await onFilesChosen(imgs);
+                    if (auds.length && canAudio) await onAudioChosen(auds);
                   }
                   if (inputEl) inputEl.value = '';
                 }}
@@ -530,6 +596,11 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
         {canImageOut && (
           <span className="badge" title="This model can generate images when prompted.">
             Image generation supported
+          </span>
+        )}
+        {canAudio && (
+          <span className="badge" title="This model supports audio inputs (mp3/wav)">
+            Audio supported
           </span>
         )}
         {
