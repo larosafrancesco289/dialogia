@@ -17,6 +17,10 @@ Local-first, privacy-focused multi-model chat UI for OpenRouter.
 
 ![Front page](assets/frontpage.png)
 
+![Chat](assets/chat.png)
+
+![Image generation](assets/image-gen.png)
+
 ![Model selection](assets/model-selection.png)
 
 ![Settings](assets/settings.png)
