@@ -57,6 +57,36 @@ export function isVisionSupported(model?: ORModel | null): boolean {
   return false;
 }
 
+// Whether a model supports audio inputs (input_audio content blocks)
+export function isAudioInputSupported(model?: ORModel | null): boolean {
+  const supported = getSupportedParameters(model);
+  if (supported.includes('audio')) return true;
+  // Heuristics from raw metadata when supported_parameters is sparse
+  const raw: any = (model as any)?.raw || {};
+  const id = String((model as any)?.id || '').toLowerCase();
+  const name = String((model as any)?.name || '').toLowerCase();
+  const hay = `${id} ${name}`;
+  const modalities = Array.isArray(raw?.modalities)
+    ? raw.modalities.map((m: any) => String(m).toLowerCase())
+    : Array.isArray(raw?.architecture?.modalities)
+      ? raw.architecture.modalities.map((m: any) => String(m).toLowerCase())
+      : [];
+  const inputModalities = Array.isArray(raw?.input_modalities)
+    ? raw.input_modalities.map((m: any) => String(m).toLowerCase())
+    : Array.isArray(raw?.architecture?.input_modalities)
+      ? raw.architecture.input_modalities.map((m: any) => String(m).toLowerCase())
+      : [];
+  if (inputModalities.some((m: string) => m.includes('audio'))) return true;
+  if (modalities.some((m: string) => m.includes('audio'))) return true;
+  // Last-resort hints for popular audio-capable families
+  if (/\b(gemini|gpt|omni|4o|flash)\b/.test(hay)) {
+    // Do not over-claim; only return true if raw flags suggest multimodality
+    const modalityStr = String((raw?.modality ?? raw?.architecture?.modality) || '').toLowerCase();
+    if (modalityStr.includes('audio') || modalityStr.includes('multi')) return true;
+  }
+  return false;
+}
+
 // Whether a model can output images (for image generation)
 export function isImageOutputSupported(model?: ORModel | null): boolean {
   if (!model) return false;

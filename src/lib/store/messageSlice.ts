@@ -14,6 +14,7 @@ import {
   isReasoningSupported,
   findModelById,
   isVisionSupported,
+  isAudioInputSupported,
   isToolCallingSupported,
   isImageOutputSupported,
 } from '@/lib/models';
@@ -57,12 +58,16 @@ export function createMessageSlice(
         }));
       const chatId = get().selectedChatId!;
       const chat = get().chats.find((c) => c.id === chatId)!;
-      // If attachments provided but model lacks vision support, drop them and inform
+      // Filter attachments by model capabilities (vision/audio allowed only when supported)
       const modelMetaVisionCheck = findModelById(get().models, chat.settings.model);
       const canVision = isVisionSupported(modelMetaVisionCheck);
-      const rawAttachments = (opts?.attachments || []).filter((a) =>
-        a.kind === 'image' ? canVision : a.kind === 'pdf',
-      );
+      const canAudio = isAudioInputSupported(modelMetaVisionCheck);
+      const rawAttachments = (opts?.attachments || []).filter((a) => {
+        if (a.kind === 'image') return !!canVision;
+        if (a.kind === 'pdf') return true;
+        if (a.kind === 'audio') return !!canAudio;
+        return false;
+      });
       // Convert PDF Files to data URLs on-the-fly for OpenRouter file blocks.
       const toDataUrl = (file: File): Promise<string> =>
         new Promise((resolve, reject) => {
@@ -71,6 +76,11 @@ export function createMessageSlice(
           fr.onerror = () => reject(fr.error);
           fr.readAsDataURL(file);
         });
+      // Audio: convert to base64 and set format when needed. PDFs: ensure dataURL exists.
+      const toBase64FromDataUrl = (dataUrl: string): string | undefined => {
+        const idx = dataUrl.indexOf('base64,');
+        return idx >= 0 ? dataUrl.slice(idx + 'base64,'.length) : undefined;
+      };
       const attachments = await Promise.all(
         rawAttachments.map(async (a) => {
           if (a.kind === 'pdf' && a.file && !a.dataURL) {
@@ -80,6 +90,30 @@ export function createMessageSlice(
             } catch {
               return a;
             }
+          }
+          if (a.kind === 'audio') {
+            let base64 = a.base64;
+            let dataURL = a.dataURL;
+            // Ensure we have a preview URL for UI and base64 for sending
+            if (!dataURL && a.file) {
+              try {
+                dataURL = await toDataUrl(a.file);
+              } catch {}
+            }
+            if (!base64 && dataURL) base64 = toBase64FromDataUrl(dataURL);
+            // Determine audio format from mime or name
+            const fmt: 'wav' | 'mp3' | undefined = a.audioFormat
+              ? a.audioFormat
+              : a.mime?.includes('wav')
+                ? 'wav'
+                : a.mime?.includes('mpeg') || a.mime?.includes('mp3')
+                  ? 'mp3'
+                  : (a.name || '').toLowerCase().endsWith('.wav')
+                    ? 'wav'
+                    : (a.name || '').toLowerCase().endsWith('.mp3')
+                      ? 'mp3'
+                      : undefined;
+            return { ...a, dataURL, base64, audioFormat: fmt } as any;
           }
           return a;
         }),

@@ -214,83 +214,83 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
 
   return (
     <>
-    <div
-      className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item ${
-        isSelected ? 'selected' : ''
-      }`}
-      style={{ paddingLeft: `${paddingLeft}px` }}
-      draggable
-      onDragStart={() => {
-        setCurrentDragData({ id: chat.id, type: 'chat' });
-      }}
-      onClick={!isEditing ? onSelect : undefined}
-    >
-      {/* Chat Icon */}
-      <div className="w-4 h-4 flex items-center justify-center text-muted-foreground shrink-0">
-        <MessageIcon size={14} />
-      </div>
+      <div
+        className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item ${
+          isSelected ? 'selected' : ''
+        }`}
+        style={{ paddingLeft: `${paddingLeft}px` }}
+        draggable
+        onDragStart={() => {
+          setCurrentDragData({ id: chat.id, type: 'chat' });
+        }}
+        onClick={!isEditing ? onSelect : undefined}
+      >
+        {/* Chat Icon */}
+        <div className="w-4 h-4 flex items-center justify-center text-muted-foreground shrink-0">
+          <MessageIcon size={14} />
+        </div>
 
-      {/* Chat Title */}
-      {isEditing ? (
-        <div className="flex items-center gap-2 flex-1">
-          <input
-            className="input flex-1 text-sm"
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRename();
-              if (e.key === 'Escape') {
-                setIsEditing(false);
+        {/* Chat Title */}
+        {isEditing ? (
+          <div className="flex items-center gap-2 flex-1">
+            <input
+              className="input flex-1 text-sm"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleRename();
+                if (e.key === 'Escape') {
+                  setIsEditing(false);
+                  setEditTitle(chat.title);
+                }
+              }}
+              onBlur={handleRename}
+              autoFocus
+            />
+          </div>
+        ) : (
+          <div className="flex-1 text-sm truncate">{chat.title}</div>
+        )}
+
+        {/* Action Buttons */}
+        {!isEditing && (
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+            <IconButton
+              size="sm"
+              onClick={(e) => {
+                e?.stopPropagation();
+                setIsEditing(true);
                 setEditTitle(chat.title);
-              }
-            }}
-            onBlur={handleRename}
-            autoFocus
-          />
-        </div>
-      ) : (
-        <div className="flex-1 text-sm truncate">{chat.title}</div>
-      )}
-
-      {/* Action Buttons */}
-      {!isEditing && (
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-          <IconButton
-            size="sm"
-            onClick={(e) => {
-              e?.stopPropagation();
-              setIsEditing(true);
-              setEditTitle(chat.title);
-            }}
-            title="Rename chat"
-          >
-            <EditIcon size={12} />
-          </IconButton>
-          <IconButton
-            size="sm"
-            onClick={(e) => {
-              e?.stopPropagation();
-              setShowConfirm(true);
-            }}
-            title="Delete chat"
-          >
-            <TrashIcon size={12} />
-          </IconButton>
-        </div>
-      )}
-    </div>
-    <ConfirmDialog
-      open={showConfirm}
-      title="Delete chat?"
-      description={`Delete chat "${chat.title}"?`}
-      confirmLabel="Delete"
-      cancelLabel="Cancel"
-      onCancel={() => setShowConfirm(false)}
-      onConfirm={() => {
-        setShowConfirm(false);
-        handleDelete();
-      }}
-    />
+              }}
+              title="Rename chat"
+            >
+              <EditIcon size={12} />
+            </IconButton>
+            <IconButton
+              size="sm"
+              onClick={(e) => {
+                e?.stopPropagation();
+                setShowConfirm(true);
+              }}
+              title="Delete chat"
+            >
+              <TrashIcon size={12} />
+            </IconButton>
+          </div>
+        )}
+      </div>
+      <ConfirmDialog
+        open={showConfirm}
+        title="Delete chat?"
+        description={`Delete chat "${chat.title}"?`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onCancel={() => setShowConfirm(false)}
+        onConfirm={() => {
+          setShowConfirm(false);
+          handleDelete();
+        }}
+      />
     </>
   );
 }

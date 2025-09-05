@@ -4,7 +4,12 @@ import { useChatStore } from '@/lib/store';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID } from '@/lib/constants';
-import { findModelById, isReasoningSupported, isVisionSupported } from '@/lib/models';
+import {
+  findModelById,
+  isReasoningSupported,
+  isVisionSupported,
+  isAudioInputSupported,
+} from '@/lib/models';
 
 export default function ModelPicker() {
   const {
@@ -87,6 +92,7 @@ export default function ModelPicker() {
             const meta = findModelById(models, o.id);
             const canReason = isReasoningSupported(meta);
             const canSee = isVisionSupported(meta);
+            const canAudio = isAudioInputSupported(meta);
             const provider = String(o.id).split('/')[0];
             const isZdr = Boolean(
               (zdrModelIds && zdrModelIds.includes(o.id)) ||
@@ -103,6 +109,7 @@ export default function ModelPicker() {
                   <div className="flex gap-1 mt-1">
                     {canReason && <span className="badge">Reasoning</span>}
                     {canSee && <span className="badge">Vision</span>}
+                    {canAudio && <span className="badge">Audio</span>}
                     {isZdr && <span className="badge">ZDR</span>}
                   </div>
                 </div>

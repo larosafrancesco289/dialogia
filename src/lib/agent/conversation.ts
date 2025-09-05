@@ -70,6 +70,27 @@ export function buildChatCompletionMessages(params: {
               file_data: a.dataURL,
             },
           });
+        } else if (a.kind === 'audio') {
+          // OpenRouter audio input uses base64 data + format (no data: prefix)
+          const fmt: any =
+            a.audioFormat ||
+            (a.mime?.includes('wav') ? 'wav' : a.mime?.includes('mp3') ? 'mp3' : undefined);
+          const fromDataUrl = (url?: string): string | undefined => {
+            if (!url) return undefined;
+            const idx = url.indexOf('base64,');
+            if (idx >= 0) return url.slice(idx + 'base64,'.length);
+            return undefined;
+          };
+          const base64 = a.base64 || fromDataUrl(a.dataURL);
+          if (base64 && fmt) {
+            blocks.push({
+              type: 'input_audio',
+              input_audio: {
+                data: base64,
+                format: fmt,
+              },
+            });
+          }
         }
       }
       finalMsgs.push({ role: 'user', content: blocks });

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import { createPortal } from 'react-dom';
 import { useEffect, useRef } from 'react';
 
@@ -27,12 +27,16 @@ export default function ConfirmDialog({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onConfirm();
+      }
     };
     document.addEventListener('keydown', onKey);
     // Focus the cancel button first for safety
     cancelRef.current?.focus();
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onCancel]);
+  }, [open, onCancel, onConfirm]);
 
   if (!open) return null;
 
@@ -48,9 +52,7 @@ export default function ConfirmDialog({
       <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
         <div className="card p-4 w-full max-w-sm glass-panel">
           <div className="text-base font-medium mb-1">{title}</div>
-          {description && (
-            <div className="text-sm text-muted-foreground mb-4">{description}</div>
-          )}
+          {description && <div className="text-sm text-muted-foreground mb-4">{description}</div>}
           <div className="flex items-center justify-end gap-2">
             <button ref={cancelRef} className="btn-outline btn-sm" onClick={onCancel}>
               {cancelLabel}
@@ -68,4 +70,3 @@ export default function ConfirmDialog({
     document.body,
   );
 }
-
