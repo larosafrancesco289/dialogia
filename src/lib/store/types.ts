@@ -38,6 +38,7 @@ export type UIState = {
         status: 'idle' | 'running' | 'done' | 'error' | 'aborted';
         content: string;
         reasoning?: string;
+        images?: string[]; // base64 data URLs for generated images
         metrics?: MessageMetrics;
         tokensIn?: number;
         tokensOut?: number;

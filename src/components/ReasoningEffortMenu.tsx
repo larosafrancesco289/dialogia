@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { LightBulbIcon } from '@heroicons/react/24/outline';
 import { findModelById, isReasoningSupported } from '@/lib/models';
@@ -15,6 +15,7 @@ export default function ReasoningEffortMenu() {
   const ui = useChatStore((s) => s.ui);
   const setUI = useChatStore((s) => s.setUI);
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const modelId = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
   const selectedModel = useMemo(() => findModelById(models, modelId), [models, modelId]);
@@ -33,8 +34,21 @@ export default function ReasoningEffortMenu() {
 
   if (!supportsReasoning) return null;
 
+  // Close when clicking outside
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      const root = rootRef.current;
+      if (root && target && root.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <button
         className={`btn self-center ${active ? 'btn-primary' : 'btn-outline'}`}
         onClick={() => setOpen((v) => !v)}

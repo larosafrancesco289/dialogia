@@ -13,7 +13,12 @@ import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
 import ReasoningEffortMenu from '@/components/ReasoningEffortMenu';
 import { estimateTokens } from '@/lib/tokenEstimate';
 import { computeCost } from '@/lib/cost';
-import { findModelById, isReasoningSupported, isVisionSupported } from '@/lib/models';
+import {
+  findModelById,
+  isReasoningSupported,
+  isVisionSupported,
+  isImageOutputSupported,
+} from '@/lib/models';
 import type { Attachment } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 // PDFs are sent directly to OpenRouter as file blocks; no local parsing.
@@ -54,7 +59,8 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
       let on: boolean | undefined;
       if (arg === 'on') on = true;
       else if (arg === 'off') on = false;
-      else if (arg === 'toggle' || arg === '') on = undefined; // toggle
+      else if (arg === 'toggle' || arg === '')
+        on = undefined; // toggle
       else return false;
       if (applyToChat) {
         const next = on == null ? !chat!.settings.search_with_brave : on;
@@ -156,6 +162,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
   const modelMeta = findModelById(models, modelId);
   const canVision = isVisionSupported(modelMeta);
   const supportsReasoning = isReasoningSupported(modelMeta);
+  const canImageOut = isImageOutputSupported(modelMeta);
   const searchEnabled = chat ? !!chat.settings.search_with_brave : !!ui.nextSearchWithBrave;
 
   // Build slash command suggestions
@@ -170,7 +177,8 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     const cmd = rawCmd.toLowerCase();
     const arg = rest.join(' ').trim();
     const list: Suggestion[] = [];
-    const push = (t: string, i: string, sub?: string) => list.push({ title: t, insert: i, subtitle: sub });
+    const push = (t: string, i: string, sub?: string) =>
+      list.push({ title: t, insert: i, subtitle: sub });
     const starts = (a: string, b: string) => a.startsWith(b);
 
     const allCmds: Array<{ key: string; label: string; help?: string }> = [
@@ -210,7 +218,9 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     if (cmd === 'model') {
       const q = arg.toLowerCase();
       const choices = models
-        .filter((m) => !q || m.id.toLowerCase().includes(q) || (m.name || '').toLowerCase().includes(q))
+        .filter(
+          (m) => !q || m.id.toLowerCase().includes(q) || (m.name || '').toLowerCase().includes(q),
+        )
         .slice(0, 8);
       for (const m of choices) push(m.name || m.id, `/model ${m.id}`, m.id);
       if (list.length === 0 && arg === '') push('Type a model id…', `/model `);
@@ -293,7 +303,6 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     }
   };
 
-
   const onPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData?.items || [];
     const files: File[] = [];
@@ -345,7 +354,9 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
                     <div className="text-xs font-medium truncate" title={a.name || 'PDF'}>
                       {a.name || 'PDF'}
                     </div>
-                  <div className="text-[11px] text-muted-foreground">Attached (parsed by OpenRouter)</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Attached (parsed by OpenRouter)
+                    </div>
                   </div>
                   {/* No local OCR; handled downstream */}
                 </div>
@@ -423,7 +434,9 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
                   title={sug.subtitle || undefined}
                 >
                   {sug.title}
-                  {sug.subtitle ? <span className="ml-2 text-xs text-muted-foreground">{sug.subtitle}</span> : null}
+                  {sug.subtitle ? (
+                    <span className="ml-2 text-xs text-muted-foreground">{sug.subtitle}</span>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -497,7 +510,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
       </div>
       {/* Helper chips row: current model, reasoning, web search, token estimate */}
       <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
-        {(
+        {
           <button
             className="badge"
             title="Change model (opens Settings)"
@@ -505,7 +518,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
           >
             {findModelById(models, modelId)?.name || modelId}
           </button>
-        )}
+        }
         {canVision && (
           <span
             className="badge"
@@ -514,20 +527,24 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             Vision supported
           </span>
         )}
-        {(
+        {canImageOut && (
+          <span className="badge" title="This model can generate images when prompted.">
+            Image generation supported
+          </span>
+        )}
+        {
           <button
             className="badge"
             title="Toggle Brave web search for next message"
             onClick={() => {
-              if (chat)
-                updateSettings({ search_with_brave: !chat.settings.search_with_brave });
+              if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
               else setUI({ nextSearchWithBrave: !ui.nextSearchWithBrave });
             }}
             aria-pressed={!!searchEnabled}
           >
             {searchEnabled ? 'Web search: On' : 'Web search: Off'}
           </button>
-        )}
+        }
         {(() => {
           const effort = chat?.settings.reasoning_effort ?? ui.nextReasoningEffort;
           if (!supportsReasoning) return null;

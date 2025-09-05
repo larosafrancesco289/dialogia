@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { CURATED_MODELS } from '@/data/curatedModels';
@@ -46,6 +46,7 @@ export default function ModelPicker() {
     });
   }, [allOptions, hiddenModelIds, models, ui?.zdrOnly]);
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
   const allowedIds = new Set((models || []).map((m: any) => m.id));
   const effectiveSelectedId =
@@ -62,8 +63,21 @@ export default function ModelPicker() {
     }
     setOpen(false);
   };
+  // Close when clicking outside
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      const root = rootRef.current;
+      if (root && target && root.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <button className="btn btn-outline" onClick={() => setOpen(!open)}>
         {current?.name || current?.id}
       </button>

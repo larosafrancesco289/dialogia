@@ -15,6 +15,8 @@ import { MessageMeta } from '@/components/message/MessageMeta';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
 import { ReasoningPanel } from '@/components/message/ReasoningPanel';
 import type { Attachment } from '@/lib/types';
+import ImageLightbox from '@/components/ImageLightbox';
+import { createPortal } from 'react-dom';
 
 export default function MessageList({ chatId }: { chatId: string }) {
   const messages = useChatStore((s) => s.messages[chatId] ?? []);
@@ -36,6 +38,11 @@ export default function MessageList({ chatId }: { chatId: string }) {
       return false;
     }
   }, []);
+
+  const [lightbox, setLightbox] = useState<{
+    images: { src: string; name?: string }[];
+    index: number;
+  } | null>(null);
 
   // Track whether user is near the bottom to enable smart autoscroll
   useEffect(() => {
@@ -212,14 +219,26 @@ export default function MessageList({ chatId }: { chatId: string }) {
                 <div className="px-4 pt-3 flex flex-wrap gap-2">
                   {m.attachments
                     .filter((a: Attachment) => a.kind === 'image')
-                    .map((a: Attachment) => (
-                      <a key={a.id} href={a.dataURL} target="_blank" rel="noreferrer">
+                    .map((a: Attachment, idx: number, arr: Attachment[]) => (
+                      <button
+                        key={a.id}
+                        className="p-0 m-0 border-none bg-transparent"
+                        onClick={() =>
+                          setLightbox({
+                            images: arr
+                              .filter((x) => x.kind === 'image' && x.dataURL)
+                              .map((x) => ({ src: x.dataURL!, name: x.name })),
+                            index: idx,
+                          })
+                        }
+                        title="Click to enlarge"
+                      >
                         <img
                           src={a.dataURL}
                           alt={a.name || 'image'}
-                          className="h-24 w-24 object-cover rounded border border-border"
+                          className="h-36 w-36 object-cover rounded border border-border"
                         />
-                      </a>
+                      </button>
                     ))}
                   {m.attachments
                     .filter((a: Attachment) => a.kind === 'pdf')
@@ -339,14 +358,26 @@ export default function MessageList({ chatId }: { chatId: string }) {
                 <div className="px-4 pt-3 flex flex-wrap gap-2">
                   {m.attachments
                     .filter((a: Attachment) => a.kind === 'image')
-                    .map((a: Attachment) => (
-                      <a key={a.id} href={a.dataURL} target="_blank" rel="noreferrer">
+                    .map((a: Attachment, idx: number, arr: Attachment[]) => (
+                      <button
+                        key={a.id}
+                        className="p-0 m-0 border-none bg-transparent"
+                        onClick={() =>
+                          setLightbox({
+                            images: arr
+                              .filter((x) => x.kind === 'image' && x.dataURL)
+                              .map((x) => ({ src: x.dataURL!, name: x.name })),
+                            index: idx,
+                          })
+                        }
+                        title="Click to enlarge"
+                      >
                         <img
                           src={a.dataURL}
                           alt={a.name || 'image'}
-                          className="h-24 w-24 object-cover rounded border border-border"
+                          className="h-36 w-36 object-cover rounded border border-border"
                         />
-                      </a>
+                      </button>
                     ))}
                   {m.attachments
                     .filter((a: Attachment) => a.kind === 'pdf')
@@ -415,6 +446,13 @@ export default function MessageList({ chatId }: { chatId: string }) {
       )}
       {/* Typing indicator is now rendered inline within the latest assistant message */}
       <div ref={endRef} />
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 }

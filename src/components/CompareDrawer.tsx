@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
 import { useChatStore } from '@/lib/store';
 import { Markdown } from '@/lib/markdown';
 import { createPortal } from 'react-dom';
+import ImageLightbox from '@/components/ImageLightbox';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
 import IconButton from '@/components/IconButton';
@@ -30,6 +31,10 @@ export default function CompareDrawer() {
   };
   const chat = chats.find((c) => c.id === selectedChatId);
   const appendAssistantMessage = useChatStore((s) => s.appendAssistantMessage);
+  const [lightbox, setLightbox] = useState<{
+    images: { src: string; name?: string }[];
+    index: number;
+  } | null>(null);
 
   // Curated + favorites list for quick selection (use model metadata when available)
   const curated = useMemo(() => CURATED_MODELS, []);
@@ -187,6 +192,13 @@ export default function CompareDrawer() {
 
   return (
     <>
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
+      )}
       <div
         className={`fixed inset-0 bg-black/30 z-[70] settings-overlay${closing ? ' is-closing' : ''}`}
         onClick={isRunning ? undefined : closeWithAnim}
@@ -399,6 +411,30 @@ export default function CompareDrawer() {
                               {run.reasoning}
                             </pre>
                           </div>
+                        </div>
+                      )}
+                      {/* Images (if any) */}
+                      {Array.isArray(run?.images) && run.images.length > 0 && (
+                        <div className="px-3 pt-3 grid grid-cols-2 gap-2">
+                          {run.images.map((src, idx) => (
+                            <button
+                              key={idx}
+                              className="p-0 m-0 border-none bg-transparent"
+                              title="Click to enlarge"
+                              onClick={() =>
+                                setLightbox({
+                                  images: run.images!.map((s) => ({ src: s })),
+                                  index: idx,
+                                })
+                              }
+                            >
+                              <img
+                                src={src}
+                                alt={`image-${idx + 1}`}
+                                className="w-full h-48 object-cover rounded border border-border"
+                              />
+                            </button>
+                          ))}
                         </div>
                       )}
                       <div className="p-3">
