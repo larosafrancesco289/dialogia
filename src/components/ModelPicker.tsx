@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, EyeIcon, LightBulbIcon, MicrophoneIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
 import {
@@ -165,11 +165,31 @@ export default function ModelPicker() {
               >
                 <div className="min-w-0">
                   <div className="truncate font-medium text-sm">{o.name || o.id}</div>
-                  <div className="flex gap-1 mt-1">
-                    {canReason && <span className="badge">Reasoning</span>}
-                    {canSee && <span className="badge">Vision</span>}
-                    {canAudio && <span className="badge">Audio</span>}
-                    {isZdr && <span className="badge">ZDR</span>}
+                  <div className="flex items-center gap-1 mt-1 text-muted-foreground">
+                    {canReason && (
+                      <LightBulbIcon
+                        className="h-4 w-4"
+                        aria-label="Reasoning supported"
+                        title="Reasoning supported"
+                      />
+                    )}
+                    {canSee && (
+                      <EyeIcon className="h-4 w-4" aria-label="Vision input" title="Vision input" />
+                    )}
+                    {canAudio && (
+                      <MicrophoneIcon
+                        className="h-4 w-4"
+                        aria-label="Audio input"
+                        title="Audio input"
+                      />
+                    )}
+                    {isZdr && (
+                      <ShieldCheckIcon
+                        className="h-4 w-4"
+                        aria-label="Zero Data Retention"
+                        title="Zero Data Retention"
+                      />
+                    )}
                   </div>
                 </div>
                 {o.id !== PINNED_MODEL_ID && (
