@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop, setCurrentDragData, getCurrentDragData } from '@/lib/dragDrop';
 import IconButton from './IconButton';
+import ConfirmDialog from './ConfirmDialog';
 import {
   FolderIcon,
   FolderOpenIcon,
@@ -196,6 +197,7 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
   const { renameChat, deleteChat } = useChatStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(chat.title);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleRename = async () => {
     if (editTitle.trim() && editTitle !== chat.title) {
@@ -205,14 +207,13 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
   };
 
   const handleDelete = async () => {
-    if (confirm(`Delete chat "${chat.title}"?`)) {
-      await deleteChat(chat.id);
-    }
+    await deleteChat(chat.id);
   };
 
   const paddingLeft = (depth + 1) * 16 + 16; // Extra level for chat items
 
   return (
+    <>
     <div
       className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item ${
         isSelected ? 'selected' : ''
@@ -269,7 +270,7 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
             size="sm"
             onClick={(e) => {
               e?.stopPropagation();
-              handleDelete();
+              setShowConfirm(true);
             }}
             title="Delete chat"
           >
@@ -278,5 +279,18 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
         </div>
       )}
     </div>
+    <ConfirmDialog
+      open={showConfirm}
+      title="Delete chat?"
+      description={`Delete chat "${chat.title}"?`}
+      confirmLabel="Delete"
+      cancelLabel="Cancel"
+      onCancel={() => setShowConfirm(false)}
+      onConfirm={() => {
+        setShowConfirm(false);
+        handleDelete();
+      }}
+    />
+    </>
   );
 }

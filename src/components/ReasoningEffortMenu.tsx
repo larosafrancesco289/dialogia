@@ -32,9 +32,7 @@ export default function ReasoningEffortMenu() {
     setOpen(false);
   };
 
-  if (!supportsReasoning) return null;
-
-  // Close when clicking outside
+  // Close when clicking outside (must be declared unconditionally)
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -46,6 +44,8 @@ export default function ReasoningEffortMenu() {
     document.addEventListener('pointerdown', onPointerDown, true);
     return () => document.removeEventListener('pointerdown', onPointerDown, true);
   }, [open]);
+
+  if (!supportsReasoning) return null;
 
   return (
     <div className="relative" ref={rootRef}>

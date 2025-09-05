@@ -4,6 +4,7 @@ import { useChatStore } from '@/lib/store';
 import { useDragAndDrop, setCurrentDragData, getCurrentDragData } from '@/lib/dragDrop';
 import FolderItem from './FolderItem';
 import IconButton from './IconButton';
+import ConfirmDialog from './ConfirmDialog';
 import {
   PlusIcon,
   FolderPlusIcon,
@@ -189,6 +190,7 @@ export default function ChatSidebar() {
             />
           ))}
       </div>
+      {/* Per-item delete confirmation handled inside RootChatItem */}
     </div>
   );
 }
@@ -221,9 +223,11 @@ function RootChatItem({
   onDelete,
   onEditTitleChange,
 }: RootChatItemProps) {
+  const [showConfirm, setShowConfirm] = useState(false);
   return (
-    <div className="pb-1">
-      <div
+    <>
+      <div className="pb-1">
+        <div
         className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item ${
           isSelected ? 'selected' : ''
         }`}
@@ -274,9 +278,7 @@ function RootChatItem({
               size="sm"
               onClick={(e) => {
                 e?.stopPropagation();
-                if (confirm(`Delete chat "${chat.title}"?`)) {
-                  onDelete();
-                }
+                setShowConfirm(true);
               }}
               title="Delete chat"
             >
@@ -284,7 +286,21 @@ function RootChatItem({
             </IconButton>
           </div>
         )}
+        </div>
       </div>
-    </div>
+
+      <ConfirmDialog
+        open={showConfirm}
+        title="Delete chat?"
+        description={`Delete chat "${chat.title}"?`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onCancel={() => setShowConfirm(false)}
+        onConfirm={() => {
+          setShowConfirm(false);
+          onDelete();
+        }}
+      />
+    </>
   );
 }
