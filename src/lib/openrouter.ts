@@ -134,6 +134,7 @@ export type StreamCallbacks = {
   onStart?: () => void;
   onToken?: (delta: string) => void;
   onReasoningToken?: (delta: string) => void;
+  onImage?: (dataUrl: string) => void; // base64 data URL for generated image
   onDone?: (full: string, extras?: { usage?: any }) => void;
   onError?: (err: Error) => void;
 };
@@ -144,6 +145,8 @@ export async function chatCompletion(params: {
   model: string;
   // Loosen type to allow multimodal content arrays and tool roles
   messages: any[];
+  // Enable image generation when model supports it
+  modalities?: Array<'image' | 'text'>;
   temperature?: number;
   top_p?: number;
   max_tokens?: number;
@@ -159,6 +162,7 @@ export async function chatCompletion(params: {
     apiKey,
     model,
     messages,
+    modalities,
     temperature,
     top_p,
     max_tokens,
@@ -171,6 +175,7 @@ export async function chatCompletion(params: {
   } = params;
 
   const body: any = { model, messages, stream: false };
+  if (Array.isArray(modalities) && modalities.length > 0) body.modalities = modalities;
   if (typeof temperature === 'number') body.temperature = temperature;
   if (typeof top_p === 'number') body.top_p = top_p;
   if (typeof max_tokens === 'number') body.max_tokens = max_tokens;
@@ -214,6 +219,8 @@ export async function streamChatCompletion(params: {
   model: string;
   // Allow multimodal content arrays
   messages: any[];
+  // Enable image generation when model supports it
+  modalities?: Array<'image' | 'text'>;
   temperature?: number;
   top_p?: number;
   max_tokens?: number;
@@ -232,6 +239,7 @@ export async function streamChatCompletion(params: {
     apiKey,
     model,
     messages,
+    modalities,
     temperature,
     top_p,
     max_tokens,
@@ -244,6 +252,7 @@ export async function streamChatCompletion(params: {
 
   // Build body with only provided optional fields so OpenRouter can apply model defaults
   const body: any = { model, messages, stream: true, stream_options: { include_usage: true } };
+  if (Array.isArray(modalities) && modalities.length > 0) body.modalities = modalities;
   if (typeof temperature === 'number') body.temperature = temperature;
   if (typeof top_p === 'number') body.top_p = top_p;
   if (typeof max_tokens === 'number') body.max_tokens = max_tokens;
@@ -320,6 +329,21 @@ export async function streamChatCompletion(params: {
           deltaReasoning = choice.delta.reasoning;
         else if (choice?.message && typeof choice.message.reasoning === 'string')
           deltaReasoning = choice.message.reasoning;
+
+        // Handle streaming image outputs
+        const emitImages = (arr: any[]) => {
+          for (const img of arr || []) {
+            const url: string | undefined = img?.image_url?.url || img?.url;
+            if (typeof url === 'string' && url.startsWith('data:image/')) {
+              callbacks?.onImage?.(url);
+            }
+          }
+        };
+        if (choice?.delta?.images && Array.isArray(choice.delta.images)) {
+          emitImages(choice.delta.images);
+        } else if (choice?.message?.images && Array.isArray(choice.message.images)) {
+          emitImages(choice.message.images);
+        }
 
         if (deltaReasoning) {
           reasoning += deltaReasoning;

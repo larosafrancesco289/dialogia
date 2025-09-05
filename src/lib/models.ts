@@ -34,8 +34,7 @@ export function isVisionSupported(model?: ORModel | null): boolean {
     ? raw.capabilities.map((c: any) => String(c).toLowerCase())
     : [];
   // OpenRouter typically nests modality info under `architecture` for many models
-  const modalityStr = String((raw?.modality ?? raw?.architecture?.modality) || '')
-    .toLowerCase();
+  const modalityStr = String((raw?.modality ?? raw?.architecture?.modality) || '').toLowerCase();
   const modalities = Array.isArray(raw?.modalities)
     ? raw.modalities.map((m: any) => String(m).toLowerCase())
     : [];
@@ -55,6 +54,32 @@ export function isVisionSupported(model?: ORModel | null): boolean {
   if (modalities.some((m: string) => m.includes('image') || m.includes('vision'))) return true;
   // Last-resort name/id hints for popular vision families
   if (/\b(vision|4o|omni)\b/.test(hay)) return true;
+  return false;
+}
+
+// Whether a model can output images (for image generation)
+export function isImageOutputSupported(model?: ORModel | null): boolean {
+  if (!model) return false;
+  const raw: any = (model as any)?.raw || {};
+  const outMods: string[] = Array.isArray(raw?.output_modalities)
+    ? raw.output_modalities
+    : Array.isArray(raw?.architecture?.output_modalities)
+      ? raw.architecture.output_modalities
+      : [];
+  const norm = (arr: any[]) => arr.map((x) => String(x || '').toLowerCase());
+  const out = norm(outMods);
+  if (out.some((m) => m.includes('image'))) return true;
+  // Fallbacks for providers that only expose a single modalities field
+  const modalities: string[] = Array.isArray(raw?.modalities)
+    ? raw.modalities
+    : Array.isArray(raw?.architecture?.modalities)
+      ? raw.architecture.modalities
+      : [];
+  const mod = norm(modalities);
+  if (mod.some((m) => m.includes('image'))) return true;
+  // Last resort: name/id hints for known image-gen previews
+  const hay = `${String(model.id || '')} ${String(model.name || '')}`.toLowerCase();
+  if (/(image|flash-image|diffusion)/.test(hay)) return true;
   return false;
 }
 

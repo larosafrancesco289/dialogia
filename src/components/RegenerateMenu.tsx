@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
@@ -8,6 +8,7 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
   const { chats, selectedChatId } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [custom, setCustom] = useState('');
   const { favoriteModelIds } = useChatStore();
   const curated = [
@@ -19,8 +20,21 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
     if (!acc.find((x) => x.id === m.id)) acc.push(m);
     return acc;
   }, []);
+  // Close when clicking outside
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      const root = rootRef.current;
+      if (root && target && root.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <button
         className="icon-button"
         aria-label="Regenerate"

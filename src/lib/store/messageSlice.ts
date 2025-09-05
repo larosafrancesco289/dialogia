@@ -10,7 +10,13 @@ import {
   fetchZdrModelIds,
   fetchZdrProviderIds,
 } from '@/lib/openrouter';
-import { isReasoningSupported, findModelById, isVisionSupported, isToolCallingSupported } from '@/lib/models';
+import {
+  isReasoningSupported,
+  findModelById,
+  isVisionSupported,
+  isToolCallingSupported,
+  isImageOutputSupported,
+} from '@/lib/models';
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 
 export function createMessageSlice(
@@ -125,14 +131,13 @@ export function createMessageSlice(
         content,
         createdAt: now,
         // Persist without heavy/binary fields for PDFs
-        attachments:
-          attachments.length
-            ? attachments.map((a) =>
-                a.kind === 'pdf'
-                  ? { id: a.id, kind: 'pdf', name: a.name, mime: a.mime, size: a.size }
-                  : a,
-              )
-            : undefined,
+        attachments: attachments.length
+          ? attachments.map((a) =>
+              a.kind === 'pdf'
+                ? { id: a.id, kind: 'pdf', name: a.name, mime: a.mime, size: a.size }
+                : a,
+            )
+          : undefined,
       };
       const assistantMsg: Message = {
         id: uuidv4(),
@@ -142,6 +147,7 @@ export function createMessageSlice(
         createdAt: now + 1,
         model: chat.settings.model,
         reasoning: '',
+        attachments: [],
       };
       const priorList = get().messages[chatId] ?? [];
       set((s) => ({
@@ -457,21 +463,50 @@ export function createMessageSlice(
             const supportsReasoning = isReasoningSupported(modelMeta);
             const supportsTools = isToolCallingSupported(modelMeta);
             await streamChatCompletion({
-        apiKey: key || '',
-        model: chat.settings.model,
-        messages: streamingMessages,
-        temperature: chat.settings.temperature,
-        top_p: chat.settings.top_p,
-        max_tokens: chat.settings.max_tokens,
-        reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-        reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-        signal: controller.signal,
-        // Include tool schema for validation on follow-up call; disable further tool use
-        tools: supportsTools ? (toolDefinition as any) : undefined,
-        tool_choice: supportsTools ? ('none' as any) : undefined,
-        providerSort,
-        plugins,
-        callbacks: {
+              apiKey: key || '',
+              model: chat.settings.model,
+              messages: streamingMessages,
+              modalities: isImageOutputSupported(modelMeta)
+                ? (['image', 'text'] as any)
+                : undefined,
+              temperature: chat.settings.temperature,
+              top_p: chat.settings.top_p,
+              max_tokens: chat.settings.max_tokens,
+              reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
+              reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+              signal: controller.signal,
+              // Include tool schema for validation on follow-up call; disable further tool use
+              tools: supportsTools ? (toolDefinition as any) : undefined,
+              tool_choice: supportsTools ? ('none' as any) : undefined,
+              providerSort,
+              plugins,
+              callbacks: {
+                onImage: (dataUrl) => {
+                  set((s) => {
+                    const list = s.messages[chatId] ?? [];
+                    const updated = list.map((m) => {
+                      if (m.id !== assistantMsg.id) return m;
+                      const prev = Array.isArray(m.attachments) ? m.attachments : [];
+                      if (prev.some((a) => a.kind === 'image' && a.dataURL === dataUrl)) return m;
+                      const mime = (() => {
+                        const m = dataUrl.slice(5, dataUrl.indexOf(';'));
+                        return m || 'image/png';
+                      })();
+                      const next = [
+                        ...prev,
+                        {
+                          id: uuidv4(),
+                          kind: 'image',
+                          name: 'generated',
+                          mime,
+                          dataURL: dataUrl,
+                        },
+                      ];
+                      return { ...m, attachments: next } as any;
+                    });
+                    return { messages: { ...s.messages, [chatId]: updated } } as any;
+                  });
+                },
                 onToken: (delta) => {
                   if (tFirstPlan == null) tFirstPlan = performance.now();
                   if (!startedStreamingContentPlan) {
@@ -547,6 +582,7 @@ export function createMessageSlice(
                     ...assistantMsg,
                     content: stripLeadingToolJson(full || ''),
                     reasoning: current?.reasoning,
+                    attachments: current?.attachments,
                     metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
                     tokensIn: promptTokens,
                     tokensOut: completionTokens,
@@ -595,6 +631,7 @@ export function createMessageSlice(
             apiKey: key || '',
             model: chat.settings.model,
             messages: streamingMessages,
+            modalities: isImageOutputSupported(modelMeta) ? (['image', 'text'] as any) : undefined,
             temperature: chat.settings.temperature,
             top_p: chat.settings.top_p,
             max_tokens: chat.settings.max_tokens,
@@ -604,6 +641,32 @@ export function createMessageSlice(
             providerSort,
             plugins,
             callbacks: {
+              onImage: (dataUrl) => {
+                set((s) => {
+                  const list = s.messages[chatId] ?? [];
+                  const updated = list.map((m) => {
+                    if (m.id !== assistantMsg.id) return m;
+                    const prev = Array.isArray(m.attachments) ? m.attachments : [];
+                    if (prev.some((a) => a.kind === 'image' && a.dataURL === dataUrl)) return m;
+                    const mime = (() => {
+                      const m = dataUrl.slice(5, dataUrl.indexOf(';'));
+                      return m || 'image/png';
+                    })();
+                    const next = [
+                      ...prev,
+                      {
+                        id: uuidv4(),
+                        kind: 'image',
+                        name: 'generated',
+                        mime,
+                        dataURL: dataUrl,
+                      },
+                    ];
+                    return { ...m, attachments: next } as any;
+                  });
+                  return { messages: { ...s.messages, [chatId]: updated } } as any;
+                });
+              },
               onToken: (delta) => {
                 if (tFirst == null) tFirst = performance.now();
                 if (!startedStreamingContent) {
@@ -675,6 +738,7 @@ export function createMessageSlice(
                   ...assistantMsg,
                   content: stripLeadingToolJson(full || ''),
                   reasoning: current?.reasoning,
+                  attachments: current?.attachments,
                   metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
                   tokensIn: promptTokens,
                   tokensOut: completionTokens,
@@ -819,6 +883,7 @@ export function createMessageSlice(
         createdAt: list[idx].createdAt,
         model: opts?.modelId || chat.settings.model,
         reasoning: '',
+        attachments: [],
       };
       set((s) => ({
         messages: {
@@ -840,6 +905,7 @@ export function createMessageSlice(
             apiKey: key || '',
             model: replacement.model!,
             messages: msgs,
+            modalities: isImageOutputSupported(modelMeta) ? (['image', 'text'] as any) : undefined,
             temperature: chat.settings.temperature,
             top_p: chat.settings.top_p,
             max_tokens: chat.settings.max_tokens,
@@ -847,6 +913,32 @@ export function createMessageSlice(
             reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
             signal: controller.signal,
             callbacks: {
+              onImage: (dataUrl) => {
+                set((s) => {
+                  const list2 = s.messages[chatId] ?? [];
+                  const updated = list2.map((m) => {
+                    if (m.id !== replacement.id) return m;
+                    const prev = Array.isArray(m.attachments) ? m.attachments : [];
+                    if (prev.some((a) => a.kind === 'image' && a.dataURL === dataUrl)) return m;
+                    const mime = (() => {
+                      const m = dataUrl.slice(5, dataUrl.indexOf(';'));
+                      return m || 'image/png';
+                    })();
+                    const next = [
+                      ...prev,
+                      {
+                        id: uuidv4(),
+                        kind: 'image',
+                        name: 'generated',
+                        mime,
+                        dataURL: dataUrl,
+                      },
+                    ];
+                    return { ...m, attachments: next } as any;
+                  });
+                  return { messages: { ...s.messages, [chatId]: updated } } as any;
+                });
+              },
               onToken: (delta) => {
                 if (tFirst == null) tFirst = performance.now();
                 set((s) => {
@@ -883,6 +975,7 @@ export function createMessageSlice(
                   ...replacement,
                   content: full,
                   reasoning: current?.reasoning,
+                  attachments: current?.attachments,
                   metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
                   tokensIn: promptTokens,
                   tokensOut: completionTokens,

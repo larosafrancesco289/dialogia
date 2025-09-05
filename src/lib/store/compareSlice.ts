@@ -1,7 +1,7 @@
 import type { StoreState } from '@/lib/store/types';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { streamChatCompletion, fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
-import { findModelById, isReasoningSupported } from '@/lib/models';
+import { findModelById, isReasoningSupported, isImageOutputSupported } from '@/lib/models';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 
 export function createCompareSlice(
@@ -126,7 +126,10 @@ export function createCompareSlice(
                 prompt,
                 selectedModelIds: modelIds,
                 runs: Object.fromEntries(
-                  modelIds.map((id) => [id, { status: 'running', content: '' as string }]),
+                  modelIds.map((id) => [
+                    id,
+                    { status: 'running', content: '' as string, images: [] as string[] },
+                  ]),
                 ),
               },
             },
@@ -169,11 +172,13 @@ export function createCompareSlice(
             {
               const modelMeta = findModelById(get().models, modelId);
               const supportsReasoning = isReasoningSupported(modelMeta);
+              const canImageOut = isImageOutputSupported(modelMeta);
               const providerSort = get().ui.routePreference === 'cost' ? 'price' : 'throughput';
               await streamChatCompletion({
                 apiKey: key || '',
                 model: modelId,
                 messages: msgs,
+                modalities: canImageOut ? (['image', 'text'] as any) : undefined,
                 temperature: chat?.settings.temperature,
                 top_p: chat?.settings.top_p,
                 max_tokens: chat?.settings.max_tokens,
@@ -182,6 +187,41 @@ export function createCompareSlice(
                 signal: controller.signal,
                 providerSort,
                 callbacks: {
+                  onImage: (dataUrl) => {
+                    set(
+                      (s) =>
+                        ({
+                          ui: {
+                            ...s.ui,
+                            compare: {
+                              ...(s.ui.compare || {
+                                isOpen: true,
+                                prompt,
+                                selectedModelIds: modelIds,
+                                runs: {},
+                              }),
+                              runs: {
+                                ...(s.ui.compare?.runs || {}),
+                                [modelId]: {
+                                  ...((s.ui.compare?.runs || {})[modelId] || {
+                                    status: 'running',
+                                    content: '',
+                                    images: [],
+                                  }),
+                                  images: Array.from(
+                                    new Set([
+                                      ...(((s.ui.compare?.runs || {})[modelId]?.images ||
+                                        []) as string[]),
+                                      dataUrl,
+                                    ]),
+                                  ),
+                                },
+                              },
+                            },
+                          },
+                        }) as any,
+                    );
+                  },
                   onToken: (delta) => {
                     if (tFirst == null) tFirst = performance.now();
                     set(
