@@ -18,8 +18,14 @@ import {
   deleteSystemPreset,
   type SystemPreset,
 } from '@/lib/presets';
-import { isReasoningSupported, isVisionSupported, findModelById, isAudioInputSupported } from '@/lib/models';
-import { EyeIcon, LightBulbIcon, MicrophoneIcon } from '@heroicons/react/24/outline';
+import {
+  isReasoningSupported,
+  isVisionSupported,
+  findModelById,
+  isAudioInputSupported,
+  isImageOutputSupported,
+} from '@/lib/models';
+import { EyeIcon, LightBulbIcon, MicrophoneIcon, PhotoIcon } from '@heroicons/react/24/outline';
 
 // Define Section at module scope so it doesn't remount on every render.
 function Section(props: { title: string; children: ReactNode }) {
@@ -650,6 +656,7 @@ export default function SettingsDrawer() {
                         const meta = findModelById(models, m.id);
                         const canReason = isReasoningSupported(meta);
                         const canSee = isVisionSupported(meta);
+                        const canImageOut = isImageOutputSupported(meta);
                         return (
                           <div
                             key={m.id}
@@ -671,6 +678,13 @@ export default function SettingsDrawer() {
                               className="h-4 w-4"
                               aria-label="Vision input"
                               title="Vision input"
+                            />
+                          )}
+                          {canImageOut && (
+                            <PhotoIcon
+                              className="h-4 w-4"
+                              aria-label="Image generation"
+                              title="Image generation"
                             />
                           )}
                           {isAudioInputSupported(meta) && (
