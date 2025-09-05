@@ -7,6 +7,10 @@ import {
   PaperClipIcon,
   XMarkIcon,
   DocumentTextIcon,
+  EyeIcon,
+  MicrophoneIcon,
+  PhotoIcon,
+  LightBulbIcon,
 } from '@heroicons/react/24/outline';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
@@ -574,7 +578,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
           </div>
         )}
       </div>
-      {/* Helper chips row: current model, reasoning, web search, token estimate */}
+      {/* Helper chips row: current model, capabilities, web search, reasoning, token estimate */}
       <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
         {
           <button
@@ -587,25 +591,34 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
         }
         {canVision && (
           <span
-            className="badge"
-            title="This model supports image input. Click the photo icon or paste/drag images here."
+            className="badge flex items-center gap-1"
+            title="Vision input supported"
+            aria-label="Vision supported"
           >
-            Vision supported
+            <EyeIcon className="h-3.5 w-3.5" />
           </span>
         )}
         {canImageOut && (
-          <span className="badge" title="This model can generate images when prompted.">
-            Image generation supported
+          <span
+            className="badge flex items-center gap-1"
+            title="Image generation supported"
+            aria-label="Image generation supported"
+          >
+            <PhotoIcon className="h-3.5 w-3.5" />
           </span>
         )}
         {canAudio && (
-          <span className="badge" title="This model supports audio inputs (mp3/wav)">
-            Audio supported
+          <span
+            className="badge flex items-center gap-1"
+            title="Audio input supported (mp3/wav)"
+            aria-label="Audio input supported"
+          >
+            <MicrophoneIcon className="h-3.5 w-3.5" />
           </span>
         )}
         {
           <button
-            className="badge"
+            className="badge flex items-center gap-1"
             title="Toggle Brave web search for next message"
             onClick={() => {
               if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
@@ -613,16 +626,21 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             }}
             aria-pressed={!!searchEnabled}
           >
-            {searchEnabled ? 'Web search: On' : 'Web search: Off'}
+            <MagnifyingGlassIcon className="h-3.5 w-3.5" /> {searchEnabled ? 'On' : 'Off'}
           </button>
         }
         {(() => {
           const effort = chat?.settings.reasoning_effort ?? ui.nextReasoningEffort;
           if (!supportsReasoning) return null;
           if (!effort || effort === 'none') return null;
+          const letter = effort === 'high' ? 'H' : effort === 'medium' ? 'M' : 'L';
           return (
-            <span className="badge" title="Reasoning effort for this chat">
-              Reasoning: {effort}
+            <span
+              className="badge flex items-center gap-1"
+              title={`Reasoning effort: ${effort}`}
+              aria-label={`Reasoning ${effort}`}
+            >
+              <LightBulbIcon className="h-3.5 w-3.5" /> {letter}
             </span>
           );
         })()}

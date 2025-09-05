@@ -18,7 +18,8 @@ import {
   deleteSystemPreset,
   type SystemPreset,
 } from '@/lib/presets';
-import { isReasoningSupported, isVisionSupported, findModelById } from '@/lib/models';
+import { isReasoningSupported, isVisionSupported, findModelById, isAudioInputSupported } from '@/lib/models';
+import { EyeIcon, LightBulbIcon, MicrophoneIcon } from '@heroicons/react/24/outline';
 
 // Define Section at module scope so it doesn't remount on every render.
 function Section(props: { title: string; children: ReactNode }) {
@@ -656,9 +657,30 @@ export default function SettingsDrawer() {
                           >
                             <div>
                               <div className="font-medium text-sm flex items-center gap-2">
-                                <span>{m.name || m.id}</span>
-                                {canReason && <span className="badge">Reasoning</span>}
-                                {canSee && <span className="badge">Vision</span>}
+                        <span>{m.name || m.id}</span>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          {canReason && (
+                            <LightBulbIcon
+                              className="h-4 w-4"
+                              aria-label="Reasoning supported"
+                              title="Reasoning supported"
+                            />
+                          )}
+                          {canSee && (
+                            <EyeIcon
+                              className="h-4 w-4"
+                              aria-label="Vision input"
+                              title="Vision input"
+                            />
+                          )}
+                          {isAudioInputSupported(meta) && (
+                            <MicrophoneIcon
+                              className="h-4 w-4"
+                              aria-label="Audio input"
+                              title="Audio input"
+                            />
+                          )}
+                        </span>
                               </div>
                               {m.name && (
                                 <div className="text-xs text-muted-foreground">{m.id}</div>
