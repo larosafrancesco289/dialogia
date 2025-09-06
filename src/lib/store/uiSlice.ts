@@ -11,6 +11,7 @@ export function createUiSlice(
     sidebarCollapsed: false,
     nextModel: undefined,
     nextSearchWithBrave: false,
+    nextTutorMode: false,
     nextReasoningEffort: undefined,
     nextReasoningTokens: undefined,
     nextSystem: undefined,
@@ -22,6 +23,8 @@ export function createUiSlice(
     zdrOnly: defaultZdrOnly(),
     routePreference: 'speed',
     braveByMessageId: {},
+    tutorByMessageId: {},
+    tutorProfileByChatId: {},
     compare: { isOpen: false, prompt: '', selectedModelIds: [], runs: {} },
   };
 

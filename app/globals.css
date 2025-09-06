@@ -624,6 +624,39 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   }
 }
 
+/* Tutor UI: answer micro pop animation */
+.answer-pop {
+  animation: answer-pop 140ms var(--spring-snappy);
+}
+@keyframes answer-pop {
+  from {
+    transform: scale(0.98);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Tutor UI: Flashcard flip */
+.flashcard {
+  perspective: 1000px;
+}
+.flashcard-inner {
+  position: relative;
+  transition: transform 400ms var(--ease-standard);
+  transform-style: preserve-3d;
+}
+.flashcard.is-flipped .flashcard-inner {
+  transform: rotateY(180deg);
+}
+.flashcard-face {
+  position: relative;
+  backface-visibility: hidden;
+}
+.flashcard-back {
+  transform: rotateY(180deg);
+}
+
 /* Prefer a calmer, static thinking panel in dark mode */
 .dark .thinking-panel {
   background: color-mix(in oklab, var(--color-muted) 70%, transparent);
