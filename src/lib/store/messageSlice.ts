@@ -4,12 +4,9 @@ import type { Message } from '@/lib/types';
 import { saveMessage } from '@/lib/db';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { stripLeadingToolJson } from '@/lib/agent/streaming';
-import {
-  streamChatCompletion,
-  chatCompletion,
-  fetchZdrModelIds,
-  fetchZdrProviderIds,
-} from '@/lib/openrouter';
+import { streamChatCompletion, chatCompletion, fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
+import { getTutorPreamble, getTutorToolDefinitions } from '@/lib/agent/tutor';
+import { loadTutorProfile, summarizeTutorProfile } from '@/lib/tutorProfile';
 import {
   isReasoningSupported,
   findModelById,
@@ -209,42 +206,58 @@ export function createMessageSlice(
         await get().renameChat(chat.id, draft || 'New Chat');
       }
 
-      const attemptToolUse = !!chat.settings.search_with_brave;
+      const attemptPlanning = !!chat.settings.search_with_brave || !!chat.settings.tutor_mode;
       const providerSort = get().ui.routePreference === 'cost' ? 'price' : 'throughput';
       const toolPreambleText =
         'You have access to a function tool named "web_search" that retrieves up-to-date web results.\n\nWhen you need current, factual, or source-backed information, call the tool first. If you call a tool, respond with ONLY tool_calls (no user-facing text). After the tool returns, write the final answer that cites sources inline as [n] using the numbering provided.\n\nweb_search(args): { query: string, count?: integer 1-10 }. Choose a focused query and a small count, and avoid unnecessary calls.';
-      const combinedSystemForThisTurn = attemptToolUse
-        ? chat.settings.system && chat.settings.system.trim()
-          ? `${toolPreambleText}\n\n${chat.settings.system}`
-          : toolPreambleText
+      const tutorPreambleText = getTutorPreamble();
+      const preambles: string[] = [];
+      if (chat.settings.search_with_brave) preambles.push(toolPreambleText);
+      if (chat.settings.tutor_mode && tutorPreambleText) preambles.push(tutorPreambleText);
+      if (chat.settings.tutor_mode) {
+        try {
+          const prof = await loadTutorProfile(chat.id);
+          const summary = summarizeTutorProfile(prof);
+          if (summary) preambles.push(`Learner Profile:\n${summary}`);
+        } catch {}
+      }
+      const combinedSystemForThisTurn = attemptPlanning
+        ? (preambles.join('\n\n') || undefined) &&
+          (chat.settings.system && chat.settings.system.trim()
+            ? `${preambles.join('\n\n')}\n\n${chat.settings.system}`
+            : preambles.join('\n\n'))
         : undefined;
-      if (attemptToolUse) {
+      if (attemptPlanning) {
         try {
           const controller = new AbortController();
           set((s) => ({ ...s, _controller: controller as any }) as any);
-          const toolDefinition = [
-            {
-              type: 'function',
-              function: {
-                name: 'web_search',
-                description:
-                  'Search the public web for up-to-date information. Use only when necessary. Return results to ground your answer and cite sources as [n].',
-                parameters: {
-                  type: 'object',
-                  properties: {
-                    query: { type: 'string', description: 'The search query to run.' },
-                    count: {
-                      type: 'integer',
-                      description: 'How many results to retrieve (1-10).',
-                      minimum: 1,
-                      maximum: 10,
+          const tutorTools = chat.settings.tutor_mode ? (getTutorToolDefinitions() as any[]) : ([] as any[]);
+          const baseTools = chat.settings.search_with_brave
+            ? [
+                {
+                  type: 'function',
+                  function: {
+                    name: 'web_search',
+                    description:
+                      'Search the public web for up-to-date information. Use only when necessary. Return results to ground your answer and cite sources as [n].',
+                    parameters: {
+                      type: 'object',
+                      properties: {
+                        query: { type: 'string', description: 'The search query to run.' },
+                        count: {
+                          type: 'integer',
+                          description: 'How many results to retrieve (1-10).',
+                          minimum: 1,
+                          maximum: 10,
+                        },
+                      },
+                      required: ['query'],
                     },
                   },
-                  required: ['query'],
                 },
-              },
-            },
-          ];
+              ]
+            : [];
+          const toolDefinition = [...baseTools, ...tutorTools];
           const planningSystem = { role: 'system', content: combinedSystemForThisTurn! } as const;
           const planningMessages: any[] = [
             planningSystem,
@@ -362,6 +375,45 @@ export function createMessageSlice(
               finalContent = stripLeadingToolJson(text);
               break;
             }
+            // Helper to attach tutor payloads
+            const attachTutorPayload = (name: string, args: any) => {
+              const keyId = assistantMsg.id;
+              const mapKey =
+                name === 'quiz_mcq'
+                  ? 'mcq'
+                  : name === 'quiz_fill_blank'
+                    ? 'fillBlank'
+                    : name === 'quiz_open_ended'
+                      ? 'openEnded'
+                      : name === 'flashcards'
+                        ? 'flashcards'
+                        : undefined;
+              if (!mapKey) return false;
+              try {
+                const items: any[] = Array.isArray(args?.items) ? args.items : [];
+                if (items.length === 0) return false;
+                const normed = items.slice(0, 40).map((it, idx) => ({ id: it.id || `${idx}`, ...it }));
+                set((s) => ({
+                  ui: {
+                    ...s.ui,
+                    tutorByMessageId: {
+                      ...(s.ui.tutorByMessageId || {}),
+                      [keyId]: {
+                        ...(s.ui.tutorByMessageId?.[keyId] || {}),
+                        title: s.ui.tutorByMessageId?.[keyId]?.title || args?.title,
+                        [mapKey]: [
+                          ...((s.ui.tutorByMessageId?.[keyId] as any)?.[mapKey] || []),
+                          ...normed,
+                        ],
+                      },
+                    },
+                  },
+                }));
+                return true;
+              } catch {
+                return false;
+              }
+            };
             for (const tc of toolCalls) {
               const name = tc?.function?.name as string;
               let args: any = {};
@@ -370,7 +422,19 @@ export function createMessageSlice(
                 if (typeof rawArgs === 'string') args = JSON.parse(rawArgs || '{}');
                 else if (rawArgs && typeof rawArgs === 'object') args = rawArgs;
               } catch {}
-              if (name !== 'web_search') continue;
+              if (name !== 'web_search' &&
+                  name !== 'quiz_mcq' &&
+                  name !== 'quiz_fill_blank' &&
+                  name !== 'quiz_open_ended' &&
+                  name !== 'flashcards') continue;
+              if (name !== 'web_search') {
+                const ok = attachTutorPayload(name, args);
+                if (ok) {
+                  usedTool = true;
+                  convo.push({ role: 'tool', name, tool_call_id: tc.id, content: 'ok' } as any);
+                }
+                continue;
+              }
               let rawQuery = String(args?.query || '').trim();
               const count = Math.min(
                 Math.max(parseInt(String(args?.count || '5'), 10) || 5, 1),
@@ -463,10 +527,10 @@ export function createMessageSlice(
                 } as any);
               }
             }
-            convo.push({
-              role: 'user',
-              content: 'Write the final answer. Cite sources inline as [n].',
-            } as any);
+            const followup = chat.settings.search_with_brave
+              ? 'Write the final answer. Cite sources inline as [n].'
+              : 'Continue the lesson concisely. Give brief guidance and next step. Do not repeat items already rendered.';
+            convo.push({ role: 'user', content: followup } as any);
             rounds++;
           }
           // Stream the final answer using planning context (optionally including search results)
@@ -656,7 +720,7 @@ export function createMessageSlice(
         let tFirst: number | undefined;
         // No automatic fallback web search; the model will call the tool when necessary
         const streamingMessages = msgs;
-        let startedStreamingContent = attemptToolUse ? false : true;
+        let startedStreamingContent = attemptPlanning ? false : true;
         let leadingBuffer = '';
         {
           const modelMeta = findModelById(get().models, chat.settings.model);

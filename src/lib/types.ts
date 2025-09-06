@@ -11,6 +11,8 @@ export type ChatSettings = {
   show_stats?: boolean; // UI preference only
   // Optional web search augmentation using Brave Search API
   search_with_brave?: boolean;
+  // Tutor mode: enables pedagogy prompt + tutor tools
+  tutor_mode?: boolean;
 };
 
 export type Message = {
@@ -27,6 +29,68 @@ export type Message = {
   metrics?: MessageMetrics;
   // Optional attachments (currently images) associated to the message
   attachments?: Attachment[];
+};
+
+// Tutor tool item types rendered by UI (ephemeral; stored in UI state)
+export type TutorMCQItem = {
+  id: string;
+  question: string;
+  choices: string[];
+  correct: number; // index into choices
+  explanation?: string;
+  topic?: string;
+  skill?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+};
+
+export type TutorFillBlankItem = {
+  id: string;
+  prompt: string; // contains the blank (e.g., "____")
+  answer: string;
+  aliases?: string[]; // alternative accepted answers
+  explanation?: string;
+  topic?: string;
+  skill?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+};
+
+export type TutorOpenItem = {
+  id: string;
+  prompt: string;
+  sample_answer?: string;
+  rubric?: string;
+  topic?: string;
+  skill?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+};
+
+export type TutorFlashcardItem = {
+  id: string;
+  front: string;
+  back: string;
+  hint?: string;
+  topic?: string;
+  skill?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+};
+
+export type TutorProfile = {
+  chatId: string;
+  updatedAt: number;
+  totalAnswered: number;
+  totalCorrect: number;
+  topics?: Record<string, { correct: number; wrong: number }>;
+  skills?: Record<string, { correct: number; wrong: number }>;
+  difficulty?: Record<'easy' | 'medium' | 'hard', { correct: number; wrong: number }>;
+};
+
+export type TutorEvent = {
+  kind: 'mcq' | 'fill_blank' | 'open' | 'flashcard';
+  itemId?: string;
+  correct?: boolean;
+  topic?: string;
+  skill?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
 };
 
 export type MessageMetrics = {

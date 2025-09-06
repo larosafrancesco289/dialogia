@@ -7,6 +7,7 @@ export type UIState = {
   sidebarCollapsed?: boolean;
   nextModel?: string;
   nextSearchWithBrave?: boolean;
+  nextTutorMode?: boolean;
   nextReasoningEffort?: 'none' | 'low' | 'medium' | 'high';
   nextReasoningTokens?: number;
   nextSystem?: string;
@@ -46,6 +47,18 @@ export type UIState = {
       }
     >;
   };
+  // Tutor tool payloads keyed by assistant message id
+  tutorByMessageId?: Record<
+    string,
+    {
+      title?: string;
+      mcq?: import('@/lib/types').TutorMCQItem[];
+      fillBlank?: import('@/lib/types').TutorFillBlankItem[];
+      openEnded?: import('@/lib/types').TutorOpenItem[];
+      flashcards?: import('@/lib/types').TutorFlashcardItem[];
+    }
+  >;
+  tutorProfileByChatId?: Record<string, import('@/lib/types').TutorProfile>;
 };
 
 export type StoreState = {
@@ -87,6 +100,10 @@ export type StoreState = {
 
   // ui
   setUI: (partial: Partial<UIState>) => void;
+
+  // tutor
+  logTutorResult: (evt: import('@/lib/types').TutorEvent) => Promise<void>;
+  loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
 
   // compare
   openCompare: () => void;

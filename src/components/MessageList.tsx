@@ -14,6 +14,7 @@ import RegenerateMenu from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
 import { ReasoningPanel } from '@/components/message/ReasoningPanel';
+import { TutorPanel } from '@/components/message/TutorPanel';
 import type { Attachment } from '@/lib/types';
 import ImageLightbox from '@/components/ImageLightbox';
 import { createPortal } from 'react-dom';
@@ -24,6 +25,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const models = useChatStore((s) => s.models);
   const isStreaming = useChatStore((s) => s.ui.isStreaming);
   const braveByMessageId = useChatStore((s) => s.ui.braveByMessageId || {});
+  const tutorByMessageId = useChatStore((s) => s.ui.tutorByMessageId || {});
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
   const showStats = chat?.settings.show_stats ?? true;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -214,6 +216,20 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   onToggle={() => toggle(m.id)}
                 />
               )}
+              {/* Tutor interactive panels (MCQ, fill-blank, open, flashcards) */}
+              {(() => {
+                const tut = tutorByMessageId[m.id];
+                if (!tut) return null;
+                return (
+                  <TutorPanel
+                    title={tut.title}
+                    mcq={tut.mcq}
+                    fillBlank={tut.fillBlank}
+                    openEnded={tut.openEnded}
+                    flashcards={tut.flashcards}
+                  />
+                );
+              })()}
               {/* Attachments (assistant-visible images/audio; PDFs shown as chips) */}
               {Array.isArray(m.attachments) && m.attachments.length > 0 && (
                 <div className="px-4 pt-3 flex flex-wrap gap-2">

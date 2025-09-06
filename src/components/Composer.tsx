@@ -11,6 +11,7 @@ import {
   MicrophoneIcon,
   PhotoIcon,
   LightBulbIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
@@ -565,6 +566,18 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             >
               <MagnifyingGlassIcon className="h-4 w-4" />
             </button>
+            <button
+              className={`btn self-center ${chat?.settings.tutor_mode || ui.nextTutorMode ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => {
+                if (chat) updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+                else setUI({ nextTutorMode: !ui.nextTutorMode });
+              }}
+              title="Tutor mode: enable pedagogy + quiz tools"
+              aria-label="Toggle Tutor Mode"
+              aria-pressed={!!(chat?.settings.tutor_mode || ui.nextTutorMode)}
+            >
+              <AcademicCapIcon className="h-4 w-4" />
+            </button>
             {/* Show reasoning effort picker only for reasoning-capable models */}
             <ReasoningEffortMenu />
             <button
@@ -598,6 +611,22 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             <EyeIcon className="h-3.5 w-3.5" />
           </span>
         )}
+        {(() => {
+          const on = chat?.settings.tutor_mode ?? ui.nextTutorMode;
+          return (
+            <button
+              className={`badge flex items-center gap-1 ${on ? '' : ''}`}
+              title="Toggle tutor mode"
+              onClick={() => {
+                if (chat) updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+                else setUI({ nextTutorMode: !ui.nextTutorMode });
+              }}
+              aria-pressed={!!on}
+            >
+              <AcademicCapIcon className="h-3.5 w-3.5" /> {on ? 'Tutor On' : 'Tutor Off'}
+            </button>
+          );
+        })()}
         {canImageOut && (
           <span
             className="badge flex items-center gap-1"

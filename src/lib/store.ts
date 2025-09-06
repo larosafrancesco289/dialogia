@@ -7,6 +7,7 @@ import { createCompareSlice } from '@/lib/store/compareSlice';
 import { createChatSlice } from '@/lib/store/chatSlice';
 import { createMessageSlice } from '@/lib/store/messageSlice';
 import { createUiSlice } from '@/lib/store/uiSlice';
+import { createTutorSlice } from '@/lib/store/tutorSlice';
 
 export const useChatStore = create<StoreState>()(
   persist(
@@ -23,6 +24,7 @@ export const useChatStore = create<StoreState>()(
       ...(createChatSlice as any)(set, get),
       ...(createMessageSlice as any)(set, get),
       ...(createUiSlice as any)(set, get),
+      ...(createTutorSlice as any)(set, get),
 
       // Ephemeral controllers (not persisted)
       _controller: undefined as AbortController | undefined,
