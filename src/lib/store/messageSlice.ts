@@ -7,6 +7,7 @@ import { stripLeadingToolJson } from '@/lib/agent/streaming';
 import { streamChatCompletion, chatCompletion, fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
 import { getTutorPreamble, getTutorToolDefinitions } from '@/lib/agent/tutor';
 import { loadTutorProfile, summarizeTutorProfile } from '@/lib/tutorProfile';
+import { addCardsToDeck, getDueCards } from '@/lib/tutorDeck';
 import {
   isReasoningSupported,
   findModelById,
@@ -220,6 +221,84 @@ export function createMessageSlice(
           const summary = summarizeTutorProfile(prof);
           if (summary) preambles.push(`Learner Profile:\n${summary}`);
         } catch {}
+        // Include steering preference once, then clear it
+        if (get().ui.nextTutorNudge) {
+          const n = get().ui.nextTutorNudge!;
+          preambles.push(`Learner Preference: ${n.replace(/_/g, ' ')}`);
+          set((s) => ({ ui: { ...s.ui, nextTutorNudge: undefined } }));
+        }
+        // Include sanitized summary of the last tutor quiz/items with your answers so the tutor can reflect accurately
+        try {
+          const tmap = get().ui.tutorByMessageId || {};
+          const short = (s: any, max = 240) => {
+            const str = String(s == null ? '' : s);
+            return str.length > max ? str.slice(0, max) + '…' : str;
+          };
+          const letter = (n: number | undefined) =>
+            typeof n === 'number' && n >= 0 && n < 26 ? String.fromCharCode(65 + n) : undefined;
+          const lastWithTutor = priorList
+            .slice()
+            .reverse()
+            .find((m) => m.role === 'assistant' && tmap[m.id] && ((tmap[m.id] as any).mcq || (tmap[m.id] as any).fillBlank || (tmap[m.id] as any).openEnded));
+          if (lastWithTutor) {
+            const payload: any = tmap[(lastWithTutor as any).id];
+            const attempts: any = payload.attempts || {};
+            const out: any = { quiz: {} as any };
+            if (Array.isArray(payload.mcq) && payload.mcq.length) {
+              (out.quiz as any).mcq = payload.mcq.slice(0, 20).map((it: any, i: number) => {
+                const a = attempts.mcq?.[it.id];
+                const pick = typeof a?.choice === 'number' ? a.choice : undefined;
+                const corr = typeof it.correct === 'number' ? it.correct : undefined;
+                return {
+                  index: i + 1,
+                  id: it.id,
+                  question: short(it.question, 200),
+                  correct_letter: letter(corr),
+                  user_choice_letter: letter(pick),
+                  is_correct: typeof pick === 'number' && typeof corr === 'number' ? pick === corr : undefined,
+                  explanation: it.explanation ? short(it.explanation, 220) : undefined,
+                };
+              });
+            }
+            if (Array.isArray(payload.fillBlank) && payload.fillBlank.length) {
+              (out.quiz as any).fill_blank = payload.fillBlank.slice(0, 20).map((it: any, i: number) => {
+                const a = attempts.fillBlank?.[it.id];
+                const ans = typeof a?.answer === 'string' ? a.answer : undefined;
+                let ok: boolean | undefined = undefined;
+                if (typeof ans === 'string') {
+                  const norm = (x: string) => x.trim().toLowerCase();
+                  ok = norm(it.answer || '') === norm(ans) || (Array.isArray(it.aliases) && it.aliases.some((x: any) => norm(x || '') === norm(ans)));
+                }
+                return {
+                  index: i + 1,
+                  id: it.id,
+                  prompt: short(it.prompt, 200),
+                  correct_answer: short(it.answer, 140),
+                  user_answer: typeof ans === 'string' ? short(ans, 140) : undefined,
+                  is_correct: ok,
+                  explanation: it.explanation ? short(it.explanation, 220) : undefined,
+                };
+              });
+            }
+            if (Array.isArray(payload.openEnded) && payload.openEnded.length) {
+              (out.quiz as any).open_ended = payload.openEnded.slice(0, 12).map((it: any, i: number) => {
+                const a = attempts.open?.[it.id];
+                const ans = typeof a?.answer === 'string' ? a.answer : undefined;
+                const g = payload.grading?.[it.id];
+                return {
+                  index: i + 1,
+                  id: it.id,
+                  prompt: short(it.prompt, 200),
+                  user_answer: typeof ans === 'string' ? short(ans, 260) : undefined,
+                  feedback: g?.feedback ? short(g.feedback, 260) : undefined,
+                  score: typeof g?.score === 'number' ? g.score : undefined,
+                };
+              });
+            }
+            const hasAny = Object.keys(out.quiz).length > 0;
+            if (hasAny) preambles.push(`Tutor Interaction Summary (sanitized):\n${JSON.stringify(out)}`);
+          }
+        } catch {}
       }
       const combinedSystemForThisTurn = attemptPlanning
         ? (preambles.join('\n\n') || undefined) &&
@@ -268,6 +347,8 @@ export function createMessageSlice(
           let finalContent: string | null = null;
           let finalUsage: any | undefined = undefined;
           let usedTool = false;
+          let usedTutorTool = false; // any tutor tool call (non-web)
+          let usedTutorContentTool = false; // interactive content tools (quiz_*, flashcards)
           let aggregatedResults: { title?: string; url?: string; description?: string }[] = [];
           const extractInlineWebSearchArgs = (
             text: string,
@@ -414,6 +495,102 @@ export function createMessageSlice(
                 return false;
               }
             };
+            const attachTutorMeta = async (name: string, args: any) => {
+              const keyId = assistantMsg.id;
+              if (name === 'start_session') {
+                set((s) => ({
+                  ui: {
+                    ...s.ui,
+                    tutorByMessageId: {
+                      ...(s.ui.tutorByMessageId || {}),
+                      [keyId]: {
+                        ...(s.ui.tutorByMessageId?.[keyId] || {}),
+                        session: {
+                          ...(s.ui.tutorByMessageId?.[keyId]?.session || {}),
+                          goal: args?.goal,
+                          duration_min: args?.duration_min,
+                          skills: Array.isArray(args?.skills) ? args.skills : undefined,
+                        },
+                      },
+                    },
+                  },
+                }));
+                return true;
+              }
+              if (name === 'stage_update') {
+                set((s) => ({
+                  ui: {
+                    ...s.ui,
+                    tutorByMessageId: {
+                      ...(s.ui.tutorByMessageId || {}),
+                      [keyId]: {
+                        ...(s.ui.tutorByMessageId?.[keyId] || {}),
+                        session: {
+                          ...(s.ui.tutorByMessageId?.[keyId]?.session || {}),
+                          stage: args?.stage,
+                          focus: args?.focus,
+                          next: args?.next,
+                        },
+                      },
+                    },
+                  },
+                }));
+                return true;
+              }
+              if (name === 'plan_next') {
+                set((s) => ({
+                  ui: {
+                    ...s.ui,
+                    tutorByMessageId: {
+                      ...(s.ui.tutorByMessageId || {}),
+                      [keyId]: {
+                        ...(s.ui.tutorByMessageId?.[keyId] || {}),
+                        recommendation: {
+                          reason: args?.reason,
+                          recommendation: args?.recommendation,
+                        },
+                      },
+                    },
+                  },
+                }));
+                return true;
+              }
+              if (name === 'grade_open_response') {
+                const itemId = String(args?.item_id || '').trim();
+                const feedback = String(args?.feedback || '').trim();
+                const score = typeof args?.score === 'number' ? args.score : undefined;
+                const criteria = Array.isArray(args?.criteria) ? args.criteria : undefined;
+                if (!itemId || !feedback) return false;
+                set((s) => ({
+                  ui: {
+                    ...s.ui,
+                    tutorByMessageId: {
+                      ...(s.ui.tutorByMessageId || {}),
+                      [keyId]: {
+                        ...(s.ui.tutorByMessageId?.[keyId] || {}),
+                        grading: {
+                          ...((s.ui.tutorByMessageId?.[keyId] as any)?.grading || {}),
+                          [itemId]: { feedback, score, criteria },
+                        },
+                      },
+                    },
+                  },
+                }));
+                return true;
+              }
+              if (name === 'add_to_deck') {
+                try {
+                  const cards = Array.isArray(args?.cards) ? args.cards : [];
+                  if (cards.length > 0) await addCardsToDeck(chat.id, cards);
+                } catch {}
+                return true;
+              }
+              if (name === 'srs_review') {
+                // handled below when pushing tool output JSON
+                return true;
+              }
+              return false;
+            };
             for (const tc of toolCalls) {
               const name = tc?.function?.name as string;
               let args: any = {};
@@ -422,14 +599,45 @@ export function createMessageSlice(
                 if (typeof rawArgs === 'string') args = JSON.parse(rawArgs || '{}');
                 else if (rawArgs && typeof rawArgs === 'object') args = rawArgs;
               } catch {}
-              if (name !== 'web_search' &&
-                  name !== 'quiz_mcq' &&
-                  name !== 'quiz_fill_blank' &&
-                  name !== 'quiz_open_ended' &&
-                  name !== 'flashcards') continue;
+              if (
+                name !== 'web_search' &&
+                name !== 'quiz_mcq' &&
+                name !== 'quiz_fill_blank' &&
+                name !== 'quiz_open_ended' &&
+                name !== 'flashcards' &&
+                name !== 'start_session' &&
+                name !== 'stage_update' &&
+                name !== 'plan_next' &&
+                name !== 'grade_open_response' &&
+                name !== 'add_to_deck' &&
+                name !== 'srs_review'
+              )
+                continue;
               if (name !== 'web_search') {
+                usedTutorTool = true;
+                if (
+                  name === 'quiz_mcq' ||
+                  name === 'quiz_fill_blank' ||
+                  name === 'quiz_open_ended' ||
+                  name === 'flashcards'
+                ) {
+                  usedTutorContentTool = true;
+                }
+                if (name === 'srs_review') {
+                  const cnt = Math.min(Math.max(parseInt(String(args?.due_count || '10'), 10) || 10, 1), 40);
+                  let due: any[] = [];
+                  try {
+                    const cards = await getDueCards(chat.id, cnt);
+                    due = cards.map((c) => ({ id: c.id, front: c.front, back: c.back, hint: c.hint, topic: c.topic, skill: c.skill }));
+                  } catch {}
+                  const jsonPayload = JSON.stringify(due);
+                  convo.push({ role: 'tool', name, tool_call_id: tc.id, content: jsonPayload } as any);
+                  usedTool = true;
+                  continue;
+                }
+                const didMeta = await attachTutorMeta(name, args);
                 const ok = attachTutorPayload(name, args);
-                if (ok) {
+                if (ok || didMeta) {
                   usedTool = true;
                   convo.push({ role: 'tool', name, tool_call_id: tc.id, content: 'ok' } as any);
                 }
@@ -548,6 +756,26 @@ export function createMessageSlice(
               ? `\n\nWeb search results (Brave):\n${linesForSystem}\n\nInstructions: Use these results to answer and cite sources inline as [n].`
               : '';
           const finalSystem = `${baseSystem}${sourcesBlock}`;
+          // If an interactive tutor content tool was used (quiz/flashcards) and no web search occurred,
+          // skip follow-up text for this assistant turn to avoid duplicating quiz in plain text.
+          if (usedTutorContentTool && (!aggregatedResults || aggregatedResults.length === 0)) {
+            set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
+            const current = get().messages[chatId]?.find((m) => m.id === assistantMsg.id);
+            const finalMsg = {
+              ...assistantMsg,
+              content: '',
+              reasoning: current?.reasoning,
+              attachments: current?.attachments,
+            } as any;
+            set((s) => {
+              const list = s.messages[chatId] ?? [];
+              const updated = list.map((m) => (m.id === assistantMsg.id ? finalMsg : m));
+              return { messages: { ...s.messages, [chatId]: updated } } as any;
+            });
+            await saveMessage(finalMsg);
+            set((s) => ({ ...s, _controller: undefined }) as any);
+            return;
+          }
           const streamingMessages = (
             [{ role: 'system', content: finalSystem } as const] as any[]
           ).concat(msgs.filter((m) => m.role !== 'system'));
