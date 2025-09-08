@@ -72,6 +72,7 @@ export function TutorPanel(props: {
 function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: string }) {
   const log = useChatStore((s) => s.logTutorResult);
   const setUI = useChatStore((s) => s.setUI);
+  const editAssistant = useChatStore((s) => s.editAssistantMessage);
   const tutorMap = useChatStore((s) => s.ui.tutorByMessageId || {});
   const attempts = (tutorMap[messageId]?.attempts as any) || {};
   const mcq = (attempts.mcq as Record<string, { choice?: number; done?: boolean }>) || {};
@@ -124,6 +125,16 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
                           },
                         },
                       });
+                      // Append a compact quiz_result block into the same assistant message content
+                      try {
+                        const st2 = (useChatStore as any).getState();
+                        const chatId = st2.selectedChatId!;
+                        const list = (st2.messages?.[chatId] || []) as any[];
+                        const msg = list.find((m) => m.id === messageId);
+                        const prevContent = (msg?.content as string) || '';
+                        const resultBlock = `\n[quiz_result]\n${JSON.stringify({ kind: 'mcq', item_id: q.id, choice: i, correct_index: correctIdx, correct })}\n[/quiz_result]\n`;
+                        editAssistant(messageId, prevContent + resultBlock);
+                      } catch {}
                     }}
                     disabled={answered}
                   >
@@ -155,6 +166,7 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
 function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; messageId: string }) {
   const log = useChatStore((s) => s.logTutorResult);
   const setUI = useChatStore((s) => s.setUI);
+  const editAssistant = useChatStore((s) => s.editAssistantMessage);
   const tutorMap = useChatStore((s) => s.ui.tutorByMessageId || {});
   const attempts = (tutorMap[messageId]?.attempts as any) || {};
   const fb = (attempts.fillBlank as Record<string, { answer?: string; revealed?: boolean; correct?: boolean }>) || {};
@@ -220,6 +232,16 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
                       },
                     },
                   });
+                  // Append a compact quiz_result block into the same assistant message content
+                  try {
+                    const st2 = (useChatStore as any).getState();
+                    const chatId = st2.selectedChatId!;
+                    const list = (st2.messages?.[chatId] || []) as any[];
+                    const msg = list.find((m) => m.id === messageId);
+                    const prevContent = (msg?.content as string) || '';
+                    const resultBlock = `\n[quiz_result]\n${JSON.stringify({ kind: 'fill_blank', item_id: it.id, answer: val, accepted: correct })}\n[/quiz_result]\n`;
+                    editAssistant(messageId, prevContent + resultBlock);
+                  } catch {}
                 }}
               >
                 Check

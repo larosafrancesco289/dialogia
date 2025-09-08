@@ -27,6 +27,71 @@ export function createMessageSlice(
       const chatId = get().selectedChatId!;
       const chat = get().chats.find((c) => c.id === chatId)!;
       const now = Date.now();
+      // If tutor mode is on, inject a sanitized recap of the most recent tutor items
+      // so the model (and user) can see what was asked and what was answered.
+      if (chat.settings.tutor_mode) {
+        try {
+          const tmap = get().ui.tutorByMessageId || {};
+          const recapped = get().ui.tutorRecapByMessageId || {};
+          const list = get().messages[chatId] ?? [];
+          const short = (s: any, max = 240) => {
+            const str = String(s == null ? '' : s);
+            return str.length > max ? str.slice(0, max) + '…' : str;
+          };
+          const letter = (n: number | undefined) =>
+            typeof n === 'number' && n >= 0 && n < 26 ? String.fromCharCode(65 + n) : undefined;
+          const lastAssistantWithTutor = list
+            .slice()
+            .reverse()
+            .find((m) => m.role === 'assistant' && tmap[m.id] && ((tmap[m.id] as any).mcq || (tmap[m.id] as any).fillBlank || (tmap[m.id] as any).openEnded));
+          if (lastAssistantWithTutor && !recapped[(lastAssistantWithTutor as any).id]) {
+            const payload: any = tmap[(lastAssistantWithTutor as any).id];
+            const attempts: any = payload.attempts || {};
+            const lines: string[] = [];
+            if (Array.isArray(payload.mcq) && payload.mcq.length) {
+              const arr = payload.mcq.slice(0, 12);
+              arr.forEach((it: any, i: number) => {
+                const pick = attempts.mcq?.[it.id]?.choice;
+                const corr = typeof it.correct === 'number' ? it.correct : undefined;
+                const pickL = letter(typeof pick === 'number' ? pick : undefined) || '-';
+                const corrL = letter(corr) || '-';
+                const ok = typeof pick === 'number' && typeof corr === 'number' ? pick === corr : undefined;
+                lines.push(
+                  `MCQ ${i + 1}: ${short(it.question, 180)}\n- Correct: ${corrL}\n- You: ${pickL}${ok != null ? ` (${ok ? 'correct' : 'wrong'})` : ''}${it.explanation ? `\n- Why: ${short(it.explanation, 220)}` : ''}`,
+                );
+              });
+            }
+            if (Array.isArray(payload.fillBlank) && payload.fillBlank.length) {
+              const arr = payload.fillBlank.slice(0, 12);
+              arr.forEach((it: any, i: number) => {
+                const ans = attempts.fillBlank?.[it.id]?.answer;
+                const norm = (x: string) => x.trim().toLowerCase();
+                const ok = typeof ans === 'string' ? (norm(it.answer || '') === norm(ans) || (Array.isArray(it.aliases) && it.aliases.some((x: any) => norm(String(x || '')) === norm(ans)))) : undefined;
+                lines.push(
+                  `Blank ${i + 1}: ${short(it.prompt, 180)}\n- Correct: ${short(it.answer, 140)}\n- You: ${typeof ans === 'string' ? short(ans, 140) : '-'}${ok != null ? ` (${ok ? 'correct' : 'wrong'})` : ''}${it.explanation ? `\n- Why: ${short(it.explanation, 220)}` : ''}`,
+                );
+              });
+            }
+            if (Array.isArray(payload.openEnded) && payload.openEnded.length) {
+              const arr = payload.openEnded.slice(0, 8);
+              arr.forEach((it: any, i: number) => {
+                const ans = attempts.open?.[it.id]?.answer;
+                const g = payload.grading?.[it.id];
+                const score = typeof g?.score === 'number' ? ` (score: ${Math.round(g.score * 100)}%)` : '';
+                lines.push(
+                  `Open ${i + 1}: ${short(it.prompt, 160)}\n- You: ${typeof ans === 'string' ? short(ans, 240) : '-'}${g?.feedback ? `\n- Feedback${score}: ${short(g.feedback, 260)}` : ''}`,
+                );
+              });
+            }
+            if (lines.length) {
+              const recap = `Quiz recap (sanitized):\n${lines.join('\n\n')}`;
+              // Append recap as an assistant message before sending the new user msg
+              await (get().appendAssistantMessage as any)(recap);
+              set((s) => ({ ui: { ...s.ui, tutorRecapByMessageId: { ...(s.ui.tutorRecapByMessageId || {}), [(lastAssistantWithTutor as any).id]: true } } }));
+            }
+          }
+        } catch {}
+      }
       const assistantMsg: Message = {
         id: uuidv4(),
         chatId,
@@ -490,6 +555,29 @@ export function createMessageSlice(
                     },
                   },
                 }));
+
+                // Append a compact tool_call block into the assistant message so the model can see it next turn
+                const compactItems = normed.slice(0, 12).map((it: any) => ({
+                  id: it.id,
+                  question: it.question,
+                  choices: Array.isArray(it.choices) ? it.choices.slice(0, 6) : undefined,
+                  correct: typeof it.correct === 'number' ? it.correct : undefined,
+                  prompt: it.prompt,
+                  front: it.front,
+                  back: it.back,
+                  explanation:
+                    typeof it.explanation === 'string'
+                      ? (it.explanation.length > 220 ? it.explanation.slice(0, 220) + '…' : it.explanation)
+                      : undefined,
+                }));
+                const toolBlock = `\n[tool_call ${name}]\n${JSON.stringify({ title: args?.title, items: compactItems })}\n[/tool_call]\n`;
+                set((s) => {
+                  const list = s.messages[chatId] ?? [];
+                  const updated = list.map((m) =>
+                    m.id === keyId ? { ...m, content: (m.content || '') + toolBlock } : m,
+                  );
+                  return { messages: { ...s.messages, [chatId]: updated } } as any;
+                });
                 return true;
               } catch {
                 return false;
@@ -763,7 +851,8 @@ export function createMessageSlice(
             const current = get().messages[chatId]?.find((m) => m.id === assistantMsg.id);
             const finalMsg = {
               ...assistantMsg,
-              content: '',
+              // Preserve any content that may have been appended when handling the tool call
+              content: current?.content || '',
               reasoning: current?.reasoning,
               attachments: current?.attachments,
             } as any;
