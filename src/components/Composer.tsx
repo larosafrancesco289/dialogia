@@ -568,11 +568,21 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             </button>
             <button
               className={`btn self-center ${chat?.settings.tutor_mode || ui.nextTutorMode ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => {
-                if (chat) updateSettings({ tutor_mode: !chat.settings.tutor_mode });
-                else setUI({ nextTutorMode: !ui.nextTutorMode });
+              onClick={async () => {
+                const isOn = !!(chat?.settings.tutor_mode || ui.nextTutorMode);
+                if (!isOn) {
+                  // Turn ON by starting a fresh Tutor chat so it greets
+                  setUI({ nextTutorMode: true });
+                  await newChat();
+                  // Reset default for future new chats (should start without Tutor)
+                  setUI({ nextTutorMode: false });
+                } else {
+                  // Turn OFF in the current chat
+                  if (chat) await updateSettings({ tutor_mode: false });
+                  else setUI({ nextTutorMode: false });
+                }
               }}
-              title="Tutor mode: enable pedagogy + quiz tools"
+              title="Tutor mode: warm guidance + practice tools (used only when helpful)"
               aria-label="Toggle Tutor Mode"
               aria-pressed={!!(chat?.settings.tutor_mode || ui.nextTutorMode)}
             >
@@ -617,9 +627,16 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             <button
               className={`badge flex items-center gap-1 ${on ? '' : ''}`}
               title="Toggle tutor mode"
-              onClick={() => {
-                if (chat) updateSettings({ tutor_mode: !chat.settings.tutor_mode });
-                else setUI({ nextTutorMode: !ui.nextTutorMode });
+              onClick={async () => {
+                const isOn = !!(chat?.settings.tutor_mode || ui.nextTutorMode);
+                if (!isOn) {
+                  setUI({ nextTutorMode: true });
+                  await newChat();
+                  setUI({ nextTutorMode: false });
+                } else {
+                  if (chat) await updateSettings({ tutor_mode: false });
+                  else setUI({ nextTutorMode: false });
+                }
               }}
               aria-pressed={!!on}
             >

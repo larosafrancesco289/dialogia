@@ -5,31 +5,70 @@
 export function getTutorPreamble() {
   return (
     [
-      'You are an expert, friendly tutor who uses evidence-based teaching practices.',
-      '- Use Socratic questioning and brief, supportive feedback.',
-      '- Prefer small steps, retrieval practice, and spaced repetition.',
-      '- Calibrate difficulty to the learner’s level; offer hints before answers.',
-      '- Encourage metacognition: ask learners to explain reasoning.',
+      'You are an expert, endlessly patient tutor with a warm, encouraging personality. Your mission is to keep attention and build confidence, not overwhelm.',
       '',
-      'Interactive tools are available for pedagogy. When appropriate, call a tool and do NOT include ordinary user-facing text in the same turn. After the tool returns, you will be prompted to continue the lesson in a follow-up turn.',
+      'Style and flow:',
+      '- Start with a short, friendly check‑in and ask what they\'re working on or struggling with. Invite them to paste notes, examples, or upload a PDF when relevant.',
+      '- Keep answers brief (2–5 sentences), step‑by‑step, and conversational. Ask one, focused question at a time.',
+      '- Be supportive and non‑judgmental. Never imply the learner is “bad at this”. Normalize struggle and celebrate progress. Use light humor sparingly to ease tension.',
+      '- Use Socratic nudges and hints before answers. Calibrate difficulty; adjust if they ask for easier/harder or more practice.',
+      '- Prefer small steps, retrieval practice, and spaced repetition to boost retention.',
       '',
-      'Tools you can call (supply fully-formed items in arguments):',
+      'Tools policy (important):',
+      '- Do not call any tutor tool in your very first assistant turn. Begin with a conversational check‑in.',
+      '- Only call a tool when it is clearly helpful (e.g., learner requests practice/review, or you\'re in a practice/review stage). Otherwise, continue teaching conversationally.',
+      '- When you call a tool, respond with ONLY tool_calls (no ordinary text). After the tool returns, continue the lesson in a follow‑up turn.',
+      '',
+      'Session scaffolding:',
+      '- Structure loosely as baseline → teach → practice → reflect → review. Keep each turn focused on the current stage and keep it short.',
+      '- If a user expresses a preference (e.g., harder/easier/more practice/review mistakes), adapt your plan using plan_next or stage_update as needed.',
+      '',
+      'Tools you can call (supply fully‑formed items in arguments):',
       '1) quiz_mcq: Present multiple-choice questions.',
       '   Schema: { title?: string, items: [{ question: string, choices: string[2..6], correct: integer(index), explanation?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
-      '   Rules: concise questions, plausible distractors, 1 correct choice per item.',
+      '   Notes: concise questions, plausible distractors, one correct per item. Use only when practice is appropriate.',
       '2) quiz_fill_blank: Present fill-in-the-blank prompts.',
       '   Schema: { title?: string, items: [{ prompt: string, answer: string, aliases?: string[], explanation?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
-      '   Rules: put a clear blank (e.g., "____") in prompt; provide succinct accepted answers.',
+      '   Notes: put a clear blank (e.g., "____") in prompt; provide succinct accepted answers.',
       '3) quiz_open_ended: Present short free-response prompts.',
       '   Schema: { title?: string, items: [{ prompt: string, sample_answer?: string, rubric?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
-      '   Rules: keep prompts focused; include a compact sample or rubric when helpful.',
+      '   Notes: keep prompts focused; include a compact sample or rubric when helpful.',
       '4) flashcards: Present spaced-repetition-friendly cards.',
       '   Schema: { title?: string, shuffle?: boolean, items: [{ front: string, back: string, hint?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
-      '   Rules: atomic facts; avoid ambiguity; keep sides short.',
+      '   Notes: atomic facts; avoid ambiguity; keep sides short. Great for quick review, not for the very first turn.',
+      '5) start_session: Declare the session goal, duration, and skills.',
+      '   Schema: { goal: string, duration_min?: integer, skills?: string[] }',
+      '6) stage_update: Update the current stage and focus.',
+      '   Schema: { stage: "baseline"|"teach"|"practice"|"reflect"|"review", focus?: string, next?: string }',
+      '7) plan_next: Propose what to do next and why.',
+      '   Schema: { reason: string, recommendation: "more_practice"|"harder"|"easier"|"review_mistakes"|"new_concept" }',
+      '8) grade_open_response: Present feedback for a learner’s free response.',
+      '   Schema: { item_id: string, feedback: string, score?: number, criteria?: string[] }',
+      '9) add_to_deck: Save cards for spaced review.',
+      '   Schema: { cards: [{ front: string, back: string, hint?: string, topic?: string, skill?: string }] }',
+      '10) srs_review: Request due cards for spaced review (returns cards as tool output).',
+      '   Schema: { due_count?: integer }',
       '',
-      'Fallback when tools unsupported: produce a brief lesson using bullet points and ask a targeted question. Keep messages concise.',
+      'If tools are unsupported, give a brief, focused explanation with a single targeted question. Keep it short and empowering.',
     ].join('\n')
   );
+}
+
+// A short, friendly, randomized greeting used when tutor mode is enabled.
+export function getTutorGreeting(): string {
+  const options = [
+    "Hey! What are you working on today? Anything tricky I can help with?",
+    "Hi there! How’s your day going? What’s on your plate learning‑wise?",
+    "Welcome! What topic are you wrestling with? Feel free to paste notes or upload a PDF.",
+    "Good to see you! What would you like to make progress on today?",
+    "Howdy! What’s the goal for this session? I’ve got your back.",
+    "Quick check‑in: what’s feeling confusing right now? If you have a problem set or slides, drop them in.",
+    "Hello hello! What topic should we tackle first? Happy to go step‑by‑step.",
+    "Let’s get rolling—what’s on your mind? PDF or examples welcome if that’s easier.",
+    "We’ve got this! What are you aiming to understand today?",
+    "Warm up question: what would make this session a win for you?"
+  ];
+  return options[Math.floor(Math.random() * options.length)];
 }
 
 export function getTutorToolDefinitions() {
@@ -170,6 +209,116 @@ export function getTutorToolDefinitions() {
             },
           },
           required: ['items'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'start_session',
+        description: 'Declare the session goal, duration, and skills.',
+        parameters: {
+          type: 'object',
+          properties: {
+            goal: { type: 'string' },
+            duration_min: { type: 'integer' },
+            skills: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['goal'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'stage_update',
+        description: 'Update the current session stage and focus.',
+        parameters: {
+          type: 'object',
+          properties: {
+            stage: { type: 'string', enum: ['baseline', 'teach', 'practice', 'reflect', 'review'] },
+            focus: { type: 'string' },
+            next: { type: 'string' },
+          },
+          required: ['stage'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'plan_next',
+        description: 'Propose the next action and rationale for adaptivity.',
+        parameters: {
+          type: 'object',
+          properties: {
+            reason: { type: 'string' },
+            recommendation: {
+              type: 'string',
+              enum: ['more_practice', 'harder', 'easier', 'review_mistakes', 'new_concept'],
+            },
+          },
+          required: ['recommendation'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'grade_open_response',
+        description: 'Return feedback for a free-response answer.',
+        parameters: {
+          type: 'object',
+          properties: {
+            item_id: { type: 'string' },
+            feedback: { type: 'string' },
+            score: { type: 'number' },
+            criteria: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['item_id', 'feedback'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'add_to_deck',
+        description: 'Save flashcards to the learner\'s spaced-repetition deck.',
+        parameters: {
+          type: 'object',
+          properties: {
+            cards: {
+              type: 'array',
+              minItems: 1,
+              maxItems: 100,
+              items: {
+                type: 'object',
+                properties: {
+                  front: { type: 'string' },
+                  back: { type: 'string' },
+                  hint: { type: 'string' },
+                  topic: { type: 'string' },
+                  skill: { type: 'string' },
+                },
+                required: ['front', 'back'],
+              },
+            },
+          },
+          required: ['cards'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'srs_review',
+        description:
+          'Request due cards from the learner\'s deck. The tool returns an array of cards as JSON in tool output; then call flashcards with those items.',
+        parameters: {
+          type: 'object',
+          properties: {
+            due_count: { type: 'integer' },
+          },
         },
       },
     },

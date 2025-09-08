@@ -12,6 +12,7 @@ export function createUiSlice(
     nextModel: undefined,
     nextSearchWithBrave: false,
     nextTutorMode: false,
+    nextTutorNudge: undefined,
     nextReasoningEffort: undefined,
     nextReasoningTokens: undefined,
     nextSystem: undefined,
@@ -25,6 +26,7 @@ export function createUiSlice(
     braveByMessageId: {},
     tutorByMessageId: {},
     tutorProfileByChatId: {},
+    tutorGreetedByChatId: {},
     compare: { isOpen: false, prompt: '', selectedModelIds: [], runs: {} },
   };
 

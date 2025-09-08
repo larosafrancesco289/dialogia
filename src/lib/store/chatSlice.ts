@@ -3,6 +3,7 @@ import { db, saveChat, saveFolder } from '@/lib/db';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, Folder, Message } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
+import { getTutorGreeting } from '@/lib/agent/tutor';
 
 export function createChatSlice(
   set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
@@ -33,6 +34,10 @@ export function createChatSlice(
         selectedChatId = chats[0].id;
       }
       set({ chats, folders, messages, selectedChatId } as any);
+      // Preload tutor profile for the selected chat into UI (if available)
+      try {
+        if (selectedChatId) await (get().loadTutorProfileIntoUI as any)(selectedChatId);
+      } catch {}
     },
 
     async newChat() {
@@ -59,6 +64,17 @@ export function createChatSlice(
       };
       await saveChat(chat);
       set((s) => ({ chats: [chat, ...s.chats], selectedChatId: id }));
+      // If starting a chat with tutor mode on, send a friendly greeting once.
+      if (chat.settings.tutor_mode) {
+        try {
+          const greeted = get().ui.tutorGreetedByChatId?.[id];
+          if (!greeted) {
+            const greeting = getTutorGreeting();
+            await (get().appendAssistantMessage as any)(greeting);
+            set((s) => ({ ui: { ...s.ui, tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true } } }));
+          }
+        } catch {}
+      }
     },
 
     selectChat(id: string) {
@@ -89,6 +105,7 @@ export function createChatSlice(
     async updateChatSettings(partial) {
       const id = get().selectedChatId;
       if (!id) return;
+      const before = get().chats.find((c) => c.id === id);
       set((s) => ({
         chats: s.chats.map((c) =>
           c.id === id
@@ -98,6 +115,19 @@ export function createChatSlice(
       }));
       const chat = get().chats.find((c) => c.id === id)!;
       await saveChat(chat);
+      // If tutor_mode has just been enabled for this chat, send a one‑time friendly greeting
+      try {
+        const turnedOn =
+          typeof partial?.tutor_mode === 'boolean' && before && before.settings.tutor_mode !== partial.tutor_mode && partial.tutor_mode === true;
+        if (turnedOn) {
+          const greeted = get().ui.tutorGreetedByChatId?.[id];
+          if (!greeted) {
+            const greeting = getTutorGreeting();
+            await (get().appendAssistantMessage as any)(greeting);
+            set((s) => ({ ui: { ...s.ui, tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true } } }));
+          }
+        }
+      } catch {}
     },
 
     async moveChatToFolder(chatId: string, folderId?: string) {

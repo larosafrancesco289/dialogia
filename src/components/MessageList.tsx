@@ -222,11 +222,15 @@ export default function MessageList({ chatId }: { chatId: string }) {
                 if (!tut) return null;
                 return (
                   <TutorPanel
+                    messageId={m.id}
                     title={tut.title}
                     mcq={tut.mcq}
                     fillBlank={tut.fillBlank}
                     openEnded={tut.openEnded}
                     flashcards={tut.flashcards}
+                    session={(tut as any).session}
+                    recommendation={(tut as any).recommendation}
+                    grading={(tut as any).grading}
                   />
                 );
               })()}

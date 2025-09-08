@@ -8,6 +8,8 @@ export type UIState = {
   nextModel?: string;
   nextSearchWithBrave?: boolean;
   nextTutorMode?: boolean;
+  // Tutor steering: set before next turn to bias planning
+  nextTutorNudge?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
   nextReasoningEffort?: 'none' | 'low' | 'medium' | 'high';
   nextReasoningTokens?: number;
   nextSystem?: string;
@@ -56,9 +58,32 @@ export type UIState = {
       fillBlank?: import('@/lib/types').TutorFillBlankItem[];
       openEnded?: import('@/lib/types').TutorOpenItem[];
       flashcards?: import('@/lib/types').TutorFlashcardItem[];
+      // Session and planning metadata
+      session?: {
+        goal?: string;
+        duration_min?: number;
+        stage?: 'baseline' | 'teach' | 'practice' | 'reflect' | 'review';
+        focus?: string;
+        next?: string;
+        skills?: string[];
+      };
+      recommendation?: {
+        reason?: string;
+        recommendation?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
+      };
+      // User attempts (stateful, per assistant message)
+      attempts?: {
+        mcq?: Record<string, { choice?: number; done?: boolean; correct?: boolean }>;
+        fillBlank?: Record<string, { answer?: string; revealed?: boolean; correct?: boolean }>;
+        open?: Record<string, { answer?: string }>;
+      };
+      // Grading results keyed by item id
+      grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
     }
   >;
   tutorProfileByChatId?: Record<string, import('@/lib/types').TutorProfile>;
+  // Per-chat ephemeral flags (not persisted)
+  tutorGreetedByChatId?: Record<string, boolean>;
 };
 
 export type StoreState = {
