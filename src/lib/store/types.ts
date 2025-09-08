@@ -84,6 +84,7 @@ export type UIState = {
   tutorProfileByChatId?: Record<string, import('@/lib/types').TutorProfile>;
   // Per-chat ephemeral flags (not persisted)
   tutorGreetedByChatId?: Record<string, boolean>;
+  tutorRecapByMessageId?: Record<string, boolean>;
 };
 
 export type StoreState = {

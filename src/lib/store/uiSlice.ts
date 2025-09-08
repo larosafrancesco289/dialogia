@@ -27,6 +27,7 @@ export function createUiSlice(
     tutorByMessageId: {},
     tutorProfileByChatId: {},
     tutorGreetedByChatId: {},
+    tutorRecapByMessageId: {},
     compare: { isOpen: false, prompt: '', selectedModelIds: [], runs: {} },
   };
 
