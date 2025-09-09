@@ -447,7 +447,9 @@ export function createMessageSlice(
               if (providerSort === 'price' || providerSort === 'throughput') {
                 debugBody.provider = { sort: providerSort };
               }
-              if (Array.isArray(plugins) && plugins.length > 0) debugBody.plugins = plugins;
+              // Avoid PDF parsing costs during planning; only enable plugins in final streaming call
+              // so PDFs are parsed once per user turn.
+              // (Leave out debugBody.plugins here.)
               set((s) => ({
                 ui: {
                   ...s.ui,
@@ -475,7 +477,9 @@ export function createMessageSlice(
               tool_choice: supportsTools ? ('auto' as any) : undefined,
               signal: controller.signal,
               providerSort,
-              plugins,
+              // Intentionally omit plugins here to skip parsing PDFs during planning
+              // (final streaming call will include plugins if needed)
+              plugins: undefined,
             });
             finalUsage = resp?.usage;
             const choice = resp?.choices?.[0];
@@ -1154,6 +1158,16 @@ export function createMessageSlice(
             providerSort,
             plugins,
             callbacks: {
+              onAnnotations: (ann) => {
+                // Persist annotations on the assistant message so future turns can skip PDF re-parsing
+                set((s) => {
+                  const list = s.messages[chatId] ?? [];
+                  const updated = list.map((m) =>
+                    m.id === assistantMsg.id ? ({ ...m, annotations: ann } as any) : m,
+                  );
+                  return { messages: { ...s.messages, [chatId]: updated } } as any;
+                });
+              },
               onImage: (dataUrl) => {
                 set((s) => {
                   const list = s.messages[chatId] ?? [];
@@ -1254,6 +1268,7 @@ export function createMessageSlice(
                   attachments: current?.attachments,
                   tutor: (current as any)?.tutor,
                   hiddenContent: (current as any)?.hiddenContent,
+                  annotations: (current as any)?.annotations || extras?.annotations,
                   metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
                   tokensIn: promptTokens,
                   tokensOut: completionTokens,
@@ -1469,6 +1484,15 @@ export function createMessageSlice(
             signal: controller.signal,
             plugins: hadPdfEarlier ? [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }] : undefined,
             callbacks: {
+              onAnnotations: (ann) => {
+                set((s) => {
+                  const list2 = s.messages[chatId] ?? [];
+                  const updated = list2.map((m) =>
+                    m.id === replacement.id ? ({ ...m, annotations: ann } as any) : m,
+                  );
+                  return { messages: { ...s.messages, [chatId]: updated } } as any;
+                });
+              },
               onImage: (dataUrl) => {
                 set((s) => {
                   const list2 = s.messages[chatId] ?? [];
@@ -1532,6 +1556,7 @@ export function createMessageSlice(
                   content: full,
                   reasoning: current?.reasoning,
                   attachments: current?.attachments,
+                  annotations: (current as any)?.annotations || extras?.annotations,
                   metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
                   tokensIn: promptTokens,
                   tokensOut: completionTokens,

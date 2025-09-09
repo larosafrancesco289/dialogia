@@ -139,7 +139,8 @@ export type StreamCallbacks = {
   onToken?: (delta: string) => void;
   onReasoningToken?: (delta: string) => void;
   onImage?: (dataUrl: string) => void; // base64 data URL for generated image
-  onDone?: (full: string, extras?: { usage?: any }) => void;
+  onAnnotations?: (annotations: any) => void;
+  onDone?: (full: string, extras?: { usage?: any; annotations?: any }) => void;
   onError?: (err: Error) => void;
 };
 
@@ -311,6 +312,7 @@ export async function streamChatCompletion(params: {
   let full = '';
   let reasoning = '';
   let usage: any | undefined;
+  let annotations: any | undefined;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -341,6 +343,13 @@ export async function streamChatCompletion(params: {
           deltaReasoning = choice.delta.reasoning;
         else if (choice?.message && typeof choice.message.reasoning === 'string')
           deltaReasoning = choice.message.reasoning;
+
+        // Capture annotations (PDF parsing metadata) when present
+        const ann = (choice?.delta as any)?.annotations || (choice?.message as any)?.annotations;
+        if (ann && !annotations) {
+          annotations = ann;
+          callbacks?.onAnnotations?.(ann);
+        }
 
         // Handle streaming image outputs
         const emitImages = (arr: any[]) => {
@@ -373,5 +382,5 @@ export async function streamChatCompletion(params: {
       }
     }
   }
-  callbacks?.onDone?.(full, { usage });
+  callbacks?.onDone?.(full, { usage, annotations });
 }

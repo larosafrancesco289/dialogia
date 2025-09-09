@@ -100,6 +100,24 @@ export function createChatSlice(
       };
       await saveChat(chat);
       set((s) => ({ chats: [chat, ...s.chats], selectedChatId: id }));
+      // Reset ephemeral "next" flags so they only apply to this new chat
+      set((s) => ({
+        ui: {
+          ...s.ui,
+          nextModel: undefined,
+          nextSearchWithBrave: false,
+          nextTutorMode: false,
+          nextTutorNudge: undefined,
+          nextReasoningEffort: undefined,
+          nextReasoningTokens: undefined,
+          nextSystem: undefined,
+          nextTemperature: undefined,
+          nextTopP: undefined,
+          nextMaxTokens: undefined,
+          nextShowThinking: undefined,
+          nextShowStats: undefined,
+        },
+      }));
       // If starting a chat with tutor mode on, send a friendly greeting once.
       if (chat.settings.tutor_mode) {
         try {

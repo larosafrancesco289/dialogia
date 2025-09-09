@@ -18,7 +18,12 @@ export function buildChatCompletionMessages(params: {
 
   // Convert prior messages into a normalized representation for token budgeting.
   // IMPORTANT: include assistant hiddenContent so the model sees tutor data in follow-ups.
-  const history: { role: 'user' | 'assistant'; content: string; attachments?: Attachment[] }[] = [];
+  const history: {
+    role: 'user' | 'assistant';
+    content: string;
+    attachments?: Attachment[];
+    annotations?: any;
+  }[] = [];
   for (const m of priorMessages) {
     if (m.role === 'system') continue; // prefer current chat.settings.system
     if (m.role !== 'user' && m.role !== 'assistant') continue;
@@ -29,7 +34,8 @@ export function buildChatCompletionMessages(params: {
         ? [base, typeof hidden === 'string' ? hidden : ''].filter((x) => x && x.trim()).join('\n\n')
         : base;
     if (!combined) continue;
-    history.push({ role: m.role, content: combined, attachments: m.attachments });
+    const annotations = (m as any).annotations;
+    history.push({ role: m.role, content: combined, attachments: m.attachments, annotations });
   }
   if (typeof newUserContent === 'string') {
     history.push({ role: 'user', content: newUserContent, attachments: newUserAttachments });
@@ -49,6 +55,7 @@ export function buildChatCompletionMessages(params: {
       role: historyWithTokens[i].role,
       content: historyWithTokens[i].content,
       attachments: historyWithTokens[i].attachments,
+      annotations: (historyWithTokens[i] as any).annotations,
     });
     running += t;
   }
@@ -101,7 +108,12 @@ export function buildChatCompletionMessages(params: {
       }
       finalMsgs.push({ role: 'user', content: blocks });
     } else {
-      finalMsgs.push({ role: k.role, content: k.content });
+      // Include assistant annotations (from prior OpenRouter response) to skip PDF re-parsing
+      if (k.role === 'assistant' && k.annotations) {
+        finalMsgs.push({ role: k.role, content: k.content, annotations: k.annotations });
+      } else {
+        finalMsgs.push({ role: k.role, content: k.content });
+      }
     }
   }
   return finalMsgs;
