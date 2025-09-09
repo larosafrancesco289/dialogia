@@ -116,6 +116,12 @@ export function createMessageSlice(
           return a;
         }),
       );
+      // Determine if any PDFs exist in conversation (prior or this turn) to enable parser plugin
+      const priorList = get().messages[chatId] ?? [];
+      const hadPdfEarlier = priorList.some((m) =>
+        Array.isArray(m.attachments) && m.attachments.some((x: any) => x?.kind === 'pdf'),
+      );
+      const hasPdf = attachments.some((a) => a.kind === 'pdf') || hadPdfEarlier;
       // Strict ZDR enforcement: block sending to non-ZDR models when enabled
       if (get().ui.zdrOnly !== false) {
         const modelId = chat.settings.model;
@@ -162,14 +168,8 @@ export function createMessageSlice(
         role: 'user',
         content,
         createdAt: now,
-        // Persist without heavy/binary fields for PDFs
-        attachments: attachments.length
-          ? attachments.map((a) =>
-              a.kind === 'pdf'
-                ? { id: a.id, kind: 'pdf', name: a.name, mime: a.mime, size: a.size }
-                : a,
-            )
-          : undefined,
+        // Persist full attachments for statefulness across turns (PDF dataURL included)
+        attachments: attachments.length ? attachments : undefined,
       };
       const assistantMsg: Message = {
         id: uuidv4(),
@@ -181,7 +181,6 @@ export function createMessageSlice(
         reasoning: '',
         attachments: [],
       };
-      const priorList = get().messages[chatId] ?? [];
       set((s) => ({
         messages: {
           ...s.messages,
@@ -199,8 +198,7 @@ export function createMessageSlice(
         newUserContent: content,
         newUserAttachments: attachments,
       });
-      // Enable OpenRouter PDF parsing when PDFs are attached
-      const hasPdf = attachments.some((a) => a.kind === 'pdf');
+      // Enable OpenRouter PDF parsing when any PDFs exist in the conversation
       const plugins = hasPdf ? [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }] : undefined;
       if (chat.title === 'New Chat') {
         const draft = content.trim().slice(0, 40);
@@ -227,7 +225,55 @@ export function createMessageSlice(
           preambles.push(`Learner Preference: ${n.replace(/_/g, ' ')}`);
           set((s) => ({ ui: { ...s.ui, nextTutorNudge: undefined } }));
         }
-        // Keep the tutor preamble and learner profile concise; skip heavy recap blocks.
+        // Add a short recap of the most recent tutor interaction attempts so the model
+        // can reference what the learner actually did (e.g., "you got 3/3 correct").
+        try {
+          const tutorMap = get().ui.tutorByMessageId || {};
+          // Walk prior assistant messages from latest backwards; summarize the first with attempts
+          const recentAssistantIds = priorList
+            .filter((m) => m.role === 'assistant')
+            .map((m) => m.id)
+            .reverse();
+          let recap = '';
+          for (const id of recentAssistantIds) {
+            const t = (tutorMap as any)[id];
+            const attempts = t?.attempts as any | undefined;
+            if (!attempts) continue;
+            const parts: string[] = [];
+            // MCQ recap (X/Y correct)
+            if (t?.mcq && Array.isArray(t.mcq)) {
+              const total = t.mcq.length;
+              const a = attempts.mcq || {};
+              const attempted = Object.keys(a).length;
+              const correct = Object.values(a).filter((x: any) => x?.correct === true).length;
+              if (attempted > 0)
+                parts.push(`MCQ: ${correct}/${total || attempted} correct`);
+            }
+            // Fill‑blank recap (X/Y correct)
+            if (t?.fillBlank && Array.isArray(t.fillBlank)) {
+              const total = t.fillBlank.length;
+              const a = attempts.fillBlank || {};
+              const attempted = Object.keys(a).length;
+              const correct = Object.values(a).filter((x: any) => x?.correct === true).length;
+              if (attempted > 0)
+                parts.push(`Fill-in-the-blank: ${correct}/${total || attempted} correct`);
+            }
+            // Open‑ended recap (submitted/graded)
+            if (t?.openEnded && Array.isArray(t.openEnded)) {
+              const a = attempts.open || {};
+              const submitted = Object.keys(a).filter((k) => !!a[k]?.answer).length;
+              const graded = t?.grading ? Object.keys(t.grading).length : 0;
+              if (submitted > 0) parts.push(`Open-ended: ${submitted} submitted${graded ? ` · ${graded} graded` : ''}`);
+            }
+            if (parts.length > 0) {
+              const header = t?.title ? `"${String(t.title)}"` : 'Last practice';
+              recap = `${header}: ${parts.join(' · ')}`;
+              break;
+            }
+          }
+          if (recap) preambles.push(`Tutor Recap: ${recap}`);
+        } catch {}
+        // Keep the tutor preamble concise; avoid heavy full-text recaps.
       }
       const combinedSystemForThisTurn = attemptPlanning
         ? (preambles.join('\n\n') || undefined) &&
@@ -1201,6 +1247,10 @@ export function createMessageSlice(
         priorMessages: list.slice(0, idx),
         models: get().models,
       });
+      // Detect PDFs anywhere prior to this assistant message to enable parser plugin
+      const hadPdfEarlier = list
+        .slice(0, idx)
+        .some((m) => Array.isArray(m.attachments) && m.attachments.some((a: any) => a?.kind === 'pdf'));
       const replacement: Message = {
         id: messageId,
         chatId,
@@ -1235,6 +1285,7 @@ export function createMessageSlice(
               stream: true,
               stream_options: { include_usage: true },
             };
+            if (hadPdfEarlier) debugBody.plugins = [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }];
             if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
             if (typeof chat.settings.temperature === 'number')
               debugBody.temperature = chat.settings.temperature;
@@ -1273,6 +1324,7 @@ export function createMessageSlice(
             reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
             reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
             signal: controller.signal,
+            plugins: hadPdfEarlier ? [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }] : undefined,
             callbacks: {
               onImage: (dataUrl) => {
                 set((s) => {
