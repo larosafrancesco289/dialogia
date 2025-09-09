@@ -9,6 +9,12 @@ import type {
 } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
 
+function safeKey(val: any, idx: number, prefix = 'item'): string {
+  const s = typeof val === 'string' ? val.trim() : '';
+  if (!s || s === 'null' || s === 'undefined') return `${prefix}_${idx}`;
+  return s;
+}
+
 export function TutorPanel(props: {
   messageId: string;
   title?: string;
@@ -16,11 +22,9 @@ export function TutorPanel(props: {
   fillBlank?: TutorFillBlankItem[];
   openEnded?: TutorOpenItem[];
   flashcards?: TutorFlashcardItem[];
-  session?: { goal?: string; duration_min?: number; stage?: 'baseline' | 'teach' | 'practice' | 'reflect' | 'review'; focus?: string; next?: string; skills?: string[] };
-  recommendation?: { reason?: string; recommendation?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept' };
   grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
 }) {
-  const { messageId, title, mcq, fillBlank, openEnded, flashcards, session, recommendation, grading } = props;
+  const { messageId, title, mcq, fillBlank, openEnded, flashcards, grading } = props;
   const hasAny = (mcq && mcq.length) || (fillBlank && fillBlank.length) || (openEnded && openEnded.length) || (flashcards && flashcards.length);
   if (!hasAny) return null;
   return (
@@ -31,16 +35,6 @@ export function TutorPanel(props: {
             <AcademicCapIcon className="h-4 w-4" />
             <div className="text-sm font-medium truncate">{title || 'Tutor Tools'}</div>
           </div>
-          {session && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {session.goal && <span className="badge">Goal: {session.goal}</span>}
-              {session.stage && <span className="badge">Stage: {session.stage}</span>}
-              {session.focus && <span className="badge">Focus: {session.focus}</span>}
-              {recommendation?.recommendation && (
-                <span className="badge">Next: {recommendation.recommendation.replace(/_/g, ' ')}</span>
-              )}
-            </div>
-          )}
         </div>
         <div className="p-3 space-y-4">
           {mcq && mcq.length > 0 && <MCQList messageId={messageId} items={mcq} />}
@@ -51,8 +45,8 @@ export function TutorPanel(props: {
             <div className="rounded-md border border-border bg-surface p-3">
               <div className="text-sm font-medium mb-2">Grading</div>
               <div className="space-y-2 text-sm">
-                {Object.entries(grading).map(([id, g]) => (
-                  <div key={id}>
+                {Object.entries(grading).map(([id, g], idx) => (
+                  <div key={safeKey(id, idx, 'grade')}>
                     <div className="font-medium">Item {id}{g.score != null ? ` · Score: ${Math.round(g.score * 100)}%` : ''}</div>
                     <div className="text-muted-foreground whitespace-pre-wrap">{g.feedback}</div>
                     {Array.isArray(g.criteria) && g.criteria.length > 0 && (
@@ -72,7 +66,7 @@ export function TutorPanel(props: {
 function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: string }) {
   const log = useChatStore((s) => s.logTutorResult);
   const setUI = useChatStore((s) => s.setUI);
-  const editAssistant = useChatStore((s) => s.editAssistantMessage);
+  // No longer mutates visible assistant content; results are kept in tutor state only
   const tutorMap = useChatStore((s) => s.ui.tutorByMessageId || {});
   const attempts = (tutorMap[messageId]?.attempts as any) || {};
   const mcq = (attempts.mcq as Record<string, { choice?: number; done?: boolean }>) || {};
@@ -83,7 +77,7 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
         const correctIdx = typeof q.correct === 'number' ? q.correct : -1;
         const answered = !!mcq[q.id]?.done;
         return (
-          <div key={q.id} className="rounded-md border border-border bg-surface">
+          <div key={safeKey(q.id, idx, 'mcq')} className="rounded-md border border-border bg-surface">
             <div className="px-3 py-2 text-sm font-medium">
               {idx + 1}. {q.question}
             </div>
@@ -126,14 +120,10 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
                         },
                       });
                       // Append a compact quiz_result block into the same assistant message content
+                      // Intentionally avoid appending raw quiz_result blocks to message content
+                      // Model memory is handled via sanitized recap preambles.
                       try {
-                        const st2 = (useChatStore as any).getState();
-                        const chatId = st2.selectedChatId!;
-                        const list = (st2.messages?.[chatId] || []) as any[];
-                        const msg = list.find((m) => m.id === messageId);
-                        const prevContent = (msg?.content as string) || '';
-                        const resultBlock = `\n[quiz_result]\n${JSON.stringify({ kind: 'mcq', item_id: q.id, choice: i, correct_index: correctIdx, correct })}\n[/quiz_result]\n`;
-                        editAssistant(messageId, prevContent + resultBlock);
+                        // no-op: legacy content mutation removed
                       } catch {}
                     }}
                     disabled={answered}
@@ -166,7 +156,7 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
 function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; messageId: string }) {
   const log = useChatStore((s) => s.logTutorResult);
   const setUI = useChatStore((s) => s.setUI);
-  const editAssistant = useChatStore((s) => s.editAssistantMessage);
+  // No longer mutates visible assistant content; results are kept in tutor state only
   const tutorMap = useChatStore((s) => s.ui.tutorByMessageId || {});
   const attempts = (tutorMap[messageId]?.attempts as any) || {};
   const fb = (attempts.fillBlank as Record<string, { answer?: string; revealed?: boolean; correct?: boolean }>) || {};
@@ -184,7 +174,7 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
         const shown = !!fb[it.id]?.revealed;
         const ok = shown ? isAccepted(it, val) : undefined;
         return (
-          <div key={it.id} className="rounded-md border border-border bg-surface p-3">
+          <div key={safeKey(it.id, idx, 'blank')} className="rounded-md border border-border bg-surface p-3">
             <div className="text-sm font-medium mb-2">{idx + 1}. {it.prompt}</div>
             <div className="flex items-center gap-2">
               <input
@@ -232,15 +222,10 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
                       },
                     },
                   });
-                  // Append a compact quiz_result block into the same assistant message content
+                  // Intentionally avoid appending raw quiz_result blocks to message content
+                  // Model memory is handled via sanitized recap preambles.
                   try {
-                    const st2 = (useChatStore as any).getState();
-                    const chatId = st2.selectedChatId!;
-                    const list = (st2.messages?.[chatId] || []) as any[];
-                    const msg = list.find((m) => m.id === messageId);
-                    const prevContent = (msg?.content as string) || '';
-                    const resultBlock = `\n[quiz_result]\n${JSON.stringify({ kind: 'fill_blank', item_id: it.id, answer: val, accepted: correct })}\n[/quiz_result]\n`;
-                    editAssistant(messageId, prevContent + resultBlock);
+                    // no-op: legacy content mutation removed
                   } catch {}
                 }}
               >
@@ -276,7 +261,7 @@ function OpenEndedList({ items, grading, messageId }: { items: TutorOpenItem[]; 
   return (
     <div className="space-y-3">
       {items.map((it, idx) => (
-        <div key={it.id} className="rounded-md border border-border bg-surface p-3">
+        <div key={safeKey(it.id, idx, 'open')} className="rounded-md border border-border bg-surface p-3">
           <div className="text-sm font-medium">{idx + 1}. {it.prompt}</div>
           <div className="mt-2 flex items-center gap-2">
             <button className="btn btn-outline btn-sm" onClick={() => setRevealed((s) => ({ ...s, [it.id]: !s[it.id] }))}>

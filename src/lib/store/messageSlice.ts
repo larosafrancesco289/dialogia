@@ -27,71 +27,6 @@ export function createMessageSlice(
       const chatId = get().selectedChatId!;
       const chat = get().chats.find((c) => c.id === chatId)!;
       const now = Date.now();
-      // If tutor mode is on, inject a sanitized recap of the most recent tutor items
-      // so the model (and user) can see what was asked and what was answered.
-      if (chat.settings.tutor_mode) {
-        try {
-          const tmap = get().ui.tutorByMessageId || {};
-          const recapped = get().ui.tutorRecapByMessageId || {};
-          const list = get().messages[chatId] ?? [];
-          const short = (s: any, max = 240) => {
-            const str = String(s == null ? '' : s);
-            return str.length > max ? str.slice(0, max) + '…' : str;
-          };
-          const letter = (n: number | undefined) =>
-            typeof n === 'number' && n >= 0 && n < 26 ? String.fromCharCode(65 + n) : undefined;
-          const lastAssistantWithTutor = list
-            .slice()
-            .reverse()
-            .find((m) => m.role === 'assistant' && tmap[m.id] && ((tmap[m.id] as any).mcq || (tmap[m.id] as any).fillBlank || (tmap[m.id] as any).openEnded));
-          if (lastAssistantWithTutor && !recapped[(lastAssistantWithTutor as any).id]) {
-            const payload: any = tmap[(lastAssistantWithTutor as any).id];
-            const attempts: any = payload.attempts || {};
-            const lines: string[] = [];
-            if (Array.isArray(payload.mcq) && payload.mcq.length) {
-              const arr = payload.mcq.slice(0, 12);
-              arr.forEach((it: any, i: number) => {
-                const pick = attempts.mcq?.[it.id]?.choice;
-                const corr = typeof it.correct === 'number' ? it.correct : undefined;
-                const pickL = letter(typeof pick === 'number' ? pick : undefined) || '-';
-                const corrL = letter(corr) || '-';
-                const ok = typeof pick === 'number' && typeof corr === 'number' ? pick === corr : undefined;
-                lines.push(
-                  `MCQ ${i + 1}: ${short(it.question, 180)}\n- Correct: ${corrL}\n- You: ${pickL}${ok != null ? ` (${ok ? 'correct' : 'wrong'})` : ''}${it.explanation ? `\n- Why: ${short(it.explanation, 220)}` : ''}`,
-                );
-              });
-            }
-            if (Array.isArray(payload.fillBlank) && payload.fillBlank.length) {
-              const arr = payload.fillBlank.slice(0, 12);
-              arr.forEach((it: any, i: number) => {
-                const ans = attempts.fillBlank?.[it.id]?.answer;
-                const norm = (x: string) => x.trim().toLowerCase();
-                const ok = typeof ans === 'string' ? (norm(it.answer || '') === norm(ans) || (Array.isArray(it.aliases) && it.aliases.some((x: any) => norm(String(x || '')) === norm(ans)))) : undefined;
-                lines.push(
-                  `Blank ${i + 1}: ${short(it.prompt, 180)}\n- Correct: ${short(it.answer, 140)}\n- You: ${typeof ans === 'string' ? short(ans, 140) : '-'}${ok != null ? ` (${ok ? 'correct' : 'wrong'})` : ''}${it.explanation ? `\n- Why: ${short(it.explanation, 220)}` : ''}`,
-                );
-              });
-            }
-            if (Array.isArray(payload.openEnded) && payload.openEnded.length) {
-              const arr = payload.openEnded.slice(0, 8);
-              arr.forEach((it: any, i: number) => {
-                const ans = attempts.open?.[it.id]?.answer;
-                const g = payload.grading?.[it.id];
-                const score = typeof g?.score === 'number' ? ` (score: ${Math.round(g.score * 100)}%)` : '';
-                lines.push(
-                  `Open ${i + 1}: ${short(it.prompt, 160)}\n- You: ${typeof ans === 'string' ? short(ans, 240) : '-'}${g?.feedback ? `\n- Feedback${score}: ${short(g.feedback, 260)}` : ''}`,
-                );
-              });
-            }
-            if (lines.length) {
-              const recap = `Quiz recap (sanitized):\n${lines.join('\n\n')}`;
-              // Append recap as an assistant message before sending the new user msg
-              await (get().appendAssistantMessage as any)(recap);
-              set((s) => ({ ui: { ...s.ui, tutorRecapByMessageId: { ...(s.ui.tutorRecapByMessageId || {}), [(lastAssistantWithTutor as any).id]: true } } }));
-            }
-          }
-        } catch {}
-      }
       const assistantMsg: Message = {
         id: uuidv4(),
         chatId,
@@ -292,78 +227,7 @@ export function createMessageSlice(
           preambles.push(`Learner Preference: ${n.replace(/_/g, ' ')}`);
           set((s) => ({ ui: { ...s.ui, nextTutorNudge: undefined } }));
         }
-        // Include sanitized summary of the last tutor quiz/items with your answers so the tutor can reflect accurately
-        try {
-          const tmap = get().ui.tutorByMessageId || {};
-          const short = (s: any, max = 240) => {
-            const str = String(s == null ? '' : s);
-            return str.length > max ? str.slice(0, max) + '…' : str;
-          };
-          const letter = (n: number | undefined) =>
-            typeof n === 'number' && n >= 0 && n < 26 ? String.fromCharCode(65 + n) : undefined;
-          const lastWithTutor = priorList
-            .slice()
-            .reverse()
-            .find((m) => m.role === 'assistant' && tmap[m.id] && ((tmap[m.id] as any).mcq || (tmap[m.id] as any).fillBlank || (tmap[m.id] as any).openEnded));
-          if (lastWithTutor) {
-            const payload: any = tmap[(lastWithTutor as any).id];
-            const attempts: any = payload.attempts || {};
-            const out: any = { quiz: {} as any };
-            if (Array.isArray(payload.mcq) && payload.mcq.length) {
-              (out.quiz as any).mcq = payload.mcq.slice(0, 20).map((it: any, i: number) => {
-                const a = attempts.mcq?.[it.id];
-                const pick = typeof a?.choice === 'number' ? a.choice : undefined;
-                const corr = typeof it.correct === 'number' ? it.correct : undefined;
-                return {
-                  index: i + 1,
-                  id: it.id,
-                  question: short(it.question, 200),
-                  correct_letter: letter(corr),
-                  user_choice_letter: letter(pick),
-                  is_correct: typeof pick === 'number' && typeof corr === 'number' ? pick === corr : undefined,
-                  explanation: it.explanation ? short(it.explanation, 220) : undefined,
-                };
-              });
-            }
-            if (Array.isArray(payload.fillBlank) && payload.fillBlank.length) {
-              (out.quiz as any).fill_blank = payload.fillBlank.slice(0, 20).map((it: any, i: number) => {
-                const a = attempts.fillBlank?.[it.id];
-                const ans = typeof a?.answer === 'string' ? a.answer : undefined;
-                let ok: boolean | undefined = undefined;
-                if (typeof ans === 'string') {
-                  const norm = (x: string) => x.trim().toLowerCase();
-                  ok = norm(it.answer || '') === norm(ans) || (Array.isArray(it.aliases) && it.aliases.some((x: any) => norm(x || '') === norm(ans)));
-                }
-                return {
-                  index: i + 1,
-                  id: it.id,
-                  prompt: short(it.prompt, 200),
-                  correct_answer: short(it.answer, 140),
-                  user_answer: typeof ans === 'string' ? short(ans, 140) : undefined,
-                  is_correct: ok,
-                  explanation: it.explanation ? short(it.explanation, 220) : undefined,
-                };
-              });
-            }
-            if (Array.isArray(payload.openEnded) && payload.openEnded.length) {
-              (out.quiz as any).open_ended = payload.openEnded.slice(0, 12).map((it: any, i: number) => {
-                const a = attempts.open?.[it.id];
-                const ans = typeof a?.answer === 'string' ? a.answer : undefined;
-                const g = payload.grading?.[it.id];
-                return {
-                  index: i + 1,
-                  id: it.id,
-                  prompt: short(it.prompt, 200),
-                  user_answer: typeof ans === 'string' ? short(ans, 260) : undefined,
-                  feedback: g?.feedback ? short(g.feedback, 260) : undefined,
-                  score: typeof g?.score === 'number' ? g.score : undefined,
-                };
-              });
-            }
-            const hasAny = Object.keys(out.quiz).length > 0;
-            if (hasAny) preambles.push(`Tutor Interaction Summary (sanitized):\n${JSON.stringify(out)}`);
-          }
-        } catch {}
+        // Keep the tutor preamble and learner profile concise; skip heavy recap blocks.
       }
       const combinedSystemForThisTurn = attemptPlanning
         ? (preambles.join('\n\n') || undefined) &&
@@ -466,6 +330,45 @@ export function createMessageSlice(
             const modelMeta = findModelById(get().models, chat.settings.model);
             const supportsReasoning = isReasoningSupported(modelMeta);
             const supportsTools = isToolCallingSupported(modelMeta);
+            // Store debug payload for planning (non-streaming) request in tutor/plan mode
+            try {
+              const debugBody: any = {
+                model: chat.settings.model,
+                messages: convo,
+                stream: false,
+              };
+              if (typeof chat.settings.temperature === 'number')
+                debugBody.temperature = chat.settings.temperature;
+              if (typeof chat.settings.top_p === 'number') debugBody.top_p = chat.settings.top_p;
+              if (typeof chat.settings.max_tokens === 'number')
+                debugBody.max_tokens = chat.settings.max_tokens;
+              if (supportsReasoning) {
+                const rc: any = {};
+                if (typeof chat.settings.reasoning_effort === 'string')
+                  rc.effort = chat.settings.reasoning_effort;
+                if (typeof chat.settings.reasoning_tokens === 'number')
+                  rc.max_tokens = chat.settings.reasoning_tokens;
+                if (Object.keys(rc).length > 0) debugBody.reasoning = rc;
+              }
+              if (supportsTools) debugBody.tools = toolDefinition as any;
+              if (supportsTools) debugBody.tool_choice = 'auto';
+              if (providerSort === 'price' || providerSort === 'throughput') {
+                debugBody.provider = { sort: providerSort };
+              }
+              if (Array.isArray(plugins) && plugins.length > 0) debugBody.plugins = plugins;
+              set((s) => ({
+                ui: {
+                  ...s.ui,
+                  debugByMessageId: {
+                    ...(s.ui.debugByMessageId || {}),
+                    [assistantMsg.id]: {
+                      body: JSON.stringify(debugBody, null, 2),
+                      createdAt: Date.now(),
+                    },
+                  },
+                },
+              }));
+            } catch {}
             const resp = await chatCompletion({
               apiKey: key || '',
               model: chat.settings.model,
@@ -538,7 +441,12 @@ export function createMessageSlice(
               try {
                 const items: any[] = Array.isArray(args?.items) ? args.items : [];
                 if (items.length === 0) return false;
-                const normed = items.slice(0, 40).map((it, idx) => ({ id: it.id || `${idx}`, ...it }));
+                const normed = items.slice(0, 40).map((it, idx) => {
+                  const raw = (it as any).id;
+                  const s = typeof raw === 'string' ? raw.trim() : '';
+                  const id = !s || s === 'null' || s === 'undefined' ? uuidv4() : s;
+                  return { id, ...it };
+                });
                 set((s) => ({
                   ui: {
                     ...s.ui,
@@ -555,29 +463,6 @@ export function createMessageSlice(
                     },
                   },
                 }));
-
-                // Append a compact tool_call block into the assistant message so the model can see it next turn
-                const compactItems = normed.slice(0, 12).map((it: any) => ({
-                  id: it.id,
-                  question: it.question,
-                  choices: Array.isArray(it.choices) ? it.choices.slice(0, 6) : undefined,
-                  correct: typeof it.correct === 'number' ? it.correct : undefined,
-                  prompt: it.prompt,
-                  front: it.front,
-                  back: it.back,
-                  explanation:
-                    typeof it.explanation === 'string'
-                      ? (it.explanation.length > 220 ? it.explanation.slice(0, 220) + '…' : it.explanation)
-                      : undefined,
-                }));
-                const toolBlock = `\n[tool_call ${name}]\n${JSON.stringify({ title: args?.title, items: compactItems })}\n[/tool_call]\n`;
-                set((s) => {
-                  const list = s.messages[chatId] ?? [];
-                  const updated = list.map((m) =>
-                    m.id === keyId ? { ...m, content: (m.content || '') + toolBlock } : m,
-                  );
-                  return { messages: { ...s.messages, [chatId]: updated } } as any;
-                });
                 return true;
               } catch {
                 return false;
@@ -585,66 +470,13 @@ export function createMessageSlice(
             };
             const attachTutorMeta = async (name: string, args: any) => {
               const keyId = assistantMsg.id;
-              if (name === 'start_session') {
-                set((s) => ({
-                  ui: {
-                    ...s.ui,
-                    tutorByMessageId: {
-                      ...(s.ui.tutorByMessageId || {}),
-                      [keyId]: {
-                        ...(s.ui.tutorByMessageId?.[keyId] || {}),
-                        session: {
-                          ...(s.ui.tutorByMessageId?.[keyId]?.session || {}),
-                          goal: args?.goal,
-                          duration_min: args?.duration_min,
-                          skills: Array.isArray(args?.skills) ? args.skills : undefined,
-                        },
-                      },
-                    },
-                  },
-                }));
-                return true;
-              }
-              if (name === 'stage_update') {
-                set((s) => ({
-                  ui: {
-                    ...s.ui,
-                    tutorByMessageId: {
-                      ...(s.ui.tutorByMessageId || {}),
-                      [keyId]: {
-                        ...(s.ui.tutorByMessageId?.[keyId] || {}),
-                        session: {
-                          ...(s.ui.tutorByMessageId?.[keyId]?.session || {}),
-                          stage: args?.stage,
-                          focus: args?.focus,
-                          next: args?.next,
-                        },
-                      },
-                    },
-                  },
-                }));
-                return true;
-              }
-              if (name === 'plan_next') {
-                set((s) => ({
-                  ui: {
-                    ...s.ui,
-                    tutorByMessageId: {
-                      ...(s.ui.tutorByMessageId || {}),
-                      [keyId]: {
-                        ...(s.ui.tutorByMessageId?.[keyId] || {}),
-                        recommendation: {
-                          reason: args?.reason,
-                          recommendation: args?.recommendation,
-                        },
-                      },
-                    },
-                  },
-                }));
-                return true;
-              }
               if (name === 'grade_open_response') {
-                const itemId = String(args?.item_id || '').trim();
+                const rawId = args?.item_id;
+                const itemId = (() => {
+                  const s = typeof rawId === 'string' ? rawId.trim() : '';
+                  if (!s || s === 'null' || s === 'undefined') return '';
+                  return s;
+                })();
                 const feedback = String(args?.feedback || '').trim();
                 const score = typeof args?.score === 'number' ? args.score : undefined;
                 const criteria = Array.isArray(args?.criteria) ? args.criteria : undefined;
@@ -693,9 +525,6 @@ export function createMessageSlice(
                 name !== 'quiz_fill_blank' &&
                 name !== 'quiz_open_ended' &&
                 name !== 'flashcards' &&
-                name !== 'start_session' &&
-                name !== 'stage_update' &&
-                name !== 'plan_next' &&
                 name !== 'grade_open_response' &&
                 name !== 'add_to_deck' &&
                 name !== 'srs_review'
@@ -877,6 +706,49 @@ export function createMessageSlice(
             const modelMeta = findModelById(get().models, chat.settings.model);
             const supportsReasoning = isReasoningSupported(modelMeta);
             const supportsTools = isToolCallingSupported(modelMeta);
+            // Store debug payload for this final streaming call (planning mode)
+            try {
+              const debugBody: any = {
+                model: chat.settings.model,
+                messages: streamingMessages,
+                stream: true,
+                stream_options: { include_usage: true },
+              };
+              if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
+              if (typeof chat.settings.temperature === 'number')
+                debugBody.temperature = chat.settings.temperature;
+              if (typeof chat.settings.top_p === 'number') debugBody.top_p = chat.settings.top_p;
+              if (typeof chat.settings.max_tokens === 'number')
+                debugBody.max_tokens = chat.settings.max_tokens;
+              if (supportsReasoning) {
+                const rc: any = {};
+                if (typeof chat.settings.reasoning_effort === 'string')
+                  rc.effort = chat.settings.reasoning_effort;
+                if (typeof chat.settings.reasoning_tokens === 'number')
+                  rc.max_tokens = chat.settings.reasoning_tokens;
+                if (Object.keys(rc).length > 0) debugBody.reasoning = rc;
+              }
+              if (supportsTools) {
+                debugBody.tools = toolDefinition as any;
+                debugBody.tool_choice = 'none';
+              }
+              if (providerSort === 'price' || providerSort === 'throughput') {
+                debugBody.provider = { sort: providerSort };
+              }
+              if (Array.isArray(plugins) && plugins.length > 0) debugBody.plugins = plugins;
+              set((s) => ({
+                ui: {
+                  ...s.ui,
+                  debugByMessageId: {
+                    ...(s.ui.debugByMessageId || {}),
+                    [assistantMsg.id]: {
+                      body: JSON.stringify(debugBody, null, 2),
+                      createdAt: Date.now(),
+                    },
+                  },
+                },
+              }));
+            } catch {}
             await streamChatCompletion({
               apiKey: key || '',
               model: chat.settings.model,
@@ -1042,6 +914,45 @@ export function createMessageSlice(
         {
           const modelMeta = findModelById(get().models, chat.settings.model);
           const supportsReasoning = isReasoningSupported(modelMeta);
+          // Store debug payload for this streaming call (standard mode)
+          try {
+            const debugBody: any = {
+              model: chat.settings.model,
+              messages: streamingMessages,
+              stream: true,
+              stream_options: { include_usage: true },
+            };
+            if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
+            if (typeof chat.settings.temperature === 'number')
+              debugBody.temperature = chat.settings.temperature;
+            if (typeof chat.settings.top_p === 'number') debugBody.top_p = chat.settings.top_p;
+            if (typeof chat.settings.max_tokens === 'number')
+              debugBody.max_tokens = chat.settings.max_tokens;
+            if (supportsReasoning) {
+              const rc: any = {};
+              if (typeof chat.settings.reasoning_effort === 'string')
+                rc.effort = chat.settings.reasoning_effort;
+              if (typeof chat.settings.reasoning_tokens === 'number')
+                rc.max_tokens = chat.settings.reasoning_tokens;
+              if (Object.keys(rc).length > 0) debugBody.reasoning = rc;
+            }
+            if (providerSort === 'price' || providerSort === 'throughput') {
+              debugBody.provider = { sort: providerSort };
+            }
+            if (Array.isArray(plugins) && plugins.length > 0) debugBody.plugins = plugins;
+            set((s) => ({
+              ui: {
+                ...s.ui,
+                debugByMessageId: {
+                  ...(s.ui.debugByMessageId || {}),
+                  [assistantMsg.id]: {
+                    body: JSON.stringify(debugBody, null, 2),
+                    createdAt: Date.now(),
+                  },
+                },
+              },
+            }));
+          } catch {}
           await streamChatCompletion({
             apiKey: key || '',
             model: chat.settings.model,
@@ -1316,6 +1227,41 @@ export function createMessageSlice(
         {
           const modelMeta = findModelById(get().models, replacement.model!);
           const supportsReasoning = isReasoningSupported(modelMeta);
+          // Store debug payload for regenerate streaming call
+          try {
+            const debugBody: any = {
+              model: replacement.model!,
+              messages: msgs,
+              stream: true,
+              stream_options: { include_usage: true },
+            };
+            if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
+            if (typeof chat.settings.temperature === 'number')
+              debugBody.temperature = chat.settings.temperature;
+            if (typeof chat.settings.top_p === 'number') debugBody.top_p = chat.settings.top_p;
+            if (typeof chat.settings.max_tokens === 'number')
+              debugBody.max_tokens = chat.settings.max_tokens;
+            if (supportsReasoning) {
+              const rc: any = {};
+              if (typeof chat.settings.reasoning_effort === 'string')
+                rc.effort = chat.settings.reasoning_effort;
+              if (typeof chat.settings.reasoning_tokens === 'number')
+                rc.max_tokens = chat.settings.reasoning_tokens;
+              if (Object.keys(rc).length > 0) debugBody.reasoning = rc;
+            }
+            set((s) => ({
+              ui: {
+                ...s.ui,
+                debugByMessageId: {
+                  ...(s.ui.debugByMessageId || {}),
+                  [replacement.id]: {
+                    body: JSON.stringify(debugBody, null, 2),
+                    createdAt: Date.now(),
+                  },
+                },
+              },
+            }));
+          } catch {}
           await streamChatCompletion({
             apiKey: key || '',
             model: replacement.model!,

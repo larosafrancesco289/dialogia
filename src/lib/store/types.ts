@@ -5,9 +5,12 @@ export type UIState = {
   isStreaming: boolean;
   notice?: string;
   sidebarCollapsed?: boolean;
+  // Debugging
+  debugMode?: boolean;
+  // Raw request payloads keyed by assistant message id (ephemeral)
+  debugByMessageId?: Record<string, { body: string; createdAt: number }>;
   nextModel?: string;
   nextSearchWithBrave?: boolean;
-  nextTutorMode?: boolean;
   // Tutor steering: set before next turn to bias planning
   nextTutorNudge?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
   nextReasoningEffort?: 'none' | 'low' | 'medium' | 'high';
@@ -84,7 +87,6 @@ export type UIState = {
   tutorProfileByChatId?: Record<string, import('@/lib/types').TutorProfile>;
   // Per-chat ephemeral flags (not persisted)
   tutorGreetedByChatId?: Record<string, boolean>;
-  tutorRecapByMessageId?: Record<string, boolean>;
 };
 
 export type StoreState = {

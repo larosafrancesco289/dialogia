@@ -14,6 +14,7 @@ import RegenerateMenu from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
 import { ReasoningPanel } from '@/components/message/ReasoningPanel';
+import { DebugPanel } from '@/components/message/DebugPanel';
 import { TutorPanel } from '@/components/message/TutorPanel';
 import type { Attachment } from '@/lib/types';
 import ImageLightbox from '@/components/ImageLightbox';
@@ -28,6 +29,8 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const tutorByMessageId = useChatStore((s) => s.ui.tutorByMessageId || {});
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
   const showStats = chat?.settings.show_stats ?? true;
+  const debugMode = useChatStore((s) => s.ui.debugMode || false);
+  const debugByMessageId = useChatStore((s) => s.ui.debugByMessageId || {});
   const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
@@ -112,6 +115,9 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const [expandedSourcesIds, setExpandedSourcesIds] = useState<Record<string, boolean>>({});
   const toggleSources = (id: string) => setExpandedSourcesIds((s) => ({ ...s, [id]: !s[id] }));
   const isSourcesExpanded = (id: string) => expandedSourcesIds[id] ?? true;
+  const [expandedDebugIds, setExpandedDebugIds] = useState<Record<string, boolean>>({});
+  const toggleDebug = (id: string) => setExpandedDebugIds((s) => ({ ...s, [id]: !s[id] }));
+  const isDebugExpanded = (id: string) => expandedDebugIds[id] ?? false;
   const editUserMessage = useChatStore((s) => s.editUserMessage);
   const editAssistantMessage = useChatStore((s) => s.editAssistantMessage);
   const [expandedStatsIds, setExpandedStatsIds] = useState<Record<string, boolean>>({});
@@ -208,6 +214,14 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   />
                 );
               })()}
+              {/* Debug payload panel (raw OpenRouter request) */}
+              {debugMode && debugByMessageId[m.id]?.body && (
+                <DebugPanel
+                  body={debugByMessageId[m.id].body}
+                  expanded={isDebugExpanded(m.id)}
+                  onToggle={() => toggleDebug(m.id)}
+                />
+              )}
               {/* Thinking block styled like sources, inline header with icon toggle */}
               {typeof m.reasoning === 'string' && m.reasoning.length > 0 && (
                 <ReasoningPanel
@@ -228,8 +242,6 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     fillBlank={tut.fillBlank}
                     openEnded={tut.openEnded}
                     flashcards={tut.flashcards}
-                    session={(tut as any).session}
-                    recommendation={(tut as any).recommendation}
                     grading={(tut as any).grading}
                   />
                 );

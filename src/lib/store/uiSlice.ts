@@ -9,9 +9,10 @@ export function createUiSlice(
     showSettings: false,
     isStreaming: false,
     sidebarCollapsed: false,
+    debugMode: false,
+    debugByMessageId: {},
     nextModel: undefined,
     nextSearchWithBrave: false,
-    nextTutorMode: false,
     nextTutorNudge: undefined,
     nextReasoningEffort: undefined,
     nextReasoningTokens: undefined,
@@ -27,7 +28,6 @@ export function createUiSlice(
     tutorByMessageId: {},
     tutorProfileByChatId: {},
     tutorGreetedByChatId: {},
-    tutorRecapByMessageId: {},
     compare: { isOpen: false, prompt: '', selectedModelIds: [], runs: {} },
   };
 
