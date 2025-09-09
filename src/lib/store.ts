@@ -39,6 +39,7 @@ export const useChatStore = create<StoreState>()(
         // Persist minimal UI preferences for better continuity
         ui: {
           sidebarCollapsed: s.ui.sidebarCollapsed,
+          debugMode: s.ui.debugMode,
           nextModel: s.ui.nextModel,
           nextSearchWithBrave: s.ui.nextSearchWithBrave,
           nextSystem: s.ui.nextSystem,

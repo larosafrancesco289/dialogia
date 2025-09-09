@@ -567,24 +567,13 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
               <MagnifyingGlassIcon className="h-4 w-4" />
             </button>
             <button
-              className={`btn self-center ${chat?.settings.tutor_mode || ui.nextTutorMode ? 'btn-primary' : 'btn-outline'}`}
+              className={`btn self-center ${chat?.settings.tutor_mode ? 'btn-primary' : 'btn-outline'}`}
               onClick={async () => {
-                const isOn = !!(chat?.settings.tutor_mode || ui.nextTutorMode);
-                if (!isOn) {
-                  // Turn ON by starting a fresh Tutor chat so it greets
-                  setUI({ nextTutorMode: true });
-                  await newChat();
-                  // Reset default for future new chats (should start without Tutor)
-                  setUI({ nextTutorMode: false });
-                } else {
-                  // Turn OFF in the current chat
-                  if (chat) await updateSettings({ tutor_mode: false });
-                  else setUI({ nextTutorMode: false });
-                }
+                if (chat) await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
               }}
               title="Tutor mode: warm guidance + practice tools (used only when helpful)"
               aria-label="Toggle Tutor Mode"
-              aria-pressed={!!(chat?.settings.tutor_mode || ui.nextTutorMode)}
+              aria-pressed={!!chat?.settings.tutor_mode}
             >
               <AcademicCapIcon className="h-4 w-4" />
             </button>
@@ -621,29 +610,18 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             <EyeIcon className="h-3.5 w-3.5" />
           </span>
         )}
-        {(() => {
-          const on = chat?.settings.tutor_mode ?? ui.nextTutorMode;
-          return (
-            <button
-              className={`badge flex items-center gap-1 ${on ? '' : ''}`}
-              title="Toggle tutor mode"
-              onClick={async () => {
-                const isOn = !!(chat?.settings.tutor_mode || ui.nextTutorMode);
-                if (!isOn) {
-                  setUI({ nextTutorMode: true });
-                  await newChat();
-                  setUI({ nextTutorMode: false });
-                } else {
-                  if (chat) await updateSettings({ tutor_mode: false });
-                  else setUI({ nextTutorMode: false });
-                }
-              }}
-              aria-pressed={!!on}
-            >
-              <AcademicCapIcon className="h-3.5 w-3.5" /> {on ? 'Tutor On' : 'Tutor Off'}
-            </button>
-          );
-        })()}
+        {chat && (
+          <button
+            className={`badge flex items-center gap-1`}
+            title="Toggle tutor mode"
+            onClick={async () => {
+              await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+            }}
+            aria-pressed={!!chat?.settings.tutor_mode}
+          >
+            <AcademicCapIcon className="h-3.5 w-3.5" /> {chat.settings.tutor_mode ? 'Tutor On' : 'Tutor Off'}
+          </button>
+        )}
         {canImageOut && (
           <span
             className="badge flex items-center gap-1"
