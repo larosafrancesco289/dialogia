@@ -13,6 +13,7 @@ export function createUiSlice(
     debugByMessageId: {},
     nextModel: undefined,
     nextSearchWithBrave: false,
+    nextTutorMode: false,
     nextTutorNudge: undefined,
     nextReasoningEffort: undefined,
     nextReasoningTokens: undefined,

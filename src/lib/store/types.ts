@@ -11,6 +11,8 @@ export type UIState = {
   debugByMessageId?: Record<string, { body: string; createdAt: number }>;
   nextModel?: string;
   nextSearchWithBrave?: boolean;
+  // If no chat is open yet, allow toggling tutor mode for the next chat
+  nextTutorMode?: boolean;
   // Tutor steering: set before next turn to bias planning
   nextTutorNudge?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
   nextReasoningEffort?: 'none' | 'low' | 'medium' | 'high';

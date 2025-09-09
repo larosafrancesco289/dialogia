@@ -5,7 +5,7 @@ import { saveMessage } from '@/lib/db';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { stripLeadingToolJson } from '@/lib/agent/streaming';
 import { streamChatCompletion, chatCompletion, fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
-import { getTutorPreamble, getTutorToolDefinitions } from '@/lib/agent/tutor';
+import { getTutorPreamble, getTutorToolDefinitions, buildTutorContextSummary } from '@/lib/agent/tutor';
 import { loadTutorProfile, summarizeTutorProfile } from '@/lib/tutorProfile';
 import { addCardsToDeck, getDueCards } from '@/lib/tutorDeck';
 import {
@@ -235,6 +235,7 @@ export function createMessageSlice(
             .map((m) => m.id)
             .reverse();
           let recap = '';
+          let contextBlock = '';
           for (const id of recentAssistantIds) {
             const t = (tutorMap as any)[id];
             const attempts = t?.attempts as any | undefined;
@@ -268,10 +269,14 @@ export function createMessageSlice(
             if (parts.length > 0) {
               const header = t?.title ? `"${String(t.title)}"` : 'Last practice';
               recap = `${header}: ${parts.join(' · ')}`;
+              // Build a compact context block with prompts and the learner's answers
+              const block = buildTutorContextSummary(t);
+              if (block) contextBlock = block;
               break;
             }
           }
           if (recap) preambles.push(`Tutor Recap: ${recap}`);
+          if (contextBlock) preambles.push(`Tutor Context (last practice):\n${contextBlock}`);
         } catch {}
         // Keep the tutor preamble concise; avoid heavy full-text recaps.
       }
