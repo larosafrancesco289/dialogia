@@ -22,6 +22,9 @@ export type Message = {
   content: string;
   // Not shown in the UI, but included in LLM conversation history
   hiddenContent?: string;
+  // OpenRouter: file parsing annotations returned by assistant (e.g., PDF parsing)
+  // When present, we include them in subsequent requests to skip re-parsing costs.
+  annotations?: any;
   createdAt: number;
   tokensIn?: number;
   tokensOut?: number;
