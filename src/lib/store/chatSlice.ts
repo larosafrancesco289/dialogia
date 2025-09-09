@@ -59,7 +59,7 @@ export function createChatSlice(
           show_thinking_by_default: get().ui.nextShowThinking ?? true,
           show_stats: get().ui.nextShowStats ?? true,
           search_with_brave: get().ui.nextSearchWithBrave ?? false,
-          tutor_mode: false,
+          tutor_mode: get().ui.nextTutorMode ?? false,
         },
       };
       await saveChat(chat);

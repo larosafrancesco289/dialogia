@@ -64,6 +64,72 @@ export function getTutorGreeting(): string {
   return options[Math.floor(Math.random() * options.length)];
 }
 
+// Build a compact, textual summary of the most recent tutor interaction
+// so the model can reference what was asked and how the learner answered
+// in subsequent turns. Keep it brief to avoid prompt bloat.
+export function buildTutorContextSummary(t: any | undefined): string | undefined {
+  if (!t) return undefined;
+  const lines: string[] = [];
+  if (t.title) lines.push(`Title: ${String(t.title)}`);
+
+  // Helper: trim a string to a max length
+  const clip = (s: any, n = 80) => {
+    const x = (typeof s === 'string' ? s : '').trim();
+    return x.length > n ? x.slice(0, n - 1) + '…' : x;
+  };
+
+  try {
+    const attempts = (t.attempts || {}) as any;
+    // MCQ summary
+    if (Array.isArray(t.mcq) && t.mcq.length > 0) {
+      const a = (attempts.mcq || {}) as Record<string, { choice?: number; done?: boolean; correct?: boolean }>;
+      const items = t.mcq.slice(0, 8);
+      lines.push('MCQ:');
+      items.forEach((q: any, i: number) => {
+        const ans = a[q.id] || {};
+        const picked = typeof ans.choice === 'number' ? ans.choice : undefined;
+        const letter = typeof picked === 'number' ? String.fromCharCode(65 + picked) : undefined;
+        const status = ans.done ? (ans.correct ? 'correct' : 'incorrect') : 'unanswered';
+        const qText = clip(q.question);
+        const suffix = letter ? ` · your answer: ${letter}` : '';
+        lines.push(`  ${i + 1}. ${qText}${suffix} · ${status}`);
+      });
+    }
+    // Fill‑blank summary
+    if (Array.isArray(t.fillBlank) && t.fillBlank.length > 0) {
+      const a = (attempts.fillBlank || {}) as Record<string, { answer?: string; revealed?: boolean; correct?: boolean }>;
+      const items = t.fillBlank.slice(0, 8);
+      lines.push('Fill‑in‑the‑blank:');
+      items.forEach((it: any, i: number) => {
+        const ans = a[it.id] || {};
+        const qText = clip(it.prompt);
+        const submitted = ans.revealed || typeof ans.answer === 'string';
+        const status = submitted ? (ans.correct ? 'correct' : 'incorrect') : 'unanswered';
+        const suffix = typeof ans.answer === 'string' && ans.answer.trim() ? ` · your answer: ${clip(ans.answer, 30)}` : '';
+        lines.push(`  ${i + 1}. ${qText}${suffix} · ${status}`);
+      });
+    }
+    // Open‑ended summary (only signal submission; grading appears separately)
+    if (Array.isArray(t.openEnded) && t.openEnded.length > 0) {
+      const a = (attempts.open || {}) as Record<string, { answer?: string }>;
+      const g = (t.grading || {}) as Record<string, { score?: number; feedback: string; criteria?: string[] }>;
+      const items = t.openEnded.slice(0, 6);
+      lines.push('Open‑ended:');
+      items.forEach((it: any, i: number) => {
+        const ans = a[it.id] || {};
+        const submitted = typeof ans.answer === 'string' && ans.answer.trim().length > 0;
+        const graded = !!g[it.id];
+        const qText = clip(it.prompt);
+        const suffix = submitted ? ` · submitted${graded ? ' · graded' : ''}` : ' · not submitted';
+        lines.push(`  ${i + 1}. ${qText}${suffix}`);
+      });
+    }
+  } catch {}
+
+  if (lines.length === 0) return undefined;
+  return lines.join('\n');
+}
+
 export function getTutorToolDefinitions() {
   return [
     {
