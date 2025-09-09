@@ -23,6 +23,9 @@ export type UIState = {
   nextMaxTokens?: number;
   nextShowThinking?: boolean;
   nextShowStats?: boolean;
+  // Tutor context fidelity for follow-up turns
+  // 'summary' keeps prompts compact; 'full' injects full quiz JSON
+  tutorContextMode?: 'summary' | 'full';
   // Privacy preference: only allow/show Zero Data Retention endpoints
   zdrOnly?: boolean;
   // Routing preference: prioritize speed or cost
@@ -165,4 +168,6 @@ export type StoreState = {
   editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
   // utility for UI features (e.g., compare drawer inserting a result)
   appendAssistantMessage: (content: string, opts?: { modelId?: string }) => Promise<void>;
+  // tutor persistence
+  persistTutorStateForMessage: (messageId: string) => Promise<void>;
 };

@@ -66,6 +66,7 @@ export function TutorPanel(props: {
 function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: string }) {
   const log = useChatStore((s) => s.logTutorResult);
   const setUI = useChatStore((s) => s.setUI);
+  const persistTutor = useChatStore((s) => s.persistTutorStateForMessage);
   // No longer mutates visible assistant content; results are kept in tutor state only
   const tutorMap = useChatStore((s) => s.ui.tutorByMessageId || {});
   const attempts = (tutorMap[messageId]?.attempts as any) || {};
@@ -119,6 +120,8 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
                           },
                         },
                       });
+                      // Persist to message for durability across reloads
+                      persistTutor(messageId).catch(() => void 0);
                       // Append a compact quiz_result block into the same assistant message content
                       // Intentionally avoid appending raw quiz_result blocks to message content
                       // Model memory is handled via sanitized recap preambles.
@@ -156,6 +159,7 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
 function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; messageId: string }) {
   const log = useChatStore((s) => s.logTutorResult);
   const setUI = useChatStore((s) => s.setUI);
+  const persistTutor = useChatStore((s) => s.persistTutorStateForMessage);
   // No longer mutates visible assistant content; results are kept in tutor state only
   const tutorMap = useChatStore((s) => s.ui.tutorByMessageId || {});
   const attempts = (tutorMap[messageId]?.attempts as any) || {};
@@ -198,6 +202,8 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
                       },
                     },
                   });
+                  // Persist typed answer so it survives reloads
+                  persistTutor(messageId).catch(() => void 0);
                 }}
               />
               <button
@@ -222,6 +228,8 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
                       },
                     },
                   });
+                  // Persist result
+                  persistTutor(messageId).catch(() => void 0);
                   // Intentionally avoid appending raw quiz_result blocks to message content
                   // Model memory is handled via sanitized recap preambles.
                   try {
@@ -255,6 +263,7 @@ function OpenEndedList({ items, grading, messageId }: { items: TutorOpenItem[]; 
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const setUI = useChatStore((s) => s.setUI);
   const send = useChatStore((s) => s.sendUserMessage);
+  const persistTutor = useChatStore((s) => s.persistTutorStateForMessage);
   const tutorMap = useChatStore((s) => s.ui.tutorByMessageId || {});
   const attempts = (tutorMap[messageId]?.attempts as any) || {};
   const open = (attempts.open as Record<string, { answer?: string }>) || {};
@@ -307,6 +316,8 @@ function OpenEndedList({ items, grading, messageId }: { items: TutorOpenItem[]; 
                     },
                   },
                 });
+                // Persist typed response
+                persistTutor(messageId).catch(() => void 0);
               }}
             />
             <button

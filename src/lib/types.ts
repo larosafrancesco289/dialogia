@@ -20,6 +20,8 @@ export type Message = {
   chatId: string;
   role: 'system' | 'user' | 'assistant';
   content: string;
+  // Not shown in the UI, but included in LLM conversation history
+  hiddenContent?: string;
   createdAt: number;
   tokensIn?: number;
   tokensOut?: number;
@@ -29,6 +31,8 @@ export type Message = {
   metrics?: MessageMetrics;
   // Optional attachments (currently images) associated to the message
   attachments?: Attachment[];
+  // Optional: persisted tutor payload for interactive content and attempts
+  tutor?: MessageTutor;
 };
 
 // Tutor tool item types rendered by UI (ephemeral; stored in UI state)
@@ -72,6 +76,22 @@ export type TutorFlashcardItem = {
   topic?: string;
   skill?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
+};
+
+// Persisted tutor payload attached to an assistant message
+export type MessageTutor = {
+  title?: string;
+  mcq?: TutorMCQItem[];
+  fillBlank?: TutorFillBlankItem[];
+  openEnded?: TutorOpenItem[];
+  flashcards?: TutorFlashcardItem[];
+  // User attempts and grading results
+  attempts?: {
+    mcq?: Record<string, { choice?: number; done?: boolean; correct?: boolean }>;
+    fillBlank?: Record<string, { answer?: string; revealed?: boolean; correct?: boolean }>;
+    open?: Record<string, { answer?: string }>;
+  };
+  grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
 };
 
 // Tutor session and grading metadata (ephemeral; UI/agent coordination only)

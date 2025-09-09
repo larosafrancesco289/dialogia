@@ -5,7 +5,7 @@ import { saveMessage } from '@/lib/db';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { stripLeadingToolJson } from '@/lib/agent/streaming';
 import { streamChatCompletion, chatCompletion, fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
-import { getTutorPreamble, getTutorToolDefinitions, buildTutorContextSummary } from '@/lib/agent/tutor';
+import { getTutorPreamble, getTutorToolDefinitions, buildTutorContextSummary, buildTutorContextFull } from '@/lib/agent/tutor';
 import { loadTutorProfile, summarizeTutorProfile } from '@/lib/tutorProfile';
 import { addCardsToDeck, getDueCards } from '@/lib/tutorDeck';
 import {
@@ -43,6 +43,41 @@ export function createMessageSlice(
         },
       }));
       await saveMessage(assistantMsg);
+    },
+
+    async persistTutorStateForMessage(messageId) {
+      const st = get();
+      const uiTutor = st.ui.tutorByMessageId?.[messageId];
+      if (!uiTutor) return;
+      let updatedMsg: any | undefined;
+      for (const [cid, list] of Object.entries(st.messages)) {
+        const idx = list.findIndex((m) => m.id === messageId);
+        if (idx >= 0) {
+          const target = list[idx];
+          let hidden = '';
+          try {
+            const recap = buildTutorContextSummary(uiTutor as any);
+            const json = buildTutorContextFull(uiTutor as any);
+            const parts: string[] = [];
+            if (recap) parts.push(`Tutor Recap:\n${recap}`);
+            if (json) parts.push(`Tutor Data JSON:\n${json}`);
+            hidden = parts.join('\n\n');
+          } catch {}
+          // Replace hiddenContent for this assistant message (do not append repeatedly)
+          const nm = { ...target, tutor: uiTutor, hiddenContent: hidden } as any;
+          set((s) => ({
+            messages: {
+              ...s.messages,
+              [cid]: list.map((m) => (m.id === messageId ? nm : m)),
+            },
+          }));
+          updatedMsg = nm;
+          break;
+        }
+      }
+      try {
+        if (updatedMsg) await saveMessage(updatedMsg);
+      } catch {}
     },
     async sendUserMessage(
       content: string,
@@ -225,60 +260,6 @@ export function createMessageSlice(
           preambles.push(`Learner Preference: ${n.replace(/_/g, ' ')}`);
           set((s) => ({ ui: { ...s.ui, nextTutorNudge: undefined } }));
         }
-        // Add a short recap of the most recent tutor interaction attempts so the model
-        // can reference what the learner actually did (e.g., "you got 3/3 correct").
-        try {
-          const tutorMap = get().ui.tutorByMessageId || {};
-          // Walk prior assistant messages from latest backwards; summarize the first with attempts
-          const recentAssistantIds = priorList
-            .filter((m) => m.role === 'assistant')
-            .map((m) => m.id)
-            .reverse();
-          let recap = '';
-          let contextBlock = '';
-          for (const id of recentAssistantIds) {
-            const t = (tutorMap as any)[id];
-            const attempts = t?.attempts as any | undefined;
-            if (!attempts) continue;
-            const parts: string[] = [];
-            // MCQ recap (X/Y correct)
-            if (t?.mcq && Array.isArray(t.mcq)) {
-              const total = t.mcq.length;
-              const a = attempts.mcq || {};
-              const attempted = Object.keys(a).length;
-              const correct = Object.values(a).filter((x: any) => x?.correct === true).length;
-              if (attempted > 0)
-                parts.push(`MCQ: ${correct}/${total || attempted} correct`);
-            }
-            // Fill‑blank recap (X/Y correct)
-            if (t?.fillBlank && Array.isArray(t.fillBlank)) {
-              const total = t.fillBlank.length;
-              const a = attempts.fillBlank || {};
-              const attempted = Object.keys(a).length;
-              const correct = Object.values(a).filter((x: any) => x?.correct === true).length;
-              if (attempted > 0)
-                parts.push(`Fill-in-the-blank: ${correct}/${total || attempted} correct`);
-            }
-            // Open‑ended recap (submitted/graded)
-            if (t?.openEnded && Array.isArray(t.openEnded)) {
-              const a = attempts.open || {};
-              const submitted = Object.keys(a).filter((k) => !!a[k]?.answer).length;
-              const graded = t?.grading ? Object.keys(t.grading).length : 0;
-              if (submitted > 0) parts.push(`Open-ended: ${submitted} submitted${graded ? ` · ${graded} graded` : ''}`);
-            }
-            if (parts.length > 0) {
-              const header = t?.title ? `"${String(t.title)}"` : 'Last practice';
-              recap = `${header}: ${parts.join(' · ')}`;
-              // Build a compact context block with prompts and the learner's answers
-              const block = buildTutorContextSummary(t);
-              if (block) contextBlock = block;
-              break;
-            }
-          }
-          if (recap) preambles.push(`Tutor Recap: ${recap}`);
-          if (contextBlock) preambles.push(`Tutor Context (last practice):\n${contextBlock}`);
-        } catch {}
-        // Keep the tutor preamble concise; avoid heavy full-text recaps.
       }
       const combinedSystemForThisTurn = attemptPlanning
         ? (preambles.join('\n\n') || undefined) &&
@@ -377,6 +358,66 @@ export function createMessageSlice(
             } catch {}
             return null;
           };
+          const extractInlineTutorCalls = (text: string): Array<{ name: string; args: any }> => {
+            const out: Array<{ name: string; args: any }> = [];
+            if (typeof text !== 'string' || !text) return out;
+            const names = [
+              'quiz_mcq',
+              'quiz_fill_blank',
+              'quiz_open_ended',
+              'flashcards',
+              'grade_open_response',
+              'add_to_deck',
+              'srs_review',
+            ];
+            const findJsonAfter = (s: string, from: number): any | undefined => {
+              const idx = s.indexOf('{', from);
+              if (idx < 0) return undefined;
+              let depth = 0;
+              let inStr = false;
+              let esc = false;
+              let end = -1;
+              for (let i = idx; i < s.length; i++) {
+                const ch = s[i];
+                if (esc) {
+                  esc = false;
+                  continue;
+                }
+                if (ch === '\\') {
+                  esc = true;
+                  continue;
+                }
+                if (ch === '"') inStr = !inStr;
+                if (!inStr) {
+                  if (ch === '{') depth++;
+                  else if (ch === '}') {
+                    depth--;
+                    if (depth === 0) {
+                      end = i + 1;
+                      break;
+                    }
+                  }
+                }
+              }
+              if (end < 0) return undefined;
+              try {
+                return JSON.parse(s.slice(idx, end));
+              } catch {
+                return undefined;
+              }
+            };
+            for (const name of names) {
+              const i = text.indexOf(name);
+              if (i < 0) continue;
+              // look for ':' or '(' then the first '{'
+              const j = Math.max(text.indexOf(':', i), text.indexOf('(', i));
+              const from = j >= 0 ? j : i;
+              const args = findJsonAfter(text, from);
+              if (args && typeof args === 'object') out.push({ name, args });
+            }
+            return out;
+          };
+
           while (rounds < 3) {
             const modelMeta = findModelById(get().models, chat.settings.model);
             const supportsReasoning = isReasoningSupported(modelMeta);
@@ -456,7 +497,7 @@ export function createMessageSlice(
                   : [];
             if ((!toolCalls || toolCalls.length === 0) && typeof message?.content === 'string') {
               const inline = extractInlineWebSearchArgs(message.content);
-              if (inline)
+              if (inline) {
                 toolCalls = [
                   {
                     id: 'call_0',
@@ -464,6 +505,17 @@ export function createMessageSlice(
                     function: { name: 'web_search', arguments: JSON.stringify(inline) },
                   },
                 ];
+              } else {
+                const tutorCalls = extractInlineTutorCalls(message.content);
+                if (tutorCalls.length > 0) {
+                  // Emulate function calls for tutor tools
+                  toolCalls = tutorCalls.map((c, idx) => ({
+                    id: `inline_${idx}`,
+                    type: 'function',
+                    function: { name: c.name, arguments: JSON.stringify(c.args) },
+                  }));
+                }
+              }
             }
             if (toolCalls && toolCalls.length > 0) {
               usedTool = true;
@@ -475,50 +527,92 @@ export function createMessageSlice(
               finalContent = stripLeadingToolJson(text);
               break;
             }
-            // Helper to attach tutor payloads
-            const attachTutorPayload = (name: string, args: any) => {
-              const keyId = assistantMsg.id;
-              const mapKey =
-                name === 'quiz_mcq'
-                  ? 'mcq'
-                  : name === 'quiz_fill_blank'
-                    ? 'fillBlank'
-                    : name === 'quiz_open_ended'
-                      ? 'openEnded'
-                      : name === 'flashcards'
-                        ? 'flashcards'
-                        : undefined;
-              if (!mapKey) return false;
-              try {
-                const items: any[] = Array.isArray(args?.items) ? args.items : [];
-                if (items.length === 0) return false;
-                const normed = items.slice(0, 40).map((it, idx) => {
-                  const raw = (it as any).id;
-                  const s = typeof raw === 'string' ? raw.trim() : '';
-                  const id = !s || s === 'null' || s === 'undefined' ? uuidv4() : s;
-                  return { id, ...it };
-                });
-                set((s) => ({
-                  ui: {
-                    ...s.ui,
-                    tutorByMessageId: {
-                      ...(s.ui.tutorByMessageId || {}),
-                      [keyId]: {
-                        ...(s.ui.tutorByMessageId?.[keyId] || {}),
-                        title: s.ui.tutorByMessageId?.[keyId]?.title || args?.title,
-                        [mapKey]: [
-                          ...((s.ui.tutorByMessageId?.[keyId] as any)?.[mapKey] || []),
-                          ...normed,
-                        ],
-                      },
-                    },
+            // Helper to attach tutor payloads; returns { ok, json } where json echos normalized items
+          const attachTutorPayload = (name: string, args: any): { ok: boolean; json?: string } => {
+            const keyId = assistantMsg.id;
+            const mapKey =
+              name === 'quiz_mcq'
+                ? 'mcq'
+                : name === 'quiz_fill_blank'
+                  ? 'fillBlank'
+                  : name === 'quiz_open_ended'
+                    ? 'openEnded'
+                    : name === 'flashcards'
+                      ? 'flashcards'
+                      : undefined;
+            if (!mapKey) return { ok: false };
+            try {
+              const items: any[] = Array.isArray(args?.items) ? args.items : [];
+              if (items.length === 0) return { ok: false };
+              const normed = items.slice(0, 40).map((it, idx) => {
+                const raw = (it as any).id;
+                const s = typeof raw === 'string' ? raw.trim() : '';
+                const id = !s || s === 'null' || s === 'undefined' ? uuidv4() : s;
+                return { id, ...it };
+              });
+              let updatedMsg: any | undefined;
+              set((s) => {
+                const nextTutor = {
+                  ...(s.ui.tutorByMessageId?.[keyId] || {}),
+                  title: s.ui.tutorByMessageId?.[keyId]?.title || args?.title,
+                  [mapKey]: [
+                    ...((s.ui.tutorByMessageId?.[keyId] as any)?.[mapKey] || []),
+                    ...normed,
+                  ],
+                } as any;
+                // Update UI map
+                const ui = {
+                  ...s.ui,
+                  tutorByMessageId: {
+                    ...(s.ui.tutorByMessageId || {}),
+                    [keyId]: nextTutor,
                   },
-                }));
-                return true;
-              } catch {
-                return false;
-              }
-            };
+                };
+                // Persist onto the assistant message for durability
+                const list = s.messages[chatId] ?? [];
+                const updated = list.map((m) => {
+                  if (m.id !== keyId) return m;
+                  const prevTutor = (m as any).tutor || {};
+                  const mergedTutor = {
+                    ...prevTutor,
+                    title: prevTutor.title || args?.title,
+                    [mapKey]: [
+                      ...(((prevTutor as any)[mapKey] as any[]) || []),
+                      ...normed,
+                    ],
+                  } as any;
+                  // Build hidden assistant content: recap + full data JSON
+                  let hidden = '';
+                  try {
+                    const recap = buildTutorContextSummary(mergedTutor);
+                    const json = buildTutorContextFull(mergedTutor);
+                    const parts = [] as string[];
+                    if (recap) parts.push(`Tutor Recap:\n${recap}`);
+                    if (json) parts.push(`Tutor Data JSON:\n${json}`);
+                    hidden = parts.join('\n\n');
+                  } catch {}
+                  // Replace hiddenContent for this assistant message
+                  const nm = { ...m, tutor: mergedTutor, hiddenContent: hidden } as any;
+                  updatedMsg = nm;
+                  return nm;
+                });
+                return { ui, messages: { ...s.messages, [chatId]: updated } } as any;
+              });
+              try {
+                if (updatedMsg) void saveMessage(updatedMsg);
+              } catch {}
+              // Build a normalized JSON payload to send back to the model as tool output
+              try {
+                const body: any = { items: normed };
+                if (typeof args?.title === 'string') body.title = args.title;
+                const json = JSON.stringify(body);
+                return { ok: true, json };
+              } catch {}
+              return { ok: true };
+            } catch {
+              return { ok: false };
+            }
+          };
             const attachTutorMeta = async (name: string, args: any) => {
               const keyId = assistantMsg.id;
               if (name === 'grade_open_response') {
@@ -532,21 +626,54 @@ export function createMessageSlice(
                 const score = typeof args?.score === 'number' ? args.score : undefined;
                 const criteria = Array.isArray(args?.criteria) ? args.criteria : undefined;
                 if (!itemId || !feedback) return false;
-                set((s) => ({
-                  ui: {
+                let updatedMsg: any | undefined;
+                set((s) => {
+                  const current = (s.ui.tutorByMessageId?.[keyId] || {}) as any;
+                  const nextTutor = {
+                    ...current,
+                    grading: {
+                      ...(current.grading || {}),
+                      [itemId]: { feedback, score, criteria },
+                    },
+                  } as any;
+                  const ui = {
                     ...s.ui,
                     tutorByMessageId: {
                       ...(s.ui.tutorByMessageId || {}),
-                      [keyId]: {
-                        ...(s.ui.tutorByMessageId?.[keyId] || {}),
-                        grading: {
-                          ...((s.ui.tutorByMessageId?.[keyId] as any)?.grading || {}),
-                          [itemId]: { feedback, score, criteria },
-                        },
-                      },
+                      [keyId]: nextTutor,
                     },
-                  },
-                }));
+                  };
+                  // Persist grading into message
+                  const list = s.messages[chatId] ?? [];
+                  const updated = list.map((m) => {
+                    if (m.id !== keyId) return m;
+                    const prevTutor = (m as any).tutor || {};
+                    const mergedTutor = {
+                      ...prevTutor,
+                      grading: {
+                        ...(prevTutor.grading || {}),
+                        [itemId]: { feedback, score, criteria },
+                      },
+                    } as any;
+                    let hidden = '';
+                    try {
+                      const recap = buildTutorContextSummary(mergedTutor);
+                      const json = buildTutorContextFull(mergedTutor);
+                      const parts = [] as string[];
+                      if (recap) parts.push(`Tutor Recap:\n${recap}`);
+                      if (json) parts.push(`Tutor Data JSON:\n${json}`);
+                      hidden = parts.join('\n\n');
+                    } catch {}
+                    // Replace hiddenContent for this assistant message
+                    const nm = { ...m, tutor: mergedTutor, hiddenContent: hidden } as any;
+                    updatedMsg = nm;
+                    return nm;
+                  });
+                  return { ui, messages: { ...s.messages, [chatId]: updated } } as any;
+                });
+                try {
+                  if (updatedMsg) await saveMessage(updatedMsg);
+                } catch {}
                 return true;
               }
               if (name === 'add_to_deck') {
@@ -604,10 +731,16 @@ export function createMessageSlice(
                   continue;
                 }
                 const didMeta = await attachTutorMeta(name, args);
-                const ok = attachTutorPayload(name, args);
-                if (ok || didMeta) {
+                const result = attachTutorPayload(name, args);
+                if (result.ok || didMeta) {
                   usedTool = true;
-                  convo.push({ role: 'tool', name, tool_call_id: tc.id, content: 'ok' } as any);
+                  // Provide structured JSON tool output so the model can see the created items
+                  convo.push({
+                    role: 'tool',
+                    name,
+                    tool_call_id: tc.id,
+                    content: result.json || 'ok',
+                  } as any);
                 }
                 continue;
               }
@@ -735,6 +868,9 @@ export function createMessageSlice(
               content: current?.content || '',
               reasoning: current?.reasoning,
               attachments: current?.attachments,
+              // Preserve tutor payload and hidden content for model context
+              tutor: (current as any)?.tutor,
+              hiddenContent: (current as any)?.hiddenContent,
             } as any;
             set((s) => {
               const list = s.messages[chatId] ?? [];
@@ -1116,6 +1252,8 @@ export function createMessageSlice(
                   content: stripLeadingToolJson(full || ''),
                   reasoning: current?.reasoning,
                   attachments: current?.attachments,
+                  tutor: (current as any)?.tutor,
+                  hiddenContent: (current as any)?.hiddenContent,
                   metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
                   tokensIn: promptTokens,
                   tokensOut: completionTokens,

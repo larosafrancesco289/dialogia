@@ -40,6 +40,7 @@ export const useChatStore = create<StoreState>()(
         ui: {
           sidebarCollapsed: s.ui.sidebarCollapsed,
           debugMode: s.ui.debugMode,
+          tutorContextMode: s.ui.tutorContextMode,
           nextModel: s.ui.nextModel,
           nextSearchWithBrave: s.ui.nextSearchWithBrave,
           nextSystem: s.ui.nextSystem,

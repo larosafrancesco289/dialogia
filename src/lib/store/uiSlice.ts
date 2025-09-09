@@ -23,6 +23,7 @@ export function createUiSlice(
     nextMaxTokens: undefined,
     nextShowThinking: undefined,
     nextShowStats: undefined,
+    tutorContextMode: 'full',
     zdrOnly: defaultZdrOnly(),
     routePreference: 'speed',
     braveByMessageId: {},

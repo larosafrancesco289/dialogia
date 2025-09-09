@@ -232,7 +232,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
               )}
               {/* Tutor interactive panels (MCQ, fill-blank, open, flashcards) */}
               {(() => {
-                const tut = tutorByMessageId[m.id];
+                const tut = tutorByMessageId[m.id] || (m as any)?.tutor;
                 if (!tut) return null;
                 return (
                   <TutorPanel

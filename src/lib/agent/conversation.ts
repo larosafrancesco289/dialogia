@@ -16,14 +16,20 @@ export function buildChatCompletionMessages(params: {
     typeof chat.settings.max_tokens === 'number' ? chat.settings.max_tokens : 1024;
   const maxPromptTokens = Math.max(512, contextLimit - reservedForCompletion);
 
-  // Convert prior messages into a normalized representation (text only for token budgeting).
+  // Convert prior messages into a normalized representation for token budgeting.
+  // IMPORTANT: include assistant hiddenContent so the model sees tutor data in follow-ups.
   const history: { role: 'user' | 'assistant'; content: string; attachments?: Attachment[] }[] = [];
   for (const m of priorMessages) {
     if (m.role === 'system') continue; // prefer current chat.settings.system
-    if (!m.content) continue;
-    if (m.role === 'user' || m.role === 'assistant') {
-      history.push({ role: m.role, content: m.content, attachments: m.attachments });
-    }
+    if (m.role !== 'user' && m.role !== 'assistant') continue;
+    const base = typeof m.content === 'string' ? m.content : '';
+    const hidden = (m as any).hiddenContent as string | undefined;
+    const combined =
+      m.role === 'assistant'
+        ? [base, typeof hidden === 'string' ? hidden : ''].filter((x) => x && x.trim()).join('\n\n')
+        : base;
+    if (!combined) continue;
+    history.push({ role: m.role, content: combined, attachments: m.attachments });
   }
   if (typeof newUserContent === 'string') {
     history.push({ role: 'user', content: newUserContent, attachments: newUserAttachments });
