@@ -15,9 +15,9 @@ export function getTutorPreamble() {
       '- Prefer small steps, retrieval practice, and spaced repetition to boost retention.',
       '',
       'Tools policy (important):',
-      '- Do not call any tutor tool in your very first assistant turn. Begin with a conversational check‑in.',
-      '- Only call a tool when it is clearly helpful (e.g., learner requests practice/review, or you\'re in a practice/review stage). Otherwise, continue teaching conversationally.',
-      '- When you call a tool, respond with ONLY tool_calls (no ordinary text). After the tool returns, continue the lesson in a follow‑up turn.',
+      '- Start with a friendly check‑in before using any tutor tools when possible.',
+      '- Call tutor tools when helpful (e.g., practice/review, or if the learner asks). Keep the flow concise and focused.',
+      '- The UI renders quizzes/flashcards from tool data; avoid duplicating items in plain text.',
       '',
       'Session scaffolding:',
       '- Structure loosely as baseline → teach → practice → reflect → review. Keep each turn focused and brief. If they ask for harder/easier or more practice, adapt conversationally.',
@@ -71,6 +71,21 @@ export function buildTutorContextSummary(t: any | undefined): string | undefined
   if (!t) return undefined;
   const lines: string[] = [];
   if (t.title) lines.push(`Title: ${String(t.title)}`);
+  // Aggregate a quick topic hint if available
+  try {
+    const topics = new Set<string>();
+    const addTopics = (arr: any[] | undefined) => {
+      if (!Array.isArray(arr)) return;
+      for (const it of arr) {
+        const topic = typeof it?.topic === 'string' ? it.topic.trim() : '';
+        if (topic) topics.add(topic);
+      }
+    };
+    addTopics(t.mcq);
+    addTopics(t.fillBlank);
+    addTopics(t.openEnded);
+    if (topics.size > 0) lines.push(`Topics: ${Array.from(topics).slice(0, 5).join(', ')}`);
+  } catch {}
 
   // Helper: trim a string to a max length
   const clip = (s: any, n = 80) => {
@@ -87,11 +102,21 @@ export function buildTutorContextSummary(t: any | undefined): string | undefined
       lines.push('MCQ:');
       items.forEach((q: any, i: number) => {
         const ans = a[q.id] || {};
-        const picked = typeof ans.choice === 'number' ? ans.choice : undefined;
-        const letter = typeof picked === 'number' ? String.fromCharCode(65 + picked) : undefined;
+        const pickedIdx = typeof ans.choice === 'number' ? ans.choice : undefined;
+        const correctIdx = typeof q?.correct === 'number' ? q.correct : undefined;
+        const choices: string[] = Array.isArray(q?.choices) ? q.choices : [];
+        const pickedLetter = typeof pickedIdx === 'number' ? String.fromCharCode(65 + pickedIdx) : undefined;
+        const correctLetter = typeof correctIdx === 'number' ? String.fromCharCode(65 + correctIdx) : undefined;
+        const pickedText = typeof pickedIdx === 'number' ? clip(choices[pickedIdx] ?? '', 50) : undefined;
+        const correctText = typeof correctIdx === 'number' ? clip(choices[correctIdx] ?? '', 50) : undefined;
         const status = ans.done ? (ans.correct ? 'correct' : 'incorrect') : 'unanswered';
         const qText = clip(q.question);
-        const suffix = letter ? ` · your answer: ${letter}` : '';
+        let suffix = '';
+        if (pickedLetter) suffix += ` · your: ${pickedLetter}${pickedText ? ` “${pickedText}”` : ''}`;
+        if (ans.done && correctLetter) {
+          // After submission, include the correct option to ground follow‑ups
+          suffix += ` · correct: ${correctLetter}${correctText ? ` “${correctText}”` : ''}`;
+        }
         lines.push(`  ${i + 1}. ${qText}${suffix} · ${status}`);
       });
     }
@@ -105,7 +130,10 @@ export function buildTutorContextSummary(t: any | undefined): string | undefined
         const qText = clip(it.prompt);
         const submitted = ans.revealed || typeof ans.answer === 'string';
         const status = submitted ? (ans.correct ? 'correct' : 'incorrect') : 'unanswered';
-        const suffix = typeof ans.answer === 'string' && ans.answer.trim() ? ` · your answer: ${clip(ans.answer, 30)}` : '';
+        let suffix = typeof ans.answer === 'string' && ans.answer.trim() ? ` · your: ${clip(ans.answer, 30)}` : '';
+        if (ans.revealed && ans.correct === false && typeof it?.answer === 'string') {
+          suffix += ` · correct: ${clip(it.answer, 30)}`;
+        }
         lines.push(`  ${i + 1}. ${qText}${suffix} · ${status}`);
       });
     }
@@ -128,6 +156,66 @@ export function buildTutorContextSummary(t: any | undefined): string | undefined
 
   if (lines.length === 0) return undefined;
   return lines.join('\n');
+}
+
+// Build a full, structured JSON block for the last practice so the model
+// has exact items, choices, correct answers, and attempts. This is larger
+// than the summary and should be controlled by a UI preference.
+export function buildTutorContextFull(t: any | undefined): string | undefined {
+  if (!t) return undefined;
+  try {
+    const out: any = {};
+    if (t.title) out.title = String(t.title);
+    if (Array.isArray(t.mcq)) out.mcq = t.mcq.map((q: any) => ({
+      id: q.id,
+      question: q.question,
+      choices: q.choices,
+      correct: q.correct,
+      explanation: q.explanation,
+      topic: q.topic,
+      skill: q.skill,
+      difficulty: q.difficulty,
+    }));
+    if (Array.isArray(t.fillBlank)) out.fill_blank = t.fillBlank.map((it: any) => ({
+      id: it.id,
+      prompt: it.prompt,
+      answer: it.answer,
+      aliases: it.aliases,
+      explanation: it.explanation,
+      topic: it.topic,
+      skill: it.skill,
+      difficulty: it.difficulty,
+    }));
+    if (Array.isArray(t.openEnded)) out.open_ended = t.openEnded.map((it: any) => ({
+      id: it.id,
+      prompt: it.prompt,
+      sample_answer: it.sample_answer,
+      rubric: it.rubric,
+      topic: it.topic,
+      skill: it.skill,
+      difficulty: it.difficulty,
+    }));
+    if (Array.isArray(t.flashcards)) out.flashcards = t.flashcards.map((it: any) => ({
+      id: it.id,
+      front: it.front,
+      back: it.back,
+      hint: it.hint,
+      topic: it.topic,
+      skill: it.skill,
+      difficulty: it.difficulty,
+    }));
+
+    const attempts = (t.attempts || {}) as any;
+    const grading = (t.grading || {}) as any;
+    if (attempts && Object.keys(attempts).length > 0) out.attempts = attempts;
+    if (grading && Object.keys(grading).length > 0) out.grading = grading;
+
+    const json = JSON.stringify(out);
+    if (!json || json === '{}') return undefined;
+    return json;
+  } catch {
+    return undefined;
+  }
 }
 
 export function getTutorToolDefinitions() {

@@ -3,7 +3,7 @@ import { db, saveChat, saveFolder } from '@/lib/db';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, Folder, Message } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
-import { getTutorGreeting } from '@/lib/agent/tutor';
+import { getTutorGreeting, buildTutorContextSummary, buildTutorContextFull } from '@/lib/agent/tutor';
 
 export function createChatSlice(
   set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
@@ -34,6 +34,42 @@ export function createChatSlice(
         selectedChatId = chats[0].id;
       }
       set({ chats, folders, messages, selectedChatId } as any);
+      // Rehydrate tutor panels from persisted message payloads
+      try {
+        const tutorMap: Record<string, any> = {};
+        const updates: { chatId: string; msg: any }[] = [];
+        for (const [cid, list] of Object.entries(messages)) {
+          for (const m of list) {
+            if (m.role === 'assistant' && (m as any)?.tutor) {
+              const tutor = (m as any).tutor;
+              tutorMap[m.id] = tutor;
+              // Backfill hiddenContent if missing so the model sees data without UI showing it
+              if (!(m as any).hiddenContent) {
+                try {
+                  const recap = buildTutorContextSummary(tutor);
+                  const json = buildTutorContextFull(tutor);
+                  const parts: string[] = [];
+                  if (recap) parts.push(`Tutor Recap:\n${recap}`);
+                  if (json) parts.push(`Tutor Data JSON:\n${json}`);
+                  const hidden = parts.join('\n\n');
+                  if (hidden) {
+                    (m as any).hiddenContent = hidden;
+                    updates.push({ chatId: cid, msg: m });
+                  }
+                } catch {}
+              }
+            }
+          }
+        }
+        if (Object.keys(tutorMap).length > 0)
+          set((s) => ({ ui: { ...s.ui, tutorByMessageId: { ...(s.ui.tutorByMessageId || {}), ...tutorMap } } }));
+        // Persist any hiddenContent backfills
+        for (const u of updates) {
+          try {
+            await (await import('@/lib/db')).saveMessage(u.msg);
+          } catch {}
+        }
+      } catch {}
       // Preload tutor profile for the selected chat into UI (if available)
       try {
         if (selectedChatId) await (get().loadTutorProfileIntoUI as any)(selectedChatId);
