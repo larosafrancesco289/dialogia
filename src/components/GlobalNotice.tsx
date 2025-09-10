@@ -17,6 +17,7 @@ export default function GlobalNotice() {
       className="fixed inset-x-0 bottom-4 flex justify-center z-[100]"
       role="status"
       aria-live="polite"
+      aria-atomic="true"
     >
       <div className="card px-4 py-3 flex items-center gap-3 shadow-[var(--shadow-card)]">
         <div className="text-sm">{notice}</div>

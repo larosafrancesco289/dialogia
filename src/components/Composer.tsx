@@ -444,6 +444,12 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           onPaste={onPaste}
+          aria-controls={focused && slashSuggestions.length > 0 ? 'slash-suggestions' : undefined}
+          aria-activedescendant={
+            focused && slashSuggestions.length > 0 ? `slash-opt-${slashIndex}` : undefined
+          }
+          aria-expanded={focused && slashSuggestions.length > 0 ? true : undefined}
+          aria-autocomplete="list"
           onKeyDown={(e) => {
             if (isStreaming) return; // allow typing while streaming, but do not send
             const hasSuggestions = focused && slashSuggestions.length > 0;
@@ -479,11 +485,19 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
         />
         {/* Slash suggestions popover */}
         {focused && slashSuggestions.length > 0 && (
-          <div className="absolute right-3 bottom-full mb-2 z-40 card p-1 popover max-w-sm">
+          <div
+            id="slash-suggestions"
+            role="listbox"
+            className="absolute right-3 bottom-full mb-2 z-40 card p-1 popover max-w-sm"
+            aria-label="Slash command suggestions"
+          >
             <div className="max-h-60 overflow-auto">
               {slashSuggestions.map((sug, idx) => (
                 <div
                   key={sug.title + idx}
+                  id={`slash-opt-${idx}`}
+                  role="option"
+                  aria-selected={idx === slashIndex}
                   className={`menu-item text-sm ${idx === slashIndex ? 'font-semibold' : ''}`}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
@@ -491,6 +505,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
                     setSlashIndex(0);
                     taRef.current?.focus();
                   }}
+                  onMouseEnter={() => setSlashIndex(idx)}
                   title={sug.subtitle || undefined}
                 >
                   {sug.title}

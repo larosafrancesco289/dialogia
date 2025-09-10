@@ -67,6 +67,7 @@ export default function ModelPicker() {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const listboxRef = useRef<HTMLDivElement>(null);
   const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
   const allowedIds = new Set((models || []).map((m: any) => m.id));
   const effectiveSelectedId =
@@ -104,6 +105,8 @@ export default function ModelPicker() {
         options.findIndex((o) => o.id === (current?.id || '')),
       );
       setHighlightedIndex(idx === -1 ? 0 : idx);
+      // focus the listbox for keyboard navigation
+      setTimeout(() => listboxRef.current?.focus(), 0);
     }
   }, [open, options, current?.id]);
 
@@ -126,10 +129,12 @@ export default function ModelPicker() {
       </button>
       {open && (
         <div
+          ref={listboxRef}
           className="absolute z-20 mt-2 w-72 card p-2 max-h-80 overflow-auto popover"
           role="listbox"
           aria-label="Select a model"
-          tabIndex={-1}
+          aria-activedescendant={`model-opt-${highlightedIndex}`}
+          tabIndex={0}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
               e.preventDefault();
@@ -170,6 +175,7 @@ export default function ModelPicker() {
             return (
               <div
                 key={o.id}
+                id={`model-opt-${idx}`}
                 role="option"
                 aria-selected={o.id === selectedId}
                 className={`menu-item flex items-center justify-between gap-2 ${
@@ -213,19 +219,21 @@ export default function ModelPicker() {
                     )}
                   </div>
                 </div>
-                {o.id !== PINNED_MODEL_ID && (
-                  <button
-                    className="p-1 rounded hover:bg-muted"
-                    title="Hide from dropdown"
-                    aria-label="Hide model from dropdown"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeModelFromDropdown(o.id);
-                    }}
-                  >
-                    <XMarkIcon className="h-4 w-4 opacity-60 hover:opacity-100" />
-                  </button>
-                )}
+                <div className="flex items-center gap-1">
+                  {o.id !== PINNED_MODEL_ID && (
+                    <button
+                      className="p-1 rounded hover:bg-muted"
+                      title="Hide from dropdown"
+                      aria-label="Hide model from dropdown"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeModelFromDropdown(o.id);
+                      }}
+                    >
+                      <XMarkIcon className="h-4 w-4 opacity-60 hover:opacity-100" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
