@@ -46,12 +46,9 @@ export function DebugPanel({
           </div>
         </div>
         {expanded && (
-          <pre className="whitespace-pre-wrap text-xs opacity-90 leading-relaxed">
-            {body}
-          </pre>
+          <pre className="whitespace-pre-wrap text-xs opacity-90 leading-relaxed">{body}</pre>
         )}
       </div>
     </div>
   );
 }
-

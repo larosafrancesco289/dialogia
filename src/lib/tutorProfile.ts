@@ -7,19 +7,22 @@ export async function loadTutorProfile(chatId: string): Promise<TutorProfile | u
   return (await kvGet<TutorProfile>(keyFor(chatId))) as TutorProfile | undefined;
 }
 
-export async function updateTutorProfile(
-  chatId: string,
-  evt: TutorEvent,
-): Promise<TutorProfile> {
-  const prev = (await loadTutorProfile(chatId)) || {
-    chatId,
-    updatedAt: Date.now(),
-    totalAnswered: 0,
-    totalCorrect: 0,
-    topics: {},
-    skills: {},
-    difficulty: { easy: { correct: 0, wrong: 0 }, medium: { correct: 0, wrong: 0 }, hard: { correct: 0, wrong: 0 } },
-  } satisfies TutorProfile;
+export async function updateTutorProfile(chatId: string, evt: TutorEvent): Promise<TutorProfile> {
+  const prev =
+    (await loadTutorProfile(chatId)) ||
+    ({
+      chatId,
+      updatedAt: Date.now(),
+      totalAnswered: 0,
+      totalCorrect: 0,
+      topics: {},
+      skills: {},
+      difficulty: {
+        easy: { correct: 0, wrong: 0 },
+        medium: { correct: 0, wrong: 0 },
+        hard: { correct: 0, wrong: 0 },
+      },
+    } satisfies TutorProfile);
 
   const next: TutorProfile = { ...prev, updatedAt: Date.now() };
   if (evt.kind === 'mcq' || evt.kind === 'fill_blank' || evt.kind === 'flashcard') {
@@ -39,11 +42,13 @@ export async function updateTutorProfile(
       else rec.wrong += 1;
     }
     if (evt.difficulty) {
-      const d = next.difficulty || (next.difficulty = {
-        easy: { correct: 0, wrong: 0 },
-        medium: { correct: 0, wrong: 0 },
-        hard: { correct: 0, wrong: 0 },
-      });
+      const d =
+        next.difficulty ||
+        (next.difficulty = {
+          easy: { correct: 0, wrong: 0 },
+          medium: { correct: 0, wrong: 0 },
+          hard: { correct: 0, wrong: 0 },
+        });
       const rec = d[evt.difficulty];
       if (isCorrect) rec.correct += 1;
       else rec.wrong += 1;
@@ -79,4 +84,3 @@ export function summarizeTutorProfile(p: TutorProfile | undefined): string {
   if (strongStr) parts.push(strongStr);
   return parts.join(' · ');
 }
-

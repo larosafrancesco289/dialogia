@@ -3,63 +3,61 @@
 // supplies it as arguments, which the UI renders as interactive widgets.
 
 export function getTutorPreamble() {
-  return (
-    [
-      'You are an expert, endlessly patient tutor with a warm, encouraging personality. Your mission is to keep attention and build confidence, not overwhelm.',
-      '',
-      'Style and flow:',
-      '- Start with a short, friendly check‑in and ask what they\'re working on or struggling with. Invite them to paste notes, examples, or upload a PDF when relevant.',
-      '- Keep answers brief (2–5 sentences), step‑by‑step, and conversational. Ask one, focused question at a time.',
-      '- Be supportive and non‑judgmental. Never imply the learner is “bad at this”. Normalize struggle and celebrate progress. Use light humor sparingly to ease tension.',
-      '- Use Socratic nudges and hints before answers. Calibrate difficulty; adjust if they ask for easier/harder or more practice.',
-      '- Prefer small steps, retrieval practice, and spaced repetition to boost retention.',
-      '',
-      'Tools policy (important):',
-      '- Start with a friendly check‑in before using any tutor tools when possible.',
-      '- Call tutor tools when helpful (e.g., practice/review, or if the learner asks). Keep the flow concise and focused.',
-      '- The UI renders quizzes/flashcards from tool data; avoid duplicating items in plain text.',
-      '',
-      'Session scaffolding:',
-      '- Structure loosely as baseline → teach → practice → reflect → review. Keep each turn focused and brief. If they ask for harder/easier or more practice, adapt conversationally.',
-      '',
-      'Tools you can call (supply fully‑formed items in arguments):',
-      '1) quiz_mcq: Present multiple-choice questions.',
-      '   Schema: { title?: string, items: [{ question: string, choices: string[2..6], correct: integer(index), explanation?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
-      '   Notes: concise questions, plausible distractors, one correct per item. Use only when practice is appropriate.',
-      '2) quiz_fill_blank: Present fill-in-the-blank prompts.',
-      '   Schema: { title?: string, items: [{ prompt: string, answer: string, aliases?: string[], explanation?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
-      '   Notes: put a clear blank (e.g., "____") in prompt; provide succinct accepted answers.',
-      '3) quiz_open_ended: Present short free-response prompts.',
-      '   Schema: { title?: string, items: [{ prompt: string, sample_answer?: string, rubric?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
-      '   Notes: keep prompts focused; include a compact sample or rubric when helpful.',
-      '4) flashcards: Present spaced-repetition-friendly cards.',
-      '   Schema: { title?: string, shuffle?: boolean, items: [{ front: string, back: string, hint?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
-      '   Notes: atomic facts; avoid ambiguity; keep sides short. Great for quick review, not for the very first turn.',
-      '5) grade_open_response: Present feedback for a learner’s free response.',
-      '   Schema: { item_id: string, feedback: string, score?: number, criteria?: string[] }',
-      '6) add_to_deck: Save cards for spaced review.',
-      '   Schema: { cards: [{ front: string, back: string, hint?: string, topic?: string, skill?: string }] }',
-      '7) srs_review: Request due cards for spaced review (returns cards as tool output).',
-      '   Schema: { due_count?: integer }',
-      '',
-      'If tools are unsupported, give a brief, focused explanation with a single targeted question. Keep it short and empowering.',
-    ].join('\n')
-  );
+  return [
+    'You are an expert, endlessly patient tutor with a warm, encouraging personality. Your mission is to keep attention and build confidence, not overwhelm.',
+    '',
+    'Style and flow:',
+    "- Start with a short, friendly check‑in and ask what they're working on or struggling with. Invite them to paste notes, examples, or upload a PDF when relevant.",
+    '- Keep answers brief (2–5 sentences), step‑by‑step, and conversational. Ask one, focused question at a time.',
+    '- Be supportive and non‑judgmental. Never imply the learner is “bad at this”. Normalize struggle and celebrate progress. Use light humor sparingly to ease tension.',
+    '- Use Socratic nudges and hints before answers. Calibrate difficulty; adjust if they ask for easier/harder or more practice.',
+    '- Prefer small steps, retrieval practice, and spaced repetition to boost retention.',
+    '',
+    'Tools policy (important):',
+    '- Start with a friendly check‑in before using any tutor tools when possible.',
+    '- Call tutor tools when helpful (e.g., practice/review, or if the learner asks). Keep the flow concise and focused.',
+    '- The UI renders quizzes/flashcards from tool data; avoid duplicating items in plain text.',
+    '',
+    'Session scaffolding:',
+    '- Structure loosely as baseline → teach → practice → reflect → review. Keep each turn focused and brief. If they ask for harder/easier or more practice, adapt conversationally.',
+    '',
+    'Tools you can call (supply fully‑formed items in arguments):',
+    '1) quiz_mcq: Present multiple-choice questions.',
+    '   Schema: { title?: string, items: [{ question: string, choices: string[2..6], correct: integer(index), explanation?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
+    '   Notes: concise questions, plausible distractors, one correct per item. Use only when practice is appropriate.',
+    '2) quiz_fill_blank: Present fill-in-the-blank prompts.',
+    '   Schema: { title?: string, items: [{ prompt: string, answer: string, aliases?: string[], explanation?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
+    '   Notes: put a clear blank (e.g., "____") in prompt; provide succinct accepted answers.',
+    '3) quiz_open_ended: Present short free-response prompts.',
+    '   Schema: { title?: string, items: [{ prompt: string, sample_answer?: string, rubric?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
+    '   Notes: keep prompts focused; include a compact sample or rubric when helpful.',
+    '4) flashcards: Present spaced-repetition-friendly cards.',
+    '   Schema: { title?: string, shuffle?: boolean, items: [{ front: string, back: string, hint?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
+    '   Notes: atomic facts; avoid ambiguity; keep sides short. Great for quick review, not for the very first turn.',
+    '5) grade_open_response: Present feedback for a learner’s free response.',
+    '   Schema: { item_id: string, feedback: string, score?: number, criteria?: string[] }',
+    '6) add_to_deck: Save cards for spaced review.',
+    '   Schema: { cards: [{ front: string, back: string, hint?: string, topic?: string, skill?: string }] }',
+    '7) srs_review: Request due cards for spaced review (returns cards as tool output).',
+    '   Schema: { due_count?: integer }',
+    '',
+    'If tools are unsupported, give a brief, focused explanation with a single targeted question. Keep it short and empowering.',
+  ].join('\n');
 }
 
 // A short, friendly, randomized greeting used when tutor mode is enabled.
 export function getTutorGreeting(): string {
   const options = [
-    "Hey! What are you working on today? Anything tricky I can help with?",
-    "Hi there! How’s your day going? What’s on your plate learning‑wise?",
-    "Welcome! What topic are you wrestling with? Feel free to paste notes or upload a PDF.",
-    "Good to see you! What would you like to make progress on today?",
-    "Howdy! What’s the goal for this session? I’ve got your back.",
-    "Quick check‑in: what’s feeling confusing right now? If you have a problem set or slides, drop them in.",
-    "Hello hello! What topic should we tackle first? Happy to go step‑by‑step.",
-    "Let’s get rolling—what’s on your mind? PDF or examples welcome if that’s easier.",
-    "We’ve got this! What are you aiming to understand today?",
-    "Warm up question: what would make this session a win for you?"
+    'Hey! What are you working on today? Anything tricky I can help with?',
+    'Hi there! How’s your day going? What’s on your plate learning‑wise?',
+    'Welcome! What topic are you wrestling with? Feel free to paste notes or upload a PDF.',
+    'Good to see you! What would you like to make progress on today?',
+    'Howdy! What’s the goal for this session? I’ve got your back.',
+    'Quick check‑in: what’s feeling confusing right now? If you have a problem set or slides, drop them in.',
+    'Hello hello! What topic should we tackle first? Happy to go step‑by‑step.',
+    'Let’s get rolling—what’s on your mind? PDF or examples welcome if that’s easier.',
+    'We’ve got this! What are you aiming to understand today?',
+    'Warm up question: what would make this session a win for you?',
   ];
   return options[Math.floor(Math.random() * options.length)];
 }
@@ -97,7 +95,10 @@ export function buildTutorContextSummary(t: any | undefined): string | undefined
     const attempts = (t.attempts || {}) as any;
     // MCQ summary
     if (Array.isArray(t.mcq) && t.mcq.length > 0) {
-      const a = (attempts.mcq || {}) as Record<string, { choice?: number; done?: boolean; correct?: boolean }>;
+      const a = (attempts.mcq || {}) as Record<
+        string,
+        { choice?: number; done?: boolean; correct?: boolean }
+      >;
       const items = t.mcq.slice(0, 8);
       lines.push('MCQ:');
       items.forEach((q: any, i: number) => {
@@ -105,14 +106,19 @@ export function buildTutorContextSummary(t: any | undefined): string | undefined
         const pickedIdx = typeof ans.choice === 'number' ? ans.choice : undefined;
         const correctIdx = typeof q?.correct === 'number' ? q.correct : undefined;
         const choices: string[] = Array.isArray(q?.choices) ? q.choices : [];
-        const pickedLetter = typeof pickedIdx === 'number' ? String.fromCharCode(65 + pickedIdx) : undefined;
-        const correctLetter = typeof correctIdx === 'number' ? String.fromCharCode(65 + correctIdx) : undefined;
-        const pickedText = typeof pickedIdx === 'number' ? clip(choices[pickedIdx] ?? '', 50) : undefined;
-        const correctText = typeof correctIdx === 'number' ? clip(choices[correctIdx] ?? '', 50) : undefined;
+        const pickedLetter =
+          typeof pickedIdx === 'number' ? String.fromCharCode(65 + pickedIdx) : undefined;
+        const correctLetter =
+          typeof correctIdx === 'number' ? String.fromCharCode(65 + correctIdx) : undefined;
+        const pickedText =
+          typeof pickedIdx === 'number' ? clip(choices[pickedIdx] ?? '', 50) : undefined;
+        const correctText =
+          typeof correctIdx === 'number' ? clip(choices[correctIdx] ?? '', 50) : undefined;
         const status = ans.done ? (ans.correct ? 'correct' : 'incorrect') : 'unanswered';
         const qText = clip(q.question);
         let suffix = '';
-        if (pickedLetter) suffix += ` · your: ${pickedLetter}${pickedText ? ` “${pickedText}”` : ''}`;
+        if (pickedLetter)
+          suffix += ` · your: ${pickedLetter}${pickedText ? ` “${pickedText}”` : ''}`;
         if (ans.done && correctLetter) {
           // After submission, include the correct option to ground follow‑ups
           suffix += ` · correct: ${correctLetter}${correctText ? ` “${correctText}”` : ''}`;
@@ -122,7 +128,10 @@ export function buildTutorContextSummary(t: any | undefined): string | undefined
     }
     // Fill‑blank summary
     if (Array.isArray(t.fillBlank) && t.fillBlank.length > 0) {
-      const a = (attempts.fillBlank || {}) as Record<string, { answer?: string; revealed?: boolean; correct?: boolean }>;
+      const a = (attempts.fillBlank || {}) as Record<
+        string,
+        { answer?: string; revealed?: boolean; correct?: boolean }
+      >;
       const items = t.fillBlank.slice(0, 8);
       lines.push('Fill‑in‑the‑blank:');
       items.forEach((it: any, i: number) => {
@@ -130,7 +139,10 @@ export function buildTutorContextSummary(t: any | undefined): string | undefined
         const qText = clip(it.prompt);
         const submitted = ans.revealed || typeof ans.answer === 'string';
         const status = submitted ? (ans.correct ? 'correct' : 'incorrect') : 'unanswered';
-        let suffix = typeof ans.answer === 'string' && ans.answer.trim() ? ` · your: ${clip(ans.answer, 30)}` : '';
+        let suffix =
+          typeof ans.answer === 'string' && ans.answer.trim()
+            ? ` · your: ${clip(ans.answer, 30)}`
+            : '';
         if (ans.revealed && ans.correct === false && typeof it?.answer === 'string') {
           suffix += ` · correct: ${clip(it.answer, 30)}`;
         }
@@ -140,7 +152,10 @@ export function buildTutorContextSummary(t: any | undefined): string | undefined
     // Open‑ended summary (only signal submission; grading appears separately)
     if (Array.isArray(t.openEnded) && t.openEnded.length > 0) {
       const a = (attempts.open || {}) as Record<string, { answer?: string }>;
-      const g = (t.grading || {}) as Record<string, { score?: number; feedback: string; criteria?: string[] }>;
+      const g = (t.grading || {}) as Record<
+        string,
+        { score?: number; feedback: string; criteria?: string[] }
+      >;
       const items = t.openEnded.slice(0, 6);
       lines.push('Open‑ended:');
       items.forEach((it: any, i: number) => {
@@ -166,44 +181,48 @@ export function buildTutorContextFull(t: any | undefined): string | undefined {
   try {
     const out: any = {};
     if (t.title) out.title = String(t.title);
-    if (Array.isArray(t.mcq)) out.mcq = t.mcq.map((q: any) => ({
-      id: q.id,
-      question: q.question,
-      choices: q.choices,
-      correct: q.correct,
-      explanation: q.explanation,
-      topic: q.topic,
-      skill: q.skill,
-      difficulty: q.difficulty,
-    }));
-    if (Array.isArray(t.fillBlank)) out.fill_blank = t.fillBlank.map((it: any) => ({
-      id: it.id,
-      prompt: it.prompt,
-      answer: it.answer,
-      aliases: it.aliases,
-      explanation: it.explanation,
-      topic: it.topic,
-      skill: it.skill,
-      difficulty: it.difficulty,
-    }));
-    if (Array.isArray(t.openEnded)) out.open_ended = t.openEnded.map((it: any) => ({
-      id: it.id,
-      prompt: it.prompt,
-      sample_answer: it.sample_answer,
-      rubric: it.rubric,
-      topic: it.topic,
-      skill: it.skill,
-      difficulty: it.difficulty,
-    }));
-    if (Array.isArray(t.flashcards)) out.flashcards = t.flashcards.map((it: any) => ({
-      id: it.id,
-      front: it.front,
-      back: it.back,
-      hint: it.hint,
-      topic: it.topic,
-      skill: it.skill,
-      difficulty: it.difficulty,
-    }));
+    if (Array.isArray(t.mcq))
+      out.mcq = t.mcq.map((q: any) => ({
+        id: q.id,
+        question: q.question,
+        choices: q.choices,
+        correct: q.correct,
+        explanation: q.explanation,
+        topic: q.topic,
+        skill: q.skill,
+        difficulty: q.difficulty,
+      }));
+    if (Array.isArray(t.fillBlank))
+      out.fill_blank = t.fillBlank.map((it: any) => ({
+        id: it.id,
+        prompt: it.prompt,
+        answer: it.answer,
+        aliases: it.aliases,
+        explanation: it.explanation,
+        topic: it.topic,
+        skill: it.skill,
+        difficulty: it.difficulty,
+      }));
+    if (Array.isArray(t.openEnded))
+      out.open_ended = t.openEnded.map((it: any) => ({
+        id: it.id,
+        prompt: it.prompt,
+        sample_answer: it.sample_answer,
+        rubric: it.rubric,
+        topic: it.topic,
+        skill: it.skill,
+        difficulty: it.difficulty,
+      }));
+    if (Array.isArray(t.flashcards))
+      out.flashcards = t.flashcards.map((it: any) => ({
+        id: it.id,
+        front: it.front,
+        back: it.back,
+        hint: it.hint,
+        topic: it.topic,
+        skill: it.skill,
+        difficulty: it.difficulty,
+      }));
 
     const attempts = (t.attempts || {}) as any;
     const grading = (t.grading || {}) as any;
@@ -297,8 +316,7 @@ export function getTutorToolDefinitions() {
       type: 'function',
       function: {
         name: 'quiz_open_ended',
-        description:
-          'Render short free-response prompts with optional sample answers or rubrics.',
+        description: 'Render short free-response prompts with optional sample answers or rubrics.',
         parameters: {
           type: 'object',
           properties: {
@@ -380,7 +398,7 @@ export function getTutorToolDefinitions() {
       type: 'function',
       function: {
         name: 'add_to_deck',
-        description: 'Save flashcards to the learner\'s spaced-repetition deck.',
+        description: "Save flashcards to the learner's spaced-repetition deck.",
         parameters: {
           type: 'object',
           properties: {
@@ -410,7 +428,7 @@ export function getTutorToolDefinitions() {
       function: {
         name: 'srs_review',
         description:
-          'Request due cards from the learner\'s deck. The tool returns an array of cards as JSON in tool output; then call flashcards with those items.',
+          "Request due cards from the learner's deck. The tool returns an array of cards as JSON in tool output; then call flashcards with those items.",
         parameters: {
           type: 'object',
           properties: {

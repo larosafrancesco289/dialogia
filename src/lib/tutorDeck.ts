@@ -32,14 +32,17 @@ async function saveDeck(deck: TutorDeck): Promise<void> {
   await kvSet(keyFor(deck.chatId), deck);
 }
 
-export async function addCardsToDeck(chatId: string, cards: Array<{
-  id?: string;
-  front: string;
-  back: string;
-  hint?: string;
-  topic?: string;
-  skill?: string;
-}>): Promise<TutorDeck> {
+export async function addCardsToDeck(
+  chatId: string,
+  cards: Array<{
+    id?: string;
+    front: string;
+    back: string;
+    hint?: string;
+    topic?: string;
+    skill?: string;
+  }>,
+): Promise<TutorDeck> {
   const now = Date.now();
   const deck = (await loadDeck(chatId)) || { chatId, updatedAt: now, cards: [] };
   const existing = new Set(deck.cards.map((c) => c.front + '\u0000' + c.back));
@@ -72,7 +75,7 @@ export async function getDueCards(chatId: string, limit = 20): Promise<TutorDeck
   const now = Date.now();
   return deck.cards
     .filter((c) => c.dueAt <= now)
-    .sort((a, b) => (a.dueAt - b.dueAt) || (a.createdAt - b.createdAt))
+    .sort((a, b) => a.dueAt - b.dueAt || a.createdAt - b.createdAt)
     .slice(0, Math.max(1, Math.min(40, limit)));
 }
 
@@ -112,4 +115,3 @@ export async function recordReview(
   await saveDeck(deck);
   return deck;
 }
-

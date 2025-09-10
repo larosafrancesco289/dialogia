@@ -1,9 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
-import { db, saveChat, saveFolder } from '@/lib/db';
+import { db, saveChat, saveFolder, saveMessage } from '@/lib/db';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, Folder, Message } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
-import { getTutorGreeting, buildTutorContextSummary, buildTutorContextFull } from '@/lib/agent/tutor';
+import {
+  getTutorGreeting,
+  buildTutorContextSummary,
+  buildTutorContextFull,
+} from '@/lib/agent/tutor';
 
 export function createChatSlice(
   set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
@@ -62,7 +66,9 @@ export function createChatSlice(
           }
         }
         if (Object.keys(tutorMap).length > 0)
-          set((s) => ({ ui: { ...s.ui, tutorByMessageId: { ...(s.ui.tutorByMessageId || {}), ...tutorMap } } }));
+          set((s) => ({
+            ui: { ...s.ui, tutorByMessageId: { ...(s.ui.tutorByMessageId || {}), ...tutorMap } },
+          }));
         // Persist any hiddenContent backfills
         for (const u of updates) {
           try {
@@ -125,7 +131,12 @@ export function createChatSlice(
           if (!greeted) {
             const greeting = getTutorGreeting();
             await (get().appendAssistantMessage as any)(greeting);
-            set((s) => ({ ui: { ...s.ui, tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true } } }));
+            set((s) => ({
+              ui: {
+                ...s.ui,
+                tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true },
+              },
+            }));
           }
         } catch {}
       }
@@ -156,6 +167,55 @@ export function createChatSlice(
       });
     },
 
+    async branchChatFromMessage(messageId: string) {
+      // Find the source chat and message index
+      const st = get();
+      let sourceChatId: string | undefined;
+      let msgIndex = -1;
+      for (const [cid, list] of Object.entries(st.messages)) {
+        const idx = list.findIndex((m) => m.id === messageId);
+        if (idx >= 0) {
+          sourceChatId = cid;
+          msgIndex = idx;
+          break;
+        }
+      }
+      if (!sourceChatId || msgIndex < 0) return;
+      const sourceChat = st.chats.find((c) => c.id === sourceChatId);
+      if (!sourceChat) return;
+      const sourceMessages = st.messages[sourceChatId] || [];
+      const slice = sourceMessages.slice(0, msgIndex + 1);
+      const now = Date.now();
+      const newChatId = uuidv4();
+      const newChat: import('@/lib/types').Chat = {
+        id: newChatId,
+        title: `${sourceChat.title || 'Chat'} (branch)`,
+        createdAt: now,
+        updatedAt: now,
+        settings: { ...sourceChat.settings },
+        folderId: sourceChat.folderId,
+      };
+
+      // Clone messages into the new chat with fresh IDs
+      const cloned = slice.map((m) => ({
+        ...m,
+        id: uuidv4(),
+        chatId: newChatId,
+      }));
+
+      await db.transaction('rw', db.chats, db.messages, async () => {
+        await saveChat(newChat);
+        for (const cm of cloned) await saveMessage(cm as any);
+      });
+
+      // Update in-memory state and focus the new branch
+      set((s) => ({
+        chats: [newChat, ...s.chats],
+        messages: { ...s.messages, [newChatId]: cloned as any },
+        selectedChatId: newChatId,
+      }));
+    },
+
     async updateChatSettings(partial) {
       const id = get().selectedChatId;
       if (!id) return;
@@ -172,13 +232,21 @@ export function createChatSlice(
       // If tutor_mode has just been enabled for this chat, send a one‑time friendly greeting
       try {
         const turnedOn =
-          typeof partial?.tutor_mode === 'boolean' && before && before.settings.tutor_mode !== partial.tutor_mode && partial.tutor_mode === true;
+          typeof partial?.tutor_mode === 'boolean' &&
+          before &&
+          before.settings.tutor_mode !== partial.tutor_mode &&
+          partial.tutor_mode === true;
         if (turnedOn) {
           const greeted = get().ui.tutorGreetedByChatId?.[id];
           if (!greeted) {
             const greeting = getTutorGreeting();
             await (get().appendAssistantMessage as any)(greeting);
-            set((s) => ({ ui: { ...s.ui, tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true } } }));
+            set((s) => ({
+              ui: {
+                ...s.ui,
+                tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true },
+              },
+            }));
           }
         }
       } catch {}

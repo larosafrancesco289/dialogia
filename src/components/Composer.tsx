@@ -626,7 +626,8 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             }}
             aria-pressed={!!chat?.settings.tutor_mode}
           >
-            <AcademicCapIcon className="h-3.5 w-3.5" /> {chat?.settings.tutor_mode ? 'Tutor On' : 'Tutor Off'}
+            <AcademicCapIcon className="h-3.5 w-3.5" />{' '}
+            {chat?.settings.tutor_mode ? 'Tutor On' : 'Tutor Off'}
           </button>
         )}
         {canImageOut && (
@@ -665,7 +666,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
           if (!supportsReasoning) return null;
           if (!effort || effort === 'none') return null;
           const letter = effort === 'high' ? 'H' : effort === 'medium' ? 'M' : 'L';
-  return (
+          return (
             <span
               className="badge flex items-center gap-1"
               title={`Reasoning effort: ${effort}`}

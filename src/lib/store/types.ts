@@ -158,6 +158,8 @@ export type StoreState = {
     content: string,
     opts?: { attachments?: import('@/lib/types').Attachment[] },
   ) => Promise<void>;
+  // chat branching
+  branchChatFromMessage: (messageId: string) => Promise<void>;
   stopStreaming: () => void;
   regenerateAssistantMessage: (messageId: string, opts?: { modelId?: string }) => Promise<void>;
   editUserMessage: (

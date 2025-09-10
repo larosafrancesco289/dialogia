@@ -244,3 +244,31 @@ export function StopSquareIcon({ size = 16, className = '' }: IconProps) {
     </svg>
   );
 }
+
+// Branch icon: two rightward arrows with a curved join
+export function BranchIcon({ size = 16, className = '' }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {/* Top arrow */}
+      <path d="M4 6h12" />
+      <path d="M16 6l-3-3" />
+      <path d="M16 6l-3 3" />
+      {/* Curved branch to lower lane */}
+      <path d="M4 6v6c0 3 3 6 6 6" />
+      {/* Bottom arrow */}
+      <path d="M10 18h6" />
+      <path d="M16 18l-3-3" />
+      <path d="M16 18l-3 3" />
+    </svg>
+  );
+}

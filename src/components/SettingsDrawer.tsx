@@ -644,8 +644,8 @@ export default function SettingsDrawer() {
                   </button>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Show a Debug panel under assistant messages with the exact
-                  request payload sent to OpenRouter.
+                  Show a Debug panel under assistant messages with the exact request payload sent to
+                  OpenRouter.
                 </div>
               </div>
             </div>
@@ -691,37 +691,37 @@ export default function SettingsDrawer() {
                           >
                             <div>
                               <div className="font-medium text-sm flex items-center gap-2">
-                        <span>{m.name || m.id}</span>
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          {canReason && (
-                            <LightBulbIcon
-                              className="h-4 w-4"
-                              aria-label="Reasoning supported"
-                              title="Reasoning supported"
-                            />
-                          )}
-                          {canSee && (
-                            <EyeIcon
-                              className="h-4 w-4"
-                              aria-label="Vision input"
-                              title="Vision input"
-                            />
-                          )}
-                          {canImageOut && (
-                            <PhotoIcon
-                              className="h-4 w-4"
-                              aria-label="Image generation"
-                              title="Image generation"
-                            />
-                          )}
-                          {isAudioInputSupported(meta) && (
-                            <MicrophoneIcon
-                              className="h-4 w-4"
-                              aria-label="Audio input"
-                              title="Audio input"
-                            />
-                          )}
-                        </span>
+                                <span>{m.name || m.id}</span>
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  {canReason && (
+                                    <LightBulbIcon
+                                      className="h-4 w-4"
+                                      aria-label="Reasoning supported"
+                                      title="Reasoning supported"
+                                    />
+                                  )}
+                                  {canSee && (
+                                    <EyeIcon
+                                      className="h-4 w-4"
+                                      aria-label="Vision input"
+                                      title="Vision input"
+                                    />
+                                  )}
+                                  {canImageOut && (
+                                    <PhotoIcon
+                                      className="h-4 w-4"
+                                      aria-label="Image generation"
+                                      title="Image generation"
+                                    />
+                                  )}
+                                  {isAudioInputSupported(meta) && (
+                                    <MicrophoneIcon
+                                      className="h-4 w-4"
+                                      aria-label="Audio input"
+                                      title="Audio input"
+                                    />
+                                  )}
+                                </span>
                               </div>
                               {m.name && (
                                 <div className="text-xs text-muted-foreground">{m.id}</div>
