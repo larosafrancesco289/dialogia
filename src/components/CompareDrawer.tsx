@@ -8,6 +8,8 @@ import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
 import IconButton from '@/components/IconButton';
 import { CloseCircleIcon, StopSquareIcon } from '@/components/icons/Icons';
+import { computeCost } from '@/lib/cost';
+import { findModelById } from '@/lib/models';
 
 export default function CompareDrawer() {
   // Subscribe to precise store slices to avoid stale values
@@ -449,6 +451,14 @@ export default function CompareDrawer() {
                             if (m.promptTokens != null) parts.push(`in ${m.promptTokens}`);
                             if (m.completionTokens != null) parts.push(`out ${m.completionTokens}`);
                             if (m.tokensPerSec != null) parts.push(`${m.tokensPerSec} tok/s`);
+                            const modelMeta = findModelById(models, id);
+                            const cost = computeCost({
+                              model: modelMeta,
+                              promptTokens: m.promptTokens,
+                              completionTokens: m.completionTokens,
+                            });
+                            if (cost.total != null)
+                              parts.push(`${cost.currency || 'USD'} ${cost.total.toFixed(5)}`);
                             return parts.join(' · ');
                           })()}
                         </div>

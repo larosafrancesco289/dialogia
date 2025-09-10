@@ -50,6 +50,7 @@ export default function SettingsDrawer() {
     models,
     hiddenModelIds,
     resetHiddenModels,
+    initializeApp,
   } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
   const [system, setSystem] = useState(chat?.settings.system ?? '');
@@ -96,6 +97,7 @@ export default function SettingsDrawer() {
     maxHeight: number;
   } | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const closeWithAnim = () => {
     setClosing(true);
@@ -135,6 +137,16 @@ export default function SettingsDrawer() {
     loadModels();
   }, [loadModels]);
 
+  // Focus model search shortly after opening for quick access
+  useEffect(() => {
+    const tid = window.setTimeout(() => {
+      try {
+        searchRef.current?.focus({ preventScroll: true } as any);
+      } catch {}
+    }, 80);
+    return () => window.clearTimeout(tid);
+  }, []);
+
   // Load saved system prompt presets on mount
   useEffect(() => {
     let mounted = true;
@@ -162,6 +174,45 @@ export default function SettingsDrawer() {
       .slice(0, 50)
       .map((m) => ({ id: m.id, name: m.name }));
   }, [models, normalizedQuery]);
+
+  const onExport = async () => {
+    try {
+      const { exportAll } = await import('@/lib/db');
+      const data = await exportAll();
+      const text = JSON.stringify(data, null, 2);
+      const blob = new Blob([text], { type: 'application/json' });
+      const ts = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const name = `dialogia-backup-${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(
+        ts.getDate(),
+      )}.json`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setUI({ notice: 'Exported chats to JSON' });
+    } catch (e: any) {
+      setUI({ notice: e?.message || 'Export failed' });
+    }
+  };
+
+  const onImportPicked = async (file?: File | null) => {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const { importAll } = await import('@/lib/db');
+      await importAll(json);
+      await initializeApp();
+      setUI({ notice: 'Imported data' });
+    } catch (e: any) {
+      setUI({ notice: e?.message || 'Import failed' });
+    }
+  };
 
   // Position the dropdown using fixed coordinates so it is never clipped
   useLayoutEffect(() => {
@@ -647,6 +698,33 @@ export default function SettingsDrawer() {
                   Show a Debug panel under assistant messages with the exact request payload sent to
                   OpenRouter.
                 </div>
+              </div>
+            </div>
+          </Section>
+
+          {/* Data */}
+          <Section title="Data">
+            <div className="space-y-2">
+              <div className="flex gap-2 items-center flex-wrap">
+                <button className="btn btn-outline" onClick={onExport}>
+                  Export as JSON
+                </button>
+                <button
+                  className="btn btn-outline"
+                  onClick={() => importInputRef.current?.click()}
+                >
+                  Import from JSON
+                </button>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json"
+                  className="hidden"
+                  onChange={(e) => onImportPicked(e.currentTarget.files?.[0])}
+                />
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Export creates a backup of chats, messages, and folders. Import merges data.
               </div>
             </div>
           </Section>
