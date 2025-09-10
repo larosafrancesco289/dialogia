@@ -56,8 +56,9 @@ function PreWithTools(
   },
 ) {
   const preRef = useRef<HTMLPreElement>(null);
-  // Remove wrap control; default to expanded blocks
+  // Expand by default; allow optional line wrapping toggle
   const [expanded, setExpanded] = useState(true);
+  const [wrap, setWrap] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const language = useMemo(
     () => props.language ?? detectLanguageFromPreChildren(props.children),
@@ -91,9 +92,18 @@ function PreWithTools(
       className={`rounded-2xl bg-muted p-4 pt-12 overflow-auto relative ${props.className ?? ''}`}
       style={{ maxHeight: expanded ? 'none' : 480 }}
       data-expanded={expanded ? 'true' : 'false'}
+      data-wrap={wrap ? 'true' : 'false'}
     >
       <div className="pre-toolbar absolute left-3 top-2 right-3 flex items-center justify-end gap-2">
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="btn-outline btn-sm"
+            onClick={() => setWrap((v) => !v)}
+            title={wrap ? 'Disable wrap' : 'Enable wrap'}
+          >
+            {wrap ? 'Unwrap' : 'Wrap'}
+          </button>
           {isOverflowing && (
             <button
               type="button"
