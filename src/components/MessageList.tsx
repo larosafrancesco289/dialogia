@@ -10,6 +10,7 @@ import {
   CheckIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { BranchIcon } from '@/components/icons/Icons';
 import RegenerateMenu from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
@@ -28,6 +29,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const braveByMessageId = useChatStore((s) => s.ui.braveByMessageId || {});
   const tutorByMessageId = useChatStore((s) => s.ui.tutorByMessageId || {});
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
+  const branchFrom = useChatStore((s) => s.branchChatFromMessage);
   const showStats = chat?.settings.show_stats ?? true;
   const debugMode = useChatStore((s) => s.ui.debugMode || false);
   const debugByMessageId = useChatStore((s) => s.ui.debugByMessageId || {});
@@ -198,6 +200,15 @@ export default function MessageList({ chatId }: { chatId: string }) {
                         <PencilSquareIcon className="h-4 w-4" />
                       </button>
                     )}
+                    <button
+                      className="icon-button"
+                      title="Create a new chat starting from this reply"
+                      aria-label="Branch chat from here"
+                      disabled={isStreaming}
+                      onClick={() => branchFrom(m.id)}
+                    >
+                      <BranchIcon className="h-4 w-4" />
+                    </button>
                     <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
                   </div>
                 )}
@@ -363,6 +374,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   )}
                 </div>
               )}
+              {/* Branching control moved to hover actions (top-right) */}
             </div>
           ) : (
             <div className="relative">

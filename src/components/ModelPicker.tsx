@@ -1,7 +1,14 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import { XMarkIcon, EyeIcon, LightBulbIcon, MicrophoneIcon, ShieldCheckIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  EyeIcon,
+  LightBulbIcon,
+  MicrophoneIcon,
+  ShieldCheckIcon,
+  PhotoIcon,
+} from '@heroicons/react/24/outline';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
 import {
@@ -92,7 +99,10 @@ export default function ModelPicker() {
   // When opening, initialize highlighted index to current selection
   useEffect(() => {
     if (open) {
-      const idx = Math.max(0, options.findIndex((o) => o.id === (current?.id || '')));
+      const idx = Math.max(
+        0,
+        options.findIndex((o) => o.id === (current?.id || '')),
+      );
       setHighlightedIndex(idx === -1 ? 0 : idx);
     }
   }, [open, options, current?.id]);
@@ -133,7 +143,9 @@ export default function ModelPicker() {
             }
             if (e.key === 'ArrowUp') {
               e.preventDefault();
-              setHighlightedIndex((i) => (i - 1 + Math.max(1, options.length)) % Math.max(1, options.length));
+              setHighlightedIndex(
+                (i) => (i - 1 + Math.max(1, options.length)) % Math.max(1, options.length),
+              );
               return;
             }
             if (e.key === 'Enter') {

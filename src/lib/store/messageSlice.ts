@@ -4,8 +4,18 @@ import type { Message } from '@/lib/types';
 import { saveMessage } from '@/lib/db';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { stripLeadingToolJson } from '@/lib/agent/streaming';
-import { streamChatCompletion, chatCompletion, fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
-import { getTutorPreamble, getTutorToolDefinitions, buildTutorContextSummary, buildTutorContextFull } from '@/lib/agent/tutor';
+import {
+  streamChatCompletion,
+  chatCompletion,
+  fetchZdrModelIds,
+  fetchZdrProviderIds,
+} from '@/lib/openrouter';
+import {
+  getTutorPreamble,
+  getTutorToolDefinitions,
+  buildTutorContextSummary,
+  buildTutorContextFull,
+} from '@/lib/agent/tutor';
 import { loadTutorProfile, summarizeTutorProfile } from '@/lib/tutorProfile';
 import { addCardsToDeck, getDueCards } from '@/lib/tutorDeck';
 import {
@@ -153,8 +163,8 @@ export function createMessageSlice(
       );
       // Determine if any PDFs exist in conversation (prior or this turn) to enable parser plugin
       const priorList = get().messages[chatId] ?? [];
-      const hadPdfEarlier = priorList.some((m) =>
-        Array.isArray(m.attachments) && m.attachments.some((x: any) => x?.kind === 'pdf'),
+      const hadPdfEarlier = priorList.some(
+        (m) => Array.isArray(m.attachments) && m.attachments.some((x: any) => x?.kind === 'pdf'),
       );
       const hasPdf = attachments.some((a) => a.kind === 'pdf') || hadPdfEarlier;
       // Strict ZDR enforcement: block sending to non-ZDR models when enabled
@@ -271,7 +281,9 @@ export function createMessageSlice(
         try {
           const controller = new AbortController();
           set((s) => ({ ...s, _controller: controller as any }) as any);
-          const tutorTools = chat.settings.tutor_mode ? (getTutorToolDefinitions() as any[]) : ([] as any[]);
+          const tutorTools = chat.settings.tutor_mode
+            ? (getTutorToolDefinitions() as any[])
+            : ([] as any[]);
           const baseTools = chat.settings.search_with_brave
             ? [
                 {
@@ -532,91 +544,91 @@ export function createMessageSlice(
               break;
             }
             // Helper to attach tutor payloads; returns { ok, json } where json echos normalized items
-          const attachTutorPayload = (name: string, args: any): { ok: boolean; json?: string } => {
-            const keyId = assistantMsg.id;
-            const mapKey =
-              name === 'quiz_mcq'
-                ? 'mcq'
-                : name === 'quiz_fill_blank'
-                  ? 'fillBlank'
-                  : name === 'quiz_open_ended'
-                    ? 'openEnded'
-                    : name === 'flashcards'
-                      ? 'flashcards'
-                      : undefined;
-            if (!mapKey) return { ok: false };
-            try {
-              const items: any[] = Array.isArray(args?.items) ? args.items : [];
-              if (items.length === 0) return { ok: false };
-              const normed = items.slice(0, 40).map((it, idx) => {
-                const raw = (it as any).id;
-                const s = typeof raw === 'string' ? raw.trim() : '';
-                const id = !s || s === 'null' || s === 'undefined' ? uuidv4() : s;
-                return { id, ...it };
-              });
-              let updatedMsg: any | undefined;
-              set((s) => {
-                const nextTutor = {
-                  ...(s.ui.tutorByMessageId?.[keyId] || {}),
-                  title: s.ui.tutorByMessageId?.[keyId]?.title || args?.title,
-                  [mapKey]: [
-                    ...((s.ui.tutorByMessageId?.[keyId] as any)?.[mapKey] || []),
-                    ...normed,
-                  ],
-                } as any;
-                // Update UI map
-                const ui = {
-                  ...s.ui,
-                  tutorByMessageId: {
-                    ...(s.ui.tutorByMessageId || {}),
-                    [keyId]: nextTutor,
-                  },
-                };
-                // Persist onto the assistant message for durability
-                const list = s.messages[chatId] ?? [];
-                const updated = list.map((m) => {
-                  if (m.id !== keyId) return m;
-                  const prevTutor = (m as any).tutor || {};
-                  const mergedTutor = {
-                    ...prevTutor,
-                    title: prevTutor.title || args?.title,
+            const attachTutorPayload = (
+              name: string,
+              args: any,
+            ): { ok: boolean; json?: string } => {
+              const keyId = assistantMsg.id;
+              const mapKey =
+                name === 'quiz_mcq'
+                  ? 'mcq'
+                  : name === 'quiz_fill_blank'
+                    ? 'fillBlank'
+                    : name === 'quiz_open_ended'
+                      ? 'openEnded'
+                      : name === 'flashcards'
+                        ? 'flashcards'
+                        : undefined;
+              if (!mapKey) return { ok: false };
+              try {
+                const items: any[] = Array.isArray(args?.items) ? args.items : [];
+                if (items.length === 0) return { ok: false };
+                const normed = items.slice(0, 40).map((it, idx) => {
+                  const raw = (it as any).id;
+                  const s = typeof raw === 'string' ? raw.trim() : '';
+                  const id = !s || s === 'null' || s === 'undefined' ? uuidv4() : s;
+                  return { id, ...it };
+                });
+                let updatedMsg: any | undefined;
+                set((s) => {
+                  const nextTutor = {
+                    ...(s.ui.tutorByMessageId?.[keyId] || {}),
+                    title: s.ui.tutorByMessageId?.[keyId]?.title || args?.title,
                     [mapKey]: [
-                      ...(((prevTutor as any)[mapKey] as any[]) || []),
+                      ...((s.ui.tutorByMessageId?.[keyId] as any)?.[mapKey] || []),
                       ...normed,
                     ],
                   } as any;
-                  // Build hidden assistant content: recap + full data JSON
-                  let hidden = '';
-                  try {
-                    const recap = buildTutorContextSummary(mergedTutor);
-                    const json = buildTutorContextFull(mergedTutor);
-                    const parts = [] as string[];
-                    if (recap) parts.push(`Tutor Recap:\n${recap}`);
-                    if (json) parts.push(`Tutor Data JSON:\n${json}`);
-                    hidden = parts.join('\n\n');
-                  } catch {}
-                  // Replace hiddenContent for this assistant message
-                  const nm = { ...m, tutor: mergedTutor, hiddenContent: hidden } as any;
-                  updatedMsg = nm;
-                  return nm;
+                  // Update UI map
+                  const ui = {
+                    ...s.ui,
+                    tutorByMessageId: {
+                      ...(s.ui.tutorByMessageId || {}),
+                      [keyId]: nextTutor,
+                    },
+                  };
+                  // Persist onto the assistant message for durability
+                  const list = s.messages[chatId] ?? [];
+                  const updated = list.map((m) => {
+                    if (m.id !== keyId) return m;
+                    const prevTutor = (m as any).tutor || {};
+                    const mergedTutor = {
+                      ...prevTutor,
+                      title: prevTutor.title || args?.title,
+                      [mapKey]: [...(((prevTutor as any)[mapKey] as any[]) || []), ...normed],
+                    } as any;
+                    // Build hidden assistant content: recap + full data JSON
+                    let hidden = '';
+                    try {
+                      const recap = buildTutorContextSummary(mergedTutor);
+                      const json = buildTutorContextFull(mergedTutor);
+                      const parts = [] as string[];
+                      if (recap) parts.push(`Tutor Recap:\n${recap}`);
+                      if (json) parts.push(`Tutor Data JSON:\n${json}`);
+                      hidden = parts.join('\n\n');
+                    } catch {}
+                    // Replace hiddenContent for this assistant message
+                    const nm = { ...m, tutor: mergedTutor, hiddenContent: hidden } as any;
+                    updatedMsg = nm;
+                    return nm;
+                  });
+                  return { ui, messages: { ...s.messages, [chatId]: updated } } as any;
                 });
-                return { ui, messages: { ...s.messages, [chatId]: updated } } as any;
-              });
-              try {
-                if (updatedMsg) void saveMessage(updatedMsg);
-              } catch {}
-              // Build a normalized JSON payload to send back to the model as tool output
-              try {
-                const body: any = { items: normed };
-                if (typeof args?.title === 'string') body.title = args.title;
-                const json = JSON.stringify(body);
-                return { ok: true, json };
-              } catch {}
-              return { ok: true };
-            } catch {
-              return { ok: false };
-            }
-          };
+                try {
+                  if (updatedMsg) void saveMessage(updatedMsg);
+                } catch {}
+                // Build a normalized JSON payload to send back to the model as tool output
+                try {
+                  const body: any = { items: normed };
+                  if (typeof args?.title === 'string') body.title = args.title;
+                  const json = JSON.stringify(body);
+                  return { ok: true, json };
+                } catch {}
+                return { ok: true };
+              } catch {
+                return { ok: false };
+              }
+            };
             const attachTutorMeta = async (name: string, args: any) => {
               const keyId = assistantMsg.id;
               if (name === 'grade_open_response') {
@@ -723,14 +735,29 @@ export function createMessageSlice(
                   usedTutorContentTool = true;
                 }
                 if (name === 'srs_review') {
-                  const cnt = Math.min(Math.max(parseInt(String(args?.due_count || '10'), 10) || 10, 1), 40);
+                  const cnt = Math.min(
+                    Math.max(parseInt(String(args?.due_count || '10'), 10) || 10, 1),
+                    40,
+                  );
                   let due: any[] = [];
                   try {
                     const cards = await getDueCards(chat.id, cnt);
-                    due = cards.map((c) => ({ id: c.id, front: c.front, back: c.back, hint: c.hint, topic: c.topic, skill: c.skill }));
+                    due = cards.map((c) => ({
+                      id: c.id,
+                      front: c.front,
+                      back: c.back,
+                      hint: c.hint,
+                      topic: c.topic,
+                      skill: c.skill,
+                    }));
                   } catch {}
                   const jsonPayload = JSON.stringify(due);
-                  convo.push({ role: 'tool', name, tool_call_id: tc.id, content: jsonPayload } as any);
+                  convo.push({
+                    role: 'tool',
+                    name,
+                    tool_call_id: tc.id,
+                    content: jsonPayload,
+                  } as any);
                   usedTool = true;
                   continue;
                 }
@@ -878,7 +905,9 @@ export function createMessageSlice(
             set((s) => {
               const list = s.messages[chatId] ?? [];
               const updated = list.map((m) =>
-                m.id === assistantMsg.id ? ({ ...m, systemSnapshot: finalSystem, genSettings: gen } as any) : m,
+                m.id === assistantMsg.id
+                  ? ({ ...m, systemSnapshot: finalSystem, genSettings: gen } as any)
+                  : m,
               );
               return { messages: { ...s.messages, [chatId]: updated } } as any;
             });
@@ -1444,7 +1473,9 @@ export function createMessageSlice(
       // Detect PDFs anywhere prior to this assistant message to enable parser plugin
       const hadPdfEarlier = list
         .slice(0, idx)
-        .some((m) => Array.isArray(m.attachments) && m.attachments.some((a: any) => a?.kind === 'pdf'));
+        .some(
+          (m) => Array.isArray(m.attachments) && m.attachments.some((a: any) => a?.kind === 'pdf'),
+        );
       const replacement: Message = {
         id: messageId,
         chatId,
@@ -1496,7 +1527,8 @@ export function createMessageSlice(
               stream: true,
               stream_options: { include_usage: true },
             };
-            if (hadPdfEarlier) debugBody.plugins = [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }];
+            if (hadPdfEarlier)
+              debugBody.plugins = [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }];
             if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
             if (typeof tempUsed === 'number') debugBody.temperature = tempUsed;
             if (typeof topPUsed === 'number') debugBody.top_p = topPUsed;
@@ -1507,7 +1539,10 @@ export function createMessageSlice(
               if (typeof rTokUsed === 'number') rc.max_tokens = rTokUsed;
               if (Object.keys(rc).length > 0) debugBody.reasoning = rc;
             }
-            if (genSnapshot?.providerSort === 'price' || genSnapshot?.providerSort === 'throughput') {
+            if (
+              genSnapshot?.providerSort === 'price' ||
+              genSnapshot?.providerSort === 'throughput'
+            ) {
               debugBody.provider = { sort: genSnapshot.providerSort };
             }
             set((s) => ({
@@ -1535,7 +1570,9 @@ export function createMessageSlice(
             reasoning_tokens: rTokUsed,
             signal: controller.signal,
             providerSort: genSnapshot?.providerSort,
-            plugins: hadPdfEarlier ? [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }] : undefined,
+            plugins: hadPdfEarlier
+              ? [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }]
+              : undefined,
             callbacks: {
               onAnnotations: (ann) => {
                 set((s) => {

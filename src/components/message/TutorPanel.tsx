@@ -25,7 +25,11 @@ export function TutorPanel(props: {
   grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
 }) {
   const { messageId, title, mcq, fillBlank, openEnded, flashcards, grading } = props;
-  const hasAny = (mcq && mcq.length) || (fillBlank && fillBlank.length) || (openEnded && openEnded.length) || (flashcards && flashcards.length);
+  const hasAny =
+    (mcq && mcq.length) ||
+    (fillBlank && fillBlank.length) ||
+    (openEnded && openEnded.length) ||
+    (flashcards && flashcards.length);
   if (!hasAny) return null;
   return (
     <div className="px-4 pt-3">
@@ -38,8 +42,12 @@ export function TutorPanel(props: {
         </div>
         <div className="p-3 space-y-4">
           {mcq && mcq.length > 0 && <MCQList messageId={messageId} items={mcq} />}
-          {fillBlank && fillBlank.length > 0 && <FillBlankList messageId={messageId} items={fillBlank} />}
-          {openEnded && openEnded.length > 0 && <OpenEndedList messageId={messageId} items={openEnded} grading={grading} />}
+          {fillBlank && fillBlank.length > 0 && (
+            <FillBlankList messageId={messageId} items={fillBlank} />
+          )}
+          {openEnded && openEnded.length > 0 && (
+            <OpenEndedList messageId={messageId} items={openEnded} grading={grading} />
+          )}
           {flashcards && flashcards.length > 0 && <FlashcardList items={flashcards} />}
           {grading && Object.keys(grading).length > 0 && (
             <div className="rounded-md border border-border bg-surface p-3">
@@ -47,10 +55,15 @@ export function TutorPanel(props: {
               <div className="space-y-2 text-sm">
                 {Object.entries(grading).map(([id, g], idx) => (
                   <div key={safeKey(id, idx, 'grade')}>
-                    <div className="font-medium">Item {id}{g.score != null ? ` · Score: ${Math.round(g.score * 100)}%` : ''}</div>
+                    <div className="font-medium">
+                      Item {id}
+                      {g.score != null ? ` · Score: ${Math.round(g.score * 100)}%` : ''}
+                    </div>
                     <div className="text-muted-foreground whitespace-pre-wrap">{g.feedback}</div>
                     {Array.isArray(g.criteria) && g.criteria.length > 0 && (
-                      <div className="mt-1 text-xs text-muted-foreground">Criteria: {g.criteria.join(', ')}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Criteria: {g.criteria.join(', ')}
+                      </div>
                     )}
                   </div>
                 ))}
@@ -78,7 +91,10 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
         const correctIdx = typeof q.correct === 'number' ? q.correct : -1;
         const answered = !!mcq[q.id]?.done;
         return (
-          <div key={safeKey(q.id, idx, 'mcq')} className="rounded-md border border-border bg-surface">
+          <div
+            key={safeKey(q.id, idx, 'mcq')}
+            className="rounded-md border border-border bg-surface"
+          >
             <div className="px-3 py-2 text-sm font-medium">
               {idx + 1}. {q.question}
             </div>
@@ -102,7 +118,14 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
                     onClick={() => {
                       if (answered) return;
                       const correct = i === correctIdx;
-                      log({ kind: 'mcq', itemId: q.id, correct, topic: q.topic, skill: q.skill, difficulty: q.difficulty });
+                      log({
+                        kind: 'mcq',
+                        itemId: q.id,
+                        correct,
+                        topic: q.topic,
+                        skill: q.skill,
+                        difficulty: q.difficulty,
+                      });
                       // Persist attempt in UI store
                       const st = (useChatStore as any).getState();
                       const prev = (st.ui.tutorByMessageId || {})[messageId] || {};
@@ -131,7 +154,9 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
                     }}
                     disabled={answered}
                   >
-                    <span className="min-w-5 text-xs font-semibold">{String.fromCharCode(65 + i)}</span>
+                    <span className="min-w-5 text-xs font-semibold">
+                      {String.fromCharCode(65 + i)}
+                    </span>
                     <span className="ml-2">{c}</span>
                   </button>
                 );
@@ -139,9 +164,13 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
               {answered && typeof picked === 'number' && (
                 <span className="badge inline-flex items-center gap-1 w-fit">
                   {picked === correctIdx ? (
-                    <><CheckIcon className="h-3.5 w-3.5" /> Correct</>
+                    <>
+                      <CheckIcon className="h-3.5 w-3.5" /> Correct
+                    </>
                   ) : (
-                    <><XMarkIcon className="h-3.5 w-3.5" /> Incorrect</>
+                    <>
+                      <XMarkIcon className="h-3.5 w-3.5" /> Incorrect
+                    </>
                   )}
                 </span>
               )}
@@ -163,7 +192,11 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
   // No longer mutates visible assistant content; results are kept in tutor state only
   const tutorMap = useChatStore((s) => s.ui.tutorByMessageId || {});
   const attempts = (tutorMap[messageId]?.attempts as any) || {};
-  const fb = (attempts.fillBlank as Record<string, { answer?: string; revealed?: boolean; correct?: boolean }>) || {};
+  const fb =
+    (attempts.fillBlank as Record<
+      string,
+      { answer?: string; revealed?: boolean; correct?: boolean }
+    >) || {};
   const normalize = (s: string) => s.trim().toLowerCase();
   const isAccepted = (it: TutorFillBlankItem, val: string) => {
     const v = normalize(val);
@@ -178,8 +211,13 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
         const shown = !!fb[it.id]?.revealed;
         const ok = shown ? isAccepted(it, val) : undefined;
         return (
-          <div key={safeKey(it.id, idx, 'blank')} className="rounded-md border border-border bg-surface p-3">
-            <div className="text-sm font-medium mb-2">{idx + 1}. {it.prompt}</div>
+          <div
+            key={safeKey(it.id, idx, 'blank')}
+            className="rounded-md border border-border bg-surface p-3"
+          >
+            <div className="text-sm font-medium mb-2">
+              {idx + 1}. {it.prompt}
+            </div>
             <div className="flex items-center gap-2">
               <input
                 className="input flex-1"
@@ -197,7 +235,10 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
                         ...prev,
                         attempts: {
                           ...prevAttempts,
-                          fillBlank: { ...prevFill, [it.id]: { ...(prevFill[it.id] || {}), answer: e.currentTarget.value } },
+                          fillBlank: {
+                            ...prevFill,
+                            [it.id]: { ...(prevFill[it.id] || {}), answer: e.currentTarget.value },
+                          },
                         },
                       },
                     },
@@ -211,7 +252,14 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
                 onClick={() => {
                   if (shown) return;
                   const correct = isAccepted(it, val);
-                  log({ kind: 'fill_blank', itemId: it.id, correct, topic: it.topic, skill: it.skill, difficulty: it.difficulty });
+                  log({
+                    kind: 'fill_blank',
+                    itemId: it.id,
+                    correct,
+                    topic: it.topic,
+                    skill: it.skill,
+                    difficulty: it.difficulty,
+                  });
                   const st = (useChatStore as any).getState();
                   const prev = (st.ui.tutorByMessageId || {})[messageId] || {};
                   const prevAttempts = (prev as any).attempts || {};
@@ -223,7 +271,15 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
                         ...prev,
                         attempts: {
                           ...prevAttempts,
-                          fillBlank: { ...prevFill, [it.id]: { ...(prevFill[it.id] || {}), answer: val, revealed: true, correct } },
+                          fillBlank: {
+                            ...prevFill,
+                            [it.id]: {
+                              ...(prevFill[it.id] || {}),
+                              answer: val,
+                              revealed: true,
+                              correct,
+                            },
+                          },
                         },
                       },
                     },
@@ -241,7 +297,11 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
               </button>
               {shown && (
                 <span className="badge inline-flex items-center gap-1">
-                  {ok ? <CheckIcon className="h-3.5 w-3.5" /> : <XMarkIcon className="h-3.5 w-3.5" />}
+                  {ok ? (
+                    <CheckIcon className="h-3.5 w-3.5" />
+                  ) : (
+                    <XMarkIcon className="h-3.5 w-3.5" />
+                  )}
                   {ok ? 'Correct' : 'Try again'}
                 </span>
               )}
@@ -259,7 +319,15 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
   );
 }
 
-function OpenEndedList({ items, grading, messageId }: { items: TutorOpenItem[]; grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>; messageId: string }) {
+function OpenEndedList({
+  items,
+  grading,
+  messageId,
+}: {
+  items: TutorOpenItem[];
+  grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
+  messageId: string;
+}) {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const setUI = useChatStore((s) => s.setUI);
   const send = useChatStore((s) => s.sendUserMessage);
@@ -270,10 +338,18 @@ function OpenEndedList({ items, grading, messageId }: { items: TutorOpenItem[]; 
   return (
     <div className="space-y-3">
       {items.map((it, idx) => (
-        <div key={safeKey(it.id, idx, 'open')} className="rounded-md border border-border bg-surface p-3">
-          <div className="text-sm font-medium">{idx + 1}. {it.prompt}</div>
+        <div
+          key={safeKey(it.id, idx, 'open')}
+          className="rounded-md border border-border bg-surface p-3"
+        >
+          <div className="text-sm font-medium">
+            {idx + 1}. {it.prompt}
+          </div>
           <div className="mt-2 flex items-center gap-2">
-            <button className="btn btn-outline btn-sm" onClick={() => setRevealed((s) => ({ ...s, [it.id]: !s[it.id] }))}>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => setRevealed((s) => ({ ...s, [it.id]: !s[it.id] }))}
+            >
               <EyeIcon className="h-4 w-4" />
               <span className="ml-1">{revealed[it.id] ? 'Hide' : 'Show'} sample</span>
             </button>
@@ -311,7 +387,10 @@ function OpenEndedList({ items, grading, messageId }: { items: TutorOpenItem[]; 
                       ...prev,
                       attempts: {
                         ...prevAttempts,
-                        open: { ...prevOpen, [it.id]: { ...(prevOpen[it.id] || {}), answer: e.currentTarget.value } },
+                        open: {
+                          ...prevOpen,
+                          [it.id]: { ...(prevOpen[it.id] || {}), answer: e.currentTarget.value },
+                        },
                       },
                     },
                   },
@@ -336,10 +415,19 @@ function OpenEndedList({ items, grading, messageId }: { items: TutorOpenItem[]; 
           </div>
           {grading && grading[it.id] && (
             <div className="mt-2 text-sm">
-              <div className="font-medium">Feedback {grading[it.id].score != null ? `(score: ${Math.round((grading[it.id].score || 0) * 100)}%)` : ''}</div>
-              <div className="text-muted-foreground whitespace-pre-wrap">{grading[it.id].feedback}</div>
+              <div className="font-medium">
+                Feedback{' '}
+                {grading[it.id].score != null
+                  ? `(score: ${Math.round((grading[it.id].score || 0) * 100)}%)`
+                  : ''}
+              </div>
+              <div className="text-muted-foreground whitespace-pre-wrap">
+                {grading[it.id].feedback}
+              </div>
               {Array.isArray(grading[it.id].criteria) && grading[it.id].criteria!.length > 0 && (
-                <div className="mt-1 text-xs text-muted-foreground">Criteria: {grading[it.id].criteria!.join(', ')}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Criteria: {grading[it.id].criteria!.join(', ')}
+                </div>
               )}
             </div>
           )}
@@ -362,13 +450,20 @@ function FlashcardList({ items }: { items: TutorFlashcardItem[] }) {
       <div className="text-xs text-muted-foreground mb-2">
         Card {index + 1} / {total}
       </div>
-      <div className={`flashcard ${flipped ? 'is-flipped' : ''}`} onClick={() => setFlipped((x) => !x)}>
+      <div
+        className={`flashcard ${flipped ? 'is-flipped' : ''}`}
+        onClick={() => setFlipped((x) => !x)}
+      >
         <div className="flashcard-inner">
           <div className="flashcard-face flashcard-front">
-            <div className="rounded-md border border-border p-4 bg-muted/30 min-h-24 whitespace-pre-wrap">{cur.front}</div>
+            <div className="rounded-md border border-border p-4 bg-muted/30 min-h-24 whitespace-pre-wrap">
+              {cur.front}
+            </div>
           </div>
           <div className="flashcard-face flashcard-back">
-            <div className="rounded-md border border-border p-4 bg-muted/30 min-h-24 whitespace-pre-wrap">{cur.back}</div>
+            <div className="rounded-md border border-border p-4 bg-muted/30 min-h-24 whitespace-pre-wrap">
+              {cur.back}
+            </div>
           </div>
         </div>
       </div>
@@ -376,7 +471,9 @@ function FlashcardList({ items }: { items: TutorFlashcardItem[] }) {
         <div className="mt-2 text-xs text-muted-foreground">Hint: {cur.hint}</div>
       )}
       <div className="mt-3 flex items-center gap-2">
-        <button className="btn btn-outline" onClick={() => setFlipped((x) => !x)}>Flip</button>
+        <button className="btn btn-outline" onClick={() => setFlipped((x) => !x)}>
+          Flip
+        </button>
         <button
           className="btn"
           onClick={() => {
@@ -389,13 +486,31 @@ function FlashcardList({ items }: { items: TutorFlashcardItem[] }) {
         </button>
         <button
           className="btn btn-outline"
-          onClick={() => log({ kind: 'flashcard', itemId: cur.id, correct: true, topic: cur.topic, skill: cur.skill, difficulty: cur.difficulty })}
+          onClick={() =>
+            log({
+              kind: 'flashcard',
+              itemId: cur.id,
+              correct: true,
+              topic: cur.topic,
+              skill: cur.skill,
+              difficulty: cur.difficulty,
+            })
+          }
         >
           I knew it
         </button>
         <button
           className="btn btn-outline"
-          onClick={() => log({ kind: 'flashcard', itemId: cur.id, correct: false, topic: cur.topic, skill: cur.skill, difficulty: cur.difficulty })}
+          onClick={() =>
+            log({
+              kind: 'flashcard',
+              itemId: cur.id,
+              correct: false,
+              topic: cur.topic,
+              skill: cur.skill,
+              difficulty: cur.difficulty,
+            })
+          }
         >
           Need review
         </button>
@@ -405,7 +520,13 @@ function FlashcardList({ items }: { items: TutorFlashcardItem[] }) {
           onClick={() => {
             const payload = {
               cards: [
-                { front: cur.front, back: cur.back, hint: cur.hint, topic: cur.topic, skill: cur.skill },
+                {
+                  front: cur.front,
+                  back: cur.back,
+                  hint: cur.hint,
+                  topic: cur.topic,
+                  skill: cur.skill,
+                },
               ],
             };
             const msg = `Please call add_to_deck with the following:\n${JSON.stringify(payload)}`;
