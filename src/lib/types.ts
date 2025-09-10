@@ -11,6 +11,8 @@ export type ChatSettings = {
   show_stats?: boolean; // UI preference only
   // Optional web search augmentation using Brave Search API
   search_with_brave?: boolean;
+  // Tutor mode: enables pedagogy prompt + tutor tools
+  tutor_mode?: boolean;
 };
 
 export type Message = {
@@ -18,6 +20,11 @@ export type Message = {
   chatId: string;
   role: 'system' | 'user' | 'assistant';
   content: string;
+  // Not shown in the UI, but included in LLM conversation history
+  hiddenContent?: string;
+  // OpenRouter: file parsing annotations returned by assistant (e.g., PDF parsing)
+  // When present, we include them in subsequent requests to skip re-parsing costs.
+  annotations?: any;
   createdAt: number;
   tokensIn?: number;
   tokensOut?: number;
@@ -27,6 +34,107 @@ export type Message = {
   metrics?: MessageMetrics;
   // Optional attachments (currently images) associated to the message
   attachments?: Attachment[];
+  // Optional: persisted tutor payload for interactive content and attempts
+  tutor?: MessageTutor;
+};
+
+// Tutor tool item types rendered by UI (ephemeral; stored in UI state)
+export type TutorMCQItem = {
+  id: string;
+  question: string;
+  choices: string[];
+  correct: number; // index into choices
+  explanation?: string;
+  topic?: string;
+  skill?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+};
+
+export type TutorFillBlankItem = {
+  id: string;
+  prompt: string; // contains the blank (e.g., "____")
+  answer: string;
+  aliases?: string[]; // alternative accepted answers
+  explanation?: string;
+  topic?: string;
+  skill?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+};
+
+export type TutorOpenItem = {
+  id: string;
+  prompt: string;
+  sample_answer?: string;
+  rubric?: string;
+  topic?: string;
+  skill?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+};
+
+export type TutorFlashcardItem = {
+  id: string;
+  front: string;
+  back: string;
+  hint?: string;
+  topic?: string;
+  skill?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+};
+
+// Persisted tutor payload attached to an assistant message
+export type MessageTutor = {
+  title?: string;
+  mcq?: TutorMCQItem[];
+  fillBlank?: TutorFillBlankItem[];
+  openEnded?: TutorOpenItem[];
+  flashcards?: TutorFlashcardItem[];
+  // User attempts and grading results
+  attempts?: {
+    mcq?: Record<string, { choice?: number; done?: boolean; correct?: boolean }>;
+    fillBlank?: Record<string, { answer?: string; revealed?: boolean; correct?: boolean }>;
+    open?: Record<string, { answer?: string }>;
+  };
+  grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
+};
+
+// Tutor session and grading metadata (ephemeral; UI/agent coordination only)
+export type TutorSession = {
+  goal?: string;
+  duration_min?: number;
+  stage?: 'baseline' | 'teach' | 'practice' | 'reflect' | 'review';
+  focus?: string;
+  next?: string;
+  skills?: string[];
+};
+
+export type TutorRecommendation = {
+  reason?: string;
+  recommendation?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
+};
+
+export type TutorGradingResult = {
+  score?: number; // 0..1 normalized or percentage scaled later
+  feedback: string;
+  criteria?: string[];
+};
+
+export type TutorProfile = {
+  chatId: string;
+  updatedAt: number;
+  totalAnswered: number;
+  totalCorrect: number;
+  topics?: Record<string, { correct: number; wrong: number }>;
+  skills?: Record<string, { correct: number; wrong: number }>;
+  difficulty?: Record<'easy' | 'medium' | 'hard', { correct: number; wrong: number }>;
+};
+
+export type TutorEvent = {
+  kind: 'mcq' | 'fill_blank' | 'open' | 'flashcard';
+  itemId?: string;
+  correct?: boolean;
+  topic?: string;
+  skill?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
 };
 
 export type MessageMetrics = {
