@@ -861,6 +861,28 @@ export function createMessageSlice(
               ? `\n\nWeb search results (Brave):\n${linesForSystem}\n\nInstructions: Use these results to answer and cite sources inline as [n].`
               : '';
           const finalSystem = `${baseSystem}${sourcesBlock}`;
+          // Snapshot the exact system + generation settings for this assistant turn
+          try {
+            const modelMeta = findModelById(get().models, chat.settings.model);
+            const supportsReasoning = isReasoningSupported(modelMeta);
+            const gen = {
+              temperature: chat.settings.temperature,
+              top_p: chat.settings.top_p,
+              max_tokens: chat.settings.max_tokens,
+              reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
+              reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+              search_with_brave: !!chat.settings.search_with_brave,
+              tutor_mode: !!chat.settings.tutor_mode,
+              providerSort,
+            } as any;
+            set((s) => {
+              const list = s.messages[chatId] ?? [];
+              const updated = list.map((m) =>
+                m.id === assistantMsg.id ? ({ ...m, systemSnapshot: finalSystem, genSettings: gen } as any) : m,
+              );
+              return { messages: { ...s.messages, [chatId]: updated } } as any;
+            });
+          } catch {}
           // If an interactive tutor content tool was used (quiz/flashcards) and no web search occurred,
           // skip follow-up text for this assistant turn to avoid duplicating quiz in plain text.
           if (usedTutorContentTool && (!aggregatedResults || aggregatedResults.length === 0)) {
@@ -1061,6 +1083,8 @@ export function createMessageSlice(
                     content: stripLeadingToolJson(full || ''),
                     reasoning: current?.reasoning,
                     attachments: current?.attachments,
+                    systemSnapshot: (current as any)?.systemSnapshot,
+                    genSettings: (current as any)?.genSettings,
                     metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
                     tokensIn: promptTokens,
                     tokensOut: completionTokens,
@@ -1266,6 +1290,8 @@ export function createMessageSlice(
                   content: stripLeadingToolJson(full || ''),
                   reasoning: current?.reasoning,
                   attachments: current?.attachments,
+                  systemSnapshot: (current as any)?.systemSnapshot,
+                  genSettings: (current as any)?.genSettings,
                   tutor: (current as any)?.tutor,
                   hiddenContent: (current as any)?.hiddenContent,
                   annotations: (current as any)?.annotations || extras?.annotations,
@@ -1405,6 +1431,16 @@ export function createMessageSlice(
         priorMessages: list.slice(0, idx),
         models: get().models,
       });
+      // Prefer the exact system snapshot captured when the original assistant message was generated
+      // so regen reproduces the same context regardless of current chat settings.
+      const original = list[idx] as any;
+      const systemSnapshot: string | undefined = original?.systemSnapshot;
+      const genSnapshot: any = original?.genSettings || {};
+      const msgs = systemSnapshot
+        ? ([{ role: 'system', content: systemSnapshot } as const] as any[]).concat(
+            payloadBefore.filter((m: any) => m.role !== 'system'),
+          )
+        : payloadBefore;
       // Detect PDFs anywhere prior to this assistant message to enable parser plugin
       const hadPdfEarlier = list
         .slice(0, idx)
@@ -1418,6 +1454,8 @@ export function createMessageSlice(
         model: opts?.modelId || chat.settings.model,
         reasoning: '',
         attachments: [],
+        systemSnapshot: (original as any)?.systemSnapshot,
+        genSettings: (original as any)?.genSettings,
       };
       set((s) => ({
         messages: {
@@ -1426,7 +1464,6 @@ export function createMessageSlice(
         },
         ui: { ...s.ui, isStreaming: true },
       }));
-      const msgs = payloadBefore;
       try {
         const controller = new AbortController();
         set((s) => ({ ...s, _controller: controller as any }) as any);
@@ -1435,7 +1472,23 @@ export function createMessageSlice(
         {
           const modelMeta = findModelById(get().models, replacement.model!);
           const supportsReasoning = isReasoningSupported(modelMeta);
-          // Store debug payload for regenerate streaming call
+          const tempUsed =
+            typeof genSnapshot.temperature === 'number'
+              ? genSnapshot.temperature
+              : chat.settings.temperature;
+          const topPUsed =
+            typeof genSnapshot.top_p === 'number' ? genSnapshot.top_p : chat.settings.top_p;
+          const maxTokUsed =
+            typeof genSnapshot.max_tokens === 'number'
+              ? genSnapshot.max_tokens
+              : chat.settings.max_tokens;
+          const rEffortUsed = supportsReasoning
+            ? (genSnapshot.reasoning_effort ?? chat.settings.reasoning_effort)
+            : undefined;
+          const rTokUsed = supportsReasoning
+            ? (genSnapshot.reasoning_tokens ?? chat.settings.reasoning_tokens)
+            : undefined;
+          // Store debug payload for regenerate streaming call (using snapshot where available)
           try {
             const debugBody: any = {
               model: replacement.model!,
@@ -1445,18 +1498,17 @@ export function createMessageSlice(
             };
             if (hadPdfEarlier) debugBody.plugins = [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }];
             if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
-            if (typeof chat.settings.temperature === 'number')
-              debugBody.temperature = chat.settings.temperature;
-            if (typeof chat.settings.top_p === 'number') debugBody.top_p = chat.settings.top_p;
-            if (typeof chat.settings.max_tokens === 'number')
-              debugBody.max_tokens = chat.settings.max_tokens;
+            if (typeof tempUsed === 'number') debugBody.temperature = tempUsed;
+            if (typeof topPUsed === 'number') debugBody.top_p = topPUsed;
+            if (typeof maxTokUsed === 'number') debugBody.max_tokens = maxTokUsed;
             if (supportsReasoning) {
               const rc: any = {};
-              if (typeof chat.settings.reasoning_effort === 'string')
-                rc.effort = chat.settings.reasoning_effort;
-              if (typeof chat.settings.reasoning_tokens === 'number')
-                rc.max_tokens = chat.settings.reasoning_tokens;
+              if (typeof rEffortUsed === 'string') rc.effort = rEffortUsed;
+              if (typeof rTokUsed === 'number') rc.max_tokens = rTokUsed;
               if (Object.keys(rc).length > 0) debugBody.reasoning = rc;
+            }
+            if (genSnapshot?.providerSort === 'price' || genSnapshot?.providerSort === 'throughput') {
+              debugBody.provider = { sort: genSnapshot.providerSort };
             }
             set((s) => ({
               ui: {
@@ -1476,12 +1528,13 @@ export function createMessageSlice(
             model: replacement.model!,
             messages: msgs,
             modalities: isImageOutputSupported(modelMeta) ? (['image', 'text'] as any) : undefined,
-            temperature: chat.settings.temperature,
-            top_p: chat.settings.top_p,
-            max_tokens: chat.settings.max_tokens,
-            reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-            reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+            temperature: tempUsed,
+            top_p: topPUsed,
+            max_tokens: maxTokUsed,
+            reasoning_effort: rEffortUsed,
+            reasoning_tokens: rTokUsed,
             signal: controller.signal,
+            providerSort: genSnapshot?.providerSort,
             plugins: hadPdfEarlier ? [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }] : undefined,
             callbacks: {
               onAnnotations: (ann) => {
