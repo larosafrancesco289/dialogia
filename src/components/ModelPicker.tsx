@@ -18,6 +18,7 @@ import {
   isAudioInputSupported,
   isImageOutputSupported,
 } from '@/lib/models';
+import { describeModelPricing } from '@/lib/cost';
 
 export default function ModelPicker() {
   const {
@@ -68,6 +69,7 @@ export default function ModelPicker() {
   const rootRef = useRef<HTMLDivElement>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const listboxRef = useRef<HTMLDivElement>(null);
+  const [listWidth, setListWidth] = useState<number | undefined>(undefined);
   const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
   const allowedIds = new Set((models || []).map((m: any) => m.id));
   const effectiveSelectedId =
@@ -100,6 +102,17 @@ export default function ModelPicker() {
   // When opening, initialize highlighted index to current selection
   useEffect(() => {
     if (open) {
+      // Compute a comfortable width so long model names don't truncate too early
+      const updateWidth = () => {
+        const r = rootRef.current?.getBoundingClientRect();
+        const triggerW = r?.width || 0;
+        const minW = 420; // px
+        const maxW = Math.max(320, Math.min(window.innerWidth - 24, 560));
+        const w = Math.min(Math.max(triggerW, minW), maxW);
+        setListWidth(Math.round(w));
+      };
+      updateWidth();
+      window.addEventListener('resize', updateWidth, { passive: true });
       const idx = Math.max(
         0,
         options.findIndex((o) => o.id === (current?.id || '')),
@@ -107,6 +120,7 @@ export default function ModelPicker() {
       setHighlightedIndex(idx === -1 ? 0 : idx);
       // focus the listbox for keyboard navigation
       setTimeout(() => listboxRef.current?.focus(), 0);
+      return () => window.removeEventListener('resize', updateWidth as any);
     }
   }, [open, options, current?.id]);
 
@@ -130,7 +144,8 @@ export default function ModelPicker() {
       {open && (
         <div
           ref={listboxRef}
-          className="absolute z-20 mt-2 w-72 card p-2 max-h-80 overflow-auto popover"
+          className="absolute z-20 mt-2 card p-2 max-h-80 overflow-auto popover"
+          style={{ width: listWidth }}
           role="listbox"
           aria-label="Select a model"
           aria-activedescendant={`model-opt-${highlightedIndex}`}
@@ -167,6 +182,7 @@ export default function ModelPicker() {
             const canSee = isVisionSupported(meta);
             const canAudio = isAudioInputSupported(meta);
             const canImageOut = isImageOutputSupported(meta);
+            const priceStr = describeModelPricing(meta);
             const provider = String(o.id).split('/')[0];
             const isZdr = Boolean(
               (zdrModelIds && zdrModelIds.includes(o.id)) ||
@@ -183,9 +199,9 @@ export default function ModelPicker() {
                 } ${idx === highlightedIndex ? 'ring-1 ring-border' : ''}`}
                 onClick={() => choose(o.id)}
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="truncate font-medium text-sm">{o.name || o.id}</div>
-                  <div className="flex items-center gap-1 mt-1 text-muted-foreground">
+                  <div className="flex items-center gap-2 mt-1 text-muted-foreground">
                     {canReason && (
                       <LightBulbIcon
                         className="h-4 w-4"
@@ -219,7 +235,12 @@ export default function ModelPicker() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2 ml-2 shrink-0">
+                  {priceStr && (
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {priceStr}
+                    </span>
+                  )}
                   {o.id !== PINNED_MODEL_ID && (
                     <button
                       className="p-1 rounded hover:bg-muted"

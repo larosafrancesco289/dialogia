@@ -25,6 +25,7 @@ import {
   isAudioInputSupported,
   isImageOutputSupported,
 } from '@/lib/models';
+import { describeModelPricing } from '@/lib/cost';
 import { EyeIcon, LightBulbIcon, MicrophoneIcon, PhotoIcon } from '@heroicons/react/24/outline';
 
 // Define Section at module scope so it doesn't remount on every render.
@@ -265,7 +266,7 @@ export default function SettingsDrawer() {
         aria-hidden
       />
       <div
-        className={`fixed inset-y-0 right-0 w-full sm:w-[520px] glass-panel border-l border-border shadow-[var(--shadow-card)] z-[80] overflow-y-auto will-change-transform settings-drawer${closing ? ' is-closing' : ''}`}
+        className={`fixed inset-y-0 right-0 w-full sm:w-[640px] glass-panel border-l border-border shadow-[var(--shadow-card)] z-[80] overflow-y-auto will-change-transform settings-drawer${closing ? ' is-closing' : ''}`}
         style={{ overscrollBehavior: 'contain' }}
         role="dialog"
         aria-modal="true"
@@ -762,15 +763,16 @@ export default function SettingsDrawer() {
                         const canReason = isReasoningSupported(meta);
                         const canSee = isVisionSupported(meta);
                         const canImageOut = isImageOutputSupported(meta);
+                        const priceStr = describeModelPricing(meta);
                         return (
                           <div
                             key={m.id}
                             className="p-2 rounded hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
                           >
-                            <div>
-                              <div className="font-medium text-sm flex items-center gap-2">
-                                <span>{m.name || m.id}</span>
-                                <span className="flex items-center gap-1 text-muted-foreground">
+                            <div className="flex items-center justify-between gap-3 w-full">
+                              <div className="font-medium text-sm flex items-center gap-2 min-w-0">
+                                <span className="truncate">{m.name || m.id}</span>
+                                <span className="flex items-center gap-1 text-muted-foreground shrink-0">
                                   {canReason && (
                                     <LightBulbIcon
                                       className="h-4 w-4"
@@ -801,6 +803,11 @@ export default function SettingsDrawer() {
                                   )}
                                 </span>
                               </div>
+                              {priceStr && (
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {priceStr}
+                                </span>
+                              )}
                               {m.name && (
                                 <div className="text-xs text-muted-foreground">{m.id}</div>
                               )}
