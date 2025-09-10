@@ -11,6 +11,7 @@ import {
   MicrophoneIcon,
   PhotoIcon,
   LightBulbIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
@@ -44,6 +45,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
   const setUI = useChatStore((s) => s.setUI);
   const ui = useChatStore((s) => s.ui);
   const [focused, setFocused] = useState(false);
+  const tutorEnabled = !!(chat ? chat.settings.tutor_mode : ui.nextTutorMode);
   const [slashIndex, setSlashIndex] = useState(0);
 
   // Slash commands: /model id, /search on|off|toggle, /reasoning none|low|medium|high
@@ -565,6 +567,23 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             >
               <MagnifyingGlassIcon className="h-4 w-4" />
             </button>
+            <button
+              className={`btn self-center ${tutorEnabled ? 'btn-primary' : 'btn-outline'}`}
+              onClick={async () => {
+                if (chat) {
+                  await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+                } else {
+                  // On welcome page: enable tutor mode for next chat and start it immediately
+                  setUI({ nextTutorMode: true });
+                  await newChat();
+                }
+              }}
+              title="Tutor mode: warm guidance + practice tools (used only when helpful)"
+              aria-label="Toggle Tutor Mode"
+              aria-pressed={tutorEnabled}
+            >
+              <AcademicCapIcon className="h-4 w-4" />
+            </button>
             {/* Show reasoning effort picker only for reasoning-capable models */}
             <ReasoningEffortMenu />
             <button
@@ -597,6 +616,18 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
           >
             <EyeIcon className="h-3.5 w-3.5" />
           </span>
+        )}
+        {chat && (
+          <button
+            className={`badge flex items-center gap-1`}
+            title="Toggle tutor mode"
+            onClick={async () => {
+              await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+            }}
+            aria-pressed={!!chat?.settings.tutor_mode}
+          >
+            <AcademicCapIcon className="h-3.5 w-3.5" /> {chat?.settings.tutor_mode ? 'Tutor On' : 'Tutor Off'}
+          </button>
         )}
         {canImageOut && (
           <span
@@ -634,7 +665,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
           if (!supportsReasoning) return null;
           if (!effort || effort === 'none') return null;
           const letter = effort === 'high' ? 'H' : effort === 'medium' ? 'M' : 'L';
-          return (
+  return (
             <span
               className="badge flex items-center gap-1"
               title={`Reasoning effort: ${effort}`}

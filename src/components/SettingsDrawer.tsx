@@ -624,6 +624,33 @@ export default function SettingsDrawer() {
             </div>
           </Section>
 
+          {/* Debug */}
+          <Section title="Debug">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-sm block">Enable debug view</label>
+                <div className="segmented">
+                  <button
+                    className={`segment ${ui?.debugMode ? 'is-active' : ''}`}
+                    onClick={() => setUI({ debugMode: true })}
+                  >
+                    On
+                  </button>
+                  <button
+                    className={`segment ${!ui?.debugMode ? 'is-active' : ''}`}
+                    onClick={() => setUI({ debugMode: false })}
+                  >
+                    Off
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Show a Debug panel under assistant messages with the exact
+                  request payload sent to OpenRouter.
+                </div>
+              </div>
+            </div>
+          </Section>
+
           {/* Models */}
           <Section title="Models">
             <div className="space-y-3">

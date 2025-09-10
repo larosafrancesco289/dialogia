@@ -5,8 +5,16 @@ export type UIState = {
   isStreaming: boolean;
   notice?: string;
   sidebarCollapsed?: boolean;
+  // Debugging
+  debugMode?: boolean;
+  // Raw request payloads keyed by assistant message id (ephemeral)
+  debugByMessageId?: Record<string, { body: string; createdAt: number }>;
   nextModel?: string;
   nextSearchWithBrave?: boolean;
+  // If no chat is open yet, allow toggling tutor mode for the next chat
+  nextTutorMode?: boolean;
+  // Tutor steering: set before next turn to bias planning
+  nextTutorNudge?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
   nextReasoningEffort?: 'none' | 'low' | 'medium' | 'high';
   nextReasoningTokens?: number;
   nextSystem?: string;
@@ -15,6 +23,9 @@ export type UIState = {
   nextMaxTokens?: number;
   nextShowThinking?: boolean;
   nextShowStats?: boolean;
+  // Tutor context fidelity for follow-up turns
+  // 'summary' keeps prompts compact; 'full' injects full quiz JSON
+  tutorContextMode?: 'summary' | 'full';
   // Privacy preference: only allow/show Zero Data Retention endpoints
   zdrOnly?: boolean;
   // Routing preference: prioritize speed or cost
@@ -46,6 +57,41 @@ export type UIState = {
       }
     >;
   };
+  // Tutor tool payloads keyed by assistant message id
+  tutorByMessageId?: Record<
+    string,
+    {
+      title?: string;
+      mcq?: import('@/lib/types').TutorMCQItem[];
+      fillBlank?: import('@/lib/types').TutorFillBlankItem[];
+      openEnded?: import('@/lib/types').TutorOpenItem[];
+      flashcards?: import('@/lib/types').TutorFlashcardItem[];
+      // Session and planning metadata
+      session?: {
+        goal?: string;
+        duration_min?: number;
+        stage?: 'baseline' | 'teach' | 'practice' | 'reflect' | 'review';
+        focus?: string;
+        next?: string;
+        skills?: string[];
+      };
+      recommendation?: {
+        reason?: string;
+        recommendation?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
+      };
+      // User attempts (stateful, per assistant message)
+      attempts?: {
+        mcq?: Record<string, { choice?: number; done?: boolean; correct?: boolean }>;
+        fillBlank?: Record<string, { answer?: string; revealed?: boolean; correct?: boolean }>;
+        open?: Record<string, { answer?: string }>;
+      };
+      // Grading results keyed by item id
+      grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
+    }
+  >;
+  tutorProfileByChatId?: Record<string, import('@/lib/types').TutorProfile>;
+  // Per-chat ephemeral flags (not persisted)
+  tutorGreetedByChatId?: Record<string, boolean>;
 };
 
 export type StoreState = {
@@ -88,6 +134,10 @@ export type StoreState = {
   // ui
   setUI: (partial: Partial<UIState>) => void;
 
+  // tutor
+  logTutorResult: (evt: import('@/lib/types').TutorEvent) => Promise<void>;
+  loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
+
   // compare
   openCompare: () => void;
   closeCompare: () => void;
@@ -118,4 +168,6 @@ export type StoreState = {
   editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
   // utility for UI features (e.g., compare drawer inserting a result)
   appendAssistantMessage: (content: string, opts?: { modelId?: string }) => Promise<void>;
+  // tutor persistence
+  persistTutorStateForMessage: (messageId: string) => Promise<void>;
 };

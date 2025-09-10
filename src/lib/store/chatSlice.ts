@@ -3,6 +3,7 @@ import { db, saveChat, saveFolder } from '@/lib/db';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, Folder, Message } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
+import { getTutorGreeting, buildTutorContextSummary, buildTutorContextFull } from '@/lib/agent/tutor';
 
 export function createChatSlice(
   set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
@@ -33,6 +34,46 @@ export function createChatSlice(
         selectedChatId = chats[0].id;
       }
       set({ chats, folders, messages, selectedChatId } as any);
+      // Rehydrate tutor panels from persisted message payloads
+      try {
+        const tutorMap: Record<string, any> = {};
+        const updates: { chatId: string; msg: any }[] = [];
+        for (const [cid, list] of Object.entries(messages)) {
+          for (const m of list) {
+            if (m.role === 'assistant' && (m as any)?.tutor) {
+              const tutor = (m as any).tutor;
+              tutorMap[m.id] = tutor;
+              // Backfill hiddenContent if missing so the model sees data without UI showing it
+              if (!(m as any).hiddenContent) {
+                try {
+                  const recap = buildTutorContextSummary(tutor);
+                  const json = buildTutorContextFull(tutor);
+                  const parts: string[] = [];
+                  if (recap) parts.push(`Tutor Recap:\n${recap}`);
+                  if (json) parts.push(`Tutor Data JSON:\n${json}`);
+                  const hidden = parts.join('\n\n');
+                  if (hidden) {
+                    (m as any).hiddenContent = hidden;
+                    updates.push({ chatId: cid, msg: m });
+                  }
+                } catch {}
+              }
+            }
+          }
+        }
+        if (Object.keys(tutorMap).length > 0)
+          set((s) => ({ ui: { ...s.ui, tutorByMessageId: { ...(s.ui.tutorByMessageId || {}), ...tutorMap } } }));
+        // Persist any hiddenContent backfills
+        for (const u of updates) {
+          try {
+            await (await import('@/lib/db')).saveMessage(u.msg);
+          } catch {}
+        }
+      } catch {}
+      // Preload tutor profile for the selected chat into UI (if available)
+      try {
+        if (selectedChatId) await (get().loadTutorProfileIntoUI as any)(selectedChatId);
+      } catch {}
     },
 
     async newChat() {
@@ -54,10 +95,40 @@ export function createChatSlice(
           show_thinking_by_default: get().ui.nextShowThinking ?? true,
           show_stats: get().ui.nextShowStats ?? true,
           search_with_brave: get().ui.nextSearchWithBrave ?? false,
+          tutor_mode: get().ui.nextTutorMode ?? false,
         },
       };
       await saveChat(chat);
       set((s) => ({ chats: [chat, ...s.chats], selectedChatId: id }));
+      // Reset ephemeral "next" flags so they only apply to this new chat
+      set((s) => ({
+        ui: {
+          ...s.ui,
+          nextModel: undefined,
+          nextSearchWithBrave: false,
+          nextTutorMode: false,
+          nextTutorNudge: undefined,
+          nextReasoningEffort: undefined,
+          nextReasoningTokens: undefined,
+          nextSystem: undefined,
+          nextTemperature: undefined,
+          nextTopP: undefined,
+          nextMaxTokens: undefined,
+          nextShowThinking: undefined,
+          nextShowStats: undefined,
+        },
+      }));
+      // If starting a chat with tutor mode on, send a friendly greeting once.
+      if (chat.settings.tutor_mode) {
+        try {
+          const greeted = get().ui.tutorGreetedByChatId?.[id];
+          if (!greeted) {
+            const greeting = getTutorGreeting();
+            await (get().appendAssistantMessage as any)(greeting);
+            set((s) => ({ ui: { ...s.ui, tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true } } }));
+          }
+        } catch {}
+      }
     },
 
     selectChat(id: string) {
@@ -88,6 +159,7 @@ export function createChatSlice(
     async updateChatSettings(partial) {
       const id = get().selectedChatId;
       if (!id) return;
+      const before = get().chats.find((c) => c.id === id);
       set((s) => ({
         chats: s.chats.map((c) =>
           c.id === id
@@ -97,6 +169,19 @@ export function createChatSlice(
       }));
       const chat = get().chats.find((c) => c.id === id)!;
       await saveChat(chat);
+      // If tutor_mode has just been enabled for this chat, send a one‑time friendly greeting
+      try {
+        const turnedOn =
+          typeof partial?.tutor_mode === 'boolean' && before && before.settings.tutor_mode !== partial.tutor_mode && partial.tutor_mode === true;
+        if (turnedOn) {
+          const greeted = get().ui.tutorGreetedByChatId?.[id];
+          if (!greeted) {
+            const greeting = getTutorGreeting();
+            await (get().appendAssistantMessage as any)(greeting);
+            set((s) => ({ ui: { ...s.ui, tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true } } }));
+          }
+        }
+      } catch {}
     },
 
     async moveChatToFolder(chatId: string, folderId?: string) {
