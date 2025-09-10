@@ -707,6 +707,47 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 .markdown ol {
   margin: 0.5rem 0 0.9rem 1.35rem;
 }
+.markdown ul {
+  /* Tailwind preflight removes list styles; restore for markdown */
+  list-style: disc;
+}
+.markdown ol {
+  list-style: decimal;
+}
+.markdown li::marker {
+  color: var(--color-fg-muted);
+}
+.markdown ul ul {
+  list-style: circle;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+.markdown ul ul ul {
+  list-style: square;
+}
+.markdown ol ol {
+  list-style: lower-alpha;
+}
+.markdown ol ol ol {
+  list-style: lower-roman;
+}
+.markdown li > p {
+  /* Avoid extra gaps for paragraphs inside list items */
+  margin: 0.15rem 0;
+}
+/* GitHub-style task lists (remark-gfm) */
+.markdown .task-list-item {
+  list-style: none; /* remove default bullet when checkbox is present */
+}
+.markdown .contains-task-list {
+  margin-left: 0.75rem; /* align with checkbox */
+}
+.markdown input[type='checkbox'] {
+  accent-color: var(--color-accent);
+  margin-right: 0.5rem;
+  transform: translateY(1px);
+  pointer-events: none; /* keep static in chat */
+}
 .markdown li {
   margin: 0.2rem 0;
 }
@@ -728,6 +769,15 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 0.1rem 0.35rem;
+}
+.markdown kbd {
+  font-family: var(--font-mono);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 0 0.3rem;
+  font-size: 0.85em;
 }
 .markdown pre {
   position: relative;
@@ -763,6 +813,10 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 .markdown img {
   max-width: 100%;
   border-radius: 10px;
+}
+.markdown .footnotes {
+  font-size: 0.9em;
+  color: var(--color-fg-muted);
 }
 
 /* Heading anchors (rehype-slug + autolink) */

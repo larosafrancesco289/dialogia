@@ -9,6 +9,7 @@ import {
   PencilSquareIcon,
   CheckIcon,
   XMarkIcon,
+  ClipboardIcon,
 } from '@heroicons/react/24/outline';
 import { BranchIcon } from '@/components/icons/Icons';
 import RegenerateMenu from '@/components/RegenerateMenu';
@@ -37,6 +38,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const endRef = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [showJump, setShowJump] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const prefersReducedMotion = useMemo(() => {
     if (typeof window === 'undefined' || !('matchMedia' in window)) return false;
     try {
@@ -59,12 +61,15 @@ export default function MessageList({ chatId }: { chatId: string }) {
       const threshold = 100; // px
       const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
       setAtBottom(nearBottom);
-      if (nearBottom) setShowJump(false);
+      // Show the jump button whenever the user is away from the bottom
+      setShowJump(!nearBottom);
     };
     // Initialize state in case content already overflows
     onScroll();
     el.addEventListener('scroll', onScroll, { passive: true } as any);
-    return () => el.removeEventListener('scroll', onScroll as any);
+    return () => {
+      el.removeEventListener('scroll', onScroll as any);
+    };
   }, []);
 
   const scrollToBottom = (behavior: ScrollBehavior) => {
@@ -162,7 +167,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
         <div key={m.id} className={`card p-0 message-card group`}>
           {m.role === 'assistant' ? (
             <div className="relative">
-              <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+              <div className="absolute bottom-2 right-2 z-30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                 {editingId === m.id ? (
                   <div className="flex items-center gap-1">
                     <button
@@ -187,6 +192,24 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   </div>
                 ) : (
                   <div className="flex items-center gap-1">
+                    <button
+                      className="icon-button"
+                      aria-label="Copy message"
+                      title={copiedId === m.id ? 'Copied' : 'Copy message'}
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(m.content || '');
+                          setCopiedId(m.id);
+                          setTimeout(() => setCopiedId((id) => (id === m.id ? null : id)), 1200);
+                        } catch {}
+                      }}
+                    >
+                      {copiedId === m.id ? (
+                        <CheckIcon className="h-4 w-4" />
+                      ) : (
+                        <ClipboardIcon className="h-4 w-4" />
+                      )}
+                    </button>
                     {!isStreaming && (
                       <button
                         className="icon-button"
@@ -374,12 +397,12 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   )}
                 </div>
               )}
-              {/* Branching control moved to hover actions (top-right) */}
+              {/* Branching control moved to hover actions (bottom-right) */}
             </div>
           ) : (
             <div className="relative">
               {/* Edit control for user messages */}
-              <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+              <div className="absolute bottom-2 right-2 z-30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                 {editingId === m.id ? (
                   <div className="flex items-center gap-1">
                     <button
@@ -413,6 +436,26 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     }}
                   >
                     <PencilSquareIcon className="h-4 w-4" />
+                  </button>
+                )}
+                {editingId !== m.id && (
+                  <button
+                    className="icon-button ml-1"
+                    aria-label="Copy message"
+                    title={copiedId === m.id ? 'Copied' : 'Copy message'}
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(m.content || '');
+                        setCopiedId(m.id);
+                        setTimeout(() => setCopiedId((id) => (id === m.id ? null : id)), 1200);
+                      } catch {}
+                    }}
+                  >
+                    {copiedId === m.id ? (
+                      <CheckIcon className="h-4 w-4" />
+                    ) : (
+                      <ClipboardIcon className="h-4 w-4" />
+                    )}
                   </button>
                 )}
               </div>
@@ -506,26 +549,29 @@ export default function MessageList({ chatId }: { chatId: string }) {
         <div
           style={{
             position: 'sticky',
-            bottom: 12,
+            bottom: 24,
             display: 'flex',
             justifyContent: 'flex-end',
-            zIndex: 50,
+            zIndex: 60,
+            pointerEvents: 'none',
           }}
         >
           <button
-            className="btn btn-outline btn-sm"
+            className="icon-button glass"
             aria-label="Jump to latest"
+            title="Jump to latest"
             onClick={() => {
               scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
               setShowJump(false);
               setAtBottom(true);
             }}
+            style={{ pointerEvents: 'auto', width: 36, height: 36 }}
           >
-            <ChevronDownIcon className="h-4 w-4" />
-            <span style={{ marginLeft: 6 }}>Jump to latest</span>
+            <ChevronDownIcon className="h-5 w-5" />
           </button>
         </div>
       )}
+      
       {/* Typing indicator is now rendered inline within the latest assistant message */}
       <div ref={endRef} />
       {lightbox && (
