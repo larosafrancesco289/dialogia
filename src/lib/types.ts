@@ -22,6 +22,21 @@ export type Message = {
   content: string;
   // Not shown in the UI, but included in LLM conversation history
   hiddenContent?: string;
+  // Snapshot of the exact system prompt used for this assistant message
+  // so regen can reproduce the same context even if chat settings changed.
+  systemSnapshot?: string;
+  // Snapshot of generation settings used for this assistant message
+  // (temperature, top_p, tokens, reasoning, and feature toggles)
+  genSettings?: {
+    temperature?: number;
+    top_p?: number;
+    max_tokens?: number;
+    reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
+    reasoning_tokens?: number;
+    search_with_brave?: boolean;
+    tutor_mode?: boolean;
+    providerSort?: 'price' | 'throughput';
+  };
   // OpenRouter: file parsing annotations returned by assistant (e.g., PDF parsing)
   // When present, we include them in subsequent requests to skip re-parsing costs.
   annotations?: any;
