@@ -12,10 +12,12 @@ export function BraveSourcesPanel({
   data,
   expanded,
   onToggle,
+  provider = 'Brave',
 }: {
   data: BraveData;
   expanded: boolean;
   onToggle: () => void;
+  provider?: 'Brave' | 'OpenRouter';
 }) {
   if (data.status === 'loading') {
     return (
@@ -23,7 +25,7 @@ export function BraveSourcesPanel({
         <div className="thinking-panel">
           <div className="flex items-center gap-2 text-sm">
             <span className="loading-dot" aria-hidden />
-            <span>Searching the web with Brave…</span>
+            <span>Searching the web with {provider}…</span>
           </div>
           <div className="thinking-shimmer" aria-hidden />
         </div>
@@ -60,7 +62,7 @@ export function BraveSourcesPanel({
       <div className="px-4 pt-3">
         <div className="thinking-panel">
           <div className="flex items-center justify-between mb-1">
-            <div className="text-xs text-muted-foreground">Web search results (Brave)</div>
+            <div className="text-xs text-muted-foreground">Web search results ({provider})</div>
             <button
               className="icon-button"
               aria-label={expanded ? 'Hide sources' : 'Show sources'}

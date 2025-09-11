@@ -101,6 +101,7 @@ export function createChatSlice(
           show_thinking_by_default: get().ui.nextShowThinking ?? true,
           show_stats: get().ui.nextShowStats ?? true,
           search_with_brave: get().ui.nextSearchWithBrave ?? false,
+          search_provider: get().ui.nextSearchProvider ?? 'brave',
           tutor_mode: get().ui.nextTutorMode ?? false,
         },
       };
@@ -112,6 +113,7 @@ export function createChatSlice(
           ...s.ui,
           nextModel: undefined,
           nextSearchWithBrave: false,
+          nextSearchProvider: undefined,
           nextTutorMode: false,
           nextTutorNudge: undefined,
           nextReasoningEffort: undefined,
