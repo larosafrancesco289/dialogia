@@ -172,6 +172,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
   const supportsReasoning = isReasoningSupported(modelMeta);
   const canImageOut = isImageOutputSupported(modelMeta);
   const searchEnabled = chat ? !!chat.settings.search_with_brave : !!ui.nextSearchWithBrave;
+  const searchProvider = (chat?.settings as any)?.search_provider || ui.nextSearchProvider || 'brave';
 
   // Build slash command suggestions
   type Suggestion = { title: string; insert: string; subtitle?: string };
@@ -576,8 +577,8 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
                 if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
                 else setUI({ nextSearchWithBrave: !ui.nextSearchWithBrave });
               }}
-              title="Use web search (Brave) to augment the next message"
-              aria-label="Toggle Brave Search"
+              title={`Use web search (${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'}) to augment the next message`}
+              aria-label={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} Search`}
               aria-pressed={!!searchEnabled}
             >
               <MagnifyingGlassIcon className="h-4 w-4" />
@@ -666,14 +667,14 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
         {
           <button
             className="badge flex items-center gap-1"
-            title="Toggle Brave web search for next message"
+            title={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} web search for next message`}
             onClick={() => {
               if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
               else setUI({ nextSearchWithBrave: !ui.nextSearchWithBrave });
             }}
             aria-pressed={!!searchEnabled}
           >
-            <MagnifyingGlassIcon className="h-3.5 w-3.5" /> {searchEnabled ? 'On' : 'Off'}
+            <MagnifyingGlassIcon className="h-3.5 w-3.5" /> {(searchProvider === 'openrouter' ? 'OR' : 'Brave') + ' ' + (searchEnabled ? 'On' : 'Off')}
           </button>
         }
         {(() => {

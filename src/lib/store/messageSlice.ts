@@ -250,13 +250,17 @@ export function createMessageSlice(
         await get().renameChat(chat.id, draft || 'New Chat');
       }
 
-      const attemptPlanning = !!chat.settings.search_with_brave || !!chat.settings.tutor_mode;
+      const searchEnabled = !!chat.settings.search_with_brave;
+      const searchProvider: 'brave' | 'openrouter' =
+        ((chat.settings as any)?.search_provider as any) || 'brave';
+      const attemptPlanning =
+        !!chat.settings.tutor_mode || (searchEnabled && searchProvider === 'brave');
       const providerSort = get().ui.routePreference === 'cost' ? 'price' : 'throughput';
       const toolPreambleText =
         'You have access to a function tool named "web_search" that retrieves up-to-date web results.\n\nWhen you need current, factual, or source-backed information, call the tool first. If you call a tool, respond with ONLY tool_calls (no user-facing text). After the tool returns, write the final answer that cites sources inline as [n] using the numbering provided.\n\nweb_search(args): { query: string, count?: integer 1-10 }. Choose a focused query and a small count, and avoid unnecessary calls.';
       const tutorPreambleText = getTutorPreamble();
       const preambles: string[] = [];
-      if (chat.settings.search_with_brave) preambles.push(toolPreambleText);
+      if (searchEnabled && searchProvider === 'brave') preambles.push(toolPreambleText);
       if (chat.settings.tutor_mode && tutorPreambleText) preambles.push(tutorPreambleText);
       if (chat.settings.tutor_mode) {
         try {
@@ -284,7 +288,7 @@ export function createMessageSlice(
           const tutorTools = chat.settings.tutor_mode
             ? (getTutorToolDefinitions() as any[])
             : ([] as any[]);
-          const baseTools = chat.settings.search_with_brave
+          const baseTools = searchEnabled && searchProvider === 'brave'
             ? [
                 {
                   type: 'function',
@@ -781,33 +785,37 @@ export function createMessageSlice(
                 10,
               );
               if (!rawQuery) rawQuery = content.trim().slice(0, 256);
-              set((s) => ({
-                ui: {
-                  ...s.ui,
-                  braveByMessageId: {
-                    ...(s.ui.braveByMessageId || {}),
-                    [assistantMsg.id]: { query: rawQuery, status: 'loading' },
+              if (searchProvider === 'brave')
+                set((s) => ({
+                  ui: {
+                    ...s.ui,
+                    braveByMessageId: {
+                      ...(s.ui.braveByMessageId || {}),
+                      [assistantMsg.id]: { query: rawQuery, status: 'loading' },
+                    },
                   },
-                },
-              }));
+                }));
               try {
                 // Per-request controller with timeout, tied to the main controller as well
                 const fetchController = new AbortController();
                 const onAbort = () => fetchController.abort();
                 controller.signal.addEventListener('abort', onAbort);
                 const to = setTimeout(() => fetchController.abort(), 20000);
-                const res = await fetch(
-                  `/api/brave?q=${encodeURIComponent(rawQuery)}&count=${count}`,
-                  {
-                    method: 'GET',
-                    headers: { Accept: 'application/json' },
-                    cache: 'no-store',
-                    signal: fetchController.signal,
-                  } as any,
-                );
+                const res =
+                  searchProvider === 'brave'
+                    ? await fetch(
+                        `/api/brave?q=${encodeURIComponent(rawQuery)}&count=${count}`,
+                        {
+                          method: 'GET',
+                          headers: { Accept: 'application/json' },
+                          cache: 'no-store',
+                          signal: fetchController.signal,
+                        } as any,
+                      )
+                    : undefined;
                 clearTimeout(to);
                 controller.signal.removeEventListener('abort', onAbort);
-                if (res.ok) {
+                if (res && res.ok) {
                   const data: any = await res.json();
                   const results = (data?.results || []) as any[];
                   set((s) => ({
@@ -835,7 +843,7 @@ export function createMessageSlice(
                     content: jsonPayload,
                   } as any);
                 } else {
-                  if (res.status === 400)
+                  if (res && res.status === 400)
                     set((s) => ({ ui: { ...s.ui, notice: 'Missing BRAVE_SEARCH_API_KEY' } }));
                   convo.push({
                     role: 'tool',
@@ -845,20 +853,21 @@ export function createMessageSlice(
                   } as any);
                 }
               } catch {
-                set((s) => ({
-                  ui: {
-                    ...s.ui,
-                    braveByMessageId: {
-                      ...(s.ui.braveByMessageId || {}),
-                      [assistantMsg.id]: {
-                        query: rawQuery,
-                        status: 'error',
-                        results: [],
-                        error: 'Network error',
+                if (searchProvider === 'brave')
+                  set((s) => ({
+                    ui: {
+                      ...s.ui,
+                      braveByMessageId: {
+                        ...(s.ui.braveByMessageId || {}),
+                        [assistantMsg.id]: {
+                          query: rawQuery,
+                          status: 'error',
+                          results: [],
+                          error: 'Network error',
+                        },
                       },
                     },
-                  },
-                }));
+                  }));
                 convo.push({
                   role: 'tool',
                   name: 'web_search',
@@ -867,7 +876,7 @@ export function createMessageSlice(
                 } as any);
               }
             }
-            const followup = chat.settings.search_with_brave
+            const followup = searchEnabled && searchProvider === 'brave'
               ? 'Write the final answer. Cite sources inline as [n].'
               : 'Continue the lesson concisely. Give brief guidance and next step. Do not repeat items already rendered.';
             convo.push({ role: 'user', content: followup } as any);
@@ -884,7 +893,7 @@ export function createMessageSlice(
             )
             .join('\n');
           const sourcesBlock =
-            usedTool && linesForSystem
+            usedTool && linesForSystem && searchProvider === 'brave'
               ? `\n\nWeb search results (Brave):\n${linesForSystem}\n\nInstructions: Use these results to answer and cite sources inline as [n].`
               : '';
           const finalSystem = `${baseSystem}${sourcesBlock}`;
@@ -899,6 +908,7 @@ export function createMessageSlice(
               reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
               reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
               search_with_brave: !!chat.settings.search_with_brave,
+              search_provider: searchProvider,
               tutor_mode: !!chat.settings.tutor_mode,
               providerSort,
             } as any;
@@ -977,7 +987,14 @@ export function createMessageSlice(
               if (providerSort === 'price' || providerSort === 'throughput') {
                 debugBody.provider = { sort: providerSort };
               }
-              if (Array.isArray(plugins) && plugins.length > 0) debugBody.plugins = plugins;
+              // For standard mode, include PDF parser and OpenRouter web plugin when selected
+              const combinedPluginsStd = (() => {
+                const arr: any[] = [];
+                if (Array.isArray(plugins) && plugins.length > 0) arr.push(...plugins);
+                if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
+                return arr;
+              })();
+              if (combinedPluginsStd.length > 0) debugBody.plugins = combinedPluginsStd;
               set((s) => ({
                 ui: {
                   ...s.ui,
@@ -1008,8 +1025,22 @@ export function createMessageSlice(
               tools: supportsTools ? (toolDefinition as any) : undefined,
               tool_choice: supportsTools ? ('none' as any) : undefined,
               providerSort,
-              plugins,
+              plugins: (() => {
+                const arr: any[] = [];
+                if (Array.isArray(plugins) && plugins.length > 0) arr.push(...plugins);
+                if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
+                return arr.length > 0 ? arr : undefined;
+              })(),
               callbacks: {
+                onAnnotations: (ann) => {
+                  set((s) => {
+                    const list = s.messages[chatId] ?? [];
+                    const updated = list.map((m) =>
+                      m.id === assistantMsg.id ? ({ ...m, annotations: ann } as any) : m,
+                    );
+                    return { messages: { ...s.messages, [chatId]: updated } } as any;
+                  });
+                },
                 onImage: (dataUrl) => {
                   set((s) => {
                     const list = s.messages[chatId] ?? [];
@@ -1183,7 +1214,13 @@ export function createMessageSlice(
             if (providerSort === 'price' || providerSort === 'throughput') {
               debugBody.provider = { sort: providerSort };
             }
-            if (Array.isArray(plugins) && plugins.length > 0) debugBody.plugins = plugins;
+            const combinedPluginsStd = (() => {
+              const arr: any[] = [];
+              if (Array.isArray(plugins) && plugins.length > 0) arr.push(...plugins);
+              if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
+              return arr;
+            })();
+            if (combinedPluginsStd.length > 0) debugBody.plugins = combinedPluginsStd;
             set((s) => ({
               ui: {
                 ...s.ui,
@@ -1209,7 +1246,12 @@ export function createMessageSlice(
             reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
             signal: controller.signal,
             providerSort,
-            plugins,
+            plugins: (() => {
+              const arr: any[] = [];
+              if (Array.isArray(plugins) && plugins.length > 0) arr.push(...plugins);
+              if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
+              return arr.length > 0 ? arr : undefined;
+            })(),
             callbacks: {
               onAnnotations: (ann) => {
                 // Persist annotations on the assistant message so future turns can skip PDF re-parsing
@@ -1529,6 +1571,9 @@ export function createMessageSlice(
             };
             if (hadPdfEarlier)
               debugBody.plugins = [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }];
+            if ((genSnapshot?.search_provider || (chat.settings as any)?.search_provider) === 'openrouter') {
+              debugBody.plugins = [...(debugBody.plugins || []), { id: 'web' }];
+            }
             if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
             if (typeof tempUsed === 'number') debugBody.temperature = tempUsed;
             if (typeof topPUsed === 'number') debugBody.top_p = topPUsed;
@@ -1570,9 +1615,13 @@ export function createMessageSlice(
             reasoning_tokens: rTokUsed,
             signal: controller.signal,
             providerSort: genSnapshot?.providerSort,
-            plugins: hadPdfEarlier
-              ? [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }]
-              : undefined,
+            plugins: (() => {
+              const arr: any[] = [];
+              if (hadPdfEarlier) arr.push({ id: 'file-parser', pdf: { engine: 'pdf-text' } });
+              const prov = genSnapshot?.search_provider || (chat.settings as any)?.search_provider;
+              if (prov === 'openrouter') arr.push({ id: 'web' });
+              return arr.length > 0 ? arr : undefined;
+            })(),
             callbacks: {
               onAnnotations: (ann) => {
                 set((s) => {

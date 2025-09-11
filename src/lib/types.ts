@@ -11,6 +11,8 @@ export type ChatSettings = {
   show_stats?: boolean; // UI preference only
   // Optional web search augmentation using Brave Search API
   search_with_brave?: boolean;
+  // Web search provider selection (defaults to 'brave' for backward compatibility)
+  search_provider?: 'brave' | 'openrouter';
   // Tutor mode: enables pedagogy prompt + tutor tools
   tutor_mode?: boolean;
 };
@@ -34,6 +36,7 @@ export type Message = {
     reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
     reasoning_tokens?: number;
     search_with_brave?: boolean;
+    search_provider?: 'brave' | 'openrouter';
     tutor_mode?: boolean;
     providerSort?: 'price' | 'throughput';
   };

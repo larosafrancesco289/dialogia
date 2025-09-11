@@ -389,6 +389,34 @@ export default function SettingsDrawer() {
               <div className="text-xs text-muted-foreground">
                 This is sent at the start of the chat to steer behavior.
               </div>
+
+              <div className="soft-divider" />
+              <div className="space-y-1">
+                <label className="text-sm block">Web Search provider</label>
+                <div className="segmented">
+                  <button
+                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'brave') === 'brave' ? 'is-active' : ''}`}
+                    onClick={() => {
+                      if (chat) updateChatSettings({ search_provider: 'brave' } as any);
+                      else setUI({ nextSearchProvider: 'brave' } as any);
+                    }}
+                  >
+                    Brave
+                  </button>
+                  <button
+                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'brave') === 'openrouter' ? 'is-active' : ''}`}
+                    onClick={() => {
+                      if (chat) updateChatSettings({ search_provider: 'openrouter' } as any);
+                      else setUI({ nextSearchProvider: 'openrouter' } as any);
+                    }}
+                  >
+                    OpenRouter
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Brave uses local function-calling; OpenRouter injects the web plugin to include citations.
+                </div>
+              </div>
             </div>
           </Section>
 
@@ -868,6 +896,7 @@ export default function SettingsDrawer() {
                   reasoning_tokens: reasoningTokens,
                   show_thinking_by_default: showThinking,
                   show_stats: showStats,
+                  // keep chosen provider if present in UI for next-only case ignored here
                 });
               } else {
                 // Persist defaults for the next chat when no chat exists
@@ -880,6 +909,8 @@ export default function SettingsDrawer() {
                   nextReasoningTokens: reasoningTokens,
                   nextShowThinking: showThinking,
                   nextShowStats: showStats,
+                  // ensure provider selection from welcome page is retained
+                  nextSearchProvider: (ui as any)?.nextSearchProvider ?? (chat as any)?.settings?.search_provider ?? 'brave',
                 });
               }
               closeWithAnim();

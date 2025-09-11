@@ -11,6 +11,7 @@ export type UIState = {
   debugByMessageId?: Record<string, { body: string; createdAt: number }>;
   nextModel?: string;
   nextSearchWithBrave?: boolean;
+  nextSearchProvider?: 'brave' | 'openrouter';
   // If no chat is open yet, allow toggling tutor mode for the next chat
   nextTutorMode?: boolean;
   // Tutor steering: set before next turn to bias planning
