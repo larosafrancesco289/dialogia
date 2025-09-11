@@ -13,6 +13,7 @@ import {
   PhotoIcon,
   LightBulbIcon,
   AcademicCapIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
@@ -33,6 +34,7 @@ import { DEFAULT_MODEL_ID } from '@/lib/constants';
 export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 'hero' }) {
   const send = useChatStore((s) => s.sendUserMessage);
   const newChat = useChatStore((s) => s.newChat);
+  // DeepResearch works as a toggle like web search; handled in sendUserMessage
   const { chats, selectedChatId } = useChatStore(
     (s) => ({ chats: s.chats, selectedChatId: s.selectedChatId }),
     shallow,
@@ -61,6 +63,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
   const [focused, setFocused] = useState(false);
   const tutorEnabled = !!(chat ? chat.settings.tutor_mode : uiNext.nextTutorMode);
   const [slashIndex, setSlashIndex] = useState(0);
+  const deepEnabled = useChatStore((s) => !!s.ui.nextDeepResearch);
 
   // Slash commands: /model id, /search on|off|toggle, /reasoning none|low|medium|high
   const trySlashCommand = async (raw: string): Promise<boolean> => {
@@ -156,6 +159,8 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     if (!chat) await newChat();
     await send(value, { attachments: toSend });
   };
+
+  // DeepResearch toggles like web search; actual call happens on send
 
   // Autofocus on mount and when chat changes or streaming stops
   useEffect(() => {
@@ -614,6 +619,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             >
               <AcademicCapIcon className="h-4 w-4" />
             </button>
+            {/* DeepResearch toggle moved into ReasoningEffortMenu to live alongside effort control */}
             {/* Show reasoning effort picker only for reasoning-capable models */}
             <ReasoningEffortMenu />
             <button

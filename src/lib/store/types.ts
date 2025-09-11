@@ -12,6 +12,8 @@ export type UIState = {
   nextModel?: string;
   nextSearchWithBrave?: boolean;
   nextSearchProvider?: 'brave' | 'openrouter';
+  // Toggle DeepResearch for the next send from composer
+  nextDeepResearch?: boolean;
   // If no chat is open yet, allow toggling tutor mode for the next chat
   nextTutorMode?: boolean;
   // Tutor steering: set before next turn to bias planning

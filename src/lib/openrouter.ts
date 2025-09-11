@@ -1,5 +1,11 @@
 import type { ORModel } from '@/lib/types';
-const USE_PROXY = process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
+// Only use the Next.js proxy when running in the browser. On the server,
+// relative URLs like "/api/openrouter/..." are not valid for global fetch,
+// which causes "Failed to parse URL" errors in server-side features
+// (e.g., DeepResearch). Use direct OpenRouter calls on the server where the
+// OPENROUTER_API_KEY is available.
+const IS_BROWSER = typeof window !== 'undefined';
+const USE_PROXY = IS_BROWSER && process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
 
 const OR_BASE = 'https://openrouter.ai/api/v1' as const;
 
@@ -159,6 +165,7 @@ export async function chatCompletion(params: {
   reasoning_tokens?: number;
   tools?: any[];
   tool_choice?: 'auto' | { type: 'function'; function: { name: string } };
+  parallel_tool_calls?: boolean;
   signal?: AbortSignal;
   providerSort?: 'price' | 'throughput';
   plugins?: any[];
@@ -175,6 +182,7 @@ export async function chatCompletion(params: {
     reasoning_tokens,
     tools,
     tool_choice,
+    parallel_tool_calls,
     signal,
     providerSort,
   } = params;
@@ -190,6 +198,7 @@ export async function chatCompletion(params: {
   if (Object.keys(reasoningConfig).length > 0) body.reasoning = reasoningConfig;
   if (Array.isArray(tools) && tools.length > 0) body.tools = tools;
   if (tool_choice) body.tool_choice = tool_choice;
+  if (typeof parallel_tool_calls === 'boolean') body.parallel_tool_calls = parallel_tool_calls;
   if (providerSort === 'price' || providerSort === 'throughput') {
     body.provider = { ...(body.provider || {}), sort: providerSort };
   }
@@ -239,6 +248,7 @@ export async function streamChatCompletion(params: {
   // Tool calling (optional)
   tools?: any[];
   tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+  parallel_tool_calls?: boolean;
   signal?: AbortSignal;
   callbacks?: StreamCallbacks;
   providerSort?: 'price' | 'throughput';
@@ -274,6 +284,7 @@ export async function streamChatCompletion(params: {
   // Tools (optional). Always include when provided so the router can validate schemas.
   if (Array.isArray(params.tools) && params.tools.length > 0) body.tools = params.tools;
   if (params.tool_choice) body.tool_choice = params.tool_choice as any;
+  if (typeof params.parallel_tool_calls === 'boolean') body.parallel_tool_calls = params.parallel_tool_calls;
   if (providerSort === 'price' || providerSort === 'throughput') {
     body.provider = { ...(body.provider || {}), sort: providerSort };
   }

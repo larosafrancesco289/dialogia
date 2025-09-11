@@ -74,6 +74,7 @@ Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/star
   - PDFs: sent as OpenRouter file blocks (parsed downstream; no local OCR).
 - Reasoning: toggle effort in the composer for thinking models; view “Thinking” panel per message.
 - Web search: toggle the Brave icon to ground the next reply with sources.
+- DeepResearch UI: click the beaker icon in the composer to run multi-step web research on the current input. Results appear as an assistant message with a sources panel.
 - Compare: click the grid icon in the header to run a prompt across multiple models and review metrics.
 - Slash commands:
   - `/model <id|name>` — set the model.
