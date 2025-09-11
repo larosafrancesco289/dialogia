@@ -44,7 +44,7 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
         <ArrowPathIcon className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 z-40 card p-2 w-56 popover">
+        <div className="absolute right-0 bottom-full mb-2 z-40 card p-2 w-56 popover">
           <div className="text-xs text-muted-foreground px-1 pb-1">Choose model</div>
           {options.map((o) => (
             <div
