@@ -43,6 +43,7 @@ export const useChatStore = create<StoreState>()(
           tutorContextMode: s.ui.tutorContextMode,
           nextModel: s.ui.nextModel,
           nextSearchWithBrave: s.ui.nextSearchWithBrave,
+          nextDeepResearch: s.ui.nextDeepResearch,
           nextSearchProvider: s.ui.nextSearchProvider,
           nextSystem: s.ui.nextSystem,
           nextTemperature: s.ui.nextTemperature,

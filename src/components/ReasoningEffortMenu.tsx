@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import { LightBulbIcon } from '@heroicons/react/24/outline';
+import { LightBulbIcon, BeakerIcon } from '@heroicons/react/24/outline';
 import { findModelById, isReasoningSupported } from '@/lib/models';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 
@@ -14,6 +14,7 @@ export default function ReasoningEffortMenu() {
   const updateSettings = useChatStore((s) => s.updateChatSettings);
   const ui = useChatStore((s) => s.ui);
   const setUI = useChatStore((s) => s.setUI);
+  const deepEnabled = useChatStore((s) => !!s.ui.nextDeepResearch);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -59,8 +60,8 @@ export default function ReasoningEffortMenu() {
         <LightBulbIcon className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute right-0 bottom-full mb-2 z-40 card p-2 w-44 popover">
-          <div className="text-xs text-muted-foreground px-1 pb-1">Reasoning effort</div>
+        <div className="absolute right-0 bottom-full mb-2 z-40 card p-2 w-52 popover">
+          <div className="text-xs text-muted-foreground px-1 pb-1">Reasoning</div>
           {(
             [
               { key: 'none', label: 'None' },
@@ -77,6 +78,19 @@ export default function ReasoningEffortMenu() {
               {o.label}
             </div>
           ))}
+          <div className="divider my-2" />
+          <button
+            className={`menu-item flex items-center gap-2 ${deepEnabled ? 'font-semibold' : ''}`}
+            onClick={() => setUI({ nextDeepResearch: !deepEnabled })}
+            title="DeepResearch: multi-step web research for the next send"
+            aria-pressed={deepEnabled}
+          >
+            <BeakerIcon className="h-4 w-4" />
+            <span>DeepResearch</span>
+            <span className={`ml-auto text-xs ${deepEnabled ? 'text-primary' : 'text-muted-foreground'}`}>
+              {deepEnabled ? 'On' : 'Off'}
+            </span>
+          </button>
         </div>
       )}
     </div>

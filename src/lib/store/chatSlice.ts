@@ -114,6 +114,8 @@ export function createChatSlice(
           nextModel: undefined,
           nextSearchWithBrave: false,
           nextSearchProvider: undefined,
+          // Ensure DeepResearch is not auto-enabled for new chats
+          nextDeepResearch: false,
           nextTutorMode: false,
           nextTutorNudge: undefined,
           nextReasoningEffort: undefined,

@@ -237,6 +237,74 @@ export function createMessageSlice(
       await saveMessage(userMsg);
       await saveMessage(assistantMsg);
 
+      // DeepResearch branch: if toggled, use server endpoint and attach sources panel
+      if (get().ui.nextDeepResearch) {
+        try {
+          const controller = new AbortController();
+          set((s) => ({ ...s, _controller: controller as any }) as any);
+          set((s) => ({ ui: { ...s.ui, isStreaming: true } }));
+          // Indicate loading in sources panel under this assistant message
+          set((s) => ({
+            ui: {
+              ...s.ui,
+              braveByMessageId: {
+                ...(s.ui.braveByMessageId || {}),
+                [assistantMsg.id]: { query: content.trim(), status: 'loading' },
+              },
+            },
+          }));
+          const res = await fetch('/api/deep-research', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task: content, model: chat.settings.model }),
+            cache: 'no-store',
+            signal: controller.signal,
+          } as any);
+          const json: any = await res.json().catch(() => ({}));
+          const sources = Array.isArray(json?.sources) ? json.sources : [];
+          if (!res.ok) throw new Error(json?.error || `deep_failed_${res.status}`);
+          // Update sources panel and content
+          set((s) => ({
+            ui: {
+              ...s.ui,
+              braveByMessageId: {
+                ...(s.ui.braveByMessageId || {}),
+                [assistantMsg.id]: { query: content.trim(), status: 'done', results: sources },
+              },
+              // Toggle off after use (like a sticky toggle, not one-shot)
+              nextDeepResearch: s.ui.nextDeepResearch,
+            },
+          }));
+          const final = {
+            ...assistantMsg,
+            content: json?.answer || '',
+          } as any;
+          set((s) => {
+            const list = s.messages[chatId] ?? [];
+            const updated = list.map((m) => (m.id === assistantMsg.id ? final : m));
+            return { messages: { ...s.messages, [chatId]: updated } } as any;
+          });
+          await saveMessage(final);
+          set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
+          set((s) => ({ ...s, _controller: undefined }) as any);
+        } catch (e: any) {
+          const msg = String(e?.message || 'DeepResearch failed');
+          set((s) => ({
+            ui: {
+              ...s.ui,
+              isStreaming: false,
+              notice: `DeepResearch: ${msg}`,
+              braveByMessageId: {
+                ...(s.ui.braveByMessageId || {}),
+                [assistantMsg.id]: { query: content.trim(), status: 'error', error: msg },
+              },
+            },
+          }));
+          set((s) => ({ ...s, _controller: undefined }) as any);
+        }
+        return;
+      }
+
       const msgs = buildChatCompletionMessages({
         chat,
         priorMessages: priorList,
