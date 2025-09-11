@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {
     typedRoutes: true,
-    optimizePackageImports: ['zustand'],
+    optimizePackageImports: ['zustand', '@heroicons/react'],
   },
 };
 

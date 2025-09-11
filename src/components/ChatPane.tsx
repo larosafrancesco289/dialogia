@@ -1,12 +1,15 @@
 'use client';
 import { useChatStore } from '@/lib/store';
+import { shallow } from 'zustand/shallow';
 import MessageList from '@/components/MessageList';
 import Composer from '@/components/Composer';
 import WelcomeHero from '@/components/WelcomeHero';
 
 export default function ChatPane() {
-  const chats = useChatStore((s) => s.chats);
-  const selectedChatId = useChatStore((s) => s.selectedChatId);
+  const { chats, selectedChatId } = useChatStore(
+    (s) => ({ chats: s.chats, selectedChatId: s.selectedChatId }),
+    shallow,
+  );
   const chat = chats.find((c) => c.id === selectedChatId);
   if (!chat) return <WelcomeHero />;
 

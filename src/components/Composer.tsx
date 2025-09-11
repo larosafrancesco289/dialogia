@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
+import { shallow } from 'zustand/shallow';
 import {
   StopIcon,
   MagnifyingGlassIcon,
@@ -32,7 +33,10 @@ import { DEFAULT_MODEL_ID } from '@/lib/constants';
 export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 'hero' }) {
   const send = useChatStore((s) => s.sendUserMessage);
   const newChat = useChatStore((s) => s.newChat);
-  const { chats, selectedChatId } = useChatStore();
+  const { chats, selectedChatId } = useChatStore(
+    (s) => ({ chats: s.chats, selectedChatId: s.selectedChatId }),
+    shallow,
+  );
   const chat = chats.find((c) => c.id === selectedChatId);
   const models = useChatStore((s) => s.models);
   const [text, setText] = useState('');
@@ -43,9 +47,19 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
   const stop = useChatStore((s) => s.stopStreaming);
   const updateSettings = useChatStore((s) => s.updateChatSettings);
   const setUI = useChatStore((s) => s.setUI);
-  const ui = useChatStore((s) => s.ui);
+  const uiNext = useChatStore(
+    (s) => ({
+      nextTutorMode: s.ui.nextTutorMode,
+      nextSearchWithBrave: s.ui.nextSearchWithBrave,
+      nextSearchProvider: s.ui.nextSearchProvider,
+      nextModel: s.ui.nextModel,
+      nextReasoningEffort: s.ui.nextReasoningEffort,
+      nextReasoningTokens: s.ui.nextReasoningTokens,
+    }),
+    shallow,
+  );
   const [focused, setFocused] = useState(false);
-  const tutorEnabled = !!(chat ? chat.settings.tutor_mode : ui.nextTutorMode);
+  const tutorEnabled = !!(chat ? chat.settings.tutor_mode : uiNext.nextTutorMode);
   const [slashIndex, setSlashIndex] = useState(0);
 
   // Slash commands: /model id, /search on|off|toggle, /reasoning none|low|medium|high
@@ -57,7 +71,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     const arg = parts.join(' ').trim();
     const applyToChat = !!chat;
 
-    const currentModelId = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
+    const currentModelId = chat?.settings.model || uiNext.nextModel || DEFAULT_MODEL_ID;
     const currentModel = findModelById(models, currentModelId);
 
     const setNotice = (msg: string) => setUI({ notice: msg });
@@ -74,7 +88,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
         await updateSettings({ search_with_brave: next });
         setNotice(`Web search: ${next ? 'On' : 'Off'}`);
       } else {
-        const prev = !!ui.nextSearchWithBrave;
+        const prev = !!uiNext.nextSearchWithBrave;
         const next = on == null ? !prev : on;
         setUI({ nextSearchWithBrave: next });
         setNotice(`Web search (next): ${next ? 'On' : 'Off'}`);
@@ -159,20 +173,20 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
   // Lightweight, live prompt token and cost estimate
   const tokenAndCost = useMemo(() => {
     const promptTokens = estimateTokens(text) || 0;
-    const mid = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
+    const mid = chat?.settings.model || uiNext.nextModel || DEFAULT_MODEL_ID;
     const modelMeta = findModelById(models, mid);
     const cost = computeCost({ model: modelMeta, promptTokens });
     return { promptTokens, currency: cost.currency, total: cost.total };
-  }, [text, chat?.settings.model, ui.nextModel, models]);
+  }, [text, chat?.settings.model, uiNext.nextModel, models]);
 
-  const modelId = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
+  const modelId = chat?.settings.model || uiNext.nextModel || DEFAULT_MODEL_ID;
   const modelMeta = findModelById(models, modelId);
   const canVision = isVisionSupported(modelMeta);
   const canAudio = isAudioInputSupported(modelMeta);
   const supportsReasoning = isReasoningSupported(modelMeta);
   const canImageOut = isImageOutputSupported(modelMeta);
-  const searchEnabled = chat ? !!chat.settings.search_with_brave : !!ui.nextSearchWithBrave;
-  const searchProvider = (chat?.settings as any)?.search_provider || ui.nextSearchProvider || 'brave';
+  const searchEnabled = chat ? !!chat.settings.search_with_brave : !!uiNext.nextSearchWithBrave;
+  const searchProvider = (chat?.settings as any)?.search_provider || uiNext.nextSearchProvider || 'brave';
 
   // Build slash command suggestions
   type Suggestion = { title: string; insert: string; subtitle?: string };
@@ -574,8 +588,8 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             <button
               className={`btn self-center ${searchEnabled ? 'btn-primary' : 'btn-outline'}`}
               onClick={() => {
-                if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
-                else setUI({ nextSearchWithBrave: !ui.nextSearchWithBrave });
+              if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
+              else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
               }}
               title={`Use web search (${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'}) to augment the next message`}
               aria-label={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} Search`}
@@ -586,13 +600,13 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             <button
               className={`btn self-center ${tutorEnabled ? 'btn-primary' : 'btn-outline'}`}
               onClick={async () => {
-                if (chat) {
-                  await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
-                } else {
-                  // On welcome page: enable tutor mode for next chat and start it immediately
-                  setUI({ nextTutorMode: true });
-                  await newChat();
-                }
+              if (chat) {
+                await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+              } else {
+                // On welcome page: enable tutor mode for next chat and start it immediately
+                setUI({ nextTutorMode: true });
+                await newChat();
+              }
               }}
               title="Tutor mode: warm guidance + practice tools (used only when helpful)"
               aria-label="Toggle Tutor Mode"
@@ -670,7 +684,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             title={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} web search for next message`}
             onClick={() => {
               if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
-              else setUI({ nextSearchWithBrave: !ui.nextSearchWithBrave });
+              else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
             }}
             aria-pressed={!!searchEnabled}
           >
@@ -678,7 +692,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
           </button>
         }
         {(() => {
-          const effort = chat?.settings.reasoning_effort ?? ui.nextReasoningEffort;
+          const effort = chat?.settings.reasoning_effort ?? uiNext.nextReasoningEffort;
           if (!supportsReasoning) return null;
           if (!effort || effort === 'none') return null;
           const letter = effort === 'high' ? 'H' : effort === 'medium' ? 'M' : 'L';
