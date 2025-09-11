@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useChatStore } from '@/lib/store';
+import { shallow } from 'zustand/shallow';
 import { useDragAndDrop, setCurrentDragData, getCurrentDragData } from '@/lib/dragDrop';
 import FolderItem from './FolderItem';
 import IconButton from './IconButton';
@@ -28,7 +29,20 @@ export default function ChatSidebar() {
     deleteChat,
     loadModels,
     createFolder,
-  } = useChatStore();
+  } = useChatStore(
+    (s) => ({
+      chats: s.chats,
+      folders: s.folders,
+      selectedChatId: s.selectedChatId,
+      selectChat: s.selectChat,
+      newChat: s.newChat,
+      renameChat: s.renameChat,
+      deleteChat: s.deleteChat,
+      loadModels: s.loadModels,
+      createFolder: s.createFolder,
+    }),
+    shallow,
+  );
   const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
 
   const { handleDragOver, handleDrop } = useDragAndDrop();

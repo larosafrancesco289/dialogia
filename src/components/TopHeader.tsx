@@ -1,6 +1,7 @@
 'use client';
 import ModelPicker from '@/components/ModelPicker';
 import { useChatStore } from '@/lib/store';
+import { shallow } from 'zustand/shallow';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import ThemeToggle from '@/components/ThemeToggle';
 import { Squares2X2Icon } from '@heroicons/react/24/outline';
@@ -10,14 +11,21 @@ import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
 
 export default function TopHeader() {
   // Use granular selectors to avoid unnecessary re-renders
-  const chats = useChatStore((s) => s.chats);
-  const selectedChatId = useChatStore((s) => s.selectedChatId);
-  const renameChat = useChatStore((s) => s.renameChat);
-  const setUI = useChatStore((s) => s.setUI);
-  const openCompare = useChatStore((s) => s.openCompare);
+  const { chats, selectedChatId, renameChat, setUI, openCompare } = useChatStore(
+    (s) => ({
+      chats: s.chats,
+      selectedChatId: s.selectedChatId,
+      renameChat: s.renameChat,
+      setUI: s.setUI,
+      openCompare: s.openCompare,
+    }),
+    shallow,
+  );
   const chat = chats.find((c) => c.id === selectedChatId);
-  const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
-  const isSettingsOpen = useChatStore((s) => s.ui.showSettings);
+  const { collapsed, isSettingsOpen } = useChatStore(
+    (s) => ({ collapsed: s.ui.sidebarCollapsed ?? false, isSettingsOpen: s.ui.showSettings }),
+    shallow,
+  );
   const [title, setTitle] = useState(chat?.title || '');
   useEffect(() => setTitle(chat?.title || ''), [chat?.id]);
   const save = useDebouncedCallback((text: string) => {

@@ -2,15 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { Markdown } from '@/lib/markdown';
-import {
-  ArrowPathIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  PencilSquareIcon,
-  CheckIcon,
-  XMarkIcon,
-  ClipboardIcon,
-} from '@heroicons/react/24/outline';
+import { ChevronDownIcon, PencilSquareIcon, CheckIcon, XMarkIcon, ClipboardIcon } from '@heroicons/react/24/outline';
 import { BranchIcon } from '@/components/icons/Icons';
 import RegenerateMenu from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
@@ -20,9 +12,8 @@ import { DebugPanel } from '@/components/message/DebugPanel';
 import { TutorPanel } from '@/components/message/TutorPanel';
 import type { Attachment } from '@/lib/types';
 import ImageLightbox from '@/components/ImageLightbox';
-import { createPortal } from 'react-dom';
-import { computeCost } from '@/lib/cost';
-import { findModelById } from '@/lib/models';
+ 
+// cost and model meta computed within MessageMeta when expanded
 
 export default function MessageList({ chatId }: { chatId: string }) {
   const messages = useChatStore((s) => s.messages[chatId] ?? []);
@@ -370,26 +361,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   <Markdown content={m.content} />
                 )}
               </div>
-              {showStats && m.metrics && (
-                <div className="px-4 pb-3 -mt-2 text-xs text-muted-foreground">
-                  {(() => {
-                    const parts: string[] = [];
-                    const mm = m.metrics!;
-                    if (mm.ttftMs != null) parts.push(`TTFT ${mm.ttftMs} ms`);
-                    if (mm.promptTokens != null) parts.push(`in ${mm.promptTokens}`);
-                    if (mm.completionTokens != null) parts.push(`out ${mm.completionTokens}`);
-                    if (mm.tokensPerSec != null) parts.push(`${mm.tokensPerSec} tok/s`);
-                    const modelMeta = findModelById(models, m.model || '');
-                    const cost = computeCost({
-                      model: modelMeta,
-                      promptTokens: mm.promptTokens,
-                      completionTokens: mm.completionTokens,
-                    });
-                    if (cost.total != null) parts.push(`${cost.currency || 'USD'} ${cost.total.toFixed(5)}`);
-                    return parts.join(' · ');
-                  })()}
-                </div>
-              )}
+              {/* Stats summary removed to respect per-message toggle */}
               {showStats && !(waitingForFirstToken && m.id === lastMessageId) && (
                 <div className="px-4 pb-3 -mt-2">
                   {isStatsExpanded(m.id) ? (

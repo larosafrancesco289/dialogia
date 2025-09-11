@@ -27,6 +27,7 @@ import {
   isImageOutputSupported,
 } from '@/lib/models';
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
+// telemetry removed for commit cleanliness
 
 export function createMessageSlice(
   set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
@@ -1149,6 +1150,7 @@ export function createMessageSlice(
                     tokensIn: promptTokens,
                     tokensOut: completionTokens,
                   } as any;
+                  // telemetry posting removed
                   set((s) => {
                     const list = s.messages[chatId] ?? [];
                     const updated = list.map((m) => (m.id === assistantMsg.id ? finalMsg : m));
@@ -1700,6 +1702,7 @@ export function createMessageSlice(
                   tokensIn: promptTokens,
                   tokensOut: completionTokens,
                 } as any;
+                // telemetry posting removed
                 set((s) => {
                   const list3 = s.messages[chatId] ?? [];
                   const updated = list3.map((m) => (m.id === replacement.id ? final : m));

@@ -1,18 +1,25 @@
 'use client';
+import dynamic from 'next/dynamic';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatPane from '@/components/ChatPane';
-import SettingsDrawer from '@/components/SettingsDrawer';
-import CompareDrawer from '@/components/CompareDrawer';
 import TopHeader from '@/components/TopHeader';
-import GlobalNotice from '@/components/GlobalNotice';
+const SettingsDrawer = dynamic(() => import('@/components/SettingsDrawer'), { ssr: false });
+const CompareDrawer = dynamic(() => import('@/components/CompareDrawer'), { ssr: false });
+const GlobalNotice = dynamic(() => import('@/components/GlobalNotice'), { ssr: false });
 import { useEffect } from 'react';
 import { useChatStore } from '@/lib/store';
+import { shallow } from 'zustand/shallow';
 
 export default function HomePage() {
   const initialize = useChatStore((s) => s.initializeApp);
-  const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
-  const isSettingsOpen = useChatStore((s) => s.ui.showSettings);
-  const isCompareOpen = useChatStore((s) => s.ui.compare?.isOpen ?? false);
+  const { collapsed, isSettingsOpen, isCompareOpen } = useChatStore(
+    (s) => ({
+      collapsed: s.ui.sidebarCollapsed ?? false,
+      isSettingsOpen: s.ui.showSettings,
+      isCompareOpen: s.ui.compare?.isOpen ?? false,
+    }),
+    shallow,
+  );
   useEffect(() => {
     initialize();
   }, [initialize]);

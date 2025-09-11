@@ -265,14 +265,23 @@ export function Markdown({ content }: { content: string }) {
   // Attach medium-zoom to images inside markdown for a better reading experience
   useEffect(() => {
     let zoom: any;
-    (async () => {
-      if (typeof window === 'undefined') return;
+    let cancelled = false;
+    const run = async () => {
+      if (typeof window === 'undefined' || cancelled) return;
       try {
         const mediumZoom = (await import('medium-zoom')).default as any;
-        zoom = mediumZoom('.markdown img', { background: 'rgba(0,0,0,0.7)', margin: 24 });
+        if (!cancelled) {
+          zoom = mediumZoom('.markdown img', { background: 'rgba(0,0,0,0.7)', margin: 24 });
+        }
       } catch {}
-    })();
+    };
+    if (typeof (window as any).requestIdleCallback === 'function') {
+      (window as any).requestIdleCallback(run, { timeout: 2000 });
+    } else {
+      setTimeout(run, 0);
+    }
     return () => {
+      cancelled = true;
       try {
         zoom?.detach?.();
       } catch {}
