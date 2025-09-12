@@ -9,8 +9,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="bg-surface text-fg">
+    <html lang="en" className="bg-surface text-fg" suppressHydrationWarning>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(() => { try { var m = localStorage.getItem('theme') || 'auto'; var d = window.matchMedia('(prefers-color-scheme: dark)').matches; var dark = m === 'dark' || (m === 'auto' && d); document.documentElement.classList.toggle('dark', dark); } catch (_) {} })();`,

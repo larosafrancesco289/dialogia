@@ -70,6 +70,7 @@ export default function ModelPicker() {
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const listboxRef = useRef<HTMLDivElement>(null);
   const [listWidth, setListWidth] = useState<number | undefined>(undefined);
+  const isSmall = typeof window !== 'undefined' && window.innerWidth < 640;
   const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
   const allowedIds = new Set((models || []).map((m: any) => m.id));
   const effectiveSelectedId =
@@ -102,13 +103,13 @@ export default function ModelPicker() {
   // When opening, initialize highlighted index to current selection
   useEffect(() => {
     if (open) {
-      // Compute a comfortable width so long model names don't truncate too early
+      // Compute width. On small screens, use nearly full width; desktop grows with trigger.
       const updateWidth = () => {
         const r = rootRef.current?.getBoundingClientRect();
         const triggerW = r?.width || 0;
-        const minW = 420; // px
-        const maxW = Math.max(320, Math.min(window.innerWidth - 24, 560));
-        const w = Math.min(Math.max(triggerW, minW), maxW);
+        const small = typeof window !== 'undefined' && window.innerWidth < 640;
+        // Mobile: use almost-full width; Desktop: match trigger width (no hard cap)
+        const w = small ? Math.min(window.innerWidth - 24, 560) : Math.max(triggerW, 360);
         setListWidth(Math.round(w));
       };
       updateWidth();
@@ -124,13 +125,15 @@ export default function ModelPicker() {
     }
   }, [open, options, current?.id]);
 
+  const stripProvider = (s?: string) => String(s || '').replace(/^[^:]+:\\s*/, '');
+
   return (
-    <div className="relative" ref={rootRef}>
+    <div className="relative min-w-0" ref={rootRef}>
       <button
-        className="btn btn-outline"
+        className="btn btn-outline min-w-0 w-full whitespace-nowrap overflow-hidden text-ellipsis"
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={current?.name || current?.id || 'Pick model'}
+        title={stripProvider(current?.name || current?.id) || 'Pick model'}
         onClick={() => setOpen(!open)}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown' || e.key === 'Enter') {
@@ -139,43 +142,44 @@ export default function ModelPicker() {
           }
         }}
       >
-        {current?.name || current?.id || 'Pick model'}
+        {stripProvider(current?.name || current?.id) || 'Pick model'}
       </button>
       {open && (
-        <div
-          ref={listboxRef}
-          className="absolute z-20 mt-2 card p-2 max-h-80 overflow-auto popover"
-          style={{ width: listWidth }}
-          role="listbox"
-          aria-label="Select a model"
-          aria-activedescendant={`model-opt-${highlightedIndex}`}
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.preventDefault();
-              setOpen(false);
-              return;
-            }
-            if (e.key === 'ArrowDown') {
-              e.preventDefault();
-              setHighlightedIndex((i) => (i + 1) % Math.max(1, options.length));
-              return;
-            }
-            if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              setHighlightedIndex(
-                (i) => (i - 1 + Math.max(1, options.length)) % Math.max(1, options.length),
-              );
-              return;
-            }
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              const target = options[highlightedIndex];
-              if (target) choose(target.id);
-              return;
-            }
-          }}
-        >
+        <div className="absolute z-20 mt-2 model-pop-wrap">
+          <div
+            ref={listboxRef}
+            className="card p-2 max-h-80 overflow-auto popover"
+            style={{ width: listWidth }}
+            role="listbox"
+            aria-label="Select a model"
+            aria-activedescendant={`model-opt-${highlightedIndex}`}
+            tabIndex={0}
+            onKeyDown={(e) => {
+             if (e.key === 'Escape') {
+               e.preventDefault();
+               setOpen(false);
+               return;
+             }
+             if (e.key === 'ArrowDown') {
+               e.preventDefault();
+               setHighlightedIndex((i) => (i + 1) % Math.max(1, options.length));
+               return;
+             }
+             if (e.key === 'ArrowUp') {
+               e.preventDefault();
+               setHighlightedIndex(
+                 (i) => (i - 1 + Math.max(1, options.length)) % Math.max(1, options.length),
+               );
+               return;
+             }
+             if (e.key === 'Enter') {
+               e.preventDefault();
+               const target = options[highlightedIndex];
+               if (target) choose(target.id);
+               return;
+             }
+            }}
+          >
           {options.map((o, idx) => {
             const meta = findModelById(models, o.id);
             const canReason = isReasoningSupported(meta);
@@ -200,7 +204,7 @@ export default function ModelPicker() {
                 onClick={() => choose(o.id)}
               >
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium text-sm">{o.name || o.id}</div>
+                  <div className="truncate font-medium text-sm">{stripProvider(o.name || o.id)}</div>
                   <div className="flex items-center gap-2 mt-1 text-muted-foreground">
                     {canReason && (
                       <LightBulbIcon
@@ -258,6 +262,7 @@ export default function ModelPicker() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
     </div>

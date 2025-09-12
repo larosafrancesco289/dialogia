@@ -14,6 +14,7 @@ import {
   LightBulbIcon,
   AcademicCapIcon,
   BeakerIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
@@ -156,8 +157,12 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     setText('');
     const toSend = attachments.slice();
     setAttachments([]);
-    // Keep the caret in the box so the user can continue typing immediately
-    taRef.current?.focus();
+    // On mobile, blur to close the keyboard; on desktop keep focus for fast follow-ups
+    try {
+      const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
+      if (isSmall) taRef.current?.blur();
+      else taRef.current?.focus();
+    } catch {}
     if (!chat) await newChat();
     await send(value, { attachments: toSend });
   };
@@ -172,7 +177,10 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     taRef.current?.focus({ preventScroll: true } as any);
   }, [selectedChatId]);
   useEffect(() => {
-    if (!isStreaming) taRef.current?.focus({ preventScroll: true } as any);
+    if (!isStreaming) {
+      const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
+      if (!isSmall) taRef.current?.focus({ preventScroll: true } as any);
+    }
   }, [isStreaming]);
 
   useAutogrowTextarea(taRef, [text]);
@@ -196,6 +204,12 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
   const searchEnabled = chat ? !!chat.settings.search_with_brave : !!uiNext.nextSearchWithBrave;
   const rawProvider = (chat?.settings as any)?.search_provider || uiNext.nextSearchProvider || 'brave';
   const searchProvider: 'brave' | 'openrouter' = braveGloballyEnabled ? rawProvider : 'openrouter';
+  type Effort = 'none' | 'low' | 'medium' | 'high';
+  const currentEffort = (chat
+    ? (chat.settings.reasoning_effort as Effort | undefined)
+    : (uiNext.nextReasoningEffort as Effort | undefined)) as Effort | undefined;
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Build slash command suggestions
   type Suggestion = { title: string; insert: string; subtitle?: string };
@@ -407,6 +421,17 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     if (next.length) setAttachments((prev) => [...prev, ...next]);
   };
 
+  // Close the mobile actions popover on outside click
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onDown = (e: PointerEvent) => {
+      const menu = document.getElementById('composer-mobile-menu');
+      if (menu && !menu.contains(e.target as Node)) setMobileMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [mobileMenuOpen]);
+
   const wrapperClass = variant === 'hero' ? 'composer-hero' : 'composer-chrome';
 
   return (
@@ -422,7 +447,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
                   className="h-16 w-16 object-cover rounded border border-border"
                 />
               ) : a.kind === 'audio' && a.dataURL ? (
-                <div className="h-16 min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2">
+                <div className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2">
                   <audio controls src={a.dataURL} className="h-10" />
                   <div className="min-w-0">
                     <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
@@ -457,10 +482,10 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
           ))}
         </div>
       )}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <textarea
           ref={taRef}
-          className="textarea flex-1 text-base"
+          className="textarea flex-1 min-w-0 text-base"
           rows={1}
           placeholder="Type a message..."
           value={text}
@@ -546,88 +571,168 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             className="btn btn-outline self-center"
             onClick={() => {
               stop();
-              setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0);
+              // Do not refocus on small screens to avoid re-opening the keyboard
+              const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
+              if (!isSmall) setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0);
             }}
             aria-label="Stop"
           >
             <StopIcon className="h-4 w-4" />
           </button>
         ) : (
-          <div className="flex items-center gap-2">
-            <label
-              className={`btn self-center cursor-pointer`}
-              title={
-                canVision && canAudio
-                  ? 'Attach images, audio (mp3/wav), or PDFs'
-                  : canVision
-                    ? 'Attach images or PDFs'
-                    : canAudio
-                      ? 'Attach audio (mp3/wav) or PDFs'
-                      : 'Attach PDFs'
-              }
-            >
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,audio/wav,audio/mpeg"
-                multiple
-                className="hidden"
-                onChange={async (e) => {
-                  const inputEl = e.currentTarget;
-                  const files = inputEl?.files;
-                  if (files) {
-                    const arr = Array.from(files);
-                    const pdfs = arr.filter((f) => f.type === 'application/pdf');
-                    const imgs = arr.filter((f) => f.type.startsWith('image/'));
-                    const auds = arr.filter(
-                      (f) =>
-                        f.type === 'audio/wav' ||
-                        f.type === 'audio/mpeg' ||
-                        f.name.toLowerCase().endsWith('.wav') ||
-                        f.name.toLowerCase().endsWith('.mp3'),
-                    );
-                    if (pdfs.length) await onPdfChosen(pdfs);
-                    if (imgs.length && canVision) await onFilesChosen(imgs);
-                    if (auds.length && canAudio) await onAudioChosen(auds);
-                  }
-                  if (inputEl) inputEl.value = '';
-                }}
-              />
-              <PaperClipIcon className="h-4 w-4" />
-            </label>
-            <button
-              className={`btn self-center ${searchEnabled ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => {
-              if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
-              else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
-              }}
-              title={`Use web search (${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'}) to augment the next message`}
-              aria-label={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} Search`}
-              aria-pressed={!!searchEnabled}
-            >
-              <MagnifyingGlassIcon className="h-4 w-4" />
-            </button>
-            {tutorGloballyEnabled && (
-              <button
-                className={`btn self-center ${tutorEnabled ? 'btn-primary' : 'btn-outline'}`}
-                onClick={async () => {
-                if (chat) {
-                  await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
-                } else {
-                  // On welcome page: enable tutor mode for next chat and start it immediately
-                  setUI({ nextTutorMode: true });
-                  await newChat();
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Hidden file input used by both desktop and mobile menu */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,audio/wav,audio/mpeg"
+              multiple
+              className="hidden"
+              onChange={async (e) => {
+                const inputEl = e.currentTarget;
+                const files = inputEl?.files;
+                if (files) {
+                  const arr = Array.from(files);
+                  const pdfs = arr.filter((f) => f.type === 'application/pdf');
+                  const imgs = arr.filter((f) => f.type.startsWith('image/'));
+                  const auds = arr.filter(
+                    (f) =>
+                      f.type === 'audio/wav' ||
+                      f.type === 'audio/mpeg' ||
+                      f.name.toLowerCase().endsWith('.wav') ||
+                      f.name.toLowerCase().endsWith('.mp3'),
+                  );
+                  if (pdfs.length) await onPdfChosen(pdfs);
+                  if (imgs.length && canVision) await onFilesChosen(imgs);
+                  if (auds.length && canAudio) await onAudioChosen(auds);
                 }
-                }}
-                title="Tutor mode: warm guidance + practice tools (used only when helpful)"
-                aria-label="Toggle Tutor Mode"
-                aria-pressed={tutorEnabled}
+                if (inputEl) inputEl.value = '';
+              }}
+            />
+
+            {/* Desktop: show full control row */}
+            <div className="hidden sm:flex items-center gap-2">
+              <label
+                className={`btn self-center cursor-pointer`}
+                title={
+                  canVision && canAudio
+                    ? 'Attach images, audio (mp3/wav), or PDFs'
+                    : canVision
+                      ? 'Attach images or PDFs'
+                      : canAudio
+                        ? 'Attach audio (mp3/wav) or PDFs'
+                        : 'Attach PDFs'
+                }
+                onClick={() => fileInputRef.current?.click()}
               >
-                <AcademicCapIcon className="h-4 w-4" />
+                <PaperClipIcon className="h-4 w-4" />
+              </label>
+              <button
+                className={`btn self-center ${searchEnabled ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => {
+                  if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
+                  else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
+                }}
+                title={`Use web search (${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'}) to augment the next message`}
+                aria-label={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} Search`}
+                aria-pressed={!!searchEnabled}
+              >
+                <MagnifyingGlassIcon className="h-4 w-4" />
               </button>
-            )}
-            {/* DeepResearch toggle moved into ReasoningEffortMenu to live alongside effort control */}
-            {/* Show reasoning effort picker only for reasoning-capable models */}
-            <ReasoningEffortMenu />
+              {tutorGloballyEnabled && (
+                <button
+                  className={`btn self-center ${tutorEnabled ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={async () => {
+                    if (chat) {
+                      await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+                    } else {
+                      setUI({ nextTutorMode: true });
+                      await newChat();
+                    }
+                  }}
+                  title="Tutor mode: warm guidance + practice tools (used only when helpful)"
+                  aria-label="Toggle Tutor Mode"
+                  aria-pressed={tutorEnabled}
+                >
+                  <AcademicCapIcon className="h-4 w-4" />
+                </button>
+              )}
+              <ReasoningEffortMenu />
+            </div>
+
+            {/* Mobile: single '+' menu to reveal actions */}
+            <div className="flex sm:hidden items-center gap-2 relative">
+              <button
+                className="btn btn-outline self-center"
+                aria-haspopup="menu"
+                aria-expanded={mobileMenuOpen}
+                aria-label="More actions"
+                onClick={() => setMobileMenuOpen((v) => !v)}
+              >
+                <PlusIcon className="h-4 w-4" />
+              </button>
+              {mobileMenuOpen && (
+                <div
+                  id="composer-mobile-menu"
+                  role="menu"
+                  className="absolute bottom-full mb-2 right-0 z-40 card p-1 popover min-w-[220px] max-w-[80vw]"
+                >
+                  <div className="menu-item text-sm" role="menuitem" onClick={() => fileInputRef.current?.click()}>
+                    Attach files
+                  </div>
+                  <div
+                    className="menu-item text-sm"
+                    role="menuitemcheckbox"
+                    aria-checked={!!searchEnabled}
+                    onClick={() => {
+                      if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
+                      else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    {`${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} Search: ${searchEnabled ? 'On' : 'Off'}`}
+                  </div>
+                  {tutorGloballyEnabled && (
+                    <div
+                      className="menu-item text-sm"
+                      role="menuitemcheckbox"
+                      aria-checked={!!tutorEnabled}
+                      onClick={async () => {
+                        if (chat) await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+                        else {
+                          setUI({ nextTutorMode: true });
+                          await newChat();
+                        }
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      {`Tutor: ${tutorEnabled ? 'On' : 'Off'}`}
+                    </div>
+                  )}
+                  {supportsReasoning && (
+                    <>
+                      <div className="text-xs text-muted-foreground px-2 pt-1">Reasoning</div>
+                      {(['none', 'low', 'medium', 'high'] as Effort[]).map((eff) => (
+                        <div
+                          key={eff}
+                          className={`menu-item text-sm ${currentEffort === eff ? 'font-semibold' : ''}`}
+                          role="menuitemradio"
+                          aria-checked={currentEffort === eff}
+                          onClick={async () => {
+                            if (chat) await updateSettings({ reasoning_effort: eff });
+                            else setUI({ nextReasoningEffort: eff });
+                            setMobileMenuOpen(false);
+                          }}
+                        >
+                          {eff[0].toUpperCase() + eff.slice(1)}
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
             <button
               className="btn btn-outline self-center"
               onClick={onSend}
@@ -640,7 +745,8 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
         )}
       </div>
       {/* Helper chips row: current model, capabilities, web search, reasoning, token estimate */}
-      <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
+      {/* Hide helper chips on small screens to reduce clutter */}
+      <div className="mt-2 hidden sm:flex items-center gap-2 flex-wrap text-xs">
         {
           <button
             className="badge"

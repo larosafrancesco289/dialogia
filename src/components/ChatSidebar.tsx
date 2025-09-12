@@ -15,6 +15,7 @@ import {
   CheckIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 import type { Chat } from '@/lib/types';
 // Settings gear moved to the top header
 
@@ -102,6 +103,19 @@ export default function ChatSidebar() {
               <FolderPlusIcon className="h-3.5 w-3.5" />
             </IconButton>
           )}
+          {/* Settings on mobile: expose gear in sidebar header */}
+          <span className="sm:hidden">
+            <IconButton
+              onClick={() => {
+                const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
+                useChatStore.getState().setUI({ showSettings: true, ...(isSmall ? { sidebarCollapsed: true } : {}) });
+              }}
+              title="Settings"
+              variant="ghost"
+            >
+              <Cog6ToothIcon className="h-3.5 w-3.5" />
+            </IconButton>
+          </span>
         </div>
       </div>
 
@@ -277,7 +291,7 @@ function RootChatItem({
 
           {/* Action Buttons */}
           {!isEditing && !collapsed && (
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+            <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex gap-1">
               <IconButton
                 size="sm"
                 onClick={(e) => {

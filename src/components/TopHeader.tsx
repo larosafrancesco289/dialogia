@@ -2,7 +2,7 @@
 import ModelPicker from '@/components/ModelPicker';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
 import ThemeToggle from '@/components/ThemeToggle';
 import { Squares2X2Icon } from '@heroicons/react/24/outline';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
@@ -11,13 +11,14 @@ import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
 
 export default function TopHeader() {
   // Use granular selectors to avoid unnecessary re-renders
-  const { chats, selectedChatId, renameChat, setUI, openCompare } = useChatStore(
+  const { chats, selectedChatId, renameChat, setUI, openCompare, newChat } = useChatStore(
     (s) => ({
       chats: s.chats,
       selectedChatId: s.selectedChatId,
       renameChat: s.renameChat,
       setUI: s.setUI,
       openCompare: s.openCompare,
+      newChat: s.newChat,
     }),
     shallow,
   );
@@ -38,7 +39,7 @@ export default function TopHeader() {
   return (
     <div className="app-header gap-3">
       <button
-        className="btn btn-ghost"
+        className="btn btn-ghost shrink-0"
         aria-label="Toggle sidebar"
         onClick={() => setUI({ sidebarCollapsed: !collapsed })}
         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -50,12 +51,12 @@ export default function TopHeader() {
         )}
       </button>
       {/* brand text not needed in unified header */}
-      <div className="relative">
+      <div className="relative flex-1 min-w-0">
         <ModelPicker />
       </div>
       {chat && (
         <input
-          className="input flex-1 max-w-xl"
+          className="input flex-1 min-w-0 max-w-full hidden sm:block"
           aria-label="Chat title"
           placeholder="Untitled chat"
           value={title}
@@ -67,9 +68,20 @@ export default function TopHeader() {
         />
       )}
       <div className="ml-auto" />
-      <ThemeToggle />
+      {/* New Chat action, accessible even when sidebar is collapsed */}
       <button
-        className="btn btn-ghost"
+        className="btn btn-ghost shrink-0"
+        aria-label="New chat"
+        title="New chat"
+        onClick={() => newChat()}
+      >
+        <PlusIcon className="h-5 w-5" />
+      </button>
+      <div className="hide-on-mobile">
+        <ThemeToggle />
+      </div>
+      <button
+        className="btn btn-ghost hide-on-mobile"
         aria-label="Open compare"
         onClick={() => openCompare()}
         onMouseEnter={() => {
@@ -87,7 +99,7 @@ export default function TopHeader() {
         <Squares2X2Icon className="h-5 w-5" />
       </button>
       <button
-        className="btn btn-ghost"
+        className="btn btn-ghost hide-on-mobile"
         aria-label="Open settings"
         aria-pressed={isSettingsOpen}
         onClick={() => setUI({ showSettings: !isSettingsOpen })}
