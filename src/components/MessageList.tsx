@@ -299,7 +299,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                         <img
                           src={a.dataURL}
                           alt={a.name || 'image'}
-                          className="h-36 w-36 object-cover rounded border border-border"
+                          className="h-28 w-28 sm:h-36 sm:w-36 object-cover rounded border border-border"
                         />
                       </button>
                     ))}
@@ -308,7 +308,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     .map((a: Attachment) => (
                       <div
                         key={a.id}
-                        className="h-16 min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
+                        className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
                       >
                         {a.dataURL ? (
                           <audio controls src={a.dataURL} className="h-10" />
@@ -479,7 +479,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                         <img
                           src={a.dataURL}
                           alt={a.name || 'image'}
-                          className="h-36 w-36 object-cover rounded border border-border"
+                          className="h-28 w-28 sm:h-36 sm:w-36 object-cover rounded border border-border"
                         />
                       </button>
                     ))}
@@ -488,7 +488,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     .map((a: Attachment) => (
                       <div
                         key={a.id}
-                        className="h-16 min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
+                        className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
                       >
                         {a.dataURL ? (
                           <audio controls src={a.dataURL} className="h-10" />

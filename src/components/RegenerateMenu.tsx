@@ -55,7 +55,7 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
                 setOpen(false);
               }}
             >
-              {o.name || o.id}
+              {(o.name || o.id).replace(/^[^:]+:\\s*/, '')}
             </div>
           ))}
           <div className="border-t border-border my-1" />

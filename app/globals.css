@@ -191,6 +191,16 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 }
 
 @media (max-width: 640px) {
+  .app-shell {
+    grid-template-columns: 1fr; /* collapse grid to one column */
+  }
+  .app-shell aside.sidebar {
+    display: none; /* hide static sidebar column on small screens */
+  }
+  .app-shell {
+    column-gap: var(--space-1);
+    padding: var(--space-1);
+  }
   .glass {
     -webkit-backdrop-filter: var(--glass-saturate) blur(12px);
     backdrop-filter: var(--glass-saturate) blur(12px);
@@ -199,6 +209,43 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   .sidebar.bg-surface {
     -webkit-backdrop-filter: var(--glass-saturate) blur(16px);
     backdrop-filter: var(--glass-saturate) blur(16px);
+  }
+  .app-header {
+    margin: var(--space-1);
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+    border-radius: 14px;
+  }
+  /* Make outline buttons smaller in the header (e.g., model picker) */
+  .app-header .btn.btn-outline {
+    height: var(--control-sm);
+    padding: 0 var(--space-3);
+  }
+}
+
+/* Centered model picker popover on small screens via wrapper */
+.model-pop-wrap {
+  right: 0; /* default desktop */
+}
+@media (max-width: 640px) {
+  .model-pop-wrap {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(560px, calc(100vw - 24px));
+  }
+  .model-pop-wrap .popover {
+    transform-origin: top center; /* nicer animation at center */
+  }
+}
+
+/* Utility: hide element on mobile, show on >= sm */
+.hide-on-mobile {
+  display: none !important;
+}
+@media (min-width: 640px) {
+  .hide-on-mobile {
+    display: inline-flex !important;
   }
 }
 
@@ -473,6 +520,12 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   box-shadow: var(--shadow-card);
   z-index: 60; /* keep above drawer content lists by default */
   padding-bottom: calc(var(--space-3) + max(0px, env(safe-area-inset-bottom)));
+}
+@media (max-width: 640px) {
+  .composer-chrome {
+    margin: 0 var(--space-2);
+    border-radius: 14px;
+  }
 }
 
 /* Hero composer (welcome page): centered, non-sticky */
