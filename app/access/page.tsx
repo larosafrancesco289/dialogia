@@ -18,13 +18,15 @@ export default function AccessPage() {
       const res = await fetch('/api/auth/verify-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ code: plain }),
       });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
         setError(data?.error || 'Invalid code');
       } else {
-        router.replace('/');
+        // Force full navigation so the new HttpOnly cookie is sent to the server
+        window.location.replace('/');
       }
     } catch (e: any) {
       setError('Network error');
@@ -65,4 +67,3 @@ export default function AccessPage() {
     </div>
   );
 }
-

@@ -60,6 +60,10 @@ async function verifyToken(token: string): Promise<boolean> {
 
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  // In development, bypass the access gate entirely for easier local work
+  if (process.env.NODE_ENV !== 'production') {
+    return NextResponse.next();
+  }
   if (isPublicPath(pathname)) return NextResponse.next();
 
   const token = req.cookies.get(AUTH_COOKIE)?.value;
