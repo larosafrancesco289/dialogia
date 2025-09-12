@@ -72,6 +72,16 @@ export default function TopHeader() {
         className="btn btn-ghost"
         aria-label="Open compare"
         onClick={() => openCompare()}
+        onMouseEnter={() => {
+          try {
+            import('@/components/CompareDrawer');
+          } catch {}
+        }}
+        onFocus={() => {
+          try {
+            import('@/components/CompareDrawer');
+          } catch {}
+        }}
         title="Compare models"
       >
         <Squares2X2Icon className="h-5 w-5" />
@@ -81,6 +91,16 @@ export default function TopHeader() {
         aria-label="Open settings"
         aria-pressed={isSettingsOpen}
         onClick={() => setUI({ showSettings: !isSettingsOpen })}
+        onMouseEnter={() => {
+          try {
+            import('@/components/SettingsDrawer');
+          } catch {}
+        }}
+        onFocus={() => {
+          try {
+            import('@/components/SettingsDrawer');
+          } catch {}
+        }}
       >
         <Cog6ToothIcon className="h-5 w-5" />
       </button>

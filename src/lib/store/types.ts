@@ -33,6 +33,10 @@ export type UIState = {
   zdrOnly?: boolean;
   // Routing preference: prioritize speed or cost
   routePreference?: 'speed' | 'cost';
+  // Experimental feature toggles (global visibility/usage)
+  experimentalBrave?: boolean; // show Brave web search and related UI
+  experimentalDeepResearch?: boolean; // show DeepResearch toggle and enable API path
+  experimentalTutor?: boolean; // show Tutor mode UI and enable tutor tools
   braveByMessageId?: Record<
     string,
     {

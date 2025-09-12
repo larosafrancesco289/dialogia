@@ -61,7 +61,9 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     shallow,
   );
   const [focused, setFocused] = useState(false);
-  const tutorEnabled = !!(chat ? chat.settings.tutor_mode : uiNext.nextTutorMode);
+  const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
+  const tutorEnabled =
+    tutorGloballyEnabled && !!(chat ? chat.settings.tutor_mode : uiNext.nextTutorMode);
   const [slashIndex, setSlashIndex] = useState(0);
   const deepEnabled = useChatStore((s) => !!s.ui.nextDeepResearch);
 
@@ -190,8 +192,10 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
   const canAudio = isAudioInputSupported(modelMeta);
   const supportsReasoning = isReasoningSupported(modelMeta);
   const canImageOut = isImageOutputSupported(modelMeta);
+  const braveGloballyEnabled = useChatStore((s) => !!s.ui.experimentalBrave);
   const searchEnabled = chat ? !!chat.settings.search_with_brave : !!uiNext.nextSearchWithBrave;
-  const searchProvider = (chat?.settings as any)?.search_provider || uiNext.nextSearchProvider || 'brave';
+  const rawProvider = (chat?.settings as any)?.search_provider || uiNext.nextSearchProvider || 'brave';
+  const searchProvider: 'brave' | 'openrouter' = braveGloballyEnabled ? rawProvider : 'openrouter';
 
   // Build slash command suggestions
   type Suggestion = { title: string; insert: string; subtitle?: string };
@@ -602,23 +606,25 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             >
               <MagnifyingGlassIcon className="h-4 w-4" />
             </button>
-            <button
-              className={`btn self-center ${tutorEnabled ? 'btn-primary' : 'btn-outline'}`}
-              onClick={async () => {
-              if (chat) {
-                await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
-              } else {
-                // On welcome page: enable tutor mode for next chat and start it immediately
-                setUI({ nextTutorMode: true });
-                await newChat();
-              }
-              }}
-              title="Tutor mode: warm guidance + practice tools (used only when helpful)"
-              aria-label="Toggle Tutor Mode"
-              aria-pressed={tutorEnabled}
-            >
-              <AcademicCapIcon className="h-4 w-4" />
-            </button>
+            {tutorGloballyEnabled && (
+              <button
+                className={`btn self-center ${tutorEnabled ? 'btn-primary' : 'btn-outline'}`}
+                onClick={async () => {
+                if (chat) {
+                  await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+                } else {
+                  // On welcome page: enable tutor mode for next chat and start it immediately
+                  setUI({ nextTutorMode: true });
+                  await newChat();
+                }
+                }}
+                title="Tutor mode: warm guidance + practice tools (used only when helpful)"
+                aria-label="Toggle Tutor Mode"
+                aria-pressed={tutorEnabled}
+              >
+                <AcademicCapIcon className="h-4 w-4" />
+              </button>
+            )}
             {/* DeepResearch toggle moved into ReasoningEffortMenu to live alongside effort control */}
             {/* Show reasoning effort picker only for reasoning-capable models */}
             <ReasoningEffortMenu />
@@ -653,7 +659,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             <EyeIcon className="h-3.5 w-3.5" />
           </span>
         )}
-        {chat && (
+        {tutorGloballyEnabled && chat && (
           <button
             className={`badge flex items-center gap-1`}
             title="Toggle tutor mode"

@@ -85,13 +85,21 @@ export function createChatSlice(
     async newChat() {
       const id = uuidv4();
       const now = Date.now();
+      // Prefer last used model from the currently selected chat when creating a new chat.
+      const selected = get().selectedChatId
+        ? get().chats.find((c) => c.id === get().selectedChatId)
+        : undefined;
+      const lastUsedModel = selected?.settings?.model;
+      const braveEnabled = !!get().ui.experimentalBrave;
+      const tutorEnabledGlobally = !!get().ui.experimentalTutor;
       const chat: Chat = {
         id,
         title: 'New Chat',
         createdAt: now,
         updatedAt: now,
         settings: {
-          model: get().ui.nextModel ?? DEFAULT_MODEL_ID,
+          // Use nextModel if explicitly set; otherwise fall back to the last used model; else default
+          model: get().ui.nextModel ?? lastUsedModel ?? DEFAULT_MODEL_ID,
           system: get().ui.nextSystem ?? 'You are a helpful assistant.',
           temperature: get().ui.nextTemperature ?? undefined,
           top_p: get().ui.nextTopP ?? undefined,
@@ -101,8 +109,11 @@ export function createChatSlice(
           show_thinking_by_default: get().ui.nextShowThinking ?? true,
           show_stats: get().ui.nextShowStats ?? true,
           search_with_brave: get().ui.nextSearchWithBrave ?? false,
-          search_provider: get().ui.nextSearchProvider ?? 'brave',
-          tutor_mode: get().ui.nextTutorMode ?? false,
+          // If Brave is disabled via experimental toggle, force OpenRouter provider
+          search_provider: braveEnabled
+            ? get().ui.nextSearchProvider ?? 'brave'
+            : 'openrouter',
+          tutor_mode: tutorEnabledGlobally ? get().ui.nextTutorMode ?? false : false,
         },
       };
       await saveChat(chat);
@@ -128,8 +139,8 @@ export function createChatSlice(
           nextShowStats: undefined,
         },
       }));
-      // If starting a chat with tutor mode on, send a friendly greeting once.
-      if (chat.settings.tutor_mode) {
+      // If starting a chat with tutor mode on, send a friendly greeting once (gated by experimental flag).
+      if (tutorEnabledGlobally && chat.settings.tutor_mode) {
         try {
           const greeted = get().ui.tutorGreetedByChatId?.[id];
           if (!greeted) {
@@ -233,14 +244,14 @@ export function createChatSlice(
       }));
       const chat = get().chats.find((c) => c.id === id)!;
       await saveChat(chat);
-      // If tutor_mode has just been enabled for this chat, send a one‑time friendly greeting
+      // If tutor_mode has just been enabled for this chat, send a one‑time friendly greeting (gated by experimental flag)
       try {
         const turnedOn =
           typeof partial?.tutor_mode === 'boolean' &&
           before &&
           before.settings.tutor_mode !== partial.tutor_mode &&
           partial.tutor_mode === true;
-        if (turnedOn) {
+        if (turnedOn && !!get().ui.experimentalTutor) {
           const greeted = get().ui.tutorGreetedByChatId?.[id];
           if (!greeted) {
             const greeting = getTutorGreeting();

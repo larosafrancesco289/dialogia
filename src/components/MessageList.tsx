@@ -21,7 +21,9 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const models = useChatStore((s) => s.models);
   const isStreaming = useChatStore((s) => s.ui.isStreaming);
   const braveByMessageId = useChatStore((s) => s.ui.braveByMessageId || {});
+  const braveGloballyEnabled = useChatStore((s) => !!s.ui.experimentalBrave);
   const tutorByMessageId = useChatStore((s) => s.ui.tutorByMessageId || {});
+  const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
   const branchFrom = useChatStore((s) => s.branchChatFromMessage);
   const showStats = chat?.settings.show_stats ?? true;
@@ -229,8 +231,9 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   </div>
                 )}
               </div>
-              {/* Brave search UX block attached to this assistant message */}
+              {/* Brave search UX block attached to this assistant message (gated by experimental toggle) */}
               {(() => {
+                if (!braveGloballyEnabled) return null;
                 const brave = braveByMessageId[m.id];
                 if (!brave) return null;
                 return (
@@ -259,6 +262,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
               )}
               {/* Tutor interactive panels (MCQ, fill-blank, open, flashcards) */}
               {(() => {
+                if (!tutorGloballyEnabled) return null;
                 const tut = tutorByMessageId[m.id] || (m as any)?.tutor;
                 if (!tut) return null;
                 return (

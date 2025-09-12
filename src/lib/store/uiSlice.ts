@@ -27,6 +27,10 @@ export function createUiSlice(
     tutorContextMode: 'full',
     zdrOnly: defaultZdrOnly(),
     routePreference: 'speed',
+    // Experimental features default off unless explicitly enabled in Settings
+    experimentalBrave: false,
+    experimentalDeepResearch: false,
+    experimentalTutor: false,
     braveByMessageId: {},
     tutorByMessageId: {},
     tutorProfileByChatId: {},
