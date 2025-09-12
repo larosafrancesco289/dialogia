@@ -42,6 +42,19 @@ BRAVE_SEARCH_API_KEY=brave_your_key_here
 NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=true
 ```
 
+Private access gate (optional but recommended when sharing preview):
+
+```
+# Signed cookie for access sessions
+AUTH_COOKIE_SECRET=replace-with-strong-random-hex
+
+# HMAC pepper for access codes
+ACCESS_CODE_PEPPER=replace-with-strong-random-hex
+
+# Comma-separated HMAC-SHA256(code, ACCESS_CODE_PEPPER) hex digests
+ACCESS_CODES_HASHED=
+```
+
 Client-side mode (not recommended):
 
 ```
@@ -98,6 +111,13 @@ Security notes:
 - Avoid placing secrets in `NEXT_PUBLIC_*` env vars when possible.
 - Brave Search runs only server-side and requires `BRAVE_SEARCH_API_KEY`.
 - ZDR-only: Model listing and sends default to ZDR-only. Override default with `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=false`.
+- Access gate: Middleware validates a signed, HttpOnly cookie on every request; unauthenticated users are redirected to `/access`. Add env vars above and distribute plaintext codes privately.
+
+### Deploying on Vercel
+
+- Create a release branch (e.g., `release`) and point your Vercel project’s Production Branch to it.
+- Add the env vars from Setup to the Vercel project (Production). Redeploy.
+- No client-side keys required; all model calls run through `/api/openrouter/*` with the server-side key.
 
 ### Project Structure
 
