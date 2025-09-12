@@ -237,8 +237,8 @@ export function createMessageSlice(
       await saveMessage(userMsg);
       await saveMessage(assistantMsg);
 
-      // DeepResearch branch: if toggled, use server endpoint and attach sources panel
-      if (get().ui.nextDeepResearch) {
+      // DeepResearch branch: if globally enabled and toggled, use server endpoint and attach sources panel
+      if (get().ui.experimentalDeepResearch && get().ui.nextDeepResearch) {
         try {
           const controller = new AbortController();
           set((s) => ({ ...s, _controller: controller as any }) as any);
@@ -320,18 +320,24 @@ export function createMessageSlice(
       }
 
       const searchEnabled = !!chat.settings.search_with_brave;
+      const braveGloballyEnabled = !!get().ui.experimentalBrave;
+      const tutorGloballyEnabled = !!get().ui.experimentalTutor;
+      const configuredProvider: 'brave' | 'openrouter' =
+        (((chat.settings as any)?.search_provider as any) || 'brave') as any;
       const searchProvider: 'brave' | 'openrouter' =
-        ((chat.settings as any)?.search_provider as any) || 'brave';
+        braveGloballyEnabled ? configuredProvider : 'openrouter';
       const attemptPlanning =
-        !!chat.settings.tutor_mode || (searchEnabled && searchProvider === 'brave');
+        (tutorGloballyEnabled && !!chat.settings.tutor_mode) ||
+        (searchEnabled && searchProvider === 'brave');
       const providerSort = get().ui.routePreference === 'cost' ? 'price' : 'throughput';
       const toolPreambleText =
         'You have access to a function tool named "web_search" that retrieves up-to-date web results.\n\nWhen you need current, factual, or source-backed information, call the tool first. If you call a tool, respond with ONLY tool_calls (no user-facing text). After the tool returns, write the final answer that cites sources inline as [n] using the numbering provided.\n\nweb_search(args): { query: string, count?: integer 1-10 }. Choose a focused query and a small count, and avoid unnecessary calls.';
-      const tutorPreambleText = getTutorPreamble();
+      const tutorPreambleText = tutorGloballyEnabled ? getTutorPreamble() : '';
       const preambles: string[] = [];
       if (searchEnabled && searchProvider === 'brave') preambles.push(toolPreambleText);
-      if (chat.settings.tutor_mode && tutorPreambleText) preambles.push(tutorPreambleText);
-      if (chat.settings.tutor_mode) {
+      if (tutorGloballyEnabled && chat.settings.tutor_mode && tutorPreambleText)
+        preambles.push(tutorPreambleText);
+      if (tutorGloballyEnabled && chat.settings.tutor_mode) {
         try {
           const prof = await loadTutorProfile(chat.id);
           const summary = summarizeTutorProfile(prof);
@@ -354,7 +360,7 @@ export function createMessageSlice(
         try {
           const controller = new AbortController();
           set((s) => ({ ...s, _controller: controller as any }) as any);
-          const tutorTools = chat.settings.tutor_mode
+          const tutorTools = tutorGloballyEnabled && chat.settings.tutor_mode
             ? (getTutorToolDefinitions() as any[])
             : ([] as any[]);
           const baseTools = searchEnabled && searchProvider === 'brave'

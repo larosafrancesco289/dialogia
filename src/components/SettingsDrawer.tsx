@@ -88,6 +88,9 @@ export default function SettingsDrawer() {
   const [routePref, setRoutePref] = useState<'speed' | 'cost'>(
     (useChatStore.getState().ui.routePreference as any) || 'speed',
   );
+  const experimentalBrave = useChatStore((s) => !!s.ui.experimentalBrave);
+  const experimentalDeepResearch = useChatStore((s) => !!s.ui.experimentalDeepResearch);
+  const experimentalTutor = useChatStore((s) => !!s.ui.experimentalTutor);
   // System prompt presets
   const [presets, setPresets] = useState<SystemPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
@@ -293,6 +296,166 @@ export default function SettingsDrawer() {
         </div>
 
         <div className="px-4 py-4 space-y-4 pb-8">
+          {/* Models (moved to top) */}
+          <Section title="Models">
+            <div className="space-y-3">
+              <div className="relative">
+                <input
+                  ref={searchRef}
+                  className="input w-full"
+                  placeholder="Search OpenRouter models (e.g. openai, anthropic, llama)"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}
+                />
+                {dropdownPos &&
+                  createPortal(
+                    <div
+                      className="fixed card p-2 overflow-auto z-[90]"
+                      ref={dropdownRef}
+                      style={{
+                        left: dropdownPos.left,
+                        top: dropdownPos.top,
+                        width: dropdownPos.width,
+                        maxHeight: dropdownPos.maxHeight,
+                        overscrollBehavior: 'contain',
+                      }}
+                    >
+                      {filtered.length === 0 && (
+                        <div className="p-2 text-sm text-muted-foreground">No matches</div>
+                      )}
+                      {filtered.map((m) => {
+                        const meta = findModelById(models, m.id);
+                        const canReason = isReasoningSupported(meta);
+                        const canSee = isVisionSupported(meta);
+                        const canImageOut = isImageOutputSupported(meta);
+                        const priceStr = describeModelPricing(meta);
+                        // Prefer a concise name: drop provider prefixes like "Anthropic: ..."
+                        const displayName = String(m.name || m.id).replace(/^[^:]+:\\s*/, '');
+                        return (
+                          <div
+                            key={m.id}
+                            className="p-2 rounded hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
+                          >
+                            <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 w-full">
+                              <div className="font-medium text-sm flex items-center gap-2 min-w-0">
+                                <span className="truncate" title={m.id}>{displayName}</span>
+                                <span className="flex items-center gap-1 text-muted-foreground shrink-0">
+                                  {canReason && (
+                                    <LightBulbIcon
+                                      className="h-4 w-4"
+                                      aria-label="Reasoning supported"
+                                      title="Reasoning supported"
+                                    />
+                                  )}
+                                  {canSee && (
+                                    <EyeIcon
+                                      className="h-4 w-4"
+                                      aria-label="Vision input"
+                                      title="Vision input"
+                                    />
+                                  )}
+                                  {canImageOut && (
+                                    <PhotoIcon
+                                      className="h-4 w-4"
+                                      aria-label="Image generation"
+                                      title="Image generation"
+                                    />
+                                  )}
+                                  {isAudioInputSupported(meta) && (
+                                    <MicrophoneIcon
+                                      className="h-4 w-4"
+                                      aria-label="Audio input"
+                                      title="Audio input"
+                                    />
+                                  )}
+                                </span>
+                              </div>
+                              {priceStr && (
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {priceStr}
+                                </span>
+                              )}
+                              <div className="justify-self-end">
+                                <IconButton
+                                  title="Add model"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (!favoriteModelIds.includes(m.id)) toggleFavoriteModel(m.id);
+                                    if (chat) {
+                                      updateChatSettings({ model: m.id });
+                                    } else {
+                                      setUI({ nextModel: m.id });
+                                    }
+                                    setQuery('');
+                                  }}
+                                >
+                                  <PlusIcon size={16} />
+                                </IconButton>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>,
+                    document.body,
+                  )}
+              </div>
+              <div>
+                <button className="btn btn-ghost" onClick={() => loadModels()}>
+                  Refresh model list
+                </button>
+              </div>
+              {hiddenModelIds && hiddenModelIds.length > 0 && (
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <div className="text-muted-foreground">
+                    {hiddenModelIds.length} hidden{' '}
+                    {hiddenModelIds.length === 1 ? 'model' : 'models'}
+                  </div>
+                  <button className="btn btn-outline btn-sm" onClick={() => resetHiddenModels()}>
+                    Reset hidden
+                  </button>
+                </div>
+              )}
+            </div>
+          </Section>
+
+          {/* Web Search (new dedicated section) */}
+          <Section title="Web Search">
+            <div className="space-y-2">
+              <div className="space-y-1">
+                <label className="text-sm block">Provider</label>
+                <div className="segmented">
+                  {experimentalBrave && (
+                    <button
+                      className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'brave') === 'brave' ? 'is-active' : ''}`}
+                      onClick={() => {
+                        if (chat) updateChatSettings({ search_provider: 'brave' } as any);
+                        else setUI({ nextSearchProvider: 'brave' } as any);
+                      }}
+                    >
+                      Brave
+                    </button>
+                  )}
+                  <button
+                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? (experimentalBrave ? 'brave' : 'openrouter')) === 'openrouter' ? 'is-active' : ''}`}
+                    onClick={() => {
+                      if (chat) updateChatSettings({ search_provider: 'openrouter' } as any);
+                      else setUI({ nextSearchProvider: 'openrouter' } as any);
+                    }}
+                  >
+                    OpenRouter
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {experimentalBrave
+                    ? 'Brave uses local function-calling; OpenRouter injects the web plugin to include citations.'
+                    : 'OpenRouter injects the web plugin to include citations.'}
+                </div>
+              </div>
+            </div>
+          </Section>
+
           {/* General */}
           <Section title="General">
             <div className="space-y-2">
@@ -388,34 +551,6 @@ export default function SettingsDrawer() {
               />
               <div className="text-xs text-muted-foreground">
                 This is sent at the start of the chat to steer behavior.
-              </div>
-
-              <div className="soft-divider" />
-              <div className="space-y-1">
-                <label className="text-sm block">Web Search provider</label>
-                <div className="segmented">
-                  <button
-                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'brave') === 'brave' ? 'is-active' : ''}`}
-                    onClick={() => {
-                      if (chat) updateChatSettings({ search_provider: 'brave' } as any);
-                      else setUI({ nextSearchProvider: 'brave' } as any);
-                    }}
-                  >
-                    Brave
-                  </button>
-                  <button
-                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'brave') === 'openrouter' ? 'is-active' : ''}`}
-                    onClick={() => {
-                      if (chat) updateChatSettings({ search_provider: 'openrouter' } as any);
-                      else setUI({ nextSearchProvider: 'openrouter' } as any);
-                    }}
-                  >
-                    OpenRouter
-                  </button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Brave uses local function-calling; OpenRouter injects the web plugin to include citations.
-                </div>
               </div>
             </div>
           </Section>
@@ -731,6 +866,72 @@ export default function SettingsDrawer() {
             </div>
           </Section>
 
+          {/* Experimental */}
+          <Section title="Experimental">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-sm block">Brave Web Search</label>
+                <div className="segmented">
+                  <button
+                    className={`segment ${experimentalBrave ? 'is-active' : ''}`}
+                    onClick={() => setUI({ experimentalBrave: true })}
+                  >
+                    On
+                  </button>
+                  <button
+                    className={`segment ${!experimentalBrave ? 'is-active' : ''}`}
+                    onClick={() => setUI({ experimentalBrave: false })}
+                  >
+                    Off
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Toggle Brave integration for web search and sources panel.
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm block">Tutor Mode</label>
+                <div className="segmented">
+                  <button
+                    className={`segment ${experimentalTutor ? 'is-active' : ''}`}
+                    onClick={() => setUI({ experimentalTutor: true })}
+                  >
+                    On
+                  </button>
+                  <button
+                    className={`segment ${!experimentalTutor ? 'is-active' : ''}`}
+                    onClick={() => setUI({ experimentalTutor: false })}
+                  >
+                    Off
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Show Tutor controls and enable practice tools (MCQ, fill‑blank, flashcards).
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm block">DeepResearch</label>
+                <div className="segmented">
+                  <button
+                    className={`segment ${experimentalDeepResearch ? 'is-active' : ''}`}
+                    onClick={() => setUI({ experimentalDeepResearch: true })}
+                  >
+                    On
+                  </button>
+                  <button
+                    className={`segment ${!experimentalDeepResearch ? 'is-active' : ''}`}
+                    onClick={() => setUI({ experimentalDeepResearch: false })}
+                  >
+                    Off
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Show the DeepResearch toggle in the composer and enable multi-step research.
+                </div>
+              </div>
+            </div>
+          </Section>
+
           {/* Data */}
           <Section title="Data">
             <div className="space-y-2">
@@ -758,127 +959,7 @@ export default function SettingsDrawer() {
             </div>
           </Section>
 
-          {/* Models */}
-          <Section title="Models">
-            <div className="space-y-3">
-              <div className="relative">
-                <input
-                  ref={searchRef}
-                  className="input w-full"
-                  placeholder="Search OpenRouter models (e.g. openai, anthropic, llama)"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.stopPropagation()}
-                />
-                {dropdownPos &&
-                  createPortal(
-                    <div
-                      className="fixed card p-2 overflow-auto z-[90]"
-                      ref={dropdownRef}
-                      style={{
-                        left: dropdownPos.left,
-                        top: dropdownPos.top,
-                        width: dropdownPos.width,
-                        maxHeight: dropdownPos.maxHeight,
-                        overscrollBehavior: 'contain',
-                      }}
-                    >
-                      {filtered.length === 0 && (
-                        <div className="p-2 text-sm text-muted-foreground">No matches</div>
-                      )}
-                      {filtered.map((m) => {
-                        const meta = findModelById(models, m.id);
-                        const canReason = isReasoningSupported(meta);
-                        const canSee = isVisionSupported(meta);
-                        const canImageOut = isImageOutputSupported(meta);
-                        const priceStr = describeModelPricing(meta);
-                        return (
-                          <div
-                            key={m.id}
-                            className="p-2 rounded hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
-                          >
-                            <div className="flex items-center justify-between gap-3 w-full">
-                              <div className="font-medium text-sm flex items-center gap-2 min-w-0">
-                                <span className="truncate">{m.name || m.id}</span>
-                                <span className="flex items-center gap-1 text-muted-foreground shrink-0">
-                                  {canReason && (
-                                    <LightBulbIcon
-                                      className="h-4 w-4"
-                                      aria-label="Reasoning supported"
-                                      title="Reasoning supported"
-                                    />
-                                  )}
-                                  {canSee && (
-                                    <EyeIcon
-                                      className="h-4 w-4"
-                                      aria-label="Vision input"
-                                      title="Vision input"
-                                    />
-                                  )}
-                                  {canImageOut && (
-                                    <PhotoIcon
-                                      className="h-4 w-4"
-                                      aria-label="Image generation"
-                                      title="Image generation"
-                                    />
-                                  )}
-                                  {isAudioInputSupported(meta) && (
-                                    <MicrophoneIcon
-                                      className="h-4 w-4"
-                                      aria-label="Audio input"
-                                      title="Audio input"
-                                    />
-                                  )}
-                                </span>
-                              </div>
-                              {priceStr && (
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                  {priceStr}
-                                </span>
-                              )}
-                              {m.name && (
-                                <div className="text-xs text-muted-foreground">{m.id}</div>
-                              )}
-                            </div>
-                            <button
-                              className="btn btn-outline text-sm"
-                              onClick={() => {
-                                if (!favoriteModelIds.includes(m.id)) toggleFavoriteModel(m.id);
-                                if (chat) {
-                                  updateChatSettings({ model: m.id });
-                                } else {
-                                  setUI({ nextModel: m.id });
-                                }
-                                setQuery('');
-                              }}
-                            >
-                              Add
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>,
-                    document.body,
-                  )}
-              </div>
-              <div>
-                <button className="btn btn-ghost" onClick={() => loadModels()}>
-                  Refresh model list
-                </button>
-              </div>
-              {hiddenModelIds && hiddenModelIds.length > 0 && (
-                <div className="flex items-center justify-between gap-2 text-sm">
-                  <div className="text-muted-foreground">
-                    {hiddenModelIds.length} hidden{' '}
-                    {hiddenModelIds.length === 1 ? 'model' : 'models'}
-                  </div>
-                  <button className="btn btn-outline btn-sm" onClick={() => resetHiddenModels()}>
-                    Reset hidden
-                  </button>
-                </div>
-              )}
-            </div>
-          </Section>
+          {/* (Models section moved to top) */}
         </div>
 
         {/* Sticky footer */}
@@ -909,8 +990,11 @@ export default function SettingsDrawer() {
                   nextReasoningTokens: reasoningTokens,
                   nextShowThinking: showThinking,
                   nextShowStats: showStats,
-                  // ensure provider selection from welcome page is retained
-                  nextSearchProvider: (ui as any)?.nextSearchProvider ?? (chat as any)?.settings?.search_provider ?? 'brave',
+                  // ensure provider selection from welcome page is retained; default based on experimental flag
+                  nextSearchProvider:
+                    (ui as any)?.nextSearchProvider ??
+                    (chat as any)?.settings?.search_provider ??
+                    (experimentalBrave ? 'brave' : 'openrouter'),
                 });
               }
               closeWithAnim();

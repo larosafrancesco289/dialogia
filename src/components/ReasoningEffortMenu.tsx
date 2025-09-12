@@ -15,6 +15,7 @@ export default function ReasoningEffortMenu() {
   const ui = useChatStore((s) => s.ui);
   const setUI = useChatStore((s) => s.setUI);
   const deepEnabled = useChatStore((s) => !!s.ui.nextDeepResearch);
+  const deepGloballyEnabled = useChatStore((s) => !!s.ui.experimentalDeepResearch);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -78,19 +79,23 @@ export default function ReasoningEffortMenu() {
               {o.label}
             </div>
           ))}
-          <div className="divider my-2" />
-          <button
-            className={`menu-item flex items-center gap-2 ${deepEnabled ? 'font-semibold' : ''}`}
-            onClick={() => setUI({ nextDeepResearch: !deepEnabled })}
-            title="DeepResearch: multi-step web research for the next send"
-            aria-pressed={deepEnabled}
-          >
-            <BeakerIcon className="h-4 w-4" />
-            <span>DeepResearch</span>
-            <span className={`ml-auto text-xs ${deepEnabled ? 'text-primary' : 'text-muted-foreground'}`}>
-              {deepEnabled ? 'On' : 'Off'}
-            </span>
-          </button>
+          {deepGloballyEnabled && (
+            <>
+              <div className="divider my-2" />
+              <button
+                className={`menu-item flex items-center gap-2 ${deepEnabled ? 'font-semibold' : ''}`}
+                onClick={() => setUI({ nextDeepResearch: !deepEnabled })}
+                title="DeepResearch: multi-step web research for the next send"
+                aria-pressed={deepEnabled}
+              >
+                <BeakerIcon className="h-4 w-4" />
+                <span>DeepResearch</span>
+                <span className={`ml-auto text-xs ${deepEnabled ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {deepEnabled ? 'On' : 'Off'}
+                </span>
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
