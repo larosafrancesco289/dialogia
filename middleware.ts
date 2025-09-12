@@ -44,8 +44,13 @@ async function verifyToken(token: string): Promise<boolean> {
       false,
       ['verify']
     );
-    // Verify using typed arrays directly to avoid ArrayBuffer view pitfalls
-    const ok = await crypto.subtle.verify('HMAC', key, sigBytes, payloadBytes);
+    // Cast to BufferSource to satisfy TS dom lib generics across versions
+    const ok = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      sigBytes as unknown as BufferSource,
+      payloadBytes as unknown as BufferSource
+    );
     if (!ok) return false;
     const claims = JSON.parse(new TextDecoder().decode(payloadBytes));
     if (typeof claims?.exp !== 'number') return false;
