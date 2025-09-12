@@ -44,12 +44,13 @@ export async function POST(req: NextRequest) {
     const token = createAuthToken(claims);
 
     const res = NextResponse.json({ ok: true });
+    const secure = process.env.NODE_ENV === 'production';
     res.cookies.set({
       name: AUTH_COOKIE_NAME,
       value: token,
       httpOnly: true,
       sameSite: 'lax',
-      secure: true,
+      secure,
       path: '/',
       maxAge: 60 * 60 * 24 * 14,
     });
@@ -58,4 +59,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 });
   }
 }
-
