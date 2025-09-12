@@ -45,12 +45,14 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ ok: true });
     const secure = process.env.NODE_ENV === 'production';
+    const domain = process.env.ACCESS_COOKIE_DOMAIN?.trim() || undefined; // optional cross-subdomain
     res.cookies.set({
       name: AUTH_COOKIE_NAME,
       value: token,
       httpOnly: true,
       sameSite: 'lax',
       secure,
+      domain,
       path: '/',
       maxAge: 60 * 60 * 24 * 14,
     });

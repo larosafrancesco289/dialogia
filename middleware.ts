@@ -6,6 +6,7 @@ const AUTH_COOKIE = 'dlg_access';
 const PUBLIC_PATHS = [
   '/access',
   '/api/auth/verify-code',
+  '/api/auth/logout',
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',
@@ -43,11 +44,8 @@ async function verifyToken(token: string): Promise<boolean> {
       false,
       ['verify']
     );
-    // Ensure we pass ArrayBuffer slices to satisfy TS DOM types
-    // Coerce to ArrayBuffer using copy to satisfy TS BufferSource types
-    const sigBuf = new Uint8Array(sigBytes).buffer as ArrayBuffer;
-    const dataBuf = new Uint8Array(payloadBytes).buffer as ArrayBuffer;
-    const ok = await crypto.subtle.verify('HMAC', key, sigBuf, dataBuf);
+    // Verify using typed arrays directly to avoid ArrayBuffer view pitfalls
+    const ok = await crypto.subtle.verify('HMAC', key, sigBytes, payloadBytes);
     if (!ok) return false;
     const claims = JSON.parse(new TextDecoder().decode(payloadBytes));
     if (typeof claims?.exp !== 'number') return false;
@@ -86,5 +84,6 @@ export default async function middleware(req: NextRequest) {
 
 export const config = {
   // Run on almost all routes; we explicitly allowlist in-code too
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|assets|public).*)'],
+  // Skip all API routes entirely to avoid any interference with auth endpoints
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|assets|public|api).*)'],
 };
