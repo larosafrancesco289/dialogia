@@ -26,7 +26,7 @@ import {
   isImageOutputSupported,
 } from '@/lib/models';
 import { describeModelPricing } from '@/lib/cost';
-import { EyeIcon, LightBulbIcon, MicrophoneIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, LightBulbIcon, MicrophoneIcon, PhotoIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
 // Define Section at module scope so it doesn't remount on every render.
 function Section(props: { title: string; children: ReactNode }) {
@@ -52,6 +52,8 @@ export default function SettingsDrawer() {
     hiddenModelIds,
     resetHiddenModels,
     initializeApp,
+    zdrModelIds,
+    zdrProviderIds,
   } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
   const [system, setSystem] = useState(chat?.settings.system ?? '');
@@ -332,6 +334,11 @@ export default function SettingsDrawer() {
                         const priceStr = describeModelPricing(meta);
                         // Prefer a concise name: drop provider prefixes like "Anthropic: ..."
                         const displayName = String(m.name || m.id).replace(/^[^:]+:\\s*/, '');
+                        const provider = String(m.id).split('/')[0];
+                        const isZdr = Boolean(
+                          (zdrModelIds && zdrModelIds.includes(m.id)) ||
+                            (zdrProviderIds && zdrProviderIds.includes(provider)),
+                        );
                         return (
                           <div
                             key={m.id}
@@ -367,6 +374,13 @@ export default function SettingsDrawer() {
                                       className="h-4 w-4"
                                       aria-label="Audio input"
                                       title="Audio input"
+                                    />
+                                  )}
+                                  {isZdr && (
+                                    <ShieldCheckIcon
+                                      className="h-4 w-4"
+                                      aria-label="Zero Data Retention"
+                                      title="Zero Data Retention"
                                     />
                                   )}
                                 </span>
