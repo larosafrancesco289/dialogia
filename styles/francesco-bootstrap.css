@@ -63,6 +63,14 @@
   /* Status colors */
   --color-success: #2ecc71; /* green */
   --color-danger: #e74c3c; /* red */
+  /* Focus ring (light): gold, coherent with accent */
+  --focus-ring: color-mix(in oklab, var(--color-accent) 50%, transparent);
+
+  /* Message role tokens (light) – gold for assistant to fit paper/ink theme */
+  --message-assistant-bg: color-mix(in oklab, var(--color-surface) 90%, var(--color-accent));
+  --message-assistant-border: color-mix(in oklab, var(--color-border) 86%, var(--color-accent));
+  --message-user-bg: color-mix(in oklab, var(--color-surface) 97%, var(--color-accent));
+  --message-user-border: color-mix(in oklab, var(--color-border) 90%, var(--color-accent));
 }
 
 :root {
@@ -84,11 +92,18 @@
   /* Status colors (dark-tuned) */
   --color-success: #3ddc84;
   --color-danger: #ff6b6b;
+  --focus-ring: rgba(106, 90, 224, 0.45);
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
   --shadow-3: 0 24px 48px rgba(0, 0, 0, 0.6);
   --shadow-card: var(--shadow-2);
+
+  /* Message role tokens (dark) – keep contrast subtle but visible */
+  --message-assistant-bg: color-mix(in oklab, var(--color-surface) 94%, var(--color-accent-2));
+  --message-assistant-border: color-mix(in oklab, var(--color-border) 88%, var(--color-accent-2));
+  --message-user-bg: color-mix(in oklab, var(--color-surface) 94.5%, var(--color-accent));
+  --message-user-border: color-mix(in oklab, var(--color-border) 88%, var(--color-accent));
 }
 
 /* ===== Base reset & globals ===== */
@@ -176,7 +191,7 @@ a:hover {
   transform: none;
 }
 .btn:focus-visible {
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .btn-outline {
@@ -196,7 +211,7 @@ a:hover {
   background: var(--color-muted);
 }
 .btn-outline:focus-visible {
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 /* Destructive intent for error/incorrect states */
 .btn-destructive {
@@ -298,6 +313,14 @@ a:hover {
   border: 1px solid color-mix(in oklab, var(--color-accent) 20%, transparent);
 }
 
+/* Hierarchy bump for active chat title */
+.chat-item.selected {
+  font-weight: 600;
+}
+.chat-item.selected .truncate {
+  color: var(--color-fg);
+}
+
 .chat-item:hover:not(.selected) {
   background: color-mix(in oklab, var(--color-muted) 60%, transparent);
 }
@@ -371,7 +394,7 @@ a:hover {
 }
 .input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 /* Multiline text input, matches input look but non-resizable and auto-growing */
@@ -393,7 +416,7 @@ a:hover {
 }
 .textarea:focus {
   outline: none;
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 /* Badges / Chips */
@@ -482,7 +505,7 @@ pre {
 
 /* Focus ring fallbacks for non-TW elements */
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

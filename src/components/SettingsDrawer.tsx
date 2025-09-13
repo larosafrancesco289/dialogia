@@ -82,7 +82,7 @@ export default function SettingsDrawer() {
   const [showThinking, setShowThinking] = useState<boolean>(
     chat?.settings.show_thinking_by_default ?? true,
   );
-  const [showStats, setShowStats] = useState<boolean>(chat?.settings.show_stats ?? true);
+  const [showStats, setShowStats] = useState<boolean>(chat?.settings.show_stats ?? false);
   const [closing, setClosing] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const [routePref, setRoutePref] = useState<'speed' | 'cost'>(
@@ -124,7 +124,7 @@ export default function SettingsDrawer() {
       chat?.settings.reasoning_tokens != null ? String(chat.settings.reasoning_tokens) : '',
     );
     setShowThinking(chat?.settings.show_thinking_by_default ?? true);
-    setShowStats(chat?.settings.show_stats ?? true);
+    setShowStats(chat?.settings.show_stats ?? false);
   }, [chat?.id]);
 
   // Prevent background scroll while drawer is open

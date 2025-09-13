@@ -44,6 +44,58 @@ export default function HomePage() {
     initialize();
   }, [initialize]);
 
+  // Mobile: swipe from left edge to open sidebar; swipe left within sidebar region to close
+  useEffect(() => {
+    if (!mounted || !isMobile) return;
+    let startX = 0;
+    let startY = 0;
+    let active = false;
+    const EDGE = 24; // px from left edge to start open gesture
+    const THRESH = 56; // px horizontal distance to trigger
+    const HYST = 12; // min horizontal slop before considering
+
+    const onDown = (e: PointerEvent) => {
+      // Ignore mouse to avoid interfering with desktop
+      if ((e.pointerType as any) === 'mouse') return;
+      startX = e.clientX;
+      startY = e.clientY;
+      const fromEdge = startX <= EDGE;
+      const sidebarOpen = !collapsed;
+      const inSidebarRegion = startX <= 360 + 40; // sidebar width + tolerance
+      // Start tracking if: collapsed and from edge (open gesture), or open and inside sidebar region (close gesture)
+      active = (collapsed && fromEdge) || (sidebarOpen && inSidebarRegion);
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!active) return;
+      const dx = e.clientX - startX;
+      const adx = Math.abs(dx);
+      const ady = Math.abs(e.clientY - startY);
+      // Require mostly horizontal intent
+      if (adx < HYST || adx < ady) return;
+      const sidebarOpen = !collapsed;
+      if (collapsed && dx > THRESH) {
+        setUI({ sidebarCollapsed: false });
+        active = false;
+      } else if (sidebarOpen && dx < -THRESH) {
+        setUI({ sidebarCollapsed: true });
+        active = false;
+      }
+    };
+    const onEnd = () => {
+      active = false;
+    };
+    window.addEventListener('pointerdown', onDown, { passive: true } as any);
+    window.addEventListener('pointermove', onMove, { passive: true } as any);
+    window.addEventListener('pointerup', onEnd as any);
+    window.addEventListener('pointercancel', onEnd as any);
+    return () => {
+      window.removeEventListener('pointerdown', onDown as any);
+      window.removeEventListener('pointermove', onMove as any);
+      window.removeEventListener('pointerup', onEnd as any);
+      window.removeEventListener('pointercancel', onEnd as any);
+    };
+  }, [mounted, isMobile, collapsed, setUI]);
+
   // Warm-up: prefetch drawer bundles on idle so first open feels instant
   useEffect(() => {
     const warm = () => {
