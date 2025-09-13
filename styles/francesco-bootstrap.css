@@ -309,8 +309,20 @@ a:hover {
 }
 
 .chat-item.selected {
-  background: color-mix(in oklab, var(--color-accent) 6%, var(--color-surface));
-  border: 1px solid color-mix(in oklab, var(--color-accent) 20%, transparent);
+  position: relative;
+  overflow: hidden; /* clip accent to rounded corners (like bubbles) */
+  background: var(--message-assistant-bg);
+  border: 1px solid var(--message-assistant-border);
+}
+.chat-item.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-accent);
+  opacity: 0.6; /* match bubble tone */
 }
 
 /* Hierarchy bump for active chat title */
