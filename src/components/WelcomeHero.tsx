@@ -20,14 +20,14 @@ export default function WelcomeHero() {
   return (
     <div className="h-full flex flex-col relative">
       <div className="absolute inset-0 hero-gradient pointer-events-none" />
-      {/* Centered hero block */}
-      <div className="relative z-10 flex-1 flex items-center justify-center">
+
+      {/* Desktop / tablet: centered hero with inline composer */}
+      <div className="hidden sm:flex relative z-10 flex-1 items-center justify-center">
         <div className="w-full max-w-3xl px-6 mx-auto text-center space-y-4">
-          <div className="text-3xl sm:text-4xl font-semibold">Welcome to Dialogia</div>
+          <div className="text-2xl sm:text-4xl font-semibold">Welcome to Dialogia</div>
           <p className="text-sm text-muted-foreground">
             Ask anything. Your chats stay local, and you control the model.
           </p>
-          {/* Quick suggestions (no model label for brevity) */}
           <div className="flex items-center justify-center gap-2 flex-wrap">
             <div className="flex gap-2 flex-wrap">
               {['Email', 'Explain code', 'Study plan'].map((s) => (
@@ -42,11 +42,35 @@ export default function WelcomeHero() {
               ))}
             </div>
           </div>
-          {/* Centered composer under the hero heading, hero variant */}
           <div className="pt-2">
             <Composer variant="hero" />
           </div>
         </div>
+      </div>
+
+      {/* Mobile: center content vertically, sticky composer at bottom */}
+      <div className="sm:hidden relative z-10 flex-1 flex items-center justify-center">
+        <div className="w-full max-w-2xl px-4 mx-auto text-center space-y-3">
+          <div className="text-2xl font-semibold">Welcome to Dialogia</div>
+          <p className="text-sm text-muted-foreground">
+            Ask anything. Your chats stay local, and you control the model.
+          </p>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            {['Email', 'Explain code', 'Study plan'].map((s) => (
+              <button
+                key={s}
+                className="badge"
+                onClick={() => quickStart(s + '…')}
+                title="Start with this suggestion"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="sm:hidden">
+        <Composer variant="sticky" />
       </div>
     </div>
   );

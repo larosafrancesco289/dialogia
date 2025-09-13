@@ -26,7 +26,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
   const branchFrom = useChatStore((s) => s.branchChatFromMessage);
-  const showStats = chat?.settings.show_stats ?? true;
+  const showStats = chat?.settings.show_stats ?? false;
   const debugMode = useChatStore((s) => s.ui.debugMode || false);
   const debugByMessageId = useChatStore((s) => s.ui.debugByMessageId || {});
   const containerRef = useRef<HTMLDivElement>(null);
@@ -155,11 +155,15 @@ export default function MessageList({ chatId }: { chatId: string }) {
   return (
     <div
       ref={containerRef}
-      className="scroll-area p-4 space-y-3 h-full"
+      className="scroll-area p-4 space-y-2 h-full"
       style={{ background: 'var(--color-canvas)' }}
     >
       {messages.map((m) => (
-        <div key={m.id} className={`card p-0 message-card group`}>
+        <div
+          key={m.id}
+          className={`card p-0 message-card group ${m.role === 'assistant' ? 'message-assistant' : 'message-user'}`}
+          aria-label={m.role === 'assistant' ? 'Assistant message' : 'Your message'}
+        >
           {m.role === 'assistant' ? (
             <div className="relative">
               <div className="absolute bottom-2 right-2 z-30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
@@ -279,7 +283,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
               })()}
               {/* Attachments (assistant-visible images/audio; PDFs shown as chips) */}
               {Array.isArray(m.attachments) && m.attachments.length > 0 && (
-                <div className="px-4 pt-3 flex flex-wrap gap-2">
+                <div className="px-4 pt-2 flex flex-wrap gap-2">
                   {m.attachments
                     .filter((a: Attachment) => a.kind === 'image')
                     .map((a: Attachment, idx: number, arr: Attachment[]) => (
@@ -336,7 +340,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     ))}
                 </div>
               )}
-              <div className="p-4 pt-3">
+              <div className="px-4 py-3">
                 {editingId === m.id ? (
                   <textarea
                     className="textarea w-full text-sm"
@@ -459,7 +463,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
               </div>
               {/* Attachments (user: images/audio/PDFs) */}
               {Array.isArray(m.attachments) && m.attachments.length > 0 && (
-                <div className="px-4 pt-3 flex flex-wrap gap-2">
+                <div className="px-4 pt-2 flex flex-wrap gap-2">
                   {m.attachments
                     .filter((a: Attachment) => a.kind === 'image')
                     .map((a: Attachment, idx: number, arr: Attachment[]) => (
@@ -516,7 +520,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     ))}
                 </div>
               )}
-              <div className="p-4 pt-3">
+              <div className="px-4 py-3">
                 {editingId === m.id ? (
                   <textarea
                     className="textarea w-full text-sm"

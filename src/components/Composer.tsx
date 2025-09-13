@@ -15,6 +15,7 @@ import {
   AcademicCapIcon,
   BeakerIcon,
   PlusIcon,
+  EllipsisVerticalIcon,
 } from '@heroicons/react/24/outline';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
@@ -209,6 +210,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     ? (chat.settings.reasoning_effort as Effort | undefined)
     : (uiNext.nextReasoningEffort as Effort | undefined)) as Effort | undefined;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Build slash command suggestions
@@ -421,12 +423,16 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     if (next.length) setAttachments((prev) => [...prev, ...next]);
   };
 
-  // Close the mobile actions popover on outside click
+  // Close the mobile actions popover on outside click, but ignore clicks on the trigger button
   useEffect(() => {
     if (!mobileMenuOpen) return;
     const onDown = (e: PointerEvent) => {
       const menu = document.getElementById('composer-mobile-menu');
-      if (menu && !menu.contains(e.target as Node)) setMobileMenuOpen(false);
+      const trigger = mobileMenuButtonRef.current;
+      const target = e.target as Node | null;
+      const inMenu = !!(menu && target && menu.contains(target));
+      const inTrigger = !!(trigger && target && trigger.contains(target));
+      if (!inMenu && !inTrigger) setMobileMenuOpen(false);
     };
     document.addEventListener('pointerdown', onDown, true);
     return () => document.removeEventListener('pointerdown', onDown, true);
@@ -613,7 +619,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             {/* Desktop: show full control row */}
             <div className="hidden sm:flex items-center gap-2">
               <label
-                className={`btn self-center cursor-pointer`}
+                className={`btn btn-outline self-center cursor-pointer`}
                 title={
                   canVision && canAudio
                     ? 'Attach images, audio (mp3/wav), or PDFs'
@@ -667,9 +673,10 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
                 aria-haspopup="menu"
                 aria-expanded={mobileMenuOpen}
                 aria-label="More actions"
+                ref={mobileMenuButtonRef}
                 onClick={() => setMobileMenuOpen((v) => !v)}
               >
-                <PlusIcon className="h-4 w-4" />
+                <EllipsisVerticalIcon className="h-4 w-4" />
               </button>
               {mobileMenuOpen && (
                 <div
@@ -734,7 +741,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
             </div>
 
             <button
-              className="btn btn-outline self-center"
+              className="btn self-center"
               onClick={onSend}
               aria-label="Send"
               title="Send"
