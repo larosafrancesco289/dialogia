@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
@@ -9,7 +10,7 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
   const chat = chats.find((c) => c.id === selectedChatId);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const [custom, setCustom] = useState('');
+  const menuRef = useRef<HTMLDivElement>(null);
   const { favoriteModelIds } = useChatStore();
   const curated = [
     { id: chat?.settings.model || CURATED_MODELS[0]?.id, name: 'Current' },
@@ -26,12 +27,54 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
       const root = rootRef.current;
-      if (root && target && root.contains(target)) return;
+      const menu = menuRef.current;
+      if ((root && target && root.contains(target)) || (menu && target && menu.contains(target)))
+        return;
       setOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown, true);
-    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+    // Close on Escape while menu/input is focused
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
   }, [open]);
+
+  // Fixed-position portal coordinates to avoid stacking-context issues
+  const [coords, setCoords] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const widthPx = 14 * 16; // Tailwind w-56 = 14rem (assuming 16px root)
+  const margin = 8;
+  const updateCoords = useMemo(
+    () =>
+      () => {
+        const root = rootRef.current;
+        if (!root) return;
+        const r = root.getBoundingClientRect();
+        const left = Math.min(
+          Math.max(8, Math.round(r.right - widthPx)),
+          Math.max(8, window.innerWidth - widthPx - 8),
+        );
+        const top = Math.max(8, Math.round(r.top - margin));
+        setCoords({ left, top });
+      },
+    [],
+  );
+  useEffect(() => {
+    if (!open) return;
+    updateCoords();
+    const onScroll = () => updateCoords();
+    const onResize = () => updateCoords();
+    window.addEventListener('scroll', onScroll, { passive: true } as any);
+    window.addEventListener('resize', onResize, { passive: true } as any);
+    return () => {
+      window.removeEventListener('scroll', onScroll as any);
+      window.removeEventListener('resize', onResize as any);
+    };
+  }, [open, updateCoords]);
 
   return (
     <div className="relative" ref={rootRef}>
@@ -39,59 +82,45 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
         className="icon-button"
         aria-label="Regenerate"
         title="Regenerate"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() =>
+          setOpen((v) => {
+            if (!v) updateCoords();
+            return !v;
+          })
+        }
       >
-        <ArrowPathIcon className="h-4 w-4" />
+        <ArrowPathIcon className="h-5 w-5 sm:h-4 sm:w-4" />
       </button>
-      {open && (
-        <div className="absolute right-0 bottom-full mb-2 z-40 card p-2 w-56 popover">
-          <div className="text-xs text-muted-foreground px-1 pb-1">Choose model</div>
-          {options.map((o) => (
-            <div
-              key={o.id}
-              className="menu-item text-sm"
-              onClick={() => {
-                onChoose(o.id);
-                setOpen(false);
-              }}
-            >
-              {(o.name || o.id).replace(/^[^:]+:\\s*/, '')}
-            </div>
-          ))}
-          <div className="border-t border-border my-1" />
-          <div className="flex gap-1">
-            <input
-              className="input flex-1"
-              placeholder="provider/model-id"
-              value={custom}
-              onChange={(e) => setCustom(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const id = custom.trim();
-                  if (id) {
-                    onChoose(id);
-                    setCustom('');
-                    setOpen(false);
-                  }
-                }
-              }}
-            />
-            <button
-              className="btn btn-outline"
-              onClick={() => {
-                const id = custom.trim();
-                if (id) {
-                  onChoose(id);
-                  setCustom('');
+      {open &&
+        createPortal(
+          <div
+            className="fixed card p-2 w-56"
+            style={{
+              zIndex: 80,
+              left: coords.left,
+              top: coords.top,
+              transform: 'translateY(-100%)', // position above trigger (bottom-full)
+            }}
+            role="menu"
+            aria-label="Regenerate options"
+            ref={menuRef}
+          >
+            <div className="text-xs text-muted-foreground px-1 pb-1">Choose model</div>
+            {options.map((o) => (
+              <div
+                key={o.id}
+                className="menu-item text-sm"
+                onClick={() => {
+                  onChoose(o.id);
                   setOpen(false);
-                }
-              }}
-            >
-              Go
-            </button>
-          </div>
-        </div>
-      )}
+                }}
+              >
+                {(o.name || o.id).replace(/^[^:]+:\\s*/, '')}
+              </div>
+            ))}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

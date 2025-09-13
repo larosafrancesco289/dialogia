@@ -45,9 +45,8 @@ export default function ModelPicker() {
   const allOptions = useMemo(() => {
     // Ensure DEFAULT_MODEL_ID is always present as a selectable option
     const injectedDefault = (() => {
-      const meta = findModelById(models, DEFAULT_MODEL_ID);
-      const display = meta?.name || DEFAULT_MODEL_ID;
-      return [{ id: DEFAULT_MODEL_ID, name: display }];
+      // Override display name for the default model
+      return [{ id: DEFAULT_MODEL_ID, name: 'Kimi K2' }];
     })();
     return [...injectedDefault, ...curated, ...customOptions].reduce((acc: any[], m: any) => {
       if (!acc.find((x) => x.id === m.id)) acc.push(m);

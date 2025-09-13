@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop, setCurrentDragData, getCurrentDragData } from '@/lib/dragDrop';
 import IconButton from './IconButton';
@@ -36,6 +36,54 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(folder.name);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
+    update();
+    window.addEventListener('resize', update, { passive: true } as any);
+    return () => window.removeEventListener('resize', update as any);
+  }, []);
+
+  // Long-press for folder actions (mobile only)
+  const [showActions, setShowActions] = useState(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const longTid = useRef<number | null>(null);
+  const longFired = useRef(false);
+  const slop = 8;
+  const clearLong = () => {
+    if (longTid.current) window.clearTimeout(longTid.current);
+    longTid.current = null;
+  };
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!isMobile || isEditing) return;
+    if (e.pointerType === 'mouse') return;
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+    longFired.current = false;
+    clearLong();
+    longTid.current = window.setTimeout(() => {
+      longFired.current = true;
+      setShowActions(true);
+    }, 500);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!isMobile || isEditing) return;
+    const dxNow = e.clientX - startX.current;
+    const dyNow = e.clientY - startY.current;
+    if (Math.abs(dxNow) > slop || Math.abs(dyNow) > slop) {
+      clearLong();
+    }
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!isMobile || isEditing) return;
+    const moved = Math.abs(e.clientX - startX.current) > slop || Math.abs(e.clientY - startY.current) > slop;
+    if (!longFired.current && !moved) handleToggleExpanded();
+    clearLong();
+  };
+  const onPointerCancel = () => {
+    clearLong();
+  };
 
   // Get chats and subfolders for this folder
   const folderChats = chats.filter((chat) => chat.folderId === folder.id);
@@ -61,17 +109,21 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
   const paddingLeft = depth * 16 + 16; // 16px per level + base padding
 
   return (
-    <div>
+    <div data-row-press>
       {/* Folder Header */}
-      <div
-        className={`flex items-center gap-2 px-4 py-2 cursor-pointer group folder-item ${
-          isDragOver ? 'drag-over' : ''
-        }`}
-        style={{ paddingLeft: `${paddingLeft}px` }}
-        draggable
-        onDragStart={() => {
-          setCurrentDragData({ id: folder.id, type: 'folder' });
-        }}
+      <div className="relative" style={{ paddingLeft: `${paddingLeft}px` }}>
+        <div
+          className={`flex items-center gap-2 px-4 py-2 cursor-pointer group folder-item ${
+            isDragOver ? 'drag-over' : ''
+          }`}
+          draggable
+          onDragStart={() => {
+            setCurrentDragData({ id: folder.id, type: 'folder' });
+          }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
         onDragOver={(e) => {
           handleDragOver(e);
           setIsDragOver(true);
@@ -134,9 +186,9 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Desktop-only action buttons */}
         {!isEditing && (
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+          <div className="hidden sm:flex opacity-0 sm:group-hover:opacity-100 transition-opacity gap-1">
             <IconButton
               size="sm"
               onClick={(e) => {
@@ -160,7 +212,43 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
             </IconButton>
           </div>
         )}
+        </div>
       </div>
+
+      {isMobile && showActions && (
+        <>
+          <button
+            className="fixed inset-0 z-[95] settings-overlay"
+            aria-label="Close actions"
+            onClick={() => setShowActions(false)}
+          />
+          <div className="fixed left-0 right-0 bottom-0 z-[100] p-2">
+            <div className="card p-2 rounded-2xl overflow-hidden">
+              <button
+                className="w-full h-11 btn btn-outline mb-2"
+                onClick={() => {
+                  setShowActions(false);
+                  setIsEditing(true);
+                  setEditName(folder.name);
+                }}
+                title="Rename folder"
+              >
+                Rename
+              </button>
+              <button
+                className="w-full h-11 btn btn-destructive"
+                onClick={() => {
+                  setShowActions(false);
+                  handleDelete();
+                }}
+                title="Delete folder"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Folder Contents (when expanded) */}
       {folder.isExpanded && (
