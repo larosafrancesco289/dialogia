@@ -289,8 +289,8 @@ export default function SettingsDrawer() {
           </h3>
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
-            <IconButton title="Close" onClick={closeWithAnim}>
-              <CloseCircleIcon size={18} />
+            <IconButton title="Close" onClick={closeWithAnim} className="w-11 h-11 sm:w-9 sm:h-9">
+              <CloseCircleIcon size={24} />
             </IconButton>
           </div>
         </div>

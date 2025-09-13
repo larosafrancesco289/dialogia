@@ -57,6 +57,12 @@ export default function HomePage() {
     const onDown = (e: PointerEvent) => {
       // Ignore mouse to avoid interfering with desktop
       if ((e.pointerType as any) === 'mouse') return;
+      // If starting on a swipeable chat row, don't hijack the gesture for drawer close
+      const t = e.target as Element | null;
+      if (t && (t.closest('[data-row-press]') || t.closest('[data-chat-swipe]') || t.closest('[data-folder-swipe]'))) {
+        active = false;
+        return;
+      }
       startX = e.clientX;
       startY = e.clientY;
       const fromEdge = startX <= EDGE;
@@ -136,8 +142,8 @@ export default function HomePage() {
             aria-label="Close sidebar"
             onClick={() => setUI({ sidebarCollapsed: true })}
           />
-          <div className="fixed inset-y-0 left-0 z-[80] w-[88%] max-w-[360px] p-2">
-            <div className="glass-panel border border-border rounded-2xl p-2 h-full overflow-hidden">
+          <div className="fixed inset-y-0 left-0 z-[80] w-[96%] max-w-[420px] p-2">
+            <div className="glass-panel border border-border rounded-2xl p-3 h-full overflow-hidden">
               <ChatSidebar />
             </div>
           </div>

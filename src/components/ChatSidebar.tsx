@@ -1,10 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useDragAndDrop, setCurrentDragData, getCurrentDragData } from '@/lib/dragDrop';
 import FolderItem from './FolderItem';
 import IconButton from './IconButton';
+import ThemeToggle from '@/components/ThemeToggle';
 import ConfirmDialog from './ConfirmDialog';
 import {
   PlusIcon,
@@ -53,6 +54,14 @@ export default function ChatSidebar() {
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [query, setQuery] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
+    update();
+    window.addEventListener('resize', update, { passive: true } as any);
+    return () => window.removeEventListener('resize', update as any);
+  }, []);
+  // no global swipe state; long-press opens action sheet per-row
 
   useEffect(() => {
     loadModels();
@@ -91,20 +100,22 @@ export default function ChatSidebar() {
       <div className="app-header justify-between">
         <div className="flex items-center gap-2 font-semibold">{collapsed ? 'Dg' : 'Dialogia'}</div>
         <div className="flex items-center gap-2">
-          <IconButton onClick={() => newChat()} title="New Chat" variant="ghost">
-            <PlusIcon className="h-3.5 w-3.5" />
+          <IconButton onClick={() => newChat()} title="New Chat" variant="ghost" className="w-11 h-11 sm:w-9 sm:h-9">
+            <PlusIcon className="h-5 w-5 sm:h-3.5 sm:w-3.5" />
           </IconButton>
           {!collapsed && (
             <IconButton
               onClick={() => setShowCreateFolder(true)}
               title="Create folder"
               variant="ghost"
+              className="w-11 h-11 sm:w-9 sm:h-9"
             >
-              <FolderPlusIcon className="h-3.5 w-3.5" />
+              <FolderPlusIcon className="h-5 w-5 sm:h-3.5 sm:w-3.5" />
             </IconButton>
           )}
-          {/* Settings on mobile: expose gear in sidebar header */}
-          <span className="sm:hidden">
+          {/* Mobile-only: theme, settings, close sidebar */}
+          <span className="sm:hidden flex items-center gap-2">
+            <ThemeToggle />
             <IconButton
               onClick={() => {
                 const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -112,8 +123,17 @@ export default function ChatSidebar() {
               }}
               title="Settings"
               variant="ghost"
+              className="w-11 h-11"
             >
-              <Cog6ToothIcon className="h-3.5 w-3.5" />
+              <Cog6ToothIcon className="h-5 w-5" />
+            </IconButton>
+            <IconButton
+              onClick={() => useChatStore.getState().setUI({ sidebarCollapsed: true })}
+              title="Close sidebar"
+              variant="ghost"
+              className="w-11 h-11"
+            >
+              <XMarkIcon className="h-5 w-5" />
             </IconButton>
           </span>
         </div>
@@ -200,6 +220,7 @@ export default function ChatSidebar() {
               key={chat.id}
               chat={chat}
               collapsed={collapsed}
+              isMobile={isMobile}
               isSelected={selectedChatId === chat.id}
               isEditing={editingId === chat.id}
               editTitle={editTitle}
@@ -227,6 +248,7 @@ export default function ChatSidebar() {
 interface RootChatItemProps {
   chat: Chat;
   collapsed: boolean;
+  isMobile: boolean;
   isSelected: boolean;
   isEditing: boolean;
   editTitle: string;
@@ -241,6 +263,7 @@ interface RootChatItemProps {
 function RootChatItem({
   chat,
   collapsed,
+  isMobile,
   isSelected,
   isEditing,
   editTitle,
@@ -252,70 +275,154 @@ function RootChatItem({
   onEditTitleChange,
 }: RootChatItemProps) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+  // Long-press detection (mobile)
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const longTid = useRef<number | null>(null);
+  const longFired = useRef(false);
+  const slop = 8;
+
+  const clearLong = () => {
+    if (longTid.current) window.clearTimeout(longTid.current);
+    longTid.current = null;
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!isMobile || isEditing) return;
+    if (e.pointerType === 'mouse') return;
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+    longFired.current = false;
+    clearLong();
+    longTid.current = window.setTimeout(() => {
+      longFired.current = true;
+      setShowActions(true);
+    }, 500);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!isMobile || isEditing) return;
+    const dxNow = e.clientX - startX.current;
+    const dyNow = e.clientY - startY.current;
+    if (Math.abs(dxNow) > slop || Math.abs(dyNow) > slop) {
+      clearLong();
+    }
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!isMobile || isEditing) return;
+    const moved = Math.abs(e.clientX - startX.current) > slop || Math.abs(e.clientY - startY.current) > slop;
+    if (!longFired.current && !moved) onSelect();
+    clearLong();
+  };
+  const onPointerCancel = () => {
+    clearLong();
+  };
+
   return (
     <>
-      <div className="pb-1">
-        <div
-          className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item ${
-            isSelected ? 'selected' : ''
-          }`}
-          draggable
-          onDragStart={() => {
-            setCurrentDragData({ id: chat.id, type: 'chat' });
-          }}
-          onClick={!isEditing ? onSelect : undefined}
-        >
-          {/* Chat Icon */}
-          <div className="w-4 h-4 flex items-center justify-center text-muted-foreground">
-            <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />
-          </div>
-
-          {/* Chat Title */}
-          {isEditing ? (
-            <div className="flex items-center gap-2 flex-1">
-              <input
-                className="input flex-1 text-sm"
-                value={editTitle}
-                onChange={(e) => onEditTitleChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') onSaveEdit();
-                  if (e.key === 'Escape') onCancelEdit();
-                }}
-                onBlur={onSaveEdit}
-                autoFocus
-              />
+      <div className="pb-1" data-row-press>
+        <div className="relative">
+          <div
+            className={`flex items-center gap-2 px-4 py-3 sm:py-2 cursor-pointer group chat-item ${
+              isSelected ? 'selected' : ''
+            }`}
+            draggable={!isMobile}
+            onDragStart={() => {
+              if (isMobile) return;
+              setCurrentDragData({ id: chat.id, type: 'chat' });
+            }}
+            onClick={!isEditing ? onSelect : undefined}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerCancel}
+          >
+            {/* Chat Icon */}
+            <div className="w-6 h-6 sm:w-4 sm:h-4 flex items-center justify-center text-muted-foreground">
+              <ChatBubbleLeftRightIcon className="h-5 w-5 sm:h-3.5 sm:w-3.5" />
             </div>
-          ) : (
-            <div className="flex-1 text-sm truncate">{collapsed ? '' : chat.title}</div>
-          )}
 
-          {/* Action Buttons */}
-          {!isEditing && !collapsed && (
-            <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex gap-1">
-              <IconButton
-                size="sm"
-                onClick={(e) => {
-                  e?.stopPropagation();
+            {/* Chat Title */}
+            {isEditing ? (
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  className="input flex-1 text-base sm:text-sm"
+                  value={editTitle}
+                  onChange={(e) => onEditTitleChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') onSaveEdit();
+                    if (e.key === 'Escape') onCancelEdit();
+                  }}
+                  onBlur={onSaveEdit}
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <div className="flex-1 text-base sm:text-sm truncate">{collapsed ? '' : chat.title}</div>
+            )}
+
+            {/* Desktop action icons only (hide on mobile) */}
+            {!isEditing && !collapsed && (
+              <div className="hidden sm:flex opacity-0 sm:group-hover:opacity-100 transition-opacity gap-1">
+                <IconButton
+                  size="sm"
+                  onClick={(e) => {
+                    e?.stopPropagation();
+                    onStartEdit();
+                  }}
+                  title="Rename chat"
+                >
+                  <PencilSquareIcon className="h-4 w-4" />
+                </IconButton>
+                <IconButton
+                  size="sm"
+                  onClick={(e) => {
+                    e?.stopPropagation();
+                    setShowConfirm(true);
+                  }}
+                  title="Delete chat"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </IconButton>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {isMobile && showActions && (
+        <>
+          <button
+            className="fixed inset-0 z-[95] settings-overlay"
+            aria-label="Close actions"
+            onClick={() => setShowActions(false)}
+          />
+          <div className="fixed left-0 right-0 bottom-0 z-[100] p-2">
+            <div className="card p-2 rounded-2xl overflow-hidden">
+              <button
+                className="w-full h-11 btn btn-outline mb-2"
+                onClick={() => {
+                  setShowActions(false);
                   onStartEdit();
                 }}
                 title="Rename chat"
               >
-                <PencilSquareIcon className="h-3 w-3" />
-              </IconButton>
-              <IconButton
-                size="sm"
-                onClick={(e) => {
-                  e?.stopPropagation();
+                Rename
+              </button>
+              <button
+                className="w-full h-11 btn btn-destructive"
+                onClick={() => {
+                  setShowActions(false);
                   setShowConfirm(true);
                 }}
                 title="Delete chat"
               >
-                <TrashIcon className="h-3 w-3" />
-              </IconButton>
+                Delete
+              </button>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
 
       <ConfirmDialog
         open={showConfirm}

@@ -47,6 +47,15 @@ export default function MessageList({ chatId }: { chatId: string }) {
     images: { src: string; name?: string }[];
     index: number;
   } | null>(null);
+  // Tap-to-highlight state for mobile actions
+  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
+    update();
+    window.addEventListener('resize', update, { passive: true } as any);
+    return () => window.removeEventListener('resize', update as any);
+  }, []);
 
   // Track whether user is near the bottom to enable smart autoscroll
   useEffect(() => {
@@ -58,6 +67,8 @@ export default function MessageList({ chatId }: { chatId: string }) {
       setAtBottom(nearBottom);
       // Show the jump button whenever the user is away from the bottom
       setShowJump(!nearBottom);
+      // Clear active message highlight on mobile when scrolling
+      if (isMobile && activeMessageId) setActiveMessageId(null);
     };
     // Initialize state in case content already overflows
     onScroll();
@@ -65,7 +76,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
     return () => {
       el.removeEventListener('scroll', onScroll as any);
     };
-  }, []);
+  }, [isMobile, activeMessageId]);
 
   const scrollToBottom = (behavior: ScrollBehavior) => {
     const el = containerRef.current;
@@ -152,6 +163,20 @@ export default function MessageList({ chatId }: { chatId: string }) {
       editUserMessage(messageId, payload, { rerun: true }).catch(() => void 0);
     }
   };
+  // Clear active highlight when tapping outside the active message on mobile
+  useEffect(() => {
+    if (!isMobile) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!activeMessageId) return;
+      const target = e.target as Element | null;
+      if (!target) return;
+      const withinActive = target.closest(`[data-mid="${activeMessageId}"]`);
+      if (withinActive) return;
+      setActiveMessageId(null);
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+  }, [isMobile, activeMessageId]);
   return (
     <div
       ref={containerRef}
@@ -161,12 +186,26 @@ export default function MessageList({ chatId }: { chatId: string }) {
       {messages.map((m) => (
         <div
           key={m.id}
-          className={`card p-0 message-card group ${m.role === 'assistant' ? 'message-assistant' : 'message-user'}`}
+          className={`card p-0 message-card group ${
+            m.role === 'assistant' ? 'message-assistant' : 'message-user'
+          } ${isMobile && activeMessageId === m.id ? 'is-active' : ''}`}
+          data-mid={m.id}
+          onClick={(e) => {
+            // On mobile, tapping the message highlights it to reveal actions.
+            if (!isMobile) return;
+            const target = e.target as HTMLElement | null;
+            if (
+              target &&
+              target.closest('button, .icon-button, a, input, textarea, [role="button"], .badge')
+            )
+              return;
+            setActiveMessageId((prev) => (prev === m.id ? null : m.id));
+          }}
           aria-label={m.role === 'assistant' ? 'Assistant message' : 'Your message'}
         >
           {m.role === 'assistant' ? (
             <div className="relative">
-              <div className="absolute bottom-2 right-2 z-30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+              <div className="message-actions absolute bottom-2 right-2 z-30 transition-opacity">
                 {editingId === m.id ? (
                   <div className="flex items-center gap-1">
                     <button
@@ -175,7 +214,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                       title="Save edit"
                       onClick={() => saveEdit(m.id)}
                     >
-                      <CheckIcon className="h-4 w-4" />
+                      <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                     </button>
                     <button
                       className="icon-button"
@@ -186,7 +225,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                         setDraft('');
                       }}
                     >
-                      <XMarkIcon className="h-4 w-4" />
+                      <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                     </button>
                   </div>
                 ) : (
@@ -204,9 +243,9 @@ export default function MessageList({ chatId }: { chatId: string }) {
                       }}
                     >
                       {copiedId === m.id ? (
-                        <CheckIcon className="h-4 w-4" />
+                        <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                       ) : (
-                        <ClipboardIcon className="h-4 w-4" />
+                        <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                       )}
                     </button>
                     {!isStreaming && (
@@ -219,7 +258,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                           setDraft(m.content || '');
                         }}
                       >
-                        <PencilSquareIcon className="h-4 w-4" />
+                        <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                       </button>
                     )}
                     <button
@@ -229,7 +268,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                       disabled={isStreaming}
                       onClick={() => branchFrom(m.id)}
                     >
-                      <BranchIcon className="h-4 w-4" />
+                      <BranchIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                     </button>
                     <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
                   </div>
@@ -404,7 +443,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
           ) : (
             <div className="relative">
               {/* Edit control for user messages */}
-              <div className="absolute bottom-2 right-2 z-30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+              <div className="message-actions absolute bottom-2 right-2 z-30 transition-opacity">
                 {editingId === m.id ? (
                   <div className="flex items-center gap-1">
                     <button
@@ -413,7 +452,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                       title="Save edit"
                       onClick={() => saveEdit(m.id)}
                     >
-                      <CheckIcon className="h-4 w-4" />
+                      <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                     </button>
                     <button
                       className="icon-button"
@@ -424,7 +463,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                         setDraft('');
                       }}
                     >
-                      <XMarkIcon className="h-4 w-4" />
+                      <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                     </button>
                   </div>
                 ) : (
@@ -437,7 +476,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                       setDraft(m.content || '');
                     }}
                   >
-                    <PencilSquareIcon className="h-4 w-4" />
+                    <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                   </button>
                 )}
                 {editingId !== m.id && (
@@ -454,9 +493,9 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     }}
                   >
                     {copiedId === m.id ? (
-                      <CheckIcon className="h-4 w-4" />
+                      <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                     ) : (
-                      <ClipboardIcon className="h-4 w-4" />
+                      <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                     )}
                   </button>
                 )}

@@ -311,6 +311,19 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
     opacity: 0;
   }
 }
+@media (max-width: 640px) {
+  /* Mobile settings: occupy full screen, no rounded edge */
+  .settings-drawer {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-radius: 0 !important;
+  }
+  /* Make small utility icon buttons larger for touch */
+  .icon-button {
+    height: 36px;
+    width: 36px;
+  }
+}
 
 /* Segmented control */
 .segmented {
@@ -393,6 +406,7 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 .chat-item {
   cursor: pointer;
   background: color-mix(in oklab, var(--color-surface) 96%, transparent);
+  will-change: transform;
 }
 .chat-item:hover {
   background: color-mix(in oklab, var(--color-muted) 70%, transparent);
@@ -476,6 +490,34 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   margin-right: 0;
   border-radius: 18px;
   border-top-left-radius: 12px; /* distinct shape cue */
+}
+
+/* Message actions visibility: tap-to-highlight on mobile, hover/focus on desktop */
+@media (max-width: 640px) {
+  /* Swipe affordance: subtle polish for mobile rows */
+  [data-chat-swipe] .chat-item {
+    border-radius: 14px;
+    box-shadow: var(--shadow-1);
+  }
+  [data-chat-swipe] .btn.btn-destructive {
+    height: 44px; /* ensure >= 44px */
+    min-width: 96px;
+  }
+  .message-card .message-actions {
+    opacity: 0;
+  }
+  .message-card.is-active .message-actions {
+    opacity: 1;
+  }
+}
+@media (min-width: 640px) {
+  .message-card .message-actions {
+    opacity: 0;
+  }
+  .message-card:hover .message-actions,
+  .message-card:focus-within .message-actions {
+    opacity: 1;
+  }
 }
 
 /* Constrain readable measure inside message content */
