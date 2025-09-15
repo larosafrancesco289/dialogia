@@ -1647,7 +1647,16 @@ export function createMessageSlice(
             };
             if (hadPdfEarlier)
               debugBody.plugins = [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }];
-            if ((genSnapshot?.search_provider || (chat.settings as any)?.search_provider) === 'openrouter') {
+            const searchWasEnabledThisTurn =
+              typeof genSnapshot?.search_with_brave === 'boolean'
+                ? !!genSnapshot.search_with_brave
+                : !!(chat.settings as any)?.search_with_brave;
+            const providerForTurn =
+              (genSnapshot?.search_provider || (chat.settings as any)?.search_provider) as
+                | 'brave'
+                | 'openrouter'
+                | undefined;
+            if (searchWasEnabledThisTurn && providerForTurn === 'openrouter') {
               debugBody.plugins = [...(debugBody.plugins || []), { id: 'web' }];
             }
             if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
@@ -1694,8 +1703,15 @@ export function createMessageSlice(
             plugins: (() => {
               const arr: any[] = [];
               if (hadPdfEarlier) arr.push({ id: 'file-parser', pdf: { engine: 'pdf-text' } });
-              const prov = genSnapshot?.search_provider || (chat.settings as any)?.search_provider;
-              if (prov === 'openrouter') arr.push({ id: 'web' });
+              const searchWasEnabledThisTurn =
+                typeof genSnapshot?.search_with_brave === 'boolean'
+                  ? !!genSnapshot.search_with_brave
+                  : !!(chat.settings as any)?.search_with_brave;
+              const prov = (genSnapshot?.search_provider || (chat.settings as any)?.search_provider) as
+                | 'brave'
+                | 'openrouter'
+                | undefined;
+              if (searchWasEnabledThisTurn && prov === 'openrouter') arr.push({ id: 'web' });
               return arr.length > 0 ? arr : undefined;
             })(),
             callbacks: {
