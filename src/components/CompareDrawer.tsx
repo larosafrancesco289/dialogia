@@ -7,7 +7,7 @@ import ImageLightbox from '@/components/ImageLightbox';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
 import IconButton from '@/components/IconButton';
-import { CloseCircleIcon, StopSquareIcon } from '@/components/icons/Icons';
+import { XCircleIcon, StopIcon } from '@heroicons/react/24/outline';
 import { computeCost } from '@/lib/cost';
 import { findModelById } from '@/lib/models';
 
@@ -218,11 +218,11 @@ export default function CompareDrawer() {
           <div className="ml-auto flex items-center gap-2">
             {isRunning ? (
               <IconButton title="Stop" onClick={() => stopCompare()}>
-                <StopSquareIcon size={18} />
+                <StopIcon className="h-5 w-5" />
               </IconButton>
             ) : (
               <IconButton title="Close" onClick={closeWithAnim}>
-                <CloseCircleIcon size={18} />
+                <XCircleIcon className="h-5 w-5" />
               </IconButton>
             )}
           </div>
@@ -340,7 +340,7 @@ export default function CompareDrawer() {
                   </button>
                   {isRunning && (
                     <IconButton title="Stop" onClick={() => stopCompare()}>
-                      <StopSquareIcon size={18} />
+                      <StopIcon className="h-5 w-5" />
                     </IconButton>
                   )}
                 </div>

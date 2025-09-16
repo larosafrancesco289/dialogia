@@ -9,10 +9,10 @@ import {
   FolderOpenIcon,
   ChevronRightIcon,
   ChevronDownIcon,
-  MessageIcon,
-  EditIcon,
+  ChatBubbleLeftRightIcon,
+  PencilSquareIcon,
   TrashIcon,
-} from './icons/Icons';
+} from '@heroicons/react/24/outline';
 import type { Folder, Chat } from '@/lib/types';
 
 interface FolderItemProps {
@@ -151,12 +151,12 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
           }}
           className="w-4 h-4 shrink-0"
         >
-          {folder.isExpanded ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
+          {folder.isExpanded ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronRightIcon className="h-3 w-3" />}
         </IconButton>
 
         {/* Folder Icon */}
         <div className="w-4 h-4 flex items-center justify-center text-muted-foreground shrink-0">
-          {folder.isExpanded ? <FolderOpenIcon size={14} /> : <FolderIcon size={14} />}
+          {folder.isExpanded ? <FolderOpenIcon className="h-3.5 w-3.5" /> : <FolderIcon className="h-3.5 w-3.5" />}
         </div>
 
         {/* Folder Name */}
@@ -198,7 +198,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
               }}
               title="Rename folder"
             >
-              <EditIcon size={12} />
+              <PencilSquareIcon className="h-3 w-3" />
             </IconButton>
             <IconButton
               size="sm"
@@ -208,7 +208,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
               }}
               title="Delete folder"
             >
-              <TrashIcon size={12} />
+              <TrashIcon className="h-3 w-3" />
             </IconButton>
           </div>
         )}
@@ -315,7 +315,7 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
       >
         {/* Chat Icon */}
         <div className="w-4 h-4 flex items-center justify-center text-muted-foreground shrink-0">
-          <MessageIcon size={14} />
+          <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />
         </div>
 
         {/* Chat Title */}
@@ -352,7 +352,7 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
               }}
               title="Rename chat"
             >
-              <EditIcon size={12} />
+              <PencilSquareIcon className="h-3 w-3" />
             </IconButton>
             <IconButton
               size="sm"
@@ -362,7 +362,7 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
               }}
               title="Delete chat"
             >
-              <TrashIcon size={12} />
+              <TrashIcon className="h-3 w-3" />
             </IconButton>
           </div>
         )}

@@ -57,7 +57,7 @@ export default function MobileHeader() {
 
   return (
     <header className="mobile-app-bar">
-      <div className="mobile-app-bar-top">
+      <div className="mobile-app-bar-grid">
         <button
           className="icon-button"
           aria-label="Show chats"
@@ -65,8 +65,11 @@ export default function MobileHeader() {
         >
           <Bars3Icon className="h-4 w-4" />
         </button>
-        <div className="mobile-app-bar-title" title={displayTitle}>
-          {displayTitle}
+        <div className="mobile-app-bar-center">
+          <div className="mobile-app-bar-title" title={displayTitle}>
+            {displayTitle}
+          </div>
+          <ModelPicker variant="sheet" className="mobile-model-trigger" />
         </div>
         <button
           className="icon-button"
@@ -78,10 +81,6 @@ export default function MobileHeader() {
         </button>
       </div>
 
-      <div className="mobile-app-bar-secondary">
-        <ModelPicker variant="sheet" />
-      </div>
-
       {menuOpen && (
         <div
           className="mobile-sheet-overlay"
@@ -91,6 +90,7 @@ export default function MobileHeader() {
           }}
         >
           <div ref={sheetRef} className="mobile-sheet card" role="menu" aria-label="Actions">
+            <div className="mobile-sheet-handle" aria-hidden="true" />
             <div className="mobile-sheet-header">
               <div className="font-semibold text-base">Quick actions</div>
               <button className="icon-button" aria-label="Close" onClick={() => setMenuOpen(false)}>

@@ -100,7 +100,12 @@ export default function ChatSidebar() {
       <div className="app-header justify-between">
         <div className="flex items-center gap-2 font-semibold">{collapsed ? 'Dg' : 'Dialogia'}</div>
         <div className="flex items-center gap-2">
-          <IconButton onClick={() => newChat()} title="New Chat" variant="ghost" className="w-11 h-11 sm:w-9 sm:h-9">
+          <IconButton
+            onClick={() => newChat()}
+            title="New Chat"
+            variant="ghost"
+            className="w-11 h-11 sm:w-9 sm:h-9"
+          >
             <PlusIcon className="h-5 w-5 sm:h-3.5 sm:w-3.5" />
           </IconButton>
           {!collapsed && (
@@ -391,40 +396,45 @@ function RootChatItem({
       </div>
 
       {isMobile && showActions && (
-        <>
-          <button
-            className="fixed inset-0 z-[95] settings-overlay"
-            aria-label="Close actions"
-            onClick={() => setShowActions(false)}
-          />
+        <div
+          className="mobile-sheet-overlay"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setShowActions(false);
+          }}
+        >
           <div
-            className="fixed left-0 right-0 bottom-0 z-[100] p-2"
-            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+            className="mobile-sheet card mobile-sheet-compact"
+            role="menu"
+            aria-label={`Actions for ${chat.title}`}
           >
-            <div className="card p-2 rounded-2xl overflow-hidden">
-              <button
-                className="w-full h-11 btn btn-outline mb-2"
-                onClick={() => {
-                  setShowActions(false);
-                  onStartEdit();
-                }}
-                title="Rename chat"
-              >
-                Rename
-              </button>
-              <button
-                className="w-full h-11 btn btn-destructive"
-                onClick={() => {
-                  setShowActions(false);
-                  setShowConfirm(true);
-                }}
-                title="Delete chat"
-              >
-                Delete
-              </button>
-            </div>
+            <div className="mobile-sheet-handle" aria-hidden="true" />
+            <button
+              type="button"
+              className="mobile-menu-item"
+              onClick={() => {
+                setShowActions(false);
+                onStartEdit();
+              }}
+              title="Rename chat"
+            >
+              <PencilSquareIcon className="h-4 w-4" />
+              <span>Rename chat</span>
+            </button>
+            <button
+              type="button"
+              className="mobile-menu-item is-danger"
+              onClick={() => {
+                setShowActions(false);
+                setShowConfirm(true);
+              }}
+              title="Delete chat"
+            >
+              <TrashIcon className="h-4 w-4" />
+              <span>Delete chat</span>
+            </button>
           </div>
-        </>
+        </div>
       )}
 
       <ConfirmDialog
