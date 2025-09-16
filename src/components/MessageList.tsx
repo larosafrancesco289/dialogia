@@ -49,6 +49,10 @@ export default function MessageList({ chatId }: { chatId: string }) {
   } | null>(null);
   // Tap-to-highlight state for mobile actions
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
+  // Mobile contextual action sheet (bottom)
+  const [mobileSheet, setMobileSheet] = useState<{ id: string; role: 'assistant' | 'user' } | null>(
+    null,
+  );
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
@@ -180,7 +184,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
   return (
     <div
       ref={containerRef}
-      className="scroll-area p-4 space-y-2 h-full"
+      className="scroll-area message-list space-y-2 h-full"
       style={{ background: 'var(--color-canvas)' }}
     >
       {messages.map((m) => (
@@ -190,22 +194,66 @@ export default function MessageList({ chatId }: { chatId: string }) {
             m.role === 'assistant' ? 'message-assistant' : 'message-user'
           } ${isMobile && activeMessageId === m.id ? 'is-active' : ''}`}
           data-mid={m.id}
-          onClick={(e) => {
-            // On mobile, tapping the message highlights it to reveal actions.
+          aria-label={m.role === 'assistant' ? 'Assistant message' : 'Your message'}
+          onPointerDown={(e) => {
             if (!isMobile) return;
+            if ((e as any).pointerType === 'mouse') return;
             const target = e.target as HTMLElement | null;
             if (
               target &&
               target.closest('button, .icon-button, a, input, textarea, [role="button"], .badge')
             )
-              return;
-            setActiveMessageId((prev) => (prev === m.id ? null : m.id));
+              return; // interactive elements use their own handlers
+            // Long-press detection
+            const startX = e.clientX;
+            const startY = e.clientY;
+            let moved = false;
+            const slop = 12;
+            let fired = false;
+            const tid = window.setTimeout(() => {
+              fired = true;
+              setMobileSheet({ id: m.id, role: m.role as any });
+            }, 320);
+            const onMove = (ev: PointerEvent) => {
+              const dx = Math.abs(ev.clientX - startX);
+              const dy = Math.abs(ev.clientY - startY);
+              if (dx > slop || dy > slop) {
+                moved = true;
+                window.clearTimeout(tid);
+                cleanup();
+              }
+            };
+            const onUp = () => {
+              window.clearTimeout(tid);
+              cleanup();
+              // If it wasn't a long press, do nothing (avoid finnicky toggles)
+            };
+            const onCancel = () => {
+              window.clearTimeout(tid);
+              cleanup();
+            };
+            const cleanup = () => {
+              window.removeEventListener('pointermove', onMove as any);
+              window.removeEventListener('pointerup', onUp as any);
+              window.removeEventListener('pointercancel', onCancel as any);
+            };
+            window.addEventListener('pointermove', onMove as any, { passive: true } as any);
+            window.addEventListener('pointerup', onUp as any);
+            window.addEventListener('pointercancel', onCancel as any);
           }}
-          aria-label={m.role === 'assistant' ? 'Assistant message' : 'Your message'}
+          onContextMenu={(e) => {
+            // Fallback: if a context menu is about to open on iOS, hijack it for our sheet
+            if (!isMobile) return;
+            e.preventDefault();
+            setMobileSheet({ id: m.id, role: m.role as any });
+          }}
         >
           {m.role === 'assistant' ? (
             <div className="relative">
-              <div className="message-actions absolute bottom-2 right-2 z-30 transition-opacity">
+              <div
+                className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
+                style={{ opacity: isMobile && editingId === m.id ? 1 : undefined }}
+              >
                 {editingId === m.id ? (
                   <div className="flex items-center gap-1">
                     <button
@@ -443,7 +491,10 @@ export default function MessageList({ chatId }: { chatId: string }) {
           ) : (
             <div className="relative">
               {/* Edit control for user messages */}
-              <div className="message-actions absolute bottom-2 right-2 z-30 transition-opacity">
+              <div
+                className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
+                style={{ opacity: isMobile && editingId === m.id ? 1 : undefined }}
+              >
                 {editingId === m.id ? (
                   <div className="flex items-center gap-1">
                     <button
@@ -590,7 +641,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
         <div
           style={{
             position: 'sticky',
-            bottom: 24,
+            bottom: 'calc(20px + env(safe-area-inset-bottom))',
             display: 'flex',
             justifyContent: 'flex-end',
             zIndex: 60,
@@ -615,6 +666,86 @@ export default function MessageList({ chatId }: { chatId: string }) {
       
       {/* Typing indicator is now rendered inline within the latest assistant message */}
       <div ref={endRef} />
+      {/* Mobile action sheet */}
+      {isMobile && mobileSheet && (
+        <>
+          <button
+            className="fixed inset-0 z-[95] settings-overlay"
+            aria-label="Close actions"
+            onClick={() => setMobileSheet(null)}
+          />
+          <div
+            className="fixed left-0 right-0 bottom-0 z-[100] p-2"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+          >
+            <div className="card p-2 rounded-2xl overflow-hidden">
+              <div className="grid gap-2">
+                <button
+                  className="w-full h-11 btn btn-outline"
+                  onClick={async () => {
+                    const msg = messages.find((x) => x.id === mobileSheet.id);
+                    if (!msg) return;
+                    try {
+                      await navigator.clipboard.writeText(msg.content || '');
+                    } catch {}
+                    setMobileSheet(null);
+                  }}
+                >
+                  Copy
+                </button>
+                {/* Edit for both roles */}
+                <button
+                  className="w-full h-11 btn btn-outline"
+                  onClick={() => {
+                    const msg = messages.find((x) => x.id === mobileSheet.id);
+                    if (!msg) return;
+                    setEditingId(msg.id);
+                    setDraft(msg.content || '');
+                    setMobileSheet(null);
+                  }}
+                >
+                  Edit
+                </button>
+                {/* Assistant-only actions */}
+                {(() => {
+                  const isAssistant = mobileSheet.role === 'assistant';
+                  if (!isAssistant) return null;
+                  return (
+                    <>
+                      <button
+                        className="w-full h-11 btn btn-outline"
+                        disabled={isStreaming}
+                        onClick={() => {
+                          branchFrom(mobileSheet.id);
+                          setMobileSheet(null);
+                        }}
+                        title="Create a new chat starting from this reply"
+                      >
+                        Branch
+                      </button>
+                      <button
+                        className="w-full h-11 btn"
+                        onClick={() => {
+                          regenerate(mobileSheet.id, {} as any);
+                          setMobileSheet(null);
+                        }}
+                      >
+                        Regenerate
+                      </button>
+                    </>
+                  );
+                })()}
+                <button
+                  className="w-full h-11 btn btn-ghost"
+                  onClick={() => setMobileSheet(null)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
       {lightbox && (
         <ImageLightbox
           images={lightbox.images}

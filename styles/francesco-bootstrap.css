@@ -431,6 +431,13 @@ a:hover {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
+/* On small screens, ensure inputs meet 44px minimum tap target */
+@media (max-width: 640px) {
+  .input {
+    height: var(--control-lg);
+  }
+}
+
 /* Badges / Chips */
 .badge {
   display: inline-flex;

@@ -397,7 +397,10 @@ function RootChatItem({
             aria-label="Close actions"
             onClick={() => setShowActions(false)}
           />
-          <div className="fixed left-0 right-0 bottom-0 z-[100] p-2">
+          <div
+            className="fixed left-0 right-0 bottom-0 z-[100] p-2"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+          >
             <div className="card p-2 rounded-2xl overflow-hidden">
               <button
                 className="w-full h-11 btn btn-outline mb-2"
