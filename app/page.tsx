@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatPane from '@/components/ChatPane';
 import TopHeader from '@/components/TopHeader';
+import MobileHeader from '@/components/MobileHeader';
 const SettingsDrawer = dynamic(
   () => import(/* webpackPrefetch: true */ '@/components/SettingsDrawer'),
   { ssr: false },
@@ -126,7 +127,7 @@ export default function HomePage() {
         {!collapsed && <ChatSidebar />}
       </aside>
       <main className="content">
-        <TopHeader />
+        {isMobile ? <MobileHeader /> : <TopHeader />}
         <div className="flex-1 min-h-0">
           <ChatPane />
         </div>

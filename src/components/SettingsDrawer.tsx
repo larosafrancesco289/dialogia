@@ -977,7 +977,13 @@ export default function SettingsDrawer() {
         </div>
 
         {/* Sticky footer */}
-        <div className="px-6 h-[88px] flex items-center border-t border-border sticky bottom-0 glass">
+        <div
+          className="px-6 flex items-center border-t border-border sticky bottom-0 glass"
+          style={{
+            minHeight: 72,
+            paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+          }}
+        >
           <button
             className="btn"
             onClick={() => {
