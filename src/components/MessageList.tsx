@@ -2,8 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { Markdown } from '@/lib/markdown';
-import { ChevronDownIcon, PencilSquareIcon, CheckIcon, XMarkIcon, ClipboardIcon } from '@heroicons/react/24/outline';
-import { BranchIcon } from '@/components/icons/Icons';
+import { ChevronDownIcon, PencilSquareIcon, CheckIcon, XMarkIcon, ClipboardIcon, ArrowUturnRightIcon } from '@heroicons/react/24/outline';
 import RegenerateMenu from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
@@ -316,7 +315,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                       disabled={isStreaming}
                       onClick={() => branchFrom(m.id)}
                     >
-                      <BranchIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      <ArrowUturnRightIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                     </button>
                     <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
                   </div>

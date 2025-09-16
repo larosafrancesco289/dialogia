@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import {
   XMarkIcon,
@@ -40,6 +41,8 @@ type Controller = {
   removeModelFromDropdown: (id: string) => void;
   modelMap: Map<string, ReturnType<typeof findModelById>>;
   ui: ReturnType<typeof useChatStore.getState>['ui'];
+  zdrModelIds?: string[];
+  zdrProviderIds?: string[];
 };
 
 function stripProvider(label?: string) {
@@ -167,20 +170,13 @@ export default function ModelPicker({
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const listboxRef = useRef<HTMLDivElement | null>(null);
-  const [listWidth, setListWidth] = useState<number | undefined>(undefined);
-  const [isSmall, setIsSmall] = useState(false);
   const mountedRef = useRef(false);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    const media = window.matchMedia('(max-width: 640px)');
-    const update = () => setIsSmall(media.matches);
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
-
-  const useSheet = variant === 'sheet' || (variant === 'auto' && isSmall);
+  const [popoverPos, setPopoverPos] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
 
   const handleChoose = (id: string) => {
     choose(id);
@@ -188,16 +184,27 @@ export default function ModelPicker({
   };
 
   useEffect(() => {
-    if (!open || useSheet) return;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      setPopoverPos(null);
+      return;
+    }
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
       if (rootRef.current && rootRef.current.contains(target)) return;
+      if (listboxRef.current && listboxRef.current.contains(target)) return;
       setOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown, true);
     return () => document.removeEventListener('pointerdown', onPointerDown, true);
-  }, [open, useSheet]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -210,17 +217,26 @@ export default function ModelPicker({
 
   useEffect(() => {
     if (!open || !mountedRef.current) return;
-    if (useSheet) {
-      setHighlightedIndex(0);
-      return;
-    }
     const updateWidth = () => {
       const rect = rootRef.current?.getBoundingClientRect();
-      const triggerW = rect?.width || 0;
-      setListWidth(Math.max(triggerW, 360));
+      if (!rect) return;
+      const viewportW = window.innerWidth;
+      const viewportH = window.innerHeight;
+      const margin = 12;
+      const gap = 8;
+      const triggerW = rect.width;
+      const minWidth = variant === 'sheet' ? 280 : 320;
+      const minHeight = variant === 'sheet' ? 260 : 220;
+      const baseWidth = Math.max(triggerW, minWidth);
+      const width = Math.min(viewportW - margin * 2, baseWidth);
+      const left = Math.min(Math.max(rect.left, margin), viewportW - width - margin);
+      const top = rect.bottom + gap;
+      const maxHeight = Math.max(minHeight, viewportH - top - margin);
+      setPopoverPos({ left, top, width, maxHeight });
     };
     updateWidth();
     window.addEventListener('resize', updateWidth);
+    window.addEventListener('scroll', updateWidth, true);
     const idx = Math.max(
       0,
       options.findIndex((o) => o.id === (current?.id || '')),
@@ -229,9 +245,10 @@ export default function ModelPicker({
     const timer = window.setTimeout(() => listboxRef.current?.focus(), 0);
     return () => {
       window.removeEventListener('resize', updateWidth);
+      window.removeEventListener('scroll', updateWidth, true);
       window.clearTimeout(timer);
     };
-  }, [open, useSheet, options, current?.id]);
+  }, [open, options, current?.id, variant]);
 
   const title = stripProvider(current?.name || current?.id) || 'Pick model';
 
@@ -263,70 +280,18 @@ export default function ModelPicker({
         <ChevronDownIcon className="h-4 w-4" />
       </button>
 
-      {open && useSheet && (
-        <div
-          className="mobile-sheet-overlay"
-          role="presentation"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setOpen(false);
-          }}
-        >
-          <div className="mobile-sheet card" role="dialog" aria-modal="true">
-            <div className="mobile-sheet-header">
-              <div>
-                <div className="text-sm text-muted-foreground">Current model</div>
-                <div className="font-semibold text-base">{title}</div>
-              </div>
-              <button
-                className="icon-button"
-                aria-label="Close"
-                onClick={() => setOpen(false)}
-              >
-                <XMarkIcon className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="mobile-sheet-body scroll-area" data-scrollable>
-              {options.map((o) => {
-                const { canReason, canSee, canAudio, canImageOut, isZdr, priceStr } = renderCapabilities(o.id);
-                const isSelected = o.id === selectedId;
-                return (
-                  <button
-                    key={o.id}
-                    type="button"
-                    className={`mobile-model-option ${isSelected ? 'is-selected' : ''}`}
-                    onClick={() => handleChoose(o.id)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-base truncate">
-                          {stripProvider(o.name || o.id)}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 text-muted-foreground">
-                          {canReason && <LightBulbIcon className="h-4 w-4" title="Reasoning" />}
-                          {canSee && <EyeIcon className="h-4 w-4" title="Vision input" />}
-                          {canAudio && <MicrophoneIcon className="h-4 w-4" title="Audio input" />}
-                          {canImageOut && <PhotoIcon className="h-4 w-4" title="Image generation" />}
-                          {isZdr && <ShieldCheckIcon className="h-4 w-4" title="Zero Data Retention" />}
-                        </div>
-                      </div>
-                      <div className="text-xs text-muted-foreground whitespace-nowrap">
-                        {priceStr || ''}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {open && !useSheet && (
-        <div className="absolute z-20 mt-2 model-pop-wrap">
+      {open && popoverPos &&
+        typeof document !== 'undefined' &&
+        createPortal(
           <div
             ref={listboxRef}
-            className="card p-2 max-h-80 overflow-auto popover"
-            style={{ width: listWidth }}
+            className="card p-2 overflow-auto popover z-[90] fixed"
+            style={{
+              left: popoverPos.left,
+              top: popoverPos.top,
+              width: popoverPos.width,
+              maxHeight: popoverPos.maxHeight,
+            }}
             role="listbox"
             aria-label="Select a model"
             aria-activedescendant={`model-opt-${highlightedIndex}`}
@@ -403,9 +368,9 @@ export default function ModelPicker({
                 </div>
               );
             })}
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

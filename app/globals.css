@@ -103,25 +103,52 @@ body,
     box-shadow: var(--shadow-card);
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-1);
   }
-  .mobile-app-bar-top {
-    display: flex;
+  .mobile-app-bar-grid {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: var(--space-2);
   }
+  .mobile-app-bar-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+  }
   .mobile-app-bar-title {
-    flex: 1;
+    max-width: 100%;
     text-align: center;
     font-weight: 600;
     font-size: 1.05rem;
+    line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .mobile-app-bar-secondary {
-    display: flex;
-    gap: var(--space-2);
+  .mobile-model-trigger {
+    width: 100%;
+  }
+  .mobile-model-trigger > button {
+    width: 100%;
+    height: 36px;
+    padding: 0 var(--space-3);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-surface) 88%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-border) 65%, transparent);
+    box-shadow: var(--shadow-1);
+  }
+  .mobile-model-trigger > button:hover {
+    background: color-mix(in oklab, var(--color-muted) 85%, transparent);
+  }
+  .mobile-model-trigger > button:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .mobile-model-trigger > button .truncate {
+    font-weight: 600;
   }
   .mobile-app-bar .icon-button {
     height: 36px;
@@ -434,17 +461,18 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   inset: 0;
   background: color-mix(in oklab, var(--color-canvas) 30%, rgba(8, 7, 10, 0.55));
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: center;
   padding: var(--space-2);
-  padding-top: calc(env(safe-area-inset-top) + var(--space-3));
-  padding-bottom: var(--space-2);
+  padding-top: calc(env(safe-area-inset-top) + var(--space-6));
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-3));
   z-index: 80;
 }
 .mobile-sheet {
   width: min(100%, 520px);
-  border-radius: 18px;
+  border-radius: 22px;
   padding: var(--space-3);
+  padding-bottom: var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -452,9 +480,21 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   -webkit-backdrop-filter: var(--glass-saturate) blur(18px);
   backdrop-filter: var(--glass-saturate) blur(18px);
 }
+.mobile-sheet-compact {
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  gap: var(--space-1);
+}
 .mobile-sheet .icon-button {
   height: 32px;
   width: 32px;
+}
+.mobile-sheet-handle {
+  align-self: center;
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-border) 70%, transparent);
+  margin-bottom: var(--space-2);
 }
 .mobile-sheet-header {
   display: flex;
@@ -497,9 +537,22 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   border: 1px solid color-mix(in oklab, var(--color-border) 90%, transparent);
   font-weight: 500;
   text-align: left;
+  transition: background-color var(--duration-fast) var(--ease-standard);
 }
 .mobile-menu-item:hover {
   background: color-mix(in oklab, var(--color-muted) 80%, transparent);
+}
+.mobile-menu-item:active {
+  transform: translateY(1px);
+}
+.mobile-menu-item.is-danger {
+  border-color: color-mix(in oklab, var(--color-danger) 50%, var(--color-border));
+  background: color-mix(in oklab, var(--color-danger) 15%, var(--color-surface));
+  color: color-mix(in oklab, var(--color-danger) 70%, var(--color-fg));
+}
+.dark .mobile-menu-item.is-danger {
+  background: color-mix(in oklab, var(--color-danger) 20%, var(--color-muted));
+  color: #130c0c;
 }
 .mobile-theme-item {
   margin-top: var(--space-1);

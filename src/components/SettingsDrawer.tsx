@@ -4,13 +4,7 @@ import { useEffect, useMemo, useState, useLayoutEffect, useRef, type ReactNode }
 import { createPortal } from 'react-dom';
 import ThemeToggle from '@/components/ThemeToggle';
 import IconButton from '@/components/IconButton';
-import {
-  CloseCircleIcon,
-  CheckIcon,
-  EditIcon,
-  TrashIcon,
-  PlusIcon,
-} from '@/components/icons/Icons';
+import { XCircleIcon, CheckIcon, PencilSquareIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import {
   getSystemPresets,
   addSystemPreset,
@@ -292,7 +286,7 @@ export default function SettingsDrawer() {
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
             <IconButton title="Close" onClick={closeWithAnim} className="w-11 h-11 sm:w-9 sm:h-9">
-              <CloseCircleIcon size={24} />
+              <XCircleIcon className="h-6 w-6" />
             </IconButton>
           </div>
         </div>
@@ -404,7 +398,7 @@ export default function SettingsDrawer() {
                                     setQuery('');
                                   }}
                                 >
-                                  <PlusIcon size={16} />
+                                  <PlusIcon className="h-4 w-4" />
                                 </IconButton>
                               </div>
                             </div>
@@ -500,7 +494,7 @@ export default function SettingsDrawer() {
                     }}
                     disabled={!selectedPresetId}
                   >
-                    <CheckIcon />
+                    <CheckIcon className="h-5 w-5" />
                   </IconButton>
                   <IconButton
                     title="Save as preset"
@@ -514,7 +508,7 @@ export default function SettingsDrawer() {
                       setPresets(sorted);
                     }}
                   >
-                    <PlusIcon />
+                    <PlusIcon className="h-5 w-5" />
                   </IconButton>
                   <IconButton
                     title="Rename preset"
@@ -530,7 +524,7 @@ export default function SettingsDrawer() {
                     }}
                     disabled={!selectedPresetId}
                   >
-                    <EditIcon />
+                    <PencilSquareIcon className="h-5 w-5" />
                   </IconButton>
                   <IconButton
                     title="Delete preset"
@@ -547,7 +541,7 @@ export default function SettingsDrawer() {
                     }}
                     disabled={!selectedPresetId}
                   >
-                    <TrashIcon />
+                    <TrashIcon className="h-5 w-5" />
                   </IconButton>
                 </div>
               </div>
