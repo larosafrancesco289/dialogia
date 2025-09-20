@@ -76,7 +76,7 @@ export default function SettingsDrawer() {
     chat?.settings.reasoning_tokens != null ? String(chat.settings.reasoning_tokens) : '',
   );
   const [showThinking, setShowThinking] = useState<boolean>(
-    chat?.settings.show_thinking_by_default ?? true,
+    chat?.settings.show_thinking_by_default ?? false,
   );
   const [showStats, setShowStats] = useState<boolean>(chat?.settings.show_stats ?? false);
   const [closing, setClosing] = useState(false);
@@ -119,7 +119,7 @@ export default function SettingsDrawer() {
     setReasoningTokensStr(
       chat?.settings.reasoning_tokens != null ? String(chat.settings.reasoning_tokens) : '',
     );
-    setShowThinking(chat?.settings.show_thinking_by_default ?? true);
+    setShowThinking(chat?.settings.show_thinking_by_default ?? false);
     setShowStats(chat?.settings.show_stats ?? false);
   }, [chat?.id]);
 

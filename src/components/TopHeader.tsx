@@ -1,17 +1,19 @@
 'use client';
 import ModelPicker from '@/components/ModelPicker';
+import ThemeToggle from '@/components/ThemeToggle';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
-import ThemeToggle from '@/components/ThemeToggle';
-import { Squares2X2Icon } from '@heroicons/react/24/outline';
-import { Cog6ToothIcon } from '@heroicons/react/24/outline';
-import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import { useEffect, useRef, useState } from 'react';
-import { useDebouncedCallback } from '@/lib/hooks/useDebouncedCallback';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PlusIcon,
+  Squares2X2Icon,
+  Cog6ToothIcon,
+  EllipsisVerticalIcon,
+} from '@heroicons/react/24/outline';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export default function TopHeader() {
-  // Use granular selectors to avoid unnecessary re-renders
   const { chats, selectedChatId, renameChat, setUI, openCompare, newChat } = useChatStore(
     (s) => ({
       chats: s.chats,
@@ -28,39 +30,55 @@ export default function TopHeader() {
     (s) => ({ collapsed: s.ui.sidebarCollapsed ?? false, isSettingsOpen: s.ui.showSettings }),
     shallow,
   );
-  const [title, setTitle] = useState(chat?.title || '');
-  useEffect(() => setTitle(chat?.title || ''), [chat?.id, chat?.title]);
-  const save = useDebouncedCallback((text: string) => {
-    if (!chat) return;
-    const t = (text || '').trim();
-    if (!t || t === chat.title) return;
-    renameChat(chat.id, t);
-  }, 400);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [menuTop, setMenuTop] = useState<number | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const displayTitle = (title || chat?.title || '').trim() || 'Untitled chat';
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
-    const onPointerDown = (e: PointerEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (menuRef.current && menuRef.current.contains(target)) return;
-      if (menuButtonRef.current && menuButtonRef.current.contains(target)) return;
-      setMobileMenuOpen(false);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false);
     };
-    document.addEventListener('pointerdown', onPointerDown, true);
-    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+    const update = () => {
+      if (!menuButtonRef.current) return;
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      const scrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+      setMenuTop(rect.bottom + 12 + scrollY);
+    };
+    update();
+    window.addEventListener('resize', update);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('resize', update);
+      document.removeEventListener('keydown', onKeyDown);
+    };
   }, [mobileMenuOpen]);
 
   const renameCurrentChat = () => {
     if (!chat) return;
-    const next = window.prompt('Rename chat', title || chat.title || 'Untitled chat');
+    const next = window.prompt('Rename chat', chat.title || 'Untitled chat');
     const trimmed = (next || '').trim();
     if (!trimmed || trimmed === chat.title) return;
-    setTitle(trimmed);
     renameChat(chat.id, trimmed);
+  };
+
+  const resolvedMenuTop = useMemo(() => {
+    if (menuTop == null) return undefined;
+    if (typeof window === 'undefined') return menuTop;
+    const viewportOffset = window.visualViewport?.offsetTop ?? 0;
+    const scrollY = window.scrollY || 0;
+    return Math.max(menuTop - scrollY, viewportOffset + 16);
+  }, [menuTop]);
+
+  const toggleMobileMenu = () => {
+    if (!mobileMenuOpen && menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      const scrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+      setMenuTop(rect.bottom + 12 + scrollY);
+    }
+    setMobileMenuOpen((v) => !v);
   };
 
   return (
@@ -77,29 +95,12 @@ export default function TopHeader() {
           <ChevronLeftIcon className="h-5 w-5" />
         )}
       </button>
-      <div className="order-3 sm:order-2 relative flex-1 min-w-0 w-full sm:w-auto">
+
+      <div className="order-2 flex-1 min-w-0 w-full sm:w-auto">
         <ModelPicker />
       </div>
-      {chat && (
-        <div className="order-4 sm:hidden w-full text-sm font-medium text-muted-foreground truncate">
-          {displayTitle}
-        </div>
-      )}
-      {chat && (
-        <input
-          className="order-5 input flex-1 min-w-0 max-w-full hidden sm:block"
-          aria-label="Chat title"
-          placeholder="Untitled chat"
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            save(e.target.value);
-          }}
-          onBlur={() => save.flush(title)}
-        />
-      )}
-      <div className="order-2 sm:order-3 ml-auto flex items-center gap-2">
-        {/* New Chat action, accessible even when sidebar is collapsed */}
+
+      <div className="order-3 ml-auto flex items-center gap-2">
         <button
           className="btn btn-ghost shrink-0 hide-on-mobile"
           aria-label="New chat"
@@ -150,73 +151,89 @@ export default function TopHeader() {
         >
           <Cog6ToothIcon className="h-5 w-5" />
         </button>
-        <div className="relative sm:hidden">
+        <div className="sm:hidden">
           <button
             ref={menuButtonRef}
             className="btn btn-ghost"
             aria-label="More actions"
             aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuOpen((v) => !v)}
+            onClick={toggleMobileMenu}
           >
             <EllipsisVerticalIcon className="h-5 w-5" />
           </button>
-          {mobileMenuOpen && (
-            <div
-              ref={menuRef}
-              className="absolute right-0 top-full mt-2 z-40 card p-1 popover min-w-[200px]"
-              role="menu"
-            >
-              <button
-                className="menu-item w-full text-left text-sm"
-                type="button"
-                onClick={() => {
-                  newChat();
-                  setMobileMenuOpen(false);
-                }}
-              >
-                New chat
-              </button>
-              {chat && (
-                <button
-                  className="menu-item w-full text-left text-sm"
-                  type="button"
-                  onClick={() => {
-                    renameCurrentChat();
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  Rename chat
-                </button>
-              )}
-              <button
-                className="menu-item w-full text-left text-sm"
-                type="button"
-                onClick={() => {
-                  openCompare();
-                  setMobileMenuOpen(false);
-                }}
-              >
-                Compare models
-              </button>
-              <ThemeToggle
-                variant="menu"
-                onToggle={() => setMobileMenuOpen(false)}
-                className="text-sm"
-              />
-              <button
-                className="menu-item w-full text-left text-sm"
-                type="button"
-                onClick={() => {
-                  setUI({ showSettings: true });
-                  setMobileMenuOpen(false);
-                }}
-              >
-                Settings
-              </button>
-            </div>
-          )}
         </div>
       </div>
+
+      {mobileMenuOpen && (
+        <>
+          <button
+            className="fixed inset-0 z-[90] cursor-default"
+            aria-label="Close menu"
+            type="button"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div
+            ref={menuRef}
+            className="fixed right-3 z-[95] card p-1 popover min-w-[220px]"
+            style={{ top: resolvedMenuTop }}
+            role="menu"
+          >
+            <button
+              className="menu-item w-full text-left text-sm"
+              type="button"
+              onClick={() => {
+                newChat();
+                setMobileMenuOpen(false);
+              }}
+            >
+              New chat
+            </button>
+            {chat && (
+              <button
+                className="menu-item w-full text-left text-sm"
+                type="button"
+                onClick={() => {
+                  renameCurrentChat();
+                  setMobileMenuOpen(false);
+                }}
+              >
+                Rename chat
+              </button>
+            )}
+            <button
+              className="menu-item w-full text-left text-sm"
+              type="button"
+              onClick={() => {
+                openCompare();
+                setMobileMenuOpen(false);
+              }}
+            >
+              Compare models
+            </button>
+            <ThemeToggle variant="menu" onToggle={() => setMobileMenuOpen(false)} className="text-sm" />
+            <button
+              className="menu-item w-full text-left text-sm"
+              type="button"
+              onClick={() => {
+                setUI({ showSettings: true });
+                setMobileMenuOpen(false);
+              }}
+            >
+              Settings
+            </button>
+            <button
+              className="menu-item w-full text-left text-sm"
+              type="button"
+              onClick={() => {
+                setUI({ sidebarCollapsed: !collapsed });
+                setMobileMenuOpen(false);
+              }}
+            >
+              {collapsed ? 'Show sidebar' : 'Hide sidebar'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

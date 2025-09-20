@@ -2,8 +2,8 @@
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import MessageList from '@/components/MessageList';
-import Composer from '@/components/Composer';
 import WelcomeHero from '@/components/WelcomeHero';
+import Composer from '@/components/Composer';
 
 export default function ChatPane() {
   const { chats, selectedChatId } = useChatStore(
