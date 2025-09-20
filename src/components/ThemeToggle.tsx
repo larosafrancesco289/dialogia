@@ -20,6 +20,7 @@ function applyTheme(mode: ThemeMode, mql?: MediaQueryList | null) {
 export default function ThemeToggle({ variant = 'ghost', className = '', onToggle }: ThemeToggleProps) {
   const [mode, setMode] = useState<ThemeMode>('auto');
   const mqlRef = useRef<MediaQueryList | null>(null);
+  const pendingToggleRef = useRef<ThemeMode | null>(null);
 
   useEffect(() => {
     // Initialize from localStorage or system
@@ -28,7 +29,9 @@ export default function ThemeToggle({ variant = 'ghost', className = '', onToggl
     mqlRef.current = window.matchMedia('(prefers-color-scheme: dark)');
     applyTheme(saved, mqlRef.current);
     const listener = () => {
-      if (saved === 'auto') applyTheme('auto', mqlRef.current);
+      if ((localStorage.getItem('theme') as ThemeMode | null) === 'auto') {
+        applyTheme('auto', mqlRef.current);
+      }
     };
     mqlRef.current.addEventListener?.('change', listener as any);
     return () => mqlRef.current?.removeEventListener?.('change', listener as any);
@@ -39,16 +42,23 @@ export default function ThemeToggle({ variant = 'ghost', className = '', onToggl
       const next: ThemeMode = prev === 'auto' ? 'light' : prev === 'light' ? 'dark' : 'auto';
       localStorage.setItem('theme', next);
       applyTheme(next, mqlRef.current);
-      onToggle?.(next);
+      pendingToggleRef.current = next;
       return next;
     });
   };
 
+  useEffect(() => {
+    if (!pendingToggleRef.current) return;
+    const next = pendingToggleRef.current;
+    pendingToggleRef.current = null;
+    onToggle?.(next);
+  }, [mode, onToggle]);
+
   const icon = useMemo(() => {
-  if (mode === 'auto') return <ComputerDesktopIcon className="h-5 w-5" />;
-  if (mode === 'dark') return <MoonIcon className="h-5 w-5" />;
-  return <SunIcon className="h-5 w-5" />;
-}, [mode]);
+    if (mode === 'auto') return <ComputerDesktopIcon className="h-5 w-5" />;
+    if (mode === 'dark') return <MoonIcon className="h-5 w-5" />;
+    return <SunIcon className="h-5 w-5" />;
+  }, [mode]);
 
   const label = `Theme: ${mode === 'auto' ? 'Auto' : mode === 'dark' ? 'Dark' : 'Light'}`;
 

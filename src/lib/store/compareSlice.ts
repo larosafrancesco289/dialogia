@@ -159,7 +159,7 @@ export function createCompareSlice(
                     settings: {
                       model: modelId,
                       system: 'You are a helpful assistant.',
-                      show_thinking_by_default: true,
+                      show_thinking_by_default: false,
                       show_stats: true,
                       search_with_brave: false,
                       reasoning_effort: undefined,

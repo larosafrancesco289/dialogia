@@ -324,6 +324,7 @@ export default function ModelPicker({
           >
             {options.map((o, idx) => {
               const { canReason, canSee, canAudio, canImageOut, isZdr, priceStr } = renderCapabilities(o.id);
+              const showPrice = variant !== 'sheet';
               return (
                 <div
                   key={o.id}
@@ -346,7 +347,7 @@ export default function ModelPicker({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-2 shrink-0">
-                    {priceStr && (
+                    {showPrice && priceStr && (
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
                         {priceStr}
                       </span>

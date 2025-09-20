@@ -9,6 +9,7 @@ import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
 import { ReasoningPanel } from '@/components/message/ReasoningPanel';
 import { DebugPanel } from '@/components/message/DebugPanel';
 import { TutorPanel } from '@/components/message/TutorPanel';
+import { findModelById, isReasoningSupported } from '@/lib/models';
 import type { Attachment } from '@/lib/types';
 import ImageLightbox from '@/components/ImageLightbox';
  
@@ -60,13 +61,16 @@ export default function MessageList({ chatId }: { chatId: string }) {
     return () => window.removeEventListener('resize', update as any);
   }, []);
 
+  // Composer is now rendered outside this scroll container in ChatPane.
+
   // Track whether user is near the bottom to enable smart autoscroll
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const onScroll = () => {
+      const distanceFromBottom = Math.max(el.scrollHeight - el.scrollTop - el.clientHeight, 0);
       const threshold = 100; // px
-      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+      const nearBottom = distanceFromBottom <= threshold;
       setAtBottom(nearBottom);
       // Show the jump button whenever the user is away from the bottom
       setShowJump(!nearBottom);
@@ -89,10 +93,11 @@ export default function MessageList({ chatId }: { chatId: string }) {
     // Schedule after layout to avoid fighting with Resize/Mutation updates
     requestAnimationFrame(() => {
       try {
-        el.scrollTo({ top: el.scrollHeight, behavior });
+        const target = Math.max(el.scrollHeight - el.clientHeight, 0);
+        el.scrollTo({ top: target, behavior });
       } catch {
         // Fallback for older browsers
-        el.scrollTop = el.scrollHeight;
+        el.scrollTop = Math.max(el.scrollHeight - el.clientHeight, 0);
       }
     });
   };
@@ -124,7 +129,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
     }
     if (!isStreaming) lastScrollTsRef.current = 0;
   }, [lastLen, isStreaming, atBottom]);
-  const showByDefault = chat?.settings.show_thinking_by_default ?? true;
+  const showByDefault = chat?.settings.show_thinking_by_default ?? false;
   const [expandedReasoningIds, setExpandedReasoningIds] = useState<Record<string, boolean>>({});
   const toggle = (id: string) => setExpandedReasoningIds((s) => ({ ...s, [id]: !s[id] }));
   const isExpanded = (id: string) => expandedReasoningIds[id] ?? showByDefault;
@@ -343,13 +348,24 @@ export default function MessageList({ chatId }: { chatId: string }) {
                 />
               )}
               {/* Thinking block styled like sources, inline header with icon toggle */}
-              {typeof m.reasoning === 'string' && m.reasoning.length > 0 && (
-                <ReasoningPanel
-                  reasoning={m.reasoning}
-                  expanded={isExpanded(m.id)}
-                  onToggle={() => toggle(m.id)}
-                />
-              )}
+              {(() => {
+                const reasoningText = typeof m.reasoning === 'string' ? (m.reasoning as string) : '';
+                const isLatestAssistant = m.role === 'assistant' && m.id === lastMessageId;
+                const messageModelId = (m.model || chat?.settings?.model) ?? undefined;
+                const modelMeta = messageModelId ? findModelById(models, messageModelId) : undefined;
+                const modelAllowsReasoning = !!modelMeta && isReasoningSupported(modelMeta);
+                const hasReasoning = reasoningText.trim().length > 0;
+                const allowStreaming = modelAllowsReasoning && isLatestAssistant && isStreaming;
+                if (!hasReasoning && !allowStreaming) return null;
+                return (
+                  <ReasoningPanel
+                    reasoning={reasoningText}
+                    expanded={isExpanded(m.id)}
+                    onToggle={() => toggle(m.id)}
+                    isStreaming={allowStreaming}
+                  />
+                );
+              })()}
               {/* Tutor interactive panels (MCQ, fill-blank, open, flashcards) */}
               {(() => {
                 if (!tutorGloballyEnabled) return null;
@@ -637,18 +653,9 @@ export default function MessageList({ chatId }: { chatId: string }) {
         </div>
       ))}
       {showJump && (
-        <div
-          style={{
-            position: 'sticky',
-            bottom: 'calc(20px + env(safe-area-inset-bottom))',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            zIndex: 60,
-            pointerEvents: 'none',
-          }}
-        >
+        <div className="jump-to-latest">
           <button
-            className="icon-button glass"
+            className="icon-button glass jump-to-latest__button"
             aria-label="Jump to latest"
             title="Jump to latest"
             onClick={() => {
@@ -656,7 +663,6 @@ export default function MessageList({ chatId }: { chatId: string }) {
               setShowJump(false);
               setAtBottom(true);
             }}
-            style={{ pointerEvents: 'auto', width: 36, height: 36 }}
           >
             <ChevronDownIcon className="h-5 w-5" />
           </button>

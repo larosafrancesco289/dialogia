@@ -106,7 +106,7 @@ export function createChatSlice(
           max_tokens: get().ui.nextMaxTokens ?? undefined,
           reasoning_effort: get().ui.nextReasoningEffort ?? undefined,
           reasoning_tokens: get().ui.nextReasoningTokens ?? undefined,
-          show_thinking_by_default: get().ui.nextShowThinking ?? true,
+          show_thinking_by_default: get().ui.nextShowThinking ?? false,
           show_stats: get().ui.nextShowStats ?? false,
           search_with_brave: get().ui.nextSearchWithBrave ?? false,
           // If Brave is disabled via experimental toggle, force OpenRouter provider
