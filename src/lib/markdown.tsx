@@ -8,6 +8,33 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
 
+const WRAP_STORAGE_KEY = 'dialogia:code-wrap';
+const WRAP_EVENT = 'dialogia:code-wrap-change';
+
+function readWrapPreference(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const stored = window.localStorage.getItem(WRAP_STORAGE_KEY);
+    if (stored === 'off') return false;
+    if (stored === 'on') return true;
+  } catch {
+    // ignore storage access failures
+  }
+  return true;
+}
+
+function persistWrapPreference(next: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(WRAP_STORAGE_KEY, next ? 'on' : 'off');
+  } catch {
+    // ignore storage access failures
+  }
+  window.setTimeout(() => {
+    window.dispatchEvent(new CustomEvent<boolean>(WRAP_EVENT, { detail: next }));
+  }, 0);
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
@@ -58,7 +85,7 @@ function PreWithTools(
   const preRef = useRef<HTMLPreElement>(null);
   // Expand by default; allow optional line wrapping toggle
   const [expanded, setExpanded] = useState(true);
-  const [wrap, setWrap] = useState(false);
+  const [wrap, setWrap] = useState<boolean>(() => readWrapPreference());
   const [isOverflowing, setIsOverflowing] = useState(false);
   const language = useMemo(
     () => props.language ?? detectLanguageFromPreChildren(props.children),
@@ -86,6 +113,25 @@ function PreWithTools(
     };
   }, [expanded, props.children]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onPreferenceChange = (event: CustomEvent<boolean>) => {
+      if (typeof event.detail !== 'boolean') return;
+      setWrap(event.detail);
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== WRAP_STORAGE_KEY) return;
+      const next = event.newValue === null ? true : event.newValue !== 'off';
+      setWrap(next);
+    };
+    window.addEventListener(WRAP_EVENT, onPreferenceChange as EventListener);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(WRAP_EVENT, onPreferenceChange as EventListener);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
   return (
     <pre
       ref={preRef}
@@ -99,7 +145,13 @@ function PreWithTools(
           <button
             type="button"
             className="btn-outline btn-sm"
-            onClick={() => setWrap((v) => !v)}
+            onClick={() => {
+              setWrap((v) => {
+                const next = !v;
+                persistWrapPreference(next);
+                return next;
+              });
+            }}
             title={wrap ? 'Disable wrap' : 'Enable wrap'}
           >
             {wrap ? 'Unwrap' : 'Wrap'}
