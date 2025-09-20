@@ -1,8 +1,17 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import { Markdown } from '@/lib/markdown';
-import { ChevronDownIcon, PencilSquareIcon, CheckIcon, XMarkIcon, ClipboardIcon, ArrowUturnRightIcon } from '@heroicons/react/24/outline';
+import {
+  ChevronDownIcon,
+  PencilSquareIcon,
+  CheckIcon,
+  XMarkIcon,
+  ClipboardIcon,
+  ArrowPathIcon,
+  ArrowUturnRightIcon,
+} from '@heroicons/react/24/outline';
 import RegenerateMenu from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
@@ -171,6 +180,80 @@ export default function MessageList({ chatId }: { chatId: string }) {
       editUserMessage(messageId, payload, { rerun: true }).catch(() => void 0);
     }
   };
+
+  const copyMessage = async (messageId: string) => {
+    const msg = messages.find((x) => x.id === messageId);
+    if (!msg) return;
+    try {
+      await navigator.clipboard.writeText(msg.content || '');
+      setCopiedId(messageId);
+      setTimeout(() => setCopiedId((id) => (id === messageId ? null : id)), 1200);
+    } catch {}
+  };
+
+  const startEditingMessage = (messageId: string) => {
+    const msg = messages.find((x) => x.id === messageId);
+    if (!msg) return;
+    setEditingId(messageId);
+    setDraft(msg.content || '');
+  };
+
+  const branchFromMessage = (messageId: string) => {
+    if (isStreaming) return;
+    branchFrom(messageId);
+  };
+
+  const regenerateMessage = (messageId: string) => {
+    regenerate(messageId, {} as any);
+  };
+
+  const mobileActionMessage = useMemo(() => {
+    if (!mobileSheet) return null;
+    return messages.find((msg) => msg.id === mobileSheet.id) ?? null;
+  }, [mobileSheet, messages]);
+
+  const mobileActionPreview = useMemo(() => {
+    if (!mobileActionMessage) return null;
+    const text = (mobileActionMessage.content || '').trim();
+    if (text) {
+      const normalized = text.replace(/\s+/g, ' ');
+      return normalized.length > 160 ? `${normalized.slice(0, 160)}…` : normalized;
+    }
+    if (Array.isArray(mobileActionMessage.attachments) && mobileActionMessage.attachments.length > 0) {
+      const first = mobileActionMessage.attachments[0];
+      return first?.name || first?.kind || 'Attachment';
+    }
+    return null;
+  }, [mobileActionMessage]);
+
+  const closeMobileSheet = useCallback(() => {
+    setMobileSheet(null);
+    setActiveMessageId(null);
+  }, [setMobileSheet, setActiveMessageId]);
+
+  useEffect(() => {
+    if (!isMobile || !mobileSheet) return;
+    if (typeof document === 'undefined') return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      closeMobileSheet();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isMobile, mobileSheet, closeMobileSheet]);
+
+  useEffect(() => {
+    if (!mobileSheet) return;
+    const exists = messages.some((msg) => msg.id === mobileSheet.id);
+    if (!exists) closeMobileSheet();
+  }, [mobileSheet, messages, closeMobileSheet]);
+
+  useEffect(() => {
+    if (!isMobile || !mobileSheet) return;
+    if (activeMessageId === mobileSheet.id) return;
+    setActiveMessageId(mobileSheet.id);
+  }, [isMobile, mobileSheet, activeMessageId, setActiveMessageId]);
   // Clear active highlight when tapping outside the active message on mobile
   useEffect(() => {
     if (!isMobile) return;
@@ -216,6 +299,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
             let fired = false;
             const tid = window.setTimeout(() => {
               fired = true;
+              setActiveMessageId(m.id);
               setMobileSheet({ id: m.id, role: m.role as any });
             }, 320);
             const onMove = (ev: PointerEvent) => {
@@ -249,6 +333,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
             // Fallback: if a context menu is about to open on iOS, hijack it for our sheet
             if (!isMobile) return;
             e.preventDefault();
+            setActiveMessageId(m.id);
             setMobileSheet({ id: m.id, role: m.role as any });
           }}
         >
@@ -286,13 +371,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                       className="icon-button"
                       aria-label="Copy message"
                       title={copiedId === m.id ? 'Copied' : 'Copy message'}
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(m.content || '');
-                          setCopiedId(m.id);
-                          setTimeout(() => setCopiedId((id) => (id === m.id ? null : id)), 1200);
-                        } catch {}
-                      }}
+                      onClick={() => copyMessage(m.id)}
                     >
                       {copiedId === m.id ? (
                         <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
@@ -305,10 +384,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                         className="icon-button"
                         aria-label="Edit message"
                         title="Edit message"
-                        onClick={() => {
-                          setEditingId(m.id);
-                          setDraft(m.content || '');
-                        }}
+                        onClick={() => startEditingMessage(m.id)}
                       >
                         <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                       </button>
@@ -318,7 +394,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                       title="Create a new chat starting from this reply"
                       aria-label="Branch chat from here"
                       disabled={isStreaming}
-                      onClick={() => branchFrom(m.id)}
+                      onClick={() => branchFromMessage(m.id)}
                     >
                       <ArrowUturnRightIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                     </button>
@@ -537,10 +613,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     className="icon-button"
                     aria-label="Edit message"
                     title="Edit message"
-                    onClick={() => {
-                      setEditingId(m.id);
-                      setDraft(m.content || '');
-                    }}
+                    onClick={() => startEditingMessage(m.id)}
                   >
                     <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                   </button>
@@ -550,13 +623,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     className="icon-button ml-1"
                     aria-label="Copy message"
                     title={copiedId === m.id ? 'Copied' : 'Copy message'}
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(m.content || '');
-                        setCopiedId(m.id);
-                        setTimeout(() => setCopiedId((id) => (id === m.id ? null : id)), 1200);
-                      } catch {}
-                    }}
+                    onClick={() => copyMessage(m.id)}
                   >
                     {copiedId === m.id ? (
                       <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
@@ -672,85 +739,121 @@ export default function MessageList({ chatId }: { chatId: string }) {
       {/* Typing indicator is now rendered inline within the latest assistant message */}
       <div ref={endRef} />
       {/* Mobile action sheet */}
-      {isMobile && mobileSheet && (
-        <>
-          <button
-            className="fixed inset-0 z-[95] settings-overlay"
-            aria-label="Close actions"
-            onClick={() => setMobileSheet(null)}
-          />
+      {isMobile &&
+        mobileSheet &&
+        typeof document !== 'undefined' &&
+        createPortal(
           <div
-            className="fixed left-0 right-0 bottom-0 z-[100] p-2"
-            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+            className="mobile-sheet-overlay mobile-message-sheet-overlay"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) closeMobileSheet();
+            }}
           >
-            <div className="card p-2 rounded-2xl overflow-hidden">
-              <div className="grid gap-2">
+            <div className="mobile-sheet card mobile-message-sheet" role="menu" aria-label="Message actions">
+              <div className="mobile-sheet-handle" aria-hidden="true" />
+              <div className="mobile-message-sheet__header">
+                <div className="mobile-message-sheet__title">
+                  <span className="mobile-message-sheet__heading">Message actions</span>
+                  {mobileActionPreview && (
+                    <p className="mobile-message-sheet__preview">{mobileActionPreview}</p>
+                  )}
+                </div>
                 <button
-                  className="w-full h-11 btn btn-outline"
-                  onClick={async () => {
-                    const msg = messages.find((x) => x.id === mobileSheet.id);
-                    if (!msg) return;
-                    try {
-                      await navigator.clipboard.writeText(msg.content || '');
-                    } catch {}
-                    setMobileSheet(null);
-                  }}
+                  type="button"
+                  className="icon-button"
+                  aria-label="Close actions"
+                  onClick={closeMobileSheet}
                 >
-                  Copy
-                </button>
-                {/* Edit for both roles */}
-                <button
-                  className="w-full h-11 btn btn-outline"
-                  onClick={() => {
-                    const msg = messages.find((x) => x.id === mobileSheet.id);
-                    if (!msg) return;
-                    setEditingId(msg.id);
-                    setDraft(msg.content || '');
-                    setMobileSheet(null);
-                  }}
-                >
-                  Edit
-                </button>
-                {/* Assistant-only actions */}
-                {(() => {
-                  const isAssistant = mobileSheet.role === 'assistant';
-                  if (!isAssistant) return null;
-                  return (
-                    <>
-                      <button
-                        className="w-full h-11 btn btn-outline"
-                        disabled={isStreaming}
-                        onClick={() => {
-                          branchFrom(mobileSheet.id);
-                          setMobileSheet(null);
-                        }}
-                        title="Create a new chat starting from this reply"
-                      >
-                        Branch
-                      </button>
-                      <button
-                        className="w-full h-11 btn"
-                        onClick={() => {
-                          regenerate(mobileSheet.id, {} as any);
-                          setMobileSheet(null);
-                        }}
-                      >
-                        Regenerate
-                      </button>
-                    </>
-                  );
-                })()}
-                <button
-                  className="w-full h-11 btn btn-ghost"
-                  onClick={() => setMobileSheet(null)}
-                >
-                  Cancel
+                  <XMarkIcon className="h-4 w-4" />
                 </button>
               </div>
+              <div className="mobile-message-sheet__actions">
+                <button
+                  type="button"
+                  className="mobile-message-action"
+                  onClick={async () => {
+                    await copyMessage(mobileSheet.id);
+                    closeMobileSheet();
+                  }}
+                >
+                  <span className="mobile-message-action__icon">
+                    <ClipboardIcon className="h-5 w-5" />
+                  </span>
+                  <span className="mobile-message-action__meta">
+                    <span className="mobile-message-action__label">Copy</span>
+                    <span className="mobile-message-action__hint">Copy message text</span>
+                  </span>
+                </button>
+                {mobileActionMessage && (
+                  <button
+                    type="button"
+                    className="mobile-message-action"
+                    disabled={editingId === mobileActionMessage.id}
+                    onClick={() => {
+                      if (editingId === mobileActionMessage.id) return;
+                      startEditingMessage(mobileActionMessage.id);
+                      closeMobileSheet();
+                    }}
+                  >
+                    <span className="mobile-message-action__icon">
+                      <PencilSquareIcon className="h-5 w-5" />
+                    </span>
+                    <span className="mobile-message-action__meta">
+                      <span className="mobile-message-action__label">
+                        {editingId === mobileActionMessage.id ? 'Editing...' : 'Edit'}
+                      </span>
+                      <span className="mobile-message-action__hint">Modify this message</span>
+                    </span>
+                  </button>
+                )}
+                {mobileSheet.role === 'assistant' && (
+                  <>
+                    <button
+                      type="button"
+                      className="mobile-message-action"
+                      disabled={isStreaming}
+                      onClick={() => {
+                        if (isStreaming) return;
+                        branchFromMessage(mobileSheet.id);
+                        closeMobileSheet();
+                      }}
+                    >
+                      <span className="mobile-message-action__icon">
+                        <ArrowUturnRightIcon className="h-5 w-5" />
+                      </span>
+                      <span className="mobile-message-action__meta">
+                        <span className="mobile-message-action__label">Branch</span>
+                        <span className="mobile-message-action__hint">Start a new chat from here</span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-message-action"
+                      onClick={() => {
+                        regenerateMessage(mobileSheet.id);
+                        closeMobileSheet();
+                      }}
+                    >
+                      <span className="mobile-message-action__icon">
+                        <ArrowPathIcon className="h-5 w-5" />
+                      </span>
+                      <span className="mobile-message-action__meta">
+                        <span className="mobile-message-action__label">Regenerate</span>
+                        <span className="mobile-message-action__hint">Ask the assistant again</span>
+                      </span>
+                    </button>
+                  </>
+                )}
+              </div>
+              <button type="button" className="btn btn-ghost w-full h-11" onClick={closeMobileSheet}>
+                Cancel
+              </button>
             </div>
-          </div>
-        </>
-      )}
+          </div>,
+          document.body,
+        )}
       {lightbox && (
         <ImageLightbox
           images={lightbox.images}
