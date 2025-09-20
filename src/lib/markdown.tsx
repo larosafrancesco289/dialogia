@@ -69,10 +69,11 @@ function detectLanguageFromPreChildren(children: React.ReactNode): string | unde
 
 function extractCodeText(children: React.ReactNode): string {
   const first = Children.toArray(children)[0] as any;
-  const raw = first?.props?.children;
+  const raw =
+    first?.props?.children ?? first?.props?.value ?? first?.props?.code ?? null;
   if (raw == null) return '';
   if (Array.isArray(raw)) return raw.join('');
-  return String(raw);
+  return typeof raw === 'string' ? raw : String(raw);
 }
 
 function PreWithTools(
@@ -298,9 +299,13 @@ function CodeBlock({ code, language }: { code: string; language?: string }) {
         const Prism = await ensurePrismLanguage(lang);
         const grammar = (lang && Prism.languages[lang]) || Prism.languages.markup;
         const h = Prism.highlight(code, grammar, (lang as string) || 'markup');
-        if (!cancelled) setHtml(h);
+        if (!cancelled) {
+          setHtml((prev) => (prev === h ? prev : h));
+        }
       } catch {
-        if (!cancelled) setHtml(null);
+        if (!cancelled) {
+          setHtml((prev) => (prev === null ? prev : null));
+        }
       }
     })();
     return () => {
@@ -370,9 +375,11 @@ export function Markdown({ content }: { content: string }) {
           code({ inline, className, children, ...props }: any) {
             // Only style inline code; block code is handled by the <pre> wrapper above
             if (!inline) {
-              const lang = (className || '').replace(/(^|.*language-)([\w-]+).*/, '$2');
-              const text = Array.isArray(children) ? children.join('') : String(children || '');
-              return <CodeBlock code={text} language={lang} />;
+              return (
+                <code className={className || ''} {...props}>
+                  {children}
+                </code>
+              );
             }
             return (
               <code className={`bg-muted rounded px-1 py-0.5 ${className || ''}`} {...props}>

@@ -854,9 +854,11 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 .message-card.message-assistant {
   background: var(--message-assistant-bg);
   border-color: var(--message-assistant-border) !important;
-  margin-right: auto;
+  margin-right: 0;
   margin-left: 0;
   border-radius: 18px;
+  max-width: none;
+  width: 100%;
 }
 .message-card.message-assistant::before {
   content: '';
@@ -875,6 +877,8 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   margin-right: 0;
   border-radius: 18px;
   border-top-left-radius: 12px; /* distinct shape cue */
+  width: fit-content;
+  max-width: clamp(160px, 72%, 560px);
 }
 
 /* Message actions visibility: tap-to-highlight on mobile, hover/focus on desktop */
@@ -908,6 +912,9 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 /* Constrain readable measure inside message content */
 .message-card .markdown {
   max-width: 72ch;
+}
+.message-card.message-assistant .markdown {
+  max-width: none;
 }
 
 /* Traffic lights */
