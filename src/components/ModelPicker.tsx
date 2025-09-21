@@ -15,6 +15,7 @@ import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
 import {
   findModelById,
+  formatModelLabel,
   isReasoningSupported,
   isVisionSupported,
   isAudioInputSupported,
@@ -44,10 +45,6 @@ type Controller = {
   zdrModelIds?: string[];
   zdrProviderIds?: string[];
 };
-
-function stripProvider(label?: string) {
-  return String(label ?? '').replace(/^[^:]+:\s*/, '');
-}
 
 export function useModelPickerController(): Controller {
   const {
@@ -250,7 +247,18 @@ export default function ModelPicker({
     };
   }, [open, options, current?.id, variant]);
 
-  const title = stripProvider(current?.name || current?.id) || 'Pick model';
+  const deriveLabel = (opt?: Option) => {
+    if (!opt) return 'Pick model';
+    return (
+      formatModelLabel({
+        model: modelMap.get(opt.id),
+        fallbackId: opt.id,
+        fallbackName: opt.name,
+      }) || 'Pick model'
+    );
+  };
+
+  const title = deriveLabel(current);
 
   const renderCapabilities = (id: string) => {
     const meta = modelMap.get(id);
@@ -337,7 +345,7 @@ export default function ModelPicker({
                   onClick={() => handleChoose(o.id)}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium text-sm">{stripProvider(o.name || o.id)}</div>
+                    <div className="truncate font-medium text-sm">{deriveLabel(o)}</div>
                     <div className="flex items-center gap-2 mt-1 text-muted-foreground">
                       {canReason && <LightBulbIcon className="h-4 w-4" title="Reasoning" />}
                       {canSee && <EyeIcon className="h-4 w-4" title="Vision input" />}

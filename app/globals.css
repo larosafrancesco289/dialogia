@@ -485,7 +485,7 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 .mobile-sheet-overlay {
   position: fixed;
   inset: 0;
-  background: color-mix(in oklab, var(--color-canvas) 30%, rgba(8, 7, 10, 0.55));
+  background: rgba(8, 7, 10, 0.42);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -678,6 +678,10 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   text-align: left;
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
+.mobile-menu-item.is-active {
+  border-color: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
+  background: color-mix(in oklab, var(--color-accent) 12%, var(--color-surface));
+}
 .mobile-menu-item:hover {
   background: color-mix(in oklab, var(--color-muted) 80%, transparent);
 }
@@ -805,6 +809,19 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   width: 3px;
   background: var(--color-accent);
   opacity: 0.6;
+}
+.chat-item.is-drag-over {
+  outline: 2px dashed color-mix(in oklab, var(--color-accent) 60%, var(--color-border));
+  outline-offset: 2px;
+}
+
+.folder-row {
+  border-radius: 18px;
+  margin-bottom: var(--space-2);
+}
+.folder-row.is-drag-over {
+  outline: 2px dashed color-mix(in oklab, var(--color-accent) 55%, var(--color-border));
+  outline-offset: 2px;
 }
 
 /* Subtle lift for cards and pressable buttons */

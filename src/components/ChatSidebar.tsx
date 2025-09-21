@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useDragAndDrop, setCurrentDragData, getCurrentDragData } from '@/lib/dragDrop';
@@ -7,6 +8,7 @@ import FolderItem from './FolderItem';
 import IconButton from './IconButton';
 import ThemeToggle from '@/components/ThemeToggle';
 import ConfirmDialog from './ConfirmDialog';
+import { MoveChatSheet } from '@/components/MoveChatSheet';
 import {
   PlusIcon,
   FolderPlusIcon,
@@ -15,9 +17,10 @@ import {
   TrashIcon,
   CheckIcon,
   XMarkIcon,
+  FolderOpenIcon,
 } from '@heroicons/react/24/outline';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
-import type { Chat } from '@/lib/types';
+import type { Chat, Folder } from '@/lib/types';
 // Settings gear moved to the top header
 
 export default function ChatSidebar() {
@@ -31,6 +34,7 @@ export default function ChatSidebar() {
     deleteChat,
     loadModels,
     createFolder,
+    moveChatToFolder,
   } = useChatStore(
     (s) => ({
       chats: s.chats,
@@ -42,6 +46,7 @@ export default function ChatSidebar() {
       deleteChat: s.deleteChat,
       loadModels: s.loadModels,
       createFolder: s.createFolder,
+      moveChatToFolder: s.moveChatToFolder,
     }),
     shallow,
   );
@@ -241,6 +246,8 @@ export default function ChatSidebar() {
               onCancelEdit={() => setEditingId(null)}
               onDelete={() => deleteChat(chat.id)}
               onEditTitleChange={setEditTitle}
+              folders={folders}
+              moveChatToFolder={moveChatToFolder}
             />
           ))}
       </div>
@@ -263,6 +270,8 @@ interface RootChatItemProps {
   onCancelEdit: () => void;
   onDelete: () => void;
   onEditTitleChange: (title: string) => void;
+  folders: Folder[];
+  moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
 }
 
 function RootChatItem({
@@ -278,9 +287,12 @@ function RootChatItem({
   onCancelEdit,
   onDelete,
   onEditTitleChange,
+  folders,
+  moveChatToFolder,
 }: RootChatItemProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [showMoveSheet, setShowMoveSheet] = useState(false);
   // Long-press detection (mobile)
   const startX = useRef(0);
   const startY = useRef(0);
@@ -383,6 +395,16 @@ function RootChatItem({
                   size="sm"
                   onClick={(e) => {
                     e?.stopPropagation();
+                    setShowMoveSheet(true);
+                  }}
+                  title="Move to folder"
+                >
+                  <FolderOpenIcon className="h-4 w-4" />
+                </IconButton>
+                <IconButton
+                  size="sm"
+                  onClick={(e) => {
+                    e?.stopPropagation();
                     setShowConfirm(true);
                   }}
                   title="Delete chat"
@@ -395,47 +417,61 @@ function RootChatItem({
         </div>
       </div>
 
-      {isMobile && showActions && (
-        <div
-          className="mobile-sheet-overlay"
-          role="presentation"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setShowActions(false);
-          }}
-        >
+      {isMobile && showActions && typeof document !== 'undefined' &&
+        createPortal(
           <div
-            className="mobile-sheet card mobile-sheet-compact"
-            role="menu"
-            aria-label={`Actions for ${chat.title}`}
+            className="mobile-sheet-overlay"
+            role="presentation"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setShowActions(false);
+            }}
           >
-            <div className="mobile-sheet-handle" aria-hidden="true" />
-            <button
-              type="button"
-              className="mobile-menu-item"
-              onClick={() => {
-                setShowActions(false);
-                onStartEdit();
-              }}
-              title="Rename chat"
+            <div
+              className="mobile-sheet card mobile-sheet-compact"
+              role="menu"
+              aria-label={`Actions for ${chat.title}`}
             >
-              <PencilSquareIcon className="h-4 w-4" />
-              <span>Rename chat</span>
-            </button>
-            <button
-              type="button"
-              className="mobile-menu-item is-danger"
-              onClick={() => {
-                setShowActions(false);
-                setShowConfirm(true);
-              }}
-              title="Delete chat"
-            >
-              <TrashIcon className="h-4 w-4" />
-              <span>Delete chat</span>
-            </button>
-          </div>
-        </div>
-      )}
+              <div className="mobile-sheet-handle" aria-hidden="true" />
+              <button
+                type="button"
+                className="mobile-menu-item"
+                onClick={() => {
+                  setShowActions(false);
+                  onStartEdit();
+                }}
+                title="Rename chat"
+              >
+                <PencilSquareIcon className="h-4 w-4" />
+                <span>Rename chat</span>
+              </button>
+              <button
+                type="button"
+                className="mobile-menu-item"
+                onClick={() => {
+                  setShowActions(false);
+                  setShowMoveSheet(true);
+                }}
+                title="Move chat to folder"
+              >
+                <FolderOpenIcon className="h-4 w-4" />
+                <span>Move to folder</span>
+              </button>
+              <button
+                type="button"
+                className="mobile-menu-item is-danger"
+                onClick={() => {
+                  setShowActions(false);
+                  setShowConfirm(true);
+                }}
+                title="Delete chat"
+              >
+                <TrashIcon className="h-4 w-4" />
+                <span>Delete chat</span>
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       <ConfirmDialog
         open={showConfirm}
@@ -447,6 +483,22 @@ function RootChatItem({
         onConfirm={() => {
           setShowConfirm(false);
           onDelete();
+        }}
+      />
+
+      <MoveChatSheet
+        open={showMoveSheet}
+        chatTitle={chat.title}
+        currentFolderId={chat.folderId}
+        folders={folders}
+        onClose={() => setShowMoveSheet(false)}
+        onMove={async (target) => {
+          if (target === chat.folderId) {
+            setShowMoveSheet(false);
+            return;
+          }
+          await moveChatToFolder(chat.id, target);
+          setShowMoveSheet(false);
         }}
       />
     </>

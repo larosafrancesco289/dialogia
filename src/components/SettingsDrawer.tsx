@@ -18,6 +18,7 @@ import {
   findModelById,
   isAudioInputSupported,
   isImageOutputSupported,
+  formatModelLabel,
 } from '@/lib/models';
 import { describeModelPricing } from '@/lib/cost';
 import { EyeIcon, LightBulbIcon, MicrophoneIcon, PhotoIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
@@ -327,7 +328,11 @@ export default function SettingsDrawer() {
                         const canImageOut = isImageOutputSupported(meta);
                         const priceStr = describeModelPricing(meta);
                         // Prefer a concise name: drop provider prefixes like "Anthropic: ..."
-                        const displayName = String(m.name || m.id).replace(/^[^:]+:\\s*/, '');
+                        const displayName = formatModelLabel({
+                          model: meta,
+                          fallbackId: m.id,
+                          fallbackName: m.name,
+                        });
                         const provider = String(m.id).split('/')[0];
                         const isZdr = Boolean(
                           (zdrModelIds && zdrModelIds.includes(m.id)) ||
