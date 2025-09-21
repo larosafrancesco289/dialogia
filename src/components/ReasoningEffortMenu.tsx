@@ -90,7 +90,9 @@ export default function ReasoningEffortMenu() {
               >
                 <BeakerIcon className="h-4 w-4" />
                 <span>DeepResearch</span>
-                <span className={`ml-auto text-xs ${deepEnabled ? 'text-primary' : 'text-muted-foreground'}`}>
+                <span
+                  className={`ml-auto text-xs ${deepEnabled ? 'text-primary' : 'text-muted-foreground'}`}
+                >
                   {deepEnabled ? 'On' : 'Off'}
                 </span>
               </button>

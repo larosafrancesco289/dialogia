@@ -70,6 +70,8 @@ export default function Composer({
     shallow,
   );
   const [focused, setFocused] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
+  const [composerHeight, setComposerHeight] = useState(0);
   const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
   const tutorEnabled =
     tutorGloballyEnabled && !!(chat ? chat.settings.tutor_mode : uiNext.nextTutorMode);
@@ -178,22 +180,34 @@ export default function Composer({
   // DeepResearch toggles like web search; actual call happens on send
 
   // Autofocus on mount and when chat changes or streaming stops
+  const canAutoFocus = () => typeof window !== 'undefined' && window.innerWidth >= 768;
+
   useEffect(() => {
-    taRef.current?.focus({ preventScroll: true } as any);
+    if (canAutoFocus()) {
+      taRef.current?.focus({ preventScroll: true } as any);
+    } else {
+      taRef.current?.blur();
+    }
   }, []);
   useEffect(() => {
-    taRef.current?.focus({ preventScroll: true } as any);
+    if (canAutoFocus()) {
+      taRef.current?.focus({ preventScroll: true } as any);
+    } else {
+      taRef.current?.blur();
+    }
   }, [selectedChatId]);
   useEffect(() => {
-    if (!isStreaming) {
-      const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
-      if (!isSmall) taRef.current?.focus({ preventScroll: true } as any);
+    if (!isStreaming && canAutoFocus()) {
+      taRef.current?.focus({ preventScroll: true } as any);
     }
   }, [isStreaming]);
 
   const maxTextareaHeight = useMemo(() => {
-    // Use a stable default viewport height to prevent hydration mismatch
-    const viewport = keyboardMetrics?.viewportHeight ?? 720;
+    // Use a stable fallback so SSR and first client render match before we measure
+    const viewport =
+      keyboardMetrics?.viewportHeight && keyboardMetrics.viewportHeight > 0
+        ? keyboardMetrics.viewportHeight
+        : 720;
     const capped = Math.min(320, Math.max(180, viewport * 0.35));
     return Math.round(capped);
   }, [keyboardMetrics?.viewportHeight]);
@@ -217,12 +231,15 @@ export default function Composer({
   const canImageOut = isImageOutputSupported(modelMeta);
   const braveGloballyEnabled = useChatStore((s) => !!s.ui.experimentalBrave);
   const searchEnabled = chat ? !!chat.settings.search_with_brave : !!uiNext.nextSearchWithBrave;
-  const rawProvider = (chat?.settings as any)?.search_provider || uiNext.nextSearchProvider || 'brave';
+  const rawProvider =
+    (chat?.settings as any)?.search_provider || uiNext.nextSearchProvider || 'brave';
   const searchProvider: 'brave' | 'openrouter' = braveGloballyEnabled ? rawProvider : 'openrouter';
   type Effort = 'none' | 'low' | 'medium' | 'high';
-  const currentEffort = (chat
-    ? (chat.settings.reasoning_effort as Effort | undefined)
-    : (uiNext.nextReasoningEffort as Effort | undefined)) as Effort | undefined;
+  const currentEffort = (
+    chat
+      ? (chat.settings.reasoning_effort as Effort | undefined)
+      : (uiNext.nextReasoningEffort as Effort | undefined)
+  ) as Effort | undefined;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -452,13 +469,47 @@ export default function Composer({
     return () => document.removeEventListener('pointerdown', onDown, true);
   }, [mobileMenuOpen]);
 
-  const wrapperClass = variant === 'hero' ? 'composer-hero' : 'composer-chrome';
+  const shouldPinToViewport =
+    isCompact && variant !== 'hero' && (focused || keyboardMetrics.offset > 0);
+  const wrapperClass =
+    variant === 'hero'
+      ? 'composer-hero'
+      : `composer-chrome${shouldPinToViewport ? ' is-mobile-pinned' : ''}`;
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const update = () => {
+      try {
+        setIsCompact(window.innerWidth < 640);
+      } catch {}
+    };
+    update();
+    window.addEventListener('resize', update, { passive: true } as any);
+    return () => window.removeEventListener('resize', update as any);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    if (!isCompact) {
+      root.classList.remove('keyboard-active');
+      return () => {
+        root.classList.remove('keyboard-active');
+      };
+    }
+    if (shouldPinToViewport) root.classList.add('keyboard-active');
+    else root.classList.remove('keyboard-active');
+    return () => {
+      root.classList.remove('keyboard-active');
+    };
+  }, [isCompact, shouldPinToViewport]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (variant === 'hero') {
       document.documentElement.style.setProperty('--composer-height', '0px');
+      setComposerHeight((prev) => (prev === 0 ? prev : 0));
       return;
     }
     if (typeof ResizeObserver === 'undefined') return;
@@ -466,8 +517,9 @@ export default function Composer({
     if (!el) return;
 
     const applyHeight = () => {
-      const h = el.offsetHeight;
-      document.documentElement.style.setProperty('--composer-height', `${Math.round(h)}px`);
+      const h = Math.round(el.offsetHeight);
+      document.documentElement.style.setProperty('--composer-height', `${h}px`);
+      setComposerHeight((prev) => (prev === h ? prev : h));
     };
     applyHeight();
     const ro = new ResizeObserver(applyHeight);
@@ -475,418 +527,439 @@ export default function Composer({
     return () => {
       ro.disconnect();
       document.documentElement.style.setProperty('--composer-height', '0px');
+      setComposerHeight((prev) => (prev === 0 ? prev : 0));
     };
   }, [variant]);
 
+  const isHeroVariant = variant === 'hero';
+
   return (
-    <div
-      ref={wrapperRef}
-      className={wrapperClass}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={onDrop}
-    >
-      {attachments.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-2">
-          {attachments.map((a) => (
-            <div key={a.id} className="relative">
-              {a.kind === 'image' && a.dataURL ? (
-                <img
-                  src={a.dataURL}
-                  alt={a.name || 'attachment'}
-                  className="h-16 w-16 object-cover rounded border border-border"
-                />
-              ) : a.kind === 'audio' && a.dataURL ? (
-                <div className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2">
-                  <audio controls src={a.dataURL} className="h-10" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
-                      {a.name || 'Audio'}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">Attached (mp3/wav)</div>
-                  </div>
-                </div>
-              ) : (
-                <div className="h-16 min-w-40 max-w-64 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2">
-                  <DocumentTextIcon className="h-5 w-5" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium truncate" title={a.name || 'PDF'}>
-                      {a.name || 'PDF'}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Attached (parsed by OpenRouter)
-                    </div>
-                  </div>
-                  {/* No local OCR; handled downstream */}
-                </div>
-              )}
-              <button
-                className="absolute -top-2 -right-2 bg-surface rounded-full border border-border p-1 shadow"
-                aria-label="Remove attachment"
-                title="Remove"
-                onClick={() => setAttachments((prev) => prev.filter((x) => x.id !== a.id))}
-              >
-                <XMarkIcon className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="flex flex-wrap items-center gap-3">
-        <textarea
-          ref={taRef}
-          className="textarea flex-1 min-w-0 text-base"
-          rows={1}
-          placeholder="Type a message..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          style={{ maxHeight: `${maxTextareaHeight}px` }}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          onPaste={onPaste}
-          aria-controls={focused && slashSuggestions.length > 0 ? 'slash-suggestions' : undefined}
-          aria-activedescendant={
-            focused && slashSuggestions.length > 0 ? `slash-opt-${slashIndex}` : undefined
-          }
-          aria-expanded={focused && slashSuggestions.length > 0 ? true : undefined}
-          aria-autocomplete="list"
-          onKeyDown={(e) => {
-            if (isStreaming) return; // allow typing while streaming, but do not send
-            const hasSuggestions = focused && slashSuggestions.length > 0;
-            if (hasSuggestions) {
-              if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setSlashIndex((i) => (i + 1) % slashSuggestions.length);
-                return;
-              }
-              if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setSlashIndex((i) => (i - 1 + slashSuggestions.length) % slashSuggestions.length);
-                return;
-              }
-              if (e.key === 'Tab' || e.key === 'Enter') {
-                e.preventDefault();
-                const pick = slashSuggestions[slashIndex] || slashSuggestions[0];
-                if (pick) setText(pick.insert + (pick.insert.endsWith(' ') ? '' : ' '));
-                return;
-              }
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                setSlashIndex(0);
-                return;
-              }
-            }
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend();
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              onSend();
-            }
-          }}
+    <>
+      {shouldPinToViewport && composerHeight > 0 && !isHeroVariant && (
+        <div
+          className="composer-placeholder"
+          aria-hidden="true"
+          style={{ height: `${composerHeight}px` }}
         />
-        {/* Slash suggestions popover */}
-        {focused && slashSuggestions.length > 0 && (
-          <div
-            id="slash-suggestions"
-            role="listbox"
-            className="absolute right-3 bottom-full mb-2 z-40 card p-1 popover max-w-sm"
-            aria-label="Slash command suggestions"
-          >
-            <div className="max-h-60 overflow-auto">
-              {slashSuggestions.map((sug, idx) => (
-                <div
-                  key={sug.title + idx}
-                  id={`slash-opt-${idx}`}
-                  role="option"
-                  aria-selected={idx === slashIndex}
-                  className={`menu-item text-sm ${idx === slashIndex ? 'font-semibold' : ''}`}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    setText(sug.insert + (sug.insert.endsWith(' ') ? '' : ' '));
-                    setSlashIndex(0);
-                    taRef.current?.focus();
-                  }}
-                  onMouseEnter={() => setSlashIndex(idx)}
-                  title={sug.subtitle || undefined}
+      )}
+      <div
+        ref={wrapperRef}
+        className={wrapperClass}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={onDrop}
+      >
+        {attachments.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {attachments.map((a) => (
+              <div key={a.id} className="relative">
+                {a.kind === 'image' && a.dataURL ? (
+                  <img
+                    src={a.dataURL}
+                    alt={a.name || 'attachment'}
+                    className="h-16 w-16 object-cover rounded border border-border"
+                  />
+                ) : a.kind === 'audio' && a.dataURL ? (
+                  <div className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2">
+                    <audio controls src={a.dataURL} className="h-10" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
+                        {a.name || 'Audio'}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">Attached (mp3/wav)</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-16 min-w-40 max-w-64 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2">
+                    <DocumentTextIcon className="h-5 w-5" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium truncate" title={a.name || 'PDF'}>
+                        {a.name || 'PDF'}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Attached (parsed by OpenRouter)
+                      </div>
+                    </div>
+                    {/* No local OCR; handled downstream */}
+                  </div>
+                )}
+                <button
+                  className="absolute -top-2 -right-2 bg-surface rounded-full border border-border p-1 shadow"
+                  aria-label="Remove attachment"
+                  title="Remove"
+                  onClick={() => setAttachments((prev) => prev.filter((x) => x.id !== a.id))}
                 >
-                  {sug.title}
-                  {sug.subtitle ? (
-                    <span className="ml-2 text-xs text-muted-foreground">{sug.subtitle}</span>
-                  ) : null}
-                </div>
-              ))}
-            </div>
+                  <XMarkIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
-        {isStreaming ? (
-          <button
-            className="btn btn-outline self-center"
-            onClick={() => {
-              stop();
-              // Do not refocus on small screens to avoid re-opening the keyboard
-              const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
-              if (!isSmall) setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0);
+        <div className="flex flex-wrap items-center gap-3">
+          <textarea
+            ref={taRef}
+            className="textarea flex-1 min-w-0 text-base"
+            rows={1}
+            placeholder="Type a message..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            style={{ maxHeight: `${maxTextareaHeight}px` }}
+            onFocus={() => {
+              setFocused(true);
             }}
-            aria-label="Stop"
-          >
-            <StopIcon className="h-4 w-4" />
-          </button>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Hidden file input used by both desktop and mobile menu */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,audio/wav,audio/mpeg"
-              multiple
-              className="hidden"
-              onChange={async (e) => {
-                const inputEl = e.currentTarget;
-                const files = inputEl?.files;
-                if (files) {
-                  const arr = Array.from(files);
-                  const pdfs = arr.filter((f) => f.type === 'application/pdf');
-                  const imgs = arr.filter((f) => f.type.startsWith('image/'));
-                  const auds = arr.filter(
-                    (f) =>
-                      f.type === 'audio/wav' ||
-                      f.type === 'audio/mpeg' ||
-                      f.name.toLowerCase().endsWith('.wav') ||
-                      f.name.toLowerCase().endsWith('.mp3'),
-                  );
-                  if (pdfs.length) await onPdfChosen(pdfs);
-                  if (imgs.length && canVision) await onFilesChosen(imgs);
-                  if (auds.length && canAudio) await onAudioChosen(auds);
+            onBlur={() => {
+              setFocused(false);
+            }}
+            onPaste={onPaste}
+            aria-controls={focused && slashSuggestions.length > 0 ? 'slash-suggestions' : undefined}
+            aria-activedescendant={
+              focused && slashSuggestions.length > 0 ? `slash-opt-${slashIndex}` : undefined
+            }
+            aria-expanded={focused && slashSuggestions.length > 0 ? true : undefined}
+            aria-autocomplete="list"
+            onKeyDown={(e) => {
+              if (isStreaming) return; // allow typing while streaming, but do not send
+              const hasSuggestions = focused && slashSuggestions.length > 0;
+              if (hasSuggestions) {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setSlashIndex((i) => (i + 1) % slashSuggestions.length);
+                  return;
                 }
-                if (inputEl) inputEl.value = '';
-              }}
-            />
-
-            {/* Desktop: show full control row */}
-            <div className="hidden sm:flex items-center gap-2">
-              <label
-                className={`btn btn-outline self-center cursor-pointer`}
-                title={
-                  canVision && canAudio
-                    ? 'Attach images, audio (mp3/wav), or PDFs'
-                    : canVision
-                      ? 'Attach images or PDFs'
-                      : canAudio
-                        ? 'Attach audio (mp3/wav) or PDFs'
-                        : 'Attach PDFs'
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setSlashIndex((i) => (i - 1 + slashSuggestions.length) % slashSuggestions.length);
+                  return;
                 }
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <PaperClipIcon className="h-4 w-4" />
-              </label>
-              <button
-                className={`btn self-center ${searchEnabled ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => {
-                  if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
-                  else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
-                }}
-                title={`Use web search (${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'}) to augment the next message`}
-                aria-label={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} Search`}
-                aria-pressed={!!searchEnabled}
-              >
-                <MagnifyingGlassIcon className="h-4 w-4" />
-              </button>
-              {tutorGloballyEnabled && (
-                <button
-                  className={`btn self-center ${tutorEnabled ? 'btn-primary' : 'btn-outline'}`}
-                  onClick={async () => {
-                    if (chat) {
-                      await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
-                    } else {
-                      setUI({ nextTutorMode: true });
-                      await newChat();
-                    }
-                  }}
-                  title="Tutor mode: warm guidance + practice tools (used only when helpful)"
-                  aria-label="Toggle Tutor Mode"
-                  aria-pressed={tutorEnabled}
-                >
-                  <AcademicCapIcon className="h-4 w-4" />
-                </button>
-              )}
-              <ReasoningEffortMenu />
-            </div>
-
-            {/* Mobile: single '+' menu to reveal actions */}
-            <div className="flex sm:hidden items-center gap-2 relative">
-              <button
-                className="btn btn-outline self-center"
-                aria-haspopup="menu"
-                aria-expanded={mobileMenuOpen}
-                aria-label="More actions"
-                ref={mobileMenuButtonRef}
-                onClick={() => setMobileMenuOpen((v) => !v)}
-              >
-                <EllipsisVerticalIcon className="h-4 w-4" />
-              </button>
-              {mobileMenuOpen && (
-                <div
-                  id="composer-mobile-menu"
-                  role="menu"
-                  className="absolute bottom-full mb-2 right-0 z-40 card p-1 popover min-w-[220px] max-w-[80vw]"
-                >
-                  <div className="menu-item text-sm" role="menuitem" onClick={() => fileInputRef.current?.click()}>
-                    Attach files
-                  </div>
+                if (e.key === 'Tab' || e.key === 'Enter') {
+                  e.preventDefault();
+                  const pick = slashSuggestions[slashIndex] || slashSuggestions[0];
+                  if (pick) setText(pick.insert + (pick.insert.endsWith(' ') ? '' : ' '));
+                  return;
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setSlashIndex(0);
+                  return;
+                }
+              }
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend();
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                onSend();
+              }
+            }}
+          />
+          {/* Slash suggestions popover */}
+          {focused && slashSuggestions.length > 0 && (
+            <div
+              id="slash-suggestions"
+              role="listbox"
+              className="absolute right-3 bottom-full mb-2 z-40 card p-1 popover max-w-sm"
+              aria-label="Slash command suggestions"
+            >
+              <div className="max-h-60 overflow-auto">
+                {slashSuggestions.map((sug, idx) => (
                   <div
-                    className="menu-item text-sm"
-                    role="menuitemcheckbox"
-                    aria-checked={!!searchEnabled}
+                    key={sug.title + idx}
+                    id={`slash-opt-${idx}`}
+                    role="option"
+                    aria-selected={idx === slashIndex}
+                    className={`menu-item text-sm ${idx === slashIndex ? 'font-semibold' : ''}`}
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
-                      if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
-                      else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
-                      setMobileMenuOpen(false);
+                      setText(sug.insert + (sug.insert.endsWith(' ') ? '' : ' '));
+                      setSlashIndex(0);
+                      taRef.current?.focus();
                     }}
+                    onMouseEnter={() => setSlashIndex(idx)}
+                    title={sug.subtitle || undefined}
                   >
-                    {`${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} Search: ${searchEnabled ? 'On' : 'Off'}`}
+                    {sug.title}
+                    {sug.subtitle ? (
+                      <span className="ml-2 text-xs text-muted-foreground">{sug.subtitle}</span>
+                    ) : null}
                   </div>
-                  {tutorGloballyEnabled && (
+                ))}
+              </div>
+            </div>
+          )}
+          {isStreaming ? (
+            <button
+              className="btn btn-outline self-center"
+              onClick={() => {
+                stop();
+                // Do not refocus on small screens to avoid re-opening the keyboard
+                const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
+                if (!isSmall)
+                  setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0);
+              }}
+              aria-label="Stop"
+            >
+              <StopIcon className="h-4 w-4" />
+            </button>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Hidden file input used by both desktop and mobile menu */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,audio/wav,audio/mpeg"
+                multiple
+                className="hidden"
+                onChange={async (e) => {
+                  const inputEl = e.currentTarget;
+                  const files = inputEl?.files;
+                  if (files) {
+                    const arr = Array.from(files);
+                    const pdfs = arr.filter((f) => f.type === 'application/pdf');
+                    const imgs = arr.filter((f) => f.type.startsWith('image/'));
+                    const auds = arr.filter(
+                      (f) =>
+                        f.type === 'audio/wav' ||
+                        f.type === 'audio/mpeg' ||
+                        f.name.toLowerCase().endsWith('.wav') ||
+                        f.name.toLowerCase().endsWith('.mp3'),
+                    );
+                    if (pdfs.length) await onPdfChosen(pdfs);
+                    if (imgs.length && canVision) await onFilesChosen(imgs);
+                    if (auds.length && canAudio) await onAudioChosen(auds);
+                  }
+                  if (inputEl) inputEl.value = '';
+                }}
+              />
+
+              {/* Desktop: show full control row */}
+              <div className="hidden sm:flex items-center gap-2">
+                <label
+                  className={`btn btn-outline self-center cursor-pointer`}
+                  title={
+                    canVision && canAudio
+                      ? 'Attach images, audio (mp3/wav), or PDFs'
+                      : canVision
+                        ? 'Attach images or PDFs'
+                        : canAudio
+                          ? 'Attach audio (mp3/wav) or PDFs'
+                          : 'Attach PDFs'
+                  }
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <PaperClipIcon className="h-4 w-4" />
+                </label>
+                <button
+                  className={`btn self-center ${searchEnabled ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => {
+                    if (chat)
+                      updateSettings({ search_with_brave: !chat.settings.search_with_brave });
+                    else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
+                  }}
+                  title={`Use web search (${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'}) to augment the next message`}
+                  aria-label={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} Search`}
+                  aria-pressed={!!searchEnabled}
+                >
+                  <MagnifyingGlassIcon className="h-4 w-4" />
+                </button>
+                {tutorGloballyEnabled && (
+                  <button
+                    className={`btn self-center ${tutorEnabled ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={async () => {
+                      if (chat) {
+                        await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+                      } else {
+                        setUI({ nextTutorMode: true });
+                        await newChat();
+                      }
+                    }}
+                    title="Tutor mode: warm guidance + practice tools (used only when helpful)"
+                    aria-label="Toggle Tutor Mode"
+                    aria-pressed={tutorEnabled}
+                  >
+                    <AcademicCapIcon className="h-4 w-4" />
+                  </button>
+                )}
+                <ReasoningEffortMenu />
+              </div>
+
+              {/* Mobile: single '+' menu to reveal actions */}
+              <div className="flex sm:hidden items-center gap-2 relative">
+                <button
+                  className="btn btn-outline self-center"
+                  aria-haspopup="menu"
+                  aria-expanded={mobileMenuOpen}
+                  aria-label="More actions"
+                  ref={mobileMenuButtonRef}
+                  onClick={() => setMobileMenuOpen((v) => !v)}
+                >
+                  <EllipsisVerticalIcon className="h-4 w-4" />
+                </button>
+                {mobileMenuOpen && (
+                  <div
+                    id="composer-mobile-menu"
+                    role="menu"
+                    className="absolute bottom-full mb-2 right-0 z-40 card p-1 popover min-w-[220px] max-w-[80vw]"
+                  >
+                    <div
+                      className="menu-item text-sm"
+                      role="menuitem"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Attach files
+                    </div>
                     <div
                       className="menu-item text-sm"
                       role="menuitemcheckbox"
-                      aria-checked={!!tutorEnabled}
-                      onClick={async () => {
-                        if (chat) await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
-                        else {
-                          setUI({ nextTutorMode: true });
-                          await newChat();
-                        }
+                      aria-checked={!!searchEnabled}
+                      onClick={() => {
+                        if (chat)
+                          updateSettings({ search_with_brave: !chat.settings.search_with_brave });
+                        else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
                         setMobileMenuOpen(false);
                       }}
                     >
-                      {`Tutor: ${tutorEnabled ? 'On' : 'Off'}`}
+                      {`${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} Search: ${searchEnabled ? 'On' : 'Off'}`}
                     </div>
-                  )}
-                  {supportsReasoning && (
-                    <>
-                      <div className="text-xs text-muted-foreground px-2 pt-1">Reasoning</div>
-                      {(['none', 'low', 'medium', 'high'] as Effort[]).map((eff) => (
-                        <div
-                          key={eff}
-                          className={`menu-item text-sm ${currentEffort === eff ? 'font-semibold' : ''}`}
-                          role="menuitemradio"
-                          aria-checked={currentEffort === eff}
-                          onClick={async () => {
-                            if (chat) await updateSettings({ reasoning_effort: eff });
-                            else setUI({ nextReasoningEffort: eff });
-                            setMobileMenuOpen(false);
-                          }}
-                        >
-                          {eff[0].toUpperCase() + eff.slice(1)}
-                        </div>
-                      ))}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+                    {tutorGloballyEnabled && (
+                      <div
+                        className="menu-item text-sm"
+                        role="menuitemcheckbox"
+                        aria-checked={!!tutorEnabled}
+                        onClick={async () => {
+                          if (chat) await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+                          else {
+                            setUI({ nextTutorMode: true });
+                            await newChat();
+                          }
+                          setMobileMenuOpen(false);
+                        }}
+                      >
+                        {`Tutor: ${tutorEnabled ? 'On' : 'Off'}`}
+                      </div>
+                    )}
+                    {supportsReasoning && (
+                      <>
+                        <div className="text-xs text-muted-foreground px-2 pt-1">Reasoning</div>
+                        {(['none', 'low', 'medium', 'high'] as Effort[]).map((eff) => (
+                          <div
+                            key={eff}
+                            className={`menu-item text-sm ${currentEffort === eff ? 'font-semibold' : ''}`}
+                            role="menuitemradio"
+                            aria-checked={currentEffort === eff}
+                            onClick={async () => {
+                              if (chat) await updateSettings({ reasoning_effort: eff });
+                              else setUI({ nextReasoningEffort: eff });
+                              setMobileMenuOpen(false);
+                            }}
+                          >
+                            {eff[0].toUpperCase() + eff.slice(1)}
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
 
+              <button className="btn self-center" onClick={onSend} aria-label="Send" title="Send">
+                <PaperAirplaneIcon className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+        {/* Helper chips row: current model, capabilities, web search, reasoning, token estimate */}
+        {/* Hide helper chips on small screens to reduce clutter */}
+        <div className="mt-2 hidden sm:flex items-center gap-2 flex-wrap text-xs">
+          {
             <button
-              className="btn self-center"
-              onClick={onSend}
-              aria-label="Send"
-              title="Send"
+              className="badge"
+              title="Change model (opens Settings)"
+              onClick={() => setUI({ showSettings: true })}
             >
-              <PaperAirplaneIcon className="h-4 w-4" />
+              {findModelById(models, modelId)?.name || modelId}
             </button>
-          </div>
-        )}
-      </div>
-      {/* Helper chips row: current model, capabilities, web search, reasoning, token estimate */}
-      {/* Hide helper chips on small screens to reduce clutter */}
-      <div className="mt-2 hidden sm:flex items-center gap-2 flex-wrap text-xs">
-        {
-          <button
-            className="badge"
-            title="Change model (opens Settings)"
-            onClick={() => setUI({ showSettings: true })}
-          >
-            {findModelById(models, modelId)?.name || modelId}
-          </button>
-        }
-        {canVision && (
-          <span
-            className="badge flex items-center gap-1"
-            title="Vision input supported"
-            aria-label="Vision supported"
-          >
-            <EyeIcon className="h-3.5 w-3.5" />
-          </span>
-        )}
-        {tutorGloballyEnabled && chat && (
-          <button
-            className={`badge flex items-center gap-1`}
-            title="Toggle tutor mode"
-            onClick={async () => {
-              await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
-            }}
-            aria-pressed={!!chat?.settings.tutor_mode}
-          >
-            <AcademicCapIcon className="h-3.5 w-3.5" />{' '}
-            {chat?.settings.tutor_mode ? 'Tutor On' : 'Tutor Off'}
-          </button>
-        )}
-        {canImageOut && (
-          <span
-            className="badge flex items-center gap-1"
-            title="Image generation supported"
-            aria-label="Image generation supported"
-          >
-            <PhotoIcon className="h-3.5 w-3.5" />
-          </span>
-        )}
-        {canAudio && (
-          <span
-            className="badge flex items-center gap-1"
-            title="Audio input supported (mp3/wav)"
-            aria-label="Audio input supported"
-          >
-            <MicrophoneIcon className="h-3.5 w-3.5" />
-          </span>
-        )}
-        {
-          <button
-            className="badge flex items-center gap-1"
-            title={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} web search for next message`}
-            onClick={() => {
-              if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
-              else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
-            }}
-            aria-pressed={!!searchEnabled}
-          >
-            <MagnifyingGlassIcon className="h-3.5 w-3.5" /> {(searchProvider === 'openrouter' ? 'OR' : 'Brave') + ' ' + (searchEnabled ? 'On' : 'Off')}
-          </button>
-        }
-        {(() => {
-          const effort = chat?.settings.reasoning_effort ?? uiNext.nextReasoningEffort;
-          if (!supportsReasoning) return null;
-          if (!effort || effort === 'none') return null;
-          const letter = effort === 'high' ? 'H' : effort === 'medium' ? 'M' : 'L';
-          return (
+          }
+          {canVision && (
             <span
               className="badge flex items-center gap-1"
-              title={`Reasoning effort: ${effort}`}
-              aria-label={`Reasoning ${effort}`}
+              title="Vision input supported"
+              aria-label="Vision supported"
             >
-              <LightBulbIcon className="h-3.5 w-3.5" /> {letter}
+              <EyeIcon className="h-3.5 w-3.5" />
             </span>
-          );
-        })()}
-        {tokenAndCost.promptTokens > 0 && (
-          <span className="badge" title="Approximate tokens and prompt cost">
-            ≈ {tokenAndCost.promptTokens} tok
-            {tokenAndCost.total != null
-              ? ` · ${tokenAndCost.currency} ${tokenAndCost.total.toFixed(5)}`
-              : ''}
+          )}
+          {tutorGloballyEnabled && chat && (
+            <button
+              className={`badge flex items-center gap-1`}
+              title="Toggle tutor mode"
+              onClick={async () => {
+                await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
+              }}
+              aria-pressed={!!chat?.settings.tutor_mode}
+            >
+              <AcademicCapIcon className="h-3.5 w-3.5" />{' '}
+              {chat?.settings.tutor_mode ? 'Tutor On' : 'Tutor Off'}
+            </button>
+          )}
+          {canImageOut && (
+            <span
+              className="badge flex items-center gap-1"
+              title="Image generation supported"
+              aria-label="Image generation supported"
+            >
+              <PhotoIcon className="h-3.5 w-3.5" />
+            </span>
+          )}
+          {canAudio && (
+            <span
+              className="badge flex items-center gap-1"
+              title="Audio input supported (mp3/wav)"
+              aria-label="Audio input supported"
+            >
+              <MicrophoneIcon className="h-3.5 w-3.5" />
+            </span>
+          )}
+          {
+            <button
+              className="badge flex items-center gap-1"
+              title={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} web search for next message`}
+              onClick={() => {
+                if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
+                else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
+              }}
+              aria-pressed={!!searchEnabled}
+            >
+              <MagnifyingGlassIcon className="h-3.5 w-3.5" />{' '}
+              {(searchProvider === 'openrouter' ? 'OR' : 'Brave') +
+                ' ' +
+                (searchEnabled ? 'On' : 'Off')}
+            </button>
+          }
+          {(() => {
+            const effort = chat?.settings.reasoning_effort ?? uiNext.nextReasoningEffort;
+            if (!supportsReasoning) return null;
+            if (!effort || effort === 'none') return null;
+            const letter = effort === 'high' ? 'H' : effort === 'medium' ? 'M' : 'L';
+            return (
+              <span
+                className="badge flex items-center gap-1"
+                title={`Reasoning effort: ${effort}`}
+                aria-label={`Reasoning ${effort}`}
+              >
+                <LightBulbIcon className="h-3.5 w-3.5" /> {letter}
+              </span>
+            );
+          })()}
+          {tokenAndCost.promptTokens > 0 && (
+            <span className="badge" title="Approximate tokens and prompt cost">
+              ≈ {tokenAndCost.promptTokens} tok
+              {tokenAndCost.total != null
+                ? ` · ${tokenAndCost.currency} ${tokenAndCost.total.toFixed(5)}`
+                : ''}
+            </span>
+          )}
+          <span className="text-xs text-muted-foreground">
+            Press Enter to send · Shift+Enter for newline
           </span>
-        )}
-        <span className="text-xs text-muted-foreground">
-          Press Enter to send · Shift+Enter for newline
-        </span>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

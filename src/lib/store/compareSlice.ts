@@ -174,10 +174,16 @@ export function createCompareSlice(
               const supportsReasoning = isReasoningSupported(modelMeta);
               const canImageOut = isImageOutputSupported(modelMeta);
               const providerSort = get().ui.routePreference === 'cost' ? 'price' : 'throughput';
-              const requestedEffort = supportsReasoning ? chat?.settings.reasoning_effort : undefined;
-              const requestedTokensRaw = supportsReasoning ? chat?.settings.reasoning_tokens : undefined;
-              const effortRequested = typeof requestedEffort === 'string' && requestedEffort !== 'none';
-              const tokensRequested = typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
+              const requestedEffort = supportsReasoning
+                ? chat?.settings.reasoning_effort
+                : undefined;
+              const requestedTokensRaw = supportsReasoning
+                ? chat?.settings.reasoning_tokens
+                : undefined;
+              const effortRequested =
+                typeof requestedEffort === 'string' && requestedEffort !== 'none';
+              const tokensRequested =
+                typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
               const autoReasoningEligible = !effortRequested && !tokensRequested;
               await streamChatCompletion({
                 apiKey: key || '',
@@ -261,48 +267,47 @@ export function createCompareSlice(
                     );
                   },
                   onReasoningToken: (delta) => {
-                    set(
-                      (s) => {
-                        const compareState =
-                          s.ui.compare || ({
+                    set((s) => {
+                      const compareState =
+                        s.ui.compare ||
+                        ({
+                          isOpen: true,
+                          prompt,
+                          selectedModelIds: modelIds,
+                          runs: {},
+                        } as NonNullable<typeof s.ui.compare>);
+                      const prevRuns = compareState.runs || {};
+                      const prevModelRun = prevRuns[modelId] || {
+                        status: 'running',
+                        content: '',
+                      };
+                      const updatedRun = {
+                        ...prevModelRun,
+                        reasoning: `${prevModelRun.reasoning || ''}${delta}`,
+                      } as any;
+                      const autoPatch = (() => {
+                        if (!autoReasoningEligible) return undefined;
+                        const prev = s.ui.autoReasoningModelIds || {};
+                        if (prev[modelId]) return undefined;
+                        return { autoReasoningModelIds: { ...prev, [modelId]: true } } as const;
+                      })();
+                      return {
+                        ui: {
+                          ...s.ui,
+                          ...(autoPatch || {}),
+                          compare: {
+                            ...compareState,
                             isOpen: true,
-                            prompt,
+                            prompt: compareState.prompt ?? prompt,
                             selectedModelIds: modelIds,
-                            runs: {},
-                          } as NonNullable<typeof s.ui.compare>);
-                        const prevRuns = compareState.runs || {};
-                        const prevModelRun = prevRuns[modelId] || {
-                          status: 'running',
-                          content: '',
-                        };
-                        const updatedRun = {
-                          ...prevModelRun,
-                          reasoning: `${prevModelRun.reasoning || ''}${delta}`,
-                        } as any;
-                        const autoPatch = (() => {
-                          if (!autoReasoningEligible) return undefined;
-                          const prev = s.ui.autoReasoningModelIds || {};
-                          if (prev[modelId]) return undefined;
-                          return { autoReasoningModelIds: { ...prev, [modelId]: true } } as const;
-                        })();
-                        return {
-                          ui: {
-                            ...s.ui,
-                            ...(autoPatch || {}),
-                            compare: {
-                              ...compareState,
-                              isOpen: true,
-                              prompt: compareState.prompt ?? prompt,
-                              selectedModelIds: modelIds,
-                              runs: {
-                                ...prevRuns,
-                                [modelId]: updatedRun,
-                              },
+                            runs: {
+                              ...prevRuns,
+                              [modelId]: updatedRun,
                             },
                           },
-                        } as any;
-                      },
-                    );
+                        },
+                      } as any;
+                    });
                   },
                   onDone: (full, extras) => {
                     const tEnd = performance.now();

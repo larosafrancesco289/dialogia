@@ -9,7 +9,12 @@ type ReasoningPanelProps = {
   isStreaming?: boolean;
 };
 
-export function ReasoningPanel({ reasoning, expanded, onToggle, isStreaming = false }: ReasoningPanelProps) {
+export function ReasoningPanel({
+  reasoning,
+  expanded,
+  onToggle,
+  isStreaming = false,
+}: ReasoningPanelProps) {
   const hasReasoning = !!(reasoning && reasoning.trim().length > 0);
   if (!hasReasoning && !isStreaming) return null;
 
@@ -102,7 +107,7 @@ export function ReasoningPanel({ reasoning, expanded, onToggle, isStreaming = fa
           aria-expanded={expanded}
           aria-controls={bodyId}
           onClick={onToggle}
-      >
+        >
           <span className="reasoning-labels">
             <span className="reasoning-title">Thinking</span>
             <span className={`reasoning-status ${isStreaming ? 'is-live' : ''}`}>

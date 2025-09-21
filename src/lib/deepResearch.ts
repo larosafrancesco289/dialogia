@@ -166,13 +166,20 @@ export type DeepResearchOutput = {
 };
 
 // Basic HTML extraction without external deps (best-effort)
-function extractMainText(html: string): { title?: string; description?: string; headings?: string[]; text: string } {
+function extractMainText(html: string): {
+  title?: string;
+  description?: string;
+  headings?: string[];
+  text: string;
+} {
   const pick = (re: RegExp) => {
     const m = html.match(re);
     return m ? m[1].trim() : undefined;
   };
   // Strip scripts/styles
-  let cleaned = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ');
+  let cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ');
   const article = cleaned.match(/<article[\s\S]*?<\/article>/i)?.[0];
   const main = cleaned.match(/<main[\s\S]*?<\/main>/i)?.[0];
   const body = cleaned.match(/<body[\s\S]*?<\/body>/i)?.[0];
@@ -186,9 +193,13 @@ function extractMainText(html: string): { title?: string; description?: string; 
     .slice(0, 12000);
   const title = pick(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const metaDesc = pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["'][^>]*>/i);
-  const ogDesc = pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["'][^>]*>/i);
+  const ogDesc = pick(
+    /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+  );
   const description = metaDesc || ogDesc || undefined;
-  const headings = Array.from(html.matchAll(/<h[12][^>]*>([\s\S]*?)<\/h[12]>/gi)).map((m) => m[1].replace(/<[^>]+>/g, '').trim()).slice(0, 12);
+  const headings = Array.from(html.matchAll(/<h[12][^>]*>([\s\S]*?)<\/h[12]>/gi))
+    .map((m) => m[1].replace(/<[^>]+>/g, '').trim())
+    .slice(0, 12);
   return { title, description, headings, text };
 }
 
@@ -208,8 +219,10 @@ async function braveSearch(args: {
   url.searchParams.set('country', (args.country || 'us').toLowerCase());
   url.searchParams.set('safesearch', 'moderate');
   if (args.freshness && args.freshness !== 'all') url.searchParams.set('freshness', args.freshness);
-  if (args.include_domains?.length) url.searchParams.set('include_domains', args.include_domains.join(','));
-  if (args.exclude_domains?.length) url.searchParams.set('exclude_domains', args.exclude_domains.join(','));
+  if (args.include_domains?.length)
+    url.searchParams.set('include_domains', args.include_domains.join(','));
+  if (args.exclude_domains?.length)
+    url.searchParams.set('exclude_domains', args.exclude_domains.join(','));
   const res = await fetch(url.toString(), {
     headers: {
       Accept: 'application/json',
@@ -228,7 +241,11 @@ async function braveSearch(args: {
   }));
 }
 
-async function fetchPage(args: { url: string; max_bytes?: number; timeout_ms?: number }): Promise<DeepFetchedPage> {
+async function fetchPage(args: {
+  url: string;
+  max_bytes?: number;
+  timeout_ms?: number;
+}): Promise<DeepFetchedPage> {
   const maxBytes = Math.min(Math.max(args.max_bytes ?? 800000, 1024), 4_000_000);
   const timeoutMs = Math.min(Math.max(args.timeout_ms ?? 15000, 2000), 30000);
   const controller = new AbortController();
@@ -236,7 +253,7 @@ async function fetchPage(args: { url: string; max_bytes?: number; timeout_ms?: n
   try {
     const res = await fetch(args.url, {
       headers: {
-        'User-Agent': 'Dialogia-DeepResearch/1.0 (+https://github.com/openai/codex-cli)'
+        'User-Agent': 'Dialogia-DeepResearch/1.0 (+https://github.com/openai/codex-cli)',
       },
       signal: controller.signal,
       cache: 'no-store',
@@ -261,28 +278,30 @@ async function fetchPage(args: { url: string; max_bytes?: number; timeout_ms?: n
     const { title, description, headings, text } = extractMainText(html);
     // Try to pick a published time from common meta tags
     const published = (() => {
-      const m = html.match(/<meta[^>]+property=["']article:published_time["'][^>]+content=["']([^"']+)["'][^>]*>/i)
-        || html.match(/<meta[^>]+name=["']pubdate["'][^>]+content=["']([^"']+)["'][^>]*>/i)
-        || html.match(/<meta[^>]+itemprop=["']datePublished["'][^>]+content=["']([^"']+)["'][^>]*>/i);
+      const m =
+        html.match(
+          /<meta[^>]+property=["']article:published_time["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+        ) ||
+        html.match(/<meta[^>]+name=["']pubdate["'][^>]+content=["']([^"']+)["'][^>]*>/i) ||
+        html.match(/<meta[^>]+itemprop=["']datePublished["'][^>]+content=["']([^"']+)["'][^>]*>/i);
       return m ? m[1] : undefined;
     })();
-    return { url: args.url, title, description, headings, text, published, bytes: (text || '').length };
+    return {
+      url: args.url,
+      title,
+      description,
+      headings,
+      text,
+      published,
+      bytes: (text || '').length,
+    };
   } finally {
     clearTimeout(timer);
   }
 }
 
 export async function deepResearch(params: DeepResearchParams): Promise<DeepResearchOutput> {
-  const {
-    apiKey,
-    task,
-    model,
-    audience,
-    style,
-    cite,
-    maxIterations = 10,
-    providerSort,
-  } = params;
+  const { apiKey, task, model, audience, style, cite, maxIterations = 10, providerSort } = params;
 
   // Enforce reasoning-only usage when configured via env (default true)
   const strict = (process.env.DEEP_RESEARCH_REASONING_ONLY || 'true').toLowerCase() === 'true';
@@ -304,7 +323,9 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
         clearTimeout(to);
         const data: any = await res.json().catch(() => ({}));
         const list: any[] = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-        const entry = list.find((m: any) => String(m?.id || '').toLowerCase() === model.toLowerCase());
+        const entry = list.find(
+          (m: any) => String(m?.id || '').toLowerCase() === model.toLowerCase(),
+        );
         const supp: string[] = Array.isArray(entry?.supported_parameters)
           ? entry.supported_parameters.map((p: any) => String(p).toLowerCase())
           : [];
@@ -378,7 +399,9 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
       const name = tc?.function?.name as string;
       const raw = tc?.function?.arguments || '{}';
       let args: any = {};
-      try { args = JSON.parse(raw); } catch {}
+      try {
+        args = JSON.parse(raw);
+      } catch {}
 
       if (name === 'web_search_brave') {
         try {
@@ -391,7 +414,12 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
               collectedSources.push({ title: r.title, url: r.url, description: r.description });
             }
           }
-          messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify(results) });
+          messages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            name,
+            content: JSON.stringify(results),
+          });
         } catch (e: any) {
           const err = { error: String(e?.message || 'search_failed') };
           trace?.push({ type: 'search', input: args, output: err });
@@ -403,7 +431,11 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
       if (name === 'fetch_url') {
         try {
           const page = await fetchPage(args);
-          trace?.push({ type: 'fetch', input: args, output: { ...page, text: page.text?.slice(0, 4000) } });
+          trace?.push({
+            type: 'fetch',
+            input: args,
+            output: { ...page, text: page.text?.slice(0, 4000) },
+          });
           messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify(page) });
         } catch (e: any) {
           const err = { error: String(e?.message || 'fetch_failed') };
@@ -416,7 +448,12 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
       if (name === 'get_time') {
         const now = new Date().toISOString();
         trace?.push({ type: 'time', input: {}, output: { now } });
-        messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify({ now }) });
+        messages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          name,
+          content: JSON.stringify({ now }),
+        });
         continue;
       }
 
@@ -425,7 +462,10 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
       messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify(unknown) });
     }
     // Encourage the model to synthesize or continue searching as needed
-    messages.push({ role: 'user', content: 'Synthesize findings so far or continue targeted research as needed.' });
+    messages.push({
+      role: 'user',
+      content: 'Synthesize findings so far or continue targeted research as needed.',
+    });
   }
 
   // Fallback when iterations exhausted: force a final synthesis without tools
@@ -434,9 +474,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
       role: 'user',
       content:
         'You have reached the research iteration limit. Write the final answer now using the gathered sources below. Cite inline as [n].\n\nSources:\n' +
-        collectedSources
-          .map((s, i) => `[${i + 1}] ${s.title || s.url} — ${s.url}`)
-          .join('\n'),
+        collectedSources.map((s, i) => `[${i + 1}] ${s.title || s.url} — ${s.url}`).join('\n'),
     });
     const resp = await chatCompletion({ apiKey, model, messages, providerSort });
     const choice = resp?.choices?.[0];

@@ -69,8 +69,7 @@ function detectLanguageFromPreChildren(children: React.ReactNode): string | unde
 
 function extractCodeText(children: React.ReactNode): string {
   const first = Children.toArray(children)[0] as any;
-  const raw =
-    first?.props?.children ?? first?.props?.value ?? first?.props?.code ?? null;
+  const raw = first?.props?.children ?? first?.props?.value ?? first?.props?.code ?? null;
   if (raw == null) return '';
   if (Array.isArray(raw)) return raw.join('');
   return typeof raw === 'string' ? raw : String(raw);

@@ -322,10 +322,11 @@ export function createMessageSlice(
       const searchEnabled = !!chat.settings.search_with_brave;
       const braveGloballyEnabled = !!get().ui.experimentalBrave;
       const tutorGloballyEnabled = !!get().ui.experimentalTutor;
-      const configuredProvider: 'brave' | 'openrouter' =
-        (((chat.settings as any)?.search_provider as any) || 'brave') as any;
-      const searchProvider: 'brave' | 'openrouter' =
-        braveGloballyEnabled ? configuredProvider : 'openrouter';
+      const configuredProvider: 'brave' | 'openrouter' = (((chat.settings as any)
+        ?.search_provider as any) || 'brave') as any;
+      const searchProvider: 'brave' | 'openrouter' = braveGloballyEnabled
+        ? configuredProvider
+        : 'openrouter';
       const attemptPlanning =
         (tutorGloballyEnabled && !!chat.settings.tutor_mode) ||
         (searchEnabled && searchProvider === 'brave');
@@ -360,34 +361,36 @@ export function createMessageSlice(
         try {
           const controller = new AbortController();
           set((s) => ({ ...s, _controller: controller as any }) as any);
-          const tutorTools = tutorGloballyEnabled && chat.settings.tutor_mode
-            ? (getTutorToolDefinitions() as any[])
-            : ([] as any[]);
-          const baseTools = searchEnabled && searchProvider === 'brave'
-            ? [
-                {
-                  type: 'function',
-                  function: {
-                    name: 'web_search',
-                    description:
-                      'Search the public web for up-to-date information. Use only when necessary. Return results to ground your answer and cite sources as [n].',
-                    parameters: {
-                      type: 'object',
-                      properties: {
-                        query: { type: 'string', description: 'The search query to run.' },
-                        count: {
-                          type: 'integer',
-                          description: 'How many results to retrieve (1-10).',
-                          minimum: 1,
-                          maximum: 10,
+          const tutorTools =
+            tutorGloballyEnabled && chat.settings.tutor_mode
+              ? (getTutorToolDefinitions() as any[])
+              : ([] as any[]);
+          const baseTools =
+            searchEnabled && searchProvider === 'brave'
+              ? [
+                  {
+                    type: 'function',
+                    function: {
+                      name: 'web_search',
+                      description:
+                        'Search the public web for up-to-date information. Use only when necessary. Return results to ground your answer and cite sources as [n].',
+                      parameters: {
+                        type: 'object',
+                        properties: {
+                          query: { type: 'string', description: 'The search query to run.' },
+                          count: {
+                            type: 'integer',
+                            description: 'How many results to retrieve (1-10).',
+                            minimum: 1,
+                            maximum: 10,
+                          },
                         },
+                        required: ['query'],
                       },
-                      required: ['query'],
                     },
                   },
-                },
-              ]
-            : [];
+                ]
+              : [];
           const toolDefinition = [...baseTools, ...tutorTools];
           const planningSystem = { role: 'system', content: combinedSystemForThisTurn! } as const;
           const planningMessages: any[] = [
@@ -878,15 +881,12 @@ export function createMessageSlice(
                 const to = setTimeout(() => fetchController.abort(), 20000);
                 const res =
                   searchProvider === 'brave'
-                    ? await fetch(
-                        `/api/brave?q=${encodeURIComponent(rawQuery)}&count=${count}`,
-                        {
-                          method: 'GET',
-                          headers: { Accept: 'application/json' },
-                          cache: 'no-store',
-                          signal: fetchController.signal,
-                        } as any,
-                      )
+                    ? await fetch(`/api/brave?q=${encodeURIComponent(rawQuery)}&count=${count}`, {
+                        method: 'GET',
+                        headers: { Accept: 'application/json' },
+                        cache: 'no-store',
+                        signal: fetchController.signal,
+                      } as any)
                     : undefined;
                 clearTimeout(to);
                 controller.signal.removeEventListener('abort', onAbort);
@@ -951,9 +951,10 @@ export function createMessageSlice(
                 } as any);
               }
             }
-            const followup = searchEnabled && searchProvider === 'brave'
-              ? 'Write the final answer. Cite sources inline as [n].'
-              : 'Continue the lesson concisely. Give brief guidance and next step. Do not repeat items already rendered.';
+            const followup =
+              searchEnabled && searchProvider === 'brave'
+                ? 'Write the final answer. Cite sources inline as [n].'
+                : 'Continue the lesson concisely. Give brief guidance and next step. Do not repeat items already rendered.';
             convo.push({ role: 'user', content: followup } as any);
             rounds++;
           }
@@ -1084,9 +1085,13 @@ export function createMessageSlice(
               }));
             } catch {}
             const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
-            const requestedTokensRaw = supportsReasoning ? chat.settings.reasoning_tokens : undefined;
-            const effortRequested = typeof requestedEffort === 'string' && requestedEffort !== 'none';
-            const tokensRequested = typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
+            const requestedTokensRaw = supportsReasoning
+              ? chat.settings.reasoning_tokens
+              : undefined;
+            const effortRequested =
+              typeof requestedEffort === 'string' && requestedEffort !== 'none';
+            const tokensRequested =
+              typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
             const autoReasoningEligible = !effortRequested && !tokensRequested;
             const modelIdUsed = chat.settings.model;
             await streamChatCompletion({
@@ -1687,11 +1692,8 @@ export function createMessageSlice(
               typeof genSnapshot?.search_with_brave === 'boolean'
                 ? !!genSnapshot.search_with_brave
                 : !!(chat.settings as any)?.search_with_brave;
-            const providerForTurn =
-              (genSnapshot?.search_provider || (chat.settings as any)?.search_provider) as
-                | 'brave'
-                | 'openrouter'
-                | undefined;
+            const providerForTurn = (genSnapshot?.search_provider ||
+              (chat.settings as any)?.search_provider) as 'brave' | 'openrouter' | undefined;
             if (searchWasEnabledThisTurn && providerForTurn === 'openrouter') {
               debugBody.plugins = [...(debugBody.plugins || []), { id: 'web' }];
             }
@@ -1747,10 +1749,8 @@ export function createMessageSlice(
                 typeof genSnapshot?.search_with_brave === 'boolean'
                   ? !!genSnapshot.search_with_brave
                   : !!(chat.settings as any)?.search_with_brave;
-              const prov = (genSnapshot?.search_provider || (chat.settings as any)?.search_provider) as
-                | 'brave'
-                | 'openrouter'
-                | undefined;
+              const prov = (genSnapshot?.search_provider ||
+                (chat.settings as any)?.search_provider) as 'brave' | 'openrouter' | undefined;
               if (searchWasEnabledThisTurn && prov === 'openrouter') arr.push({ id: 'web' });
               return arr.length > 0 ? arr : undefined;
             })(),

@@ -21,7 +21,7 @@ import { TutorPanel } from '@/components/message/TutorPanel';
 import { findModelById, isReasoningSupported } from '@/lib/models';
 import type { Attachment } from '@/lib/types';
 import ImageLightbox from '@/components/ImageLightbox';
- 
+
 // cost and model meta computed within MessageMeta when expanded
 
 export default function MessageList({ chatId }: { chatId: string }) {
@@ -223,7 +223,10 @@ export default function MessageList({ chatId }: { chatId: string }) {
       const normalized = text.replace(/\s+/g, ' ');
       return normalized.length > 160 ? `${normalized.slice(0, 160)}…` : normalized;
     }
-    if (Array.isArray(mobileActionMessage.attachments) && mobileActionMessage.attachments.length > 0) {
+    if (
+      Array.isArray(mobileActionMessage.attachments) &&
+      mobileActionMessage.attachments.length > 0
+    ) {
       const first = mobileActionMessage.attachments[0];
       return first?.name || first?.kind || 'Attachment';
     }
@@ -343,40 +346,320 @@ export default function MessageList({ chatId }: { chatId: string }) {
               setActiveMessageId(m.id);
               setMobileSheet({ id: m.id, role: m.role as any });
             }}
-        >
-          {m.role === 'assistant' ? (
-            <div className="relative">
-              {showInlineActions && (
-                <div
-                  className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
-                  style={isMobile ? { opacity: 1 } : undefined}
-                >
-                  {isEditingThisMessage ? (
-                    <div className="flex items-center gap-1">
-                      <button
-                        className="icon-button"
-                        aria-label="Save edit"
-                        title="Save edit"
-                        onClick={() => saveEdit(m.id)}
-                      >
-                        <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </button>
-                      <button
-                        className="icon-button"
-                        aria-label="Cancel edit"
-                        title="Cancel edit"
-                        onClick={() => {
-                          setEditingId(null);
-                          setDraft('');
-                        }}
-                      >
-                        <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </button>
+          >
+            {m.role === 'assistant' ? (
+              <div className="relative">
+                {showInlineActions && (
+                  <div
+                    className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
+                    style={isMobile ? { opacity: 1 } : undefined}
+                  >
+                    {isEditingThisMessage ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          className="icon-button"
+                          aria-label="Save edit"
+                          title="Save edit"
+                          onClick={() => saveEdit(m.id)}
+                        >
+                          <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                        </button>
+                        <button
+                          className="icon-button"
+                          aria-label="Cancel edit"
+                          title="Cancel edit"
+                          onClick={() => {
+                            setEditingId(null);
+                            setDraft('');
+                          }}
+                        >
+                          <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <button
+                          className="icon-button"
+                          aria-label="Copy message"
+                          title={copiedId === m.id ? 'Copied' : 'Copy message'}
+                          onClick={() => copyMessage(m.id)}
+                        >
+                          {copiedId === m.id ? (
+                            <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                          ) : (
+                            <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                          )}
+                        </button>
+                        {!isStreaming && (
+                          <button
+                            className="icon-button"
+                            aria-label="Edit message"
+                            title="Edit message"
+                            onClick={() => startEditingMessage(m.id)}
+                          >
+                            <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                          </button>
+                        )}
+                        <button
+                          className="icon-button"
+                          title="Create a new chat starting from this reply"
+                          aria-label="Branch chat from here"
+                          disabled={isStreaming}
+                          onClick={() => branchFromMessage(m.id)}
+                        >
+                          <ArrowUturnRightIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                        </button>
+                        <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Brave search UX block attached to this assistant message (gated by experimental toggle) */}
+                {(() => {
+                  if (!braveGloballyEnabled) return null;
+                  const brave = braveByMessageId[m.id];
+                  if (!brave) return null;
+                  return (
+                    <BraveSourcesPanel
+                      data={brave as any}
+                      expanded={isSourcesExpanded(m.id)}
+                      onToggle={() => toggleSources(m.id)}
+                    />
+                  );
+                })()}
+                {/* Debug payload panel (raw OpenRouter request) */}
+                {debugMode && debugByMessageId[m.id]?.body && (
+                  <DebugPanel
+                    body={debugByMessageId[m.id].body}
+                    expanded={isDebugExpanded(m.id)}
+                    onToggle={() => toggleDebug(m.id)}
+                  />
+                )}
+                {/* Thinking block styled like sources, inline header with icon toggle */}
+                {(() => {
+                  const reasoningText =
+                    typeof m.reasoning === 'string' ? (m.reasoning as string) : '';
+                  const isLatestAssistant = m.role === 'assistant' && m.id === lastMessageId;
+                  const messageModelId = (m.model || chat?.settings?.model) ?? undefined;
+                  const modelMeta = messageModelId
+                    ? findModelById(models, messageModelId)
+                    : undefined;
+                  const modelAllowsReasoning = !!modelMeta && isReasoningSupported(modelMeta);
+                  const hasReasoning = reasoningText.trim().length > 0;
+                  const messageEffort = m.genSettings?.reasoning_effort;
+                  const messageTokens = m.genSettings?.reasoning_tokens;
+                  const chatEffort = chat?.settings.reasoning_effort;
+                  const chatTokens = chat?.settings.reasoning_tokens;
+                  const effortRequested =
+                    typeof messageEffort === 'string'
+                      ? messageEffort !== 'none'
+                      : typeof chatEffort === 'string'
+                        ? chatEffort !== 'none'
+                        : false;
+                  const tokensRequested =
+                    typeof messageTokens === 'number'
+                      ? messageTokens > 0
+                      : typeof chatTokens === 'number'
+                        ? chatTokens > 0
+                        : false;
+                  const isAutoReasoningModel = !!(
+                    messageModelId && autoReasoningModelIds[messageModelId]
+                  );
+                  const allowStreaming =
+                    (effortRequested || tokensRequested || isAutoReasoningModel) &&
+                    modelAllowsReasoning &&
+                    isLatestAssistant &&
+                    isStreaming;
+                  if (!hasReasoning && !allowStreaming) return null;
+                  return (
+                    <ReasoningPanel
+                      reasoning={reasoningText}
+                      expanded={isExpanded(m.id)}
+                      onToggle={() => toggle(m.id)}
+                      isStreaming={allowStreaming}
+                    />
+                  );
+                })()}
+                {/* Tutor interactive panels (MCQ, fill-blank, open, flashcards) */}
+                {(() => {
+                  if (!tutorGloballyEnabled) return null;
+                  const tut = tutorByMessageId[m.id] || (m as any)?.tutor;
+                  if (!tut) return null;
+                  return (
+                    <TutorPanel
+                      messageId={m.id}
+                      title={tut.title}
+                      mcq={tut.mcq}
+                      fillBlank={tut.fillBlank}
+                      openEnded={tut.openEnded}
+                      flashcards={tut.flashcards}
+                      grading={(tut as any).grading}
+                    />
+                  );
+                })()}
+                {/* Attachments (assistant-visible images/audio; PDFs shown as chips) */}
+                {Array.isArray(m.attachments) && m.attachments.length > 0 && (
+                  <div className="px-4 pt-2 flex flex-wrap gap-2">
+                    {m.attachments
+                      .filter((a: Attachment) => a.kind === 'image')
+                      .map((a: Attachment, idx: number, arr: Attachment[]) => (
+                        <button
+                          key={a.id}
+                          className="p-0 m-0 border-none bg-transparent"
+                          onClick={() =>
+                            setLightbox({
+                              images: arr
+                                .filter((x) => x.kind === 'image' && x.dataURL)
+                                .map((x) => ({ src: x.dataURL!, name: x.name })),
+                              index: idx,
+                            })
+                          }
+                          title="Click to enlarge"
+                        >
+                          <img
+                            src={a.dataURL}
+                            alt={a.name || 'image'}
+                            className="h-28 w-28 sm:h-36 sm:w-36 object-cover rounded border border-border"
+                          />
+                        </button>
+                      ))}
+                    {m.attachments
+                      .filter((a: Attachment) => a.kind === 'audio')
+                      .map((a: Attachment) => (
+                        <div
+                          key={a.id}
+                          className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
+                        >
+                          {a.dataURL ? (
+                            <audio controls src={a.dataURL} className="h-10" />
+                          ) : (
+                            <span className="text-xs">Audio attached</span>
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
+                              {a.name || 'Audio'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    {m.attachments
+                      .filter((a: Attachment) => a.kind === 'pdf')
+                      .map((a: Attachment) => (
+                        <span
+                          key={a.id}
+                          className="badge"
+                          title={`${a.name || 'PDF'}${a.pageCount ? ` • ${a.pageCount} pages` : ''}`}
+                        >
+                          {a.name || 'PDF'}
+                          {a.pageCount ? ` (${a.pageCount}p)` : ''}
+                        </span>
+                      ))}
+                  </div>
+                )}
+                <div className="px-4 py-3">
+                  {editingId === m.id ? (
+                    <textarea
+                      className="textarea w-full text-sm"
+                      rows={Math.min(8, Math.max(3, Math.ceil((draft.length || 1) / 60)))}
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                          e.preventDefault();
+                          saveEdit(m.id);
+                        }
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          saveEdit(m.id);
+                        }
+                      }}
+                      placeholder="Edit assistant message..."
+                    />
+                  ) : waitingForFirstToken && m.id === lastMessageId ? (
+                    <div className="typing-indicator" aria-live="polite" aria-label="Generating">
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1">
+                    <Markdown content={m.content} />
+                  )}
+                </div>
+                {/* Stats summary removed to respect per-message toggle */}
+                {showStats && !(waitingForFirstToken && m.id === lastMessageId) && (
+                  <div className="px-4 pb-3 -mt-2">
+                    {isStatsExpanded(m.id) ? (
+                      <div className="text-xs text-muted-foreground">
+                        {(() => {
+                          const modelId = m.model || chat?.settings.model || 'unknown';
+                          return (
+                            <MessageMeta
+                              message={m}
+                              modelId={modelId}
+                              chatSettings={chat!.settings}
+                              models={models}
+                              showStats={true}
+                            />
+                          );
+                        })()}
+                        <div className="mt-1">
+                          <button className="badge" onClick={() => toggleStats(m.id)}>
+                            Hide stats
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button className="badge" onClick={() => toggleStats(m.id)}>
+                        stats
+                      </button>
+                    )}
+                  </div>
+                )}
+                {/* Branching control moved to hover actions (bottom-right) */}
+              </div>
+            ) : (
+              <div className="relative">
+                {/* Edit control for user messages */}
+                {showInlineActions && (
+                  <div
+                    className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
+                    style={isMobile ? { opacity: 1 } : undefined}
+                  >
+                    {isEditingThisMessage ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          className="icon-button"
+                          aria-label="Save edit"
+                          title="Save edit"
+                          onClick={() => saveEdit(m.id)}
+                        >
+                          <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                        </button>
+                        <button
+                          className="icon-button"
+                          aria-label="Cancel edit"
+                          title="Cancel edit"
+                          onClick={() => {
+                            setEditingId(null);
+                            setDraft('');
+                          }}
+                        >
+                          <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                        </button>
+                      </div>
+                    ) : (
                       <button
                         className="icon-button"
+                        aria-label="Edit message"
+                        title="Edit message"
+                        onClick={() => startEditingMessage(m.id)}
+                      >
+                        <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      </button>
+                    )}
+                    {!isEditingThisMessage && (
+                      <button
+                        className="icon-button ml-1"
                         aria-label="Copy message"
                         title={copiedId === m.id ? 'Copied' : 'Copy message'}
                         onClick={() => copyMessage(m.id)}
@@ -387,370 +670,95 @@ export default function MessageList({ chatId }: { chatId: string }) {
                           <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                         )}
                       </button>
-                      {!isStreaming && (
-                        <button
-                          className="icon-button"
-                          aria-label="Edit message"
-                          title="Edit message"
-                          onClick={() => startEditingMessage(m.id)}
-                        >
-                          <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </button>
-                      )}
-                      <button
-                        className="icon-button"
-                        title="Create a new chat starting from this reply"
-                        aria-label="Branch chat from here"
-                        disabled={isStreaming}
-                        onClick={() => branchFromMessage(m.id)}
-                      >
-                        <ArrowUturnRightIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </button>
-                      <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* Brave search UX block attached to this assistant message (gated by experimental toggle) */}
-              {(() => {
-                if (!braveGloballyEnabled) return null;
-                const brave = braveByMessageId[m.id];
-                if (!brave) return null;
-                return (
-                  <BraveSourcesPanel
-                    data={brave as any}
-                    expanded={isSourcesExpanded(m.id)}
-                    onToggle={() => toggleSources(m.id)}
-                  />
-                );
-              })()}
-              {/* Debug payload panel (raw OpenRouter request) */}
-              {debugMode && debugByMessageId[m.id]?.body && (
-                <DebugPanel
-                  body={debugByMessageId[m.id].body}
-                  expanded={isDebugExpanded(m.id)}
-                  onToggle={() => toggleDebug(m.id)}
-                />
-              )}
-              {/* Thinking block styled like sources, inline header with icon toggle */}
-              {(() => {
-                const reasoningText = typeof m.reasoning === 'string' ? (m.reasoning as string) : '';
-                const isLatestAssistant = m.role === 'assistant' && m.id === lastMessageId;
-                const messageModelId = (m.model || chat?.settings?.model) ?? undefined;
-                const modelMeta = messageModelId ? findModelById(models, messageModelId) : undefined;
-                const modelAllowsReasoning = !!modelMeta && isReasoningSupported(modelMeta);
-                const hasReasoning = reasoningText.trim().length > 0;
-                const messageEffort = m.genSettings?.reasoning_effort;
-                const messageTokens = m.genSettings?.reasoning_tokens;
-                const chatEffort = chat?.settings.reasoning_effort;
-                const chatTokens = chat?.settings.reasoning_tokens;
-                const effortRequested =
-                  typeof messageEffort === 'string'
-                    ? messageEffort !== 'none'
-                    : typeof chatEffort === 'string'
-                      ? chatEffort !== 'none'
-                      : false;
-                const tokensRequested =
-                  typeof messageTokens === 'number'
-                    ? messageTokens > 0
-                    : typeof chatTokens === 'number'
-                      ? chatTokens > 0
-                      : false;
-                const isAutoReasoningModel = !!(messageModelId && autoReasoningModelIds[messageModelId]);
-                const allowStreaming =
-                  (effortRequested || tokensRequested || isAutoReasoningModel) &&
-                  modelAllowsReasoning &&
-                  isLatestAssistant &&
-                  isStreaming;
-                if (!hasReasoning && !allowStreaming) return null;
-                return (
-                  <ReasoningPanel
-                    reasoning={reasoningText}
-                    expanded={isExpanded(m.id)}
-                    onToggle={() => toggle(m.id)}
-                    isStreaming={allowStreaming}
-                  />
-                );
-              })()}
-              {/* Tutor interactive panels (MCQ, fill-blank, open, flashcards) */}
-              {(() => {
-                if (!tutorGloballyEnabled) return null;
-                const tut = tutorByMessageId[m.id] || (m as any)?.tutor;
-                if (!tut) return null;
-                return (
-                  <TutorPanel
-                    messageId={m.id}
-                    title={tut.title}
-                    mcq={tut.mcq}
-                    fillBlank={tut.fillBlank}
-                    openEnded={tut.openEnded}
-                    flashcards={tut.flashcards}
-                    grading={(tut as any).grading}
-                  />
-                );
-              })()}
-              {/* Attachments (assistant-visible images/audio; PDFs shown as chips) */}
-              {Array.isArray(m.attachments) && m.attachments.length > 0 && (
-                <div className="px-4 pt-2 flex flex-wrap gap-2">
-                  {m.attachments
-                    .filter((a: Attachment) => a.kind === 'image')
-                    .map((a: Attachment, idx: number, arr: Attachment[]) => (
-                      <button
-                        key={a.id}
-                        className="p-0 m-0 border-none bg-transparent"
-                        onClick={() =>
-                          setLightbox({
-                            images: arr
-                              .filter((x) => x.kind === 'image' && x.dataURL)
-                              .map((x) => ({ src: x.dataURL!, name: x.name })),
-                            index: idx,
-                          })
-                        }
-                        title="Click to enlarge"
-                      >
-                        <img
-                          src={a.dataURL}
-                          alt={a.name || 'image'}
-                          className="h-28 w-28 sm:h-36 sm:w-36 object-cover rounded border border-border"
-                        />
-                      </button>
-                    ))}
-                  {m.attachments
-                    .filter((a: Attachment) => a.kind === 'audio')
-                    .map((a: Attachment) => (
-                      <div
-                        key={a.id}
-                        className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
-                      >
-                        {a.dataURL ? (
-                          <audio controls src={a.dataURL} className="h-10" />
-                        ) : (
-                          <span className="text-xs">Audio attached</span>
-                        )}
-                        <div className="min-w-0">
-                          <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
-                            {a.name || 'Audio'}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  {m.attachments
-                    .filter((a: Attachment) => a.kind === 'pdf')
-                    .map((a: Attachment) => (
-                      <span
-                        key={a.id}
-                        className="badge"
-                        title={`${a.name || 'PDF'}${a.pageCount ? ` • ${a.pageCount} pages` : ''}`}
-                      >
-                        {a.name || 'PDF'}
-                        {a.pageCount ? ` (${a.pageCount}p)` : ''}
-                      </span>
-                    ))}
-                </div>
-              )}
-              <div className="px-4 py-3">
-                {editingId === m.id ? (
-                  <textarea
-                    className="textarea w-full text-sm"
-                    rows={Math.min(8, Math.max(3, Math.ceil((draft.length || 1) / 60)))}
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                        e.preventDefault();
-                        saveEdit(m.id);
-                      }
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        saveEdit(m.id);
-                      }
-                    }}
-                    placeholder="Edit assistant message..."
-                  />
-                ) : waitingForFirstToken && m.id === lastMessageId ? (
-                  <div className="typing-indicator" aria-live="polite" aria-label="Generating">
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
+                    )}
                   </div>
-                ) : (
-                  <Markdown content={m.content} />
                 )}
-              </div>
-              {/* Stats summary removed to respect per-message toggle */}
-              {showStats && !(waitingForFirstToken && m.id === lastMessageId) && (
-                <div className="px-4 pb-3 -mt-2">
-                  {isStatsExpanded(m.id) ? (
-                    <div className="text-xs text-muted-foreground">
-                      {(() => {
-                        const modelId = m.model || chat?.settings.model || 'unknown';
-                        return (
-                          <MessageMeta
-                            message={m}
-                            modelId={modelId}
-                            chatSettings={chat!.settings}
-                            models={models}
-                            showStats={true}
+                {/* Attachments (user: images/audio/PDFs) */}
+                {Array.isArray(m.attachments) && m.attachments.length > 0 && (
+                  <div className="px-4 pt-2 flex flex-wrap gap-2">
+                    {m.attachments
+                      .filter((a: Attachment) => a.kind === 'image')
+                      .map((a: Attachment, idx: number, arr: Attachment[]) => (
+                        <button
+                          key={a.id}
+                          className="p-0 m-0 border-none bg-transparent"
+                          onClick={() =>
+                            setLightbox({
+                              images: arr
+                                .filter((x) => x.kind === 'image' && x.dataURL)
+                                .map((x) => ({ src: x.dataURL!, name: x.name })),
+                              index: idx,
+                            })
+                          }
+                          title="Click to enlarge"
+                        >
+                          <img
+                            src={a.dataURL}
+                            alt={a.name || 'image'}
+                            className="h-28 w-28 sm:h-36 sm:w-36 object-cover rounded border border-border"
                           />
-                        );
-                      })()}
-                      <div className="mt-1">
-                        <button className="badge" onClick={() => toggleStats(m.id)}>
-                          Hide stats
                         </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button className="badge" onClick={() => toggleStats(m.id)}>
-                      stats
-                    </button>
-                  )}
-                </div>
-              )}
-              {/* Branching control moved to hover actions (bottom-right) */}
-            </div>
-          ) : (
-            <div className="relative">
-              {/* Edit control for user messages */}
-              {showInlineActions && (
-                <div
-                  className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
-                  style={isMobile ? { opacity: 1 } : undefined}
-                >
-                  {isEditingThisMessage ? (
-                    <div className="flex items-center gap-1">
-                      <button
-                        className="icon-button"
-                        aria-label="Save edit"
-                        title="Save edit"
-                        onClick={() => saveEdit(m.id)}
-                      >
-                        <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </button>
-                      <button
-                        className="icon-button"
-                        aria-label="Cancel edit"
-                        title="Cancel edit"
-                        onClick={() => {
-                          setEditingId(null);
-                          setDraft('');
-                        }}
-                      >
-                        <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      className="icon-button"
-                      aria-label="Edit message"
-                      title="Edit message"
-                      onClick={() => startEditingMessage(m.id)}
-                    >
-                      <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                    </button>
-                  )}
-                  {!isEditingThisMessage && (
-                    <button
-                      className="icon-button ml-1"
-                      aria-label="Copy message"
-                      title={copiedId === m.id ? 'Copied' : 'Copy message'}
-                      onClick={() => copyMessage(m.id)}
-                    >
-                      {copiedId === m.id ? (
-                        <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      ) : (
-                        <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      )}
-                    </button>
-                  )}
-                </div>
-              )}
-              {/* Attachments (user: images/audio/PDFs) */}
-              {Array.isArray(m.attachments) && m.attachments.length > 0 && (
-                <div className="px-4 pt-2 flex flex-wrap gap-2">
-                  {m.attachments
-                    .filter((a: Attachment) => a.kind === 'image')
-                    .map((a: Attachment, idx: number, arr: Attachment[]) => (
-                      <button
-                        key={a.id}
-                        className="p-0 m-0 border-none bg-transparent"
-                        onClick={() =>
-                          setLightbox({
-                            images: arr
-                              .filter((x) => x.kind === 'image' && x.dataURL)
-                              .map((x) => ({ src: x.dataURL!, name: x.name })),
-                            index: idx,
-                          })
-                        }
-                        title="Click to enlarge"
-                      >
-                        <img
-                          src={a.dataURL}
-                          alt={a.name || 'image'}
-                          className="h-28 w-28 sm:h-36 sm:w-36 object-cover rounded border border-border"
-                        />
-                      </button>
-                    ))}
-                  {m.attachments
-                    .filter((a: Attachment) => a.kind === 'audio')
-                    .map((a: Attachment) => (
-                      <div
-                        key={a.id}
-                        className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
-                      >
-                        {a.dataURL ? (
-                          <audio controls src={a.dataURL} className="h-10" />
-                        ) : (
-                          <span className="text-xs">Audio attached</span>
-                        )}
-                        <div className="min-w-0">
-                          <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
-                            {a.name || 'Audio'}
+                      ))}
+                    {m.attachments
+                      .filter((a: Attachment) => a.kind === 'audio')
+                      .map((a: Attachment) => (
+                        <div
+                          key={a.id}
+                          className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
+                        >
+                          {a.dataURL ? (
+                            <audio controls src={a.dataURL} className="h-10" />
+                          ) : (
+                            <span className="text-xs">Audio attached</span>
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
+                              {a.name || 'Audio'}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  {m.attachments
-                    .filter((a: Attachment) => a.kind === 'pdf')
-                    .map((a: Attachment) => (
-                      <span
-                        key={a.id}
-                        className="badge"
-                        title={`${a.name || 'PDF'}${a.pageCount ? ` • ${a.pageCount} pages` : ''}`}
-                      >
-                        {a.name || 'PDF'}
-                        {a.pageCount ? ` (${a.pageCount}p)` : ''}
-                      </span>
-                    ))}
-                </div>
-              )}
-              <div className="px-4 py-3">
-                {editingId === m.id ? (
-                  <textarea
-                    className="textarea w-full text-sm"
-                    rows={Math.min(8, Math.max(3, Math.ceil((draft.length || 1) / 60)))}
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                        e.preventDefault();
-                        saveEdit(m.id);
-                      }
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        saveEdit(m.id);
-                      }
-                    }}
-                    placeholder="Edit your message..."
-                  />
-                ) : (
-                  <Markdown content={m.content} />
+                      ))}
+                    {m.attachments
+                      .filter((a: Attachment) => a.kind === 'pdf')
+                      .map((a: Attachment) => (
+                        <span
+                          key={a.id}
+                          className="badge"
+                          title={`${a.name || 'PDF'}${a.pageCount ? ` • ${a.pageCount} pages` : ''}`}
+                        >
+                          {a.name || 'PDF'}
+                          {a.pageCount ? ` (${a.pageCount}p)` : ''}
+                        </span>
+                      ))}
+                  </div>
                 )}
+                <div className="px-4 py-3">
+                  {editingId === m.id ? (
+                    <textarea
+                      className="textarea w-full text-sm"
+                      rows={Math.min(8, Math.max(3, Math.ceil((draft.length || 1) / 60)))}
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                          e.preventDefault();
+                          saveEdit(m.id);
+                        }
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          saveEdit(m.id);
+                        }
+                      }}
+                      placeholder="Edit your message..."
+                    />
+                  ) : (
+                    <Markdown content={m.content} />
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      );
+            )}
+          </div>
+        );
       })}
       {showJump && (
         <div className="jump-to-latest">
@@ -768,7 +776,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
           </button>
         </div>
       )}
-      
+
       {/* Typing indicator is now rendered inline within the latest assistant message */}
       <div ref={endRef} />
       {/* Mobile action sheet */}
@@ -784,7 +792,11 @@ export default function MessageList({ chatId }: { chatId: string }) {
               if (event.target === event.currentTarget) closeMobileSheet();
             }}
           >
-            <div className="mobile-sheet card mobile-message-sheet" role="menu" aria-label="Message actions">
+            <div
+              className="mobile-sheet card mobile-message-sheet"
+              role="menu"
+              aria-label="Message actions"
+            >
               <div className="mobile-sheet-handle" aria-hidden="true" />
               <div className="mobile-message-sheet__header">
                 <div className="mobile-message-sheet__title">
@@ -858,7 +870,9 @@ export default function MessageList({ chatId }: { chatId: string }) {
                       </span>
                       <span className="mobile-message-action__meta">
                         <span className="mobile-message-action__label">Branch</span>
-                        <span className="mobile-message-action__hint">Start a new chat from here</span>
+                        <span className="mobile-message-action__hint">
+                          Start a new chat from here
+                        </span>
                       </span>
                     </button>
                     <button
@@ -880,7 +894,11 @@ export default function MessageList({ chatId }: { chatId: string }) {
                   </>
                 )}
               </div>
-              <button type="button" className="btn btn-ghost w-full h-11" onClick={closeMobileSheet}>
+              <button
+                type="button"
+                className="btn btn-ghost w-full h-11"
+                onClick={closeMobileSheet}
+              >
                 Cancel
               </button>
             </div>

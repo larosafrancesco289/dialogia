@@ -65,17 +65,17 @@ export default function MobileHeader() {
     };
     update();
     window.addEventListener('resize', update);
-      window.addEventListener('scroll', update, true);
-      document.addEventListener('pointerdown', onPointerDown, true);
-      return () => {
-        if (ignoreAnchorResetRef.current !== null) {
-          window.clearTimeout(ignoreAnchorResetRef.current);
-          ignoreAnchorResetRef.current = null;
-        }
-        window.removeEventListener('resize', update);
-        window.removeEventListener('scroll', update, true);
-        document.removeEventListener('pointerdown', onPointerDown, true);
-      };
+    window.addEventListener('scroll', update, true);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => {
+      if (ignoreAnchorResetRef.current !== null) {
+        window.clearTimeout(ignoreAnchorResetRef.current);
+        ignoreAnchorResetRef.current = null;
+      }
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+    };
   }, [menuOpen]);
 
   const renameCurrentChat = () => {
@@ -119,7 +119,8 @@ export default function MobileHeader() {
         </button>
       </div>
 
-      {menuOpen && popoverPos &&
+      {menuOpen &&
+        popoverPos &&
         typeof document !== 'undefined' &&
         createPortal(
           <div className="fixed inset-0 z-[90]" role="presentation">
@@ -138,7 +139,11 @@ export default function MobileHeader() {
             >
               <div className="flex items-center justify-between gap-2 px-2 pb-2">
                 <span className="text-sm font-semibold">Quick actions</span>
-                <button className="icon-button" aria-label="Close" onClick={() => setMenuOpen(false)}>
+                <button
+                  className="icon-button"
+                  aria-label="Close"
+                  onClick={() => setMenuOpen(false)}
+                >
                   <XMarkIcon className="h-4 w-4" />
                 </button>
               </div>

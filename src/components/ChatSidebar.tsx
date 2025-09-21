@@ -129,7 +129,9 @@ export default function ChatSidebar() {
             <IconButton
               onClick={() => {
                 const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
-                useChatStore.getState().setUI({ showSettings: true, ...(isSmall ? { sidebarCollapsed: true } : {}) });
+                useChatStore
+                  .getState()
+                  .setUI({ showSettings: true, ...(isSmall ? { sidebarCollapsed: true } : {}) });
               }}
               title="Settings"
               variant="ghost"
@@ -327,7 +329,8 @@ function RootChatItem({
   };
   const onPointerUp = (e: React.PointerEvent) => {
     if (!isMobile || isEditing) return;
-    const moved = Math.abs(e.clientX - startX.current) > slop || Math.abs(e.clientY - startY.current) > slop;
+    const moved =
+      Math.abs(e.clientX - startX.current) > slop || Math.abs(e.clientY - startY.current) > slop;
     if (!longFired.current && !moved) onSelect();
     clearLong();
   };
@@ -375,7 +378,9 @@ function RootChatItem({
                 />
               </div>
             ) : (
-              <div className="flex-1 text-base sm:text-sm truncate">{collapsed ? '' : chat.title}</div>
+              <div className="flex-1 text-base sm:text-sm truncate">
+                {collapsed ? '' : chat.title}
+              </div>
             )}
 
             {/* Desktop action icons only (hide on mobile) */}
@@ -417,7 +422,9 @@ function RootChatItem({
         </div>
       </div>
 
-      {isMobile && showActions && typeof document !== 'undefined' &&
+      {isMobile &&
+        showActions &&
+        typeof document !== 'undefined' &&
         createPortal(
           <div
             className="mobile-sheet-overlay"

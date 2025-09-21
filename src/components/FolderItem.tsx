@@ -86,7 +86,8 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
   };
   const onPointerUp = (e: ReactPointerEvent) => {
     if (!isMobile || isEditing) return;
-    const moved = Math.abs(e.clientX - startX.current) > slop || Math.abs(e.clientY - startY.current) > slop;
+    const moved =
+      Math.abs(e.clientX - startX.current) > slop || Math.abs(e.clientY - startY.current) > slop;
     if (longFired.current || moved) suppressTap.current = true;
     clearLong();
   };
@@ -128,108 +129,116 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
           onDragStart={() => {
             setCurrentDragData({ id: folder.id, type: 'folder' });
           }}
-        onClick={(e) => {
-          if (isEditing) return;
-          if (isMobile && suppressTap.current) {
-            suppressTap.current = false;
-            return;
-          }
-          suppressTap.current = false;
-          handleToggleExpanded();
-        }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-        onDragOver={(e) => {
-          handleDragOver(e);
-          setIsDragOver(true);
-        }}
-        onDragLeave={() => {
-          setIsDragOver(false);
-        }}
-        onDrop={async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsDragOver(false);
-          const dragData = getCurrentDragData();
-          if (dragData && dragData.id !== folder.id) {
-            await handleDrop(folder.id, dragData.id, dragData.type);
-          }
-          setCurrentDragData(null);
-        }}
-      >
-        {/* Expand/Collapse Icon */}
-        <IconButton
-          size="sm"
           onClick={(e) => {
-            e?.stopPropagation();
+            if (isEditing) return;
+            if (isMobile && suppressTap.current) {
+              suppressTap.current = false;
+              return;
+            }
+            suppressTap.current = false;
             handleToggleExpanded();
           }}
-          className="w-6 h-6 shrink-0"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
+          onDragOver={(e) => {
+            handleDragOver(e);
+            setIsDragOver(true);
+          }}
+          onDragLeave={() => {
+            setIsDragOver(false);
+          }}
+          onDrop={async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(false);
+            const dragData = getCurrentDragData();
+            if (dragData && dragData.id !== folder.id) {
+              await handleDrop(folder.id, dragData.id, dragData.type);
+            }
+            setCurrentDragData(null);
+          }}
         >
-          {folder.isExpanded ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-        </IconButton>
+          {/* Expand/Collapse Icon */}
+          <IconButton
+            size="sm"
+            onClick={(e) => {
+              e?.stopPropagation();
+              handleToggleExpanded();
+            }}
+            className="w-6 h-6 shrink-0"
+          >
+            {folder.isExpanded ? (
+              <ChevronDownIcon className="h-4 w-4" />
+            ) : (
+              <ChevronRightIcon className="h-4 w-4" />
+            )}
+          </IconButton>
 
-        {/* Folder Icon */}
-        <div className="w-6 h-6 flex items-center justify-center text-muted-foreground shrink-0">
-          {folder.isExpanded ? <FolderOpenIcon className="h-5 w-5" /> : <FolderIcon className="h-5 w-5" />}
-        </div>
+          {/* Folder Icon */}
+          <div className="w-6 h-6 flex items-center justify-center text-muted-foreground shrink-0">
+            {folder.isExpanded ? (
+              <FolderOpenIcon className="h-5 w-5" />
+            ) : (
+              <FolderIcon className="h-5 w-5" />
+            )}
+          </div>
 
-        {/* Folder Name */}
-        {isEditing ? (
-          <div className="flex items-center gap-2 flex-1">
-            <input
-              className="input flex-1 text-base sm:text-sm"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRename();
-                if (e.key === 'Escape') {
-                  setIsEditing(false);
+          {/* Folder Name */}
+          {isEditing ? (
+            <div className="flex items-center gap-2 flex-1">
+              <input
+                className="input flex-1 text-base sm:text-sm"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRename();
+                  if (e.key === 'Escape') {
+                    setIsEditing(false);
+                    setEditName(folder.name);
+                  }
+                }}
+                onBlur={handleRename}
+                autoFocus
+              />
+            </div>
+          ) : (
+            <div className="flex-1 text-sm truncate font-semibold">{folder.name}</div>
+          )}
+
+          {/* Desktop-only action buttons */}
+          {!isEditing && (
+            <div className="hidden sm:flex opacity-0 sm:group-hover:opacity-100 transition-opacity gap-1">
+              <IconButton
+                size="sm"
+                onClick={(e) => {
+                  e?.stopPropagation();
+                  setIsEditing(true);
                   setEditName(folder.name);
-                }
-              }}
-              onBlur={handleRename}
-              autoFocus
-            />
-          </div>
-        ) : (
-          <div className="flex-1 text-sm truncate font-semibold">
-            {folder.name}
-          </div>
-        )}
-
-        {/* Desktop-only action buttons */}
-        {!isEditing && (
-          <div className="hidden sm:flex opacity-0 sm:group-hover:opacity-100 transition-opacity gap-1">
-            <IconButton
-              size="sm"
-              onClick={(e) => {
-                e?.stopPropagation();
-                setIsEditing(true);
-                setEditName(folder.name);
-              }}
-              title="Rename folder"
-            >
-              <PencilSquareIcon className="h-3 w-3" />
-            </IconButton>
-            <IconButton
-              size="sm"
-              onClick={(e) => {
-                e?.stopPropagation();
-                setShowDeleteConfirm(true);
-              }}
-              title="Delete folder"
-            >
-              <TrashIcon className="h-3 w-3" />
-            </IconButton>
-          </div>
-        )}
+                }}
+                title="Rename folder"
+              >
+                <PencilSquareIcon className="h-3 w-3" />
+              </IconButton>
+              <IconButton
+                size="sm"
+                onClick={(e) => {
+                  e?.stopPropagation();
+                  setShowDeleteConfirm(true);
+                }}
+                title="Delete folder"
+              >
+                <TrashIcon className="h-3 w-3" />
+              </IconButton>
+            </div>
+          )}
         </div>
       </div>
 
-      {isMobile && showActions && typeof document !== 'undefined' &&
+      {isMobile &&
+        showActions &&
+        typeof document !== 'undefined' &&
         createPortal(
           <div
             className="mobile-sheet-overlay"
@@ -238,7 +247,11 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
               if (event.target === event.currentTarget) setShowActions(false);
             }}
           >
-            <div className="mobile-sheet card mobile-sheet-compact" role="menu" aria-label={`Folder actions for ${folder.name}`}>
+            <div
+              className="mobile-sheet card mobile-sheet-compact"
+              role="menu"
+              aria-label={`Folder actions for ${folder.name}`}
+            >
               <div className="mobile-sheet-handle" aria-hidden="true" />
               <button
                 className="mobile-menu-item"
@@ -379,7 +392,8 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
   const onPointerUp = (e: React.PointerEvent) => {
     if (!isMobile || isEditing) return;
     const moved =
-      Math.abs(e.clientX - longStartX.current) > 10 || Math.abs(e.clientY - longStartY.current) > 10;
+      Math.abs(e.clientX - longStartX.current) > 10 ||
+      Math.abs(e.clientY - longStartY.current) > 10;
     if (!longFired.current && !moved) onSelect();
     clearLong();
   };
@@ -472,7 +486,9 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
           </div>
         )}
       </div>
-      {isMobile && showActions && typeof document !== 'undefined' &&
+      {isMobile &&
+        showActions &&
+        typeof document !== 'undefined' &&
         createPortal(
           <div
             className="mobile-sheet-overlay"
@@ -481,7 +497,11 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
               if (event.target === event.currentTarget) setShowActions(false);
             }}
           >
-            <div className="mobile-sheet card mobile-sheet-compact" role="menu" aria-label={`Actions for ${chat.title}`}>
+            <div
+              className="mobile-sheet card mobile-sheet-compact"
+              role="menu"
+              aria-label={`Actions for ${chat.title}`}
+            >
               <div className="mobile-sheet-handle" aria-hidden="true" />
               <button
                 className="mobile-menu-item"
