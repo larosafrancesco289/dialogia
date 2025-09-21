@@ -269,7 +269,7 @@ export default function ModelPicker({
     const provider = String(id).split('/')[0];
     const isZdr = Boolean(
       (zdrModelIds && zdrModelIds.includes(id)) ||
-      (zdrProviderIds && zdrProviderIds.includes(provider)),
+        (zdrProviderIds && zdrProviderIds.includes(provider)),
     );
     const priceStr = describeModelPricing(meta);
     return { canReason, canSee, canAudio, canImageOut, isZdr, priceStr };
@@ -288,7 +288,8 @@ export default function ModelPicker({
         <ChevronDownIcon className="h-4 w-4" />
       </button>
 
-      {open && popoverPos &&
+      {open &&
+        popoverPos &&
         typeof document !== 'undefined' &&
         createPortal(
           <div
@@ -331,7 +332,8 @@ export default function ModelPicker({
             }}
           >
             {options.map((o, idx) => {
-              const { canReason, canSee, canAudio, canImageOut, isZdr, priceStr } = renderCapabilities(o.id);
+              const { canReason, canSee, canAudio, canImageOut, isZdr, priceStr } =
+                renderCapabilities(o.id);
               const showPrice = variant !== 'sheet';
               return (
                 <div

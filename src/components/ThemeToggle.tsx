@@ -17,7 +17,11 @@ function applyTheme(mode: ThemeMode, mql?: MediaQueryList | null) {
   root.classList.toggle('dark', isDark);
 }
 
-export default function ThemeToggle({ variant = 'ghost', className = '', onToggle }: ThemeToggleProps) {
+export default function ThemeToggle({
+  variant = 'ghost',
+  className = '',
+  onToggle,
+}: ThemeToggleProps) {
   const [mode, setMode] = useState<ThemeMode>('auto');
   const mqlRef = useRef<MediaQueryList | null>(null);
   const pendingToggleRef = useRef<ThemeMode | null>(null);

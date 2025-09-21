@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const BRAVE_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search';
 
 export async function GET(req: NextRequest) {
-  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const apiKey = process.env.BRAVE_SEARCH_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'Missing BRAVE_SEARCH_API_KEY' }, { status: 400 });
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 
     if (!res.ok) {
       const text = await res.text();
-      const t1 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const dur = Math.max(0, t1 - t0);
       return new NextResponse(JSON.stringify({ error: 'brave_error', detail: text }), {
         status: res.status,
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
       url: r?.url,
       description: r?.description,
     }));
-    const t1 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const dur = Math.max(0, t1 - t0);
     return new NextResponse(JSON.stringify({ results }), {
       status: 200,

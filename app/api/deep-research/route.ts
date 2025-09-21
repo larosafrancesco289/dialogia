@@ -5,7 +5,8 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   const braveKey = process.env.BRAVE_SEARCH_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'Missing OPENROUTER_API_KEY' }, { status: 500 });
-  if (!braveKey) return NextResponse.json({ error: 'Missing BRAVE_SEARCH_API_KEY' }, { status: 500 });
+  if (!braveKey)
+    return NextResponse.json({ error: 'Missing BRAVE_SEARCH_API_KEY' }, { status: 500 });
 
   let body: any;
   try {
@@ -36,4 +37,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status });
   }
 }
-

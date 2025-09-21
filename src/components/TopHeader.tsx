@@ -210,7 +210,11 @@ export default function TopHeader() {
             >
               Compare models
             </button>
-            <ThemeToggle variant="menu" onToggle={() => setMobileMenuOpen(false)} className="text-sm" />
+            <ThemeToggle
+              variant="menu"
+              onToggle={() => setMobileMenuOpen(false)}
+              className="text-sm"
+            />
             <button
               className="menu-item w-full text-left text-sm"
               type="button"

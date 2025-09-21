@@ -57,18 +57,17 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
   const widthPx = 14 * 16; // Tailwind w-56 = 14rem (assuming 16px root)
   const margin = 8;
   const updateCoords = useMemo(
-    () =>
-      () => {
-        const root = rootRef.current;
-        if (!root) return;
-        const r = root.getBoundingClientRect();
-        const left = Math.min(
-          Math.max(8, Math.round(r.right - widthPx)),
-          Math.max(8, window.innerWidth - widthPx - 8),
-        );
-        const top = Math.max(8, Math.round(r.top - margin));
-        setCoords({ left, top });
-      },
+    () => () => {
+      const root = rootRef.current;
+      if (!root) return;
+      const r = root.getBoundingClientRect();
+      const left = Math.min(
+        Math.max(8, Math.round(r.right - widthPx)),
+        Math.max(8, window.innerWidth - widthPx - 8),
+      );
+      const top = Math.max(8, Math.round(r.top - margin));
+      setCoords({ left, top });
+    },
     [],
   );
   useEffect(() => {

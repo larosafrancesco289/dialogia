@@ -34,11 +34,7 @@ export function hmacCode(code: string, pepper: string): string {
 export type AuthClaims = { iat: number; exp: number; sub: string };
 
 function base64url(buf: Buffer) {
-  return buf
-    .toString('base64')
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
+  return buf.toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 export function createAuthToken(claims: AuthClaims): string {

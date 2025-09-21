@@ -5,11 +5,7 @@ import Composer from '@/components/Composer';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 // No model label here; keep imports lean
 
-export default function WelcomeHero({
-  keyboardMetrics,
-}: {
-  keyboardMetrics: KeyboardMetrics;
-}) {
+export default function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetrics }) {
   const newChat = useChatStore((s) => s.newChat);
   const send = useChatStore((s) => s.sendUserMessage);
   // We intentionally hide the model label on the hero
