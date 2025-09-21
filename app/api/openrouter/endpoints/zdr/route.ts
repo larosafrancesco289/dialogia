@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const OR_ZDR_URL = 'https://openrouter.ai/api/v1/endpoints/zdr';
 
 export async function GET(req: NextRequest) {
-  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   try {
     const res = await fetch(OR_ZDR_URL, {
       headers: {
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
       cache: 'no-store',
     });
     const body = await res.text();
-    const t1 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const dur = Math.max(0, t1 - t0);
     return new Response(body, {
       status: res.status,

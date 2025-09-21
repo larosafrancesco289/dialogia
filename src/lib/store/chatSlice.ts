@@ -110,10 +110,8 @@ export function createChatSlice(
           show_stats: get().ui.nextShowStats ?? false,
           search_with_brave: get().ui.nextSearchWithBrave ?? false,
           // If Brave is disabled via experimental toggle, force OpenRouter provider
-          search_provider: braveEnabled
-            ? get().ui.nextSearchProvider ?? 'brave'
-            : 'openrouter',
-          tutor_mode: tutorEnabledGlobally ? get().ui.nextTutorMode ?? false : false,
+          search_provider: braveEnabled ? (get().ui.nextSearchProvider ?? 'brave') : 'openrouter',
+          tutor_mode: tutorEnabledGlobally ? (get().ui.nextTutorMode ?? false) : false,
         },
       };
       await saveChat(chat);

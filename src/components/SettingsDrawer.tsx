@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState, useLayoutEffect, useRef, type ReactNode }
 import { createPortal } from 'react-dom';
 import ThemeToggle from '@/components/ThemeToggle';
 import IconButton from '@/components/IconButton';
-import { XCircleIcon, CheckIcon, PencilSquareIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import {
+  XCircleIcon,
+  CheckIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  PlusIcon,
+} from '@heroicons/react/24/outline';
 import {
   getSystemPresets,
   addSystemPreset,
@@ -21,7 +27,13 @@ import {
   formatModelLabel,
 } from '@/lib/models';
 import { describeModelPricing } from '@/lib/cost';
-import { EyeIcon, LightBulbIcon, MicrophoneIcon, PhotoIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import {
+  EyeIcon,
+  LightBulbIcon,
+  MicrophoneIcon,
+  PhotoIcon,
+  ShieldCheckIcon,
+} from '@heroicons/react/24/outline';
 
 // Define Section at module scope so it doesn't remount on every render.
 function Section(props: { title: string; children: ReactNode }) {
@@ -345,7 +357,9 @@ export default function SettingsDrawer() {
                           >
                             <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 w-full">
                               <div className="font-medium text-sm flex items-center gap-2 min-w-0">
-                                <span className="truncate" title={m.id}>{displayName}</span>
+                                <span className="truncate" title={m.id}>
+                                  {displayName}
+                                </span>
                                 <span className="flex items-center gap-1 text-muted-foreground shrink-0">
                                   {canReason && (
                                     <LightBulbIcon
@@ -952,10 +966,7 @@ export default function SettingsDrawer() {
                 <button className="btn btn-outline" onClick={onExport}>
                   Export as JSON
                 </button>
-                <button
-                  className="btn btn-outline"
-                  onClick={() => importInputRef.current?.click()}
-                >
+                <button className="btn btn-outline" onClick={() => importInputRef.current?.click()}>
                   Import from JSON
                 </button>
                 <input
@@ -977,14 +988,14 @@ export default function SettingsDrawer() {
 
         {/* Sticky footer */}
         <div
-          className="px-6 flex items-center border-t border-border sticky bottom-0 glass"
+          className="px-6 flex items-center justify-center border-t border-border sticky bottom-0 glass"
           style={{
             minHeight: 72,
             paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
           }}
         >
           <button
-            className="btn"
+            className="btn w-full max-w-sm"
             onClick={() => {
               if (chat) {
                 updateChatSettings({

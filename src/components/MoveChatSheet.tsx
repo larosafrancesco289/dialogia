@@ -32,7 +32,14 @@ function buildFolderOptions(folders: Folder[], parentId?: string, depth = 0): Fo
   return result;
 }
 
-export function MoveChatSheet({ open, chatTitle, currentFolderId, folders, onMove, onClose }: MoveChatSheetProps) {
+export function MoveChatSheet({
+  open,
+  chatTitle,
+  currentFolderId,
+  folders,
+  onMove,
+  onClose,
+}: MoveChatSheetProps) {
   const options = useMemo(() => buildFolderOptions(folders), [folders]);
 
   if (!open || typeof document === 'undefined') return null;
@@ -58,7 +65,9 @@ export function MoveChatSheet({ open, chatTitle, currentFolderId, folders, onMov
           <span>Unfiled</span>
         </button>
         {options.length === 0 ? (
-          <div className="text-xs text-muted-foreground px-1 py-2">Create a folder to organize chats.</div>
+          <div className="text-xs text-muted-foreground px-1 py-2">
+            Create a folder to organize chats.
+          </div>
         ) : (
           options.map((option) => (
             <button

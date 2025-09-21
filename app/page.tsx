@@ -60,7 +60,12 @@ export default function HomePage() {
       if ((e.pointerType as any) === 'mouse') return;
       // If starting on a swipeable chat row, don't hijack the gesture for drawer close
       const t = e.target as Element | null;
-      if (t && (t.closest('[data-row-press]') || t.closest('[data-chat-swipe]') || t.closest('[data-folder-swipe]'))) {
+      if (
+        t &&
+        (t.closest('[data-row-press]') ||
+          t.closest('[data-chat-swipe]') ||
+          t.closest('[data-folder-swipe]'))
+      ) {
         active = false;
         return;
       }
@@ -123,7 +128,9 @@ export default function HomePage() {
   return (
     <div className="app-shell" style={{ ['--sidebar-width' as any]: collapsed ? '0px' : '320px' }}>
       {/* Sidebar column (hidden via CSS on small screens) */}
-      <aside className={`sidebar ${collapsed ? '' : 'glass-panel border border-border rounded-2xl p-2'}`}>
+      <aside
+        className={`sidebar ${collapsed ? '' : 'glass-panel border border-border rounded-2xl p-2'}`}
+      >
         {!collapsed && <ChatSidebar />}
       </aside>
       <main className="content">

@@ -18,6 +18,11 @@ body,
 @media (max-width: 640px) {
   html,
   body {
+    overflow: auto;
+  }
+
+  html.keyboard-active,
+  html.keyboard-active body {
     overflow: hidden;
   }
 }
@@ -270,7 +275,8 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 
 .scroll-area {
   overflow: auto;
-  overscroll-behavior: auto;
+  /* Contain scroll so Safari doesn’t pan the page when the list hits edges */
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   /* Prevent browser scroll anchoring from fighting manual autoscroll */
   overflow-anchor: none;
@@ -300,11 +306,12 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 
   html.keyboard-active .message-list {
     padding-bottom: calc(
-      var(--space-4) + var(--composer-height, 0px) + var(--keyboard-offset, 0px)
+      var(--space-3) + max(0px, env(safe-area-inset-bottom)) +
+        max(0px, calc(var(--composer-height, 0px) - var(--keyboard-offset, 0px)))
     );
     scroll-padding-bottom: calc(
-      var(--space-2) + max(0px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) +
-        var(--keyboard-offset, 0px)
+      var(--space-2) + max(0px, env(safe-area-inset-bottom)) +
+        max(0px, calc(var(--composer-height, 0px) - var(--keyboard-offset, 0px)))
     );
   }
 }
@@ -347,6 +354,46 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 .settings-drawer .scroll-area,
 .settings-drawer [data-scrollable] {
   overscroll-behavior: contain;
+}
+
+.settings-card {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.settings-card > * + * {
+  margin-top: var(--space-4);
+}
+.settings-card .segmented {
+  margin-top: var(--space-2);
+}
+
+.settings-actions-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-footer {
+  position: sticky;
+  bottom: 0;
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-3) var(--space-6);
+  padding-bottom: calc(var(--space-3) + max(12px, env(safe-area-inset-bottom)));
+  min-height: 72px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.settings-save-button {
+  min-width: 240px;
+  height: calc(var(--control-lg) + 6px);
+  font-size: 1.08rem;
+  padding: 0 var(--space-6);
 }
 
 /* Reusable glass effect */
@@ -393,6 +440,13 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   .app-header .btn.btn-outline {
     height: var(--control-sm);
     padding: 0 var(--space-3);
+  }
+  .settings-footer {
+    padding: var(--space-2) var(--space-4);
+    padding-bottom: calc(var(--space-2) + max(12px, env(safe-area-inset-bottom)));
+  }
+  .settings-save-button {
+    width: 100%;
   }
 }
 
@@ -1050,36 +1104,58 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   bottom: calc(var(--space-3) + max(0px, env(safe-area-inset-bottom)));
   margin: 0 var(--space-4);
   padding: var(--space-3);
-  background: var(--glass-panel-bg);
-  -webkit-backdrop-filter: var(--glass-saturate) blur(16px);
-  backdrop-filter: var(--glass-saturate) blur(16px);
-  border: 1px solid var(--color-border);
+  background:
+    radial-gradient(120% 140% at 0% 100%, rgba(120, 100, 255, 0.08), transparent 70%),
+    radial-gradient(150% 150% at 100% -10%, rgba(80, 140, 255, 0.05), transparent 65%),
+    color-mix(in oklab, var(--glass-panel-bg) 92%, rgba(18, 14, 32, 0.24));
+  -webkit-backdrop-filter: var(--glass-saturate) blur(22px);
+  backdrop-filter: var(--glass-saturate) blur(22px);
+  border: 1px solid color-mix(in oklab, var(--color-border) 70%, rgba(160, 140, 255, 0.25));
   border-radius: 18px;
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 18px 36px rgba(24, 18, 60, 0.22);
+  overflow: hidden;
+  isolation: isolate;
   z-index: 60; /* keep above drawer content lists by default */
   padding-bottom: calc(var(--space-3) + max(0px, env(safe-area-inset-bottom)));
   transform: translateY(calc(-1 * var(--keyboard-offset, 0px)));
-  will-change: transform;
+  transition: transform 160ms ease;
 }
 @media (max-width: 640px) {
   .composer-chrome {
     margin: 0 var(--space-1);
+    bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)));
     padding: var(--space-2);
     padding-bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)));
     border-radius: 14px;
+    box-shadow: 0 16px 32px rgba(24, 18, 60, 0.24);
+  }
+
+  .composer-chrome.is-mobile-pinned {
+    position: fixed;
+    left: var(--space-1);
+    right: var(--space-1);
+    bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)));
+    /* Keep the same transform logic that lifts it above the keyboard */
+    transform: translateY(calc(-1 * var(--keyboard-offset, 0px)));
+    z-index: 90;
   }
 
   html.keyboard-active .composer-chrome {
-    position: sticky;
-    bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px));
     margin: 0 var(--space-1);
-    transform: none;
-    z-index: 70;
+    transform: translateY(calc(-1 * var(--keyboard-offset, 0px)));
+    z-index: 80;
+  }
+
+  .composer-placeholder {
+    margin: 0 var(--space-1);
+    pointer-events: none;
   }
 
   html.keyboard-active .composer-hero {
     position: sticky;
-    bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px));
+    bottom: calc(
+      var(--space-2) + max(0px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px)
+    );
     margin: 0 var(--space-1);
     z-index: 70;
   }
@@ -1171,7 +1247,9 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   box-shadow: var(--shadow-card);
   overflow: hidden;
   backdrop-filter: var(--glass-saturate) blur(18px);
-  transition: border-color 200ms var(--ease-standard), box-shadow 200ms var(--ease-standard);
+  transition:
+    border-color 200ms var(--ease-standard),
+    box-shadow 200ms var(--ease-standard);
 }
 .thinking-panel::before {
   content: '';
@@ -1294,7 +1372,12 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent 10%, rgba(255, 255, 255, 0.4) 55%, transparent 100%);
+  background: linear-gradient(
+    90deg,
+    transparent 10%,
+    rgba(255, 255, 255, 0.4) 55%,
+    transparent 100%
+  );
   transform: translateX(-95%);
   animation: reasoning-preview-sheen 2.8s ease-in-out infinite;
   mix-blend-mode: screen;
@@ -1540,7 +1623,12 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   color: color-mix(in oklab, rgba(148, 197, 255, 0.7), rgba(226, 232, 240, 0.82));
 }
 .dark .reasoning-preview.is-live::after {
-  background: linear-gradient(90deg, transparent 10%, rgba(148, 197, 255, 0.32) 55%, transparent 100%);
+  background: linear-gradient(
+    90deg,
+    transparent 10%,
+    rgba(148, 197, 255, 0.32) 55%,
+    transparent 100%
+  );
 }
 .dark .reasoning-status {
   color: color-mix(in oklab, rgba(226, 232, 240, 0.82) 65%, transparent);
@@ -1552,7 +1640,6 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 .dark .reasoning-status.is-live {
   color: color-mix(in oklab, rgba(148, 197, 255, 0.88) 70%, rgba(226, 232, 240, 0.82) 30%);
 }
-
 
 /* Tutor UI: answer micro pop animation */
 .answer-pop {

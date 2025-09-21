@@ -48,7 +48,11 @@ export function useKeyboardInsets(): KeyboardMetrics {
       const roundedTop = Math.max(0, Math.round(next.viewportTop));
 
       setMetrics((prev) => {
-        if (prev.offset === roundedOffset && prev.viewportHeight === roundedHeight && prev.viewportTop === roundedTop) {
+        if (
+          prev.offset === roundedOffset &&
+          prev.viewportHeight === roundedHeight &&
+          prev.viewportTop === roundedTop
+        ) {
           return prev;
         }
         return {

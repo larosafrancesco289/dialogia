@@ -42,14 +42,14 @@ async function verifyToken(token: string): Promise<boolean> {
       new TextEncoder().encode(secret),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
-      ['verify']
+      ['verify'],
     );
     // Cast to BufferSource to satisfy TS dom lib generics across versions
     const ok = await crypto.subtle.verify(
       'HMAC',
       key,
       sigBytes as unknown as BufferSource,
-      payloadBytes as unknown as BufferSource
+      payloadBytes as unknown as BufferSource,
     );
     if (!ok) return false;
     const claims = JSON.parse(new TextDecoder().decode(payloadBytes));

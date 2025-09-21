@@ -13,8 +13,7 @@ export async function POST(req: NextRequest) {
   try {
     const { code } = (await req.json()) as { code?: string };
     const plain = String(code || '').trim();
-    if (!plain)
-      return NextResponse.json({ ok: false, error: 'missing_code' }, { status: 400 });
+    if (!plain) return NextResponse.json({ ok: false, error: 'missing_code' }, { status: 400 });
 
     const pepper = getAccessCodePepper();
     const hashes = getAccessCodeHashes();

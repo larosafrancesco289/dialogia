@@ -284,7 +284,8 @@ export async function streamChatCompletion(params: {
   // Tools (optional). Always include when provided so the router can validate schemas.
   if (Array.isArray(params.tools) && params.tools.length > 0) body.tools = params.tools;
   if (params.tool_choice) body.tool_choice = params.tool_choice as any;
-  if (typeof params.parallel_tool_calls === 'boolean') body.parallel_tool_calls = params.parallel_tool_calls;
+  if (typeof params.parallel_tool_calls === 'boolean')
+    body.parallel_tool_calls = params.parallel_tool_calls;
   if (providerSort === 'price' || providerSort === 'throughput') {
     body.provider = { ...(body.provider || {}), sort: providerSort };
   }

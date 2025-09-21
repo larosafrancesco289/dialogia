@@ -1,12 +1,14 @@
 import type { ORModel } from '@/lib/types';
 
 export function stripProviderPrefix(label?: string): string {
-  return String(label ?? '').replace(/^[^:]+:\s*/, '').trim();
+  return String(label ?? '')
+    .replace(/^[^:]+:\s*/, '')
+    .trim();
 }
 
 function deriveNameFromId(id?: string): string {
   if (!id) return '';
-  const segment = id.includes('/') ? id.split('/').pop() ?? id : id;
+  const segment = id.includes('/') ? (id.split('/').pop() ?? id) : id;
   const normalized = segment.replace(/[-_]+/g, ' ').trim();
   return normalized || segment;
 }
@@ -24,7 +26,8 @@ export function formatModelLabel(params: {
   const rawInfo = model && model.raw ? (model.raw as any).info : undefined;
   const infoDisplay =
     rawInfo && typeof rawInfo.display === 'string' ? (rawInfo.display as string) : undefined;
-  const infoName = rawInfo && typeof rawInfo.name === 'string' ? (rawInfo.name as string) : undefined;
+  const infoName =
+    rawInfo && typeof rawInfo.name === 'string' ? (rawInfo.name as string) : undefined;
   const candidates = [model?.name, rawName, infoDisplay, infoName, fallbackName];
   for (const candidate of candidates) {
     if (typeof candidate !== 'string') continue;
