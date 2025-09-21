@@ -4,6 +4,8 @@ import { shallow } from 'zustand/shallow';
 import MessageList from '@/components/MessageList';
 import WelcomeHero from '@/components/WelcomeHero';
 import Composer from '@/components/Composer';
+import { useKeyboardInsets } from '@/lib/hooks/useKeyboardInsets';
+import type { CSSProperties } from 'react';
 
 export default function ChatPane() {
   const { chats, selectedChatId } = useChatStore(
@@ -11,10 +13,14 @@ export default function ChatPane() {
     shallow,
   );
   const chat = chats.find((c) => c.id === selectedChatId);
+  const keyboardOffset = useKeyboardInsets();
+  const keyboardVars = {
+    '--keyboard-offset': `${Math.max(0, Math.round(keyboardOffset))}px`,
+  } as CSSProperties;
   if (!chat) return <WelcomeHero />;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col" style={keyboardVars}>
       <div className="flex-1 min-h-0">
         <MessageList chatId={chat.id} />
       </div>

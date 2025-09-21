@@ -42,6 +42,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const suppressTap = useRef(false);
   useEffect(() => {
     const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
     update();
@@ -66,9 +67,11 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
     startX.current = e.clientX;
     startY.current = e.clientY;
     longFired.current = false;
+    suppressTap.current = false;
     clearLong();
     longTid.current = window.setTimeout(() => {
       longFired.current = true;
+      suppressTap.current = true;
       setShowActions(true);
     }, 500);
   };
@@ -77,16 +80,18 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
     const dxNow = e.clientX - startX.current;
     const dyNow = e.clientY - startY.current;
     if (Math.abs(dxNow) > slop || Math.abs(dyNow) > slop) {
+      suppressTap.current = true;
       clearLong();
     }
   };
   const onPointerUp = (e: ReactPointerEvent) => {
     if (!isMobile || isEditing) return;
     const moved = Math.abs(e.clientX - startX.current) > slop || Math.abs(e.clientY - startY.current) > slop;
-    if (!longFired.current && !moved) handleToggleExpanded();
+    if (longFired.current || moved) suppressTap.current = true;
     clearLong();
   };
   const onPointerCancel = () => {
+    suppressTap.current = true;
     clearLong();
   };
 
@@ -123,6 +128,15 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
           onDragStart={() => {
             setCurrentDragData({ id: folder.id, type: 'folder' });
           }}
+        onClick={(e) => {
+          if (isEditing) return;
+          if (isMobile && suppressTap.current) {
+            suppressTap.current = false;
+            return;
+          }
+          suppressTap.current = false;
+          handleToggleExpanded();
+        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -166,7 +180,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
         {isEditing ? (
           <div className="flex items-center gap-2 flex-1">
             <input
-              className="input flex-1 text-sm"
+              className="input flex-1 text-base sm:text-sm"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={(e) => {
@@ -181,7 +195,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
             />
           </div>
         ) : (
-          <div className="flex-1 text-sm truncate font-semibold" onClick={handleToggleExpanded}>
+          <div className="flex-1 text-sm truncate font-semibold">
             {folder.name}
           </div>
         )}
@@ -403,7 +417,7 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
         {isEditing ? (
           <div className="flex items-center gap-2 flex-1">
             <input
-              className="input flex-1 text-sm"
+              className="input flex-1 text-base sm:text-sm"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               onKeyDown={(e) => {
