@@ -154,7 +154,7 @@ export default function ChatSidebar() {
         <div className="sidebar-section pb-3">
           <div className="flex gap-2">
             <input
-              className="input flex-1 text-sm"
+              className="input flex-1 text-base sm:text-sm"
               placeholder="Folder name"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
@@ -188,7 +188,7 @@ export default function ChatSidebar() {
       {!collapsed && (
         <div className="sidebar-section pb-2">
           <input
-            className="input w-full text-sm"
+            className="input w-full text-base sm:text-sm"
             placeholder="Search chats"
             value={query}
             onChange={(e) => setQuery(e.target.value)}

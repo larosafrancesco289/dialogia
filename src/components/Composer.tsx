@@ -439,9 +439,38 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
   }, [mobileMenuOpen]);
 
   const wrapperClass = variant === 'hero' ? 'composer-hero' : 'composer-chrome';
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (variant === 'hero') {
+      document.documentElement.style.setProperty('--composer-height', '0px');
+      return;
+    }
+    if (typeof ResizeObserver === 'undefined') return;
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const applyHeight = () => {
+      const h = el.offsetHeight;
+      document.documentElement.style.setProperty('--composer-height', `${Math.round(h)}px`);
+    };
+    applyHeight();
+    const ro = new ResizeObserver(applyHeight);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      document.documentElement.style.setProperty('--composer-height', '0px');
+    };
+  }, [variant]);
 
   return (
-    <div className={wrapperClass} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
+    <div
+      ref={wrapperRef}
+      className={wrapperClass}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={onDrop}
+    >
       {attachments.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
           {attachments.map((a) => (
