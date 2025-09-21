@@ -1662,22 +1662,109 @@ export function createMessageSlice(
         {
           const modelMeta = findModelById(get().models, replacement.model!);
           const supportsReasoning = isReasoningSupported(modelMeta);
-          const tempUsed =
-            typeof genSnapshot.temperature === 'number'
-              ? genSnapshot.temperature
-              : chat.settings.temperature;
-          const topPUsed =
-            typeof genSnapshot.top_p === 'number' ? genSnapshot.top_p : chat.settings.top_p;
-          const maxTokUsed =
-            typeof genSnapshot.max_tokens === 'number'
-              ? genSnapshot.max_tokens
-              : chat.settings.max_tokens;
-          const rEffortUsed = supportsReasoning
-            ? (genSnapshot.reasoning_effort ?? chat.settings.reasoning_effort)
-            : undefined;
-          const rTokUsed = supportsReasoning
-            ? (genSnapshot.reasoning_tokens ?? chat.settings.reasoning_tokens)
-            : undefined;
+          const previousModelId =
+            typeof (original as any)?.model === 'string' ? (original as any).model : undefined;
+          const modelChanged =
+            typeof replacement.model === 'string' && replacement.model !== previousModelId;
+          const pickNumber = (snapshotVal: unknown, chatVal: unknown) => {
+            if (modelChanged) {
+              if (typeof chatVal === 'number') return chatVal;
+              if (typeof snapshotVal === 'number') return snapshotVal;
+            } else {
+              if (typeof snapshotVal === 'number') return snapshotVal;
+              if (typeof chatVal === 'number') return chatVal;
+            }
+            return undefined;
+          };
+          const pickReasoningEffort = (
+            snapshotVal: unknown,
+            chatVal: unknown,
+          ): 'none' | 'low' | 'medium' | 'high' | undefined => {
+            if (!supportsReasoning) return undefined;
+            if (modelChanged) {
+              if (typeof chatVal === 'string') return chatVal as any;
+              if (typeof snapshotVal === 'string') return snapshotVal as any;
+            } else {
+              if (typeof snapshotVal === 'string') return snapshotVal as any;
+              if (typeof chatVal === 'string') return chatVal as any;
+            }
+            return undefined;
+          };
+          const pickReasoningTokens = (snapshotVal: unknown, chatVal: unknown) => {
+            if (!supportsReasoning) return undefined;
+            if (modelChanged) {
+              if (typeof chatVal === 'number') return chatVal;
+              if (typeof snapshotVal === 'number') return snapshotVal;
+            } else {
+              if (typeof snapshotVal === 'number') return snapshotVal;
+              if (typeof chatVal === 'number') return chatVal;
+            }
+            return undefined;
+          };
+          const pickBoolean = (snapshotVal: unknown, chatVal: unknown, fallback = false) => {
+            if (modelChanged) {
+              if (typeof chatVal === 'boolean') return chatVal;
+              if (typeof snapshotVal === 'boolean') return snapshotVal;
+            } else {
+              if (typeof snapshotVal === 'boolean') return snapshotVal;
+              if (typeof chatVal === 'boolean') return chatVal;
+            }
+            return fallback;
+          };
+          const pickProvider = (
+            snapshotVal: unknown,
+            chatVal: unknown,
+          ): 'brave' | 'openrouter' | undefined => {
+            if (modelChanged) {
+              if (typeof chatVal === 'string') return chatVal as any;
+              if (typeof snapshotVal === 'string') return snapshotVal as any;
+            } else {
+              if (typeof snapshotVal === 'string') return snapshotVal as any;
+              if (typeof chatVal === 'string') return chatVal as any;
+            }
+            return undefined;
+          };
+          const tempUsed = pickNumber(genSnapshot.temperature, chat.settings.temperature);
+          const topPUsed = pickNumber(genSnapshot.top_p, chat.settings.top_p);
+          const maxTokUsed = pickNumber(genSnapshot.max_tokens, chat.settings.max_tokens);
+          const rEffortUsed = pickReasoningEffort(
+            genSnapshot.reasoning_effort,
+            chat.settings.reasoning_effort,
+          );
+          const rTokUsed = pickReasoningTokens(
+            genSnapshot.reasoning_tokens,
+            chat.settings.reasoning_tokens,
+          );
+          const searchWithBrave = pickBoolean(
+            genSnapshot?.search_with_brave,
+            (chat.settings as any)?.search_with_brave,
+            false,
+          );
+          const providerForTurn = pickProvider(
+            genSnapshot?.search_provider,
+            (chat.settings as any)?.search_provider,
+          );
+          const tutorModeForTurn = pickBoolean(genSnapshot?.tutor_mode, chat.settings.tutor_mode, false);
+          const appliedGenSettings: Record<string, any> = {};
+          if (typeof tempUsed === 'number') appliedGenSettings.temperature = tempUsed;
+          if (typeof topPUsed === 'number') appliedGenSettings.top_p = topPUsed;
+          if (typeof maxTokUsed === 'number') appliedGenSettings.max_tokens = maxTokUsed;
+          if (supportsReasoning && typeof rEffortUsed === 'string')
+            appliedGenSettings.reasoning_effort = rEffortUsed;
+          if (supportsReasoning && typeof rTokUsed === 'number')
+            appliedGenSettings.reasoning_tokens = rTokUsed;
+          appliedGenSettings.search_with_brave = !!searchWithBrave;
+          if (providerForTurn) appliedGenSettings.search_provider = providerForTurn;
+          appliedGenSettings.tutor_mode = !!tutorModeForTurn;
+          if (genSnapshot?.providerSort === 'price' || genSnapshot?.providerSort === 'throughput')
+            appliedGenSettings.providerSort = genSnapshot.providerSort;
+          set((s) => {
+            const list2 = s.messages[chatId] ?? [];
+            const updated = list2.map((m) =>
+              m.id === replacement.id ? ({ ...m, genSettings: appliedGenSettings } as any) : m,
+            );
+            return { messages: { ...s.messages, [chatId]: updated } } as any;
+          });
           // Store debug payload for regenerate streaming call (using snapshot where available)
           try {
             const debugBody: any = {
@@ -1688,13 +1775,7 @@ export function createMessageSlice(
             };
             if (hadPdfEarlier)
               debugBody.plugins = [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }];
-            const searchWasEnabledThisTurn =
-              typeof genSnapshot?.search_with_brave === 'boolean'
-                ? !!genSnapshot.search_with_brave
-                : !!(chat.settings as any)?.search_with_brave;
-            const providerForTurn = (genSnapshot?.search_provider ||
-              (chat.settings as any)?.search_provider) as 'brave' | 'openrouter' | undefined;
-            if (searchWasEnabledThisTurn && providerForTurn === 'openrouter') {
+            if (searchWithBrave && providerForTurn === 'openrouter') {
               debugBody.plugins = [...(debugBody.plugins || []), { id: 'web' }];
             }
             if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
@@ -1745,13 +1826,7 @@ export function createMessageSlice(
             plugins: (() => {
               const arr: any[] = [];
               if (hadPdfEarlier) arr.push({ id: 'file-parser', pdf: { engine: 'pdf-text' } });
-              const searchWasEnabledThisTurn =
-                typeof genSnapshot?.search_with_brave === 'boolean'
-                  ? !!genSnapshot.search_with_brave
-                  : !!(chat.settings as any)?.search_with_brave;
-              const prov = (genSnapshot?.search_provider ||
-                (chat.settings as any)?.search_provider) as 'brave' | 'openrouter' | undefined;
-              if (searchWasEnabledThisTurn && prov === 'openrouter') arr.push({ id: 'web' });
+              if (searchWithBrave && providerForTurn === 'openrouter') arr.push({ id: 'web' });
               return arr.length > 0 ? arr : undefined;
             })(),
             callbacks: {
@@ -1840,6 +1915,7 @@ export function createMessageSlice(
                   reasoning: current?.reasoning,
                   attachments: current?.attachments,
                   annotations: (current as any)?.annotations || extras?.annotations,
+                  genSettings: appliedGenSettings,
                   metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
                   tokensIn: promptTokens,
                   tokensOut: completionTokens,

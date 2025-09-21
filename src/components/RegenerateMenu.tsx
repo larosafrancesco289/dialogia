@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import { CURATED_MODELS } from '@/data/curatedModels';
@@ -53,31 +53,74 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
   }, [open]);
 
   // Fixed-position portal coordinates to avoid stacking-context issues
-  const [coords, setCoords] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const [coords, setCoords] = useState<{ left: number; top: number; placement: 'up' | 'down' }>(
+    { left: 0, top: 0, placement: 'down' },
+  );
   const widthPx = 14 * 16; // Tailwind w-56 = 14rem (assuming 16px root)
   const margin = 8;
-  const updateCoords = useMemo(
-    () => () => {
-      const root = rootRef.current;
-      if (!root) return;
-      const r = root.getBoundingClientRect();
-      const left = Math.min(
-        Math.max(8, Math.round(r.right - widthPx)),
-        Math.max(8, window.innerWidth - widthPx - 8),
-      );
-      const top = Math.max(8, Math.round(r.top - margin));
-      setCoords({ left, top });
-    },
-    [],
-  );
+  const updateCoords = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const rect = root.getBoundingClientRect();
+    const measuredHeight = menuRef.current?.offsetHeight ?? 0;
+    const estimatedHeight = measuredHeight || 224; // fallback height before first measurement
+    const left = Math.min(
+      Math.max(margin, Math.round(rect.right - widthPx)),
+      Math.max(margin, window.innerWidth - widthPx - margin),
+    );
+    const spaceAbove = rect.top - margin;
+    const spaceBelow = window.innerHeight - rect.bottom - margin;
+    const downCandidateTop = Math.round(rect.bottom + margin);
+    const downMaxTop = window.innerHeight - margin - estimatedHeight;
+    const downOverflow = downCandidateTop + estimatedHeight > window.innerHeight - margin;
+    const upCandidateTop = Math.round(rect.top - margin - estimatedHeight);
+    const upOverflow = upCandidateTop < margin;
+    let placement: 'up' | 'down';
+    if (downOverflow && !upOverflow) placement = 'up';
+    else if (upOverflow && !downOverflow) placement = 'down';
+    else placement = spaceBelow >= spaceAbove ? 'down' : 'up';
+    let top = placement === 'down' ? downCandidateTop : upCandidateTop;
+    if (placement === 'down') {
+      top = Math.min(Math.max(margin, top), downMaxTop);
+      if (top < margin && !upOverflow) {
+        placement = 'up';
+        top = Math.max(margin, Math.round(rect.top - margin - estimatedHeight));
+      }
+    }
+    if (placement === 'up') {
+      const upTop = Math.max(margin, Math.round(rect.top - margin - estimatedHeight));
+      if (upTop + estimatedHeight > rect.top - margin && !downOverflow) {
+        placement = 'down';
+        top = Math.min(Math.max(margin, downCandidateTop), downMaxTop);
+      } else {
+        top = upTop;
+      }
+    }
+    // After the menu has measured, re-clamp using the actual height to keep within viewport
+    if (measuredHeight) {
+      if (placement === 'down') {
+        const maxTop = window.innerHeight - margin - measuredHeight;
+        top = Math.min(Math.max(margin, downCandidateTop), maxTop);
+      } else {
+        top = Math.max(margin, Math.round(rect.top - margin - measuredHeight));
+      }
+    }
+    const clampHeight = measuredHeight || estimatedHeight;
+    const maxTopFinal = window.innerHeight - margin - clampHeight;
+    top = Math.min(top, maxTopFinal);
+    top = Math.max(margin, top);
+    setCoords({ left, top, placement });
+  }, []);
   useEffect(() => {
     if (!open) return;
     updateCoords();
+    const raf = requestAnimationFrame(() => updateCoords());
     const onScroll = () => updateCoords();
     const onResize = () => updateCoords();
     window.addEventListener('scroll', onScroll, { passive: true } as any);
     window.addEventListener('resize', onResize, { passive: true } as any);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener('scroll', onScroll as any);
       window.removeEventListener('resize', onResize as any);
     };
@@ -106,8 +149,8 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
               zIndex: 80,
               left: coords.left,
               top: coords.top,
-              transform: 'translateY(-100%)', // position above trigger (bottom-full)
             }}
+            data-placement={coords.placement}
             role="menu"
             aria-label="Regenerate options"
             ref={menuRef}
