@@ -435,6 +435,12 @@ a:hover {
 @media (max-width: 640px) {
   .input {
     height: var(--control-lg);
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  .textarea {
+    font-size: 16px;
+    line-height: 1.4;
   }
 }
 
