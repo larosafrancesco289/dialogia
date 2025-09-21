@@ -1,5 +1,43 @@
 import type { ORModel } from '@/lib/types';
 
+export function stripProviderPrefix(label?: string): string {
+  return String(label ?? '').replace(/^[^:]+:\s*/, '').trim();
+}
+
+function deriveNameFromId(id?: string): string {
+  if (!id) return '';
+  const segment = id.includes('/') ? id.split('/').pop() ?? id : id;
+  const normalized = segment.replace(/[-_]+/g, ' ').trim();
+  return normalized || segment;
+}
+
+export function formatModelLabel(params: {
+  model?: ORModel | null;
+  fallbackId?: string;
+  fallbackName?: string;
+}): string {
+  const { model, fallbackId, fallbackName } = params;
+  const rawName =
+    model && model.raw && typeof (model.raw as any).name === 'string'
+      ? ((model.raw as any).name as string)
+      : undefined;
+  const rawInfo = model && model.raw ? (model.raw as any).info : undefined;
+  const infoDisplay =
+    rawInfo && typeof rawInfo.display === 'string' ? (rawInfo.display as string) : undefined;
+  const infoName = rawInfo && typeof rawInfo.name === 'string' ? (rawInfo.name as string) : undefined;
+  const candidates = [model?.name, rawName, infoDisplay, infoName, fallbackName];
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue;
+    const trimmed = candidate.trim();
+    if (!trimmed) continue;
+    if (trimmed.toLowerCase() === 'free') continue;
+    return stripProviderPrefix(trimmed);
+  }
+  const idSource = fallbackId || model?.id;
+  const derived = deriveNameFromId(idSource);
+  return derived || 'Pick model';
+}
+
 export function getSupportedParameters(model?: ORModel | null): string[] {
   const raw = (model as any)?.raw || {};
   const params: unknown = raw?.supported_parameters;
