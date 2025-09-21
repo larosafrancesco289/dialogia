@@ -80,11 +80,14 @@ export default function MessageList({ chatId }: { chatId: string }) {
       const distanceFromBottom = Math.max(el.scrollHeight - el.scrollTop - el.clientHeight, 0);
       const threshold = 100; // px
       const nearBottom = distanceFromBottom <= threshold;
-      setAtBottom(nearBottom);
+      setAtBottom((prev) => (prev === nearBottom ? prev : nearBottom));
       // Show the jump button whenever the user is away from the bottom
-      setShowJump(!nearBottom);
+      const shouldShowJump = !nearBottom;
+      setShowJump((prev) => (prev === shouldShowJump ? prev : shouldShowJump));
       // Clear active message highlight on mobile when scrolling
-      if (isMobile && activeMessageId) setActiveMessageId(null);
+      if (isMobile) {
+        setActiveMessageId((current) => (current ? null : current));
+      }
     };
     // Initialize state in case content already overflows
     onScroll();
@@ -92,7 +95,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
     return () => {
       el.removeEventListener('scroll', onScroll as any);
     };
-  }, [isMobile, activeMessageId]);
+  }, [isMobile]);
 
   const scrollToBottom = (behavior: ScrollBehavior) => {
     const el = containerRef.current;
@@ -274,134 +277,139 @@ export default function MessageList({ chatId }: { chatId: string }) {
       className="scroll-area message-list space-y-2 h-full"
       style={{ background: 'var(--color-canvas)' }}
     >
-      {messages.map((m) => (
-        <div
-          key={m.id}
-          className={`card p-0 message-card group ${
-            m.role === 'assistant' ? 'message-assistant' : 'message-user'
-          } ${isMobile && activeMessageId === m.id ? 'is-active' : ''}`}
-          data-mid={m.id}
-          aria-label={m.role === 'assistant' ? 'Assistant message' : 'Your message'}
-          onPointerDown={(e) => {
-            if (!isMobile) return;
-            if ((e as any).pointerType === 'mouse') return;
-            const target = e.target as HTMLElement | null;
-            if (
-              target &&
-              target.closest('button, .icon-button, a, input, textarea, [role="button"], .badge')
-            )
-              return; // interactive elements use their own handlers
-            // Long-press detection
-            const startX = e.clientX;
-            const startY = e.clientY;
-            let moved = false;
-            const slop = 12;
-            let fired = false;
-            const tid = window.setTimeout(() => {
-              fired = true;
-              setActiveMessageId(m.id);
-              setMobileSheet({ id: m.id, role: m.role as any });
-            }, 320);
-            const onMove = (ev: PointerEvent) => {
-              const dx = Math.abs(ev.clientX - startX);
-              const dy = Math.abs(ev.clientY - startY);
-              if (dx > slop || dy > slop) {
-                moved = true;
+      {messages.map((m) => {
+        const isEditingThisMessage = editingId === m.id;
+        const showInlineActions = !isMobile || isEditingThisMessage;
+        return (
+          <div
+            key={m.id}
+            className={`card p-0 message-card group ${
+              m.role === 'assistant' ? 'message-assistant' : 'message-user'
+            } ${isMobile && activeMessageId === m.id ? 'is-active' : ''}`}
+            data-mid={m.id}
+            aria-label={m.role === 'assistant' ? 'Assistant message' : 'Your message'}
+            onPointerDown={(e) => {
+              if (!isMobile) return;
+              if ((e as any).pointerType === 'mouse') return;
+              const target = e.target as HTMLElement | null;
+              if (
+                target &&
+                target.closest('button, .icon-button, a, input, textarea, [role="button"], .badge')
+              )
+                return; // interactive elements use their own handlers
+              // Long-press detection
+              const startX = e.clientX;
+              const startY = e.clientY;
+              let moved = false;
+              const slop = 12;
+              let fired = false;
+              const tid = window.setTimeout(() => {
+                fired = true;
+                setActiveMessageId(m.id);
+                setMobileSheet({ id: m.id, role: m.role as any });
+              }, 320);
+              const onMove = (ev: PointerEvent) => {
+                const dx = Math.abs(ev.clientX - startX);
+                const dy = Math.abs(ev.clientY - startY);
+                if (dx > slop || dy > slop) {
+                  moved = true;
+                  window.clearTimeout(tid);
+                  cleanup();
+                }
+              };
+              const onUp = () => {
                 window.clearTimeout(tid);
                 cleanup();
-              }
-            };
-            const onUp = () => {
-              window.clearTimeout(tid);
-              cleanup();
-              // If it wasn't a long press, do nothing (avoid finnicky toggles)
-            };
-            const onCancel = () => {
-              window.clearTimeout(tid);
-              cleanup();
-            };
-            const cleanup = () => {
-              window.removeEventListener('pointermove', onMove as any);
-              window.removeEventListener('pointerup', onUp as any);
-              window.removeEventListener('pointercancel', onCancel as any);
-            };
-            window.addEventListener('pointermove', onMove as any, { passive: true } as any);
-            window.addEventListener('pointerup', onUp as any);
-            window.addEventListener('pointercancel', onCancel as any);
-          }}
-          onContextMenu={(e) => {
-            // Fallback: if a context menu is about to open on iOS, hijack it for our sheet
-            if (!isMobile) return;
-            e.preventDefault();
-            setActiveMessageId(m.id);
-            setMobileSheet({ id: m.id, role: m.role as any });
-          }}
+                // If it wasn't a long press, do nothing (avoid finnicky toggles)
+              };
+              const onCancel = () => {
+                window.clearTimeout(tid);
+                cleanup();
+              };
+              const cleanup = () => {
+                window.removeEventListener('pointermove', onMove as any);
+                window.removeEventListener('pointerup', onUp as any);
+                window.removeEventListener('pointercancel', onCancel as any);
+              };
+              window.addEventListener('pointermove', onMove as any, { passive: true } as any);
+              window.addEventListener('pointerup', onUp as any);
+              window.addEventListener('pointercancel', onCancel as any);
+            }}
+            onContextMenu={(e) => {
+              // Fallback: if a context menu is about to open on iOS, hijack it for our sheet
+              if (!isMobile) return;
+              e.preventDefault();
+              setActiveMessageId(m.id);
+              setMobileSheet({ id: m.id, role: m.role as any });
+            }}
         >
           {m.role === 'assistant' ? (
             <div className="relative">
-              <div
-                className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
-                style={{ opacity: isMobile && editingId === m.id ? 1 : undefined }}
-              >
-                {editingId === m.id ? (
-                  <div className="flex items-center gap-1">
-                    <button
-                      className="icon-button"
-                      aria-label="Save edit"
-                      title="Save edit"
-                      onClick={() => saveEdit(m.id)}
-                    >
-                      <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                    </button>
-                    <button
-                      className="icon-button"
-                      aria-label="Cancel edit"
-                      title="Cancel edit"
-                      onClick={() => {
-                        setEditingId(null);
-                        setDraft('');
-                      }}
-                    >
-                      <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <button
-                      className="icon-button"
-                      aria-label="Copy message"
-                      title={copiedId === m.id ? 'Copied' : 'Copy message'}
-                      onClick={() => copyMessage(m.id)}
-                    >
-                      {copiedId === m.id ? (
-                        <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      ) : (
-                        <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      )}
-                    </button>
-                    {!isStreaming && (
+              {showInlineActions && (
+                <div
+                  className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
+                  style={isMobile ? { opacity: 1 } : undefined}
+                >
+                  {isEditingThisMessage ? (
+                    <div className="flex items-center gap-1">
                       <button
                         className="icon-button"
-                        aria-label="Edit message"
-                        title="Edit message"
-                        onClick={() => startEditingMessage(m.id)}
+                        aria-label="Save edit"
+                        title="Save edit"
+                        onClick={() => saveEdit(m.id)}
                       >
-                        <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                        <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                       </button>
-                    )}
-                    <button
-                      className="icon-button"
-                      title="Create a new chat starting from this reply"
-                      aria-label="Branch chat from here"
-                      disabled={isStreaming}
-                      onClick={() => branchFromMessage(m.id)}
-                    >
-                      <ArrowUturnRightIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                    </button>
-                    <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
-                  </div>
-                )}
-              </div>
+                      <button
+                        className="icon-button"
+                        aria-label="Cancel edit"
+                        title="Cancel edit"
+                        onClick={() => {
+                          setEditingId(null);
+                          setDraft('');
+                        }}
+                      >
+                        <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="icon-button"
+                        aria-label="Copy message"
+                        title={copiedId === m.id ? 'Copied' : 'Copy message'}
+                        onClick={() => copyMessage(m.id)}
+                      >
+                        {copiedId === m.id ? (
+                          <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                        ) : (
+                          <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                        )}
+                      </button>
+                      {!isStreaming && (
+                        <button
+                          className="icon-button"
+                          aria-label="Edit message"
+                          title="Edit message"
+                          onClick={() => startEditingMessage(m.id)}
+                        >
+                          <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                        </button>
+                      )}
+                      <button
+                        className="icon-button"
+                        title="Create a new chat starting from this reply"
+                        aria-label="Branch chat from here"
+                        disabled={isStreaming}
+                        onClick={() => branchFromMessage(m.id)}
+                      >
+                        <ArrowUturnRightIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      </button>
+                      <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Brave search UX block attached to this assistant message (gated by experimental toggle) */}
               {(() => {
                 if (!braveGloballyEnabled) return null;
@@ -582,57 +590,59 @@ export default function MessageList({ chatId }: { chatId: string }) {
           ) : (
             <div className="relative">
               {/* Edit control for user messages */}
-              <div
-                className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
-                style={{ opacity: isMobile && editingId === m.id ? 1 : undefined }}
-              >
-                {editingId === m.id ? (
-                  <div className="flex items-center gap-1">
+              {showInlineActions && (
+                <div
+                  className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
+                  style={isMobile ? { opacity: 1 } : undefined}
+                >
+                  {isEditingThisMessage ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="icon-button"
+                        aria-label="Save edit"
+                        title="Save edit"
+                        onClick={() => saveEdit(m.id)}
+                      >
+                        <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      </button>
+                      <button
+                        className="icon-button"
+                        aria-label="Cancel edit"
+                        title="Cancel edit"
+                        onClick={() => {
+                          setEditingId(null);
+                          setDraft('');
+                        }}
+                      >
+                        <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       className="icon-button"
-                      aria-label="Save edit"
-                      title="Save edit"
-                      onClick={() => saveEdit(m.id)}
+                      aria-label="Edit message"
+                      title="Edit message"
+                      onClick={() => startEditingMessage(m.id)}
                     >
-                      <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                     </button>
+                  )}
+                  {!isEditingThisMessage && (
                     <button
-                      className="icon-button"
-                      aria-label="Cancel edit"
-                      title="Cancel edit"
-                      onClick={() => {
-                        setEditingId(null);
-                        setDraft('');
-                      }}
+                      className="icon-button ml-1"
+                      aria-label="Copy message"
+                      title={copiedId === m.id ? 'Copied' : 'Copy message'}
+                      onClick={() => copyMessage(m.id)}
                     >
-                      <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      {copiedId === m.id ? (
+                        <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      ) : (
+                        <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      )}
                     </button>
-                  </div>
-                ) : (
-                  <button
-                    className="icon-button"
-                    aria-label="Edit message"
-                    title="Edit message"
-                    onClick={() => startEditingMessage(m.id)}
-                  >
-                    <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                  </button>
-                )}
-                {editingId !== m.id && (
-                  <button
-                    className="icon-button ml-1"
-                    aria-label="Copy message"
-                    title={copiedId === m.id ? 'Copied' : 'Copy message'}
-                    onClick={() => copyMessage(m.id)}
-                  >
-                    {copiedId === m.id ? (
-                      <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                    ) : (
-                      <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                    )}
-                  </button>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
               {/* Attachments (user: images/audio/PDFs) */}
               {Array.isArray(m.attachments) && m.attachments.length > 0 && (
                 <div className="px-4 pt-2 flex flex-wrap gap-2">
@@ -718,7 +728,8 @@ export default function MessageList({ chatId }: { chatId: string }) {
             </div>
           )}
         </div>
-      ))}
+      );
+      })}
       {showJump && (
         <div className="jump-to-latest">
           <button

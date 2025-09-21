@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import { CURATED_MODELS } from '@/data/curatedModels';
+import { formatModelLabel } from '@/lib/models';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => void }) {
@@ -11,7 +12,14 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { favoriteModelIds } = useChatStore();
+  const { favoriteModelIds, models } = useChatStore();
+  const modelMap = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const model of models || []) {
+      map.set(model.id, model);
+    }
+    return map;
+  }, [models]);
   const curated = [
     { id: chat?.settings.model || CURATED_MODELS[0]?.id, name: 'Current' },
     ...CURATED_MODELS,
@@ -106,18 +114,25 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
             ref={menuRef}
           >
             <div className="text-xs text-muted-foreground px-1 pb-1">Choose model</div>
-            {options.map((o) => (
-              <div
-                key={o.id}
-                className="menu-item text-sm"
-                onClick={() => {
-                  onChoose(o.id);
-                  setOpen(false);
-                }}
-              >
-                {(o.name || o.id).replace(/^[^:]+:\\s*/, '')}
-              </div>
-            ))}
+            {options.map((o) => {
+              const label = formatModelLabel({
+                model: modelMap.get(o.id),
+                fallbackId: o.id,
+                fallbackName: o.name,
+              });
+              return (
+                <div
+                  key={o.id}
+                  className="menu-item text-sm"
+                  onClick={() => {
+                    onChoose(o.id);
+                    setOpen(false);
+                  }}
+                >
+                  {label}
+                </div>
+              );
+            })}
           </div>,
           document.body,
         )}

@@ -1,9 +1,13 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop, setCurrentDragData, getCurrentDragData } from '@/lib/dragDrop';
 import IconButton from './IconButton';
 import ConfirmDialog from './ConfirmDialog';
+import { MoveChatSheet } from '@/components/MoveChatSheet';
 import {
   FolderIcon,
   FolderOpenIcon,
@@ -37,6 +41,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
   const [editName, setEditName] = useState(folder.name);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   useEffect(() => {
     const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
     update();
@@ -55,7 +60,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
     if (longTid.current) window.clearTimeout(longTid.current);
     longTid.current = null;
   };
-  const onPointerDown = (e: React.PointerEvent) => {
+  const onPointerDown = (e: ReactPointerEvent) => {
     if (!isMobile || isEditing) return;
     if (e.pointerType === 'mouse') return;
     startX.current = e.clientX;
@@ -67,7 +72,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
       setShowActions(true);
     }, 500);
   };
-  const onPointerMove = (e: React.PointerEvent) => {
+  const onPointerMove = (e: ReactPointerEvent) => {
     if (!isMobile || isEditing) return;
     const dxNow = e.clientX - startX.current;
     const dyNow = e.clientY - startY.current;
@@ -75,7 +80,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
       clearLong();
     }
   };
-  const onPointerUp = (e: React.PointerEvent) => {
+  const onPointerUp = (e: ReactPointerEvent) => {
     if (!isMobile || isEditing) return;
     const moved = Math.abs(e.clientX - startX.current) > slop || Math.abs(e.clientY - startY.current) > slop;
     if (!longFired.current && !moved) handleToggleExpanded();
@@ -101,9 +106,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
   };
 
   const handleDelete = async () => {
-    if (confirm(`Delete folder "${folder.name}"? Chats will be moved to the root level.`)) {
-      await deleteFolder(folder.id);
-    }
+    await deleteFolder(folder.id);
   };
 
   const paddingLeft = depth * 16 + 16; // 16px per level + base padding
@@ -113,8 +116,8 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
       {/* Folder Header */}
       <div className="relative" style={{ paddingLeft: `${paddingLeft}px` }}>
         <div
-          className={`flex items-center gap-2 px-4 py-2 cursor-pointer group folder-item ${
-            isDragOver ? 'drag-over' : ''
+          className={`flex items-center gap-2 px-4 py-3 sm:py-2 cursor-pointer group chat-item folder-row ${
+            isDragOver ? 'is-drag-over' : ''
           }`}
           draggable
           onDragStart={() => {
@@ -149,14 +152,14 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
             e?.stopPropagation();
             handleToggleExpanded();
           }}
-          className="w-4 h-4 shrink-0"
+          className="w-6 h-6 shrink-0"
         >
-          {folder.isExpanded ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronRightIcon className="h-3 w-3" />}
+          {folder.isExpanded ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
         </IconButton>
 
         {/* Folder Icon */}
-        <div className="w-4 h-4 flex items-center justify-center text-muted-foreground shrink-0">
-          {folder.isExpanded ? <FolderOpenIcon className="h-3.5 w-3.5" /> : <FolderIcon className="h-3.5 w-3.5" />}
+        <div className="w-6 h-6 flex items-center justify-center text-muted-foreground shrink-0">
+          {folder.isExpanded ? <FolderOpenIcon className="h-5 w-5" /> : <FolderIcon className="h-5 w-5" />}
         </div>
 
         {/* Folder Name */}
@@ -178,10 +181,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
             />
           </div>
         ) : (
-          <div
-            className="flex-1 text-sm truncate font-medium text-muted-foreground"
-            onClick={handleToggleExpanded}
-          >
+          <div className="flex-1 text-sm truncate font-semibold" onClick={handleToggleExpanded}>
             {folder.name}
           </div>
         )}
@@ -204,7 +204,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
               size="sm"
               onClick={(e) => {
                 e?.stopPropagation();
-                handleDelete();
+                setShowDeleteConfirm(true);
               }}
               title="Delete folder"
             >
@@ -215,17 +215,19 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
         </div>
       </div>
 
-      {isMobile && showActions && (
-        <>
-          <button
-            className="fixed inset-0 z-[95] settings-overlay"
-            aria-label="Close actions"
-            onClick={() => setShowActions(false)}
-          />
-          <div className="fixed left-0 right-0 bottom-0 z-[100] p-2">
-            <div className="card p-2 rounded-2xl overflow-hidden">
+      {isMobile && showActions && typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="mobile-sheet-overlay"
+            role="presentation"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setShowActions(false);
+            }}
+          >
+            <div className="mobile-sheet card mobile-sheet-compact" role="menu" aria-label={`Folder actions for ${folder.name}`}>
+              <div className="mobile-sheet-handle" aria-hidden="true" />
               <button
-                className="w-full h-11 btn btn-outline mb-2"
+                className="mobile-menu-item"
                 onClick={() => {
                   setShowActions(false);
                   setIsEditing(true);
@@ -233,22 +235,37 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
                 }}
                 title="Rename folder"
               >
-                Rename
+                <PencilSquareIcon className="h-4 w-4" />
+                <span>Rename folder</span>
               </button>
               <button
-                className="w-full h-11 btn btn-destructive"
+                className="mobile-menu-item is-danger"
                 onClick={() => {
                   setShowActions(false);
-                  handleDelete();
+                  setShowDeleteConfirm(true);
                 }}
                 title="Delete folder"
               >
-                Delete
+                <TrashIcon className="h-4 w-4" />
+                <span>Delete folder</span>
               </button>
             </div>
-          </div>
-        </>
-      )}
+          </div>,
+          document.body,
+        )}
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete folder?"
+        description={`Chats inside "${folder.name}" will move to the root.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={async () => {
+          setShowDeleteConfirm(false);
+          await handleDelete();
+        }}
+      />
 
       {/* Folder Contents (when expanded) */}
       {folder.isExpanded && (
@@ -282,10 +299,32 @@ interface ChatItemProps {
 }
 
 function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
-  const { renameChat, deleteChat } = useChatStore();
+  const { renameChat, deleteChat, moveChatToFolder, folders } = useChatStore(
+    (state) => ({
+      renameChat: state.renameChat,
+      deleteChat: state.deleteChat,
+      moveChatToFolder: state.moveChatToFolder,
+      folders: state.folders,
+    }),
+    shallow,
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(chat.title);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+  const [showMoveSheet, setShowMoveSheet] = useState(false);
+  const longStartX = useRef(0);
+  const longStartY = useRef(0);
+  const longTid = useRef<number | null>(null);
+  const longFired = useRef(false);
+
+  useEffect(() => {
+    const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
+    update();
+    window.addEventListener('resize', update, { passive: true } as any);
+    return () => window.removeEventListener('resize', update as any);
+  }, []);
 
   const handleRename = async () => {
     if (editTitle.trim() && editTitle !== chat.title) {
@@ -298,6 +337,43 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
     await deleteChat(chat.id);
   };
 
+  const clearLong = () => {
+    if (longTid.current) window.clearTimeout(longTid.current);
+    longTid.current = null;
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!isMobile || isEditing) return;
+    if (e.pointerType === 'mouse') return;
+    longStartX.current = e.clientX;
+    longStartY.current = e.clientY;
+    longFired.current = false;
+    clearLong();
+    longTid.current = window.setTimeout(() => {
+      longFired.current = true;
+      setShowActions(true);
+    }, 480);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!isMobile || isEditing || !longTid.current) return;
+    const dx = Math.abs(e.clientX - longStartX.current);
+    const dy = Math.abs(e.clientY - longStartY.current);
+    if (dx > 10 || dy > 10) clearLong();
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!isMobile || isEditing) return;
+    const moved =
+      Math.abs(e.clientX - longStartX.current) > 10 || Math.abs(e.clientY - longStartY.current) > 10;
+    if (!longFired.current && !moved) onSelect();
+    clearLong();
+  };
+
+  const onPointerCancel = () => {
+    clearLong();
+  };
+
   const paddingLeft = (depth + 1) * 16 + 16; // Extra level for chat items
 
   return (
@@ -307,11 +383,16 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
           isSelected ? 'selected' : ''
         }`}
         style={{ paddingLeft: `${paddingLeft}px` }}
-        draggable
+        draggable={!isMobile}
         onDragStart={() => {
+          if (isMobile) return;
           setCurrentDragData({ id: chat.id, type: 'chat' });
         }}
         onClick={!isEditing ? onSelect : undefined}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
       >
         {/* Chat Icon */}
         <div className="w-4 h-4 flex items-center justify-center text-muted-foreground shrink-0">
@@ -358,6 +439,16 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
               size="sm"
               onClick={(e) => {
                 e?.stopPropagation();
+                setShowMoveSheet(true);
+              }}
+              title="Move to folder"
+            >
+              <FolderOpenIcon className="h-3 w-3" />
+            </IconButton>
+            <IconButton
+              size="sm"
+              onClick={(e) => {
+                e?.stopPropagation();
                 setShowConfirm(true);
               }}
               title="Delete chat"
@@ -367,6 +458,55 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
           </div>
         )}
       </div>
+      {isMobile && showActions && typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="mobile-sheet-overlay"
+            role="presentation"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setShowActions(false);
+            }}
+          >
+            <div className="mobile-sheet card mobile-sheet-compact" role="menu" aria-label={`Actions for ${chat.title}`}>
+              <div className="mobile-sheet-handle" aria-hidden="true" />
+              <button
+                className="mobile-menu-item"
+                onClick={() => {
+                  setShowActions(false);
+                  setIsEditing(true);
+                  setEditTitle(chat.title);
+                }}
+                title="Rename chat"
+              >
+                <PencilSquareIcon className="h-4 w-4" />
+                <span>Rename chat</span>
+              </button>
+              <button
+                className="mobile-menu-item"
+                onClick={() => {
+                  setShowActions(false);
+                  setShowMoveSheet(true);
+                }}
+                title="Move chat to folder"
+              >
+                <FolderOpenIcon className="h-4 w-4" />
+                <span>Move to folder</span>
+              </button>
+              <button
+                className="mobile-menu-item is-danger"
+                onClick={() => {
+                  setShowActions(false);
+                  setShowConfirm(true);
+                }}
+                title="Delete chat"
+              >
+                <TrashIcon className="h-4 w-4" />
+                <span>Delete chat</span>
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
       <ConfirmDialog
         open={showConfirm}
         title="Delete chat?"
@@ -377,6 +517,21 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
         onConfirm={() => {
           setShowConfirm(false);
           handleDelete();
+        }}
+      />
+      <MoveChatSheet
+        open={showMoveSheet}
+        chatTitle={chat.title}
+        currentFolderId={chat.folderId}
+        folders={folders}
+        onClose={() => setShowMoveSheet(false)}
+        onMove={async (target) => {
+          if (target === chat.folderId) {
+            setShowMoveSheet(false);
+            return;
+          }
+          await moveChatToFolder(chat.id, target);
+          setShowMoveSheet(false);
         }}
       />
     </>
