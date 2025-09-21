@@ -31,9 +31,16 @@ import {
 } from '@/lib/models';
 import type { Attachment } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
+import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 // PDFs are sent directly to OpenRouter as file blocks; no local parsing.
 
-export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 'hero' }) {
+export default function Composer({
+  variant = 'sticky',
+  keyboardMetrics,
+}: {
+  variant?: 'sticky' | 'hero';
+  keyboardMetrics: KeyboardMetrics;
+}) {
   const send = useChatStore((s) => s.sendUserMessage);
   const newChat = useChatStore((s) => s.newChat);
   // DeepResearch works as a toggle like web search; handled in sendUserMessage
@@ -184,7 +191,14 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
     }
   }, [isStreaming]);
 
-  useAutogrowTextarea(taRef, [text]);
+  const maxTextareaHeight = useMemo(() => {
+    // Use a stable default viewport height to prevent hydration mismatch
+    const viewport = keyboardMetrics?.viewportHeight ?? 720;
+    const capped = Math.min(320, Math.max(180, viewport * 0.35));
+    return Math.round(capped);
+  }, [keyboardMetrics?.viewportHeight]);
+
+  useAutogrowTextarea(taRef, [text], maxTextareaHeight);
 
   // Lightweight, live prompt token and cost estimate
   const tokenAndCost = useMemo(() => {
@@ -525,6 +539,7 @@ export default function Composer({ variant = 'sticky' }: { variant?: 'sticky' | 
           placeholder="Type a message..."
           value={text}
           onChange={(e) => setText(e.target.value)}
+          style={{ maxHeight: `${maxTextareaHeight}px` }}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           onPaste={onPaste}

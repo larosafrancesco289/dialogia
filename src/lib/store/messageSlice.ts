@@ -1083,6 +1083,12 @@ export function createMessageSlice(
                 },
               }));
             } catch {}
+            const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
+            const requestedTokensRaw = supportsReasoning ? chat.settings.reasoning_tokens : undefined;
+            const effortRequested = typeof requestedEffort === 'string' && requestedEffort !== 'none';
+            const tokensRequested = typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
+            const autoReasoningEligible = !effortRequested && !tokensRequested;
+            const modelIdUsed = chat.settings.model;
             await streamChatCompletion({
               apiKey: key || '',
               model: chat.settings.model,
@@ -1195,7 +1201,19 @@ export function createMessageSlice(
                         ? { ...m, reasoning: (m.reasoning || '') + delta }
                         : m,
                     );
-                    return { messages: { ...s.messages, [chatId]: updated } } as any;
+                    const partial: Partial<StoreState> = {
+                      messages: { ...s.messages, [chatId]: updated },
+                    } as any;
+                    if (autoReasoningEligible && modelIdUsed) {
+                      const prev = s.ui.autoReasoningModelIds || {};
+                      if (!prev[modelIdUsed]) {
+                        partial.ui = {
+                          ...s.ui,
+                          autoReasoningModelIds: { ...prev, [modelIdUsed]: true },
+                        } as any;
+                      }
+                    }
+                    return partial;
                   });
                 },
                 onDone: async (full, extras) => {
@@ -1310,6 +1328,12 @@ export function createMessageSlice(
               },
             }));
           } catch {}
+          const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
+          const requestedTokensRaw = supportsReasoning ? chat.settings.reasoning_tokens : undefined;
+          const effortRequested = typeof requestedEffort === 'string' && requestedEffort !== 'none';
+          const tokensRequested = typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
+          const autoReasoningEligible = !effortRequested && !tokensRequested;
+          const modelIdUsed = chat.settings.model;
           await streamChatCompletion({
             apiKey: key || '',
             model: chat.settings.model,
@@ -1416,7 +1440,19 @@ export function createMessageSlice(
                   const updated = list.map((m) =>
                     m.id === assistantMsg.id ? { ...m, reasoning: (m.reasoning || '') + delta } : m,
                   );
-                  return { messages: { ...s.messages, [chatId]: updated } } as any;
+                  const partial: Partial<StoreState> = {
+                    messages: { ...s.messages, [chatId]: updated },
+                  } as any;
+                  if (autoReasoningEligible && modelIdUsed) {
+                    const prev = s.ui.autoReasoningModelIds || {};
+                    if (!prev[modelIdUsed]) {
+                      partial.ui = {
+                        ...s.ui,
+                        autoReasoningModelIds: { ...prev, [modelIdUsed]: true },
+                      } as any;
+                    }
+                  }
+                  return partial;
                 });
               },
               onDone: async (full, extras) => {
@@ -1688,6 +1724,10 @@ export function createMessageSlice(
               },
             }));
           } catch {}
+          const effortRequested = typeof rEffortUsed === 'string' && rEffortUsed !== 'none';
+          const tokensRequested = typeof rTokUsed === 'number' && rTokUsed > 0;
+          const autoReasoningEligible = !effortRequested && !tokensRequested;
+          const modelIdUsed = replacement.model!;
           await streamChatCompletion({
             apiKey: key || '',
             model: replacement.model!,
@@ -1766,7 +1806,19 @@ export function createMessageSlice(
                   const updated = list2.map((m) =>
                     m.id === replacement.id ? { ...m, reasoning: (m.reasoning || '') + delta } : m,
                   );
-                  return { messages: { ...s.messages, [chatId]: updated } } as any;
+                  const partial: Partial<StoreState> = {
+                    messages: { ...s.messages, [chatId]: updated },
+                  } as any;
+                  if (autoReasoningEligible && modelIdUsed) {
+                    const prev = s.ui.autoReasoningModelIds || {};
+                    if (!prev[modelIdUsed]) {
+                      partial.ui = {
+                        ...s.ui,
+                        autoReasoningModelIds: { ...prev, [modelIdUsed]: true },
+                      } as any;
+                    }
+                  }
+                  return partial;
                 });
               },
               onDone: async (full, extras) => {

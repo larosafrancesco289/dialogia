@@ -11,6 +11,7 @@ export function createUiSlice(
     sidebarCollapsed: false,
     debugMode: false,
     debugByMessageId: {},
+    autoReasoningModelIds: {},
     nextModel: undefined,
     nextSearchWithBrave: false,
     nextDeepResearch: false,
