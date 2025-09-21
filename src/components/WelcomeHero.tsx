@@ -2,9 +2,14 @@
 import { useCallback } from 'react';
 import { useChatStore } from '@/lib/store';
 import Composer from '@/components/Composer';
+import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 // No model label here; keep imports lean
 
-export default function WelcomeHero() {
+export default function WelcomeHero({
+  keyboardMetrics,
+}: {
+  keyboardMetrics: KeyboardMetrics;
+}) {
   const newChat = useChatStore((s) => s.newChat);
   const send = useChatStore((s) => s.sendUserMessage);
   // We intentionally hide the model label on the hero
@@ -43,7 +48,7 @@ export default function WelcomeHero() {
             </div>
           </div>
           <div className="pt-2">
-            <Composer variant="hero" />
+            <Composer variant="hero" keyboardMetrics={keyboardMetrics} />
           </div>
         </div>
       </div>
@@ -70,7 +75,7 @@ export default function WelcomeHero() {
         </div>
       </div>
       <div className="sm:hidden">
-        <Composer variant="sticky" />
+        <Composer variant="sticky" keyboardMetrics={keyboardMetrics} />
       </div>
     </div>
   );

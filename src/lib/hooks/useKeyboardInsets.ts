@@ -2,83 +2,168 @@
 
 import { useEffect, useState } from 'react';
 
+export type KeyboardMetrics = {
+  offset: number;
+  viewportHeight: number;
+  viewportTop: number;
+};
+
+const KEYBOARD_THRESHOLD = 60; // px difference to treat as a real keyboard occlusion
+
 /**
- * Provides the vertical inset introduced by on-screen keyboards on mobile browsers.
- * Uses VisualViewport when available and falls back to window innerHeight changes.
+ * Tracks the on-screen keyboard occlusion and visual viewport metrics.
+ * Keeps CSS custom properties in sync so layout can respond via pure CSS.
  */
-export function useKeyboardInsets() {
-  const [offset, setOffset] = useState(0);
+export function useKeyboardInsets(): KeyboardMetrics {
+  const initialHeight =
+    typeof window !== 'undefined' && typeof window.innerHeight === 'number'
+      ? window.innerHeight
+      : 0;
+  const [metrics, setMetrics] = useState<KeyboardMetrics>({
+    offset: 0,
+    viewportHeight: initialHeight,
+    viewportTop: 0,
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
 
     const viewport = window.visualViewport || null;
-    let baseline = window.innerHeight;
+    let fallbackBaseline = window.innerHeight;
+    let viewportBaseline = viewport
+      ? Math.max(
+          window.innerHeight,
+          (viewport.height ?? window.innerHeight) + (viewport.offsetTop ?? 0),
+        )
+      : window.innerHeight;
+    let viewportKeyboardVisible = false;
+    let fallbackKeyboardVisible = false;
+    let frameHandle = 0;
+    const doc = typeof document !== 'undefined' ? document : null;
+    const root = doc?.documentElement ?? null;
 
-    const updateOffset = (next: number) => {
-      setOffset((prev) => {
-        if (Math.abs(prev - next) < 1) return prev;
-        return next;
+    const commitMetrics = (next: KeyboardMetrics) => {
+      const roundedOffset = Math.max(0, Math.round(next.offset));
+      const roundedHeight = Math.max(0, Math.round(next.viewportHeight));
+      const roundedTop = Math.max(0, Math.round(next.viewportTop));
+
+      setMetrics((prev) => {
+        if (prev.offset === roundedOffset && prev.viewportHeight === roundedHeight && prev.viewportTop === roundedTop) {
+          return prev;
+        }
+        return {
+          offset: roundedOffset,
+          viewportHeight: roundedHeight,
+          viewportTop: roundedTop,
+        };
       });
-      if (typeof document !== 'undefined') {
-        document.documentElement.style.setProperty('--keyboard-offset', `${Math.round(next)}px`);
+
+      if (root) {
+        root.style.setProperty('--keyboard-offset', `${roundedOffset}px`);
+        root.style.setProperty('--viewport-height', `${roundedHeight}px`);
+        root.style.setProperty('--viewport-offset-top', `${roundedTop}px`);
+        root.style.setProperty('--viewport-offset-bottom', `${roundedOffset}px`);
+        root.classList.toggle('keyboard-active', roundedOffset > 0);
       }
     };
 
-    const compute = () => {
-      if (typeof window === 'undefined') return;
-      const currentInner = window.innerHeight;
-
+    const computeMetrics = (): KeyboardMetrics => {
       if (viewport) {
-        const viewportHeight = viewport.height ?? currentInner;
-        const viewportOffsetTop = viewport.offsetTop ?? 0;
-        const visibleHeight = viewportHeight + viewportOffsetTop;
-        const occlusionLikely =
-          viewportOffsetTop > 1 || Math.abs(currentInner - viewportHeight) > 1;
+        const top = viewport.offsetTop ?? 0;
+        const height = viewport.height ?? window.innerHeight;
+        const total = height + top;
+        const candidate = Math.max(total, window.innerHeight);
 
-        if (!occlusionLikely) {
-          baseline = visibleHeight;
-        } else {
-          baseline = Math.max(baseline, visibleHeight);
+        if (!viewportKeyboardVisible) {
+          viewportBaseline = Math.max(viewportBaseline, candidate);
+        } else if (candidate > viewportBaseline) {
+          viewportBaseline = candidate;
         }
 
-        const occluded = Math.max(0, baseline - visibleHeight);
-        updateOffset(occluded);
-        if (occluded <= 1) baseline = visibleHeight;
-      } else {
-        const occlusionLikely = Math.abs(baseline - currentInner) > 1;
-        if (!occlusionLikely) {
-          baseline = currentInner;
+        let occlusion = Math.max(0, viewportBaseline - total);
+
+        if (occlusion > KEYBOARD_THRESHOLD) {
+          viewportKeyboardVisible = true;
+        } else if (viewportKeyboardVisible) {
+          viewportKeyboardVisible = false;
+          viewportBaseline = candidate;
+          occlusion = 0;
         } else {
-          baseline = Math.max(baseline, currentInner);
+          viewportBaseline = candidate;
+          occlusion = 0;
         }
-        const occluded = Math.max(0, baseline - currentInner);
-        updateOffset(occluded);
-        if (occluded <= 1) baseline = currentInner;
+
+        return {
+          offset: occlusion,
+          viewportHeight: height,
+          viewportTop: top,
+        };
       }
+
+      const currentInner = window.innerHeight;
+      const diff = fallbackBaseline - currentInner;
+      let occlusion = 0;
+      if (!fallbackKeyboardVisible) {
+        fallbackBaseline = Math.max(fallbackBaseline, currentInner);
+      }
+
+      if (diff > KEYBOARD_THRESHOLD) {
+        fallbackKeyboardVisible = true;
+        fallbackBaseline = Math.max(fallbackBaseline, currentInner);
+        occlusion = Math.max(0, fallbackBaseline - currentInner);
+      } else {
+        if (fallbackKeyboardVisible) {
+          fallbackKeyboardVisible = false;
+          fallbackBaseline = currentInner;
+        } else {
+          fallbackBaseline = currentInner;
+        }
+        occlusion = 0;
+      }
+
+      return {
+        offset: occlusion,
+        viewportHeight: currentInner,
+        viewportTop: 0,
+      };
     };
 
-    compute();
+    const handleChange = () => {
+      cancelAnimationFrame(frameHandle);
+      frameHandle = requestAnimationFrame(() => {
+        const nextMetrics = computeMetrics();
+        commitMetrics(nextMetrics);
+      });
+    };
+
+    handleChange();
 
     if (viewport) {
-      viewport.addEventListener('resize', compute);
-      viewport.addEventListener('scroll', compute);
+      viewport.addEventListener('resize', handleChange);
+      viewport.addEventListener('scroll', handleChange);
     } else {
-      window.addEventListener('resize', compute);
+      window.addEventListener('resize', handleChange);
+      window.addEventListener('orientationchange', handleChange);
     }
 
     return () => {
+      cancelAnimationFrame(frameHandle);
       if (viewport) {
-        viewport.removeEventListener('resize', compute);
-        viewport.removeEventListener('scroll', compute);
+        viewport.removeEventListener('resize', handleChange);
+        viewport.removeEventListener('scroll', handleChange);
       } else {
-        window.removeEventListener('resize', compute);
+        window.removeEventListener('resize', handleChange);
+        window.removeEventListener('orientationchange', handleChange);
       }
-      if (typeof document !== 'undefined') {
-        document.documentElement.style.setProperty('--keyboard-offset', '0px');
+      if (root) {
+        root.style.setProperty('--keyboard-offset', '0px');
+        root.style.setProperty('--viewport-height', '100dvh');
+        root.style.setProperty('--viewport-offset-top', '0px');
+        root.style.setProperty('--viewport-offset-bottom', '0px');
+        root.classList.remove('keyboard-active');
       }
     };
   }, []);
 
-  return offset;
+  return metrics;
 }
