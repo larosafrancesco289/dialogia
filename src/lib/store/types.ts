@@ -9,6 +9,8 @@ export type UIState = {
   debugMode?: boolean;
   // Raw request payloads keyed by assistant message id (ephemeral)
   debugByMessageId?: Record<string, { body: string; createdAt: number }>;
+  // Models that emit reasoning traces even when no effort was requested
+  autoReasoningModelIds?: Record<string, true>;
   nextModel?: string;
   nextSearchWithBrave?: boolean;
   nextSearchProvider?: 'brave' | 'openrouter';

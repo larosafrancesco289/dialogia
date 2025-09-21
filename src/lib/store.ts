@@ -53,6 +53,7 @@ export const useChatStore = create<StoreState>()(
           nextReasoningTokens: s.ui.nextReasoningTokens,
           nextShowThinking: s.ui.nextShowThinking,
           nextShowStats: s.ui.nextShowStats,
+          autoReasoningModelIds: s.ui.autoReasoningModelIds,
           zdrOnly: s.ui.zdrOnly,
           routePreference: s.ui.routePreference,
           experimentalBrave: s.ui.experimentalBrave,

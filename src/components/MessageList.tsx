@@ -35,6 +35,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
   const branchFrom = useChatStore((s) => s.branchChatFromMessage);
+  const autoReasoningModelIds = useChatStore((s) => s.ui.autoReasoningModelIds || {});
   const showStats = chat?.settings.show_stats ?? false;
   const debugMode = useChatStore((s) => s.ui.debugMode || false);
   const debugByMessageId = useChatStore((s) => s.ui.debugByMessageId || {});
@@ -439,7 +440,28 @@ export default function MessageList({ chatId }: { chatId: string }) {
                 const modelMeta = messageModelId ? findModelById(models, messageModelId) : undefined;
                 const modelAllowsReasoning = !!modelMeta && isReasoningSupported(modelMeta);
                 const hasReasoning = reasoningText.trim().length > 0;
-                const allowStreaming = modelAllowsReasoning && isLatestAssistant && isStreaming;
+                const messageEffort = m.genSettings?.reasoning_effort;
+                const messageTokens = m.genSettings?.reasoning_tokens;
+                const chatEffort = chat?.settings.reasoning_effort;
+                const chatTokens = chat?.settings.reasoning_tokens;
+                const effortRequested =
+                  typeof messageEffort === 'string'
+                    ? messageEffort !== 'none'
+                    : typeof chatEffort === 'string'
+                      ? chatEffort !== 'none'
+                      : false;
+                const tokensRequested =
+                  typeof messageTokens === 'number'
+                    ? messageTokens > 0
+                    : typeof chatTokens === 'number'
+                      ? chatTokens > 0
+                      : false;
+                const isAutoReasoningModel = !!(messageModelId && autoReasoningModelIds[messageModelId]);
+                const allowStreaming =
+                  (effortRequested || tokensRequested || isAutoReasoningModel) &&
+                  modelAllowsReasoning &&
+                  isLatestAssistant &&
+                  isStreaming;
                 if (!hasReasoning && !allowStreaming) return null;
                 return (
                   <ReasoningPanel

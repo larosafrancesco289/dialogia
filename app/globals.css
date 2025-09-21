@@ -10,6 +10,9 @@ body,
 :root {
   --keyboard-offset: 0px;
   --composer-height: 0px;
+  --viewport-height: 100dvh;
+  --viewport-offset-top: 0px;
+  --viewport-offset-bottom: 0px;
 }
 
 @media (max-width: 640px) {
@@ -45,7 +48,8 @@ body,
   --header-height: 56px;
   display: grid;
   grid-template-columns: var(--sidebar-width, 320px) 1fr;
-  height: 100dvh;
+  height: var(--viewport-height);
+  min-height: var(--viewport-height);
   position: relative;
   transition: grid-template-columns var(--duration-slow) var(--ease-standard);
   column-gap: var(--space-3);
@@ -288,6 +292,13 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 @media (max-width: 640px) {
   .message-list {
     padding: var(--space-2);
+    padding-bottom: calc(var(--space-4) + var(--composer-height, 0px));
+    scroll-padding-bottom: calc(
+      var(--space-2) + max(0px, env(safe-area-inset-bottom)) + var(--composer-height, 0px)
+    );
+  }
+
+  html.keyboard-active .message-list {
     padding-bottom: calc(
       var(--space-4) + var(--composer-height, 0px) + var(--keyboard-offset, 0px)
     );
@@ -319,10 +330,16 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 @media (max-width: 640px) {
   .jump-to-latest {
     bottom: calc(
+      var(--space-6) + max(14px, env(safe-area-inset-bottom)) + var(--composer-height, 0px)
+    );
+    padding-right: calc(var(--space-1) + max(0px, env(safe-area-inset-right)));
+  }
+
+  html.keyboard-active .jump-to-latest {
+    bottom: calc(
       var(--space-6) + max(14px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) +
         var(--keyboard-offset, 0px)
     );
-    padding-right: calc(var(--space-1) + max(0px, env(safe-area-inset-right)));
   }
 }
 
@@ -1046,16 +1063,25 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 }
 @media (max-width: 640px) {
   .composer-chrome {
-    position: fixed;
-    left: var(--space-1);
-    right: var(--space-1);
-    bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px));
-    margin: 0;
+    margin: 0 var(--space-1);
     padding: var(--space-2);
     padding-bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)));
     border-radius: 14px;
+  }
+
+  html.keyboard-active .composer-chrome {
+    position: sticky;
+    bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px));
+    margin: 0 var(--space-1);
     transform: none;
-    z-index: 90;
+    z-index: 70;
+  }
+
+  html.keyboard-active .composer-hero {
+    position: sticky;
+    bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px));
+    margin: 0 var(--space-1);
+    z-index: 70;
   }
 }
 
