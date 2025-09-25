@@ -34,6 +34,12 @@ import {
   PhotoIcon,
   ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
+import {
+  normalizeTutorMemory,
+  enforceTutorMemoryLimit,
+  EMPTY_TUTOR_MEMORY,
+} from '@/lib/agent/tutorMemory';
+import { DEFAULT_TUTOR_MODEL_ID, DEFAULT_TUTOR_MEMORY_FREQUENCY } from '@/lib/constants';
 
 // Define Section at module scope so it doesn't remount on every render.
 function Section(props: { title: string; children: ReactNode }) {
@@ -88,6 +94,24 @@ export default function SettingsDrawer() {
   const [reasoningTokensStr, setReasoningTokensStr] = useState<string>(
     chat?.settings.reasoning_tokens != null ? String(chat.settings.reasoning_tokens) : '',
   );
+  const [tutorDefaultModel, setTutorDefaultModel] = useState<string>(
+    ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID,
+  );
+  const [tutorMemoryModel, setTutorMemoryModel] = useState<string>(
+    ui?.tutorMemoryModelId || ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID,
+  );
+  const [tutorMemoryFrequency, setTutorMemoryFrequency] = useState<number>(
+    ui?.tutorMemoryFrequency || DEFAULT_TUTOR_MEMORY_FREQUENCY,
+  );
+  const [tutorMemoryFrequencyStr, setTutorMemoryFrequencyStr] = useState<string>(
+    String(ui?.tutorMemoryFrequency || DEFAULT_TUTOR_MEMORY_FREQUENCY),
+  );
+  const [tutorMemoryAutoUpdate, setTutorMemoryAutoUpdate] = useState<boolean>(
+    ui?.tutorMemoryAutoUpdate !== false,
+  );
+  const [tutorMemorySnapshot, setTutorMemorySnapshot] = useState<string>(
+    normalizeTutorMemory(ui?.tutorGlobalMemory || EMPTY_TUTOR_MEMORY),
+  );
   const [showThinking, setShowThinking] = useState<boolean>(
     chat?.settings.show_thinking_by_default ?? false,
   );
@@ -134,7 +158,22 @@ export default function SettingsDrawer() {
     );
     setShowThinking(chat?.settings.show_thinking_by_default ?? false);
     setShowStats(chat?.settings.show_stats ?? false);
-  }, [chat?.id]);
+    setTutorDefaultModel(ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID);
+    setTutorMemoryModel(ui?.tutorMemoryModelId || ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID);
+    const freq = ui?.tutorMemoryFrequency || DEFAULT_TUTOR_MEMORY_FREQUENCY;
+    setTutorMemoryFrequency(freq);
+    setTutorMemoryFrequencyStr(String(freq));
+    setTutorMemoryAutoUpdate(ui?.tutorMemoryAutoUpdate !== false);
+    const nextMemory = normalizeTutorMemory(ui?.tutorGlobalMemory || EMPTY_TUTOR_MEMORY);
+    setTutorMemorySnapshot(nextMemory);
+  }, [
+    chat?.id,
+    ui?.tutorDefaultModelId,
+    ui?.tutorMemoryModelId,
+    ui?.tutorMemoryFrequency,
+    ui?.tutorMemoryAutoUpdate,
+    ui?.tutorGlobalMemory,
+  ]);
 
   // Prevent background scroll while drawer is open
   useEffect(() => {
@@ -931,16 +970,130 @@ export default function SettingsDrawer() {
                   >
                     Off
                   </button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Show Tutor controls and enable practice tools (MCQ, fill‑blank, flashcards).
-                </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-sm block">DeepResearch</label>
-                <div className="segmented">
-                  <button
-                    className={`segment ${experimentalDeepResearch ? 'is-active' : ''}`}
+              <div className="text-xs text-muted-foreground">
+                Show Tutor controls and enable practice tools (MCQ, fill‑blank, flashcards).
+              </div>
+            </div>
+            {experimentalTutor && (
+              <>
+                <div className="space-y-1">
+                  <label className="text-sm block">Force Tutor Mode</label>
+                  <div className="segmented">
+                    <button
+                      className={`segment ${ui?.forceTutorMode ? 'is-active' : ''}`}
+                      onClick={async () => {
+                        setUI({ forceTutorMode: true });
+                        if (chat) await updateChatSettings({ tutor_mode: true });
+                      }}
+                    >
+                      On
+                    </button>
+                    <button
+                      className={`segment ${!ui?.forceTutorMode ? 'is-active' : ''}`}
+                      onClick={() => setUI({ forceTutorMode: false })}
+                    >
+                      Off
+                    </button>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    When enabled, all chats run in Tutor Mode and use the settings below.
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm block">Tutor default model</label>
+                  <input
+                    className="input w-full"
+                    value={tutorDefaultModel}
+                    onChange={(e) => setTutorDefaultModel(e.target.value)}
+                    list="tutor-model-options"
+                    placeholder="provider/model"
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    Each Tutor Mode chat automatically uses this model.
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-sm block">Memory update model</label>
+                    <input
+                      className="input w-full"
+                      value={tutorMemoryModel}
+                      onChange={(e) => setTutorMemoryModel(e.target.value)}
+                      list="tutor-model-options"
+                      placeholder="provider/model"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Used for the periodic memory analysis requests.
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm block">Memory update frequency</label>
+                    <input
+                      className="input w-full"
+                      type="number"
+                      min={1}
+                      value={tutorMemoryFrequencyStr}
+                      onChange={(e) => {
+                        setTutorMemoryFrequencyStr(e.target.value);
+                        const num = Number(e.target.value);
+                        if (Number.isFinite(num) && num > 0) {
+                          setTutorMemoryFrequency(Math.ceil(num));
+                        }
+                      }}
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Memory is refreshed after this many learner turns (default {DEFAULT_TUTOR_MEMORY_FREQUENCY}).
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm block">Auto-update memory by default</label>
+                  <div className="segmented">
+                    <button
+                      className={`segment ${tutorMemoryAutoUpdate ? 'is-active' : ''}`}
+                      onClick={() => setTutorMemoryAutoUpdate(true)}
+                    >
+                      On
+                    </button>
+                    <button
+                      className={`segment ${!tutorMemoryAutoUpdate ? 'is-active' : ''}`}
+                      onClick={() => setTutorMemoryAutoUpdate(false)}
+                    >
+                      Off
+                    </button>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Controls whether new Tutor Mode chats begin with automatic memory updates.
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm block">Shared tutor memory</label>
+                  <textarea
+                    className="textarea w-full"
+                    rows={6}
+                    value={tutorMemorySnapshot}
+                    onChange={(e) => setTutorMemorySnapshot(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    Acts as the persistent tutor scratchpad (max 1000 tokens). Updates apply to all Tutor Mode chats.
+                  </div>
+                </div>
+                <datalist id="tutor-model-options">
+                  {(models || []).slice(0, 200).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name || m.id}
+                    </option>
+                  ))}
+                </datalist>
+              </>
+            )}
+            <div className="space-y-1">
+              <label className="text-sm block">DeepResearch</label>
+              <div className="segmented">
+                <button
+                  className={`segment ${experimentalDeepResearch ? 'is-active' : ''}`}
                     onClick={() => setUI({ experimentalDeepResearch: true })}
                   >
                     On
@@ -997,6 +1150,21 @@ export default function SettingsDrawer() {
           <button
             className="btn w-full max-w-sm"
             onClick={() => {
+              const trimmedTutorModel = tutorDefaultModel.trim() || DEFAULT_TUTOR_MODEL_ID;
+              const trimmedMemoryModel = tutorMemoryModel.trim() || trimmedTutorModel;
+              const freqValue =
+                Number.isFinite(tutorMemoryFrequency) && tutorMemoryFrequency > 0
+                  ? Math.ceil(tutorMemoryFrequency)
+                  : DEFAULT_TUTOR_MEMORY_FREQUENCY;
+              const normalizedMemoryInput = normalizeTutorMemory(tutorMemorySnapshot);
+              const limitedMemory = enforceTutorMemoryLimit(normalizedMemoryInput);
+              setUI({
+                tutorDefaultModelId: trimmedTutorModel,
+                tutorMemoryModelId: trimmedMemoryModel,
+                tutorMemoryFrequency: freqValue,
+                tutorMemoryAutoUpdate: tutorMemoryAutoUpdate,
+                tutorGlobalMemory: limitedMemory,
+              });
               if (chat) {
                 updateChatSettings({
                   system,
@@ -1007,6 +1175,15 @@ export default function SettingsDrawer() {
                   reasoning_tokens: reasoningTokens,
                   show_thinking_by_default: showThinking,
                   show_stats: showStats,
+                  ...(chat.settings.tutor_mode || ui?.forceTutorMode
+                    ? {
+                        tutor_memory_frequency: freqValue,
+                        tutor_memory_model: trimmedMemoryModel,
+                        tutor_default_model: trimmedTutorModel,
+                        tutor_memory: limitedMemory,
+                        tutor_memory_disabled: tutorMemoryAutoUpdate ? false : true,
+                      }
+                    : {}),
                   // keep chosen provider if present in UI for next-only case ignored here
                 });
               } else {
@@ -1020,6 +1197,7 @@ export default function SettingsDrawer() {
                   nextReasoningTokens: reasoningTokens,
                   nextShowThinking: showThinking,
                   nextShowStats: showStats,
+                  tutorGlobalMemory: limitedMemory,
                   // ensure provider selection from welcome page is retained; default based on experimental flag
                   nextSearchProvider:
                     (ui as any)?.nextSearchProvider ??

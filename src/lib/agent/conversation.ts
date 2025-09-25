@@ -1,5 +1,6 @@
 import type { Chat, Message, ORModel, Attachment } from '@/lib/types';
 import { estimateTokens } from '@/lib/tokenEstimate';
+import { normalizeTutorMemory } from '@/lib/agent/tutorMemory';
 
 // Construct the message payload for the LLM from prior conversation, with a simple token window
 export function buildChatCompletionMessages(params: {
@@ -62,8 +63,15 @@ export function buildChatCompletionMessages(params: {
   kept.reverse();
 
   const finalMsgs: any[] = [];
-  if (chat.settings.system && chat.settings.system.trim()) {
-    finalMsgs.push({ role: 'system', content: chat.settings.system });
+  const systemParts: string[] = [];
+  const tutorMemory = chat.settings.tutor_mode
+    ? normalizeTutorMemory(chat.settings.tutor_memory)
+    : undefined;
+  if (typeof tutorMemory === 'string' && tutorMemory.trim()) systemParts.push(tutorMemory.trim());
+  if (chat.settings.system && chat.settings.system.trim())
+    systemParts.push(chat.settings.system.trim());
+  if (systemParts.length > 0) {
+    finalMsgs.push({ role: 'system', content: systemParts.join('\n\n') });
   }
   // Transform kept messages to OpenAI-style content blocks when attachments present
   for (const k of kept) {

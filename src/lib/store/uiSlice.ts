@@ -1,5 +1,7 @@
 import type { StoreState, UIState } from '@/lib/store/types';
 import { defaultZdrOnly } from '@/lib/env';
+import { DEFAULT_TUTOR_MODEL_ID, DEFAULT_TUTOR_MEMORY_FREQUENCY } from '@/lib/constants';
+import { EMPTY_TUTOR_MEMORY } from '@/lib/agent/tutorMemory';
 
 export function createUiSlice(
   set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
@@ -12,6 +14,13 @@ export function createUiSlice(
     debugMode: false,
     debugByMessageId: {},
     autoReasoningModelIds: {},
+    tutorDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
+    tutorMemoryModelId: DEFAULT_TUTOR_MODEL_ID,
+    tutorMemoryFrequency: DEFAULT_TUTOR_MEMORY_FREQUENCY,
+    tutorMemoryAutoUpdate: true,
+    tutorMemoryDebugByMessageId: {},
+    tutorGlobalMemory: EMPTY_TUTOR_MEMORY,
+    forceTutorMode: false,
     nextModel: undefined,
     nextSearchWithBrave: false,
     nextDeepResearch: false,

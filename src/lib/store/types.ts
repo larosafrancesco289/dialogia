@@ -11,6 +11,25 @@ export type UIState = {
   debugByMessageId?: Record<string, { body: string; createdAt: number }>;
   // Models that emit reasoning traces even when no effort was requested
   autoReasoningModelIds?: Record<string, true>;
+  tutorDefaultModelId?: string;
+  tutorMemoryModelId?: string;
+  tutorMemoryFrequency?: number;
+  tutorMemoryAutoUpdate?: boolean;
+  tutorGlobalMemory?: string;
+  forceTutorMode?: boolean;
+  tutorMemoryDebugByMessageId?: Record<
+    string,
+    {
+      version?: number;
+      messageCount?: number;
+      updatedAt?: number;
+      model?: string;
+      before?: string;
+      after?: string;
+      raw?: string;
+      conversationWindow?: string;
+    }
+  >;
   nextModel?: string;
   nextSearchWithBrave?: boolean;
   nextSearchProvider?: 'brave' | 'openrouter';
