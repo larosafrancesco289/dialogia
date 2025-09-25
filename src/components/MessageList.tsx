@@ -33,12 +33,17 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const braveGloballyEnabled = useChatStore((s) => !!s.ui.experimentalBrave);
   const tutorByMessageId = useChatStore((s) => s.ui.tutorByMessageId || {});
   const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
+  const forceTutorMode = useChatStore((s) => !!s.ui.forceTutorMode);
+  const tutorMemoryDebugByMessageId = useChatStore((s) => s.ui.tutorMemoryDebugByMessageId || {});
+  const updateChatSettings = useChatStore((s) => s.updateChatSettings);
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
   const branchFrom = useChatStore((s) => s.branchChatFromMessage);
   const autoReasoningModelIds = useChatStore((s) => s.ui.autoReasoningModelIds || {});
   const showStats = chat?.settings.show_stats ?? false;
   const debugMode = useChatStore((s) => s.ui.debugMode || false);
   const debugByMessageId = useChatStore((s) => s.ui.debugByMessageId || {});
+  const tutorMemoryAutoUpdateDefault = useChatStore((s) => s.ui.tutorMemoryAutoUpdate !== false);
+  const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat?.settings?.tutor_mode);
   const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
@@ -409,7 +414,9 @@ export default function MessageList({ chatId }: { chatId: string }) {
                         >
                           <ArrowUturnRightIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                         </button>
-                        <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
+                        {!tutorEnabled && (
+                          <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
+                        )}
                       </div>
                     )}
                   </div>
@@ -433,6 +440,33 @@ export default function MessageList({ chatId }: { chatId: string }) {
                     body={debugByMessageId[m.id].body}
                     expanded={isDebugExpanded(m.id)}
                     onToggle={() => toggleDebug(m.id)}
+                    memoryInfo={(() => {
+                      if (!tutorEnabled) return undefined;
+                      const mem = tutorMemoryDebugByMessageId[m.id] || {};
+                      const memoryDisabled = chat?.settings.tutor_memory_disabled === true;
+                      return {
+                        enabled: !memoryDisabled,
+                        defaultEnabled: tutorMemoryAutoUpdateDefault,
+                        version: mem.version ?? chat?.settings.tutor_memory_version,
+                        messageCount: mem.messageCount ?? chat?.settings.tutor_memory_message_count,
+                        after: mem.after ?? chat?.settings.tutor_memory,
+                        before: mem.before,
+                        raw: mem.raw,
+                        conversationWindow: mem.conversationWindow,
+                        model: mem.model,
+                        updatedAt: mem.updatedAt,
+                      };
+                    })()}
+                    onToggleMemory={
+                      tutorEnabled && chat
+                        ? async () => {
+                            const memoryDisabled = chat.settings.tutor_memory_disabled === true;
+                            await updateChatSettings({
+                              tutor_memory_disabled: memoryDisabled ? false : true,
+                            });
+                          }
+                        : undefined
+                    }
                   />
                 )}
                 {/* Thinking block styled like sources, inline header with icon toggle */}
