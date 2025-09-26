@@ -1,6 +1,15 @@
 'use client';
 import { useChatStore } from '@/lib/store';
-import { useEffect, useMemo, useState, useLayoutEffect, useRef, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useLayoutEffect,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 import ThemeToggle from '@/components/ThemeToggle';
 import IconButton from '@/components/IconButton';
@@ -50,6 +59,43 @@ function Section(props: { title: string; children: ReactNode }) {
     </div>
   );
 }
+
+type TabId = 'models' | 'chat' | 'tutor' | 'display' | 'privacy' | 'data' | 'labs';
+
+const TAB_LIST: ReadonlyArray<{ id: TabId; label: string }> = [
+  { id: 'models', label: 'Models' },
+  { id: 'chat', label: 'Chat' },
+  { id: 'tutor', label: 'Tutor' },
+  { id: 'display', label: 'Display' },
+  { id: 'privacy', label: 'Privacy' },
+  { id: 'data', label: 'Data' },
+  { id: 'labs', label: 'Labs' },
+];
+
+const TAB_SECTIONS: Record<TabId, string[]> = {
+  models: ['models', 'web-search', 'routing'],
+  chat: ['general', 'generation', 'reasoning'],
+  tutor: ['tutor'],
+  display: ['display', 'debug'],
+  privacy: ['privacy'],
+  data: ['data'],
+  labs: ['experimental'],
+};
+
+const SECTION_TITLES: Record<string, string> = {
+  models: 'Models',
+  'web-search': 'Web Search',
+  routing: 'Routing',
+  general: 'General',
+  generation: 'Generation',
+  reasoning: 'Reasoning',
+  tutor: 'Tutor',
+  display: 'Display',
+  debug: 'Debug',
+  privacy: 'Privacy',
+  data: 'Data',
+  experimental: 'Experimental',
+};
 
 export default function SettingsDrawer() {
   const {
@@ -117,6 +163,11 @@ export default function SettingsDrawer() {
   );
   const [showStats, setShowStats] = useState<boolean>(chat?.settings.show_stats ?? false);
   const [closing, setClosing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>('models');
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const drawerRef = useRef<HTMLDivElement | null>(null);
+  const tabBarRef = useRef<HTMLDivElement | null>(null);
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const searchRef = useRef<HTMLInputElement>(null);
   const [routePref, setRoutePref] = useState<'speed' | 'cost'>(
     (useChatStore.getState().ui.routePreference as any) || 'speed',
@@ -293,6 +344,112 @@ export default function SettingsDrawer() {
     };
   }, [normalizedQuery]);
 
+  const renderSection = useCallback(
+    (tabId: TabId, sectionId: string, content: ReactNode) => {
+      if (activeTab !== tabId) return null;
+      return (
+        <div
+          key={sectionId}
+          id={`settings-${sectionId}`}
+          data-settings-section={sectionId}
+          ref={(el) => {
+            if (el) {
+              sectionRefs.current[sectionId] = el;
+            } else {
+              delete sectionRefs.current[sectionId];
+            }
+          }}
+          className="space-y-4"
+        >
+          {content}
+        </div>
+      );
+    },
+    [activeTab],
+  );
+
+  const scrollToSection = useCallback(
+    (sectionId: string) => {
+      const container = drawerRef.current;
+      const target = sectionRefs.current[sectionId];
+      if (!container || !target) return;
+
+      const header = container.querySelector('[data-settings-header]') as HTMLElement | null;
+      const headerHeight = header?.offsetHeight ?? 0;
+      const tabBarHeight = tabBarRef.current?.offsetHeight ?? 0;
+      const offset = headerHeight + tabBarHeight + 16;
+
+      const prefersReducedMotion =
+        typeof window !== 'undefined' && window.matchMedia
+          ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          : false;
+
+      container.scrollTo({
+        top: Math.max(0, target.offsetTop - offset),
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      });
+      setActiveSection(sectionId);
+    },
+    [],
+  );
+
+  const handleTabKey = useCallback(
+    (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        const next = (index + 1) % TAB_LIST.length;
+        setActiveTab(TAB_LIST[next].id);
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const prev = (index - 1 + TAB_LIST.length) % TAB_LIST.length;
+        setActiveTab(TAB_LIST[prev].id);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const firstSection = TAB_SECTIONS[activeTab]?.[0] ?? null;
+    setActiveSection(firstSection);
+    if (drawerRef.current) {
+      drawerRef.current.scrollTo({ top: 0 });
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    const container = drawerRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length === 0) return;
+        const id = visible[0].target.getAttribute('data-settings-section');
+        if (id && id !== activeSection) {
+          setActiveSection(id);
+        }
+      },
+      {
+        root: container,
+        threshold: 0.3,
+        rootMargin: '-80px 0px -55% 0px',
+      },
+    );
+
+    const subscription = TAB_SECTIONS[activeTab] ?? [];
+    subscription.forEach((id) => {
+      const el = sectionRefs.current[id];
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [activeTab]);
+
+  const navSections = TAB_SECTIONS[activeTab] ?? [];
+  const showDesktopNav = navSections.length > 1;
+
   // Close the search dropdown when clicking outside
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
@@ -317,6 +474,7 @@ export default function SettingsDrawer() {
         aria-hidden
       />
       <div
+        ref={drawerRef}
         className={`fixed inset-y-0 right-0 w-full sm:w-[640px] glass-panel border-l border-border shadow-[var(--shadow-card)] z-[80] overflow-y-auto will-change-transform settings-drawer${closing ? ' is-closing' : ''}`}
         style={{ overscrollBehavior: 'contain' }}
         role="dialog"
@@ -329,6 +487,7 @@ export default function SettingsDrawer() {
       >
         {/* Header */}
         <div
+          data-settings-header
           className="flex items-center gap-3 border-b border-border sticky top-0 glass z-10 px-4"
           style={{ height: 'var(--header-height)' }}
         >
@@ -343,9 +502,97 @@ export default function SettingsDrawer() {
           </div>
         </div>
 
-        <div className="px-4 py-4 space-y-4 pb-8">
-          {/* Models (moved to top) */}
-          <Section title="Models">
+        <div
+          ref={tabBarRef}
+          className="flex items-center gap-2 overflow-x-auto border-b border-border glass sticky z-10 px-4"
+          style={{ top: 'var(--header-height)', minHeight: 50 }}
+          role="tablist"
+          aria-label="Settings categories"
+        >
+          {TAB_LIST.map((tab, index) => (
+            <button
+              key={tab.id}
+              id={`settings-tab-${tab.id}`}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`settings-tabpanel-${tab.id}`}
+              tabIndex={activeTab === tab.id ? 0 : -1}
+              className={`shrink-0 px-3 py-2 text-sm rounded-full border transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-muted text-foreground border-border'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              }`}
+              onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(event) => handleTabKey(event, index)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="px-4 pt-4 pb-24">
+          <div className="md:flex md:items-start md:gap-6">
+            {showDesktopNav && (
+              <nav
+                className="hidden md:block md:w-48 md:shrink-0 sticky"
+                style={{ top: 'calc(var(--header-height) + 62px)' }}
+                aria-label="In-page settings navigation"
+              >
+                <div className="flex flex-col gap-1">
+                  {navSections.map((sectionId) => (
+                    <button
+                      key={sectionId}
+                      type="button"
+                      className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                        activeSection === sectionId
+                          ? 'bg-muted text-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                      }`}
+                      onClick={() => scrollToSection(sectionId)}
+                    >
+                      {SECTION_TITLES[sectionId] ?? sectionId}
+                    </button>
+                  ))}
+                </div>
+              </nav>
+            )}
+            <div className="flex-1">
+              {TAB_LIST.map((tab) => {
+                const isActive = tab.id === activeTab;
+                return (
+                  <div
+                    key={tab.id}
+                    role="tabpanel"
+                    id={`settings-tabpanel-${tab.id}`}
+                    aria-labelledby={`settings-tab-${tab.id}`}
+                    hidden={!isActive}
+                    className={`space-y-6 ${isActive ? '' : 'hidden'}`}
+                  >
+                    {isActive && (
+                      <>
+                        {navSections.length > 1 && (
+                          <div className="md:hidden flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
+                            {navSections.map((sectionId) => (
+                              <button
+                                key={sectionId}
+                                type="button"
+                                className={`shrink-0 px-3 py-2 text-sm rounded-full border transition-colors ${
+                                  activeSection === sectionId
+                                    ? 'bg-muted text-foreground border-border'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                                }`}
+                                onClick={() => scrollToSection(sectionId)}
+                              >
+                                {SECTION_TITLES[sectionId] ?? sectionId}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {renderSection(
+                          'models',
+                          'models',
+                          <Section title="Models">
             <div className="space-y-3">
               <div className="relative">
                 <input
@@ -484,10 +731,13 @@ export default function SettingsDrawer() {
                 </div>
               )}
             </div>
-          </Section>
+                        </Section>,
+                        )}
 
-          {/* Web Search (new dedicated section) */}
-          <Section title="Web Search">
+                        {renderSection(
+                          'models',
+                          'web-search',
+                          <Section title="Web Search">
             <div className="space-y-2">
               <div className="space-y-1">
                 <label className="text-sm block">Provider</label>
@@ -520,10 +770,47 @@ export default function SettingsDrawer() {
                 </div>
               </div>
             </div>
-          </Section>
+                        </Section>,
+                        )}
 
-          {/* General */}
-          <Section title="General">
+                        {renderSection(
+                          'models',
+                          'routing',
+                          <Section title="Routing">
+            <div className="space-y-2">
+              <label className="text-sm block">Route preference</label>
+              <div className="segmented">
+                <button
+                  className={`segment ${routePref === 'speed' ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setRoutePref('speed');
+                    setUI({ routePreference: 'speed' });
+                  }}
+                >
+                  Speed
+                </button>
+                <button
+                  className={`segment ${routePref === 'cost' ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setRoutePref('cost');
+                    setUI({ routePreference: 'cost' });
+                  }}
+                >
+                  Cost
+                </button>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Speed sorts by provider throughput; Cost sorts by price. OpenRouter routing uses
+                this hint when selecting a provider for the chosen model.
+              </div>
+            </div>
+                        </Section>,
+                        )}
+
+                        {renderSection(
+                          'chat',
+                          'general',
+                          <Section title="General">
             <div className="space-y-2">
               <label className="text-sm">System prompt</label>
               {/* Presets controls */}
@@ -619,74 +906,13 @@ export default function SettingsDrawer() {
                 This is sent at the start of the chat to steer behavior.
               </div>
             </div>
-          </Section>
+                        </Section>,
+                        )}
 
-          {/* Privacy */}
-          <Section title="Privacy">
-            <div className="space-y-2">
-              <label className="text-sm flex items-center justify-between">
-                <span>Zero Data Retention (ZDR) only</span>
-                <div className="segmented">
-                  <button
-                    className={`segment ${ui?.zdrOnly !== false ? 'is-active' : ''}`}
-                    onClick={() => {
-                      setUI({ zdrOnly: true });
-                      loadModels();
-                    }}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={`segment ${ui?.zdrOnly === false ? 'is-active' : ''}`}
-                    onClick={() => {
-                      setUI({ zdrOnly: false });
-                      loadModels();
-                    }}
-                  >
-                    Off
-                  </button>
-                </div>
-              </label>
-              <div className="text-xs text-muted-foreground">
-                When enabled, model search results are limited to providers with a Zero Data
-                Retention policy (fetched from OpenRouter). Curated defaults also follow this.
-              </div>
-            </div>
-          </Section>
-
-          {/* Routing */}
-          <Section title="Routing">
-            <div className="space-y-2">
-              <label className="text-sm block">Route preference</label>
-              <div className="segmented">
-                <button
-                  className={`segment ${routePref === 'speed' ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setRoutePref('speed');
-                    setUI({ routePreference: 'speed' });
-                  }}
-                >
-                  Speed
-                </button>
-                <button
-                  className={`segment ${routePref === 'cost' ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setRoutePref('cost');
-                    setUI({ routePreference: 'cost' });
-                  }}
-                >
-                  Cost
-                </button>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Speed sorts by provider throughput; Cost sorts by price. OpenRouter routing uses
-                this hint when selecting a provider for the chosen model.
-              </div>
-            </div>
-          </Section>
-
-          {/* Generation */}
-          <Section title="Generation">
+                        {renderSection(
+                          'chat',
+                          'generation',
+                          <Section title="Generation">
             <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
@@ -791,10 +1017,13 @@ export default function SettingsDrawer() {
                 </div>
               </div>
             </div>
-          </Section>
+                        </Section>,
+                        )}
 
-          {/* Reasoning */}
-          <Section title="Reasoning">
+                        {renderSection(
+                          'chat',
+                          'reasoning',
+                          <Section title="Reasoning">
             <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-sm flex items-center justify-between">
@@ -856,10 +1085,156 @@ export default function SettingsDrawer() {
                 </div>
               </div>
             </div>
-          </Section>
+                        </Section>,
+                        )}
 
-          {/* Display */}
-          <Section title="Display">
+                        {renderSection(
+                          'tutor',
+                          'tutor',
+                          <Section title="Tutor">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-sm block">Tutor Mode</label>
+                <div className="segmented">
+                  <button
+                    className={`segment ${experimentalTutor ? 'is-active' : ''}`}
+                    onClick={() => setUI({ experimentalTutor: true })}
+                  >
+                    On
+                  </button>
+                  <button
+                    className={`segment ${!experimentalTutor ? 'is-active' : ''}`}
+                    onClick={() => setUI({ experimentalTutor: false })}
+                  >
+                    Off
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Show Tutor controls and enable practice tools (MCQ, fill‑blank, flashcards).
+                </div>
+              </div>
+              {experimentalTutor && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-sm block">Force Tutor Mode</label>
+                    <div className="segmented">
+                      <button
+                        className={`segment ${ui?.forceTutorMode ? 'is-active' : ''}`}
+                        onClick={async () => {
+                          setUI({ forceTutorMode: true });
+                          if (chat) await updateChatSettings({ tutor_mode: true });
+                        }}
+                      >
+                        On
+                      </button>
+                      <button
+                        className={`segment ${!ui?.forceTutorMode ? 'is-active' : ''}`}
+                        onClick={() => setUI({ forceTutorMode: false })}
+                      >
+                        Off
+                      </button>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      When enabled, all chats run in Tutor Mode and use the settings below.
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm block">Tutor default model</label>
+                    <input
+                      className="input w-full"
+                      value={tutorDefaultModel}
+                      onChange={(e) => setTutorDefaultModel(e.target.value)}
+                      list="tutor-model-options"
+                      placeholder="provider/model"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Each Tutor Mode chat automatically uses this model.
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-sm block">Memory update model</label>
+                      <input
+                        className="input w-full"
+                        value={tutorMemoryModel}
+                        onChange={(e) => setTutorMemoryModel(e.target.value)}
+                        list="tutor-model-options"
+                        placeholder="provider/model"
+                      />
+                      <div className="text-xs text-muted-foreground">
+                        Used for the periodic memory analysis requests.
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm block">Memory update frequency</label>
+                      <input
+                        className="input w-full"
+                        type="number"
+                        min={1}
+                        value={tutorMemoryFrequencyStr}
+                        onChange={(e) => {
+                          setTutorMemoryFrequencyStr(e.target.value);
+                          const num = Number(e.target.value);
+                          if (Number.isFinite(num) && num > 0) {
+                            setTutorMemoryFrequency(Math.ceil(num));
+                          }
+                        }}
+                      />
+                      <div className="text-xs text-muted-foreground">
+                        Memory is refreshed after this many learner turns (default {DEFAULT_TUTOR_MEMORY_FREQUENCY}).
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm block">Auto-update memory by default</label>
+                    <div className="segmented">
+                      <button
+                        className={`segment ${tutorMemoryAutoUpdate ? 'is-active' : ''}`}
+                        onClick={() => setTutorMemoryAutoUpdate(true)}
+                      >
+                        On
+                      </button>
+                      <button
+                        className={`segment ${!tutorMemoryAutoUpdate ? 'is-active' : ''}`}
+                        onClick={() => setTutorMemoryAutoUpdate(false)}
+                      >
+                        Off
+                      </button>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Controls whether new Tutor Mode chats begin with automatic memory updates.
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm block">Shared tutor memory</label>
+                    <textarea
+                      className="textarea w-full"
+                      rows={6}
+                      value={tutorMemorySnapshot}
+                      onChange={(e) => setTutorMemorySnapshot(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Acts as the persistent tutor scratchpad (max 1000 tokens). Updates apply to all Tutor Mode chats.
+                    </div>
+                  </div>
+                  <datalist id="tutor-model-options">
+                    {(models || []).slice(0, 200).map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name || m.id}
+                      </option>
+                    ))}
+                  </datalist>
+                </>
+              )}
+            </div>
+                        </Section>,
+                        )}
+
+                        {renderSection(
+                          'display',
+                          'display',
+                          <Section title="Display">
             <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-sm block">Show thinking by default</label>
@@ -903,10 +1278,13 @@ export default function SettingsDrawer() {
                 </div>
               </div>
             </div>
-          </Section>
+                        </Section>,
+                        )}
 
-          {/* Debug */}
-          <Section title="Debug">
+                        {renderSection(
+                          'display',
+                          'debug',
+                          <Section title="Debug">
             <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-sm block">Enable debug view</label>
@@ -930,10 +1308,49 @@ export default function SettingsDrawer() {
                 </div>
               </div>
             </div>
-          </Section>
+                        </Section>,
+                        )}
 
-          {/* Experimental */}
-          <Section title="Experimental">
+                        {renderSection(
+                          'privacy',
+                          'privacy',
+                          <Section title="Privacy">
+            <div className="space-y-2">
+              <label className="text-sm flex items-center justify-between">
+                <span>Zero Data Retention (ZDR) only</span>
+                <div className="segmented">
+                  <button
+                    className={`segment ${ui?.zdrOnly !== false ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setUI({ zdrOnly: true });
+                      loadModels();
+                    }}
+                  >
+                    On
+                  </button>
+                  <button
+                    className={`segment ${ui?.zdrOnly === false ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setUI({ zdrOnly: false });
+                      loadModels();
+                    }}
+                  >
+                    Off
+                  </button>
+                </div>
+              </label>
+              <div className="text-xs text-muted-foreground">
+                When enabled, model search results are limited to providers with a Zero Data
+                Retention policy (fetched from OpenRouter). Curated defaults also follow this.
+              </div>
+            </div>
+                        </Section>,
+                        )}
+
+                        {renderSection(
+                          'labs',
+                          'experimental',
+                          <Section title="Experimental">
             <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-sm block">Brave Web Search</label>
@@ -956,142 +1373,8 @@ export default function SettingsDrawer() {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-sm block">Tutor Mode</label>
+                <label className="text-sm block">DeepResearch</label>
                 <div className="segmented">
-                  <button
-                    className={`segment ${experimentalTutor ? 'is-active' : ''}`}
-                    onClick={() => setUI({ experimentalTutor: true })}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={`segment ${!experimentalTutor ? 'is-active' : ''}`}
-                    onClick={() => setUI({ experimentalTutor: false })}
-                  >
-                    Off
-                  </button>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Show Tutor controls and enable practice tools (MCQ, fill‑blank, flashcards).
-              </div>
-            </div>
-            {experimentalTutor && (
-              <>
-                <div className="space-y-1">
-                  <label className="text-sm block">Force Tutor Mode</label>
-                  <div className="segmented">
-                    <button
-                      className={`segment ${ui?.forceTutorMode ? 'is-active' : ''}`}
-                      onClick={async () => {
-                        setUI({ forceTutorMode: true });
-                        if (chat) await updateChatSettings({ tutor_mode: true });
-                      }}
-                    >
-                      On
-                    </button>
-                    <button
-                      className={`segment ${!ui?.forceTutorMode ? 'is-active' : ''}`}
-                      onClick={() => setUI({ forceTutorMode: false })}
-                    >
-                      Off
-                    </button>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    When enabled, all chats run in Tutor Mode and use the settings below.
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm block">Tutor default model</label>
-                  <input
-                    className="input w-full"
-                    value={tutorDefaultModel}
-                    onChange={(e) => setTutorDefaultModel(e.target.value)}
-                    list="tutor-model-options"
-                    placeholder="provider/model"
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    Each Tutor Mode chat automatically uses this model.
-                  </div>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-sm block">Memory update model</label>
-                    <input
-                      className="input w-full"
-                      value={tutorMemoryModel}
-                      onChange={(e) => setTutorMemoryModel(e.target.value)}
-                      list="tutor-model-options"
-                      placeholder="provider/model"
-                    />
-                    <div className="text-xs text-muted-foreground">
-                      Used for the periodic memory analysis requests.
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm block">Memory update frequency</label>
-                    <input
-                      className="input w-full"
-                      type="number"
-                      min={1}
-                      value={tutorMemoryFrequencyStr}
-                      onChange={(e) => {
-                        setTutorMemoryFrequencyStr(e.target.value);
-                        const num = Number(e.target.value);
-                        if (Number.isFinite(num) && num > 0) {
-                          setTutorMemoryFrequency(Math.ceil(num));
-                        }
-                      }}
-                    />
-                    <div className="text-xs text-muted-foreground">
-                      Memory is refreshed after this many learner turns (default {DEFAULT_TUTOR_MEMORY_FREQUENCY}).
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm block">Auto-update memory by default</label>
-                  <div className="segmented">
-                    <button
-                      className={`segment ${tutorMemoryAutoUpdate ? 'is-active' : ''}`}
-                      onClick={() => setTutorMemoryAutoUpdate(true)}
-                    >
-                      On
-                    </button>
-                    <button
-                      className={`segment ${!tutorMemoryAutoUpdate ? 'is-active' : ''}`}
-                      onClick={() => setTutorMemoryAutoUpdate(false)}
-                    >
-                      Off
-                    </button>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Controls whether new Tutor Mode chats begin with automatic memory updates.
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm block">Shared tutor memory</label>
-                  <textarea
-                    className="textarea w-full"
-                    rows={6}
-                    value={tutorMemorySnapshot}
-                    onChange={(e) => setTutorMemorySnapshot(e.target.value)}
-                    onKeyDown={(e) => e.stopPropagation()}
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    Acts as the persistent tutor scratchpad (max 1000 tokens). Updates apply to all Tutor Mode chats.
-                  </div>
-                </div>
-                <datalist id="tutor-model-options">
-                  {(models || []).slice(0, 200).map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name || m.id}
-                    </option>
-                  ))}
-                </datalist>
-              </>
-            )}
-            <div className="space-y-1">
-              <label className="text-sm block">DeepResearch</label>
-              <div className="segmented">
                 <button
                   className={`segment ${experimentalDeepResearch ? 'is-active' : ''}`}
                     onClick={() => setUI({ experimentalDeepResearch: true })}
@@ -1110,10 +1393,13 @@ export default function SettingsDrawer() {
                 </div>
               </div>
             </div>
-          </Section>
+                        </Section>,
+                        )}
 
-          {/* Data */}
-          <Section title="Data">
+                        {renderSection(
+                          'data',
+                          'data',
+                          <Section title="Data">
             <div className="space-y-2">
               <div className="flex gap-2 items-center flex-wrap">
                 <button className="btn btn-outline" onClick={onExport}>
@@ -1134,9 +1420,15 @@ export default function SettingsDrawer() {
                 Export creates a backup of chats, messages, and folders. Import merges data.
               </div>
             </div>
-          </Section>
-
-          {/* (Models section moved to top) */}
+                        </Section>,
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Sticky footer */}
