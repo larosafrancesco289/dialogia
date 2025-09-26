@@ -118,6 +118,21 @@ export type UIState = {
     }
   >;
   tutorProfileByChatId?: Record<string, import('@/lib/types').TutorProfile>;
+  tutorWelcomeByChatId?: Record<
+    string,
+    {
+      status: 'idle' | 'loading' | 'ready' | 'error';
+      message?: string;
+      error?: string;
+      generatedAt?: number;
+    }
+  >;
+  tutorWelcomePreview?: {
+    status: 'idle' | 'loading' | 'ready' | 'error';
+    message?: string;
+    error?: string;
+    generatedAt?: number;
+  };
   // Per-chat ephemeral flags (not persisted)
   tutorGreetedByChatId?: Record<string, boolean>;
 };
@@ -165,6 +180,8 @@ export type StoreState = {
   // tutor
   logTutorResult: (evt: import('@/lib/types').TutorEvent) => Promise<void>;
   loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
+  primeTutorWelcomePreview: () => Promise<string | undefined>;
+  prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
 
   // compare
   openCompare: () => void;

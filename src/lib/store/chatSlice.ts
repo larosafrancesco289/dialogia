@@ -7,11 +7,7 @@ import {
   DEFAULT_TUTOR_MODEL_ID,
   DEFAULT_TUTOR_MEMORY_FREQUENCY,
 } from '@/lib/constants';
-import {
-  getTutorGreeting,
-  buildTutorContextSummary,
-  buildTutorContextFull,
-} from '@/lib/agent/tutor';
+import { buildTutorContextSummary, buildTutorContextFull } from '@/lib/agent/tutor';
 import { EMPTY_TUTOR_MEMORY, normalizeTutorMemory } from '@/lib/agent/tutorMemory';
 
 export function createChatSlice(
@@ -94,7 +90,20 @@ export function createChatSlice(
       const selected = get().selectedChatId
         ? get().chats.find((c) => c.id === get().selectedChatId)
         : undefined;
-      const lastUsedModel = selected?.settings?.model;
+      const lastNonTutorModel = (() => {
+        let candidate: { model: string; updatedAt: number } | undefined;
+        for (const c of get().chats) {
+          const model = c.settings?.model;
+          if (!model || c.settings?.tutor_mode) continue;
+          if (!candidate || (c.updatedAt ?? 0) > candidate.updatedAt) {
+            candidate = { model, updatedAt: c.updatedAt ?? 0 };
+          }
+        }
+        return candidate?.model;
+      })();
+      const lastUsedModel = !selected?.settings?.tutor_mode
+        ? selected?.settings?.model
+        : lastNonTutorModel;
       const braveEnabled = !!get().ui.experimentalBrave;
       const tutorEnabledGlobally = !!get().ui.experimentalTutor;
       const forceTutorMode = !!(get().ui.forceTutorMode ?? false);
@@ -140,6 +149,11 @@ export function createChatSlice(
       };
       await saveChat(chat);
       set((s) => ({ chats: [chat, ...s.chats], selectedChatId: id }));
+      if (baseSettings.tutor_mode) {
+        try {
+          (get().prepareTutorWelcomeMessage as any)(id);
+        } catch {}
+      }
       // Reset ephemeral "next" flags so they only apply to this new chat
       set((s) => ({
         ui: {
@@ -161,22 +175,6 @@ export function createChatSlice(
           nextShowStats: undefined,
         },
       }));
-      // If starting a chat with tutor mode on, send a friendly greeting once (gated by experimental flag).
-      if (tutorEnabledGlobally && chat.settings.tutor_mode && !forceTutorMode) {
-        try {
-          const greeted = get().ui.tutorGreetedByChatId?.[id];
-          if (!greeted) {
-            const greeting = getTutorGreeting();
-            await (get().appendAssistantMessage as any)(greeting);
-            set((s) => ({
-              ui: {
-                ...s.ui,
-                tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true },
-              },
-            }));
-          }
-        } catch {}
-      }
     },
 
     selectChat(id: string) {
@@ -312,7 +310,6 @@ export function createChatSlice(
       }));
       const chat = get().chats.find((c) => c.id === id)!;
       await saveChat(chat);
-      // If tutor_mode has just been enabled for this chat, send a one‑time friendly greeting (gated by experimental flag)
       try {
         const turnedOn =
           typeof appliedPartial?.tutor_mode === 'boolean' &&
@@ -320,17 +317,7 @@ export function createChatSlice(
           before.settings.tutor_mode !== appliedPartial.tutor_mode &&
           appliedPartial.tutor_mode === true;
         if (turnedOn && !!get().ui.experimentalTutor) {
-          const greeted = get().ui.tutorGreetedByChatId?.[id];
-          if (!greeted) {
-            const greeting = getTutorGreeting();
-            await (get().appendAssistantMessage as any)(greeting);
-            set((s) => ({
-              ui: {
-                ...s.ui,
-                tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true },
-              },
-            }));
-          }
+          (get().prepareTutorWelcomeMessage as any)(id);
         }
       } catch {}
     },

@@ -61,6 +61,7 @@ export type Message = {
   attachments?: Attachment[];
   // Optional: persisted tutor payload for interactive content and attempts
   tutor?: MessageTutor;
+  tutorWelcome?: boolean;
 };
 
 // Tutor tool item types rendered by UI (ephemeral; stored in UI state)
