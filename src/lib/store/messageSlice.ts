@@ -225,6 +225,15 @@ export function createMessageSlice(
         }),
       );
       // Determine if any PDFs exist in conversation (prior or this turn) to enable parser plugin
+      if (tutorEnabled) {
+        try {
+          const maybePromise = (get().prepareTutorWelcomeMessage as any)(chatId);
+          // Fire-and-forget so tutor welcome generation does not block user sends
+          if (maybePromise && typeof maybePromise.then === 'function') {
+            maybePromise.catch(() => {});
+          }
+        } catch {}
+      }
       const priorList = get().messages[chatId] ?? [];
       const hadPdfEarlier = priorList.some(
         (m) => Array.isArray(m.attachments) && m.attachments.some((x: any) => x?.kind === 'pdf'),

@@ -51,7 +51,14 @@ export function createUiSlice(
   return {
     ui: initial,
     setUI(partial: Partial<UIState>) {
-      set((s) => ({ ui: { ...s.ui, ...partial } }));
+      set((s) => {
+        const nextUi: UIState = { ...s.ui, ...partial };
+        if (partial.experimentalTutor === false) {
+          nextUi.forceTutorMode = false;
+          nextUi.nextTutorMode = false;
+        }
+        return { ui: nextUi };
+      });
     },
   } satisfies Partial<StoreState>;
 }

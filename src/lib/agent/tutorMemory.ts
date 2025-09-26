@@ -13,6 +13,14 @@ export type TutorMemoryUpdateResult = {
   conversationWindow: string;
 };
 
+export type TutorMemorySections = {
+  goals: string[];
+  progress: string[];
+  preferences: string[];
+};
+
+const PLACEHOLDER_PATTERN = /not recorded yet\.?/i;
+
 const isSectionHeader = (line: string) => /^-\s*(Goals|Progress|Preferences):/i.test(line.trim());
 
 export function enforceTutorMemoryLimit(text: string): string {
@@ -59,6 +67,100 @@ export function normalizeTutorMemory(input?: string): string {
     if (!matcher.test(text)) text = `${text}\n- ${heading}:\n  - Not recorded yet.`;
   }
   return enforceTutorMemoryLimit(text);
+}
+
+export function extractTutorMemorySections(memory?: string): TutorMemorySections {
+  const sections: TutorMemorySections = { goals: [], progress: [], preferences: [] };
+  if (!memory) return sections;
+  const lines = memory.split(/\r?\n/);
+  let current: keyof TutorMemorySections | null = null;
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (/^memory:/i.test(line)) continue;
+    if (/^-\s*Goals:/i.test(line)) {
+      current = 'goals';
+      continue;
+    }
+    if (/^-\s*Progress:/i.test(line)) {
+      current = 'progress';
+      continue;
+    }
+    if (/^-\s*Preferences:/i.test(line)) {
+      current = 'preferences';
+      continue;
+    }
+    if (!current) continue;
+    if (!/^[-*•]/.test(line)) continue;
+    const normalized = line.replace(/^[-*•]+\s*/, '').trim();
+    if (!normalized || PLACEHOLDER_PATTERN.test(normalized)) continue;
+    const cleaned = normalized
+      .replace(/^(Goals?|Progress|Preferences)[:\-]\s*/i, '')
+      .replace(/\s+/g, ' ')
+      .replace(/\.$/, '')
+      .trim();
+    if (!cleaned) continue;
+    sections[current].push(cleaned);
+  }
+  return sections;
+}
+
+const formatList = (items: string[]): string => {
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  const head = items.slice(0, -1).join(', ');
+  const tail = items[items.length - 1];
+  return `${head}, and ${tail}`;
+};
+
+export function buildTutorWelcomeFallback(rawMemory?: string): string {
+  const memory = normalizeTutorMemory(rawMemory);
+  const { goals, progress, preferences } = extractTutorMemorySections(memory);
+  const intro = 'Welcome back!';
+  if (goals.length) return `${intro} Still focused on ${formatList(goals)}?`;
+  if (progress.length) return `${intro} Nice progress on ${formatList(progress)}.`;
+  if (preferences.length) return `${intro} I'll keep ${formatList(preferences)} in mind.`;
+  return `${intro} Ready when you are.`;
+}
+
+export async function generateTutorWelcomeMessage(params: {
+  apiKey: string;
+  model: string;
+  memory?: string;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const { apiKey, model, memory, signal } = params;
+  const normalized = normalizeTutorMemory(memory);
+  const prompt = [
+    'Learner memory (context only):',
+    normalized,
+    '',
+    'Write a warm welcome that proves you remember them.',
+    'Requirements: 1-2 sentences, under 35 words total, second-person voice, no lists, no mention of "memory".',
+    'Weave in one specific detail from the learner notes and end by inviting them to start.',
+  ].join('\n');
+  const messages = [
+    {
+      role: 'system',
+      content:
+        'You are a warm, attentive tutor who remembers prior sessions. Reply with a single paragraph of 1-2 sentences (max 35 words) that naturally references the learner details and ends with an invitation to continue.',
+    },
+    { role: 'user', content: prompt },
+  ];
+  const response = await chatCompletion({
+    apiKey,
+    model,
+    messages,
+    max_tokens: 220,
+    temperature: 0.65,
+    top_p: 0.9,
+    providerSort: 'throughput',
+    signal,
+  });
+  const text = (response?.choices?.[0]?.message?.content || '').trim();
+  if (!text) throw new Error('tutor_welcome_empty');
+  return text;
 }
 
 export async function updateTutorMemory(params: {

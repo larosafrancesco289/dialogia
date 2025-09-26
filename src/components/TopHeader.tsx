@@ -114,12 +114,16 @@ export default function TopHeader() {
 
       <div className="order-2 flex-1 min-w-0 w-full sm:w-auto">
         {tutorActive ? (
-          <div className="badge px-3 py-2 flex items-center gap-2 text-sm">
-            <AcademicCapIcon className="h-4 w-4 text-primary" />
-            <span className="font-medium">Tutor</span>
-            {tutorModelLabel && (
-              <span className="text-muted-foreground truncate">({tutorModelLabel})</span>
-            )}
+          <div className="tutor-model-pill" title={tutorModelLabel || undefined}>
+            <span className="tutor-model-pill__icon">
+              <AcademicCapIcon className="h-5 w-5" />
+            </span>
+            <div className="tutor-model-pill__text">
+              <span className="tutor-model-pill__label">Tutor</span>
+              {tutorModelLabel && (
+                <span className="tutor-model-pill__model">{tutorModelLabel}</span>
+              )}
+            </div>
           </div>
         ) : (
           <ModelPicker />

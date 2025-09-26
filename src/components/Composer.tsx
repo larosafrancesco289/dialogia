@@ -837,7 +837,7 @@ export default function Composer({
               title="Change model (opens Settings)"
               onClick={() => setUI({ showSettings: true })}
             >
-              {findModelById(models, modelId)?.name || modelId}
+              {tutorEnabled ? 'Tutor' : findModelById(models, modelId)?.name || modelId}
             </button>
           }
           {canVision && (
