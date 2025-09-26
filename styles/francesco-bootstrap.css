@@ -305,7 +305,7 @@ a:hover {
   border-radius: 12px;
   margin: 2px 0;
   position: relative;
-  border: 1px solid transparent;
+  border: 1px solid color-mix(in oklab, var(--color-border) 65%, transparent);
 }
 
 .chat-item.selected {
@@ -335,6 +335,7 @@ a:hover {
 
 .chat-item:hover:not(.selected) {
   background: color-mix(in oklab, var(--color-muted) 60%, transparent);
+  border-color: color-mix(in oklab, var(--color-border) 85%, transparent);
 }
 
 /* Apple-like sidebar styling */

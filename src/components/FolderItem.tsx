@@ -115,7 +115,9 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
     await deleteFolder(folder.id);
   };
 
-  const paddingLeft = depth * 16 + 16; // 16px per level + base padding
+  const indentStep = 24;
+  const paddingLeft = 16;
+  const marginLeft = depth * indentStep;
 
   return (
     <div data-row-press>
@@ -159,6 +161,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
             }
             setCurrentDragData(null);
           }}
+          style={{ marginLeft: `${marginLeft}px`, paddingLeft: `${paddingLeft}px` }}
         >
           {/* Expand/Collapse Icon */}
           <IconButton
@@ -402,7 +405,9 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
     clearLong();
   };
 
-  const paddingLeft = (depth + 1) * 16 + 16; // Extra level for chat items
+  const indentStep = 24;
+  const paddingLeft = 16;
+  const marginLeft = (depth + 1) * indentStep;
 
   return (
     <>
@@ -410,7 +415,7 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
         className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item ${
           isSelected ? 'selected' : ''
         }`}
-        style={{ paddingLeft: `${paddingLeft}px` }}
+        style={{ marginLeft: `${marginLeft}px`, paddingLeft: `${paddingLeft}px` }}
         draggable={!isMobile}
         onDragStart={() => {
           if (isMobile) return;

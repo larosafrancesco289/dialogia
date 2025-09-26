@@ -3,16 +3,14 @@ import { useChatStore } from '@/lib/store';
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
-  useLayoutEffect,
   useRef,
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
 import ThemeToggle from '@/components/ThemeToggle';
 import IconButton from '@/components/IconButton';
+import ModelSearch, { ModelSearchHandle } from '@/components/ModelSearch';
 import {
   XCircleIcon,
   CheckIcon,
@@ -27,22 +25,6 @@ import {
   deleteSystemPreset,
   type SystemPreset,
 } from '@/lib/presets';
-import {
-  isReasoningSupported,
-  isVisionSupported,
-  findModelById,
-  isAudioInputSupported,
-  isImageOutputSupported,
-  formatModelLabel,
-} from '@/lib/models';
-import { describeModelPricing } from '@/lib/cost';
-import {
-  EyeIcon,
-  LightBulbIcon,
-  MicrophoneIcon,
-  PhotoIcon,
-  ShieldCheckIcon,
-} from '@heroicons/react/24/outline';
 import {
   normalizeTutorMemory,
   enforceTutorMemoryLimit,
@@ -129,8 +111,6 @@ export default function SettingsDrawer() {
   const [maxTokensStr, setMaxTokensStr] = useState<string>(
     chat?.settings.max_tokens != null ? String(chat.settings.max_tokens) : '',
   );
-  // Removed manual custom model input; use search below
-  const [query, setQuery] = useState('');
   const [reasoningEffort, setReasoningEffort] = useState<
     'none' | 'low' | 'medium' | 'high' | undefined
   >(chat?.settings.reasoning_effort);
@@ -168,7 +148,7 @@ export default function SettingsDrawer() {
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const tabBarRef = useRef<HTMLDivElement | null>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const searchRef = useRef<HTMLInputElement>(null);
+  const modelSearchRef = useRef<ModelSearchHandle | null>(null);
   const [routePref, setRoutePref] = useState<'speed' | 'cost'>(
     (useChatStore.getState().ui.routePreference as any) || 'speed',
   );
@@ -178,13 +158,6 @@ export default function SettingsDrawer() {
   // System prompt presets
   const [presets, setPresets] = useState<SystemPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
-  const [dropdownPos, setDropdownPos] = useState<{
-    left: number;
-    top: number;
-    width: number;
-    maxHeight: number;
-  } | null>(null);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const closeWithAnim = () => {
@@ -244,7 +217,7 @@ export default function SettingsDrawer() {
   useEffect(() => {
     const tid = window.setTimeout(() => {
       try {
-        searchRef.current?.focus({ preventScroll: true } as any);
+        modelSearchRef.current?.focus();
       } catch {}
     }, 80);
     return () => window.clearTimeout(tid);
@@ -264,19 +237,6 @@ export default function SettingsDrawer() {
       mounted = false;
     };
   }, []);
-
-  const normalizedQuery = query.trim().toLowerCase().replace(/\s+/g, ' ');
-  const filtered = useMemo(() => {
-    if (!normalizedQuery) return [] as { id: string; name?: string }[];
-    const words = normalizedQuery.split(' ');
-    return (models || [])
-      .filter((m) => {
-        const hay = `${m.id} ${m.name ?? ''}`.toLowerCase();
-        return words.every((w) => hay.includes(w));
-      })
-      .slice(0, 50)
-      .map((m) => ({ id: m.id, name: m.name }));
-  }, [models, normalizedQuery]);
 
   const onExport = async () => {
     try {
@@ -316,33 +276,6 @@ export default function SettingsDrawer() {
       setUI({ notice: e?.message || 'Import failed' });
     }
   };
-
-  // Position the dropdown using fixed coordinates so it is never clipped
-  useLayoutEffect(() => {
-    const update = () => {
-      if (!normalizedQuery) return setDropdownPos(null);
-      const el = searchRef.current;
-      if (!el) return setDropdownPos(null);
-      const r = el.getBoundingClientRect();
-      const margin = 8;
-      const footer = 88; // sticky footer height
-      const viewportH = window.innerHeight;
-      const available = Math.max(120, viewportH - footer - margin - r.bottom);
-      setDropdownPos({
-        left: r.left,
-        top: r.bottom + margin,
-        width: r.width,
-        maxHeight: available,
-      });
-    };
-    update();
-    window.addEventListener('resize', update, { passive: true });
-    window.addEventListener('scroll', update, true);
-    return () => {
-      window.removeEventListener('resize', update as any);
-      window.removeEventListener('scroll', update as any, true as any);
-    };
-  }, [normalizedQuery]);
 
   const renderSection = useCallback(
     (tabId: TabId, sectionId: string, content: ReactNode) => {
@@ -449,22 +382,6 @@ export default function SettingsDrawer() {
 
   const navSections = TAB_SECTIONS[activeTab] ?? [];
   const showDesktopNav = navSections.length > 1;
-
-  // Close the search dropdown when clicking outside
-  useEffect(() => {
-    const onPointerDown = (e: PointerEvent) => {
-      if (!normalizedQuery) return;
-      const target = e.target as Node | null;
-      const inputEl = searchRef.current;
-      const dropEl = dropdownRef.current;
-      if (inputEl && target && inputEl.contains(target)) return;
-      if (dropEl && target && dropEl.contains(target)) return;
-      setQuery('');
-      setDropdownPos(null);
-    };
-    document.addEventListener('pointerdown', onPointerDown, true);
-    return () => document.removeEventListener('pointerdown', onPointerDown, true);
-  }, [normalizedQuery]);
 
   return (
     <>
@@ -594,126 +511,20 @@ export default function SettingsDrawer() {
                           'models',
                           <Section title="Models">
             <div className="space-y-3">
-              <div className="relative">
-                <input
-                  ref={searchRef}
-                  className="input w-full"
-                  placeholder="Search OpenRouter models (e.g. openai, anthropic, llama)"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.stopPropagation()}
-                />
-                {dropdownPos &&
-                  createPortal(
-                    <div
-                      className="fixed card p-2 overflow-auto z-[90]"
-                      ref={dropdownRef}
-                      style={{
-                        left: dropdownPos.left,
-                        top: dropdownPos.top,
-                        width: dropdownPos.width,
-                        maxHeight: dropdownPos.maxHeight,
-                        overscrollBehavior: 'contain',
-                      }}
-                    >
-                      {filtered.length === 0 && (
-                        <div className="p-2 text-sm text-muted-foreground">No matches</div>
-                      )}
-                      {filtered.map((m) => {
-                        const meta = findModelById(models, m.id);
-                        const canReason = isReasoningSupported(meta);
-                        const canSee = isVisionSupported(meta);
-                        const canImageOut = isImageOutputSupported(meta);
-                        const priceStr = describeModelPricing(meta);
-                        // Prefer a concise name: drop provider prefixes like "Anthropic: ..."
-                        const displayName = formatModelLabel({
-                          model: meta,
-                          fallbackId: m.id,
-                          fallbackName: m.name,
-                        });
-                        const provider = String(m.id).split('/')[0];
-                        const isZdr = Boolean(
-                          (zdrModelIds && zdrModelIds.includes(m.id)) ||
-                            (zdrProviderIds && zdrProviderIds.includes(provider)),
-                        );
-                        return (
-                          <div
-                            key={m.id}
-                            className="p-2 rounded hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
-                          >
-                            <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 w-full">
-                              <div className="font-medium text-sm flex items-center gap-2 min-w-0">
-                                <span className="truncate" title={m.id}>
-                                  {displayName}
-                                </span>
-                                <span className="flex items-center gap-1 text-muted-foreground shrink-0">
-                                  {canReason && (
-                                    <LightBulbIcon
-                                      className="h-4 w-4"
-                                      aria-label="Reasoning supported"
-                                      title="Reasoning supported"
-                                    />
-                                  )}
-                                  {canSee && (
-                                    <EyeIcon
-                                      className="h-4 w-4"
-                                      aria-label="Vision input"
-                                      title="Vision input"
-                                    />
-                                  )}
-                                  {canImageOut && (
-                                    <PhotoIcon
-                                      className="h-4 w-4"
-                                      aria-label="Image generation"
-                                      title="Image generation"
-                                    />
-                                  )}
-                                  {isAudioInputSupported(meta) && (
-                                    <MicrophoneIcon
-                                      className="h-4 w-4"
-                                      aria-label="Audio input"
-                                      title="Audio input"
-                                    />
-                                  )}
-                                  {isZdr && (
-                                    <ShieldCheckIcon
-                                      className="h-4 w-4"
-                                      aria-label="Zero Data Retention"
-                                      title="Zero Data Retention"
-                                    />
-                                  )}
-                                </span>
-                              </div>
-                              {priceStr && (
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                  {priceStr}
-                                </span>
-                              )}
-                              <div className="justify-self-end">
-                                <IconButton
-                                  title="Add model"
-                                  size="sm"
-                                  onClick={() => {
-                                    if (!favoriteModelIds.includes(m.id)) toggleFavoriteModel(m.id);
-                                    if (chat) {
-                                      updateChatSettings({ model: m.id });
-                                    } else {
-                                      setUI({ nextModel: m.id });
-                                    }
-                                    setQuery('');
-                                  }}
-                                >
-                                  <PlusIcon className="h-4 w-4" />
-                                </IconButton>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>,
-                    document.body,
-                  )}
-              </div>
+              <ModelSearch
+                ref={modelSearchRef}
+                placeholder="Search OpenRouter models (e.g. openai, anthropic, llama)"
+                selectedIds={favoriteModelIds || []}
+                clearOnSelect
+                onSelect={(result) => {
+                  if (!favoriteModelIds?.includes(result.id)) toggleFavoriteModel(result.id);
+                  if (chat) {
+                    updateChatSettings({ model: result.id });
+                  } else {
+                    setUI({ nextModel: result.id });
+                  }
+                }}
+              />
               <div>
                 <button className="btn btn-ghost" onClick={() => loadModels()}>
                   Refresh model list
@@ -1140,6 +951,16 @@ export default function SettingsDrawer() {
                   </div>
                   <div className="space-y-1">
                     <label className="text-sm block">Tutor default model</label>
+                    <ModelSearch
+                      placeholder="Search tutor models"
+                      selectedIds={tutorDefaultModel ? [tutorDefaultModel] : []}
+                      actionLabel="Use"
+                      selectedLabel="Selected"
+                      clearOnSelect
+                      onSelect={(result) => {
+                        setTutorDefaultModel(result.id);
+                      }}
+                    />
                     <input
                       className="input w-full"
                       value={tutorDefaultModel}
@@ -1154,6 +975,16 @@ export default function SettingsDrawer() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
                       <label className="text-sm block">Memory update model</label>
+                      <ModelSearch
+                        placeholder="Search models for memory updates"
+                        selectedIds={tutorMemoryModel ? [tutorMemoryModel] : []}
+                        actionLabel="Use"
+                        selectedLabel="Selected"
+                        clearOnSelect
+                        onSelect={(result) => {
+                          setTutorMemoryModel(result.id);
+                        }}
+                      />
                       <input
                         className="input w-full"
                         value={tutorMemoryModel}

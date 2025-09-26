@@ -1,8 +1,7 @@
 'use client';
-import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { Markdown } from '@/lib/markdown';
-import { createPortal } from 'react-dom';
 import ImageLightbox from '@/components/ImageLightbox';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
@@ -10,6 +9,7 @@ import IconButton from '@/components/IconButton';
 import { XCircleIcon, StopIcon } from '@heroicons/react/24/outline';
 import { computeCost } from '@/lib/cost';
 import { findModelById } from '@/lib/models';
+import ModelSearch from '@/components/ModelSearch';
 
 export default function CompareDrawer() {
   // Subscribe to precise store slices to avoid stale values
@@ -87,72 +87,6 @@ export default function CompareDrawer() {
     models,
     compare.isOpen,
   ]);
-
-  // Search OpenRouter models
-  const [query, setQuery] = useState('');
-  const normalizedQuery = query.trim().toLowerCase().replace(/\s+/g, ' ');
-  const filtered = useMemo(() => {
-    if (!normalizedQuery) return [] as { id: string; name?: string }[];
-    const words = normalizedQuery.split(' ');
-    return (models || [])
-      .filter((m) => {
-        const hay = `${m.id} ${m.name ?? ''}`.toLowerCase();
-        return words.every((w) => hay.includes(w));
-      })
-      .slice(0, 50)
-      .map((m) => ({ id: m.id, name: m.name }));
-  }, [models, normalizedQuery]);
-
-  // Position dropdown like settings search
-  const searchRef = useRef<HTMLInputElement>(null);
-  const [dropdownPos, setDropdownPos] = useState<{
-    left: number;
-    top: number;
-    width: number;
-    maxHeight: number;
-  } | null>(null);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-  useLayoutEffect(() => {
-    const update = () => {
-      if (!normalizedQuery) return setDropdownPos(null);
-      const el = searchRef.current;
-      if (!el) return setDropdownPos(null);
-      const r = el.getBoundingClientRect();
-      const margin = 8;
-      const footer = 88;
-      const viewportH = window.innerHeight;
-      const available = Math.max(120, viewportH - footer - margin - r.bottom);
-      setDropdownPos({
-        left: r.left,
-        top: r.bottom + margin,
-        width: r.width,
-        maxHeight: available,
-      });
-    };
-    update();
-    window.addEventListener('resize', update, { passive: true } as any);
-    window.addEventListener('scroll', update, true as any);
-    return () => {
-      window.removeEventListener('resize', update as any);
-      window.removeEventListener('scroll', update as any, true as any);
-    };
-  }, [normalizedQuery]);
-
-  // Close the search dropdown when clicking outside
-  useEffect(() => {
-    const onPointerDown = (e: PointerEvent) => {
-      if (!normalizedQuery) return;
-      const target = e.target as Node | null;
-      const inputEl = searchRef.current;
-      const dropEl = dropdownRef.current;
-      if (inputEl && target && inputEl.contains(target)) return;
-      if (dropEl && target && dropEl.contains(target)) return;
-      setQuery('');
-      setDropdownPos(null);
-    };
-    document.addEventListener('pointerdown', onPointerDown, true);
-    return () => document.removeEventListener('pointerdown', onPointerDown, true);
-  }, [normalizedQuery]);
 
   const [customId, setCustomId] = useState('');
   const addCustom = () => {
@@ -256,58 +190,19 @@ export default function CompareDrawer() {
                     );
                   })}
                 </div>
-                <div className="relative mt-2">
-                  <input
-                    ref={searchRef}
-                    className="input w-full"
+                <div className="mt-2">
+                  <ModelSearch
                     placeholder="Search OpenRouter models (e.g. openai, anthropic, llama)"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    selectedIds={compare.selectedModelIds || []}
+                    actionLabel="Select"
+                    selectedLabel="Selected"
+                    onSelect={(result) => {
+                      const set = new Set(compare.selectedModelIds || []);
+                      if (set.has(result.id)) set.delete(result.id);
+                      else set.add(result.id);
+                      setCompare({ selectedModelIds: Array.from(set).slice(0, 6) });
+                    }}
                   />
-                  {dropdownPos &&
-                    createPortal(
-                      <div
-                        className="fixed card p-2 overflow-auto z-[90]"
-                        ref={dropdownRef}
-                        style={{
-                          left: dropdownPos.left,
-                          top: dropdownPos.top,
-                          width: dropdownPos.width,
-                          maxHeight: dropdownPos.maxHeight,
-                          overscrollBehavior: 'contain',
-                        }}
-                      >
-                        {filtered.length === 0 && (
-                          <div className="p-2 text-sm text-muted-foreground">No matches</div>
-                        )}
-                        {filtered.map((m) => {
-                          const picked = (compare.selectedModelIds || []).includes(m.id);
-                          return (
-                            <div
-                              key={m.id}
-                              className="p-2 rounded hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
-                              onClick={() => {
-                                const set = new Set(compare.selectedModelIds || []);
-                                if (set.has(m.id)) set.delete(m.id);
-                                else set.add(m.id);
-                                setCompare({ selectedModelIds: Array.from(set).slice(0, 6) });
-                              }}
-                            >
-                              <div>
-                                <div className="font-medium text-sm">{m.name || m.id}</div>
-                                {m.name && (
-                                  <div className="text-xs text-muted-foreground">{m.id}</div>
-                                )}
-                              </div>
-                              <div className={`badge ${picked ? '' : 'opacity-50'}`}>
-                                {picked ? 'Selected' : 'Select'}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>,
-                      document.body,
-                    )}
                 </div>
               </div>
               <div className="space-y-2">

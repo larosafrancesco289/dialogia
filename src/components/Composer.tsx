@@ -894,14 +894,6 @@ export default function Composer({
               </span>
             );
           })()}
-          {tokenAndCost.promptTokens > 0 && (
-            <span className="badge" title="Approximate tokens and prompt cost">
-              ≈ {tokenAndCost.promptTokens} tok
-              {tokenAndCost.total != null
-                ? ` · ${tokenAndCost.currency} ${tokenAndCost.total.toFixed(5)}`
-                : ''}
-            </span>
-          )}
           <span className="text-xs text-muted-foreground">
             Press Enter to send · Shift+Enter for newline
           </span>

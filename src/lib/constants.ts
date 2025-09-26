@@ -1,4 +1,5 @@
 export const DEFAULT_MODEL_ID = 'moonshotai/kimi-k2-0905';
+export const DEFAULT_MODEL_NAME = 'Kimi K2';
 export const PINNED_MODEL_ID = DEFAULT_MODEL_ID;
 
 export const DEFAULT_TUTOR_MODEL_ID = DEFAULT_MODEL_ID;
