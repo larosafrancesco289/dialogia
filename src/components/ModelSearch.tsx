@@ -110,9 +110,7 @@ function buildResult(
 
 function renderHighlightedText(text: string, queryWords: string[], keyPrefix: string) {
   if (!queryWords.length) return text;
-  const pattern = queryWords
-    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join('|');
+  const pattern = queryWords.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   if (!pattern) return text;
   try {
     const regex = new RegExp(`(${pattern})`, 'gi');
@@ -129,11 +127,7 @@ function renderHighlightedText(text: string, queryWords: string[], keyPrefix: st
           </mark>
         );
       }
-      return (
-        <span key={key}>
-          {segment}
-        </span>
-      );
+      return <span key={key}>{segment}</span>;
     });
   } catch {
     return text;
@@ -187,9 +181,9 @@ export const ModelSearch = forwardRef<ModelSearchHandle, ModelSearchProps>(funct
       const hay = `${model.id} ${model.name ?? ''}`.toLowerCase();
       return queryWords.every((word) => hay.includes(word));
     });
-    return filtered.slice(0, maxResults).map((model) =>
-      buildResult(model, { zdrModelIds, zdrProviderIds }),
-    );
+    return filtered
+      .slice(0, maxResults)
+      .map((model) => buildResult(model, { zdrModelIds, zdrProviderIds }));
   }, [models, normalizedQuery, queryWords, maxResults, zdrModelIds, zdrProviderIds]);
 
   const closeDropdown = () => {
@@ -356,7 +350,8 @@ export const ModelSearch = forwardRef<ModelSearchHandle, ModelSearchProps>(funct
   const formatId = (result: ModelSearchResult) =>
     renderHighlightedText(result.fullId, queryWords, `${result.id}-id`);
 
-  const inputWrapperClasses = `relative rounded-xl border border-border bg-background focus-within:ring-2 focus-within:ring-primary/70 transition-shadow ${inputClassName}`.trim();
+  const inputWrapperClasses =
+    `relative rounded-xl border border-border bg-background focus-within:ring-2 focus-within:ring-primary/70 transition-shadow ${inputClassName}`.trim();
   const inputClasses = 'input w-full border-0 bg-transparent focus:ring-0 focus:outline-none';
 
   return (
@@ -379,7 +374,9 @@ export const ModelSearch = forwardRef<ModelSearchHandle, ModelSearchProps>(funct
         />
       </div>
 
-      {position && normalizedQuery && typeof document !== 'undefined' &&
+      {position &&
+        normalizedQuery &&
+        typeof document !== 'undefined' &&
         createPortal(
           <div
             ref={listRef}
@@ -434,9 +431,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle, ModelSearchProps>(funct
                             {Intl.NumberFormat().format(result.contextLength)} tokens
                           </span>
                         )}
-                        {result.price && (
-                          <span className="whitespace-nowrap">{result.price}</span>
-                        )}
+                        {result.price && <span className="whitespace-nowrap">{result.price}</span>}
                       </div>
                       {renderCapabilities(result)}
                     </div>
@@ -466,12 +461,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle, ModelSearchProps>(funct
 
 function PlusSymbol() {
   return (
-    <svg
-      className={ICON_SIZE}
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      focusable="false"
-    >
+    <svg className={ICON_SIZE} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path
         d="M12 5.25a.75.75 0 0 1 .75.75v5.25h5.25a.75.75 0 1 1 0 1.5H12.75v5.25a.75.75 0 0 1-1.5 0V12.75H6a.75.75 0 0 1 0-1.5h5.25V6a.75.75 0 0 1 .75-.75Z"
         fill="currentColor"

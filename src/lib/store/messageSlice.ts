@@ -32,7 +32,11 @@ import {
   isToolCallingSupported,
   isImageOutputSupported,
 } from '@/lib/models';
-import { MAX_FALLBACK_RESULTS, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import {
+  MAX_FALLBACK_RESULTS,
+  DEFAULT_TUTOR_MODEL_ID,
+  DEFAULT_TUTOR_MEMORY_MODEL_ID,
+} from '@/lib/constants';
 // telemetry removed for commit cleanliness
 
 export function createMessageSlice(
@@ -113,9 +117,13 @@ export function createMessageSlice(
       const forceTutorMode = !!(uiState.forceTutorMode ?? false);
       const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat.settings.tutor_mode);
       let tutorDefaultModelId = uiState.tutorDefaultModelId || chat.settings.tutor_default_model;
-      if (!tutorDefaultModelId) tutorDefaultModelId = DEFAULT_TUTOR_MODEL_ID;
       let tutorMemoryModelId =
-        uiState.tutorMemoryModelId || chat.settings.tutor_memory_model || tutorDefaultModelId;
+        uiState.tutorMemoryModelId ||
+        chat.settings.tutor_memory_model ||
+        tutorDefaultModelId ||
+        DEFAULT_TUTOR_MEMORY_MODEL_ID;
+      if (!tutorDefaultModelId) tutorDefaultModelId = DEFAULT_TUTOR_MODEL_ID;
+      if (!tutorMemoryModelId) tutorMemoryModelId = DEFAULT_TUTOR_MEMORY_MODEL_ID;
       const memoryAutoUpdateEnabled =
         uiState.tutorMemoryAutoUpdate !== false && chat.settings.tutor_memory_disabled !== true;
       if (tutorEnabled) {
@@ -240,7 +248,7 @@ export function createMessageSlice(
       );
       const hasPdf = attachments.some((a) => a.kind === 'pdf') || hadPdfEarlier;
       // Strict ZDR enforcement: block sending to non-ZDR models when enabled
-      if (get().ui.zdrOnly !== false) {
+      if (get().ui.zdrOnly === true) {
         const modelId = activeModelId;
         let allowedModelIds = new Set(get().zdrModelIds || []);
         if (allowedModelIds.size === 0) {
@@ -376,14 +384,16 @@ export function createMessageSlice(
         return;
       }
 
-      let memoryDebug: {
-        before?: string;
-        after?: string;
-        version?: number;
-        messageCount?: number;
-        conversationWindow?: string;
-        raw?: string;
-      } | undefined;
+      let memoryDebug:
+        | {
+            before?: string;
+            after?: string;
+            version?: number;
+            messageCount?: number;
+            conversationWindow?: string;
+            raw?: string;
+          }
+        | undefined;
       if (tutorEnabled && memoryAutoUpdateEnabled) {
         const settings = chat.settings;
         const priorCount = settings.tutor_memory_message_count ?? 0;
@@ -514,8 +524,7 @@ export function createMessageSlice(
       const preambles: string[] = [];
       if (tutorMemoryBlock) preambles.push(tutorMemoryBlock);
       if (searchEnabled && searchProvider === 'brave') preambles.push(toolPreambleText);
-      if (tutorEnabled && tutorPreambleText)
-        preambles.push(tutorPreambleText);
+      if (tutorEnabled && tutorPreambleText) preambles.push(tutorPreambleText);
       if (tutorEnabled) {
         try {
           const prof = await loadTutorProfile(chat.id);
@@ -1737,9 +1746,14 @@ export function createMessageSlice(
       const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat.settings.tutor_mode);
       if (tutorEnabled) {
         const desiredModel =
-          uiState.tutorDefaultModelId || chat.settings.tutor_default_model || DEFAULT_TUTOR_MODEL_ID;
+          uiState.tutorDefaultModelId ||
+          chat.settings.tutor_default_model ||
+          DEFAULT_TUTOR_MODEL_ID;
         opts = { ...(opts || {}), modelId: desiredModel };
-        if (chat.settings.model !== desiredModel || chat.settings.tutor_default_model !== desiredModel) {
+        if (
+          chat.settings.model !== desiredModel ||
+          chat.settings.tutor_default_model !== desiredModel
+        ) {
           const updatedSettings = {
             ...chat.settings,
             model: desiredModel,
@@ -1754,7 +1768,7 @@ export function createMessageSlice(
         }
       }
       // ZDR enforcement for regenerate with provider fallback
-      if (get().ui.zdrOnly !== false) {
+      if (get().ui.zdrOnly === true) {
         const modelId = opts?.modelId || chat.settings.model;
         let allowedModelIds = new Set(get().zdrModelIds || []);
         if (allowedModelIds.size === 0) {
@@ -1924,7 +1938,11 @@ export function createMessageSlice(
             genSnapshot?.search_provider,
             (chat.settings as any)?.search_provider,
           );
-          const tutorModeForTurn = pickBoolean(genSnapshot?.tutor_mode, chat.settings.tutor_mode, false);
+          const tutorModeForTurn = pickBoolean(
+            genSnapshot?.tutor_mode,
+            chat.settings.tutor_mode,
+            false,
+          );
           const appliedGenSettings: Record<string, any> = {};
           if (typeof tempUsed === 'number') appliedGenSettings.temperature = tempUsed;
           if (typeof topPUsed === 'number') appliedGenSettings.top_p = topPUsed;

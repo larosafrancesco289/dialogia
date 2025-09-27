@@ -38,11 +38,14 @@ export default function MobileHeader() {
   const nextTutorMode = !!uiState.nextTutorMode;
   const tutorDefaultModelId = uiState.tutorDefaultModelId;
   const models = useChatStore((s) => s.models);
-  const tutorActive = experimentalTutor && (forceTutorMode || (!!chat ? !!chat.settings?.tutor_mode : nextTutorMode));
-  const tutorModelId = chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
+  const tutorActive =
+    experimentalTutor && (forceTutorMode || (!!chat ? !!chat.settings?.tutor_mode : nextTutorMode));
+  const tutorModelId =
+    chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(
-    () => (tutorModelId ? formatModelLabel({ model: tutorModelMeta, fallbackId: tutorModelId }) : ''),
+    () =>
+      tutorModelId ? formatModelLabel({ model: tutorModelMeta, fallbackId: tutorModelId }) : '',
     [tutorModelMeta, tutorModelId],
   );
   const [menuOpen, setMenuOpen] = useState(false);
@@ -142,7 +145,13 @@ export default function MobileHeader() {
               }
             }}
             disabled={forceTutorMode}
-            title={forceTutorMode ? 'Tutor Mode is enforced in settings' : tutorActive ? 'Disable Tutor Mode' : 'Enable Tutor Mode'}
+            title={
+              forceTutorMode
+                ? 'Tutor Mode is enforced in settings'
+                : tutorActive
+                  ? 'Disable Tutor Mode'
+                  : 'Enable Tutor Mode'
+            }
           >
             <AcademicCapIcon className="h-4 w-4" />
           </button>

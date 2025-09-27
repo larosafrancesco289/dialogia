@@ -85,7 +85,9 @@ export function DebugPanel({
         </div>
         {expanded && (
           <>
-            <pre className="whitespace-pre-wrap text-xs opacity-90 leading-relaxed mb-3">{body}</pre>
+            <pre className="whitespace-pre-wrap text-xs opacity-90 leading-relaxed mb-3">
+              {body}
+            </pre>
             {memoryInfo && (
               <div className="space-y-2 text-xs">
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
@@ -93,7 +95,9 @@ export function DebugPanel({
                   {typeof memoryInfo.messageCount === 'number' && (
                     <span>Messages since update: {memoryInfo.messageCount}</span>
                   )}
-                  {typeof memoryInfo.version === 'number' && <span>Version: {memoryInfo.version}</span>}
+                  {typeof memoryInfo.version === 'number' && (
+                    <span>Version: {memoryInfo.version}</span>
+                  )}
                   {memoryInfo.model && <span>Model: {memoryInfo.model}</span>}
                   {memoryInfo.updatedAt && (
                     <span>

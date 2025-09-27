@@ -122,7 +122,7 @@ function TutorGreetingCard() {
   }, [selectedChatId, prepareTutorWelcomeMessage, primeTutorWelcomePreview]);
 
   useEffect(() => {
-    const current = selectedChatId ? welcomeState ?? previewState : previewState;
+    const current = selectedChatId ? (welcomeState ?? previewState) : previewState;
     if (current?.status === 'ready') {
       const tid = setTimeout(() => setReadyForReveal(true), 260);
       return () => clearTimeout(tid);
@@ -131,17 +131,22 @@ function TutorGreetingCard() {
     return undefined;
   }, [welcomeState?.status, previewState?.status, selectedChatId]);
 
-  const state = selectedChatId ? welcomeState ?? previewState : previewState;
+  const state = selectedChatId ? (welcomeState ?? previewState) : previewState;
   const status = state?.status ?? 'loading';
   const message = (state?.message || '').trim();
   const headerText =
-    status === 'ready' && message ? 'Thanks for coming back.' : 'Give me a moment to gather our notes.';
+    status === 'ready' && message
+      ? 'Thanks for coming back.'
+      : 'Give me a moment to gather our notes.';
   const showLoading = status !== 'ready' || !readyForReveal;
   const displayMessage =
     message || "Welcome back! I'm ready whenever you are. What should we dive into first?";
 
   return (
-    <div className="tutor-greeting-card card bg-card/70 border border-border/60 text-left text-sm" aria-live="polite">
+    <div
+      className="tutor-greeting-card card bg-card/70 border border-border/60 text-left text-sm"
+      aria-live="polite"
+    >
       <div className="tutor-greeting-card__glow" aria-hidden />
       <div className="relative px-5 py-5 space-y-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground/90">
@@ -157,9 +162,12 @@ function TutorGreetingCard() {
             <div className="tutor-greeting-loading">
               <div className="tutor-greeting-loading__spinner" aria-hidden />
               <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground/90">Gathering what you shared last time...</p>
+                <p className="text-sm font-medium text-foreground/90">
+                  Gathering what you shared last time...
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  I'm lining up your goals, wins, and preferences so I can pick up where we left off.
+                  I'm lining up your goals, wins, and preferences so I can pick up where we left
+                  off.
                 </p>
               </div>
             </div>

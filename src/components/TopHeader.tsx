@@ -39,11 +39,14 @@ export default function TopHeader() {
   const forceTutorMode = !!uiState.forceTutorMode;
   const nextTutorMode = !!uiState.nextTutorMode;
   const tutorDefaultModelId = uiState.tutorDefaultModelId;
-  const tutorActive = experimentalTutor && (forceTutorMode || (!!chat ? !!chat.settings?.tutor_mode : nextTutorMode));
-  const tutorModelId = chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
+  const tutorActive =
+    experimentalTutor && (forceTutorMode || (!!chat ? !!chat.settings?.tutor_mode : nextTutorMode));
+  const tutorModelId =
+    chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(
-    () => (tutorModelId ? formatModelLabel({ model: tutorModelMeta, fallbackId: tutorModelId }) : ''),
+    () =>
+      tutorModelId ? formatModelLabel({ model: tutorModelMeta, fallbackId: tutorModelId }) : '',
     [tutorModelMeta, tutorModelId],
   );
 
@@ -144,7 +147,13 @@ export default function TopHeader() {
               }
             }}
             disabled={forceTutorMode}
-            title={forceTutorMode ? 'Tutor Mode is enforced in settings' : tutorActive ? 'Disable Tutor Mode' : 'Enable Tutor Mode'}
+            title={
+              forceTutorMode
+                ? 'Tutor Mode is enforced in settings'
+                : tutorActive
+                  ? 'Disable Tutor Mode'
+                  : 'Enable Tutor Mode'
+            }
           >
             <AcademicCapIcon className="h-5 w-5" />
             <span className="hidden sm:inline ml-1">{tutorActive ? 'Tutor On' : 'Tutor Off'}</span>
