@@ -11,23 +11,43 @@ import {
   Squares2X2Icon,
   Cog6ToothIcon,
   XMarkIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import ModelPicker from '@/components/ModelPicker';
 import ThemeToggle from '@/components/ThemeToggle';
+import { findModelById, formatModelLabel } from '@/lib/models';
 
 export default function MobileHeader() {
-  const { chats, selectedChatId, renameChat, newChat, setUI, openCompare } = useChatStore(
-    (state) => ({
-      chats: state.chats,
-      selectedChatId: state.selectedChatId,
-      renameChat: state.renameChat,
-      newChat: state.newChat,
-      setUI: state.setUI,
-      openCompare: state.openCompare,
-    }),
-    shallow,
-  );
+  const { chats, selectedChatId, renameChat, newChat, setUI, openCompare, updateChatSettings } =
+    useChatStore(
+      (state) => ({
+        chats: state.chats,
+        selectedChatId: state.selectedChatId,
+        renameChat: state.renameChat,
+        newChat: state.newChat,
+        setUI: state.setUI,
+        openCompare: state.openCompare,
+        updateChatSettings: state.updateChatSettings,
+      }),
+      shallow,
+    );
   const chat = chats.find((c) => c.id === selectedChatId);
+  const uiState = useChatStore((s) => s.ui, shallow);
+  const experimentalTutor = !!uiState.experimentalTutor;
+  const forceTutorMode = !!uiState.forceTutorMode;
+  const nextTutorMode = !!uiState.nextTutorMode;
+  const tutorDefaultModelId = uiState.tutorDefaultModelId;
+  const models = useChatStore((s) => s.models);
+  const tutorActive =
+    experimentalTutor && (forceTutorMode || (!!chat ? !!chat.settings?.tutor_mode : nextTutorMode));
+  const tutorModelId =
+    chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
+  const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
+  const tutorModelLabel = useMemo(
+    () =>
+      tutorModelId ? formatModelLabel({ model: tutorModelMeta, fallbackId: tutorModelId }) : '',
+    [tutorModelMeta, tutorModelId],
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const anchorRef = useRef<HTMLButtonElement | null>(null);
@@ -100,8 +120,42 @@ export default function MobileHeader() {
           <div className="mobile-app-bar-title" title={chat?.title || 'Untitled chat'}>
             {chat?.title || 'Untitled chat'}
           </div>
-          <ModelPicker variant="sheet" className="mobile-model-trigger" />
+          {tutorActive ? (
+            <div className="badge gap-1 px-3 py-1 text-xs">
+              <AcademicCapIcon className="h-3.5 w-3.5" />
+              <span>Tutor</span>
+              {tutorModelLabel && (
+                <span className="text-muted-foreground">({tutorModelLabel})</span>
+              )}
+            </div>
+          ) : (
+            <ModelPicker variant="sheet" className="mobile-model-trigger" />
+          )}
         </div>
+        {experimentalTutor && (
+          <button
+            className={`icon-button ${tutorActive ? 'text-primary' : ''}`}
+            aria-pressed={tutorActive}
+            onClick={async () => {
+              if (forceTutorMode) return;
+              if (chat) {
+                await updateChatSettings({ tutor_mode: !chat.settings.tutor_mode });
+              } else {
+                setUI({ nextTutorMode: !nextTutorMode });
+              }
+            }}
+            disabled={forceTutorMode}
+            title={
+              forceTutorMode
+                ? 'Tutor Mode is enforced in settings'
+                : tutorActive
+                  ? 'Disable Tutor Mode'
+                  : 'Enable Tutor Mode'
+            }
+          >
+            <AcademicCapIcon className="h-4 w-4" />
+          </button>
+        )}
         <button
           className="icon-button"
           aria-label="More"

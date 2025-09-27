@@ -11,6 +11,25 @@ export type UIState = {
   debugByMessageId?: Record<string, { body: string; createdAt: number }>;
   // Models that emit reasoning traces even when no effort was requested
   autoReasoningModelIds?: Record<string, true>;
+  tutorDefaultModelId?: string;
+  tutorMemoryModelId?: string;
+  tutorMemoryFrequency?: number;
+  tutorMemoryAutoUpdate?: boolean;
+  tutorGlobalMemory?: string;
+  forceTutorMode?: boolean;
+  tutorMemoryDebugByMessageId?: Record<
+    string,
+    {
+      version?: number;
+      messageCount?: number;
+      updatedAt?: number;
+      model?: string;
+      before?: string;
+      after?: string;
+      raw?: string;
+      conversationWindow?: string;
+    }
+  >;
   nextModel?: string;
   nextSearchWithBrave?: boolean;
   nextSearchProvider?: 'brave' | 'openrouter';
@@ -99,6 +118,21 @@ export type UIState = {
     }
   >;
   tutorProfileByChatId?: Record<string, import('@/lib/types').TutorProfile>;
+  tutorWelcomeByChatId?: Record<
+    string,
+    {
+      status: 'idle' | 'loading' | 'ready' | 'error';
+      message?: string;
+      error?: string;
+      generatedAt?: number;
+    }
+  >;
+  tutorWelcomePreview?: {
+    status: 'idle' | 'loading' | 'ready' | 'error';
+    message?: string;
+    error?: string;
+    generatedAt?: number;
+  };
   // Per-chat ephemeral flags (not persisted)
   tutorGreetedByChatId?: Record<string, boolean>;
 };
@@ -146,6 +180,8 @@ export type StoreState = {
   // tutor
   logTutorResult: (evt: import('@/lib/types').TutorEvent) => Promise<void>;
   loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
+  primeTutorWelcomePreview: () => Promise<string | undefined>;
+  prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
 
   // compare
   openCompare: () => void;

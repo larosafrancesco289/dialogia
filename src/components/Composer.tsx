@@ -12,7 +12,6 @@ import {
   MicrophoneIcon,
   PhotoIcon,
   LightBulbIcon,
-  AcademicCapIcon,
   BeakerIcon,
   PlusIcon,
   EllipsisVerticalIcon,
@@ -73,8 +72,10 @@ export default function Composer({
   const [isCompact, setIsCompact] = useState(false);
   const [composerHeight, setComposerHeight] = useState(0);
   const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
+  const forceTutorMode = useChatStore((s) => !!s.ui.forceTutorMode);
   const tutorEnabled =
-    tutorGloballyEnabled && !!(chat ? chat.settings.tutor_mode : uiNext.nextTutorMode);
+    tutorGloballyEnabled &&
+    (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.nextTutorMode));
   const [slashIndex, setSlashIndex] = useState(0);
   const deepEnabled = useChatStore((s) => !!s.ui.nextDeepResearch);
 
@@ -758,25 +759,7 @@ export default function Composer({
                 >
                   <MagnifyingGlassIcon className="h-4 w-4" />
                 </button>
-                {tutorGloballyEnabled && (
-                  <button
-                    className={`btn self-center ${tutorEnabled ? 'btn-primary' : 'btn-outline'}`}
-                    onClick={async () => {
-                      if (chat) {
-                        await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
-                      } else {
-                        setUI({ nextTutorMode: true });
-                        await newChat();
-                      }
-                    }}
-                    title="Tutor mode: warm guidance + practice tools (used only when helpful)"
-                    aria-label="Toggle Tutor Mode"
-                    aria-pressed={tutorEnabled}
-                  >
-                    <AcademicCapIcon className="h-4 w-4" />
-                  </button>
-                )}
-                <ReasoningEffortMenu />
+                {!tutorEnabled && <ReasoningEffortMenu />}
               </div>
 
               {/* Mobile: single '+' menu to reveal actions */}
@@ -817,24 +800,7 @@ export default function Composer({
                     >
                       {`${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} Search: ${searchEnabled ? 'On' : 'Off'}`}
                     </div>
-                    {tutorGloballyEnabled && (
-                      <div
-                        className="menu-item text-sm"
-                        role="menuitemcheckbox"
-                        aria-checked={!!tutorEnabled}
-                        onClick={async () => {
-                          if (chat) await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
-                          else {
-                            setUI({ nextTutorMode: true });
-                            await newChat();
-                          }
-                          setMobileMenuOpen(false);
-                        }}
-                      >
-                        {`Tutor: ${tutorEnabled ? 'On' : 'Off'}`}
-                      </div>
-                    )}
-                    {supportsReasoning && (
+                    {supportsReasoning && !tutorEnabled && (
                       <>
                         <div className="text-xs text-muted-foreground px-2 pt-1">Reasoning</div>
                         {(['none', 'low', 'medium', 'high'] as Effort[]).map((eff) => (
@@ -873,7 +839,7 @@ export default function Composer({
               title="Change model (opens Settings)"
               onClick={() => setUI({ showSettings: true })}
             >
-              {findModelById(models, modelId)?.name || modelId}
+              {tutorEnabled ? 'Tutor' : findModelById(models, modelId)?.name || modelId}
             </button>
           }
           {canVision && (
@@ -884,19 +850,6 @@ export default function Composer({
             >
               <EyeIcon className="h-3.5 w-3.5" />
             </span>
-          )}
-          {tutorGloballyEnabled && chat && (
-            <button
-              className={`badge flex items-center gap-1`}
-              title="Toggle tutor mode"
-              onClick={async () => {
-                await updateSettings({ tutor_mode: !chat.settings.tutor_mode });
-              }}
-              aria-pressed={!!chat?.settings.tutor_mode}
-            >
-              <AcademicCapIcon className="h-3.5 w-3.5" />{' '}
-              {chat?.settings.tutor_mode ? 'Tutor On' : 'Tutor Off'}
-            </button>
           )}
           {canImageOut && (
             <span
@@ -916,45 +869,36 @@ export default function Composer({
               <MicrophoneIcon className="h-3.5 w-3.5" />
             </span>
           )}
-          {
-            <button
-              className="badge flex items-center gap-1"
-              title={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} web search for next message`}
-              onClick={() => {
-                if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
-                else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
-              }}
-              aria-pressed={!!searchEnabled}
-            >
-              <MagnifyingGlassIcon className="h-3.5 w-3.5" />{' '}
-              {(searchProvider === 'openrouter' ? 'OR' : 'Brave') +
-                ' ' +
-                (searchEnabled ? 'On' : 'Off')}
-            </button>
-          }
-          {(() => {
-            const effort = chat?.settings.reasoning_effort ?? uiNext.nextReasoningEffort;
-            if (!supportsReasoning) return null;
-            if (!effort || effort === 'none') return null;
-            const letter = effort === 'high' ? 'H' : effort === 'medium' ? 'M' : 'L';
-            return (
-              <span
-                className="badge flex items-center gap-1"
-                title={`Reasoning effort: ${effort}`}
-                aria-label={`Reasoning ${effort}`}
-              >
-                <LightBulbIcon className="h-3.5 w-3.5" /> {letter}
-              </span>
-            );
-          })()}
-          {tokenAndCost.promptTokens > 0 && (
-            <span className="badge" title="Approximate tokens and prompt cost">
-              ≈ {tokenAndCost.promptTokens} tok
-              {tokenAndCost.total != null
-                ? ` · ${tokenAndCost.currency} ${tokenAndCost.total.toFixed(5)}`
-                : ''}
-            </span>
-          )}
+          <button
+            className="badge flex items-center gap-1"
+            title={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} web search for next message`}
+            onClick={() => {
+              if (chat) updateSettings({ search_with_brave: !chat.settings.search_with_brave });
+              else setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
+            }}
+            aria-pressed={!!searchEnabled}
+          >
+            <MagnifyingGlassIcon className="h-3.5 w-3.5" />{' '}
+            {(searchProvider === 'openrouter' ? 'OR' : 'Brave') +
+              ' ' +
+              (searchEnabled ? 'On' : 'Off')}
+          </button>
+          {!tutorEnabled &&
+            (() => {
+              const effort = chat?.settings.reasoning_effort ?? uiNext.nextReasoningEffort;
+              if (!supportsReasoning) return null;
+              if (!effort || effort === 'none') return null;
+              const letter = effort === 'high' ? 'H' : effort === 'medium' ? 'M' : 'L';
+              return (
+                <span
+                  className="badge flex items-center gap-1"
+                  title={`Reasoning effort: ${effort}`}
+                  aria-label={`Reasoning ${effort}`}
+                >
+                  <LightBulbIcon className="h-3.5 w-3.5" /> {letter}
+                </span>
+              );
+            })()}
           <span className="text-xs text-muted-foreground">
             Press Enter to send · Shift+Enter for newline
           </span>

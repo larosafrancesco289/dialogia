@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import {
@@ -10,9 +10,11 @@ import {
   ShieldCheckIcon,
   PhotoIcon,
   ChevronDownIcon,
+  CheckIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { CURATED_MODELS } from '@/data/curatedModels';
-import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
+import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
 import {
   findModelById,
   formatModelLabel,
@@ -24,6 +26,7 @@ import {
 import { describeModelPricing } from '@/lib/cost';
 import { shallow } from 'zustand/shallow';
 import type { Chat } from '@/lib/types';
+import type { StoreState } from '@/lib/store/types';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -44,6 +47,9 @@ type Controller = {
   ui: ReturnType<typeof useChatStore.getState>['ui'];
   zdrModelIds?: string[];
   zdrProviderIds?: string[];
+  setUI: StoreState['setUI'];
+  zdrHiddenCount: number;
+  zdrRestricted: boolean;
 };
 
 export function useModelPickerController(): Controller {
@@ -79,15 +85,16 @@ export function useModelPickerController(): Controller {
   const chat = chats.find((c) => c.id === selectedChatId);
   const curated = CURATED_MODELS;
 
+  const allowedIds = useMemo(() => new Set((models || []).map((m: any) => m.id)), [models]);
+
   const customOptions = useMemo(() => {
-    const allowed = new Set((models || []).map((m: any) => m.id));
     return (favoriteModelIds || [])
-      .filter((id: string) => allowed.has(id))
+      .filter((id: string) => allowedIds.has(id))
       .map((id: string) => ({ id, name: id }));
-  }, [favoriteModelIds, models]);
+  }, [favoriteModelIds, allowedIds]);
 
   const allOptions = useMemo(() => {
-    const injectedDefault = [{ id: DEFAULT_MODEL_ID, name: 'Kimi K2' }];
+    const injectedDefault = [{ id: DEFAULT_MODEL_ID, name: DEFAULT_MODEL_NAME }];
     return [...injectedDefault, ...curated, ...customOptions].reduce((acc: Option[], m: Option) => {
       if (!acc.find((x) => x.id === m.id)) acc.push(m);
       return acc;
@@ -96,19 +103,29 @@ export function useModelPickerController(): Controller {
 
   const options = useMemo(() => {
     const hidden = new Set(hiddenModelIds || []);
-    const allowedIds = new Set((models || []).map((m: any) => m.id));
     return allOptions.filter((m: Option) => {
       if (m.id === PINNED_MODEL_ID) return true;
       if (hidden.has(m.id)) return false;
-      if (ui?.zdrOnly !== false) return allowedIds.has(m.id);
+      if (ui?.zdrOnly === true) return allowedIds.has(m.id);
       return true;
     });
-  }, [allOptions, hiddenModelIds, models, ui?.zdrOnly]);
+  }, [allOptions, hiddenModelIds, ui?.zdrOnly, allowedIds]);
+
+  const zdrHiddenCount = useMemo(() => {
+    if (ui?.zdrOnly !== true) return 0;
+    const hidden = new Set(hiddenModelIds || []);
+    let count = 0;
+    for (const option of allOptions) {
+      if (option.id === PINNED_MODEL_ID) continue;
+      if (hidden.has(option.id)) continue;
+      if (!allowedIds.has(option.id)) count += 1;
+    }
+    return count;
+  }, [ui?.zdrOnly, hiddenModelIds, allOptions, allowedIds]);
 
   const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
-  const allowedIds = new Set((models || []).map((m: any) => m.id));
   const effectiveSelectedId =
-    ui?.zdrOnly !== false && selectedId && !allowedIds.has(selectedId) ? undefined : selectedId;
+    ui?.zdrOnly === true && selectedId && !allowedIds.has(selectedId) ? undefined : selectedId;
   const current =
     allOptions.find((o) => o.id === effectiveSelectedId) ||
     (effectiveSelectedId ? { id: effectiveSelectedId, name: effectiveSelectedId } : undefined) ||
@@ -142,6 +159,9 @@ export function useModelPickerController(): Controller {
     ui,
     zdrModelIds,
     zdrProviderIds,
+    setUI,
+    zdrHiddenCount,
+    zdrRestricted: ui?.zdrOnly === true,
   };
 }
 
@@ -161,12 +181,17 @@ export default function ModelPicker({
     modelMap,
     zdrModelIds,
     zdrProviderIds,
+    setUI,
+    zdrHiddenCount,
+    zdrRestricted,
   } = useModelPickerController();
 
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [filter, setFilter] = useState('');
   const rootRef = useRef<HTMLDivElement | null>(null);
   const listboxRef = useRef<HTMLDivElement | null>(null);
+  const filterInputRef = useRef<HTMLInputElement | null>(null);
   const mountedRef = useRef(false);
   const [popoverPos, setPopoverPos] = useState<{
     left: number;
@@ -174,6 +199,31 @@ export default function ModelPicker({
     width: number;
     maxHeight: number;
   } | null>(null);
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
+
+  const deriveLabel = (opt?: Option) => {
+    if (!opt) return 'Pick model';
+    return (
+      formatModelLabel({
+        model: modelMap.get(opt.id),
+        fallbackId: opt.id,
+        fallbackName: opt.name,
+      }) || 'Pick model'
+    );
+  };
+
+  const normalizedFilter = filter.trim().toLowerCase().replace(/\s+/g, ' ');
+  const filterWords = normalizedFilter ? normalizedFilter.split(' ') : [];
+
+  const visibleOptions = useMemo(() => {
+    if (!filterWords.length) return options;
+    return options.filter((option) => {
+      const haystack = `${deriveLabel(option)} ${option.id}`.toLowerCase();
+      return filterWords.every((word) => haystack.includes(word));
+    });
+  }, [options, filterWords, modelMap]);
+
+  const title = deriveLabel(current);
 
   const handleChoose = (id: string) => {
     choose(id);
@@ -190,6 +240,7 @@ export default function ModelPicker({
   useEffect(() => {
     if (!open) {
       setPopoverPos(null);
+      setFilter('');
       return;
     }
     const onPointerDown = (event: PointerEvent) => {
@@ -214,51 +265,50 @@ export default function ModelPicker({
 
   useEffect(() => {
     if (!open || !mountedRef.current) return;
-    const updateWidth = () => {
+    const updatePosition = () => {
       const rect = rootRef.current?.getBoundingClientRect();
       if (!rect) return;
       const viewportW = window.innerWidth;
       const viewportH = window.innerHeight;
-      const margin = 12;
+      const margin = 16;
       const gap = 8;
       const triggerW = rect.width;
       const minWidth = variant === 'sheet' ? 280 : 320;
-      const minHeight = variant === 'sheet' ? 260 : 220;
+      const minHeight = variant === 'sheet' ? 220 : 200;
       const baseWidth = Math.max(triggerW, minWidth);
       const width = Math.min(viewportW - margin * 2, baseWidth);
       const left = Math.min(Math.max(rect.left, margin), viewportW - width - margin);
       const top = rect.bottom + gap;
-      const maxHeight = Math.max(minHeight, viewportH - top - margin);
-      setPopoverPos({ left, top, width, maxHeight });
+      const availableHeight = Math.max(minHeight, viewportH - top - margin);
+      const cappedHeight = Math.max(minHeight, Math.min(availableHeight, viewportH * 0.7));
+      setPopoverPos({ left, top, width, maxHeight: cappedHeight });
     };
-    updateWidth();
-    window.addEventListener('resize', updateWidth);
-    window.addEventListener('scroll', updateWidth, true);
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
     const idx = Math.max(
       0,
-      options.findIndex((o) => o.id === (current?.id || '')),
+      visibleOptions.findIndex((o) => o.id === (current?.id || '')),
     );
     setHighlightedIndex(idx === -1 ? 0 : idx);
-    const timer = window.setTimeout(() => listboxRef.current?.focus(), 0);
+    const timer = window.setTimeout(() => {
+      if (filterInputRef.current) filterInputRef.current.focus();
+      else listboxRef.current?.focus();
+    }, 0);
     return () => {
-      window.removeEventListener('resize', updateWidth);
-      window.removeEventListener('scroll', updateWidth, true);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
       window.clearTimeout(timer);
     };
-  }, [open, options, current?.id, variant]);
+  }, [open, visibleOptions, current?.id, variant]);
 
-  const deriveLabel = (opt?: Option) => {
-    if (!opt) return 'Pick model';
-    return (
-      formatModelLabel({
-        model: modelMap.get(opt.id),
-        fallbackId: opt.id,
-        fallbackName: opt.name,
-      }) || 'Pick model'
-    );
-  };
-
-  const title = deriveLabel(current);
+  useEffect(() => {
+    setHighlightedIndex((idx) => {
+      if (!visibleOptions.length) return 0;
+      if (idx >= visibleOptions.length) return Math.max(visibleOptions.length - 1, 0);
+      return idx;
+    });
+  }, [visibleOptions.length]);
 
   const renderCapabilities = (id: string) => {
     const meta = modelMap.get(id);
@@ -272,7 +322,17 @@ export default function ModelPicker({
         (zdrProviderIds && zdrProviderIds.includes(provider)),
     );
     const priceStr = describeModelPricing(meta);
-    return { canReason, canSee, canAudio, canImageOut, isZdr, priceStr };
+    const context = meta?.context_length;
+    return { canReason, canSee, canAudio, canImageOut, isZdr, priceStr, context };
+  };
+
+  const focusOptionButton = (index: number) => {
+    const container = listboxRef.current;
+    if (!container) return;
+    const button = container.querySelector<HTMLButtonElement>(
+      `button[data-option-index="${index}"]`,
+    );
+    button?.focus();
   };
 
   return (
@@ -294,7 +354,7 @@ export default function ModelPicker({
         createPortal(
           <div
             ref={listboxRef}
-            className="card p-2 overflow-auto popover z-[90] fixed"
+            className="card p-2 overflow-auto popover z-[90] fixed flex flex-col gap-2"
             style={{
               left: popoverPos.left,
               top: popoverPos.top,
@@ -303,7 +363,9 @@ export default function ModelPicker({
             }}
             role="listbox"
             aria-label="Select a model"
-            aria-activedescendant={`model-opt-${highlightedIndex}`}
+            aria-activedescendant={
+              visibleOptions.length ? `model-opt-${highlightedIndex}` : undefined
+            }
             tabIndex={0}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
@@ -313,69 +375,224 @@ export default function ModelPicker({
               }
               if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setHighlightedIndex((i) => (i + 1) % Math.max(1, options.length));
+                if (!visibleOptions.length) return;
+                setHighlightedIndex((i) => {
+                  const next = (i + 1) % visibleOptions.length;
+                  focusOptionButton(next);
+                  return next;
+                });
                 return;
               }
               if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                setHighlightedIndex(
-                  (i) => (i - 1 + Math.max(1, options.length)) % Math.max(1, options.length),
-                );
+                if (!visibleOptions.length) return;
+                setHighlightedIndex((i) => {
+                  const prev = (i - 1 + visibleOptions.length) % visibleOptions.length;
+                  focusOptionButton(prev);
+                  return prev;
+                });
                 return;
               }
               if (e.key === 'Enter') {
                 e.preventDefault();
-                const target = options[highlightedIndex];
+                const target = visibleOptions[highlightedIndex];
                 if (target) handleChoose(target.id);
-                return;
               }
             }}
           >
-            {options.map((o, idx) => {
-              const { canReason, canSee, canAudio, canImageOut, isZdr, priceStr } =
+            <div className="sticky top-0 z-10 flex items-center gap-2 rounded-full border border-border/30 bg-muted/15 px-3 py-1.5 backdrop-blur-sm focus-within:ring-2 focus-within:ring-primary/30 focus-within:bg-muted/30">
+              <MagnifyingGlassIcon className="h-4 w-4 text-muted-foreground/80 shrink-0" />
+              <input
+                ref={filterInputRef}
+                className="w-full rounded-full bg-transparent text-sm leading-tight text-muted-foreground focus:text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0"
+                placeholder="Filter models"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    if (!visibleOptions.length) return;
+                    setHighlightedIndex(0);
+                    focusOptionButton(0);
+                    return;
+                  }
+                  if (event.key === 'Enter' && visibleOptions.length > 0) {
+                    event.preventDefault();
+                    handleChoose(visibleOptions[0].id);
+                    return;
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    if (filter) setFilter('');
+                    else setOpen(false);
+                  }
+                }}
+              />
+            </div>
+
+            {zdrRestricted && zdrHiddenCount > 0 && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                <ShieldCheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="flex-1 space-y-1">
+                  <div>
+                    {zdrHiddenCount === 1
+                      ? '1 model is hidden by the ZDR-only preference.'
+                      : `${zdrHiddenCount} models are hidden by the ZDR-only preference.`}
+                  </div>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline"
+                    onClick={() => setUI({ zdrOnly: false })}
+                  >
+                    Show all models
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {visibleOptions.length === 0 && (
+              <div className="text-sm text-muted-foreground px-3 py-4 text-center">
+                No models found.
+              </div>
+            )}
+
+            {visibleOptions.map((o, idx) => {
+              const { canReason, canSee, canAudio, canImageOut, isZdr, priceStr, context } =
                 renderCapabilities(o.id);
               const showPrice = variant !== 'sheet';
+              const isSelected = o.id === selectedId;
+              const isActive = idx === highlightedIndex;
+              const label = deriveLabel(o);
+              const provider = String(o.id).split('/')[0] || '';
+              const providerLabel = provider ? provider.toUpperCase() : '';
+
+              const capabilityChips = (
+                [
+                  canReason
+                    ? { icon: <LightBulbIcon className="h-3.5 w-3.5" />, text: 'Reasoning' }
+                    : null,
+                  canSee ? { icon: <EyeIcon className="h-3.5 w-3.5" />, text: 'Vision' } : null,
+                  canAudio
+                    ? { icon: <MicrophoneIcon className="h-3.5 w-3.5" />, text: 'Audio' }
+                    : null,
+                  canImageOut
+                    ? { icon: <PhotoIcon className="h-3.5 w-3.5" />, text: 'Images' }
+                    : null,
+                  isZdr ? { icon: <ShieldCheckIcon className="h-3.5 w-3.5" />, text: 'ZDR' } : null,
+                ] as Array<{ icon: ReactNode; text: string } | null>
+              ).filter((chip): chip is { icon: ReactNode; text: string } => chip !== null);
+
               return (
                 <div
                   key={o.id}
                   id={`model-opt-${idx}`}
                   role="option"
-                  aria-selected={o.id === selectedId}
-                  className={`menu-item flex items-center justify-between gap-2 ${
-                    o.id === selectedId ? 'bg-muted' : ''
-                  } ${idx === highlightedIndex ? 'ring-1 ring-border' : ''}`}
-                  onClick={() => handleChoose(o.id)}
+                  aria-selected={isSelected}
+                  className={`relative w-full rounded-xl border transition-colors ${
+                    isActive
+                      ? 'border-primary/40 bg-muted/50'
+                      : 'border-transparent hover:bg-muted/30'
+                  } ${isSelected ? 'ring-1 ring-primary/50 bg-muted/60' : ''}`}
+                  onMouseEnter={() => setHighlightedIndex(idx)}
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium text-sm">{deriveLabel(o)}</div>
-                    <div className="flex items-center gap-2 mt-1 text-muted-foreground">
-                      {canReason && <LightBulbIcon className="h-4 w-4" title="Reasoning" />}
-                      {canSee && <EyeIcon className="h-4 w-4" title="Vision input" />}
-                      {canAudio && <MicrophoneIcon className="h-4 w-4" title="Audio input" />}
-                      {canImageOut && <PhotoIcon className="h-4 w-4" title="Image generation" />}
-                      {isZdr && <ShieldCheckIcon className="h-4 w-4" title="Zero Data Retention" />}
+                  <button
+                    type="button"
+                    data-option-index={idx}
+                    className="w-full text-left px-3 py-2.5 flex items-start gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+                    onClick={() => handleChoose(o.id)}
+                    onFocus={() => setHighlightedIndex(idx)}
+                    onKeyDown={(event) => {
+                      if (!visibleOptions.length) return;
+                      if (event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        const next = (idx + 1) % visibleOptions.length;
+                        setHighlightedIndex(next);
+                        focusOptionButton(next);
+                      } else if (event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        const prev = (idx - 1 + visibleOptions.length) % visibleOptions.length;
+                        setHighlightedIndex(prev);
+                        focusOptionButton(prev);
+                      } else if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleChoose(o.id);
+                      }
+                    }}
+                  >
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div
+                            className="font-semibold text-sm leading-tight truncate"
+                            title={label}
+                          >
+                            {label}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
+                            {provider && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5">
+                                {providerLabel}
+                              </span>
+                            )}
+                            <span
+                              className="font-mono text-[11px] tracking-tight truncate"
+                              title={o.id}
+                            >
+                              {o.id}
+                            </span>
+                            {context && (
+                              <span className="inline-flex items-center gap-1 text-xs">
+                                {numberFormatter.format(context)} ctx
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {showPrice && priceStr && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap leading-tight">
+                            {priceStr}
+                          </span>
+                        )}
+                      </div>
+
+                      {capabilityChips.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+                          {capabilityChips.map((chip, idxChip) => (
+                            <span
+                              key={`${o.id}-cap-${idxChip}`}
+                              className="inline-flex items-center gap-1 rounded-full bg-muted/70 px-2 py-[3px]"
+                            >
+                              {chip.icon}
+                              <span>{chip.text}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-2 shrink-0">
-                    {showPrice && priceStr && (
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {priceStr}
-                      </span>
-                    )}
-                    {o.id !== PINNED_MODEL_ID && (
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {isSelected && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                          <CheckIcon className="h-4 w-4" />
+                          Active
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                  {o.id !== PINNED_MODEL_ID && (
+                    <div className="flex justify-end px-3 pb-1 -mt-1">
                       <button
-                        className="p-1 rounded hover:bg-muted"
+                        className="inline-flex items-center gap-1 rounded-full border border-transparent px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                         title="Hide from dropdown"
                         aria-label="Hide model from dropdown"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={(event) => {
+                          event.stopPropagation();
                           removeModelFromDropdown(o.id);
                         }}
                       >
-                        <XMarkIcon className="h-4 w-4 opacity-60 hover:opacity-100" />
+                        <XMarkIcon className="h-3.5 w-3.5" />
+                        <span>Hide</span>
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

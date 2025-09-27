@@ -14,9 +14,9 @@ export function getTutorPreamble() {
     '- Prefer small steps, retrieval practice, and spaced repetition to boost retention.',
     '',
     'Tools policy (important):',
-    '- Start with a friendly check‑in before using any tutor tools when possible.',
-    '- Call tutor tools when helpful (e.g., practice/review, or if the learner asks). Keep the flow concise and focused.',
-    '- The UI renders quizzes/flashcards from tool data; avoid duplicating items in plain text.',
+    '- Start with a friendly check‑in before offering structured practice when possible.',
+    '- Use the quiz_mcq tool sparingly for focused retrieval practice or when the learner asks. Keep the flow concise and focused.',
+    '- The UI renders multiple-choice items from tool data; avoid duplicating them in plain text.',
     '',
     'Session scaffolding:',
     '- Structure loosely as baseline → teach → practice → reflect → review. Keep each turn focused and brief. If they ask for harder/easier or more practice, adapt conversationally.',
@@ -25,21 +25,8 @@ export function getTutorPreamble() {
     '1) quiz_mcq: Present multiple-choice questions.',
     '   Schema: { title?: string, items: [{ question: string, choices: string[2..6], correct: integer(index), explanation?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
     '   Notes: concise questions, plausible distractors, one correct per item. Use only when practice is appropriate.',
-    '2) quiz_fill_blank: Present fill-in-the-blank prompts.',
-    '   Schema: { title?: string, items: [{ prompt: string, answer: string, aliases?: string[], explanation?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
-    '   Notes: put a clear blank (e.g., "____") in prompt; provide succinct accepted answers.',
-    '3) quiz_open_ended: Present short free-response prompts.',
-    '   Schema: { title?: string, items: [{ prompt: string, sample_answer?: string, rubric?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
-    '   Notes: keep prompts focused; include a compact sample or rubric when helpful.',
-    '4) flashcards: Present spaced-repetition-friendly cards.',
-    '   Schema: { title?: string, shuffle?: boolean, items: [{ front: string, back: string, hint?: string, topic?: string, skill?: string, difficulty?: "easy"|"medium"|"hard" }] }',
-    '   Notes: atomic facts; avoid ambiguity; keep sides short. Great for quick review, not for the very first turn.',
-    '5) grade_open_response: Present feedback for a learner’s free response.',
-    '   Schema: { item_id: string, feedback: string, score?: number, criteria?: string[] }',
-    '6) add_to_deck: Save cards for spaced review.',
-    '   Schema: { cards: [{ front: string, back: string, hint?: string, topic?: string, skill?: string }] }',
-    '7) srs_review: Request due cards for spaced review (returns cards as tool output).',
-    '   Schema: { due_count?: integer }',
+    '',
+    'No other tools are available. If tool output is unnecessary, stay in a conversational reply.',
     '',
     'If tools are unsupported, give a brief, focused explanation with a single targeted question. Keep it short and empowering.',
   ].join('\n');
@@ -275,165 +262,6 @@ export function getTutorToolDefinitions() {
             },
           },
           required: ['items'],
-        },
-      },
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'quiz_fill_blank',
-        description:
-          'Render fill-in-the-blank prompts. Supply the accepted answer(s) to check correctness.',
-        parameters: {
-          type: 'object',
-          properties: {
-            title: { type: 'string' },
-            items: {
-              type: 'array',
-              minItems: 1,
-              maxItems: 20,
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  prompt: { type: 'string' },
-                  answer: { type: 'string' },
-                  aliases: { type: 'array', items: { type: 'string' } },
-                  explanation: { type: 'string' },
-                  topic: { type: 'string' },
-                  skill: { type: 'string' },
-                  difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
-                },
-                required: ['prompt', 'answer'],
-              },
-            },
-          },
-          required: ['items'],
-        },
-      },
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'quiz_open_ended',
-        description: 'Render short free-response prompts with optional sample answers or rubrics.',
-        parameters: {
-          type: 'object',
-          properties: {
-            title: { type: 'string' },
-            items: {
-              type: 'array',
-              minItems: 1,
-              maxItems: 12,
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  prompt: { type: 'string' },
-                  sample_answer: { type: 'string' },
-                  rubric: { type: 'string' },
-                  topic: { type: 'string' },
-                  skill: { type: 'string' },
-                  difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
-                },
-                required: ['prompt'],
-              },
-            },
-          },
-          required: ['items'],
-        },
-      },
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'flashcards',
-        description: 'Render flashcards for quick review (front/back).',
-        parameters: {
-          type: 'object',
-          properties: {
-            title: { type: 'string' },
-            shuffle: { type: 'boolean' },
-            items: {
-              type: 'array',
-              minItems: 1,
-              maxItems: 40,
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  front: { type: 'string' },
-                  back: { type: 'string' },
-                  hint: { type: 'string' },
-                  topic: { type: 'string' },
-                  skill: { type: 'string' },
-                  difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
-                },
-                required: ['front', 'back'],
-              },
-            },
-          },
-          required: ['items'],
-        },
-      },
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'grade_open_response',
-        description: 'Return feedback for a free-response answer.',
-        parameters: {
-          type: 'object',
-          properties: {
-            item_id: { type: 'string' },
-            feedback: { type: 'string' },
-            score: { type: 'number' },
-            criteria: { type: 'array', items: { type: 'string' } },
-          },
-          required: ['item_id', 'feedback'],
-        },
-      },
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'add_to_deck',
-        description: "Save flashcards to the learner's spaced-repetition deck.",
-        parameters: {
-          type: 'object',
-          properties: {
-            cards: {
-              type: 'array',
-              minItems: 1,
-              maxItems: 100,
-              items: {
-                type: 'object',
-                properties: {
-                  front: { type: 'string' },
-                  back: { type: 'string' },
-                  hint: { type: 'string' },
-                  topic: { type: 'string' },
-                  skill: { type: 'string' },
-                },
-                required: ['front', 'back'],
-              },
-            },
-          },
-          required: ['cards'],
-        },
-      },
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'srs_review',
-        description:
-          "Request due cards from the learner's deck. The tool returns an array of cards as JSON in tool output; then call flashcards with those items.",
-        parameters: {
-          type: 'object',
-          properties: {
-            due_count: { type: 'integer' },
-          },
         },
       },
     },

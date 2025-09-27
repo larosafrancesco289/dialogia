@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
-import { saveMessage } from '@/lib/db';
+import { saveMessage, saveChat } from '@/lib/db';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { stripLeadingToolJson } from '@/lib/agent/streaming';
 import {
@@ -16,6 +16,12 @@ import {
   buildTutorContextSummary,
   buildTutorContextFull,
 } from '@/lib/agent/tutor';
+import {
+  updateTutorMemory,
+  normalizeTutorMemory,
+  getTutorMemoryFrequency,
+  EMPTY_TUTOR_MEMORY,
+} from '@/lib/agent/tutorMemory';
 import { loadTutorProfile, summarizeTutorProfile } from '@/lib/tutorProfile';
 import { addCardsToDeck, getDueCards } from '@/lib/tutorDeck';
 import {
@@ -26,7 +32,11 @@ import {
   isToolCallingSupported,
   isImageOutputSupported,
 } from '@/lib/models';
-import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
+import {
+  MAX_FALLBACK_RESULTS,
+  DEFAULT_TUTOR_MODEL_ID,
+  DEFAULT_TUTOR_MEMORY_MODEL_ID,
+} from '@/lib/constants';
 // telemetry removed for commit cleanliness
 
 export function createMessageSlice(
@@ -101,9 +111,69 @@ export function createMessageSlice(
           ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
         }));
       const chatId = get().selectedChatId!;
-      const chat = get().chats.find((c) => c.id === chatId)!;
+      let chat = get().chats.find((c) => c.id === chatId)!;
+      const uiState = get().ui;
+      const tutorGloballyEnabled = !!uiState.experimentalTutor;
+      const forceTutorMode = !!(uiState.forceTutorMode ?? false);
+      const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat.settings.tutor_mode);
+      let tutorDefaultModelId = uiState.tutorDefaultModelId || chat.settings.tutor_default_model;
+      let tutorMemoryModelId =
+        uiState.tutorMemoryModelId ||
+        chat.settings.tutor_memory_model ||
+        tutorDefaultModelId ||
+        DEFAULT_TUTOR_MEMORY_MODEL_ID;
+      if (!tutorDefaultModelId) tutorDefaultModelId = DEFAULT_TUTOR_MODEL_ID;
+      if (!tutorMemoryModelId) tutorMemoryModelId = DEFAULT_TUTOR_MEMORY_MODEL_ID;
+      const memoryAutoUpdateEnabled =
+        uiState.tutorMemoryAutoUpdate !== false && chat.settings.tutor_memory_disabled !== true;
+      if (tutorEnabled) {
+        const updatedSettings = { ...chat.settings };
+        let settingsChanged = false;
+        if (updatedSettings.model !== tutorDefaultModelId) {
+          updatedSettings.model = tutorDefaultModelId;
+          settingsChanged = true;
+        }
+        if (updatedSettings.tutor_default_model !== tutorDefaultModelId) {
+          updatedSettings.tutor_default_model = tutorDefaultModelId;
+          settingsChanged = true;
+        }
+        if (updatedSettings.tutor_memory_model !== tutorMemoryModelId) {
+          updatedSettings.tutor_memory_model = tutorMemoryModelId;
+          settingsChanged = true;
+        }
+        const normalizedMem = normalizeTutorMemory(updatedSettings.tutor_memory);
+        if (normalizedMem !== updatedSettings.tutor_memory) {
+          updatedSettings.tutor_memory = normalizedMem;
+          settingsChanged = true;
+        }
+        if (
+          typeof updatedSettings.tutor_memory_frequency !== 'number' ||
+          updatedSettings.tutor_memory_frequency <= 0
+        ) {
+          updatedSettings.tutor_memory_frequency = getTutorMemoryFrequency(updatedSettings);
+          settingsChanged = true;
+        }
+        if (
+          typeof updatedSettings.tutor_memory_message_count !== 'number' ||
+          updatedSettings.tutor_memory_message_count < 0
+        ) {
+          updatedSettings.tutor_memory_message_count = 0;
+          settingsChanged = true;
+        }
+        if (settingsChanged) {
+          const updatedChat = { ...chat, settings: updatedSettings, updatedAt: Date.now() };
+          set((s) => ({ chats: s.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
+          chat = updatedChat;
+          try {
+            await saveChat(updatedChat);
+          } catch {}
+        }
+        tutorDefaultModelId = chat.settings.tutor_default_model || tutorDefaultModelId;
+        tutorMemoryModelId = chat.settings.tutor_memory_model || tutorMemoryModelId;
+      }
+      const activeModelId = chat.settings.model;
       // Filter attachments by model capabilities (vision/audio allowed only when supported)
-      const modelMetaVisionCheck = findModelById(get().models, chat.settings.model);
+      const modelMetaVisionCheck = findModelById(get().models, activeModelId);
       const canVision = isVisionSupported(modelMetaVisionCheck);
       const canAudio = isAudioInputSupported(modelMetaVisionCheck);
       const rawAttachments = (opts?.attachments || []).filter((a) => {
@@ -163,14 +233,23 @@ export function createMessageSlice(
         }),
       );
       // Determine if any PDFs exist in conversation (prior or this turn) to enable parser plugin
+      if (tutorEnabled) {
+        try {
+          const maybePromise = (get().prepareTutorWelcomeMessage as any)(chatId);
+          // Fire-and-forget so tutor welcome generation does not block user sends
+          if (maybePromise && typeof maybePromise.then === 'function') {
+            maybePromise.catch(() => {});
+          }
+        } catch {}
+      }
       const priorList = get().messages[chatId] ?? [];
       const hadPdfEarlier = priorList.some(
         (m) => Array.isArray(m.attachments) && m.attachments.some((x: any) => x?.kind === 'pdf'),
       );
       const hasPdf = attachments.some((a) => a.kind === 'pdf') || hadPdfEarlier;
       // Strict ZDR enforcement: block sending to non-ZDR models when enabled
-      if (get().ui.zdrOnly !== false) {
-        const modelId = chat.settings.model;
+      if (get().ui.zdrOnly === true) {
+        const modelId = activeModelId;
         let allowedModelIds = new Set(get().zdrModelIds || []);
         if (allowedModelIds.size === 0) {
           try {
@@ -223,7 +302,7 @@ export function createMessageSlice(
         role: 'assistant',
         content: '',
         createdAt: now + 1,
-        model: chat.settings.model,
+        model: activeModelId,
         reasoning: '',
         attachments: [],
       };
@@ -256,7 +335,7 @@ export function createMessageSlice(
           const res = await fetch('/api/deep-research', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ task: content, model: chat.settings.model }),
+            body: JSON.stringify({ task: content, model: activeModelId }),
             cache: 'no-store',
             signal: controller.signal,
           } as any);
@@ -305,6 +384,114 @@ export function createMessageSlice(
         return;
       }
 
+      let memoryDebug:
+        | {
+            before?: string;
+            after?: string;
+            version?: number;
+            messageCount?: number;
+            conversationWindow?: string;
+            raw?: string;
+          }
+        | undefined;
+      if (tutorEnabled && memoryAutoUpdateEnabled) {
+        const settings = chat.settings;
+        const priorCount = settings.tutor_memory_message_count ?? 0;
+        const frequency = getTutorMemoryFrequency(settings);
+        const nextCount = priorCount + 1;
+        let newCount = nextCount;
+        let newMemory = settings.tutor_memory || EMPTY_TUTOR_MEMORY;
+        let version = settings.tutor_memory_version ?? 0;
+        if (nextCount >= frequency) {
+          try {
+            const result = await updateTutorMemory({
+              apiKey: key || '',
+              model: tutorMemoryModelId,
+              existingMemory: settings.tutor_memory,
+              conversation: priorList.concat(userMsg),
+              frequency,
+            });
+            newMemory = result.memory;
+            version += 1;
+            newCount = 0;
+            memoryDebug = {
+              before: settings.tutor_memory,
+              after: newMemory,
+              version,
+              messageCount: nextCount,
+              conversationWindow: result.conversationWindow,
+              raw: result.raw,
+            };
+          } catch (err: any) {
+            set((s) => ({
+              ui: {
+                ...s.ui,
+                notice:
+                  s.ui.debugMode && err?.message
+                    ? `Tutor memory update failed: ${String(err.message)}`
+                    : s.ui.notice,
+              },
+            }));
+          }
+        }
+        if (
+          newCount !== priorCount ||
+          newMemory !== settings.tutor_memory ||
+          version !== (settings.tutor_memory_version ?? 0)
+        ) {
+          const updatedSettings = {
+            ...chat.settings,
+            tutor_memory: newMemory,
+            tutor_memory_version: version,
+            tutor_memory_message_count: newCount,
+          };
+          const updatedChat = { ...chat, settings: updatedSettings, updatedAt: Date.now() };
+          set((s) => ({ chats: s.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
+          chat = updatedChat;
+          try {
+            await saveChat(updatedChat);
+          } catch {}
+        }
+      } else if (tutorEnabled && !memoryAutoUpdateEnabled) {
+        const priorCount = chat.settings.tutor_memory_message_count ?? 0;
+        const nextCount = priorCount + 1;
+        if (nextCount !== priorCount) {
+          const updatedSettings = {
+            ...chat.settings,
+            tutor_memory_message_count: nextCount,
+          };
+          const updatedChat = { ...chat, settings: updatedSettings, updatedAt: Date.now() };
+          set((s) => ({ chats: s.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
+          chat = updatedChat;
+          try {
+            await saveChat(updatedChat);
+          } catch {}
+        }
+      }
+
+      if (tutorEnabled) {
+        const snapshot = {
+          version: chat.settings.tutor_memory_version,
+          messageCount: chat.settings.tutor_memory_message_count,
+          after: chat.settings.tutor_memory,
+          before: memoryDebug?.before,
+          raw: memoryDebug?.raw,
+          conversationWindow: memoryDebug?.conversationWindow,
+          updatedAt: memoryDebug ? Date.now() : undefined,
+          model: tutorMemoryModelId,
+        };
+        set((s) => ({
+          ui: {
+            ...s.ui,
+            tutorGlobalMemory: chat.settings.tutor_memory || s.ui.tutorGlobalMemory,
+            tutorMemoryDebugByMessageId: {
+              ...(s.ui.tutorMemoryDebugByMessageId || {}),
+              [assistantMsg.id]: snapshot,
+            },
+          },
+        }));
+      }
+
       const msgs = buildChatCompletionMessages({
         chat,
         priorMessages: priorList,
@@ -321,24 +508,24 @@ export function createMessageSlice(
 
       const searchEnabled = !!chat.settings.search_with_brave;
       const braveGloballyEnabled = !!get().ui.experimentalBrave;
-      const tutorGloballyEnabled = !!get().ui.experimentalTutor;
       const configuredProvider: 'brave' | 'openrouter' = (((chat.settings as any)
         ?.search_provider as any) || 'brave') as any;
       const searchProvider: 'brave' | 'openrouter' = braveGloballyEnabled
         ? configuredProvider
         : 'openrouter';
-      const attemptPlanning =
-        (tutorGloballyEnabled && !!chat.settings.tutor_mode) ||
-        (searchEnabled && searchProvider === 'brave');
+      const attemptPlanning = tutorEnabled || (searchEnabled && searchProvider === 'brave');
       const providerSort = get().ui.routePreference === 'cost' ? 'price' : 'throughput';
       const toolPreambleText =
         'You have access to a function tool named "web_search" that retrieves up-to-date web results.\n\nWhen you need current, factual, or source-backed information, call the tool first. If you call a tool, respond with ONLY tool_calls (no user-facing text). After the tool returns, write the final answer that cites sources inline as [n] using the numbering provided.\n\nweb_search(args): { query: string, count?: integer 1-10 }. Choose a focused query and a small count, and avoid unnecessary calls.';
       const tutorPreambleText = tutorGloballyEnabled ? getTutorPreamble() : '';
+      const tutorMemoryBlock = tutorEnabled
+        ? normalizeTutorMemory(chat.settings.tutor_memory)
+        : undefined;
       const preambles: string[] = [];
+      if (tutorMemoryBlock) preambles.push(tutorMemoryBlock);
       if (searchEnabled && searchProvider === 'brave') preambles.push(toolPreambleText);
-      if (tutorGloballyEnabled && chat.settings.tutor_mode && tutorPreambleText)
-        preambles.push(tutorPreambleText);
-      if (tutorGloballyEnabled && chat.settings.tutor_mode) {
+      if (tutorEnabled && tutorPreambleText) preambles.push(tutorPreambleText);
+      if (tutorEnabled) {
         try {
           const prof = await loadTutorProfile(chat.id);
           const summary = summarizeTutorProfile(prof);
@@ -361,10 +548,7 @@ export function createMessageSlice(
         try {
           const controller = new AbortController();
           set((s) => ({ ...s, _controller: controller as any }) as any);
-          const tutorTools =
-            tutorGloballyEnabled && chat.settings.tutor_mode
-              ? (getTutorToolDefinitions() as any[])
-              : ([] as any[]);
+          const tutorTools = tutorEnabled ? (getTutorToolDefinitions() as any[]) : ([] as any[]);
           const baseTools =
             searchEnabled && searchProvider === 'brave'
               ? [
@@ -455,15 +639,7 @@ export function createMessageSlice(
           const extractInlineTutorCalls = (text: string): Array<{ name: string; args: any }> => {
             const out: Array<{ name: string; args: any }> = [];
             if (typeof text !== 'string' || !text) return out;
-            const names = [
-              'quiz_mcq',
-              'quiz_fill_blank',
-              'quiz_open_ended',
-              'flashcards',
-              'grade_open_response',
-              'add_to_deck',
-              'srs_review',
-            ];
+            const names = ['quiz_mcq'];
             const findJsonAfter = (s: string, from: number): any | undefined => {
               const idx = s.indexOf('{', from);
               if (idx < 0) return undefined;
@@ -631,17 +807,8 @@ export function createMessageSlice(
               args: any,
             ): { ok: boolean; json?: string } => {
               const keyId = assistantMsg.id;
-              const mapKey =
-                name === 'quiz_mcq'
-                  ? 'mcq'
-                  : name === 'quiz_fill_blank'
-                    ? 'fillBlank'
-                    : name === 'quiz_open_ended'
-                      ? 'openEnded'
-                      : name === 'flashcards'
-                        ? 'flashcards'
-                        : undefined;
-              if (!mapKey) return { ok: false };
+              if (name !== 'quiz_mcq') return { ok: false };
+              const mapKey = 'mcq';
               try {
                 const items: any[] = Array.isArray(args?.items) ? args.items : [];
                 if (items.length === 0) return { ok: false };
@@ -1572,9 +1739,36 @@ export function createMessageSlice(
           ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
         }));
       const chatId = get().selectedChatId!;
-      const chat = get().chats.find((c) => c.id === chatId)!;
+      let chat = get().chats.find((c) => c.id === chatId)!;
+      const uiState = get().ui;
+      const tutorGloballyEnabled = !!uiState.experimentalTutor;
+      const forceTutorMode = !!(uiState.forceTutorMode ?? false);
+      const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat.settings.tutor_mode);
+      if (tutorEnabled) {
+        const desiredModel =
+          uiState.tutorDefaultModelId ||
+          chat.settings.tutor_default_model ||
+          DEFAULT_TUTOR_MODEL_ID;
+        opts = { ...(opts || {}), modelId: desiredModel };
+        if (
+          chat.settings.model !== desiredModel ||
+          chat.settings.tutor_default_model !== desiredModel
+        ) {
+          const updatedSettings = {
+            ...chat.settings,
+            model: desiredModel,
+            tutor_default_model: desiredModel,
+          };
+          const updatedChat = { ...chat, settings: updatedSettings, updatedAt: Date.now() };
+          set((s) => ({ chats: s.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
+          chat = updatedChat;
+          try {
+            await saveChat(updatedChat);
+          } catch {}
+        }
+      }
       // ZDR enforcement for regenerate with provider fallback
-      if (get().ui.zdrOnly !== false) {
+      if (get().ui.zdrOnly === true) {
         const modelId = opts?.modelId || chat.settings.model;
         let allowedModelIds = new Set(get().zdrModelIds || []);
         if (allowedModelIds.size === 0) {
@@ -1662,22 +1856,113 @@ export function createMessageSlice(
         {
           const modelMeta = findModelById(get().models, replacement.model!);
           const supportsReasoning = isReasoningSupported(modelMeta);
-          const tempUsed =
-            typeof genSnapshot.temperature === 'number'
-              ? genSnapshot.temperature
-              : chat.settings.temperature;
-          const topPUsed =
-            typeof genSnapshot.top_p === 'number' ? genSnapshot.top_p : chat.settings.top_p;
-          const maxTokUsed =
-            typeof genSnapshot.max_tokens === 'number'
-              ? genSnapshot.max_tokens
-              : chat.settings.max_tokens;
-          const rEffortUsed = supportsReasoning
-            ? (genSnapshot.reasoning_effort ?? chat.settings.reasoning_effort)
-            : undefined;
-          const rTokUsed = supportsReasoning
-            ? (genSnapshot.reasoning_tokens ?? chat.settings.reasoning_tokens)
-            : undefined;
+          const previousModelId =
+            typeof (original as any)?.model === 'string' ? (original as any).model : undefined;
+          const modelChanged =
+            typeof replacement.model === 'string' && replacement.model !== previousModelId;
+          const pickNumber = (snapshotVal: unknown, chatVal: unknown) => {
+            if (modelChanged) {
+              if (typeof chatVal === 'number') return chatVal;
+              if (typeof snapshotVal === 'number') return snapshotVal;
+            } else {
+              if (typeof snapshotVal === 'number') return snapshotVal;
+              if (typeof chatVal === 'number') return chatVal;
+            }
+            return undefined;
+          };
+          const pickReasoningEffort = (
+            snapshotVal: unknown,
+            chatVal: unknown,
+          ): 'none' | 'low' | 'medium' | 'high' | undefined => {
+            if (!supportsReasoning) return undefined;
+            if (modelChanged) {
+              if (typeof chatVal === 'string') return chatVal as any;
+              if (typeof snapshotVal === 'string') return snapshotVal as any;
+            } else {
+              if (typeof snapshotVal === 'string') return snapshotVal as any;
+              if (typeof chatVal === 'string') return chatVal as any;
+            }
+            return undefined;
+          };
+          const pickReasoningTokens = (snapshotVal: unknown, chatVal: unknown) => {
+            if (!supportsReasoning) return undefined;
+            if (modelChanged) {
+              if (typeof chatVal === 'number') return chatVal;
+              if (typeof snapshotVal === 'number') return snapshotVal;
+            } else {
+              if (typeof snapshotVal === 'number') return snapshotVal;
+              if (typeof chatVal === 'number') return chatVal;
+            }
+            return undefined;
+          };
+          const pickBoolean = (snapshotVal: unknown, chatVal: unknown, fallback = false) => {
+            if (modelChanged) {
+              if (typeof chatVal === 'boolean') return chatVal;
+              if (typeof snapshotVal === 'boolean') return snapshotVal;
+            } else {
+              if (typeof snapshotVal === 'boolean') return snapshotVal;
+              if (typeof chatVal === 'boolean') return chatVal;
+            }
+            return fallback;
+          };
+          const pickProvider = (
+            snapshotVal: unknown,
+            chatVal: unknown,
+          ): 'brave' | 'openrouter' | undefined => {
+            if (modelChanged) {
+              if (typeof chatVal === 'string') return chatVal as any;
+              if (typeof snapshotVal === 'string') return snapshotVal as any;
+            } else {
+              if (typeof snapshotVal === 'string') return snapshotVal as any;
+              if (typeof chatVal === 'string') return chatVal as any;
+            }
+            return undefined;
+          };
+          const tempUsed = pickNumber(genSnapshot.temperature, chat.settings.temperature);
+          const topPUsed = pickNumber(genSnapshot.top_p, chat.settings.top_p);
+          const maxTokUsed = pickNumber(genSnapshot.max_tokens, chat.settings.max_tokens);
+          const rEffortUsed = pickReasoningEffort(
+            genSnapshot.reasoning_effort,
+            chat.settings.reasoning_effort,
+          );
+          const rTokUsed = pickReasoningTokens(
+            genSnapshot.reasoning_tokens,
+            chat.settings.reasoning_tokens,
+          );
+          const searchWithBrave = pickBoolean(
+            genSnapshot?.search_with_brave,
+            (chat.settings as any)?.search_with_brave,
+            false,
+          );
+          const providerForTurn = pickProvider(
+            genSnapshot?.search_provider,
+            (chat.settings as any)?.search_provider,
+          );
+          const tutorModeForTurn = pickBoolean(
+            genSnapshot?.tutor_mode,
+            chat.settings.tutor_mode,
+            false,
+          );
+          const appliedGenSettings: Record<string, any> = {};
+          if (typeof tempUsed === 'number') appliedGenSettings.temperature = tempUsed;
+          if (typeof topPUsed === 'number') appliedGenSettings.top_p = topPUsed;
+          if (typeof maxTokUsed === 'number') appliedGenSettings.max_tokens = maxTokUsed;
+          if (supportsReasoning && typeof rEffortUsed === 'string')
+            appliedGenSettings.reasoning_effort = rEffortUsed;
+          if (supportsReasoning && typeof rTokUsed === 'number')
+            appliedGenSettings.reasoning_tokens = rTokUsed;
+          appliedGenSettings.search_with_brave = !!searchWithBrave;
+          if (providerForTurn) appliedGenSettings.search_provider = providerForTurn;
+          appliedGenSettings.tutor_mode = !!tutorModeForTurn;
+          if (genSnapshot?.providerSort === 'price' || genSnapshot?.providerSort === 'throughput')
+            appliedGenSettings.providerSort = genSnapshot.providerSort;
+          set((s) => {
+            const list2 = s.messages[chatId] ?? [];
+            const updated = list2.map((m) =>
+              m.id === replacement.id ? ({ ...m, genSettings: appliedGenSettings } as any) : m,
+            );
+            return { messages: { ...s.messages, [chatId]: updated } } as any;
+          });
           // Store debug payload for regenerate streaming call (using snapshot where available)
           try {
             const debugBody: any = {
@@ -1688,13 +1973,7 @@ export function createMessageSlice(
             };
             if (hadPdfEarlier)
               debugBody.plugins = [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }];
-            const searchWasEnabledThisTurn =
-              typeof genSnapshot?.search_with_brave === 'boolean'
-                ? !!genSnapshot.search_with_brave
-                : !!(chat.settings as any)?.search_with_brave;
-            const providerForTurn = (genSnapshot?.search_provider ||
-              (chat.settings as any)?.search_provider) as 'brave' | 'openrouter' | undefined;
-            if (searchWasEnabledThisTurn && providerForTurn === 'openrouter') {
+            if (searchWithBrave && providerForTurn === 'openrouter') {
               debugBody.plugins = [...(debugBody.plugins || []), { id: 'web' }];
             }
             if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
@@ -1745,13 +2024,7 @@ export function createMessageSlice(
             plugins: (() => {
               const arr: any[] = [];
               if (hadPdfEarlier) arr.push({ id: 'file-parser', pdf: { engine: 'pdf-text' } });
-              const searchWasEnabledThisTurn =
-                typeof genSnapshot?.search_with_brave === 'boolean'
-                  ? !!genSnapshot.search_with_brave
-                  : !!(chat.settings as any)?.search_with_brave;
-              const prov = (genSnapshot?.search_provider ||
-                (chat.settings as any)?.search_provider) as 'brave' | 'openrouter' | undefined;
-              if (searchWasEnabledThisTurn && prov === 'openrouter') arr.push({ id: 'web' });
+              if (searchWithBrave && providerForTurn === 'openrouter') arr.push({ id: 'web' });
               return arr.length > 0 ? arr : undefined;
             })(),
             callbacks: {
@@ -1840,6 +2113,7 @@ export function createMessageSlice(
                   reasoning: current?.reasoning,
                   attachments: current?.attachments,
                   annotations: (current as any)?.annotations || extras?.annotations,
+                  genSettings: appliedGenSettings,
                   metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
                   tokensIn: promptTokens,
                   tokensOut: completionTokens,
