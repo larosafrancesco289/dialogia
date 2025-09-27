@@ -53,9 +53,11 @@ export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: stri
   }, [open]);
 
   // Fixed-position portal coordinates to avoid stacking-context issues
-  const [coords, setCoords] = useState<{ left: number; top: number; placement: 'up' | 'down' }>(
-    { left: 0, top: 0, placement: 'down' },
-  );
+  const [coords, setCoords] = useState<{ left: number; top: number; placement: 'up' | 'down' }>({
+    left: 0,
+    top: 0,
+    placement: 'down',
+  });
   const widthPx = 14 * 16; // Tailwind w-56 = 14rem (assuming 16px root)
   const margin = 8;
   const updateCoords = useCallback(() => {

@@ -1,6 +1,10 @@
 import type { StoreState, UIState } from '@/lib/store/types';
 import { defaultZdrOnly } from '@/lib/env';
-import { DEFAULT_TUTOR_MODEL_ID, DEFAULT_TUTOR_MEMORY_FREQUENCY } from '@/lib/constants';
+import {
+  DEFAULT_TUTOR_MODEL_ID,
+  DEFAULT_TUTOR_MEMORY_MODEL_ID,
+  DEFAULT_TUTOR_MEMORY_FREQUENCY,
+} from '@/lib/constants';
 import { EMPTY_TUTOR_MEMORY } from '@/lib/agent/tutorMemory';
 
 export function createUiSlice(
@@ -15,7 +19,7 @@ export function createUiSlice(
     debugByMessageId: {},
     autoReasoningModelIds: {},
     tutorDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-    tutorMemoryModelId: DEFAULT_TUTOR_MODEL_ID,
+    tutorMemoryModelId: DEFAULT_TUTOR_MEMORY_MODEL_ID,
     tutorMemoryFrequency: DEFAULT_TUTOR_MEMORY_FREQUENCY,
     tutorMemoryAutoUpdate: true,
     tutorMemoryDebugByMessageId: {},
@@ -37,10 +41,10 @@ export function createUiSlice(
     tutorContextMode: 'full',
     zdrOnly: defaultZdrOnly(),
     routePreference: 'speed',
-    // Experimental features default off unless explicitly enabled in Settings
+    // Experimental feature toggles (Tutor defaults on; others opt-in via Settings)
     experimentalBrave: false,
     experimentalDeepResearch: false,
-    experimentalTutor: false,
+    experimentalTutor: true,
     braveByMessageId: {},
     tutorByMessageId: {},
     tutorProfileByChatId: {},

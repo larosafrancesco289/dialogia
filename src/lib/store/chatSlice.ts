@@ -5,6 +5,7 @@ import type { Chat, Folder, Message } from '@/lib/types';
 import {
   DEFAULT_MODEL_ID,
   DEFAULT_TUTOR_MODEL_ID,
+  DEFAULT_TUTOR_MEMORY_MODEL_ID,
   DEFAULT_TUTOR_MEMORY_FREQUENCY,
 } from '@/lib/constants';
 import { buildTutorContextSummary, buildTutorContextFull } from '@/lib/agent/tutor';
@@ -130,14 +131,19 @@ export function createChatSlice(
       };
       if (baseSettings.tutor_mode) {
         const tutorModel = uiState.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID;
+        const tutorMemoryModel =
+          uiState.tutorMemoryModelId ||
+          uiState.tutorDefaultModelId ||
+          DEFAULT_TUTOR_MEMORY_MODEL_ID;
         baseSettings.model = tutorModel;
         baseSettings.tutor_default_model = tutorModel;
-        baseSettings.tutor_memory_model = uiState.tutorMemoryModelId || tutorModel;
+        baseSettings.tutor_memory_model = tutorMemoryModel;
         const globalMemory = uiState.tutorGlobalMemory || EMPTY_TUTOR_MEMORY;
         baseSettings.tutor_memory = normalizeTutorMemory(globalMemory);
         baseSettings.tutor_memory_version = 0;
         baseSettings.tutor_memory_message_count = 0;
-        baseSettings.tutor_memory_frequency = uiState.tutorMemoryFrequency || DEFAULT_TUTOR_MEMORY_FREQUENCY;
+        baseSettings.tutor_memory_frequency =
+          uiState.tutorMemoryFrequency || DEFAULT_TUTOR_MEMORY_FREQUENCY;
         if (uiState.tutorMemoryAutoUpdate === false) baseSettings.tutor_memory_disabled = true;
       }
       const chat: Chat = {
@@ -259,8 +265,13 @@ export function createChatSlice(
       const forceTutorMode = !!(uiState.forceTutorMode ?? false);
       let appliedPartial = { ...partial } as Partial<Chat['settings']>;
       const desiredModel =
-        uiState.tutorDefaultModelId || before?.settings.tutor_default_model || DEFAULT_TUTOR_MODEL_ID;
-      const desiredMemoryModel = uiState.tutorMemoryModelId || desiredModel;
+        uiState.tutorDefaultModelId ||
+        before?.settings.tutor_default_model ||
+        DEFAULT_TUTOR_MODEL_ID;
+      const desiredMemoryModel =
+        uiState.tutorMemoryModelId ||
+        before?.settings.tutor_memory_model ||
+        DEFAULT_TUTOR_MEMORY_MODEL_ID;
       let nextGlobalMemory = normalizeTutorMemory(uiState.tutorGlobalMemory);
       const ensureTutorDefaults = () => {
         const partialMemoryDisabled =

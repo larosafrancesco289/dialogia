@@ -178,9 +178,7 @@ export async function updateTutorMemory(params: {
       const role = m.role === 'assistant' ? 'Tutor' : m.role === 'user' ? 'Learner' : m.role;
       const chunks = [m.content];
       if (m.hiddenContent) chunks.push(m.hiddenContent);
-      const body = chunks
-        .filter((x) => typeof x === 'string' && x.trim())
-        .join('\n\n');
+      const body = chunks.filter((x) => typeof x === 'string' && x.trim()).join('\n\n');
       if (!body) return '';
       return `${role}: ${body}`;
     })
@@ -225,9 +223,7 @@ export async function updateTutorMemory(params: {
   };
 }
 
-export function getTutorMemoryFrequency(settings?: {
-  tutor_memory_frequency?: number;
-}): number {
+export function getTutorMemoryFrequency(settings?: { tutor_memory_frequency?: number }): number {
   const fromSettings = settings?.tutor_memory_frequency;
   if (typeof fromSettings === 'number' && fromSettings > 0) return Math.ceil(fromSettings);
   return DEFAULT_TUTOR_MEMORY_FREQUENCY;

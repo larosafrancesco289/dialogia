@@ -28,7 +28,7 @@ export function createModelSlice(
         ]);
         set({ zdrModelIds: Array.from(modelIds), zdrProviderIds: Array.from(providers) } as any);
         // If user prefers ZDR-only, restrict models to explicit ZDR ids first, provider fallback second
-        const zdrOnly = get().ui.zdrOnly !== false; // default to true
+        const zdrOnly = get().ui.zdrOnly === true;
         if (zdrOnly) {
           if (modelIds.size > 0) {
             models = models.filter((m) => modelIds.has(m.id || ''));

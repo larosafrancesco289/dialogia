@@ -8,13 +8,14 @@ import {
   generateTutorWelcomeMessage,
   normalizeTutorMemory,
 } from '@/lib/agent/tutorMemory';
-import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import { DEFAULT_TUTOR_MODEL_ID, DEFAULT_TUTOR_MEMORY_MODEL_ID } from '@/lib/constants';
 
 export function createTutorSlice(
   set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
   get: () => StoreState,
 ) {
-  const canUseProxy = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
+  const canUseProxy =
+    typeof window !== 'undefined' && process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
 
   const buildWelcome = async (params: {
     memory?: string;
@@ -66,7 +67,8 @@ export function createTutorSlice(
     },
     async primeTutorWelcomePreview() {
       const state = get();
-      const tutorActive = !!state.ui.experimentalTutor && (state.ui.forceTutorMode || state.ui.nextTutorMode);
+      const tutorActive =
+        !!state.ui.experimentalTutor && (state.ui.forceTutorMode || state.ui.nextTutorMode);
       if (!tutorActive) {
         set((s) => ({
           ui: {
@@ -91,7 +93,7 @@ export function createTutorSlice(
         state.ui.tutorMemoryModelId ||
         state.ui.tutorDefaultModelId ||
         state.ui.nextModel ||
-        DEFAULT_TUTOR_MODEL_ID;
+        DEFAULT_TUTOR_MEMORY_MODEL_ID;
       set((s) => ({
         ui: {
           ...s.ui,
@@ -182,12 +184,14 @@ export function createTutorSlice(
       };
 
       const existingWelcomeIdx = findWelcomeIndex(currentMessages);
-      const existingWelcome = existingWelcomeIdx >= 0 ? currentMessages[existingWelcomeIdx] : undefined;
+      const existingWelcome =
+        existingWelcomeIdx >= 0 ? currentMessages[existingWelcomeIdx] : undefined;
       const existingContent = existingWelcome?.content?.trim();
       const cachedWelcomeState = state.ui.tutorWelcomeByChatId?.[id];
-      const cachedContent = cachedWelcomeState?.status === 'ready' && cachedWelcomeState.message
-        ? cachedWelcomeState.message.trim()
-        : undefined;
+      const cachedContent =
+        cachedWelcomeState?.status === 'ready' && cachedWelcomeState.message
+          ? cachedWelcomeState.message.trim()
+          : undefined;
       const hasCredentials = !!((apiKey && apiKey.trim()) || canUseProxy);
 
       const pickInitialMessage = () => {
@@ -236,7 +240,8 @@ export function createTutorSlice(
                 tutorWelcome: true,
               };
           const nextMessages = (() => {
-            if (welcomeIndex >= 0) return list.map((m, idx) => (idx === welcomeIndex ? welcomeMessage! : m));
+            if (welcomeIndex >= 0)
+              return list.map((m, idx) => (idx === welcomeIndex ? welcomeMessage! : m));
             const insertIdx = (() => {
               const firstUserIdx = list.findIndex((m) => m.role === 'user');
               if (firstUserIdx >= 0) return firstUserIdx;

@@ -26,6 +26,7 @@ import {
 import { describeModelPricing } from '@/lib/cost';
 import { shallow } from 'zustand/shallow';
 import type { Chat } from '@/lib/types';
+import type { StoreState } from '@/lib/store/types';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -46,6 +47,9 @@ type Controller = {
   ui: ReturnType<typeof useChatStore.getState>['ui'];
   zdrModelIds?: string[];
   zdrProviderIds?: string[];
+  setUI: StoreState['setUI'];
+  zdrHiddenCount: number;
+  zdrRestricted: boolean;
 };
 
 export function useModelPickerController(): Controller {
@@ -81,12 +85,13 @@ export function useModelPickerController(): Controller {
   const chat = chats.find((c) => c.id === selectedChatId);
   const curated = CURATED_MODELS;
 
+  const allowedIds = useMemo(() => new Set((models || []).map((m: any) => m.id)), [models]);
+
   const customOptions = useMemo(() => {
-    const allowed = new Set((models || []).map((m: any) => m.id));
     return (favoriteModelIds || [])
-      .filter((id: string) => allowed.has(id))
+      .filter((id: string) => allowedIds.has(id))
       .map((id: string) => ({ id, name: id }));
-  }, [favoriteModelIds, models]);
+  }, [favoriteModelIds, allowedIds]);
 
   const allOptions = useMemo(() => {
     const injectedDefault = [{ id: DEFAULT_MODEL_ID, name: DEFAULT_MODEL_NAME }];
@@ -98,19 +103,29 @@ export function useModelPickerController(): Controller {
 
   const options = useMemo(() => {
     const hidden = new Set(hiddenModelIds || []);
-    const allowedIds = new Set((models || []).map((m: any) => m.id));
     return allOptions.filter((m: Option) => {
       if (m.id === PINNED_MODEL_ID) return true;
       if (hidden.has(m.id)) return false;
-      if (ui?.zdrOnly !== false) return allowedIds.has(m.id);
+      if (ui?.zdrOnly === true) return allowedIds.has(m.id);
       return true;
     });
-  }, [allOptions, hiddenModelIds, models, ui?.zdrOnly]);
+  }, [allOptions, hiddenModelIds, ui?.zdrOnly, allowedIds]);
+
+  const zdrHiddenCount = useMemo(() => {
+    if (ui?.zdrOnly !== true) return 0;
+    const hidden = new Set(hiddenModelIds || []);
+    let count = 0;
+    for (const option of allOptions) {
+      if (option.id === PINNED_MODEL_ID) continue;
+      if (hidden.has(option.id)) continue;
+      if (!allowedIds.has(option.id)) count += 1;
+    }
+    return count;
+  }, [ui?.zdrOnly, hiddenModelIds, allOptions, allowedIds]);
 
   const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
-  const allowedIds = new Set((models || []).map((m: any) => m.id));
   const effectiveSelectedId =
-    ui?.zdrOnly !== false && selectedId && !allowedIds.has(selectedId) ? undefined : selectedId;
+    ui?.zdrOnly === true && selectedId && !allowedIds.has(selectedId) ? undefined : selectedId;
   const current =
     allOptions.find((o) => o.id === effectiveSelectedId) ||
     (effectiveSelectedId ? { id: effectiveSelectedId, name: effectiveSelectedId } : undefined) ||
@@ -144,6 +159,9 @@ export function useModelPickerController(): Controller {
     ui,
     zdrModelIds,
     zdrProviderIds,
+    setUI,
+    zdrHiddenCount,
+    zdrRestricted: ui?.zdrOnly === true,
   };
 }
 
@@ -163,6 +181,9 @@ export default function ModelPicker({
     modelMap,
     zdrModelIds,
     zdrProviderIds,
+    setUI,
+    zdrHiddenCount,
+    zdrRestricted,
   } = useModelPickerController();
 
   const [open, setOpen] = useState(false);
@@ -409,20 +430,35 @@ export default function ModelPicker({
               />
             </div>
 
+            {zdrRestricted && zdrHiddenCount > 0 && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                <ShieldCheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="flex-1 space-y-1">
+                  <div>
+                    {zdrHiddenCount === 1
+                      ? '1 model is hidden by the ZDR-only preference.'
+                      : `${zdrHiddenCount} models are hidden by the ZDR-only preference.`}
+                  </div>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline"
+                    onClick={() => setUI({ zdrOnly: false })}
+                  >
+                    Show all models
+                  </button>
+                </div>
+              </div>
+            )}
+
             {visibleOptions.length === 0 && (
-              <div className="text-sm text-muted-foreground px-3 py-4 text-center">No models found.</div>
+              <div className="text-sm text-muted-foreground px-3 py-4 text-center">
+                No models found.
+              </div>
             )}
 
             {visibleOptions.map((o, idx) => {
-              const {
-                canReason,
-                canSee,
-                canAudio,
-                canImageOut,
-                isZdr,
-                priceStr,
-                context,
-              } = renderCapabilities(o.id);
+              const { canReason, canSee, canAudio, canImageOut, isZdr, priceStr, context } =
+                renderCapabilities(o.id);
               const showPrice = variant !== 'sheet';
               const isSelected = o.id === selectedId;
               const isActive = idx === highlightedIndex;
@@ -436,8 +472,12 @@ export default function ModelPicker({
                     ? { icon: <LightBulbIcon className="h-3.5 w-3.5" />, text: 'Reasoning' }
                     : null,
                   canSee ? { icon: <EyeIcon className="h-3.5 w-3.5" />, text: 'Vision' } : null,
-                  canAudio ? { icon: <MicrophoneIcon className="h-3.5 w-3.5" />, text: 'Audio' } : null,
-                  canImageOut ? { icon: <PhotoIcon className="h-3.5 w-3.5" />, text: 'Images' } : null,
+                  canAudio
+                    ? { icon: <MicrophoneIcon className="h-3.5 w-3.5" />, text: 'Audio' }
+                    : null,
+                  canImageOut
+                    ? { icon: <PhotoIcon className="h-3.5 w-3.5" />, text: 'Images' }
+                    : null,
                   isZdr ? { icon: <ShieldCheckIcon className="h-3.5 w-3.5" />, text: 'ZDR' } : null,
                 ] as Array<{ icon: ReactNode; text: string } | null>
               ).filter((chip): chip is { icon: ReactNode; text: string } => chip !== null);
@@ -449,7 +489,9 @@ export default function ModelPicker({
                   role="option"
                   aria-selected={isSelected}
                   className={`relative w-full rounded-xl border transition-colors ${
-                    isActive ? 'border-primary/40 bg-muted/50' : 'border-transparent hover:bg-muted/30'
+                    isActive
+                      ? 'border-primary/40 bg-muted/50'
+                      : 'border-transparent hover:bg-muted/30'
                   } ${isSelected ? 'ring-1 ring-primary/50 bg-muted/60' : ''}`}
                   onMouseEnter={() => setHighlightedIndex(idx)}
                 >
@@ -480,7 +522,10 @@ export default function ModelPicker({
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="font-semibold text-sm leading-tight truncate" title={label}>
+                          <div
+                            className="font-semibold text-sm leading-tight truncate"
+                            title={label}
+                          >
                             {label}
                           </div>
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
@@ -489,7 +534,10 @@ export default function ModelPicker({
                                 {providerLabel}
                               </span>
                             )}
-                            <span className="font-mono text-[11px] tracking-tight truncate" title={o.id}>
+                            <span
+                              className="font-mono text-[11px] tracking-tight truncate"
+                              title={o.id}
+                            >
                               {o.id}
                             </span>
                             {context && (

@@ -71,7 +71,7 @@ export function createCompareSlice(
           ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
         }));
       // ZDR enforcement for compare: use provider fallback if explicit ZDR list is unavailable
-      if (get().ui.zdrOnly !== false) {
+      if (get().ui.zdrOnly === true) {
         let allowedModelIds = new Set(get().zdrModelIds || []);
         if (allowedModelIds.size === 0) {
           try {

@@ -15,10 +15,8 @@ const KEYBOARD_THRESHOLD = 60; // px difference to treat as a real keyboard occl
  * Keeps CSS custom properties in sync so layout can respond via pure CSS.
  */
 export function useKeyboardInsets(): KeyboardMetrics {
-  const initialHeight =
-    typeof window !== 'undefined' && typeof window.innerHeight === 'number'
-      ? window.innerHeight
-      : 0;
+  // Start with a consistent zero height so SSR and first client paint match.
+  const initialHeight = 0;
   const [metrics, setMetrics] = useState<KeyboardMetrics>({
     offset: 0,
     viewportHeight: initialHeight,

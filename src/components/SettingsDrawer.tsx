@@ -30,7 +30,11 @@ import {
   enforceTutorMemoryLimit,
   EMPTY_TUTOR_MEMORY,
 } from '@/lib/agent/tutorMemory';
-import { DEFAULT_TUTOR_MODEL_ID, DEFAULT_TUTOR_MEMORY_FREQUENCY } from '@/lib/constants';
+import {
+  DEFAULT_TUTOR_MODEL_ID,
+  DEFAULT_TUTOR_MEMORY_MODEL_ID,
+  DEFAULT_TUTOR_MEMORY_FREQUENCY,
+} from '@/lib/constants';
 
 // Define Section at module scope so it doesn't remount on every render.
 function Section(props: { title: string; children: ReactNode }) {
@@ -124,7 +128,7 @@ export default function SettingsDrawer() {
     ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID,
   );
   const [tutorMemoryModel, setTutorMemoryModel] = useState<string>(
-    ui?.tutorMemoryModelId || ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID,
+    ui?.tutorMemoryModelId || ui?.tutorDefaultModelId || DEFAULT_TUTOR_MEMORY_MODEL_ID,
   );
   const [tutorMemoryFrequency, setTutorMemoryFrequency] = useState<number>(
     ui?.tutorMemoryFrequency || DEFAULT_TUTOR_MEMORY_FREQUENCY,
@@ -183,7 +187,9 @@ export default function SettingsDrawer() {
     setShowThinking(chat?.settings.show_thinking_by_default ?? false);
     setShowStats(chat?.settings.show_stats ?? false);
     setTutorDefaultModel(ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID);
-    setTutorMemoryModel(ui?.tutorMemoryModelId || ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID);
+    setTutorMemoryModel(
+      ui?.tutorMemoryModelId || ui?.tutorDefaultModelId || DEFAULT_TUTOR_MEMORY_MODEL_ID,
+    );
     const freq = ui?.tutorMemoryFrequency || DEFAULT_TUTOR_MEMORY_FREQUENCY;
     setTutorMemoryFrequency(freq);
     setTutorMemoryFrequencyStr(String(freq));
@@ -301,45 +307,39 @@ export default function SettingsDrawer() {
     [activeTab],
   );
 
-  const scrollToSection = useCallback(
-    (sectionId: string) => {
-      const container = drawerRef.current;
-      const target = sectionRefs.current[sectionId];
-      if (!container || !target) return;
+  const scrollToSection = useCallback((sectionId: string) => {
+    const container = drawerRef.current;
+    const target = sectionRefs.current[sectionId];
+    if (!container || !target) return;
 
-      const header = container.querySelector('[data-settings-header]') as HTMLElement | null;
-      const headerHeight = header?.offsetHeight ?? 0;
-      const tabBarHeight = tabBarRef.current?.offsetHeight ?? 0;
-      const offset = headerHeight + tabBarHeight + 16;
+    const header = container.querySelector('[data-settings-header]') as HTMLElement | null;
+    const headerHeight = header?.offsetHeight ?? 0;
+    const tabBarHeight = tabBarRef.current?.offsetHeight ?? 0;
+    const offset = headerHeight + tabBarHeight + 16;
 
-      const prefersReducedMotion =
-        typeof window !== 'undefined' && window.matchMedia
-          ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-          : false;
+    const prefersReducedMotion =
+      typeof window !== 'undefined' && window.matchMedia
+        ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        : false;
 
-      container.scrollTo({
-        top: Math.max(0, target.offsetTop - offset),
-        behavior: prefersReducedMotion ? 'auto' : 'smooth',
-      });
-      setActiveSection(sectionId);
-    },
-    [],
-  );
+    container.scrollTo({
+      top: Math.max(0, target.offsetTop - offset),
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    });
+    setActiveSection(sectionId);
+  }, []);
 
-  const handleTabKey = useCallback(
-    (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-        event.preventDefault();
-        const next = (index + 1) % TAB_LIST.length;
-        setActiveTab(TAB_LIST[next].id);
-      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-        event.preventDefault();
-        const prev = (index - 1 + TAB_LIST.length) % TAB_LIST.length;
-        setActiveTab(TAB_LIST[prev].id);
-      }
-    },
-    [],
-  );
+  const handleTabKey = useCallback((event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      const next = (index + 1) % TAB_LIST.length;
+      setActiveTab(TAB_LIST[next].id);
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const prev = (index - 1 + TAB_LIST.length) % TAB_LIST.length;
+      setActiveTab(TAB_LIST[prev].id);
+    }
+  }, []);
 
   useEffect(() => {
     const firstSection = TAB_SECTIONS[activeTab]?.[0] ?? null;
@@ -510,748 +510,782 @@ export default function SettingsDrawer() {
                           'models',
                           'models',
                           <Section title="Models">
-            <div className="space-y-3">
-              <ModelSearch
-                ref={modelSearchRef}
-                placeholder="Search OpenRouter models (e.g. openai, anthropic, llama)"
-                selectedIds={favoriteModelIds || []}
-                clearOnSelect
-                onSelect={(result) => {
-                  if (!favoriteModelIds?.includes(result.id)) toggleFavoriteModel(result.id);
-                  if (chat) {
-                    updateChatSettings({ model: result.id });
-                  } else {
-                    setUI({ nextModel: result.id });
-                  }
-                }}
-              />
-              <div>
-                <button className="btn btn-ghost" onClick={() => loadModels()}>
-                  Refresh model list
-                </button>
-              </div>
-              {hiddenModelIds && hiddenModelIds.length > 0 && (
-                <div className="flex items-center justify-between gap-2 text-sm">
-                  <div className="text-muted-foreground">
-                    {hiddenModelIds.length} hidden{' '}
-                    {hiddenModelIds.length === 1 ? 'model' : 'models'}
-                  </div>
-                  <button className="btn btn-outline btn-sm" onClick={() => resetHiddenModels()}>
-                    Reset hidden
-                  </button>
-                </div>
-              )}
-            </div>
-                        </Section>,
+                            <div className="space-y-3">
+                              <ModelSearch
+                                ref={modelSearchRef}
+                                placeholder="Search OpenRouter models (e.g. openai, anthropic, llama)"
+                                selectedIds={favoriteModelIds || []}
+                                clearOnSelect
+                                onSelect={(result) => {
+                                  if (!favoriteModelIds?.includes(result.id))
+                                    toggleFavoriteModel(result.id);
+                                  if (chat) {
+                                    updateChatSettings({ model: result.id });
+                                  } else {
+                                    setUI({ nextModel: result.id });
+                                  }
+                                }}
+                              />
+                              <div>
+                                <button className="btn btn-ghost" onClick={() => loadModels()}>
+                                  Refresh model list
+                                </button>
+                              </div>
+                              {hiddenModelIds && hiddenModelIds.length > 0 && (
+                                <div className="flex items-center justify-between gap-2 text-sm">
+                                  <div className="text-muted-foreground">
+                                    {hiddenModelIds.length} hidden{' '}
+                                    {hiddenModelIds.length === 1 ? 'model' : 'models'}
+                                  </div>
+                                  <button
+                                    className="btn btn-outline btn-sm"
+                                    onClick={() => resetHiddenModels()}
+                                  >
+                                    Reset hidden
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </Section>,
                         )}
 
                         {renderSection(
                           'models',
                           'web-search',
                           <Section title="Web Search">
-            <div className="space-y-2">
-              <div className="space-y-1">
-                <label className="text-sm block">Provider</label>
-                <div className="segmented">
-                  {experimentalBrave && (
-                    <button
-                      className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'brave') === 'brave' ? 'is-active' : ''}`}
-                      onClick={() => {
-                        if (chat) updateChatSettings({ search_provider: 'brave' } as any);
-                        else setUI({ nextSearchProvider: 'brave' } as any);
-                      }}
-                    >
-                      Brave
-                    </button>
-                  )}
-                  <button
-                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? (experimentalBrave ? 'brave' : 'openrouter')) === 'openrouter' ? 'is-active' : ''}`}
-                    onClick={() => {
-                      if (chat) updateChatSettings({ search_provider: 'openrouter' } as any);
-                      else setUI({ nextSearchProvider: 'openrouter' } as any);
-                    }}
-                  >
-                    OpenRouter
-                  </button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {experimentalBrave
-                    ? 'Brave uses local function-calling; OpenRouter injects the web plugin to include citations.'
-                    : 'OpenRouter injects the web plugin to include citations.'}
-                </div>
-              </div>
-            </div>
-                        </Section>,
+                            <div className="space-y-2">
+                              <div className="space-y-1">
+                                <label className="text-sm block">Provider</label>
+                                <div className="segmented">
+                                  {experimentalBrave && (
+                                    <button
+                                      className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'brave') === 'brave' ? 'is-active' : ''}`}
+                                      onClick={() => {
+                                        if (chat)
+                                          updateChatSettings({ search_provider: 'brave' } as any);
+                                        else setUI({ nextSearchProvider: 'brave' } as any);
+                                      }}
+                                    >
+                                      Brave
+                                    </button>
+                                  )}
+                                  <button
+                                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? (experimentalBrave ? 'brave' : 'openrouter')) === 'openrouter' ? 'is-active' : ''}`}
+                                    onClick={() => {
+                                      if (chat)
+                                        updateChatSettings({
+                                          search_provider: 'openrouter',
+                                        } as any);
+                                      else setUI({ nextSearchProvider: 'openrouter' } as any);
+                                    }}
+                                  >
+                                    OpenRouter
+                                  </button>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {experimentalBrave
+                                    ? 'Brave uses local function-calling; OpenRouter injects the web plugin to include citations.'
+                                    : 'OpenRouter injects the web plugin to include citations.'}
+                                </div>
+                              </div>
+                            </div>
+                          </Section>,
                         )}
 
                         {renderSection(
                           'models',
                           'routing',
                           <Section title="Routing">
-            <div className="space-y-2">
-              <label className="text-sm block">Route preference</label>
-              <div className="segmented">
-                <button
-                  className={`segment ${routePref === 'speed' ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setRoutePref('speed');
-                    setUI({ routePreference: 'speed' });
-                  }}
-                >
-                  Speed
-                </button>
-                <button
-                  className={`segment ${routePref === 'cost' ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setRoutePref('cost');
-                    setUI({ routePreference: 'cost' });
-                  }}
-                >
-                  Cost
-                </button>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Speed sorts by provider throughput; Cost sorts by price. OpenRouter routing uses
-                this hint when selecting a provider for the chosen model.
-              </div>
-            </div>
-                        </Section>,
+                            <div className="space-y-2">
+                              <label className="text-sm block">Route preference</label>
+                              <div className="segmented">
+                                <button
+                                  className={`segment ${routePref === 'speed' ? 'is-active' : ''}`}
+                                  onClick={() => {
+                                    setRoutePref('speed');
+                                    setUI({ routePreference: 'speed' });
+                                  }}
+                                >
+                                  Speed
+                                </button>
+                                <button
+                                  className={`segment ${routePref === 'cost' ? 'is-active' : ''}`}
+                                  onClick={() => {
+                                    setRoutePref('cost');
+                                    setUI({ routePreference: 'cost' });
+                                  }}
+                                >
+                                  Cost
+                                </button>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Speed sorts by provider throughput; Cost sorts by price. OpenRouter
+                                routing uses this hint when selecting a provider for the chosen
+                                model.
+                              </div>
+                            </div>
+                          </Section>,
                         )}
 
                         {renderSection(
                           'chat',
                           'general',
                           <Section title="General">
-            <div className="space-y-2">
-              <label className="text-sm">System prompt</label>
-              {/* Presets controls */}
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  className="input"
-                  value={selectedPresetId}
-                  onChange={(e) => setSelectedPresetId(e.target.value)}
-                  onKeyDown={(e) => e.stopPropagation()}
-                >
-                  <option value="">Select a preset…</option>
-                  {presets.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex items-center gap-1">
-                  <IconButton
-                    title="Apply preset"
-                    onClick={async () => {
-                      const p = presets.find((x) => x.id === selectedPresetId);
-                      if (!p) return;
-                      setSystem(p.system);
-                      if (chat) await updateChatSettings({ system: p.system });
-                    }}
-                    disabled={!selectedPresetId}
-                  >
-                    <CheckIcon className="h-5 w-5" />
-                  </IconButton>
-                  <IconButton
-                    title="Save as preset"
-                    onClick={async () => {
-                      const name = window.prompt('Preset name?');
-                      if (name == null) return;
-                      const p = await addSystemPreset(name, system);
-                      setSelectedPresetId(p.id);
-                      const list = await getSystemPresets();
-                      const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
-                      setPresets(sorted);
-                    }}
-                  >
-                    <PlusIcon className="h-5 w-5" />
-                  </IconButton>
-                  <IconButton
-                    title="Rename preset"
-                    onClick={async () => {
-                      const p = presets.find((x) => x.id === selectedPresetId);
-                      if (!p) return;
-                      const next = window.prompt('Rename preset', p.name);
-                      if (next == null) return;
-                      await updateSystemPreset(p.id, { name: next.trim() || p.name });
-                      const list = await getSystemPresets();
-                      const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
-                      setPresets(sorted);
-                    }}
-                    disabled={!selectedPresetId}
-                  >
-                    <PencilSquareIcon className="h-5 w-5" />
-                  </IconButton>
-                  <IconButton
-                    title="Delete preset"
-                    onClick={async () => {
-                      const p = presets.find((x) => x.id === selectedPresetId);
-                      if (!p) return;
-                      const ok = window.confirm(`Delete preset "${p.name}"?`);
-                      if (!ok) return;
-                      await deleteSystemPreset(p.id);
-                      const list = await getSystemPresets();
-                      const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
-                      setPresets(sorted);
-                      setSelectedPresetId('');
-                    }}
-                    disabled={!selectedPresetId}
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </IconButton>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Choose, apply, save, or manage reusable system prompts.
-              </div>
-              <div className="soft-divider" />
-              <textarea
-                className="textarea w-full"
-                rows={5}
-                placeholder="You are a helpful assistant."
-                value={system}
-                onChange={(e) => setSystem(e.target.value)}
-                onKeyDown={(e) => e.stopPropagation()}
-              />
-              <div className="text-xs text-muted-foreground">
-                This is sent at the start of the chat to steer behavior.
-              </div>
-            </div>
-                        </Section>,
+                            <div className="space-y-2">
+                              <label className="text-sm">System prompt</label>
+                              {/* Presets controls */}
+                              <div className="flex flex-wrap items-center gap-2">
+                                <select
+                                  className="input"
+                                  value={selectedPresetId}
+                                  onChange={(e) => setSelectedPresetId(e.target.value)}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                >
+                                  <option value="">Select a preset…</option>
+                                  {presets.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                      {p.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <div className="flex items-center gap-1">
+                                  <IconButton
+                                    title="Apply preset"
+                                    onClick={async () => {
+                                      const p = presets.find((x) => x.id === selectedPresetId);
+                                      if (!p) return;
+                                      setSystem(p.system);
+                                      if (chat) await updateChatSettings({ system: p.system });
+                                    }}
+                                    disabled={!selectedPresetId}
+                                  >
+                                    <CheckIcon className="h-5 w-5" />
+                                  </IconButton>
+                                  <IconButton
+                                    title="Save as preset"
+                                    onClick={async () => {
+                                      const name = window.prompt('Preset name?');
+                                      if (name == null) return;
+                                      const p = await addSystemPreset(name, system);
+                                      setSelectedPresetId(p.id);
+                                      const list = await getSystemPresets();
+                                      const sorted = list
+                                        .slice()
+                                        .sort((a, b) => a.name.localeCompare(b.name));
+                                      setPresets(sorted);
+                                    }}
+                                  >
+                                    <PlusIcon className="h-5 w-5" />
+                                  </IconButton>
+                                  <IconButton
+                                    title="Rename preset"
+                                    onClick={async () => {
+                                      const p = presets.find((x) => x.id === selectedPresetId);
+                                      if (!p) return;
+                                      const next = window.prompt('Rename preset', p.name);
+                                      if (next == null) return;
+                                      await updateSystemPreset(p.id, {
+                                        name: next.trim() || p.name,
+                                      });
+                                      const list = await getSystemPresets();
+                                      const sorted = list
+                                        .slice()
+                                        .sort((a, b) => a.name.localeCompare(b.name));
+                                      setPresets(sorted);
+                                    }}
+                                    disabled={!selectedPresetId}
+                                  >
+                                    <PencilSquareIcon className="h-5 w-5" />
+                                  </IconButton>
+                                  <IconButton
+                                    title="Delete preset"
+                                    onClick={async () => {
+                                      const p = presets.find((x) => x.id === selectedPresetId);
+                                      if (!p) return;
+                                      const ok = window.confirm(`Delete preset "${p.name}"?`);
+                                      if (!ok) return;
+                                      await deleteSystemPreset(p.id);
+                                      const list = await getSystemPresets();
+                                      const sorted = list
+                                        .slice()
+                                        .sort((a, b) => a.name.localeCompare(b.name));
+                                      setPresets(sorted);
+                                      setSelectedPresetId('');
+                                    }}
+                                    disabled={!selectedPresetId}
+                                  >
+                                    <TrashIcon className="h-5 w-5" />
+                                  </IconButton>
+                                </div>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Choose, apply, save, or manage reusable system prompts.
+                              </div>
+                              <div className="soft-divider" />
+                              <textarea
+                                className="textarea w-full"
+                                rows={5}
+                                placeholder="You are a helpful assistant."
+                                value={system}
+                                onChange={(e) => setSystem(e.target.value)}
+                                onKeyDown={(e) => e.stopPropagation()}
+                              />
+                              <div className="text-xs text-muted-foreground">
+                                This is sent at the start of the chat to steer behavior.
+                              </div>
+                            </div>
+                          </Section>,
                         )}
 
                         {renderSection(
                           'chat',
                           'generation',
                           <Section title="Generation">
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-sm flex items-center justify-between">
-                  <span>Temperature</span>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => {
-                      setTemperature(undefined);
-                      setTemperatureStr('');
-                    }}
-                  >
-                    Reset
-                  </button>
-                </label>
-                <input
-                  className="input w-full"
-                  inputMode="decimal"
-                  placeholder="model default"
-                  value={temperatureStr}
-                  onChange={(e) => setTemperatureStr(e.target.value)}
-                  onBlur={() => {
-                    const v = temperatureStr.trim();
-                    if (v === '') {
-                      setTemperature(undefined);
-                      return;
-                    }
-                    const n = Number(v);
-                    if (!Number.isNaN(n)) setTemperature(n);
-                  }}
-                  onKeyDown={(e) => e.stopPropagation()}
-                />
-                <div className="text-xs text-muted-foreground">
-                  Higher = more creative. Leave blank for model default.
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm flex items-center justify-between">
-                  <span>Top_p</span>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => {
-                      setTopP(undefined);
-                      setTopPStr('');
-                    }}
-                  >
-                    Reset
-                  </button>
-                </label>
-                <input
-                  className="input w-full"
-                  inputMode="decimal"
-                  placeholder="model default"
-                  value={topPStr}
-                  onChange={(e) => setTopPStr(e.target.value)}
-                  onBlur={() => {
-                    const v = topPStr.trim();
-                    if (v === '') {
-                      setTopP(undefined);
-                      return;
-                    }
-                    const n = Number(v);
-                    if (!Number.isNaN(n)) setTopP(n);
-                  }}
-                  onKeyDown={(e) => e.stopPropagation()}
-                />
-                <div className="text-xs text-muted-foreground">
-                  Nucleus sampling. 1.0 ≈ off. Leave blank for default.
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm flex items-center justify-between">
-                  <span>Max tokens</span>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => {
-                      setMaxTokens(undefined);
-                      setMaxTokensStr('');
-                    }}
-                  >
-                    Auto
-                  </button>
-                </label>
-                <input
-                  className="input w-full"
-                  inputMode="numeric"
-                  placeholder="auto"
-                  value={maxTokensStr}
-                  onChange={(e) => setMaxTokensStr(e.target.value)}
-                  onBlur={() => {
-                    const v = maxTokensStr.trim();
-                    if (v === '') {
-                      setMaxTokens(undefined);
-                      return;
-                    }
-                    const n = Number(v);
-                    if (!Number.isNaN(n)) setMaxTokens(Math.floor(n));
-                  }}
-                  onKeyDown={(e) => e.stopPropagation()}
-                />
-                <div className="text-xs text-muted-foreground">
-                  Upper bound on output length. Leave blank to auto-select.
-                </div>
-              </div>
-            </div>
-                        </Section>,
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <label className="text-sm flex items-center justify-between">
+                                  <span>Temperature</span>
+                                  <button
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => {
+                                      setTemperature(undefined);
+                                      setTemperatureStr('');
+                                    }}
+                                  >
+                                    Reset
+                                  </button>
+                                </label>
+                                <input
+                                  className="input w-full"
+                                  inputMode="decimal"
+                                  placeholder="model default"
+                                  value={temperatureStr}
+                                  onChange={(e) => setTemperatureStr(e.target.value)}
+                                  onBlur={() => {
+                                    const v = temperatureStr.trim();
+                                    if (v === '') {
+                                      setTemperature(undefined);
+                                      return;
+                                    }
+                                    const n = Number(v);
+                                    if (!Number.isNaN(n)) setTemperature(n);
+                                  }}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                />
+                                <div className="text-xs text-muted-foreground">
+                                  Higher = more creative. Leave blank for model default.
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-sm flex items-center justify-between">
+                                  <span>Top_p</span>
+                                  <button
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => {
+                                      setTopP(undefined);
+                                      setTopPStr('');
+                                    }}
+                                  >
+                                    Reset
+                                  </button>
+                                </label>
+                                <input
+                                  className="input w-full"
+                                  inputMode="decimal"
+                                  placeholder="model default"
+                                  value={topPStr}
+                                  onChange={(e) => setTopPStr(e.target.value)}
+                                  onBlur={() => {
+                                    const v = topPStr.trim();
+                                    if (v === '') {
+                                      setTopP(undefined);
+                                      return;
+                                    }
+                                    const n = Number(v);
+                                    if (!Number.isNaN(n)) setTopP(n);
+                                  }}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                />
+                                <div className="text-xs text-muted-foreground">
+                                  Nucleus sampling. 1.0 ≈ off. Leave blank for default.
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-sm flex items-center justify-between">
+                                  <span>Max tokens</span>
+                                  <button
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => {
+                                      setMaxTokens(undefined);
+                                      setMaxTokensStr('');
+                                    }}
+                                  >
+                                    Auto
+                                  </button>
+                                </label>
+                                <input
+                                  className="input w-full"
+                                  inputMode="numeric"
+                                  placeholder="auto"
+                                  value={maxTokensStr}
+                                  onChange={(e) => setMaxTokensStr(e.target.value)}
+                                  onBlur={() => {
+                                    const v = maxTokensStr.trim();
+                                    if (v === '') {
+                                      setMaxTokens(undefined);
+                                      return;
+                                    }
+                                    const n = Number(v);
+                                    if (!Number.isNaN(n)) setMaxTokens(Math.floor(n));
+                                  }}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                />
+                                <div className="text-xs text-muted-foreground">
+                                  Upper bound on output length. Leave blank to auto-select.
+                                </div>
+                              </div>
+                            </div>
+                          </Section>,
                         )}
 
                         {renderSection(
                           'chat',
                           'reasoning',
                           <Section title="Reasoning">
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-sm flex items-center justify-between">
-                  <span>Reasoning effort</span>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setReasoningEffort(undefined)}
-                  >
-                    Default
-                  </button>
-                </label>
-                <select
-                  className="input w-full"
-                  value={reasoningEffort ?? ''}
-                  onChange={(e) => setReasoningEffort((e.target.value || undefined) as any)}
-                >
-                  <option value="">model default</option>
-                  <option value="none">none</option>
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
-                </select>
-                <div className="text-xs text-muted-foreground">
-                  Request model reasoning depth (if supported).
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm flex items-center justify-between">
-                  <span>Reasoning tokens</span>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => {
-                      setReasoningTokens(undefined);
-                      setReasoningTokensStr('');
-                    }}
-                  >
-                    Auto
-                  </button>
-                </label>
-                <input
-                  className="input w-full"
-                  inputMode="numeric"
-                  placeholder="auto"
-                  value={reasoningTokensStr}
-                  onChange={(e) => setReasoningTokensStr(e.target.value)}
-                  onBlur={() => {
-                    const v = reasoningTokensStr.trim();
-                    if (v === '') {
-                      setReasoningTokens(undefined);
-                      return;
-                    }
-                    const n = Number(v);
-                    if (!Number.isNaN(n)) setReasoningTokens(Math.floor(n));
-                  }}
-                  onKeyDown={(e) => e.stopPropagation()}
-                />
-                <div className="text-xs text-muted-foreground">
-                  Budget for chain‑of‑thought tokens (supported models only).
-                </div>
-              </div>
-            </div>
-                        </Section>,
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <label className="text-sm flex items-center justify-between">
+                                  <span>Reasoning effort</span>
+                                  <button
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setReasoningEffort(undefined)}
+                                  >
+                                    Default
+                                  </button>
+                                </label>
+                                <select
+                                  className="input w-full"
+                                  value={reasoningEffort ?? ''}
+                                  onChange={(e) =>
+                                    setReasoningEffort((e.target.value || undefined) as any)
+                                  }
+                                >
+                                  <option value="">model default</option>
+                                  <option value="none">none</option>
+                                  <option value="low">low</option>
+                                  <option value="medium">medium</option>
+                                  <option value="high">high</option>
+                                </select>
+                                <div className="text-xs text-muted-foreground">
+                                  Request model reasoning depth (if supported).
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-sm flex items-center justify-between">
+                                  <span>Reasoning tokens</span>
+                                  <button
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => {
+                                      setReasoningTokens(undefined);
+                                      setReasoningTokensStr('');
+                                    }}
+                                  >
+                                    Auto
+                                  </button>
+                                </label>
+                                <input
+                                  className="input w-full"
+                                  inputMode="numeric"
+                                  placeholder="auto"
+                                  value={reasoningTokensStr}
+                                  onChange={(e) => setReasoningTokensStr(e.target.value)}
+                                  onBlur={() => {
+                                    const v = reasoningTokensStr.trim();
+                                    if (v === '') {
+                                      setReasoningTokens(undefined);
+                                      return;
+                                    }
+                                    const n = Number(v);
+                                    if (!Number.isNaN(n)) setReasoningTokens(Math.floor(n));
+                                  }}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                />
+                                <div className="text-xs text-muted-foreground">
+                                  Budget for chain‑of‑thought tokens (supported models only).
+                                </div>
+                              </div>
+                            </div>
+                          </Section>,
                         )}
 
                         {renderSection(
                           'tutor',
                           'tutor',
                           <Section title="Tutor">
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-sm block">Tutor Mode</label>
-                <div className="segmented">
-                  <button
-                    className={`segment ${experimentalTutor ? 'is-active' : ''}`}
-                    onClick={() => setUI({ experimentalTutor: true })}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={`segment ${!experimentalTutor ? 'is-active' : ''}`}
-                    onClick={() => setUI({ experimentalTutor: false })}
-                  >
-                    Off
-                  </button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Show Tutor controls and enable practice tools (MCQ, fill‑blank, flashcards).
-                </div>
-              </div>
-              {experimentalTutor && (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-sm block">Force Tutor Mode</label>
-                    <div className="segmented">
-                      <button
-                        className={`segment ${ui?.forceTutorMode ? 'is-active' : ''}`}
-                        onClick={async () => {
-                          setUI({ forceTutorMode: true });
-                          if (chat) await updateChatSettings({ tutor_mode: true });
-                        }}
-                      >
-                        On
-                      </button>
-                      <button
-                        className={`segment ${!ui?.forceTutorMode ? 'is-active' : ''}`}
-                        onClick={() => setUI({ forceTutorMode: false })}
-                      >
-                        Off
-                      </button>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      When enabled, all chats run in Tutor Mode and use the settings below.
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm block">Tutor default model</label>
-                    <ModelSearch
-                      placeholder="Search tutor models"
-                      selectedIds={tutorDefaultModel ? [tutorDefaultModel] : []}
-                      actionLabel="Use"
-                      selectedLabel="Selected"
-                      clearOnSelect
-                      onSelect={(result) => {
-                        setTutorDefaultModel(result.id);
-                      }}
-                    />
-                    <input
-                      className="input w-full"
-                      value={tutorDefaultModel}
-                      onChange={(e) => setTutorDefaultModel(e.target.value)}
-                      list="tutor-model-options"
-                      placeholder="provider/model"
-                    />
-                    <div className="text-xs text-muted-foreground">
-                      Each Tutor Mode chat automatically uses this model.
-                    </div>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <label className="text-sm block">Memory update model</label>
-                      <ModelSearch
-                        placeholder="Search models for memory updates"
-                        selectedIds={tutorMemoryModel ? [tutorMemoryModel] : []}
-                        actionLabel="Use"
-                        selectedLabel="Selected"
-                        clearOnSelect
-                        onSelect={(result) => {
-                          setTutorMemoryModel(result.id);
-                        }}
-                      />
-                      <input
-                        className="input w-full"
-                        value={tutorMemoryModel}
-                        onChange={(e) => setTutorMemoryModel(e.target.value)}
-                        list="tutor-model-options"
-                        placeholder="provider/model"
-                      />
-                      <div className="text-xs text-muted-foreground">
-                        Used for the periodic memory analysis requests.
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-sm block">Memory update frequency</label>
-                      <input
-                        className="input w-full"
-                        type="number"
-                        min={1}
-                        value={tutorMemoryFrequencyStr}
-                        onChange={(e) => {
-                          setTutorMemoryFrequencyStr(e.target.value);
-                          const num = Number(e.target.value);
-                          if (Number.isFinite(num) && num > 0) {
-                            setTutorMemoryFrequency(Math.ceil(num));
-                          }
-                        }}
-                      />
-                      <div className="text-xs text-muted-foreground">
-                        Memory is refreshed after this many learner turns (default {DEFAULT_TUTOR_MEMORY_FREQUENCY}).
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm block">Auto-update memory by default</label>
-                    <div className="segmented">
-                      <button
-                        className={`segment ${tutorMemoryAutoUpdate ? 'is-active' : ''}`}
-                        onClick={() => setTutorMemoryAutoUpdate(true)}
-                      >
-                        On
-                      </button>
-                      <button
-                        className={`segment ${!tutorMemoryAutoUpdate ? 'is-active' : ''}`}
-                        onClick={() => setTutorMemoryAutoUpdate(false)}
-                      >
-                        Off
-                      </button>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Controls whether new Tutor Mode chats begin with automatic memory updates.
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm block">Shared tutor memory</label>
-                    <textarea
-                      className="textarea w-full"
-                      rows={6}
-                      value={tutorMemorySnapshot}
-                      onChange={(e) => setTutorMemorySnapshot(e.target.value)}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    />
-                    <div className="text-xs text-muted-foreground">
-                      Acts as the persistent tutor scratchpad (max 1000 tokens). Updates apply to all Tutor Mode chats.
-                    </div>
-                  </div>
-                  <datalist id="tutor-model-options">
-                    {(models || []).slice(0, 200).map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name || m.id}
-                      </option>
-                    ))}
-                  </datalist>
-                </>
-              )}
-            </div>
-                        </Section>,
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <label className="text-sm block">Tutor Mode</label>
+                                <div className="segmented">
+                                  <button
+                                    className={`segment ${experimentalTutor ? 'is-active' : ''}`}
+                                    onClick={() => setUI({ experimentalTutor: true })}
+                                  >
+                                    On
+                                  </button>
+                                  <button
+                                    className={`segment ${!experimentalTutor ? 'is-active' : ''}`}
+                                    onClick={() => setUI({ experimentalTutor: false })}
+                                  >
+                                    Off
+                                  </button>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Show Tutor controls and enable practice tools (MCQ, fill‑blank,
+                                  flashcards).
+                                </div>
+                              </div>
+                              {experimentalTutor && (
+                                <>
+                                  <div className="space-y-1">
+                                    <label className="text-sm block">Force Tutor Mode</label>
+                                    <div className="segmented">
+                                      <button
+                                        className={`segment ${ui?.forceTutorMode ? 'is-active' : ''}`}
+                                        onClick={async () => {
+                                          setUI({ forceTutorMode: true });
+                                          if (chat) await updateChatSettings({ tutor_mode: true });
+                                        }}
+                                      >
+                                        On
+                                      </button>
+                                      <button
+                                        className={`segment ${!ui?.forceTutorMode ? 'is-active' : ''}`}
+                                        onClick={() => setUI({ forceTutorMode: false })}
+                                      >
+                                        Off
+                                      </button>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      When enabled, all chats run in Tutor Mode and use the settings
+                                      below.
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-sm block">Tutor default model</label>
+                                    <ModelSearch
+                                      placeholder="Search tutor models"
+                                      selectedIds={tutorDefaultModel ? [tutorDefaultModel] : []}
+                                      actionLabel="Use"
+                                      selectedLabel="Selected"
+                                      clearOnSelect
+                                      onSelect={(result) => {
+                                        setTutorDefaultModel(result.id);
+                                      }}
+                                    />
+                                    <input
+                                      className="input w-full"
+                                      value={tutorDefaultModel}
+                                      onChange={(e) => setTutorDefaultModel(e.target.value)}
+                                      list="tutor-model-options"
+                                      placeholder="provider/model"
+                                    />
+                                    <div className="text-xs text-muted-foreground">
+                                      Each Tutor Mode chat automatically uses this model.
+                                    </div>
+                                  </div>
+                                  <div className="grid gap-3 sm:grid-cols-2">
+                                    <div className="space-y-1">
+                                      <label className="text-sm block">Memory update model</label>
+                                      <ModelSearch
+                                        placeholder="Search models for memory updates"
+                                        selectedIds={tutorMemoryModel ? [tutorMemoryModel] : []}
+                                        actionLabel="Use"
+                                        selectedLabel="Selected"
+                                        clearOnSelect
+                                        onSelect={(result) => {
+                                          setTutorMemoryModel(result.id);
+                                        }}
+                                      />
+                                      <input
+                                        className="input w-full"
+                                        value={tutorMemoryModel}
+                                        onChange={(e) => setTutorMemoryModel(e.target.value)}
+                                        list="tutor-model-options"
+                                        placeholder="provider/model"
+                                      />
+                                      <div className="text-xs text-muted-foreground">
+                                        Used for the periodic memory analysis requests.
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-sm block">
+                                        Memory update frequency
+                                      </label>
+                                      <input
+                                        className="input w-full"
+                                        type="number"
+                                        min={1}
+                                        value={tutorMemoryFrequencyStr}
+                                        onChange={(e) => {
+                                          setTutorMemoryFrequencyStr(e.target.value);
+                                          const num = Number(e.target.value);
+                                          if (Number.isFinite(num) && num > 0) {
+                                            setTutorMemoryFrequency(Math.ceil(num));
+                                          }
+                                        }}
+                                      />
+                                      <div className="text-xs text-muted-foreground">
+                                        Memory is refreshed after this many learner turns (default{' '}
+                                        {DEFAULT_TUTOR_MEMORY_FREQUENCY}).
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-sm block">
+                                      Auto-update memory by default
+                                    </label>
+                                    <div className="segmented">
+                                      <button
+                                        className={`segment ${tutorMemoryAutoUpdate ? 'is-active' : ''}`}
+                                        onClick={() => setTutorMemoryAutoUpdate(true)}
+                                      >
+                                        On
+                                      </button>
+                                      <button
+                                        className={`segment ${!tutorMemoryAutoUpdate ? 'is-active' : ''}`}
+                                        onClick={() => setTutorMemoryAutoUpdate(false)}
+                                      >
+                                        Off
+                                      </button>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      Controls whether new Tutor Mode chats begin with automatic
+                                      memory updates.
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-sm block">Shared tutor memory</label>
+                                    <textarea
+                                      className="textarea w-full"
+                                      rows={6}
+                                      value={tutorMemorySnapshot}
+                                      onChange={(e) => setTutorMemorySnapshot(e.target.value)}
+                                      onKeyDown={(e) => e.stopPropagation()}
+                                    />
+                                    <div className="text-xs text-muted-foreground">
+                                      Acts as the persistent tutor scratchpad (max 1000 tokens).
+                                      Updates apply to all Tutor Mode chats.
+                                    </div>
+                                  </div>
+                                  <datalist id="tutor-model-options">
+                                    {(models || []).slice(0, 200).map((m) => (
+                                      <option key={m.id} value={m.id}>
+                                        {m.name || m.id}
+                                      </option>
+                                    ))}
+                                  </datalist>
+                                </>
+                              )}
+                            </div>
+                          </Section>,
                         )}
 
                         {renderSection(
                           'display',
                           'display',
                           <Section title="Display">
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-sm block">Show thinking by default</label>
-                <div className="segmented">
-                  <button
-                    className={`segment ${showThinking ? 'is-active' : ''}`}
-                    onClick={() => setShowThinking(true)}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={`segment ${!showThinking ? 'is-active' : ''}`}
-                    onClick={() => setShowThinking(false)}
-                  >
-                    Off
-                  </button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Expand the reasoning panel automatically for new messages.
-                </div>
-              </div>
-              <div className="soft-divider" />
-              <div className="space-y-1">
-                <label className="text-sm block">Show stats</label>
-                <div className="segmented">
-                  <button
-                    className={`segment ${showStats ? 'is-active' : ''}`}
-                    onClick={() => setShowStats(true)}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={`segment ${!showStats ? 'is-active' : ''}`}
-                    onClick={() => setShowStats(false)}
-                  >
-                    Off
-                  </button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Display model, timing, and cost info under messages.
-                </div>
-              </div>
-            </div>
-                        </Section>,
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <label className="text-sm block">Show thinking by default</label>
+                                <div className="segmented">
+                                  <button
+                                    className={`segment ${showThinking ? 'is-active' : ''}`}
+                                    onClick={() => setShowThinking(true)}
+                                  >
+                                    On
+                                  </button>
+                                  <button
+                                    className={`segment ${!showThinking ? 'is-active' : ''}`}
+                                    onClick={() => setShowThinking(false)}
+                                  >
+                                    Off
+                                  </button>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Expand the reasoning panel automatically for new messages.
+                                </div>
+                              </div>
+                              <div className="soft-divider" />
+                              <div className="space-y-1">
+                                <label className="text-sm block">Show stats</label>
+                                <div className="segmented">
+                                  <button
+                                    className={`segment ${showStats ? 'is-active' : ''}`}
+                                    onClick={() => setShowStats(true)}
+                                  >
+                                    On
+                                  </button>
+                                  <button
+                                    className={`segment ${!showStats ? 'is-active' : ''}`}
+                                    onClick={() => setShowStats(false)}
+                                  >
+                                    Off
+                                  </button>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Display model, timing, and cost info under messages.
+                                </div>
+                              </div>
+                            </div>
+                          </Section>,
                         )}
 
                         {renderSection(
                           'display',
                           'debug',
                           <Section title="Debug">
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-sm block">Enable debug view</label>
-                <div className="segmented">
-                  <button
-                    className={`segment ${ui?.debugMode ? 'is-active' : ''}`}
-                    onClick={() => setUI({ debugMode: true })}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={`segment ${!ui?.debugMode ? 'is-active' : ''}`}
-                    onClick={() => setUI({ debugMode: false })}
-                  >
-                    Off
-                  </button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Show a Debug panel under assistant messages with the exact request payload sent to
-                  OpenRouter.
-                </div>
-              </div>
-            </div>
-                        </Section>,
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <label className="text-sm block">Enable debug view</label>
+                                <div className="segmented">
+                                  <button
+                                    className={`segment ${ui?.debugMode ? 'is-active' : ''}`}
+                                    onClick={() => setUI({ debugMode: true })}
+                                  >
+                                    On
+                                  </button>
+                                  <button
+                                    className={`segment ${!ui?.debugMode ? 'is-active' : ''}`}
+                                    onClick={() => setUI({ debugMode: false })}
+                                  >
+                                    Off
+                                  </button>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Show a Debug panel under assistant messages with the exact request
+                                  payload sent to OpenRouter.
+                                </div>
+                              </div>
+                            </div>
+                          </Section>,
                         )}
 
                         {renderSection(
                           'privacy',
                           'privacy',
                           <Section title="Privacy">
-            <div className="space-y-2">
-              <label className="text-sm flex items-center justify-between">
-                <span>Zero Data Retention (ZDR) only</span>
-                <div className="segmented">
-                  <button
-                    className={`segment ${ui?.zdrOnly !== false ? 'is-active' : ''}`}
-                    onClick={() => {
-                      setUI({ zdrOnly: true });
-                      loadModels();
-                    }}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={`segment ${ui?.zdrOnly === false ? 'is-active' : ''}`}
-                    onClick={() => {
-                      setUI({ zdrOnly: false });
-                      loadModels();
-                    }}
-                  >
-                    Off
-                  </button>
-                </div>
-              </label>
-              <div className="text-xs text-muted-foreground">
-                When enabled, model search results are limited to providers with a Zero Data
-                Retention policy (fetched from OpenRouter). Curated defaults also follow this.
-              </div>
-            </div>
-                        </Section>,
+                            <div className="space-y-2">
+                              <label className="text-sm flex items-center justify-between">
+                                <span>Zero Data Retention (ZDR) only</span>
+                                <div className="segmented">
+                                  <button
+                                    className={`segment ${ui?.zdrOnly === true ? 'is-active' : ''}`}
+                                    onClick={() => {
+                                      setUI({ zdrOnly: true });
+                                      loadModels();
+                                    }}
+                                  >
+                                    On
+                                  </button>
+                                  <button
+                                    className={`segment ${ui?.zdrOnly === false ? 'is-active' : ''}`}
+                                    onClick={() => {
+                                      setUI({ zdrOnly: false });
+                                      loadModels();
+                                    }}
+                                  >
+                                    Off
+                                  </button>
+                                </div>
+                              </label>
+                              <div className="text-xs text-muted-foreground">
+                                When enabled, model search results are limited to providers with a
+                                Zero Data Retention policy (fetched from OpenRouter). Curated
+                                defaults also follow this.
+                              </div>
+                            </div>
+                          </Section>,
                         )}
 
                         {renderSection(
                           'labs',
                           'experimental',
                           <Section title="Experimental">
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-sm block">Brave Web Search</label>
-                <div className="segmented">
-                  <button
-                    className={`segment ${experimentalBrave ? 'is-active' : ''}`}
-                    onClick={() => setUI({ experimentalBrave: true })}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={`segment ${!experimentalBrave ? 'is-active' : ''}`}
-                    onClick={() => setUI({ experimentalBrave: false })}
-                  >
-                    Off
-                  </button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Toggle Brave integration for web search and sources panel.
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm block">DeepResearch</label>
-                <div className="segmented">
-                <button
-                  className={`segment ${experimentalDeepResearch ? 'is-active' : ''}`}
-                    onClick={() => setUI({ experimentalDeepResearch: true })}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={`segment ${!experimentalDeepResearch ? 'is-active' : ''}`}
-                    onClick={() => setUI({ experimentalDeepResearch: false })}
-                  >
-                    Off
-                  </button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Show the DeepResearch toggle in the composer and enable multi-step research.
-                </div>
-              </div>
-            </div>
-                        </Section>,
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <label className="text-sm block">Brave Web Search</label>
+                                <div className="segmented">
+                                  <button
+                                    className={`segment ${experimentalBrave ? 'is-active' : ''}`}
+                                    onClick={() => setUI({ experimentalBrave: true })}
+                                  >
+                                    On
+                                  </button>
+                                  <button
+                                    className={`segment ${!experimentalBrave ? 'is-active' : ''}`}
+                                    onClick={() => setUI({ experimentalBrave: false })}
+                                  >
+                                    Off
+                                  </button>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Toggle Brave integration for web search and sources panel.
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-sm block">DeepResearch</label>
+                                <div className="segmented">
+                                  <button
+                                    className={`segment ${experimentalDeepResearch ? 'is-active' : ''}`}
+                                    onClick={() => setUI({ experimentalDeepResearch: true })}
+                                  >
+                                    On
+                                  </button>
+                                  <button
+                                    className={`segment ${!experimentalDeepResearch ? 'is-active' : ''}`}
+                                    onClick={() => setUI({ experimentalDeepResearch: false })}
+                                  >
+                                    Off
+                                  </button>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Show the DeepResearch toggle in the composer and enable multi-step
+                                  research.
+                                </div>
+                              </div>
+                            </div>
+                          </Section>,
                         )}
 
                         {renderSection(
                           'data',
                           'data',
                           <Section title="Data">
-            <div className="space-y-2">
-              <div className="flex gap-2 items-center flex-wrap">
-                <button className="btn btn-outline" onClick={onExport}>
-                  Export as JSON
-                </button>
-                <button className="btn btn-outline" onClick={() => importInputRef.current?.click()}>
-                  Import from JSON
-                </button>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept="application/json"
-                  className="hidden"
-                  onChange={(e) => onImportPicked(e.currentTarget.files?.[0])}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Export creates a backup of chats, messages, and folders. Import merges data.
-              </div>
-            </div>
-                        </Section>,
+                            <div className="space-y-2">
+                              <div className="flex gap-2 items-center flex-wrap">
+                                <button className="btn btn-outline" onClick={onExport}>
+                                  Export as JSON
+                                </button>
+                                <button
+                                  className="btn btn-outline"
+                                  onClick={() => importInputRef.current?.click()}
+                                >
+                                  Import from JSON
+                                </button>
+                                <input
+                                  ref={importInputRef}
+                                  type="file"
+                                  accept="application/json"
+                                  className="hidden"
+                                  onChange={(e) => onImportPicked(e.currentTarget.files?.[0])}
+                                />
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Export creates a backup of chats, messages, and folders. Import
+                                merges data.
+                              </div>
+                            </div>
+                          </Section>,
                         )}
                       </>
                     )}

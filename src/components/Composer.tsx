@@ -73,7 +73,9 @@ export default function Composer({
   const [composerHeight, setComposerHeight] = useState(0);
   const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
   const forceTutorMode = useChatStore((s) => !!s.ui.forceTutorMode);
-  const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.nextTutorMode));
+  const tutorEnabled =
+    tutorGloballyEnabled &&
+    (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.nextTutorMode));
   const [slashIndex, setSlashIndex] = useState(0);
   const deepEnabled = useChatStore((s) => !!s.ui.nextDeepResearch);
 
@@ -877,23 +879,26 @@ export default function Composer({
             aria-pressed={!!searchEnabled}
           >
             <MagnifyingGlassIcon className="h-3.5 w-3.5" />{' '}
-            {(searchProvider === 'openrouter' ? 'OR' : 'Brave') + ' ' + (searchEnabled ? 'On' : 'Off')}
+            {(searchProvider === 'openrouter' ? 'OR' : 'Brave') +
+              ' ' +
+              (searchEnabled ? 'On' : 'Off')}
           </button>
-          {!tutorEnabled && (() => {
-            const effort = chat?.settings.reasoning_effort ?? uiNext.nextReasoningEffort;
-            if (!supportsReasoning) return null;
-            if (!effort || effort === 'none') return null;
-            const letter = effort === 'high' ? 'H' : effort === 'medium' ? 'M' : 'L';
-            return (
-              <span
-                className="badge flex items-center gap-1"
-                title={`Reasoning effort: ${effort}`}
-                aria-label={`Reasoning ${effort}`}
-              >
-                <LightBulbIcon className="h-3.5 w-3.5" /> {letter}
-              </span>
-            );
-          })()}
+          {!tutorEnabled &&
+            (() => {
+              const effort = chat?.settings.reasoning_effort ?? uiNext.nextReasoningEffort;
+              if (!supportsReasoning) return null;
+              if (!effort || effort === 'none') return null;
+              const letter = effort === 'high' ? 'H' : effort === 'medium' ? 'M' : 'L';
+              return (
+                <span
+                  className="badge flex items-center gap-1"
+                  title={`Reasoning effort: ${effort}`}
+                  aria-label={`Reasoning ${effort}`}
+                >
+                  <LightBulbIcon className="h-3.5 w-3.5" /> {letter}
+                </span>
+              );
+            })()}
           <span className="text-xs text-muted-foreground">
             Press Enter to send · Shift+Enter for newline
           </span>
