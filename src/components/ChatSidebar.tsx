@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
-import { useDragAndDrop, setCurrentDragData, getCurrentDragData } from '@/lib/dragDrop';
+import { useDragAndDrop } from '@/lib/dragDrop';
 import FolderItem from './FolderItem';
 import IconButton from './IconButton';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -52,7 +52,8 @@ export default function ChatSidebar() {
   );
   const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
 
-  const { handleDragOver, handleDrop } = useDragAndDrop();
+  const { handleDragOver, handleDrop, handleDragStart, handleDragEnd, getDragData } =
+    useDragAndDrop();
   // Settings button removed from sidebar header
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -210,11 +211,10 @@ export default function ChatSidebar() {
         onDragOver={handleDragOver}
         onDrop={async (e) => {
           e.preventDefault();
-          const dragData = getCurrentDragData();
+          const dragData = getDragData();
           if (dragData && dragData.type === 'chat') {
-            await handleDrop(undefined, dragData.id, dragData.type);
+            await handleDrop(undefined);
           }
-          setCurrentDragData(null);
         }}
       >
         {/* Root folders */}
@@ -250,6 +250,8 @@ export default function ChatSidebar() {
               onEditTitleChange={setEditTitle}
               folders={folders}
               moveChatToFolder={moveChatToFolder}
+              onDragStart={(id) => handleDragStart(id, 'chat')}
+              onDragEnd={handleDragEnd}
             />
           ))}
       </div>
@@ -274,6 +276,8 @@ interface RootChatItemProps {
   onEditTitleChange: (title: string) => void;
   folders: Folder[];
   moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
+  onDragStart: (chatId: string) => void;
+  onDragEnd: () => void;
 }
 
 function RootChatItem({
@@ -291,6 +295,8 @@ function RootChatItem({
   onEditTitleChange,
   folders,
   moveChatToFolder,
+  onDragStart,
+  onDragEnd,
 }: RootChatItemProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -349,8 +355,9 @@ function RootChatItem({
             draggable={!isMobile}
             onDragStart={() => {
               if (isMobile) return;
-              setCurrentDragData({ id: chat.id, type: 'chat' });
+              onDragStart(chat.id);
             }}
+            onDragEnd={onDragEnd}
             onClick={!isEditing ? onSelect : undefined}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}

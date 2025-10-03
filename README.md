@@ -5,7 +5,7 @@ Local-first, privacy-focused multi-model chat UI for OpenRouter.
 ### Highlights
 
 - Local storage: Chats, messages, folders persisted in-browser via IndexedDB (Dexie).
-- ZDR-first: Lists and enforces Zero Data Retention models by default; toggleable.
+- ZDR-ready: Optional Zero Data Retention filtering and enforcement; toggleable.
 - Model control: Curated picker, favorites, hide-from-dropdown, and custom IDs.
 - Rich I/O: Images (vision), audio input (mp3/wav), PDFs; image generation output supported.
 - Reasoning: Optional “thinking” stream for reasoning-capable models with effort control.
@@ -37,9 +37,12 @@ OPENROUTER_API_KEY=sk-or-v1_your_server_key_here
 # Optional: Brave Search (server-side only)
 BRAVE_SEARCH_API_KEY=brave_your_key_here
 
-# Optional: default ZDR behavior (true if unset)
-# Set to false to list all models by default
-NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=true
+# Optional: default ZDR behavior (false if unset)
+# Uncomment to start in ZDR-only mode
+# NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=true
+
+# Optional: default OpenRouter route preference (speed|cost; defaults to speed)
+# NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT=cost
 ```
 
 Private access gate (optional but recommended when sharing preview):
@@ -74,6 +77,7 @@ npm install
 - Start (prod): `npm start`
 - Format: `npm run format`
 - Type check: `npm run lint:types`
+- Tests: `npm run test`
 
 Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/start.sh`.
 
@@ -110,7 +114,7 @@ Security notes:
 - Prefer proxy mode (`NEXT_PUBLIC_USE_OR_PROXY=true`) to keep provider keys server-side.
 - Avoid placing secrets in `NEXT_PUBLIC_*` env vars when possible.
 - Brave Search runs only server-side and requires `BRAVE_SEARCH_API_KEY`.
-- ZDR-only: Model listing and sends default to ZDR-only. Override default with `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=false`.
+- ZDR-only: Opt-in via Settings or `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=true`.
 - Access gate: Middleware validates a signed, HttpOnly cookie on every request; unauthenticated users are redirected to `/access`. Add env vars above and distribute plaintext codes privately.
 
 ### Deploying on Vercel
@@ -126,12 +130,13 @@ app/                    # Next.js App Router entry (layout, page, globals)
 src/components/         # React components (PascalCase .tsx)
 src/components/message/ # Message subcomponents (meta, reasoning, sources)
 src/lib/                # Utilities, API client, state slices
-src/data/               # Curated models and presets
+src/data/               # Curated model metadata
 src/types/              # Type augmentations
 public/                 # Static assets served by Next
 assets/                 # Screenshots
 styles/                 # Global CSS tokens (francesco-bootstrap.css)
 scripts/                # Helper scripts (dev/build/start)
+tests/                  # Node-based unit tests (`npm run test`)
 ```
 
 ### Development
@@ -140,7 +145,7 @@ scripts/                # Helper scripts (dev/build/start)
 - Formatting: Prettier (`.prettierrc`) — single quotes, semicolons, trailing commas=all, width=100
 - Naming: PascalCase components in `src/components/`; named exports favored
 - Type safety: run `npm run lint:types` before pushing
-- Testing: none configured; validate via UI. If adding tests, prefer colocated `*.test.ts(x)` and discuss framework (Jest+RTL or Playwright).
+- Testing: `npm run test` (Node test runner via `tsx`); add colocated `*.test.ts(x)` for unit coverage.
 
 ### License
 

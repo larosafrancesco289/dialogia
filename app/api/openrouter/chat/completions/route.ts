@@ -1,24 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const OR_BASE = 'https://openrouter.ai/api/v1';
+import { requireServerOpenRouterKey } from '@/lib/config';
+import { orChatCompletions } from '@/lib/api/orClient';
 
 export async function POST(req: NextRequest) {
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
+  let apiKey: string;
+  try {
+    apiKey = requireServerOpenRouterKey();
+  } catch {
     return NextResponse.json({ error: 'Missing OPENROUTER_API_KEY (server)' }, { status: 500 });
   }
   try {
     const body = await req.text();
-    const res = await fetch(`${OR_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': req.headers.get('origin') || 'http://localhost:3000',
-        'X-Title': 'Dialogia',
-      },
+    const res = await orChatCompletions({
+      apiKey,
       body,
+      stream: true,
+      origin: req.headers.get('origin') || undefined,
     });
     // Pass through streaming or JSON response as-is
     const contentType = res.headers.get('content-type') || 'application/json';

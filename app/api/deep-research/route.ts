@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deepResearch } from '@/lib/deepResearch';
+import { getBraveSearchKey, requireServerOpenRouterKey } from '@/lib/config';
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const braveKey = process.env.BRAVE_SEARCH_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: 'Missing OPENROUTER_API_KEY' }, { status: 500 });
+  let apiKey: string;
+  try {
+    apiKey = requireServerOpenRouterKey();
+  } catch {
+    return NextResponse.json({ error: 'Missing OPENROUTER_API_KEY' }, { status: 500 });
+  }
+  const braveKey = getBraveSearchKey();
   if (!braveKey)
     return NextResponse.json({ error: 'Missing BRAVE_SEARCH_API_KEY' }, { status: 500 });
 

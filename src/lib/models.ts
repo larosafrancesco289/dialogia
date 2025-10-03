@@ -154,6 +154,20 @@ export function isImageOutputSupported(model?: ORModel | null): boolean {
   return false;
 }
 
+export function getModelCapabilities(model?: ORModel | null): {
+  canReason: boolean;
+  canSee: boolean;
+  canAudio: boolean;
+  canImageOut: boolean;
+} {
+  return {
+    canReason: isReasoningSupported(model),
+    canSee: isVisionSupported(model),
+    canAudio: isAudioInputSupported(model),
+    canImageOut: isImageOutputSupported(model),
+  };
+}
+
 export function findModelById(models: ORModel[] | undefined, id?: string): ORModel | undefined {
   if (!models || !id) return undefined;
   return models.find((m) => m.id === id);
