@@ -274,9 +274,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
     const ok = await (async () => {
       try {
         const models = await fetchModels(apiKey);
-        const entry = models.find(
-          (m) => m.id.toLowerCase() === model.toLowerCase(),
-        );
+        const entry = models.find((m) => m.id.toLowerCase() === model.toLowerCase());
         const supported = Array.isArray((entry?.raw as any)?.supported_parameters)
           ? (entry?.raw as any).supported_parameters.map((p: any) => String(p).toLowerCase())
           : [];

@@ -3,14 +3,15 @@ import type { StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
 import { saveMessage, saveChat } from '@/lib/db';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
-import { stripLeadingToolJson } from '@/lib/agent/streaming';
 import { streamChatCompletion, chatCompletion } from '@/lib/openrouter';
+import { getTutorPreamble, getTutorToolDefinitions } from '@/lib/agent/tutor';
 import {
-  getTutorPreamble,
-  getTutorToolDefinitions,
-  buildTutorContextSummary,
-  buildTutorContextFull,
-} from '@/lib/agent/tutor';
+  attachTutorUiState,
+  buildHiddenTutorContent,
+  ensureTutorDefaults,
+  maybeAdvanceTutorMemory,
+} from '@/lib/agent/tutorFlow';
+import { snapshotGenSettings } from '@/lib/agent/generation';
 import {
   updateTutorMemory,
   normalizeTutorMemory,
@@ -19,18 +20,13 @@ import {
 } from '@/lib/agent/tutorMemory';
 import { runDeepResearchTurn } from '@/lib/agent/deepResearchOrchestrator';
 import { loadTutorProfile, summarizeTutorProfile } from '@/lib/tutorProfile';
-import { addCardsToDeck, getDueCards } from '@/lib/tutorDeck';
 import {
   isReasoningSupported,
   findModelById,
   isToolCallingSupported,
   isImageOutputSupported,
 } from '@/lib/models';
-import {
-  MAX_FALLBACK_RESULTS,
-  DEFAULT_TUTOR_MODEL_ID,
-  DEFAULT_TUTOR_MEMORY_MODEL_ID,
-} from '@/lib/constants';
+import { DEFAULT_TUTOR_MODEL_ID, DEFAULT_TUTOR_MEMORY_MODEL_ID } from '@/lib/constants';
 import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
 import {
   checkZdrModelAllowance,
@@ -41,12 +37,10 @@ import {
   ZDR_UNAVAILABLE_NOTICE,
 } from '@/lib/zdr';
 import { prepareAttachmentsForModel } from '@/lib/agent/attachments';
+import { providerSortFromRoutePref, composePlugins, buildDebugBody } from '@/lib/agent/request';
+import { planTurn, streamFinal } from '@/lib/services/messagePipeline';
+import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
-import {
-  extractTutorToolCalls,
-  extractWebSearchArgs,
-  normalizeTutorQuizPayload,
-} from '@/lib/agent/tools';
 // telemetry removed for commit cleanliness
 
 export function createMessageSlice(
@@ -108,15 +102,7 @@ export function createMessageSlice(
         const idx = list.findIndex((m) => m.id === messageId);
         if (idx >= 0) {
           const target = list[idx];
-          let hidden = '';
-          try {
-            const recap = buildTutorContextSummary(uiTutor as any);
-            const json = buildTutorContextFull(uiTutor as any);
-            const parts: string[] = [];
-            if (recap) parts.push(`Tutor Recap:\n${recap}`);
-            if (json) parts.push(`Tutor Data JSON:\n${json}`);
-            hidden = parts.join('\n\n');
-          } catch {}
+          const hidden = buildHiddenTutorContent(uiTutor as any);
           // Replace hiddenContent for this assistant message (do not append repeatedly)
           const nm = { ...target, tutor: uiTutor, hiddenContent: hidden } as any;
           set((s) => ({
@@ -160,41 +146,14 @@ export function createMessageSlice(
       const memoryAutoUpdateEnabled =
         uiState.tutorMemoryAutoUpdate !== false && chat.settings.tutor_memory_disabled !== true;
       if (tutorEnabled) {
-        const updatedSettings = { ...chat.settings };
-        let settingsChanged = false;
-        if (updatedSettings.model !== tutorDefaultModelId) {
-          updatedSettings.model = tutorDefaultModelId;
-          settingsChanged = true;
-        }
-        if (updatedSettings.tutor_default_model !== tutorDefaultModelId) {
-          updatedSettings.tutor_default_model = tutorDefaultModelId;
-          settingsChanged = true;
-        }
-        if (updatedSettings.tutor_memory_model !== tutorMemoryModelId) {
-          updatedSettings.tutor_memory_model = tutorMemoryModelId;
-          settingsChanged = true;
-        }
-        const normalizedMem = normalizeTutorMemory(updatedSettings.tutor_memory);
-        if (normalizedMem !== updatedSettings.tutor_memory) {
-          updatedSettings.tutor_memory = normalizedMem;
-          settingsChanged = true;
-        }
-        if (
-          typeof updatedSettings.tutor_memory_frequency !== 'number' ||
-          updatedSettings.tutor_memory_frequency <= 0
-        ) {
-          updatedSettings.tutor_memory_frequency = getTutorMemoryFrequency(updatedSettings);
-          settingsChanged = true;
-        }
-        if (
-          typeof updatedSettings.tutor_memory_message_count !== 'number' ||
-          updatedSettings.tutor_memory_message_count < 0
-        ) {
-          updatedSettings.tutor_memory_message_count = 0;
-          settingsChanged = true;
-        }
-        if (settingsChanged) {
-          const updatedChat = { ...chat, settings: updatedSettings, updatedAt: Date.now() };
+        const ensured = ensureTutorDefaults({
+          ui: uiState,
+          chat,
+          fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
+          fallbackMemoryModelId: DEFAULT_TUTOR_MEMORY_MODEL_ID,
+        });
+        if (ensured.changed) {
+          const updatedChat = { ...chat, settings: ensured.nextSettings, updatedAt: Date.now() };
           set((s) => ({ chats: s.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
           chat = updatedChat;
           try {
@@ -283,79 +242,23 @@ export function createMessageSlice(
             raw?: string;
           }
         | undefined;
-      if (tutorEnabled && memoryAutoUpdateEnabled) {
-        const settings = chat.settings;
-        const priorCount = settings.tutor_memory_message_count ?? 0;
-        const frequency = getTutorMemoryFrequency(settings);
-        const nextCount = priorCount + 1;
-        let newCount = nextCount;
-        let newMemory = settings.tutor_memory || EMPTY_TUTOR_MEMORY;
-        let version = settings.tutor_memory_version ?? 0;
-        if (nextCount >= frequency) {
-          try {
-            const result = await updateTutorMemory({
-              apiKey: key || '',
-              model: tutorMemoryModelId,
-              existingMemory: settings.tutor_memory,
-              conversation: priorList.concat(userMsg),
-              frequency,
-            });
-            newMemory = result.memory;
-            version += 1;
-            newCount = 0;
-            memoryDebug = {
-              before: settings.tutor_memory,
-              after: newMemory,
-              version,
-              messageCount: nextCount,
-              conversationWindow: result.conversationWindow,
-              raw: result.raw,
-            };
-          } catch (err: any) {
-            set((s) => ({
-              ui: {
-                ...s.ui,
-                notice:
-                  s.ui.debugMode && err?.message
-                    ? `Tutor memory update failed: ${String(err.message)}`
-                    : s.ui.notice,
-              },
-            }));
-          }
-        }
-        if (
-          newCount !== priorCount ||
-          newMemory !== settings.tutor_memory ||
-          version !== (settings.tutor_memory_version ?? 0)
-        ) {
-          const updatedSettings = {
-            ...chat.settings,
-            tutor_memory: newMemory,
-            tutor_memory_version: version,
-            tutor_memory_message_count: newCount,
-          };
-          const updatedChat = { ...chat, settings: updatedSettings, updatedAt: Date.now() };
+      if (tutorEnabled) {
+        const result = await maybeAdvanceTutorMemory({
+          apiKey: key || '',
+          modelId: tutorMemoryModelId,
+          settings: chat.settings,
+          conversation: priorList.concat(userMsg),
+          autoUpdate: memoryAutoUpdateEnabled,
+        });
+        const updatedChat = { ...chat, settings: result.nextSettings, updatedAt: Date.now() };
+        if (JSON.stringify(updatedChat.settings) !== JSON.stringify(chat.settings)) {
           set((s) => ({ chats: s.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
           chat = updatedChat;
           try {
             await saveChat(updatedChat);
           } catch {}
         }
-      } else if (tutorEnabled && !memoryAutoUpdateEnabled) {
-        const priorCount = chat.settings.tutor_memory_message_count ?? 0;
-        const nextCount = priorCount + 1;
-        if (nextCount !== priorCount) {
-          const updatedSettings = {
-            ...chat.settings,
-            tutor_memory_message_count: nextCount,
-          };
-          const updatedChat = { ...chat, settings: updatedSettings, updatedAt: Date.now() };
-          set((s) => ({ chats: s.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
-          chat = updatedChat;
-          try {
-            await saveChat(updatedChat);
-          } catch {}
-        }
+        memoryDebug = result.debug;
       }
 
       if (tutorEnabled) {
@@ -389,7 +292,11 @@ export function createMessageSlice(
         newUserAttachments: attachments,
       });
       // Enable OpenRouter PDF parsing when any PDFs exist in the conversation
-      const plugins = hasPdf ? [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }] : undefined;
+      const plugins = composePlugins({
+        hasPdf,
+        searchEnabled: false,
+        searchProvider: 'openrouter',
+      });
       if (chat.title === 'New Chat') {
         const draft = content.trim().slice(0, 40);
         await get().renameChat(chat.id, draft || 'New Chat');
@@ -403,7 +310,7 @@ export function createMessageSlice(
         ? configuredProvider
         : 'openrouter';
       const attemptPlanning = tutorEnabled || (searchEnabled && searchProvider === 'brave');
-      const providerSort = get().ui.routePreference === 'cost' ? 'price' : 'throughput';
+      const providerSort = providerSortFromRoutePref(get().ui.routePreference as any);
       const toolPreambleText =
         'You have access to a function tool named "web_search" that retrieves up-to-date web results.\n\nWhen you need current, factual, or source-backed information, call the tool first. If you call a tool, respond with ONLY tool_calls (no user-facing text). After the tool returns, write the final answer that cites sources inline as [n] using the numbering provided.\n\nweb_search(args): { query: string, count?: integer 1-10 }. Choose a focused query and a small count, and avoid unnecessary calls.';
       const tutorPreambleText = tutorGloballyEnabled ? getTutorPreamble() : '';
@@ -439,519 +346,52 @@ export function createMessageSlice(
           set((s) => ({ ...s, _controller: controller as any }) as any);
           const tutorTools = tutorEnabled ? (getTutorToolDefinitions() as any[]) : ([] as any[]);
           const baseTools =
-            searchEnabled && searchProvider === 'brave'
-              ? [
-                  {
-                    type: 'function',
-                    function: {
-                      name: 'web_search',
-                      description:
-                        'Search the public web for up-to-date information. Use only when necessary. Return results to ground your answer and cite sources as [n].',
-                      parameters: {
-                        type: 'object',
-                        properties: {
-                          query: { type: 'string', description: 'The search query to run.' },
-                          count: {
-                            type: 'integer',
-                            description: 'How many results to retrieve (1-10).',
-                            minimum: 1,
-                            maximum: 10,
-                          },
-                        },
-                        required: ['query'],
-                      },
-                    },
-                  },
-                ]
-              : [];
+            searchEnabled && searchProvider === 'brave' ? getSearchToolDefinition() : [];
           const toolDefinition = [...baseTools, ...tutorTools];
-          const planningSystem = { role: 'system', content: combinedSystemForThisTurn! } as const;
-          const planningMessages: any[] = [
-            planningSystem,
-            ...msgs.filter((m) => m.role !== 'system'),
-          ];
-          let convo = planningMessages.slice();
-          let rounds = 0;
-          let finalContent: string | null = null;
-          let finalUsage: any | undefined = undefined;
-          let usedTool = false;
-          let usedTutorTool = false; // any tutor tool call (non-web)
-          let usedTutorContentTool = false; // interactive content tools (quiz_*, flashcards)
-          let aggregatedResults: { title?: string; url?: string; description?: string }[] = [];
-          const attachTutorQuiz = async (args: any) => {
-            const normalized = normalizeTutorQuizPayload(args);
-            if (!normalized) return { ok: false };
-            let updatedMsg: any | undefined;
-            const mapKey = 'mcq';
-            set((s) => {
-              const keyId = assistantMsg.id;
-              const normed = normalized.items;
-              const nextTutorUi = {
-                ...(s.ui.tutorByMessageId?.[keyId] || {}),
-                title: s.ui.tutorByMessageId?.[keyId]?.title || args?.title,
-                [mapKey]: [
-                  ...(((s.ui.tutorByMessageId?.[keyId] as any)?.[mapKey] as any[]) || []),
-                  ...normed,
-                ],
-              } as any;
-              const list = s.messages[chatId] ?? [];
-              const updated = list.map((m) => {
-                if (m.id !== keyId) return m;
-                const prevTutor = (m as any).tutor || {};
-                const mergedTutor = {
-                  ...prevTutor,
-                  title: prevTutor.title || args?.title,
-                  [mapKey]: [...(((prevTutor as any)[mapKey] as any[]) || []), ...normed],
-                } as any;
-                let hidden = '';
-                try {
-                  const recap = buildTutorContextSummary(mergedTutor);
-                  const json = buildTutorContextFull(mergedTutor);
-                  const parts: string[] = [];
-                  if (recap) parts.push(`Tutor Recap:\n${recap}`);
-                  if (json) parts.push(`Tutor Data JSON:\n${json}`);
-                  hidden = parts.join('\n\n');
-                } catch {}
-                const next = { ...m, tutor: mergedTutor, hiddenContent: hidden } as any;
-                updatedMsg = next;
-                return next;
-              });
-              return {
-                ui: {
-                  ...s.ui,
-                  tutorByMessageId: {
-                    ...(s.ui.tutorByMessageId || {}),
-                    [keyId]: nextTutorUi,
-                  },
-                },
-                messages: { ...s.messages, [chatId]: updated },
-              } as any;
-            });
-            try {
-              if (updatedMsg) await saveMessage(updatedMsg);
-            } catch {}
-            try {
-              const body: any = { items: normalized.items };
-              if (typeof args?.title === 'string') body.title = args.title;
-              return { ok: true, json: JSON.stringify(body) };
-            } catch {}
-            return { ok: true };
-          };
-
-          while (rounds < 3) {
-            const modelMeta = findModelById(get().models, chat.settings.model);
-            const supportsReasoning = isReasoningSupported(modelMeta);
-            const supportsTools = isToolCallingSupported(modelMeta);
-            // Store debug payload for planning (non-streaming) request in tutor/plan mode
-            try {
-              const debugBody: any = {
-                model: chat.settings.model,
-                messages: convo,
-                stream: false,
-              };
-              if (typeof chat.settings.temperature === 'number')
-                debugBody.temperature = chat.settings.temperature;
-              if (typeof chat.settings.top_p === 'number') debugBody.top_p = chat.settings.top_p;
-              if (typeof chat.settings.max_tokens === 'number')
-                debugBody.max_tokens = chat.settings.max_tokens;
-              if (supportsReasoning) {
-                const rc: any = {};
-                if (typeof chat.settings.reasoning_effort === 'string')
-                  rc.effort = chat.settings.reasoning_effort;
-                if (typeof chat.settings.reasoning_tokens === 'number')
-                  rc.max_tokens = chat.settings.reasoning_tokens;
-                if (Object.keys(rc).length > 0) debugBody.reasoning = rc;
-              }
-              if (supportsTools) debugBody.tools = toolDefinition as any;
-              if (supportsTools) debugBody.tool_choice = 'auto';
-              if (providerSort === 'price' || providerSort === 'throughput') {
-                debugBody.provider = { sort: providerSort };
-              }
-              // Avoid PDF parsing costs during planning; only enable plugins in final streaming call
-              // so PDFs are parsed once per user turn.
-              // (Leave out debugBody.plugins here.)
-              if (get().ui.debugMode) {
-                set((s) => ({
-                  ui: {
-                    ...s.ui,
-                    debugByMessageId: {
-                      ...(s.ui.debugByMessageId || {}),
-                      [assistantMsg.id]: {
-                        body: JSON.stringify(debugBody, null, 2),
-                        createdAt: Date.now(),
-                      },
-                    },
-                  },
-                }));
-              }
-            } catch {}
-            const resp = await chatCompletion({
-              apiKey: key || '',
-              model: chat.settings.model,
-              messages: convo as any,
-              temperature: chat.settings.temperature,
-              top_p: chat.settings.top_p,
-              max_tokens: chat.settings.max_tokens,
-              reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-              reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-              tools: supportsTools ? (toolDefinition as any) : undefined,
-              // Let the model decide whether to call the tool when supported
-              tool_choice: supportsTools ? ('auto' as any) : undefined,
-              signal: controller.signal,
-              providerSort,
-              // Intentionally omit plugins here to skip parsing PDFs during planning
-              // (final streaming call will include plugins if needed)
-              plugins: undefined,
-            });
-            finalUsage = resp?.usage;
-            const choice = resp?.choices?.[0];
-            const message = choice?.message || {};
-            let toolCalls =
-              Array.isArray(message?.tool_calls) && message.tool_calls.length > 0
-                ? message.tool_calls
-                : message?.function_call
-                  ? [
-                      {
-                        id: 'call_0',
-                        type: 'function',
-                        function: {
-                          name: message.function_call.name,
-                          arguments: message.function_call.arguments,
-                        },
-                      },
-                    ]
-                  : [];
-            if ((!toolCalls || toolCalls.length === 0) && typeof message?.content === 'string') {
-              const inline = extractWebSearchArgs(message.content);
-              if (inline) {
-                toolCalls = [
-                  {
-                    id: 'call_0',
-                    type: 'function',
-                    function: { name: 'web_search', arguments: JSON.stringify(inline) },
-                  },
-                ];
-              } else {
-                const tutorCalls = extractTutorToolCalls(message.content);
-                if (tutorCalls.length > 0) {
-                  // Emulate function calls for tutor tools
-                  toolCalls = tutorCalls.map((c, idx) => ({
-                    id: `inline_${idx}`,
-                    type: 'function',
-                    function: { name: c.name, arguments: JSON.stringify(c.args) },
-                  }));
-                }
-              }
-            }
-            if (toolCalls && toolCalls.length > 0) {
-              usedTool = true;
-              convo.push({ role: 'assistant', content: null, tool_calls: toolCalls } as any);
-            }
-            // Do not force tool calls; only proceed when the model chooses to call tools
-            if (!toolCalls || toolCalls.length === 0) {
-              const text = typeof message?.content === 'string' ? message.content : '';
-              finalContent = stripLeadingToolJson(text);
-              break;
-            }
-            const attachTutorMeta = async (name: string, args: any) => {
-              const keyId = assistantMsg.id;
-              if (name === 'grade_open_response') {
-                const rawId = args?.item_id;
-                const itemId = (() => {
-                  const s = typeof rawId === 'string' ? rawId.trim() : '';
-                  if (!s || s === 'null' || s === 'undefined') return '';
-                  return s;
-                })();
-                const feedback = String(args?.feedback || '').trim();
-                const score = typeof args?.score === 'number' ? args.score : undefined;
-                const criteria = Array.isArray(args?.criteria) ? args.criteria : undefined;
-                if (!itemId || !feedback) return false;
-                let updatedMsg: any | undefined;
-                set((s) => {
-                  const current = (s.ui.tutorByMessageId?.[keyId] || {}) as any;
-                  const nextTutor = {
-                    ...current,
-                    grading: {
-                      ...(current.grading || {}),
-                      [itemId]: { feedback, score, criteria },
-                    },
-                  } as any;
-                  const ui = {
-                    ...s.ui,
-                    tutorByMessageId: {
-                      ...(s.ui.tutorByMessageId || {}),
-                      [keyId]: nextTutor,
-                    },
-                  };
-                  // Persist grading into message
-                  const list = s.messages[chatId] ?? [];
-                  const updated = list.map((m) => {
-                    if (m.id !== keyId) return m;
-                    const prevTutor = (m as any).tutor || {};
-                    const mergedTutor = {
-                      ...prevTutor,
-                      grading: {
-                        ...(prevTutor.grading || {}),
-                        [itemId]: { feedback, score, criteria },
-                      },
-                    } as any;
-                    let hidden = '';
-                    try {
-                      const recap = buildTutorContextSummary(mergedTutor);
-                      const json = buildTutorContextFull(mergedTutor);
-                      const parts = [] as string[];
-                      if (recap) parts.push(`Tutor Recap:\n${recap}`);
-                      if (json) parts.push(`Tutor Data JSON:\n${json}`);
-                      hidden = parts.join('\n\n');
-                    } catch {}
-                    // Replace hiddenContent for this assistant message
-                    const nm = { ...m, tutor: mergedTutor, hiddenContent: hidden } as any;
-                    updatedMsg = nm;
-                    return nm;
-                  });
-                  return { ui, messages: { ...s.messages, [chatId]: updated } } as any;
-                });
-                try {
-                  if (updatedMsg) await saveMessage(updatedMsg);
-                } catch {}
-                return true;
-              }
-              if (name === 'add_to_deck') {
-                try {
-                  const cards = Array.isArray(args?.cards) ? args.cards : [];
-                  if (cards.length > 0) await addCardsToDeck(chat.id, cards);
-                } catch {}
-                return true;
-              }
-              if (name === 'srs_review') {
-                // handled below when pushing tool output JSON
-                return true;
-              }
-              return false;
-            };
-            for (const tc of toolCalls) {
-              const name = tc?.function?.name as string;
-              let args: any = {};
-              try {
-                const rawArgs = (tc?.function as any)?.arguments;
-                if (typeof rawArgs === 'string') args = JSON.parse(rawArgs || '{}');
-                else if (rawArgs && typeof rawArgs === 'object') args = rawArgs;
-              } catch {}
-              if (
-                name !== 'web_search' &&
-                name !== 'quiz_mcq' &&
-                name !== 'quiz_fill_blank' &&
-                name !== 'quiz_open_ended' &&
-                name !== 'flashcards' &&
-                name !== 'grade_open_response' &&
-                name !== 'add_to_deck' &&
-                name !== 'srs_review'
-              )
-                continue;
-              if (name !== 'web_search') {
-                usedTutorTool = true;
-                if (
-                  name === 'quiz_mcq' ||
-                  name === 'quiz_fill_blank' ||
-                  name === 'quiz_open_ended' ||
-                  name === 'flashcards'
-                ) {
-                  usedTutorContentTool = true;
-                }
-                if (name === 'srs_review') {
-                  const cnt = Math.min(
-                    Math.max(parseInt(String(args?.due_count || '10'), 10) || 10, 1),
-                    40,
-                  );
-                  let due: any[] = [];
-                  try {
-                    const cards = await getDueCards(chat.id, cnt);
-                    due = cards.map((c) => ({
-                      id: c.id,
-                      front: c.front,
-                      back: c.back,
-                      hint: c.hint,
-                      topic: c.topic,
-                      skill: c.skill,
-                    }));
-                  } catch {}
-                  const jsonPayload = JSON.stringify(due);
-                  convo.push({
-                    role: 'tool',
-                    name,
-                    tool_call_id: tc.id,
-                    content: jsonPayload,
-                  } as any);
-                  usedTool = true;
-                  continue;
-                }
-                const didMeta = await attachTutorMeta(name, args);
-                const result = name === 'quiz_mcq' ? await attachTutorQuiz(args) : { ok: false };
-                if (result.ok || didMeta) {
-                  usedTool = true;
-                  // Provide structured JSON tool output so the model can see the created items
-                  convo.push({
-                    role: 'tool',
-                    name,
-                    tool_call_id: tc.id,
-                    content: result.json || 'ok',
-                  } as any);
-                }
-                continue;
-              }
-              let rawQuery = String(args?.query || '').trim();
-              const count = Math.min(
-                Math.max(parseInt(String(args?.count || '5'), 10) || 5, 1),
-                10,
-              );
-              if (!rawQuery) rawQuery = content.trim().slice(0, 256);
-              if (searchProvider === 'brave')
-                set((s) => ({
-                  ui: {
-                    ...s.ui,
-                    braveByMessageId: {
-                      ...(s.ui.braveByMessageId || {}),
-                      [assistantMsg.id]: { query: rawQuery, status: 'loading' },
-                    },
-                  },
-                }));
-              try {
-                // Per-request controller with timeout, tied to the main controller as well
-                const fetchController = new AbortController();
-                const onAbort = () => fetchController.abort();
-                controller.signal.addEventListener('abort', onAbort);
-                const to = setTimeout(() => fetchController.abort(), 20000);
-                const res =
-                  searchProvider === 'brave'
-                    ? await fetch(`/api/brave?q=${encodeURIComponent(rawQuery)}&count=${count}`, {
-                        method: 'GET',
-                        headers: { Accept: 'application/json' },
-                        cache: 'no-store',
-                        signal: fetchController.signal,
-                      } as any)
-                    : undefined;
-                clearTimeout(to);
-                controller.signal.removeEventListener('abort', onAbort);
-                if (res && res.ok) {
-                  const data: any = await res.json();
-                  const results = (data?.results || []) as any[];
-                  set((s) => ({
-                    ui: {
-                      ...s.ui,
-                      braveByMessageId: {
-                        ...(s.ui.braveByMessageId || {}),
-                        [assistantMsg.id]: { query: rawQuery, status: 'done', results },
-                      },
-                    },
-                  }));
-                  aggregatedResults = results;
-                  // Provide structured JSON tool output per OpenRouter function-calling docs
-                  const jsonPayload = JSON.stringify(
-                    results.slice(0, MAX_FALLBACK_RESULTS).map((r: any) => ({
-                      title: r?.title,
-                      url: r?.url,
-                      description: r?.description,
-                    })),
-                  );
-                  convo.push({
-                    role: 'tool',
-                    name: 'web_search',
-                    tool_call_id: tc.id,
-                    content: jsonPayload,
-                  } as any);
-                } else {
-                  if (res && res.status === 400)
-                    set((s) => ({ ui: { ...s.ui, notice: 'Missing BRAVE_SEARCH_API_KEY' } }));
-                  convo.push({
-                    role: 'tool',
-                    name: 'web_search',
-                    tool_call_id: tc.id,
-                    content: 'No results',
-                  } as any);
-                }
-              } catch {
-                if (searchProvider === 'brave')
-                  set((s) => ({
-                    ui: {
-                      ...s.ui,
-                      braveByMessageId: {
-                        ...(s.ui.braveByMessageId || {}),
-                        [assistantMsg.id]: {
-                          query: rawQuery,
-                          status: 'error',
-                          results: [],
-                          error: 'Network error',
-                        },
-                      },
-                    },
-                  }));
-                convo.push({
-                  role: 'tool',
-                  name: 'web_search',
-                  tool_call_id: tc.id,
-                  content: 'No results',
-                } as any);
-              }
-            }
-            const followup =
-              searchEnabled && searchProvider === 'brave'
-                ? 'Write the final answer. Cite sources inline as [n].'
-                : 'Continue the lesson concisely. Give brief guidance and next step. Do not repeat items already rendered.';
-            convo.push({ role: 'user', content: followup } as any);
-            rounds++;
-          }
-          // Stream the final answer using planning context (optionally including search results)
-          const baseSystem =
-            combinedSystemForThisTurn || chat.settings.system || 'You are a helpful assistant.';
-          const linesForSystem = (aggregatedResults || [])
-            .slice(0, MAX_FALLBACK_RESULTS)
-            .map(
-              (r, i) =>
-                `${i + 1}. ${(r.title || r.url || 'Result').toString()} — ${r.url || ''}${r.description ? ` — ${r.description}` : ''}`,
-            )
-            .join('\n');
-          const sourcesBlock =
-            usedTool && linesForSystem && searchProvider === 'brave'
-              ? `\n\nWeb search results (Brave):\n${linesForSystem}\n\nInstructions: Use these results to answer and cite sources inline as [n].`
-              : '';
-          const finalSystem = `${baseSystem}${sourcesBlock}`;
-          // Snapshot the exact system + generation settings for this assistant turn
+          const planResult = await planTurn({
+            chat,
+            chatId,
+            assistantMessage: assistantMsg,
+            userContent: content,
+            combinedSystem: combinedSystemForThisTurn,
+            baseMessages: msgs,
+            toolDefinition,
+            searchEnabled,
+            searchProvider,
+            providerSort,
+            apiKey: key || '',
+            controller,
+            set,
+            get,
+            models: get().models,
+            persistMessage: saveMessage,
+          });
           try {
             const modelMeta = findModelById(get().models, chat.settings.model);
-            const supportsReasoning = isReasoningSupported(modelMeta);
-            const gen = {
-              temperature: chat.settings.temperature,
-              top_p: chat.settings.top_p,
-              max_tokens: chat.settings.max_tokens,
-              reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-              reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-              search_with_brave: !!chat.settings.search_with_brave,
-              search_provider: searchProvider,
-              tutor_mode: !!chat.settings.tutor_mode,
+            const gen = snapshotGenSettings({
+              settings: chat.settings,
+              modelMeta,
+              searchProvider,
               providerSort,
-            } as any;
+            });
             set((s) => {
               const list = s.messages[chatId] ?? [];
               const updated = list.map((m) =>
                 m.id === assistantMsg.id
-                  ? ({ ...m, systemSnapshot: finalSystem, genSettings: gen } as any)
+                  ? ({ ...m, systemSnapshot: planResult.finalSystem, genSettings: gen } as any)
                   : m,
               );
               return { messages: { ...s.messages, [chatId]: updated } } as any;
             });
           } catch {}
-          // If an interactive tutor content tool was used (quiz/flashcards) and no web search occurred,
-          // skip follow-up text for this assistant turn to avoid duplicating quiz in plain text.
-          if (usedTutorContentTool && (!aggregatedResults || aggregatedResults.length === 0)) {
+          if (planResult.usedTutorContentTool && !planResult.hasSearchResults) {
             set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
             const current = get().messages[chatId]?.find((m) => m.id === assistantMsg.id);
             const finalMsg = {
               ...assistantMsg,
-              // Preserve any content that may have been appended when handling the tool call
               content: current?.content || '',
               reasoning: current?.reasoning,
               attachments: current?.attachments,
-              // Preserve tutor payload and hidden content for model context
               tutor: (current as any)?.tutor,
               hiddenContent: (current as any)?.hiddenContent,
             } as any;
@@ -965,116 +405,26 @@ export function createMessageSlice(
             return;
           }
           const streamingMessages = (
-            [{ role: 'system', content: finalSystem } as const] as any[]
+            [{ role: 'system', content: planResult.finalSystem } as const] as any[]
           ).concat(msgs.filter((m) => m.role !== 'system'));
-
-          const tStartPlan = performance.now();
-          {
-            const modelMeta = findModelById(get().models, chat.settings.model);
-            const supportsReasoning = isReasoningSupported(modelMeta);
-            const supportsTools = isToolCallingSupported(modelMeta);
-            // Store debug payload for this final streaming call (planning mode)
-            try {
-              const debugBody: any = {
-                model: chat.settings.model,
-                messages: streamingMessages,
-                stream: true,
-                stream_options: { include_usage: true },
-              };
-              if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
-              if (typeof chat.settings.temperature === 'number')
-                debugBody.temperature = chat.settings.temperature;
-              if (typeof chat.settings.top_p === 'number') debugBody.top_p = chat.settings.top_p;
-              if (typeof chat.settings.max_tokens === 'number')
-                debugBody.max_tokens = chat.settings.max_tokens;
-              if (supportsReasoning) {
-                const rc: any = {};
-                if (typeof chat.settings.reasoning_effort === 'string')
-                  rc.effort = chat.settings.reasoning_effort;
-                if (typeof chat.settings.reasoning_tokens === 'number')
-                  rc.max_tokens = chat.settings.reasoning_tokens;
-                if (Object.keys(rc).length > 0) debugBody.reasoning = rc;
-              }
-              if (supportsTools) {
-                debugBody.tools = toolDefinition as any;
-                debugBody.tool_choice = 'none';
-              }
-              if (providerSort === 'price' || providerSort === 'throughput') {
-                debugBody.provider = { sort: providerSort };
-              }
-              // For standard mode, include PDF parser and OpenRouter web plugin when selected
-              const combinedPluginsStd = (() => {
-                const arr: any[] = [];
-                if (Array.isArray(plugins) && plugins.length > 0) arr.push(...plugins);
-                if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
-                return arr;
-              })();
-              if (combinedPluginsStd.length > 0) debugBody.plugins = combinedPluginsStd;
-              if (get().ui.debugMode) {
-                set((s) => ({
-                  ui: {
-                    ...s.ui,
-                    debugByMessageId: {
-                      ...(s.ui.debugByMessageId || {}),
-                      [assistantMsg.id]: {
-                        body: JSON.stringify(debugBody, null, 2),
-                        createdAt: Date.now(),
-                      },
-                    },
-                  },
-                }));
-              }
-            } catch {}
-            const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
-            const requestedTokensRaw = supportsReasoning
-              ? chat.settings.reasoning_tokens
-              : undefined;
-            const effortRequested =
-              typeof requestedEffort === 'string' && requestedEffort !== 'none';
-            const tokensRequested =
-              typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
-            const autoReasoningEligible = !effortRequested && !tokensRequested;
-            const modelIdUsed = chat.settings.model;
-            const planCallbacks = createMessageStreamCallbacks(
-              {
-                chatId,
-                assistantMessage: assistantMsg,
-                set,
-                get,
-                startBuffered: false,
-                autoReasoningEligible,
-                modelIdUsed,
-                clearController: () => set((s) => ({ ...s, _controller: undefined }) as any),
-                persistMessage: saveMessage,
-              },
-              { startedAt: tStartPlan },
-            );
-            await streamChatCompletion({
-              apiKey: key || '',
-              model: chat.settings.model,
-              messages: streamingMessages,
-              modalities: isImageOutputSupported(modelMeta)
-                ? (['image', 'text'] as any)
-                : undefined,
-              temperature: chat.settings.temperature,
-              top_p: chat.settings.top_p,
-              max_tokens: chat.settings.max_tokens,
-              reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-              reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-              signal: controller.signal,
-              // Include tool schema for validation on follow-up call; disable further tool use
-              tools: supportsTools ? (toolDefinition as any) : undefined,
-              tool_choice: supportsTools ? ('none' as any) : undefined,
-              providerSort,
-              plugins: (() => {
-                const arr: any[] = [];
-                if (Array.isArray(plugins) && plugins.length > 0) arr.push(...plugins);
-                if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
-                return arr.length > 0 ? arr : undefined;
-              })(),
-              callbacks: planCallbacks,
-            });
-          }
+          await streamFinal({
+            chat,
+            chatId,
+            assistantMessage: assistantMsg,
+            messages: streamingMessages,
+            controller,
+            apiKey: key || '',
+            providerSort,
+            set,
+            get,
+            models: get().models,
+            persistMessage: saveMessage,
+            basePlugins: plugins,
+            searchEnabled,
+            searchProvider,
+            toolDefinition,
+            startBuffered: false,
+          });
           return;
         } catch (e: any) {
           if (e?.message === 'unauthorized')
@@ -1091,100 +441,23 @@ export function createMessageSlice(
       try {
         const controller = new AbortController();
         set((s) => ({ ...s, _controller: controller as any }) as any);
-        const tStart = performance.now();
-        // No automatic fallback web search; the model will call the tool when necessary
-        const streamingMessages = msgs;
-        {
-          const modelMeta = findModelById(get().models, chat.settings.model);
-          const supportsReasoning = isReasoningSupported(modelMeta);
-          // Store debug payload for this streaming call (standard mode)
-          try {
-            const debugBody: any = {
-              model: chat.settings.model,
-              messages: streamingMessages,
-              stream: true,
-              stream_options: { include_usage: true },
-            };
-            if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
-            if (typeof chat.settings.temperature === 'number')
-              debugBody.temperature = chat.settings.temperature;
-            if (typeof chat.settings.top_p === 'number') debugBody.top_p = chat.settings.top_p;
-            if (typeof chat.settings.max_tokens === 'number')
-              debugBody.max_tokens = chat.settings.max_tokens;
-            if (supportsReasoning) {
-              const rc: any = {};
-              if (typeof chat.settings.reasoning_effort === 'string')
-                rc.effort = chat.settings.reasoning_effort;
-              if (typeof chat.settings.reasoning_tokens === 'number')
-                rc.max_tokens = chat.settings.reasoning_tokens;
-              if (Object.keys(rc).length > 0) debugBody.reasoning = rc;
-            }
-            if (providerSort === 'price' || providerSort === 'throughput') {
-              debugBody.provider = { sort: providerSort };
-            }
-            const combinedPluginsStd = (() => {
-              const arr: any[] = [];
-              if (Array.isArray(plugins) && plugins.length > 0) arr.push(...plugins);
-              if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
-              return arr;
-            })();
-            if (combinedPluginsStd.length > 0) debugBody.plugins = combinedPluginsStd;
-            if (get().ui.debugMode) {
-              set((s) => ({
-                ui: {
-                  ...s.ui,
-                  debugByMessageId: {
-                    ...(s.ui.debugByMessageId || {}),
-                    [assistantMsg.id]: {
-                      body: JSON.stringify(debugBody, null, 2),
-                      createdAt: Date.now(),
-                    },
-                  },
-                },
-              }));
-            }
-          } catch {}
-          const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
-          const requestedTokensRaw = supportsReasoning ? chat.settings.reasoning_tokens : undefined;
-          const effortRequested = typeof requestedEffort === 'string' && requestedEffort !== 'none';
-          const tokensRequested = typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
-          const autoReasoningEligible = !effortRequested && !tokensRequested;
-          const modelIdUsed = chat.settings.model;
-          const streamCallbacks = createMessageStreamCallbacks(
-            {
-              chatId,
-              assistantMessage: assistantMsg,
-              set,
-              get,
-              startBuffered: attemptPlanning,
-              autoReasoningEligible,
-              modelIdUsed,
-              clearController: () => set((s) => ({ ...s, _controller: undefined }) as any),
-              persistMessage: saveMessage,
-            },
-            { startedAt: tStart },
-          );
-          await streamChatCompletion({
-            apiKey: key || '',
-            model: chat.settings.model,
-            messages: streamingMessages,
-            modalities: isImageOutputSupported(modelMeta) ? (['image', 'text'] as any) : undefined,
-            temperature: chat.settings.temperature,
-            top_p: chat.settings.top_p,
-            max_tokens: chat.settings.max_tokens,
-            reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-            reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-            signal: controller.signal,
-            providerSort,
-            plugins: (() => {
-              const arr: any[] = [];
-              if (Array.isArray(plugins) && plugins.length > 0) arr.push(...plugins);
-              if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
-              return arr.length > 0 ? arr : undefined;
-            })(),
-            callbacks: streamCallbacks,
-          });
-        }
+        await streamFinal({
+          chat,
+          chatId,
+          assistantMessage: assistantMsg,
+          messages: msgs,
+          controller,
+          apiKey: key || '',
+          providerSort,
+          set,
+          get,
+          models: get().models,
+          persistMessage: saveMessage,
+          basePlugins: plugins,
+          searchEnabled,
+          searchProvider,
+          startBuffered: attemptPlanning,
+        });
       } catch (e: any) {
         if (e?.message === 'unauthorized')
           set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: 'Invalid API key' } }));
@@ -1447,33 +720,24 @@ export function createMessageSlice(
           });
           // Store debug payload for regenerate streaming call (using snapshot where available)
           try {
-            const debugBody: any = {
-              model: replacement.model!,
-              messages: msgs,
+            const dbg = buildDebugBody({
+              modelId: replacement.model!,
+              messages: msgs as any,
               stream: true,
-              stream_options: { include_usage: true },
-            };
-            if (hadPdfEarlier)
-              debugBody.plugins = [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }];
-            if (searchWithBrave && providerForTurn === 'openrouter') {
-              debugBody.plugins = [...(debugBody.plugins || []), { id: 'web' }];
-            }
-            if (isImageOutputSupported(modelMeta)) debugBody.modalities = ['image', 'text'];
-            if (typeof tempUsed === 'number') debugBody.temperature = tempUsed;
-            if (typeof topPUsed === 'number') debugBody.top_p = topPUsed;
-            if (typeof maxTokUsed === 'number') debugBody.max_tokens = maxTokUsed;
-            if (supportsReasoning) {
-              const rc: any = {};
-              if (typeof rEffortUsed === 'string') rc.effort = rEffortUsed;
-              if (typeof rTokUsed === 'number') rc.max_tokens = rTokUsed;
-              if (Object.keys(rc).length > 0) debugBody.reasoning = rc;
-            }
-            if (
-              genSnapshot?.providerSort === 'price' ||
-              genSnapshot?.providerSort === 'throughput'
-            ) {
-              debugBody.provider = { sort: genSnapshot.providerSort };
-            }
+              includeUsage: true,
+              canImageOut: isImageOutputSupported(modelMeta),
+              temperature: tempUsed,
+              top_p: topPUsed,
+              max_tokens: maxTokUsed,
+              reasoningEffort: supportsReasoning ? rEffortUsed : undefined,
+              reasoningTokens: supportsReasoning ? rTokUsed : undefined,
+              providerSort: genSnapshot?.providerSort,
+              plugins: composePlugins({
+                hasPdf: hadPdfEarlier,
+                searchEnabled: searchWithBrave,
+                searchProvider: providerForTurn,
+              }),
+            });
             if (get().ui.debugMode) {
               set((s) => ({
                 ui: {
@@ -1481,7 +745,7 @@ export function createMessageSlice(
                   debugByMessageId: {
                     ...(s.ui.debugByMessageId || {}),
                     [replacement.id]: {
-                      body: JSON.stringify(debugBody, null, 2),
+                      body: JSON.stringify(dbg, null, 2),
                       createdAt: Date.now(),
                     },
                   },

@@ -6,12 +6,13 @@ export function extractWebSearchArgs(text: string): WebSearchRequest | null {
   if (typeof text !== 'string' || !text) return null;
   try {
     const candidates: Array<Record<string, any>> = [];
-    const jsonMatches = text.match(/\{[\s\S]*?\}/g) || [];
-    for (const match of jsonMatches) {
-      try {
-        const parsed = JSON.parse(match);
-        if (parsed && typeof parsed === 'object') candidates.push(parsed);
-      } catch {}
+    for (let i = 0; i < text.length; i += 1) {
+      if (text[i] !== '{') continue;
+      const parsed = parseJsonAfter(text, i);
+      if (parsed && parsed.value && typeof parsed.value === 'object') {
+        candidates.push(parsed.value);
+        i = parsed.endIndex;
+      }
     }
     for (const payload of candidates) {
       const direct = readSearchPayload(payload);
@@ -55,13 +56,17 @@ export function extractTutorToolCalls(text: string): TutorToolCall[] {
     const idx = text.indexOf(tool);
     if (idx < 0) continue;
     const cursor = Math.max(text.indexOf(':', idx), text.indexOf('(', idx));
-    const json = parseJsonAfter(text, cursor >= 0 ? cursor : idx);
+    const parsed = parseJsonAfter(text, cursor >= 0 ? cursor : idx);
+    const json = parsed?.value;
     if (json && typeof json === 'object') output.push({ name: tool, args: json });
   }
   return output;
 }
 
-function parseJsonAfter(source: string, from: number): any | undefined {
+function parseJsonAfter(
+  source: string,
+  from: number,
+): { value: any; endIndex: number } | undefined {
   const start = source.indexOf('{', from);
   if (start < 0) return undefined;
   let depth = 0;
@@ -88,7 +93,7 @@ function parseJsonAfter(source: string, from: number): any | undefined {
         if (depth === 0) {
           const raw = source.slice(start, i + 1);
           try {
-            return JSON.parse(raw);
+            return { value: JSON.parse(raw), endIndex: i };
           } catch {
             return undefined;
           }

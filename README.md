@@ -106,6 +106,7 @@ Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/star
 - API proxy: `/api/openrouter/*` for models/completions; `/api/brave` for web search
 - Markdown: `react-markdown` + GFM, Prism, KaTeX, Mermaid
 - Styles: Tailwind v4 base + `styles/francesco-bootstrap.css` tokens; `app/globals.css` layout
+- Agent services: `src/lib/agent/request.ts`, `searchFlow.ts`, and `tutorFlow.ts` centralize request building, web search orchestration, and tutor memory composition for slices.
 - Capabilities: Derived from OpenRouter model metadata (vision, audio input, image output, reasoning)
 - PDFs: Routed with OpenRouter’s file parser plugin — no local parsing required
 
@@ -129,6 +130,7 @@ Security notes:
 app/                    # Next.js App Router entry (layout, page, globals)
 src/components/         # React components (PascalCase .tsx)
 src/components/message/ # Message subcomponents (meta, reasoning, sources)
+src/components/settings/# Settings drawer panels per tab (models/chat/tutor/etc.)
 src/lib/                # Utilities, API client, state slices
 src/data/               # Curated model metadata
 src/types/              # Type augmentations
@@ -136,7 +138,7 @@ public/                 # Static assets served by Next
 assets/                 # Screenshots
 styles/                 # Global CSS tokens (francesco-bootstrap.css)
 scripts/                # Helper scripts (dev/build/start)
-tests/                  # Node-based unit tests (`npm run test`)
+tests/                  # Legacy Node-based unit tests (`npm run test` also runs colocated *.test.ts)
 ```
 
 ### Development

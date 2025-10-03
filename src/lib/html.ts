@@ -51,12 +51,19 @@ export function extractMainText(html: string): HtmlContentSummary {
     pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["'][^>]*>/i) ||
     pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["'][^>]*>/i);
   const headings: string[] = [];
-  const headingRegex = /<(h[1-4])[^>]*>([\s\S]*?)<\/\1>/gi;
-  let headingMatch: RegExpExecArray | null;
-  while ((headingMatch = headingRegex.exec(source))) {
-    const [, , headingContent] = headingMatch;
-    const cleaned = strip(headingContent);
-    if (cleaned) headings.push(cleaned);
+  const seen = new Set<string>();
+  const headingSources = [main, article, body, html].filter(Boolean) as string[];
+  for (const chunk of headingSources) {
+    const headingRegex = /<(h[1-4])[^>]*>([\s\S]*?)<\/\1>/gi;
+    let match: RegExpExecArray | null;
+    while ((match = headingRegex.exec(chunk))) {
+      const [, , headingContent] = match;
+      const cleaned = strip(headingContent);
+      if (!cleaned || seen.has(cleaned)) continue;
+      seen.add(cleaned);
+      headings.push(cleaned);
+      if (headings.length >= 12) break;
+    }
     if (headings.length >= 12) break;
   }
 

@@ -1,416 +1,352 @@
-# Dialogia Refactor Plan
+# Refactor Plan — Dialogia
 
-This plan outlines a focused, incremental refactor to reach higher standards of simplicity, modularity, consistency, and maintainability. It avoids wholesale rewrites and prioritizes small, verifiable steps.
+A staged, surgical refactor to improve simplicity, readability, modularity, naming consistency, and testability without changing user‑facing behavior.
 
-## Objectives
+## Goals
 
-- Reduce complexity and duplication across state, API, and UI layers
-- Improve naming, module boundaries, and documentation
-- Centralize configuration and environment handling
-- Strengthen privacy and auth gate correctness
-- Prepare the codebase for tests and incremental feature evolution
+- Reduce complexity by decomposing large modules into focused units.
+- Remove duplication and centralize shared logic and constants.
+- Tighten boundaries between UI state, domain logic, and IO (API/LLM).
+- Improve naming, documentation, and tests for critical utilities.
+- Keep proxies and secrets server-side while clarifying configuration.
 
 ---
 
-## Cross‑Cutting Naming + Conventions
+## High‑Risk/High‑Value Targets (Summary)
 
-Issues
+- Break up `src/lib/store/messageSlice.ts` into smaller domain modules; keep the slice thin.
+- Extract Brave/OpenRouter web search tooling into a shared service.
+- Extract Tutor hidden-context builders and memory update helpers.
+- Consolidate request payload/debug building and plugin assembly in one place.
+- Split `SettingsDrawer` into tab panels; move gesture logic from `app/page.tsx` into a hook.
+- Remove unused modules (`src/lib/env.ts`, `src/lib/pdfRag.ts` if not reintroduced, unused hooks/crypto) and dead code.
+- Add deterministic tests for core utilities (models, cost, html, tools, tutor memory, ZDR filters).
 
-- Non‑hook utilities prefixed with `use*` are misleading (e.g., `src/lib/env.ts:9`).
-- Mixed terminology and defaults for ZDR (“Zero Data Retention”) preference between code and README.
-- Large modules mixing multiple concerns (e.g., `src/lib/store/messageSlice.ts`) reduce readability and testability.
+---
+
+## Architecture & Boundaries
+
+- Separate concerns explicitly:
+  - Extract IO/services from state slices: Add `src/lib/services/` for OpenRouter calls composition, Brave search, and planning flows. Keep slices responsible for state updates only.
+  - Extract Tutor flows into `src/lib/agent/tutorFlow.ts` (welcome, memory advance, hidden-context composition, quiz/tool merges).
+  - Extract Search flows into `src/lib/agent/searchFlow.ts` (tool schema, OR plugin choice, Brave API routing, results merging, sources block assembly).
+  - Extract request build helpers into `src/lib/agent/request.ts` (provider sort, tools array, PDF plugins, debug payloads).
+
+- Introduce minimal “ports and adapters” shape:
+  - Define small interfaces where useful (e.g., `MessagePersister`, `SearchClient`) to ease testing.
+  - Keep `src/lib/openrouter.ts` low-level; compose higher-level behavior in services.
+
+- Document module responsibilities in short headers at the top of new files.
 
 Actions
 
-- Rename non‑hook env helpers:
-  - Rename `useOpenRouterProxy` to `isOpenRouterProxyEnabled` (pure util, not a hook).
-  - Rename `defaultZdrOnly` to `getDefaultZdrOnly` for clarity.
-- Confirm ZDR defaults OFF by default:
-  - Keep default as false when unset (privacy toggle is opt‑in), and update README to match.
-  - Document the source of truth for the default (README + `src/lib/env.ts`).
-- Split large modules by concern with narrow exports (details below per area).
+- Create `src/lib/agent/request.ts`; move request/stream/debug/preamble assembly helpers here.
+- Create `src/lib/agent/searchFlow.ts`; move Brave/OR search tooling logic here.
+- Create `src/lib/agent/tutorFlow.ts`; move tutor preamble, hidden content, memory update orchestration here (use existing primitives).
+- Convert `messageSlice.ts` to call the above modules; remove duplicate inline logic.
 
 ---
 
-## Environment + Configuration
+## Zustand Store Slices
 
-Issues
+Current issues
 
-- README previously suggested ZDR defaulting to on, but code defaults to off (`src/lib/env.ts:15`–`17`).
-- Env access is scattered; no single typed config surface.
+- `messageSlice.ts` is very large and mixes IO, state, planning, search, tutor, and persistence.
+- Tutor hidden content building is duplicated across `chatSlice.ts` and `messageSlice.ts`.
+- Provider sorting and plugin assembly duplicated across slices (`messageSlice`, `compareSlice`).
 
 Actions
 
-- Create `src/lib/config.ts` and centralize typed reads with safe defaults:
-  - `getPublicOpenRouterKey()`, `isOpenRouterProxyEnabled()`, `hasBraveKey()`, `getDefaultZdrOnly()`, `getRoutePreferenceDefault()`.
-  - Move logic from `src/lib/env.ts` and re‑export for compatibility (deprecate old names).
-- Replace `process.env` reads across the codebase with calls to `config.ts`.
-- Update README and `.env.example` to state ZDR is off by default and is an optional privacy toggle.
+- Keep slices thin:
+  - Move heavy logic into service modules; expose small functions that return state patches or side effects to apply.
+  - Keep IO (fetch/stream) in services; pass callbacks to update state via injected functions.
+- Extract shared helpers:
+  - Extract `buildHiddenTutorContent(tutorPayload) => string` used wherever hidden content is set.
+  - Extract `getProviderSort(ui.routePreference) => 'price'|'throughput'`.
+  - Extract `buildPlugins({ hasPdf, searchProvider, searchEnabled })`.
+  - Extract `snapshotGenSettings(chat, modelMeta)`.
+- Normalize naming of UI “next\*” flags vs chat settings in one mapping helper: `deriveChatSettingsFromUi(ui, previous?)`.
+- Remove state writes that are not persisted or visible (e.g., duplicate backfills) from slices; do in services and persist once.
 
 ---
 
-## Auth Gate + Middleware
+## Messaging/Agent Pipeline
 
-Issues
+Current issues
 
-- Cookie name duplicated in middleware and server lib (`middleware.ts:3` vs `src/lib/auth.ts`).
-- Middleware needs to run on the edge (WebCrypto) while server lib uses Node crypto; constants cannot be imported as‑is.
-- `PUBLIC_PREFIXES` contains `/public`, which is not a user path in Next static routing (see `middleware.ts:16`).
-- Redundant allowlisting logic: both `config.matcher` and `isPublicPath` attempt to filter routes.
+- Planning + streaming path contains repeated debug payload assembly and plugin logic.
+- Inline tool-call extraction for `web_search` and tutor quiz parsing is mixed with message IO.
+- Multiple places accumulate tutor reasoning/hidden state with similar code.
 
 Actions
 
-- Extract shared auth constants and minimal helpers into an isomorphic module:
-  - Create `src/lib/auth/shared.ts` defining `AUTH_COOKIE_NAME` and base64url helpers.
-  - Create `src/lib/auth/edge.ts` for edge verification (WebCrypto), used by `middleware.ts`.
-  - Keep `src/lib/auth.ts` for server‑only helpers (Node `crypto`), importing constants from `shared.ts`.
-- Use the shared constant in `middleware.ts` to eliminate duplication.
-- Remove `/public` from `PUBLIC_PREFIXES` (`middleware.ts:16`).
-- Simplify route filtering to a single approach:
-  - Prefer `config.matcher` as the canonical filter. In `isPublicPath`, keep only path checks that must be dynamic at runtime.
-- Add unit tests for token creation/verification parity (server vs edge) once a test harness is in place.
+- Extract pipeline steps into dedicated functions:
+  - “Plan step”: `planTurn({chat, prior, tools, system, providerSort})` → `{message, toolCalls, usage}`.
+  - “Tool execution”: `executeWebSearch({provider, args})`, `applyTutorToolCall(...)`.
+  - “Final stream”: `streamFinal({messages, plugins, callbacks})` using a single `createMessageStreamCallbacks`.
+- Replace ad‑hoc JSON detection with centralized helpers from `agent/tools.ts` only.
+- Keep tutor tool rendering and hidden-content composition in `tutorFlow.ts`; call it from the pipeline.
+- Ensure annotations propagation (PDF parsing) is handled once in request builder and stream callbacks.
 
 ---
 
-## API Client + Proxy
+## Web Search (Brave + OpenRouter Web Plugin)
 
-Issues
+Current issues
 
-- Proxy/header logic duplicated across server routes and client (`src/lib/openrouter.ts`, `app/api/openrouter/*`).
-- Timeouts and error mapping vary.
+- Brave tool JSON, result mapping, and sources block assembly are embedded in `messageSlice.ts` and partly duplicated in DeepResearch.
+- Two ways to hit Brave exist (server route `/api/brave` from UI; direct fetch in DeepResearch).
 
 Actions
 
-- Create a minimal OR client wrapper: `src/lib/api/orClient.ts`:
-  - `orFetchModels()`, `orChatCompletions({ stream?: boolean })`, `orFetchZdrEndpoints()`.
-  - Unify headers (`HTTP-Referer`, `X-Title`), conservative timeouts, and error mapping.
-  - Internally select proxy vs direct based on `isOpenRouterProxyEnabled()` and runtime (browser/server).
-- Replace direct OpenRouter fetches and proxy calls with the wrapper in:
-  - `src/lib/openrouter.ts` (thin wrapper remains or is folded into `api/orClient.ts`).
-  - `src/lib/deepResearch.ts` to reuse request building and error handling.
-- Coalesce ZDR provider/model list fetching into a single exported helper in the wrapper.
+- Extract a single `searchFlow` with:
+  - `getSearchToolDefinition()` for function tools.
+  - `runBraveSearch(q, count)` calling the existing `/api/brave` route when in the browser; call Brave directly only from server modules.
+  - `mergeSearchResults([...])` and `formatSourcesBlock(results)`.
+- Replace duplicated Brave logic in `messageSlice` with calls to `searchFlow`.
+- In `lib/deepResearch.ts`, reuse the same mapping and formatting helpers; keep direct server fetch (it already runs server‑side) but share normalization.
 
 ---
 
-## State Management (Zustand)
+## Tutor Mode & Memory
 
-Issues
+Current issues
 
-- `src/lib/store/messageSlice.ts` is large and cross‑cuts concerns: composition of messages, attachments processing, tool orchestration, streaming IO, DeepResearch branching, tutor memory updates, debug logging, and metrics.
-- ZDR enforcement logic appears in multiple places (message/compare/model slices).
-- Debug payload plumbing is always present, not clearly dev‑only.
+- Hidden tutor context assembly is duplicated several times.
+- Memory frequency logic and snapshotting appear in multiple places.
 
 Actions
 
-- Extract message concerns into dedicated modules:
-  - `src/lib/agent/buildMessages.ts` (exists as `conversation.ts` but extend it):
-    - Keep only prompt construction and token‑window budgeting.
-  - `src/lib/agent/attachments.ts`:
-    - Image/audio/PDF pre‑processing, base64 handling, file→dataURL conversion, content blocks.
-  - `src/lib/agent/streamHandlers.ts`:
-    - Shared SSE parsing, reasoning/image/annotation event handling, `stripLeadingToolJson` usage.
-  - `src/lib/agent/tools.ts`:
-    - Web search tool function shapes, inline extraction, tutor tool parsing.
-  - `src/lib/agent/deepResearchOrchestrator.ts`:
-    - DeepResearch branch handling invoked by store; leave HTTP in `app/api/deep-research/route.ts`.
-- Extract ZDR enforcement to `src/lib/zdr.ts`:
-  - `enforceZdrModelSelection(modelId, cache)` used by send/compare/model loading; centralize fallback logic (explicit model list → providers → strict failure).
-- Gate debug UI/state by `ui.debugMode` or `process.env.NODE_ENV !== 'production'`:
-  - Wrap writes to `ui.debugByMessageId` and heavy debug strings with a guard.
-- Keep `StoreState` surface stable; refactor internals module‑by‑module.
+- Extract to `agent/tutorFlow.ts`:
+  - `buildHiddenTutorContent(tutor)` — composes Recap + JSON once.
+  - `maybeAdvanceTutorMemory({chat, messages, modelId, apiKey})` — returns `{updatedChat, debug}` and persists.
+  - `attachTutorUiState(messageId, patch)` — merges UI state and message `tutor` payload consistently.
+  - `ensureTutorDefaults({ui, chat})` — computes tutor defaults when enabling/sticky.
+- Replace all scattered hidden-content setting with the centralized helper.
+- Add tests for `normalizeTutorQuizPayload`, `buildTutorWelcomeFallback`, memory frequency boundaries.
 
 ---
 
-## Components
+## OpenRouter Client & Request Building
 
-Composer (`src/components/Composer.tsx`)
+Current issues
 
-- Issues: Mixed concerns (text input, slash commands, file intake, menus, chips, estimates) in one component; long file.
-- Actions:
-  - Extract subcomponents:
-    - `ComposerInput` (textarea, autofocus, slash key handling)
-    - `ComposerActions` (attach/search/reasoning/send controls for desktop)
-    - `ComposerMobileMenu` (mobile actions sheet)
-    - `AttachmentPreviewList` (with image/pdf/audio badges)
-  - Extract slash suggestion generator into a pure util `src/lib/slash.ts` with typed suggestions.
-  - Move attachment ingestion to `src/lib/agent/attachments.ts` and call from Composer.
-
-MessageList (`src/components/MessageList.tsx`)
-
-- Issues: Handles autoscroll, copy/edit/branch, meta panels, and lightbox in one component.
-- Actions:
-  - Split into:
-    - `MessageList` (virtualized list + scroll management only)
-    - `MessageCard` (single message presentation + local actions)
-    - `MessagePanels` (reasoning/sources/debug subpanel bundle)
-  - Consider simple virtualization (e.g., windowed rendering) to improve large chat performance.
-
-ModelPicker (`src/components/ModelPicker.tsx`)
-
-- Issues: Complex logic, repeated formatting, ad‑hoc filtering.
-- Actions:
-  - Extract capability calculation to a util (`src/lib/models.ts` exports already exist; compose these helpers).
-  - Debounce filter input and memoize visible options.
-  - Consolidate `zdr` warnings/labels using centralized ZDR helper.
-
-ChatSidebar (`src/components/ChatSidebar.tsx`) + Drag & Drop (`src/lib/dragDrop.ts`)
-
-- Issues: Global `currentDragData` and manual DnD wiring.
-- Actions:
-  - Replace global variable with component state or a lightweight context.
-  - Encapsulate DnD logic in a hook `useDragAndDrop()` that never writes to module globals; return handlers and data.
-  - Optionally consider pointer‑gesture driven reordering if DnD remains complex.
-
-TopHeader (`src/components/TopHeader.tsx`)
-
-- Actions:
-  - Extract the mobile overflow menu into its own controlled popover component to reuse behaviors.
-
-Message Subcomponents (`src/components/message/*`)
-
-- Actions:
-  - Keep panels small and focused; convert any repeated className strings to small reusable primitives.
-
----
-
-## Styles + Tokens
-
-Issues
-
-- `app/globals.css` is large and mixes layout primitives, component styles, and animations.
-- Design tokens live in `styles/francesco-bootstrap.css` but there are repeated semantic classes in globals.
-- Global `*` transitions may affect perf and cause unintended transitions.
+- Provider sort mapping duplicated.
+- PDF plugin composition duplicated.
+- Debug payload construction repeated in planning and streaming.
 
 Actions
 
-- Keep tokens and primitives in `styles/francesco-bootstrap.css` and move component‑scoped rules into CSS modules or colocated `.css` next to components where practical.
-- Prune/limit global `* { transition: ... }` to only high‑value properties or remove for perf; respect `prefers-reduced-motion` (already present) and simplify default transitions.
-- Reduce duplication of chip/button classes by consolidating shared primitives (e.g., `.badge`, `.btn`, `.btn-outline`) with minimal variants.
-- Document CSS structure in README (what lives where, how to add variants).
+- In `agent/request.ts`:
+  - `providerSortFromRoutePref(pref)`.
+  - `pdfPlugins(hasPdf)`.
+  - `composePlugins({ hasPdf, searchProvider, searchEnabled })`.
+  - `buildDebugBody({model, messages, tools, reasoning, providerSort, plugins})` — used by both plan and stream.
+- Use the above in `messageSlice` and `compareSlice`.
 
 ---
 
-## Data + Curated Models + Presets
+## Components & UI
 
-Issues
+Current issues
 
-- Two presets modules: `src/data/presets.ts` (unused) and `src/lib/presets.ts` (Dexie‑backed persistence).
-- Curated models are used both in constants and ModelPicker; no health‑check to ensure curated IDs exist in fetched models.
+- `SettingsDrawer.tsx` is large and multi‑concern.
+- Swipe gesture logic for the sidebar lives in `app/page.tsx`.
+- Attachment ingestion logic in `Composer.tsx` duplicates file handling across paste/drop/input.
 
 Actions
 
-- Delete or integrate `src/data/presets.ts`; seed optional defaults by importing into `src/lib/presets.ts` on first run if desired.
-- Add a curated model health check during `loadModels`:
-  - If curated default is missing from available models, show a one‑line UI notice and fallback to first available model.
-- Keep curated lists small; document where to add/edit curated entries and the selection criteria.
+- Split `SettingsDrawer` into sub‑panels under `src/components/settings/`:
+  - `ModelsPanel.tsx`, `ChatPanel.tsx`, `TutorPanel.tsx`, `DisplayPanel.tsx`, `PrivacyPanel.tsx`, `DataPanel.tsx`, `LabsPanel.tsx`.
+  - Keep a thin wrapper `SettingsDrawer.tsx` to orchestrate tabs and scroll.
+- Extract `useSidebarGestures()` hook to `src/lib/hooks/useSidebarGestures.ts`; import in `app/page.tsx`.
+- Extract attachment utilities to `src/lib/attachments.ts` (UI side):
+  - `readFileAsDataURL(file)`, `detectAudioFormat(file)`, `toAttachment(file)` with max size/type guards.
+  - Replace repetitions in `Composer` for paste/drop/input with unified helpers.
+- Define constants in `src/lib/constants.ts` for size limits and counts:
+  - `MAX_IMAGES_PER_MESSAGE`, `MAX_PDF_SIZE_MB`, `MAX_AUDIO_SIZE_MB`.
 
 ---
 
-## DeepResearch
+## Utilities, Types, Naming
 
-Issues
+Current issues
 
-- Algorithm is embedded in `src/lib/deepResearch.ts` and branching logic appears in the store.
-- Mixed concerns: HTML parsing, tool orchestration, and OpenRouter calls.
+- `src/lib/env.ts` re-exports `config` with deprecated helpers and is not used.
+- `src/lib/pdfRag.ts` appears unused.
+- `src/lib/hooks/useDebouncedCallback.ts` appears unused.
+- `src/lib/crypto.ts` appears unused.
 
 Actions
 
-- Move orchestration entry from store to a dedicated orchestrator (`src/lib/agent/deepResearchOrchestrator.ts`) that calls into `deepResearch.ts`.
-- Extract HTML parsing helpers from `deepResearch.ts` to `src/lib/html.ts` with clear contracts and unit tests.
-- Reuse `api/orClient.ts` for OR requests; keep Brave fetcher self‑contained.
+- Delete `src/lib/env.ts`; update any imports (none found) to use `@/lib/config` directly.
+- Delete unused modules (`src/lib/pdfRag.ts`, `src/lib/hooks/useDebouncedCallback.ts`, `src/lib/crypto.ts`) unless reintroduced with tests.
+- Add/clarify types where `any` is prevalent in request builders and stream callbacks; prefer explicit `unknown` → narrow.
+- Normalize string literal unions and enums across modules (e.g., route preference vs provider sort).
 
 ---
 
-## Models + Capabilities
+## API Routes & Middleware
 
-Issues
+Current issues
 
-- Capability detection relies on multiple heuristics in `src/lib/models.ts`. Some duplication and loose `any` usage.
+- Brave search logic duplicated between route and DeepResearch.
+- Public path checks rely on exact matches; acceptable but consider trailing slashes.
 
 Actions
 
-- Tighten types around `ORModel['raw']` via a lightweight type to reduce `any` where feasible.
-- Add unit tests for capability detection paths (vision/audio/image output, reasoning) using sample model payloads.
-- Keep `formatModelLabel` and `describeModelPricing` as the canonical normalization helpers and remove ad‑hoc labels elsewhere.
+- Keep `/api/openrouter/*` and `/api/brave` as-is; expose normalization helpers in shared services.
+- Consider adding `startsWith('/access')` in `isPublicPath` only if subroutes arise; otherwise leave matcher to guard assets.
+- Add minimal error codes/types for `/api/brave` to aid UI notices consistently.
 
 ---
 
-## Cost + Metrics
+## Testing & Quality Gates
 
-Issues
+Current baseline
 
-- Cost calculation and metrics formatting are spread between `src/lib/cost.ts` and UI.
+- Node test runner via `tsx --test`; suites exist for: config, ZDR, models, streaming, tutor memory.
+
+Gaps & Actions
+
+- Add unit tests:
+  - `lib/cost.describeModelPricing` and edge cases for pricing normalization.
+  - `lib/html.extractMainText` (title/description/headings extraction, entity decoding, caps).
+  - `lib/agent/tools.extractWebSearchArgs` and `normalizeTutorQuizPayload`.
+  - `lib/agent/tutorMemory.*` (frequency calculation boundaries, placeholder handling).
+  - `lib/zdr.filterZdrModels` behavior when lists are empty/provider‑only/model‑only.
+- Add service tests for `agent/request` helpers (plugin assembly, provider sort mapping, debug body presence).
+- Optional integration stub: a fast test for `deepResearch` using stubbed fetch that simulates tool calls.
+- Keep tests colocated following `*.test.ts(x)` convention.
+
+---
+
+## Performance & UX
 
 Actions
 
-- Provide small formatters:
-  - `formatTokens(value)`, `formatThroughput(tokens, ms)`, and reuse across UI components.
-- Use a single descriptor for model pricing (`describeModelPricing` already exists); avoid re‑formatting in components.
+- Throttle or buffer UI updates during streaming where beneficial (already handled by callbacks; verify flush frequency). Consider a small buffer for high‑frequency token updates if needed.
+- Ensure `MessageList` only re-renders affected rows (it already maps by id; verify memoization strategy).
+- Prefetch settings/compare drawers as already done; keep `requestIdleCallback` fallback.
 
 ---
 
-## Accessibility + UX
+## Security & Privacy
 
 Actions
 
-- Ensure all icon‑only buttons have `aria-label` (most do; verify in `TopHeader`, `ModelPicker`, `Composer`, `MessageList`).
-- Verify keyboard navigation in popovers/menus (`ModelPicker`, composer mobile menu, settings drawer). Many are already ARIA‑labeled; keep it consistent.
-- Add `role`, `aria-expanded`, `aria-controls` consistently to custom popovers.
+- Maintain proxy default (`NEXT_PUBLIC_USE_OR_PROXY=true`) and server‑side keys.
+- Keep Brave key server-only (DeepResearch and `/api/brave`); do not introduce new `NEXT_PUBLIC_*` vars.
+- Preserve ZDR enforcement; centralize model/provider list caching and notices via shared helpers.
 
 ---
 
-## Performance
+## Dead Code & Cleanup (Quick Wins)
 
 Actions
 
-- Virtualize long message lists (simple windowing) to reduce DOM churn.
-- Debounce model filtering in `ModelPicker` and expensive compute in `Composer`.
-- Keep `requestIdleCallback` warm‑up for drawers; ensure fallbacks avoid long main‑thread tasks.
-- Confirm Mermaid and Prism are always dynamically loaded (they are); keep `securityLevel: 'strict'` for Mermaid.
+- Delete `src/lib/env.ts`.
+- Delete `src/lib/pdfRag.ts` unless kept for future PDF local RAG (currently unused).
+- Delete `src/lib/crypto.ts` unless UI key encryption is reintroduced.
+- Delete `src/lib/hooks/useDebouncedCallback.ts` if confirm unused.
+- Remove unreachable branches and duplicate notice strings where central helpers exist.
 
 ---
 
-## Testing Strategy (incremental)
+## Step‑By‑Step Implementation Plan (Milestones)
 
-Add unit tests where logic is pure and deterministic:
+1. Create shared helpers
 
-- Env defaults and config parsing (`src/lib/config.ts`): ZDR default, proxy flag.
-- Auth token parity (server vs edge) with known secret and payload.
-- `stripLeadingToolJson` cases (fenced JSON and inline blocks).
-- Model capability detection helpers.
-- Tutor memory normalization + limit enforcement.
-- Token estimate and cost calculation.
-- HTML extraction from `deepResearch` parser using small HTML fixtures.
+- Add `src/lib/agent/request.ts` with provider sort, plugin assembly, debug body, and system preamble helpers.
+- Add `src/lib/agent/searchFlow.ts` with tool schema, Brave runner, sources formatting.
+- Add `src/lib/agent/tutorFlow.ts` with hidden-content builder, tutor defaults, memory advance orchestration.
 
-Introduce tests gradually (Jest or Vitest) and colocate as `*.test.ts(x)`.
+2. Refactor slices to use helpers
 
----
+- Replace in `messageSlice.ts`:
+  - Inline Brave tool handling → `searchFlow`.
+  - Hidden content backfills and tutor merges → `tutorFlow.buildHiddenTutorContent` + centralized attach.
+  - Provider sort and plugin arrays → `agent/request` helpers.
+- Replace in `compareSlice.ts`:
+  - Provider sort and plugin assembly → `agent/request` helpers.
 
-## Security + Privacy
+3. UI extraction
 
-Actions
+- Split `SettingsDrawer` into panels in `src/components/settings/*` with stable props.
+- Add `useSidebarGestures` hook and use in `app/page.tsx`.
+- Extract attachment helpers and constants; replace duplicated file handling in `Composer.tsx`.
 
-- Enforce ZDR consistently via centralized helper before sends and compares; provide a clear user notice when blocked.
-- Ensure no leakage of secrets to client (proxy flag + server routes already in place)
-  - Audit `NEXT_PUBLIC_*` usage remains minimal.
-- Review `middleware.ts` matcher and `isPublicPath` to avoid accidental gating of public assets; remove `/public` prefix check.
+4. Cleanup & consistency
 
----
+- Remove unused modules/files (env/pdfRag/crypto/debounced hook) and unused imports.
+- Normalize notices and error messages via shared constants.
 
-## Documentation + Scripts
+5. Tests
 
-Actions
+- Add targeted unit tests for new helpers and existing utilities as outlined.
+- Keep `npm run test` green; update README with any new scripts if added.
 
-- Update README to reflect:
-  - ZDR default OFF (opt‑in privacy toggle exposed in Settings and env via `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT`)
-  - New env functions and naming
-  - High‑level architecture map (state slices, agent modules, API wrapper)
-- Add `npm run test` and document how to run tests.
-- Keep `.env.example` synchronized with README.
+6. Documentation
 
----
-
-## Proposed Module Map (Illustrative)
-
-- `src/lib/config.ts` — central env/config
-- `src/lib/api/orClient.ts` — OpenRouter client (proxy/direct)
-- `src/lib/zdr.ts` — ZDR lists + enforcement
-- `src/lib/agent/`:
-  - `buildMessages.ts` — LLM payload construction
-  - `attachments.ts` — file ingestion + content blocks
-  - `streamHandlers.ts` — SSE parsing + callbacks
-  - `tools.ts` — tool schemas + inline extraction
-  - `deepResearchOrchestrator.ts` — store‑facing orchestration
-- `src/lib/auth/`:
-  - `shared.ts` — constants + base64url
-  - `edge.ts` — WebCrypto verify
-  - `index.ts` — Node crypto (current `auth.ts`)
-- `src/lib/html.ts` — HTML extraction helpers (from DeepResearch)
+- Update README “Architecture” with new module boundaries.
+- Document any new env expectations (none beyond existing) and testing guidance.
 
 ---
 
-## Example Refactors (Patterns)
+## Non‑Goals (For Future Consideration)
 
-- Rename env util (non‑hook):
-
-  ```ts
-  // src/lib/env.ts (before)
-  export function useOpenRouterProxy(): boolean {
-    return process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
-  }
-
-  // src/lib/config.ts (after)
-  export function isOpenRouterProxyEnabled(): boolean {
-    return process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
-  }
-  ```
-
-- Centralize ZDR enforcement:
-
-  ```ts
-  // src/lib/zdr.ts
-  export async function enforceZdrModelSelection(modelId: string, cache: ZdrCache) {
-    const ids = cache.modelIds ?? (cache.modelIds = await fetchZdrModelIds());
-    if (ids.size > 0) return ids.has(modelId);
-    const providers = cache.providers ?? (cache.providers = await fetchZdrProviderIds());
-    return providers.has(modelId.split('/')[0]);
-  }
-  ```
-
-- Extract attachment processing:
-
-  ```ts
-  // src/lib/agent/attachments.ts
-  export async function toDataUrl(file: File): Promise<string> {
-    /* ... */
-  }
-  export function toAudioBlock(fileOrDataUrl: { dataURL?: string; name?: string; mime?: string }) {
-    // derive base64 + format
-  }
-  ```
-
-- Edge/server auth split:
-
-  ```ts
-  // src/lib/auth/shared.ts
-  export const AUTH_COOKIE_NAME = 'dlg_access';
-  export const base64url = (buf: Uint8Array) => /* ... */;
-
-  // middleware.ts
-  import { AUTH_COOKIE_NAME } from '@/lib/auth/shared';
-  ```
+- Token counting via model‑specific encoders (keep current estimator simple).
+- Server‑side persistence/export beyond IndexedDB (scope remains local‑first).
+- Introducing a global state management change (remain on Zustand; just modularize).
 
 ---
 
-## Rollout Plan (Incremental)
+## Appendix — Example Refactor Patterns
 
-1. Environment and auth constants
+Hidden tutor content centralization (illustrative)
 
-- Add `config.ts`, `auth/shared.ts`, and rename `useOpenRouterProxy` → `isOpenRouterProxyEnabled`.
-- Confirm ZDR default OFF (no code change needed) and fix `/public` prefix in middleware; update docs.
+```ts
+// src/lib/agent/tutorFlow.ts
+export function buildHiddenTutorContent(tutor: any): string {
+  const parts: string[] = [];
+  const recap = buildTutorContextSummary(tutor);
+  const json = buildTutorContextFull(tutor);
+  if (recap) parts.push(`Tutor Recap:\n${recap}`);
+  if (json) parts.push(`Tutor Data JSON:\n${json}`);
+  return parts.join('\n\n');
+}
+```
 
-2. API wrapper
+Provider sort and plugin assembly (illustrative)
 
-- Introduce `api/orClient.ts` and switch `openrouter.ts`/server routes incrementally.
+```ts
+export const providerSortFromRoutePref = (pref: 'speed' | 'cost') =>
+  pref === 'cost' ? 'price' : 'throughput';
 
-3. ZDR centralization
+export function composePlugins({
+  hasPdf,
+  searchProvider,
+  searchEnabled,
+}: {
+  hasPdf: boolean;
+  searchProvider: 'brave' | 'openrouter';
+  searchEnabled: boolean;
+}) {
+  const arr: any[] = [];
+  if (hasPdf) arr.push({ id: 'file-parser', pdf: { engine: 'pdf-text' } });
+  if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
+  return arr.length ? arr : undefined;
+}
+```
 
-- Add `zdr.ts` and replace scattered enforcement in send/compare/model slices.
+These snippets demonstrate consolidation targets; do not change runtime behavior.
 
-4. Message slice decomposition
+---
 
-- Extract attachments/tool/streaming helpers; keep store interface stable.
+## Acceptance Criteria
 
-5. Component splits
-
-- Split `Composer`, `MessageList`, and `TopHeader` sub‑components.
-
-6. Tests
-
-- Add unit tests for env, auth parity, ZDR, tool JSON stripping, tutor memory, model capabilities.
-
-7. Docs + cleanup
-
-- Update README/.env.example; remove dead `src/data/presets.ts` if unused.
-
-This plan keeps behavior intact while making the codebase simpler, more modular, and easier to test and evolve.
+- No user‑visible regressions; identical outputs for the same inputs.
+- Slices become thin; heavy logic lives in dedicated, tested helpers.
+- Duplicate logic removed: hidden tutor content, provider sort, plugins, debug bodies.
+- Unused modules removed.
+- New/updated tests pass with `npm run test`; types pass with `npm run lint:types`.
