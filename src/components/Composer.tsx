@@ -237,65 +237,27 @@ export default function Composer({
 
   const onFilesChosen = async (files: FileList | File[]) => {
     if (!canVision) return;
-    const arr = Array.from(files || []);
-    const max = 4;
-    const remain = Math.max(0, max - attachments.length);
-    const toProcess = arr.slice(0, remain);
-    const accepted = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+    const toProcess = clampImages(attachments.filter((a) => a.kind === 'image').length, files);
     const next: Attachment[] = [];
     for (const f of toProcess) {
-      if (!accepted.includes(f.type)) continue;
-      if (f.size > 5 * 1024 * 1024) continue; // 5MB cap per image
-      const dataURL: string = await new Promise((resolve, reject) => {
-        const fr = new FileReader();
-        fr.onload = () => resolve(String(fr.result || ''));
-        fr.onerror = () => reject(fr.error);
-        fr.readAsDataURL(f);
-      });
-      let width: number | undefined;
-      let height: number | undefined;
-      try {
-        await new Promise<void>((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            width = img.width;
-            height = img.height;
-            resolve();
-          };
-          img.onerror = () => resolve();
-          img.src = dataURL;
-        });
-      } catch {}
-      next.push({
-        id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        kind: 'image',
-        name: f.name,
-        mime: f.type,
-        size: f.size,
-        width,
-        height,
-        dataURL,
-      });
+      const att = await toImageAttachment(f);
+      if (att) next.push(att);
     }
     if (next.length) setAttachments((prev) => [...prev, ...next]);
   };
 
   const onPdfChosen = async (files: FileList | File[]) => {
     const arr = Array.from(files || []);
-    const accepted = ['application/pdf'];
     const maxDocs = 2;
     const existingDocs = attachments.filter((a) => a.kind === 'pdf').length;
     const remain = Math.max(0, maxDocs - existingDocs);
     const toProcess = arr.slice(0, remain);
+    const next: Attachment[] = [];
     for (const f of toProcess) {
-      if (!accepted.includes(f.type)) continue;
-      if (f.size > 15 * 1024 * 1024) continue; // 15MB per pdf
-      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      setAttachments((prev) => [
-        ...prev,
-        { id, kind: 'pdf', name: f.name, mime: f.type, size: f.size, file: f },
-      ]);
+      const att = await toPdfAttachment(f);
+      if (att) next.push(att);
     }
+    if (next.length) setAttachments((prev) => [...prev, ...next]);
   };
 
   const onPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -325,8 +287,7 @@ export default function Composer({
       const imgs = arr.filter((f) => f.type.startsWith('image/'));
       const auds = arr.filter(
         (f) =>
-          f.type === 'audio/wav' ||
-          f.type === 'audio/mpeg' ||
+          f.type.startsWith('audio/') ||
           f.name.toLowerCase().endsWith('.wav') ||
           f.name.toLowerCase().endsWith('.mp3'),
       );
@@ -338,34 +299,14 @@ export default function Composer({
 
   const onAudioChosen = async (files: FileList | File[]) => {
     const arr = Array.from(files || []);
-    const accepted = ['audio/wav', 'audio/mpeg'];
-    const maxAud = 1; // keep it simple: one audio per message
+    const maxAud = 1;
     const existingAud = attachments.filter((a) => a.kind === 'audio').length;
     const remain = Math.max(0, maxAud - existingAud);
     const toProcess = arr.slice(0, remain);
     const next: Attachment[] = [];
     for (const f of toProcess) {
-      const isAccepted =
-        accepted.includes(f.type) ||
-        f.name.toLowerCase().endsWith('.wav') ||
-        f.name.toLowerCase().endsWith('.mp3');
-      if (!isAccepted) continue;
-      if (f.size > 15 * 1024 * 1024) continue; // 15MB cap for audio
-      const dataURL: string = await new Promise((resolve, reject) => {
-        const fr = new FileReader();
-        fr.onload = () => resolve(String(fr.result || ''));
-        fr.onerror = () => reject(fr.error);
-        fr.readAsDataURL(f);
-      });
-      next.push({
-        id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        kind: 'audio',
-        name: f.name,
-        mime: f.type || (f.name.toLowerCase().endsWith('.wav') ? 'audio/wav' : 'audio/mpeg'),
-        size: f.size,
-        dataURL,
-        file: f,
-      });
+      const att = await toAudioAttachment(f);
+      if (att) next.push(att);
     }
     if (next.length) setAttachments((prev) => [...prev, ...next]);
   };
@@ -501,8 +442,7 @@ export default function Composer({
               const imgs = arr.filter((f) => f.type.startsWith('image/'));
               const auds = arr.filter(
                 (f) =>
-                  f.type === 'audio/wav' ||
-                  f.type === 'audio/mpeg' ||
+                  f.type.startsWith('audio/') ||
                   f.name.toLowerCase().endsWith('.wav') ||
                   f.name.toLowerCase().endsWith('.mp3'),
               );
@@ -614,3 +554,9 @@ export default function Composer({
     </>
   );
 }
+import {
+  toImageAttachment,
+  toPdfAttachment,
+  toAudioAttachment,
+  clampImages,
+} from '@/lib/attachments';

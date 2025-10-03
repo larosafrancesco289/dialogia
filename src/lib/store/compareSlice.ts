@@ -2,6 +2,7 @@ import type { StoreState } from '@/lib/store/types';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { streamChatCompletion } from '@/lib/openrouter';
 import { findModelById, isReasoningSupported, isImageOutputSupported } from '@/lib/models';
+import { providerSortFromRoutePref } from '@/lib/agent/request';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import {
   checkZdrModelAllowance,
@@ -187,7 +188,7 @@ export function createCompareSlice(
               const modelMeta = findModelById(get().models, modelId);
               const supportsReasoning = isReasoningSupported(modelMeta);
               const canImageOut = isImageOutputSupported(modelMeta);
-              const providerSort = get().ui.routePreference === 'cost' ? 'price' : 'throughput';
+              const providerSort = providerSortFromRoutePref(get().ui.routePreference as any);
               const requestedEffort = supportsReasoning
                 ? chat?.settings.reasoning_effort
                 : undefined;

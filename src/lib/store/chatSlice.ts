@@ -8,8 +8,9 @@ import {
   DEFAULT_TUTOR_MEMORY_MODEL_ID,
   DEFAULT_TUTOR_MEMORY_FREQUENCY,
 } from '@/lib/constants';
-import { buildTutorContextSummary, buildTutorContextFull } from '@/lib/agent/tutor';
+import { buildHiddenTutorContent } from '@/lib/agent/tutorFlow';
 import { EMPTY_TUTOR_MEMORY, normalizeTutorMemory } from '@/lib/agent/tutorMemory';
+import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
 
 export function createChatSlice(
   set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
@@ -52,12 +53,7 @@ export function createChatSlice(
               // Backfill hiddenContent if missing so the model sees data without UI showing it
               if (!(m as any).hiddenContent) {
                 try {
-                  const recap = buildTutorContextSummary(tutor);
-                  const json = buildTutorContextFull(tutor);
-                  const parts: string[] = [];
-                  if (recap) parts.push(`Tutor Recap:\n${recap}`);
-                  if (json) parts.push(`Tutor Data JSON:\n${json}`);
-                  const hidden = parts.join('\n\n');
+                  const hidden = buildHiddenTutorContent(tutor);
                   if (hidden) {
                     (m as any).hiddenContent = hidden;
                     updates.push({ chatId: cid, msg: m });
@@ -109,43 +105,15 @@ export function createChatSlice(
       const tutorEnabledGlobally = !!get().ui.experimentalTutor;
       const forceTutorMode = !!(get().ui.forceTutorMode ?? false);
       const uiState = get().ui;
-      const baseSettings: Chat['settings'] = {
-        // Use nextModel if explicitly set; otherwise fall back to the last used model; else default
-        model: uiState.nextModel ?? lastUsedModel ?? DEFAULT_MODEL_ID,
-        system: uiState.nextSystem ?? 'You are a helpful assistant.',
-        temperature: uiState.nextTemperature ?? undefined,
-        top_p: uiState.nextTopP ?? undefined,
-        max_tokens: uiState.nextMaxTokens ?? undefined,
-        reasoning_effort: uiState.nextReasoningEffort ?? undefined,
-        reasoning_tokens: uiState.nextReasoningTokens ?? undefined,
-        show_thinking_by_default: uiState.nextShowThinking ?? false,
-        show_stats: uiState.nextShowStats ?? false,
-        search_with_brave: uiState.nextSearchWithBrave ?? false,
-        // If Brave is disabled via experimental toggle, force OpenRouter provider
-        search_provider: braveEnabled ? (uiState.nextSearchProvider ?? 'brave') : 'openrouter',
-        tutor_mode: forceTutorMode
-          ? true
-          : tutorEnabledGlobally
-            ? (uiState.nextTutorMode ?? false)
-            : false,
-      };
-      if (baseSettings.tutor_mode) {
-        const tutorModel = uiState.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID;
-        const tutorMemoryModel =
-          uiState.tutorMemoryModelId ||
-          uiState.tutorDefaultModelId ||
-          DEFAULT_TUTOR_MEMORY_MODEL_ID;
-        baseSettings.model = tutorModel;
-        baseSettings.tutor_default_model = tutorModel;
-        baseSettings.tutor_memory_model = tutorMemoryModel;
-        const globalMemory = uiState.tutorGlobalMemory || EMPTY_TUTOR_MEMORY;
-        baseSettings.tutor_memory = normalizeTutorMemory(globalMemory);
-        baseSettings.tutor_memory_version = 0;
-        baseSettings.tutor_memory_message_count = 0;
-        baseSettings.tutor_memory_frequency =
-          uiState.tutorMemoryFrequency || DEFAULT_TUTOR_MEMORY_FREQUENCY;
-        if (uiState.tutorMemoryAutoUpdate === false) baseSettings.tutor_memory_disabled = true;
-      }
+      const baseSettings = deriveChatSettingsFromUi({
+        ui: uiState,
+        fallbackModelId: DEFAULT_MODEL_ID,
+        fallbackSystem: 'You are a helpful assistant.',
+        lastUsedModelId: lastUsedModel,
+        braveEnabled,
+        tutorEnabled: tutorEnabledGlobally,
+        forceTutorMode,
+      });
       const chat: Chat = {
         id,
         title: 'New Chat',

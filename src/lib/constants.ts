@@ -19,3 +19,8 @@ export const HEADER_HEIGHT_PX = 56;
 // Streaming / UI tuning
 export const STREAM_SCROLL_THROTTLE_MS = 160;
 export const MAX_FALLBACK_RESULTS = 5;
+
+// Attachments limits
+export const MAX_IMAGES_PER_MESSAGE = 4;
+export const MAX_PDF_SIZE_MB = 15;
+export const MAX_AUDIO_SIZE_MB = 15;
