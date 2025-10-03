@@ -1,1 +1,0 @@
-      if (tid) clearTimeout(tid);
