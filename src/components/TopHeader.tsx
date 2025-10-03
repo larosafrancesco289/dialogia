@@ -9,10 +9,10 @@ import {
   PlusIcon,
   Squares2X2Icon,
   Cog6ToothIcon,
-  EllipsisVerticalIcon,
   AcademicCapIcon,
 } from '@heroicons/react/24/outline';
-import { useMemo, useEffect, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
+import TopHeaderMobileMenu from '@/components/top-header/MobileMenu';
 import { findModelById, formatModelLabel } from '@/lib/models';
 export default function TopHeader() {
   const { chats, selectedChatId, renameChat, setUI, openCompare, newChat, updateChatSettings } =
@@ -50,54 +50,12 @@ export default function TopHeader() {
     [tutorModelMeta, tutorModelId],
   );
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [menuTop, setMenuTop] = useState<number | null>(null);
-  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!mobileMenuOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileMenuOpen(false);
-    };
-    const update = () => {
-      if (!menuButtonRef.current) return;
-      const rect = menuButtonRef.current.getBoundingClientRect();
-      const scrollY = typeof window !== 'undefined' ? window.scrollY : 0;
-      setMenuTop(rect.bottom + 12 + scrollY);
-    };
-    update();
-    window.addEventListener('resize', update);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.removeEventListener('resize', update);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [mobileMenuOpen]);
-
   const renameCurrentChat = () => {
     if (!chat) return;
     const next = window.prompt('Rename chat', chat.title || 'Untitled chat');
     const trimmed = (next || '').trim();
     if (!trimmed || trimmed === chat.title) return;
     renameChat(chat.id, trimmed);
-  };
-
-  const resolvedMenuTop = useMemo(() => {
-    if (menuTop == null) return undefined;
-    if (typeof window === 'undefined') return menuTop;
-    const viewportOffset = window.visualViewport?.offsetTop ?? 0;
-    const scrollY = window.scrollY || 0;
-    return Math.max(menuTop - scrollY, viewportOffset + 16);
-  }, [menuTop]);
-
-  const toggleMobileMenu = () => {
-    if (!mobileMenuOpen && menuButtonRef.current) {
-      const rect = menuButtonRef.current.getBoundingClientRect();
-      const scrollY = typeof window !== 'undefined' ? window.scrollY : 0;
-      setMenuTop(rect.bottom + 12 + scrollY);
-    }
-    setMobileMenuOpen((v) => !v);
   };
 
   return (
@@ -165,7 +123,6 @@ export default function TopHeader() {
           title="New chat"
           onClick={() => {
             newChat();
-            setMobileMenuOpen(false);
           }}
         >
           <PlusIcon className="h-5 w-5" />
@@ -209,93 +166,16 @@ export default function TopHeader() {
         >
           <Cog6ToothIcon className="h-5 w-5" />
         </button>
-        <div className="sm:hidden">
-          <button
-            ref={menuButtonRef}
-            className="btn btn-ghost"
-            aria-label="More actions"
-            aria-expanded={mobileMenuOpen}
-            onClick={toggleMobileMenu}
-          >
-            <EllipsisVerticalIcon className="h-5 w-5" />
-          </button>
-        </div>
+        <TopHeaderMobileMenu
+          hasChat={!!chat}
+          collapsed={collapsed}
+          onNewChat={newChat}
+          onRenameChat={chat ? renameCurrentChat : undefined}
+          onOpenCompare={openCompare}
+          onOpenSettings={() => setUI({ showSettings: true })}
+          onToggleSidebar={() => setUI({ sidebarCollapsed: !collapsed })}
+        />
       </div>
-
-      {mobileMenuOpen && (
-        <>
-          <button
-            className="fixed inset-0 z-[90] cursor-default"
-            aria-label="Close menu"
-            type="button"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-          <div
-            ref={menuRef}
-            className="fixed right-3 z-[95] card p-1 popover min-w-[220px]"
-            style={{ top: resolvedMenuTop }}
-            role="menu"
-          >
-            <button
-              className="menu-item w-full text-left text-sm"
-              type="button"
-              onClick={() => {
-                newChat();
-                setMobileMenuOpen(false);
-              }}
-            >
-              New chat
-            </button>
-            {chat && (
-              <button
-                className="menu-item w-full text-left text-sm"
-                type="button"
-                onClick={() => {
-                  renameCurrentChat();
-                  setMobileMenuOpen(false);
-                }}
-              >
-                Rename chat
-              </button>
-            )}
-            <button
-              className="menu-item w-full text-left text-sm"
-              type="button"
-              onClick={() => {
-                openCompare();
-                setMobileMenuOpen(false);
-              }}
-            >
-              Compare models
-            </button>
-            <ThemeToggle
-              variant="menu"
-              onToggle={() => setMobileMenuOpen(false)}
-              className="text-sm"
-            />
-            <button
-              className="menu-item w-full text-left text-sm"
-              type="button"
-              onClick={() => {
-                setUI({ showSettings: true });
-                setMobileMenuOpen(false);
-              }}
-            >
-              Settings
-            </button>
-            <button
-              className="menu-item w-full text-left text-sm"
-              type="button"
-              onClick={() => {
-                setUI({ sidebarCollapsed: !collapsed });
-                setMobileMenuOpen(false);
-              }}
-            >
-              {collapsed ? 'Show sidebar' : 'Hide sidebar'}
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 }

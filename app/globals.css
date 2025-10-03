@@ -56,7 +56,6 @@ body,
   height: var(--viewport-height);
   min-height: var(--viewport-height);
   position: relative;
-  transition: grid-template-columns var(--duration-slow) var(--ease-standard);
   column-gap: var(--space-3);
   padding: var(--space-2);
 }

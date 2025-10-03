@@ -1,5 +1,13 @@
 'use client';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import {
@@ -15,18 +23,13 @@ import {
 } from '@heroicons/react/24/outline';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
-import {
-  findModelById,
-  formatModelLabel,
-  isReasoningSupported,
-  isVisionSupported,
-  isAudioInputSupported,
-  isImageOutputSupported,
-} from '@/lib/models';
+import { findModelById, formatModelLabel, getModelCapabilities } from '@/lib/models';
 import { describeModelPricing } from '@/lib/cost';
 import { shallow } from 'zustand/shallow';
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
+import { evaluateZdrModel, ZDR_NO_MATCH_NOTICE } from '@/lib/zdr';
+import type { ZdrLists } from '@/lib/zdr';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -186,9 +189,18 @@ export default function ModelPicker({
     zdrRestricted,
   } = useModelPickerController();
 
+  const zdrLists = useMemo<ZdrLists>(
+    () => ({
+      modelIds: new Set(zdrModelIds || []),
+      providerIds: new Set(zdrProviderIds || []),
+    }),
+    [zdrModelIds, zdrProviderIds],
+  );
+
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [filter, setFilter] = useState('');
+  const deferredFilter = useDeferredValue(filter);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const listboxRef = useRef<HTMLDivElement | null>(null);
   const filterInputRef = useRef<HTMLInputElement | null>(null);
@@ -201,19 +213,28 @@ export default function ModelPicker({
   } | null>(null);
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
-  const deriveLabel = (opt?: Option) => {
-    if (!opt) return 'Pick model';
-    return (
-      formatModelLabel({
-        model: modelMap.get(opt.id),
-        fallbackId: opt.id,
-        fallbackName: opt.name,
-      }) || 'Pick model'
-    );
-  };
+  const deriveLabel = useCallback(
+    (opt?: Option) => {
+      if (!opt) return 'Pick model';
+      return (
+        formatModelLabel({
+          model: modelMap.get(opt.id),
+          fallbackId: opt.id,
+          fallbackName: opt.name,
+        }) || 'Pick model'
+      );
+    },
+    [modelMap],
+  );
 
-  const normalizedFilter = filter.trim().toLowerCase().replace(/\s+/g, ' ');
-  const filterWords = normalizedFilter ? normalizedFilter.split(' ') : [];
+  const normalizedFilter = useMemo(
+    () => deferredFilter.trim().toLowerCase().replace(/\s+/g, ' '),
+    [deferredFilter],
+  );
+  const filterWords = useMemo(
+    () => (normalizedFilter ? normalizedFilter.split(' ') : []),
+    [normalizedFilter],
+  );
 
   const visibleOptions = useMemo(() => {
     if (!filterWords.length) return options;
@@ -221,7 +242,7 @@ export default function ModelPicker({
       const haystack = `${deriveLabel(option)} ${option.id}`.toLowerCase();
       return filterWords.every((word) => haystack.includes(word));
     });
-  }, [options, filterWords, modelMap]);
+  }, [options, filterWords, deriveLabel]);
 
   const title = deriveLabel(current);
 
@@ -310,21 +331,34 @@ export default function ModelPicker({
     });
   }, [visibleOptions.length]);
 
-  const renderCapabilities = (id: string) => {
-    const meta = modelMap.get(id);
-    const canReason = isReasoningSupported(meta);
-    const canSee = isVisionSupported(meta);
-    const canAudio = isAudioInputSupported(meta);
-    const canImageOut = isImageOutputSupported(meta);
-    const provider = String(id).split('/')[0];
-    const isZdr = Boolean(
-      (zdrModelIds && zdrModelIds.includes(id)) ||
-        (zdrProviderIds && zdrProviderIds.includes(provider)),
-    );
-    const priceStr = describeModelPricing(meta);
-    const context = meta?.context_length;
-    return { canReason, canSee, canAudio, canImageOut, isZdr, priceStr, context };
-  };
+  const renderCapabilities = useCallback(
+    (id: string) => {
+      const meta = modelMap.get(id);
+      const { canReason, canSee, canAudio, canImageOut } = getModelCapabilities(meta);
+      const zdrStatus = evaluateZdrModel(id, zdrLists);
+      const priceStr = describeModelPricing(meta);
+      const context = meta?.context_length;
+      return {
+        canReason,
+        canSee,
+        canAudio,
+        canImageOut,
+        isZdr: zdrStatus.status === 'allowed',
+        priceStr,
+        context,
+      };
+    },
+    [modelMap, zdrLists],
+  );
+
+  const zdrHiddenMessage = useMemo(() => {
+    if (!zdrRestricted || zdrHiddenCount <= 0) return null;
+    const countText =
+      zdrHiddenCount === 1
+        ? '1 model is hidden by the ZDR-only preference.'
+        : `${zdrHiddenCount} models are hidden by the ZDR-only preference.`;
+    return `${ZDR_NO_MATCH_NOTICE} ${countText}`;
+  }, [zdrRestricted, zdrHiddenCount]);
 
   const focusOptionButton = (index: number) => {
     const container = listboxRef.current;
@@ -430,15 +464,11 @@ export default function ModelPicker({
               />
             </div>
 
-            {zdrRestricted && zdrHiddenCount > 0 && (
+            {zdrHiddenMessage && (
               <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
                 <ShieldCheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="flex-1 space-y-1">
-                  <div>
-                    {zdrHiddenCount === 1
-                      ? '1 model is hidden by the ZDR-only preference.'
-                      : `${zdrHiddenCount} models are hidden by the ZDR-only preference.`}
-                  </div>
+                  <div>{zdrHiddenMessage}</div>
                   <button
                     type="button"
                     className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline"

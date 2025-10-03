@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBraveSearchKey } from '@/lib/config';
 
 const BRAVE_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search';
 
 export async function GET(req: NextRequest) {
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const apiKey = process.env.BRAVE_SEARCH_API_KEY;
+  const apiKey = getBraveSearchKey();
   if (!apiKey) {
     return NextResponse.json({ error: 'Missing BRAVE_SEARCH_API_KEY' }, { status: 400 });
   }

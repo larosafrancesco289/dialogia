@@ -1,8 +1,17 @@
 import type { StoreState } from '@/lib/store/types';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
-import { streamChatCompletion, fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
+import { streamChatCompletion } from '@/lib/openrouter';
 import { findModelById, isReasoningSupported, isImageOutputSupported } from '@/lib/models';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
+import {
+  checkZdrModelAllowance,
+  ensureZdrLists,
+  evaluateZdrModel,
+  toZdrState,
+  ZDR_NO_MATCH_NOTICE,
+  ZDR_UNAVAILABLE_NOTICE,
+} from '@/lib/zdr';
+import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
 
 export function createCompareSlice(
   set: (fn: (s: StoreState) => Partial<StoreState> | void) => void,
@@ -64,34 +73,39 @@ export function createCompareSlice(
       });
     },
     async runCompare(prompt: string, modelIds: string[]) {
-      const useProxy = process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
-      const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
+      const useProxy = isOpenRouterProxyEnabled();
+      const key = getPublicOpenRouterKey();
       if (!key && !useProxy)
         return set((s) => ({
           ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
         }));
       // ZDR enforcement for compare: use provider fallback if explicit ZDR list is unavailable
       if (get().ui.zdrOnly === true) {
-        let allowedModelIds = new Set(get().zdrModelIds || []);
-        if (allowedModelIds.size === 0) {
-          try {
-            allowedModelIds = await fetchZdrModelIds();
-            set({ zdrModelIds: Array.from(allowedModelIds) } as any);
-          } catch {}
+        const lists = await ensureZdrLists({
+          modelIds: get().zdrModelIds,
+          providerIds: get().zdrProviderIds,
+        });
+        set(toZdrState(lists) as any);
+        if (lists.modelIds.size === 0 && lists.providerIds.size === 0) {
+          return set((s) => {
+            const prev = s.ui.compare || {
+              isOpen: false,
+              prompt: '',
+              selectedModelIds: [],
+              runs: {},
+            };
+            return {
+              ui: {
+                ...s.ui,
+                notice: ZDR_UNAVAILABLE_NOTICE,
+                compare: { ...prev, selectedModelIds: [] },
+              },
+            } as any;
+          });
         }
-        let filtered: string[] = [];
-        if (allowedModelIds.size > 0) {
-          filtered = (modelIds || []).filter((id) => allowedModelIds.has(id));
-        } else {
-          let providers = new Set(get().zdrProviderIds || []);
-          if (providers.size === 0) {
-            try {
-              providers = await fetchZdrProviderIds();
-              set({ zdrProviderIds: Array.from(providers) } as any);
-            } catch {}
-          }
-          filtered = (modelIds || []).filter((id) => providers.has(String(id).split('/')[0]));
-        }
+        const filtered = (modelIds || []).filter(
+          (id) => evaluateZdrModel(id, lists).status === 'allowed',
+        );
         if (filtered.length === 0) {
           return set((s) => {
             const prev = s.ui.compare || {
@@ -103,7 +117,7 @@ export function createCompareSlice(
             return {
               ui: {
                 ...s.ui,
-                notice: 'ZDR-only is enabled. None of the selected models are ZDR.',
+                notice: ZDR_NO_MATCH_NOTICE,
                 compare: { ...prev, selectedModelIds: [] },
               },
             } as any;

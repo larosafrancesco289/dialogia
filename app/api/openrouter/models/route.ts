@@ -1,23 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const OR_BASE = 'https://openrouter.ai/api/v1';
+import { requireServerOpenRouterKey } from '@/lib/config';
+import { orFetchModels } from '@/lib/api/orClient';
 
 export async function GET(req: NextRequest) {
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
+  let apiKey: string;
+  try {
+    apiKey = requireServerOpenRouterKey();
+  } catch {
     return NextResponse.json({ error: 'Missing OPENROUTER_API_KEY (server)' }, { status: 500 });
   }
   try {
-    const res = await fetch(`${OR_BASE}/models`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': req.headers.get('origin') || 'http://localhost:3000',
-        'X-Title': 'Dialogia',
-      },
-      cache: 'no-store',
-    });
+    const res = await orFetchModels(apiKey, { origin: req.headers.get('origin') || undefined });
     const body = await res.text();
     const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const dur = Math.max(0, t1 - t0);

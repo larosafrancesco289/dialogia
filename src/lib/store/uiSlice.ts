@@ -1,5 +1,5 @@
 import type { StoreState, UIState } from '@/lib/store/types';
-import { defaultZdrOnly } from '@/lib/env';
+import { getDefaultZdrOnly, getRoutePreferenceDefault } from '@/lib/config';
 import {
   DEFAULT_TUTOR_MODEL_ID,
   DEFAULT_TUTOR_MEMORY_MODEL_ID,
@@ -39,8 +39,8 @@ export function createUiSlice(
     nextShowThinking: undefined,
     nextShowStats: undefined,
     tutorContextMode: 'full',
-    zdrOnly: defaultZdrOnly(),
-    routePreference: 'speed',
+    zdrOnly: getDefaultZdrOnly(),
+    routePreference: getRoutePreferenceDefault(),
     // Experimental feature toggles (Tutor defaults on; others opt-in via Settings)
     experimentalBrave: false,
     experimentalDeepResearch: false,

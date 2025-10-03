@@ -1,4 +1,5 @@
 'use client';
+import { useRef } from 'react';
 import { useChatStore } from '@/lib/store';
 
 export interface DragData {
@@ -8,49 +9,37 @@ export interface DragData {
 
 export function useDragAndDrop() {
   const { moveChatToFolder } = useChatStore();
+  const dragDataRef = useRef<DragData | null>(null);
 
-  // Handle drag start
   const handleDragStart = (id: string, type: 'folder' | 'chat') => {
-    const dragData: DragData = { id, type };
-    // Store drag data in a way that persists across the drag operation
-    // We'll use a data attribute on the dragged element
-    return dragData;
+    dragDataRef.current = { id, type };
   };
 
-  // Handle drag over (required for drop to work)
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+  const handleDragEnd = () => {
+    dragDataRef.current = null;
   };
 
-  // Handle drop
-  const handleDrop = async (
-    targetFolderId: string | undefined,
-    draggedId: string,
-    draggedType: 'folder' | 'chat',
-  ) => {
-    if (draggedType === 'chat') {
-      // Move chat to folder (or root if targetFolderId is undefined)
-      await moveChatToFolder(draggedId, targetFolderId);
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (targetFolderId?: string) => {
+    const data = dragDataRef.current;
+    if (!data) return;
+    if (data.type === 'chat') {
+      await moveChatToFolder(data.id, targetFolderId);
     }
-    // For now, we don't support moving folders into other folders
-    // This could be added later for nested folder functionality
+    dragDataRef.current = null;
   };
+
+  const getDragData = () => dragDataRef.current;
 
   return {
     handleDragStart,
+    handleDragEnd,
     handleDragOver,
     handleDrop,
+    getDragData,
   };
-}
-
-// Global drag state management for tracking what's being dragged
-let currentDragData: DragData | null = null;
-
-export function setCurrentDragData(data: DragData | null) {
-  currentDragData = data;
-}
-
-export function getCurrentDragData(): DragData | null {
-  return currentDragData;
 }

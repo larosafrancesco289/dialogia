@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const OR_ZDR_URL = 'https://openrouter.ai/api/v1/endpoints/zdr';
+import { orFetchZdrEndpoints } from '@/lib/api/orClient';
 
 export async function GET(req: NextRequest) {
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   try {
-    const res = await fetch(OR_ZDR_URL, {
-      headers: {
-        'Content-Type': 'application/json',
-        'HTTP-Referer': req.headers.get('origin') || 'http://localhost:3000',
-        'X-Title': 'Dialogia',
-      },
-      cache: 'no-store',
-    });
+    const res = await orFetchZdrEndpoints({ origin: req.headers.get('origin') || undefined });
     const body = await res.text();
     const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const dur = Math.max(0, t1 - t0);

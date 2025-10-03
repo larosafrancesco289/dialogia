@@ -4,12 +4,7 @@ import type { Message } from '@/lib/types';
 import { saveMessage, saveChat } from '@/lib/db';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { stripLeadingToolJson } from '@/lib/agent/streaming';
-import {
-  streamChatCompletion,
-  chatCompletion,
-  fetchZdrModelIds,
-  fetchZdrProviderIds,
-} from '@/lib/openrouter';
+import { streamChatCompletion, chatCompletion } from '@/lib/openrouter';
 import {
   getTutorPreamble,
   getTutorToolDefinitions,
@@ -22,13 +17,12 @@ import {
   getTutorMemoryFrequency,
   EMPTY_TUTOR_MEMORY,
 } from '@/lib/agent/tutorMemory';
+import { runDeepResearchTurn } from '@/lib/agent/deepResearchOrchestrator';
 import { loadTutorProfile, summarizeTutorProfile } from '@/lib/tutorProfile';
 import { addCardsToDeck, getDueCards } from '@/lib/tutorDeck';
 import {
   isReasoningSupported,
   findModelById,
-  isVisionSupported,
-  isAudioInputSupported,
   isToolCallingSupported,
   isImageOutputSupported,
 } from '@/lib/models';
@@ -37,12 +31,51 @@ import {
   DEFAULT_TUTOR_MODEL_ID,
   DEFAULT_TUTOR_MEMORY_MODEL_ID,
 } from '@/lib/constants';
+import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
+import {
+  checkZdrModelAllowance,
+  ensureZdrLists,
+  evaluateZdrModel,
+  getZdrBlockNotice,
+  toZdrState,
+  ZDR_UNAVAILABLE_NOTICE,
+} from '@/lib/zdr';
+import { prepareAttachmentsForModel } from '@/lib/agent/attachments';
+import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
+import {
+  extractTutorToolCalls,
+  extractWebSearchArgs,
+  normalizeTutorQuizPayload,
+} from '@/lib/agent/tools';
 // telemetry removed for commit cleanliness
 
 export function createMessageSlice(
   set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
   get: () => StoreState,
 ) {
+  const ensureZdrAllowed = async (modelId: string): Promise<boolean> => {
+    const { lists, check } = await checkZdrModelAllowance(modelId, {
+      modelIds: get().zdrModelIds,
+      providerIds: get().zdrProviderIds,
+    });
+    set(toZdrState(lists) as any);
+    if (lists.modelIds.size === 0 && lists.providerIds.size === 0) {
+      set((s) => ({ ui: { ...s.ui, notice: ZDR_UNAVAILABLE_NOTICE } }));
+      return false;
+    }
+    if (check.status === 'unknown') {
+      set((s) => ({ ui: { ...s.ui, notice: ZDR_UNAVAILABLE_NOTICE } }));
+      return false;
+    }
+    if (check.status === 'forbidden') {
+      set((s) => ({
+        ui: { ...s.ui, notice: getZdrBlockNotice(modelId, check.reason) },
+      }));
+      return false;
+    }
+    return true;
+  };
+
   return {
     async appendAssistantMessage(content: string, opts?: { modelId?: string }) {
       const chatId = get().selectedChatId!;
@@ -104,8 +137,8 @@ export function createMessageSlice(
       content: string,
       opts?: { attachments?: import('@/lib/types').Attachment[] },
     ) {
-      const useProxy = process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
-      const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
+      const useProxy = isOpenRouterProxyEnabled();
+      const key = getPublicOpenRouterKey();
       if (!key && !useProxy)
         return set((s) => ({
           ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
@@ -172,66 +205,11 @@ export function createMessageSlice(
         tutorMemoryModelId = chat.settings.tutor_memory_model || tutorMemoryModelId;
       }
       const activeModelId = chat.settings.model;
-      // Filter attachments by model capabilities (vision/audio allowed only when supported)
-      const modelMetaVisionCheck = findModelById(get().models, activeModelId);
-      const canVision = isVisionSupported(modelMetaVisionCheck);
-      const canAudio = isAudioInputSupported(modelMetaVisionCheck);
-      const rawAttachments = (opts?.attachments || []).filter((a) => {
-        if (a.kind === 'image') return !!canVision;
-        if (a.kind === 'pdf') return true;
-        if (a.kind === 'audio') return !!canAudio;
-        return false;
+      const attachments = await prepareAttachmentsForModel({
+        attachments: opts?.attachments,
+        modelId: activeModelId,
+        models: get().models,
       });
-      // Convert PDF Files to data URLs on-the-fly for OpenRouter file blocks.
-      const toDataUrl = (file: File): Promise<string> =>
-        new Promise((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(String(fr.result || ''));
-          fr.onerror = () => reject(fr.error);
-          fr.readAsDataURL(file);
-        });
-      // Audio: convert to base64 and set format when needed. PDFs: ensure dataURL exists.
-      const toBase64FromDataUrl = (dataUrl: string): string | undefined => {
-        const idx = dataUrl.indexOf('base64,');
-        return idx >= 0 ? dataUrl.slice(idx + 'base64,'.length) : undefined;
-      };
-      const attachments = await Promise.all(
-        rawAttachments.map(async (a) => {
-          if (a.kind === 'pdf' && a.file && !a.dataURL) {
-            try {
-              const dataURL = await toDataUrl(a.file);
-              return { ...a, dataURL };
-            } catch {
-              return a;
-            }
-          }
-          if (a.kind === 'audio') {
-            let base64 = a.base64;
-            let dataURL = a.dataURL;
-            // Ensure we have a preview URL for UI and base64 for sending
-            if (!dataURL && a.file) {
-              try {
-                dataURL = await toDataUrl(a.file);
-              } catch {}
-            }
-            if (!base64 && dataURL) base64 = toBase64FromDataUrl(dataURL);
-            // Determine audio format from mime or name
-            const fmt: 'wav' | 'mp3' | undefined = a.audioFormat
-              ? a.audioFormat
-              : a.mime?.includes('wav')
-                ? 'wav'
-                : a.mime?.includes('mpeg') || a.mime?.includes('mp3')
-                  ? 'mp3'
-                  : (a.name || '').toLowerCase().endsWith('.wav')
-                    ? 'wav'
-                    : (a.name || '').toLowerCase().endsWith('.mp3')
-                      ? 'mp3'
-                      : undefined;
-            return { ...a, dataURL, base64, audioFormat: fmt } as any;
-          }
-          return a;
-        }),
-      );
       // Determine if any PDFs exist in conversation (prior or this turn) to enable parser plugin
       if (tutorEnabled) {
         try {
@@ -249,42 +227,8 @@ export function createMessageSlice(
       const hasPdf = attachments.some((a) => a.kind === 'pdf') || hadPdfEarlier;
       // Strict ZDR enforcement: block sending to non-ZDR models when enabled
       if (get().ui.zdrOnly === true) {
-        const modelId = activeModelId;
-        let allowedModelIds = new Set(get().zdrModelIds || []);
-        if (allowedModelIds.size === 0) {
-          try {
-            allowedModelIds = await fetchZdrModelIds();
-            set({ zdrModelIds: Array.from(allowedModelIds) } as any);
-          } catch {}
-        }
-        if (allowedModelIds.size > 0) {
-          if (!allowedModelIds.has(modelId)) {
-            return set((s) => ({
-              ui: {
-                ...s.ui,
-                notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not ZDR. Choose a ZDR model in Settings.`,
-              },
-            }));
-          }
-        } else {
-          // Fallback to provider-based allowance when explicit list unavailable
-          let providers = new Set(get().zdrProviderIds || []);
-          if (providers.size === 0) {
-            try {
-              providers = await fetchZdrProviderIds();
-              set({ zdrProviderIds: Array.from(providers) } as any);
-            } catch {}
-          }
-          const providerPrefix = (modelId || '').split('/')[0];
-          if (!providerPrefix || !providers.has(providerPrefix)) {
-            return set((s) => ({
-              ui: {
-                ...s.ui,
-                notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not from a ZDR provider. Choose a ZDR model in Settings.`,
-              },
-            }));
-          }
-        }
+        const allowed = await ensureZdrAllowed(activeModelId);
+        if (!allowed) return;
       }
       const now = Date.now();
       const userMsg: Message = {
@@ -316,72 +260,17 @@ export function createMessageSlice(
       await saveMessage(userMsg);
       await saveMessage(assistantMsg);
 
-      // DeepResearch branch: if globally enabled and toggled, use server endpoint and attach sources panel
       if (get().ui.experimentalDeepResearch && get().ui.nextDeepResearch) {
-        try {
-          const controller = new AbortController();
-          set((s) => ({ ...s, _controller: controller as any }) as any);
-          set((s) => ({ ui: { ...s.ui, isStreaming: true } }));
-          // Indicate loading in sources panel under this assistant message
-          set((s) => ({
-            ui: {
-              ...s.ui,
-              braveByMessageId: {
-                ...(s.ui.braveByMessageId || {}),
-                [assistantMsg.id]: { query: content.trim(), status: 'loading' },
-              },
-            },
-          }));
-          const res = await fetch('/api/deep-research', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ task: content, model: activeModelId }),
-            cache: 'no-store',
-            signal: controller.signal,
-          } as any);
-          const json: any = await res.json().catch(() => ({}));
-          const sources = Array.isArray(json?.sources) ? json.sources : [];
-          if (!res.ok) throw new Error(json?.error || `deep_failed_${res.status}`);
-          // Update sources panel and content
-          set((s) => ({
-            ui: {
-              ...s.ui,
-              braveByMessageId: {
-                ...(s.ui.braveByMessageId || {}),
-                [assistantMsg.id]: { query: content.trim(), status: 'done', results: sources },
-              },
-              // Toggle off after use (like a sticky toggle, not one-shot)
-              nextDeepResearch: s.ui.nextDeepResearch,
-            },
-          }));
-          const final = {
-            ...assistantMsg,
-            content: json?.answer || '',
-          } as any;
-          set((s) => {
-            const list = s.messages[chatId] ?? [];
-            const updated = list.map((m) => (m.id === assistantMsg.id ? final : m));
-            return { messages: { ...s.messages, [chatId]: updated } } as any;
-          });
-          await saveMessage(final);
-          set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
-          set((s) => ({ ...s, _controller: undefined }) as any);
-        } catch (e: any) {
-          const msg = String(e?.message || 'DeepResearch failed');
-          set((s) => ({
-            ui: {
-              ...s.ui,
-              isStreaming: false,
-              notice: `DeepResearch: ${msg}`,
-              braveByMessageId: {
-                ...(s.ui.braveByMessageId || {}),
-                [assistantMsg.id]: { query: content.trim(), status: 'error', error: msg },
-              },
-            },
-          }));
-          set((s) => ({ ...s, _controller: undefined }) as any);
-        }
-        return;
+        const handled = await runDeepResearchTurn({
+          task: content,
+          modelId: activeModelId,
+          chatId,
+          assistantMessage: assistantMsg,
+          set,
+          get,
+          persistMessage: saveMessage,
+        });
+        if (handled) return;
       }
 
       let memoryDebug:
@@ -589,103 +478,64 @@ export function createMessageSlice(
           let usedTutorTool = false; // any tutor tool call (non-web)
           let usedTutorContentTool = false; // interactive content tools (quiz_*, flashcards)
           let aggregatedResults: { title?: string; url?: string; description?: string }[] = [];
-          const extractInlineWebSearchArgs = (
-            text: string,
-          ): { query: string; count?: number } | null => {
-            try {
-              const candidates: Array<Record<string, any>> = [];
-              const jsonMatches = text.match(/\{[\s\S]*?\}/g) || [];
-              for (const m of jsonMatches) {
+          const attachTutorQuiz = async (args: any) => {
+            const normalized = normalizeTutorQuizPayload(args);
+            if (!normalized) return { ok: false };
+            let updatedMsg: any | undefined;
+            const mapKey = 'mcq';
+            set((s) => {
+              const keyId = assistantMsg.id;
+              const normed = normalized.items;
+              const nextTutorUi = {
+                ...(s.ui.tutorByMessageId?.[keyId] || {}),
+                title: s.ui.tutorByMessageId?.[keyId]?.title || args?.title,
+                [mapKey]: [
+                  ...(((s.ui.tutorByMessageId?.[keyId] as any)?.[mapKey] as any[]) || []),
+                  ...normed,
+                ],
+              } as any;
+              const list = s.messages[chatId] ?? [];
+              const updated = list.map((m) => {
+                if (m.id !== keyId) return m;
+                const prevTutor = (m as any).tutor || {};
+                const mergedTutor = {
+                  ...prevTutor,
+                  title: prevTutor.title || args?.title,
+                  [mapKey]: [...(((prevTutor as any)[mapKey] as any[]) || []), ...normed],
+                } as any;
+                let hidden = '';
                 try {
-                  candidates.push(JSON.parse(m));
+                  const recap = buildTutorContextSummary(mergedTutor);
+                  const json = buildTutorContextFull(mergedTutor);
+                  const parts: string[] = [];
+                  if (recap) parts.push(`Tutor Recap:\n${recap}`);
+                  if (json) parts.push(`Tutor Data JSON:\n${json}`);
+                  hidden = parts.join('\n\n');
                 } catch {}
-              }
-              for (const c of candidates) {
-                if (typeof c.query === 'string') {
-                  const q = String(c.query).trim();
-                  if (q) {
-                    const cnt = Number.isFinite(c.count)
-                      ? Math.max(1, Math.min(10, Math.floor(c.count)))
-                      : undefined;
-                    return { query: q, count: cnt };
-                  }
-                }
-                if (typeof c.name === 'string' && c.name === 'web_search') {
-                  const arg = c.arguments;
-                  if (typeof arg === 'string') {
-                    try {
-                      const inner = JSON.parse(arg);
-                      if (inner && typeof inner.query === 'string' && inner.query.trim()) {
-                        const cnt = Number.isFinite(inner.count)
-                          ? Math.max(1, Math.min(10, Math.floor(inner.count)))
-                          : undefined;
-                        return { query: inner.query.trim(), count: cnt };
-                      }
-                    } catch {}
-                  } else if (arg && typeof arg === 'object' && typeof arg.query === 'string') {
-                    const q = String(arg.query).trim();
-                    if (q) {
-                      const cnt = Number.isFinite(arg.count)
-                        ? Math.max(1, Math.min(10, Math.floor(arg.count)))
-                        : undefined;
-                      return { query: q, count: cnt };
-                    }
-                  }
-                }
-              }
+                const next = { ...m, tutor: mergedTutor, hiddenContent: hidden } as any;
+                updatedMsg = next;
+                return next;
+              });
+              return {
+                ui: {
+                  ...s.ui,
+                  tutorByMessageId: {
+                    ...(s.ui.tutorByMessageId || {}),
+                    [keyId]: nextTutorUi,
+                  },
+                },
+                messages: { ...s.messages, [chatId]: updated },
+              } as any;
+            });
+            try {
+              if (updatedMsg) await saveMessage(updatedMsg);
             } catch {}
-            return null;
-          };
-          const extractInlineTutorCalls = (text: string): Array<{ name: string; args: any }> => {
-            const out: Array<{ name: string; args: any }> = [];
-            if (typeof text !== 'string' || !text) return out;
-            const names = ['quiz_mcq'];
-            const findJsonAfter = (s: string, from: number): any | undefined => {
-              const idx = s.indexOf('{', from);
-              if (idx < 0) return undefined;
-              let depth = 0;
-              let inStr = false;
-              let esc = false;
-              let end = -1;
-              for (let i = idx; i < s.length; i++) {
-                const ch = s[i];
-                if (esc) {
-                  esc = false;
-                  continue;
-                }
-                if (ch === '\\') {
-                  esc = true;
-                  continue;
-                }
-                if (ch === '"') inStr = !inStr;
-                if (!inStr) {
-                  if (ch === '{') depth++;
-                  else if (ch === '}') {
-                    depth--;
-                    if (depth === 0) {
-                      end = i + 1;
-                      break;
-                    }
-                  }
-                }
-              }
-              if (end < 0) return undefined;
-              try {
-                return JSON.parse(s.slice(idx, end));
-              } catch {
-                return undefined;
-              }
-            };
-            for (const name of names) {
-              const i = text.indexOf(name);
-              if (i < 0) continue;
-              // look for ':' or '(' then the first '{'
-              const j = Math.max(text.indexOf(':', i), text.indexOf('(', i));
-              const from = j >= 0 ? j : i;
-              const args = findJsonAfter(text, from);
-              if (args && typeof args === 'object') out.push({ name, args });
-            }
-            return out;
+            try {
+              const body: any = { items: normalized.items };
+              if (typeof args?.title === 'string') body.title = args.title;
+              return { ok: true, json: JSON.stringify(body) };
+            } catch {}
+            return { ok: true };
           };
 
           while (rounds < 3) {
@@ -720,18 +570,20 @@ export function createMessageSlice(
               // Avoid PDF parsing costs during planning; only enable plugins in final streaming call
               // so PDFs are parsed once per user turn.
               // (Leave out debugBody.plugins here.)
-              set((s) => ({
-                ui: {
-                  ...s.ui,
-                  debugByMessageId: {
-                    ...(s.ui.debugByMessageId || {}),
-                    [assistantMsg.id]: {
-                      body: JSON.stringify(debugBody, null, 2),
-                      createdAt: Date.now(),
+              if (get().ui.debugMode) {
+                set((s) => ({
+                  ui: {
+                    ...s.ui,
+                    debugByMessageId: {
+                      ...(s.ui.debugByMessageId || {}),
+                      [assistantMsg.id]: {
+                        body: JSON.stringify(debugBody, null, 2),
+                        createdAt: Date.now(),
+                      },
                     },
                   },
-                },
-              }));
+                }));
+              }
             } catch {}
             const resp = await chatCompletion({
               apiKey: key || '',
@@ -770,7 +622,7 @@ export function createMessageSlice(
                     ]
                   : [];
             if ((!toolCalls || toolCalls.length === 0) && typeof message?.content === 'string') {
-              const inline = extractInlineWebSearchArgs(message.content);
+              const inline = extractWebSearchArgs(message.content);
               if (inline) {
                 toolCalls = [
                   {
@@ -780,7 +632,7 @@ export function createMessageSlice(
                   },
                 ];
               } else {
-                const tutorCalls = extractInlineTutorCalls(message.content);
+                const tutorCalls = extractTutorToolCalls(message.content);
                 if (tutorCalls.length > 0) {
                   // Emulate function calls for tutor tools
                   toolCalls = tutorCalls.map((c, idx) => ({
@@ -801,83 +653,6 @@ export function createMessageSlice(
               finalContent = stripLeadingToolJson(text);
               break;
             }
-            // Helper to attach tutor payloads; returns { ok, json } where json echos normalized items
-            const attachTutorPayload = (
-              name: string,
-              args: any,
-            ): { ok: boolean; json?: string } => {
-              const keyId = assistantMsg.id;
-              if (name !== 'quiz_mcq') return { ok: false };
-              const mapKey = 'mcq';
-              try {
-                const items: any[] = Array.isArray(args?.items) ? args.items : [];
-                if (items.length === 0) return { ok: false };
-                const normed = items.slice(0, 40).map((it, idx) => {
-                  const raw = (it as any).id;
-                  const s = typeof raw === 'string' ? raw.trim() : '';
-                  const id = !s || s === 'null' || s === 'undefined' ? uuidv4() : s;
-                  return { id, ...it };
-                });
-                let updatedMsg: any | undefined;
-                set((s) => {
-                  const nextTutor = {
-                    ...(s.ui.tutorByMessageId?.[keyId] || {}),
-                    title: s.ui.tutorByMessageId?.[keyId]?.title || args?.title,
-                    [mapKey]: [
-                      ...((s.ui.tutorByMessageId?.[keyId] as any)?.[mapKey] || []),
-                      ...normed,
-                    ],
-                  } as any;
-                  // Update UI map
-                  const ui = {
-                    ...s.ui,
-                    tutorByMessageId: {
-                      ...(s.ui.tutorByMessageId || {}),
-                      [keyId]: nextTutor,
-                    },
-                  };
-                  // Persist onto the assistant message for durability
-                  const list = s.messages[chatId] ?? [];
-                  const updated = list.map((m) => {
-                    if (m.id !== keyId) return m;
-                    const prevTutor = (m as any).tutor || {};
-                    const mergedTutor = {
-                      ...prevTutor,
-                      title: prevTutor.title || args?.title,
-                      [mapKey]: [...(((prevTutor as any)[mapKey] as any[]) || []), ...normed],
-                    } as any;
-                    // Build hidden assistant content: recap + full data JSON
-                    let hidden = '';
-                    try {
-                      const recap = buildTutorContextSummary(mergedTutor);
-                      const json = buildTutorContextFull(mergedTutor);
-                      const parts = [] as string[];
-                      if (recap) parts.push(`Tutor Recap:\n${recap}`);
-                      if (json) parts.push(`Tutor Data JSON:\n${json}`);
-                      hidden = parts.join('\n\n');
-                    } catch {}
-                    // Replace hiddenContent for this assistant message
-                    const nm = { ...m, tutor: mergedTutor, hiddenContent: hidden } as any;
-                    updatedMsg = nm;
-                    return nm;
-                  });
-                  return { ui, messages: { ...s.messages, [chatId]: updated } } as any;
-                });
-                try {
-                  if (updatedMsg) void saveMessage(updatedMsg);
-                } catch {}
-                // Build a normalized JSON payload to send back to the model as tool output
-                try {
-                  const body: any = { items: normed };
-                  if (typeof args?.title === 'string') body.title = args.title;
-                  const json = JSON.stringify(body);
-                  return { ok: true, json };
-                } catch {}
-                return { ok: true };
-              } catch {
-                return { ok: false };
-              }
-            };
             const attachTutorMeta = async (name: string, args: any) => {
               const keyId = assistantMsg.id;
               if (name === 'grade_open_response') {
@@ -1011,7 +786,7 @@ export function createMessageSlice(
                   continue;
                 }
                 const didMeta = await attachTutorMeta(name, args);
-                const result = attachTutorPayload(name, args);
+                const result = name === 'quiz_mcq' ? await attachTutorQuiz(args) : { ok: false };
                 if (result.ok || didMeta) {
                   usedTool = true;
                   // Provide structured JSON tool output so the model can see the created items
@@ -1194,9 +969,6 @@ export function createMessageSlice(
           ).concat(msgs.filter((m) => m.role !== 'system'));
 
           const tStartPlan = performance.now();
-          let tFirstPlan: number | undefined;
-          let startedStreamingContentPlan = true; // content should be user-facing now
-          let leadingBufferPlan = '';
           {
             const modelMeta = findModelById(get().models, chat.settings.model);
             const supportsReasoning = isReasoningSupported(modelMeta);
@@ -1238,18 +1010,20 @@ export function createMessageSlice(
                 return arr;
               })();
               if (combinedPluginsStd.length > 0) debugBody.plugins = combinedPluginsStd;
-              set((s) => ({
-                ui: {
-                  ...s.ui,
-                  debugByMessageId: {
-                    ...(s.ui.debugByMessageId || {}),
-                    [assistantMsg.id]: {
-                      body: JSON.stringify(debugBody, null, 2),
-                      createdAt: Date.now(),
+              if (get().ui.debugMode) {
+                set((s) => ({
+                  ui: {
+                    ...s.ui,
+                    debugByMessageId: {
+                      ...(s.ui.debugByMessageId || {}),
+                      [assistantMsg.id]: {
+                        body: JSON.stringify(debugBody, null, 2),
+                        createdAt: Date.now(),
+                      },
                     },
                   },
-                },
-              }));
+                }));
+              }
             } catch {}
             const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
             const requestedTokensRaw = supportsReasoning
@@ -1261,6 +1035,20 @@ export function createMessageSlice(
               typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
             const autoReasoningEligible = !effortRequested && !tokensRequested;
             const modelIdUsed = chat.settings.model;
+            const planCallbacks = createMessageStreamCallbacks(
+              {
+                chatId,
+                assistantMessage: assistantMsg,
+                set,
+                get,
+                startBuffered: false,
+                autoReasoningEligible,
+                modelIdUsed,
+                clearController: () => set((s) => ({ ...s, _controller: undefined }) as any),
+                persistMessage: saveMessage,
+              },
+              { startedAt: tStartPlan },
+            );
             await streamChatCompletion({
               apiKey: key || '',
               model: chat.settings.model,
@@ -1284,150 +1072,7 @@ export function createMessageSlice(
                 if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
                 return arr.length > 0 ? arr : undefined;
               })(),
-              callbacks: {
-                onAnnotations: (ann) => {
-                  set((s) => {
-                    const list = s.messages[chatId] ?? [];
-                    const updated = list.map((m) =>
-                      m.id === assistantMsg.id ? ({ ...m, annotations: ann } as any) : m,
-                    );
-                    return { messages: { ...s.messages, [chatId]: updated } } as any;
-                  });
-                },
-                onImage: (dataUrl) => {
-                  set((s) => {
-                    const list = s.messages[chatId] ?? [];
-                    const updated = list.map((m) => {
-                      if (m.id !== assistantMsg.id) return m;
-                      const prev = Array.isArray(m.attachments) ? m.attachments : [];
-                      if (prev.some((a) => a.kind === 'image' && a.dataURL === dataUrl)) return m;
-                      const mime = (() => {
-                        const m = dataUrl.slice(5, dataUrl.indexOf(';'));
-                        return m || 'image/png';
-                      })();
-                      const next = [
-                        ...prev,
-                        {
-                          id: uuidv4(),
-                          kind: 'image',
-                          name: 'generated',
-                          mime,
-                          dataURL: dataUrl,
-                        },
-                      ];
-                      return { ...m, attachments: next } as any;
-                    });
-                    return { messages: { ...s.messages, [chatId]: updated } } as any;
-                  });
-                },
-                onToken: (delta) => {
-                  if (tFirstPlan == null) tFirstPlan = performance.now();
-                  if (!startedStreamingContentPlan) {
-                    leadingBufferPlan += delta;
-                    const hasStructure =
-                      leadingBufferPlan.trimStart().startsWith('{') ||
-                      leadingBufferPlan.trimStart().startsWith('```');
-                    if (hasStructure) {
-                      const stripped = stripLeadingToolJson(leadingBufferPlan);
-                      const rest = stripped.trimStart();
-                      if (rest && !(rest.startsWith('{') || rest.startsWith('```'))) {
-                        startedStreamingContentPlan = true;
-                        const toEmit = stripped;
-                        leadingBufferPlan = '';
-                        set((s) => {
-                          const list = s.messages[chatId] ?? [];
-                          const updated = list.map((m) =>
-                            m.id === assistantMsg.id ? { ...m, content: m.content + toEmit } : m,
-                          );
-                          return { messages: { ...s.messages, [chatId]: updated } } as any;
-                        });
-                      }
-                    } else if (leadingBufferPlan.length > 512) {
-                      startedStreamingContentPlan = true;
-                      const toEmit = leadingBufferPlan;
-                      leadingBufferPlan = '';
-                      set((s) => {
-                        const list = s.messages[chatId] ?? [];
-                        const updated = list.map((m) =>
-                          m.id === assistantMsg.id ? { ...m, content: m.content + toEmit } : m,
-                        );
-                        return { messages: { ...s.messages, [chatId]: updated } } as any;
-                      });
-                    }
-                  } else {
-                    set((s) => {
-                      const list = s.messages[chatId] ?? [];
-                      const updated = list.map((m) =>
-                        m.id === assistantMsg.id ? { ...m, content: m.content + delta } : m,
-                      );
-                      return { messages: { ...s.messages, [chatId]: updated } } as any;
-                    });
-                  }
-                },
-                onReasoningToken: (delta) => {
-                  if (tFirstPlan == null) tFirstPlan = performance.now();
-                  set((s) => {
-                    const list = s.messages[chatId] ?? [];
-                    const updated = list.map((m) =>
-                      m.id === assistantMsg.id
-                        ? { ...m, reasoning: (m.reasoning || '') + delta }
-                        : m,
-                    );
-                    const partial: Partial<StoreState> = {
-                      messages: { ...s.messages, [chatId]: updated },
-                    } as any;
-                    if (autoReasoningEligible && modelIdUsed) {
-                      const prev = s.ui.autoReasoningModelIds || {};
-                      if (!prev[modelIdUsed]) {
-                        partial.ui = {
-                          ...s.ui,
-                          autoReasoningModelIds: { ...prev, [modelIdUsed]: true },
-                        } as any;
-                      }
-                    }
-                    return partial;
-                  });
-                },
-                onDone: async (full, extras) => {
-                  set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
-                  const current = get().messages[chatId]?.find((m) => m.id === assistantMsg.id);
-                  const tEnd = performance.now();
-                  const ttftMs = tFirstPlan
-                    ? Math.max(0, Math.round(tFirstPlan - tStartPlan))
-                    : undefined;
-                  const completionMs = Math.max(0, Math.round(tEnd - tStartPlan));
-                  const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
-                  const completionTokens =
-                    extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
-                  const tokensPerSec =
-                    completionTokens && completionMs
-                      ? +(completionTokens / (completionMs / 1000)).toFixed(2)
-                      : undefined;
-                  const finalMsg = {
-                    ...assistantMsg,
-                    content: stripLeadingToolJson(full || ''),
-                    reasoning: current?.reasoning,
-                    attachments: current?.attachments,
-                    systemSnapshot: (current as any)?.systemSnapshot,
-                    genSettings: (current as any)?.genSettings,
-                    metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
-                    tokensIn: promptTokens,
-                    tokensOut: completionTokens,
-                  } as any;
-                  // telemetry posting removed
-                  set((s) => {
-                    const list = s.messages[chatId] ?? [];
-                    const updated = list.map((m) => (m.id === assistantMsg.id ? finalMsg : m));
-                    return { messages: { ...s.messages, [chatId]: updated } } as any;
-                  });
-                  await saveMessage(finalMsg);
-                  set((s) => ({ ...s, _controller: undefined }) as any);
-                },
-                onError: (err) => {
-                  set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: err.message } }));
-                  set((s) => ({ ...s, _controller: undefined }) as any);
-                },
-              },
+              callbacks: planCallbacks,
             });
           }
           return;
@@ -1447,11 +1092,8 @@ export function createMessageSlice(
         const controller = new AbortController();
         set((s) => ({ ...s, _controller: controller as any }) as any);
         const tStart = performance.now();
-        let tFirst: number | undefined;
         // No automatic fallback web search; the model will call the tool when necessary
         const streamingMessages = msgs;
-        let startedStreamingContent = attemptPlanning ? false : true;
-        let leadingBuffer = '';
         {
           const modelMeta = findModelById(get().models, chat.settings.model);
           const supportsReasoning = isReasoningSupported(modelMeta);
@@ -1487,18 +1129,20 @@ export function createMessageSlice(
               return arr;
             })();
             if (combinedPluginsStd.length > 0) debugBody.plugins = combinedPluginsStd;
-            set((s) => ({
-              ui: {
-                ...s.ui,
-                debugByMessageId: {
-                  ...(s.ui.debugByMessageId || {}),
-                  [assistantMsg.id]: {
-                    body: JSON.stringify(debugBody, null, 2),
-                    createdAt: Date.now(),
+            if (get().ui.debugMode) {
+              set((s) => ({
+                ui: {
+                  ...s.ui,
+                  debugByMessageId: {
+                    ...(s.ui.debugByMessageId || {}),
+                    [assistantMsg.id]: {
+                      body: JSON.stringify(debugBody, null, 2),
+                      createdAt: Date.now(),
+                    },
                   },
                 },
-              },
-            }));
+              }));
+            }
           } catch {}
           const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
           const requestedTokensRaw = supportsReasoning ? chat.settings.reasoning_tokens : undefined;
@@ -1506,6 +1150,20 @@ export function createMessageSlice(
           const tokensRequested = typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
           const autoReasoningEligible = !effortRequested && !tokensRequested;
           const modelIdUsed = chat.settings.model;
+          const streamCallbacks = createMessageStreamCallbacks(
+            {
+              chatId,
+              assistantMessage: assistantMsg,
+              set,
+              get,
+              startBuffered: attemptPlanning,
+              autoReasoningEligible,
+              modelIdUsed,
+              clearController: () => set((s) => ({ ...s, _controller: undefined }) as any),
+              persistMessage: saveMessage,
+            },
+            { startedAt: tStart },
+          );
           await streamChatCompletion({
             apiKey: key || '',
             model: chat.settings.model,
@@ -1524,149 +1182,7 @@ export function createMessageSlice(
               if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
               return arr.length > 0 ? arr : undefined;
             })(),
-            callbacks: {
-              onAnnotations: (ann) => {
-                // Persist annotations on the assistant message so future turns can skip PDF re-parsing
-                set((s) => {
-                  const list = s.messages[chatId] ?? [];
-                  const updated = list.map((m) =>
-                    m.id === assistantMsg.id ? ({ ...m, annotations: ann } as any) : m,
-                  );
-                  return { messages: { ...s.messages, [chatId]: updated } } as any;
-                });
-              },
-              onImage: (dataUrl) => {
-                set((s) => {
-                  const list = s.messages[chatId] ?? [];
-                  const updated = list.map((m) => {
-                    if (m.id !== assistantMsg.id) return m;
-                    const prev = Array.isArray(m.attachments) ? m.attachments : [];
-                    if (prev.some((a) => a.kind === 'image' && a.dataURL === dataUrl)) return m;
-                    const mime = (() => {
-                      const m = dataUrl.slice(5, dataUrl.indexOf(';'));
-                      return m || 'image/png';
-                    })();
-                    const next = [
-                      ...prev,
-                      {
-                        id: uuidv4(),
-                        kind: 'image',
-                        name: 'generated',
-                        mime,
-                        dataURL: dataUrl,
-                      },
-                    ];
-                    return { ...m, attachments: next } as any;
-                  });
-                  return { messages: { ...s.messages, [chatId]: updated } } as any;
-                });
-              },
-              onToken: (delta) => {
-                if (tFirst == null) tFirst = performance.now();
-                if (!startedStreamingContent) {
-                  leadingBuffer += delta;
-                  const hasStructure =
-                    leadingBuffer.trimStart().startsWith('{') ||
-                    leadingBuffer.trimStart().startsWith('```');
-                  if (hasStructure) {
-                    const stripped = stripLeadingToolJson(leadingBuffer);
-                    const rest = stripped.trimStart();
-                    if (rest && !(rest.startsWith('{') || rest.startsWith('```'))) {
-                      startedStreamingContent = true;
-                      const toEmit = stripped;
-                      leadingBuffer = '';
-                      set((s) => {
-                        const list = s.messages[chatId] ?? [];
-                        const updated = list.map((m) =>
-                          m.id === assistantMsg.id ? { ...m, content: m.content + toEmit } : m,
-                        );
-                        return { messages: { ...s.messages, [chatId]: updated } } as any;
-                      });
-                    }
-                  } else if (leadingBuffer.length > 512) {
-                    startedStreamingContent = true;
-                    const toEmit = leadingBuffer;
-                    leadingBuffer = '';
-                    set((s) => {
-                      const list = s.messages[chatId] ?? [];
-                      const updated = list.map((m) =>
-                        m.id === assistantMsg.id ? { ...m, content: m.content + toEmit } : m,
-                      );
-                      return { messages: { ...s.messages, [chatId]: updated } } as any;
-                    });
-                  }
-                } else {
-                  set((s) => {
-                    const list = s.messages[chatId] ?? [];
-                    const updated = list.map((m) =>
-                      m.id === assistantMsg.id ? { ...m, content: m.content + delta } : m,
-                    );
-                    return { messages: { ...s.messages, [chatId]: updated } } as any;
-                  });
-                }
-              },
-              onReasoningToken: (delta) => {
-                if (tFirst == null) tFirst = performance.now();
-                set((s) => {
-                  const list = s.messages[chatId] ?? [];
-                  const updated = list.map((m) =>
-                    m.id === assistantMsg.id ? { ...m, reasoning: (m.reasoning || '') + delta } : m,
-                  );
-                  const partial: Partial<StoreState> = {
-                    messages: { ...s.messages, [chatId]: updated },
-                  } as any;
-                  if (autoReasoningEligible && modelIdUsed) {
-                    const prev = s.ui.autoReasoningModelIds || {};
-                    if (!prev[modelIdUsed]) {
-                      partial.ui = {
-                        ...s.ui,
-                        autoReasoningModelIds: { ...prev, [modelIdUsed]: true },
-                      } as any;
-                    }
-                  }
-                  return partial;
-                });
-              },
-              onDone: async (full, extras) => {
-                set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
-                const current = get().messages[chatId]?.find((m) => m.id === assistantMsg.id);
-                const tEnd = performance.now();
-                const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
-                const completionMs = Math.max(0, Math.round(tEnd - tStart));
-                const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
-                const completionTokens =
-                  extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
-                const tokensPerSec =
-                  completionTokens && completionMs
-                    ? +(completionTokens / (completionMs / 1000)).toFixed(2)
-                    : undefined;
-                const final = {
-                  ...assistantMsg,
-                  content: stripLeadingToolJson(full || ''),
-                  reasoning: current?.reasoning,
-                  attachments: current?.attachments,
-                  systemSnapshot: (current as any)?.systemSnapshot,
-                  genSettings: (current as any)?.genSettings,
-                  tutor: (current as any)?.tutor,
-                  hiddenContent: (current as any)?.hiddenContent,
-                  annotations: (current as any)?.annotations || extras?.annotations,
-                  metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
-                  tokensIn: promptTokens,
-                  tokensOut: completionTokens,
-                } as any;
-                set((s) => {
-                  const list = s.messages[chatId] ?? [];
-                  const updated = list.map((m) => (m.id === assistantMsg.id ? final : m));
-                  return { messages: { ...s.messages, [chatId]: updated } } as any;
-                });
-                await saveMessage(final);
-                set((s) => ({ ...s, _controller: undefined }) as any);
-              },
-              onError: (err) => {
-                set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: err.message } }));
-                set((s) => ({ ...s, _controller: undefined }) as any);
-              },
-            },
+            callbacks: streamCallbacks,
           });
         }
       } catch (e: any) {
@@ -1732,8 +1248,8 @@ export function createMessageSlice(
     },
 
     async regenerateAssistantMessage(messageId, opts) {
-      const useProxy = process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
-      const key = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
+      const useProxy = isOpenRouterProxyEnabled();
+      const key = getPublicOpenRouterKey();
       if (!key && !useProxy)
         return set((s) => ({
           ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
@@ -1767,43 +1283,10 @@ export function createMessageSlice(
           } catch {}
         }
       }
-      // ZDR enforcement for regenerate with provider fallback
       if (get().ui.zdrOnly === true) {
-        const modelId = opts?.modelId || chat.settings.model;
-        let allowedModelIds = new Set(get().zdrModelIds || []);
-        if (allowedModelIds.size === 0) {
-          try {
-            allowedModelIds = await fetchZdrModelIds();
-            set({ zdrModelIds: Array.from(allowedModelIds) } as any);
-          } catch {}
-        }
-        if (allowedModelIds.size > 0) {
-          if (!allowedModelIds.has(modelId)) {
-            return set((s) => ({
-              ui: {
-                ...s.ui,
-                notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not ZDR. Choose a ZDR model in Settings.`,
-              },
-            }));
-          }
-        } else {
-          let providers = new Set(get().zdrProviderIds || []);
-          if (providers.size === 0) {
-            try {
-              providers = await fetchZdrProviderIds();
-              set({ zdrProviderIds: Array.from(providers) } as any);
-            } catch {}
-          }
-          const providerPrefix = (modelId || '').split('/')[0];
-          if (!providerPrefix || !providers.has(providerPrefix)) {
-            return set((s) => ({
-              ui: {
-                ...s.ui,
-                notice: `ZDR-only is enabled. The selected model (\n${modelId}\n) is not from a ZDR provider. Choose a ZDR model in Settings.`,
-              },
-            }));
-          }
-        }
+        const nextModel = opts?.modelId || chat.settings.model;
+        const allowed = await ensureZdrAllowed(nextModel);
+        if (!allowed) return;
       }
       const list = get().messages[chatId] ?? [];
       const idx = list.findIndex((m) => m.id === messageId);
@@ -1852,7 +1335,6 @@ export function createMessageSlice(
         const controller = new AbortController();
         set((s) => ({ ...s, _controller: controller as any }) as any);
         const tStart = performance.now();
-        let tFirst: number | undefined;
         {
           const modelMeta = findModelById(get().models, replacement.model!);
           const supportsReasoning = isReasoningSupported(modelMeta);
@@ -1992,23 +1474,39 @@ export function createMessageSlice(
             ) {
               debugBody.provider = { sort: genSnapshot.providerSort };
             }
-            set((s) => ({
-              ui: {
-                ...s.ui,
-                debugByMessageId: {
-                  ...(s.ui.debugByMessageId || {}),
-                  [replacement.id]: {
-                    body: JSON.stringify(debugBody, null, 2),
-                    createdAt: Date.now(),
+            if (get().ui.debugMode) {
+              set((s) => ({
+                ui: {
+                  ...s.ui,
+                  debugByMessageId: {
+                    ...(s.ui.debugByMessageId || {}),
+                    [replacement.id]: {
+                      body: JSON.stringify(debugBody, null, 2),
+                      createdAt: Date.now(),
+                    },
                   },
                 },
-              },
-            }));
+              }));
+            }
           } catch {}
           const effortRequested = typeof rEffortUsed === 'string' && rEffortUsed !== 'none';
           const tokensRequested = typeof rTokUsed === 'number' && rTokUsed > 0;
           const autoReasoningEligible = !effortRequested && !tokensRequested;
           const modelIdUsed = replacement.model!;
+          const regenCallbacks = createMessageStreamCallbacks(
+            {
+              chatId,
+              assistantMessage: replacement,
+              set,
+              get,
+              startBuffered: false,
+              autoReasoningEligible,
+              modelIdUsed,
+              clearController: () => set((s) => ({ ...s, _controller: undefined }) as any),
+              persistMessage: saveMessage,
+            },
+            { startedAt: tStart },
+          );
           await streamChatCompletion({
             apiKey: key || '',
             model: replacement.model!,
@@ -2027,111 +1525,7 @@ export function createMessageSlice(
               if (searchWithBrave && providerForTurn === 'openrouter') arr.push({ id: 'web' });
               return arr.length > 0 ? arr : undefined;
             })(),
-            callbacks: {
-              onAnnotations: (ann) => {
-                set((s) => {
-                  const list2 = s.messages[chatId] ?? [];
-                  const updated = list2.map((m) =>
-                    m.id === replacement.id ? ({ ...m, annotations: ann } as any) : m,
-                  );
-                  return { messages: { ...s.messages, [chatId]: updated } } as any;
-                });
-              },
-              onImage: (dataUrl) => {
-                set((s) => {
-                  const list2 = s.messages[chatId] ?? [];
-                  const updated = list2.map((m) => {
-                    if (m.id !== replacement.id) return m;
-                    const prev = Array.isArray(m.attachments) ? m.attachments : [];
-                    if (prev.some((a) => a.kind === 'image' && a.dataURL === dataUrl)) return m;
-                    const mime = (() => {
-                      const m = dataUrl.slice(5, dataUrl.indexOf(';'));
-                      return m || 'image/png';
-                    })();
-                    const next = [
-                      ...prev,
-                      {
-                        id: uuidv4(),
-                        kind: 'image',
-                        name: 'generated',
-                        mime,
-                        dataURL: dataUrl,
-                      },
-                    ];
-                    return { ...m, attachments: next } as any;
-                  });
-                  return { messages: { ...s.messages, [chatId]: updated } } as any;
-                });
-              },
-              onToken: (delta) => {
-                if (tFirst == null) tFirst = performance.now();
-                set((s) => {
-                  const list2 = s.messages[chatId] ?? [];
-                  const updated = list2.map((m) =>
-                    m.id === replacement.id ? { ...m, content: m.content + delta } : m,
-                  );
-                  return { messages: { ...s.messages, [chatId]: updated } } as any;
-                });
-              },
-              onReasoningToken: (delta) => {
-                set((s) => {
-                  const list2 = s.messages[chatId] ?? [];
-                  const updated = list2.map((m) =>
-                    m.id === replacement.id ? { ...m, reasoning: (m.reasoning || '') + delta } : m,
-                  );
-                  const partial: Partial<StoreState> = {
-                    messages: { ...s.messages, [chatId]: updated },
-                  } as any;
-                  if (autoReasoningEligible && modelIdUsed) {
-                    const prev = s.ui.autoReasoningModelIds || {};
-                    if (!prev[modelIdUsed]) {
-                      partial.ui = {
-                        ...s.ui,
-                        autoReasoningModelIds: { ...prev, [modelIdUsed]: true },
-                      } as any;
-                    }
-                  }
-                  return partial;
-                });
-              },
-              onDone: async (full, extras) => {
-                set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
-                const current = get().messages[chatId]?.find((m) => m.id === replacement.id);
-                const tEnd = performance.now();
-                const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
-                const completionMs = Math.max(0, Math.round(tEnd - tStart));
-                const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
-                const completionTokens =
-                  extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
-                const tokensPerSec =
-                  completionTokens && completionMs
-                    ? +(completionTokens / (completionMs / 1000)).toFixed(2)
-                    : undefined;
-                const final = {
-                  ...replacement,
-                  content: full,
-                  reasoning: current?.reasoning,
-                  attachments: current?.attachments,
-                  annotations: (current as any)?.annotations || extras?.annotations,
-                  genSettings: appliedGenSettings,
-                  metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec },
-                  tokensIn: promptTokens,
-                  tokensOut: completionTokens,
-                } as any;
-                // telemetry posting removed
-                set((s) => {
-                  const list3 = s.messages[chatId] ?? [];
-                  const updated = list3.map((m) => (m.id === replacement.id ? final : m));
-                  return { messages: { ...s.messages, [chatId]: updated } } as any;
-                });
-                await saveMessage(final);
-                set((s) => ({ ...s, _controller: undefined }) as any);
-              },
-              onError: (err) => {
-                set((s) => ({ ui: { ...s.ui, isStreaming: false, notice: err.message } }));
-                set((s) => ({ ...s, _controller: undefined }) as any);
-              },
-            },
+            callbacks: regenCallbacks,
           });
         }
       } catch (e: any) {

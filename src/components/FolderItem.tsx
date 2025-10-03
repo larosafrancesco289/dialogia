@@ -4,7 +4,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { useDragAndDrop, setCurrentDragData, getCurrentDragData } from '@/lib/dragDrop';
+import { useDragAndDrop } from '@/lib/dragDrop';
 import IconButton from './IconButton';
 import ConfirmDialog from './ConfirmDialog';
 import { MoveChatSheet } from '@/components/MoveChatSheet';
@@ -35,7 +35,8 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
     toggleFolderExpanded,
   } = useChatStore();
 
-  const { handleDragOver, handleDrop } = useDragAndDrop();
+  const { handleDragOver, handleDrop, handleDragStart, handleDragEnd, getDragData } =
+    useDragAndDrop();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(folder.name);
@@ -129,8 +130,9 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
           }`}
           draggable
           onDragStart={() => {
-            setCurrentDragData({ id: folder.id, type: 'folder' });
+            handleDragStart(folder.id, 'folder');
           }}
+          onDragEnd={handleDragEnd}
           onClick={(e) => {
             if (isEditing) return;
             if (isMobile && suppressTap.current) {
@@ -155,11 +157,10 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
             e.preventDefault();
             e.stopPropagation();
             setIsDragOver(false);
-            const dragData = getCurrentDragData();
+            const dragData = getDragData();
             if (dragData && dragData.id !== folder.id) {
-              await handleDrop(folder.id, dragData.id, dragData.type);
+              await handleDrop(folder.id);
             }
-            setCurrentDragData(null);
           }}
           style={{ marginLeft: `${marginLeft}px`, paddingLeft: `${paddingLeft}px` }}
         >
@@ -313,6 +314,8 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
               depth={depth + 1}
               isSelected={selectedChatId === chat.id}
               onSelect={() => selectChat(chat.id)}
+              onDragStart={(id) => handleDragStart(id, 'chat')}
+              onDragEnd={handleDragEnd}
             />
           ))}
         </div>
@@ -326,9 +329,11 @@ interface ChatItemProps {
   depth: number;
   isSelected: boolean;
   onSelect: () => void;
+  onDragStart: (chatId: string) => void;
+  onDragEnd: () => void;
 }
 
-function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
+function ChatItem({ chat, depth, isSelected, onSelect, onDragStart, onDragEnd }: ChatItemProps) {
   const { renameChat, deleteChat, moveChatToFolder, folders } = useChatStore(
     (state) => ({
       renameChat: state.renameChat,
@@ -419,8 +424,9 @@ function ChatItem({ chat, depth, isSelected, onSelect }: ChatItemProps) {
         draggable={!isMobile}
         onDragStart={() => {
           if (isMobile) return;
-          setCurrentDragData({ id: chat.id, type: 'chat' });
+          onDragStart(chat.id);
         }}
+        onDragEnd={onDragEnd}
         onClick={!isEditing ? onSelect : undefined}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

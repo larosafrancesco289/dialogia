@@ -1,4 +1,6 @@
-import { chatCompletion } from '@/lib/openrouter';
+import { chatCompletion, fetchModels } from '@/lib/openrouter';
+import { getBraveSearchKey, getDeepResearchReasoningOnly } from '@/lib/config';
+import { extractMainText } from '@/lib/html';
 
 // System prompt for DeepResearch with interleaved tool reasoning
 export function buildDeepResearchPrompt(opts?: {
@@ -165,44 +167,6 @@ export type DeepResearchOutput = {
   model: string;
 };
 
-// Basic HTML extraction without external deps (best-effort)
-function extractMainText(html: string): {
-  title?: string;
-  description?: string;
-  headings?: string[];
-  text: string;
-} {
-  const pick = (re: RegExp) => {
-    const m = html.match(re);
-    return m ? m[1].trim() : undefined;
-  };
-  // Strip scripts/styles
-  let cleaned = html
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ');
-  const article = cleaned.match(/<article[\s\S]*?<\/article>/i)?.[0];
-  const main = cleaned.match(/<main[\s\S]*?<\/main>/i)?.[0];
-  const body = cleaned.match(/<body[\s\S]*?<\/body>/i)?.[0];
-  const pickHtml = article || main || body || cleaned;
-  // Remove tags
-  const text = pickHtml
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;|&amp;|&quot;|&#39;|&lt;|&gt;/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 12000);
-  const title = pick(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const metaDesc = pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["'][^>]*>/i);
-  const ogDesc = pick(
-    /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-  );
-  const description = metaDesc || ogDesc || undefined;
-  const headings = Array.from(html.matchAll(/<h[12][^>]*>([\s\S]*?)<\/h[12]>/gi))
-    .map((m) => m[1].replace(/<[^>]+>/g, '').trim())
-    .slice(0, 12);
-  return { title, description, headings, text };
-}
-
 async function braveSearch(args: {
   query: string;
   count?: number;
@@ -211,7 +175,7 @@ async function braveSearch(args: {
   include_domains?: string[];
   exclude_domains?: string[];
 }): Promise<DeepSearchResult[]> {
-  const apiKey = process.env.BRAVE_SEARCH_API_KEY;
+  const apiKey = getBraveSearchKey();
   if (!apiKey) throw new Error('brave_missing_key');
   const url = new URL('https://api.search.brave.com/res/v1/web/search');
   url.searchParams.set('q', args.query);
@@ -304,32 +268,19 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
   const { apiKey, task, model, audience, style, cite, maxIterations = 10, providerSort } = params;
 
   // Enforce reasoning-only usage when configured via env (default true)
-  const strict = (process.env.DEEP_RESEARCH_REASONING_ONLY || 'true').toLowerCase() === 'true';
+  const strict = getDeepResearchReasoningOnly();
   if (strict) {
     // Verify using OpenRouter metadata instead of name heuristics
     const ok = await (async () => {
       try {
-        const controller = new AbortController();
-        const to = setTimeout(() => controller.abort(), 10000);
-        const res = await fetch('https://openrouter.ai/api/v1/models', {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-        clearTimeout(to);
-        const data: any = await res.json().catch(() => ({}));
-        const list: any[] = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-        const entry = list.find(
-          (m: any) => String(m?.id || '').toLowerCase() === model.toLowerCase(),
+        const models = await fetchModels(apiKey);
+        const entry = models.find(
+          (m) => m.id.toLowerCase() === model.toLowerCase(),
         );
-        const supp: string[] = Array.isArray(entry?.supported_parameters)
-          ? entry.supported_parameters.map((p: any) => String(p).toLowerCase())
+        const supported = Array.isArray((entry?.raw as any)?.supported_parameters)
+          ? (entry?.raw as any).supported_parameters.map((p: any) => String(p).toLowerCase())
           : [];
-        return supp.includes('reasoning');
+        return supported.includes('reasoning');
       } catch {
         return false;
       }

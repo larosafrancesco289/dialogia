@@ -1,18 +1,27 @@
-export function getPublicOpenRouterKey(): string | undefined {
-  return process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
-}
+import {
+  getAccessCookieDomain,
+  getBraveSearchKey,
+  getDeepResearchReasoningOnly,
+  getDefaultZdrOnly,
+  getPublicOpenRouterKey,
+  getRoutePreferenceDefault,
+  hasBraveKey,
+  isOpenRouterProxyEnabled,
+} from '@/lib/config';
 
-export function hasBraveKey(): boolean {
-  return Boolean(process.env.BRAVE_SEARCH_API_KEY);
-}
+export {
+  getAccessCookieDomain,
+  getBraveSearchKey,
+  getDeepResearchReasoningOnly,
+  getDefaultZdrOnly,
+  getPublicOpenRouterKey,
+  getRoutePreferenceDefault,
+  hasBraveKey,
+  isOpenRouterProxyEnabled,
+} from '@/lib/config';
 
-export function useOpenRouterProxy(): boolean {
-  return process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
-}
+/** @deprecated use `isOpenRouterProxyEnabled` */
+export const useOpenRouterProxy = () => isOpenRouterProxyEnabled();
 
-// Default for the ZDR-only preference; off unless explicitly enabled
-export function defaultZdrOnly(): boolean {
-  const v = process.env.NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT;
-  if (v == null) return false;
-  return String(v).toLowerCase() === 'true';
-}
+/** @deprecated use `getDefaultZdrOnly` */
+export const defaultZdrOnly = () => getDefaultZdrOnly();

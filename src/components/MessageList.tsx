@@ -2,28 +2,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
-import { Markdown } from '@/lib/markdown';
 import {
   ChevronDownIcon,
   PencilSquareIcon,
-  CheckIcon,
   XMarkIcon,
   ClipboardIcon,
   ArrowPathIcon,
   ArrowUturnRightIcon,
 } from '@heroicons/react/24/outline';
-import RegenerateMenu from '@/components/RegenerateMenu';
-import { MessageMeta } from '@/components/message/MessageMeta';
-import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
-import { ReasoningPanel } from '@/components/message/ReasoningPanel';
-import { DebugPanel } from '@/components/message/DebugPanel';
-import { TutorPanel } from '@/components/message/TutorPanel';
-import { findModelById, isReasoningSupported } from '@/lib/models';
 import type { Attachment } from '@/lib/types';
 import ImageLightbox from '@/components/ImageLightbox';
-
-// cost and model meta computed within MessageMeta when expanded
-
+import MessagePanels, { type MessagePanelsProps } from '@/components/message/MessagePanels';
+import MessageCard from '@/components/message/MessageCard';
 export default function MessageList({ chatId }: { chatId: string }) {
   const messages = useChatStore((s) => s.messages[chatId] ?? []);
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
@@ -62,6 +52,8 @@ export default function MessageList({ chatId }: { chatId: string }) {
     images: { src: string; name?: string }[];
     index: number;
   } | null>(null);
+  const WINDOW_INCREMENT = 150;
+  const [visibleCount, setVisibleCount] = useState(WINDOW_INCREMENT);
   // Tap-to-highlight state for mobile actions
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
   // Mobile contextual action sheet (bottom)
@@ -262,6 +254,21 @@ export default function MessageList({ chatId }: { chatId: string }) {
   }, [mobileSheet, messages, closeMobileSheet]);
 
   useEffect(() => {
+    setVisibleCount(WINDOW_INCREMENT);
+  }, [chatId]);
+
+  useEffect(() => {
+    setVisibleCount((count) => {
+      if (messages.length === 0) return WINDOW_INCREMENT;
+      return Math.min(Math.max(count, WINDOW_INCREMENT), messages.length);
+    });
+  }, [messages.length]);
+
+  const startIndex = Math.max(0, messages.length - visibleCount);
+  const visibleMessages = messages.slice(startIndex);
+  const hiddenCount = startIndex;
+
+  useEffect(() => {
     if (!isMobile || !mobileSheet) return;
     if (activeMessageId === mobileSheet.id) return;
     setActiveMessageId(mobileSheet.id);
@@ -286,512 +293,85 @@ export default function MessageList({ chatId }: { chatId: string }) {
       className="scroll-area message-list space-y-2 h-full"
       style={{ background: 'var(--color-canvas)' }}
     >
-      {messages.map((m) => {
-        const isEditingThisMessage = editingId === m.id;
-        const showInlineActions = !isMobile || isEditingThisMessage;
-        return (
-          <div
-            key={m.id}
-            className={`card p-0 message-card group ${
-              m.role === 'assistant' ? 'message-assistant' : 'message-user'
-            } ${isMobile && activeMessageId === m.id ? 'is-active' : ''}`}
-            data-mid={m.id}
-            aria-label={m.role === 'assistant' ? 'Assistant message' : 'Your message'}
-            onPointerDown={(e) => {
-              if (!isMobile) return;
-              if ((e as any).pointerType === 'mouse') return;
-              const target = e.target as HTMLElement | null;
-              if (
-                target &&
-                target.closest('button, .icon-button, a, input, textarea, [role="button"], .badge')
-              )
-                return; // interactive elements use their own handlers
-              // Long-press detection
-              const startX = e.clientX;
-              const startY = e.clientY;
-              let moved = false;
-              const slop = 12;
-              let fired = false;
-              const tid = window.setTimeout(() => {
-                fired = true;
-                setActiveMessageId(m.id);
-                setMobileSheet({ id: m.id, role: m.role as any });
-              }, 320);
-              const onMove = (ev: PointerEvent) => {
-                const dx = Math.abs(ev.clientX - startX);
-                const dy = Math.abs(ev.clientY - startY);
-                if (dx > slop || dy > slop) {
-                  moved = true;
-                  window.clearTimeout(tid);
-                  cleanup();
-                }
-              };
-              const onUp = () => {
-                window.clearTimeout(tid);
-                cleanup();
-                // If it wasn't a long press, do nothing (avoid finnicky toggles)
-              };
-              const onCancel = () => {
-                window.clearTimeout(tid);
-                cleanup();
-              };
-              const cleanup = () => {
-                window.removeEventListener('pointermove', onMove as any);
-                window.removeEventListener('pointerup', onUp as any);
-                window.removeEventListener('pointercancel', onCancel as any);
-              };
-              window.addEventListener('pointermove', onMove as any, { passive: true } as any);
-              window.addEventListener('pointerup', onUp as any);
-              window.addEventListener('pointercancel', onCancel as any);
-            }}
-            onContextMenu={(e) => {
-              // Fallback: if a context menu is about to open on iOS, hijack it for our sheet
-              if (!isMobile) return;
-              e.preventDefault();
-              setActiveMessageId(m.id);
-              setMobileSheet({ id: m.id, role: m.role as any });
-            }}
+      {hiddenCount > 0 && (
+        <div className="flex justify-center py-2">
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() =>
+              setVisibleCount((count) => Math.min(messages.length, count + WINDOW_INCREMENT))
+            }
           >
-            {m.role === 'assistant' ? (
-              <div className="relative">
-                {showInlineActions && (
-                  <div
-                    className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
-                    style={isMobile ? { opacity: 1 } : undefined}
-                  >
-                    {isEditingThisMessage ? (
-                      <div className="flex items-center gap-1">
-                        <button
-                          className="icon-button"
-                          aria-label="Save edit"
-                          title="Save edit"
-                          onClick={() => saveEdit(m.id)}
-                        >
-                          <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </button>
-                        <button
-                          className="icon-button"
-                          aria-label="Cancel edit"
-                          title="Cancel edit"
-                          onClick={() => {
-                            setEditingId(null);
-                            setDraft('');
-                          }}
-                        >
-                          <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <button
-                          className="icon-button"
-                          aria-label="Copy message"
-                          title={copiedId === m.id ? 'Copied' : 'Copy message'}
-                          onClick={() => copyMessage(m.id)}
-                        >
-                          {copiedId === m.id ? (
-                            <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                          ) : (
-                            <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                          )}
-                        </button>
-                        {!isStreaming && (
-                          <button
-                            className="icon-button"
-                            aria-label="Edit message"
-                            title="Edit message"
-                            onClick={() => startEditingMessage(m.id)}
-                          >
-                            <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                          </button>
-                        )}
-                        <button
-                          className="icon-button"
-                          title="Create a new chat starting from this reply"
-                          aria-label="Branch chat from here"
-                          disabled={isStreaming}
-                          onClick={() => branchFromMessage(m.id)}
-                        >
-                          <ArrowUturnRightIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </button>
-                        {!tutorEnabled && (
-                          <RegenerateMenu onChoose={(modelId) => regenerate(m.id, { modelId })} />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* Brave search UX block attached to this assistant message (gated by experimental toggle) */}
-                {(() => {
-                  if (!braveGloballyEnabled) return null;
-                  const brave = braveByMessageId[m.id];
-                  if (!brave) return null;
-                  return (
-                    <BraveSourcesPanel
-                      data={brave as any}
-                      expanded={isSourcesExpanded(m.id)}
-                      onToggle={() => toggleSources(m.id)}
-                    />
-                  );
-                })()}
-                {/* Debug payload panel (raw OpenRouter request) */}
-                {debugMode && debugByMessageId[m.id]?.body && (
-                  <DebugPanel
-                    body={debugByMessageId[m.id].body}
-                    expanded={isDebugExpanded(m.id)}
-                    onToggle={() => toggleDebug(m.id)}
-                    memoryInfo={(() => {
-                      if (!tutorEnabled) return undefined;
-                      const mem = tutorMemoryDebugByMessageId[m.id] || {};
-                      const memoryDisabled = chat?.settings.tutor_memory_disabled === true;
-                      return {
-                        enabled: !memoryDisabled,
-                        defaultEnabled: tutorMemoryAutoUpdateDefault,
-                        version: mem.version ?? chat?.settings.tutor_memory_version,
-                        messageCount: mem.messageCount ?? chat?.settings.tutor_memory_message_count,
-                        after: mem.after ?? chat?.settings.tutor_memory,
-                        before: mem.before,
-                        raw: mem.raw,
-                        conversationWindow: mem.conversationWindow,
-                        model: mem.model,
-                        updatedAt: mem.updatedAt,
-                      };
-                    })()}
-                    onToggleMemory={
-                      tutorEnabled && chat
-                        ? async () => {
-                            const memoryDisabled = chat.settings.tutor_memory_disabled === true;
-                            await updateChatSettings({
-                              tutor_memory_disabled: memoryDisabled ? false : true,
-                            });
-                          }
-                        : undefined
-                    }
-                  />
-                )}
-                {/* Thinking block styled like sources, inline header with icon toggle */}
-                {(() => {
-                  const reasoningText =
-                    typeof m.reasoning === 'string' ? (m.reasoning as string) : '';
-                  const isLatestAssistant = m.role === 'assistant' && m.id === lastMessageId;
-                  const messageModelId = (m.model || chat?.settings?.model) ?? undefined;
-                  const modelMeta = messageModelId
-                    ? findModelById(models, messageModelId)
-                    : undefined;
-                  const modelAllowsReasoning = !!modelMeta && isReasoningSupported(modelMeta);
-                  const hasReasoning = reasoningText.trim().length > 0;
-                  const messageEffort = m.genSettings?.reasoning_effort;
-                  const messageTokens = m.genSettings?.reasoning_tokens;
-                  const chatEffort = chat?.settings.reasoning_effort;
-                  const chatTokens = chat?.settings.reasoning_tokens;
-                  const effortRequested =
-                    typeof messageEffort === 'string'
-                      ? messageEffort !== 'none'
-                      : typeof chatEffort === 'string'
-                        ? chatEffort !== 'none'
-                        : false;
-                  const tokensRequested =
-                    typeof messageTokens === 'number'
-                      ? messageTokens > 0
-                      : typeof chatTokens === 'number'
-                        ? chatTokens > 0
-                        : false;
-                  const isAutoReasoningModel = !!(
-                    messageModelId && autoReasoningModelIds[messageModelId]
-                  );
-                  const allowStreaming =
-                    (effortRequested || tokensRequested || isAutoReasoningModel) &&
-                    modelAllowsReasoning &&
-                    isLatestAssistant &&
-                    isStreaming;
-                  if (!hasReasoning && !allowStreaming) return null;
-                  return (
-                    <ReasoningPanel
-                      reasoning={reasoningText}
-                      expanded={isExpanded(m.id)}
-                      onToggle={() => toggle(m.id)}
-                      isStreaming={allowStreaming}
-                    />
-                  );
-                })()}
-                {/* Tutor interactive panels (MCQ, fill-blank, open, flashcards) */}
-                {(() => {
-                  if (!tutorGloballyEnabled) return null;
-                  const tut = tutorByMessageId[m.id] || (m as any)?.tutor;
-                  if (!tut) return null;
-                  return (
-                    <TutorPanel
-                      messageId={m.id}
-                      title={tut.title}
-                      mcq={tut.mcq}
-                      fillBlank={tut.fillBlank}
-                      openEnded={tut.openEnded}
-                      flashcards={tut.flashcards}
-                      grading={(tut as any).grading}
-                    />
-                  );
-                })()}
-                {/* Attachments (assistant-visible images/audio; PDFs shown as chips) */}
-                {Array.isArray(m.attachments) && m.attachments.length > 0 && (
-                  <div className="px-4 pt-2 flex flex-wrap gap-2">
-                    {m.attachments
-                      .filter((a: Attachment) => a.kind === 'image')
-                      .map((a: Attachment, idx: number, arr: Attachment[]) => (
-                        <button
-                          key={a.id}
-                          className="p-0 m-0 border-none bg-transparent"
-                          onClick={() =>
-                            setLightbox({
-                              images: arr
-                                .filter((x) => x.kind === 'image' && x.dataURL)
-                                .map((x) => ({ src: x.dataURL!, name: x.name })),
-                              index: idx,
-                            })
-                          }
-                          title="Click to enlarge"
-                        >
-                          <img
-                            src={a.dataURL}
-                            alt={a.name || 'image'}
-                            className="h-28 w-28 sm:h-36 sm:w-36 object-cover rounded border border-border"
-                          />
-                        </button>
-                      ))}
-                    {m.attachments
-                      .filter((a: Attachment) => a.kind === 'audio')
-                      .map((a: Attachment) => (
-                        <div
-                          key={a.id}
-                          className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
-                        >
-                          {a.dataURL ? (
-                            <audio controls src={a.dataURL} className="h-10" />
-                          ) : (
-                            <span className="text-xs">Audio attached</span>
-                          )}
-                          <div className="min-w-0">
-                            <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
-                              {a.name || 'Audio'}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    {m.attachments
-                      .filter((a: Attachment) => a.kind === 'pdf')
-                      .map((a: Attachment) => (
-                        <span
-                          key={a.id}
-                          className="badge"
-                          title={`${a.name || 'PDF'}${a.pageCount ? ` • ${a.pageCount} pages` : ''}`}
-                        >
-                          {a.name || 'PDF'}
-                          {a.pageCount ? ` (${a.pageCount}p)` : ''}
-                        </span>
-                      ))}
-                  </div>
-                )}
-                <div className="px-4 py-3">
-                  {editingId === m.id ? (
-                    <textarea
-                      className="textarea w-full text-sm"
-                      rows={Math.min(8, Math.max(3, Math.ceil((draft.length || 1) / 60)))}
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                          e.preventDefault();
-                          saveEdit(m.id);
-                        }
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          saveEdit(m.id);
-                        }
-                      }}
-                      placeholder="Edit assistant message..."
-                    />
-                  ) : waitingForFirstToken && m.id === lastMessageId ? (
-                    <div className="typing-indicator" aria-live="polite" aria-label="Generating">
-                      <span className="typing-dot" />
-                      <span className="typing-dot" />
-                      <span className="typing-dot" />
-                    </div>
-                  ) : (
-                    <Markdown content={m.content} />
-                  )}
-                </div>
-                {/* Stats summary removed to respect per-message toggle */}
-                {showStats && !(waitingForFirstToken && m.id === lastMessageId) && (
-                  <div className="px-4 pb-3 -mt-2">
-                    {isStatsExpanded(m.id) ? (
-                      <div className="text-xs text-muted-foreground">
-                        {(() => {
-                          const modelId = m.model || chat?.settings.model || 'unknown';
-                          return (
-                            <MessageMeta
-                              message={m}
-                              modelId={modelId}
-                              chatSettings={chat!.settings}
-                              models={models}
-                              showStats={true}
-                            />
-                          );
-                        })()}
-                        <div className="mt-1">
-                          <button className="badge" onClick={() => toggleStats(m.id)}>
-                            Hide stats
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button className="badge" onClick={() => toggleStats(m.id)}>
-                        stats
-                      </button>
-                    )}
-                  </div>
-                )}
-                {/* Branching control moved to hover actions (bottom-right) */}
-              </div>
-            ) : (
-              <div className="relative">
-                {/* Edit control for user messages */}
-                {showInlineActions && (
-                  <div
-                    className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
-                    style={isMobile ? { opacity: 1 } : undefined}
-                  >
-                    {isEditingThisMessage ? (
-                      <div className="flex items-center gap-1">
-                        <button
-                          className="icon-button"
-                          aria-label="Save edit"
-                          title="Save edit"
-                          onClick={() => saveEdit(m.id)}
-                        >
-                          <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </button>
-                        <button
-                          className="icon-button"
-                          aria-label="Cancel edit"
-                          title="Cancel edit"
-                          onClick={() => {
-                            setEditingId(null);
-                            setDraft('');
-                          }}
-                        >
-                          <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        className="icon-button"
-                        aria-label="Edit message"
-                        title="Edit message"
-                        onClick={() => startEditingMessage(m.id)}
-                      >
-                        <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </button>
-                    )}
-                    {!isEditingThisMessage && (
-                      <button
-                        className="icon-button ml-1"
-                        aria-label="Copy message"
-                        title={copiedId === m.id ? 'Copied' : 'Copy message'}
-                        onClick={() => copyMessage(m.id)}
-                      >
-                        {copiedId === m.id ? (
-                          <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                        ) : (
-                          <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                        )}
-                      </button>
-                    )}
-                  </div>
-                )}
-                {/* Attachments (user: images/audio/PDFs) */}
-                {Array.isArray(m.attachments) && m.attachments.length > 0 && (
-                  <div className="px-4 pt-2 flex flex-wrap gap-2">
-                    {m.attachments
-                      .filter((a: Attachment) => a.kind === 'image')
-                      .map((a: Attachment, idx: number, arr: Attachment[]) => (
-                        <button
-                          key={a.id}
-                          className="p-0 m-0 border-none bg-transparent"
-                          onClick={() =>
-                            setLightbox({
-                              images: arr
-                                .filter((x) => x.kind === 'image' && x.dataURL)
-                                .map((x) => ({ src: x.dataURL!, name: x.name })),
-                              index: idx,
-                            })
-                          }
-                          title="Click to enlarge"
-                        >
-                          <img
-                            src={a.dataURL}
-                            alt={a.name || 'image'}
-                            className="h-28 w-28 sm:h-36 sm:w-36 object-cover rounded border border-border"
-                          />
-                        </button>
-                      ))}
-                    {m.attachments
-                      .filter((a: Attachment) => a.kind === 'audio')
-                      .map((a: Attachment) => (
-                        <div
-                          key={a.id}
-                          className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
-                        >
-                          {a.dataURL ? (
-                            <audio controls src={a.dataURL} className="h-10" />
-                          ) : (
-                            <span className="text-xs">Audio attached</span>
-                          )}
-                          <div className="min-w-0">
-                            <div className="text-xs font-medium truncate" title={a.name || 'Audio'}>
-                              {a.name || 'Audio'}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    {m.attachments
-                      .filter((a: Attachment) => a.kind === 'pdf')
-                      .map((a: Attachment) => (
-                        <span
-                          key={a.id}
-                          className="badge"
-                          title={`${a.name || 'PDF'}${a.pageCount ? ` • ${a.pageCount} pages` : ''}`}
-                        >
-                          {a.name || 'PDF'}
-                          {a.pageCount ? ` (${a.pageCount}p)` : ''}
-                        </span>
-                      ))}
-                  </div>
-                )}
-                <div className="px-4 py-3">
-                  {editingId === m.id ? (
-                    <textarea
-                      className="textarea w-full text-sm"
-                      rows={Math.min(8, Math.max(3, Math.ceil((draft.length || 1) / 60)))}
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                          e.preventDefault();
-                          saveEdit(m.id);
-                        }
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          saveEdit(m.id);
-                        }
-                      }}
-                      placeholder="Edit your message..."
-                    />
-                  ) : (
-                    <Markdown content={m.content} />
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+            Show earlier messages ({hiddenCount})
+          </button>
+        </div>
+      )}
+
+      {visibleMessages.map((message) => {
+        const isEditingThisMessage = editingId === message.id;
+        const showInlineActions = !isMobile || isEditingThisMessage;
+        const messagePanels = {
+          models,
+          braveGloballyEnabled,
+          braveEntry: braveByMessageId[message.id],
+          isSourcesExpanded: isSourcesExpanded(message.id),
+          onToggleSources: () => toggleSources(message.id),
+          debugMode,
+          debugEntry: debugByMessageId[message.id],
+          isDebugExpanded: isDebugExpanded(message.id),
+          onToggleDebug: () => toggleDebug(message.id),
+          tutorGloballyEnabled,
+          tutorEnabled,
+          tutorEntry: tutorByMessageId[message.id] || (message as any)?.tutor,
+          tutorMemoryDebug: tutorMemoryDebugByMessageId[message.id],
+          tutorMemoryAutoUpdateDefault,
+          updateChatSettings,
+          autoReasoningModelIds,
+          isStreaming,
+          lastMessageId,
+          reasoningExpanded: isExpanded(message.id),
+          onToggleReasoning: () => toggle(message.id),
+        } satisfies Omit<MessagePanelsProps, 'message'>;
+
+        return (
+          <MessageCard
+            key={message.id}
+            message={message}
+            chat={chat}
+            models={models}
+            isMobile={isMobile}
+            isActive={isMobile && activeMessageId === message.id}
+            showInlineActions={showInlineActions}
+            isStreaming={isStreaming}
+            isEditing={isEditingThisMessage}
+            editingId={editingId}
+            draft={draft}
+            setDraft={setDraft}
+            setEditingId={setEditingId}
+            saveEdit={saveEdit}
+            startEditingMessage={startEditingMessage}
+            copyMessage={copyMessage}
+            copiedId={copiedId}
+            branchFromMessage={branchFromMessage}
+            regenerateMessage={regenerateMessage}
+            onChooseRegenerateModel={(modelId) => {
+              if (!modelId) return;
+              regenerate(message.id, { modelId });
+            }}
+            setLightbox={setLightbox}
+            waitingForFirstToken={waitingForFirstToken && message.id === lastMessageId}
+            lastMessageId={lastMessageId}
+            showStats={showStats}
+            isStatsExpanded={isStatsExpanded}
+            toggleStats={toggleStats}
+            messagePanels={messagePanels}
+            activeMessageId={activeMessageId}
+            setActiveMessageId={setActiveMessageId}
+            setMobileSheet={setMobileSheet}
+            mobileSheet={mobileSheet}
+            closeMobileSheet={closeMobileSheet}
+            tutorEnabled={tutorEnabled}
+          />
         );
       })}
       {showJump && (
@@ -949,5 +529,3 @@ export default function MessageList({ chatId }: { chatId: string }) {
     </div>
   );
 }
-
-// RegenerateMenu extracted to its own component

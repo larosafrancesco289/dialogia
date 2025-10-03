@@ -9,13 +9,13 @@ import {
   normalizeTutorMemory,
 } from '@/lib/agent/tutorMemory';
 import { DEFAULT_TUTOR_MODEL_ID, DEFAULT_TUTOR_MEMORY_MODEL_ID } from '@/lib/constants';
+import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
 
 export function createTutorSlice(
   set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
   get: () => StoreState,
 ) {
-  const canUseProxy =
-    typeof window !== 'undefined' && process.env.NEXT_PUBLIC_USE_OR_PROXY === 'true';
+  const canUseProxy = typeof window !== 'undefined' && isOpenRouterProxyEnabled();
 
   const buildWelcome = async (params: {
     memory?: string;
@@ -88,7 +88,7 @@ export function createTutorSlice(
         },
       }));
 
-      const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
+      const apiKey = getPublicOpenRouterKey();
       const modelId =
         state.ui.tutorMemoryModelId ||
         state.ui.tutorDefaultModelId ||
@@ -159,7 +159,7 @@ export function createTutorSlice(
       if (current?.status === 'loading') return current.message;
 
       const currentMessages = state.messages[id] ?? [];
-      const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY as string | undefined;
+      const apiKey = getPublicOpenRouterKey();
       const modelId =
         chat.settings.tutor_memory_model ||
         chat.settings.tutor_default_model ||

@@ -8,6 +8,7 @@ import {
   getAccessCodePepper,
   hmacCode,
 } from '@/lib/auth';
+import { getAccessCookieDomain } from '@/lib/config';
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ ok: true });
     const secure = process.env.NODE_ENV === 'production';
-    const domain = process.env.ACCESS_COOKIE_DOMAIN?.trim() || undefined; // optional cross-subdomain
+    const domain = getAccessCookieDomain();
     res.cookies.set({
       name: AUTH_COOKIE_NAME,
       value: token,
