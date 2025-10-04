@@ -2,30 +2,30 @@
 // Responsibility: Encapsulate planning and streaming flows for assistant turns.
 
 import { chatCompletion, streamChatCompletion } from '@/lib/openrouter';
-import { buildDebugBody, type ProviderSort } from '@/lib/agent/request';
-import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import {
-  extractTutorToolCalls,
-  extractWebSearchArgs,
-  normalizeTutorQuizPayload,
-} from '@/lib/agent/tools';
+  buildDebugBody,
+  composePlugins,
+  maybeRecordDebug,
+  type ProviderSort,
+} from '@/lib/agent/request';
+import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
+import { applyTutorToolCall, extractTutorToolCalls, extractWebSearchArgs } from '@/lib/agent/tools';
 import {
   formatSourcesBlock,
   mergeSearchResults,
   runBraveSearch,
+  updateBraveUi,
   type SearchResult,
 } from '@/lib/agent/searchFlow';
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
-import {
-  findModelById,
-  isImageOutputSupported,
-  isReasoningSupported,
-  isToolCallingSupported,
-} from '@/lib/models';
-import { addCardsToDeck, getDueCards } from '@/lib/tutorDeck';
-import { attachTutorUiState } from '@/lib/agent/tutorFlow';
+import { isToolCallingSupported } from '@/lib/models';
+import type { ModelIndex } from '@/lib/models';
+import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, Message, ORModel } from '@/lib/types';
+
+let chatCompletionImpl = chatCompletion;
+let streamChatCompletionImpl = streamChatCompletion;
 
 export type StoreSetter = (updater: (state: StoreState) => Partial<StoreState> | void) => void;
 export type StoreGetter = () => StoreState;
@@ -47,6 +47,7 @@ export type PlanTurnOptions = {
   set: StoreSetter;
   get: StoreGetter;
   models: ORModel[];
+  modelIndex: ModelIndex;
   persistMessage: PersistMessage;
 };
 
@@ -55,129 +56,6 @@ export type PlanTurnResult = {
   usedTutorContentTool: boolean;
   hasSearchResults: boolean;
 };
-
-export async function applyTutorToolCall(opts: {
-  name: string;
-  args: any;
-  chat: Chat;
-  chatId: string;
-  assistantMessage: Message;
-  set: StoreSetter;
-  persistMessage: PersistMessage;
-}): Promise<{ handled: boolean; usedContent: boolean; payload?: string }> {
-  const { name, args, chat, chatId, assistantMessage, set, persistMessage } = opts;
-
-  const patchForItems = async (mapKey: string) => {
-    const normalized = normalizeTutorQuizPayload(args);
-    if (!normalized) return { handled: false, usedContent: false } as const;
-    let updatedMsg: Message | undefined;
-    set((state) => {
-      const keyId = assistantMessage.id;
-      const prevUi = (state.ui.tutorByMessageId || {})[keyId] || {};
-      const patch = {
-        title: prevUi.title || args?.title,
-        [mapKey]: [...(((prevUi as any)[mapKey] as any[]) || []), ...normalized.items],
-      } as Record<string, any>;
-      const list = state.messages[chatId] ?? [];
-      const result = attachTutorUiState({
-        currentUi: state.ui.tutorByMessageId,
-        currentMessages: list,
-        messageId: keyId,
-        patch,
-      });
-      if (result.updatedMessage) updatedMsg = result.updatedMessage;
-      return {
-        ui: { ...state.ui, tutorByMessageId: result.nextUi },
-        messages: { ...state.messages, [chatId]: result.nextMessages },
-      } as Partial<StoreState>;
-    });
-    if (updatedMsg) {
-      try {
-        await persistMessage(updatedMsg);
-      } catch {}
-    }
-    try {
-      const body: any = { items: normalized.items };
-      if (typeof args?.title === 'string') body.title = args.title;
-      return { handled: true, usedContent: true, payload: JSON.stringify(body) } as const;
-    } catch {}
-    return { handled: true, usedContent: true } as const;
-  };
-
-  if (name === 'quiz_mcq') return patchForItems('mcq');
-  if (name === 'quiz_fill_blank') return patchForItems('fillBlank');
-  if (name === 'quiz_open_ended') return patchForItems('openEnded');
-  if (name === 'flashcards') return patchForItems('flashcards');
-
-  if (name === 'grade_open_response') {
-    const rawId = args?.item_id;
-    const itemId = (() => {
-      const s = typeof rawId === 'string' ? rawId.trim() : '';
-      if (!s || s === 'null' || s === 'undefined') return '';
-      return s;
-    })();
-    const feedback = String(args?.feedback || '').trim();
-    const score = typeof args?.score === 'number' ? args.score : undefined;
-    const criteria = Array.isArray(args?.criteria) ? args.criteria : undefined;
-    if (!itemId || !feedback) return { handled: false, usedContent: false };
-    let updatedMsg: Message | undefined;
-    set((state) => {
-      const list = state.messages[chatId] ?? [];
-      const target = list.find((m) => m.id === assistantMessage.id);
-      const existingTutor = (target as any)?.tutor || {};
-      const patch = {
-        grading: {
-          ...(existingTutor.grading || {}),
-          [itemId]: { feedback, score, criteria },
-        },
-      } as Record<string, any>;
-      const result = attachTutorUiState({
-        currentUi: state.ui.tutorByMessageId,
-        currentMessages: list,
-        messageId: assistantMessage.id,
-        patch,
-      });
-      if (result.updatedMessage) updatedMsg = result.updatedMessage;
-      return {
-        ui: { ...state.ui, tutorByMessageId: result.nextUi },
-        messages: { ...state.messages, [chatId]: result.nextMessages },
-      } as Partial<StoreState>;
-    });
-    if (updatedMsg) {
-      try {
-        await persistMessage(updatedMsg);
-      } catch {}
-    }
-    return { handled: true, usedContent: false };
-  }
-
-  if (name === 'add_to_deck') {
-    try {
-      const cards = Array.isArray(args?.cards) ? args.cards : [];
-      if (cards.length > 0) await addCardsToDeck(chat.id, cards);
-    } catch {}
-    return { handled: true, usedContent: false };
-  }
-
-  if (name === 'srs_review') {
-    const cnt = Math.min(Math.max(parseInt(String(args?.due_count || '10'), 10) || 10, 1), 40);
-    let due: any[] = [];
-    try {
-      const cards = await getDueCards(chat.id, cnt);
-      due = cards.map((c) => ({
-        id: c.id,
-        front: c.front,
-        back: c.back,
-        hint: c.hint,
-        topic: c.topic,
-        skill: c.skill,
-      }));
-    } catch {}
-    return { handled: true, usedContent: false, payload: JSON.stringify(due) };
-  }
-
-  return { handled: false, usedContent: false };
-}
 
 export async function executeWebSearch(opts: {
   args: Record<string, any>;
@@ -194,15 +72,7 @@ export async function executeWebSearch(opts: {
   if (!rawQuery) rawQuery = userContent.trim().slice(0, 256);
 
   if (searchProvider === 'brave') {
-    set((state) => ({
-      ui: {
-        ...state.ui,
-        braveByMessageId: {
-          ...(state.ui.braveByMessageId || {}),
-          [assistantMessageId]: { query: rawQuery, status: 'loading' },
-        },
-      },
-    }));
+    updateBraveUi(set, assistantMessageId, { query: rawQuery, status: 'loading' });
   }
 
   try {
@@ -219,56 +89,32 @@ export async function executeWebSearch(opts: {
 
     if (result.ok) {
       if (searchProvider === 'brave')
-        set((state) => ({
-          ui: {
-            ...state.ui,
-            braveByMessageId: {
-              ...(state.ui.braveByMessageId || {}),
-              [assistantMessageId]: {
-                query: rawQuery,
-                status: 'done',
-                results: result.results,
-              },
-            },
-          },
-        }));
+        updateBraveUi(set, assistantMessageId, {
+          query: rawQuery,
+          status: 'done',
+          results: result.results,
+        });
       return { ok: true, results: result.results, query: rawQuery };
     }
 
     if (searchProvider === 'brave')
-      set((state) => ({
-        ui: {
-          ...state.ui,
-          braveByMessageId: {
-            ...(state.ui.braveByMessageId || {}),
-            [assistantMessageId]: {
-              query: rawQuery,
-              status: 'error',
-              results: [],
-              error: result.error || 'No results',
-            },
-          },
-        },
-      }));
+      updateBraveUi(set, assistantMessageId, {
+        query: rawQuery,
+        status: 'error',
+        results: [],
+        error: result.error || 'No results',
+      });
     if (result.error === 'Missing BRAVE_SEARCH_API_KEY')
       set((state) => ({ ui: { ...state.ui, notice: 'Missing BRAVE_SEARCH_API_KEY' } }));
     return { ok: false, results: [], error: result.error, query: rawQuery };
   } catch (err: any) {
     if (searchProvider === 'brave')
-      set((state) => ({
-        ui: {
-          ...state.ui,
-          braveByMessageId: {
-            ...(state.ui.braveByMessageId || {}),
-            [assistantMessageId]: {
-              query: rawQuery,
-              status: 'error',
-              results: [],
-              error: err?.message || 'Network error',
-            },
-          },
-        },
-      }));
+      updateBraveUi(set, assistantMessageId, {
+        query: rawQuery,
+        status: 'error',
+        results: [],
+        error: err?.message || 'Network error',
+      });
     return { ok: false, results: [], error: err?.message, query: rawQuery };
   }
 }
@@ -290,6 +136,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     set,
     get,
     models,
+    modelIndex,
     persistMessage,
   } = opts;
 
@@ -305,57 +152,10 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   let usedTutorContentTool = false;
   let aggregatedResults: SearchResult[] = [];
 
-  const applyTutorItems = async (
-    variant: 'quiz_mcq' | 'quiz_fill_blank' | 'quiz_open_ended' | 'flashcards',
-    args: any,
-  ) => {
-    const normalized = normalizeTutorQuizPayload(args);
-    if (!normalized) return { ok: false } as const;
-    let updatedMsg: Message | undefined;
-    set((state) => {
-      const keyId = assistantMessage.id;
-      const prevUi = (state.ui.tutorByMessageId || {})[keyId] || {};
-      const mapKey =
-        variant === 'quiz_mcq'
-          ? 'mcq'
-          : variant === 'quiz_fill_blank'
-            ? 'fillBlank'
-            : variant === 'quiz_open_ended'
-              ? 'openEnded'
-              : 'flashcards';
-      const patch = {
-        title: prevUi.title || args?.title,
-        [mapKey]: [...(((prevUi as any)[mapKey] as any[]) || []), ...normalized.items],
-      } as Record<string, any>;
-      const list = state.messages[chatId] ?? [];
-      const result = attachTutorUiState({
-        currentUi: state.ui.tutorByMessageId,
-        currentMessages: list,
-        messageId: keyId,
-        patch,
-      });
-      if (result.updatedMessage) updatedMsg = result.updatedMessage;
-      return {
-        ui: { ...state.ui, tutorByMessageId: result.nextUi },
-        messages: { ...state.messages, [chatId]: result.nextMessages },
-      } as Partial<StoreState>;
-    });
-    if (updatedMsg) {
-      try {
-        await persistMessage(updatedMsg);
-      } catch {}
-    }
-    try {
-      const body: any = { items: normalized.items };
-      if (typeof args?.title === 'string') body.title = args.title;
-      return { ok: true, json: JSON.stringify(body) } as const;
-    } catch {}
-    return { ok: true } as const;
-  };
-
   while (rounds < 3) {
-    const modelMeta = findModelById(models, chat.settings.model);
-    const supportsReasoning = isReasoningSupported(modelMeta);
+    const modelMeta = modelIndex.get(chat.settings.model);
+    const caps = modelIndex.caps(chat.settings.model);
+    const supportsReasoning = caps.canReason;
     const supportsTools = isToolCallingSupported(modelMeta);
     try {
       const dbg = buildDebugBody({
@@ -371,23 +171,10 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
         toolChoice: supportsTools ? 'auto' : undefined,
         providerSort,
       });
-      if (get().ui.debugMode) {
-        set((state) => ({
-          ui: {
-            ...state.ui,
-            debugByMessageId: {
-              ...(state.ui.debugByMessageId || {}),
-              [assistantMessage.id]: {
-                body: JSON.stringify(dbg, null, 2),
-                createdAt: Date.now(),
-              },
-            },
-          },
-        }));
-      }
+      maybeRecordDebug({ set, get }, assistantMessage.id, dbg);
     } catch {}
 
-    const resp = await chatCompletion({
+    const resp = await chatCompletionImpl({
       apiKey,
       model: chat.settings.model,
       messages: convo as any,
@@ -558,10 +345,9 @@ export type StreamFinalOptions = {
   set: StoreSetter;
   get: StoreGetter;
   models: ORModel[];
+  modelIndex: ModelIndex;
   persistMessage: PersistMessage;
-  basePlugins?: any[];
-  searchEnabled: boolean;
-  searchProvider: 'brave' | 'openrouter';
+  plugins?: any[];
   toolDefinition?: any[];
   startBuffered: boolean;
 };
@@ -578,25 +364,20 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     set,
     get,
     models,
+    modelIndex,
     persistMessage,
-    basePlugins,
-    searchEnabled,
-    searchProvider,
+    plugins,
     toolDefinition,
     startBuffered,
   } = opts;
 
-  const modelMeta = findModelById(models, chat.settings.model);
-  const supportsReasoning = isReasoningSupported(modelMeta);
-  const canImageOut = isImageOutputSupported(modelMeta);
+  const modelMeta = modelIndex.get(chat.settings.model);
+  const caps = modelIndex.caps(chat.settings.model);
+  const supportsReasoning = caps.canReason;
+  const canImageOut = caps.canImageOut;
   const supportsTools = isToolCallingSupported(modelMeta);
   const includeTools = supportsTools && Array.isArray(toolDefinition) && toolDefinition.length > 0;
-  const combinedPlugins = (() => {
-    const arr: any[] = [];
-    if (Array.isArray(basePlugins) && basePlugins.length > 0) arr.push(...basePlugins);
-    if (searchEnabled && searchProvider === 'openrouter') arr.push({ id: 'web' });
-    return arr.length > 0 ? arr : undefined;
-  })();
+  const combinedPlugins = Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined;
 
   try {
     const dbg = buildDebugBody({
@@ -615,20 +396,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
       providerSort,
       plugins: combinedPlugins,
     });
-    if (get().ui.debugMode) {
-      set((state) => ({
-        ui: {
-          ...state.ui,
-          debugByMessageId: {
-            ...(state.ui.debugByMessageId || {}),
-            [assistantMessage.id]: {
-              body: JSON.stringify(dbg, null, 2),
-              createdAt: Date.now(),
-            },
-          },
-        },
-      }));
-    }
+    maybeRecordDebug({ set, get }, assistantMessage.id, dbg);
   } catch {}
 
   const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
@@ -653,7 +421,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     { startedAt: tStart },
   );
 
-  await streamChatCompletion({
+  await streamChatCompletionImpl({
     apiKey,
     model: chat.settings.model,
     messages,
@@ -670,4 +438,221 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     plugins: combinedPlugins,
     callbacks,
   });
+}
+
+export type RegenerateOptions = {
+  chat: Chat;
+  chatId: string;
+  targetMessageId: string;
+  messages: Message[];
+  models: ORModel[];
+  modelIndex: ModelIndex;
+  apiKey: string;
+  controller: AbortController;
+  set: StoreSetter;
+  get: StoreGetter;
+  persistMessage: PersistMessage;
+  overrideModelId?: string;
+};
+
+export async function regenerate(opts: RegenerateOptions): Promise<void> {
+  const {
+    chat,
+    chatId,
+    targetMessageId,
+    messages,
+    models,
+    modelIndex,
+    apiKey,
+    controller,
+    set,
+    get,
+    persistMessage,
+    overrideModelId,
+  } = opts;
+
+  const index = messages.findIndex((msg) => msg.id === targetMessageId);
+  if (index < 0) return;
+
+  const original = messages[index];
+  const priorMessages = messages.slice(0, index);
+  const payload = buildChatCompletionMessages({ chat, priorMessages, models });
+  const systemSnapshot: string | undefined = (original as any)?.systemSnapshot;
+  const convo = systemSnapshot
+    ? ([{ role: 'system', content: systemSnapshot } as const] as any[]).concat(
+        payload.filter((entry: any) => entry.role !== 'system'),
+      )
+    : payload;
+
+  const hadPdfEarlier = priorMessages.some(
+    (msg) =>
+      Array.isArray(msg.attachments) && msg.attachments.some((att: any) => att?.kind === 'pdf'),
+  );
+
+  const modelIdForTurn = overrideModelId || chat.settings.model;
+  const modelMeta = modelIndex.get(modelIdForTurn);
+  const caps = modelIndex.caps(modelIdForTurn);
+  const supportsReasoning = caps.canReason;
+
+  const snapshotSettings = ((original as any)?.genSettings as Record<string, unknown>) || {};
+  const previousModelId =
+    typeof (original as any)?.model === 'string' ? (original as any).model : undefined;
+  const modelChanged = typeof modelIdForTurn === 'string' && modelIdForTurn !== previousModelId;
+
+  const pickNumber = (snapshotVal: unknown, chatVal: unknown): number | undefined => {
+    const fromSnapshot = typeof snapshotVal === 'number' ? snapshotVal : undefined;
+    const fromChat = typeof chatVal === 'number' ? chatVal : undefined;
+    if (modelChanged) return fromChat ?? fromSnapshot;
+    return fromSnapshot ?? fromChat;
+  };
+
+  const pickReasoningEffort = (
+    snapshotVal: unknown,
+    chatVal: unknown,
+  ): 'none' | 'low' | 'medium' | 'high' | undefined => {
+    if (!supportsReasoning) return undefined;
+    const fromSnapshot = typeof snapshotVal === 'string' ? (snapshotVal as any) : undefined;
+    const fromChat = typeof chatVal === 'string' ? (chatVal as any) : undefined;
+    if (modelChanged) return fromChat ?? fromSnapshot;
+    return fromSnapshot ?? fromChat;
+  };
+
+  const pickReasoningTokens = (snapshotVal: unknown, chatVal: unknown): number | undefined => {
+    if (!supportsReasoning) return undefined;
+    const fromSnapshot = typeof snapshotVal === 'number' ? snapshotVal : undefined;
+    const fromChat = typeof chatVal === 'number' ? chatVal : undefined;
+    if (modelChanged) return fromChat ?? fromSnapshot;
+    return fromSnapshot ?? fromChat;
+  };
+
+  const pickBoolean = (snapshotVal: unknown, chatVal: unknown, fallback = false): boolean => {
+    const fromSnapshot = typeof snapshotVal === 'boolean' ? snapshotVal : undefined;
+    const fromChat = typeof chatVal === 'boolean' ? chatVal : undefined;
+    if (modelChanged) return fromChat ?? fromSnapshot ?? fallback;
+    return fromSnapshot ?? fromChat ?? fallback;
+  };
+
+  const pickProvider = (
+    snapshotVal: unknown,
+    chatVal: unknown,
+  ): 'brave' | 'openrouter' | undefined => {
+    const fromSnapshot = typeof snapshotVal === 'string' ? (snapshotVal as any) : undefined;
+    const fromChat = typeof chatVal === 'string' ? (chatVal as any) : undefined;
+    if (modelChanged) return fromChat ?? fromSnapshot;
+    return fromSnapshot ?? fromChat;
+  };
+
+  const temperature = pickNumber(snapshotSettings.temperature, chat.settings.temperature);
+  const topP = pickNumber(snapshotSettings.top_p, chat.settings.top_p);
+  const maxTokens = pickNumber(snapshotSettings.max_tokens, chat.settings.max_tokens);
+  const reasoningEffort = pickReasoningEffort(
+    snapshotSettings.reasoning_effort,
+    chat.settings.reasoning_effort,
+  );
+  const reasoningTokens = pickReasoningTokens(
+    snapshotSettings.reasoning_tokens,
+    chat.settings.reasoning_tokens,
+  );
+  const searchWithBrave = pickBoolean(
+    snapshotSettings.search_with_brave,
+    (chat.settings as any)?.search_with_brave,
+    false,
+  );
+  const searchProvider = pickProvider(
+    snapshotSettings.search_provider,
+    (chat.settings as any)?.search_provider,
+  );
+  const tutorModeForTurn = pickBoolean(
+    snapshotSettings.tutor_mode,
+    chat.settings.tutor_mode,
+    false,
+  );
+  const providerSortSnapshot = snapshotSettings?.providerSort;
+  const providerSort: ProviderSort | undefined =
+    providerSortSnapshot === 'price' || providerSortSnapshot === 'throughput'
+      ? (providerSortSnapshot as ProviderSort)
+      : undefined;
+
+  const appliedGenSettings: Record<string, unknown> = {};
+  if (typeof temperature === 'number') appliedGenSettings.temperature = temperature;
+  if (typeof topP === 'number') appliedGenSettings.top_p = topP;
+  if (typeof maxTokens === 'number') appliedGenSettings.max_tokens = maxTokens;
+  if (supportsReasoning && typeof reasoningEffort === 'string')
+    appliedGenSettings.reasoning_effort = reasoningEffort;
+  if (supportsReasoning && typeof reasoningTokens === 'number')
+    appliedGenSettings.reasoning_tokens = reasoningTokens;
+  appliedGenSettings.search_with_brave = !!searchWithBrave;
+  if (searchProvider) appliedGenSettings.search_provider = searchProvider;
+  appliedGenSettings.tutor_mode = !!tutorModeForTurn;
+  if (providerSort) appliedGenSettings.providerSort = providerSort;
+
+  const replacement: Message = {
+    id: original.id,
+    chatId,
+    role: 'assistant',
+    content: '',
+    createdAt: original.createdAt,
+    model: modelIdForTurn,
+    reasoning: '',
+    attachments: [],
+    systemSnapshot,
+    genSettings: appliedGenSettings,
+  } as Message;
+
+  set((state) => ({
+    messages: {
+      ...state.messages,
+      [chatId]: (state.messages[chatId] ?? []).map((entry) =>
+        entry.id === original.id ? replacement : entry,
+      ),
+    },
+    ui: { ...state.ui, isStreaming: true },
+  }));
+  set((state) => ({ ...state, _controller: controller as any }) as any);
+
+  const plugins = composePlugins({
+    hasPdf: hadPdfEarlier,
+    searchEnabled: searchWithBrave,
+    searchProvider: searchProvider || 'openrouter',
+  });
+
+  const nextSettings: Chat['settings'] = { ...chat.settings, model: modelIdForTurn };
+  if (typeof temperature === 'number') nextSettings.temperature = temperature;
+  if (typeof topP === 'number') nextSettings.top_p = topP;
+  if (typeof maxTokens === 'number') nextSettings.max_tokens = maxTokens;
+  if (supportsReasoning && typeof reasoningEffort === 'string')
+    nextSettings.reasoning_effort = reasoningEffort;
+  if (supportsReasoning && typeof reasoningTokens === 'number')
+    nextSettings.reasoning_tokens = reasoningTokens;
+  nextSettings.search_with_brave = !!searchWithBrave;
+  if (searchProvider) nextSettings.search_provider = searchProvider;
+  nextSettings.tutor_mode = !!tutorModeForTurn;
+
+  const chatForStream: Chat = { ...chat, settings: nextSettings };
+
+  await streamFinal({
+    chat: chatForStream,
+    chatId,
+    assistantMessage: replacement,
+    messages: convo,
+    controller,
+    apiKey,
+    providerSort: providerSort ?? undefined,
+    set,
+    get,
+    models,
+    modelIndex,
+    persistMessage,
+    plugins,
+    toolDefinition: undefined,
+    startBuffered: false,
+  });
+}
+
+export function __setOpenRouterMocksForTests(overrides?: {
+  chatCompletion?: typeof chatCompletion;
+  streamChatCompletion?: typeof streamChatCompletion;
+}) {
+  chatCompletionImpl = overrides?.chatCompletion ?? chatCompletion;
+  streamChatCompletionImpl = overrides?.streamChatCompletion ?? streamChatCompletion;
 }

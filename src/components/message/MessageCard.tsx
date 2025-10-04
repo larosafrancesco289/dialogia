@@ -12,6 +12,7 @@ import { Markdown } from '@/lib/markdown';
 import RegenerateMenu from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
 import MessagePanels, { type MessagePanelsProps } from '@/components/message/MessagePanels';
+import { MessageAttachments } from '@/components/message/MessageAttachments';
 import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
 
 export type MessageCardProps = {
@@ -151,9 +152,6 @@ export default function MessageCard({
     setActiveMessageId(message.id);
     setMobileSheet({ id: message.id, role: message.role as 'assistant' | 'user' });
   };
-
-  const renderAttachments = (filter: (attachment: Attachment) => boolean) =>
-    attachments.filter(filter);
 
   const messagePanelsNode = useMemo(
     () => (
@@ -378,64 +376,7 @@ function AssistantMessageContent({
 
       {messagePanelsNode}
 
-      {attachments.length > 0 && (
-        <div className="px-4 pt-2 flex flex-wrap gap-2">
-          {attachments
-            .filter((attachment) => attachment.kind === 'image')
-            .map((attachment, index, array) => (
-              <button
-                key={attachment.id}
-                className="p-0 m-0 border-none bg-transparent"
-                onClick={() =>
-                  setLightbox({
-                    images: array
-                      .filter((item) => item.kind === 'image' && item.dataURL)
-                      .map((item) => ({ src: item.dataURL!, name: item.name })),
-                    index,
-                  })
-                }
-                title="Click to enlarge"
-              >
-                <img
-                  src={attachment.dataURL}
-                  alt={attachment.name || 'image'}
-                  className="h-28 w-28 sm:h-36 sm:w-36 object-cover rounded border border-border"
-                />
-              </button>
-            ))}
-          {attachments
-            .filter((attachment) => attachment.kind === 'audio')
-            .map((attachment) => (
-              <div
-                key={attachment.id}
-                className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
-              >
-                {attachment.dataURL ? (
-                  <audio controls src={attachment.dataURL} className="h-10" />
-                ) : (
-                  <span className="text-xs">Audio attached</span>
-                )}
-                <div className="min-w-0">
-                  <div className="text-xs font-medium truncate" title={attachment.name || 'Audio'}>
-                    {attachment.name || 'Audio'}
-                  </div>
-                </div>
-              </div>
-            ))}
-          {attachments
-            .filter((attachment) => attachment.kind === 'pdf')
-            .map((attachment) => (
-              <span
-                key={attachment.id}
-                className="badge"
-                title={`${attachment.name || 'PDF'}${attachment.pageCount ? ` • ${attachment.pageCount} pages` : ''}`}
-              >
-                {attachment.name || 'PDF'}
-                {attachment.pageCount ? ` (${attachment.pageCount}p)` : ''}
-              </span>
-            ))}
-        </div>
-      )}
+      <MessageAttachments attachments={attachments} onOpenLightbox={setLightbox} />
 
       <div className="px-4 py-3">
         {isEditing ? (
@@ -585,64 +526,7 @@ function UserMessageContent({
         </div>
       )}
 
-      {attachments.length > 0 && (
-        <div className="px-4 pt-2 flex flex-wrap gap-2">
-          {attachments
-            .filter((attachment) => attachment.kind === 'image')
-            .map((attachment, index, array) => (
-              <button
-                key={attachment.id}
-                className="p-0 m-0 border-none bg-transparent"
-                onClick={() =>
-                  setLightbox({
-                    images: array
-                      .filter((item) => item.kind === 'image' && item.dataURL)
-                      .map((item) => ({ src: item.dataURL!, name: item.name })),
-                    index,
-                  })
-                }
-                title="Click to enlarge"
-              >
-                <img
-                  src={attachment.dataURL}
-                  alt={attachment.name || 'image'}
-                  className="h-28 w-28 sm:h-36 sm:w-36 object-cover rounded border border-border"
-                />
-              </button>
-            ))}
-          {attachments
-            .filter((attachment) => attachment.kind === 'audio')
-            .map((attachment) => (
-              <div
-                key={attachment.id}
-                className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2"
-              >
-                {attachment.dataURL ? (
-                  <audio controls src={attachment.dataURL} className="h-10" />
-                ) : (
-                  <span className="text-xs">Audio attached</span>
-                )}
-                <div className="min-w-0">
-                  <div className="text-xs font-medium truncate" title={attachment.name || 'Audio'}>
-                    {attachment.name || 'Audio'}
-                  </div>
-                </div>
-              </div>
-            ))}
-          {attachments
-            .filter((attachment) => attachment.kind === 'pdf')
-            .map((attachment) => (
-              <span
-                key={attachment.id}
-                className="badge"
-                title={`${attachment.name || 'PDF'}${attachment.pageCount ? ` • ${attachment.pageCount} pages` : ''}`}
-              >
-                {attachment.name || 'PDF'}
-                {attachment.pageCount ? ` (${attachment.pageCount}p)` : ''}
-              </span>
-            ))}
-        </div>
-      )}
+      <MessageAttachments attachments={attachments} onOpenLightbox={setLightbox} />
 
       <div className="px-4 py-3">
         {isEditing ? (

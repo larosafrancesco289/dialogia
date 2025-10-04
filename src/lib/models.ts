@@ -1,5 +1,20 @@
 import type { ORModel } from '@/lib/types';
 
+export type ModelCapabilityFlags = {
+  canReason: boolean;
+  canSee: boolean;
+  canAudio: boolean;
+  canImageOut: boolean;
+};
+
+export type ModelIndex = {
+  all: ORModel[];
+  byId: Map<string, ORModel>;
+  get: (id?: string) => ORModel | undefined;
+  caps: (id?: string) => ModelCapabilityFlags;
+  label: (id?: string, fallbackName?: string) => string;
+};
+
 export function stripProviderPrefix(label?: string): string {
   return String(label ?? '')
     .replace(/^[^:]+:\s*/, '')
@@ -154,21 +169,74 @@ export function isImageOutputSupported(model?: ORModel | null): boolean {
   return false;
 }
 
-export function getModelCapabilities(model?: ORModel | null): {
-  canReason: boolean;
-  canSee: boolean;
-  canAudio: boolean;
-  canImageOut: boolean;
-} {
+const EMPTY_CAPS: ModelCapabilityFlags = {
+  canReason: false,
+  canSee: false,
+  canAudio: false,
+  canImageOut: false,
+};
+
+export function getModelCapabilities(model?: ORModel | null): ModelCapabilityFlags {
+  if (!model) return EMPTY_CAPS;
   return {
     canReason: isReasoningSupported(model),
     canSee: isVisionSupported(model),
     canAudio: isAudioInputSupported(model),
     canImageOut: isImageOutputSupported(model),
-  };
+  } satisfies ModelCapabilityFlags;
 }
 
 export function findModelById(models: ORModel[] | undefined, id?: string): ORModel | undefined {
   if (!models || !id) return undefined;
   return models.find((m) => m.id === id);
 }
+
+export function createModelIndex(models: ORModel[] | undefined): ModelIndex {
+  const list = Array.isArray(models) ? models.slice() : [];
+  const byId = new Map<string, ORModel>();
+  const capsCache = new Map<string, ModelCapabilityFlags>();
+  for (const model of list) {
+    if (!model?.id) continue;
+    byId.set(model.id, model);
+  }
+
+  const get = (id?: string) => {
+    if (!id) return undefined;
+    return byId.get(id);
+  };
+
+  const caps = (id?: string): ModelCapabilityFlags => {
+    if (!id) return EMPTY_CAPS;
+    if (capsCache.has(id)) return capsCache.get(id)!;
+    const model = get(id);
+    const computed = getModelCapabilities(model);
+    capsCache.set(id, computed);
+    return computed;
+  };
+
+  const label = (id?: string, fallbackName?: string) => {
+    const model = get(id);
+    return formatModelLabel({ model, fallbackId: id, fallbackName });
+  };
+
+  return {
+    all: list,
+    byId,
+    get,
+    caps,
+    label,
+  } satisfies ModelIndex;
+}
+
+export const EMPTY_MODEL_INDEX: ModelIndex = (() => {
+  const byId = new Map<string, ORModel>();
+  const capsCache = new Map<string, ModelCapabilityFlags>();
+  return {
+    all: [],
+    byId,
+    get: () => undefined,
+    caps: () => EMPTY_CAPS,
+    label: (id?: string, fallbackName?: string) =>
+      formatModelLabel({ model: undefined, fallbackId: id, fallbackName }),
+  } satisfies ModelIndex;
+})();

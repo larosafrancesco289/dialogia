@@ -8,7 +8,10 @@ import {
   DEFAULT_TUTOR_MEMORY_MODEL_ID,
   DEFAULT_TUTOR_MEMORY_FREQUENCY,
 } from '@/lib/constants';
-import { buildHiddenTutorContent } from '@/lib/agent/tutorFlow';
+import {
+  buildHiddenTutorContent,
+  ensureTutorDefaults as ensureTutorDefaultsFlow,
+} from '@/lib/agent/tutorFlow';
 import { EMPTY_TUTOR_MEMORY, normalizeTutorMemory } from '@/lib/agent/tutorMemory';
 import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
 
@@ -232,16 +235,8 @@ export function createChatSlice(
       const uiState = get().ui;
       const forceTutorMode = !!(uiState.forceTutorMode ?? false);
       let appliedPartial = { ...partial } as Partial<Chat['settings']>;
-      const desiredModel =
-        uiState.tutorDefaultModelId ||
-        before?.settings.tutor_default_model ||
-        DEFAULT_TUTOR_MODEL_ID;
-      const desiredMemoryModel =
-        uiState.tutorMemoryModelId ||
-        before?.settings.tutor_memory_model ||
-        DEFAULT_TUTOR_MEMORY_MODEL_ID;
       let nextGlobalMemory = normalizeTutorMemory(uiState.tutorGlobalMemory);
-      const ensureTutorDefaults = () => {
+      const applyTutorDefaults = () => {
         const partialMemoryDisabled =
           typeof appliedPartial.tutor_memory_disabled === 'boolean'
             ? appliedPartial.tutor_memory_disabled
@@ -251,22 +246,29 @@ export function createChatSlice(
           (typeof before?.settings.tutor_memory_disabled === 'boolean'
             ? before.settings.tutor_memory_disabled
             : uiState.tutorMemoryAutoUpdate === false);
-        const baseMemory = appliedPartial.tutor_memory
-          ? normalizeTutorMemory(appliedPartial.tutor_memory)
-          : before?.settings.tutor_memory
-            ? normalizeTutorMemory(before.settings.tutor_memory)
-            : nextGlobalMemory;
-        const normalizedMemory = normalizeTutorMemory(baseMemory);
+        const baseSettings = {
+          ...(before?.settings || {}),
+          ...appliedPartial,
+          tutor_memory_disabled: memoryDisabled,
+        };
+        const ensured = ensureTutorDefaultsFlow({
+          ui: uiState,
+          chat: { settings: baseSettings },
+          fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
+          fallbackMemoryModelId: DEFAULT_TUTOR_MEMORY_MODEL_ID,
+        });
+        const nextSettings = ensured.nextSettings;
+        const normalizedMemory = normalizeTutorMemory(nextSettings.tutor_memory);
         nextGlobalMemory = normalizedMemory;
         appliedPartial = {
           ...appliedPartial,
           tutor_mode: true,
-          model: desiredModel,
-          tutor_default_model: desiredModel,
-          tutor_memory_model: desiredMemoryModel,
+          model: nextSettings.model,
+          tutor_default_model: nextSettings.tutor_default_model,
+          tutor_memory_model: nextSettings.tutor_memory_model,
           tutor_memory: normalizedMemory,
           tutor_memory_version: before?.settings.tutor_memory_version ?? 0,
-          tutor_memory_message_count: before?.settings.tutor_memory_message_count ?? 0,
+          tutor_memory_message_count: nextSettings.tutor_memory_message_count ?? 0,
           tutor_memory_frequency:
             before?.settings.tutor_memory_frequency ||
             uiState.tutorMemoryFrequency ||
@@ -275,8 +277,8 @@ export function createChatSlice(
         };
       };
 
-      if (appliedPartial.tutor_mode === true) ensureTutorDefaults();
-      if (forceTutorMode) ensureTutorDefaults();
+      if (appliedPartial.tutor_mode === true) applyTutorDefaults();
+      if (forceTutorMode) applyTutorDefaults();
       set((s) => ({
         chats: s.chats.map((c) => {
           if (c.id !== id) return c;

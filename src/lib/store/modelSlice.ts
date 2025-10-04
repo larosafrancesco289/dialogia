@@ -1,27 +1,32 @@
 import type { StoreState } from '@/lib/store/types';
 import { fetchModels } from '@/lib/openrouter';
 import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
-import { ensureZdrLists, filterZdrModels, toZdrState, ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
+import { ensureListsAndFilter } from '@/lib/zdr/enforce';
+import { toZdrState, ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
 import { CURATED_MODELS } from '@/data/curatedModels';
-import { formatModelLabel } from '@/lib/models';
+import { createModelIndex, EMPTY_MODEL_INDEX, formatModelLabel } from '@/lib/models';
 
 export function createModelSlice(
   set: (fn: (s: StoreState) => Partial<StoreState> | void) => void,
   get: () => StoreState,
 ) {
+  let isLoadingModels = false;
   return {
     models: [] as StoreState['models'],
     favoriteModelIds: [] as StoreState['favoriteModelIds'],
     hiddenModelIds: [] as StoreState['hiddenModelIds'],
+    modelIndex: EMPTY_MODEL_INDEX,
 
     async loadModels() {
+      if (isLoadingModels) return;
       const useProxy = isOpenRouterProxyEnabled();
       const key = getPublicOpenRouterKey();
       if (!key && !useProxy)
         return set((s) => ({
-          ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
+          ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY' },
         }));
+      isLoadingModels = true;
       try {
         let models = await fetchModels(key || '');
         const availableIds = new Set(models.map((model) => model.id));
@@ -55,26 +60,30 @@ export function createModelSlice(
             },
           }));
         }
-        const lists = await ensureZdrLists({
-          modelIds: get().zdrModelIds,
-          providerIds: get().zdrProviderIds,
-        });
-        set(toZdrState(lists) as any);
-        if (get().ui.zdrOnly === true) {
-          const filtered = filterZdrModels(models, lists);
-          if (filtered.status === 'unknown') {
+        const zdrOnly = get().ui.zdrOnly === true;
+        const { lists, filter, filtered } = await ensureListsAndFilter(
+          models,
+          zdrOnly ? 'enforce' : 'informational',
+          {
+            modelIds: get().zdrModelIds,
+            providerIds: get().zdrProviderIds,
+          },
+        );
+        set(() => toZdrState(lists) as any);
+        if (zdrOnly) {
+          if (filter.status === 'unknown') {
             models = [];
-            set((s) => ({
-              ui: { ...s.ui, notice: ZDR_UNAVAILABLE_NOTICE },
-            }));
+            set((s) => ({ ui: { ...s.ui, notice: ZDR_UNAVAILABLE_NOTICE } }));
           } else {
-            models = filtered.models;
+            models = filtered;
           }
         }
-        set({ models } as any);
+        set({ models, modelIndex: createModelIndex(models) } as any);
       } catch (e: any) {
         if (e?.message === 'unauthorized')
           set((s) => ({ ui: { ...s.ui, notice: 'Invalid API key' } }));
+      } finally {
+        isLoadingModels = false;
       }
     },
 

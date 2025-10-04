@@ -10,6 +10,7 @@ import {
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { estimateTokens } from '@/lib/tokenEstimate';
 import { computeCost } from '@/lib/cost';
 import {
@@ -64,7 +65,8 @@ export default function Composer({
     shallow,
   );
   const [focused, setFocused] = useState(false);
-  const [isCompact, setIsCompact] = useState(false);
+  const isCompact = useIsMobile();
+  const isTablet = useIsMobile(768);
   const [composerHeight, setComposerHeight] = useState(0);
   const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
   const forceTutorMode = useChatStore((s) => !!s.ui.forceTutorMode);
@@ -162,11 +164,8 @@ export default function Composer({
     const toSend = attachments.slice();
     setAttachments([]);
     // On mobile, blur to close the keyboard; on desktop keep focus for fast follow-ups
-    try {
-      const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
-      if (isSmall) taRef.current?.blur();
-      else taRef.current?.focus();
-    } catch {}
+    if (isTablet) taRef.current?.blur();
+    else taRef.current?.focus();
     if (!chat) await newChat();
     await send(value, { attachments: toSend });
   };
@@ -174,24 +173,24 @@ export default function Composer({
   // DeepResearch toggles like web search; actual call happens on send
 
   // Autofocus on mount and when chat changes or streaming stops
-  const canAutoFocus = () => typeof window !== 'undefined' && window.innerWidth >= 768;
+  const canAutoFocus = !isTablet;
 
   useEffect(() => {
-    if (canAutoFocus()) {
+    if (canAutoFocus) {
       taRef.current?.focus({ preventScroll: true } as any);
     } else {
       taRef.current?.blur();
     }
   }, []);
   useEffect(() => {
-    if (canAutoFocus()) {
+    if (canAutoFocus) {
       taRef.current?.focus({ preventScroll: true } as any);
     } else {
       taRef.current?.blur();
     }
   }, [selectedChatId]);
   useEffect(() => {
-    if (!isStreaming && canAutoFocus()) {
+    if (!isStreaming && canAutoFocus) {
       taRef.current?.focus({ preventScroll: true } as any);
     }
   }, [isStreaming]);
@@ -320,18 +319,6 @@ export default function Composer({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const update = () => {
-      try {
-        setIsCompact(window.innerWidth < 640);
-      } catch {}
-    };
-    update();
-    window.addEventListener('resize', update, { passive: true } as any);
-    return () => window.removeEventListener('resize', update as any);
-  }, []);
-
-  useEffect(() => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
     if (!isCompact) {
@@ -400,8 +387,7 @@ export default function Composer({
 
   const handleStop = () => {
     stop();
-    const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
-    if (!isSmall) setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0);
+    if (!isTablet) setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0);
   };
 
   const openFilePicker = () => fileInputRef.current?.click();
