@@ -55,6 +55,7 @@ export type RoutePreferenceDefault = 'speed' | 'cost';
 
 const ROUTE_PREFERENCE_VALUES: RoutePreferenceDefault[] = ['speed', 'cost'];
 
+// UI defaults map directly to transport mapping in agent/request.providerSortFromRoutePref.
 export function getRoutePreferenceDefault(): RoutePreferenceDefault {
   const value = readEnvValue(process.env.NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT);
   if (value) {

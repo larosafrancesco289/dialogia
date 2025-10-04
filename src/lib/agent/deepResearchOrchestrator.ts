@@ -1,5 +1,6 @@
 import type { Message } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
+import { updateBraveUi } from '@/lib/agent/searchFlow';
 
 export type DeepResearchContext = {
   task: string;
@@ -26,15 +27,7 @@ export async function runDeepResearchTurn({
   const controller = new AbortController();
   set((state) => ({ ...(state as any), _controller: controller as any }) as any);
   set((state) => ({ ui: { ...state.ui, isStreaming: true } }));
-  set((state) => ({
-    ui: {
-      ...state.ui,
-      braveByMessageId: {
-        ...(state.ui.braveByMessageId || {}),
-        [assistantMessage.id]: { query: trimmedTask, status: 'loading' },
-      },
-    },
-  }));
+  updateBraveUi(set, assistantMessage.id, { query: trimmedTask, status: 'loading' });
 
   try {
     const res = await fetch('/api/deep-research', {
@@ -51,13 +44,14 @@ export async function runDeepResearchTurn({
     set((state) => ({
       ui: {
         ...state.ui,
-        braveByMessageId: {
-          ...(state.ui.braveByMessageId || {}),
-          [assistantMessage.id]: { query: trimmedTask, status: 'done', results: sources },
-        },
         nextDeepResearch: state.ui.nextDeepResearch,
       },
     }));
+    updateBraveUi(set, assistantMessage.id, {
+      query: trimmedTask,
+      status: 'done',
+      results: sources,
+    });
 
     const finalMessage: Message = {
       ...assistantMessage,
@@ -79,16 +73,13 @@ export async function runDeepResearchTurn({
         ...state.ui,
         isStreaming: false,
         notice: `DeepResearch: ${errorMessage}`,
-        braveByMessageId: {
-          ...(state.ui.braveByMessageId || {}),
-          [assistantMessage.id]: {
-            query: trimmedTask,
-            status: 'error',
-            error: errorMessage,
-          },
-        },
       },
     }));
+    updateBraveUi(set, assistantMessage.id, {
+      query: trimmedTask,
+      status: 'error',
+      error: errorMessage,
+    });
     set((state) => ({ ...(state as any), _controller: undefined }) as any);
     return false;
   }

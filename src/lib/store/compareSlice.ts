@@ -1,17 +1,10 @@
 import type { StoreState } from '@/lib/store/types';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { streamChatCompletion } from '@/lib/openrouter';
-import { findModelById, isReasoningSupported, isImageOutputSupported } from '@/lib/models';
 import { providerSortFromRoutePref } from '@/lib/agent/request';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
-import {
-  checkZdrModelAllowance,
-  ensureZdrLists,
-  evaluateZdrModel,
-  toZdrState,
-  ZDR_NO_MATCH_NOTICE,
-  ZDR_UNAVAILABLE_NOTICE,
-} from '@/lib/zdr';
+import { toZdrState, ZDR_NO_MATCH_NOTICE, ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
+import { ensureListsAndFilter } from '@/lib/zdr/enforce';
 import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
 
 export function createCompareSlice(
@@ -78,15 +71,16 @@ export function createCompareSlice(
       const key = getPublicOpenRouterKey();
       if (!key && !useProxy)
         return set((s) => ({
-          ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY in .env' },
+          ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY' },
         }));
-      // ZDR enforcement for compare: use provider fallback if explicit ZDR list is unavailable
+      // ZDR enforcement for compare: apply cached lists and filter selections
       if (get().ui.zdrOnly === true) {
-        const lists = await ensureZdrLists({
+        const sourceModels = modelIds.map((id) => ({ id }));
+        const { lists, filter } = await ensureListsAndFilter(sourceModels, 'enforce', {
           modelIds: get().zdrModelIds,
           providerIds: get().zdrProviderIds,
         });
-        set(toZdrState(lists) as any);
+        set(() => toZdrState(lists) as any);
         if (lists.modelIds.size === 0 && lists.providerIds.size === 0) {
           return set((s) => {
             const prev = s.ui.compare || {
@@ -104,10 +98,10 @@ export function createCompareSlice(
             } as any;
           });
         }
-        const filtered = (modelIds || []).filter(
-          (id) => evaluateZdrModel(id, lists).status === 'allowed',
-        );
-        if (filtered.length === 0) {
+        const allowedIds = filter.models
+          .map((m) => m.id)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0);
+        if (allowedIds.length === 0) {
           return set((s) => {
             const prev = s.ui.compare || {
               isOpen: false,
@@ -124,7 +118,7 @@ export function createCompareSlice(
             } as any;
           });
         }
-        modelIds = filtered;
+        modelIds = allowedIds;
       }
       const chatId = get().selectedChatId;
       const chat = chatId ? get().chats.find((c) => c.id === chatId)! : undefined;
@@ -185,9 +179,9 @@ export function createCompareSlice(
               newUserContent: prompt,
             });
             {
-              const modelMeta = findModelById(get().models, modelId);
-              const supportsReasoning = isReasoningSupported(modelMeta);
-              const canImageOut = isImageOutputSupported(modelMeta);
+              const caps = get().modelIndex.caps(modelId);
+              const supportsReasoning = caps.canReason;
+              const canImageOut = caps.canImageOut;
               const providerSort = providerSortFromRoutePref(get().ui.routePreference as any);
               const requestedEffort = supportsReasoning
                 ? chat?.settings.reasoning_effort

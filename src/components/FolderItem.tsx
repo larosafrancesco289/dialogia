@@ -1,10 +1,11 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop } from '@/lib/dragDrop';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import IconButton from './IconButton';
 import ConfirmDialog from './ConfirmDialog';
 import { MoveChatSheet } from '@/components/MoveChatSheet';
@@ -41,15 +42,9 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(folder.name);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useIsMobile();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const suppressTap = useRef(false);
-  useEffect(() => {
-    const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
-    update();
-    window.addEventListener('resize', update, { passive: true } as any);
-    return () => window.removeEventListener('resize', update as any);
-  }, []);
 
   // Long-press for folder actions (mobile only)
   const [showActions, setShowActions] = useState(false);
@@ -346,20 +341,13 @@ function ChatItem({ chat, depth, isSelected, onSelect, onDragStart, onDragEnd }:
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(chat.title);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useIsMobile();
   const [showActions, setShowActions] = useState(false);
   const [showMoveSheet, setShowMoveSheet] = useState(false);
   const longStartX = useRef(0);
   const longStartY = useRef(0);
   const longTid = useRef<number | null>(null);
   const longFired = useRef(false);
-
-  useEffect(() => {
-    const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
-    update();
-    window.addEventListener('resize', update, { passive: true } as any);
-    return () => window.removeEventListener('resize', update as any);
-  }, []);
 
   const handleRename = async () => {
     if (editTitle.trim() && editTitle !== chat.title) {

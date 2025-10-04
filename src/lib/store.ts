@@ -32,6 +32,7 @@ export const useChatStore = create<StoreState>()(
     }),
     {
       name: 'dialogia-ui',
+      // Persist only durable preferences; session-scoped flags (next*) are intentionally omitted.
       partialize: (s) => ({
         selectedChatId: s.selectedChatId,
         favoriteModelIds: s.favoriteModelIds,
@@ -41,19 +42,6 @@ export const useChatStore = create<StoreState>()(
           sidebarCollapsed: s.ui.sidebarCollapsed,
           debugMode: s.ui.debugMode,
           tutorContextMode: s.ui.tutorContextMode,
-          nextModel: s.ui.nextModel,
-          nextSearchWithBrave: s.ui.nextSearchWithBrave,
-          nextDeepResearch: s.ui.nextDeepResearch,
-          nextSearchProvider: s.ui.nextSearchProvider,
-          nextSystem: s.ui.nextSystem,
-          nextTemperature: s.ui.nextTemperature,
-          nextTopP: s.ui.nextTopP,
-          nextMaxTokens: s.ui.nextMaxTokens,
-          nextReasoningEffort: s.ui.nextReasoningEffort,
-          nextReasoningTokens: s.ui.nextReasoningTokens,
-          nextShowThinking: s.ui.nextShowThinking,
-          nextShowStats: s.ui.nextShowStats,
-          autoReasoningModelIds: s.ui.autoReasoningModelIds,
           zdrOnly: s.ui.zdrOnly,
           routePreference: s.ui.routePreference,
           experimentalBrave: s.ui.experimentalBrave,

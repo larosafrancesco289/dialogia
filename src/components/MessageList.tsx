@@ -14,6 +14,7 @@ import type { Attachment } from '@/lib/types';
 import ImageLightbox from '@/components/ImageLightbox';
 import MessagePanels, { type MessagePanelsProps } from '@/components/message/MessagePanels';
 import MessageCard from '@/components/message/MessageCard';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
 export default function MessageList({ chatId }: { chatId: string }) {
   const messages = useChatStore((s) => s.messages[chatId] ?? []);
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
@@ -60,13 +61,7 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const [mobileSheet, setMobileSheet] = useState<{ id: string; role: 'assistant' | 'user' } | null>(
     null,
   );
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
-    update();
-    window.addEventListener('resize', update, { passive: true } as any);
-    return () => window.removeEventListener('resize', update as any);
-  }, []);
+  const isMobile = useIsMobile();
 
   // Composer is now rendered outside this scroll container in ChatPane.
 

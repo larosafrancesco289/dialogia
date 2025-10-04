@@ -1,5 +1,10 @@
 import type { ORModel } from '@/lib/types';
 import { orChatCompletions, orFetchModels, orFetchZdrEndpoints } from '@/lib/api/orClient';
+import { buildChatBody } from '@/lib/agent/request';
+
+// Transport-only client for OpenRouter.
+// Request payload construction lives in agent/request.buildChatBody to keep one source of truth
+// between debug captures and outbound network requests.
 
 async function loadZdrEndpoints(signal?: AbortSignal): Promise<any[]> {
   const res = await orFetchZdrEndpoints({ signal });
@@ -96,50 +101,6 @@ export type StreamCallbacks = {
   onError?: (err: Error) => void;
 };
 
-function buildChatRequestBody(
-  params: {
-    model: string;
-    messages: any[];
-    modalities?: Array<'image' | 'text'>;
-    temperature?: number;
-    top_p?: number;
-    max_tokens?: number;
-    reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
-    reasoning_tokens?: number;
-    tools?: any[];
-    tool_choice?: any;
-    parallel_tool_calls?: boolean;
-    providerSort?: 'price' | 'throughput';
-    plugins?: any[];
-  },
-  stream: boolean,
-) {
-  const body: any = { model: params.model, messages: params.messages, stream };
-  if (stream) body.stream_options = { include_usage: true };
-  if (Array.isArray(params.modalities) && params.modalities.length > 0)
-    body.modalities = params.modalities;
-  if (typeof params.temperature === 'number') body.temperature = params.temperature;
-  if (typeof params.top_p === 'number') body.top_p = params.top_p;
-  if (typeof params.max_tokens === 'number') body.max_tokens = params.max_tokens;
-
-  const reasoning: any = {};
-  if (typeof params.reasoning_effort === 'string') reasoning.effort = params.reasoning_effort;
-  if (typeof params.reasoning_tokens === 'number') reasoning.max_tokens = params.reasoning_tokens;
-  if (Object.keys(reasoning).length > 0) body.reasoning = reasoning;
-
-  if (Array.isArray(params.tools) && params.tools.length > 0) body.tools = params.tools;
-  if (params.tool_choice) body.tool_choice = params.tool_choice;
-  if (typeof params.parallel_tool_calls === 'boolean')
-    body.parallel_tool_calls = params.parallel_tool_calls;
-  if (params.providerSort === 'price' || params.providerSort === 'throughput') {
-    body.provider = { ...(body.provider || {}), sort: params.providerSort };
-  }
-  if (Array.isArray(params.plugins) && params.plugins.length > 0) {
-    body.plugins = params.plugins;
-  }
-  return body;
-}
-
 // OpenAI-compatible non-streaming chat completion with optional tool support
 export async function chatCompletion(params: {
   apiKey: string;
@@ -160,7 +121,22 @@ export async function chatCompletion(params: {
   providerSort?: 'price' | 'throughput';
   plugins?: any[];
 }) {
-  const body = buildChatRequestBody(params, false);
+  const body = buildChatBody({
+    model: params.model,
+    messages: params.messages,
+    stream: false,
+    modalities: params.modalities,
+    temperature: params.temperature,
+    top_p: params.top_p,
+    max_tokens: params.max_tokens,
+    reasoning_effort: params.reasoning_effort,
+    reasoning_tokens: params.reasoning_tokens,
+    tools: params.tools,
+    tool_choice: params.tool_choice,
+    parallel_tool_calls: params.parallel_tool_calls,
+    providerSort: params.providerSort,
+    plugins: params.plugins,
+  });
   const res = await orChatCompletions({ apiKey: params.apiKey, body, signal: params.signal });
   if (res.status === 401 || res.status === 403) throw new Error('unauthorized');
   if (res.status === 429) throw new Error('rate_limited');
@@ -191,7 +167,23 @@ export async function streamChatCompletion(params: {
   plugins?: any[];
 }) {
   const callbacks = params.callbacks;
-  const body = buildChatRequestBody(params, true);
+  const body = buildChatBody({
+    model: params.model,
+    messages: params.messages,
+    stream: true,
+    modalities: params.modalities,
+    temperature: params.temperature,
+    top_p: params.top_p,
+    max_tokens: params.max_tokens,
+    reasoning_effort: params.reasoning_effort,
+    reasoning_tokens: params.reasoning_tokens,
+    tools: params.tools,
+    tool_choice: params.tool_choice,
+    parallel_tool_calls: params.parallel_tool_calls,
+    providerSort: params.providerSort,
+    plugins: params.plugins,
+    includeUsage: true,
+  });
   const res = await orChatCompletions({
     apiKey: params.apiKey,
     body,

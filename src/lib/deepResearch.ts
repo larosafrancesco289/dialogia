@@ -44,7 +44,7 @@ export const DEEP_TOOLS = [
   {
     type: 'function',
     function: {
-      name: 'web_search_brave',
+      name: 'web_search',
       description:
         'Search the public web via Brave for up-to-date results. Use specific queries and small result counts. Avoid redundant calls.',
       parameters: {
@@ -78,6 +78,12 @@ export const DEEP_TOOLS = [
             type: 'array',
             items: { type: 'string' },
             description: 'Exclude results from these domains (optional).',
+          },
+          provider: {
+            type: 'string',
+            description: 'Search provider to use. Defaults to brave.',
+            enum: ['brave'],
+            default: 'brave',
           },
         },
         required: ['query'],
@@ -352,9 +358,22 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
         args = JSON.parse(raw);
       } catch {}
 
-      if (name === 'web_search_brave') {
+      if (name === 'web_search') {
         try {
-          const results = await braveSearch(args);
+          const provider = typeof args?.provider === 'string' ? args.provider : 'brave';
+          if (provider !== 'brave') {
+            const unsupported = { error: `unsupported_provider_${provider}` };
+            trace?.push({ type: 'search', input: args, output: unsupported });
+            messages.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              name,
+              content: JSON.stringify(unsupported),
+            });
+            continue;
+          }
+          const { provider: _provider, ...searchArgs } = args || {};
+          const results = await braveSearch(searchArgs);
           trace?.push({ type: 'search', input: args, output: results });
           for (const r of results) {
             if (!r?.url) continue;

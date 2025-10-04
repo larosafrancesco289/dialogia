@@ -1,4 +1,5 @@
 import type { Chat, ChatSettings, Message, ORModel, MessageMetrics, Folder } from '@/lib/types';
+import type { ModelIndex } from '@/lib/models';
 
 export type UIState = {
   showSettings: boolean;
@@ -144,6 +145,7 @@ export type StoreState = {
   selectedChatId?: string;
 
   models: ORModel[];
+  modelIndex: ModelIndex;
   favoriteModelIds: string[];
   hiddenModelIds: string[];
   // Cached ZDR model ids (ephemeral; not persisted)

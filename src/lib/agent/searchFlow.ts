@@ -1,7 +1,10 @@
 // Module: agent/searchFlow
 // Responsibility: Centralize web search tool schema, Brave API calls, and result formatting.
 
+import type { StoreState } from '@/lib/store/types';
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
+
+type StoreSetter = (updater: (state: StoreState) => Partial<StoreState> | void) => void;
 
 export function getSearchToolDefinition() {
   return [
@@ -58,6 +61,27 @@ export async function runBraveSearch(
   } catch (e: any) {
     return { ok: false, results: [], error: e?.message || 'Network error' };
   }
+}
+
+export function updateBraveUi(
+  set: StoreSetter,
+  messageId: string,
+  entry: {
+    query: string;
+    status: 'loading' | 'done' | 'error';
+    results?: SearchResult[];
+    error?: string;
+  },
+) {
+  set((state) => ({
+    ui: {
+      ...state.ui,
+      braveByMessageId: {
+        ...(state.ui.braveByMessageId || {}),
+        [messageId]: entry,
+      },
+    },
+  }));
 }
 
 export function mergeSearchResults(groups: SearchResult[][]): SearchResult[] {

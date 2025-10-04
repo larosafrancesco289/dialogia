@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useDragAndDrop } from '@/lib/dragDrop';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import FolderItem from './FolderItem';
 import IconButton from './IconButton';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -60,13 +61,8 @@ export default function ChatSidebar() {
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [query, setQuery] = useState('');
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
-    update();
-    window.addEventListener('resize', update, { passive: true } as any);
-    return () => window.removeEventListener('resize', update as any);
-  }, []);
+  const isMobile = useIsMobile();
+  const isTablet = useIsMobile(768);
   // no global swipe state; long-press opens action sheet per-row
 
   useEffect(() => {
@@ -129,10 +125,9 @@ export default function ChatSidebar() {
             <ThemeToggle />
             <IconButton
               onClick={() => {
-                const isSmall = typeof window !== 'undefined' && window.innerWidth < 768;
                 useChatStore
                   .getState()
-                  .setUI({ showSettings: true, ...(isSmall ? { sidebarCollapsed: true } : {}) });
+                  .setUI({ showSettings: true, ...(isTablet ? { sidebarCollapsed: true } : {}) });
               }}
               title="Settings"
               variant="ghost"
