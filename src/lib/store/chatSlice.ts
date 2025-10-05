@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, saveChat, saveFolder, saveMessage } from '@/lib/db';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, Folder, Message } from '@/lib/types';
+import type { StoreSetter } from '@/lib/agent/types';
 import {
   DEFAULT_MODEL_ID,
   DEFAULT_TUTOR_MODEL_ID,
@@ -16,8 +17,9 @@ import { EMPTY_TUTOR_MEMORY, normalizeTutorMemory } from '@/lib/agent/tutorMemor
 import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
 
 export function createChatSlice(
-  set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
+  set: StoreSetter,
   get: () => StoreState,
+  _store?: unknown,
 ) {
   return {
     async initializeApp() {

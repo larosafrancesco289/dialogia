@@ -2,30 +2,31 @@ import type { StoreState } from '@/lib/store/types';
 import { fetchModels } from '@/lib/openrouter';
 import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
 import { ensureListsAndFilter } from '@/lib/zdr/enforce';
-import { toZdrState, ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
+import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { createModelIndex, EMPTY_MODEL_INDEX, formatModelLabel } from '@/lib/models';
+import { createStoreSlice } from '@/lib/store/createSlice';
 
-export function createModelSlice(
-  set: (fn: (s: StoreState) => Partial<StoreState> | void) => void,
-  get: () => StoreState,
-) {
+export const createModelSlice = createStoreSlice((set, get) => {
   let isLoadingModels = false;
+
   return {
     models: [] as StoreState['models'],
     favoriteModelIds: [] as StoreState['favoriteModelIds'],
     hiddenModelIds: [] as StoreState['hiddenModelIds'],
     modelIndex: EMPTY_MODEL_INDEX,
 
-    async loadModels() {
+    async loadModels(_opts?: { showErrors?: boolean }) {
       if (isLoadingModels) return;
       const useProxy = isOpenRouterProxyEnabled();
       const key = getPublicOpenRouterKey();
-      if (!key && !useProxy)
-        return set((s) => ({
+      if (!key && !useProxy) {
+        set((s) => ({
           ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY' },
         }));
+        return;
+      }
       isLoadingModels = true;
       try {
         let models = await fetchModels(key || '');
@@ -69,7 +70,10 @@ export function createModelSlice(
             providerIds: get().zdrProviderIds,
           },
         );
-        set(() => toZdrState(lists) as any);
+        set(() => ({
+          zdrModelIds: Array.from(lists.modelIds),
+          zdrProviderIds: Array.from(lists.providerIds),
+        }));
         if (zdrOnly) {
           if (filter.status === 'unknown') {
             models = [];
@@ -78,7 +82,7 @@ export function createModelSlice(
             models = filtered;
           }
         }
-        set({ models, modelIndex: createModelIndex(models) } as any);
+        set({ models, modelIndex: createModelIndex(models) });
       } catch (e: any) {
         if (e?.message === 'unauthorized')
           set((s) => ({ ui: { ...s.ui, notice: 'Invalid API key' } }));
@@ -109,7 +113,7 @@ export function createModelSlice(
     },
 
     resetHiddenModels() {
-      set({ hiddenModelIds: [] } as any);
+      set({ hiddenModelIds: [] });
     },
 
     removeModelFromDropdown(id: string) {
@@ -117,11 +121,11 @@ export function createModelSlice(
       set((s) => {
         const isFavorite = s.favoriteModelIds.includes(id);
         if (isFavorite) {
-          return { favoriteModelIds: s.favoriteModelIds.filter((m) => m !== id) } as any;
+          return { favoriteModelIds: s.favoriteModelIds.filter((m) => m !== id) };
         }
-        if (s.hiddenModelIds.includes(id)) return {} as any;
-        return { hiddenModelIds: [id, ...s.hiddenModelIds] } as any;
+        if (s.hiddenModelIds.includes(id)) return {};
+        return { hiddenModelIds: [id, ...s.hiddenModelIds] };
       });
     },
   } satisfies Partial<StoreState>;
-}
+});

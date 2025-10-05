@@ -5,6 +5,7 @@ import { createModelIndex } from '@/lib/models';
 import type { Message, Chat, ORModel } from '@/lib/types';
 import { getTutorToolDefinitions } from '@/lib/agent/tutor';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
+import type { StoreSetter } from '@/lib/agent/types';
 
 const baseModels: ORModel[] = [
   {
@@ -85,9 +86,18 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   };
 
   const savedMessages: Message[] = [];
-  const set = (updater: any) => {
-    const patch = updater(state);
-    mergeState(state, patch);
+  const set: StoreSetter = (partial, replace) => {
+    if (typeof partial === 'function') {
+      const patch = partial(state);
+      if (patch) mergeState(state, patch);
+    } else if (partial) {
+      if (replace) {
+        Object.keys(state).forEach((key) => {
+          delete (state as any)[key];
+        });
+      }
+      mergeState(state, partial as Partial<typeof state>);
+    }
   };
   const get = () => state;
 
@@ -261,9 +271,18 @@ test('regenerate reuses snapshots and records debug payload', async () => {
   };
 
   const saved: Message[] = [];
-  const set = (updater: any) => {
-    const patch = updater(state);
-    mergeState(state, patch);
+  const set: StoreSetter = (partial, replace) => {
+    if (typeof partial === 'function') {
+      const patch = partial(state);
+      if (patch) mergeState(state, patch);
+    } else if (partial) {
+      if (replace) {
+        Object.keys(state).forEach((key) => {
+          delete (state as any)[key];
+        });
+      }
+      mergeState(state, partial as Partial<typeof state>);
+    }
   };
   const get = () => state;
 

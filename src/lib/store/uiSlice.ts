@@ -6,11 +6,9 @@ import {
   DEFAULT_TUTOR_MEMORY_FREQUENCY,
 } from '@/lib/constants';
 import { EMPTY_TUTOR_MEMORY } from '@/lib/agent/tutorMemory';
+import { createStoreSlice } from '@/lib/store/createSlice';
 
-export function createUiSlice(
-  set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
-  get: () => StoreState,
-) {
+export const createUiSlice = createStoreSlice((set) => {
   const initial: UIState = {
     showSettings: false,
     isStreaming: false,
@@ -65,4 +63,4 @@ export function createUiSlice(
       });
     },
   } satisfies Partial<StoreState>;
-}
+});

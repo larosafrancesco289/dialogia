@@ -1,5 +1,6 @@
 import type { Message } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
+import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { updateBraveUi } from '@/lib/agent/searchFlow';
 
 export type DeepResearchContext = {
@@ -7,8 +8,8 @@ export type DeepResearchContext = {
   modelId: string;
   chatId: string;
   assistantMessage: Message;
-  set: (updater: (state: StoreState) => Partial<StoreState> | void) => void;
-  get: () => StoreState;
+  set: StoreSetter;
+  get: StoreGetter;
   persistMessage: (message: Message) => Promise<void>;
 };
 

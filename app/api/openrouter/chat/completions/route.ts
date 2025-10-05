@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireServerOpenRouterKey } from '@/lib/config';
-import { orChatCompletions } from '@/lib/api/orClient';
+import { orChatCompletions } from '@/lib/api/openrouterClient';
 
 export async function POST(req: NextRequest) {
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();

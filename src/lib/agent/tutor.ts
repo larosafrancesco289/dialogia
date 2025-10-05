@@ -2,6 +2,8 @@
 // The tools are presentation-only: the model generates the content and
 // supplies it as arguments, which the UI renders as interactive widgets.
 
+import type { ToolDefinition } from '@/lib/agent/types';
+
 export function getTutorPreamble() {
   return [
     'You are an expert, endlessly patient tutor with a warm, encouraging personality. Your mission is to keep attention and build confidence, not overwhelm.',
@@ -224,7 +226,7 @@ export function buildTutorContextFull(t: any | undefined): string | undefined {
   }
 }
 
-export function getTutorToolDefinitions() {
+export function getTutorToolDefinitions(): ToolDefinition[] {
   return [
     {
       type: 'function',

@@ -9,8 +9,7 @@ import {
   type ZdrFilterResult,
   type ZdrLists,
 } from '@/lib/zdr';
-
-export type StoreSetter = (updater: (state: StoreState) => Partial<StoreState> | void) => void;
+import type { StoreSetter } from '@/lib/agent/types';
 
 export type ZdrFilterMode = 'enforce' | 'informational';
 

@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { stripLeadingToolJson } from '@/lib/agent/streaming';
 import type { Message } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
+import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 
 export type StreamExtras = {
   usage?: {
@@ -16,8 +17,8 @@ export type StreamExtras = {
 export type MessageStreamOptions = {
   chatId: string;
   assistantMessage: Message;
-  set: (updater: (state: StoreState) => Partial<StoreState> | void) => void;
-  get: () => StoreState;
+  set: StoreSetter;
+  get: StoreGetter;
   startBuffered?: boolean;
   autoReasoningEligible?: boolean;
   modelIdUsed?: string;

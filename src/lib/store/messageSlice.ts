@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
+import type { StoreSetter } from '@/lib/agent/types';
 import { saveMessage, saveChat } from '@/lib/db';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { getTutorPreamble, getTutorToolDefinitions } from '@/lib/agent/tutor';
@@ -27,11 +28,14 @@ import { prepareAttachmentsForModel } from '@/lib/agent/attachments';
 import { providerSortFromRoutePref, composePlugins } from '@/lib/agent/request';
 import { planTurn, regenerate, streamFinal } from '@/lib/services/messagePipeline';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
+import { shouldShortCircuitTutor } from '@/lib/agent/policy';
+import type { SearchProvider } from '@/lib/agent/types';
 // telemetry removed for commit cleanliness
 
 export function createMessageSlice(
-  set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
+  set: StoreSetter,
   get: () => StoreState,
+  _store?: unknown,
 ) {
   const ensureZdrAllowed = async (modelId: string): Promise<boolean> => {
     const { lists } = await ensureListsAndFilter(get().models || [], 'informational', {
@@ -269,9 +273,9 @@ export function createMessageSlice(
 
       const searchEnabled = !!chat.settings.search_with_brave;
       const braveGloballyEnabled = !!get().ui.experimentalBrave;
-      const configuredProvider: 'brave' | 'openrouter' = (((chat.settings as any)
-        ?.search_provider as any) || 'brave') as any;
-      const searchProvider: 'brave' | 'openrouter' = braveGloballyEnabled
+      const configuredProvider: SearchProvider =
+        (((chat.settings as any)?.search_provider as SearchProvider) || 'brave');
+      const searchProvider: SearchProvider = braveGloballyEnabled
         ? configuredProvider
         : 'openrouter';
       const attemptPlanning = tutorEnabled || (searchEnabled && searchProvider === 'brave');
@@ -315,9 +319,8 @@ export function createMessageSlice(
         try {
           const controller = new AbortController();
           set((s) => ({ ...s, _controller: controller as any }) as any);
-          const tutorTools = tutorEnabled ? (getTutorToolDefinitions() as any[]) : ([] as any[]);
-          const baseTools =
-            searchEnabled && searchProvider === 'brave' ? getSearchToolDefinition() : [];
+          const tutorTools = tutorEnabled ? getTutorToolDefinitions() : [];
+          const baseTools = searchEnabled && searchProvider === 'brave' ? getSearchToolDefinition() : [];
           const toolDefinition = [...baseTools, ...tutorTools];
           const planResult = await planTurn({
             chat,
@@ -356,7 +359,7 @@ export function createMessageSlice(
               return { messages: { ...s.messages, [chatId]: updated } } as any;
             });
           } catch {}
-          if (planResult.usedTutorContentTool && !planResult.hasSearchResults) {
+          if (shouldShortCircuitTutor(planResult)) {
             set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
             const current = get().messages[chatId]?.find((m) => m.id === assistantMsg.id);
             const finalMsg = {

@@ -3,25 +3,51 @@ import type { Chat, Message } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import { attachTutorUiState } from '@/lib/agent/tutorFlow';
 import { addCardsToDeck, getDueCards } from '@/lib/tutorDeck';
+import { runBraveSearch, updateBraveUi } from '@/lib/agent/searchFlow';
+import type {
+  PersistMessage,
+  SearchProvider,
+  SearchResult,
+  StoreSetter,
+  ToolExecutionResult,
+  TutorToolCall,
+  TutorToolName,
+  WebSearchArgs,
+} from '@/lib/agent/types';
 
-export type WebSearchRequest = { query: string; count?: number };
+const INLINE_TUTOR_TOOL_NAMES: TutorToolName[] = ['quiz_mcq'];
 
-export function extractWebSearchArgs(text: string): WebSearchRequest | null {
+const TUTOR_TOOL_NAME_SET = new Set<TutorToolName>([
+  'quiz_mcq',
+  'quiz_fill_blank',
+  'quiz_open_ended',
+  'flashcards',
+  'grade_open_response',
+  'add_to_deck',
+  'srs_review',
+]);
+
+export function isTutorToolName(name: string): name is TutorToolName {
+  return TUTOR_TOOL_NAME_SET.has(name as TutorToolName);
+}
+
+export function extractWebSearchArgs(text: string): WebSearchArgs | null {
   if (typeof text !== 'string' || !text) return null;
   try {
-    const candidates: Array<Record<string, any>> = [];
+    const candidates: Array<Record<string, unknown>> = [];
     for (let i = 0; i < text.length; i += 1) {
       if (text[i] !== '{') continue;
       const parsed = parseJsonAfter(text, i);
-      if (parsed && parsed.value && typeof parsed.value === 'object') {
-        candidates.push(parsed.value);
+      if (parsed && typeof parsed.value === 'object' && parsed.value) {
+        candidates.push(parsed.value as Record<string, unknown>);
         i = parsed.endIndex;
       }
     }
     for (const payload of candidates) {
       const direct = readSearchPayload(payload);
       if (direct) return direct;
-      if (typeof payload.name === 'string' && payload.name === 'web_search') {
+      const payloadName = typeof payload.name === 'string' ? payload.name : '';
+      if (payloadName === 'web_search') {
         const args = payload.arguments;
         if (typeof args === 'string') {
           try {
@@ -39,30 +65,101 @@ export function extractWebSearchArgs(text: string): WebSearchRequest | null {
   return null;
 }
 
-function readSearchPayload(value: any): WebSearchRequest | null {
+function readSearchPayload(value: unknown): WebSearchArgs | null {
   if (!value || typeof value !== 'object') return null;
-  const query = typeof value.query === 'string' ? value.query.trim() : '';
+  const record = value as Record<string, unknown>;
+  const query = typeof record.query === 'string' ? record.query.trim() : '';
   if (!query) return null;
-  const rawCount = value.count;
-  const count = Number.isFinite(rawCount)
-    ? Math.max(1, Math.min(10, Math.floor(rawCount)))
-    : undefined;
+  const rawCount = record.count;
+  const count =
+    typeof rawCount === 'number' && Number.isFinite(rawCount)
+      ? Math.max(1, Math.min(10, Math.floor(rawCount)))
+      : undefined;
   return { query, count };
 }
 
-export type TutorToolCall = { name: string; args: any };
+export async function performWebSearchTool(opts: {
+  args: WebSearchArgs;
+  fallbackQuery: string;
+  searchProvider: SearchProvider;
+  controller: AbortController;
+  assistantMessageId: string;
+  chatId: string;
+  set: StoreSetter;
+}): Promise<ToolExecutionResult> {
+  const { args, fallbackQuery, searchProvider, controller, assistantMessageId, chatId, set } = opts;
+  let rawQuery = typeof args?.query === 'string' ? args.query.trim() : '';
+  const parsedCount = Number.parseInt(String(args?.count ?? ''), 10);
+  const count = Math.min(Math.max(Number.isFinite(parsedCount) ? parsedCount : 5, 1), 10);
+  if (!rawQuery) rawQuery = fallbackQuery.trim().slice(0, 256);
+
+  if (searchProvider === 'brave') {
+    updateBraveUi(set, assistantMessageId, { query: rawQuery, status: 'loading' });
+  }
+
+  const fetchController = new AbortController();
+  const onAbort = () => fetchController.abort();
+  controller.signal.addEventListener('abort', onAbort);
+  const timeout = setTimeout(() => fetchController.abort(), 20000);
+
+  try {
+    const result =
+      searchProvider === 'brave'
+        ? await runBraveSearch(rawQuery, count, { signal: fetchController.signal })
+        : { ok: false, results: [] as SearchResult[], error: undefined };
+
+    if (result.ok) {
+      if (searchProvider === 'brave') {
+        updateBraveUi(set, assistantMessageId, {
+          query: rawQuery,
+          status: 'done',
+          results: result.results,
+        });
+      }
+      return { ok: true, results: result.results, query: rawQuery };
+    }
+
+    if (searchProvider === 'brave') {
+      updateBraveUi(set, assistantMessageId, {
+        query: rawQuery,
+        status: 'error',
+        results: [],
+        error: result.error || 'No results',
+      });
+    }
+    if (result.error === 'Missing BRAVE_SEARCH_API_KEY') {
+      set((state) => ({ ui: { ...state.ui, notice: 'Missing BRAVE_SEARCH_API_KEY' } }));
+    }
+    return { ok: false, results: [], error: result.error, query: rawQuery };
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : undefined;
+    if (searchProvider === 'brave') {
+      updateBraveUi(set, assistantMessageId, {
+        query: rawQuery,
+        status: 'error',
+        results: [],
+        error: errorMessage || 'Network error',
+      });
+    }
+    return { ok: false, results: [], error: errorMessage, query: rawQuery };
+  } finally {
+    clearTimeout(timeout);
+    controller.signal.removeEventListener('abort', onAbort);
+  }
+}
 
 export function extractTutorToolCalls(text: string): TutorToolCall[] {
   if (typeof text !== 'string' || !text) return [];
-  const supported = ['quiz_mcq'];
   const output: TutorToolCall[] = [];
-  for (const tool of supported) {
+  for (const tool of INLINE_TUTOR_TOOL_NAMES) {
     const idx = text.indexOf(tool);
     if (idx < 0) continue;
     const cursor = Math.max(text.indexOf(':', idx), text.indexOf('(', idx));
     const parsed = parseJsonAfter(text, cursor >= 0 ? cursor : idx);
     const json = parsed?.value;
-    if (json && typeof json === 'object') output.push({ name: tool, args: json });
+    if (json && typeof json === 'object') {
+      output.push({ name: tool, args: json as Record<string, unknown> });
+    }
   }
   return output;
 }
@@ -70,7 +167,7 @@ export function extractTutorToolCalls(text: string): TutorToolCall[] {
 function parseJsonAfter(
   source: string,
   from: number,
-): { value: any; endIndex: number } | undefined {
+): { value: unknown; endIndex: number } | undefined {
   const start = source.indexOf('{', from);
   if (start < 0) return undefined;
   let depth = 0;
@@ -109,28 +206,26 @@ function parseJsonAfter(
 }
 
 export type TutorQuizPayload = {
-  items: Array<{ id: string; [key: string]: any }>;
+  items: Array<{ id: string; [key: string]: unknown }>;
 };
 
-export function normalizeTutorQuizPayload(args: any): TutorQuizPayload | null {
+export function normalizeTutorQuizPayload(args: unknown): TutorQuizPayload | null {
   if (!args || typeof args !== 'object') return null;
-  const items: any[] = Array.isArray(args.items) ? args.items : [];
+  const record = args as Record<string, unknown>;
+  const items = Array.isArray(record.items) ? record.items : [];
   if (items.length === 0) return null;
   const normalized = items.slice(0, 40).map((item) => {
-    const raw = (item as any).id;
-    const trimmed = typeof raw === 'string' ? raw.trim() : '';
-    const id = !trimmed || trimmed === 'null' || trimmed === 'undefined' ? uuidv4() : trimmed;
-    return { ...item, id };
+    const data = item as Record<string, unknown>;
+    const rawId = typeof data.id === 'string' ? data.id.trim() : '';
+    const id = !rawId || rawId === 'null' || rawId === 'undefined' ? uuidv4() : rawId;
+    return { ...data, id };
   });
   return { items: normalized };
 }
 
-type StoreSetter = (updater: (state: StoreState) => Partial<StoreState> | void) => void;
-type PersistMessage = (message: Message) => Promise<void>;
-
 export async function applyTutorToolCall(opts: {
-  name: string;
-  args: any;
+  name: TutorToolName;
+  args: Record<string, unknown>;
   chat: Chat;
   chatId: string;
   assistantMessage: Message;
@@ -143,6 +238,8 @@ export async function applyTutorToolCall(opts: {
     const normalized = normalizeTutorQuizPayload(args);
     if (!normalized) return { handled: false, usedContent: false } as const;
     let updatedMsg: Message | undefined;
+    const titleFromArgs =
+      typeof args['title'] === 'string' ? (args['title'] as string) : undefined;
     set((state) => {
       const list = state.messages[chatId] ?? [];
       const result = attachTutorUiState({
@@ -152,11 +249,12 @@ export async function applyTutorToolCall(opts: {
         patch: {
           title:
             ((state.ui.tutorByMessageId || {})[assistantMessage.id]?.title as string | undefined) ||
-            args?.title,
+            titleFromArgs,
           [mapKey]: [
-            ...((((state.ui.tutorByMessageId || {})[assistantMessage.id] as any)?.[
-              mapKey
-            ] as any[]) || []),
+            ...((((state.ui.tutorByMessageId || {})[assistantMessage.id] as Record<
+              string,
+              unknown
+            >)?.[mapKey] as unknown[]) || []),
             ...normalized.items,
           ],
         },
@@ -174,7 +272,7 @@ export async function applyTutorToolCall(opts: {
     }
     try {
       const payload: Record<string, unknown> = { items: normalized.items };
-      if (typeof args?.title === 'string') payload.title = args.title;
+      if (titleFromArgs) payload.title = titleFromArgs;
       return { handled: true, usedContent: true, payload: JSON.stringify(payload) } as const;
     } catch {}
     return { handled: true, usedContent: true } as const;
@@ -186,16 +284,13 @@ export async function applyTutorToolCall(opts: {
   if (name === 'flashcards') return patchTutorItems('flashcards');
 
   if (name === 'grade_open_response') {
-    const rawId = args?.item_id;
-    const itemId = (() => {
-      const s = typeof rawId === 'string' ? rawId.trim() : '';
-      if (!s || s === 'null' || s === 'undefined') return '';
-      return s;
-    })();
-    const feedback = String(args?.feedback || '').trim();
-    const score = typeof args?.score === 'number' ? args.score : undefined;
-    const criteria = Array.isArray(args?.criteria) ? args.criteria : undefined;
-    if (!itemId || !feedback) return { handled: false, usedContent: false };
+    const rawId = typeof args['item_id'] === 'string' ? (args['item_id'] as string).trim() : '';
+    if (!rawId || rawId === 'null' || rawId === 'undefined') return { handled: false, usedContent: false };
+    const feedback =
+      typeof args['feedback'] === 'string' ? (args['feedback'] as string).trim() : '';
+    if (!feedback) return { handled: false, usedContent: false };
+    const score = typeof args['score'] === 'number' ? (args['score'] as number) : undefined;
+    const criteria = Array.isArray(args['criteria']) ? (args['criteria'] as unknown[]) : undefined;
     let updatedMsg: Message | undefined;
     set((state) => {
       const list = state.messages[chatId] ?? [];
@@ -207,9 +302,9 @@ export async function applyTutorToolCall(opts: {
           grading: {
             ...(((state.ui.tutorByMessageId || {})[assistantMessage.id]?.grading as Record<
               string,
-              any
+              unknown
             >) || {}),
-            [itemId]: { feedback, score, criteria },
+            [rawId]: { feedback, score, criteria },
           },
         },
       });
@@ -229,15 +324,18 @@ export async function applyTutorToolCall(opts: {
 
   if (name === 'add_to_deck') {
     try {
-      const cards = Array.isArray(args?.cards) ? args.cards : [];
+      const cards = Array.isArray(args['cards']) ? (args['cards'] as any[]) : [];
       if (cards.length > 0) await addCardsToDeck(chat.id, cards);
     } catch {}
     return { handled: true, usedContent: false };
   }
 
   if (name === 'srs_review') {
-    const cnt = Math.min(Math.max(parseInt(String(args?.due_count || '10'), 10) || 10, 1), 40);
-    let due: any[] = [];
+    const cnt = Math.min(
+      Math.max(Number.parseInt(String(args['due_count'] ?? '10'), 10) || 10, 1),
+      40,
+    );
+    let due: Record<string, unknown>[] = [];
     try {
       const cards = await getDueCards(chat.id, cnt);
       due = cards.map((c) => ({

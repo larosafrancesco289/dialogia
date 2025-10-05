@@ -40,7 +40,15 @@ test('buildDebugBody includes optional knobs when provided', () => {
     max_tokens: 256,
     reasoningEffort: 'medium',
     reasoningTokens: 1024,
-    tools: [{ id: 'tutor' }],
+    tools: [
+      {
+        type: 'function',
+        function: {
+          name: 'tutor_call',
+          parameters: { type: 'object', properties: {} },
+        },
+      },
+    ],
     toolChoice: 'auto',
     providerSort: 'price',
     plugins: [{ id: 'web' }],
@@ -55,7 +63,7 @@ test('buildDebugBody includes optional knobs when provided', () => {
   assert.equal(body.top_p, 0.9);
   assert.equal(body.max_tokens, 256);
   assert.deepEqual(body.reasoning, { effort: 'medium', max_tokens: 1024 });
-  assert.deepEqual(body.tools, [{ id: 'tutor' }]);
+  assert.equal(body.tools?.[0]?.function?.name, 'tutor_call');
   assert.equal(body.tool_choice, 'auto');
   assert.deepEqual(body.provider, { sort: 'price' });
   assert.deepEqual(body.plugins, [{ id: 'web' }]);
