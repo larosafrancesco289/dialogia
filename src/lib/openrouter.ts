@@ -1,6 +1,8 @@
 import type { ORModel } from '@/lib/types';
 import { orChatCompletions, orFetchModels, orFetchZdrEndpoints } from '@/lib/api/openrouterClient';
 import { buildChatBody } from '@/lib/agent/request';
+import { consumeSse } from '@/lib/api/stream';
+import { ApiError, responseError } from '@/lib/api/errors';
 
 // Transport-only client for OpenRouter.
 // Request payload construction lives in agent/request.buildChatBody to keep one source of truth
@@ -8,7 +10,7 @@ import { buildChatBody } from '@/lib/agent/request';
 
 async function loadZdrEndpoints(signal?: AbortSignal): Promise<any[]> {
   const res = await orFetchZdrEndpoints({ signal });
-  if (!res.ok) throw new Error(`zdr_failed_${res.status}`);
+  if (!res.ok) throw responseError(res, { code: 'openrouter_zdr_failed' });
   const payload = await res.json().catch(() => null);
   if (!payload) return [];
   if (Array.isArray(payload?.data)) return payload.data;
@@ -75,10 +77,13 @@ export async function fetchZdrModelIds(): Promise<Set<string>> {
 export async function fetchModels(apiKey: string): Promise<ORModel[]> {
   const res = await orFetchModels(apiKey);
   if (res.status === 401 || res.status === 403) {
-    throw new Error('unauthorized');
+    throw responseError(res, {
+      code: 'unauthorized',
+      message: 'Invalid API key',
+    });
   }
   if (!res.ok) {
-    throw new Error(`models_failed_${res.status}`);
+    throw responseError(res, { code: 'openrouter_models_failed' });
   }
   const data = await res.json();
   const items = Array.isArray(data?.data) ? data.data : data;
@@ -138,9 +143,10 @@ export async function chatCompletion(params: {
     plugins: params.plugins,
   });
   const res = await orChatCompletions({ apiKey: params.apiKey, body, signal: params.signal });
-  if (res.status === 401 || res.status === 403) throw new Error('unauthorized');
-  if (res.status === 429) throw new Error('rate_limited');
-  if (!res.ok) throw new Error(`chat_failed_${res.status}`);
+  if (res.status === 401 || res.status === 403)
+    throw responseError(res, { code: 'unauthorized', message: 'Invalid API key' });
+  if (res.status === 429) throw responseError(res, { code: 'rate_limited', message: 'Rate limited' });
+  if (!res.ok) throw responseError(res, { code: 'openrouter_chat_failed' });
   return res.json();
 }
 
@@ -184,6 +190,7 @@ export async function streamChatCompletion(params: {
     plugins: params.plugins,
     includeUsage: true,
   });
+
   const res = await orChatCompletions({
     apiKey: params.apiKey,
     body,
@@ -191,86 +198,75 @@ export async function streamChatCompletion(params: {
     stream: true,
   });
 
-  if (res.status === 401 || res.status === 403) throw new Error('unauthorized');
-  if (res.status === 429) throw new Error('rate_limited');
-  if (!res.ok || !res.body) throw new Error(`chat_failed_${res.status}`);
+  if (res.status === 401 || res.status === 403)
+    throw responseError(res, { code: 'unauthorized', message: 'Invalid API key' });
+  if (res.status === 429) throw responseError(res, { code: 'rate_limited', message: 'Rate limited' });
+  if (!res.ok) throw responseError(res, { code: 'openrouter_chat_failed' });
 
-  callbacks?.onStart?.();
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
   let full = '';
-  let reasoning = '';
   let usage: any | undefined;
   let annotations: any | undefined;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split(/\r?\n/);
-    buffer = lines.pop() ?? '';
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) continue;
-      const data = trimmed.slice(5).trim();
-      if (data === '[DONE]') {
-        callbacks?.onDone?.(full, { usage });
-        return;
-      }
-      try {
-        const json = JSON.parse(data);
-        const choice = json.choices?.[0] ?? {};
-        // Prefer delta fields during streaming; fall back to message.* if provider sends final chunk as full message
-        let deltaContent: string = '';
-        if (choice?.delta && typeof choice.delta.content === 'string')
-          deltaContent = choice.delta.content;
-        else if (choice?.message && typeof choice.message.content === 'string')
-          deltaContent = choice.message.content;
-
-        let deltaReasoning: string = '';
-        if (choice?.delta && typeof choice.delta.reasoning === 'string')
-          deltaReasoning = choice.delta.reasoning;
-        else if (choice?.message && typeof choice.message.reasoning === 'string')
-          deltaReasoning = choice.message.reasoning;
-
-        // Capture annotations (PDF parsing metadata) when present
-        const ann = (choice?.delta as any)?.annotations || (choice?.message as any)?.annotations;
-        if (ann && !annotations) {
-          annotations = ann;
-          callbacks?.onAnnotations?.(ann);
-        }
-
-        // Handle streaming image outputs
-        const emitImages = (arr: any[]) => {
-          for (const img of arr || []) {
-            const url: string | undefined = img?.image_url?.url || img?.url;
-            if (typeof url === 'string' && url.startsWith('data:image/')) {
-              callbacks?.onImage?.(url);
-            }
-          }
-        };
-        if (choice?.delta?.images && Array.isArray(choice.delta.images)) {
-          emitImages(choice.delta.images);
-        } else if (choice?.message?.images && Array.isArray(choice.message.images)) {
-          emitImages(choice.message.images);
-        }
-
-        if (deltaReasoning) {
-          reasoning += deltaReasoning;
-          callbacks?.onReasoningToken?.(deltaReasoning);
-        }
-        if (deltaContent) {
-          full += deltaContent;
-          callbacks?.onToken?.(deltaContent);
-        }
-        if (json.usage) {
-          usage = json.usage;
-        }
-      } catch (e) {
-        // ignore malformed line
+  const emitImages = (arr: any[]) => {
+    for (const img of arr || []) {
+      const url: string | undefined = img?.image_url?.url || img?.url;
+      if (typeof url === 'string' && url.startsWith('data:image/')) {
+        callbacks?.onImage?.(url);
       }
     }
+  };
+
+  const handleMessage = (data: string) => {
+    try {
+      const json = JSON.parse(data);
+      const choice = json.choices?.[0] ?? {};
+      const delta = choice?.delta ?? {};
+      const message = choice?.message ?? {};
+
+      const deltaContent: string =
+        typeof delta.content === 'string'
+          ? delta.content
+          : typeof message.content === 'string'
+            ? message.content
+            : '';
+
+      const deltaReasoning: string =
+        typeof (delta as any).reasoning === 'string'
+          ? (delta as any).reasoning
+          : typeof (message as any).reasoning === 'string'
+            ? (message as any).reasoning
+            : '';
+
+      const ann = (delta as any)?.annotations || (message as any)?.annotations;
+      if (ann && !annotations) {
+        annotations = ann;
+        callbacks?.onAnnotations?.(ann);
+      }
+
+      if (Array.isArray(delta?.images)) emitImages(delta.images as any[]);
+      if (Array.isArray((message as any)?.images)) emitImages((message as any).images as any[]);
+
+      if (deltaReasoning) callbacks?.onReasoningToken?.(deltaReasoning);
+      if (deltaContent) {
+        full += deltaContent;
+        callbacks?.onToken?.(deltaContent);
+      }
+
+      if (json.usage) usage = json.usage;
+    } catch {
+      // swallow malformed chunk
+    }
+  };
+
+  try {
+    await consumeSse(res, {
+      onStart: callbacks?.onStart,
+      onMessage: handleMessage,
+    });
+  } catch (error) {
+    callbacks?.onError?.(error instanceof Error ? error : new ApiError({ code: 'openrouter_chat_failed' }));
+    throw error;
   }
+
   callbacks?.onDone?.(full, { usage, annotations });
 }

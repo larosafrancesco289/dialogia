@@ -1,12 +1,13 @@
 import type { StoreState } from '@/lib/store/types';
 import { fetchModels } from '@/lib/openrouter';
 import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
-import { ensureListsAndFilter } from '@/lib/zdr/enforce';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
+import { ensureListsAndFilterCached } from '@/lib/zdr/cache';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { createModelIndex, EMPTY_MODEL_INDEX, formatModelLabel } from '@/lib/models';
 import { createStoreSlice } from '@/lib/store/createSlice';
+import { isApiError } from '@/lib/api/errors';
 
 export const createModelSlice = createStoreSlice((set, get) => {
   let isLoadingModels = false;
@@ -62,18 +63,12 @@ export const createModelSlice = createStoreSlice((set, get) => {
           }));
         }
         const zdrOnly = get().ui.zdrOnly === true;
-        const { lists, filter, filtered } = await ensureListsAndFilter(
+        const { filter, filtered } = await ensureListsAndFilterCached(
           models,
           zdrOnly ? 'enforce' : 'informational',
-          {
-            modelIds: get().zdrModelIds,
-            providerIds: get().zdrProviderIds,
-          },
+          set,
+          get,
         );
-        set(() => ({
-          zdrModelIds: Array.from(lists.modelIds),
-          zdrProviderIds: Array.from(lists.providerIds),
-        }));
         if (zdrOnly) {
           if (filter.status === 'unknown') {
             models = [];
@@ -84,7 +79,7 @@ export const createModelSlice = createStoreSlice((set, get) => {
         }
         set({ models, modelIndex: createModelIndex(models) });
       } catch (e: any) {
-        if (e?.message === 'unauthorized')
+        if (isApiError(e) && e.code === 'unauthorized')
           set((s) => ({ ui: { ...s.ui, notice: 'Invalid API key' } }));
       } finally {
         isLoadingModels = false;

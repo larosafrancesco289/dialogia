@@ -3,10 +3,16 @@ import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { streamChatCompletion } from '@/lib/openrouter';
 import { providerSortFromRoutePref } from '@/lib/agent/request';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
-import { toZdrState, ZDR_NO_MATCH_NOTICE, ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
-import { ensureListsAndFilter } from '@/lib/zdr/enforce';
+import { ZDR_NO_MATCH_NOTICE, ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
+import { ensureListsAndFilterCached } from '@/lib/zdr/cache';
+import { isApiError } from '@/lib/api/errors';
 import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
 import type { StoreSetter } from '@/lib/agent/types';
+import {
+  setCompareController,
+  abortAllCompare,
+  clearCompareController,
+} from '@/lib/services/controllers';
 
 export function createCompareSlice(
   set: StoreSetter,
@@ -78,11 +84,12 @@ export function createCompareSlice(
       // ZDR enforcement for compare: apply cached lists and filter selections
       if (get().ui.zdrOnly === true) {
         const sourceModels = modelIds.map((id) => ({ id }));
-        const { lists, filter } = await ensureListsAndFilter(sourceModels, 'enforce', {
-          modelIds: get().zdrModelIds,
-          providerIds: get().zdrProviderIds,
-        });
-        set(() => toZdrState(lists) as any);
+        const { lists, filter } = await ensureListsAndFilterCached(
+          sourceModels,
+          'enforce',
+          set,
+          get,
+        );
         if (lists.modelIds.size === 0 && lists.providerIds.size === 0) {
           return set((s) => {
             const prev = s.ui.compare || {
@@ -147,15 +154,12 @@ export function createCompareSlice(
           }) as any,
       );
 
-      const prev = (get() as any)._compareControllers as Record<string, AbortController>;
-      Object.values(prev || {}).forEach((c) => c.abort());
-      set((s) => ({ ...(s as any), _compareControllers: {} as any }) as any);
+      abortAllCompare();
 
-      const controllers: Record<string, AbortController> = {};
       await Promise.all(
         modelIds.map(async (modelId) => {
           const controller = new AbortController();
-          controllers[modelId] = controller;
+          setCompareController(modelId, controller);
           const tStart = performance.now();
           let tFirst: number | undefined;
           try {
@@ -429,22 +433,21 @@ export function createCompareSlice(
                     },
                   }) as any,
               );
-            } else if (e?.message === 'unauthorized') {
+            } else if (isApiError(e) && e.code === 'unauthorized') {
               set((s) => ({ ui: { ...s.ui, notice: 'Invalid API key' } }));
-            } else if (e?.message === 'rate_limited') {
+            } else if (isApiError(e) && e.code === 'rate_limited') {
               set((s) => ({ ui: { ...s.ui, notice: 'Rate limited. Retry later.' } }));
             } else {
               set((s) => ({ ui: { ...s.ui, notice: e?.message || 'Compare failed' } }));
             }
+          } finally {
+            clearCompareController(modelId);
           }
         }),
       );
-      set((s) => ({ ...(s as any), _compareControllers: controllers as any }) as any);
     },
     stopCompare() {
-      const map = (get() as any)._compareControllers as Record<string, AbortController>;
-      Object.values(map || {}).forEach((c) => c.abort());
-      set((s) => ({ ...(s as any), _compareControllers: {} as any }) as any);
+      abortAllCompare();
     },
   } satisfies Partial<StoreState>;
 }

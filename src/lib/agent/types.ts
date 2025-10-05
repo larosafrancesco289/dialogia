@@ -1,8 +1,7 @@
-import type { Chat, Message, ORModel } from '@/lib/types';
+import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
-import type { ProviderSort } from '@/lib/agent/request';
 import type { SetState, GetState } from 'zustand';
-import type { StoreState } from '@/lib/store/types';
+import type { StoreState, UIState } from '@/lib/store/types';
 
 export type StoreSetter = SetState<StoreState>;
 export type StoreGetter = GetState<StoreState>;
@@ -10,7 +9,18 @@ export type PersistMessage = (message: Message) => Promise<void>;
 
 export type ModelMessage = Record<string, unknown>;
 
-export type PluginConfig = Record<string, unknown>;
+export type ProviderSort = 'price' | 'throughput' | undefined;
+
+export type PdfPluginConfig = {
+  id: 'file-parser';
+  pdf: { engine: 'pdf-text' };
+};
+
+export type WebPluginConfig = {
+  id: 'web';
+};
+
+export type PluginConfig = PdfPluginConfig | WebPluginConfig;
 
 export type SearchProvider = 'brave' | 'openrouter';
 
@@ -24,6 +34,8 @@ export type ToolDefinition = {
   type: 'function';
   function: ToolFunctionDefinition;
 };
+
+export type StoreAccess = { set: StoreSetter; get: StoreGetter };
 
 export type ToolCall = {
   id: string;
@@ -85,6 +97,36 @@ export type PlanTurnResult = {
   finalSystem: string;
   usedTutorContentTool: boolean;
   hasSearchResults: boolean;
+};
+
+export type ComposeTurnArgs = {
+  chat: Chat;
+  ui: UIState;
+  modelIndex: ModelIndex;
+  prior: Message[];
+  newUser?: {
+    content?: string;
+    attachments?: Attachment[];
+  };
+  attachments?: Attachment[];
+};
+
+export type TurnComposition = {
+  system?: string;
+  messages: ModelMessage[];
+  tools?: ToolDefinition[];
+  plugins?: PluginConfig[];
+  providerSort?: ProviderSort;
+  hasPdf: boolean;
+  shouldPlan: boolean;
+  search: {
+    enabled: boolean;
+    provider: SearchProvider;
+  };
+  tutor: {
+    enabled: boolean;
+  };
+  consumedTutorNudge?: UIState['nextTutorNudge'];
 };
 
 export type StreamFinalOptions = {

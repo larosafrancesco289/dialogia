@@ -3,7 +3,7 @@
 
 import { isReasoningSupported } from '@/lib/models';
 import type { ChatSettings, ORModel } from '@/lib/types';
-import type { ProviderSort } from '@/lib/agent/request';
+import type { ProviderSort } from '@/lib/agent/types';
 
 export function snapshotGenSettings(opts: {
   settings: ChatSettings;

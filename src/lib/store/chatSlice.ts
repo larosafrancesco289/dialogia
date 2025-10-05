@@ -9,12 +9,10 @@ import {
   DEFAULT_TUTOR_MEMORY_MODEL_ID,
   DEFAULT_TUTOR_MEMORY_FREQUENCY,
 } from '@/lib/constants';
-import {
-  buildHiddenTutorContent,
-  ensureTutorDefaults as ensureTutorDefaultsFlow,
-} from '@/lib/agent/tutorFlow';
+import { buildHiddenTutorContent, ensureTutorDefaults } from '@/lib/agent/tutorFlow';
 import { EMPTY_TUTOR_MEMORY, normalizeTutorMemory } from '@/lib/agent/tutorMemory';
 import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
+import { primeTutorWelcome } from '@/lib/services/turns';
 
 export function createChatSlice(
   set: StoreSetter,
@@ -128,11 +126,7 @@ export function createChatSlice(
       };
       await saveChat(chat);
       set((s) => ({ chats: [chat, ...s.chats], selectedChatId: id }));
-      if (baseSettings.tutor_mode) {
-        try {
-          (get().prepareTutorWelcomeMessage as any)(id);
-        } catch {}
-      }
+      if (baseSettings.tutor_mode) primeTutorWelcome(id, { set, get });
       // Reset ephemeral "next" flags so they only apply to this new chat
       set((s) => ({
         ui: {
@@ -253,7 +247,7 @@ export function createChatSlice(
           ...appliedPartial,
           tutor_memory_disabled: memoryDisabled,
         };
-        const ensured = ensureTutorDefaultsFlow({
+        const ensured = ensureTutorDefaults({
           ui: uiState,
           chat: { settings: baseSettings },
           fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
@@ -300,7 +294,7 @@ export function createChatSlice(
           before.settings.tutor_mode !== appliedPartial.tutor_mode &&
           appliedPartial.tutor_mode === true;
         if (turnedOn && !!get().ui.experimentalTutor) {
-          (get().prepareTutorWelcomeMessage as any)(id);
+          primeTutorWelcome(id, { set, get });
         }
       } catch {}
     },

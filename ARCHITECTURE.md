@@ -12,13 +12,18 @@ business logic that is easy to test.
 - **State** — Zustand slices in `src/lib/store/*`. Composition happens in `src/lib/store.ts`, which
   wires persistence, migrations, and selectors. Each slice owns a bounded feature area (models,
   chat history, UI flags, compare drawer, tutor context, etc.).
-- **Agent** — Request builders, planning, tools, and policies in `src/lib/agent/*`. These modules
-  coordinate message planning, tool invocation, tutor flows, and research orchestration without
-  touching transport concerns directly.
+- **Agent** — Request builders, planning, tools, and policies in `src/lib/agent/*`. The
+  `compose.ts` module is the single entry for per-turn system/message assembly so every consumer
+  (send, regenerate, tests) shares the exact same preamble logic. These modules coordinate message
+  planning, tool invocation, tutor flows, and research orchestration without touching transport
+  concerns directly.
 - **Services** — Cross-cutting orchestrators in `src/lib/services/*` that connect the store to the
-  agent layer. `messagePipeline.ts` is the entry point for send/stream lifecycles.
+  agent layer. `services/turns.ts` owns send/regenerate flows, while `services/controllers.ts`
+  isolates AbortController lifecycles outside persistence. `messagePipeline.ts` remains the entry
+  point for the streaming lifecycle.
 - **Transport** — HTTP clients in `src/lib/api/*` and protocol adapters such as
-  `src/lib/openrouter.ts`. They hide headers, retries, streaming surface area, and origin handling.
+  `src/lib/openrouter.ts`. Shared helpers in `src/lib/api/stream.ts` and `src/lib/api/errors.ts`
+  encapsulate SSE parsing and typed error construction so retry logic stays consistent.
 - **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Brave search proxy in
   `app/api/brave/route.ts`, and any additional integrations. These never import UI modules.
 
@@ -53,10 +58,12 @@ business logic that is easy to test.
 1. A composer component in `src/components/chat` dispatches a store action (e.g.,
    `useMessageStore.getState().sendDraft()`). UI-only effects (shortcuts, resize) run through local
    hooks to keep the component tree declarative.
-2. The action invokes the pipeline entry point in `src/lib/services/messagePipeline.ts`. The service
-   reads the latest slices, prepares metadata, and hands control to the agent layer.
-3. Agent helpers in `src/lib/agent/request.ts` and `src/lib/agent/policy.ts` determine planning
-   rounds, tool eligibility (search, tutor), and build the OpenRouter payload.
+2. The action invokes `src/lib/services/turns.ts`, which prepares chat/tutor state, manages
+   controllers, and delegates to the agent pipeline. Streaming orchestration continues through
+   `src/lib/services/messagePipeline.ts`.
+3. Agent helpers in `src/lib/agent/compose.ts`, `src/lib/agent/request.ts`, and
+   `src/lib/agent/policy.ts` determine planning rounds, tool eligibility (search, tutor), and build
+   the OpenRouter payload.
 4. The transport function `src/lib/openrouter.ts` uses the consolidated client in
    `src/lib/api/openrouterClient.ts` to perform the HTTP request (streaming or non-streaming).
    Proxying through `/api/openrouter/*` keeps provider keys off the client.
@@ -73,4 +80,6 @@ business logic that is easy to test.
   the app unaware of fetch details.
 - Typed slices and pipeline DTOs ensure UI, agent, and services agree on a single contract.
 - IndexedDB (Dexie) manages long-lived chat history, while the persisted slice tracks session-level
-  preferences. Ephemeral controllers stay outside persistence to avoid corrupting restores.
+  preferences. Ephemeral controllers stay outside persistence to avoid corrupting restores. A
+  versioned upgrade hook in `src/lib/db.ts` sanitizes historical messages (trimmed tutor context,
+  filtered attachments) so newer features do not have to guard every field.
