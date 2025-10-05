@@ -10,7 +10,7 @@ import {
   ArrowPathIcon,
   ArrowUturnRightIcon,
 } from '@heroicons/react/24/outline';
-import type { Attachment } from '@/lib/types';
+import type { Attachment, Message } from '@/lib/types';
 import ImageLightbox from '@/components/ImageLightbox';
 import MessagePanels, { type MessagePanelsProps } from '@/components/message/MessagePanels';
 import MessageCard from '@/components/message/MessageCard';
@@ -63,6 +63,15 @@ export default function MessageList({ chatId }: { chatId: string }) {
   );
   const isMobile = useIsMobile();
 
+  const isAssistantPlaceholder = useCallback((message?: Message, previous?: Message) => {
+    if (!message || message.role !== 'assistant' || previous?.role !== 'user') return false;
+    const hasContent = message.content.trim().length > 0;
+    const hasReasoning = !!(message.reasoning && message.reasoning.trim().length > 0);
+    const hasAttachments = Array.isArray(message.attachments) && message.attachments.length > 0;
+    const hasTutorPayload = !!(message.tutor || message.tutorWelcome);
+    return !hasContent && !hasReasoning && !hasAttachments && !hasTutorPayload;
+  }, []);
+
   // Composer is now rendered outside this scroll container in ChatPane.
 
   // Track whether user is near the bottom to enable smart autoscroll
@@ -93,30 +102,39 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const scrollToBottom = (behavior: ScrollBehavior) => {
     const el = containerRef.current;
     if (!el) return;
-    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-    if (distance <= 1) return; // already at bottom; avoid redundant scrolls
-    // Schedule after layout to avoid fighting with Resize/Mutation updates
+    // Double rAF ensures DOM is fully laid out before measuring scrollHeight
     requestAnimationFrame(() => {
-      try {
-        const target = Math.max(el.scrollHeight - el.clientHeight, 0);
-        el.scrollTo({ top: target, behavior });
-      } catch {
-        // Fallback for older browsers
-        el.scrollTop = Math.max(el.scrollHeight - el.clientHeight, 0);
-      }
+      requestAnimationFrame(() => {
+        if (!el) return;
+        // Check if already at bottom AFTER layout is complete
+        const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+        if (distance <= 1) return; // already at bottom; avoid redundant scrolls
+        try {
+          const target = Math.max(el.scrollHeight - el.clientHeight, 0);
+          el.scrollTo({ top: target, behavior });
+        } catch {
+          // Fallback for older browsers
+          el.scrollTop = Math.max(el.scrollHeight - el.clientHeight, 0);
+        }
+      });
     });
   };
 
-  // Scroll when a new message is added, but only if at bottom or if user sent the last message
+  // Scroll when a new message is added, but only if at bottom or if user recently sent a message
   useEffect(() => {
-    const last = messages[messages.length - 1];
-    const lastRole = last?.role;
     if (messages.length === 0) return;
-    if (atBottom || lastRole === 'user') {
+    const last = messages[messages.length - 1];
+    const secondToLast = messages[messages.length - 2];
+    const lastRole = last?.role;
+    // Detect the empty assistant stub that follows a freshly sent user message
+    const isPlaceholder = isAssistantPlaceholder(last, secondToLast);
+    const hasRecentUserMessage = lastRole === 'user' || isPlaceholder;
+    if (atBottom || hasRecentUserMessage) {
       scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
     } else {
       setShowJump(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length]);
   // Also keep scrolling during streaming as content grows
   const lastLen =
