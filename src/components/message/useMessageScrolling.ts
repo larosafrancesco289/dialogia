@@ -27,6 +27,11 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   const [atBottom, setAtBottom] = useState(true);
   const [showJump, setShowJump] = useState(false);
   const lastScrollTsRef = useRef(0);
+  const onScrollAwayRef = useRef(onScrollAway);
+
+  useEffect(() => {
+    onScrollAwayRef.current = onScrollAway;
+  }, [onScrollAway]);
 
   const scrollToBottom = useCallback(
     (behavior: ScrollBehavior) => {
@@ -53,17 +58,25 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const onScroll = () => {
+
+    const syncScrollState = () => {
       const distanceFromBottom = Math.max(el.scrollHeight - el.scrollTop - el.clientHeight, 0);
       const nearBottom = distanceFromBottom <= 100;
       setAtBottom((prev) => (prev === nearBottom ? prev : nearBottom));
       setShowJump((prev) => (prev === !nearBottom ? prev : !nearBottom));
-      if (isMobile && onScrollAway) onScrollAway();
     };
-    onScroll();
-    el.addEventListener('scroll', onScroll, { passive: true } as any);
-    return () => el.removeEventListener('scroll', onScroll as any);
-  }, [isMobile, onScrollAway]);
+
+    const handleScroll = () => {
+      syncScrollState();
+      if (!isMobile) return;
+      const onScrollAwayFn = onScrollAwayRef.current;
+      if (onScrollAwayFn) onScrollAwayFn();
+    };
+
+    syncScrollState();
+    el.addEventListener('scroll', handleScroll, { passive: true } as any);
+    return () => el.removeEventListener('scroll', handleScroll as any);
+  }, [isMobile]);
 
   const lastLen = useMemo(() => {
     const last = messages[messages.length - 1];
