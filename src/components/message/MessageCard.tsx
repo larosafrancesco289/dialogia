@@ -13,6 +13,7 @@ import RegenerateMenu from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
 import MessagePanels, { type MessagePanelsProps } from '@/components/message/MessagePanels';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
+import styles from './MessageCard.module.css';
 import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
 
 export type MessageCardProps = {
@@ -91,6 +92,17 @@ export default function MessageCard({
 }: MessageCardProps) {
   const isAssistant = message.role === 'assistant';
   const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
+
+  const messageClassName = [
+    'card',
+    'p-0',
+    'group',
+    styles.messageCard,
+    isAssistant ? styles.assistant : styles.user,
+    isMobile && isActive ? styles.active : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const handleCopy = () => copyMessage(message.id);
   const handleStartEdit = () => startEditingMessage(message.id);
@@ -185,9 +197,7 @@ export default function MessageCard({
 
   return (
     <div
-      className={`card p-0 message-card group ${
-        message.role === 'assistant' ? 'message-assistant' : 'message-user'
-      } ${isMobile && isActive ? 'is-active' : ''}`}
+      className={messageClassName}
       data-mid={message.id}
       aria-label={message.role === 'assistant' ? 'Assistant message' : 'Your message'}
       onPointerDown={handleTouchStart}
@@ -310,7 +320,7 @@ function AssistantMessageContent({
     <div className="relative">
       {showInlineActions && (
         <div
-          className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
+          className={`${styles.actions} absolute bottom-2 right-2 z-30 transition-opacity`}
           style={isMobile ? { opacity: 1 } : undefined}
         >
           {isEditing ? (
@@ -398,10 +408,10 @@ function AssistantMessageContent({
             placeholder="Edit assistant message..."
           />
         ) : waitingForFirstToken && message.id === lastMessageId ? (
-          <div className="typing-indicator" aria-live="polite" aria-label="Generating">
-            <span className="typing-dot" />
-            <span className="typing-dot" />
-            <span className="typing-dot" />
+          <div className={styles.typingIndicator} aria-live="polite" aria-label="Generating">
+            <span className={styles.typingDot} />
+            <span className={styles.typingDot} />
+            <span className={styles.typingDot} />
           </div>
         ) : (
           <Markdown content={message.content} />
@@ -474,7 +484,7 @@ function UserMessageContent({
     <div className="relative">
       {showInlineActions && (
         <div
-          className="message-actions absolute bottom-2 right-2 z-30 transition-opacity"
+          className={`${styles.actions} absolute bottom-2 right-2 z-30 transition-opacity`}
           style={isMobile ? { opacity: 1 } : undefined}
         >
           {isEditing ? (

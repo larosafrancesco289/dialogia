@@ -6,10 +6,12 @@ import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { toZdrState, ZDR_NO_MATCH_NOTICE, ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
 import { ensureListsAndFilter } from '@/lib/zdr/enforce';
 import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
+import type { StoreSetter } from '@/lib/agent/types';
 
 export function createCompareSlice(
-  set: (fn: (s: StoreState) => Partial<StoreState> | void) => void,
+  set: StoreSetter,
   get: () => StoreState,
+  _store?: unknown,
 ) {
   return {
     openCompare() {

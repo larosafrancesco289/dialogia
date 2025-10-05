@@ -3,10 +3,9 @@
 
 import type { StoreState } from '@/lib/store/types';
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
+import type { SearchProvider, SearchResult, ToolDefinition, StoreSetter } from '@/lib/agent/types';
 
-type StoreSetter = (updater: (state: StoreState) => Partial<StoreState> | void) => void;
-
-export function getSearchToolDefinition() {
+export function getSearchToolDefinition(): ToolDefinition[] {
   return [
     {
       type: 'function',
@@ -31,8 +30,6 @@ export function getSearchToolDefinition() {
     },
   ];
 }
-
-export type SearchResult = { title?: string; url?: string; description?: string };
 
 export async function runBraveSearch(
   query: string,
@@ -95,10 +92,7 @@ export function mergeSearchResults(groups: SearchResult[][]): SearchResult[] {
   return Array.from(byUrl.values());
 }
 
-export function formatSourcesBlock(
-  results: SearchResult[],
-  provider: 'brave' | 'openrouter',
-): string {
+export function formatSourcesBlock(results: SearchResult[], provider: SearchProvider): string {
   const lines = results
     .slice(0, MAX_FALLBACK_RESULTS)
     .map(

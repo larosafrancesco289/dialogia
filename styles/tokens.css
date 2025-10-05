@@ -1,0 +1,108 @@
+/* Design tokens for Dialogia. Shared across Tailwind layers and custom CSS modules. */
+
+:root {
+  /* Spacing (4px grid) */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  /* Control sizes */
+  --control-sm: 32px;
+  --control-md: 40px;
+  --control-lg: 44px; /* min recommended tap target */
+
+  /* Typography */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Inter,
+    ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji',
+    'Segoe UI Emoji';
+  --font-mono:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+
+  /* Radius & Elevation */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 16px; /* legacy alias */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-3: 0 24px 48px rgba(0, 0, 0, 0.12);
+  --shadow-card: var(--shadow-2);
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0.7, 0, 1);
+  --spring-snappy: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 140ms;
+  --duration-med: 200ms;
+  --duration-slow: 260ms;
+
+  /* Surface palette — Imperial Archive (light) */
+  --color-canvas: #f4f1ec;
+  --color-surface: #fdfbf8;
+  --color-muted: #f1ede7;
+  --color-fg: #1e1c18;
+  --color-fg-muted: #5b534b;
+  --color-accent: #b9975b;
+  --color-accent-2: #6d2a8a;
+  --color-border: #d5cfc4;
+
+  /* Status palette */
+  --color-success: #2ecc71;
+  --color-danger: #e74c3c;
+
+  /* Effects */
+  --focus-ring: color-mix(in oklab, var(--color-accent) 50%, transparent);
+  --glass-surface-bg: color-mix(in oklab, var(--color-surface) 72%, transparent);
+  --glass-panel-bg: color-mix(in oklab, var(--color-surface) 78%, transparent);
+  --glass-strong-bg: color-mix(in oklab, var(--color-surface) 85%, transparent);
+  --glass-saturate: saturate(180%);
+  --glass-blur-surface: blur(18px);
+  --glass-blur-panel: blur(22px);
+
+  /* Message role styling */
+  --message-assistant-bg: color-mix(in oklab, var(--color-surface) 90%, var(--color-accent));
+  --message-assistant-border: color-mix(in oklab, var(--color-border) 86%, var(--color-accent));
+  --message-user-bg: color-mix(in oklab, var(--color-surface) 97%, var(--color-accent));
+  --message-user-border: color-mix(in oklab, var(--color-border) 90%, var(--color-accent));
+}
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --color-canvas: #08070a;
+  --color-surface: #121017;
+  --color-muted: #17131e;
+  --color-fg: #f1efef;
+  --color-fg-muted: #c8c3d1;
+  --color-accent: #d4af37;
+  --color-accent-2: #5b2c6f;
+  --color-border: #2e2533;
+
+  --color-success: #3ddc84;
+  --color-danger: #ff6b6b;
+  --focus-ring: rgba(106, 90, 224, 0.45);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 24px 48px rgba(0, 0, 0, 0.6);
+  --shadow-card: var(--shadow-2);
+
+  --message-assistant-bg: color-mix(in oklab, var(--color-surface) 94%, var(--color-accent-2));
+  --message-assistant-border: color-mix(in oklab, var(--color-border) 88%, var(--color-accent-2));
+  --message-user-bg: color-mix(in oklab, var(--color-surface) 94.5%, var(--color-accent));
+  --message-user-border: color-mix(in oklab, var(--color-border) 88%, var(--color-accent));
+}

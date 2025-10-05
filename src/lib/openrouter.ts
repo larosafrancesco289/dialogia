@@ -1,5 +1,5 @@
 import type { ORModel } from '@/lib/types';
-import { orChatCompletions, orFetchModels, orFetchZdrEndpoints } from '@/lib/api/orClient';
+import { orChatCompletions, orFetchModels, orFetchZdrEndpoints } from '@/lib/api/openrouterClient';
 import { buildChatBody } from '@/lib/agent/request';
 
 // Transport-only client for OpenRouter.

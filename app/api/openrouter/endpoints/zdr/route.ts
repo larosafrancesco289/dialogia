@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { orFetchZdrEndpoints } from '@/lib/api/orClient';
+import { orFetchZdrEndpoints } from '@/lib/api/openrouterClient';
 
 export async function GET(req: NextRequest) {
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();

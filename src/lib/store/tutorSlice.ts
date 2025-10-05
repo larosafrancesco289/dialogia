@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StoreState } from '@/lib/store/types';
 import type { Message, TutorEvent, TutorProfile } from '@/lib/types';
+import type { StoreSetter } from '@/lib/agent/types';
 import { updateTutorProfile, loadTutorProfile } from '@/lib/tutorProfile';
 import { saveMessage } from '@/lib/db';
 import {
@@ -12,8 +13,9 @@ import { DEFAULT_TUTOR_MODEL_ID, DEFAULT_TUTOR_MEMORY_MODEL_ID } from '@/lib/con
 import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
 
 export function createTutorSlice(
-  set: (updater: (s: StoreState) => Partial<StoreState> | void) => void,
+  set: StoreSetter,
   get: () => StoreState,
+  _store?: unknown,
 ) {
   const canUseProxy = typeof window !== 'undefined' && isOpenRouterProxyEnabled();
 

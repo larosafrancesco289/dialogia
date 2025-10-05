@@ -1,12 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  getSearchToolDefinition,
-  mergeSearchResults,
-  formatSourcesBlock,
-  runBraveSearch,
-  type SearchResult,
-} from './searchFlow';
+import { getSearchToolDefinition, mergeSearchResults, formatSourcesBlock, runBraveSearch } from './searchFlow';
+import type { SearchResult } from '@/lib/agent/types';
 
 test('getSearchToolDefinition exposes web_search function schema', () => {
   const tools = getSearchToolDefinition();

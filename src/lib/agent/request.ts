@@ -6,11 +6,11 @@
 
 import type { StoreState } from '@/lib/store/types';
 import { isImageOutputSupported, isReasoningSupported } from '@/lib/models';
+import type { PluginConfig, ToolDefinition, StoreSetter, StoreGetter } from '@/lib/agent/types';
 
 export type ProviderSort = 'price' | 'throughput' | undefined;
 
-type StoreSetter = (updater: (state: StoreState) => Partial<StoreState> | void) => void;
-export type StoreAccess = { set: StoreSetter; get: () => StoreState };
+export type StoreAccess = { set: StoreSetter; get: StoreGetter };
 
 export function providerSortFromRoutePref(pref?: 'speed' | 'cost' | null): ProviderSort {
   if (pref === 'cost') return 'price';
@@ -18,7 +18,7 @@ export function providerSortFromRoutePref(pref?: 'speed' | 'cost' | null): Provi
   return undefined;
 }
 
-export function pdfPlugins(hasPdf: boolean): Array<any> | undefined {
+export function pdfPlugins(hasPdf: boolean): PluginConfig[] | undefined {
   if (!hasPdf) return undefined;
   return [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }];
 }
@@ -27,8 +27,8 @@ export function composePlugins(opts: {
   hasPdf: boolean;
   searchEnabled?: boolean;
   searchProvider?: 'brave' | 'openrouter';
-}): Array<any> | undefined {
-  const arr: any[] = [];
+}): PluginConfig[] | undefined {
+  const arr: PluginConfig[] = [];
   const base = pdfPlugins(opts.hasPdf);
   if (base && base.length) arr.push(...base);
   if (opts.searchEnabled && opts.searchProvider === 'openrouter') arr.push({ id: 'web' });
@@ -37,7 +37,7 @@ export function composePlugins(opts: {
 
 export type BuildChatBodyParams = {
   model: string;
-  messages: any[];
+  messages: unknown[];
   stream: boolean;
   modalities?: Array<'image' | 'text'>;
   temperature?: number;
@@ -45,11 +45,11 @@ export type BuildChatBodyParams = {
   max_tokens?: number;
   reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
   reasoning_tokens?: number;
-  tools?: any[];
+  tools?: ToolDefinition[];
   tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
   parallel_tool_calls?: boolean;
   providerSort?: ProviderSort;
-  plugins?: any[];
+  plugins?: PluginConfig[];
   includeUsage?: boolean;
 };
 
@@ -84,7 +84,7 @@ export function buildChatBody(params: BuildChatBodyParams) {
 
 export function buildDebugBody(args: {
   modelId: string;
-  messages: any[];
+  messages: unknown[];
   stream: boolean;
   includeUsage?: boolean;
   temperature?: number;
@@ -92,11 +92,11 @@ export function buildDebugBody(args: {
   max_tokens?: number;
   reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
   reasoningTokens?: number;
-  tools?: any[];
+  tools?: ToolDefinition[];
   toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
   parallelToolCalls?: boolean;
   providerSort?: ProviderSort;
-  plugins?: any[];
+  plugins?: PluginConfig[];
   canImageOut?: boolean;
 }) {
   return buildChatBody({

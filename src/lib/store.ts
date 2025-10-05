@@ -8,37 +8,46 @@ import { createChatSlice } from '@/lib/store/chatSlice';
 import { createMessageSlice } from '@/lib/store/messageSlice';
 import { createUiSlice } from '@/lib/store/uiSlice';
 import { createTutorSlice } from '@/lib/store/tutorSlice';
+import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 
 export const useChatStore = create<StoreState>()(
   persist(
-    (set, get) => ({
-      // Base state containers
-      chats: [],
-      folders: [],
-      messages: {},
-      selectedChatId: undefined,
+    ((set: StoreSetter, get: StoreGetter, store: unknown) => {
+      const sliceSet = set as StoreSetter;
+      const sliceGet = get as StoreGetter;
+      const sliceStore = store as any;
 
-      // Feature slices (state + actions)
-      ...(createModelSlice as any)(set, get),
-      ...(createCompareSlice as any)(set, get),
-      ...(createChatSlice as any)(set, get),
-      ...(createMessageSlice as any)(set, get),
-      ...(createUiSlice as any)(set, get),
-      ...(createTutorSlice as any)(set, get),
+      return {
+        // Base state containers
+        chats: [],
+        folders: [],
+        messages: {},
+        selectedChatId: undefined,
 
-      // Ephemeral controllers (not persisted)
-      _controller: undefined as AbortController | undefined,
-      _compareControllers: {} as Record<string, AbortController>,
-    }),
+        // Feature slices (state + actions)
+        ...createModelSlice(sliceSet, sliceGet, sliceStore),
+        ...createCompareSlice(sliceSet, sliceGet, sliceStore),
+        ...createChatSlice(sliceSet, sliceGet, sliceStore),
+        ...createMessageSlice(sliceSet, sliceGet, sliceStore),
+        ...createUiSlice(sliceSet, sliceGet, sliceStore),
+        ...createTutorSlice(sliceSet, sliceGet, sliceStore),
+
+        // Ephemeral controllers (not persisted)
+        _controller: undefined as AbortController | undefined,
+        _compareControllers: {} as Record<string, AbortController>,
+      };
+    }) as any,
     {
       name: 'dialogia-ui',
+      version: 1,
+      migrate: ((persistedState: unknown) => (persistedState as Partial<StoreState>) ?? {}) as any,
       // Persist only durable preferences; session-scoped flags (next*) are intentionally omitted.
-      partialize: (s) => ({
+      partialize: ((s: StoreState) => ({
         selectedChatId: s.selectedChatId,
         favoriteModelIds: s.favoriteModelIds,
         hiddenModelIds: s.hiddenModelIds,
-        // Persist minimal UI preferences for better continuity
         ui: {
+          showSettings: s.ui.showSettings,
           sidebarCollapsed: s.ui.sidebarCollapsed,
           debugMode: s.ui.debugMode,
           tutorContextMode: s.ui.tutorContextMode,
@@ -54,7 +63,7 @@ export const useChatStore = create<StoreState>()(
           tutorGlobalMemory: s.ui.tutorGlobalMemory,
           forceTutorMode: s.ui.forceTutorMode,
         },
-      }),
-    },
-  ),
+      })) as any,
+    } as any,
+  ) as any,
 );

@@ -1,8 +1,7 @@
 @import 'tailwindcss';
+@import '../styles/tokens.css';
 @import '../styles/francesco-bootstrap.css';
 
-html,
-body,
 #__next {
   height: 100%;
 }
@@ -511,6 +510,18 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   }
 }
 
+@media (max-width: 640px) {
+  /* Swipe affordance: subtle polish for mobile chat rows */
+  [data-chat-swipe] .chat-item {
+    border-radius: 14px;
+    box-shadow: var(--shadow-1);
+  }
+  [data-chat-swipe] .btn.btn-destructive {
+    height: 44px; /* ensure >= 44px */
+    min-width: 96px;
+  }
+}
+
 /* Centered model picker popover on small screens via wrapper */
 .model-pop-wrap {
   right: 0; /* default desktop */
@@ -610,18 +621,6 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   .icon-button {
     height: 36px;
     width: 36px;
-  }
-  /* Prevent iOS text selection popover during long-press on message bubbles */
-  .message-card {
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
-  }
-  .message-card input,
-  .message-card textarea {
-    -webkit-user-select: text;
-    user-select: text;
-    -webkit-touch-callout: default;
   }
   /* Prevent iOS text selection popover during long-press on chat rows */
   .chat-item {
@@ -997,98 +996,6 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   transform: translateY(0);
 }
 
-/* Message mount animation */
-.message-card {
-  animation: message-enter 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  border-color: transparent !important; /* calmer, borderless cards */
-  box-shadow: var(--shadow-1);
-  background: color-mix(in oklab, var(--color-surface) 98%, transparent);
-  overflow: hidden; /* allow side accents to clip cleanly */
-  max-width: min(92%, 860px); /* keep bubbles readable and allow alignment */
-  /* Hint compositing on iOS to reduce brief blanks during rapid scroll */
-  backface-visibility: hidden;
-  transform: translateZ(0);
-  will-change: transform, opacity;
-  contain: paint;
-  touch-action: manipulation; /* faster taps, still allows vertical scroll */
-}
-@keyframes message-enter {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Role-specific message treatments – subtle shade differences */
-.message-card.message-assistant {
-  background: var(--message-assistant-bg);
-  border-color: var(--message-assistant-border) !important;
-  margin-right: 0;
-  margin-left: 0;
-  border-radius: 18px;
-  max-width: none;
-  width: 100%;
-}
-.message-card.message-assistant::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px; /* subtle non-color cue */
-  background: var(--color-accent);
-  opacity: 0.6;
-}
-.message-card.message-user {
-  background: var(--message-user-bg);
-  border-color: var(--message-user-border) !important;
-  margin-left: auto;
-  margin-right: 0;
-  border-radius: 18px;
-  border-top-left-radius: 12px; /* distinct shape cue */
-  width: fit-content;
-  max-width: clamp(160px, 72%, 560px);
-}
-
-/* Message actions visibility: tap-to-highlight on mobile, hover/focus on desktop */
-@media (max-width: 640px) {
-  /* Swipe affordance: subtle polish for mobile rows */
-  [data-chat-swipe] .chat-item {
-    border-radius: 14px;
-    box-shadow: var(--shadow-1);
-  }
-  [data-chat-swipe] .btn.btn-destructive {
-    height: 44px; /* ensure >= 44px */
-    min-width: 96px;
-  }
-  .message-card .message-actions {
-    opacity: 0;
-  }
-  .message-card.is-active .message-actions {
-    opacity: 1;
-  }
-}
-@media (min-width: 640px) {
-  .message-card .message-actions {
-    opacity: 0;
-  }
-  .message-card:hover .message-actions,
-  .message-card:focus-within .message-actions {
-    opacity: 1;
-  }
-}
-
-/* Constrain readable measure inside message content */
-.message-card .markdown {
-  max-width: 72ch;
-}
-.message-card.message-assistant .markdown {
-  max-width: none;
-}
 
 /* Traffic lights */
 .traffic-lights {
@@ -1341,49 +1248,6 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   transition: height 120ms ease;
 }
 
-/* Typing indicator (3 dots) used before first token) */
-.typing-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: var(--glass-panel-bg);
-  box-shadow: var(--shadow-1);
-}
-.typing-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--color-fg-muted) 80%, transparent);
-  animation: typing-bounce 900ms var(--ease-standard) infinite;
-}
-.typing-dot:nth-child(2) {
-  animation-delay: 150ms;
-}
-.typing-dot:nth-child(3) {
-  animation-delay: 300ms;
-}
-@keyframes typing-bounce {
-  0% {
-    transform: translateY(0);
-    opacity: 0.5;
-  }
-  50% {
-    transform: translateY(-3px);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(0);
-    opacity: 0.6;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .typing-dot {
-    animation: none;
-  }
-}
 
 /* Landing gradient similar to blurred GPT hero, but in our palette */
 .hero-gradient::before {
