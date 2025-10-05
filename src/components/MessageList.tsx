@@ -14,8 +14,9 @@ import type { Attachment, Message } from '@/lib/types';
 import ImageLightbox from '@/components/ImageLightbox';
 import MessagePanels, { type MessagePanelsProps } from '@/components/message/MessagePanels';
 import MessageCard from '@/components/message/MessageCard';
+import { useMessageScrolling } from '@/components/message/useMessageScrolling';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
-export default function MessageList({ chatId }: { chatId: string }) {
+export function MessageList({ chatId }: { chatId: string }) {
   const messages = useChatStore((s) => s.messages[chatId] ?? []);
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const models = useChatStore((s) => s.models);
@@ -35,10 +36,6 @@ export default function MessageList({ chatId }: { chatId: string }) {
   const debugByMessageId = useChatStore((s) => s.ui.debugByMessageId || {});
   const tutorMemoryAutoUpdateDefault = useChatStore((s) => s.ui.tutorMemoryAutoUpdate !== false);
   const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat?.settings?.tutor_mode);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
-  const [atBottom, setAtBottom] = useState(true);
-  const [showJump, setShowJump] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const prefersReducedMotion = useMemo(() => {
     if (typeof window === 'undefined' || !('matchMedia' in window)) return false;
@@ -48,19 +45,6 @@ export default function MessageList({ chatId }: { chatId: string }) {
       return false;
     }
   }, []);
-
-  const [lightbox, setLightbox] = useState<{
-    images: { src: string; name?: string }[];
-    index: number;
-  } | null>(null);
-  const WINDOW_INCREMENT = 150;
-  const [visibleCount, setVisibleCount] = useState(WINDOW_INCREMENT);
-  // Tap-to-highlight state for mobile actions
-  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
-  // Mobile contextual action sheet (bottom)
-  const [mobileSheet, setMobileSheet] = useState<{ id: string; role: 'assistant' | 'user' } | null>(
-    null,
-  );
   const isMobile = useIsMobile();
 
   const isAssistantPlaceholder = useCallback((message?: Message, previous?: Message) => {
@@ -72,86 +56,38 @@ export default function MessageList({ chatId }: { chatId: string }) {
     return !hasContent && !hasReasoning && !hasAttachments && !hasTutorPayload;
   }, []);
 
+  // Tap-to-highlight state for mobile actions
+  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
+
+  const {
+    containerRef,
+    endRef,
+    atBottom,
+    showJump,
+    setShowJump,
+    jumpToLatest,
+  } = useMessageScrolling({
+    messages,
+    isStreaming,
+    isMobile,
+    prefersReducedMotion,
+    isAssistantPlaceholder,
+    onScrollAway: () => setActiveMessageId(null),
+  });
+
+  const [lightbox, setLightbox] = useState<{
+    images: { src: string; name?: string }[];
+    index: number;
+  } | null>(null);
+  const WINDOW_INCREMENT = 150;
+  const [visibleCount, setVisibleCount] = useState(WINDOW_INCREMENT);
+  // Mobile contextual action sheet (bottom)
+  const [mobileSheet, setMobileSheet] = useState<{ id: string; role: 'assistant' | 'user' } | null>(
+    null,
+  );
+
   // Composer is now rendered outside this scroll container in ChatPane.
 
-  // Track whether user is near the bottom to enable smart autoscroll
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const distanceFromBottom = Math.max(el.scrollHeight - el.scrollTop - el.clientHeight, 0);
-      const threshold = 100; // px
-      const nearBottom = distanceFromBottom <= threshold;
-      setAtBottom((prev) => (prev === nearBottom ? prev : nearBottom));
-      // Show the jump button whenever the user is away from the bottom
-      const shouldShowJump = !nearBottom;
-      setShowJump((prev) => (prev === shouldShowJump ? prev : shouldShowJump));
-      // Clear active message highlight on mobile when scrolling
-      if (isMobile) {
-        setActiveMessageId((current) => (current ? null : current));
-      }
-    };
-    // Initialize state in case content already overflows
-    onScroll();
-    el.addEventListener('scroll', onScroll, { passive: true } as any);
-    return () => {
-      el.removeEventListener('scroll', onScroll as any);
-    };
-  }, [isMobile]);
-
-  const scrollToBottom = (behavior: ScrollBehavior) => {
-    const el = containerRef.current;
-    if (!el) return;
-    // Double rAF ensures DOM is fully laid out before measuring scrollHeight
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (!el) return;
-        // Check if already at bottom AFTER layout is complete
-        const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-        if (distance <= 1) return; // already at bottom; avoid redundant scrolls
-        try {
-          const target = Math.max(el.scrollHeight - el.clientHeight, 0);
-          el.scrollTo({ top: target, behavior });
-        } catch {
-          // Fallback for older browsers
-          el.scrollTop = Math.max(el.scrollHeight - el.clientHeight, 0);
-        }
-      });
-    });
-  };
-
-  // Scroll when a new message is added, but only if at bottom or if user recently sent a message
-  useEffect(() => {
-    if (messages.length === 0) return;
-    const last = messages[messages.length - 1];
-    const secondToLast = messages[messages.length - 2];
-    const lastRole = last?.role;
-    // Detect the empty assistant stub that follows a freshly sent user message
-    const isPlaceholder = isAssistantPlaceholder(last, secondToLast);
-    const hasRecentUserMessage = lastRole === 'user' || isPlaceholder;
-    if (atBottom || hasRecentUserMessage) {
-      scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
-    } else {
-      setShowJump(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length]);
-  // Also keep scrolling during streaming as content grows
-  const lastLen =
-    (messages[messages.length - 1]?.content?.length ?? 0) +
-    (messages[messages.length - 1]?.reasoning?.length ?? 0);
-  const lastScrollTsRef = useRef(0);
-  useEffect(() => {
-    if (isStreaming && atBottom) {
-      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      if (now - lastScrollTsRef.current > 160) {
-        // During streaming, avoid smooth animation to reduce jitter
-        scrollToBottom('auto');
-        lastScrollTsRef.current = now;
-      }
-    }
-    if (!isStreaming) lastScrollTsRef.current = 0;
-  }, [lastLen, isStreaming, atBottom]);
   const showByDefault = chat?.settings.show_thinking_by_default ?? false;
   const [expandedReasoningIds, setExpandedReasoningIds] = useState<Record<string, boolean>>({});
   const toggle = (id: string) => setExpandedReasoningIds((s) => ({ ...s, [id]: !s[id] }));
@@ -394,9 +330,8 @@ export default function MessageList({ chatId }: { chatId: string }) {
             aria-label="Jump to latest"
             title="Jump to latest"
             onClick={() => {
-              scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
+              jumpToLatest();
               setShowJump(false);
-              setAtBottom(true);
             }}
           >
             <ChevronDownIcon className="h-5 w-5" />

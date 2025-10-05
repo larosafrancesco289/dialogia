@@ -2,6 +2,7 @@ import type { Message } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { updateBraveUi } from '@/lib/agent/searchFlow';
+import { setTurnController, clearTurnController } from '@/lib/services/controllers';
 
 export type DeepResearchContext = {
   task: string;
@@ -26,7 +27,7 @@ export async function runDeepResearchTurn({
   if (!trimmedTask) return false;
 
   const controller = new AbortController();
-  set((state) => ({ ...(state as any), _controller: controller as any }) as any);
+  setTurnController(chatId, controller);
   set((state) => ({ ui: { ...state.ui, isStreaming: true } }));
   updateBraveUi(set, assistantMessage.id, { query: trimmedTask, status: 'loading' });
 
@@ -65,7 +66,7 @@ export async function runDeepResearchTurn({
     });
     await persistMessage(finalMessage);
     set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
-    set((state) => ({ ...(state as any), _controller: undefined }) as any);
+    clearTurnController(chatId);
     return true;
   } catch (err: any) {
     const errorMessage = String(err?.message || 'DeepResearch failed');
@@ -81,7 +82,7 @@ export async function runDeepResearchTurn({
       status: 'error',
       error: errorMessage,
     });
-    set((state) => ({ ...(state as any), _controller: undefined }) as any);
+    clearTurnController(chatId);
     return false;
   }
 }

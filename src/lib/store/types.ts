@@ -155,10 +155,6 @@ export type StoreState = {
 
   ui: UIState;
 
-  // ephemeral controllers (not persisted)
-  _controller?: AbortController;
-  _compareControllers?: Record<string, AbortController>;
-
   // lifecycle
   initializeApp: () => Promise<void>;
 

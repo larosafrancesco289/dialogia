@@ -6,11 +6,14 @@
 
 import type { StoreState } from '@/lib/store/types';
 import { isImageOutputSupported, isReasoningSupported } from '@/lib/models';
-import type { PluginConfig, ToolDefinition, StoreSetter, StoreGetter } from '@/lib/agent/types';
-
-export type ProviderSort = 'price' | 'throughput' | undefined;
-
-export type StoreAccess = { set: StoreSetter; get: StoreGetter };
+import type {
+  PluginConfig,
+  ToolDefinition,
+  ProviderSort,
+  StoreAccess,
+  StoreSetter,
+  StoreGetter,
+} from '@/lib/agent/types';
 
 export function providerSortFromRoutePref(pref?: 'speed' | 'cost' | null): ProviderSort {
   if (pref === 'cost') return 'price';
@@ -20,7 +23,8 @@ export function providerSortFromRoutePref(pref?: 'speed' | 'cost' | null): Provi
 
 export function pdfPlugins(hasPdf: boolean): PluginConfig[] | undefined {
   if (!hasPdf) return undefined;
-  return [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }];
+  const pdfPlugin: PluginConfig = { id: 'file-parser', pdf: { engine: 'pdf-text' } };
+  return [pdfPlugin];
 }
 
 export function composePlugins(opts: {
@@ -118,7 +122,7 @@ export function buildDebugBody(args: {
   });
 }
 
-export function maybeRecordDebug(store: StoreAccess, messageId: string, body: unknown) {
+export function recordDebugIfEnabled(store: StoreAccess, messageId: string, body: unknown) {
   if (!messageId) return;
   if (!store.get().ui.debugMode) return;
   let payload = '';

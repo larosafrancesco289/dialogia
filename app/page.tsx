@@ -5,7 +5,10 @@ import ChatPane from '@/components/ChatPane';
 import TopHeader from '@/components/TopHeader';
 import MobileHeader from '@/components/MobileHeader';
 const SettingsDrawer = dynamic(
-  () => import(/* webpackPrefetch: true */ '@/components/SettingsDrawer'),
+  () =>
+    import(/* webpackPrefetch: true */ '@/components/SettingsDrawer').then(
+      (mod) => mod.SettingsDrawer,
+    ),
   { ssr: false },
 );
 const CompareDrawer = dynamic(

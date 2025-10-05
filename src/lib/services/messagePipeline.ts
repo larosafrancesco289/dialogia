@@ -2,12 +2,7 @@
 // Responsibility: Encapsulate planning and streaming flows for assistant turns.
 
 import { chatCompletion, streamChatCompletion } from '@/lib/openrouter';
-import {
-  buildDebugBody,
-  composePlugins,
-  maybeRecordDebug,
-  type ProviderSort,
-} from '@/lib/agent/request';
+import { buildDebugBody, composePlugins, recordDebugIfEnabled } from '@/lib/agent/request';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import {
   applyTutorToolCall,
@@ -40,7 +35,9 @@ import type {
   ToolCall,
   ToolDefinition,
   WebSearchArgs,
+  ProviderSort,
 } from '@/lib/agent/types';
+import { clearTurnController, setTurnController } from '@/lib/services/controllers';
 
 let chatCompletionImpl = chatCompletion;
 let streamChatCompletionImpl = streamChatCompletion;
@@ -145,7 +142,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
         toolChoice: toolsForPlanning ? 'auto' : undefined,
         providerSort,
       });
-      maybeRecordDebug({ set, get }, assistantMessage.id, dbg);
+      recordDebugIfEnabled({ set, get }, assistantMessage.id, dbg);
     } catch {}
 
     const resp = await chatCompletionImpl({
@@ -331,7 +328,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
       providerSort,
       plugins: combinedPlugins,
     });
-    maybeRecordDebug({ set, get }, assistantMessage.id, dbg);
+    recordDebugIfEnabled({ set, get }, assistantMessage.id, dbg);
   } catch {}
 
   const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
@@ -350,7 +347,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
       startBuffered,
       autoReasoningEligible,
       modelIdUsed,
-      clearController: () => set((state) => ({ ...state, _controller: undefined }) as any),
+      clearController: () => clearTurnController(chatId),
       persistMessage,
     },
     { startedAt: tStart },
@@ -528,7 +525,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     },
     ui: { ...state.ui, isStreaming: true },
   }));
-  set((state) => ({ ...state, _controller: controller as any }) as any);
+  setTurnController(chatId, controller);
 
   const plugins = composePlugins({
     hasPdf: hadPdfEarlier,

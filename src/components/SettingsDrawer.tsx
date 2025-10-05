@@ -37,6 +37,7 @@ import {
   DEFAULT_TUTOR_MEMORY_MODEL_ID,
   DEFAULT_TUTOR_MEMORY_FREQUENCY,
 } from '@/lib/constants';
+import { useSettingsTabs } from '@/components/settings/useSettingsTabs';
 
 const TAB_LIST: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: 'models', label: 'Models' },
@@ -73,7 +74,7 @@ const SECTION_TITLES: Record<string, string> = {
   experimental: 'Experimental',
 };
 
-export default function SettingsDrawer() {
+export function SettingsDrawer() {
   const {
     chats,
     selectedChatId,
@@ -137,11 +138,16 @@ export default function SettingsDrawer() {
   );
   const [showStats, setShowStats] = useState<boolean>(chat?.settings.show_stats ?? false);
   const [closing, setClosing] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>('models');
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const {
+    activeTab,
+    setActiveTab,
+    activeSection,
+    setActiveSection,
+    tabBarRef,
+    sectionRefs,
+    registerSection,
+  } = useSettingsTabs();
   const drawerRef = useRef<HTMLDivElement | null>(null);
-  const tabBarRef = useRef<HTMLDivElement | null>(null);
-  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const modelSearchRef = useRef<ModelSearchHandle | null>(null);
   const [routePref, setRoutePref] = useState<'speed' | 'cost'>(
     (useChatStore.getState().ui.routePreference as any) || 'speed',
@@ -281,20 +287,14 @@ export default function SettingsDrawer() {
           key={sectionId}
           id={`settings-${sectionId}`}
           data-settings-section={sectionId}
-          ref={(el) => {
-            if (el) {
-              sectionRefs.current[sectionId] = el;
-            } else {
-              delete sectionRefs.current[sectionId];
-            }
-          }}
+          ref={registerSection(sectionId)}
           className="space-y-4"
         >
           {content}
         </div>
       );
     },
-    [activeTab],
+    [activeTab, registerSection],
   );
 
   const scrollToSection = useCallback((sectionId: string) => {

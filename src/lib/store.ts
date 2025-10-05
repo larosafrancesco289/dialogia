@@ -31,10 +31,6 @@ export const useChatStore = create<StoreState>()(
         ...createMessageSlice(sliceSet, sliceGet, sliceStore),
         ...createUiSlice(sliceSet, sliceGet, sliceStore),
         ...createTutorSlice(sliceSet, sliceGet, sliceStore),
-
-        // Ephemeral controllers (not persisted)
-        _controller: undefined as AbortController | undefined,
-        _compareControllers: {} as Record<string, AbortController>,
       };
     }) as any,
     {

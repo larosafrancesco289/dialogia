@@ -1,7 +1,7 @@
 'use client';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
-import MessageList from '@/components/MessageList';
+import { MessageList } from '@/components/MessageList';
 import WelcomeHero from '@/components/WelcomeHero';
 import Composer from '@/components/Composer';
 import { useKeyboardInsets } from '@/lib/hooks/useKeyboardInsets';
