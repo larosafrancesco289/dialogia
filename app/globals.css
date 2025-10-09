@@ -382,8 +382,9 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
     var(--space-5) + max(10px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px)
   );
   display: flex;
-  justify-content: flex-end;
-  padding-right: calc(var(--space-3) + max(0px, env(safe-area-inset-right)));
+  justify-content: center;
+  padding: 0;
+  width: 100%;
   pointer-events: none;
   z-index: 60;
   height: 0;
@@ -399,7 +400,6 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
     bottom: calc(
       var(--space-6) + max(14px, env(safe-area-inset-bottom)) + var(--composer-height, 0px)
     );
-    padding-right: calc(var(--space-1) + max(0px, env(safe-area-inset-right)));
   }
 
   html.keyboard-active .jump-to-latest {
