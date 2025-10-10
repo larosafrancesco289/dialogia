@@ -17,7 +17,7 @@ function applyTheme(mode: ThemeMode, mql?: MediaQueryList | null) {
   root.classList.toggle('dark', isDark);
 }
 
-export default function ThemeToggle({
+export function ThemeToggle({
   variant = 'ghost',
   className = '',
   onToggle,

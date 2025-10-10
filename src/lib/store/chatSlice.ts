@@ -104,8 +104,8 @@ export function createChatSlice(
       const lastUsedModel = !selected?.settings?.tutor_mode
         ? selected?.settings?.model
         : lastNonTutorModel;
-      const braveEnabled = !!get().ui.experimentalBrave;
       const tutorEnabledGlobally = !!get().ui.experimentalTutor;
+      const braveEnabled = !!get().ui.experimentalBrave;
       const forceTutorMode = !!(get().ui.forceTutorMode ?? false);
       const uiState = get().ui;
       const baseSettings = deriveChatSettingsFromUi({
@@ -132,7 +132,7 @@ export function createChatSlice(
         ui: {
           ...s.ui,
           nextModel: undefined,
-          nextSearchWithBrave: false,
+          nextSearchEnabled: false,
           nextSearchProvider: undefined,
           // Ensure DeepResearch is not auto-enabled for new chats
           nextDeepResearch: false,

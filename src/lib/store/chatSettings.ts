@@ -42,10 +42,10 @@ export function deriveChatSettingsFromUi(opts: {
     ui.nextShowThinking ?? previous?.show_thinking_by_default ?? false;
   const show_stats = ui.nextShowStats ?? previous?.show_stats ?? false;
 
-  const search_with_brave = ui.nextSearchWithBrave ?? previous?.search_with_brave ?? false;
-  const search_provider = braveEnabled
-    ? (ui.nextSearchProvider ?? previous?.search_provider ?? 'brave')
-    : 'openrouter';
+  const search_enabled = ui.nextSearchEnabled ?? previous?.search_enabled ?? false;
+  const nextProvider = ui.nextSearchProvider ?? previous?.search_provider;
+  const search_provider =
+    braveEnabled && nextProvider === 'brave' ? 'brave' : 'openrouter';
 
   const tutor_mode = forceTutorMode
     ? true
@@ -63,7 +63,7 @@ export function deriveChatSettingsFromUi(opts: {
     reasoning_tokens,
     show_thinking_by_default,
     show_stats,
-    search_with_brave,
+    search_enabled,
     search_provider,
     tutor_mode,
   };

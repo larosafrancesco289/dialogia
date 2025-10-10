@@ -1,6 +1,6 @@
 'use client';
 import type { ReactNode } from 'react';
-import SettingsSection from '@/components/settings/SettingsSection';
+import { SettingsSection } from '@/components/settings/SettingsSection';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
 
@@ -11,7 +11,7 @@ type LabsPanelProps = {
   setUI: (ui: Partial<StoreState['ui']>) => void;
 };
 
-export default function LabsPanel(props: LabsPanelProps) {
+export function LabsPanel(props: LabsPanelProps) {
   const { renderSection, experimentalBrave, experimentalDeepResearch, setUI } = props;
 
   return (

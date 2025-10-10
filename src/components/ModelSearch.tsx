@@ -476,5 +476,3 @@ function PlusSymbol() {
     </svg>
   );
 }
-
-export default ModelSearch;

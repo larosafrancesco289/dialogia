@@ -20,12 +20,14 @@ import {
 } from '@/lib/agent/tutorFlow';
 import { composeTurn } from '@/lib/agent/compose';
 import { runDeepResearchTurn } from '@/lib/agent/deepResearchOrchestrator';
-import { planTurn, regenerate, streamFinal } from '@/lib/services/messagePipeline';
+import { planTurn } from '@/lib/agent/planning';
+import { streamFinal } from '@/lib/agent/streaming';
+import { regenerate } from '@/lib/agent/regenerate';
 import { snapshotGenSettings } from '@/lib/agent/generation';
 import { shouldShortCircuitTutor } from '@/lib/agent/policy';
 import { guardZdrOrNotify } from '@/lib/zdr/cache';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
-import { isApiError } from '@/lib/api/errors';
+import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import {
   NOTICE_INVALID_KEY,
   NOTICE_MISSING_CLIENT_KEY,
@@ -426,9 +428,9 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
       startBuffered: shouldPlan,
     });
   } catch (error: any) {
-    if (isApiError(error) && error.code === 'unauthorized') {
+    if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
       set((state) => ({ ui: { ...state.ui, isStreaming: false, notice: NOTICE_INVALID_KEY } }));
-    } else if (isApiError(error) && error.code === 'rate_limited') {
+    } else if (isApiError(error) && error.code === API_ERROR_CODES.RATE_LIMITED) {
       set((state) => ({
         ui: { ...state.ui, isStreaming: false, notice: NOTICE_RATE_LIMITED },
       }));
@@ -514,9 +516,9 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
       overrideModelId,
     });
   } catch (error: any) {
-    if (isApiError(error) && error.code === 'unauthorized') {
+    if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
       set((state) => ({ ui: { ...state.ui, isStreaming: false, notice: NOTICE_INVALID_KEY } }));
-    } else if (isApiError(error) && error.code === 'rate_limited') {
+    } else if (isApiError(error) && error.code === API_ERROR_CODES.RATE_LIMITED) {
       set((state) => ({
         ui: { ...state.ui, isStreaming: false, notice: NOTICE_RATE_LIMITED },
       }));

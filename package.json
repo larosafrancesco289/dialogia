@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "format": "prettier --write .",
+    "lint": "eslint --cache --ext .ts,.tsx app src tests",
     "lint:types": "tsc --noEmit",
     "test": "tsx --test 'tests/**/*.test.ts' 'src/**/*.test.ts'"
   },
@@ -42,6 +43,10 @@
     "postcss": "^8.4.38",
     "prettier": "^3.3.3",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "@typescript-eslint/eslint-plugin": "^7.17.0",
+    "@typescript-eslint/parser": "^7.17.0",
+    "eslint": "^9.12.0",
+    "eslint-plugin-react-hooks": "^5.1.0"
   }
 }

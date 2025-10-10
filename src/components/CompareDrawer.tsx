@@ -2,14 +2,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { Markdown } from '@/lib/markdown';
-import ImageLightbox from '@/components/ImageLightbox';
+import { ImageLightbox } from '@/components/ImageLightbox';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID } from '@/lib/constants';
-import IconButton from '@/components/IconButton';
+import { IconButton } from '@/components/IconButton';
 import { XCircleIcon, StopIcon } from '@heroicons/react/24/outline';
 import { computeCost } from '@/lib/cost';
 import { findModelById } from '@/lib/models';
-import ModelSearch from '@/components/ModelSearch';
+import { ModelSearch } from '@/components/ModelSearch';
 import {
   selectCompareState,
   selectCurrentChat,
@@ -19,7 +19,7 @@ import {
   selectNextModel,
 } from '@/lib/store/selectors';
 
-export default function CompareDrawer() {
+export function CompareDrawer() {
   // Subscribe to precise store slices to avoid stale values
   const setCompare = useChatStore((s) => s.setCompare);
   const closeCompare = useChatStore((s) => s.closeCompare);

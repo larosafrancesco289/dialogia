@@ -8,7 +8,7 @@ export type AttachmentPreviewListProps = {
   className?: string;
 };
 
-export default function AttachmentPreviewList({
+export function AttachmentPreviewList({
   attachments,
   onRemove,
   className,

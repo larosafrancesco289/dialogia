@@ -14,19 +14,22 @@ business logic that is easy to test.
   chat history, UI flags, compare drawer, tutor context, etc.).
 - **Agent** — Request builders, planning, tools, and policies in `src/lib/agent/*`. The
   `compose.ts` module is the single entry for per-turn system/message assembly so every consumer
-  (send, regenerate, tests) shares the exact same preamble logic. These modules coordinate message
-  planning, tool invocation, tutor flows, and research orchestration without touching transport
-  concerns directly.
+  (send, regenerate, tests) shares the exact same preamble logic. `planning.ts`, `streaming.ts`, and
+  `regenerate.ts` separate multi-round planning, streaming, and regen logic so services stay thin.
+  These modules coordinate tool invocation, tutor flows, and research orchestration without touching
+  transport concerns directly.
   - `request.ts` centralizes provider routing and the `composePlugins` helper. The PDF parser plugin
     is only attached when uploads are present, and the OpenRouter web plugin is enabled when the UI
     requests OpenRouter-backed search. Keeping this logic in one place avoids divergent payloads.
 - **Services** — Cross-cutting orchestrators in `src/lib/services/*` that connect the store to the
   agent layer. `services/turns.ts` owns send/regenerate flows, while `services/controllers.ts`
-  isolates AbortController lifecycles outside persistence. `messagePipeline.ts` remains the entry
-  point for the streaming lifecycle.
+  isolates AbortController lifecycles outside persistence. Pipeline helpers now live in
+  `src/lib/agent/planning.ts`, `streaming.ts`, and `regenerate.ts`; `services/messagePipeline.ts`
+  re-exports them for backward compatibility.
 - **Transport** — HTTP clients in `src/lib/api/*` and protocol adapters such as
-  `src/lib/openrouter.ts`. Shared helpers in `src/lib/api/stream.ts` and `src/lib/api/errors.ts`
-  encapsulate SSE parsing and typed error construction so retry logic stays consistent.
+  `src/lib/openrouter.ts`. Shared helpers in `src/lib/api/config.ts`, `src/lib/api/stream.ts`, and
+  `src/lib/api/errors.ts` encapsulate defaults, SSE parsing, and typed error construction so retry
+  logic stays consistent.
 - **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Brave search proxy in
   `app/api/brave/route.ts`, and any additional integrations. These never import UI modules.
 
@@ -62,8 +65,8 @@ business logic that is easy to test.
    `useMessageStore.getState().sendDraft()`). UI-only effects (shortcuts, resize) run through local
    hooks to keep the component tree declarative.
 2. The action invokes `src/lib/services/turns.ts`, which prepares chat/tutor state, manages
-   controllers, and delegates to the agent pipeline. Streaming orchestration continues through
-   `src/lib/services/messagePipeline.ts`.
+   controllers, and delegates multi-round planning to `src/lib/agent/planning.ts` before streaming
+   the final response via `src/lib/agent/streaming.ts`.
 3. Agent helpers in `src/lib/agent/compose.ts`, `src/lib/agent/request.ts`, and
    `src/lib/agent/policy.ts` determine planning rounds, tool eligibility (search, tutor), and build
    the OpenRouter payload.
@@ -95,6 +98,6 @@ business logic that is easy to test.
    inherit the contract. Request payload tweaks should flow through `src/lib/agent/request.ts`.
 3. Define tool schemas under `src/lib/agent/searchFlow.ts` (or a new module) and surface helpers
    from the agent layer—never from UI components.
-4. Register tool parsing or execution in `src/lib/services/messagePipeline.ts` and keep side-effects
-   (store writes, notices) funneled through services.
+4. Register tool parsing or execution in `src/lib/agent/planning.ts` / `streaming.ts` and keep
+  side-effects (store writes, notices) funneled through services.
 5. Update `CONFIGURATION.md` with any new environment variables and document proxy requirements.

@@ -40,7 +40,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
       system: 'You are helpful.',
       show_thinking_by_default: false,
       show_stats: false,
-      search_with_brave: true,
+      search_enabled: true,
       search_provider: 'brave',
       reasoning_effort: 'none',
       reasoning_tokens: 0,
@@ -216,7 +216,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
       system: 'Be formal.',
       show_thinking_by_default: false,
       show_stats: false,
-      search_with_brave: false,
+      search_enabled: false,
       search_provider: 'openrouter',
       reasoning_effort: 'low',
       reasoning_tokens: 256,
@@ -243,7 +243,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
       top_p: 0.7,
       max_tokens: 150,
       providerSort: ProviderSort.Price,
-      search_with_brave: true,
+      search_enabled: true,
       search_provider: 'openrouter',
     },
   };
@@ -322,7 +322,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
   const updatedMessage = state.messages[chat.id][1];
   assert.equal(updatedMessage.content, 'Hello');
   assert.equal(updatedMessage.genSettings.providerSort, ProviderSort.Price);
-  assert.equal(updatedMessage.genSettings.search_with_brave, true);
+  assert.equal(updatedMessage.genSettings.search_enabled, true);
   const debugEntry = state.ui.debugByMessageId[assistantMessage.id];
   assert.ok(debugEntry);
   const parsed = JSON.parse(debugEntry.body);

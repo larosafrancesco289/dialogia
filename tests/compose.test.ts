@@ -14,7 +14,7 @@ const baseChat = (): Chat => ({
   settings: {
     model: 'provider/model-alpha',
     system: 'Always respond enthusiastically.',
-    search_with_brave: true,
+    search_enabled: true,
     search_provider: 'brave',
     tutor_mode: true,
     tutor_memory: 'Learner just reviewed linear equations.',
@@ -108,4 +108,24 @@ test('composeTurn merges tutor and search context with plugins and tools', async
 
   loadProfile.mock.restore();
   summarizeProfile.mock.restore();
+});
+
+test('composeTurn falls back to OpenRouter search when Brave experiment disabled', async () => {
+  const chat = baseChat();
+  chat.settings.search_provider = 'brave';
+  const result = await composeTurn({
+    chat,
+    ui: {
+      experimentalBrave: false,
+      experimentalTutor: false,
+      forceTutorMode: false,
+      routePreference: 'speed',
+    } as any,
+    modelIndex: modelIndexStub,
+    prior: [],
+    newUser: { content: 'Hello' },
+    attachments: [],
+  });
+
+  assert.equal(result.search.provider, 'openrouter');
 });

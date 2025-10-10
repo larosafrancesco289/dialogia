@@ -1,7 +1,7 @@
 'use client';
 import type { ReactNode } from 'react';
-import SettingsSection from '@/components/settings/SettingsSection';
-import IconButton from '@/components/IconButton';
+import { SettingsSection } from '@/components/settings/SettingsSection';
+import { IconButton } from '@/components/IconButton';
 import { CheckIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import {
   addSystemPreset,
@@ -39,7 +39,7 @@ type ChatPanelProps = {
   setReasoningTokens: (value: number | undefined) => void;
 };
 
-export default function ChatPanel(props: ChatPanelProps) {
+export function ChatPanel(props: ChatPanelProps) {
   const {
     chat,
     system,

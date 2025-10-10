@@ -19,4 +19,15 @@ yarn-error.log*
 # OS
 .DS_Store
 
+# Tooling
+.vscode/
+.idea/
+.vercel/
+.turbo/
+
+# Temporary files
+tmp/
+*.log
+.eslintcache
+
 AGENTS.md

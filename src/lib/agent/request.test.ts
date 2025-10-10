@@ -1,7 +1,33 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { providerSortFromRoutePref, composePlugins, buildDebugBody, pdfPlugins } from './request';
+import {
+  providerSortFromRoutePref,
+  composePlugins,
+  buildDebugBody,
+  pdfPlugins,
+  recordDebugIfEnabled,
+  DEBUG_LOG_TTL_MS,
+  DEBUG_LOG_MAX_ENTRIES,
+} from './request';
 import { ProviderSort } from '@/lib/models/providerSort';
+import type { StoreAccess } from '@/lib/agent/types';
+
+const createTestStore = (initialUi: any): StoreAccess & { state: { ui: any } } => {
+  const store = {
+    state: { ui: initialUi },
+    get() {
+      return store.state;
+    },
+    set(update: any) {
+      if (!update) return;
+      const next = typeof update === 'function' ? update(store.state) : update;
+      if (next) {
+        store.state = { ...store.state, ...next };
+      }
+    },
+  };
+  return store as StoreAccess & { state: { ui: any } };
+};
 
 test('providerSortFromRoutePref maps UI preferences to provider sort', () => {
   assert.equal(providerSortFromRoutePref('speed'), ProviderSort.Throughput);
@@ -68,4 +94,45 @@ test('buildDebugBody includes optional knobs when provided', () => {
   assert.equal(body.tool_choice, 'auto');
   assert.deepEqual(body.provider, { sort: 'price' });
   assert.deepEqual(body.plugins, [{ id: 'web' }]);
+});
+
+test('recordDebugIfEnabled prunes stale debug entries', () => {
+  const now = Date.now();
+  const store = createTestStore({
+    debugMode: true,
+    debugByMessageId: {
+      stale: { body: 'old', createdAt: now - DEBUG_LOG_TTL_MS - 10 },
+      fresh: { body: 'fresh', createdAt: now - 5000 },
+    },
+  });
+  const originalNow = Date.now;
+  Date.now = () => now;
+  try {
+    recordDebugIfEnabled(store, 'new', { ok: true });
+  } finally {
+    Date.now = originalNow;
+  }
+  const entries = store.state.ui.debugByMessageId;
+  assert.deepEqual(Object.keys(entries).sort(), ['fresh', 'new']);
+  assert.equal(typeof entries.new.body, 'string');
+});
+
+test('recordDebugIfEnabled caps debug entries to the configured limit', () => {
+  const store = createTestStore({ debugMode: true, debugByMessageId: {} });
+  const originalNow = Date.now;
+  let current = Date.now();
+  try {
+    for (let i = 0; i < DEBUG_LOG_MAX_ENTRIES + 5; i += 1) {
+      current += 1000;
+      Date.now = () => current;
+      recordDebugIfEnabled(store, `id-${i}`, { index: i });
+    }
+  } finally {
+    Date.now = originalNow;
+  }
+  const entries = store.state.ui.debugByMessageId;
+  const keys = Object.keys(entries);
+  assert.equal(keys.length, DEBUG_LOG_MAX_ENTRIES);
+  assert.equal(keys.includes(`id-${DEBUG_LOG_MAX_ENTRIES + 4}`), true);
+  assert.equal(keys.includes('id-0'), false);
 });

@@ -12,7 +12,7 @@ type Props = {
   onCancel: () => void;
 };
 
-export default function ConfirmDialog({
+export function ConfirmDialog({
   open,
   title,
   description,

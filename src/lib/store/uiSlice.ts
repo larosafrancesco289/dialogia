@@ -24,7 +24,7 @@ export const createUiSlice = createStoreSlice((set) => {
     tutorGlobalMemory: EMPTY_TUTOR_MEMORY,
     forceTutorMode: false,
     nextModel: undefined,
-    nextSearchWithBrave: false,
+    nextSearchEnabled: false,
     nextDeepResearch: false,
     nextTutorMode: false,
     nextTutorNudge: undefined,

@@ -1,9 +1,9 @@
 'use client';
 import dynamic from 'next/dynamic';
-import ChatSidebar from '@/components/ChatSidebar';
-import ChatPane from '@/components/ChatPane';
-import TopHeader from '@/components/TopHeader';
-import MobileHeader from '@/components/MobileHeader';
+import { ChatSidebar } from '@/components/ChatSidebar';
+import { ChatPane } from '@/components/ChatPane';
+import { TopHeader } from '@/components/TopHeader';
+import { MobileHeader } from '@/components/MobileHeader';
 const SettingsDrawer = dynamic(
   () =>
     import(/* webpackPrefetch: true */ '@/components/SettingsDrawer').then(
@@ -12,10 +12,16 @@ const SettingsDrawer = dynamic(
   { ssr: false },
 );
 const CompareDrawer = dynamic(
-  () => import(/* webpackPrefetch: true */ '@/components/CompareDrawer'),
+  () =>
+    import(/* webpackPrefetch: true */ '@/components/CompareDrawer').then((mod) => ({
+      default: mod.CompareDrawer,
+    })),
   { ssr: false },
 );
-const GlobalNotice = dynamic(() => import('@/components/GlobalNotice'), { ssr: false });
+const GlobalNotice = dynamic(
+  () => import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
+  { ssr: false },
+);
 import { useEffect, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';

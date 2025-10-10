@@ -23,13 +23,13 @@ import {
 import type { Attachment } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
-import AttachmentPreviewList from '@/components/AttachmentPreviewList';
-import ComposerInput from '@/components/composer/ComposerInput';
-import ComposerActions from '@/components/composer/ComposerActions';
+import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
+import { ComposerInput } from '@/components/composer/ComposerInput';
+import { ComposerActions } from '@/components/composer/ComposerActions';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
 // PDFs are sent directly to OpenRouter as file blocks; no local parsing.
 
-export default function Composer({
+export function Composer({
   variant = 'sticky',
   keyboardMetrics,
 }: {
@@ -56,7 +56,7 @@ export default function Composer({
   const uiNext = useChatStore(
     (s) => ({
       nextTutorMode: s.ui.nextTutorMode,
-      nextSearchWithBrave: s.ui.nextSearchWithBrave,
+      nextSearchEnabled: s.ui.nextSearchEnabled,
       nextSearchProvider: s.ui.nextSearchProvider,
       nextModel: s.ui.nextModel,
       nextReasoningEffort: s.ui.nextReasoningEffort,
@@ -96,13 +96,13 @@ export default function Composer({
         on = undefined; // toggle
       else return false;
       if (applyToChat) {
-        const next = on == null ? !chat!.settings.search_with_brave : on;
-        await updateSettings({ search_with_brave: next });
+        const next = on == null ? !chat!.settings.search_enabled : on;
+        await updateSettings({ search_enabled: next });
         setNotice(`Web search: ${next ? 'On' : 'Off'}`);
       } else {
-        const prev = !!uiNext.nextSearchWithBrave;
+        const prev = !!uiNext.nextSearchEnabled;
         const next = on == null ? !prev : on;
-        setUI({ nextSearchWithBrave: next });
+        setUI({ nextSearchEnabled: next });
         setNotice(`Web search (next): ${next ? 'On' : 'Off'}`);
       }
       return true;
@@ -222,11 +222,12 @@ export default function Composer({
   const canAudio = isAudioInputSupported(modelMeta);
   const supportsReasoning = isReasoningSupported(modelMeta);
   const canImageOut = isImageOutputSupported(modelMeta);
-  const braveGloballyEnabled = useChatStore((s) => !!s.ui.experimentalBrave);
-  const searchEnabled = chat ? !!chat.settings.search_with_brave : !!uiNext.nextSearchWithBrave;
+  const experimentalBrave = useChatStore((s) => !!s.ui.experimentalBrave);
+  const searchEnabled = chat ? !!chat.settings.search_enabled : !!uiNext.nextSearchEnabled;
   const rawProvider =
-    (chat?.settings as any)?.search_provider || uiNext.nextSearchProvider || 'brave';
-  const searchProvider: 'brave' | 'openrouter' = braveGloballyEnabled ? rawProvider : 'openrouter';
+    (chat?.settings as any)?.search_provider || uiNext.nextSearchProvider || 'openrouter';
+  const searchProvider: 'brave' | 'openrouter' =
+    experimentalBrave && rawProvider === 'brave' ? 'brave' : 'openrouter';
   const currentEffort = (
     chat
       ? (chat.settings.reasoning_effort as Effort | undefined)
@@ -374,9 +375,9 @@ export default function Composer({
   const showReasoningMenu = supportsReasoning && !tutorEnabled;
   const toggleSearch = () => {
     if (chat) {
-      void updateSettings({ search_with_brave: !chat.settings.search_with_brave });
+      void updateSettings({ search_enabled: !chat.settings.search_enabled });
     } else {
-      setUI({ nextSearchWithBrave: !uiNext.nextSearchWithBrave });
+      setUI({ nextSearchEnabled: !uiNext.nextSearchEnabled });
     }
   };
 

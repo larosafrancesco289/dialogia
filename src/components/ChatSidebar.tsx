@@ -5,10 +5,10 @@ import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useDragAndDrop } from '@/lib/dragDrop';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
-import FolderItem from './FolderItem';
-import IconButton from './IconButton';
-import ThemeToggle from '@/components/ThemeToggle';
-import ConfirmDialog from './ConfirmDialog';
+import { FolderItem } from './FolderItem';
+import { IconButton } from './IconButton';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { ConfirmDialog } from './ConfirmDialog';
 import { MoveChatSheet } from '@/components/MoveChatSheet';
 import {
   PlusIcon,
@@ -24,7 +24,7 @@ import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 import type { Chat, Folder } from '@/lib/types';
 // Settings gear moved to the top header
 
-export default function ChatSidebar() {
+export function ChatSidebar() {
   const {
     chats,
     folders,

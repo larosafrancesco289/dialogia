@@ -10,7 +10,7 @@ interface IconButtonProps {
   disabled?: boolean;
 }
 
-export default function IconButton({
+export function IconButton({
   children,
   onClick,
   title,

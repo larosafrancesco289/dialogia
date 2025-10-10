@@ -124,6 +124,9 @@ export function buildDebugBody(args: {
   });
 }
 
+export const DEBUG_LOG_TTL_MS = 1000 * 60 * 60 * 2;
+export const DEBUG_LOG_MAX_ENTRIES = 50;
+
 export function recordDebugIfEnabled(store: StoreAccess, messageId: string, body: unknown) {
   if (!messageId) return;
   if (!store.get().ui.debugMode) return;
@@ -137,13 +140,22 @@ export function recordDebugIfEnabled(store: StoreAccess, messageId: string, body
       payload = String(body);
     }
   }
-  store.set((state) => ({
-    ui: {
-      ...state.ui,
-      debugByMessageId: {
-        ...(state.ui.debugByMessageId || {}),
-        [messageId]: { body: payload, createdAt: Date.now() },
+  const now = Date.now();
+  store.set((state) => {
+    const existing = state.ui.debugByMessageId || {};
+    const entries = Object.entries(existing).filter(([id, value]) => {
+      if (id === messageId) return false;
+      const createdAt = typeof value?.createdAt === 'number' ? value.createdAt : 0;
+      return now - createdAt <= DEBUG_LOG_TTL_MS;
+    });
+    entries.push([messageId, { body: payload, createdAt: now }]);
+    entries.sort((a, b) => (a[1].createdAt ?? 0) - (b[1].createdAt ?? 0));
+    const trimmed = entries.slice(-DEBUG_LOG_MAX_ENTRIES);
+    return {
+      ui: {
+        ...state.ui,
+        debugByMessageId: Object.fromEntries(trimmed),
       },
-    },
-  }));
+    };
+  });
 }

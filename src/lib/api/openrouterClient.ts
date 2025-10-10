@@ -1,3 +1,4 @@
+import { apiDefaults } from '@/lib/api/config';
 import { isOpenRouterProxyEnabled } from '@/lib/config';
 import type { ModelContentBlock, ToolCall } from '@/lib/agent/types';
 
@@ -46,18 +47,6 @@ export type SseDelta = {
   usage?: Usage;
 };
 
-const OR_BASE_URL = 'https://openrouter.ai/api/v1';
-const PROXY_BASE_PATH = '/api/openrouter';
-const IS_BROWSER = typeof window !== 'undefined';
-
-function resolveOrigin(explicit?: string): string {
-  if (explicit && explicit.trim()) return explicit;
-  if (IS_BROWSER && typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin;
-  }
-  return 'http://localhost:3000';
-}
-
 type OrFetchOptions = {
   method?: string;
   apiKey?: string;
@@ -78,7 +67,7 @@ function toBodyInit(body: any): BodyInit | undefined {
 }
 
 async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Response> {
-  const useProxy = IS_BROWSER && isOpenRouterProxyEnabled();
+  const useProxy = apiDefaults.isBrowser && isOpenRouterProxyEnabled();
   const authRequired = options.authRequired ?? !useProxy;
   const headers: Record<string, string> = { ...(options.headers || {}) };
   const body = toBodyInit(options.body);
@@ -86,7 +75,7 @@ async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Resp
     headers['Content-Type'] = 'application/json';
   }
 
-  const origin = resolveOrigin(options.origin);
+  const origin = apiDefaults.resolveOrigin(options.origin);
   if (!useProxy) {
     if (authRequired) {
       if (!options.apiKey) throw new Error('missing_openrouter_api_key');
@@ -94,12 +83,13 @@ async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Resp
     } else if (options.apiKey) {
       headers.Authorization = `Bearer ${options.apiKey}`;
     }
-    headers['X-Title'] = 'Dialogia';
-    headers['HTTP-Referer'] = origin;
+    Object.assign(headers, apiDefaults.headers(origin));
   }
 
   const controller = new AbortController();
-  const timeoutMs = options.timeoutMs ?? (options.stream ? undefined : 20000);
+  const timeoutMs =
+    options.timeoutMs ??
+    (options.stream ? undefined : apiDefaults.timeouts.chat);
   let timeout: ReturnType<typeof setTimeout> | undefined;
   if (timeoutMs && timeoutMs > 0) {
     timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -114,7 +104,7 @@ async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Resp
   }
 
   try {
-    const url = `${useProxy ? PROXY_BASE_PATH : OR_BASE_URL}${path}`;
+    const url = `${useProxy ? apiDefaults.proxyPath : apiDefaults.baseUrl}${path}`;
     const response = await fetch(url, {
       method: options.method ?? 'GET',
       headers,
@@ -137,7 +127,7 @@ export async function orFetchModels(
     apiKey,
     signal: options.signal,
     origin: options.origin,
-    timeoutMs: 20000,
+    timeoutMs: apiDefaults.timeouts.models,
   });
 }
 
@@ -147,7 +137,7 @@ export async function orFetchZdrEndpoints(
   return orFetch('/endpoints/zdr', {
     method: 'GET',
     signal: options.signal,
-    timeoutMs: 20000,
+    timeoutMs: apiDefaults.timeouts.zdr,
     authRequired: false,
     origin: options.origin,
   });
@@ -169,6 +159,6 @@ export async function orChatCompletions(options: ChatOptions): Promise<Response>
     signal: options.signal,
     stream: options.stream,
     origin: options.origin,
-    timeoutMs: options.stream ? undefined : 45000,
+    timeoutMs: options.stream ? undefined : apiDefaults.timeouts.chat,
   });
 }

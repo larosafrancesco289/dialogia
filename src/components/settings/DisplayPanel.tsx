@@ -2,7 +2,7 @@
 // Component: DisplayPanel
 // Responsibility: Display and Debug settings controls.
 
-export default function DisplayPanel(props: {
+export function DisplayPanel(props: {
   showThinking: boolean;
   showStats: boolean;
   uiDebugMode: boolean;

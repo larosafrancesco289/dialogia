@@ -1,10 +1,10 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import Composer from '@/components/Composer';
+import { Composer } from '@/components/Composer';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 
-export default function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetrics }) {
+export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetrics }) {
   const newChat = useChatStore((s) => s.newChat);
   const send = useChatStore((s) => s.sendUserMessage);
   const ui = useChatStore((s) => s.ui);

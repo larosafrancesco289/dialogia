@@ -15,7 +15,7 @@ export type ComposerInputProps = {
   onFocusChange: (focused: boolean) => void;
 };
 
-export default function ComposerInput({
+export function ComposerInput({
   value,
   onChange,
   onSend,

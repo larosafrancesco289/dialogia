@@ -5,7 +5,7 @@ import { providerSortFromRoutePref } from '@/lib/agent/request';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { ZDR_NO_MATCH_NOTICE, ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
 import { ensureListsAndFilterCached } from '@/lib/zdr/cache';
-import { isApiError } from '@/lib/api/errors';
+import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { requireClientKeyOrProxy } from '@/lib/config';
 import type { StoreSetter } from '@/lib/agent/types';
 import {
@@ -185,7 +185,7 @@ export function createCompareSlice(
                       system: 'You are a helpful assistant.',
                       show_thinking_by_default: false,
                       show_stats: true,
-                      search_with_brave: false,
+                      search_enabled: false,
                       reasoning_effort: undefined,
                     },
                   },
@@ -432,9 +432,9 @@ export function createCompareSlice(
                     },
                   }) as any,
               );
-            } else if (isApiError(e) && e.code === 'unauthorized') {
+            } else if (isApiError(e) && e.code === API_ERROR_CODES.UNAUTHORIZED) {
               set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
-            } else if (isApiError(e) && e.code === 'rate_limited') {
+            } else if (isApiError(e) && e.code === API_ERROR_CODES.RATE_LIMITED) {
               set((s) => ({ ui: { ...s.ui, notice: NOTICE_RATE_LIMITED } }));
             } else {
               set((s) => ({ ui: { ...s.ui, notice: e?.message || 'Compare failed' } }));

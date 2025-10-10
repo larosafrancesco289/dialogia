@@ -2,7 +2,7 @@
 // Component: PrivacyPanel
 // Responsibility: Zero Data Retention toggle and related notices.
 
-export default function PrivacyPanel(props: {
+export function PrivacyPanel(props: {
   zdrOnly: boolean | undefined;
   setZdrOnly: (v: boolean) => void;
   reloadModels: () => void;

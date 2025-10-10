@@ -7,6 +7,11 @@ test('stripLeadingToolJson removes fenced JSON blocks', () => {
   assert.equal(stripLeadingToolJson(input), 'Answer');
 });
 
+test('stripLeadingToolJson removes bare JSON prefixes', () => {
+  const input = '{"name":"web_search","arguments":{"query":"hello"}}\nAnswer';
+  assert.equal(stripLeadingToolJson(input), 'Answer');
+});
+
 test('stripLeadingToolJson leaves regular text', () => {
   const input = 'Plain response from model';
   assert.equal(stripLeadingToolJson(input), 'Plain response from model');

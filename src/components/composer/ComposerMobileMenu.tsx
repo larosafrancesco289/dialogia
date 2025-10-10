@@ -18,7 +18,7 @@ export type ComposerMobileMenuProps = {
   onSelectEffort: (effort: Effort) => void;
 };
 
-export default function ComposerMobileMenu({
+export function ComposerMobileMenu({
   isOpen,
   onToggle,
   onClose,

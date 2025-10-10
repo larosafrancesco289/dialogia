@@ -2,7 +2,7 @@
 // Component: DataPanel
 // Responsibility: Export and import data controls.
 
-export default function DataPanel(props: {
+export function DataPanel(props: {
   onExport: () => Promise<void> | void;
   onImportPicked: (file?: File | null) => Promise<void> | void;
 }) {
