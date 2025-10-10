@@ -9,15 +9,17 @@ import { isImageOutputSupported, isReasoningSupported } from '@/lib/models';
 import type {
   PluginConfig,
   ToolDefinition,
-  ProviderSort,
   StoreAccess,
   StoreSetter,
   StoreGetter,
 } from '@/lib/agent/types';
+import { ProviderSort } from '@/lib/agent/types';
 
-export function providerSortFromRoutePref(pref?: 'speed' | 'cost' | null): ProviderSort {
-  if (pref === 'cost') return 'price';
-  if (pref === 'speed') return 'throughput';
+export function providerSortFromRoutePref(
+  pref?: 'speed' | 'cost' | null,
+): ProviderSort | undefined {
+  if (pref === 'cost') return ProviderSort.Price;
+  if (pref === 'speed') return ProviderSort.Throughput;
   return undefined;
 }
 
@@ -78,7 +80,7 @@ export function buildChatBody(params: BuildChatBodyParams) {
   if (params.tool_choice) body.tool_choice = params.tool_choice;
   if (typeof params.parallel_tool_calls === 'boolean')
     body.parallel_tool_calls = params.parallel_tool_calls;
-  if (params.providerSort === 'price' || params.providerSort === 'throughput') {
+  if (params.providerSort === ProviderSort.Price || params.providerSort === ProviderSort.Throughput) {
     body.provider = { ...(body.provider || {}), sort: params.providerSort };
   }
   if (Array.isArray(params.plugins) && params.plugins.length) body.plugins = params.plugins;

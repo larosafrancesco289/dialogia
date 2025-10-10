@@ -1,3 +1,5 @@
+import type { ProviderSort } from '@/lib/models/providerSort';
+
 export type ChatSettings = {
   model: string;
   temperature?: number;
@@ -45,7 +47,7 @@ export type Message = {
     search_with_brave?: boolean;
     search_provider?: 'brave' | 'openrouter';
     tutor_mode?: boolean;
-    providerSort?: 'price' | 'throughput';
+    providerSort?: ProviderSort;
   };
   // OpenRouter: file parsing annotations returned by assistant (e.g., PDF parsing)
   // When present, we include them in subsequent requests to skip re-parsing costs.

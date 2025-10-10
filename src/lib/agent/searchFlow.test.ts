@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getSearchToolDefinition, mergeSearchResults, formatSourcesBlock, runBraveSearch } from './searchFlow';
 import type { SearchResult } from '@/lib/agent/types';
+import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
 
 test('getSearchToolDefinition exposes web_search function schema', () => {
   const tools = getSearchToolDefinition();
@@ -57,7 +58,7 @@ test('runBraveSearch returns results and propagates errors', async () => {
     globalThis.fetch = (async () => ({ ok: false, status: 400 })) as any;
     const missingKey = await runBraveSearch('beta', 2);
     assert.equal(missingKey.ok, false);
-    assert.equal(missingKey.error, 'Missing BRAVE_SEARCH_API_KEY');
+    assert.equal(missingKey.error, NOTICE_MISSING_BRAVE_KEY);
 
     globalThis.fetch = (async () => {
       throw new Error('network down');

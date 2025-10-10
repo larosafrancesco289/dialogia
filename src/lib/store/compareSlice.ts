@@ -6,13 +6,19 @@ import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { ZDR_NO_MATCH_NOTICE, ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
 import { ensureListsAndFilterCached } from '@/lib/zdr/cache';
 import { isApiError } from '@/lib/api/errors';
-import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
+import { requireClientKeyOrProxy } from '@/lib/config';
 import type { StoreSetter } from '@/lib/agent/types';
+import {
+  NOTICE_INVALID_KEY,
+  NOTICE_MISSING_CLIENT_KEY,
+  NOTICE_RATE_LIMITED,
+} from '@/lib/store/notices';
 import {
   setCompareController,
   abortAllCompare,
   clearCompareController,
 } from '@/lib/services/controllers';
+import { computeMetrics } from '@/lib/services/metrics';
 
 export function createCompareSlice(
   set: StoreSetter,
@@ -75,12 +81,15 @@ export function createCompareSlice(
       });
     },
     async runCompare(prompt: string, modelIds: string[]) {
-      const useProxy = isOpenRouterProxyEnabled();
-      const key = getPublicOpenRouterKey();
-      if (!key && !useProxy)
+      let key: string | undefined;
+      try {
+        const status = requireClientKeyOrProxy();
+        key = status.key;
+      } catch {
         return set((s) => ({
-          ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY' },
+          ui: { ...s.ui, notice: NOTICE_MISSING_CLIENT_KEY },
         }));
+      }
       // ZDR enforcement for compare: apply cached lists and filter selections
       if (get().ui.zdrOnly === true) {
         const sourceModels = modelIds.map((id) => ({ id }));
@@ -326,16 +335,12 @@ export function createCompareSlice(
                   },
                   onDone: (full, extras) => {
                     const tEnd = performance.now();
-                    const ttftMs = tFirst ? Math.max(0, Math.round(tFirst - tStart)) : undefined;
-                    const completionMs = Math.max(0, Math.round(tEnd - tStart));
-                    const promptTokens =
-                      extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
-                    const completionTokens =
-                      extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
-                    const tokensPerSec =
-                      completionTokens && completionMs
-                        ? +(completionTokens / (completionMs / 1000)).toFixed(2)
-                        : undefined;
+                    const metrics = computeMetrics({
+                      startedAt: tStart,
+                      firstTokenAt: tFirst,
+                      finishedAt: tEnd,
+                      usage: extras?.usage,
+                    });
                     set(
                       (s) =>
                         ({
@@ -357,15 +362,9 @@ export function createCompareSlice(
                                   }),
                                   status: 'done',
                                   content: full,
-                                  metrics: {
-                                    ttftMs,
-                                    completionMs,
-                                    promptTokens,
-                                    completionTokens,
-                                    tokensPerSec,
-                                  },
-                                  tokensIn: promptTokens,
-                                  tokensOut: completionTokens,
+                                  metrics,
+                                  tokensIn: metrics.promptTokens,
+                                  tokensOut: metrics.completionTokens,
                                 },
                               },
                             },
@@ -434,9 +433,9 @@ export function createCompareSlice(
                   }) as any,
               );
             } else if (isApiError(e) && e.code === 'unauthorized') {
-              set((s) => ({ ui: { ...s.ui, notice: 'Invalid API key' } }));
+              set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
             } else if (isApiError(e) && e.code === 'rate_limited') {
-              set((s) => ({ ui: { ...s.ui, notice: 'Rate limited. Retry later.' } }));
+              set((s) => ({ ui: { ...s.ui, notice: NOTICE_RATE_LIMITED } }));
             } else {
               set((s) => ({ ui: { ...s.ui, notice: e?.message || 'Compare failed' } }));
             }

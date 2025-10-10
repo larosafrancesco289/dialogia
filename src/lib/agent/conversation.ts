@@ -1,6 +1,7 @@
 import type { Chat, Message, ORModel, Attachment } from '@/lib/types';
 import { estimateTokens } from '@/lib/tokenEstimate';
 import { normalizeTutorMemory } from '@/lib/agent/tutorMemory';
+import type { ModelContentBlock, ModelMessage } from '@/lib/agent/types';
 
 // Construct the message payload for the LLM from prior conversation, with a simple token window
 export function buildChatCompletionMessages(params: {
@@ -9,7 +10,7 @@ export function buildChatCompletionMessages(params: {
   models: ORModel[];
   newUserContent?: string;
   newUserAttachments?: Attachment[];
-}): any[] {
+}): ModelMessage[] {
   const { chat, priorMessages, models, newUserContent, newUserAttachments } = params;
   const modelInfo = models.find((m) => m.id === chat.settings.model);
   const contextLimit = modelInfo?.context_length ?? 8000;
@@ -62,7 +63,7 @@ export function buildChatCompletionMessages(params: {
   }
   kept.reverse();
 
-  const finalMsgs: any[] = [];
+  const finalMsgs: ModelMessage[] = [];
   const systemParts: string[] = [];
   const tutorMemory = chat.settings.tutor_mode
     ? normalizeTutorMemory(chat.settings.tutor_memory)
@@ -76,8 +77,9 @@ export function buildChatCompletionMessages(params: {
   // Transform kept messages to OpenAI-style content blocks when attachments present
   for (const k of kept) {
     if (k.role === 'user' && Array.isArray(k.attachments) && k.attachments.length > 0) {
-      const blocks: any[] = [];
-      if (k.content && k.content.trim()) blocks.push({ type: 'text', text: k.content });
+      const blocks: ModelContentBlock[] = [];
+      if (k.content && k.content.trim())
+        blocks.push({ type: 'text', text: k.content });
       for (const a of k.attachments) {
         if (a.kind === 'image' && a.dataURL) {
           blocks.push({ type: 'image_url', image_url: { url: a.dataURL } });
@@ -115,13 +117,15 @@ export function buildChatCompletionMessages(params: {
         }
       }
       finalMsgs.push({ role: 'user', content: blocks });
-    } else {
+    } else if (k.role === 'assistant') {
       // Include assistant annotations (from prior OpenRouter response) to skip PDF re-parsing
-      if (k.role === 'assistant' && k.annotations) {
-        finalMsgs.push({ role: k.role, content: k.content, annotations: k.annotations });
+      if (k.annotations) {
+        finalMsgs.push({ role: 'assistant', content: k.content, annotations: k.annotations });
       } else {
-        finalMsgs.push({ role: k.role, content: k.content });
+        finalMsgs.push({ role: 'assistant', content: k.content });
       }
+    } else {
+      finalMsgs.push({ role: 'user', content: k.content });
     }
   }
   return finalMsgs;

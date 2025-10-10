@@ -6,6 +6,7 @@ import type { Message, Chat, ORModel } from '@/lib/types';
 import { getTutorToolDefinitions } from '@/lib/agent/tutor';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
 import type { StoreSetter } from '@/lib/agent/types';
+import { ProviderSort } from '@/lib/models/providerSort';
 
 const baseModels: ORModel[] = [
   {
@@ -118,10 +119,18 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
 
   __setOpenRouterMocksForTests({
     chatCompletion: async () => ({
+      id: 'plan-turn-1',
+      object: 'chat.completion',
+      created: Date.now(),
+      model: 'provider/model',
       usage: { prompt_tokens: 10 },
       choices: [
         {
+          index: 0,
+          finish_reason: 'stop',
           message: {
+            role: 'assistant',
+            content: null,
             tool_calls: [
               {
                 id: 'call_0',
@@ -170,7 +179,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     toolDefinition: [...searchTools, ...tutorTools],
     searchEnabled: true,
     searchProvider: 'brave',
-    providerSort: 'throughput',
+    providerSort: ProviderSort.Throughput,
     apiKey: 'test',
     controller: new AbortController(),
     set,
@@ -233,7 +242,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
       temperature: 0.3,
       top_p: 0.7,
       max_tokens: 150,
-      providerSort: 'price',
+      providerSort: ProviderSort.Price,
       search_with_brave: true,
       search_provider: 'openrouter',
     },
@@ -312,7 +321,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
 
   const updatedMessage = state.messages[chat.id][1];
   assert.equal(updatedMessage.content, 'Hello');
-  assert.equal(updatedMessage.genSettings.providerSort, 'price');
+  assert.equal(updatedMessage.genSettings.providerSort, ProviderSort.Price);
   assert.equal(updatedMessage.genSettings.search_with_brave, true);
   const debugEntry = state.ui.debugByMessageId[assistantMessage.id];
   assert.ok(debugEntry);

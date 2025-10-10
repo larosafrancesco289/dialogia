@@ -216,3 +216,29 @@ export type StoreState = {
   // tutor persistence
   persistTutorStateForMessage: (messageId: string) => Promise<void>;
 };
+
+export type PersistedUIState = Pick<
+  UIState,
+  | 'showSettings'
+  | 'sidebarCollapsed'
+  | 'debugMode'
+  | 'tutorContextMode'
+  | 'zdrOnly'
+  | 'routePreference'
+  | 'experimentalBrave'
+  | 'experimentalDeepResearch'
+  | 'experimentalTutor'
+  | 'tutorDefaultModelId'
+  | 'tutorMemoryModelId'
+  | 'tutorMemoryFrequency'
+  | 'tutorMemoryAutoUpdate'
+  | 'tutorGlobalMemory'
+  | 'forceTutorMode'
+>;
+
+export type PersistedStoreState = Pick<
+  StoreState,
+  'selectedChatId' | 'favoriteModelIds' | 'hiddenModelIds'
+> & {
+  ui: PersistedUIState;
+};

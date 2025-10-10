@@ -74,3 +74,22 @@ export function getDeepResearchReasoningOnly(): boolean {
 export function getAccessCookieDomain(): string | undefined {
   return readEnv('ACCESS_COOKIE_DOMAIN');
 }
+
+export function requireClientKeyOrProxy(): { key?: string; useProxy: boolean } {
+  const key = getPublicOpenRouterKey();
+  const useProxy = isOpenRouterProxyEnabled();
+  if (!key && !useProxy) {
+    const error = new Error('missing_client_key_or_proxy');
+    (error as any).code = 'missing_client_key_or_proxy';
+    throw error;
+  }
+  return { key, useProxy };
+}
+
+export function isProd(): boolean {
+  return readEnvValue(process.env.NODE_ENV)?.toLowerCase() === 'production';
+}
+
+export function isDev(): boolean {
+  return !isProd();
+}

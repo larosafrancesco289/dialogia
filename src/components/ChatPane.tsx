@@ -1,18 +1,14 @@
 'use client';
 import { useChatStore } from '@/lib/store';
-import { shallow } from 'zustand/shallow';
 import { MessageList } from '@/components/MessageList';
 import WelcomeHero from '@/components/WelcomeHero';
 import Composer from '@/components/Composer';
 import { useKeyboardInsets } from '@/lib/hooks/useKeyboardInsets';
 import type { CSSProperties } from 'react';
+import { selectCurrentChat } from '@/lib/store/selectors';
 
 export default function ChatPane() {
-  const { chats, selectedChatId } = useChatStore(
-    (s) => ({ chats: s.chats, selectedChatId: s.selectedChatId }),
-    shallow,
-  );
-  const chat = chats.find((c) => c.id === selectedChatId);
+  const chat = useChatStore(selectCurrentChat);
   const keyboardMetrics = useKeyboardInsets();
   const keyboardVars = {
     '--keyboard-offset': `${Math.max(0, Math.round(keyboardMetrics.offset))}px`,

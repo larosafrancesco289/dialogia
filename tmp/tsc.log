@@ -1,0 +1,17 @@
+src/lib/agent/tutorMemory.ts(163,65): error TS2339: Property 'trim' does not exist on type 'string | ModelContentBlock[]'.
+  Property 'trim' does not exist on type 'ModelContentBlock[]'.
+src/lib/agent/tutorMemory.ts(219,65): error TS2339: Property 'trim' does not exist on type 'string | ModelContentBlock[]'.
+  Property 'trim' does not exist on type 'ModelContentBlock[]'.
+src/lib/services/messagePipeline.test.ts(121,5): error TS2322: Type '() => Promise<{ usage: { prompt_tokens: number; }; choices: { message: { tool_calls: { id: string; type: "function"; function: { name: string; arguments: string; }; }[]; }; }[]; }>' is not assignable to type '(params: { apiKey: string; model: string; messages: ModelMessage[]; modalities?: ("image" | "text")[] | undefined; temperature?: number | undefined; top_p?: number | undefined; max_tokens?: number | undefined; ... 7 more ...; plugins?: PluginConfig[] | undefined; }) => Promise<...>'.
+  Type 'Promise<{ usage: { prompt_tokens: number; }; choices: { message: { tool_calls: { id: string; type: "function"; function: { name: string; arguments: string; }; }[]; }; }[]; }>' is not assignable to type 'Promise<ChatCompletionPayload>'.
+    Type '{ usage: { prompt_tokens: number; }; choices: { message: { tool_calls: { id: string; type: "function"; function: { name: string; arguments: string; }; }[]; }; }[]; }' is missing the following properties from type 'ChatCompletionPayload': id, object, created, model
+src/lib/services/messagePipeline.ts(449,30): error TS1361: 'ProviderSort' cannot be used as a value because it was imported using 'import type'.
+src/lib/services/messagePipeline.ts(449,77): error TS1361: 'ProviderSort' cannot be used as a value because it was imported using 'import type'.
+src/lib/store.ts(29,49): error TS2345: Argument of type 'StoreApi<StoreState>' is not assignable to parameter of type 'Write<StoreApi<StoreState>, StorePersist<StoreState, Partial<StoreState>>>'.
+  Property 'persist' is missing in type 'StoreApi<StoreState>' but required in type 'StorePersist<StoreState, Partial<StoreState>>'.
+src/lib/store.ts(33,46): error TS2345: Argument of type 'StoreApi<StoreState>' is not assignable to parameter of type 'Write<StoreApi<StoreState>, StorePersist<StoreState, Partial<StoreState>>>'.
+  Property 'persist' is missing in type 'StoreApi<StoreState>' but required in type 'StorePersist<StoreState, Partial<StoreState>>'.
+src/lib/store.ts(47,7): error TS2322: Type '(s: StoreState) => PersistedStoreState' is not assignable to type '(state: StoreState) => Partial<StoreState>'.
+  Call signature return types 'PersistedStoreState' and 'Partial<StoreState>' are incompatible.
+    The types of 'ui' are incompatible between these types.
+      Property 'isStreaming' is missing in type 'PersistedUIState' but required in type 'UIState'.

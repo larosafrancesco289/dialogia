@@ -22,8 +22,12 @@ import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 import { isToolCallingSupported } from '@/lib/models';
 import type { ModelIndex } from '@/lib/models';
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
+import { createToolCall, normalizeToolCalls, parseToolArguments } from '@/lib/agent/parsers';
+import { combineSystem } from '@/lib/agent/system';
 import type { Chat, Message, ORModel } from '@/lib/types';
+import { ProviderSort } from '@/lib/models/providerSort';
 import type {
+  ModelMessage,
   PlanTurnOptions,
   PlanTurnResult,
   RegenerateOptions,
@@ -35,54 +39,12 @@ import type {
   ToolCall,
   ToolDefinition,
   WebSearchArgs,
-  ProviderSort,
 } from '@/lib/agent/types';
 import { clearTurnController, setTurnController } from '@/lib/services/controllers';
+import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
 
 let chatCompletionImpl = chatCompletion;
 let streamChatCompletionImpl = streamChatCompletion;
-
-function normalizeToolCalls(message: unknown): ToolCall[] {
-  const calls: ToolCall[] = [];
-  const rawCalls = Array.isArray((message as any)?.tool_calls)
-    ? (message as any).tool_calls
-    : [];
-  rawCalls.forEach((call: any, index: number) => {
-    const name = typeof call?.function?.name === 'string' ? call.function.name : '';
-    const args = typeof call?.function?.arguments === 'string' ? call.function.arguments : '';
-    if (!name || !args) return;
-    const id = typeof call?.id === 'string' ? call.id : `call_${index}`;
-    calls.push({ id, type: 'function', function: { name, arguments: args } });
-  });
-  if (calls.length > 0) return calls;
-
-  const legacy = (message as any)?.function_call;
-  if (legacy && typeof legacy === 'object') {
-    const name = typeof legacy.name === 'string' ? legacy.name : '';
-    const args = typeof legacy.arguments === 'string' ? legacy.arguments : '';
-    if (name && args) {
-      return [{ id: 'call_0', type: 'function', function: { name, arguments: args } }];
-    }
-  }
-  return [];
-}
-
-function createToolCall(name: string, args: Record<string, unknown>, id: string): ToolCall {
-  return {
-    id,
-    type: 'function',
-    function: { name, arguments: JSON.stringify(args) },
-  };
-}
-
-function parseToolArguments(call: ToolCall): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(call.function.arguments);
-    return typeof parsed === 'object' && parsed ? parsed : {};
-  } catch {
-    return {};
-  }
-}
 
 export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const {
@@ -108,8 +70,8 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const planningSystem =
     combinedSystem != null ? ({ role: 'system', content: combinedSystem } as const) : undefined;
 
-  const planningMessages: any[] = planningSystem
-    ? [planningSystem, ...baseMessages.filter((entry: any) => entry.role !== 'system')]
+  const planningMessages: ModelMessage[] = planningSystem
+    ? [planningSystem, ...baseMessages.filter((entry) => entry.role !== 'system')]
     : baseMessages.slice();
 
   let convo = planningMessages.slice();
@@ -131,7 +93,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     try {
       const dbg = buildDebugBody({
         modelId: chat.settings.model,
-        messages: convo as any,
+        messages: convo,
         stream: false,
         temperature: chat.settings.temperature,
         top_p: chat.settings.top_p,
@@ -148,7 +110,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     const resp = await chatCompletionImpl({
       apiKey,
       model: chat.settings.model,
-      messages: convo as any,
+      messages: convo,
       temperature: chat.settings.temperature,
       top_p: chat.settings.top_p,
       max_tokens: chat.settings.max_tokens,
@@ -183,7 +145,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
 
     if (toolCalls.length > 0) {
       usedTool = true;
-      convo.push({ role: 'assistant', content: null, tool_calls: toolCalls } as any);
+      convo.push({ role: 'assistant', content: null, tool_calls: toolCalls });
     }
 
     if (toolCalls.length === 0) {
@@ -222,17 +184,17 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
             name: 'web_search',
             tool_call_id: tc.id,
             content: JSON.stringify(payload),
-          } as any);
+          });
         } else {
-          if (searchResult.error === 'Missing BRAVE_SEARCH_API_KEY') {
-            set((state) => ({ ui: { ...state.ui, notice: 'Missing BRAVE_SEARCH_API_KEY' } }));
+          if (searchResult.error === NOTICE_MISSING_BRAVE_KEY) {
+            set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_BRAVE_KEY } }));
           }
           convo.push({
             role: 'tool',
             name: 'web_search',
             tool_call_id: tc.id,
             content: 'No results',
-          } as any);
+          });
         }
         usedTool = true;
         continue;
@@ -256,7 +218,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
               name: callName,
               tool_call_id: tc.id,
               content: tutorOutcome.payload,
-            } as any);
+            });
           }
           usedTool = true;
         }
@@ -264,7 +226,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     }
 
     const followup = followUpPrompt({ searchEnabled, searchProvider });
-    convo.push({ role: 'user', content: followup } as any);
+    convo.push({ role: 'user', content: followup });
     rounds += 1;
   }
 
@@ -275,9 +237,10 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
         ? chat.settings.system
         : DEFAULT_BASE_SYSTEM;
   const hasResults = shouldAppendSources(aggregatedResults);
-  const finalSystem = hasResults
-    ? `${baseSystem}${formatSourcesBlock(aggregatedResults, searchProvider)}`
-    : baseSystem;
+  const sourcesAppendix = hasResults
+    ? formatSourcesBlock(aggregatedResults, searchProvider)
+    : undefined;
+  const finalSystem = combineSystem(baseSystem, [], sourcesAppendix) ?? baseSystem;
 
   return { finalSystem, usedTutorContentTool, hasSearchResults: hasResults };
 }
@@ -484,9 +447,9 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     chat.settings.tutor_mode,
     false,
   );
-  const providerSortSnapshot = snapshotSettings?.providerSort;
+  const providerSortSnapshot = (snapshotSettings as Record<string, unknown>).providerSort;
   const providerSort: ProviderSort | undefined =
-    providerSortSnapshot === 'price' || providerSortSnapshot === 'throughput'
+    providerSortSnapshot === ProviderSort.Price || providerSortSnapshot === ProviderSort.Throughput
       ? (providerSortSnapshot as ProviderSort)
       : undefined;
 

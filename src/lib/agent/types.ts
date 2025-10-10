@@ -1,5 +1,6 @@
 import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
+import { ProviderSort } from '@/lib/models/providerSort';
 import type { SetState, GetState } from 'zustand';
 import type { StoreState, UIState } from '@/lib/store/types';
 
@@ -7,9 +8,45 @@ export type StoreSetter = SetState<StoreState>;
 export type StoreGetter = GetState<StoreState>;
 export type PersistMessage = (message: Message) => Promise<void>;
 
-export type ModelMessage = Record<string, unknown>;
+export type ModelContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+  | { type: 'file'; file: { filename: string; file_data: string } }
+  | { type: 'input_audio'; input_audio: { data: string; format: string } };
 
-export type ProviderSort = 'price' | 'throughput' | undefined;
+export type SystemModelMessage = {
+  role: 'system';
+  content: string;
+};
+
+export type UserModelMessage = {
+  role: 'user';
+  content: string | ModelContentBlock[];
+  name?: string;
+};
+
+export type AssistantModelMessage = {
+  role: 'assistant';
+  content: string | ModelContentBlock[] | null;
+  name?: string;
+  annotations?: unknown;
+  tool_calls?: ToolCall[];
+};
+
+export type ToolModelMessage = {
+  role: 'tool';
+  content: string;
+  tool_call_id: string;
+  name?: string;
+};
+
+export type ModelMessage =
+  | SystemModelMessage
+  | UserModelMessage
+  | AssistantModelMessage
+  | ToolModelMessage;
+
+export { ProviderSort };
 
 export type PdfPluginConfig = {
   id: 'file-parser';
@@ -83,7 +120,7 @@ export type PlanTurnOptions = {
   toolDefinition?: ToolDefinition[];
   searchEnabled: boolean;
   searchProvider: SearchProvider;
-  providerSort: ProviderSort;
+  providerSort?: ProviderSort;
   apiKey: string;
   controller: AbortController;
   set: StoreSetter;
@@ -136,7 +173,7 @@ export type StreamFinalOptions = {
   messages: ModelMessage[];
   controller: AbortController;
   apiKey: string;
-  providerSort: ProviderSort;
+  providerSort?: ProviderSort;
   set: StoreSetter;
   get: StoreGetter;
   models: ORModel[];

@@ -2,6 +2,8 @@ import type { Message } from '@/lib/types';
 import { chatCompletion } from '@/lib/openrouter';
 import { DEFAULT_TUTOR_MEMORY_FREQUENCY } from '@/lib/constants';
 import { estimateTokens } from '@/lib/tokenEstimate';
+import type { ModelMessage } from '@/lib/agent/types';
+import { ProviderSort } from '@/lib/models/providerSort';
 
 export const EMPTY_TUTOR_MEMORY = `Memory:\n- Goals:\n  - Not recorded yet.\n- Progress:\n  - Not recorded yet.\n- Preferences:\n  - Not recorded yet.`;
 
@@ -140,7 +142,7 @@ export async function generateTutorWelcomeMessage(params: {
     'Requirements: 1-2 sentences, under 35 words total, second-person voice, no lists, no mention of "memory".',
     'Weave in one specific detail from the learner notes and end by inviting them to start.',
   ].join('\n');
-  const messages = [
+  const messages: ModelMessage[] = [
     {
       role: 'system',
       content:
@@ -155,10 +157,16 @@ export async function generateTutorWelcomeMessage(params: {
     max_tokens: 220,
     temperature: 0.65,
     top_p: 0.9,
-    providerSort: 'throughput',
+    providerSort: ProviderSort.Throughput,
     signal,
   });
-  const text = (response?.choices?.[0]?.message?.content || '').trim();
+  const messageContent = response?.choices?.[0]?.message?.content;
+  const text = Array.isArray(messageContent)
+    ? messageContent
+        .map((block) => (block.type === 'text' ? block.text : ''))
+        .join(' ')
+        .trim()
+    : (messageContent ?? '').toString().trim();
   if (!text) throw new Error('tutor_welcome_empty');
   return text;
 }
@@ -176,7 +184,13 @@ export async function updateTutorMemory(params: {
   const formatted = lastMessages
     .map((m) => {
       const role = m.role === 'assistant' ? 'Tutor' : m.role === 'user' ? 'Learner' : m.role;
-      const chunks = [m.content];
+      const baseContent = Array.isArray(m.content)
+        ? m.content
+            .map((block) => (block.type === 'text' ? block.text : ''))
+            .filter(Boolean)
+            .join(' ')
+        : m.content;
+      const chunks = [baseContent];
       if (m.hiddenContent) chunks.push(m.hiddenContent);
       const body = chunks.filter((x) => typeof x === 'string' && x.trim()).join('\n\n');
       if (!body) return '';
@@ -198,7 +212,7 @@ export async function updateTutorMemory(params: {
   ]
     .filter(Boolean)
     .join('\n');
-  const messages = [
+  const messages: ModelMessage[] = [
     {
       role: 'system',
       content:
@@ -214,7 +228,13 @@ export async function updateTutorMemory(params: {
     top_p: 0.4,
     temperature: 0.2,
   });
-  const text = (response?.choices?.[0]?.message?.content || '').trim();
+  const updateContent = response?.choices?.[0]?.message?.content;
+  const text = Array.isArray(updateContent)
+    ? updateContent
+        .map((block) => (block.type === 'text' ? block.text : ''))
+        .join(' ')
+        .trim()
+    : (updateContent ?? '').toString().trim();
   const normalized = normalizeTutorMemory(text);
   return {
     memory: normalized,

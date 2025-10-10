@@ -17,6 +17,9 @@ business logic that is easy to test.
   (send, regenerate, tests) shares the exact same preamble logic. These modules coordinate message
   planning, tool invocation, tutor flows, and research orchestration without touching transport
   concerns directly.
+  - `request.ts` centralizes provider routing and the `composePlugins` helper. The PDF parser plugin
+    is only attached when uploads are present, and the OpenRouter web plugin is enabled when the UI
+    requests OpenRouter-backed search. Keeping this logic in one place avoids divergent payloads.
 - **Services** — Cross-cutting orchestrators in `src/lib/services/*` that connect the store to the
   agent layer. `services/turns.ts` owns send/regenerate flows, while `services/controllers.ts`
   isolates AbortController lifecycles outside persistence. `messagePipeline.ts` remains the entry
@@ -83,3 +86,15 @@ business logic that is easy to test.
   preferences. Ephemeral controllers stay outside persistence to avoid corrupting restores. A
   versioned upgrade hook in `src/lib/db.ts` sanitizes historical messages (trimmed tutor context,
   filtered attachments) so newer features do not have to guard every field.
+
+## Extending Providers or Tools
+
+1. Add provider metadata to `src/data/curatedModels.ts` and update `src/lib/models.ts` if new
+   capability flags are required (e.g., vision, audio).
+2. Implement transport changes in `src/lib/openrouter.ts` (or a new client module) so all callers
+   inherit the contract. Request payload tweaks should flow through `src/lib/agent/request.ts`.
+3. Define tool schemas under `src/lib/agent/searchFlow.ts` (or a new module) and surface helpers
+   from the agent layer—never from UI components.
+4. Register tool parsing or execution in `src/lib/services/messagePipeline.ts` and keep side-effects
+   (store writes, notices) funneled through services.
+5. Update `CONFIGURATION.md` with any new environment variables and document proxy requirements.

@@ -124,9 +124,9 @@ export function createChatSlice(
         updatedAt: now,
         settings: baseSettings,
       };
-      await saveChat(chat);
       set((s) => ({ chats: [chat, ...s.chats], selectedChatId: id }));
       if (baseSettings.tutor_mode) primeTutorWelcome(id, { set, get });
+      saveChat(chat).catch(() => undefined);
       // Reset ephemeral "next" flags so they only apply to this new chat
       set((s) => ({
         ui: {

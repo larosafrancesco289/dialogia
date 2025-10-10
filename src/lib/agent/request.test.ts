@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { providerSortFromRoutePref, composePlugins, buildDebugBody, pdfPlugins } from './request';
+import { ProviderSort } from '@/lib/models/providerSort';
 
 test('providerSortFromRoutePref maps UI preferences to provider sort', () => {
-  assert.equal(providerSortFromRoutePref('speed'), 'throughput');
-  assert.equal(providerSortFromRoutePref('cost'), 'price');
+  assert.equal(providerSortFromRoutePref('speed'), ProviderSort.Throughput);
+  assert.equal(providerSortFromRoutePref('cost'), ProviderSort.Price);
   assert.equal(providerSortFromRoutePref(undefined), undefined);
   assert.equal(providerSortFromRoutePref(null as any), undefined);
 });
@@ -50,7 +51,7 @@ test('buildDebugBody includes optional knobs when provided', () => {
       },
     ],
     toolChoice: 'auto',
-    providerSort: 'price',
+    providerSort: ProviderSort.Price,
     plugins: [{ id: 'web' }],
     canImageOut: true,
   });
