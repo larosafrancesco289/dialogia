@@ -16,8 +16,10 @@ import MessagePanels, { type MessagePanelsProps } from '@/components/message/Mes
 import MessageCard from '@/components/message/MessageCard';
 import { useMessageScrolling } from '@/components/message/useMessageScrolling';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
+
+const EMPTY_MESSAGES: Message[] = [];
 export function MessageList({ chatId }: { chatId: string }) {
-  const messages = useChatStore((s) => s.messages[chatId] ?? []);
+  const messages = useChatStore((s) => s.messages[chatId] ?? EMPTY_MESSAGES);
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const models = useChatStore((s) => s.models);
   const isStreaming = useChatStore((s) => s.ui.isStreaming);

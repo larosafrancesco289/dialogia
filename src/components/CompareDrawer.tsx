@@ -10,28 +10,35 @@ import { XCircleIcon, StopIcon } from '@heroicons/react/24/outline';
 import { computeCost } from '@/lib/cost';
 import { findModelById } from '@/lib/models';
 import ModelSearch from '@/components/ModelSearch';
+import {
+  selectCompareState,
+  selectCurrentChat,
+  selectFavoriteModelIds,
+  selectHiddenModelIds,
+  selectModels,
+  selectNextModel,
+} from '@/lib/store/selectors';
 
 export default function CompareDrawer() {
   // Subscribe to precise store slices to avoid stale values
-  const ui = useChatStore((s) => s.ui);
   const setCompare = useChatStore((s) => s.setCompare);
   const closeCompare = useChatStore((s) => s.closeCompare);
   const runCompare = useChatStore((s) => s.runCompare);
   const stopCompare = useChatStore((s) => s.stopCompare);
-  const models = useChatStore((s) => s.models);
-  const favoriteModelIds = useChatStore((s) => s.favoriteModelIds);
-  const hiddenModelIds = useChatStore((s) => s.hiddenModelIds);
-  const chats = useChatStore((s) => s.chats);
-  const selectedChatId = useChatStore((s) => s.selectedChatId);
+  const models = useChatStore(selectModels);
+  const favoriteModelIds = useChatStore(selectFavoriteModelIds);
+  const hiddenModelIds = useChatStore(selectHiddenModelIds);
+  const chat = useChatStore(selectCurrentChat);
+  const compareState = useChatStore(selectCompareState);
+  const nextModel = useChatStore(selectNextModel);
   const loadModels = useChatStore((s) => s.loadModels);
-  const compare = ui.compare || { isOpen: false, prompt: '', selectedModelIds: [], runs: {} };
+  const compare = compareState || { isOpen: false, prompt: '', selectedModelIds: [], runs: {} };
   const updateChatSettings = useChatStore((s) => s.updateChatSettings);
   const [closing, setClosing] = useState(false);
   const closeWithAnim = () => {
     setClosing(true);
     window.setTimeout(() => closeCompare(), 190);
   };
-  const chat = chats.find((c) => c.id === selectedChatId);
   const appendAssistantMessage = useChatStore((s) => s.appendAssistantMessage);
   const [lightbox, setLightbox] = useState<{
     images: { src: string; name?: string }[];
@@ -47,7 +54,7 @@ export default function CompareDrawer() {
       .filter((id): id is string => Boolean(id && typeof id === 'string' && allowed.has(id)))
       .map((id) => ({ id, name: nameById.get(id) || id }));
   }, [favoriteModelIds, models]);
-  const currentModelId = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
+  const currentModelId = chat?.settings.model || nextModel || DEFAULT_MODEL_ID;
   const selectedOptions = useMemo(() => {
     const map = new Map<string, { id: string; name?: string }>();
     const fromModels = new Map((models || []).map((m) => [m.id, m.name as string | undefined]));

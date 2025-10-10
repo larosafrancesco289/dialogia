@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deepResearch } from '@/lib/deepResearch';
 import { getBraveSearchKey, requireServerOpenRouterKey } from '@/lib/config';
+import { ProviderSort } from '@/lib/models/providerSort';
 
 export async function POST(req: NextRequest) {
   let apiKey: string;
@@ -25,6 +26,12 @@ export async function POST(req: NextRequest) {
   if (!model) return NextResponse.json({ error: 'Missing model' }, { status: 400 });
 
   try {
+    const rawProviderSort = body?.providerSort;
+    const providerSort =
+      rawProviderSort === ProviderSort.Price || rawProviderSort === ProviderSort.Throughput
+        ? (rawProviderSort as ProviderSort)
+        : undefined;
+
     const result = await deepResearch({
       apiKey,
       task,
@@ -33,7 +40,7 @@ export async function POST(req: NextRequest) {
       style: body?.style,
       cite: body?.cite,
       maxIterations: typeof body?.maxIterations === 'number' ? body.maxIterations : undefined,
-      providerSort: body?.providerSort,
+      providerSort,
     });
     return NextResponse.json(result, { status: 200 });
   } catch (e: any) {

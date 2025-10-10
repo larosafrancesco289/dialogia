@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AUTH_COOKIE_NAME } from '@/lib/auth/shared';
 import { verifyAuthTokenEdge } from '@/lib/auth/edge';
+import { isProd } from '@/lib/config';
 
 // URLs that do not require auth
 const PUBLIC_PATHS = [
@@ -26,7 +27,7 @@ async function verifyToken(token: string): Promise<boolean> {
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   // In development, bypass the access gate entirely for easier local work
-  if (process.env.NODE_ENV !== 'production') {
+  if (!isProd()) {
     return NextResponse.next();
   }
   if (isPublicPath(pathname)) return NextResponse.next();

@@ -3,6 +3,7 @@ import { stripLeadingToolJson } from '@/lib/agent/streaming';
 import type { Message } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
+import { computeMetrics } from '@/lib/services/metrics';
 
 export type StreamExtras = {
   usage?: {
@@ -49,6 +50,7 @@ export function createMessageStreamCallbacks(
   const getMessages = () => get().messages[chatId] ?? [];
 
   const flushDelta = (delta: string) => {
+    if (!delta) return;
     set((state) => {
       const list = state.messages[chatId] ?? [];
       const updated = list.map((msg) =>
@@ -59,6 +61,7 @@ export function createMessageStreamCallbacks(
   };
 
   const updateReasoning = (delta: string) => {
+    if (!delta) return;
     set((state) => {
       const list = state.messages[chatId] ?? [];
       const updated = list.map((msg) =>
@@ -153,16 +156,12 @@ export function createMessageStreamCallbacks(
       const currentMessages = getMessages();
       const current = currentMessages.find((msg) => msg.id === assistantMessage.id);
       const finishedAt = performance.now();
-      const ttftMs = firstTokenAt
-        ? Math.max(0, Math.round(firstTokenAt - timing.startedAt))
-        : undefined;
-      const completionMs = Math.max(0, Math.round(finishedAt - timing.startedAt));
-      const promptTokens = extras?.usage?.prompt_tokens ?? extras?.usage?.input_tokens;
-      const completionTokens = extras?.usage?.completion_tokens ?? extras?.usage?.output_tokens;
-      const tokensPerSec =
-        completionTokens && completionMs
-          ? +(completionTokens / (completionMs / 1000)).toFixed(2)
-          : undefined;
+      const metrics = computeMetrics({
+        startedAt: timing.startedAt,
+        firstTokenAt,
+        finishedAt,
+        usage: extras?.usage,
+      });
       const finalMessage: Message = {
         ...assistantMessage,
         content: stripLeadingToolJson(full || ''),
@@ -172,9 +171,9 @@ export function createMessageStreamCallbacks(
         genSettings: (current as any)?.genSettings,
         tutor: (current as any)?.tutor,
         hiddenContent: (current as any)?.hiddenContent,
-        metrics: { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec } as any,
-        tokensIn: promptTokens,
-        tokensOut: completionTokens,
+        metrics,
+        tokensIn: metrics.promptTokens,
+        tokensOut: metrics.completionTokens,
         annotations: current?.annotations ?? extras?.annotations,
       } as any;
       set((state) => {

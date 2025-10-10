@@ -1,6 +1,6 @@
 import type { StoreState } from '@/lib/store/types';
 import { fetchModels } from '@/lib/openrouter';
-import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
+import { requireClientKeyOrProxy } from '@/lib/config';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
 import { ensureListsAndFilterCached } from '@/lib/zdr/cache';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
@@ -8,6 +8,7 @@ import { CURATED_MODELS } from '@/data/curatedModels';
 import { createModelIndex, EMPTY_MODEL_INDEX, formatModelLabel } from '@/lib/models';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { isApiError } from '@/lib/api/errors';
+import { NOTICE_INVALID_KEY, NOTICE_MISSING_CLIENT_KEY } from '@/lib/store/notices';
 
 export const createModelSlice = createStoreSlice((set, get) => {
   let isLoadingModels = false;
@@ -20,11 +21,13 @@ export const createModelSlice = createStoreSlice((set, get) => {
 
     async loadModels(_opts?: { showErrors?: boolean }) {
       if (isLoadingModels) return;
-      const useProxy = isOpenRouterProxyEnabled();
-      const key = getPublicOpenRouterKey();
-      if (!key && !useProxy) {
+      let key: string | undefined;
+      try {
+        const status = requireClientKeyOrProxy();
+        key = status.key;
+      } catch {
         set((s) => ({
-          ui: { ...s.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY' },
+          ui: { ...s.ui, notice: NOTICE_MISSING_CLIENT_KEY },
         }));
         return;
       }
@@ -80,7 +83,7 @@ export const createModelSlice = createStoreSlice((set, get) => {
         set({ models, modelIndex: createModelIndex(models) });
       } catch (e: any) {
         if (isApiError(e) && e.code === 'unauthorized')
-          set((s) => ({ ui: { ...s.ui, notice: 'Invalid API key' } }));
+          set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
       } finally {
         isLoadingModels = false;
       }

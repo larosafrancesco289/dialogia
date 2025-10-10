@@ -1,5 +1,12 @@
 import type { ORModel } from '@/lib/types';
-import { orChatCompletions, orFetchModels, orFetchZdrEndpoints } from '@/lib/api/openrouterClient';
+import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/agent/types';
+import type { ProviderSort } from '@/lib/models/providerSort';
+import {
+  orChatCompletions,
+  orFetchModels,
+  orFetchZdrEndpoints,
+  type ChatCompletionPayload,
+} from '@/lib/api/openrouterClient';
 import { buildChatBody } from '@/lib/agent/request';
 import { consumeSse } from '@/lib/api/stream';
 import { ApiError, responseError } from '@/lib/api/errors';
@@ -111,7 +118,7 @@ export async function chatCompletion(params: {
   apiKey: string;
   model: string;
   // Loosen type to allow multimodal content arrays and tool roles
-  messages: any[];
+  messages: ModelMessage[];
   // Enable image generation when model supports it
   modalities?: Array<'image' | 'text'>;
   temperature?: number;
@@ -119,13 +126,13 @@ export async function chatCompletion(params: {
   max_tokens?: number;
   reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
   reasoning_tokens?: number;
-  tools?: any[];
+  tools?: ToolDefinition[];
   tool_choice?: 'auto' | { type: 'function'; function: { name: string } };
   parallel_tool_calls?: boolean;
   signal?: AbortSignal;
-  providerSort?: 'price' | 'throughput';
-  plugins?: any[];
-}) {
+  providerSort?: ProviderSort;
+  plugins?: PluginConfig[];
+}): Promise<ChatCompletionPayload> {
   const body = buildChatBody({
     model: params.model,
     messages: params.messages,
@@ -147,14 +154,15 @@ export async function chatCompletion(params: {
     throw responseError(res, { code: 'unauthorized', message: 'Invalid API key' });
   if (res.status === 429) throw responseError(res, { code: 'rate_limited', message: 'Rate limited' });
   if (!res.ok) throw responseError(res, { code: 'openrouter_chat_failed' });
-  return res.json();
+  const payload: ChatCompletionPayload = await res.json();
+  return payload;
 }
 
 export async function streamChatCompletion(params: {
   apiKey: string;
   model: string;
   // Allow multimodal content arrays
-  messages: any[];
+  messages: ModelMessage[];
   // Enable image generation when model supports it
   modalities?: Array<'image' | 'text'>;
   temperature?: number;
@@ -164,13 +172,13 @@ export async function streamChatCompletion(params: {
   reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
   reasoning_tokens?: number;
   // Tool calling (optional)
-  tools?: any[];
+  tools?: ToolDefinition[];
   tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
   parallel_tool_calls?: boolean;
   signal?: AbortSignal;
   callbacks?: StreamCallbacks;
-  providerSort?: 'price' | 'throughput';
-  plugins?: any[];
+  providerSort?: ProviderSort;
+  plugins?: PluginConfig[];
 }) {
   const callbacks = params.callbacks;
   const body = buildChatBody({

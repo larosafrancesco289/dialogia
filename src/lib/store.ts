@@ -12,9 +12,9 @@ import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 
 export const useChatStore = create<StoreState>()(
   persist(
-    ((set: StoreSetter, get: StoreGetter, store: unknown) => {
-      const sliceSet = set as StoreSetter;
-      const sliceGet = get as StoreGetter;
+    (set, get, store) => {
+      const sliceSet: StoreSetter = set;
+      const sliceGet: StoreGetter = get;
       const sliceStore = store as any;
 
       return {
@@ -32,13 +32,18 @@ export const useChatStore = create<StoreState>()(
         ...createUiSlice(sliceSet, sliceGet, sliceStore),
         ...createTutorSlice(sliceSet, sliceGet, sliceStore),
       };
-    }) as any,
+    },
     {
       name: 'dialogia-ui',
       version: 1,
-      migrate: ((persistedState: unknown) => (persistedState as Partial<StoreState>) ?? {}) as any,
+      migrate: (persistedState: unknown): Partial<StoreState> => {
+        if (persistedState && typeof persistedState === 'object') {
+          return persistedState as Partial<StoreState>;
+        }
+        return {};
+      },
       // Persist only durable preferences; session-scoped flags (next*) are intentionally omitted.
-      partialize: ((s: StoreState) => ({
+      partialize: (s: StoreState) => ({
         selectedChatId: s.selectedChatId,
         favoriteModelIds: s.favoriteModelIds,
         hiddenModelIds: s.hiddenModelIds,
@@ -59,7 +64,7 @@ export const useChatStore = create<StoreState>()(
           tutorGlobalMemory: s.ui.tutorGlobalMemory,
           forceTutorMode: s.ui.forceTutorMode,
         },
-      })) as any,
-    } as any,
-  ) as any,
+      }) as Partial<StoreState>,
+    },
+  ),
 );

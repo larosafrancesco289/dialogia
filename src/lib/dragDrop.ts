@@ -1,5 +1,6 @@
 'use client';
-import { useRef } from 'react';
+import { useCallback } from 'react';
+import type { DragEvent as ReactDragEvent } from 'react';
 import { useChatStore } from '@/lib/store';
 
 export interface DragData {
@@ -7,33 +8,43 @@ export interface DragData {
   type: 'folder' | 'chat';
 }
 
+let sharedDragData: DragData | null = null;
+
+const setSharedDragData = (data: DragData | null) => {
+  sharedDragData = data;
+};
+
+const getSharedDragData = () => sharedDragData;
+
 export function useDragAndDrop() {
-  const { moveChatToFolder } = useChatStore();
-  const dragDataRef = useRef<DragData | null>(null);
+  const moveChatToFolder = useChatStore((s) => s.moveChatToFolder);
 
-  const handleDragStart = (id: string, type: 'folder' | 'chat') => {
-    dragDataRef.current = { id, type };
-  };
+  const handleDragStart = useCallback((id: string, type: DragData['type']) => {
+    setSharedDragData({ id, type });
+  }, []);
 
-  const handleDragEnd = () => {
-    dragDataRef.current = null;
-  };
+  const handleDragEnd = useCallback(() => {
+    setSharedDragData(null);
+  }, []);
 
-  const handleDragOver = (event: React.DragEvent) => {
+  const handleDragOver = useCallback((event: ReactDragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-  };
+  }, []);
 
-  const handleDrop = async (targetFolderId?: string) => {
-    const data = dragDataRef.current;
-    if (!data) return;
-    if (data.type === 'chat') {
-      await moveChatToFolder(data.id, targetFolderId);
-    }
-    dragDataRef.current = null;
-  };
+  const handleDrop = useCallback(
+    async (targetFolderId?: string) => {
+      const data = getSharedDragData();
+      if (!data) return;
+      if (data.type === 'chat') {
+        await moveChatToFolder(data.id, targetFolderId);
+      }
+      setSharedDragData(null);
+    },
+    [moveChatToFolder],
+  );
 
-  const getDragData = () => dragDataRef.current;
+  const getDragData = useCallback(() => getSharedDragData(), []);
 
   return {
     handleDragStart,

@@ -1,4 +1,50 @@
 import { isOpenRouterProxyEnabled } from '@/lib/config';
+import type { ModelContentBlock, ToolCall } from '@/lib/agent/types';
+
+export type Usage = {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+};
+
+export type ChatCompletionMessage = {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | ModelContentBlock[] | null;
+  tool_calls?: ToolCall[];
+  annotations?: unknown;
+};
+
+export type ChatCompletionChoice = {
+  index: number;
+  finish_reason?: string | null;
+  message: ChatCompletionMessage;
+};
+
+export type ChatCompletionPayload = {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: ChatCompletionChoice[];
+  usage?: Usage;
+};
+
+export type SseDelta = {
+  id?: string;
+  object?: string;
+  model?: string;
+  created?: number;
+  choices?: Array<{
+    index?: number;
+    finish_reason?: string | null;
+    delta?: Partial<ChatCompletionMessage> & {
+      reasoning?: string;
+    };
+  }>;
+  usage?: Usage;
+};
 
 const OR_BASE_URL = 'https://openrouter.ai/api/v1';
 const PROXY_BASE_PATH = '/api/openrouter';

@@ -2,9 +2,10 @@
 import { useChatStore } from '@/lib/store';
 import { useEffect, useState } from 'react';
 import InlineNotice from '@/components/InlineNotice';
+import { selectNotice } from '@/lib/store/selectors';
 
 export default function GlobalNotice() {
-  const notice = useChatStore((s) => s.ui.notice);
+  const notice = useChatStore(selectNotice);
   const setUI = useChatStore((s) => s.setUI);
   const [visible, setVisible] = useState(false);
 

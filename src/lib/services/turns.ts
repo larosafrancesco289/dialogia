@@ -7,7 +7,7 @@ import type { Attachment, Message } from '@/lib/types';
 import { type StoreSetter, type StoreGetter, type StoreAccess } from '@/lib/agent/types';
 import { saveMessage, saveChat } from '@/lib/db';
 import { prepareAttachmentsForModel } from '@/lib/agent/attachments';
-import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
+import { requireClientKeyOrProxy } from '@/lib/config';
 import {
   DEFAULT_TUTOR_MODEL_ID,
   DEFAULT_TUTOR_MEMORY_MODEL_ID,
@@ -26,6 +26,11 @@ import { shouldShortCircuitTutor } from '@/lib/agent/policy';
 import { guardZdrOrNotify } from '@/lib/zdr/cache';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
 import { isApiError } from '@/lib/api/errors';
+import {
+  NOTICE_INVALID_KEY,
+  NOTICE_MISSING_CLIENT_KEY,
+  NOTICE_RATE_LIMITED,
+} from '@/lib/store/notices';
 
 export type SendTurnOptions = {
   content: string;
@@ -114,10 +119,12 @@ export async function persistTutorForMessage({ messageId, store }: PersistTutorA
 }
 
 export async function sendUserTurn({ content, attachments, set, get }: SendTurnOptions) {
-  const useProxy = isOpenRouterProxyEnabled();
-  const key = getPublicOpenRouterKey();
-  if (!key && !useProxy) {
-    set((state) => ({ ui: { ...state.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY' } }));
+  let key: string | undefined;
+  try {
+    const status = requireClientKeyOrProxy();
+    key = status.key;
+  } catch {
+    set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_CLIENT_KEY } }));
     return;
   }
 
@@ -420,10 +427,10 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     });
   } catch (error: any) {
     if (isApiError(error) && error.code === 'unauthorized') {
-      set((state) => ({ ui: { ...state.ui, isStreaming: false, notice: 'Invalid API key' } }));
+      set((state) => ({ ui: { ...state.ui, isStreaming: false, notice: NOTICE_INVALID_KEY } }));
     } else if (isApiError(error) && error.code === 'rate_limited') {
       set((state) => ({
-        ui: { ...state.ui, isStreaming: false, notice: 'Rate limited. Retry later.' },
+        ui: { ...state.ui, isStreaming: false, notice: NOTICE_RATE_LIMITED },
       }));
     }
     clearTurnController(chatId);
@@ -438,10 +445,12 @@ export type RegenerateTurnArgs = {
 };
 
 export async function regenerateTurn({ messageId, overrideModelId, set, get }: RegenerateTurnArgs) {
-  const useProxy = isOpenRouterProxyEnabled();
-  const key = getPublicOpenRouterKey();
-  if (!key && !useProxy) {
-    set((state) => ({ ui: { ...state.ui, notice: 'Missing NEXT_PUBLIC_OPENROUTER_API_KEY' } }));
+  let key: string | undefined;
+  try {
+    const status = requireClientKeyOrProxy();
+    key = status.key;
+  } catch {
+    set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_CLIENT_KEY } }));
     return;
   }
 
@@ -506,10 +515,10 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
     });
   } catch (error: any) {
     if (isApiError(error) && error.code === 'unauthorized') {
-      set((state) => ({ ui: { ...state.ui, isStreaming: false, notice: 'Invalid API key' } }));
+      set((state) => ({ ui: { ...state.ui, isStreaming: false, notice: NOTICE_INVALID_KEY } }));
     } else if (isApiError(error) && error.code === 'rate_limited') {
       set((state) => ({
-        ui: { ...state.ui, isStreaming: false, notice: 'Rate limited. Retry later.' },
+        ui: { ...state.ui, isStreaming: false, notice: NOTICE_RATE_LIMITED },
       }));
     }
     clearTurnController(chatId);

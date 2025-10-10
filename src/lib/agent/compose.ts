@@ -8,7 +8,8 @@ import { composePlugins, providerSortFromRoutePref } from '@/lib/agent/request';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
 import { normalizeTutorMemory } from '@/lib/agent/tutorMemory';
 import { type ComposeTurnArgs, type TurnComposition, type ToolDefinition } from '@/lib/agent/types';
-import { loadTutorProfile, summarizeTutorProfile } from '@/lib/tutorProfile';
+import tutorProfileService from '@/lib/tutorProfile';
+import { combineSystem } from '@/lib/agent/system';
 
 const TOOL_PREAMBLE =
   'You have access to a function tool named "web_search" that retrieves up-to-date web results.\n\nWhen you need current, factual, or source-backed information, call the tool first. If you call a tool, respond with ONLY tool_calls (no user-facing text). After the tool returns, write the final answer that cites sources inline as [n] using the numbering provided.\n\nweb_search(args): { query: string, count?: integer 1-10 }. Choose a focused query and a small count, and avoid unnecessary calls.';
@@ -64,8 +65,8 @@ export async function composeTurn({
     const tutorPreamble = tutorGloballyEnabled ? getTutorPreamble() : '';
     if (tutorPreamble) preambles.push(tutorPreamble);
     try {
-      const profile = await loadTutorProfile(chat.id);
-      const summary = summarizeTutorProfile(profile);
+      const profile = await tutorProfileService.loadTutorProfile(chat.id);
+      const summary = tutorProfileService.summarizeTutorProfile(profile);
       if (summary) preambles.push(`Learner Profile:\n${summary}`);
     } catch {
       // ignore profile load failures
@@ -75,12 +76,9 @@ export async function composeTurn({
     }
   }
 
-  const baseSystem = typeof chat.settings.system === 'string' ? chat.settings.system.trim() : '';
-  const preambleBlock = preambles.filter(Boolean).join('\n\n');
-  let system: string | undefined;
-  if (preambleBlock && baseSystem) system = `${preambleBlock}\n\n${baseSystem}`;
-  else if (preambleBlock) system = preambleBlock;
-  else system = baseSystem || undefined;
+  const baseSystem =
+    typeof chat.settings.system === 'string' ? chat.settings.system : undefined;
+  const system = combineSystem(baseSystem, preambles);
 
   const newUserContent = newUser?.content;
   const userAttachments = preparedAttachments.length > 0 ? preparedAttachments : undefined;

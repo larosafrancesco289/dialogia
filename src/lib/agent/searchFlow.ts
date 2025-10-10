@@ -4,6 +4,7 @@
 import type { StoreState } from '@/lib/store/types';
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 import type { SearchProvider, SearchResult, ToolDefinition, StoreSetter } from '@/lib/agent/types';
+import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
 
 export function getSearchToolDefinition(): ToolDefinition[] {
   return [
@@ -49,7 +50,7 @@ export async function runBraveSearch(
       return {
         ok: false,
         results: [],
-        error: res.status === 400 ? 'Missing BRAVE_SEARCH_API_KEY' : `HTTP ${res.status}`,
+        error: res.status === 400 ? NOTICE_MISSING_BRAVE_KEY : `HTTP ${res.status}`,
       };
     }
     const data: any = await res.json();

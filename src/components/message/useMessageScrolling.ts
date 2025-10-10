@@ -30,86 +30,96 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   const onScrollAwayRef = useRef(onScrollAway);
   const autoScrollEnabledRef = useRef(true);
   const programmaticScrollRef = useRef(false);
-  const programmaticTimeoutRef = useRef<number | null>(null);
-
-  const FOLLOW_THRESHOLD_PX = 24;
+  const atBottomRef = useRef(true);
+  const lastMessageMetaRef = useRef<{
+    id?: string;
+    role?: Message['role'];
+    placeholder: boolean;
+    contentLen: number;
+    reasoningLen: number;
+  }>();
+  const followThresholdPx = isMobile ? 120 : 180;
+  const overflowThresholdPx = Math.max(48, followThresholdPx / 2);
 
   useEffect(() => {
     onScrollAwayRef.current = onScrollAway;
   }, [onScrollAway]);
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior) => {
+  const syncScrollState = useCallback(() => {
     const el = containerRef.current;
-    if (!el) return;
+    if (!el) return { wasProgrammatic: false, scrolledAway: false };
 
-    if (programmaticTimeoutRef.current !== null) {
-      clearTimeout(programmaticTimeoutRef.current);
-      programmaticTimeoutRef.current = null;
-    }
+    const distanceFromBottom = Math.max(el.scrollHeight - el.scrollTop - el.clientHeight, 0);
+    const withinFollowRange = distanceFromBottom <= followThresholdPx;
+    const hasOverflow = el.scrollHeight - el.clientHeight > overflowThresholdPx;
+    const showJumpNow = hasOverflow && !withinFollowRange;
+    const wasProgrammatic = programmaticScrollRef.current;
+    let scrolledAway = false;
 
-    programmaticScrollRef.current = true;
-    autoScrollEnabledRef.current = true;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const element = containerRef.current;
-        if (!element) {
-          programmaticScrollRef.current = false;
-          return;
-        }
-        const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
-        if (distance <= 1) {
-          programmaticScrollRef.current = false;
-          return;
-        }
-        try {
-          const target = Math.max(element.scrollHeight - element.clientHeight, 0);
-          element.scrollTo({ top: target, behavior });
-        } catch {
-          element.scrollTop = Math.max(element.scrollHeight - element.clientHeight, 0);
-        }
-      });
-    });
-
-    if (typeof window !== 'undefined') {
-      const duration = behavior === 'smooth' ? 500 : 0;
-      programmaticTimeoutRef.current = window.setTimeout(() => {
+    if (wasProgrammatic) {
+      if (withinFollowRange) {
         programmaticScrollRef.current = false;
-        programmaticTimeoutRef.current = null;
-      }, duration);
+      }
+      autoScrollEnabledRef.current = true;
+    } else if (!withinFollowRange) {
+      if (autoScrollEnabledRef.current) {
+        autoScrollEnabledRef.current = false;
+        scrolledAway = true;
+      }
+    } else {
+      autoScrollEnabledRef.current = true;
     }
-  }, []);
+
+    atBottomRef.current = withinFollowRange;
+    setAtBottom((prev) => (prev === withinFollowRange ? prev : withinFollowRange));
+    setShowJump((prev) => (prev === showJumpNow ? prev : showJumpNow));
+
+    return { wasProgrammatic, scrolledAway };
+  }, [followThresholdPx, overflowThresholdPx, setAtBottom, setShowJump]);
+
+  const scrollToBottom = useCallback(
+    (behavior: ScrollBehavior) => {
+      const el = containerRef.current;
+      if (!el) return;
+
+      programmaticScrollRef.current = true;
+      autoScrollEnabledRef.current = true;
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const element = containerRef.current;
+          if (!element) {
+            programmaticScrollRef.current = false;
+            return;
+          }
+
+          const target = Math.max(element.scrollHeight - element.clientHeight, 0);
+          const distance = target - element.scrollTop;
+
+          if (Math.abs(distance) <= 1) {
+            programmaticScrollRef.current = false;
+            syncScrollState();
+            return;
+          }
+
+          try {
+            element.scrollTo({ top: target, behavior });
+          } catch {
+            element.scrollTop = target;
+          }
+
+          requestAnimationFrame(() => {
+            syncScrollState();
+          });
+        });
+      });
+    },
+    [syncScrollState],
+  );
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-
-    const syncScrollState = () => {
-      const distanceFromBottom = Math.max(el.scrollHeight - el.scrollTop - el.clientHeight, 0);
-      const withinFollowRange = distanceFromBottom <= FOLLOW_THRESHOLD_PX;
-      const showJumpNow = !withinFollowRange;
-      const wasProgrammatic = programmaticScrollRef.current;
-      let scrolledAway = false;
-
-      if (wasProgrammatic) {
-        if (withinFollowRange) {
-          programmaticScrollRef.current = false;
-        }
-        autoScrollEnabledRef.current = true;
-      } else {
-        if (withinFollowRange) {
-          autoScrollEnabledRef.current = true;
-        } else if (autoScrollEnabledRef.current) {
-          autoScrollEnabledRef.current = false;
-          scrolledAway = true;
-        }
-      }
-
-      setAtBottom((prev) => (prev === withinFollowRange ? prev : withinFollowRange));
-      setShowJump((prev) => (prev === showJumpNow ? prev : showJumpNow));
-
-      return { wasProgrammatic, scrolledAway };
-    };
 
     const handleScroll = () => {
       const { wasProgrammatic, scrolledAway } = syncScrollState();
@@ -121,16 +131,11 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     syncScrollState();
     el.addEventListener('scroll', handleScroll, { passive: true } as any);
     return () => el.removeEventListener('scroll', handleScroll as any);
-  }, [isMobile]);
+  }, [isMobile, syncScrollState]);
 
   useEffect(() => {
-    return () => {
-      if (programmaticTimeoutRef.current !== null) {
-        clearTimeout(programmaticTimeoutRef.current);
-        programmaticTimeoutRef.current = null;
-      }
-    };
-  }, []);
+    syncScrollState();
+  }, [messages.length, syncScrollState]);
 
   const lastLen = useMemo(() => {
     const last = messages[messages.length - 1];
@@ -139,17 +144,48 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   }, [messages]);
 
   useEffect(() => {
-    if (messages.length === 0) return;
+    if (messages.length === 0) {
+      lastMessageMetaRef.current = undefined;
+      autoScrollEnabledRef.current = true;
+      programmaticScrollRef.current = false;
+      atBottomRef.current = true;
+      setShowJump((prev) => (prev === false ? prev : false));
+      setAtBottom((prev) => (prev === true ? prev : true));
+      return;
+    }
+
     const last = messages[messages.length - 1];
     const secondToLast = messages[messages.length - 2];
-    const lastRole = last?.role;
     const placeholder = isAssistantPlaceholder(last, secondToLast);
-    const hasRecentUserMessage = lastRole === 'user' || placeholder;
+
+    const meta = {
+      id: last?.id,
+      role: last?.role,
+      placeholder,
+      contentLen: last?.content?.length ?? 0,
+      reasoningLen: last?.reasoning?.length ?? 0,
+    };
+
+    const prevMeta = lastMessageMetaRef.current;
+    if (
+      prevMeta &&
+      prevMeta.id === meta.id &&
+      prevMeta.role === meta.role &&
+      prevMeta.placeholder === meta.placeholder &&
+      prevMeta.contentLen === meta.contentLen &&
+      prevMeta.reasoningLen === meta.reasoningLen
+    ) {
+      return;
+    }
+
+    lastMessageMetaRef.current = meta;
+    const hasRecentUserMessage = meta.role === 'user' || meta.placeholder;
     if (hasRecentUserMessage) {
       autoScrollEnabledRef.current = true;
     }
 
-    const shouldFollow = (atBottom && autoScrollEnabledRef.current) || hasRecentUserMessage;
+    const shouldFollow =
+      (atBottomRef.current && autoScrollEnabledRef.current) || hasRecentUserMessage;
 
     if (shouldFollow) {
       if (!programmaticScrollRef.current) {
@@ -158,18 +194,11 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     } else if (!atBottom) {
       setShowJump((prev) => (prev === true ? prev : true));
     }
-  }, [
-    messages.length,
-    messages,
-    atBottom,
-    prefersReducedMotion,
-    isAssistantPlaceholder,
-    scrollToBottom,
-  ]);
+  }, [messages, prefersReducedMotion, scrollToBottom, isAssistantPlaceholder]);
 
   useEffect(() => {
     if (!autoScrollEnabledRef.current) return;
-    if (isStreaming && atBottom) {
+    if (isStreaming && atBottomRef.current) {
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
       if (now - lastScrollTsRef.current > 160) {
         scrollToBottom('auto');
@@ -177,12 +206,13 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       }
     }
     if (!isStreaming) lastScrollTsRef.current = 0;
-  }, [isStreaming, atBottom, lastLen, scrollToBottom]);
+  }, [isStreaming, lastLen, scrollToBottom]);
 
   const jumpToLatest = useCallback(() => {
     autoScrollEnabledRef.current = true;
+    setShowJump((prev) => (prev === false ? prev : false));
     scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
-  }, [prefersReducedMotion, scrollToBottom]);
+  }, [prefersReducedMotion, scrollToBottom, setShowJump]);
 
   return {
     containerRef,

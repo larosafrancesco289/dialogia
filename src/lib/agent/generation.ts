@@ -9,11 +9,11 @@ export function snapshotGenSettings(opts: {
   settings: ChatSettings;
   modelMeta: ORModel | undefined;
   searchProvider: 'brave' | 'openrouter';
-  providerSort: ProviderSort;
+  providerSort?: ProviderSort;
 }) {
   const { settings, modelMeta, searchProvider, providerSort } = opts;
   const supportsReasoning = isReasoningSupported(modelMeta);
-  return {
+  const snapshot: Record<string, unknown> = {
     temperature: settings.temperature,
     top_p: settings.top_p,
     max_tokens: settings.max_tokens,
@@ -22,6 +22,7 @@ export function snapshotGenSettings(opts: {
     search_with_brave: !!settings.search_with_brave,
     search_provider: searchProvider,
     tutor_mode: !!settings.tutor_mode,
-    providerSort,
-  } as Record<string, unknown>;
+  };
+  if (providerSort) snapshot.providerSort = providerSort;
+  return snapshot;
 }

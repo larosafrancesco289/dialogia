@@ -84,3 +84,11 @@ export function summarizeTutorProfile(p: TutorProfile | undefined): string {
   if (strongStr) parts.push(strongStr);
   return parts.join(' · ');
 }
+
+export const tutorProfileService = {
+  loadTutorProfile,
+  updateTutorProfile,
+  summarizeTutorProfile,
+};
+
+export default tutorProfileService;

@@ -17,6 +17,7 @@ OPENROUTER_API_KEY=sk-or-v1_server_key
 
 # Optional integrations
 BRAVE_SEARCH_API_KEY=
+DEEP_RESEARCH_REASONING_ONLY=true
 NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT=speed
 NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=false
 
@@ -37,6 +38,9 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
   disabled.
 - `OPENROUTER_API_KEY` — server-side key for OpenRouter. Required when proxy is enabled.
 - `BRAVE_SEARCH_API_KEY` — enables the Brave Search tool. Used only on the server.
+- `DEEP_RESEARCH_REASONING_ONLY` — defaults to `true`. Forces the DeepResearch agent to pick models
+  that advertise reasoning support; set to `false` to allow experimental providers during testing.
+  DeepResearch always executes with the server-side `OPENROUTER_API_KEY`.
 - `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT` — if `true`, new sessions start with ZDR-only enforcement.
 - `NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT` — optional routing hint (`speed` | `cost`).
 - `AUTH_COOKIE_SECRET`, `ACCESS_CODE_PEPPER`, `ACCESS_CODES_HASHED` — configure the access gate in

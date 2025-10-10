@@ -1,9 +1,10 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { composeTurn } from '@/lib/agent/compose';
+import { ProviderSort } from '@/lib/models/providerSort';
 import type { Chat, Message, Attachment } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
-import * as tutorProfile from '@/lib/tutorProfile';
+import tutorProfileService from '@/lib/tutorProfile';
 
 const baseChat = (): Chat => ({
   id: 'chat-1',
@@ -46,8 +47,12 @@ const modelIndexStub: ModelIndex = {
 };
 
 test('composeTurn merges tutor and search context with plugins and tools', async () => {
-  const loadProfile = mock.method(tutorProfile, 'loadTutorProfile', async () => ({ id: 'profile-1' }));
-  const summarizeProfile = mock.method(tutorProfile, 'summarizeTutorProfile', () => 'Prefers visuals');
+  const loadProfile = mock.method(tutorProfileService, 'loadTutorProfile', async () => ({ id: 'profile-1' }));
+  const summarizeProfile = mock.method(
+    tutorProfileService,
+    'summarizeTutorProfile',
+    () => 'Prefers visuals',
+  );
 
   const chat = baseChat();
   const ui = {
@@ -90,7 +95,7 @@ test('composeTurn merges tutor and search context with plugins and tools', async
   assert.equal(result.search.enabled, true);
   assert.equal(result.hasPdf, true);
   assert.equal(result.shouldPlan, true);
-  assert.equal(result.providerSort, 'throughput');
+  assert.equal(result.providerSort, ProviderSort.Throughput);
   assert.equal(result.consumedTutorNudge, 'more_practice');
   assert.ok(result.system && result.system.includes('Learner Profile:'));
   assert.ok(result.system && result.system.includes('Always respond enthusiastically.'));

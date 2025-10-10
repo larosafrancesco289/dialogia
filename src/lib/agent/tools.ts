@@ -14,6 +14,8 @@ import type {
   TutorToolName,
   WebSearchArgs,
 } from '@/lib/agent/types';
+import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
+import { withAbort } from '@/lib/utils/abort';
 
 const INLINE_TUTOR_TOOL_NAMES: TutorToolName[] = ['quiz_mcq'];
 
@@ -97,55 +99,52 @@ export async function performWebSearchTool(opts: {
     updateBraveUi(set, assistantMessageId, { query: rawQuery, status: 'loading' });
   }
 
-  const fetchController = new AbortController();
-  const onAbort = () => fetchController.abort();
-  controller.signal.addEventListener('abort', onAbort);
-  const timeout = setTimeout(() => fetchController.abort(), 20000);
+  return withAbort(controller.signal, async (fetchController) => {
+    const timeout = setTimeout(() => fetchController.abort(), 20000);
+    try {
+      const result =
+        searchProvider === 'brave'
+          ? await runBraveSearch(rawQuery, count, { signal: fetchController.signal })
+          : { ok: false, results: [] as SearchResult[], error: undefined };
 
-  try {
-    const result =
-      searchProvider === 'brave'
-        ? await runBraveSearch(rawQuery, count, { signal: fetchController.signal })
-        : { ok: false, results: [] as SearchResult[], error: undefined };
+      if (result.ok) {
+        if (searchProvider === 'brave') {
+          updateBraveUi(set, assistantMessageId, {
+            query: rawQuery,
+            status: 'done',
+            results: result.results,
+          });
+        }
+        return { ok: true, results: result.results, query: rawQuery };
+      }
 
-    if (result.ok) {
       if (searchProvider === 'brave') {
         updateBraveUi(set, assistantMessageId, {
           query: rawQuery,
-          status: 'done',
-          results: result.results,
+          status: 'error',
+          results: [],
+          error: result.error || 'No results',
         });
       }
-      return { ok: true, results: result.results, query: rawQuery };
+      if (result.error === NOTICE_MISSING_BRAVE_KEY) {
+        set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_BRAVE_KEY } }));
+      }
+      return { ok: false, results: [], error: result.error, query: rawQuery };
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : undefined;
+      if (searchProvider === 'brave') {
+        updateBraveUi(set, assistantMessageId, {
+          query: rawQuery,
+          status: 'error',
+          results: [],
+          error: errorMessage || 'Network error',
+        });
+      }
+      return { ok: false, results: [], error: errorMessage, query: rawQuery };
+    } finally {
+      clearTimeout(timeout);
     }
-
-    if (searchProvider === 'brave') {
-      updateBraveUi(set, assistantMessageId, {
-        query: rawQuery,
-        status: 'error',
-        results: [],
-        error: result.error || 'No results',
-      });
-    }
-    if (result.error === 'Missing BRAVE_SEARCH_API_KEY') {
-      set((state) => ({ ui: { ...state.ui, notice: 'Missing BRAVE_SEARCH_API_KEY' } }));
-    }
-    return { ok: false, results: [], error: result.error, query: rawQuery };
-  } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : undefined;
-    if (searchProvider === 'brave') {
-      updateBraveUi(set, assistantMessageId, {
-        query: rawQuery,
-        status: 'error',
-        results: [],
-        error: errorMessage || 'Network error',
-      });
-    }
-    return { ok: false, results: [], error: errorMessage, query: rawQuery };
-  } finally {
-    clearTimeout(timeout);
-    controller.signal.removeEventListener('abort', onAbort);
-  }
+  });
 }
 
 export function extractTutorToolCalls(text: string): TutorToolCall[] {
@@ -164,7 +163,7 @@ export function extractTutorToolCalls(text: string): TutorToolCall[] {
   return output;
 }
 
-function parseJsonAfter(
+export function parseJsonAfter(
   source: string,
   from: number,
 ): { value: unknown; endIndex: number } | undefined {

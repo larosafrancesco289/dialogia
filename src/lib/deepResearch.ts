@@ -1,6 +1,9 @@
 import { chatCompletion, fetchModels } from '@/lib/openrouter';
 import { getBraveSearchKey, getDeepResearchReasoningOnly } from '@/lib/config';
 import { extractMainText } from '@/lib/html';
+import type { ModelMessage, ToolDefinition } from '@/lib/agent/types';
+import type { ProviderSort } from '@/lib/models/providerSort';
+import { normalizeToolCalls, parseToolArguments } from '@/lib/agent/parsers';
 
 // System prompt for DeepResearch with interleaved tool reasoning
 export function buildDeepResearchPrompt(opts?: {
@@ -40,7 +43,7 @@ export function buildDeepResearchPrompt(opts?: {
 }
 
 // Tool definitions following OpenRouter tool-calling spec
-export const DEEP_TOOLS = [
+export const DEEP_TOOLS: ToolDefinition[] = [
   {
     type: 'function',
     function: {
@@ -157,7 +160,7 @@ export type DeepResearchParams = {
   style?: 'concise' | 'detailed' | 'executive';
   cite?: 'inline' | 'footnotes';
   maxIterations?: number;
-  providerSort?: 'price' | 'throughput';
+  providerSort?: ProviderSort;
   // Brave options defaults are handled in tool impl
 };
 
@@ -293,12 +296,12 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
   }
 
   const system = buildDeepResearchPrompt({ audience, style, cite });
-  const messages: any[] = [
+  const messages: ModelMessage[] = [
     { role: 'system', content: system },
     { role: 'user', content: task },
   ];
 
-  const tools = DEEP_TOOLS as any[];
+  const tools = DEEP_TOOLS;
   const trace: DeepResearchOutput['trace'] = [];
   const collectedSources: Array<{ title?: string; url: string; description?: string }> = [];
   const seenUrls = new Set<string>();
@@ -334,7 +337,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
     usage = resp?.usage || usage;
     const choice = resp?.choices?.[0];
     const msg = choice?.message || {};
-    const toolCalls = Array.isArray(msg?.tool_calls) ? msg.tool_calls : [];
+    const toolCalls = normalizeToolCalls(msg);
 
     if (!allowTools || toolCalls.length === 0) {
       const final = typeof msg?.content === 'string' ? msg.content : '';
@@ -351,16 +354,14 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
     messages.push({ role: 'assistant', content: null, tool_calls: toolCalls });
 
     for (const tc of toolCalls) {
-      const name = tc?.function?.name as string;
-      const raw = tc?.function?.arguments || '{}';
-      let args: any = {};
-      try {
-        args = JSON.parse(raw);
-      } catch {}
+      const name = tc.function.name;
+      const args = parseToolArguments(tc);
 
       if (name === 'web_search') {
         try {
-          const provider = typeof args?.provider === 'string' ? args.provider : 'brave';
+          const provider = typeof (args as { provider?: unknown }).provider === 'string'
+            ? ((args as { provider?: string }).provider as string)
+            : 'brave';
           if (provider !== 'brave') {
             const unsupported = { error: `unsupported_provider_${provider}` };
             trace?.push({ type: 'search', input: args, output: unsupported });
@@ -372,7 +373,32 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
             });
             continue;
           }
-          const { provider: _provider, ...searchArgs } = args || {};
+          const includeDomains = Array.isArray((args as any).include_domains)
+            ? (args as any).include_domains.filter((entry: unknown): entry is string =>
+                typeof entry === 'string',
+              )
+            : undefined;
+          const excludeDomains = Array.isArray((args as any).exclude_domains)
+            ? (args as any).exclude_domains.filter((entry: unknown): entry is string =>
+                typeof entry === 'string',
+              )
+            : undefined;
+          const searchArgs: Parameters<typeof braveSearch>[0] = {
+            query: typeof (args as any).query === 'string' ? (args as any).query : '',
+            count: typeof (args as any).count === 'number' ? (args as any).count : undefined,
+            freshness:
+              (args as any).freshness === 'd' ||
+              (args as any).freshness === 'w' ||
+              (args as any).freshness === 'm' ||
+              (args as any).freshness === 'y' ||
+              (args as any).freshness === 'all'
+                ? ((args as any).freshness as 'd' | 'w' | 'm' | 'y' | 'all')
+                : undefined,
+            country:
+              typeof (args as any).country === 'string' ? (args as any).country : undefined,
+            include_domains: includeDomains,
+            exclude_domains: excludeDomains,
+          };
           const results = await braveSearch(searchArgs);
           trace?.push({ type: 'search', input: args, output: results });
           for (const r of results) {
@@ -398,10 +424,17 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
 
       if (name === 'fetch_url') {
         try {
-          const page = await fetchPage(args);
+          const fetchArgs = {
+            url: typeof (args as any).url === 'string' ? (args as any).url : '',
+            max_bytes: typeof (args as any).max_bytes === 'number' ? (args as any).max_bytes : undefined,
+            timeout_ms:
+              typeof (args as any).timeout_ms === 'number' ? (args as any).timeout_ms : undefined,
+          } satisfies Parameters<typeof fetchPage>[0];
+          if (!fetchArgs.url) throw new Error('fetch_missing_url');
+          const page = await fetchPage(fetchArgs);
           trace?.push({
             type: 'fetch',
-            input: args,
+            input: fetchArgs,
             output: { ...page, text: page.text?.slice(0, 4000) },
           });
           messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify(page) });
