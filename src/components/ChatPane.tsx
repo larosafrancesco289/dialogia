@@ -1,13 +1,13 @@
 'use client';
 import { useChatStore } from '@/lib/store';
 import { MessageList } from '@/components/MessageList';
-import WelcomeHero from '@/components/WelcomeHero';
-import Composer from '@/components/Composer';
+import { WelcomeHero } from '@/components/WelcomeHero';
+import { Composer } from '@/components/Composer';
 import { useKeyboardInsets } from '@/lib/hooks/useKeyboardInsets';
 import type { CSSProperties } from 'react';
 import { selectCurrentChat } from '@/lib/store/selectors';
 
-export default function ChatPane() {
+export function ChatPane() {
   const chat = useChatStore(selectCurrentChat);
   const keyboardMetrics = useKeyboardInsets();
   const keyboardVars = {

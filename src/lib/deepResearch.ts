@@ -1,4 +1,5 @@
 import { chatCompletion, fetchModels } from '@/lib/openrouter';
+import { apiDefaults } from '@/lib/api/config';
 import { getBraveSearchKey, getDeepResearchReasoningOnly } from '@/lib/config';
 import { extractMainText } from '@/lib/html';
 import type { ModelMessage, ToolDefinition } from '@/lib/agent/types';
@@ -275,6 +276,7 @@ async function fetchPage(args: {
 
 export async function deepResearch(params: DeepResearchParams): Promise<DeepResearchOutput> {
   const { apiKey, task, model, audience, style, cite, maxIterations = 10, providerSort } = params;
+  const origin = apiDefaults.resolveOrigin();
 
   // Enforce reasoning-only usage when configured via env (default true)
   const strict = getDeepResearchReasoningOnly();
@@ -282,7 +284,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
     // Verify using OpenRouter metadata instead of name heuristics
     const ok = await (async () => {
       try {
-        const models = await fetchModels(apiKey);
+        const models = await fetchModels(apiKey, { origin });
         const entry = models.find((m) => m.id.toLowerCase() === model.toLowerCase());
         const supported = Array.isArray((entry?.raw as any)?.supported_parameters)
           ? (entry?.raw as any).supported_parameters.map((p: any) => String(p).toLowerCase())
@@ -333,6 +335,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
       // Encourage sequential tool calls for interleaved reasoning
       parallel_tool_calls: allowTools ? false : undefined,
       providerSort,
+      origin,
     });
     usage = resp?.usage || usage;
     const choice = resp?.choices?.[0];

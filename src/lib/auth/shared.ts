@@ -1,5 +1,24 @@
 export const AUTH_COOKIE_NAME = 'dlg_access';
 
+/**
+ * Routes that remain accessible without an auth token. Middleware uses this
+ * list before performing any verification to avoid unnecessary work.
+ */
+export const PUBLIC_AUTH_PATHS = Object.freeze([
+  '/access',
+  '/api/auth/verify-code',
+  '/api/auth/logout',
+  '/favicon.ico',
+  '/robots.txt',
+  '/sitemap.xml',
+]);
+
+/**
+ * Matcher pattern for the auth middleware. Keeps static assets excluded while
+ * covering application routes.
+ */
+export const AUTH_MIDDLEWARE_MATCHER = ['/((?!_next/|favicon.ico|assets|api).*)'];
+
 function toBase64(input: Uint8Array): string {
   if (typeof Buffer !== 'undefined') {
     return Buffer.from(input).toString('base64');

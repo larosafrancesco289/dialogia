@@ -11,7 +11,7 @@ Local-first, privacy-focused multi-model chat UI for OpenRouter.
 - Reasoning: Optional “thinking” stream for reasoning-capable models with effort control.
 - Streaming + metrics: TTFT, token counts, tokens/sec; basic cost estimate when pricing is known.
 - Compare drawer: Run one prompt across multiple models; copy, insert to chat, or switch model.
-- Web search: Optional Brave Search augmentation for source-grounded answers.
+- Web search: Optional Brave Search or OpenRouter web plugin augmentation for grounded answers.
 
 ### Screenshots
 
@@ -76,6 +76,7 @@ npm install
 - Build: `npm run build`
 - Start (prod): `npm start`
 - Format: `npm run format`
+- Lint: `npm run lint`
 - Type check: `npm run lint:types`
 - Tests: `npm run test`
 
@@ -90,7 +91,7 @@ Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/star
   - Audio (mp3/wav): sent as input_audio content to audio-capable models.
   - PDFs: sent as OpenRouter file blocks (parsed downstream; no local OCR).
 - Reasoning: toggle effort in the composer for thinking models; view “Thinking” panel per message.
-- Web search: toggle the Brave icon to ground the next reply with sources.
+- Web search: toggle the search icon to ground the next reply with sources. Brave runs locally when enabled; otherwise the OpenRouter web plugin is attached.
 - DeepResearch UI: click the beaker icon in the composer to run multi-step web research on the current input. Results appear as an assistant message with a sources panel.
 - Compare: click the grid icon in the header to run a prompt across multiple models and review metrics.
 - Slash commands:
@@ -146,7 +147,7 @@ tests/                  # Legacy Node-based unit tests (`npm run test` also runs
 - Language: TypeScript + React 18; Next.js App Router
 - Formatting: Prettier (`.prettierrc`) — single quotes, semicolons, trailing commas=all, width=100
 - Naming: PascalCase components in `src/components/`; named exports favored
-- Type safety: run `npm run lint:types` before pushing
+- Linting & types: run `npm run lint` and `npm run lint:types` before pushing
 - Testing: `npm run test` (Node test runner via `tsx`); add colocated `*.test.ts(x)` for unit coverage.
 
 ### License

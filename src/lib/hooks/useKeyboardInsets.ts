@@ -10,6 +10,96 @@ export type KeyboardMetrics = {
 
 const KEYBOARD_THRESHOLD = 60; // px difference to treat as a real keyboard occlusion
 
+export type KeyboardTrackerState = {
+  viewportBaseline: number;
+  viewportKeyboardVisible: boolean;
+  fallbackBaseline: number;
+  fallbackKeyboardVisible: boolean;
+};
+
+export function createKeyboardTrackerState(
+  win: Window,
+  viewport: VisualViewport | null,
+): KeyboardTrackerState {
+  const baseline = win.innerHeight;
+  const viewportHeight = viewport?.height ?? baseline;
+  const viewportTop = viewport?.offsetTop ?? 0;
+  const viewportBaseline = Math.max(baseline, viewportHeight + viewportTop);
+  return {
+    viewportBaseline,
+    viewportKeyboardVisible: false,
+    fallbackBaseline: baseline,
+    fallbackKeyboardVisible: false,
+  };
+}
+
+export function computeKeyboardMetrics(
+  state: KeyboardTrackerState,
+  env: { window: Window; viewport: VisualViewport | null },
+): KeyboardMetrics {
+  const { window: win, viewport } = env;
+
+  if (viewport) {
+    const top = viewport.offsetTop ?? 0;
+    const height = viewport.height ?? win.innerHeight;
+    const total = height + top;
+    const candidate = Math.max(total, win.innerHeight);
+
+    if (!state.viewportKeyboardVisible) {
+      state.viewportBaseline = Math.max(state.viewportBaseline, candidate);
+    } else if (candidate > state.viewportBaseline) {
+      state.viewportBaseline = candidate;
+    }
+
+    let occlusion = Math.max(0, state.viewportBaseline - total);
+
+    if (occlusion > KEYBOARD_THRESHOLD) {
+      state.viewportKeyboardVisible = true;
+    } else if (state.viewportKeyboardVisible) {
+      state.viewportKeyboardVisible = false;
+      state.viewportBaseline = candidate;
+      occlusion = 0;
+    } else {
+      state.viewportBaseline = candidate;
+      occlusion = 0;
+    }
+
+    return {
+      offset: occlusion,
+      viewportHeight: height,
+      viewportTop: top,
+    };
+  }
+
+  const currentInner = win.innerHeight;
+  const diff = state.fallbackBaseline - currentInner;
+  let occlusion = 0;
+
+  if (!state.fallbackKeyboardVisible) {
+    state.fallbackBaseline = Math.max(state.fallbackBaseline, currentInner);
+  }
+
+  if (diff > KEYBOARD_THRESHOLD) {
+    state.fallbackKeyboardVisible = true;
+    state.fallbackBaseline = Math.max(state.fallbackBaseline, currentInner);
+    occlusion = Math.max(0, state.fallbackBaseline - currentInner);
+  } else {
+    if (state.fallbackKeyboardVisible) {
+      state.fallbackKeyboardVisible = false;
+      state.fallbackBaseline = currentInner;
+    } else {
+      state.fallbackBaseline = currentInner;
+    }
+    occlusion = 0;
+  }
+
+  return {
+    offset: occlusion,
+    viewportHeight: currentInner,
+    viewportTop: 0,
+  };
+}
+
 /**
  * Tracks the on-screen keyboard occlusion and visual viewport metrics.
  * Keeps CSS custom properties in sync so layout can respond via pure CSS.
@@ -27,15 +117,7 @@ export function useKeyboardInsets(): KeyboardMetrics {
     if (typeof window === 'undefined') return undefined;
 
     const viewport = window.visualViewport || null;
-    let fallbackBaseline = window.innerHeight;
-    let viewportBaseline = viewport
-      ? Math.max(
-          window.innerHeight,
-          (viewport.height ?? window.innerHeight) + (viewport.offsetTop ?? 0),
-        )
-      : window.innerHeight;
-    let viewportKeyboardVisible = false;
-    let fallbackKeyboardVisible = false;
+    const trackerState = createKeyboardTrackerState(window, viewport);
     let frameHandle = 0;
     const doc = typeof document !== 'undefined' ? document : null;
     const root = doc?.documentElement ?? null;
@@ -69,66 +151,8 @@ export function useKeyboardInsets(): KeyboardMetrics {
       }
     };
 
-    const computeMetrics = (): KeyboardMetrics => {
-      if (viewport) {
-        const top = viewport.offsetTop ?? 0;
-        const height = viewport.height ?? window.innerHeight;
-        const total = height + top;
-        const candidate = Math.max(total, window.innerHeight);
-
-        if (!viewportKeyboardVisible) {
-          viewportBaseline = Math.max(viewportBaseline, candidate);
-        } else if (candidate > viewportBaseline) {
-          viewportBaseline = candidate;
-        }
-
-        let occlusion = Math.max(0, viewportBaseline - total);
-
-        if (occlusion > KEYBOARD_THRESHOLD) {
-          viewportKeyboardVisible = true;
-        } else if (viewportKeyboardVisible) {
-          viewportKeyboardVisible = false;
-          viewportBaseline = candidate;
-          occlusion = 0;
-        } else {
-          viewportBaseline = candidate;
-          occlusion = 0;
-        }
-
-        return {
-          offset: occlusion,
-          viewportHeight: height,
-          viewportTop: top,
-        };
-      }
-
-      const currentInner = window.innerHeight;
-      const diff = fallbackBaseline - currentInner;
-      let occlusion = 0;
-      if (!fallbackKeyboardVisible) {
-        fallbackBaseline = Math.max(fallbackBaseline, currentInner);
-      }
-
-      if (diff > KEYBOARD_THRESHOLD) {
-        fallbackKeyboardVisible = true;
-        fallbackBaseline = Math.max(fallbackBaseline, currentInner);
-        occlusion = Math.max(0, fallbackBaseline - currentInner);
-      } else {
-        if (fallbackKeyboardVisible) {
-          fallbackKeyboardVisible = false;
-          fallbackBaseline = currentInner;
-        } else {
-          fallbackBaseline = currentInner;
-        }
-        occlusion = 0;
-      }
-
-      return {
-        offset: occlusion,
-        viewportHeight: currentInner,
-        viewportTop: 0,
-      };
-    };
+    const computeMetrics = (): KeyboardMetrics =>
+      computeKeyboardMetrics(trackerState, { window, viewport });
 
     const handleChange = () => {
       cancelAnimationFrame(frameHandle);

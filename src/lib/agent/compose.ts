@@ -27,10 +27,12 @@ export async function composeTurn({
   const tutorEnabled =
     tutorGloballyEnabled && (forceTutorMode || Boolean(chat.settings.tutor_mode));
 
-  const searchEnabled = !!chat.settings.search_with_brave;
+  const searchEnabled = !!chat.settings.search_enabled;
   const configuredProvider =
-    ((chat.settings as any)?.search_provider as TurnComposition['search']['provider']) || 'brave';
-  const searchProvider = ui.experimentalBrave ? configuredProvider : 'openrouter';
+    ((chat.settings as any)?.search_provider as TurnComposition['search']['provider']) ||
+    'openrouter';
+  const searchProvider =
+    ui.experimentalBrave && configuredProvider === 'brave' ? 'brave' : 'openrouter';
 
   const priorMessages = prior ?? [];
   const preparedAttachments = attachments ?? newUser?.attachments ?? [];

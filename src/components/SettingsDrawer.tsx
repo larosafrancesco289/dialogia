@@ -8,16 +8,16 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
-import ThemeToggle from '@/components/ThemeToggle';
-import DisplayPanel from '@/components/settings/DisplayPanel';
-import PrivacyPanel from '@/components/settings/PrivacyPanel';
-import DataPanel from '@/components/settings/DataPanel';
-import ModelsPanel from '@/components/settings/ModelsPanel';
-import ChatPanel from '@/components/settings/ChatPanel';
-import TutorPanel from '@/components/settings/TutorPanel';
-import LabsPanel from '@/components/settings/LabsPanel';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { DisplayPanel } from '@/components/settings/DisplayPanel';
+import { PrivacyPanel } from '@/components/settings/PrivacyPanel';
+import { DataPanel } from '@/components/settings/DataPanel';
+import { ModelsPanel } from '@/components/settings/ModelsPanel';
+import { ChatPanel } from '@/components/settings/ChatPanel';
+import { TutorPanel } from '@/components/settings/TutorPanel';
+import { LabsPanel } from '@/components/settings/LabsPanel';
 import type { TabId, RenderSection } from '@/components/settings/types';
-import IconButton from '@/components/IconButton';
+import { IconButton } from '@/components/IconButton';
 import type { ModelSearchHandle } from '@/components/ModelSearch';
 import { XCircleIcon } from '@heroicons/react/24/outline';
 import {
@@ -692,7 +692,7 @@ export function SettingsDrawer() {
                   nextSearchProvider:
                     (ui as any)?.nextSearchProvider ??
                     (chat as any)?.settings?.search_provider ??
-                    (experimentalBrave ? 'brave' : 'openrouter'),
+                    'openrouter',
                 });
               }
               closeWithAnim();

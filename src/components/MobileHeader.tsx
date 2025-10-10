@@ -13,11 +13,11 @@ import {
   XMarkIcon,
   AcademicCapIcon,
 } from '@heroicons/react/24/outline';
-import ModelPicker from '@/components/ModelPicker';
-import ThemeToggle from '@/components/ThemeToggle';
+import { ModelPicker } from '@/components/ModelPicker';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { findModelById, formatModelLabel } from '@/lib/models';
 
-export default function MobileHeader() {
+export function MobileHeader() {
   const { chats, selectedChatId, renameChat, newChat, setUI, openCompare, updateChatSettings } =
     useChatStore(
       (state) => ({

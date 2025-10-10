@@ -1,7 +1,7 @@
 'use client';
 import type { ReactNode, Ref } from 'react';
-import SettingsSection from '@/components/settings/SettingsSection';
-import ModelSearch, { type ModelSearchHandle } from '@/components/ModelSearch';
+import { SettingsSection } from '@/components/settings/SettingsSection';
+import { ModelSearch, type ModelSearchHandle } from '@/components/ModelSearch';
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
@@ -23,7 +23,7 @@ type ModelsPanelProps = {
   ui: StoreState['ui'];
 };
 
-export default function ModelsPanel(props: ModelsPanelProps) {
+export function ModelsPanel(props: ModelsPanelProps) {
   const {
     chat,
     favoriteModelIds,
@@ -91,7 +91,7 @@ export default function ModelsPanel(props: ModelsPanelProps) {
               <div className="segmented">
                 {experimentalBrave && (
                   <button
-                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'brave') === 'brave' ? 'is-active' : ''}`}
+                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'openrouter') === 'brave' ? 'is-active' : ''}`}
                     onClick={() => {
                       if (chat)
                         updateChatSettings({ search_provider: 'brave' } as any).catch(() => void 0);
@@ -102,7 +102,7 @@ export default function ModelsPanel(props: ModelsPanelProps) {
                   </button>
                 )}
                 <button
-                  className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? (experimentalBrave ? 'brave' : 'openrouter')) === 'openrouter' ? 'is-active' : ''}`}
+                  className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'openrouter') === 'openrouter' ? 'is-active' : ''}`}
                   onClick={() => {
                     if (chat)
                       updateChatSettings({

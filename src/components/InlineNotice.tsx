@@ -7,7 +7,7 @@ export type InlineNoticeProps = {
   className?: string;
 };
 
-export default function InlineNotice({
+export function InlineNotice({
   message,
   onDismiss,
   role = 'status',

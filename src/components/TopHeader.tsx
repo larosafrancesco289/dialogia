@@ -1,6 +1,6 @@
 'use client';
-import ModelPicker from '@/components/ModelPicker';
-import ThemeToggle from '@/components/ThemeToggle';
+import { ModelPicker } from '@/components/ModelPicker';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import {
@@ -12,9 +12,9 @@ import {
   AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { useMemo, useState } from 'react';
-import TopHeaderMobileMenu from '@/components/top-header/MobileMenu';
+import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
 import { findModelById, formatModelLabel } from '@/lib/models';
-export default function TopHeader() {
+export function TopHeader() {
   const { chats, selectedChatId, renameChat, setUI, openCompare, newChat, updateChatSettings } =
     useChatStore(
       (s) => ({

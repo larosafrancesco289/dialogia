@@ -31,7 +31,7 @@ export type MessagePanelsProps = {
   onToggleReasoning: () => void;
 };
 
-export default function MessagePanels({
+export function MessagePanels({
   message,
   chat,
   models,

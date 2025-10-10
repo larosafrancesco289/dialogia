@@ -1,60 +1,160 @@
-// Helpers for cleaning model outputs that may echo tool-call JSON before user-facing text
+// Module: agent/streaming
+// Responsibility: Stream final assistant responses and propagate token callbacks.
 
-// Remove leading JSON blobs or fenced JSON blocks that look like tool-call arguments
-export function stripLeadingToolJson(input: string): string {
-  let s = input || '';
-  while (true) {
-    const trimmed = s.trimStart();
-    // Handle fenced code blocks first: ```{...}``` or ```json {...}```
-    if (trimmed.startsWith('```')) {
-      const fenceEnd = trimmed.indexOf('```', 3);
-      if (fenceEnd > 0) {
-        const fenced = trimmed.slice(3, fenceEnd).trim();
-        // Remove only if the fenced block looks like our tool-call JSON
-        if (/\{[\s\S]*\}/.test(fenced) && /"(query|name)"\s*:/.test(fenced)) {
-          s = trimmed.slice(fenceEnd + 3);
-          continue;
-        }
-      }
-      break;
-    }
-    if (trimmed.startsWith('{')) {
-      // Only strip if this looks like our tool-call JSON
-      if (!/"(query|name)"\s*:/.test(trimmed.slice(0, 200))) break;
-      let depth = 0;
-      let inString = false;
-      let escaped = false;
-      let end = -1;
-      for (let i = 0; i < trimmed.length; i++) {
-        const ch = trimmed[i];
-        if (escaped) {
-          escaped = false;
-          continue;
-        }
-        if (ch === '\\') {
-          escaped = true;
-          continue;
-        }
-        if (ch === '"') {
-          inString = !inString;
-          continue;
-        }
-        if (!inString) {
-          if (ch === '{') depth++;
-          else if (ch === '}') {
-            depth--;
-            if (depth === 0) {
-              end = i + 1;
-              break;
-            }
-          }
-        }
-      }
-      if (end === -1) break;
-      s = trimmed.slice(end);
+import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
+import { buildDebugBody, recordDebugIfEnabled } from '@/lib/agent/request';
+import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
+import { isToolCallingSupported } from '@/lib/models';
+import { clearTurnController } from '@/lib/services/controllers';
+import type { StreamFinalOptions, ToolDefinition } from '@/lib/agent/types';
+
+const TOOL_FENCE_REGEX = /^\s*```([a-z0-9_-]+)?\s*\n([\s\S]*?)\n```\s*/i;
+const TOOL_LANGS = new Set(['json', 'jsonc', 'tool', 'function', 'callback']);
+
+function findJsonObjectEnd(value: string): number | null {
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i];
+    if (escape) {
+      escape = false;
       continue;
     }
-    break;
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (char === '{') depth += 1;
+    else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) return i + 1;
+      if (depth < 0) return null;
+    }
   }
-  return s.trimStart();
+  return null;
+}
+
+export function stripLeadingToolJson(input: string): string {
+  if (!input) return input;
+  const trimmed = input.trimStart();
+  if (!trimmed) return trimmed;
+
+  const fenceMatch = trimmed.match(TOOL_FENCE_REGEX);
+  if (fenceMatch) {
+    const lang = fenceMatch[1]?.toLowerCase();
+    if (lang && !TOOL_LANGS.has(lang)) return input;
+    return trimmed.slice(fenceMatch[0].length).trimStart();
+  }
+
+  if (trimmed.startsWith('{')) {
+    const endIndex = findJsonObjectEnd(trimmed);
+    if (endIndex != null) {
+      const jsonCandidate = trimmed.slice(0, endIndex).trim();
+      try {
+        JSON.parse(jsonCandidate);
+      } catch {
+        return input;
+      }
+      return trimmed.slice(endIndex).trimStart();
+    }
+  }
+
+  return input;
+}
+
+export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
+  const {
+    chat,
+    chatId,
+    assistantMessage,
+    messages,
+    controller,
+    apiKey,
+    providerSort,
+    set,
+    get,
+    modelIndex,
+    persistMessage,
+    plugins,
+    toolDefinition,
+    startBuffered,
+  } = opts;
+
+  const modelMeta = modelIndex.get(chat.settings.model);
+  const caps = modelIndex.caps(chat.settings.model);
+  const supportsReasoning = caps.canReason;
+  const canImageOut = caps.canImageOut;
+  const supportsTools = isToolCallingSupported(modelMeta);
+  const includeTools =
+    supportsTools && Array.isArray(toolDefinition) && toolDefinition.length > 0;
+  const combinedPlugins = Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined;
+  const toolsForStreaming = includeTools ? (toolDefinition as ToolDefinition[]) : undefined;
+
+  try {
+    const dbg = buildDebugBody({
+      modelId: chat.settings.model,
+      messages: messages as any,
+      stream: true,
+      includeUsage: true,
+      canImageOut,
+      temperature: chat.settings.temperature,
+      top_p: chat.settings.top_p,
+      max_tokens: chat.settings.max_tokens,
+      reasoningEffort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
+      reasoningTokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+      tools: toolsForStreaming,
+      toolChoice: includeTools ? 'none' : undefined,
+      providerSort,
+      plugins: combinedPlugins,
+    });
+    recordDebugIfEnabled({ set, get }, assistantMessage.id, dbg);
+  } catch {
+    // ignore debug capture issues
+  }
+
+  const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
+  const requestedTokensRaw = supportsReasoning ? chat.settings.reasoning_tokens : undefined;
+  const effortRequested = typeof requestedEffort === 'string' && requestedEffort !== 'none';
+  const tokensRequested = typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
+  const autoReasoningEligible = !effortRequested && !tokensRequested;
+  const modelIdUsed = chat.settings.model;
+  const tStart = performance.now();
+  const callbacks = createMessageStreamCallbacks(
+    {
+      chatId,
+      assistantMessage,
+      set,
+      get,
+      startBuffered,
+      autoReasoningEligible,
+      modelIdUsed,
+      clearController: () => clearTurnController(chatId),
+      persistMessage,
+    },
+    { startedAt: tStart },
+  );
+
+  await getStreamChatCompletion()({
+    apiKey,
+    model: chat.settings.model,
+    messages,
+    modalities: canImageOut ? (['image', 'text'] as any) : undefined,
+    temperature: chat.settings.temperature,
+    top_p: chat.settings.top_p,
+    max_tokens: chat.settings.max_tokens,
+    reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
+    reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+    signal: controller.signal,
+    tools: toolsForStreaming,
+    tool_choice: includeTools ? ('none' as any) : undefined,
+    providerSort,
+    plugins: combinedPlugins,
+    callbacks,
+  });
 }

@@ -32,7 +32,7 @@ export type UIState = {
     }
   >;
   nextModel?: string;
-  nextSearchWithBrave?: boolean;
+  nextSearchEnabled?: boolean;
   nextSearchProvider?: 'brave' | 'openrouter';
   // Toggle DeepResearch for the next send from composer
   nextDeepResearch?: boolean;

@@ -6,7 +6,7 @@ import { CURATED_MODELS } from '@/data/curatedModels';
 import { formatModelLabel } from '@/lib/models';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
-export default function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => void }) {
+export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => void }) {
   const { chats, selectedChatId } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
   const [open, setOpen] = useState(false);

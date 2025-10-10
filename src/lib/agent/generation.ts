@@ -19,7 +19,7 @@ export function snapshotGenSettings(opts: {
     max_tokens: settings.max_tokens,
     reasoning_effort: supportsReasoning ? settings.reasoning_effort : undefined,
     reasoning_tokens: supportsReasoning ? settings.reasoning_tokens : undefined,
-    search_with_brave: !!settings.search_with_brave,
+    search_enabled: !!settings.search_enabled,
     search_provider: searchProvider,
     tutor_mode: !!settings.tutor_mode,
   };

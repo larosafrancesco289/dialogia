@@ -7,7 +7,7 @@ import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/con
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { createModelIndex, EMPTY_MODEL_INDEX, formatModelLabel } from '@/lib/models';
 import { createStoreSlice } from '@/lib/store/createSlice';
-import { isApiError } from '@/lib/api/errors';
+import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { NOTICE_INVALID_KEY, NOTICE_MISSING_CLIENT_KEY } from '@/lib/store/notices';
 
 export const createModelSlice = createStoreSlice((set, get) => {
@@ -82,7 +82,7 @@ export const createModelSlice = createStoreSlice((set, get) => {
         }
         set({ models, modelIndex: createModelIndex(models) });
       } catch (e: any) {
-        if (isApiError(e) && e.code === 'unauthorized')
+        if (isApiError(e) && e.code === API_ERROR_CODES.UNAUTHORIZED)
           set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
       } finally {
         isLoadingModels = false;

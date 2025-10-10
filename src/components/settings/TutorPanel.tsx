@@ -1,7 +1,7 @@
 'use client';
 import type { ReactNode } from 'react';
-import SettingsSection from '@/components/settings/SettingsSection';
-import ModelSearch from '@/components/ModelSearch';
+import { SettingsSection } from '@/components/settings/SettingsSection';
+import { ModelSearch } from '@/components/ModelSearch';
 import type { Chat, ORModel } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
@@ -29,7 +29,7 @@ type TutorPanelProps = {
   defaultTutorMemoryFrequency: number;
 };
 
-export default function TutorPanel(props: TutorPanelProps) {
+export function TutorPanel(props: TutorPanelProps) {
   const {
     chat,
     renderSection,

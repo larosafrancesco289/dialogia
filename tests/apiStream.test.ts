@@ -23,8 +23,8 @@ test('consumeSse emits data events and signals completion', async () => {
     onStart: () => {
       started = true;
     },
-    onMessage: (data) => {
-      events.push(data);
+    onMessage: (event) => {
+      events.push(event.data);
     },
     onDone: (info) => {
       doneInfo = info;

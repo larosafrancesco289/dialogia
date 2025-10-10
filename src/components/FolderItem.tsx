@@ -6,8 +6,8 @@ import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop } from '@/lib/dragDrop';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
-import IconButton from './IconButton';
-import ConfirmDialog from './ConfirmDialog';
+import { IconButton } from './IconButton';
+import { ConfirmDialog } from './ConfirmDialog';
 import { MoveChatSheet } from '@/components/MoveChatSheet';
 import {
   FolderIcon,
@@ -25,7 +25,7 @@ interface FolderItemProps {
   depth?: number;
 }
 
-export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
+export function FolderItem({ folder, depth = 0 }: FolderItemProps) {
   const {
     chats,
     folders,

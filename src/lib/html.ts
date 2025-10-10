@@ -69,3 +69,21 @@ export function extractMainText(html: string): HtmlContentSummary {
 
   return { title, description, headings: headings.length ? headings : undefined, text };
 }
+
+/**
+ * Inline script used before hydration to ensure the correct theme class is
+ * present on the root element. The logic mirrors the previous inline script in
+ * app/layout but lives here for reuse and testability.
+ */
+export function injectThemeClass(): string {
+  return `(() => {
+  try {
+    const mode = localStorage.getItem('theme') || 'auto';
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const shouldUseDark = mode === 'dark' || (mode === 'auto' && prefersDark);
+    document.documentElement.classList.toggle('dark', shouldUseDark);
+  } catch (_) {
+    // no-op: theme will fall back to default styles
+  }
+})();`;
+}

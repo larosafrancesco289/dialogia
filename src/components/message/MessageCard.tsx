@@ -9,9 +9,9 @@ import {
   ArrowUturnRightIcon,
 } from '@heroicons/react/24/outline';
 import { Markdown } from '@/lib/markdown';
-import RegenerateMenu from '@/components/RegenerateMenu';
+import { RegenerateMenu } from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
-import MessagePanels, { type MessagePanelsProps } from '@/components/message/MessagePanels';
+import { MessagePanels, type MessagePanelsProps } from '@/components/message/MessagePanels';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
 import styles from './MessageCard.module.css';
 import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
@@ -56,7 +56,7 @@ export type MessageCardProps = {
   tutorEnabled: boolean;
 };
 
-export default function MessageCard({
+export function MessageCard({
   message,
   chat,
   models,

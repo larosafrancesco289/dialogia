@@ -168,7 +168,7 @@ export function useModelPickerController(): Controller {
   };
 }
 
-export default function ModelPicker({
+export function ModelPicker({
   variant = 'auto',
   className = '',
 }: {

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import ThemeToggle from '@/components/ThemeToggle';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export type TopHeaderMobileMenuProps = {
   hasChat: boolean;
@@ -13,7 +13,7 @@ export type TopHeaderMobileMenuProps = {
   onToggleSidebar: () => void;
 };
 
-export default function TopHeaderMobileMenu({
+export function TopHeaderMobileMenu({
   hasChat,
   collapsed,
   onNewChat,

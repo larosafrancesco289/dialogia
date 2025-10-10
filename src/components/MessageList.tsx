@@ -11,10 +11,11 @@ import {
   ArrowUturnRightIcon,
 } from '@heroicons/react/24/outline';
 import type { Attachment, Message } from '@/lib/types';
-import ImageLightbox from '@/components/ImageLightbox';
-import MessagePanels, { type MessagePanelsProps } from '@/components/message/MessagePanels';
-import MessageCard from '@/components/message/MessageCard';
+import { ImageLightbox } from '@/components/ImageLightbox';
+import { MessagePanels, type MessagePanelsProps } from '@/components/message/MessagePanels';
+import { MessageCard } from '@/components/message/MessageCard';
 import { useMessageScrolling } from '@/components/message/useMessageScrolling';
+import { useMessageWindow } from '@/components/message/hooks/useMessageWindow';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 
 const EMPTY_MESSAGES: Message[] = [];
@@ -81,8 +82,7 @@ export function MessageList({ chatId }: { chatId: string }) {
     images: { src: string; name?: string }[];
     index: number;
   } | null>(null);
-  const WINDOW_INCREMENT = 150;
-  const [visibleCount, setVisibleCount] = useState(WINDOW_INCREMENT);
+  const WINDOW_PAGE_SIZE = 150;
   // Mobile contextual action sheet (bottom)
   const [mobileSheet, setMobileSheet] = useState<{ id: string; role: 'assistant' | 'user' } | null>(
     null,
@@ -204,20 +204,10 @@ export function MessageList({ chatId }: { chatId: string }) {
     if (!exists) closeMobileSheet();
   }, [mobileSheet, messages, closeMobileSheet]);
 
-  useEffect(() => {
-    setVisibleCount(WINDOW_INCREMENT);
-  }, [chatId]);
-
-  useEffect(() => {
-    setVisibleCount((count) => {
-      if (messages.length === 0) return WINDOW_INCREMENT;
-      return Math.min(Math.max(count, WINDOW_INCREMENT), messages.length);
-    });
-  }, [messages.length]);
-
-  const startIndex = Math.max(0, messages.length - visibleCount);
-  const visibleMessages = messages.slice(startIndex);
-  const hiddenCount = startIndex;
+  const { visibleItems: visibleMessages, hiddenCount, showMore } = useMessageWindow(messages, {
+    pageSize: WINDOW_PAGE_SIZE,
+    resetKey: chatId,
+  });
 
   useEffect(() => {
     if (!isMobile || !mobileSheet) return;
@@ -246,13 +236,7 @@ export function MessageList({ chatId }: { chatId: string }) {
     >
       {hiddenCount > 0 && (
         <div className="flex justify-center py-2">
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() =>
-              setVisibleCount((count) => Math.min(messages.length, count + WINDOW_INCREMENT))
-            }
-          >
+          <button type="button" className="btn btn-ghost btn-sm" onClick={showMore}>
             Show earlier messages ({hiddenCount})
           </button>
         </div>

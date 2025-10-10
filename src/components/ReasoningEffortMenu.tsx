@@ -7,7 +7,7 @@ import { DEFAULT_MODEL_ID } from '@/lib/constants';
 
 type Effort = 'none' | 'low' | 'medium' | 'high';
 
-export default function ReasoningEffortMenu() {
+export function ReasoningEffortMenu() {
   const { chats, selectedChatId } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
   const models = useChatStore((s) => s.models);

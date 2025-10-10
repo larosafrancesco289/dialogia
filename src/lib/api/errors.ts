@@ -1,14 +1,17 @@
 // Module: api/errors
 // Responsibility: Provide typed error helpers for transport failures and response status handling.
 
+export const API_ERROR_CODES = Object.freeze({
+  UNAUTHORIZED: 'unauthorized',
+  RATE_LIMITED: 'rate_limited',
+  STREAM_MISSING_BODY: 'stream_missing_body',
+  OPENROUTER_CHAT_FAILED: 'openrouter_chat_failed',
+  OPENROUTER_MODELS_FAILED: 'openrouter_models_failed',
+  OPENROUTER_ZDR_FAILED: 'openrouter_zdr_failed',
+} as const);
+
 export type ApiErrorCode =
-  | 'unauthorized'
-  | 'rate_limited'
-  | 'stream_missing_body'
-  | 'openrouter_chat_failed'
-  | 'openrouter_models_failed'
-  | 'openrouter_zdr_failed'
-  | string;
+  (typeof API_ERROR_CODES)[keyof typeof API_ERROR_CODES] | (string & {});
 
 export type ApiErrorInit = {
   code: ApiErrorCode;

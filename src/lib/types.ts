@@ -11,8 +11,8 @@ export type ChatSettings = {
   reasoning_tokens?: number; // max reasoning tokens (optional)
   show_thinking_by_default?: boolean; // UI preference only
   show_stats?: boolean; // UI preference only
-  // Optional web search augmentation using Brave Search API
-  search_with_brave?: boolean;
+  // Optional web search augmentation (provider controlled separately)
+  search_enabled?: boolean;
   // Web search provider selection (defaults to 'brave' for backward compatibility)
   search_provider?: 'brave' | 'openrouter';
   // Tutor mode: enables pedagogy prompt + tutor tools
@@ -44,7 +44,7 @@ export type Message = {
     max_tokens?: number;
     reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
     reasoning_tokens?: number;
-    search_with_brave?: boolean;
+    search_enabled?: boolean;
     search_provider?: 'brave' | 'openrouter';
     tutor_mode?: boolean;
     providerSort?: ProviderSort;

@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AUTH_COOKIE_NAME } from '@/lib/auth/shared';
+import { AUTH_COOKIE_NAME, PUBLIC_AUTH_PATHS, AUTH_MIDDLEWARE_MATCHER } from '@/lib/auth/shared';
 import { verifyAuthTokenEdge } from '@/lib/auth/edge';
 import { isProd } from '@/lib/config';
 
-// URLs that do not require auth
-const PUBLIC_PATHS = [
-  '/access',
-  '/api/auth/verify-code',
-  '/api/auth/logout',
-  '/favicon.ico',
-  '/robots.txt',
-  '/sitemap.xml',
-];
-
 // Dynamic paths that remain public; static assets are excluded via the matcher.
 function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.includes(pathname);
+  return PUBLIC_AUTH_PATHS.includes(pathname);
 }
 
 async function verifyToken(token: string): Promise<boolean> {
@@ -51,5 +41,5 @@ export default async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/|favicon.ico|assets|api).*)'],
+  matcher: AUTH_MIDDLEWARE_MATCHER,
 };

@@ -8,8 +8,8 @@ import {
   type ChatCompletionPayload,
 } from '@/lib/api/openrouterClient';
 import { buildChatBody } from '@/lib/agent/request';
-import { consumeSse } from '@/lib/api/stream';
-import { ApiError, responseError } from '@/lib/api/errors';
+import { consumeSse, type SseEvent } from '@/lib/api/stream';
+import { ApiError, API_ERROR_CODES, responseError } from '@/lib/api/errors';
 
 // Transport-only client for OpenRouter.
 // Request payload construction lives in agent/request.buildChatBody to keep one source of truth
@@ -17,7 +17,7 @@ import { ApiError, responseError } from '@/lib/api/errors';
 
 async function loadZdrEndpoints(signal?: AbortSignal): Promise<any[]> {
   const res = await orFetchZdrEndpoints({ signal });
-  if (!res.ok) throw responseError(res, { code: 'openrouter_zdr_failed' });
+  if (!res.ok) throw responseError(res, { code: API_ERROR_CODES.OPENROUTER_ZDR_FAILED });
   const payload = await res.json().catch(() => null);
   if (!payload) return [];
   if (Array.isArray(payload?.data)) return payload.data;
@@ -81,16 +81,19 @@ export async function fetchZdrModelIds(): Promise<Set<string>> {
   }
 }
 
-export async function fetchModels(apiKey: string): Promise<ORModel[]> {
-  const res = await orFetchModels(apiKey);
+export async function fetchModels(
+  apiKey: string,
+  opts: { origin?: string; signal?: AbortSignal } = {},
+): Promise<ORModel[]> {
+  const res = await orFetchModels(apiKey, { signal: opts.signal, origin: opts.origin });
   if (res.status === 401 || res.status === 403) {
     throw responseError(res, {
-      code: 'unauthorized',
+      code: API_ERROR_CODES.UNAUTHORIZED,
       message: 'Invalid API key',
     });
   }
   if (!res.ok) {
-    throw responseError(res, { code: 'openrouter_models_failed' });
+    throw responseError(res, { code: API_ERROR_CODES.OPENROUTER_MODELS_FAILED });
   }
   const data = await res.json();
   const items = Array.isArray(data?.data) ? data.data : data;
@@ -132,6 +135,7 @@ export async function chatCompletion(params: {
   signal?: AbortSignal;
   providerSort?: ProviderSort;
   plugins?: PluginConfig[];
+  origin?: string;
 }): Promise<ChatCompletionPayload> {
   const body = buildChatBody({
     model: params.model,
@@ -149,11 +153,17 @@ export async function chatCompletion(params: {
     providerSort: params.providerSort,
     plugins: params.plugins,
   });
-  const res = await orChatCompletions({ apiKey: params.apiKey, body, signal: params.signal });
+  const res = await orChatCompletions({
+    apiKey: params.apiKey,
+    body,
+    signal: params.signal,
+    origin: params.origin,
+  });
   if (res.status === 401 || res.status === 403)
-    throw responseError(res, { code: 'unauthorized', message: 'Invalid API key' });
-  if (res.status === 429) throw responseError(res, { code: 'rate_limited', message: 'Rate limited' });
-  if (!res.ok) throw responseError(res, { code: 'openrouter_chat_failed' });
+    throw responseError(res, { code: API_ERROR_CODES.UNAUTHORIZED, message: 'Invalid API key' });
+  if (res.status === 429)
+    throw responseError(res, { code: API_ERROR_CODES.RATE_LIMITED, message: 'Rate limited' });
+  if (!res.ok) throw responseError(res, { code: API_ERROR_CODES.OPENROUTER_CHAT_FAILED });
   const payload: ChatCompletionPayload = await res.json();
   return payload;
 }
@@ -179,6 +189,7 @@ export async function streamChatCompletion(params: {
   callbacks?: StreamCallbacks;
   providerSort?: ProviderSort;
   plugins?: PluginConfig[];
+  origin?: string;
 }) {
   const callbacks = params.callbacks;
   const body = buildChatBody({
@@ -204,12 +215,14 @@ export async function streamChatCompletion(params: {
     body,
     signal: params.signal,
     stream: true,
+    origin: params.origin,
   });
 
   if (res.status === 401 || res.status === 403)
-    throw responseError(res, { code: 'unauthorized', message: 'Invalid API key' });
-  if (res.status === 429) throw responseError(res, { code: 'rate_limited', message: 'Rate limited' });
-  if (!res.ok) throw responseError(res, { code: 'openrouter_chat_failed' });
+    throw responseError(res, { code: API_ERROR_CODES.UNAUTHORIZED, message: 'Invalid API key' });
+  if (res.status === 429)
+    throw responseError(res, { code: API_ERROR_CODES.RATE_LIMITED, message: 'Rate limited' });
+  if (!res.ok) throw responseError(res, { code: API_ERROR_CODES.OPENROUTER_CHAT_FAILED });
 
   let full = '';
   let usage: any | undefined;
@@ -224,9 +237,11 @@ export async function streamChatCompletion(params: {
     }
   };
 
-  const handleMessage = (data: string) => {
+  const handleMessage = (event: SseEvent) => {
+    const payload = event?.data;
+    if (!payload) return;
     try {
-      const json = JSON.parse(data);
+      const json = JSON.parse(payload);
       const choice = json.choices?.[0] ?? {};
       const delta = choice?.delta ?? {};
       const message = choice?.message ?? {};
@@ -272,7 +287,9 @@ export async function streamChatCompletion(params: {
       onMessage: handleMessage,
     });
   } catch (error) {
-    callbacks?.onError?.(error instanceof Error ? error : new ApiError({ code: 'openrouter_chat_failed' }));
+    callbacks?.onError?.(
+      error instanceof Error ? error : new ApiError({ code: API_ERROR_CODES.OPENROUTER_CHAT_FAILED }),
+    );
     throw error;
   }
 

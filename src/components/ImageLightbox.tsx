@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 type Img = { src: string; name?: string };
 
-export default function ImageLightbox({
+export function ImageLightbox({
   images,
   initialIndex = 0,
   onClose,

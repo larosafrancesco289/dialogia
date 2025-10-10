@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 // Component: SettingsSection
 // Responsibility: Standard card shell for grouped settings sections.
-export default function SettingsSection(props: { title: string; children: ReactNode }) {
+export function SettingsSection(props: { title: string; children: ReactNode }) {
   const { title, children } = props;
   return (
     <div className="card p-4 space-y-3">
