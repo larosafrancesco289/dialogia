@@ -3,11 +3,12 @@
 // while keeping the Zustand message slice focused on state updates.
 
 import { v4 as uuidv4 } from 'uuid';
-import type { Attachment, Message } from '@/lib/types';
+import type { Attachment, Message, ModelTransport } from '@/lib/types';
+import type { ModelIndex } from '@/lib/models';
 import { type StoreSetter, type StoreGetter, type StoreAccess } from '@/lib/agent/types';
 import { saveMessage, saveChat } from '@/lib/db';
 import { prepareAttachmentsForModel } from '@/lib/agent/attachments';
-import { requireClientKeyOrProxy } from '@/lib/config';
+import { requireClientKeyOrProxy, requireAnthropicClientKeyOrProxy } from '@/lib/config';
 import {
   DEFAULT_TUTOR_MODEL_ID,
   DEFAULT_TUTOR_MEMORY_MODEL_ID,
@@ -31,8 +32,10 @@ import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import {
   NOTICE_INVALID_KEY,
   NOTICE_MISSING_CLIENT_KEY,
+  NOTICE_MISSING_ANTHROPIC_KEY,
   NOTICE_RATE_LIMITED,
 } from '@/lib/store/notices';
+import { resolveModelTransport } from '@/lib/providers';
 
 export type SendTurnOptions = {
   content: string;
@@ -121,15 +124,6 @@ export async function persistTutorForMessage({ messageId, store }: PersistTutorA
 }
 
 export async function sendUserTurn({ content, attachments, set, get }: SendTurnOptions) {
-  let key: string | undefined;
-  try {
-    const status = requireClientKeyOrProxy();
-    key = status.key;
-  } catch {
-    set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_CLIENT_KEY } }));
-    return;
-  }
-
   const chatId = get().selectedChatId;
   if (!chatId) return;
   let chat = get().chats.find((c) => c.id === chatId);
@@ -186,6 +180,52 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
   );
   if (!activeModelIds.length && chat.settings.model) activeModelIds.push(chat.settings.model);
   const primaryModelId = activeModelIds[0];
+
+  const modelIndexSnapshot = get().modelIndex;
+  const authByTransport = new Map<ModelTransport, { key?: string; useProxy: boolean }>();
+  const authByModelId = new Map<string, { transport: ModelTransport; apiKey: string }>();
+
+  const ensureAuthForTransport = (transport: ModelTransport) => {
+    if (authByTransport.has(transport)) return authByTransport.get(transport)!;
+    try {
+      const status =
+        transport === 'anthropic' ? requireAnthropicClientKeyOrProxy() : requireClientKeyOrProxy();
+      authByTransport.set(transport, status);
+      return status;
+    } catch (error) {
+      const notice =
+        transport === 'anthropic' ? NOTICE_MISSING_ANTHROPIC_KEY : NOTICE_MISSING_CLIENT_KEY;
+      set((state) => ({ ui: { ...state.ui, notice } }));
+      throw error;
+    }
+  };
+
+  const ensureAuthForModel = (modelId?: string) => {
+    if (!modelId) return null;
+    if (authByModelId.has(modelId)) return authByModelId.get(modelId)!;
+    const meta = modelIndexSnapshot.get(modelId);
+    const transport = resolveModelTransport(modelId, meta);
+    const transportAuth = ensureAuthForTransport(transport);
+    const entry = { transport, apiKey: transportAuth.key || '' };
+    authByModelId.set(modelId, entry);
+    return entry;
+  };
+
+  try {
+    const modelsNeedingAuth = new Set<string>();
+    activeModelIds.forEach((id) => {
+      if (id) modelsNeedingAuth.add(id);
+    });
+    if (tutorEnabled) {
+      if (tutorDefaultModelId) modelsNeedingAuth.add(tutorDefaultModelId);
+      if (tutorMemoryModelId) modelsNeedingAuth.add(tutorMemoryModelId);
+    }
+    for (const id of modelsNeedingAuth) {
+      ensureAuthForModel(id);
+    }
+  } catch {
+    return;
+  }
 
   const modelsList = get().models;
   const attachmentsByModel = new Map<string, Attachment[]>();
@@ -270,19 +310,32 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     await saveMessage(placeholder);
   }
 
+  const primaryAuth = primaryModelId ? authByModelId.get(primaryModelId) : undefined;
   if (get().ui.experimentalDeepResearch && get().ui.nextDeepResearch) {
-    const handled = await runDeepResearchTurn({
-      task: content,
-      modelId: primaryModelId,
-      chatId,
-      assistantMessage: primaryAssistant,
-      set,
-      get,
-      persistMessage: saveMessage,
-    });
-    if (handled) {
-      while (pendingStreams > 0) markComplete();
-      return;
+    if (!primaryAuth || primaryAuth.transport !== 'openrouter') {
+      set((state) => ({
+        ui: {
+          ...state.ui,
+          nextDeepResearch: false,
+          notice:
+            state.ui.notice ??
+            'DeepResearch currently requires an OpenRouter model selection.',
+        },
+      }));
+    } else {
+      const handled = await runDeepResearchTurn({
+        task: content,
+        modelId: primaryModelId,
+        chatId,
+        assistantMessage: primaryAssistant,
+        set,
+        get,
+        persistMessage: saveMessage,
+      });
+      if (handled) {
+        while (pendingStreams > 0) markComplete();
+        return;
+      }
     }
   }
 
@@ -298,25 +351,29 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     | undefined;
 
   if (tutorEnabled) {
-    const result = await maybeAdvanceTutorMemory({
-      apiKey: key || '',
-      modelId: tutorMemoryModelId,
-      settings: chat.settings,
-      conversation: priorMessages.concat(userMsg),
-      autoUpdate: memoryAutoUpdateEnabled,
-    });
+    const memoryAuth = ensureAuthForModel(tutorMemoryModelId);
+    if (memoryAuth) {
+      const result = await maybeAdvanceTutorMemory({
+        apiKey: memoryAuth.apiKey,
+        transport: memoryAuth.transport,
+        modelId: tutorMemoryModelId,
+        settings: chat.settings,
+        conversation: priorMessages.concat(userMsg),
+        autoUpdate: memoryAutoUpdateEnabled,
+      });
 
-    const updatedChat = { ...chat, settings: result.nextSettings, updatedAt: Date.now() };
-    if (JSON.stringify(updatedChat.settings) !== JSON.stringify(chat.settings)) {
-      set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
-      chat = updatedChat;
-      try {
-        await saveChat(updatedChat);
-      } catch {
-        /* ignore */
+      const updatedChat = { ...chat, settings: result.nextSettings, updatedAt: Date.now() };
+      if (JSON.stringify(updatedChat.settings) !== JSON.stringify(chat.settings)) {
+        set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
+        chat = updatedChat;
+        try {
+          await saveChat(updatedChat);
+        } catch {
+          /* ignore */
+        }
       }
+      memoryDebug = result.debug;
     }
-    memoryDebug = result.debug;
   }
 
   if (tutorEnabled) {
@@ -373,6 +430,12 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     const controller = new AbortController();
     const abortListener = () => controller.abort();
     masterController.signal.addEventListener('abort', abortListener);
+    const auth = authByModelId.get(modelId) || ensureAuthForModel(modelId);
+    if (!auth) {
+      masterController.signal.removeEventListener('abort', abortListener);
+      onComplete();
+      return;
+    }
     const composition = await composeTurn({
       chat: chatForModel,
       ui: snapshot.ui,
@@ -408,7 +471,8 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
           searchEnabled,
           searchProvider,
           providerSort,
-          apiKey: key || '',
+          apiKey: auth.apiKey,
+          transport: auth.transport,
           controller,
           set,
           get,
@@ -467,7 +531,8 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
           assistantMessage,
           messages: streamingMessages,
           controller,
-          apiKey: key || '',
+          apiKey: auth.apiKey,
+          transport: auth.transport,
           providerSort,
           set,
           get,
@@ -487,7 +552,8 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
         assistantMessage,
         messages: composedMessages,
         controller,
-        apiKey: key || '',
+        apiKey: auth.apiKey,
+        transport: auth.transport,
         providerSort,
         set,
         get,
@@ -540,15 +606,6 @@ export type RegenerateTurnArgs = {
 };
 
 export async function regenerateTurn({ messageId, overrideModelId, set, get }: RegenerateTurnArgs) {
-  let key: string | undefined;
-  try {
-    const status = requireClientKeyOrProxy();
-    key = status.key;
-  } catch {
-    set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_CLIENT_KEY } }));
-    return;
-  }
-
   const chatId = get().selectedChatId;
   if (!chatId) return;
   let chat = get().chats.find((c) => c.id === chatId);
@@ -583,6 +640,13 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
   }
 
   const targetModel = overrideModelId || chat.settings.model;
+  const modelIndexSnapshot = get().modelIndex;
+  const targetAuth = resolveModelAuthForSingle({
+    modelId: targetModel,
+    modelIndex: modelIndexSnapshot,
+    set,
+  });
+  if (!targetAuth) return;
   if (get().ui.zdrOnly === true) {
     const allowed = await guardZdrOrNotify(targetModel, set, get);
     if (!allowed) return;
@@ -601,7 +665,8 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
       messages,
       models: get().models,
       modelIndex: get().modelIndex,
-      apiKey: key || '',
+      apiKey: targetAuth.apiKey,
+      transport: targetAuth.transport,
       controller,
       set,
       get,
@@ -648,4 +713,28 @@ export function attachTutorState({ messageId, patch, store }: AttachTutorUiArgs)
     },
   }));
   return updatedMessage;
+}
+
+function resolveModelAuthForSingle({
+  modelId,
+  modelIndex,
+  set,
+}: {
+  modelId?: string;
+  modelIndex: ModelIndex;
+  set: StoreSetter;
+}): { transport: ModelTransport; apiKey: string } | null {
+  if (!modelId) return null;
+  const meta = modelIndex.get(modelId);
+  const transport = resolveModelTransport(modelId, meta);
+  try {
+    const status =
+      transport === 'anthropic' ? requireAnthropicClientKeyOrProxy() : requireClientKeyOrProxy();
+    return { transport, apiKey: status.key || '' };
+  } catch {
+    const notice =
+      transport === 'anthropic' ? NOTICE_MISSING_ANTHROPIC_KEY : NOTICE_MISSING_CLIENT_KEY;
+    set((state) => ({ ui: { ...state.ui, notice } }));
+    return null;
+  }
 }

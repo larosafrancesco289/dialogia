@@ -1,4 +1,4 @@
-import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
+import type { Attachment, Chat, Message, ORModel, ModelTransport } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { SetState, GetState } from 'zustand';
@@ -122,6 +122,7 @@ export type PlanTurnOptions = {
   searchProvider: SearchProvider;
   providerSort?: ProviderSort;
   apiKey: string;
+  transport?: ModelTransport;
   controller: AbortController;
   set: StoreSetter;
   get: StoreGetter;
@@ -173,6 +174,7 @@ export type StreamFinalOptions = {
   messages: ModelMessage[];
   controller: AbortController;
   apiKey: string;
+  transport?: ModelTransport;
   providerSort?: ProviderSort;
   set: StoreSetter;
   get: StoreGetter;
@@ -192,6 +194,7 @@ export type RegenerateOptions = {
   models: ORModel[];
   modelIndex: ModelIndex;
   apiKey: string;
+  transport?: ModelTransport;
   controller: AbortController;
   set: StoreSetter;
   get: StoreGetter;

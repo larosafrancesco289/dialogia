@@ -8,6 +8,8 @@ export const API_ERROR_CODES = Object.freeze({
   OPENROUTER_CHAT_FAILED: 'openrouter_chat_failed',
   OPENROUTER_MODELS_FAILED: 'openrouter_models_failed',
   OPENROUTER_ZDR_FAILED: 'openrouter_zdr_failed',
+  PROVIDER_CHAT_FAILED: 'provider_chat_failed',
+  PROVIDER_MODELS_FAILED: 'provider_models_failed',
 } as const);
 
 export type ApiErrorCode =

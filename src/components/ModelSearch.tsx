@@ -22,7 +22,8 @@ import {
 } from '@/lib/models';
 import { describeModelPricing } from '@/lib/cost';
 import { useChatStore } from '@/lib/store';
-import type { ORModel } from '@/lib/types';
+import type { ORModel, ModelTransport } from '@/lib/types';
+import { getModelTransport, getModelTransportLabel } from '@/lib/providers';
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -45,7 +46,9 @@ export type ModelSearchHandle = {
 export type ModelSearchResult = {
   id: string;
   displayName: string;
-  provider: string;
+  provider: string; // slug used for filtering/ZDR
+  providerLabel: string;
+  transport: ModelTransport;
   shortId: string;
   fullId: string;
   price?: string;
@@ -82,7 +85,9 @@ function buildResult(
     zdrProviderIds?: string[];
   },
 ): ModelSearchResult {
+  const transport = getModelTransport(model);
   const provider = String(model.id).split('/')[0] || 'openrouter';
+  const providerLabel = getModelTransportLabel(model);
   const shortId = model.id.includes('/') ? model.id.split('/').slice(1).join('/') : model.id;
   const displayName = formatModelLabel({ model, fallbackId: model.id, fallbackName: model.name });
   const price = describeModelPricing(model);
@@ -99,6 +104,8 @@ function buildResult(
     id: model.id,
     displayName,
     provider,
+    providerLabel,
+    transport,
     shortId,
     fullId: model.id,
     price,
@@ -179,7 +186,8 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
       if (!normalizedQuery) return [] as ModelSearchResult[];
       const modelsList = models || [];
       const filtered = modelsList.filter((model) => {
-        const hay = `${model.id} ${model.name ?? ''}`.toLowerCase();
+        const providerLabel = getModelTransportLabel(model);
+        const hay = `${model.id} ${model.name ?? ''} ${providerLabel}`.toLowerCase();
         return queryWords.every((word) => hay.includes(word));
       });
       return filtered
@@ -428,7 +436,9 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
                           </span>
                           <span className="inline-flex items-center gap-1">
                             <ChevronRightIcon className="h-3.5 w-3.5" />
-                            <span className="capitalize">{result.provider}</span>
+                            <span className="text-[11px] uppercase tracking-wide">
+                              {result.providerLabel || result.provider}
+                            </span>
                           </span>
                           {result.contextLength && (
                             <span title="Context length" className="whitespace-nowrap">

@@ -31,6 +31,7 @@ import type { StoreState } from '@/lib/store/types';
 import { evaluateZdrModel, ZDR_NO_MATCH_NOTICE } from '@/lib/zdr';
 import type { ZdrLists } from '@/lib/zdr';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { getModelTransportLabel } from '@/lib/providers';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -275,10 +276,12 @@ export function ModelPicker({
   const visibleOptions = useMemo(() => {
     if (!filterWords.length) return options;
     return options.filter((option) => {
-      const haystack = `${deriveLabel(option)} ${option.id}`.toLowerCase();
+      const meta = modelMap.get(option.id);
+      const providerText = getModelTransportLabel(meta);
+      const haystack = `${deriveLabel(option)} ${option.id} ${providerText}`.toLowerCase();
       return filterWords.every((word) => haystack.includes(word));
     });
-  }, [options, filterWords, deriveLabel]);
+  }, [options, filterWords, deriveLabel, modelMap]);
 
   useEffect(() => {
     if (selectedIds.length > maxSelectable) {
@@ -327,21 +330,34 @@ export function ModelPicker({
   );
 
   const selectionSummary = useMemo(() => {
-    const labels = selectedIds.map((id) =>
-      deriveLabel({
-        id,
-        name: modelMap.get(id)?.name || id,
-      }),
-    );
+    const entries = selectedIds.map((id) => {
+      const meta = modelMap.get(id);
+      return {
+        label: deriveLabel({
+          id,
+          name: meta?.name || id,
+        }),
+        provider: getModelTransportLabel(meta),
+      };
+    });
+    const labels = entries.map((entry) => entry.label);
     if (!labels.length) {
       const fallback = deriveLabel(current);
       return { button: fallback, tooltip: fallback };
     }
     if (labels.length === 1) {
-      return { button: labels[0], tooltip: labels[0] };
+      const providerLabel = entries[0]?.provider;
+      const buttonLabel = providerLabel ? `${labels[0]} · ${providerLabel}` : labels[0];
+      const tooltip = providerLabel ? `${labels[0]} (${providerLabel})` : labels[0];
+      return { button: buttonLabel, tooltip };
     }
-    const button = `${labels[0]} +${labels.length - 1}`;
-    const tooltip = labels.join(', ');
+    const providerLabel = entries[0]?.provider;
+    const button = providerLabel
+      ? `${labels[0]} · ${providerLabel} +${labels.length - 1}`
+      : `${labels[0]} +${labels.length - 1}`;
+    const tooltip = entries
+      .map((entry) => (entry.provider ? `${entry.label} (${entry.provider})` : entry.label))
+      .join(', ');
     return { button, tooltip };
   }, [selectedIds, deriveLabel, modelMap, current]);
 
@@ -569,10 +585,12 @@ export function ModelPicker({
               </div>
               <div className="flex flex-wrap gap-2">
                 {selectedIds.map((id, index) => {
+                  const meta = modelMap.get(id);
                   const label = deriveLabel({
                     id,
-                    name: modelMap.get(id)?.name || id,
+                    name: meta?.name || id,
                   });
+                  const providerLabel = getModelTransportLabel(meta);
                   const isPrimary = index === 0;
                   return (
                     <span
@@ -591,7 +609,14 @@ export function ModelPicker({
                         title={isPrimary ? 'Primary model' : 'Make primary'}
                       >
                         {isPrimary && <CheckIcon className="h-3.5 w-3.5" />}
-                        <span className="truncate max-w-[120px]">{label}</span>
+                        <span className="flex flex-col leading-tight">
+                          <span className="truncate max-w-[140px]">{label}</span>
+                          {providerLabel && (
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground/80">
+                              {providerLabel}
+                            </span>
+                          )}
+                        </span>
                       </button>
                       {selectedIds.length > 1 && (
                         <button
@@ -648,9 +673,9 @@ export function ModelPicker({
               const isSelected = selectedIds.includes(o.id);
               const isPrimary = selectedId === o.id;
               const isActive = idx === highlightedIndex;
+              const meta = modelMap.get(o.id);
               const label = deriveLabel(o);
-              const provider = String(o.id).split('/')[0] || '';
-              const providerLabel = provider ? provider.toUpperCase() : '';
+              const providerLabel = getModelTransportLabel(meta);
 
               const capabilityChips = (
                 [
@@ -721,7 +746,7 @@ export function ModelPicker({
                             {label}
                           </div>
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-                            {provider && (
+                            {providerLabel && (
                               <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5">
                                 {providerLabel}
                               </span>

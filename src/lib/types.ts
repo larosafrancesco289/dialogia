@@ -1,5 +1,7 @@
 import type { ProviderSort } from '@/lib/models/providerSort';
 
+export type ModelTransport = 'openrouter' | 'anthropic';
+
 export type ChatSettings = {
   model: string;
   parallel_models?: string[];
@@ -198,6 +200,10 @@ export type ORModel = {
   context_length?: number;
   pricing?: { prompt?: number; completion?: number; currency?: string };
   raw?: any;
+  // Transport/provider metadata for multi-provider routing.
+  transport?: ModelTransport;
+  transportModelId?: string;
+  providerDisplay?: string;
 };
 
 export type KVRecord = {

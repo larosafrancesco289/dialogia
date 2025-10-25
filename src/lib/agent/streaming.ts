@@ -76,6 +76,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     messages,
     controller,
     apiKey,
+    transport = 'openrouter',
     providerSort,
     set,
     get,
@@ -142,6 +143,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
 
   await getStreamChatCompletion()({
     apiKey,
+    transport,
     model: chat.settings.model,
     messages,
     modalities: canImageOut ? (['image', 'text'] as any) : undefined,
