@@ -1,12 +1,12 @@
 ### Dialogia
 
-Local-first, privacy-focused multi-model chat UI for OpenRouter.
+Local-first, privacy-focused multi-model chat UI for OpenRouter, Anthropic, and beyond.
 
 ### Highlights
 
 - Local storage: Chats, messages, folders persisted in-browser via IndexedDB (Dexie).
 - ZDR-ready: Optional Zero Data Retention filtering and enforcement; toggleable.
-- Model control: Curated picker, favorites, hide-from-dropdown, and custom IDs.
+- Model control: Curated picker, favorites, hide-from-dropdown, custom IDs, and provider labels.
 - Rich I/O: Images (vision), audio input (mp3/wav), PDFs; image generation output supported.
 - Reasoning: Optional “thinking” stream for reasoning-capable models with effort control.
 - Streaming + metrics: TTFT, token counts, tokens/sec; basic cost estimate when pricing is known.
@@ -43,6 +43,14 @@ BRAVE_SEARCH_API_KEY=brave_your_key_here
 
 # Optional: default OpenRouter route preference (speed|cost; defaults to speed)
 # NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT=cost
+
+# Optional: direct Anthropic access (pick one)
+# Direct client key (not recommended for production)
+# NEXT_PUBLIC_ANTHROPIC_API_KEY=sk-ant-live_your_client_key_here
+
+# Or proxy via Next.js API with a server key
+# NEXT_PUBLIC_USE_ANTHROPIC_PROXY=true
+# ANTHROPIC_API_KEY=sk-ant-live_your_server_key_here
 ```
 
 Private access gate (optional but recommended when sharing preview):
@@ -62,6 +70,7 @@ Client-side mode (not recommended):
 
 ```
 NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-v1_your_client_key_here
+# NEXT_PUBLIC_ANTHROPIC_API_KEY=sk-ant_your_client_key_here
 ```
 
 Install dependencies:

@@ -1,5 +1,5 @@
-import type { Message } from '@/lib/types';
-import { chatCompletion } from '@/lib/openrouter';
+import type { Message, ModelTransport } from '@/lib/types';
+import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { DEFAULT_TUTOR_MEMORY_FREQUENCY } from '@/lib/constants';
 import { estimateTokens } from '@/lib/tokenEstimate';
 import type { ModelMessage } from '@/lib/agent/types';
@@ -131,8 +131,9 @@ export async function generateTutorWelcomeMessage(params: {
   model: string;
   memory?: string;
   signal?: AbortSignal;
+  transport?: ModelTransport;
 }): Promise<string> {
-  const { apiKey, model, memory, signal } = params;
+  const { apiKey, model, memory, signal, transport = 'openrouter' } = params;
   const normalized = normalizeTutorMemory(memory);
   const prompt = [
     'Learner memory (context only):',
@@ -150,8 +151,9 @@ export async function generateTutorWelcomeMessage(params: {
     },
     { role: 'user', content: prompt },
   ];
-  const response = await chatCompletion({
+  const response = await getChatCompletion()({
     apiKey,
+    transport,
     model,
     messages,
     max_tokens: 220,
@@ -177,8 +179,10 @@ export async function updateTutorMemory(params: {
   existingMemory?: string;
   conversation: Message[];
   frequency?: number;
+  transport?: ModelTransport;
 }): Promise<TutorMemoryUpdateResult> {
-  const { apiKey, model, existingMemory, conversation, frequency } = params;
+  const { apiKey, model, existingMemory, conversation, frequency, transport = 'openrouter' } =
+    params;
   const memory = normalizeTutorMemory(existingMemory);
   const lastMessages = conversation.slice(-10);
   const formatted = lastMessages
@@ -220,8 +224,9 @@ export async function updateTutorMemory(params: {
     },
     { role: 'user', content: userPrompt },
   ];
-  const response = await chatCompletion({
+  const response = await getChatCompletion()({
     apiKey,
+    transport,
     model,
     messages,
     max_tokens: 512,

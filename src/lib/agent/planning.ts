@@ -45,6 +45,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     searchProvider,
     providerSort,
     apiKey,
+    transport = 'openrouter',
     controller,
     set,
     get,
@@ -96,6 +97,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
 
     const resp = await getChatCompletion()({
       apiKey,
+      transport,
       model: chat.settings.model,
       messages: convo,
       temperature: chat.settings.temperature,

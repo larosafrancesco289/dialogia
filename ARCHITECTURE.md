@@ -30,8 +30,9 @@ business logic that is easy to test.
   `src/lib/openrouter.ts`. Shared helpers in `src/lib/api/config.ts`, `src/lib/api/stream.ts`, and
   `src/lib/api/errors.ts` encapsulate defaults, SSE parsing, and typed error construction so retry
   logic stays consistent.
-- **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Brave search proxy in
-  `app/api/brave/route.ts`, and any additional integrations. These never import UI modules.
+- **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Anthropic routes in
+  `app/api/anthropic/*`, Brave search proxy in `app/api/brave/route.ts`, and any additional
+  integrations. These never import UI modules.
 
 ```
             ┌──────────┐
@@ -69,10 +70,11 @@ business logic that is easy to test.
    the final response via `src/lib/agent/streaming.ts`.
 3. Agent helpers in `src/lib/agent/compose.ts`, `src/lib/agent/request.ts`, and
    `src/lib/agent/policy.ts` determine planning rounds, tool eligibility (search, tutor), and build
-   the OpenRouter payload.
-4. The transport function `src/lib/openrouter.ts` uses the consolidated client in
-   `src/lib/api/openrouterClient.ts` to perform the HTTP request (streaming or non-streaming).
-   Proxying through `/api/openrouter/*` keeps provider keys off the client.
+   provider-specific payloads.
+4. The pipeline client (`src/lib/agent/pipelineClient.ts`) selects the correct transport
+   implementation (`src/lib/openrouter.ts`, `src/lib/anthropic.ts`, etc.) and underlying HTTP
+   client. Proxying through `/api/openrouter/*` or `/api/anthropic/*` keeps provider keys off the
+   client whenever proxy mode is enabled.
 5. Streaming responses feed `src/lib/agent/streamHandlers.ts`, which mutate store slices via
    dedicated update helpers (append tokens, metrics, annotations). Non-streaming responses update
    message state in one shot.
@@ -94,8 +96,9 @@ business logic that is easy to test.
 
 1. Add provider metadata to `src/data/curatedModels.ts` and update `src/lib/models.ts` if new
    capability flags are required (e.g., vision, audio).
-2. Implement transport changes in `src/lib/openrouter.ts` (or a new client module) so all callers
-   inherit the contract. Request payload tweaks should flow through `src/lib/agent/request.ts`.
+2. Implement transport changes in `src/lib/openrouter.ts`, `src/lib/anthropic.ts`, or a new client
+   module so all callers inherit the contract. Request payload tweaks should flow through
+   `src/lib/agent/request.ts`.
 3. Define tool schemas under `src/lib/agent/searchFlow.ts` (or a new module) and surface helpers
    from the agent layer—never from UI components.
 4. Register tool parsing or execution in `src/lib/agent/planning.ts` / `streaming.ts` and keep

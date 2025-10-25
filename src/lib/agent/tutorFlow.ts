@@ -8,7 +8,7 @@ import {
   getTutorMemoryFrequency,
   EMPTY_TUTOR_MEMORY,
 } from '@/lib/agent/tutorMemory';
-import type { Message } from '@/lib/types';
+import type { Message, ModelTransport } from '@/lib/types';
 
 export function buildHiddenTutorContent(tutor: unknown): string {
   try {
@@ -72,6 +72,7 @@ export function ensureTutorDefaults(args: {
 
 export async function maybeAdvanceTutorMemory(args: {
   apiKey: string;
+  transport: ModelTransport;
   modelId: string;
   settings: any;
   conversation: Message[];
@@ -87,7 +88,7 @@ export async function maybeAdvanceTutorMemory(args: {
     raw?: string;
   };
 }> {
-  const { apiKey, modelId, settings, conversation, autoUpdate } = args;
+  const { apiKey, transport, modelId, settings, conversation, autoUpdate } = args;
   const priorCount = settings.tutor_memory_message_count ?? 0;
   const frequency = getTutorMemoryFrequency(settings);
   const nextCount = priorCount + 1;
@@ -99,6 +100,7 @@ export async function maybeAdvanceTutorMemory(args: {
     try {
       const result = await updateTutorMemory({
         apiKey,
+        transport,
         model: modelId,
         existingMemory: settings.tutor_memory,
         conversation,

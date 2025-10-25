@@ -50,7 +50,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
           <div className="space-y-3">
             <ModelSearch
               ref={modelSearchRef}
-              placeholder="Search OpenRouter models (e.g. openai, anthropic, llama)"
+              placeholder="Search models across providers (e.g. Claude, GPT-4o, Grok)"
               selectedIds={favoriteModelIds || []}
               clearOnSelect
               onSelect={(result) => {

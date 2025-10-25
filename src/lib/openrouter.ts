@@ -103,6 +103,9 @@ export async function fetchModels(
     context_length: m.context_length,
     pricing: m.pricing,
     raw: m,
+    transport: 'openrouter' as const,
+    transportModelId: m.id,
+    providerDisplay: 'OpenRouter',
   }));
 }
 
