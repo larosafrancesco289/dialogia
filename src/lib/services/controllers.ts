@@ -1,9 +1,8 @@
 // Module: services/controllers
-// Responsibility: Coordinate AbortControllers for chat turns and compare runs
-// without storing them in Zustand state. Provides helper setters and abortors.
+// Responsibility: Coordinate AbortControllers for chat turns without storing them in
+// Zustand state. Provides helper setters and abortors.
 
 const turnControllers = new Map<string, AbortController>();
-const compareControllers = new Map<string, AbortController>();
 
 export function setTurnController(chatId: string, controller: AbortController) {
   if (!chatId) return;
@@ -32,28 +31,4 @@ export function abortTurn(chatId: string) {
 export function abortAllTurns() {
   turnControllers.forEach((controller) => controller.abort());
   turnControllers.clear();
-}
-
-export function setCompareController(runId: string, controller: AbortController) {
-  if (!runId) return;
-  const existing = compareControllers.get(runId);
-  if (existing && existing !== controller) existing.abort();
-  compareControllers.set(runId, controller);
-}
-
-export function clearCompareController(runId: string) {
-  if (!runId) return;
-  compareControllers.delete(runId);
-}
-
-export function abortAllCompare() {
-  compareControllers.forEach((controller) => controller.abort());
-  compareControllers.clear();
-}
-
-export function abortCompare(runId: string) {
-  if (!runId) return;
-  const controller = compareControllers.get(runId);
-  if (controller) controller.abort();
-  compareControllers.delete(runId);
 }

@@ -146,6 +146,7 @@ export function createChatSlice(
           nextMaxTokens: undefined,
           nextShowThinking: undefined,
           nextShowStats: undefined,
+          nextParallelModels: undefined,
         },
       }));
     },
@@ -231,6 +232,15 @@ export function createChatSlice(
       const uiState = get().ui;
       const forceTutorMode = !!(uiState.forceTutorMode ?? false);
       let appliedPartial = { ...partial } as Partial<Chat['settings']>;
+      if (Array.isArray(appliedPartial.parallel_models)) {
+        const next = appliedPartial.parallel_models.filter(
+          (id): id is string => typeof id === 'string' && id.length > 0,
+        );
+        const base = appliedPartial.model ?? before?.settings.model;
+        appliedPartial.parallel_models = Array.from(
+          new Set(next.filter((id) => !base || id !== base)),
+        );
+      }
       let nextGlobalMemory = normalizeTutorMemory(uiState.tutorGlobalMemory);
       const applyTutorDefaults = () => {
         const partialMemoryDisabled =
@@ -281,6 +291,18 @@ export function createChatSlice(
           const updatedSettings = { ...c.settings, ...appliedPartial };
           // If forceTutorMode is active, never allow tutor_mode to be false
           if (forceTutorMode) updatedSettings.tutor_mode = true;
+          if (Array.isArray(updatedSettings.parallel_models)) {
+            updatedSettings.parallel_models = Array.from(
+              new Set(
+                updatedSettings.parallel_models.filter(
+                  (modelId): modelId is string =>
+                    typeof modelId === 'string' &&
+                    modelId.length > 0 &&
+                    modelId !== updatedSettings.model,
+                ),
+              ),
+            );
+          }
           return { ...c, settings: updatedSettings, updatedAt: Date.now() };
         }),
         ui: { ...s.ui, tutorGlobalMemory: nextGlobalMemory },

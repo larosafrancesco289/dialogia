@@ -8,7 +8,6 @@ import {
   EllipsisVerticalIcon,
   PlusIcon,
   PencilSquareIcon,
-  Squares2X2Icon,
   Cog6ToothIcon,
   XMarkIcon,
   AcademicCapIcon,
@@ -18,7 +17,14 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { findModelById, formatModelLabel } from '@/lib/models';
 
 export function MobileHeader() {
-  const { chats, selectedChatId, renameChat, newChat, setUI, openCompare, updateChatSettings } =
+  const {
+    chats,
+    selectedChatId,
+    renameChat,
+    newChat,
+    setUI,
+    updateChatSettings,
+  } =
     useChatStore(
       (state) => ({
         chats: state.chats,
@@ -26,7 +32,6 @@ export function MobileHeader() {
         renameChat: state.renameChat,
         newChat: state.newChat,
         setUI: state.setUI,
-        openCompare: state.openCompare,
         updateChatSettings: state.updateChatSettings,
       }),
       shallow,
@@ -226,20 +231,6 @@ export function MobileHeader() {
                     <span>Rename chat</span>
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="mobile-menu-item"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    try {
-                      import('@/components/CompareDrawer');
-                    } catch {}
-                    openCompare();
-                  }}
-                >
-                  <Squares2X2Icon className="h-4 w-4" />
-                  <span>Compare models</span>
-                </button>
                 <ThemeToggle variant="menu" className="mobile-theme-item" />
                 <button
                   type="button"

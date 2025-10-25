@@ -2,6 +2,7 @@ import type { ProviderSort } from '@/lib/models/providerSort';
 
 export type ChatSettings = {
   model: string;
+  parallel_models?: string[];
   temperature?: number;
   top_p?: number;
   max_tokens?: number;

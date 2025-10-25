@@ -11,7 +11,7 @@ business logic that is easy to test.
   them (for example `src/components/chat/hooks/useComposerShortcuts.ts`).
 - **State** — Zustand slices in `src/lib/store/*`. Composition happens in `src/lib/store.ts`, which
   wires persistence, migrations, and selectors. Each slice owns a bounded feature area (models,
-  chat history, UI flags, compare drawer, tutor context, etc.).
+  chat history, UI flags, multi-model state, tutor context, etc.).
 - **Agent** — Request builders, planning, tools, and policies in `src/lib/agent/*`. The
   `compose.ts` module is the single entry for per-turn system/message assembly so every consumer
   (send, regenerate, tests) shares the exact same preamble logic. `planning.ts`, `streaming.ts`, and

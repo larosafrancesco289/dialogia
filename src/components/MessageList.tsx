@@ -19,8 +19,8 @@ import { useMessageWindow } from '@/components/message/hooks/useMessageWindow';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 
 const EMPTY_MESSAGES: Message[] = [];
-export function MessageList({ chatId }: { chatId: string }) {
-  const messages = useChatStore((s) => s.messages[chatId] ?? EMPTY_MESSAGES);
+export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
+  const allMessages = useChatStore((s) => s.messages[chatId] ?? EMPTY_MESSAGES);
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const models = useChatStore((s) => s.models);
   const isStreaming = useChatStore((s) => s.ui.isStreaming);
@@ -49,6 +49,14 @@ export function MessageList({ chatId }: { chatId: string }) {
     }
   }, []);
   const isMobile = useIsMobile();
+  const messages = useMemo(() => {
+    if (!modelFilter) return allMessages;
+    return allMessages.filter((message) => {
+      if (message.role !== 'assistant') return true;
+      const target = typeof message.model === 'string' ? message.model : undefined;
+      return target === modelFilter;
+    });
+  }, [allMessages, modelFilter]);
 
   const isAssistantPlaceholder = useCallback((message?: Message, previous?: Message) => {
     if (!message || message.role !== 'assistant' || previous?.role !== 'user') return false;

@@ -48,6 +48,7 @@ export type UIState = {
   nextMaxTokens?: number;
   nextShowThinking?: boolean;
   nextShowStats?: boolean;
+  nextParallelModels?: string[];
   // Tutor context fidelity for follow-up turns
   // 'summary' keeps prompts compact; 'full' injects full quiz JSON
   tutorContextMode?: 'summary' | 'full';
@@ -68,24 +69,6 @@ export type UIState = {
       error?: string;
     }
   >;
-  compare?: {
-    isOpen: boolean;
-    prompt: string;
-    selectedModelIds: string[];
-    runs: Record<
-      string,
-      {
-        status: 'idle' | 'running' | 'done' | 'error' | 'aborted';
-        content: string;
-        reasoning?: string;
-        images?: string[]; // base64 data URLs for generated images
-        metrics?: MessageMetrics;
-        tokensIn?: number;
-        tokensOut?: number;
-        error?: string;
-      }
-    >;
-  };
   // Tutor tool payloads keyed by assistant message id
   tutorByMessageId?: Record<
     string,
@@ -181,13 +164,6 @@ export type StoreState = {
   primeTutorWelcomePreview: () => Promise<string | undefined>;
   prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
 
-  // compare
-  openCompare: () => void;
-  closeCompare: () => void;
-  setCompare: (partial: Partial<NonNullable<UIState['compare']>>) => void;
-  runCompare: (prompt: string, modelIds: string[]) => Promise<void>;
-  stopCompare: () => void;
-
   // models
   loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
   toggleFavoriteModel: (id: string) => void;
@@ -211,7 +187,7 @@ export type StoreState = {
     opts?: { rerun?: boolean },
   ) => Promise<void>;
   editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
-  // utility for UI features (e.g., compare drawer inserting a result)
+  // utility for UI features (e.g., multi-model responses inserting a result)
   appendAssistantMessage: (content: string, opts?: { modelId?: string }) => Promise<void>;
   // tutor persistence
   persistTutorStateForMessage: (messageId: string) => Promise<void>;
