@@ -141,11 +141,12 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
   const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat.settings.tutor_mode);
 
   let tutorDefaultModelId = uiState.tutorDefaultModelId || chat.settings.tutor_default_model;
-  let tutorMemoryModelId =
+  let tutorMemoryModelId = (
     uiState.tutorMemoryModelId ||
     chat.settings.tutor_memory_model ||
     tutorDefaultModelId ||
-    DEFAULT_TUTOR_MEMORY_MODEL_ID;
+    DEFAULT_TUTOR_MEMORY_MODEL_ID
+  );
   if (!tutorDefaultModelId) tutorDefaultModelId = DEFAULT_TUTOR_MODEL_ID;
   if (!tutorMemoryModelId) tutorMemoryModelId = DEFAULT_TUTOR_MEMORY_MODEL_ID;
 
@@ -173,21 +174,42 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     tutorMemoryModelId = chat.settings.tutor_memory_model || tutorMemoryModelId;
   }
 
-  const activeModelId = chat.settings.model;
+  const parallelModels = Array.isArray(chat.settings.parallel_models)
+    ? chat.settings.parallel_models.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    : [];
+  const activeModelIds = Array.from(
+    new Set(
+      [chat.settings.model, ...parallelModels].filter(
+        (id): id is string => typeof id === 'string' && id.length > 0,
+      ),
+    ),
+  );
+  if (!activeModelIds.length && chat.settings.model) activeModelIds.push(chat.settings.model);
+  const primaryModelId = activeModelIds[0];
 
-  const preparedAttachments = await prepareAttachmentsForModel({
-    attachments,
-    modelId: activeModelId,
-    models: get().models,
-  });
+  const modelsList = get().models;
+  const attachmentsByModel = new Map<string, Attachment[]>();
+  await Promise.all(
+    activeModelIds.map(async (modelId) => {
+      const prepared = await prepareAttachmentsForModel({
+        attachments,
+        modelId,
+        models: modelsList,
+      });
+      attachmentsByModel.set(modelId, prepared);
+    }),
+  );
+  const primaryAttachments = attachmentsByModel.get(primaryModelId) ?? [];
 
   if (tutorEnabled) primeTutorWelcome(chatId, { set, get });
 
   const priorMessages = get().messages[chatId] ?? [];
 
   if (get().ui.zdrOnly === true) {
-    const allowed = await guardZdrOrNotify(activeModelId, set, get);
-    if (!allowed) return;
+    for (const modelId of activeModelIds) {
+      const allowed = await guardZdrOrNotify(modelId, set, get);
+      if (!allowed) return;
+    }
   }
 
   const now = Date.now();
@@ -197,42 +219,71 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     role: 'user',
     content,
     createdAt: now,
-    attachments: preparedAttachments.length ? preparedAttachments : undefined,
+    attachments: primaryAttachments.length ? primaryAttachments : undefined,
   };
 
-  const assistantMsg: Message = {
+  const assistantPlaceholders = activeModelIds.map((modelId, index) => ({
     id: uuidv4(),
     chatId,
     role: 'assistant',
     content: '',
-    createdAt: now + 1,
-    model: activeModelId,
+    createdAt: now + 1 + index,
+    model: modelId,
     reasoning: '',
     attachments: [],
+  })) as Message[];
+  const assistantByModel = new Map<string, Message>();
+  assistantPlaceholders.forEach((msg, index) => {
+    const modelId = activeModelIds[index];
+    assistantByModel.set(modelId, msg);
+  });
+  const primaryAssistant = assistantByModel.get(primaryModelId);
+  if (!primaryAssistant) return;
+
+  const masterController = new AbortController();
+  setTurnController(chatId, masterController);
+  let pendingStreams = assistantPlaceholders.length;
+  if (pendingStreams === 0) {
+    clearTurnController(chatId);
+    set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
+    return;
+  }
+
+  const markComplete = () => {
+    if (pendingStreams <= 0) return;
+    pendingStreams -= 1;
+    const stillRunning = pendingStreams > 0;
+    set((state) => ({ ui: { ...state.ui, isStreaming: stillRunning } }));
+    if (!stillRunning) clearTurnController(chatId);
   };
 
   set((state) => ({
     messages: {
       ...state.messages,
-      [chatId]: [...(state.messages[chatId] ?? []), userMsg, assistantMsg],
+      [chatId]: [...(state.messages[chatId] ?? []), userMsg, ...assistantPlaceholders],
     },
     ui: { ...state.ui, isStreaming: true },
   }));
 
   await saveMessage(userMsg);
-  await saveMessage(assistantMsg);
+  for (const placeholder of assistantPlaceholders) {
+    await saveMessage(placeholder);
+  }
 
   if (get().ui.experimentalDeepResearch && get().ui.nextDeepResearch) {
     const handled = await runDeepResearchTurn({
       task: content,
-      modelId: activeModelId,
+      modelId: primaryModelId,
       chatId,
-      assistantMessage: assistantMsg,
+      assistantMessage: primaryAssistant,
       set,
       get,
       persistMessage: saveMessage,
     });
-    if (handled) return;
+    if (handled) {
+      while (pendingStreams > 0) markComplete();
+      return;
+    }
   }
 
   let memoryDebug:
@@ -285,7 +336,7 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
         tutorGlobalMemory: chat.settings.tutor_memory || state.ui.tutorGlobalMemory,
         tutorMemoryDebugByMessageId: {
           ...(state.ui.tutorMemoryDebugByMessageId || {}),
-          [assistantMsg.id]: snapshot,
+          [primaryAssistant.id]: snapshot,
         },
       },
     }));
@@ -296,147 +347,189 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     await get().renameChat(chat.id, draft || 'New Chat');
   }
 
-  const stateSnapshot = get();
-  const composition = await composeTurn({
-    chat,
-    ui: stateSnapshot.ui,
-    modelIndex: stateSnapshot.modelIndex,
-    prior: priorMessages,
-    newUser: { content, attachments: preparedAttachments },
-    attachments: preparedAttachments,
-  });
+  const runModelTurn = async ({
+    modelId,
+    assistantMessage,
+    attachmentsForModel,
+    isPrimary,
+    masterController,
+    onComplete,
+  }: {
+    modelId: string;
+    assistantMessage: Message;
+    attachmentsForModel: Attachment[];
+    isPrimary: boolean;
+    masterController: AbortController;
+    onComplete: () => void;
+  }): Promise<void> => {
+    const snapshot = get();
+    const chatForModel = {
+      ...chat,
+      settings: {
+        ...chat.settings,
+        model: modelId,
+      },
+    };
+    const controller = new AbortController();
+    const abortListener = () => controller.abort();
+    masterController.signal.addEventListener('abort', abortListener);
+    const composition = await composeTurn({
+      chat: chatForModel,
+      ui: snapshot.ui,
+      modelIndex: snapshot.modelIndex,
+      prior: priorMessages,
+      newUser: { content, attachments: attachmentsForModel },
+      attachments: attachmentsForModel,
+    });
 
-  if (composition.consumedTutorNudge) {
-    set((state) => ({ ui: { ...state.ui, nextTutorNudge: undefined } }));
-  }
+    if (isPrimary && composition.consumedTutorNudge) {
+      set((state) => ({ ui: { ...state.ui, nextTutorNudge: undefined } }));
+    }
 
-  const composedMessages = composition.messages;
-  const combinedSystemForThisTurn = composition.system;
-  const providerSort = composition.providerSort;
-  const shouldPlan = composition.shouldPlan;
-  const searchEnabled = composition.search.enabled;
-  const searchProvider = composition.search.provider;
-  const toolDefinition = composition.tools ?? [];
-  const plugins = composition.plugins;
+    const composedMessages = composition.messages;
+    const combinedSystemForThisTurn = composition.system;
+    const providerSort = composition.providerSort;
+    const shouldPlan = composition.shouldPlan;
+    const searchEnabled = composition.search.enabled;
+    const searchProvider = composition.search.provider;
+    const toolDefinition = composition.tools ?? [];
+    const plugins = composition.plugins;
 
-  try {
-    if (shouldPlan) {
-      const controller = new AbortController();
-      setTurnController(chatId, controller);
-      const planResult = await planTurn({
-        chat,
-        chatId,
-        assistantMessage: assistantMsg,
-        userContent: content,
-        combinedSystem: combinedSystemForThisTurn,
-        baseMessages: composedMessages,
-        toolDefinition,
-        searchEnabled,
-        searchProvider,
-        providerSort,
-        apiKey: key || '',
-        controller,
-        set,
-        get,
-        models: get().models,
-        modelIndex: get().modelIndex,
-        persistMessage: saveMessage,
-      });
-
-      try {
-        const modelMeta = get().modelIndex.get(chat.settings.model);
-        const gen = snapshotGenSettings({
-          settings: chat.settings,
-          modelMeta,
+    try {
+      if (shouldPlan) {
+        const planResult = await planTurn({
+          chat: chatForModel,
+          chatId,
+          assistantMessage,
+          userContent: content,
+          combinedSystem: combinedSystemForThisTurn,
+          baseMessages: composedMessages,
+          toolDefinition,
+          searchEnabled,
           searchProvider,
           providerSort,
+          apiKey: key || '',
+          controller,
+          set,
+          get,
+          models: snapshot.models,
+          modelIndex: snapshot.modelIndex,
+          persistMessage: saveMessage,
         });
-        set((state) => {
-          const list = state.messages[chatId] ?? [];
-          const updated = list.map((m) =>
-            m.id === assistantMsg.id
-              ? ({ ...m, systemSnapshot: planResult.finalSystem, genSettings: gen } as any)
-              : m,
-          );
-          return { messages: { ...state.messages, [chatId]: updated } };
-        });
-      } catch {
-        /* best effort snapshot */
-      }
 
-      if (shouldShortCircuitTutor(planResult)) {
-        set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
-        const current = get().messages[chatId]?.find((m) => m.id === assistantMsg.id);
-        const finalMsg = {
-          ...assistantMsg,
-          content: current?.content || '',
-          reasoning: current?.reasoning,
-          attachments: current?.attachments,
-          tutor: (current as any)?.tutor,
-          hiddenContent: (current as any)?.hiddenContent,
-        } as Message;
-        set((state) => {
-          const list = state.messages[chatId] ?? [];
-          const updated = list.map((m) => (m.id === assistantMsg.id ? finalMsg : m));
-          return { messages: { ...state.messages, [chatId]: updated } };
+        try {
+          const modelMeta = get().modelIndex.get(chatForModel.settings.model);
+          const gen = snapshotGenSettings({
+            settings: chatForModel.settings,
+            modelMeta,
+            searchProvider,
+            providerSort,
+          });
+          set((state) => {
+            const list = state.messages[chatId] ?? [];
+            const updated = list.map((m) =>
+              m.id === assistantMessage.id
+                ? ({ ...m, systemSnapshot: planResult.finalSystem, genSettings: gen } as any)
+                : m,
+            );
+            return { messages: { ...state.messages, [chatId]: updated } };
+          });
+        } catch {
+          /* best effort snapshot */
+        }
+
+        if (shouldShortCircuitTutor(planResult)) {
+          const current = get().messages[chatId]?.find((m) => m.id === assistantMessage.id);
+          const finalMsg = {
+            ...assistantMessage,
+            content: current?.content || '',
+            reasoning: current?.reasoning,
+            attachments: current?.attachments,
+            tutor: (current as any)?.tutor,
+            hiddenContent: (current as any)?.hiddenContent,
+          } as Message;
+          set((state) => {
+            const list = state.messages[chatId] ?? [];
+            const updated = list.map((m) => (m.id === assistantMessage.id ? finalMsg : m));
+            return { messages: { ...state.messages, [chatId]: updated } };
+          });
+          await saveMessage(finalMsg);
+          return;
+        }
+
+        const streamingMessages = (
+          [{ role: 'system', content: planResult.finalSystem } as const] as any[]
+        ).concat(composedMessages.filter((m) => m.role !== 'system'));
+
+        await streamFinal({
+          chat: chatForModel,
+          chatId,
+          assistantMessage,
+          messages: streamingMessages,
+          controller,
+          apiKey: key || '',
+          providerSort,
+          set,
+          get,
+          models: snapshot.models,
+          modelIndex: snapshot.modelIndex,
+          persistMessage: saveMessage,
+          plugins,
+          toolDefinition,
+          startBuffered: false,
         });
-        await saveMessage(finalMsg);
-        clearTurnController(chatId);
         return;
       }
 
-      const streamingMessages = (
-        [{ role: 'system', content: planResult.finalSystem } as const] as any[]
-      ).concat(composedMessages.filter((m) => m.role !== 'system'));
-
       await streamFinal({
-        chat,
+        chat: chatForModel,
         chatId,
-        assistantMessage: assistantMsg,
-        messages: streamingMessages,
+        assistantMessage,
+        messages: composedMessages,
         controller,
         apiKey: key || '',
         providerSort,
         set,
         get,
-        models: get().models,
-        modelIndex: get().modelIndex,
+        models: snapshot.models,
+        modelIndex: snapshot.modelIndex,
         persistMessage: saveMessage,
         plugins,
         toolDefinition,
         startBuffered: false,
       });
-      return;
+    } catch (error: any) {
+      if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
+        set((state) => ({ ui: { ...state.ui, notice: NOTICE_INVALID_KEY } }));
+      } else if (isApiError(error) && error.code === API_ERROR_CODES.RATE_LIMITED) {
+        set((state) => ({
+          ui: { ...state.ui, notice: NOTICE_RATE_LIMITED },
+        }));
+      }
+      controller.abort();
+    } finally {
+      masterController.signal.removeEventListener('abort', abortListener);
+      onComplete();
     }
-
-    const controller = new AbortController();
-    setTurnController(chatId, controller);
-    await streamFinal({
-      chat,
-      chatId,
-      assistantMessage: assistantMsg,
-      messages: composedMessages,
-      controller,
-      apiKey: key || '',
-      providerSort,
-      set,
-      get,
-      models: get().models,
-      modelIndex: get().modelIndex,
-      persistMessage: saveMessage,
-      plugins,
-      startBuffered: shouldPlan,
+  };
+  const runPromises = activeModelIds.map((modelId) => {
+    const assistantMessage = assistantByModel.get(modelId);
+    if (!assistantMessage) {
+      markComplete();
+      return Promise.resolve();
+    }
+    const attachmentsForModel = attachmentsByModel.get(modelId) ?? [];
+    return runModelTurn({
+      modelId,
+      assistantMessage,
+      attachmentsForModel,
+      isPrimary: modelId === primaryModelId,
+      masterController,
+      onComplete: markComplete,
     });
-  } catch (error: any) {
-    if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
-      set((state) => ({ ui: { ...state.ui, isStreaming: false, notice: NOTICE_INVALID_KEY } }));
-    } else if (isApiError(error) && error.code === API_ERROR_CODES.RATE_LIMITED) {
-      set((state) => ({
-        ui: { ...state.ui, isStreaming: false, notice: NOTICE_RATE_LIMITED },
-      }));
-    }
-    clearTurnController(chatId);
-  }
+  });
+
+  await Promise.allSettled(runPromises);
 }
 
 export type RegenerateTurnArgs = {

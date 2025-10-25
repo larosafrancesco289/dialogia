@@ -36,6 +36,7 @@ export const createUiSlice = createStoreSlice((set) => {
     nextMaxTokens: undefined,
     nextShowThinking: undefined,
     nextShowStats: undefined,
+    nextParallelModels: undefined,
     tutorContextMode: 'full',
     zdrOnly: getDefaultZdrOnly(),
     routePreference: getRoutePreferenceDefault(),
@@ -47,7 +48,6 @@ export const createUiSlice = createStoreSlice((set) => {
     tutorByMessageId: {},
     tutorProfileByChatId: {},
     tutorGreetedByChatId: {},
-    compare: { isOpen: false, prompt: '', selectedModelIds: [], runs: {} },
   };
 
   return {

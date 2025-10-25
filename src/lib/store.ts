@@ -3,7 +3,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { StoreState } from '@/lib/store/types';
 import { createModelSlice } from '@/lib/store/modelSlice';
-import { createCompareSlice } from '@/lib/store/compareSlice';
 import { createChatSlice } from '@/lib/store/chatSlice';
 import { createMessageSlice } from '@/lib/store/messageSlice';
 import { createUiSlice } from '@/lib/store/uiSlice';
@@ -26,7 +25,6 @@ export const useChatStore = create<StoreState>()(
 
         // Feature slices (state + actions)
         ...createModelSlice(sliceSet, sliceGet, sliceStore),
-        ...createCompareSlice(sliceSet, sliceGet, sliceStore),
         ...createChatSlice(sliceSet, sliceGet, sliceStore),
         ...createMessageSlice(sliceSet, sliceGet, sliceStore),
         ...createUiSlice(sliceSet, sliceGet, sliceStore),

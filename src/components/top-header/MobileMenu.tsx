@@ -8,7 +8,6 @@ export type TopHeaderMobileMenuProps = {
   collapsed: boolean;
   onNewChat: () => void;
   onRenameChat?: () => void;
-  onOpenCompare: () => void;
   onOpenSettings: () => void;
   onToggleSidebar: () => void;
 };
@@ -18,7 +17,6 @@ export function TopHeaderMobileMenu({
   collapsed,
   onNewChat,
   onRenameChat,
-  onOpenCompare,
   onOpenSettings,
   onToggleSidebar,
 }: TopHeaderMobileMenuProps) {
@@ -127,16 +125,6 @@ export function TopHeaderMobileMenu({
                 Rename chat
               </button>
             )}
-            <button
-              className="menu-item w-full text-left text-sm"
-              type="button"
-              onClick={() => {
-                onOpenCompare();
-                setIsOpen(false);
-              }}
-            >
-              Compare models
-            </button>
             <ThemeToggle variant="menu" onToggle={() => setIsOpen(false)} className="text-sm" />
             <button
               className="menu-item w-full text-left text-sm"

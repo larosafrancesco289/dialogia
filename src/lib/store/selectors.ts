@@ -22,8 +22,6 @@ export const selectMessagesForCurrentChat = (state: StoreState) => {
 
 export const selectIsStreaming = (state: StoreState) => state.ui.isStreaming;
 
-export const selectCompareState = (state: StoreState) => state.ui.compare;
-
 export const selectIsTutorEnabled = (state: StoreState) => {
   const chat = selectCurrentChat(state);
   const tutorGloballyEnabled = !!state.ui.experimentalTutor;

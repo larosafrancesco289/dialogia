@@ -30,6 +30,7 @@ import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import { evaluateZdrModel, ZDR_NO_MATCH_NOTICE } from '@/lib/zdr';
 import type { ZdrLists } from '@/lib/zdr';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -44,7 +45,8 @@ type Controller = {
   allOptions: Option[];
   current?: Option;
   selectedId?: string;
-  choose: (modelId: string) => void;
+  selectedIds: string[];
+  setModels: (modelIds: string[]) => void;
   removeModelFromDropdown: (id: string) => void;
   modelMap: Map<string, ReturnType<typeof findModelById>>;
   ui: ReturnType<typeof useChatStore.getState>['ui'];
@@ -126,7 +128,28 @@ export function useModelPickerController(): Controller {
     return count;
   }, [ui?.zdrOnly, hiddenModelIds, allOptions, allowedIds]);
 
-  const selectedId: string | undefined = chat?.settings.model ?? ui?.nextModel;
+  const selectedIds = useMemo(() => {
+    const fromChat = chat
+      ? [
+          chat.settings.model || DEFAULT_MODEL_ID,
+          ...((chat.settings.parallel_models as string[] | undefined) ?? []),
+        ]
+      : [
+          ui?.nextModel || DEFAULT_MODEL_ID,
+          ...((ui?.nextParallelModels as string[] | undefined) ?? []),
+        ];
+    const cleaned = fromChat.filter(
+      (id): id is string => typeof id === 'string' && id.length > 0,
+    );
+    const deduped: string[] = [];
+    for (const id of cleaned) {
+      if (!deduped.includes(id)) deduped.push(id);
+    }
+    if (deduped.length === 0) deduped.push(DEFAULT_MODEL_ID);
+    return deduped;
+  }, [chat, ui?.nextModel, ui?.nextParallelModels]);
+
+  const selectedId = selectedIds[0];
   const effectiveSelectedId =
     ui?.zdrOnly === true && selectedId && !allowedIds.has(selectedId) ? undefined : selectedId;
   const current =
@@ -134,11 +157,18 @@ export function useModelPickerController(): Controller {
     (effectiveSelectedId ? { id: effectiveSelectedId, name: effectiveSelectedId } : undefined) ||
     options[0];
 
-  const choose = (modelId: string) => {
+  const setModels = (modelIds: string[]) => {
+    const cleaned = modelIds.filter((id): id is string => typeof id === 'string' && id.length > 0);
+    const deduped: string[] = [];
+    for (const id of cleaned) {
+      if (!deduped.includes(id)) deduped.push(id);
+    }
+    const final = deduped.length ? deduped : [DEFAULT_MODEL_ID];
+    const [primary, ...rest] = final;
     if (chat) {
-      updateChatSettings({ model: modelId });
+      updateChatSettings({ model: primary, parallel_models: rest });
     } else {
-      setUI({ nextModel: modelId });
+      setUI({ nextModel: primary, nextParallelModels: rest });
     }
   };
 
@@ -156,7 +186,8 @@ export function useModelPickerController(): Controller {
     allOptions,
     current,
     selectedId,
-    choose,
+    selectedIds,
+    setModels,
     removeModelFromDropdown,
     modelMap,
     ui,
@@ -179,7 +210,8 @@ export function ModelPicker({
     options,
     current,
     selectedId,
-    choose,
+    selectedIds,
+    setModels,
     removeModelFromDropdown,
     modelMap,
     zdrModelIds,
@@ -205,6 +237,10 @@ export function ModelPicker({
   const listboxRef = useRef<HTMLDivElement | null>(null);
   const filterInputRef = useRef<HTMLInputElement | null>(null);
   const mountedRef = useRef(false);
+  const isMobile = useIsMobile();
+  const maxSelectable = isMobile ? 2 : 4;
+  const limitTimeoutRef = useRef<number | null>(null);
+  const [limitPulse, setLimitPulse] = useState(false);
   const [popoverPos, setPopoverPos] = useState<{
     left: number;
     top: number;
@@ -244,12 +280,70 @@ export function ModelPicker({
     });
   }, [options, filterWords, deriveLabel]);
 
-  const title = deriveLabel(current);
+  useEffect(() => {
+    if (selectedIds.length > maxSelectable) {
+      setModels(selectedIds.slice(0, maxSelectable));
+    }
+  }, [selectedIds, maxSelectable, setModels]);
 
-  const handleChoose = (id: string) => {
-    choose(id);
-    setOpen(false);
-  };
+  useEffect(
+    () => () => {
+      if (limitTimeoutRef.current != null) {
+        window.clearTimeout(limitTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  const toggleModel = useCallback(
+    (id: string) => {
+      const isSelected = selectedIds.includes(id);
+      if (isSelected) {
+        if (selectedIds.length === 1) return;
+        const next = selectedIds.filter((value) => value !== id);
+        setModels(next);
+        return;
+      }
+      if (selectedIds.length >= maxSelectable) {
+        setLimitPulse(true);
+        if (limitTimeoutRef.current != null) {
+          window.clearTimeout(limitTimeoutRef.current);
+        }
+        limitTimeoutRef.current = window.setTimeout(() => setLimitPulse(false), 1200);
+        return;
+      }
+      setModels([...selectedIds, id]);
+    },
+    [selectedIds, maxSelectable, setModels],
+  );
+
+  const setPrimaryModel = useCallback(
+    (id: string) => {
+      if (!selectedIds.includes(id) || selectedIds[0] === id) return;
+      const next = [id, ...selectedIds.filter((value) => value !== id)];
+      setModels(next);
+    },
+    [selectedIds, setModels],
+  );
+
+  const selectionSummary = useMemo(() => {
+    const labels = selectedIds.map((id) =>
+      deriveLabel({
+        id,
+        name: modelMap.get(id)?.name || id,
+      }),
+    );
+    if (!labels.length) {
+      const fallback = deriveLabel(current);
+      return { button: fallback, tooltip: fallback };
+    }
+    if (labels.length === 1) {
+      return { button: labels[0], tooltip: labels[0] };
+    }
+    const button = `${labels[0]} +${labels.length - 1}`;
+    const tooltip = labels.join(', ');
+    return { button, tooltip };
+  }, [selectedIds, deriveLabel, modelMap, current]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -372,13 +466,13 @@ export function ModelPicker({
   return (
     <div className={`relative min-w-0 ${className}`.trim()} ref={rootRef}>
       <button
-        className="btn btn-outline min-w-0 w-full whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-between gap-2"
+        className={`btn btn-outline min-w-0 w-full whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-between gap-2${limitPulse ? ' ring-2 ring-primary/50 border-primary/40' : ''}`}
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={title}
+        title={selectionSummary.tooltip}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="truncate">{title}</span>
+        <span className="truncate">{selectionSummary.button}</span>
         <ChevronDownIcon className="h-4 w-4" />
       </button>
 
@@ -430,7 +524,7 @@ export function ModelPicker({
               if (e.key === 'Enter') {
                 e.preventDefault();
                 const target = visibleOptions[highlightedIndex];
-                if (target) handleChoose(target.id);
+                if (target) toggleModel(target.id);
               }
             }}
           >
@@ -445,16 +539,16 @@ export function ModelPicker({
                 onKeyDown={(event) => {
                   if (event.key === 'ArrowDown') {
                     event.preventDefault();
-                    if (!visibleOptions.length) return;
-                    setHighlightedIndex(0);
-                    focusOptionButton(0);
-                    return;
-                  }
-                  if (event.key === 'Enter' && visibleOptions.length > 0) {
-                    event.preventDefault();
-                    handleChoose(visibleOptions[0].id);
-                    return;
-                  }
+                  if (!visibleOptions.length) return;
+                  setHighlightedIndex(0);
+                  focusOptionButton(0);
+                  return;
+                }
+                if (event.key === 'Enter' && visibleOptions.length > 0) {
+                  event.preventDefault();
+                  toggleModel(visibleOptions[0].id);
+                  return;
+                }
                   if (event.key === 'Escape') {
                     event.preventDefault();
                     if (filter) setFilter('');
@@ -462,6 +556,67 @@ export function ModelPicker({
                   }
                 }}
               />
+            </div>
+
+            <div className="px-1 space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  Selected models {selectedIds.length}/{maxSelectable}
+                </span>
+                <span className="text-muted-foreground/70">
+                  Primary column streams first
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedIds.map((id, index) => {
+                  const label = deriveLabel({
+                    id,
+                    name: modelMap.get(id)?.name || id,
+                  });
+                  const isPrimary = index === 0;
+                  return (
+                    <span
+                      key={`selected-${id}`}
+                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs ${
+                        isPrimary
+                          ? 'border-primary/60 bg-primary/10 text-primary'
+                          : 'border-border/60 bg-muted/40'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 focus:outline-none"
+                        onClick={() => setPrimaryModel(id)}
+                        disabled={isPrimary}
+                        title={isPrimary ? 'Primary model' : 'Make primary'}
+                      >
+                        {isPrimary && <CheckIcon className="h-3.5 w-3.5" />}
+                        <span className="truncate max-w-[120px]">{label}</span>
+                      </button>
+                      {selectedIds.length > 1 && (
+                        <button
+                          type="button"
+                          className="p-0.5 rounded-full hover:bg-muted/70 focus:outline-none"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            toggleModel(id);
+                          }}
+                          title="Remove model"
+                          aria-label={`Remove ${label}`}
+                        >
+                          <XMarkIcon className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+              {selectedIds.length >= maxSelectable && (
+                <div className="text-xs text-amber-600">
+                  Maximum of {maxSelectable} models on {isMobile ? 'mobile' : 'desktop'}.
+                </div>
+              )}
             </div>
 
             {zdrHiddenMessage && (
@@ -490,7 +645,8 @@ export function ModelPicker({
               const { canReason, canSee, canAudio, canImageOut, isZdr, priceStr, context } =
                 renderCapabilities(o.id);
               const showPrice = variant !== 'sheet';
-              const isSelected = o.id === selectedId;
+              const isSelected = selectedIds.includes(o.id);
+              const isPrimary = selectedId === o.id;
               const isActive = idx === highlightedIndex;
               const label = deriveLabel(o);
               const provider = String(o.id).split('/')[0] || '';
@@ -522,14 +678,20 @@ export function ModelPicker({
                     isActive
                       ? 'border-primary/40 bg-muted/50'
                       : 'border-transparent hover:bg-muted/30'
-                  } ${isSelected ? 'ring-1 ring-primary/50 bg-muted/60' : ''}`}
+                  } ${
+                    isSelected
+                      ? isPrimary
+                        ? 'ring-2 ring-primary/60 border-primary/50 bg-primary/5'
+                        : 'ring-1 ring-primary/40 bg-muted/60'
+                      : ''
+                  }`}
                   onMouseEnter={() => setHighlightedIndex(idx)}
                 >
                   <button
                     type="button"
                     data-option-index={idx}
                     className="w-full text-left px-3 py-2.5 flex items-start gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-                    onClick={() => handleChoose(o.id)}
+                    onClick={() => toggleModel(o.id)}
                     onFocus={() => setHighlightedIndex(idx)}
                     onKeyDown={(event) => {
                       if (!visibleOptions.length) return;
@@ -545,7 +707,7 @@ export function ModelPicker({
                         focusOptionButton(prev);
                       } else if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        handleChoose(o.id);
+                        toggleModel(o.id);
                       }
                     }}
                   >
@@ -598,11 +760,30 @@ export function ModelPicker({
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className="flex flex-col items-end gap-2 shrink-0">
                       {isSelected && (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                           <CheckIcon className="h-4 w-4" />
-                          Active
+                          {isPrimary ? 'Primary' : 'Selected'}
+                        </span>
+                      )}
+                      {isSelected && !isPrimary && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          className="btn btn-ghost btn-xs px-2 py-1"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setPrimaryModel(o.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              setPrimaryModel(o.id);
+                            }
+                          }}
+                        >
+                          Make primary
                         </span>
                       )}
                     </div>

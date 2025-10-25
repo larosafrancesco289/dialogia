@@ -11,13 +11,6 @@ const SettingsDrawer = dynamic(
     ),
   { ssr: false },
 );
-const CompareDrawer = dynamic(
-  () =>
-    import(/* webpackPrefetch: true */ '@/components/CompareDrawer').then((mod) => ({
-      default: mod.CompareDrawer,
-    })),
-  { ssr: false },
-);
 const GlobalNotice = dynamic(
   () => import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
   { ssr: false },
@@ -29,11 +22,10 @@ import { useSidebarGestures } from '@/lib/hooks/useSidebarGestures';
 
 export default function HomePage() {
   const initialize = useChatStore((s) => s.initializeApp);
-  const { collapsed, isSettingsOpen, isCompareOpen } = useChatStore(
+  const { collapsed, isSettingsOpen } = useChatStore(
     (s) => ({
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
-      isCompareOpen: s.ui.compare?.isOpen ?? false,
     }),
     shallow,
   );
@@ -67,7 +59,6 @@ export default function HomePage() {
     const warm = () => {
       try {
         import('@/components/SettingsDrawer');
-        import('@/components/CompareDrawer');
       } catch {}
     };
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
@@ -93,7 +84,6 @@ export default function HomePage() {
           <ChatPane />
         </div>
         {isSettingsOpen && <SettingsDrawer />}
-        {isCompareOpen && <CompareDrawer />}
         <GlobalNotice />
       </main>
       {/* Mobile sidebar overlay */}

@@ -3,26 +3,25 @@ import { ModelPicker } from '@/components/ModelPicker';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  PlusIcon,
-  Squares2X2Icon,
-  Cog6ToothIcon,
-  AcademicCapIcon,
-} from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 import { useMemo, useState } from 'react';
 import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
 import { findModelById, formatModelLabel } from '@/lib/models';
 export function TopHeader() {
-  const { chats, selectedChatId, renameChat, setUI, openCompare, newChat, updateChatSettings } =
+  const {
+    chats,
+    selectedChatId,
+    renameChat,
+    setUI,
+    newChat,
+    updateChatSettings,
+  } =
     useChatStore(
       (s) => ({
         chats: s.chats,
         selectedChatId: s.selectedChatId,
         renameChat: s.renameChat,
         setUI: s.setUI,
-        openCompare: s.openCompare,
         newChat: s.newChat,
         updateChatSettings: s.updateChatSettings,
       }),
@@ -30,7 +29,10 @@ export function TopHeader() {
     );
   const chat = chats.find((c) => c.id === selectedChatId);
   const { collapsed, isSettingsOpen } = useChatStore(
-    (s) => ({ collapsed: s.ui.sidebarCollapsed ?? false, isSettingsOpen: s.ui.showSettings }),
+    (s) => ({
+      collapsed: s.ui.sidebarCollapsed ?? false,
+      isSettingsOpen: s.ui.showSettings,
+    }),
     shallow,
   );
   const uiState = useChatStore((s) => s.ui, shallow);
@@ -132,24 +134,6 @@ export function TopHeader() {
         </div>
         <button
           className="btn btn-ghost hide-on-mobile"
-          aria-label="Open compare"
-          onClick={() => openCompare()}
-          onMouseEnter={() => {
-            try {
-              import('@/components/CompareDrawer');
-            } catch {}
-          }}
-          onFocus={() => {
-            try {
-              import('@/components/CompareDrawer');
-            } catch {}
-          }}
-          title="Compare models"
-        >
-          <Squares2X2Icon className="h-5 w-5" />
-        </button>
-        <button
-          className="btn btn-ghost hide-on-mobile"
           aria-label="Open settings"
           aria-pressed={isSettingsOpen}
           onClick={() => setUI({ showSettings: !isSettingsOpen })}
@@ -171,7 +155,6 @@ export function TopHeader() {
           collapsed={collapsed}
           onNewChat={newChat}
           onRenameChat={chat ? renameCurrentChat : undefined}
-          onOpenCompare={openCompare}
           onOpenSettings={() => setUI({ showSettings: true })}
           onToggleSidebar={() => setUI({ sidebarCollapsed: !collapsed })}
         />

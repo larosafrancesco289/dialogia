@@ -53,8 +53,18 @@ export function deriveChatSettingsFromUi(opts: {
       ? (ui.nextTutorMode ?? previous?.tutor_mode ?? false)
       : false;
 
+  const parallelFromUi = Array.isArray(ui.nextParallelModels)
+    ? ui.nextParallelModels
+    : previous?.parallel_models;
+  const normalizedParallel = Array.isArray(parallelFromUi)
+    ? Array.from(
+        new Set(parallelFromUi.filter((id): id is string => !!id && id !== baseModel)),
+      )
+    : [];
+
   const settings: ChatSettings = {
     model: baseModel,
+    parallel_models: normalizedParallel,
     system,
     temperature,
     top_p,
@@ -78,6 +88,7 @@ export function deriveChatSettingsFromUi(opts: {
       DEFAULT_TUTOR_MEMORY_MODEL_ID;
     const baseMemory = ui.tutorGlobalMemory || previous?.tutor_memory || EMPTY_TUTOR_MEMORY;
     settings.model = tutor_default_model;
+    settings.parallel_models = [];
     settings.tutor_default_model = tutor_default_model;
     settings.tutor_memory_model = tutor_memory_model;
     settings.tutor_memory = normalizeTutorMemory(baseMemory);
