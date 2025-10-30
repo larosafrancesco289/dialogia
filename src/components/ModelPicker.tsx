@@ -314,6 +314,7 @@ export function ModelPicker({
         // If multi-model is disabled, replace the current selection
         if (!enableMultiModelChat) {
           setModels([id]);
+          setOpen(false);
           return;
         }
         setLimitPulse(true);
@@ -324,6 +325,10 @@ export function ModelPicker({
         return;
       }
       setModels([...selectedIds, id]);
+      // Close dropdown in single-model mode after selection
+      if (!enableMultiModelChat) {
+        setOpen(false);
+      }
     },
     [selectedIds, maxSelectable, enableMultiModelChat, setModels],
   );
