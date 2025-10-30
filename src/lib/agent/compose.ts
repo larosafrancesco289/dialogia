@@ -73,6 +73,19 @@ export async function composeTurn({
     } catch {
       // ignore profile load failures
     }
+
+    // Add learning plan context if plan exists
+    if (chat.settings.learningPlan) {
+      const { generatePlanContextPreamble } = await import('@/lib/agent/planAwareTutor');
+      const { getLatestLearnerModel } = await import('@/lib/agent/learnerModel');
+      const learnerModel = getLatestLearnerModel(priorMessages);
+      const planContext = generatePlanContextPreamble(
+        chat.settings.learningPlan,
+        learnerModel,
+      );
+      if (planContext) preambles.push(planContext);
+    }
+
     if (ui.nextTutorNudge) {
       preambles.push(`Learner Preference: ${ui.nextTutorNudge.replace(/_/g, ' ')}`);
     }
