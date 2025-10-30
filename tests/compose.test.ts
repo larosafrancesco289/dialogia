@@ -17,7 +17,35 @@ const baseChat = (): Chat => ({
     search_enabled: true,
     search_provider: 'brave',
     tutor_mode: true,
-    tutor_memory: 'Learner just reviewed linear equations.',
+    tutor_default_model: 'provider/model-alpha',
+    learningPlan: {
+      goal: 'Master algebra fundamentals',
+      generatedAt: Date.now() - 10,
+      updatedAt: Date.now() - 10,
+      version: 1,
+      nodes: [
+        {
+          id: 'linear-equations',
+          name: 'Linear Equations',
+          description: 'Solve and graph linear equations and inequalities.',
+          objectives: ['Solve linear equations', 'Interpret slope and intercept'],
+          prerequisites: [],
+          status: 'in_progress',
+          estimatedMinutes: 45,
+        },
+        {
+          id: 'systems',
+          name: 'Systems of Equations',
+          description: 'Solve systems using substitution and elimination.',
+          objectives: ['Solve systems by substitution', 'Solve systems by elimination'],
+          prerequisites: ['linear-equations'],
+          status: 'not_started',
+          estimatedMinutes: 60,
+        },
+      ],
+    },
+    planGenerated: true,
+    enableLearnerModel: true,
   },
 });
 
@@ -99,7 +127,8 @@ test('composeTurn merges tutor and search context with plugins and tools', async
   assert.equal(result.consumedTutorNudge, 'more_practice');
   assert.ok(result.system && result.system.includes('Learner Profile:'));
   assert.ok(result.system && result.system.includes('Always respond enthusiastically.'));
-  assert.ok(result.system && result.system.includes('Learner just reviewed linear equations.'));
+  assert.ok(result.system && result.system.includes('LEARNING PLAN CONTEXT'));
+  assert.ok(result.system && result.system.includes('CURRENT FOCUS: Linear Equations'));
 
   assert.ok(result.plugins && result.plugins.some((plugin) => plugin.id === 'file-parser'));
   const toolNames = (result.tools || []).map((tool) => tool.function.name);

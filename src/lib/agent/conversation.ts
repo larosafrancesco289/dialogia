@@ -1,6 +1,5 @@
 import type { Chat, Message, ORModel, Attachment } from '@/lib/types';
 import { estimateTokens } from '@/lib/tokenEstimate';
-import { normalizeTutorMemory } from '@/lib/agent/tutorMemory';
 import type { ModelContentBlock, ModelMessage } from '@/lib/agent/types';
 
 // Construct the message payload for the LLM from prior conversation, with a simple token window
@@ -65,10 +64,6 @@ export function buildChatCompletionMessages(params: {
 
   const finalMsgs: ModelMessage[] = [];
   const systemParts: string[] = [];
-  const tutorMemory = chat.settings.tutor_mode
-    ? normalizeTutorMemory(chat.settings.tutor_memory)
-    : undefined;
-  if (typeof tutorMemory === 'string' && tutorMemory.trim()) systemParts.push(tutorMemory.trim());
   if (chat.settings.system && chat.settings.system.trim())
     systemParts.push(chat.settings.system.trim());
   if (systemParts.length > 0) {

@@ -183,9 +183,6 @@ export function MessageCard({
         tutorGloballyEnabled={messagePanels.tutorGloballyEnabled}
         tutorEnabled={messagePanels.tutorEnabled}
         tutorEntry={messagePanels.tutorEntry}
-        tutorMemoryDebug={messagePanels.tutorMemoryDebug}
-        tutorMemoryAutoUpdateDefault={messagePanels.tutorMemoryAutoUpdateDefault}
-        updateChatSettings={messagePanels.updateChatSettings}
         autoReasoningModelIds={messagePanels.autoReasoningModelIds}
         isStreaming={messagePanels.isStreaming}
         lastMessageId={messagePanels.lastMessageId}

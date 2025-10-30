@@ -9,15 +9,10 @@ export const DEFAULT_TUTOR_MODEL: CuratedModel = {
   id: 'anthropic/claude-sonnet-4.5',
   name: 'Claude Sonnet 4.5',
 };
-export const DEFAULT_TUTOR_MEMORY_MODEL: CuratedModel = {
-  id: 'grok/grok-4-fast',
-  name: 'Grok 4 Fast',
-};
 
 export const DEFAULT_MODEL_ID = DEFAULT_CHAT_MODEL.id;
 export const DEFAULT_MODEL_NAME = DEFAULT_CHAT_MODEL.name;
 export const DEFAULT_TUTOR_MODEL_ID = DEFAULT_TUTOR_MODEL.id;
-export const DEFAULT_TUTOR_MEMORY_MODEL_ID = DEFAULT_TUTOR_MEMORY_MODEL.id;
 
 export const CURATED_MODELS: CuratedModel[] = [
   DEFAULT_CHAT_MODEL,

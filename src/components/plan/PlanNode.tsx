@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import {
   CheckCircleIcon,
   ClockIcon,
@@ -27,38 +28,65 @@ export function PlanNode({
   const getStatusIcon = () => {
     switch (node.status) {
       case 'completed':
-        return <CheckCircleSolid className="h-5 w-5 text-green-500 flex-shrink-0" />;
+        return (
+          <CheckCircleSolid
+            className="h-5 w-5 flex-shrink-0"
+            style={{ color: 'var(--color-accent)' }}
+          />
+        );
       case 'in_progress':
-        return <ClockIcon className="h-5 w-5 text-blue-500 flex-shrink-0" />;
+        return (
+          <ClockIcon className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--color-accent-2)' }} />
+        );
       case 'not_started':
         if (!isReady) {
           return <LockClosedIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />;
         }
         return (
-          <div className="h-5 w-5 rounded-full border-2 border-muted-foreground flex-shrink-0" />
+          <div
+            className="h-5 w-5 rounded-full border-2 flex-shrink-0"
+            style={{ borderColor: 'color-mix(in oklab, var(--color-accent-2) 35%, var(--color-border))' }}
+          />
         );
     }
   };
 
-  const getStatusColor = () => {
+  const containerStyle = useMemo<CSSProperties>(() => {
     switch (node.status) {
       case 'completed':
-        return 'border-green-500/20 bg-green-500/5';
+        return {
+          borderColor: 'color-mix(in oklab, var(--color-accent) 45%, var(--color-border))',
+          background: 'color-mix(in oklab, var(--color-accent) 14%, var(--color-surface))',
+        };
       case 'in_progress':
-        return 'border-blue-500/20 bg-blue-500/5';
-      case 'not_started':
-        return isReady ? 'border-border bg-background' : 'border-border bg-muted/20';
+        return {
+          borderColor: 'color-mix(in oklab, var(--color-accent-2) 45%, var(--color-border))',
+          background: 'color-mix(in oklab, var(--color-accent-2) 14%, var(--color-surface))',
+        };
+      default:
+        return isReady
+          ? {
+              borderColor: 'color-mix(in oklab, var(--color-border) 85%, transparent)',
+              background: 'color-mix(in oklab, var(--color-surface) 92%, transparent)',
+            }
+          : {
+              borderColor: 'color-mix(in oklab, var(--color-border) 80%, transparent)',
+              background: 'color-mix(in oklab, var(--color-muted) 65%, transparent)',
+            };
     }
-  };
+  }, [node.status, isReady]);
 
   const canInteract = isReady || node.status !== 'not_started';
 
   return (
-    <div className={`rounded-lg border ${getStatusColor()} overflow-hidden`}>
+    <div
+      className="group relative overflow-hidden rounded-[20px] border shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-0.5 focus-within:-translate-y-0.5"
+      style={containerStyle}
+    >
       {/* Node header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full px-3 py-2.5 flex items-center gap-3 text-left hover:bg-muted/20 transition-colors"
+        className="relative flex w-full items-center gap-3 rounded-[inherit] px-4 py-3 text-left transition-colors hover:bg-muted/30"
         disabled={!canInteract}
       >
         {/* Status icon */}
@@ -66,9 +94,9 @@ export function PlanNode({
 
         {/* Node name */}
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm truncate">{node.name}</div>
+          <div className="truncate text-sm font-semibold text-foreground">{node.name}</div>
           {node.estimatedMinutes && (
-            <div className="text-xs text-muted-foreground mt-0.5">
+            <div className="mt-0.5 text-xs text-muted-foreground">
               ~{node.estimatedMinutes} min
             </div>
           )}
@@ -88,7 +116,7 @@ export function PlanNode({
 
       {/* Expanded content */}
       {expanded && canInteract && (
-        <div className="px-3 pb-3 space-y-3 border-t border-border/50">
+        <div className="space-y-3 border-t border-border/60 bg-muted/30 px-4 pb-4 pt-3">
           {/* Description */}
           {node.description && (
             <div className="pt-3">
@@ -98,14 +126,17 @@ export function PlanNode({
 
           {/* Learning objectives */}
           <div>
-            <div className="text-xs font-medium text-muted-foreground mb-1.5">
+            <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
               Learning Objectives:
             </div>
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {node.objectives.map((objective, idx) => (
-                <li key={idx} className="text-xs text-foreground flex gap-2">
-                  <span className="text-muted-foreground">•</span>
-                  <span>{objective}</span>
+                <li key={idx} className="flex gap-2 text-xs text-foreground">
+                  <span
+                    className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                    style={{ background: 'var(--color-accent)' }}
+                  />
+                  <span className="leading-snug">{objective}</span>
                 </li>
               ))}
             </ul>
@@ -114,19 +145,25 @@ export function PlanNode({
           {/* Prerequisites */}
           {prerequisites.length > 0 && (
             <div>
-              <div className="text-xs font-medium text-muted-foreground mb-1.5">
+              <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
                 Prerequisites:
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {prerequisites.map((prereq) => (
                   <div
                     key={prereq.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs"
+                    className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/70 px-2 py-0.5 text-xs text-muted-foreground"
                   >
                     {prereq.status === 'completed' ? (
-                      <CheckCircleIcon className="h-3 w-3 text-green-500" />
+                      <CheckCircleIcon
+                        className="h-3 w-3"
+                        style={{ color: 'color-mix(in oklab, var(--color-accent) 80%, var(--color-fg) 20%)' }}
+                      />
                     ) : (
-                      <ClockIcon className="h-3 w-3 text-muted-foreground" />
+                      <ClockIcon
+                        className="h-3 w-3"
+                        style={{ color: 'color-mix(in oklab, var(--color-accent-2) 70%, var(--color-fg) 30%)' }}
+                      />
                     )}
                     <span>{prereq.name}</span>
                   </div>
@@ -137,11 +174,15 @@ export function PlanNode({
 
           {/* Status change actions */}
           {onStatusChange && node.status !== 'completed' && (
-            <div className="pt-2 flex gap-2">
+            <div className="flex gap-2 pt-2">
               {node.status === 'not_started' && (
                 <button
                   onClick={() => onStatusChange('in_progress')}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors hover:opacity-90"
+                  style={{
+                    background: 'color-mix(in oklab, var(--color-accent-2) 65%, transparent)',
+                    color: 'var(--color-surface)',
+                  }}
                 >
                   Start Learning
                 </button>
@@ -150,7 +191,11 @@ export function PlanNode({
                 <>
                   <button
                     onClick={() => onStatusChange('completed')}
-                    className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+                    className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors hover:opacity-90"
+                    style={{
+                      background: 'color-mix(in oklab, var(--color-accent) 70%, transparent)',
+                      color: 'var(--color-surface)',
+                    }}
                   >
                     Mark Complete
                   </button>
@@ -167,7 +212,7 @@ export function PlanNode({
 
           {/* Timestamps */}
           {(node.startedAt || node.completedAt) && (
-            <div className="pt-2 text-xs text-muted-foreground space-y-0.5">
+            <div className="space-y-0.5 pt-2 text-xs text-muted-foreground">
               {node.startedAt && (
                 <div>Started: {new Date(node.startedAt).toLocaleDateString()}</div>
               )}
@@ -181,8 +226,8 @@ export function PlanNode({
 
       {/* Locked message */}
       {expanded && !canInteract && (
-        <div className="px-3 pb-3 pt-3 border-t border-border/50">
-          <div className="text-xs text-muted-foreground italic">
+        <div className="border-t border-border/60 px-4 pb-4 pt-3">
+          <div className="text-xs italic text-muted-foreground">
             Complete the prerequisites first to unlock this topic.
           </div>
         </div>

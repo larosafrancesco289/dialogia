@@ -21,9 +21,6 @@ export type MessagePanelsProps = {
   tutorGloballyEnabled: boolean;
   tutorEnabled: boolean;
   tutorEntry?: any;
-  tutorMemoryDebug?: any;
-  tutorMemoryAutoUpdateDefault: boolean;
-  updateChatSettings: (settings: Partial<Chat['settings']>) => Promise<void> | void;
   autoReasoningModelIds: Record<string, boolean>;
   isStreaming: boolean;
   lastMessageId?: string;
@@ -46,9 +43,6 @@ export function MessagePanels({
   tutorGloballyEnabled,
   tutorEnabled,
   tutorEntry,
-  tutorMemoryDebug,
-  tutorMemoryAutoUpdateDefault,
-  updateChatSettings,
   autoReasoningModelIds,
   isStreaming,
   lastMessageId,
@@ -69,41 +63,12 @@ export function MessagePanels({
   }
 
   if (debugMode && debugEntry?.body) {
-    const memoryInfo = (() => {
-      if (!tutorEnabled) return undefined;
-      const mem = tutorMemoryDebug || {};
-      const memoryDisabled = chat?.settings.tutor_memory_disabled === true;
-      return {
-        enabled: !memoryDisabled,
-        defaultEnabled: tutorMemoryAutoUpdateDefault,
-        version: mem.version ?? chat?.settings.tutor_memory_version,
-        messageCount: mem.messageCount ?? chat?.settings.tutor_memory_message_count,
-        after: mem.after ?? chat?.settings.tutor_memory,
-        before: mem.before,
-        raw: mem.raw,
-        conversationWindow: mem.conversationWindow,
-        model: mem.model,
-        updatedAt: mem.updatedAt,
-      };
-    })();
-
     panels.push(
       <DebugPanel
         key="debug"
         body={debugEntry.body}
         expanded={isDebugExpanded}
         onToggle={onToggleDebug}
-        memoryInfo={memoryInfo}
-        onToggleMemory={
-          tutorEnabled && chat
-            ? async () => {
-                const memoryDisabled = chat.settings.tutor_memory_disabled === true;
-                await updateChatSettings({
-                  tutor_memory_disabled: memoryDisabled ? false : true,
-                });
-              }
-            : undefined
-        }
       />,
     );
   }

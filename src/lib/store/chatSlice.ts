@@ -3,14 +3,8 @@ import { db, saveChat, saveFolder, saveMessage } from '@/lib/db';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, Folder, Message } from '@/lib/types';
 import type { StoreSetter } from '@/lib/agent/types';
-import {
-  DEFAULT_MODEL_ID,
-  DEFAULT_TUTOR_MODEL_ID,
-  DEFAULT_TUTOR_MEMORY_MODEL_ID,
-  DEFAULT_TUTOR_MEMORY_FREQUENCY,
-} from '@/lib/constants';
+import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { buildHiddenTutorContent, ensureTutorDefaults } from '@/lib/agent/tutorFlow';
-import { EMPTY_TUTOR_MEMORY, normalizeTutorMemory } from '@/lib/agent/tutorMemory';
 import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
 import { primeTutorWelcome } from '@/lib/services/turns';
 
@@ -241,45 +235,24 @@ export function createChatSlice(
           new Set(next.filter((id) => !base || id !== base)),
         );
       }
-      let nextGlobalMemory = normalizeTutorMemory(uiState.tutorGlobalMemory);
       const applyTutorDefaults = () => {
-        const partialMemoryDisabled =
-          typeof appliedPartial.tutor_memory_disabled === 'boolean'
-            ? appliedPartial.tutor_memory_disabled
-            : undefined;
-        const memoryDisabled =
-          partialMemoryDisabled ??
-          (typeof before?.settings.tutor_memory_disabled === 'boolean'
-            ? before.settings.tutor_memory_disabled
-            : uiState.tutorMemoryAutoUpdate === false);
         const baseSettings = {
           ...(before?.settings || {}),
           ...appliedPartial,
-          tutor_memory_disabled: memoryDisabled,
         };
         const ensured = ensureTutorDefaults({
           ui: uiState,
           chat: { settings: baseSettings },
           fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-          fallbackMemoryModelId: DEFAULT_TUTOR_MEMORY_MODEL_ID,
         });
         const nextSettings = ensured.nextSettings;
-        const normalizedMemory = normalizeTutorMemory(nextSettings.tutor_memory);
-        nextGlobalMemory = normalizedMemory;
         appliedPartial = {
           ...appliedPartial,
           tutor_mode: true,
           model: nextSettings.model,
           tutor_default_model: nextSettings.tutor_default_model,
-          tutor_memory_model: nextSettings.tutor_memory_model,
-          tutor_memory: normalizedMemory,
-          tutor_memory_version: before?.settings.tutor_memory_version ?? 0,
-          tutor_memory_message_count: nextSettings.tutor_memory_message_count ?? 0,
-          tutor_memory_frequency:
-            before?.settings.tutor_memory_frequency ||
-            uiState.tutorMemoryFrequency ||
-            DEFAULT_TUTOR_MEMORY_FREQUENCY,
-          tutor_memory_disabled: memoryDisabled,
+          enableLearnerModel: nextSettings.enableLearnerModel,
+          learnerModelUpdateFrequency: nextSettings.learnerModelUpdateFrequency,
         };
       };
 
@@ -305,7 +278,7 @@ export function createChatSlice(
           }
           return { ...c, settings: updatedSettings, updatedAt: Date.now() };
         }),
-        ui: { ...s.ui, tutorGlobalMemory: nextGlobalMemory },
+        ui: { ...s.ui },
       }));
       const chat = get().chats.find((c) => c.id === id)!;
       await saveChat(chat);

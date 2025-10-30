@@ -27,16 +27,7 @@ import {
   deleteSystemPreset,
   type SystemPreset,
 } from '@/lib/presets';
-import {
-  normalizeTutorMemory,
-  enforceTutorMemoryLimit,
-  EMPTY_TUTOR_MEMORY,
-} from '@/lib/agent/tutorMemory';
-import {
-  DEFAULT_TUTOR_MODEL_ID,
-  DEFAULT_TUTOR_MEMORY_MODEL_ID,
-  DEFAULT_TUTOR_MEMORY_FREQUENCY,
-} from '@/lib/constants';
+import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { useSettingsTabs } from '@/components/settings/useSettingsTabs';
 
 const TAB_LIST: ReadonlyArray<{ id: TabId; label: string }> = [
@@ -118,21 +109,6 @@ export function SettingsDrawer() {
   const [tutorDefaultModel, setTutorDefaultModel] = useState<string>(
     ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID,
   );
-  const [tutorMemoryModel, setTutorMemoryModel] = useState<string>(
-    ui?.tutorMemoryModelId || ui?.tutorDefaultModelId || DEFAULT_TUTOR_MEMORY_MODEL_ID,
-  );
-  const [tutorMemoryFrequency, setTutorMemoryFrequency] = useState<number>(
-    ui?.tutorMemoryFrequency || DEFAULT_TUTOR_MEMORY_FREQUENCY,
-  );
-  const [tutorMemoryFrequencyStr, setTutorMemoryFrequencyStr] = useState<string>(
-    String(ui?.tutorMemoryFrequency || DEFAULT_TUTOR_MEMORY_FREQUENCY),
-  );
-  const [tutorMemoryAutoUpdate, setTutorMemoryAutoUpdate] = useState<boolean>(
-    ui?.tutorMemoryAutoUpdate !== false,
-  );
-  const [tutorMemorySnapshot, setTutorMemorySnapshot] = useState<string>(
-    normalizeTutorMemory(ui?.tutorGlobalMemory || EMPTY_TUTOR_MEMORY),
-  );
   const [showThinking, setShowThinking] = useState<boolean>(
     chat?.settings.show_thinking_by_default ?? false,
   );
@@ -184,22 +160,9 @@ export function SettingsDrawer() {
     setShowThinking(chat?.settings.show_thinking_by_default ?? false);
     setShowStats(chat?.settings.show_stats ?? false);
     setTutorDefaultModel(ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID);
-    setTutorMemoryModel(
-      ui?.tutorMemoryModelId || ui?.tutorDefaultModelId || DEFAULT_TUTOR_MEMORY_MODEL_ID,
-    );
-    const freq = ui?.tutorMemoryFrequency || DEFAULT_TUTOR_MEMORY_FREQUENCY;
-    setTutorMemoryFrequency(freq);
-    setTutorMemoryFrequencyStr(String(freq));
-    setTutorMemoryAutoUpdate(ui?.tutorMemoryAutoUpdate !== false);
-    const nextMemory = normalizeTutorMemory(ui?.tutorGlobalMemory || EMPTY_TUTOR_MEMORY);
-    setTutorMemorySnapshot(nextMemory);
   }, [
     chat?.id,
     ui?.tutorDefaultModelId,
-    ui?.tutorMemoryModelId,
-    ui?.tutorMemoryFrequency,
-    ui?.tutorMemoryAutoUpdate,
-    ui?.tutorGlobalMemory,
   ]);
 
   // Prevent background scroll while drawer is open
@@ -530,18 +493,6 @@ export function SettingsDrawer() {
                           updateChatSettings={updateChatSettings}
                           tutorDefaultModel={tutorDefaultModel}
                           setTutorDefaultModel={setTutorDefaultModel}
-                          tutorMemoryModel={tutorMemoryModel}
-                          setTutorMemoryModel={setTutorMemoryModel}
-                          tutorMemoryFrequency={tutorMemoryFrequency}
-                          tutorMemoryFrequencyStr={tutorMemoryFrequencyStr}
-                          setTutorMemoryFrequency={setTutorMemoryFrequency}
-                          setTutorMemoryFrequencyStr={setTutorMemoryFrequencyStr}
-                          tutorMemoryAutoUpdate={tutorMemoryAutoUpdate}
-                          setTutorMemoryAutoUpdate={setTutorMemoryAutoUpdate}
-                          tutorMemorySnapshot={tutorMemorySnapshot}
-                          setTutorMemorySnapshot={setTutorMemorySnapshot}
-                          models={models}
-                          defaultTutorMemoryFrequency={DEFAULT_TUTOR_MEMORY_FREQUENCY}
                         />
                       );
                       break;
@@ -646,19 +597,8 @@ export function SettingsDrawer() {
             className="btn w-full max-w-sm"
             onClick={() => {
               const trimmedTutorModel = tutorDefaultModel.trim() || DEFAULT_TUTOR_MODEL_ID;
-              const trimmedMemoryModel = tutorMemoryModel.trim() || trimmedTutorModel;
-              const freqValue =
-                Number.isFinite(tutorMemoryFrequency) && tutorMemoryFrequency > 0
-                  ? Math.ceil(tutorMemoryFrequency)
-                  : DEFAULT_TUTOR_MEMORY_FREQUENCY;
-              const normalizedMemoryInput = normalizeTutorMemory(tutorMemorySnapshot);
-              const limitedMemory = enforceTutorMemoryLimit(normalizedMemoryInput);
               setUI({
                 tutorDefaultModelId: trimmedTutorModel,
-                tutorMemoryModelId: trimmedMemoryModel,
-                tutorMemoryFrequency: freqValue,
-                tutorMemoryAutoUpdate: tutorMemoryAutoUpdate,
-                tutorGlobalMemory: limitedMemory,
               });
               if (chat) {
                 updateChatSettings({
@@ -672,17 +612,11 @@ export function SettingsDrawer() {
                   show_stats: showStats,
                   ...(chat.settings.tutor_mode || ui?.forceTutorMode
                     ? {
-                        tutor_memory_frequency: freqValue,
-                        tutor_memory_model: trimmedMemoryModel,
                         tutor_default_model: trimmedTutorModel,
-                        tutor_memory: limitedMemory,
-                        tutor_memory_disabled: tutorMemoryAutoUpdate ? false : true,
                       }
                     : {}),
-                  // keep chosen provider if present in UI for next-only case ignored here
                 });
               } else {
-                // Persist defaults for the next chat when no chat exists
                 setUI({
                   nextSystem: system,
                   nextTemperature: temperature,
@@ -692,8 +626,6 @@ export function SettingsDrawer() {
                   nextReasoningTokens: reasoningTokens,
                   nextShowThinking: showThinking,
                   nextShowStats: showStats,
-                  tutorGlobalMemory: limitedMemory,
-                  // ensure provider selection from welcome page is retained; default based on experimental flag
                   nextSearchProvider:
                     (ui as any)?.nextSearchProvider ??
                     (chat as any)?.settings?.search_provider ??

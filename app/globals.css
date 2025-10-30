@@ -638,6 +638,51 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   }
 }
 
+.plan-sheet {
+  animation: drawer-in var(--duration-slow) var(--ease-standard);
+  border-top-left-radius: 24px;
+  border-bottom-left-radius: 24px;
+  overscroll-behavior: contain;
+  background: var(--glass-panel-bg);
+  -webkit-backdrop-filter: var(--glass-saturate) var(--glass-blur-panel);
+  backdrop-filter: var(--glass-saturate) var(--glass-blur-panel);
+}
+.plan-sheet.is-closing {
+  animation: drawer-out 200ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.plan-sheet__body {
+  padding-bottom: calc(var(--space-8) + max(18px, env(safe-area-inset-bottom)));
+}
+@media (max-width: 640px) {
+  .plan-sheet {
+    border-radius: 0 !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+  }
+}
+
+.plan-loading-bar {
+  background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--color-accent) 70%, transparent),
+      transparent
+    )
+    0 0 / 200% 100%;
+  animation: plan-loading-bar 1.6s ease-in-out infinite;
+}
+@keyframes plan-loading-bar {
+  0% {
+    background-position: 180% 0;
+  }
+  50% {
+    background-position: 50% 0;
+  }
+  100% {
+    background-position: -80% 0;
+  }
+}
+
 .mobile-sheet-overlay {
   position: fixed;
   inset: 0;

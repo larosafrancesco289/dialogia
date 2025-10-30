@@ -111,12 +111,34 @@ export async function generateLearningPlan(
   }
 
   // Create LearningPlan with proper timestamps and version
+  const rawNodes: any[] = Array.isArray(planData.nodes) ? planData.nodes : [];
+  const normalizedNodes = rawNodes.map((node, index) => {
+    const status = (() => {
+      if (node?.status === 'completed' || node?.status === 'in_progress') return node.status;
+      return 'not_started';
+    })();
+    const prerequisites = Array.isArray(node?.prerequisites)
+      ? node.prerequisites.filter((id: unknown): id is string => typeof id === 'string')
+      : [];
+    const objectives = Array.isArray(node?.objectives)
+      ? node.objectives.filter((obj: unknown): obj is string => typeof obj === 'string')
+      : [];
+    return {
+      ...node,
+      id: typeof node?.id === 'string' && node.id.trim() ? node.id.trim() : `node_${index + 1}`,
+      name: typeof node?.name === 'string' && node.name.trim() ? node.name.trim() : `Topic ${index + 1}`,
+      status,
+      prerequisites,
+      objectives,
+    };
+  });
+
   const plan: LearningPlan = {
     goal: planData.goal || goal,
     generatedAt: Date.now(),
     updatedAt: Date.now(),
     version: 1,
-    nodes: planData.nodes || [],
+    nodes: normalizedNodes,
     metadata: planData.metadata,
   };
 

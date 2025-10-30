@@ -1,12 +1,15 @@
 'use client';
 import { CheckCircleIcon, ArrowTrendingUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
-import type { Message, LearnerModel } from '@/lib/types';
+import type { Message, LearnerModel, TopicMastery } from '@/lib/types';
 import { useState } from 'react';
 
 export function LearnerModelUpdates({ message }: { message: Message }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const { planUpdates, learnerModel } = message;
+  const masteryEntries: Array<[string, TopicMastery]> = learnerModel
+    ? (Object.entries(learnerModel.mastery ?? {}) as Array<[string, TopicMastery]>)
+    : [];
 
   // Only show if there are updates or learner model data
   if (!planUpdates && !learnerModel) return null;
@@ -90,34 +93,47 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
 
             {isExpanded && (
               <div className="px-3 pb-3 text-xs space-y-2">
-                {Object.entries(learnerModel).map(([topic, mastery]) => {
-                  if (typeof mastery === 'object' && mastery !== null && 'confidence' in mastery) {
-                    const m = mastery as any;
-                    const confidence = Math.round((m.confidence || 0) * 100);
+                {masteryEntries.length === 0 && (
+                  <div className="text-muted-foreground">
+                    Learner model does not have topic mastery data yet.
+                  </div>
+                )}
 
-                    return (
-                      <div key={topic} className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-foreground">{topic}</span>
-                          <span className={`${confidence >= 70 ? 'text-green-600 dark:text-green-400' : confidence >= 40 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {confidence}%
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full transition-all ${confidence >= 70 ? 'bg-green-500' : confidence >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                            style={{ width: `${confidence}%` }}
-                          />
-                        </div>
-                        {m.interactions !== undefined && (
-                          <div className="text-muted-foreground">
-                            {m.interactions} interaction{m.interactions !== 1 ? 's' : ''}
-                          </div>
-                        )}
+                {masteryEntries.map(([topicId, mastery]) => {
+                  const confidence = Math.round((mastery.confidence ?? 0) * 100);
+                  const label = mastery.nodeId || topicId;
+                  const interactions = mastery.interactions ?? 0;
+              const confidenceColor =
+                confidence >= 70
+                  ? 'color-mix(in oklab, var(--color-accent) 80%, var(--color-fg) 20%)'
+                  : confidence >= 40
+                    ? 'color-mix(in oklab, var(--color-accent-2) 70%, var(--color-fg) 30%)'
+                    : 'color-mix(in oklab, var(--color-danger) 75%, var(--color-fg) 25%)';
+
+              const barColor =
+                confidence >= 70
+                  ? 'color-mix(in oklab, var(--color-accent) 75%, transparent)'
+                  : confidence >= 40
+                    ? 'color-mix(in oklab, var(--color-accent-2) 70%, transparent)'
+                    : 'color-mix(in oklab, var(--color-danger) 70%, transparent)';
+
+                  return (
+                    <div key={topicId} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-foreground">{label}</span>
+                        <span style={{ color: confidenceColor }}>{confidence}%</span>
                       </div>
-                    );
-                  }
-                  return null;
+                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${confidence}%`, background: barColor }}
+                        />
+                      </div>
+                      <div className="text-muted-foreground">
+                        {interactions} interaction{interactions === 1 ? '' : 's'}
+                      </div>
+                    </div>
+                  );
                 })}
               </div>
             )}

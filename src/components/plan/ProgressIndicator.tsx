@@ -13,8 +13,11 @@ export function ProgressIndicator({ plan }: { plan: LearningPlan }) {
         <div className="flex-1">
           <div className="h-2 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progress.percentComplete}%` }}
+              className="h-full transition-all duration-300"
+              style={{
+                width: `${progress.percentComplete}%`,
+                background: 'color-mix(in oklab, var(--color-accent) 85%, transparent)',
+              }}
             />
           </div>
         </div>
@@ -26,14 +29,20 @@ export function ProgressIndicator({ plan }: { plan: LearningPlan }) {
       {/* Stats */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
-          <CheckCircleIcon className="h-3.5 w-3.5 text-green-500" />
+          <CheckCircleIcon
+            className="h-3.5 w-3.5"
+            style={{ color: 'color-mix(in oklab, var(--color-accent) 80%, var(--color-fg) 20%)' }}
+          />
           <span>
             {progress.completed} completed
           </span>
         </div>
         {progress.inProgress > 0 && (
           <div className="flex items-center gap-1.5">
-            <ClockIcon className="h-3.5 w-3.5 text-blue-500" />
+            <ClockIcon
+              className="h-3.5 w-3.5"
+              style={{ color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)' }}
+            />
             <span>
               {progress.inProgress} in progress
             </span>

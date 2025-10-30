@@ -49,7 +49,6 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
       max_tokens: 256,
       tutor_mode: true,
       tutor_default_model: 'provider/model',
-      tutor_memory_model: 'provider/model',
     },
   };
   const assistantMessage: Message = {
@@ -75,11 +74,9 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
       debugMode: false,
       debugByMessageId: {},
       tutorByMessageId: {},
-      tutorMemoryDebugByMessageId: {},
       braveByMessageId: {},
       experimentalTutor: true,
       experimentalBrave: true,
-      tutorMemoryAutoUpdate: true,
       forceTutorMode: false,
       autoReasoningModelIds: {},
       routePreference: 'speed',
@@ -226,7 +223,6 @@ test('regenerate reuses snapshots and records debug payload', async () => {
       max_tokens: 200,
       tutor_mode: false,
       tutor_default_model: 'provider/model',
-      tutor_memory_model: 'provider/model',
     },
   };
   const assistantMessage: Message = {
@@ -268,11 +264,9 @@ test('regenerate reuses snapshots and records debug payload', async () => {
       debugMode: true,
       debugByMessageId: {},
       tutorByMessageId: {},
-      tutorMemoryDebugByMessageId: {},
       braveByMessageId: {},
       experimentalTutor: false,
       experimentalBrave: false,
-      tutorMemoryAutoUpdate: true,
       forceTutorMode: false,
       autoReasoningModelIds: {},
       routePreference: 'speed',

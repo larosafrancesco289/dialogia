@@ -1,14 +1,8 @@
 // Module: agent/tutorFlow
-// Responsibility: Centralize tutor hidden-context composition and memory update orchestration.
+// Responsibility: Build hidden tutor payloads and ensure tutor defaults stay consistent.
 
 import { buildTutorContextFull, buildTutorContextSummary } from '@/lib/agent/tutor';
-import {
-  updateTutorMemory,
-  normalizeTutorMemory,
-  getTutorMemoryFrequency,
-  EMPTY_TUTOR_MEMORY,
-} from '@/lib/agent/tutorMemory';
-import type { Message, ModelTransport } from '@/lib/types';
+import type { Message } from '@/lib/types';
 
 export function buildHiddenTutorContent(tutor: unknown): string {
   try {
@@ -27,113 +21,43 @@ export function ensureTutorDefaults(args: {
   ui: any;
   chat: { settings: any };
   fallbackDefaultModelId: string;
-  fallbackMemoryModelId: string;
-}): { nextSettings: any; changed: boolean; defaultModelId: string; memoryModelId: string } {
-  const { ui, chat, fallbackDefaultModelId, fallbackMemoryModelId } = args;
+}): { nextSettings: any; changed: boolean; defaultModelId: string } {
+  const { ui, chat, fallbackDefaultModelId } = args;
   let tutorDefaultModelId = ui?.tutorDefaultModelId || chat.settings.tutor_default_model;
-  let tutorMemoryModelId =
-    ui?.tutorMemoryModelId || chat.settings.tutor_memory_model || tutorDefaultModelId;
   if (!tutorDefaultModelId) tutorDefaultModelId = fallbackDefaultModelId;
-  if (!tutorMemoryModelId) tutorMemoryModelId = fallbackMemoryModelId;
+
   const next = { ...chat.settings };
   let changed = false;
+
   if (next.model !== tutorDefaultModelId) {
     next.model = tutorDefaultModelId;
     changed = true;
   }
+
   if (next.tutor_default_model !== tutorDefaultModelId) {
     next.tutor_default_model = tutorDefaultModelId;
     changed = true;
   }
-  if (next.tutor_memory_model !== tutorMemoryModelId) {
-    next.tutor_memory_model = tutorMemoryModelId;
+
+  if (next.enableLearnerModel !== true) {
+    next.enableLearnerModel = true;
     changed = true;
   }
-  const normalizedMem = normalizeTutorMemory(next.tutor_memory);
-  if (normalizedMem !== next.tutor_memory) {
-    next.tutor_memory = normalizedMem;
+
+  if (
+    typeof next.learnerModelUpdateFrequency !== 'number' ||
+    Number.isNaN(next.learnerModelUpdateFrequency) ||
+    next.learnerModelUpdateFrequency <= 0
+  ) {
+    next.learnerModelUpdateFrequency = 3;
     changed = true;
   }
-  if (typeof next.tutor_memory_frequency !== 'number' || next.tutor_memory_frequency <= 0) {
-    next.tutor_memory_frequency = getTutorMemoryFrequency(next);
-    changed = true;
-  }
-  if (typeof next.tutor_memory_message_count !== 'number' || next.tutor_memory_message_count < 0) {
-    next.tutor_memory_message_count = 0;
-    changed = true;
-  }
+
   return {
     nextSettings: next,
     changed,
     defaultModelId: tutorDefaultModelId,
-    memoryModelId: tutorMemoryModelId,
   };
-}
-
-export async function maybeAdvanceTutorMemory(args: {
-  apiKey: string;
-  transport: ModelTransport;
-  modelId: string;
-  settings: any;
-  conversation: Message[];
-  autoUpdate: boolean;
-}): Promise<{
-  nextSettings: any;
-  debug?: {
-    before?: string;
-    after?: string;
-    version?: number;
-    messageCount?: number;
-    conversationWindow?: string;
-    raw?: string;
-  };
-}> {
-  const { apiKey, transport, modelId, settings, conversation, autoUpdate } = args;
-  const priorCount = settings.tutor_memory_message_count ?? 0;
-  const frequency = getTutorMemoryFrequency(settings);
-  const nextCount = priorCount + 1;
-  let newCount = nextCount;
-  let newMemory = settings.tutor_memory || EMPTY_TUTOR_MEMORY;
-  let version = settings.tutor_memory_version ?? 0;
-  let debug: any | undefined;
-  if (autoUpdate && nextCount >= frequency) {
-    try {
-      const result = await updateTutorMemory({
-        apiKey,
-        transport,
-        model: modelId,
-        existingMemory: settings.tutor_memory,
-        conversation,
-        frequency,
-      });
-      newMemory = result.memory;
-      version += 1;
-      newCount = 0;
-      debug = {
-        before: settings.tutor_memory,
-        after: newMemory,
-        version,
-        messageCount: nextCount,
-        conversationWindow: result.conversationWindow,
-        raw: result.raw,
-      };
-    } catch {
-      // Swallow; caller can handle notices via UI if desired
-    }
-  }
-  if (!autoUpdate) {
-    // Only bump the counter; do not run the update
-    if (nextCount !== priorCount) {
-      newCount = nextCount;
-    }
-  }
-  const nextSettings = {
-    ...settings,
-    tutor_memory: newMemory,
-    tutor_memory_version: version,
-    tutor_memory_message_count: newCount,
-  };
-  return { nextSettings, debug };
 }
 
 export function mergeTutorPayload(prev: any, patch: any): { merged: any; hiddenContent: string } {
