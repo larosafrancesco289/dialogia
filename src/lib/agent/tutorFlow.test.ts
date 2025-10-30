@@ -71,6 +71,7 @@ test('mergeTutorPayload merges patches and rebuilds hidden content', () => {
 test('maybeAdvanceTutorMemory increments counters when auto-update disabled', async () => {
   const result = await maybeAdvanceTutorMemory({
     apiKey: 'ignored',
+    transport: 'openrouter',
     modelId: DEFAULT_TUTOR_MODEL_ID,
     settings: {
       tutor_memory: '{}',

@@ -27,6 +27,13 @@ export type ChatSettings = {
   tutor_memory_frequency?: number;
   tutor_memory_disabled?: boolean;
   tutor_memory_model?: string;
+  // Learning Plan System
+  learningPlan?: LearningPlan;
+  planGenerated?: boolean; // Flag to track if plan was generated
+  planGenerationModel?: string; // Model used to generate plan
+  // Learner Model Tracking
+  enableLearnerModel?: boolean; // Whether to track mastery
+  learnerModelUpdateFrequency?: number; // Update every N interactions (default: 3)
 };
 
 export type Message = {
@@ -67,6 +74,13 @@ export type Message = {
   // Optional: persisted tutor payload for interactive content and attempts
   tutor?: MessageTutor;
   tutorWelcome?: boolean;
+  // Learner Model (attached to assistant messages)
+  learnerModel?: LearnerModel; // Snapshot of learner model at this point
+  // Plan Updates (track what changed in this interaction)
+  planUpdates?: {
+    statusChanges?: { nodeId: string; from: string; to: string }[];
+    masteryChanges?: { nodeId: string; from: number; to: number }[];
+  };
 };
 
 // Tutor tool item types rendered by UI (ephemeral; stored in UI state)
@@ -166,6 +180,83 @@ export type TutorEvent = {
   topic?: string;
   skill?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
+};
+
+// Learning Plan System Types
+export type LearningPlan = {
+  goal: string; // "Master calculus derivatives"
+  generatedAt: number; // Unix timestamp
+  updatedAt: number; // Last modification time
+  version: number; // Schema version (for migrations)
+  nodes: LearningPlanNode[]; // Tree structure
+  metadata?: {
+    estimatedHours?: number;
+    difficulty?: 'beginner' | 'intermediate' | 'advanced';
+    prerequisites?: string[]; // External prerequisites (e.g., "algebra")
+  };
+};
+
+export type LearningPlanNode = {
+  id: string; // Unique node ID (e.g., "limits", "chain_rule")
+  name: string; // Display name ("Limit Concept")
+  description?: string; // Detailed description
+  objectives: string[]; // Learning objectives (verifiable outcomes)
+  prerequisites: string[]; // Node IDs that must be completed first
+  status: 'not_started' | 'in_progress' | 'completed';
+  startedAt?: number; // When first worked on
+  completedAt?: number; // When marked complete
+  estimatedMinutes?: number; // Time estimate
+  resources?: {
+    // Optional learning materials
+    type: 'reading' | 'video' | 'practice';
+    title: string;
+    url?: string;
+  }[];
+  children?: string[]; // Child node IDs (for hierarchical plans)
+};
+
+// Learner Model Types
+export type LearnerModel = {
+  studentId?: string; // Optional user ID (currently unused)
+  chatId: string; // Associated chat
+  updatedAt: number; // Last update timestamp
+  version: number; // Schema version
+  mastery: Record<string, TopicMastery>; // Keyed by node ID from LearningPlan
+  globalMetrics?: {
+    totalInteractions: number;
+    accuracyRate: number; // Overall correctness
+    averageConfidence: number; // Avg mastery across topics
+  };
+};
+
+export type TopicMastery = {
+  nodeId: string; // Reference to LearningPlanNode
+  confidence: number; // 0.0 - 1.0 (mastery estimate)
+  interactions: number; // Number of interactions on this topic
+  lastInteraction: number; // Timestamp
+  evidence: Evidence[]; // Supporting evidence for mastery estimate
+  misconceptions: Misconception[]; // Identified errors
+  needsReview?: boolean; // Flag for spaced repetition
+};
+
+export type Evidence = {
+  timestamp: number;
+  type:
+    | 'correct_answer'
+    | 'incorrect_answer'
+    | 'partial_answer'
+    | 'hint_needed'
+    | 'explanation_requested';
+  details: string; // Description of what happened
+  weight: number; // 0.0 - 1.0 (how much this updates mastery)
+};
+
+export type Misconception = {
+  id: string;
+  description: string; // "Confuses power rule exponent order"
+  firstObserved: number;
+  occurrences: number;
+  resolved: boolean;
 };
 
 export type MessageMetrics = {
