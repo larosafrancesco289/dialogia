@@ -121,6 +121,8 @@ export type UIState = {
   };
   // Per-chat ephemeral flags (not persisted)
   tutorGreetedByChatId?: Record<string, boolean>;
+  // Learning plan UI state
+  planSheetOpen?: boolean;
 };
 
 export type StoreState = {

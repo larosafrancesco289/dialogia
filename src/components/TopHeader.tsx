@@ -3,10 +3,20 @@ import { ModelPicker } from '@/components/ModelPicker';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, Cog6ToothIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PlusIcon,
+  Cog6ToothIcon,
+  AcademicCapIcon,
+  ClipboardDocumentListIcon,
+  SparklesIcon,
+} from '@heroicons/react/24/outline';
 import { useMemo, useState } from 'react';
 import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
 import { findModelById, formatModelLabel } from '@/lib/models';
+import { PlanSheet } from '@/components/plan/PlanSheet';
+import { calculatePlanProgress, getNextNode } from '@/lib/agent/planGenerator';
 export function TopHeader() {
   const {
     chats,
@@ -28,10 +38,11 @@ export function TopHeader() {
       shallow,
     );
   const chat = chats.find((c) => c.id === selectedChatId);
-  const { collapsed, isSettingsOpen } = useChatStore(
+  const { collapsed, isSettingsOpen, planSheetOpen } = useChatStore(
     (s) => ({
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
+      planSheetOpen: s.ui.planSheetOpen ?? false,
     }),
     shallow,
   );
@@ -52,12 +63,28 @@ export function TopHeader() {
     [tutorModelMeta, tutorModelId],
   );
 
+  // Learning plan state
+  const learningPlan = chat?.settings?.learningPlan;
+  const hasPlan = !!learningPlan;
+  const planProgress = useMemo(
+    () => (learningPlan ? calculatePlanProgress(learningPlan) : null),
+    [learningPlan],
+  );
+  const currentNode = useMemo(
+    () => (learningPlan ? getNextNode(learningPlan) : null),
+    [learningPlan],
+  );
+
   const renameCurrentChat = () => {
     if (!chat) return;
     const next = window.prompt('Rename chat', chat.title || 'Untitled chat');
     const trimmed = (next || '').trim();
     if (!trimmed || trimmed === chat.title) return;
     renameChat(chat.id, trimmed);
+  };
+
+  const handlePlanUpdate = async (updatedPlan: any) => {
+    await updateChatSettings({ learningPlan: updatedPlan });
   };
 
   return (
@@ -119,6 +146,37 @@ export function TopHeader() {
             <span className="hidden sm:inline ml-1">{tutorActive ? 'Tutor On' : 'Tutor Off'}</span>
           </button>
         )}
+        {hasPlan && planProgress && (
+          <>
+            {/* Current topic badge */}
+            {currentNode && (
+              <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-xs">
+                <SparklesIcon className="h-3.5 w-3.5 text-blue-500" />
+                <span className="text-blue-700 dark:text-blue-400 font-medium">
+                  {currentNode.name}
+                </span>
+              </div>
+            )}
+            {/* Compact progress */}
+            <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="font-medium">
+                {planProgress.completed}/{learningPlan.nodes.length}
+              </span>
+              <span>•</span>
+              <span>{planProgress.percentComplete}%</span>
+            </div>
+            {/* View Plan button */}
+            <button
+              className="btn btn-ghost shrink-0"
+              onClick={() => setUI({ planSheetOpen: true })}
+              title="View Learning Plan"
+              aria-label="View Learning Plan"
+            >
+              <ClipboardDocumentListIcon className="h-5 w-5" />
+              <span className="hidden sm:inline ml-1">Plan</span>
+            </button>
+          </>
+        )}
         <button
           className="btn btn-ghost shrink-0 hide-on-mobile"
           aria-label="New chat"
@@ -159,6 +217,14 @@ export function TopHeader() {
           onToggleSidebar={() => setUI({ sidebarCollapsed: !collapsed })}
         />
       </div>
+
+      {/* Learning Plan Sheet */}
+      <PlanSheet
+        plan={learningPlan || null}
+        isOpen={planSheetOpen}
+        onClose={() => setUI({ planSheetOpen: false })}
+        onUpdate={handlePlanUpdate}
+      />
     </div>
   );
 }

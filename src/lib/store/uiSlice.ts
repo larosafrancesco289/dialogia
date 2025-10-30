@@ -50,6 +50,7 @@ export const createUiSlice = createStoreSlice((set, get) => {
     tutorByMessageId: {},
     tutorProfileByChatId: {},
     tutorGreetedByChatId: {},
+    planSheetOpen: false,
   };
 
   return {

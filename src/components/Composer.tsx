@@ -8,6 +8,7 @@ import {
   PhotoIcon,
   LightBulbIcon,
   MagnifyingGlassIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
@@ -27,6 +28,7 @@ import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
 import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
+import { getNextNode } from '@/lib/agent/planGenerator';
 // PDFs are sent directly to OpenRouter as file blocks; no local parsing.
 
 export function Composer({
@@ -73,6 +75,13 @@ export function Composer({
   const tutorEnabled =
     tutorGloballyEnabled &&
     (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.nextTutorMode));
+
+  // Learning plan current focus
+  const learningPlan = chat?.settings?.learningPlan;
+  const currentNode = useMemo(
+    () => (learningPlan ? getNextNode(learningPlan) : null),
+    [learningPlan],
+  );
 
   // Slash commands: /model id, /search on|off|toggle, /reasoning none|low|medium|high
   const trySlashCommand = async (raw: string): Promise<boolean> => {
@@ -479,6 +488,16 @@ export function Composer({
               {tutorEnabled ? 'Tutor' : findModelById(models, modelId)?.name || modelId}
             </button>
           }
+          {currentNode && (
+            <span
+              className="badge flex items-center gap-1 bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400"
+              title={`Currently learning: ${currentNode.name}`}
+              aria-label="Current learning focus"
+            >
+              <SparklesIcon className="h-3.5 w-3.5" />
+              {currentNode.name}
+            </span>
+          )}
           {canVision && (
             <span
               className="badge flex items-center gap-1"

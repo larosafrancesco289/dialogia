@@ -13,6 +13,7 @@ import { RegenerateMenu } from '@/components/RegenerateMenu';
 import { MessageMeta } from '@/components/message/MessageMeta';
 import { MessagePanels, type MessagePanelsProps } from '@/components/message/MessagePanels';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
+import { LearnerModelUpdates } from '@/components/message/LearnerModelUpdates';
 import styles from './MessageCard.module.css';
 import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
 
@@ -417,6 +418,9 @@ function AssistantMessageContent({
           <Markdown content={message.content} />
         )}
       </div>
+
+      {/* Learner Model Updates */}
+      {!isEditing && <LearnerModelUpdates message={message} />}
 
       {showStats && !(waitingForFirstToken && message.id === lastMessageId) && (
         <div className="px-4 pb-3 -mt-2">

@@ -109,6 +109,97 @@ Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/star
   - `/reasoning none|low|medium|high` — set reasoning effort.
   - `/help` — list supported commands.
 
+### Tutor Mode: Adaptive Learning Plans
+
+Dialogia includes an experimental **Tutor Mode** that provides personalized, structured learning experiences with automatic progress tracking.
+
+#### Features
+
+- **Automatic Plan Generation**: Start a chat with a learning goal (e.g., "I want to learn Python basics"), and the tutor automatically generates a structured learning plan with topics, prerequisites, and learning objectives.
+- **Mastery Tracking**: The system continuously monitors your understanding through conversation, tracking confidence levels (0-100%) for each topic based on your responses, questions, and demonstrated knowledge.
+- **Adaptive Progression**: The tutor automatically advances you to the next topic when you reach 70% mastery, have completed 5+ interactions, and show no unresolved misconceptions.
+- **Visual Progress**: View your learning plan and progress in real-time through the plan sidebar, with color-coded indicators showing completed, in-progress, and upcoming topics.
+
+#### How to Use
+
+1. **Enable Tutor Mode**: Click the "Tutor" button in the top header to activate tutor mode for the current chat (or for the next new chat if no chat is open).
+
+2. **Start Learning**: Begin a conversation with your learning goal, for example:
+   - "I want to learn React hooks"
+   - "Teach me linear algebra fundamentals"
+   - "Help me understand how Docker works"
+   - "I need to learn SQL for data analysis"
+
+3. **View Your Plan**: Once the plan is generated, you'll see:
+   - A **progress indicator** in the header showing your completion percentage
+   - The **current focus topic** highlighted in the header and composer
+   - A **"View Plan" button** to open the full learning plan sidebar
+
+4. **Track Your Progress**: As you learn:
+   - Your mastery level for each topic is displayed in **assistant messages** after key interactions
+   - **Status changes** (topic completion, transitions) appear as notifications in messages
+   - The **plan sidebar** updates in real-time with your current mastery levels
+   - Topics automatically unlock as you complete prerequisites
+
+5. **Navigate Your Plan**: Click "View Plan" to:
+   - See all topics in your learning path
+   - View prerequisites and dependencies
+   - Check your mastery level for each topic (with progress bars)
+   - Manually advance or revisit topics if needed
+   - See estimated completion time and difficulty
+
+#### Example Learning Goals
+
+Tutor mode works best with structured, skill-based learning goals:
+
+**Programming Languages:**
+- "I want to learn Python basics"
+- "Teach me JavaScript ES6+ features"
+- "Help me understand TypeScript type system"
+
+**Frameworks & Tools:**
+- "I need to learn React for web development"
+- "Teach me Docker containerization"
+- "Help me understand Git workflows"
+
+**Concepts & Theory:**
+- "I want to learn linear algebra"
+- "Teach me database normalization"
+- "Help me understand machine learning fundamentals"
+
+**Professional Skills:**
+- "I need to learn SQL for data analysis"
+- "Teach me REST API design principles"
+- "Help me understand system design concepts"
+
+#### Understanding the Learner Model
+
+The tutor tracks your mastery using a Bayesian confidence model:
+- **Starting confidence**: 30% (beginner level)
+- **Evidence weights**: -0.5 (misconception) to +0.5 (clear understanding)
+- **Completion threshold**: 70% confidence, 5+ interactions, no unresolved misconceptions
+- **Update frequency**: Learner model updates every 3 interactions by default
+
+Progress indicators use color coding:
+- 🟢 **Green (70-100%)**: Strong mastery, ready to advance
+- 🟡 **Yellow (40-69%)**: Developing understanding, keep practicing
+- 🔴 **Red (0-39%)**: Needs more work, concepts not yet clear
+
+#### Tips for Effective Learning
+
+- **Be specific** with your learning goals — the more focused, the better the plan
+- **Ask questions** when you don't understand — the tutor tracks misconceptions
+- **Demonstrate understanding** by explaining concepts back or solving problems
+- **Review the plan** regularly to see your overall progress and upcoming topics
+- **Take your time** — mastery is based on understanding, not speed
+
+#### Limitations & Known Issues
+
+- Plan generation requires a capable model (GPT-4, Claude, etc.)
+- Very broad goals (e.g., "teach me everything") may produce less structured plans
+- Mastery tracking is based on conversational evidence, not formal assessments
+- Manual topic advancement is available but may skip important prerequisites
+
 ### Architecture
 
 - Framework: Next.js App Router (React 18)
