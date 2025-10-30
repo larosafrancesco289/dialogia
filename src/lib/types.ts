@@ -21,12 +21,6 @@ export type ChatSettings = {
   // Tutor mode: enables pedagogy prompt + tutor tools
   tutor_mode?: boolean;
   tutor_default_model?: string;
-  tutor_memory?: string;
-  tutor_memory_version?: number;
-  tutor_memory_message_count?: number;
-  tutor_memory_frequency?: number;
-  tutor_memory_disabled?: boolean;
-  tutor_memory_model?: string;
   // Learning Plan System
   learningPlan?: LearningPlan;
   planGenerated?: boolean; // Flag to track if plan was generated

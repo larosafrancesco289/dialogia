@@ -6,7 +6,6 @@ import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { getTutorPreamble, getTutorToolDefinitions } from '@/lib/agent/tutor';
 import { composePlugins, providerSortFromRoutePref } from '@/lib/agent/request';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
-import { normalizeTutorMemory } from '@/lib/agent/tutorMemory';
 import { type ComposeTurnArgs, type TurnComposition, type ToolDefinition } from '@/lib/agent/types';
 import tutorProfileService from '@/lib/tutorProfile';
 import { combineSystem } from '@/lib/agent/system';
@@ -54,12 +53,6 @@ export async function composeTurn({
   const tools = [...searchTools, ...tutorTools];
 
   const preambles: string[] = [];
-  if (tutorEnabled) {
-    const memoryBlock = normalizeTutorMemory(chat.settings.tutor_memory);
-    if (typeof memoryBlock === 'string' && memoryBlock.trim()) {
-      preambles.push(memoryBlock.trim());
-    }
-  }
   if (searchEnabled && searchProvider === 'brave') {
     preambles.push(TOOL_PREAMBLE);
   }

@@ -13,24 +13,7 @@ export type UIState = {
   // Models that emit reasoning traces even when no effort was requested
   autoReasoningModelIds?: Record<string, true>;
   tutorDefaultModelId?: string;
-  tutorMemoryModelId?: string;
-  tutorMemoryFrequency?: number;
-  tutorMemoryAutoUpdate?: boolean;
-  tutorGlobalMemory?: string;
   forceTutorMode?: boolean;
-  tutorMemoryDebugByMessageId?: Record<
-    string,
-    {
-      version?: number;
-      messageCount?: number;
-      updatedAt?: number;
-      model?: string;
-      before?: string;
-      after?: string;
-      raw?: string;
-      conversationWindow?: string;
-    }
-  >;
   learnerModelDebugByMessageId?: Record<string, any>;
   nextModel?: string;
   nextSearchEnabled?: boolean;
@@ -123,6 +106,17 @@ export type UIState = {
   tutorGreetedByChatId?: Record<string, boolean>;
   // Learning plan UI state
   planSheetOpen?: boolean;
+  planGenerationByChatId?: Record<
+    string,
+    {
+      status: 'idle' | 'loading' | 'ready' | 'error';
+      goal?: string;
+      startedAt?: number;
+      completedAt?: number;
+      error?: string;
+      modelId?: string;
+    }
+  >;
 };
 
 export type StoreState = {
@@ -210,10 +204,6 @@ export type PersistedUIState = Pick<
   | 'experimentalTutor'
   | 'enableMultiModelChat'
   | 'tutorDefaultModelId'
-  | 'tutorMemoryModelId'
-  | 'tutorMemoryFrequency'
-  | 'tutorMemoryAutoUpdate'
-  | 'tutorGlobalMemory'
   | 'forceTutorMode'
 >;
 

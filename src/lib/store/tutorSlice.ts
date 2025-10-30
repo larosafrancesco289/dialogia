@@ -1,48 +1,31 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StoreState } from '@/lib/store/types';
-import type { Message, TutorEvent, TutorProfile } from '@/lib/types';
+import type { LearningPlan, Message, TutorEvent, TutorProfile } from '@/lib/types';
 import type { StoreSetter } from '@/lib/agent/types';
 import { updateTutorProfile, loadTutorProfile } from '@/lib/tutorProfile';
 import { saveMessage } from '@/lib/db';
-import {
-  buildTutorWelcomeFallback,
-  generateTutorWelcomeMessage,
-  normalizeTutorMemory,
-} from '@/lib/agent/tutorMemory';
-import { DEFAULT_TUTOR_MODEL_ID, DEFAULT_TUTOR_MEMORY_MODEL_ID } from '@/lib/constants';
-import { getPublicOpenRouterKey, isOpenRouterProxyEnabled } from '@/lib/config';
+import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import { getNextNode } from '@/lib/agent/planGenerator';
+
+const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
+  if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {
+    return 'Welcome! Share what you want to learn and I’ll build a personalized plan with adaptive mastery tracking.';
+  }
+
+  const nextNode = getNextNode(plan);
+  if (!nextNode) {
+    return `Welcome back! You’ve completed the learning plan for "${plan.goal}". Let me know if you’d like to review or start a new goal.`;
+  }
+
+  const description = nextNode.description ? ` — ${nextNode.description}` : '';
+  return `Welcome back! We’re working toward "${plan.goal}". Our next focus is ${nextNode.name}${description}. Ask a question or request practice when you’re ready.`;
+};
 
 export function createTutorSlice(
   set: StoreSetter,
   get: () => StoreState,
   _store?: unknown,
 ) {
-  const canUseProxy = typeof window !== 'undefined' && isOpenRouterProxyEnabled();
-
-  const buildWelcome = async (params: {
-    memory?: string;
-    modelId: string;
-    apiKey?: string;
-    signal?: AbortSignal;
-  }): Promise<{ message: string; error?: string; isFallback: boolean }> => {
-    const { memory, modelId, apiKey, signal } = params;
-    const normalizedMemory = normalizeTutorMemory(memory);
-    const hasCredentials = (apiKey && apiKey.trim()) || canUseProxy;
-    if (!hasCredentials)
-      return {
-        message: buildTutorWelcomeFallback(normalizedMemory),
-        error: 'tutor_welcome_no_credentials',
-        isFallback: true,
-      };
-    const text = await generateTutorWelcomeMessage({
-      apiKey: apiKey || '',
-      model: modelId,
-      memory: normalizedMemory,
-      signal,
-    });
-    return { message: text, error: undefined, isFallback: false };
-  };
-
   return {
     async logTutorResult(evt: TutorEvent) {
       const chatId = get().selectedChatId!;
@@ -80,64 +63,22 @@ export function createTutorSlice(
         }));
         return undefined;
       }
-      const current = state.ui.tutorWelcomePreview;
-      if (current?.status === 'loading') return current.message;
-
-      set((s) => ({
-        ui: {
-          ...s.ui,
-          tutorWelcomePreview: { status: 'loading' },
-        },
-      }));
-
-      const apiKey = getPublicOpenRouterKey();
-      const modelId =
-        state.ui.tutorMemoryModelId ||
-        state.ui.tutorDefaultModelId ||
-        state.ui.nextModel ||
-        DEFAULT_TUTOR_MEMORY_MODEL_ID;
+      const selectedChat = state.selectedChatId
+        ? state.chats.find((c) => c.id === state.selectedChatId)
+        : undefined;
+      const plan = selectedChat?.settings?.learningPlan;
+      const message = buildPlanWelcomeMessage(plan);
       set((s) => ({
         ui: {
           ...s.ui,
           tutorWelcomePreview: {
-            status: 'loading',
+            status: 'ready',
+            message,
             generatedAt: Date.now(),
-            message: buildTutorWelcomeFallback(state.ui.tutorGlobalMemory),
           },
         },
       }));
-      try {
-        const { message, error } = await buildWelcome({
-          memory: state.ui.tutorGlobalMemory,
-          modelId,
-          apiKey,
-        });
-        set((s) => ({
-          ui: {
-            ...s.ui,
-            tutorWelcomePreview: {
-              status: 'ready',
-              message,
-              error,
-              generatedAt: Date.now(),
-            },
-          },
-        }));
-        return message;
-      } catch (err: any) {
-        set((s) => ({
-          ui: {
-            ...s.ui,
-            tutorWelcomePreview: {
-              status: 'ready',
-              message: buildTutorWelcomeFallback(state.ui.tutorGlobalMemory),
-              error: String(err?.message || err) || 'welcome_failed',
-              generatedAt: Date.now(),
-            },
-          },
-        }));
-        return buildTutorWelcomeFallback(state.ui.tutorGlobalMemory);
-      }
+      return message;
     },
     async prepareTutorWelcomeMessage(chatId?: string) {
       const id = chatId || get().selectedChatId;
@@ -157,23 +98,9 @@ export function createTutorSlice(
         return undefined;
       }
 
-      const current = state.ui.tutorWelcomeByChatId?.[id];
-      if (current?.status === 'loading') return current.message;
-
       const currentMessages = state.messages[id] ?? [];
-      const apiKey = getPublicOpenRouterKey();
-      const modelId =
-        chat.settings.tutor_memory_model ||
-        chat.settings.tutor_default_model ||
-        chat.settings.model ||
-        DEFAULT_TUTOR_MODEL_ID;
+      const planMessage = buildPlanWelcomeMessage(chat.settings.learningPlan);
 
-      const fallbackText = buildTutorWelcomeFallback(chat.settings.tutor_memory).trim();
-      const previewState = state.ui.tutorWelcomePreview;
-      const previewContent =
-        previewState?.status === 'ready' && previewState.message
-          ? previewState.message.trim()
-          : undefined;
       const findWelcomeIndex = (list: Message[]) => {
         const flaggedIdx = list.findIndex((m) => m.role === 'assistant' && m.tutorWelcome);
         if (flaggedIdx >= 0) return flaggedIdx;
@@ -185,27 +112,6 @@ export function createTutorSlice(
         return -1;
       };
 
-      const existingWelcomeIdx = findWelcomeIndex(currentMessages);
-      const existingWelcome =
-        existingWelcomeIdx >= 0 ? currentMessages[existingWelcomeIdx] : undefined;
-      const existingContent = existingWelcome?.content?.trim();
-      const cachedWelcomeState = state.ui.tutorWelcomeByChatId?.[id];
-      const cachedContent =
-        cachedWelcomeState?.status === 'ready' && cachedWelcomeState.message
-          ? cachedWelcomeState.message.trim()
-          : undefined;
-      const hasCredentials = !!((apiKey && apiKey.trim()) || canUseProxy);
-
-      const pickInitialMessage = () => {
-        const candidates = [existingContent, previewContent, cachedContent].filter(
-          (value): value is string => !!value && value.trim().length > 0,
-        );
-        const nonFallback = candidates.find((value) => value !== fallbackText);
-        return nonFallback || fallbackText;
-      };
-
-      const initialMessage = pickInitialMessage();
-
       const resolveInsertionTimestamp = (list: Message[]) => {
         const welcomeIndex = findWelcomeIndex(list);
         if (welcomeIndex >= 0) return list[welcomeIndex].createdAt;
@@ -216,19 +122,18 @@ export function createTutorSlice(
         return Date.now() - 1;
       };
 
-      const upsertWelcomeMessage = (
-        content: string,
-        status: 'idle' | 'loading' | 'ready' | 'error' = 'ready',
-        errorMessage?: string,
-        generatedAt?: number,
-      ) => {
+      const upsertWelcomeMessage = (content: string) => {
         const trimmed = content.trim();
         let welcomeMessage: Message | undefined;
         set((s) => {
           const list = s.messages[id] ?? currentMessages;
           const welcomeIndex = findWelcomeIndex(list);
           const existing = welcomeIndex >= 0 ? list[welcomeIndex] : undefined;
-          const createdAt = generatedAt ?? existing?.createdAt ?? resolveInsertionTimestamp(list);
+          const createdAt = existing?.createdAt ?? resolveInsertionTimestamp(list);
+          const modelId =
+            chat.settings.tutor_default_model ||
+            chat.settings.model ||
+            DEFAULT_TUTOR_MODEL_ID;
           welcomeMessage = existing
             ? { ...existing, content: trimmed, model: modelId, tutorWelcome: true }
             : {
@@ -265,10 +170,9 @@ export function createTutorSlice(
               tutorWelcomeByChatId: {
                 ...(s.ui.tutorWelcomeByChatId || {}),
                 [id]: {
-                  status,
+                  status: 'ready',
                   message: trimmed,
-                  error: errorMessage,
-                  generatedAt: generatedAt ?? createdAt,
+                  generatedAt: Date.now(),
                 },
               },
               tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true },
@@ -278,45 +182,11 @@ export function createTutorSlice(
         return welcomeMessage!;
       };
 
-      const initialWelcome = upsertWelcomeMessage(
-        initialMessage,
-        'ready',
-        cachedWelcomeState?.error,
-        cachedWelcomeState?.generatedAt,
-      );
-      const initialWasUpdated =
-        !existingWelcome || existingWelcome.content.trim() !== initialWelcome.content.trim();
-      if (initialWasUpdated) {
-        try {
-          await saveMessage(initialWelcome);
-        } catch {}
-      }
-
-      const shouldGenerate = hasCredentials && initialMessage === fallbackText;
-      if (!shouldGenerate) return initialMessage;
-
-      let finalMessage = fallbackText;
-      let error: string | undefined;
+      const welcome = upsertWelcomeMessage(planMessage);
       try {
-        const build = await buildWelcome({
-          memory: chat.settings.tutor_memory,
-          modelId,
-          apiKey,
-        });
-        finalMessage = build.message.trim() || fallbackText;
-        error = build.error;
-      } catch (err: any) {
-        error = String(err?.message || err) || 'welcome_failed';
-      }
-
-      const finalWelcome = upsertWelcomeMessage(finalMessage, 'ready', error, Date.now());
-      const finalChanged = finalWelcome.content.trim() !== initialWelcome.content.trim();
-      if (finalChanged) {
-        try {
-          await saveMessage(finalWelcome);
-        } catch {}
-      }
-      return finalMessage;
+        await saveMessage(welcome);
+      } catch {}
+      return planMessage;
     },
   } satisfies Partial<StoreState>;
 }

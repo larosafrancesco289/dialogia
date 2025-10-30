@@ -53,8 +53,8 @@ export function initializeLearnerModel(
 }
 
 /**
- * Extract evidence from student response using LLM analysis
- * Follows the tutorMemory.ts pattern for consistency
+ * Extract evidence from student response using LLM analysis.
+ * Mirrors the legacy tutor memory extraction flow to keep prompts consistent.
  */
 export async function extractEvidence(
   nodeId: string,
@@ -377,7 +377,7 @@ export async function maybeUpdateLearnerModel(args: {
     return { updatedModel: learnerModel! };
   }
 
-  // Check frequency (similar to maybeAdvanceTutorMemory)
+  // Respect configured update cadence before making API calls
   const priorCount =
     (learnerModel as any)._interactionCount ??
     learnerModel.globalMetrics?.totalInteractions ??

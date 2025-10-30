@@ -9,16 +9,8 @@ import { type StoreSetter, type StoreGetter, type StoreAccess } from '@/lib/agen
 import { saveMessage, saveChat } from '@/lib/db';
 import { prepareAttachmentsForModel } from '@/lib/agent/attachments';
 import { requireClientKeyOrProxy, requireAnthropicClientKeyOrProxy } from '@/lib/config';
-import {
-  DEFAULT_TUTOR_MODEL_ID,
-  DEFAULT_TUTOR_MEMORY_MODEL_ID,
-} from '@/lib/constants';
-import {
-  attachTutorUiState,
-  ensureTutorDefaults,
-  maybeAdvanceTutorMemory,
-  mergeTutorPayload,
-} from '@/lib/agent/tutorFlow';
+import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import { attachTutorUiState, ensureTutorDefaults, mergeTutorPayload } from '@/lib/agent/tutorFlow';
 import { composeTurn } from '@/lib/agent/compose';
 import { runDeepResearchTurn } from '@/lib/agent/deepResearchOrchestrator';
 import { planTurn } from '@/lib/agent/planning';
@@ -135,17 +127,8 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
   const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat.settings.tutor_mode);
 
   let tutorDefaultModelId = uiState.tutorDefaultModelId || chat.settings.tutor_default_model;
-  let tutorMemoryModelId = (
-    uiState.tutorMemoryModelId ||
-    chat.settings.tutor_memory_model ||
-    tutorDefaultModelId ||
-    DEFAULT_TUTOR_MEMORY_MODEL_ID
-  );
   if (!tutorDefaultModelId) tutorDefaultModelId = DEFAULT_TUTOR_MODEL_ID;
-  if (!tutorMemoryModelId) tutorMemoryModelId = DEFAULT_TUTOR_MEMORY_MODEL_ID;
-
-  const memoryAutoUpdateEnabled =
-    uiState.tutorMemoryAutoUpdate !== false && chat.settings.tutor_memory_disabled !== true;
+  let tutorAnalysisModelId = tutorDefaultModelId;
 
   // Variables for learner model and plan updates
   let pendingLearnerModel: any;
@@ -156,7 +139,6 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
       ui: uiState,
       chat,
       fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-      fallbackMemoryModelId: DEFAULT_TUTOR_MEMORY_MODEL_ID,
     });
     if (ensured.changed) {
       const updatedChat = { ...chat, settings: ensured.nextSettings, updatedAt: Date.now() };
@@ -168,8 +150,12 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
         /* persist best effort */
       }
     }
-    tutorDefaultModelId = chat.settings.tutor_default_model || tutorDefaultModelId;
-    tutorMemoryModelId = chat.settings.tutor_memory_model || tutorMemoryModelId;
+    tutorDefaultModelId =
+      ensured.defaultModelId ||
+      chat.settings.tutor_default_model ||
+      tutorDefaultModelId ||
+      DEFAULT_TUTOR_MODEL_ID;
+    tutorAnalysisModelId = tutorDefaultModelId;
   }
 
   const parallelModels = Array.isArray(chat.settings.parallel_models)
@@ -220,9 +206,8 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     activeModelIds.forEach((id) => {
       if (id) modelsNeedingAuth.add(id);
     });
-    if (tutorEnabled) {
-      if (tutorDefaultModelId) modelsNeedingAuth.add(tutorDefaultModelId);
-      if (tutorMemoryModelId) modelsNeedingAuth.add(tutorMemoryModelId);
+    if (tutorEnabled && tutorDefaultModelId) {
+      modelsNeedingAuth.add(tutorDefaultModelId);
     }
     for (const id of modelsNeedingAuth) {
       ensureAuthForModel(id);
@@ -248,62 +233,6 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
   if (tutorEnabled) primeTutorWelcome(chatId, { set, get });
 
   const priorMessages = get().messages[chatId] ?? [];
-
-  // Auto-generate learning plan if goal detected and no plan exists
-  if (tutorEnabled && !chat.settings.learningPlan && priorMessages.length === 0) {
-    try {
-      const { detectLearningGoal, generateLearningPlan } = await import(
-        '@/lib/agent/planGenerator'
-      );
-      const { updateNodeStatus } = await import('@/lib/agent/planGenerator');
-      const { initializeLearnerModel } = await import('@/lib/agent/learnerModel');
-
-      const goalDetection = detectLearningGoal(content);
-
-      if (goalDetection.detected && goalDetection.confidence > 0.6 && goalDetection.goal) {
-        const planAuth = ensureAuthForModel(tutorDefaultModelId);
-        if (planAuth) {
-          const plan = await generateLearningPlan(goalDetection.goal, {
-            apiKey: planAuth.apiKey,
-            transport: planAuth.transport,
-            model: tutorDefaultModelId,
-          });
-
-          // Mark first node as in_progress
-          const startedPlan =
-            plan.nodes.length > 0 ? updateNodeStatus(plan, plan.nodes[0].id, 'in_progress') : plan;
-
-          // Store plan in chat settings
-          const updatedChat = {
-            ...chat,
-            settings: {
-              ...chat.settings,
-              learningPlan: startedPlan,
-              planGenerated: true,
-              planGenerationModel: tutorDefaultModelId,
-              enableLearnerModel: true, // Auto-enable learner tracking
-            },
-            updatedAt: Date.now(),
-          };
-
-          set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
-          chat = updatedChat;
-
-          try {
-            await saveChat(updatedChat);
-          } catch {
-            /* ignore */
-          }
-
-          // Initialize learner model
-          pendingLearnerModel = initializeLearnerModel(chatId, startedPlan);
-        }
-      }
-    } catch (error) {
-      console.error('Goal detection / plan generation failed:', error);
-      // Continue with normal tutoring
-    }
-  }
 
   if (get().ui.zdrOnly === true) {
     for (const modelId of activeModelIds) {
@@ -370,6 +299,164 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     await saveMessage(placeholder);
   }
 
+  const shouldEnsurePlan = tutorEnabled && !chat.settings.learningPlan;
+  const conversationWithNew = priorMessages.concat(userMsg);
+  if (shouldEnsurePlan) {
+    let inferredGoal: string | undefined;
+    try {
+      const { detectLearningGoal, generateLearningPlan } = await import(
+        '@/lib/agent/planGenerator'
+      );
+      const { updateNodeStatus } = await import('@/lib/agent/planGenerator');
+      const { initializeLearnerModel } = await import('@/lib/agent/learnerModel');
+
+      const candidateMessages: string[] = [];
+      const seenCandidates = new Set<string>();
+      let firstUserMessage: string | undefined;
+      const addCandidate = (value?: string, opts?: { markAsFirstUser?: boolean }) => {
+        if (!value) return;
+        const normalized = value.trim();
+        if (!normalized) return;
+        const limited = normalized.length > 3000 ? normalized.slice(0, 3000) : normalized;
+        if (seenCandidates.has(limited)) return;
+        seenCandidates.add(limited);
+        candidateMessages.push(limited);
+        if (opts?.markAsFirstUser && !firstUserMessage) firstUserMessage = limited;
+      };
+
+      for (const msg of conversationWithNew) {
+        if (msg.role === 'user' && typeof msg.content === 'string') {
+          addCandidate(msg.content, { markAsFirstUser: firstUserMessage == null });
+        }
+      }
+
+      if (candidateMessages.length === 0) addCandidate(content, { markAsFirstUser: true });
+
+      let bestConfidence = 0;
+
+      for (const candidate of candidateMessages) {
+        const detection = detectLearningGoal(candidate);
+        if (detection.detected && detection.goal && detection.confidence >= bestConfidence) {
+          inferredGoal = detection.goal.trim();
+          bestConfidence = detection.confidence;
+          if (bestConfidence >= 0.9) break;
+        }
+      }
+
+      if (!inferredGoal) {
+        if (firstUserMessage) {
+          inferredGoal = firstUserMessage;
+        } else if (candidateMessages.length > 0) {
+          inferredGoal = candidateMessages[0];
+        }
+      }
+
+      if (!inferredGoal) inferredGoal = 'General learning and practice';
+
+      const planAuth = ensureAuthForModel(tutorAnalysisModelId);
+      if (planAuth) {
+        set((state) => ({
+          ui: {
+            ...state.ui,
+            planGenerationByChatId: {
+              ...(state.ui.planGenerationByChatId || {}),
+              [chatId]: {
+                status: 'loading',
+                goal: inferredGoal,
+                startedAt: Date.now(),
+                modelId: tutorAnalysisModelId || tutorDefaultModelId,
+                error: undefined,
+              },
+            },
+          },
+        }));
+
+        const plan = await generateLearningPlan(inferredGoal, {
+          apiKey: planAuth.apiKey,
+          transport: planAuth.transport,
+          model: tutorAnalysisModelId || tutorDefaultModelId,
+        });
+
+        const startedPlan =
+          plan.nodes.length > 0 ? updateNodeStatus(plan, plan.nodes[0].id, 'in_progress') : plan;
+
+        const nextSettings = {
+          ...chat.settings,
+            learningPlan: startedPlan,
+            planGenerated: true,
+            planGenerationModel: tutorAnalysisModelId || tutorDefaultModelId,
+            enableLearnerModel: true,
+          };
+
+        if (typeof nextSettings.learnerModelUpdateFrequency !== 'number') {
+          nextSettings.learnerModelUpdateFrequency = 3;
+        }
+
+        const updatedChat = {
+          ...chat,
+          settings: nextSettings,
+          updatedAt: Date.now(),
+        };
+
+        set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
+        chat = updatedChat;
+
+        try {
+          await saveChat(updatedChat);
+        } catch {
+          /* ignore */
+        }
+
+        pendingLearnerModel = initializeLearnerModel(chatId, startedPlan);
+
+        set((state) => {
+          const prevMap = state.ui.planGenerationByChatId || {};
+          const previous = prevMap[chatId];
+          return {
+            ui: {
+              ...state.ui,
+              planGenerationByChatId: {
+                ...prevMap,
+                [chatId]: {
+                  status: 'ready',
+                  goal: inferredGoal,
+                  startedAt: previous?.startedAt ?? Date.now(),
+                  completedAt: Date.now(),
+                  modelId: tutorAnalysisModelId || tutorDefaultModelId,
+                  error: undefined,
+                },
+              },
+            },
+          };
+        });
+      }
+    } catch (error) {
+      set((state) => {
+        const prevMap = state.ui.planGenerationByChatId || {};
+        return {
+          ui: {
+            ...state.ui,
+            planGenerationByChatId: {
+              ...prevMap,
+              [chatId]: {
+                ...prevMap[chatId],
+                status: 'error',
+                goal: prevMap[chatId]?.goal ?? inferredGoal,
+                startedAt: prevMap[chatId]?.startedAt,
+                completedAt: Date.now(),
+                modelId:
+                  prevMap[chatId]?.modelId ?? (tutorAnalysisModelId || tutorDefaultModelId),
+                error: error instanceof Error ? error.message : String(error),
+              },
+            },
+          },
+        };
+      });
+      console.error('Goal detection / plan generation failed:', error);
+      // Continue with normal tutoring
+    }
+  }
+
   const primaryAuth = primaryModelId ? authByModelId.get(primaryModelId) : undefined;
   if (get().ui.experimentalDeepResearch && get().ui.nextDeepResearch) {
     if (!primaryAuth || primaryAuth.transport !== 'openrouter') {
@@ -399,69 +486,9 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     }
   }
 
-  let memoryDebug:
-    | {
-        before?: string;
-        after?: string;
-        version?: number;
-        messageCount?: number;
-        conversationWindow?: string;
-        raw?: string;
-      }
-    | undefined;
-
-  if (tutorEnabled) {
-    const memoryAuth = ensureAuthForModel(tutorMemoryModelId);
-    if (memoryAuth) {
-      const result = await maybeAdvanceTutorMemory({
-        apiKey: memoryAuth.apiKey,
-        transport: memoryAuth.transport,
-        modelId: tutorMemoryModelId,
-        settings: chat.settings,
-        conversation: priorMessages.concat(userMsg),
-        autoUpdate: memoryAutoUpdateEnabled,
-      });
-
-      const updatedChat = { ...chat, settings: result.nextSettings, updatedAt: Date.now() };
-      if (JSON.stringify(updatedChat.settings) !== JSON.stringify(chat.settings)) {
-        set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
-        chat = updatedChat;
-        try {
-          await saveChat(updatedChat);
-        } catch {
-          /* ignore */
-        }
-      }
-      memoryDebug = result.debug;
-    }
-  }
-
-  if (tutorEnabled) {
-    const snapshot = {
-      version: chat.settings.tutor_memory_version,
-      messageCount: chat.settings.tutor_memory_message_count,
-      after: chat.settings.tutor_memory,
-      before: memoryDebug?.before,
-      raw: memoryDebug?.raw,
-      conversationWindow: memoryDebug?.conversationWindow,
-      updatedAt: memoryDebug ? Date.now() : undefined,
-      model: tutorMemoryModelId,
-    };
-    set((state) => ({
-      ui: {
-        ...state.ui,
-        tutorGlobalMemory: chat?.settings.tutor_memory || state.ui.tutorGlobalMemory,
-        tutorMemoryDebugByMessageId: {
-          ...(state.ui.tutorMemoryDebugByMessageId || {}),
-          [primaryAssistant.id]: snapshot,
-        },
-      },
-    }));
-  }
-
   // Update learner model if plan exists
   if (tutorEnabled && chat.settings.learningPlan) {
-    const modelAuth = ensureAuthForModel(tutorMemoryModelId); // Reuse same model as memory
+    const modelAuth = ensureAuthForModel(tutorAnalysisModelId);
     if (modelAuth) {
       try {
         const { getLatestLearnerModel, initializeLearnerModel, maybeUpdateLearnerModel } =
@@ -478,7 +505,7 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
         const modelResult = await maybeUpdateLearnerModel({
           apiKey: modelAuth.apiKey,
           transport: modelAuth.transport,
-          modelId: tutorMemoryModelId,
+          modelId: tutorAnalysisModelId,
           plan: chat.settings.learningPlan,
           learnerModel: currentModel,
           conversation: priorMessages.concat(userMsg),

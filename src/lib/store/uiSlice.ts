@@ -1,11 +1,6 @@
 import type { StoreState, UIState } from '@/lib/store/types';
 import { getDefaultZdrOnly, getRoutePreferenceDefault } from '@/lib/config';
-import {
-  DEFAULT_TUTOR_MODEL_ID,
-  DEFAULT_TUTOR_MEMORY_MODEL_ID,
-  DEFAULT_TUTOR_MEMORY_FREQUENCY,
-} from '@/lib/constants';
-import { EMPTY_TUTOR_MEMORY } from '@/lib/agent/tutorMemory';
+import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { createStoreSlice } from '@/lib/store/createSlice';
 
 export const createUiSlice = createStoreSlice((set, get) => {
@@ -17,12 +12,7 @@ export const createUiSlice = createStoreSlice((set, get) => {
     debugByMessageId: {},
     autoReasoningModelIds: {},
     tutorDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-    tutorMemoryModelId: DEFAULT_TUTOR_MEMORY_MODEL_ID,
-    tutorMemoryFrequency: DEFAULT_TUTOR_MEMORY_FREQUENCY,
-    tutorMemoryAutoUpdate: true,
-    tutorMemoryDebugByMessageId: {},
     learnerModelDebugByMessageId: {},
-    tutorGlobalMemory: EMPTY_TUTOR_MEMORY,
     forceTutorMode: false,
     nextModel: undefined,
     nextSearchEnabled: false,
@@ -51,6 +41,7 @@ export const createUiSlice = createStoreSlice((set, get) => {
     tutorProfileByChatId: {},
     tutorGreetedByChatId: {},
     planSheetOpen: false,
+    planGenerationByChatId: {},
   };
 
   return {

@@ -29,15 +29,13 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   const tutorByMessageId = useChatStore((s) => s.ui.tutorByMessageId || {});
   const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
   const forceTutorMode = useChatStore((s) => !!s.ui.forceTutorMode);
-  const tutorMemoryDebugByMessageId = useChatStore((s) => s.ui.tutorMemoryDebugByMessageId || {});
-  const updateChatSettings = useChatStore((s) => s.updateChatSettings);
+  const planGeneration = useChatStore((s) => s.ui.planGenerationByChatId?.[chatId]);
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
   const branchFrom = useChatStore((s) => s.branchChatFromMessage);
   const autoReasoningModelIds = useChatStore((s) => s.ui.autoReasoningModelIds || {});
   const showStats = chat?.settings.show_stats ?? false;
   const debugMode = useChatStore((s) => s.ui.debugMode || false);
   const debugByMessageId = useChatStore((s) => s.ui.debugByMessageId || {});
-  const tutorMemoryAutoUpdateDefault = useChatStore((s) => s.ui.tutorMemoryAutoUpdate !== false);
   const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat?.settings?.tutor_mode);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const prefersReducedMotion = useMemo(() => {
@@ -266,9 +264,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
           tutorGloballyEnabled,
           tutorEnabled,
           tutorEntry: tutorByMessageId[message.id] || (message as any)?.tutor,
-          tutorMemoryDebug: tutorMemoryDebugByMessageId[message.id],
-          tutorMemoryAutoUpdateDefault,
-          updateChatSettings,
           autoReasoningModelIds,
           isStreaming,
           lastMessageId,
@@ -317,6 +312,39 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
           />
         );
       })}
+
+      {planGeneration?.status === 'loading' && (
+        <div className="mx-auto w-full max-w-2xl px-2">
+          <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-primary/5 px-5 py-4 shadow-[var(--shadow-card)]">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen"
+              aria-hidden="true"
+            >
+              <div className="absolute -top-24 -left-6 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+              <div className="absolute -bottom-16 right-0 h-52 w-52 rounded-full bg-primary/15 blur-[80px]" />
+            </div>
+            <div className="relative flex items-start gap-3">
+              <div className="mt-0.5 rounded-full bg-primary/15 p-2">
+                <ArrowPathIcon className="h-5 w-5 text-primary animate-spin" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-primary">
+                  Designing your personalized learning plan…
+                </p>
+                <p className="mt-1 text-xs text-primary/80">
+                  {planGeneration.goal
+                    ? `Goal: ${planGeneration.goal}`
+                    : 'Mapping out topics, objectives, and prerequisites for you.'}
+                </p>
+                <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-primary/15">
+                  <div className="plan-loading-bar h-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showJump && (
         <div className="jump-to-latest">
           <button

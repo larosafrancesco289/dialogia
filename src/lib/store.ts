@@ -83,6 +83,11 @@ export const useChatStore = create<StoreState>()(
 
         if (state.ui && typeof state.ui === 'object') {
           const ui = { ...(state.ui as Record<string, any>) };
+          delete ui.tutorMemoryModelId;
+          delete ui.tutorMemoryFrequency;
+          delete ui.tutorMemoryAutoUpdate;
+          delete ui.tutorGlobalMemory;
+          delete ui.tutorMemoryDebugByMessageId;
           if ('nextSearchWithBrave' in ui) {
             if (ui.nextSearchEnabled == null) ui.nextSearchEnabled = !!ui.nextSearchWithBrave;
             delete ui.nextSearchWithBrave;
@@ -108,10 +113,6 @@ export const useChatStore = create<StoreState>()(
           experimentalDeepResearch: s.ui.experimentalDeepResearch,
           experimentalTutor: s.ui.experimentalTutor,
           tutorDefaultModelId: s.ui.tutorDefaultModelId,
-          tutorMemoryModelId: s.ui.tutorMemoryModelId,
-          tutorMemoryFrequency: s.ui.tutorMemoryFrequency,
-          tutorMemoryAutoUpdate: s.ui.tutorMemoryAutoUpdate,
-          tutorGlobalMemory: s.ui.tutorGlobalMemory,
           forceTutorMode: s.ui.forceTutorMode,
         },
       }) as Partial<StoreState>,

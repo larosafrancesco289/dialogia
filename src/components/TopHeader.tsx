@@ -11,6 +11,8 @@ import {
   AcademicCapIcon,
   ClipboardDocumentListIcon,
   SparklesIcon,
+  ArrowPathIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { useMemo, useState } from 'react';
 import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
@@ -73,6 +75,10 @@ export function TopHeader() {
   const currentNode = useMemo(
     () => (learningPlan ? getNextNode(learningPlan) : null),
     [learningPlan],
+  );
+  const planGeneration = useChatStore(
+    (s) => (s.selectedChatId ? s.ui.planGenerationByChatId?.[s.selectedChatId] : undefined),
+    shallow,
   );
 
   const renameCurrentChat = () => {
@@ -146,13 +152,52 @@ export function TopHeader() {
             <span className="hidden sm:inline ml-1">{tutorActive ? 'Tutor On' : 'Tutor Off'}</span>
           </button>
         )}
+        {planGeneration?.status === 'loading' && (
+          <div
+            className="flex min-w-0 items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs shadow-[var(--shadow-card)]"
+            title={planGeneration.goal || undefined}
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10">
+              <ArrowPathIcon className="h-4 w-4 text-primary animate-spin" />
+            </span>
+            <div className="flex min-w-0 flex-col leading-tight">
+              <span className="font-semibold uppercase tracking-wide text-primary">
+                Generating plan…
+              </span>
+              {planGeneration.goal && (
+                <span className="truncate text-[11px] text-primary/80">{planGeneration.goal}</span>
+              )}
+            </div>
+          </div>
+        )}
+        {planGeneration?.status === 'error' && !hasPlan && (
+          <div
+            className="flex items-center gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 shadow-[var(--shadow-card)]"
+            title={planGeneration.error || 'Plan generation failed'}
+          >
+            <ExclamationTriangleIcon className="h-4 w-4" />
+            <span>Plan generation failed</span>
+          </div>
+        )}
         {hasPlan && planProgress && (
           <>
             {/* Current topic badge */}
             {currentNode && (
-              <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-xs">
-                <SparklesIcon className="h-3.5 w-3.5 text-blue-500" />
-                <span className="text-blue-700 dark:text-blue-400 font-medium">
+              <div
+                className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs"
+                style={{
+                  background: 'color-mix(in oklab, var(--color-accent-2) 15%, transparent)',
+                  border: '1px solid color-mix(in oklab, var(--color-accent-2) 35%, var(--color-border))',
+                }}
+              >
+                <SparklesIcon
+                  className="h-3.5 w-3.5"
+                  style={{ color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)' }}
+                />
+                <span
+                  className="font-medium"
+                  style={{ color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)' }}
+                >
                   {currentNode.name}
                 </span>
               </div>
