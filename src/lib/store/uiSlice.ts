@@ -21,6 +21,7 @@ export const createUiSlice = createStoreSlice((set, get) => {
     tutorMemoryFrequency: DEFAULT_TUTOR_MEMORY_FREQUENCY,
     tutorMemoryAutoUpdate: true,
     tutorMemoryDebugByMessageId: {},
+    learnerModelDebugByMessageId: {},
     tutorGlobalMemory: EMPTY_TUTOR_MEMORY,
     forceTutorMode: false,
     nextModel: undefined,

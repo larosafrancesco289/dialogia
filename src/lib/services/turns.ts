@@ -147,6 +147,10 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
   const memoryAutoUpdateEnabled =
     uiState.tutorMemoryAutoUpdate !== false && chat.settings.tutor_memory_disabled !== true;
 
+  // Variables for learner model and plan updates
+  let pendingLearnerModel: any;
+  let pendingPlanUpdates: any;
+
   if (tutorEnabled) {
     const ensured = ensureTutorDefaults({
       ui: uiState,
@@ -244,6 +248,62 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
   if (tutorEnabled) primeTutorWelcome(chatId, { set, get });
 
   const priorMessages = get().messages[chatId] ?? [];
+
+  // Auto-generate learning plan if goal detected and no plan exists
+  if (tutorEnabled && !chat.settings.learningPlan && priorMessages.length === 0) {
+    try {
+      const { detectLearningGoal, generateLearningPlan } = await import(
+        '@/lib/agent/planGenerator'
+      );
+      const { updateNodeStatus } = await import('@/lib/agent/planGenerator');
+      const { initializeLearnerModel } = await import('@/lib/agent/learnerModel');
+
+      const goalDetection = detectLearningGoal(content);
+
+      if (goalDetection.detected && goalDetection.confidence > 0.6 && goalDetection.goal) {
+        const planAuth = ensureAuthForModel(tutorDefaultModelId);
+        if (planAuth) {
+          const plan = await generateLearningPlan(goalDetection.goal, {
+            apiKey: planAuth.apiKey,
+            transport: planAuth.transport,
+            model: tutorDefaultModelId,
+          });
+
+          // Mark first node as in_progress
+          const startedPlan =
+            plan.nodes.length > 0 ? updateNodeStatus(plan, plan.nodes[0].id, 'in_progress') : plan;
+
+          // Store plan in chat settings
+          const updatedChat = {
+            ...chat,
+            settings: {
+              ...chat.settings,
+              learningPlan: startedPlan,
+              planGenerated: true,
+              planGenerationModel: tutorDefaultModelId,
+              enableLearnerModel: true, // Auto-enable learner tracking
+            },
+            updatedAt: Date.now(),
+          };
+
+          set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
+          chat = updatedChat;
+
+          try {
+            await saveChat(updatedChat);
+          } catch {
+            /* ignore */
+          }
+
+          // Initialize learner model
+          pendingLearnerModel = initializeLearnerModel(chatId, startedPlan);
+        }
+      }
+    } catch (error) {
+      console.error('Goal detection / plan generation failed:', error);
+      // Continue with normal tutoring
+    }
+  }
 
   if (get().ui.zdrOnly === true) {
     for (const modelId of activeModelIds) {
@@ -390,13 +450,95 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     set((state) => ({
       ui: {
         ...state.ui,
-        tutorGlobalMemory: chat.settings.tutor_memory || state.ui.tutorGlobalMemory,
+        tutorGlobalMemory: chat?.settings.tutor_memory || state.ui.tutorGlobalMemory,
         tutorMemoryDebugByMessageId: {
           ...(state.ui.tutorMemoryDebugByMessageId || {}),
           [primaryAssistant.id]: snapshot,
         },
       },
     }));
+  }
+
+  // Update learner model if plan exists
+  if (tutorEnabled && chat.settings.learningPlan) {
+    const modelAuth = ensureAuthForModel(tutorMemoryModelId); // Reuse same model as memory
+    if (modelAuth) {
+      try {
+        const { getLatestLearnerModel, initializeLearnerModel, maybeUpdateLearnerModel } =
+          await import('@/lib/agent/learnerModel');
+        const { processPlanProgress } = await import('@/lib/agent/planAwareTutor');
+
+        // Get or initialize learner model
+        let currentModel = getLatestLearnerModel(priorMessages);
+        if (!currentModel) {
+          currentModel = initializeLearnerModel(chatId, chat.settings.learningPlan);
+        }
+
+        // Update learner model based on conversation
+        const modelResult = await maybeUpdateLearnerModel({
+          apiKey: modelAuth.apiKey,
+          transport: modelAuth.transport,
+          modelId: tutorMemoryModelId,
+          plan: chat.settings.learningPlan,
+          learnerModel: currentModel,
+          conversation: priorMessages.concat(userMsg),
+          updateFrequency: chat.settings.learnerModelUpdateFrequency || 3,
+          autoUpdate: chat.settings.enableLearnerModel !== false,
+        });
+
+        pendingLearnerModel = modelResult.updatedModel;
+
+        // Check if plan needs status updates
+        const planResult = await processPlanProgress(
+          chat.settings.learningPlan,
+          modelResult.updatedModel,
+        );
+
+        // Update plan in chat settings if changed
+        if (planResult.updatedPlan !== chat.settings.learningPlan) {
+          const updatedChat = {
+            ...chat,
+            settings: {
+              ...chat.settings,
+              learningPlan: planResult.updatedPlan,
+            },
+            updatedAt: Date.now(),
+          };
+
+          set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
+          chat = updatedChat;
+
+          try {
+            await saveChat(updatedChat);
+          } catch {
+            /* ignore */
+          }
+        }
+
+        pendingPlanUpdates = planResult.planUpdates;
+
+        // Store debug info in UI
+        if (modelResult.debug) {
+          set((state) => ({
+            ui: {
+              ...state.ui,
+              learnerModelDebugByMessageId: {
+                ...(state.ui.learnerModelDebugByMessageId || {}),
+                [primaryAssistant.id]: {
+                  before: currentModel,
+                  after: modelResult.updatedModel,
+                  debug: modelResult.debug,
+                  planUpdates: pendingPlanUpdates,
+                },
+              },
+            },
+          }));
+        }
+      } catch (error) {
+        console.error('Learner model update failed:', error);
+        // Continue with normal tutoring
+      }
+    }
   }
 
   if (chat.title === 'New Chat') {
@@ -457,6 +599,24 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     const searchProvider = composition.search.provider;
     const toolDefinition = composition.tools ?? [];
     const plugins = composition.plugins;
+    const attachLearnerContextToAssistant = () => {
+      if (!pendingLearnerModel && !pendingPlanUpdates) return;
+      const patch: Partial<Message> = {};
+      if (pendingLearnerModel) {
+        patch.learnerModel = pendingLearnerModel;
+      }
+      if (pendingPlanUpdates) {
+        patch.planUpdates = pendingPlanUpdates;
+      }
+      Object.assign(assistantMessage, patch);
+      set((state) => {
+        const list = state.messages[chatId] ?? [];
+        const updated = list.map((m) =>
+          m.id === assistantMessage.id ? ({ ...m, ...patch } as Message) : m,
+        );
+        return { messages: { ...state.messages, [chatId]: updated } };
+      });
+    };
 
     try {
       if (shouldPlan) {
@@ -511,6 +671,8 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
             attachments: current?.attachments,
             tutor: (current as any)?.tutor,
             hiddenContent: (current as any)?.hiddenContent,
+            learnerModel: pendingLearnerModel,
+            planUpdates: pendingPlanUpdates,
           } as Message;
           set((state) => {
             const list = state.messages[chatId] ?? [];
@@ -520,6 +682,8 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
           await saveMessage(finalMsg);
           return;
         }
+
+        attachLearnerContextToAssistant();
 
         const streamingMessages = (
           [{ role: 'system', content: planResult.finalSystem } as const] as any[]
@@ -545,6 +709,8 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
         });
         return;
       }
+
+      attachLearnerContextToAssistant();
 
       await streamFinal({
         chat: chatForModel,

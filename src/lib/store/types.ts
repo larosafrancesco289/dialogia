@@ -31,6 +31,7 @@ export type UIState = {
       conversationWindow?: string;
     }
   >;
+  learnerModelDebugByMessageId?: Record<string, any>;
   nextModel?: string;
   nextSearchEnabled?: boolean;
   nextSearchProvider?: 'brave' | 'openrouter';
