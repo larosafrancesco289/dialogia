@@ -5,13 +5,23 @@
 export function DisplayPanel(props: {
   showThinking: boolean;
   showStats: boolean;
+  enableMultiModelChat: boolean;
   uiDebugMode: boolean;
   setShowThinking: (v: boolean) => void;
   setShowStats: (v: boolean) => void;
+  setEnableMultiModelChat: (v: boolean) => void;
   setDebugMode: (v: boolean) => void;
 }) {
-  const { showThinking, showStats, uiDebugMode, setShowThinking, setShowStats, setDebugMode } =
-    props;
+  const {
+    showThinking,
+    showStats,
+    enableMultiModelChat,
+    uiDebugMode,
+    setShowThinking,
+    setShowStats,
+    setEnableMultiModelChat,
+    setDebugMode,
+  } = props;
   return (
     <div className="space-y-4">
       <div className="card p-4 space-y-3">
@@ -55,6 +65,28 @@ export function DisplayPanel(props: {
           </div>
           <div className="text-xs text-muted-foreground">
             Display model, timing, and cost info under messages.
+          </div>
+        </div>
+        <div className="soft-divider" />
+        <div className="space-y-1">
+          <label className="text-sm block">Multi-model chat</label>
+          <div className="segmented">
+            <button
+              className={`segment ${enableMultiModelChat ? 'is-active' : ''}`}
+              onClick={() => setEnableMultiModelChat(true)}
+            >
+              On
+            </button>
+            <button
+              className={`segment ${!enableMultiModelChat ? 'is-active' : ''}`}
+              onClick={() => setEnableMultiModelChat(false)}
+            >
+              Off
+            </button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Allow selecting and chatting with multiple models simultaneously in a multi-column
+            layout.
           </div>
         </div>
       </div>

@@ -56,6 +56,7 @@ type Controller = {
   setUI: StoreState['setUI'];
   zdrHiddenCount: number;
   zdrRestricted: boolean;
+  enableMultiModelChat: boolean;
 };
 
 export function useModelPickerController(): Controller {
@@ -197,6 +198,7 @@ export function useModelPickerController(): Controller {
     setUI,
     zdrHiddenCount,
     zdrRestricted: ui?.zdrOnly === true,
+    enableMultiModelChat: ui?.enableMultiModelChat === true,
   };
 }
 
@@ -220,6 +222,7 @@ export function ModelPicker({
     setUI,
     zdrHiddenCount,
     zdrRestricted,
+    enableMultiModelChat,
   } = useModelPickerController();
 
   const zdrLists = useMemo<ZdrLists>(
@@ -239,7 +242,7 @@ export function ModelPicker({
   const filterInputRef = useRef<HTMLInputElement | null>(null);
   const mountedRef = useRef(false);
   const isMobile = useIsMobile();
-  const maxSelectable = isMobile ? 2 : 4;
+  const maxSelectable = enableMultiModelChat ? (isMobile ? 2 : 4) : 1;
   const limitTimeoutRef = useRef<number | null>(null);
   const [limitPulse, setLimitPulse] = useState(false);
   const [popoverPos, setPopoverPos] = useState<{
@@ -308,6 +311,11 @@ export function ModelPicker({
         return;
       }
       if (selectedIds.length >= maxSelectable) {
+        // If multi-model is disabled, replace the current selection
+        if (!enableMultiModelChat) {
+          setModels([id]);
+          return;
+        }
         setLimitPulse(true);
         if (limitTimeoutRef.current != null) {
           window.clearTimeout(limitTimeoutRef.current);
@@ -317,7 +325,7 @@ export function ModelPicker({
       }
       setModels([...selectedIds, id]);
     },
-    [selectedIds, maxSelectable, setModels],
+    [selectedIds, maxSelectable, enableMultiModelChat, setModels],
   );
 
   const setPrimaryModel = useCallback(
@@ -574,15 +582,16 @@ export function ModelPicker({
               />
             </div>
 
-            <div className="px-1 space-y-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  Selected models {selectedIds.length}/{maxSelectable}
-                </span>
-                <span className="text-muted-foreground/70">
-                  Primary column streams first
-                </span>
-              </div>
+            {enableMultiModelChat && (
+              <div className="px-1 space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    Selected models {selectedIds.length}/{maxSelectable}
+                  </span>
+                  <span className="text-muted-foreground/70">
+                    Primary column streams first
+                  </span>
+                </div>
               <div className="flex flex-wrap gap-2">
                 {selectedIds.map((id, index) => {
                   const meta = modelMap.get(id);
@@ -642,7 +651,8 @@ export function ModelPicker({
                   Maximum of {maxSelectable} models on {isMobile ? 'mobile' : 'desktop'}.
                 </div>
               )}
-            </div>
+              </div>
+            )}
 
             {zdrHiddenMessage && (
               <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">

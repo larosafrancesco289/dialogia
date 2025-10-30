@@ -155,6 +155,7 @@ export function SettingsDrawer() {
   const experimentalBrave = useChatStore((s) => !!s.ui.experimentalBrave);
   const experimentalDeepResearch = useChatStore((s) => !!s.ui.experimentalDeepResearch);
   const experimentalTutor = useChatStore((s) => !!s.ui.experimentalTutor);
+  const enableMultiModelChat = useChatStore((s) => !!s.ui.enableMultiModelChat);
   // System prompt presets
   const [presets, setPresets] = useState<SystemPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
@@ -551,9 +552,13 @@ export function SettingsDrawer() {
                         <DisplayPanel
                           showThinking={showThinking}
                           showStats={showStats}
+                          enableMultiModelChat={enableMultiModelChat}
                           uiDebugMode={!!ui?.debugMode}
                           setShowThinking={setShowThinking}
                           setShowStats={setShowStats}
+                          setEnableMultiModelChat={(value: boolean) =>
+                            setUI({ enableMultiModelChat: value })
+                          }
                           setDebugMode={(value: boolean) => setUI({ debugMode: value })}
                         />,
                       );

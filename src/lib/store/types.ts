@@ -60,6 +60,7 @@ export type UIState = {
   experimentalBrave?: boolean; // show Brave web search and related UI
   experimentalDeepResearch?: boolean; // show DeepResearch toggle and enable API path
   experimentalTutor?: boolean; // show Tutor mode UI and enable tutor tools
+  enableMultiModelChat?: boolean; // allow selecting and chatting with multiple models simultaneously
   braveByMessageId?: Record<
     string,
     {
@@ -204,6 +205,7 @@ export type PersistedUIState = Pick<
   | 'experimentalBrave'
   | 'experimentalDeepResearch'
   | 'experimentalTutor'
+  | 'enableMultiModelChat'
   | 'tutorDefaultModelId'
   | 'tutorMemoryModelId'
   | 'tutorMemoryFrequency'

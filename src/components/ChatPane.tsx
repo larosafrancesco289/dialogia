@@ -11,6 +11,7 @@ import { formatModelLabel, findModelById } from '@/lib/models';
 export function ChatPane() {
   const chat = useChatStore(selectCurrentChat);
   const models = useChatStore((s) => s.models);
+  const enableMultiModelChat = useChatStore((s) => !!s.ui.enableMultiModelChat);
   const keyboardMetrics = useKeyboardInsets();
   const keyboardVars = {
     '--keyboard-offset': `${Math.max(0, Math.round(keyboardMetrics.offset))}px`,
@@ -31,7 +32,7 @@ export function ChatPane() {
     }
     return deduped.length ? deduped : base;
   }, [chatSettings?.model, chatSettings?.parallel_models]);
-  const multiColumn = activeModelIds.length > 1;
+  const multiColumn = activeModelIds.length > 1 && enableMultiModelChat;
   const primaryModelId = activeModelIds[0] || chatSettings?.model;
 
   if (!chat) return <WelcomeHero keyboardMetrics={keyboardMetrics} />;
