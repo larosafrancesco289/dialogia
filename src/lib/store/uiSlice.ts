@@ -8,7 +8,7 @@ import {
 import { EMPTY_TUTOR_MEMORY } from '@/lib/agent/tutorMemory';
 import { createStoreSlice } from '@/lib/store/createSlice';
 
-export const createUiSlice = createStoreSlice((set) => {
+export const createUiSlice = createStoreSlice((set, get) => {
   const initial: UIState = {
     showSettings: false,
     isStreaming: false,
@@ -44,6 +44,7 @@ export const createUiSlice = createStoreSlice((set) => {
     experimentalBrave: false,
     experimentalDeepResearch: false,
     experimentalTutor: true,
+    enableMultiModelChat: false,
     braveByMessageId: {},
     tutorByMessageId: {},
     tutorProfileByChatId: {},
@@ -59,8 +60,24 @@ export const createUiSlice = createStoreSlice((set) => {
           nextUi.forceTutorMode = false;
           nextUi.nextTutorMode = false;
         }
+        if (partial.enableMultiModelChat === false) {
+          nextUi.nextParallelModels = undefined;
+        }
         return { ui: nextUi };
       });
+      if (partial.enableMultiModelChat === false) {
+        const { selectedChatId, chats, updateChatSettings } = get();
+        if (!selectedChatId || typeof updateChatSettings !== 'function') return;
+        const activeChat = chats.find((chat) => chat.id === selectedChatId);
+        if (
+          !activeChat ||
+          !Array.isArray(activeChat.settings.parallel_models) ||
+          activeChat.settings.parallel_models.length === 0
+        ) {
+          return;
+        }
+        void updateChatSettings({ parallel_models: [] });
+      }
     },
   } satisfies Partial<StoreState>;
 });
