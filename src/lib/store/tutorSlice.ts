@@ -9,16 +9,16 @@ import { getNextNode } from '@/lib/agent/planGenerator';
 
 const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
   if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {
-    return 'Welcome! Share what you want to learn and I’ll build a personalized plan with adaptive mastery tracking.';
+    return 'Welcome! Share what you want to learn and I\'ll build a personalized plan with adaptive mastery tracking. Feel free to upload any materials you have to help me understand your learning context.';
   }
 
   const nextNode = getNextNode(plan);
   if (!nextNode) {
-    return `Welcome back! You’ve completed the learning plan for "${plan.goal}". Let me know if you’d like to review or start a new goal.`;
+    return `Welcome back! You've completed the learning plan for "${plan.goal}". Let me know if you'd like to review or start a new goal. Feel free to upload any new materials if you have them.`;
   }
 
   const description = nextNode.description ? ` — ${nextNode.description}` : '';
-  return `Welcome back! We’re working toward "${plan.goal}". Our next focus is ${nextNode.name}${description}. Ask a question or request practice when you’re ready.`;
+  return `Welcome back! We're working toward "${plan.goal}". Our next focus is ${nextNode.name}${description}. Ask a question or request practice when you're ready. You can also upload any relevant materials to support your learning.`;
 };
 
 export function createTutorSlice(
