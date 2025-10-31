@@ -22,7 +22,13 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
 
   return (
     <div className="px-4 pb-3">
-      <div className="rounded-lg border border-blue-500/20 bg-blue-500/5">
+      <div
+        className="rounded-lg border"
+        style={{
+          borderColor: 'color-mix(in oklab, var(--color-accent-2) 35%, var(--color-border))',
+          background: 'color-mix(in oklab, var(--color-accent-2) 8%, var(--color-surface))',
+        }}
+      >
         {/* Status Changes (Node completions/transitions) */}
         {hasStatusChanges && (
           <div className="px-3 py-2 space-y-1">
