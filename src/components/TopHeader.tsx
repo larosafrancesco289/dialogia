@@ -80,6 +80,7 @@ export function TopHeader() {
     (s) => (s.selectedChatId ? s.ui.planGenerationByChatId?.[s.selectedChatId] : undefined),
     shallow,
   );
+  const planSheetOverride = useChatStore((s) => s.ui.planSheetPlanOverride ?? null);
 
   const renameCurrentChat = () => {
     if (!chat) return;
@@ -213,7 +214,7 @@ export function TopHeader() {
             {/* View Plan button */}
             <button
               className="btn btn-ghost shrink-0"
-              onClick={() => setUI({ planSheetOpen: true })}
+              onClick={() => setUI({ planSheetOpen: true, planSheetPlanOverride: null })}
               title="View Learning Plan"
               aria-label="View Learning Plan"
             >
@@ -265,9 +266,9 @@ export function TopHeader() {
 
       {/* Learning Plan Sheet */}
       <PlanSheet
-        plan={learningPlan || null}
+        plan={planSheetOverride ?? learningPlan ?? null}
         isOpen={planSheetOpen}
-        onClose={() => setUI({ planSheetOpen: false })}
+        onClose={() => setUI({ planSheetOpen: false, planSheetPlanOverride: null })}
         onUpdate={handlePlanUpdate}
       />
     </div>

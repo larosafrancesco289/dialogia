@@ -6,8 +6,8 @@ export const DEFAULT_CHAT_MODEL: CuratedModel = {
 };
 
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
-  id: 'anthropic/claude-sonnet-4.5',
-  name: 'Claude Sonnet 4.5',
+  id: 'anthropic/claude-haiku-4.5',
+  name: 'Claude Haiku 4.5',
 };
 
 export const DEFAULT_MODEL_ID = DEFAULT_CHAT_MODEL.id;
@@ -19,5 +19,5 @@ export const CURATED_MODELS: CuratedModel[] = [
   { id: 'openai/gpt-5', name: 'GPT-5' },
   { id: 'x-ai/grok-4-fast', name: 'Grok 4 Fast' },
   { id: 'google/gemini-2.5-flash-image-preview', name: 'Gemini 2.5 Flash Image Preview' },
-  { id: 'anthropic/claude-sonnet-4.5', name: 'Claude Sonnet 4.5' },
+  { id: 'anthropic/claude-haiku-4.5', name: 'Claude Haiku 4.5' },
 ];

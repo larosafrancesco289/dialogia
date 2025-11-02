@@ -95,6 +95,11 @@ export function MessagePanels({
         fillBlank={tutorEntry.fillBlank}
         openEnded={tutorEntry.openEnded}
         flashcards={tutorEntry.flashcards}
+        questionnaire={tutorEntry.questionnaire}
+        diagnostic={tutorEntry.diagnostic}
+        planProposal={tutorEntry.planProposal}
+        planSuggestions={tutorEntry.planSuggestions}
+        assessmentUpdates={tutorEntry.assessmentUpdates}
         grading={tutorEntry.grading}
       />,
     );

@@ -1,4 +1,12 @@
-import type { Chat, ChatSettings, Message, ORModel, MessageMetrics, Folder } from '@/lib/types';
+import type {
+  Chat,
+  ChatSettings,
+  Message,
+  ORModel,
+  MessageMetrics,
+  Folder,
+  LearningPlan,
+} from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 
 export type UIState = {
@@ -106,6 +114,7 @@ export type UIState = {
   tutorGreetedByChatId?: Record<string, boolean>;
   // Learning plan UI state
   planSheetOpen?: boolean;
+  planSheetPlanOverride?: LearningPlan | null;
   planGenerationByChatId?: Record<
     string,
     {

@@ -84,6 +84,13 @@ export type ToolCall = {
 };
 
 export type TutorToolName =
+  | 'ask_student_question'
+  | 'create_diagnostic'
+  | 'generate_plan'
+  | 'update_plan'
+  | 'assess_answer'
+  | 'update_learner_model'
+  | 'get_plan_suggestions'
   | 'quiz_mcq'
   | 'quiz_fill_blank'
   | 'quiz_open_ended'
