@@ -48,12 +48,16 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   }, []);
   const isMobile = useIsMobile();
   const messages = useMemo(() => {
-    if (!modelFilter) return allMessages;
-    return allMessages.filter((message) => {
-      if (message.role !== 'assistant') return true;
-      const target = typeof message.model === 'string' ? message.model : undefined;
-      return target === modelFilter;
-    });
+    const base = !modelFilter
+      ? allMessages
+      : allMessages.filter((message) => {
+          if (message.role !== 'assistant') return true;
+          const target = typeof message.model === 'string' ? message.model : undefined;
+          return target === modelFilter;
+        });
+    return base.filter(
+      (message) => !(message.role === 'user' && message.metadata?.hiddenFromUser),
+    );
   }, [allMessages, modelFilter]);
 
   const isAssistantPlaceholder = useCallback((message?: Message, previous?: Message) => {

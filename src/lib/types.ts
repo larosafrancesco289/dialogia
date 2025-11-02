@@ -65,6 +65,10 @@ export type Message = {
   metrics?: MessageMetrics;
   // Optional attachments (currently images) associated to the message
   attachments?: Attachment[];
+  metadata?: {
+    hiddenFromUser?: boolean;
+    kind?: string;
+  };
   // Optional: persisted tutor payload for interactive content and attempts
   tutor?: MessageTutor;
   tutorWelcome?: boolean;
