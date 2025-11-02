@@ -120,6 +120,87 @@ export type TutorFlashcardItem = {
   difficulty?: 'easy' | 'medium' | 'hard';
 };
 
+export type TutorQuestionnaireOption = {
+  label: string;
+  description?: string;
+};
+
+export type TutorQuestionnaireItem = {
+  id: string;
+  question: string;
+  category?: string;
+  allowMultiple?: boolean;
+  followUpBehavior?: 'required' | 'optional' | 'none';
+  options: TutorQuestionnaireOption[];
+};
+
+export type TutorQuestionnaire = {
+  questions: TutorQuestionnaireItem[];
+  status: 'awaiting' | 'submitted';
+  submittedAt?: number;
+  responses?: Record<string, string[]>;
+};
+
+export type TutorDiagnosticItem = {
+  id: string;
+  question: string;
+  choices: string[];
+  correct?: number;
+  explanation?: string;
+  skill?: string;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced' | 'mixed' | 'easy' | 'medium' | 'hard';
+};
+
+export type TutorDiagnostic = {
+  diagnosticId: string;
+  topic: string;
+  depth: 'quick' | 'moderate' | 'comprehensive';
+  items: TutorDiagnosticItem[];
+  adaptToAnswers?: boolean;
+  interpretation?: Record<string, string>;
+  status: 'pending' | 'completed';
+  score?: number;
+};
+
+export type TutorPlanProposal = {
+  plan: LearningPlan;
+  requiresConfirmation?: boolean;
+  confirmationMessage?: string;
+  status: 'pending' | 'approved' | 'declined';
+  requestedAt: number;
+  resolvedAt?: number;
+};
+
+export type TutorPlanSuggestion = {
+  action: string;
+  priority?: 'low' | 'medium' | 'high';
+  description?: string;
+  rationale?: string;
+  estimatedImpact?: string;
+  implementationDetails?: Record<string, unknown>;
+};
+
+export type TutorAssessmentEvidence = {
+  question: string;
+  studentAnswer: string;
+  correctAnswer?: string;
+  questionType?: 'mcq' | 'fill-blank' | 'open-ended' | 'explanation' | 'application';
+  skill?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  result: 'correct' | 'incorrect' | 'partial';
+  hintsUsed?: number;
+  feedback?: string;
+};
+
+export type TutorLearnerModelUpdate = {
+  nodeId: string;
+  confidenceBefore?: number;
+  confidenceAfter?: number;
+  masteryLevel?: string;
+  evidence?: TutorAssessmentEvidence[];
+  tutorComment?: string;
+};
+
 // Persisted tutor payload attached to an assistant message
 export type MessageTutor = {
   title?: string;
@@ -127,6 +208,11 @@ export type MessageTutor = {
   fillBlank?: TutorFillBlankItem[];
   openEnded?: TutorOpenItem[];
   flashcards?: TutorFlashcardItem[];
+  questionnaire?: TutorQuestionnaire;
+  diagnostic?: TutorDiagnostic;
+  planProposal?: TutorPlanProposal;
+  planSuggestions?: TutorPlanSuggestion[];
+  assessmentUpdates?: TutorLearnerModelUpdate[];
   // User attempts and grading results
   attempts?: {
     mcq?: Record<string, { choice?: number; done?: boolean; correct?: boolean }>;

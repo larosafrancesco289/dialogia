@@ -1,9 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Chat, Message } from '@/lib/types';
+import type { Chat, LearningPlan, Message, TutorPlanSuggestion } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import { attachTutorUiState } from '@/lib/agent/tutorFlow';
 import { addCardsToDeck, getDueCards } from '@/lib/tutorDeck';
 import { runBraveSearch, updateBraveUi } from '@/lib/agent/searchFlow';
+import { validateLearningPlan } from '@/lib/agent/planGenerator';
 import type {
   PersistMessage,
   SearchProvider,
@@ -17,9 +18,27 @@ import type {
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
 import { withAbort } from '@/lib/utils/abort';
 
-const INLINE_TUTOR_TOOL_NAMES: TutorToolName[] = ['quiz_mcq'];
+const INLINE_TUTOR_TOOL_NAMES: TutorToolName[] = [
+  'ask_student_question',
+  'create_diagnostic',
+  'generate_plan',
+  'update_plan',
+  'assess_answer',
+  'update_learner_model',
+  'quiz_mcq',
+  'quiz_fill_blank',
+  'quiz_open_ended',
+  'flashcards',
+];
 
 const TUTOR_TOOL_NAME_SET = new Set<TutorToolName>([
+  'ask_student_question',
+  'create_diagnostic',
+  'generate_plan',
+  'update_plan',
+  'assess_answer',
+  'update_learner_model',
+  'get_plan_suggestions',
   'quiz_mcq',
   'quiz_fill_blank',
   'quiz_open_ended',
@@ -222,6 +241,49 @@ export function normalizeTutorQuizPayload(args: unknown): TutorQuizPayload | nul
   return { items: normalized };
 }
 
+const PLAN_SUGGESTION_PRIORITIES = new Set(['low', 'medium', 'high']);
+
+function normalizePlanSuggestions(items: unknown[]): TutorPlanSuggestion[] {
+  return items
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null;
+      const record = entry as Record<string, unknown>;
+      const action =
+        typeof record.action === 'string' ? record.action.trim() : undefined;
+      if (!action) return null;
+      const priorityRaw =
+        typeof record.priority === 'string' ? record.priority.trim().toLowerCase() : undefined;
+      const priority = priorityRaw && PLAN_SUGGESTION_PRIORITIES.has(priorityRaw)
+        ? priorityRaw
+        : undefined;
+      const description =
+        typeof record.description === 'string'
+          ? record.description.trim()
+          : undefined;
+      const rationale =
+        typeof record.rationale === 'string'
+          ? record.rationale.trim()
+          : undefined;
+      const estimatedImpact =
+        typeof record.estimatedImpact === 'string'
+          ? record.estimatedImpact.trim()
+          : undefined;
+      const implementationDetails =
+        record.implementationDetails && typeof record.implementationDetails === 'object'
+          ? (record.implementationDetails as Record<string, unknown>)
+          : undefined;
+      return {
+        action,
+        priority: priority as 'low' | 'medium' | 'high' | undefined,
+        description,
+        rationale,
+        estimatedImpact,
+        implementationDetails,
+      };
+    })
+    .filter(Boolean) as TutorPlanSuggestion[];
+}
+
 export async function applyTutorToolCall(opts: {
   name: TutorToolName;
   args: Record<string, unknown>;
@@ -233,30 +295,20 @@ export async function applyTutorToolCall(opts: {
 }): Promise<{ handled: boolean; usedContent: boolean; payload?: string }> {
   const { name, args, chat, chatId, assistantMessage, set, persistMessage } = opts;
 
-  const patchTutorItems = async (mapKey: string) => {
-    const normalized = normalizeTutorQuizPayload(args);
-    if (!normalized) return { handled: false, usedContent: false } as const;
+  const applyTutorPatch = async (
+    buildPatch: (prev: Record<string, unknown>) => Record<string, unknown>,
+  ) => {
     let updatedMsg: Message | undefined;
-    const titleFromArgs =
-      typeof args['title'] === 'string' ? (args['title'] as string) : undefined;
     set((state) => {
       const list = state.messages[chatId] ?? [];
+       const prev =
+         ((state.ui.tutorByMessageId || {})[assistantMessage.id] as Record<string, unknown>) || {};
+      const patch = buildPatch(prev);
       const result = attachTutorUiState({
         currentUi: state.ui.tutorByMessageId,
         currentMessages: list,
         messageId: assistantMessage.id,
-        patch: {
-          title:
-            ((state.ui.tutorByMessageId || {})[assistantMessage.id]?.title as string | undefined) ||
-            titleFromArgs,
-          [mapKey]: [
-            ...((((state.ui.tutorByMessageId || {})[assistantMessage.id] as Record<
-              string,
-              unknown
-            >)?.[mapKey] as unknown[]) || []),
-            ...normalized.items,
-          ],
-        },
+        patch,
       });
       if (result.updatedMessage) updatedMsg = result.updatedMessage;
       return {
@@ -269,6 +321,525 @@ export async function applyTutorToolCall(opts: {
         await persistMessage(updatedMsg);
       } catch {}
     }
+    return updatedMsg;
+  };
+
+  if (name === 'ask_student_question') {
+    const rawQuestions = Array.isArray(args['questions']) ? (args['questions'] as unknown[]) : [];
+    const normalizedQuestions = rawQuestions
+      .map((entry, index) => {
+        if (!entry || typeof entry !== 'object') return null;
+        const record = entry as Record<string, unknown>;
+        const questionText =
+          typeof record.question === 'string' ? record.question.trim() : undefined;
+        if (!questionText) return null;
+    const optionsRaw = Array.isArray(record.options) ? (record.options as unknown[]) : [];
+    const options = optionsRaw
+      .map((opt) => {
+        if (!opt || typeof opt !== 'object') return null;
+        const optRecord = opt as Record<string, unknown>;
+        const label =
+          typeof optRecord.label === 'string'
+            ? optRecord.label.trim()
+                : typeof optRecord.title === 'string'
+                  ? optRecord.title.trim()
+                  : '';
+            if (!label) return null;
+            const description =
+              typeof optRecord.description === 'string'
+                ? optRecord.description.trim()
+                : undefined;
+            return { label, description };
+          })
+          .filter(Boolean) as Array<{ label: string; description?: string }>;
+        if (options.length < 2) return null;
+        const allowMultiple =
+          typeof record.allowMultiple === 'boolean'
+            ? record.allowMultiple
+            : typeof record.multiSelect === 'boolean'
+              ? record.multiSelect
+              : false;
+        const followUpBehavior =
+          typeof record.followUpBehavior === 'string'
+            ? record.followUpBehavior
+            : (undefined as string | undefined);
+        const category =
+          typeof record.category === 'string'
+            ? record.category.trim()
+            : typeof record.header === 'string'
+              ? record.header.trim()
+              : undefined;
+        const idRaw =
+          typeof record.id === 'string'
+            ? record.id.trim()
+            : `question_${index + 1}_${uuidv4()}`;
+        return {
+          id: idRaw,
+          question: questionText,
+          category,
+          allowMultiple,
+          followUpBehavior:
+            followUpBehavior === 'required' || followUpBehavior === 'optional'
+              ? followUpBehavior
+              : 'none',
+          options,
+        };
+      })
+      .filter(Boolean) as Array<{
+      id: string;
+      question: string;
+      category?: string;
+      allowMultiple?: boolean;
+      followUpBehavior: 'required' | 'optional' | 'none';
+      options: Array<{ label: string; description?: string }>;
+    }>;
+
+    if (normalizedQuestions.length === 0) {
+      return { handled: false, usedContent: false };
+    }
+
+    const title =
+      typeof args['title'] === 'string'
+        ? args['title'].trim()
+        : typeof args['prompt'] === 'string'
+          ? args['prompt'].trim()
+          : undefined;
+
+    await applyTutorPatch((prev) => {
+      const nextQuestionnaire = {
+        questions: normalizedQuestions,
+        status: 'awaiting' as const,
+        submittedAt: undefined,
+        responses: undefined,
+      };
+      const patch: Record<string, unknown> = {
+        questionnaire: nextQuestionnaire,
+      };
+      if (title && (!prev.title || typeof prev.title !== 'string')) {
+        patch.title = title;
+      }
+      return patch;
+    });
+
+    try {
+      return {
+        handled: true,
+        usedContent: true,
+        payload: JSON.stringify({
+          status: 'awaiting_student',
+          questionCount: normalizedQuestions.length,
+        }),
+      };
+    } catch {
+      return { handled: true, usedContent: true };
+    }
+  }
+
+  if (name === 'create_diagnostic') {
+    const diagnosticId =
+      typeof args['diagnosticId'] === 'string' && args['diagnosticId'].trim()
+        ? (args['diagnosticId'] as string).trim()
+        : `diag_${uuidv4()}`;
+    const topic =
+      typeof args['topic'] === 'string' ? (args['topic'] as string).trim() : undefined;
+    const depthRaw =
+      typeof args['depth'] === 'string' ? (args['depth'] as string).trim() : undefined;
+    const depth: 'quick' | 'moderate' | 'comprehensive' =
+      depthRaw === 'moderate' || depthRaw === 'comprehensive' ? depthRaw : 'quick';
+    const quiz = args['quiz'] && typeof args['quiz'] === 'object' ? (args['quiz'] as any) : {};
+    const itemsRaw = Array.isArray(quiz?.items) ? quiz.items : [];
+    const normalizedItems = itemsRaw
+      .map((item: any, index: number) => {
+        if (!item || typeof item !== 'object') return null;
+        const question =
+          typeof item.question === 'string' ? item.question.trim() : undefined;
+        const choicesRaw = Array.isArray(item.choices) ? item.choices : [];
+        const choices = choicesRaw
+          .map((choice: unknown) => (typeof choice === 'string' ? choice.trim() : undefined))
+          .filter(
+            (choice: unknown): choice is string =>
+              typeof choice === 'string' && choice.trim().length > 0,
+          );
+        if (!question || choices.length < 2) return null;
+        const id =
+          typeof item.id === 'string' && item.id.trim()
+            ? item.id.trim()
+            : `diagnostic_item_${index + 1}_${uuidv4()}`;
+        const correct =
+          typeof item.correct === 'number' && Number.isFinite(item.correct) ? item.correct : undefined;
+        const explanation =
+          typeof item.explanation === 'string' ? item.explanation.trim() : undefined;
+        const skill = typeof item.skill === 'string' ? item.skill.trim() : undefined;
+        const difficulty =
+          typeof item.difficulty === 'string' ? item.difficulty.trim() : undefined;
+        return {
+          id,
+          question,
+          choices,
+          correct,
+          explanation,
+          skill,
+          difficulty,
+        };
+      })
+      .filter(Boolean) as Array<{
+      id: string;
+      question: string;
+      choices: string[];
+      correct?: number;
+      explanation?: string;
+      skill?: string;
+      difficulty?: string;
+    }>;
+
+    if (normalizedItems.length === 0) {
+      return { handled: false, usedContent: false };
+    }
+
+    const adaptToAnswers =
+      typeof args['adaptToAnswers'] === 'boolean'
+        ? (args['adaptToAnswers'] as boolean)
+        : typeof quiz?.adaptive === 'boolean'
+          ? !!quiz.adaptive
+          : false;
+    const interpretation =
+      quiz?.interpretation && typeof quiz.interpretation === 'object'
+        ? (quiz.interpretation as Record<string, string>)
+        : undefined;
+
+    await applyTutorPatch(() => ({
+      diagnostic: {
+        diagnosticId,
+        topic: topic || '',
+        depth,
+        items: normalizedItems,
+        adaptToAnswers,
+        interpretation,
+        status: 'pending',
+      },
+    }));
+
+    try {
+      return {
+        handled: true,
+        usedContent: true,
+        payload: JSON.stringify({
+          diagnosticId,
+          itemCount: normalizedItems.length,
+        }),
+      };
+    } catch {
+      return { handled: true, usedContent: true };
+    }
+  }
+
+  if (name === 'generate_plan' || name === 'update_plan') {
+    const source =
+      args['plan'] && typeof args['plan'] === 'object' ? (args['plan'] as Record<string, unknown>) : args;
+    const nodesRaw = Array.isArray(source.nodes) ? source.nodes : [];
+    const normalizedNodes = nodesRaw
+      .map((node: any, index: number) => {
+        if (!node || typeof node !== 'object') return null;
+        const nameRaw = typeof node.name === 'string' ? node.name.trim() : undefined;
+        const objectivesRaw = Array.isArray(node.objectives)
+          ? (node.objectives as unknown[])
+          : [];
+        const objectives = objectivesRaw
+          .map((obj: unknown) => (typeof obj === 'string' ? obj.trim() : undefined))
+          .filter((obj): obj is string => !!obj);
+        const prerequisitesRaw = Array.isArray(node.prerequisites)
+          ? (node.prerequisites as unknown[])
+          : [];
+        const prerequisites = prerequisitesRaw
+          .map((pr: unknown) => (typeof pr === 'string' ? pr.trim() : undefined))
+          .filter((pr): pr is string => !!pr);
+        if (!nameRaw || objectives.length === 0) return null;
+        const id =
+          typeof node.id === 'string' && node.id.trim()
+            ? node.id.trim()
+            : `node_${index + 1}_${uuidv4()}`;
+        return {
+          id,
+          name: nameRaw,
+          description:
+            typeof node.description === 'string' ? node.description.trim() : undefined,
+          objectives,
+          prerequisites,
+          status:
+            node.status === 'in_progress' || node.status === 'completed'
+              ? node.status
+              : 'not_started',
+          estimatedMinutes:
+            typeof node.estimatedMinutes === 'number'
+              ? Math.max(5, Math.min(360, Math.round(node.estimatedMinutes)))
+              : undefined,
+          resources: Array.isArray(node.resources) ? node.resources : undefined,
+          children: Array.isArray(node.children) ? node.children : undefined,
+        };
+      })
+      .filter(Boolean) as LearningPlan['nodes'];
+
+    if (normalizedNodes.length === 0) {
+      return { handled: false, usedContent: false };
+    }
+
+    const plan: LearningPlan = {
+      goal:
+        typeof source.goal === 'string' && source.goal.trim()
+          ? (source.goal as string).trim()
+          : chat.settings.learningPlan?.goal || 'Personalized Learning Plan',
+      generatedAt: Date.now(),
+      updatedAt: Date.now(),
+      version: 1,
+      nodes: normalizedNodes,
+      metadata:
+        source.metadata && typeof source.metadata === 'object'
+          ? (source.metadata as Record<string, unknown>)
+          : undefined,
+    };
+
+    const validation = validateLearningPlan(plan);
+    if (!validation.valid) {
+      return { handled: false, usedContent: false };
+    }
+
+    const requiresConfirmation =
+      typeof source.requiresConfirmation === 'boolean'
+        ? (source.requiresConfirmation as boolean)
+        : name !== 'update_plan';
+    const confirmationMessage =
+      typeof source.confirmationMessage === 'string'
+        ? source.confirmationMessage.trim()
+        : undefined;
+
+    const normalizedSuggestions = Array.isArray(source.suggestions)
+      ? normalizePlanSuggestions(source.suggestions as unknown[])
+      : undefined;
+
+    await applyTutorPatch((prev) => {
+      const patch: Record<string, unknown> = {
+        planProposal: {
+          plan,
+          requiresConfirmation,
+          confirmationMessage,
+          status: 'pending' as const,
+          requestedAt: Date.now(),
+        },
+      };
+      if (normalizedSuggestions && normalizedSuggestions.length > 0) {
+        patch.planSuggestions = normalizedSuggestions;
+      } else if (prev.planSuggestions && Array.isArray(prev.planSuggestions)) {
+        patch.planSuggestions = prev.planSuggestions;
+      }
+      return patch;
+    });
+
+    try {
+      return {
+        handled: true,
+        usedContent: true,
+        payload: JSON.stringify({
+          status: 'plan_ready',
+          requiresConfirmation,
+          nodes: plan.nodes.length,
+        }),
+      };
+    } catch {
+      return { handled: true, usedContent: true };
+    }
+  }
+
+  if (name === 'get_plan_suggestions') {
+    const suggestionsRaw = Array.isArray(args['suggestions'])
+      ? (args['suggestions'] as unknown[])
+      : [];
+    const normalized = normalizePlanSuggestions(suggestionsRaw);
+
+    if (normalized.length === 0) {
+      return { handled: false, usedContent: false };
+    }
+
+    await applyTutorPatch((prev) => {
+      const prior = Array.isArray(prev.planSuggestions)
+        ? (prev.planSuggestions as TutorPlanSuggestion[])
+        : [];
+      const merged = [...prior, ...normalized];
+      return { planSuggestions: merged };
+    });
+
+    try {
+      return {
+        handled: true,
+        usedContent: true,
+        payload: JSON.stringify({
+          suggestionCount: normalized.length,
+        }),
+      };
+    } catch {
+      return { handled: true, usedContent: true };
+    }
+  }
+
+  if (name === 'assess_answer') {
+    const nodeId =
+      typeof args['nodeId'] === 'string' ? (args['nodeId'] as string).trim() : undefined;
+    const interaction =
+      args['interaction'] && typeof args['interaction'] === 'object'
+        ? (args['interaction'] as Record<string, unknown>)
+        : undefined;
+    if (!nodeId || !interaction) {
+      return { handled: false, usedContent: false };
+    }
+
+    const evidence: Record<string, unknown> = {
+      question:
+        typeof interaction.question === 'string' ? interaction.question.trim() : '',
+      studentAnswer:
+        typeof interaction.studentAnswer === 'string'
+          ? interaction.studentAnswer.trim()
+          : '',
+      correctAnswer:
+        typeof interaction.correctAnswer === 'string'
+          ? interaction.correctAnswer.trim()
+          : undefined,
+      questionType:
+        typeof interaction.questionType === 'string'
+          ? interaction.questionType
+          : undefined,
+      skill:
+        typeof interaction.skill === 'string' ? interaction.skill.trim() : undefined,
+      difficulty:
+        typeof interaction.difficulty === 'string'
+          ? interaction.difficulty.trim()
+          : undefined,
+      hintsUsed:
+        typeof interaction.hintsUsed === 'number' ? interaction.hintsUsed : undefined,
+      result:
+        typeof interaction.correct === 'boolean'
+          ? interaction.correct
+            ? 'correct'
+            : 'incorrect'
+          : 'partial',
+    };
+
+    await applyTutorPatch((prev) => {
+      const prior = Array.isArray(prev.assessmentUpdates)
+        ? (prev.assessmentUpdates as Record<string, unknown>[])
+        : [];
+      return {
+        assessmentUpdates: [
+          ...prior,
+          {
+            nodeId,
+            evidence: [evidence],
+          },
+        ],
+      };
+    });
+
+    return { handled: true, usedContent: true };
+  }
+
+  if (name === 'update_learner_model') {
+    const nodeId =
+      typeof args['nodeId'] === 'string' ? (args['nodeId'] as string).trim() : undefined;
+    if (!nodeId) return { handled: false, usedContent: false };
+    const evidenceRaw = Array.isArray(args['evidence']) ? args['evidence'] : [];
+    const evidence = evidenceRaw
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null;
+        const record = item as Record<string, unknown>;
+        const type =
+          typeof record.type === 'string' ? record.type.trim() : undefined;
+        const weight =
+          typeof record.weight === 'number' && Number.isFinite(record.weight)
+            ? record.weight
+            : undefined;
+        if (!type || weight == null) return null;
+        return {
+          type,
+          weight,
+          details:
+            typeof record.details === 'string' ? record.details.trim() : undefined,
+          skill:
+            typeof record.skill === 'string' ? record.skill.trim() : undefined,
+        };
+      })
+      .filter(Boolean) as Array<Record<string, unknown>>;
+
+    const misconceptionsRaw = Array.isArray(args['misconceptions'])
+      ? args['misconceptions']
+      : [];
+    const misconceptions = misconceptionsRaw
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null;
+        const record = item as Record<string, unknown>;
+        const description =
+          typeof record.description === 'string'
+            ? record.description.trim()
+            : undefined;
+        if (!description) return null;
+        const severity =
+          typeof record.severity === 'string' ? record.severity.trim() : undefined;
+        const examples =
+          Array.isArray(record.examples) && record.examples.length > 0
+            ? record.examples
+            : undefined;
+        return {
+          description,
+          severity,
+          examples,
+        };
+      })
+      .filter(Boolean) as Array<Record<string, unknown>>;
+
+    const notes =
+      typeof args['notes'] === 'string' ? (args['notes'] as string).trim() : undefined;
+
+    const confidenceBefore =
+      typeof args['confidenceBefore'] === 'number' ? (args['confidenceBefore'] as number) : undefined;
+    const confidenceAfter =
+      typeof args['confidenceAfter'] === 'number' ? (args['confidenceAfter'] as number) : undefined;
+    const masteryLevel =
+      typeof args['masteryLevel'] === 'string' ? (args['masteryLevel'] as string).trim() : undefined;
+
+    await applyTutorPatch((prev) => {
+      const prior = Array.isArray(prev.assessmentUpdates)
+        ? (prev.assessmentUpdates as Record<string, unknown>[])
+        : [];
+      return {
+        assessmentUpdates: [
+          ...prior,
+          {
+            nodeId,
+            confidenceBefore,
+            confidenceAfter,
+            masteryLevel,
+            evidence,
+            misconceptions,
+            tutorComment: notes,
+          },
+        ],
+      };
+    });
+
+    return { handled: true, usedContent: true };
+  }
+
+  const patchTutorItems = async (mapKey: string) => {
+    const normalized = normalizeTutorQuizPayload(args);
+    if (!normalized) return { handled: false, usedContent: false } as const;
+    const titleFromArgs =
+      typeof args['title'] === 'string' ? (args['title'] as string) : undefined;
+    await applyTutorPatch((prev) => {
+      const existingTitle = typeof prev.title === 'string' && prev.title.trim().length > 0 ? prev.title : titleFromArgs;
+      const existingItems = Array.isArray(prev[mapKey]) ? (prev[mapKey] as unknown[]) : [];
+      const nextPatch: Record<string, unknown> = {
+        [mapKey]: [...existingItems, ...normalized.items],
+      };
+      if (existingTitle) nextPatch.title = existingTitle;
+      return nextPatch;
+    });
     try {
       const payload: Record<string, unknown> = { items: normalized.items };
       if (titleFromArgs) payload.title = titleFromArgs;

@@ -41,6 +41,7 @@ export const createUiSlice = createStoreSlice((set, get) => {
     tutorProfileByChatId: {},
     tutorGreetedByChatId: {},
     planSheetOpen: false,
+    planSheetPlanOverride: null,
     planGenerationByChatId: {},
   };
 
@@ -55,6 +56,9 @@ export const createUiSlice = createStoreSlice((set, get) => {
         }
         if (partial.enableMultiModelChat === false) {
           nextUi.nextParallelModels = undefined;
+        }
+        if (partial.planSheetOpen === false) {
+          nextUi.planSheetPlanOverride = null;
         }
         return { ui: nextUi };
       });
