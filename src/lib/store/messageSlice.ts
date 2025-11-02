@@ -28,9 +28,18 @@ export function createMessageSlice(
 
     async sendUserMessage(
       content: string,
-      opts?: { attachments?: import('@/lib/types').Attachment[] },
+      opts?: {
+        attachments?: import('@/lib/types').Attachment[];
+        metadata?: import('@/lib/types').Message['metadata'];
+      },
     ) {
-      await sendUserTurn({ content, attachments: opts?.attachments, set, get });
+      await sendUserTurn({
+        content,
+        attachments: opts?.attachments,
+        metadata: opts?.metadata,
+        set,
+        get,
+      });
     },
 
     stopStreaming() {

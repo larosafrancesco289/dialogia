@@ -32,6 +32,7 @@ import { resolveModelTransport } from '@/lib/providers';
 export type SendTurnOptions = {
   content: string;
   attachments?: Attachment[];
+  metadata?: Message['metadata'];
   set: StoreSetter;
   get: StoreGetter;
 };
@@ -115,7 +116,13 @@ export async function persistTutorForMessage({ messageId, store }: PersistTutorA
   }
 }
 
-export async function sendUserTurn({ content, attachments, set, get }: SendTurnOptions) {
+export async function sendUserTurn({
+  content,
+  attachments,
+  metadata,
+  set,
+  get,
+}: SendTurnOptions) {
   const chatId = get().selectedChatId;
   if (!chatId) return;
   let chat = get().chats.find((c) => c.id === chatId);
@@ -249,6 +256,7 @@ export async function sendUserTurn({ content, attachments, set, get }: SendTurnO
     content,
     createdAt: now,
     attachments: primaryAttachments.length ? primaryAttachments : undefined,
+    metadata: metadata || undefined,
   };
 
   const assistantPlaceholders = activeModelIds.map((modelId, index) => ({

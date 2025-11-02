@@ -182,7 +182,10 @@ export type StoreState = {
   // messaging
   sendUserMessage: (
     content: string,
-    opts?: { attachments?: import('@/lib/types').Attachment[] },
+    opts?: {
+      attachments?: import('@/lib/types').Attachment[];
+      metadata?: Message['metadata'];
+    },
   ) => Promise<void>;
   // chat branching
   branchChatFromMessage: (messageId: string) => Promise<void>;
