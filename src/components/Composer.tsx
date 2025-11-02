@@ -490,7 +490,12 @@ export function Composer({
           }
           {currentNode && (
             <span
-              className="badge flex items-center gap-1 bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400"
+              className="badge flex items-center gap-1"
+              style={{
+                background: 'color-mix(in oklab, var(--color-accent-2) 15%, transparent)',
+                borderColor: 'color-mix(in oklab, var(--color-accent-2) 35%, var(--color-border))',
+                color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
+              }}
               title={`Currently learning: ${currentNode.name}`}
               aria-label="Current learning focus"
             >

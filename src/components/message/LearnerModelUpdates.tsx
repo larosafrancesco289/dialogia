@@ -44,8 +44,18 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
                 )}
                 {change.to === 'in_progress' && change.from === 'not_started' && (
                   <>
-                    <ArrowTrendingUpIcon className="h-4 w-4 text-blue-500 shrink-0" />
-                    <span className="text-blue-700 dark:text-blue-400 font-medium">
+                    <ArrowTrendingUpIcon
+                      className="h-4 w-4 shrink-0"
+                      style={{
+                        color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
+                      }}
+                    />
+                    <span
+                      className="font-medium"
+                      style={{
+                        color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
+                      }}
+                    >
                       Started: {change.nodeId}
                     </span>
                   </>
@@ -57,7 +67,17 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
 
         {/* Mastery Changes */}
         {hasMasteryChanges && (
-          <div className={`px-3 py-2 space-y-1 ${hasStatusChanges ? 'border-t border-blue-500/20' : ''}`}>
+          <div
+            className="px-3 py-2 space-y-1"
+            style={
+              hasStatusChanges
+                ? {
+                    borderTop: '1px solid',
+                    borderColor: 'color-mix(in oklab, var(--color-accent-2) 30%, var(--color-border))',
+                  }
+                : {}
+            }
+          >
             {planUpdates.masteryChanges!.map((change, idx) => {
               const increase = change.to > change.from;
               const delta = Math.abs(change.to - change.from);
@@ -86,7 +106,16 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
 
         {/* Expandable Learner Model Details */}
         {learnerModel && (
-          <div className={`${hasAnyUpdates ? 'border-t border-blue-500/20' : ''}`}>
+          <div
+            style={
+              hasAnyUpdates
+                ? {
+                    borderTop: '1px solid',
+                    borderColor: 'color-mix(in oklab, var(--color-accent-2) 30%, var(--color-border))',
+                  }
+                : {}
+            }
+          >
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="w-full px-3 py-2 flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors"
