@@ -109,6 +109,22 @@ Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/star
   - `/reasoning none|low|medium|high` — set reasoning effort.
   - `/help` — list supported commands.
 
+### Headless Tutor Simulation
+
+Run the complete tutoring pipeline (tutor agent, simulated learner, and LLM judge) without the UI:
+
+```
+npm run tutor:simulate -- --goal "Limits revision"
+```
+
+Key details:
+
+- **API keys**: The runner talks directly to model APIs. Set `OPENROUTER_API_KEY` for the simulated student/judge models and `ANTHROPIC_API_KEY` for the default tutor model (`anthropic/claude-haiku-4.5`). Override with `--openrouter-key` / `--anthropic-key` if needed. Proxy-only setups are not supported for the headless flow.
+- **Defaults**: Uses the curated defaults from `src/data/curatedModels.ts` (tutor = `DEFAULT_TUTOR_MODEL_ID`, student/judge = `DEFAULT_MODEL_ID`). Override via `--tutor-model`, `--student-model`, and `--judge-model`.
+- **Output**: Shows a concise turn-by-turn summary in the terminal and writes the full JSON payload (transcripts, tool calls, tutor UI, learner model snapshots, judge verdict) to `tmp/tutor-sim-*.json`. Override the destination with `--json-out path/to/report.json`.
+- **Customizing**: Pass `--turns <n>` to limit the dialogue length, provide `--initial-user` to seed the first learner utterance, or supply different model IDs per role.
+- **Testing**: The orchestration layer is covered by `tests/headlessSession.test.ts`. Run with `npm run test` once your environment allows TSX to spawn its IPC socket (some sandboxes may block this by default).
+
 ### Tutor Mode: Adaptive Learning Plans
 
 Dialogia includes an experimental **Tutor Mode** that provides personalized, structured learning experiences with automatic progress tracking.
