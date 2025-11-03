@@ -25,9 +25,36 @@ export type ChatSettings = {
   learningPlan?: LearningPlan;
   planGenerated?: boolean; // Flag to track if plan was generated
   planGenerationModel?: string; // Model used to generate plan
+  showToolCallLog?: boolean; // Display tool call log under assistant messages
+  showDebugRawJson?: boolean; // Toggle raw request payload in debug panel
   // Learner Model Tracking
   enableLearnerModel?: boolean; // Whether to track mastery
-  learnerModelUpdateFrequency?: number; // Update every N interactions (default: 3)
+};
+
+export type ToolCallLogEntry = {
+  id: string;
+  name: string;
+  timestamp: number;
+  status: 'pending' | 'success' | 'error';
+  category?: 'search' | 'tutor' | 'planning' | 'system' | 'other';
+  input: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  error?: string;
+  duration?: number;
+  metadata?: {
+    modelUsed?: string;
+    tokensUsed?: number;
+    cached?: boolean;
+    provider?: string;
+    round?: number;
+    notes?: string;
+    usedContent?: boolean;
+    modelUpdated?: boolean;
+    planUpdated?: boolean;
+    results?: number;
+    requested?: number;
+    [key: string]: unknown;
+  };
 };
 
 export type Message = {
@@ -79,6 +106,8 @@ export type Message = {
     statusChanges?: { nodeId: string; from: string; to: string }[];
     masteryChanges?: { nodeId: string; from: number; to: number }[];
   };
+  // Tool call transparency log for this assistant turn
+  toolCalls?: ToolCallLogEntry[];
 };
 
 // Tutor tool item types rendered by UI (ephemeral; stored in UI state)
@@ -330,9 +359,12 @@ export type Evidence = {
     | 'incorrect_answer'
     | 'partial_answer'
     | 'hint_needed'
-    | 'explanation_requested';
+    | 'explanation_requested'
+    | 'misconception_detected'
+    | 'insight_demonstrated';
   details: string; // Description of what happened
   weight: number; // 0.0 - 1.0 (how much this updates mastery)
+  skill?: string;
 };
 
 export type Misconception = {
@@ -341,6 +373,8 @@ export type Misconception = {
   firstObserved: number;
   occurrences: number;
   resolved: boolean;
+  severity?: string;
+  examples?: string[];
 };
 
 export type MessageMetrics = {

@@ -171,6 +171,7 @@ export function createMessageStreamCallbacks(
         genSettings: (current as any)?.genSettings,
         tutor: (current as any)?.tutor,
         hiddenContent: (current as any)?.hiddenContent,
+        toolCalls: (current as any)?.toolCalls ?? assistantMessage.toolCalls,
         metrics,
         tokensIn: metrics.promptTokens,
         tokensOut: metrics.completionTokens,

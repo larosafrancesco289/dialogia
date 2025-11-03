@@ -1,5 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Chat, LearningPlan, Message, TutorPlanSuggestion } from '@/lib/types';
+import type {
+  Chat,
+  LearningPlan,
+  LearnerModel,
+  Message,
+  TutorPlanSuggestion,
+  Evidence,
+  Misconception,
+} from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import { attachTutorUiState } from '@/lib/agent/tutorFlow';
 import { addCardsToDeck, getDueCards } from '@/lib/tutorDeck';
@@ -10,6 +18,7 @@ import type {
   SearchProvider,
   SearchResult,
   StoreSetter,
+  StoreGetter,
   ToolExecutionResult,
   TutorToolCall,
   TutorToolName,
@@ -17,6 +26,12 @@ import type {
 } from '@/lib/agent/types';
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
 import { withAbort } from '@/lib/utils/abort';
+import {
+  getLatestLearnerModel,
+  initializeLearnerModel,
+  updateLearnerModel,
+} from '@/lib/agent/learnerModel';
+import { processPlanProgress } from '@/lib/agent/planAwareTutor';
 
 const INLINE_TUTOR_TOOL_NAMES: TutorToolName[] = [
   'ask_student_question',
@@ -291,9 +306,25 @@ export async function applyTutorToolCall(opts: {
   chatId: string;
   assistantMessage: Message;
   set: StoreSetter;
+  get: StoreGetter;
   persistMessage: PersistMessage;
-}): Promise<{ handled: boolean; usedContent: boolean; payload?: string }> {
-  const { name, args, chat, chatId, assistantMessage, set, persistMessage } = opts;
+}): Promise<{
+  handled: boolean;
+  usedContent: boolean;
+  payload?: string;
+  learnerModel?: LearnerModel;
+  planUpdates?: Message['planUpdates'];
+  updatedPlan?: LearningPlan;
+  learnerModelDebug?: {
+    nodeId: string;
+    nodeName?: string;
+    evidenceType?: Evidence['type'];
+    weight?: number;
+    oldConfidence?: number;
+    newConfidence?: number;
+  };
+}> {
+  const { name, args, chat, chatId, assistantMessage, set, get, persistMessage } = opts;
 
   const applyTutorPatch = async (
     buildPatch: (prev: Record<string, unknown>) => Record<string, unknown>,
@@ -756,16 +787,18 @@ export async function applyTutorToolCall(opts: {
             ? record.weight
             : undefined;
         if (!type || weight == null) return null;
+        const details =
+          typeof record.details === 'string' ? record.details.trim() : undefined;
+        const skill =
+          typeof record.skill === 'string' ? record.skill.trim() : undefined;
         return {
-          type,
+          type: type as Evidence['type'],
           weight,
-          details:
-            typeof record.details === 'string' ? record.details.trim() : undefined,
-          skill:
-            typeof record.skill === 'string' ? record.skill.trim() : undefined,
+          details,
+          skill,
         };
       })
-      .filter(Boolean) as Array<Record<string, unknown>>;
+      .filter(Boolean) as Array<Pick<Evidence, 'type' | 'weight' | 'details' | 'skill'>>;
 
     const misconceptionsRaw = Array.isArray(args['misconceptions'])
       ? args['misconceptions']
@@ -783,7 +816,7 @@ export async function applyTutorToolCall(opts: {
           typeof record.severity === 'string' ? record.severity.trim() : undefined;
         const examples =
           Array.isArray(record.examples) && record.examples.length > 0
-            ? record.examples
+            ? (record.examples as string[])
             : undefined;
         return {
           description,
@@ -791,7 +824,7 @@ export async function applyTutorToolCall(opts: {
           examples,
         };
       })
-      .filter(Boolean) as Array<Record<string, unknown>>;
+      .filter(Boolean) as Array<{ description: string; severity?: string; examples?: string[] }>;
 
     const notes =
       typeof args['notes'] === 'string' ? (args['notes'] as string).trim() : undefined;
@@ -802,6 +835,7 @@ export async function applyTutorToolCall(opts: {
       typeof args['confidenceAfter'] === 'number' ? (args['confidenceAfter'] as number) : undefined;
     const masteryLevel =
       typeof args['masteryLevel'] === 'string' ? (args['masteryLevel'] as string).trim() : undefined;
+    const plan = chat.settings.learningPlan;
 
     await applyTutorPatch((prev) => {
       const prior = Array.isArray(prev.assessmentUpdates)
@@ -823,7 +857,80 @@ export async function applyTutorToolCall(opts: {
       };
     });
 
-    return { handled: true, usedContent: true };
+    if (!plan) {
+      return { handled: true, usedContent: true };
+    }
+
+    const state = get();
+    const messagesForChat = (state.messages?.[chatId] ?? []) as Message[];
+    let currentModel = getLatestLearnerModel(messagesForChat);
+    if (!currentModel) {
+      currentModel = initializeLearnerModel(chatId, plan);
+    }
+
+    if (!currentModel || evidence.length === 0) {
+      return {
+        handled: true,
+        usedContent: true,
+        learnerModel: currentModel,
+        updatedPlan: plan,
+      };
+    }
+
+    const nodeMeta = plan.nodes.find((node) => node.id === nodeId);
+    const now = Date.now();
+    let updatedModel = currentModel;
+    const misconceptionQueue = misconceptions.slice();
+    let appliedWeight = 0;
+
+    evidence.forEach((entry, index) => {
+      appliedWeight += entry.weight;
+      const misconceptionMeta = misconceptionQueue.shift();
+      const misconceptionObj: Misconception | undefined = misconceptionMeta
+        ? {
+            id: `misc_${nodeId}_${now + index}`,
+            description: misconceptionMeta.description,
+            firstObserved: now + index,
+            occurrences: 1,
+            resolved: false,
+            severity: misconceptionMeta.severity,
+            examples: misconceptionMeta.examples,
+          }
+        : undefined;
+      const evidenceObj: Evidence = {
+        timestamp: now + index,
+        type: entry.type,
+        weight: entry.weight,
+        details: entry.details ?? 'No details provided',
+        skill: entry.skill,
+      };
+      updatedModel = updateLearnerModel(updatedModel, {
+        nodeId,
+        evidence: evidenceObj,
+        misconception: misconceptionObj,
+      });
+    });
+
+    const oldConfidence = currentModel.mastery[nodeId]?.confidence ?? 0;
+    const newConfidence = updatedModel.mastery[nodeId]?.confidence ?? oldConfidence;
+
+    const planResult = await processPlanProgress(plan, updatedModel);
+
+    return {
+      handled: true,
+      usedContent: true,
+      learnerModel: updatedModel,
+      planUpdates: planResult.planUpdates,
+      updatedPlan: planResult.updatedPlan,
+      learnerModelDebug: {
+        nodeId,
+        nodeName: nodeMeta?.name,
+        evidenceType: evidence[0]?.type,
+        weight: appliedWeight,
+        oldConfidence,
+        newConfidence,
+      },
+    };
   }
 
   const patchTutorItems = async (mapKey: string) => {

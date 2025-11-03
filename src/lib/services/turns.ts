@@ -3,7 +3,7 @@
 // while keeping the Zustand message slice focused on state updates.
 
 import { v4 as uuidv4 } from 'uuid';
-import type { Attachment, Message, ModelTransport } from '@/lib/types';
+import type { Attachment, Message, ModelTransport, LearnerModel, Chat } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import { type StoreSetter, type StoreGetter, type StoreAccess } from '@/lib/agent/types';
 import { saveMessage, saveChat } from '@/lib/db';
@@ -28,6 +28,7 @@ import {
   NOTICE_RATE_LIMITED,
 } from '@/lib/store/notices';
 import { resolveModelTransport } from '@/lib/providers';
+import { getLatestLearnerModel, initializeLearnerModel } from '@/lib/agent/learnerModel';
 
 export type SendTurnOptions = {
   content: string;
@@ -70,6 +71,7 @@ export async function appendAssistantTurn({ content, modelId, set, get }: Append
     createdAt: now,
     model: modelId || chat.settings.model,
     reasoning: '',
+    toolCalls: [],
   };
   set((state) => ({
     messages: {
@@ -125,8 +127,9 @@ export async function sendUserTurn({
 }: SendTurnOptions) {
   const chatId = get().selectedChatId;
   if (!chatId) return;
-  let chat = get().chats.find((c) => c.id === chatId);
-  if (!chat) return;
+  const initialChat = get().chats.find((c) => c.id === chatId);
+  if (!initialChat) return;
+  let chat: Chat = initialChat;
 
   const uiState = get().ui;
   const tutorGloballyEnabled = !!uiState.experimentalTutor;
@@ -135,11 +138,10 @@ export async function sendUserTurn({
 
   let tutorDefaultModelId = uiState.tutorDefaultModelId || chat.settings.tutor_default_model;
   if (!tutorDefaultModelId) tutorDefaultModelId = DEFAULT_TUTOR_MODEL_ID;
-  let tutorAnalysisModelId = tutorDefaultModelId;
 
   // Variables for learner model and plan updates
-  let pendingLearnerModel: any;
-  let pendingPlanUpdates: any;
+  let pendingLearnerModel: LearnerModel | undefined;
+  let pendingPlanUpdates: Message['planUpdates'] | undefined;
 
   if (tutorEnabled) {
     const ensured = ensureTutorDefaults({
@@ -148,7 +150,7 @@ export async function sendUserTurn({
       fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
     });
     if (ensured.changed) {
-      const updatedChat = { ...chat, settings: ensured.nextSettings, updatedAt: Date.now() };
+      const updatedChat: Chat = { ...chat, settings: ensured.nextSettings, updatedAt: Date.now() };
       set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
       chat = updatedChat;
       try {
@@ -162,7 +164,6 @@ export async function sendUserTurn({
       chat.settings.tutor_default_model ||
       tutorDefaultModelId ||
       DEFAULT_TUTOR_MODEL_ID;
-    tutorAnalysisModelId = tutorDefaultModelId;
   }
 
   const parallelModels = Array.isArray(chat.settings.parallel_models)
@@ -240,6 +241,13 @@ export async function sendUserTurn({
   if (tutorEnabled) primeTutorWelcome(chatId, { set, get });
 
   const priorMessages = get().messages[chatId] ?? [];
+  let priorLearnerModel: LearnerModel | undefined;
+  if (tutorEnabled && chat.settings.learningPlan) {
+    priorLearnerModel = getLatestLearnerModel(priorMessages);
+    if (!priorLearnerModel) {
+      priorLearnerModel = initializeLearnerModel(chatId, chat.settings.learningPlan);
+    }
+  }
 
   if (get().ui.zdrOnly === true) {
     for (const modelId of activeModelIds) {
@@ -268,6 +276,7 @@ export async function sendUserTurn({
     model: modelId,
     reasoning: '',
     attachments: [],
+    toolCalls: [],
   })) as Message[];
   const assistantByModel = new Map<string, Message>();
   assistantPlaceholders.forEach((msg, index) => {
@@ -337,87 +346,6 @@ export async function sendUserTurn({
     }
   }
 
-  // Update learner model if plan exists
-  if (tutorEnabled && chat.settings.learningPlan) {
-    const modelAuth = ensureAuthForModel(tutorAnalysisModelId);
-    if (modelAuth) {
-      try {
-        const { getLatestLearnerModel, initializeLearnerModel, maybeUpdateLearnerModel } =
-          await import('@/lib/agent/learnerModel');
-        const { processPlanProgress } = await import('@/lib/agent/planAwareTutor');
-
-        // Get or initialize learner model
-        let currentModel = getLatestLearnerModel(priorMessages);
-        if (!currentModel) {
-          currentModel = initializeLearnerModel(chatId, chat.settings.learningPlan);
-        }
-
-        // Update learner model based on conversation
-        const modelResult = await maybeUpdateLearnerModel({
-          apiKey: modelAuth.apiKey,
-          transport: modelAuth.transport,
-          modelId: tutorAnalysisModelId,
-          plan: chat.settings.learningPlan,
-          learnerModel: currentModel,
-          conversation: priorMessages.concat(userMsg),
-          updateFrequency: chat.settings.learnerModelUpdateFrequency || 3,
-          autoUpdate: chat.settings.enableLearnerModel !== false,
-        });
-
-        pendingLearnerModel = modelResult.updatedModel;
-
-        // Check if plan needs status updates
-        const planResult = await processPlanProgress(
-          chat.settings.learningPlan,
-          modelResult.updatedModel,
-        );
-
-        // Update plan in chat settings if changed
-        if (planResult.updatedPlan !== chat.settings.learningPlan) {
-          const updatedChat = {
-            ...chat,
-            settings: {
-              ...chat.settings,
-              learningPlan: planResult.updatedPlan,
-            },
-            updatedAt: Date.now(),
-          };
-
-          set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
-          chat = updatedChat;
-
-          try {
-            await saveChat(updatedChat);
-          } catch {
-            /* ignore */
-          }
-        }
-
-        pendingPlanUpdates = planResult.planUpdates;
-
-        // Store debug info in UI
-        if (modelResult.debug) {
-          set((state) => ({
-            ui: {
-              ...state.ui,
-              learnerModelDebugByMessageId: {
-                ...(state.ui.learnerModelDebugByMessageId || {}),
-                [primaryAssistant.id]: {
-                  before: currentModel,
-                  after: modelResult.updatedModel,
-                  debug: modelResult.debug,
-                  planUpdates: pendingPlanUpdates,
-                },
-              },
-            },
-          }));
-        }
-      } catch (error) {
-        console.error('Learner model update failed:', error);
-        // Continue with normal tutoring
-      }
-    }
-  }
 
   if (chat.title === 'New Chat') {
     const draft = content.trim().slice(0, 40);
@@ -519,6 +447,50 @@ export async function sendUserTurn({
           persistMessage: saveMessage,
         });
 
+        if (planResult.learnerModel) {
+          pendingLearnerModel = planResult.learnerModel;
+        }
+        if (planResult.planUpdates) {
+          pendingPlanUpdates = planResult.planUpdates;
+        }
+        if (
+          planResult.updatedPlan &&
+          chat.settings.learningPlan &&
+          planResult.updatedPlan !== chat.settings.learningPlan
+        ) {
+          const updatedChat: Chat = {
+            ...chat,
+            settings: {
+              ...chat.settings,
+              learningPlan: planResult.updatedPlan,
+            },
+            updatedAt: Date.now(),
+          };
+          set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
+          chat = updatedChat;
+          try {
+            await saveChat(updatedChat);
+          } catch {
+            /* ignore */
+          }
+        }
+        if (planResult.learnerModel && planResult.learnerModelDebug && priorLearnerModel) {
+          set((state) => ({
+            ui: {
+              ...state.ui,
+              learnerModelDebugByMessageId: {
+                ...(state.ui.learnerModelDebugByMessageId || {}),
+                [primaryAssistant.id]: {
+                  before: priorLearnerModel,
+                  after: planResult.learnerModel,
+                  debug: planResult.learnerModelDebug,
+                  planUpdates: planResult.planUpdates,
+                },
+              },
+            },
+          }));
+        }
+
         try {
           const modelMeta = get().modelIndex.get(chatForModel.settings.model);
           const gen = snapshotGenSettings({
@@ -542,16 +514,19 @@ export async function sendUserTurn({
 
         if (shouldShortCircuitTutor(planResult)) {
           const current = get().messages[chatId]?.find((m) => m.id === assistantMessage.id);
-          const finalMsg = {
-            ...assistantMessage,
-            content: current?.content || '',
-            reasoning: current?.reasoning,
-            attachments: current?.attachments,
-            tutor: (current as any)?.tutor,
-            hiddenContent: (current as any)?.hiddenContent,
-            learnerModel: pendingLearnerModel,
-            planUpdates: pendingPlanUpdates,
-          } as Message;
+          const baseMessage: Message =
+            (current as Message | undefined) ?? ({ ...assistantMessage } as Message);
+          const finalMsg: Message = {
+            ...baseMessage,
+            content: current?.content ?? baseMessage.content ?? '',
+            reasoning: current?.reasoning ?? baseMessage.reasoning,
+            attachments: current?.attachments ?? baseMessage.attachments,
+            tutor: (current as any)?.tutor ?? (baseMessage as any)?.tutor,
+            hiddenContent:
+              (current as any)?.hiddenContent ?? (baseMessage as any)?.hiddenContent ?? undefined,
+            learnerModel: pendingLearnerModel ?? baseMessage.learnerModel,
+            planUpdates: pendingPlanUpdates ?? baseMessage.planUpdates,
+          };
           set((state) => {
             const list = state.messages[chatId] ?? [];
             const updated = list.map((m) => (m.id === assistantMessage.id ? finalMsg : m));
@@ -652,8 +627,9 @@ export type RegenerateTurnArgs = {
 export async function regenerateTurn({ messageId, overrideModelId, set, get }: RegenerateTurnArgs) {
   const chatId = get().selectedChatId;
   if (!chatId) return;
-  let chat = get().chats.find((c) => c.id === chatId);
-  if (!chat) return;
+  const initialChat = get().chats.find((c) => c.id === chatId);
+  if (!initialChat) return;
+  let chat: Chat = initialChat;
 
   const uiState = get().ui;
   const tutorGloballyEnabled = !!uiState.experimentalTutor;
@@ -672,7 +648,7 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
         model: desiredModel,
         tutor_default_model: desiredModel,
       };
-      const updatedChat = { ...chat, settings: updatedSettings, updatedAt: Date.now() };
+      const updatedChat: Chat = { ...chat, settings: updatedSettings, updatedAt: Date.now() };
       set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
       chat = updatedChat;
       try {

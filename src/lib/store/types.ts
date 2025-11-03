@@ -40,6 +40,8 @@ export type UIState = {
   nextMaxTokens?: number;
   nextShowThinking?: boolean;
   nextShowStats?: boolean;
+  nextShowToolCallLog?: boolean;
+  nextShowDebugRawJson?: boolean;
   nextParallelModels?: string[];
   // Tutor context fidelity for follow-up turns
   // 'summary' keeps prompts compact; 'full' injects full quiz JSON

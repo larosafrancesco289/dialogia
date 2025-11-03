@@ -273,6 +273,10 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
           lastMessageId,
           reasoningExpanded: isExpanded(message.id),
           onToggleReasoning: () => toggle(message.id),
+          showToolCallLog: !!chat?.settings?.showToolCallLog,
+          showDebugRawJson: chat?.settings?.showDebugRawJson ?? true,
+          toolCalls: Array.isArray(message.toolCalls) ? message.toolCalls : undefined,
+          highlightToolCalls: message.id === lastMessageId,
         } satisfies Omit<MessagePanelsProps, 'message'>;
 
         return (

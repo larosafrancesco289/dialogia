@@ -1,4 +1,13 @@
-import type { Attachment, Chat, Message, ORModel, ModelTransport } from '@/lib/types';
+import type {
+  Attachment,
+  Chat,
+  Message,
+  ORModel,
+  ModelTransport,
+  LearnerModel,
+  LearningPlan,
+  Evidence,
+} from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { SetState, GetState } from 'zustand';
@@ -142,6 +151,17 @@ export type PlanTurnResult = {
   finalSystem: string;
   usedTutorContentTool: boolean;
   hasSearchResults: boolean;
+  learnerModel?: LearnerModel;
+  planUpdates?: Message['planUpdates'];
+  updatedPlan?: LearningPlan;
+  learnerModelDebug?: {
+    nodeId: string;
+    nodeName?: string;
+    evidenceType?: Evidence['type'];
+    weight?: number;
+    oldConfidence?: number;
+    newConfidence?: number;
+  };
 };
 
 export type ComposeTurnArgs = {
