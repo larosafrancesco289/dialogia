@@ -188,6 +188,10 @@ export function MessageCard({
         lastMessageId={messagePanels.lastMessageId}
         reasoningExpanded={messagePanels.reasoningExpanded}
         onToggleReasoning={messagePanels.onToggleReasoning}
+        showToolCallLog={messagePanels.showToolCallLog}
+        showDebugRawJson={messagePanels.showDebugRawJson}
+        toolCalls={messagePanels.toolCalls}
+        highlightToolCalls={messagePanels.highlightToolCalls}
       />
     ),
     [message, chat, models, messagePanels],

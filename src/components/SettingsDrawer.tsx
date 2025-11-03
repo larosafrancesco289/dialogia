@@ -113,6 +113,12 @@ export function SettingsDrawer() {
     chat?.settings.show_thinking_by_default ?? false,
   );
   const [showStats, setShowStats] = useState<boolean>(chat?.settings.show_stats ?? false);
+  const [showToolCallLog, setShowToolCallLog] = useState<boolean>(
+    chat?.settings.showToolCallLog ?? false,
+  );
+  const [showDebugRawJson, setShowDebugRawJson] = useState<boolean>(
+    chat?.settings.showDebugRawJson ?? true,
+  );
   const [closing, setClosing] = useState(false);
   const {
     activeTab,
@@ -159,10 +165,14 @@ export function SettingsDrawer() {
     );
     setShowThinking(chat?.settings.show_thinking_by_default ?? false);
     setShowStats(chat?.settings.show_stats ?? false);
+    setShowToolCallLog(chat?.settings.showToolCallLog ?? false);
+    setShowDebugRawJson(chat?.settings.showDebugRawJson ?? true);
     setTutorDefaultModel(ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID);
   }, [
     chat?.id,
     ui?.tutorDefaultModelId,
+    chat?.settings.showToolCallLog,
+    chat?.settings.showDebugRawJson,
   ]);
 
   // Prevent background scroll while drawer is open
@@ -503,10 +513,14 @@ export function SettingsDrawer() {
                         <DisplayPanel
                           showThinking={showThinking}
                           showStats={showStats}
+                          showToolCallLog={showToolCallLog}
+                          showDebugRawJson={showDebugRawJson}
                           enableMultiModelChat={enableMultiModelChat}
                           uiDebugMode={!!ui?.debugMode}
                           setShowThinking={setShowThinking}
                           setShowStats={setShowStats}
+                          setShowToolCallLog={setShowToolCallLog}
+                          setShowDebugRawJson={setShowDebugRawJson}
                           setEnableMultiModelChat={(value: boolean) =>
                             setUI({ enableMultiModelChat: value })
                           }
@@ -610,6 +624,8 @@ export function SettingsDrawer() {
                   reasoning_tokens: reasoningTokens,
                   show_thinking_by_default: showThinking,
                   show_stats: showStats,
+                  showToolCallLog,
+                  showDebugRawJson,
                   ...(chat.settings.tutor_mode || ui?.forceTutorMode
                     ? {
                         tutor_default_model: trimmedTutorModel,
@@ -626,6 +642,8 @@ export function SettingsDrawer() {
                   nextReasoningTokens: reasoningTokens,
                   nextShowThinking: showThinking,
                   nextShowStats: showStats,
+                  nextShowToolCallLog: showToolCallLog,
+                  nextShowDebugRawJson: showDebugRawJson,
                   nextSearchProvider:
                     (ui as any)?.nextSearchProvider ??
                     (chat as any)?.settings?.search_provider ??

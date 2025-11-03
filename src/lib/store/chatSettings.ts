@@ -36,6 +36,8 @@ export function deriveChatSettingsFromUi(opts: {
   const show_thinking_by_default =
     ui.nextShowThinking ?? previous?.show_thinking_by_default ?? false;
   const show_stats = ui.nextShowStats ?? previous?.show_stats ?? false;
+  const showToolCallLog = ui.nextShowToolCallLog ?? previous?.showToolCallLog ?? false;
+  const showDebugRawJson = ui.nextShowDebugRawJson ?? previous?.showDebugRawJson ?? true;
 
   const search_enabled = ui.nextSearchEnabled ?? previous?.search_enabled ?? false;
   const nextProvider = ui.nextSearchProvider ?? previous?.search_provider;
@@ -68,6 +70,8 @@ export function deriveChatSettingsFromUi(opts: {
     reasoning_tokens,
     show_thinking_by_default,
     show_stats,
+    showToolCallLog,
+    showDebugRawJson,
     search_enabled,
     search_provider,
     tutor_mode,
@@ -80,10 +84,6 @@ export function deriveChatSettingsFromUi(opts: {
     settings.parallel_models = [];
     settings.tutor_default_model = tutor_default_model;
     settings.enableLearnerModel = true;
-    settings.learnerModelUpdateFrequency =
-      previous?.learnerModelUpdateFrequency && previous.learnerModelUpdateFrequency > 0
-        ? previous.learnerModelUpdateFrequency
-        : 3;
   }
 
   return settings;

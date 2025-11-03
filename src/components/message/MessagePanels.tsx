@@ -1,6 +1,6 @@
 'use client';
 import { findModelById, isReasoningSupported } from '@/lib/models';
-import type { Chat, Message, ORModel } from '@/lib/types';
+import type { Chat, Message, ORModel, ToolCallLogEntry } from '@/lib/types';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
 import { ReasoningPanel } from '@/components/message/ReasoningPanel';
 import { DebugPanel } from '@/components/message/DebugPanel';
@@ -26,6 +26,10 @@ export type MessagePanelsProps = {
   lastMessageId?: string;
   reasoningExpanded: boolean;
   onToggleReasoning: () => void;
+  showToolCallLog: boolean;
+  showDebugRawJson: boolean;
+  toolCalls?: ToolCallLogEntry[];
+  highlightToolCalls?: boolean;
 };
 
 export function MessagePanels({
@@ -48,6 +52,10 @@ export function MessagePanels({
   lastMessageId,
   reasoningExpanded,
   onToggleReasoning,
+  showToolCallLog,
+  showDebugRawJson,
+  toolCalls,
+  highlightToolCalls,
 }: MessagePanelsProps) {
   const panels: React.ReactNode[] = [];
 
@@ -62,11 +70,17 @@ export function MessagePanels({
     );
   }
 
-  if (debugMode && debugEntry?.body) {
+  const toolCallList = Array.isArray(toolCalls) ? toolCalls : undefined;
+  const shouldShowToolLog = showToolCallLog && toolCallList && toolCallList.length > 0;
+  if (debugMode && (debugEntry?.body || shouldShowToolLog)) {
     panels.push(
       <DebugPanel
         key="debug"
-        body={debugEntry.body}
+        body={debugEntry?.body}
+        toolCalls={toolCallList}
+        showToolCalls={showToolCallLog}
+        showRawJson={showDebugRawJson}
+        highlightToolCalls={highlightToolCalls}
         expanded={isDebugExpanded}
         onToggle={onToggleDebug}
       />,

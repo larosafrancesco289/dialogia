@@ -63,6 +63,8 @@ test('ask_student_question tool stores questionnaire for the message', async () 
     }
   };
 
+  const get = () => state;
+
   let persisted = false;
 
   const outcome = await applyTutorToolCall({
@@ -82,6 +84,7 @@ test('ask_student_question tool stores questionnaire for the message', async () 
     chatId: 'chat-test',
     assistantMessage,
     set,
+    get,
     persistMessage: async () => {
       persisted = true;
     },

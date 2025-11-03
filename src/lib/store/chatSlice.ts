@@ -140,6 +140,8 @@ export function createChatSlice(
           nextMaxTokens: undefined,
           nextShowThinking: undefined,
           nextShowStats: undefined,
+          nextShowToolCallLog: undefined,
+          nextShowDebugRawJson: undefined,
           nextParallelModels: undefined,
         },
       }));
@@ -252,7 +254,6 @@ export function createChatSlice(
           model: nextSettings.model,
           tutor_default_model: nextSettings.tutor_default_model,
           enableLearnerModel: nextSettings.enableLearnerModel,
-          learnerModelUpdateFrequency: nextSettings.learnerModelUpdateFrequency,
         };
       };
 

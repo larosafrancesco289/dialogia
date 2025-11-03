@@ -197,6 +197,19 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   const savedTutor = savedMessages.find((msg) => Array.isArray((msg as any)?.tutor?.mcq))
     ?.tutor as any;
   assert.ok(Array.isArray(savedTutor?.mcq) && savedTutor.mcq.length === 1);
+  const toolLog = state.messages[chat.id][0]?.toolCalls;
+  assert.ok(Array.isArray(toolLog) && toolLog.length >= 2);
+  const searchEntries = toolLog.filter((entry: any) => entry?.name === 'web_search');
+  const tutorEntries = toolLog.filter((entry: any) => entry?.name === 'quiz_mcq');
+  assert.ok(searchEntries.length >= 1);
+  assert.ok(tutorEntries.length >= 1);
+  assert.equal(searchEntries[0]?.category, 'search');
+  assert.equal(searchEntries[0]?.metadata?.provider, 'brave');
+  assert.equal(searchEntries[0]?.metadata?.round, 1);
+  assert.equal(searchEntries[0]?.metadata?.results, 1);
+  assert.equal(tutorEntries[0]?.category, 'tutor');
+  assert.equal(tutorEntries[0]?.metadata?.round, 1);
+  assert.equal(tutorEntries[0]?.metadata?.usedContent, true);
 
   __setOpenRouterMocksForTests();
   globalThis.fetch = originalFetch;

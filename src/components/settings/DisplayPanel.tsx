@@ -5,20 +5,28 @@
 export function DisplayPanel(props: {
   showThinking: boolean;
   showStats: boolean;
+  showToolCallLog: boolean;
+  showDebugRawJson: boolean;
   enableMultiModelChat: boolean;
   uiDebugMode: boolean;
   setShowThinking: (v: boolean) => void;
   setShowStats: (v: boolean) => void;
+  setShowToolCallLog: (v: boolean) => void;
+  setShowDebugRawJson: (v: boolean) => void;
   setEnableMultiModelChat: (v: boolean) => void;
   setDebugMode: (v: boolean) => void;
 }) {
   const {
     showThinking,
     showStats,
+    showToolCallLog,
+    showDebugRawJson,
     enableMultiModelChat,
     uiDebugMode,
     setShowThinking,
     setShowStats,
+    setShowToolCallLog,
+    setShowDebugRawJson,
     setEnableMultiModelChat,
     setDebugMode,
   } = props;
@@ -112,6 +120,48 @@ export function DisplayPanel(props: {
           <div className="text-xs text-muted-foreground">
             Show a Debug panel under assistant messages with the exact request payload sent to
             OpenRouter.
+          </div>
+        </div>
+        <div className="soft-divider" />
+        <div className="space-y-1">
+          <label className="text-sm block">Show tool call log</label>
+          <div className="segmented">
+            <button
+              className={`segment ${showToolCallLog ? 'is-active' : ''}`}
+              onClick={() => setShowToolCallLog(true)}
+            >
+              On
+            </button>
+            <button
+              className={`segment ${!showToolCallLog ? 'is-active' : ''}`}
+              onClick={() => setShowToolCallLog(false)}
+            >
+              Off
+            </button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Include structured tool activity inside the debug panel for each assistant turn.
+          </div>
+        </div>
+        <div className="soft-divider" />
+        <div className="space-y-1">
+          <label className="text-sm block">Show raw debug JSON</label>
+          <div className="segmented">
+            <button
+              className={`segment ${showDebugRawJson ? 'is-active' : ''}`}
+              onClick={() => setShowDebugRawJson(true)}
+            >
+              On
+            </button>
+            <button
+              className={`segment ${!showDebugRawJson ? 'is-active' : ''}`}
+              onClick={() => setShowDebugRawJson(false)}
+            >
+              Off
+            </button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            When off, hide the raw request JSON block to keep the debug panel concise.
           </div>
         </div>
       </div>

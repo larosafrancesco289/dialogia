@@ -39,7 +39,6 @@ test('ensureTutorDefaults fills missing tutor defaults and enables learner model
   assert.equal(result.nextSettings.model, DEFAULT_TUTOR_MODEL_ID);
   assert.equal(result.nextSettings.tutor_default_model, DEFAULT_TUTOR_MODEL_ID);
   assert.equal(result.nextSettings.enableLearnerModel, true);
-  assert.equal(result.nextSettings.learnerModelUpdateFrequency, 3);
 });
 
 test('mergeTutorPayload merges patches and rebuilds hidden content', () => {

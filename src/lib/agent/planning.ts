@@ -31,6 +31,8 @@ import type {
   WebSearchArgs,
 } from '@/lib/agent/types';
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
+import { startToolCallLogEntry, updateToolCallLogEntry } from '@/lib/services/toolCallLog';
+import type { ToolCallLogEntry } from '@/lib/types';
 
 export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const {
@@ -65,6 +67,10 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   let usedTool = false;
   let usedTutorContentTool = false;
   let aggregatedResults: SearchResult[] = [];
+  let learnerModelResult: PlanTurnResult['learnerModel'] | undefined;
+  let planUpdatesResult: PlanTurnResult['planUpdates'] | undefined;
+  let updatedPlanResult: PlanTurnResult['updatedPlan'] | undefined;
+  let learnerModelDebugResult: PlanTurnResult['learnerModelDebug'] | undefined;
 
   while (rounds < MAX_PLANNING_ROUNDS) {
     const modelMeta = modelIndex.get(chat.settings.model);
@@ -144,73 +150,180 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     for (const tc of toolCalls) {
       const callName = tc.function.name;
       const parsedArgs = parseToolArguments(tc);
-
-      if (callName === 'web_search') {
-        const searchArgs: WebSearchArgs = {
-          query: typeof parsedArgs.query === 'string' ? parsedArgs.query : '',
-          count: typeof parsedArgs.count === 'number' ? parsedArgs.count : undefined,
-        };
-        const searchResult = await performWebSearchTool({
-          args: searchArgs,
-          fallbackQuery: userContent,
-          searchProvider,
-          controller,
-          assistantMessageId: assistantMessage.id,
-          chatId,
+      const shouldLog = callName === 'web_search' || isTutorToolName(callName);
+      const roundMeta: ToolCallLogEntry['metadata'] | undefined =
+        shouldLog && Number.isFinite(rounds)
+          ? { round: rounds + 1 }
+          : undefined;
+      const logEntry = shouldLog
+        ? startToolCallLogEntry({
+            set,
+            chatId,
+            messageId: assistantMessage.id,
+            name: callName,
+            input: parsedArgs,
+            category: callName === 'web_search' ? 'search' : isTutorToolName(callName) ? 'tutor' : 'other',
+            metadata:
+              callName === 'web_search'
+                ? { ...(roundMeta || {}), provider: searchProvider }
+                : roundMeta,
+          })
+        : undefined;
+      const startedAt = logEntry ? performance.now() : undefined;
+      const finalizeLog = (
+        status: 'success' | 'error',
+        output?: Record<string, unknown>,
+        errorMessage?: string,
+        metadataPatch?: ToolCallLogEntry['metadata'],
+      ) => {
+        if (!logEntry) return;
+        updateToolCallLogEntry({
           set,
-        });
-        if (searchResult.ok) {
-          aggregatedResults = mergeSearchResults([aggregatedResults, searchResult.results]);
-          const payload = searchResult.results
-            .slice(0, MAX_FALLBACK_RESULTS)
-            .map((r) => ({
-              title: r?.title,
-              url: r?.url,
-              description: r?.description,
-            }));
-          convo.push({
-            role: 'tool',
-            name: 'web_search',
-            tool_call_id: tc.id,
-            content: JSON.stringify(payload),
-          });
-        } else {
-          if (searchResult.error === NOTICE_MISSING_BRAVE_KEY) {
-            set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_BRAVE_KEY } }));
-          }
-          convo.push({
-            role: 'tool',
-            name: 'web_search',
-            tool_call_id: tc.id,
-            content: 'No results',
-          });
-        }
-        usedTool = true;
-        continue;
-      }
-
-      if (isTutorToolName(callName)) {
-        const tutorOutcome = await applyTutorToolCall({
-          name: callName,
-          args: parsedArgs,
-          chat,
           chatId,
-          assistantMessage,
-          set,
-          persistMessage,
+          messageId: assistantMessage.id,
+          toolCallId: logEntry.id,
+          updates: {
+            status,
+            output,
+            error: errorMessage,
+            duration:
+              startedAt != null
+                ? Math.max(0, Math.round(performance.now() - startedAt))
+                : undefined,
+            metadata: metadataPatch,
+          },
         });
-        if (tutorOutcome.handled) {
-          if (tutorOutcome.usedContent) usedTutorContentTool = true;
-          if (tutorOutcome.payload) {
+      };
+
+      try {
+        if (callName === 'web_search') {
+          const searchArgs: WebSearchArgs = {
+            query: typeof parsedArgs.query === 'string' ? parsedArgs.query : '',
+            count: typeof parsedArgs.count === 'number' ? parsedArgs.count : undefined,
+          };
+          const searchResult = await performWebSearchTool({
+            args: searchArgs,
+            fallbackQuery: userContent,
+            searchProvider,
+            controller,
+            assistantMessageId: assistantMessage.id,
+            chatId,
+            set,
+          });
+          const output: Record<string, unknown> = {
+            ok: searchResult.ok,
+            query: searchResult.query,
+          };
+          if (searchResult.ok) {
+            aggregatedResults = mergeSearchResults([aggregatedResults, searchResult.results]);
+            const payload = searchResult.results
+              .slice(0, MAX_FALLBACK_RESULTS)
+              .map((r) => ({
+                title: r?.title,
+                url: r?.url,
+                description: r?.description,
+              }));
             convo.push({
               role: 'tool',
-              name: callName,
+              name: 'web_search',
               tool_call_id: tc.id,
-              content: tutorOutcome.payload,
+              content: JSON.stringify(payload),
             });
+            output.resultsPreview = payload.slice(0, 3);
+            const metadataPatch: ToolCallLogEntry['metadata'] = {
+              ...(roundMeta || {}),
+              ...(typeof searchArgs.count === 'number' ? { requested: searchArgs.count } : {}),
+              results: searchResult.results.length,
+            };
+            finalizeLog('success', output, undefined, metadataPatch);
+          } else {
+            if (searchResult.error === NOTICE_MISSING_BRAVE_KEY) {
+              set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_BRAVE_KEY } }));
+            }
+            convo.push({
+              role: 'tool',
+              name: 'web_search',
+              tool_call_id: tc.id,
+              content: 'No results',
+            });
+            const metadataPatch = roundMeta
+              ? {
+                  ...roundMeta,
+                  ...(typeof searchArgs.count === 'number'
+                    ? { requested: searchArgs.count }
+                    : {}),
+                }
+              : undefined;
+            finalizeLog(
+              'error',
+              output,
+              searchResult.error || 'Search returned no results',
+              metadataPatch,
+            );
           }
           usedTool = true;
+          continue;
         }
+
+        if (isTutorToolName(callName)) {
+          const tutorOutcome = await applyTutorToolCall({
+            name: callName,
+            args: parsedArgs,
+            chat,
+            chatId,
+            assistantMessage,
+            set,
+            get,
+            persistMessage,
+          });
+          const output: Record<string, unknown> = {
+            handled: tutorOutcome.handled,
+            usedContent: tutorOutcome.usedContent,
+          };
+          if (tutorOutcome.payload) output.payload = tutorOutcome.payload;
+          if (tutorOutcome.learnerModelDebug) {
+            output.learnerModelDebug = tutorOutcome.learnerModelDebug;
+            learnerModelDebugResult = tutorOutcome.learnerModelDebug;
+          }
+          if (tutorOutcome.planUpdates) output.planUpdates = tutorOutcome.planUpdates;
+          if (tutorOutcome.learnerModel) learnerModelResult = tutorOutcome.learnerModel;
+          if (tutorOutcome.planUpdates) planUpdatesResult = tutorOutcome.planUpdates;
+          if (tutorOutcome.updatedPlan) updatedPlanResult = tutorOutcome.updatedPlan;
+          if (tutorOutcome.handled) {
+            if (tutorOutcome.usedContent) usedTutorContentTool = true;
+            if (tutorOutcome.payload) {
+              convo.push({
+                role: 'tool',
+                name: callName,
+                tool_call_id: tc.id,
+                content: tutorOutcome.payload,
+              });
+            }
+            usedTool = true;
+            const metadataPatch: ToolCallLogEntry['metadata'] = {
+              ...(roundMeta || {}),
+              ...(tutorOutcome.usedContent ? { usedContent: true } : {}),
+              ...(tutorOutcome.learnerModel ? { modelUpdated: true } : {}),
+              ...(tutorOutcome.planUpdates ? { planUpdated: true } : {}),
+            };
+            finalizeLog('success', output, undefined, metadataPatch);
+          } else {
+            const metadataPatch = roundMeta ? { ...roundMeta } : undefined;
+            finalizeLog('error', output, 'Tutor tool call was not handled', metadataPatch);
+          }
+          continue;
+        }
+
+        finalizeLog(
+          'error',
+          undefined,
+          `Unsupported tool: ${callName}`,
+          roundMeta ? { ...roundMeta } : undefined,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        finalizeLog('error', undefined, message, roundMeta ? { ...roundMeta } : undefined);
+        throw error;
       }
     }
 
@@ -231,5 +344,13 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     : undefined;
   const finalSystem = combineSystem(baseSystem, [], sourcesAppendix) ?? baseSystem;
 
-  return { finalSystem, usedTutorContentTool, hasSearchResults: hasResults };
+  return {
+    finalSystem,
+    usedTutorContentTool,
+    hasSearchResults: hasResults,
+    learnerModel: learnerModelResult,
+    planUpdates: planUpdatesResult,
+    updatedPlan: updatedPlanResult,
+    learnerModelDebug: learnerModelDebugResult,
+  };
 }

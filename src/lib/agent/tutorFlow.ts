@@ -44,15 +44,6 @@ export function ensureTutorDefaults(args: {
     changed = true;
   }
 
-  if (
-    typeof next.learnerModelUpdateFrequency !== 'number' ||
-    Number.isNaN(next.learnerModelUpdateFrequency) ||
-    next.learnerModelUpdateFrequency <= 0
-  ) {
-    next.learnerModelUpdateFrequency = 3;
-    changed = true;
-  }
-
   return {
     nextSettings: next,
     changed,
