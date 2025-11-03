@@ -2,7 +2,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { HeadlessTutorSession } from '@/lib/headless/session';
+import { HeadlessTutorSession, type HeadlessTurnArtifacts } from '@/lib/headless/session';
 import { LLMJudge, LLMUserSimulator } from '@/lib/headless/simulators';
 import { createModelIndex } from '@/lib/models';
 import type { Chat, Message, ORModel, ModelTransport, ToolCallLogEntry } from '@/lib/types';
@@ -14,6 +14,35 @@ import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { CURATED_MODELS } from '@/data/curatedModels';
 
 type ArgMap = Record<string, string | boolean>;
+
+type PresetDefinition = {
+  goal: string;
+  description: string;
+  turns?: number;
+  initialUser?: string;
+  tutorModel?: string;
+  studentModel?: string;
+  judgeModel?: string;
+};
+
+const PRESET_SCENARIOS: Record<string, PresetDefinition> = {
+  python_basics: {
+    goal: 'I want to learn Python fundamentals for scripting and automation.',
+    description: 'Entry-level programming learner requesting a structured Python plan.',
+    turns: 5,
+    initialUser: 'Hi tutor! I want to learn Python so I can automate simple tasks.',
+  },
+  data_science_refresh: {
+    goal: 'Help me refresh core statistics and Python data science workflows.',
+    description: 'Intermediate learner focused on applied statistics and Python tooling.',
+    turns: 4,
+  },
+  ap_calculus: {
+    goal: 'Prepare me for the AP Calculus AB exam with practice and review.',
+    description: 'High school learner targeting AP Calculus AB preparation.',
+    turns: 6,
+  },
+};
 
 function parseArgs(argv: string[]): ArgMap {
   const result: ArgMap = {};
@@ -51,7 +80,9 @@ function usage() {
       'Usage: npm run tutor:simulate -- --goal "Study topic" [options]',
       '',
       'Options:',
-      '  --goal "<text>"            Goal or scenario for the student (required)',
+      '  --goal "<text>"            Goal or scenario for the student (required unless --preset)',
+      '  --preset <name>           Use a predefined scenario (see --list-presets)',
+      '  --list-presets            Show built-in preset names and descriptions',
       '  --turns <n>                Maximum tutor turns (default: 4)',
       '  --tutor-model <id>         Model ID for tutor agent',
       '  --student-model <id>       Model ID for simulated student',
@@ -59,8 +90,45 @@ function usage() {
       '  --openrouter-key <key>     OpenRouter API key (default from env)',
       '  --anthropic-key <key>      Anthropic API key (optional, required for native anthropic models)',
       '  --initial-user "<text>"    Seed student message instead of generating',
+      '  --json-out <path>          Write full JSON report to this path (defaults to tmp/)',
     ].join('\n'),
   );
+}
+
+function normalizeEnvValue(value: string): string {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+async function loadEnvDefaults(): Promise<void> {
+  const envFiles = ['.env.local', '.env'];
+  for (const filename of envFiles) {
+    try {
+      const fullPath = path.resolve(process.cwd(), filename);
+      const content = await fs.readFile(fullPath, 'utf8');
+      const lines = content.split(/\r?\n/);
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith('#')) continue;
+        const idx = line.indexOf('=');
+        if (idx <= 0) continue;
+        const key = line.slice(0, idx).trim();
+        if (!key) continue;
+        if (process.env[key]) continue;
+        const value = normalizeEnvValue(line.slice(idx + 1));
+        if (!value) continue;
+        process.env[key] = value.replace(/\\n/g, '\n');
+      }
+    } catch {
+      // Missing env file is fine; continue to the next candidate.
+    }
+  }
 }
 
 function coerceInt(value: string | boolean | undefined, fallback: number): number {
@@ -132,9 +200,11 @@ type SimulationTurn = {
   turn: number;
   student: string;
   tutor: string;
+  composition: HeadlessTurnArtifacts['composition'];
   toolCalls?: ToolCallLogEntry[];
   tutorUi?: Record<string, unknown>;
   plan: PlanTurnResult;
+  debugPayload?: string;
 };
 
 type SimulationReport = {
@@ -195,23 +265,104 @@ function printSection(title: string) {
   console.log('-'.repeat(title.length));
 }
 
-function formatToolCalls(entries: ToolCallLogEntry[] | undefined): string {
-  if (!entries || entries.length === 0) return 'none';
-  return entries
-    .map((entry) => {
-      const status = entry.status === 'success' ? '✓' : entry.status === 'error' ? '✕' : '…';
-      return `${status} ${entry.name}`;
-    })
-    .join(', ');
+function summarizeToolDefinitions(
+  tools: HeadlessTurnArtifacts['composition']['tools'],
+): string {
+  if (!tools || tools.length === 0) return 'none';
+  const names = tools.map((tool) => tool.function?.name ?? '(unnamed)');
+  return names.join(', ');
 }
 
-function formatLearnerSummary(plan: PlanTurnResult) {
+function summarizePlugins(plugins: HeadlessTurnArtifacts['composition']['plugins']): string {
+  if (!plugins || plugins.length === 0) return 'none';
+  return plugins.map((plugin) => plugin.id).join(', ');
+}
+
+function previewTextBlock(text: string | undefined, maxLines = 4): string[] {
+  if (!text) return ['(none)'];
+  const wrapped = wrapText(text);
+  const lines = wrapped.slice(0, maxLines);
+  if (wrapped.length > maxLines) lines.push('...');
+  return lines;
+}
+
+function summarizePlanFlags(plan: PlanTurnResult): string {
   const segments: string[] = [];
   if (plan.learnerModel) segments.push('learner model updated');
   if (plan.planUpdates) segments.push('plan updated');
   if (plan.usedTutorContentTool) segments.push('inline tutor UI');
   if (plan.hasSearchResults) segments.push('search results cited');
   return segments.length ? segments.join(', ') : 'no tutor tool usage';
+}
+
+function summarizePlanUpdates(plan: PlanTurnResult): string[] {
+  const updates = plan.planUpdates;
+  if (!updates) return ['(no plan deltas)'];
+
+  const lines: string[] = [];
+  if (updates.statusChanges?.length) {
+    lines.push(`status changes: ${updates.statusChanges.length}`);
+  }
+  if (updates.masteryChanges?.length) {
+    lines.push(`mastery changes: ${updates.masteryChanges.length}`);
+  }
+  if (!lines.length) return ['(no plan deltas)'];
+  return lines;
+}
+
+function learnerModelSummary(plan: PlanTurnResult): string | undefined {
+  if (!plan.learnerModel) return undefined;
+  const mastery = plan.learnerModel.mastery ?? {};
+  const nodeCount = Object.keys(mastery).length;
+  const avg = plan.learnerModel.globalMetrics?.averageConfidence;
+  const avgPct = typeof avg === 'number' ? `${Math.round(avg * 100)}% avg confidence` : undefined;
+  const parts = [`nodes tracked: ${nodeCount}`];
+  if (avgPct) parts.push(avgPct);
+  return parts.join(', ');
+}
+
+function printToolCallDetails(entries: ToolCallLogEntry[] | undefined) {
+  if (!entries || entries.length === 0) {
+    console.log('Tool calls: none');
+    return;
+  }
+  console.log('Tool calls:');
+  entries.forEach((entry) => {
+    const status = entry.status === 'success' ? '✓' : entry.status === 'error' ? '✕' : '…';
+    const meta: string[] = [];
+    if (typeof entry.duration === 'number') meta.push(`${Math.round(entry.duration)}ms`);
+    if (entry.metadata?.provider) meta.push(`provider=${entry.metadata.provider}`);
+    if (entry.metadata?.modelUsed) meta.push(`model=${entry.metadata.modelUsed}`);
+    if (entry.metadata?.round) meta.push(`round=${entry.metadata.round}`);
+    const metaSuffix = meta.length ? ` (${meta.join(', ')})` : '';
+    console.log(`  ${status} ${entry.name}${metaSuffix}`);
+    if (entry.category) {
+      console.log(`    category: ${entry.category}`);
+    }
+    const inputKeys = Object.keys(entry.input ?? {});
+    if (inputKeys.length) {
+      console.log(`    input: ${JSON.stringify(entry.input)}`);
+    }
+    if (entry.output && Object.keys(entry.output).length) {
+      console.log(`    output: ${JSON.stringify(entry.output)}`);
+    }
+    if (entry.error) {
+      console.log(`    error: ${entry.error}`);
+    }
+  });
+}
+
+function printTutorUiSummary(tutorUi: Record<string, unknown> | undefined) {
+  if (!tutorUi) {
+    console.log('Tutor UI: none');
+    return;
+  }
+  const summary = summarizePlan(tutorUi);
+  if (summary) {
+    console.log(`Tutor UI: ${summary}`);
+  } else {
+    console.log('Tutor UI: (available -- see JSON report)');
+  }
 }
 
 function indentLines(lines: string[], indent = '  '): string[] {
@@ -229,12 +380,45 @@ function printSummary(report: SimulationReport, jsonPath: string) {
 
   report.turns.forEach((turn) => {
     printSection(`Turn ${turn.turn}`);
-    console.log('Student:');
+    console.log('Student message:');
     indentLines(wrapText(turn.student)).forEach((line) => console.log(line));
-    console.log('Tutor:');
+    console.log('Tutor response:');
     indentLines(wrapText(turn.tutor)).forEach((line) => console.log(line));
-    console.log(`Tool calls: ${formatToolCalls(turn.toolCalls)}`);
-    console.log(`Plan summary: ${formatLearnerSummary(turn.plan)}`);
+
+    console.log('\nComposition');
+    console.log('-----------');
+    console.log(`  Should plan: ${turn.composition.shouldPlan ? 'yes' : 'no'}`);
+    console.log(`  Tools configured: ${summarizeToolDefinitions(turn.composition.tools)}`);
+    console.log(`  Plugins: ${summarizePlugins(turn.composition.plugins)}`);
+    if (turn.composition.providerSort) {
+      console.log(`  Provider sort: ${JSON.stringify(turn.composition.providerSort)}`);
+    }
+    if (turn.composition.system) {
+      console.log('  System prompt preview:');
+      indentLines(previewTextBlock(turn.composition.system), '    ').forEach((line) =>
+        console.log(line),
+      );
+    }
+
+    console.log('\nPlanning Artifacts');
+    console.log('------------------');
+    console.log(`  Flags: ${summarizePlanFlags(turn.plan)}`);
+    const learnerSummary = learnerModelSummary(turn.plan);
+    if (learnerSummary) console.log(`  Learner model: ${learnerSummary}`);
+    console.log('  Plan deltas:');
+    indentLines(summarizePlanUpdates(turn.plan), '    ').forEach((line) => console.log(line));
+    if (turn.plan.finalSystem) {
+      console.log('  Final system preview:');
+      indentLines(previewTextBlock(turn.plan.finalSystem), '    ').forEach((line) =>
+        console.log(line),
+      );
+    }
+
+    console.log('');
+    printToolCallDetails(turn.toolCalls);
+    printTutorUiSummary(turn.tutorUi);
+    console.log(`Debug payload: ${turn.debugPayload ? 'available (see JSON report)' : 'none'}`);
+    console.log('');
   });
 
   printSection('Judge Verdict');
@@ -251,9 +435,10 @@ function printSummary(report: SimulationReport, jsonPath: string) {
     report.judge.improvements.forEach((item) => console.log(`  • ${item}`));
   }
 
-  console.log('\nFull JSON report saved to:');
-  console.log(`  ${jsonPath}`);
-  console.log('Open in your editor or run `jq`/`less` for deeper inspection.\n');
+  console.log('\nArtifacts');
+  console.log('---------');
+  console.log(`  JSON report: ${jsonPath}`);
+  console.log('Opened best with your editor, `less`, or `jq` for deeper inspection.\n');
 }
 
 async function writeReport(
@@ -273,31 +458,55 @@ async function writeReport(
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+
+  if (args['list-presets']) {
+    console.log('\nAvailable presets:\n');
+    Object.entries(PRESET_SCENARIOS).forEach(([name, preset]) => {
+      const details = [`  ${name}`];
+      details.push(`    Goal: ${preset.goal}`);
+      details.push(`    Turns: ${preset.turns ?? 4}`);
+      if (preset.initialUser) details.push(`    Initial student: ${preset.initialUser}`);
+      details.push(`    ${preset.description}`);
+      console.log(details.join('\n'));
+      console.log('');
+    });
+    return;
+  }
+
   if (args.help) {
     usage();
     return;
   }
 
-  const goalArg = args.goal;
-  if (typeof goalArg !== 'string' || goalArg.trim().length === 0) {
-    usage();
-    throw new Error('Missing required --goal argument.');
-  }
-  const goal = goalArg.trim();
+  await loadEnvDefaults();
 
-  const turns = Math.max(1, coerceInt(args.turns, 4));
+  const presetName = coerceString(args.preset)?.toLowerCase();
+  const preset = presetName ? PRESET_SCENARIOS[presetName] : undefined;
+  if (presetName && !preset) {
+    const options = Object.keys(PRESET_SCENARIOS).join(', ');
+    throw new Error(`Unknown preset "${presetName}". Available presets: ${options}`);
+  }
+
+  const goalArg = coerceString(args.goal);
+  const goal = goalArg?.trim() || preset?.goal;
+  if (!goal) {
+    usage();
+    throw new Error('Missing required --goal argument (or use --preset).');
+  }
+
+  const turns = Math.max(1, coerceInt(args.turns, preset?.turns ?? 4));
   const tutorModel =
     typeof args['tutor-model'] === 'string' && args['tutor-model']
       ? args['tutor-model']
-      : DEFAULT_TUTOR_MODEL_ID;
+      : preset?.tutorModel ?? DEFAULT_TUTOR_MODEL_ID;
   const studentModel =
     typeof args['student-model'] === 'string' && args['student-model']
       ? args['student-model']
-      : DEFAULT_MODEL_ID;
+      : preset?.studentModel ?? DEFAULT_MODEL_ID;
   const judgeModel =
     typeof args['judge-model'] === 'string' && args['judge-model']
       ? args['judge-model']
-      : DEFAULT_MODEL_ID;
+      : preset?.judgeModel ?? DEFAULT_MODEL_ID;
 
   const openrouterKey =
     (typeof args['openrouter-key'] === 'string' && args['openrouter-key']) ||
@@ -374,15 +583,25 @@ async function main() {
     turn: number;
     user: string;
     assistant: string;
+    composition: HeadlessTurnArtifacts['composition'];
     toolCalls?: ToolCallLogEntry[];
     tutorUi?: Record<string, unknown>;
     plan: PlanTurnResult;
+    debugPayload?: string;
   }> = [];
 
   let studentMessage =
     typeof args['initial-user'] === 'string'
       ? args['initial-user']
-      : await studentSim.initialMessage(goal);
+      : preset?.initialUser ?? (await studentSim.initialMessage(goal));
+
+  if (presetName) {
+    console.log(
+      `Using preset "${presetName}" -- goal "${goal}" (${turns} turn${
+        turns === 1 ? '' : 's'
+      }).\n`,
+    );
+  }
 
   for (let turn = 1; turn <= turns; turn += 1) {
     const turnResult = await session.runTurn(studentMessage);
@@ -394,9 +613,11 @@ async function main() {
       turn,
       user: turnResult.user.content,
       assistant: turnResult.assistant.content,
+      composition: turnResult.artifacts.composition,
       toolCalls: turnResult.artifacts.toolCalls,
       tutorUi,
       plan: turnResult.artifacts.plan,
+      debugPayload: turnResult.artifacts.debugPayload,
     });
 
     if (turn === turns) break;
@@ -420,9 +641,11 @@ async function main() {
       turn: entry.turn,
       student: entry.user,
       tutor: entry.assistant,
+      composition: entry.composition,
       toolCalls: entry.toolCalls,
       tutorUi: entry.tutorUi,
       plan: entry.plan,
+      debugPayload: entry.debugPayload,
     })),
     transcript: transcript.map((msg) => ({
       id: msg.id,
