@@ -1,13 +1,13 @@
 type CuratedModel = { id: string; name: string };
 
 export const DEFAULT_CHAT_MODEL: CuratedModel = {
-  id: 'moonshotai/kimi-k2-0905',
-  name: 'Kimi K2',
+  id: 'x-ai/grok-4-fast',
+  name: 'Grok 4 Fast',
 };
 
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
-  id: 'anthropic/claude-haiku-4.5',
-  name: 'Claude Haiku 4.5',
+  id: 'x-ai/grok-4-fast',
+  name: 'Grok 4 Fast',
 };
 
 export const DEFAULT_MODEL_ID = DEFAULT_CHAT_MODEL.id;
