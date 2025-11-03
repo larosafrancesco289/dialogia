@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   AcademicCapIcon,
@@ -79,8 +79,8 @@ function AnimatedStep({
 
   const animationClass =
     phase === 'entered'
-      ? 'transition-all duration-300 ease-out opacity-100 translate-y-0'
-      : 'transition-all duration-300 ease-out opacity-0 translate-y-2';
+      ? 'transition-all duration-450 ease-[cubic-bezier(0.16,0.84,0.44,1)] opacity-100 translate-y-0'
+      : 'transition-all duration-450 ease-[cubic-bezier(0.16,0.84,0.44,1)] opacity-0 translate-y-3';
   const merged = className ? `${className} ${animationClass}` : animationClass;
 
   return <div className={merged}>{children}</div>;
@@ -257,16 +257,24 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
     }
     return total > 0 ? 0 : -1;
   }, [items, mcq, total]);
-  const [activeIndex, setActiveIndex] = useState(() =>
+  const [activeIndex, setActiveIndex] = useState(
     firstPendingIndex >= 0 ? firstPendingIndex : 0,
   );
   const advanceTimer = useRef<number | null>(null);
+  const transitionTimer = useRef<number | null>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
+  const [transitionStage, setTransitionStage] = useState<'idle' | 'out' | 'in'>('idle');
 
   useEffect(
     () => () => {
       if (advanceTimer.current != null) {
         window.clearTimeout(advanceTimer.current);
         advanceTimer.current = null;
+      }
+      if (transitionTimer.current != null) {
+        window.clearTimeout(transitionTimer.current);
+        transitionTimer.current = null;
       }
     },
     [],
@@ -299,18 +307,120 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
   const answered = !!activeAttempt.done;
   const correctIdx = typeof activeItem.correct === 'number' ? activeItem.correct : -1;
 
-  const goToIndex = (idx: number) => {
-    if (!Number.isFinite(idx)) return;
-    setActiveIndex((prev) => {
-      if (!total) return prev;
+  const clampIndex = useCallback(
+    (idx: number) => {
+      if (!total) return 0;
+      if (Number.isNaN(idx)) return 0;
       if (idx < 0) return 0;
       if (idx >= total) return total - 1;
       return idx;
-    });
-  };
+    },
+    [total],
+  );
 
-  const goPrevious = () => goToIndex(activeIndex - 1);
-  const goNext = () => goToIndex(activeIndex + 1);
+  const setIndexClamped = useCallback(
+    (idx: number) => {
+      const target = clampIndex(idx);
+      setActiveIndex(target);
+    },
+    [clampIndex],
+  );
+
+  const requestAnimatedIndex = useCallback(
+    (idx: number) => {
+      const target = clampIndex(idx);
+      if (!total || target === activeIndex) return;
+      if (prefersReducedMotion) {
+        setIndexClamped(target);
+        return;
+      }
+      if (transitionStage !== 'idle') return;
+      setPendingIndex(target);
+      setTransitionStage('out');
+    },
+    [activeIndex, clampIndex, prefersReducedMotion, setIndexClamped, total, transitionStage],
+  );
+
+  const goToIndex = useCallback(
+    (idx: number, opts?: { animate?: boolean }) => {
+      if (opts?.animate) {
+        requestAnimatedIndex(idx);
+        return;
+      }
+      if (transitionTimer.current != null) {
+        window.clearTimeout(transitionTimer.current);
+        transitionTimer.current = null;
+      }
+      setPendingIndex(null);
+      setTransitionStage('idle');
+      setIndexClamped(idx);
+    },
+    [requestAnimatedIndex, setIndexClamped],
+  );
+
+  const goPrevious = useCallback(
+    () => goToIndex(activeIndex - 1, { animate: true }),
+    [activeIndex, goToIndex],
+  );
+  const goNext = useCallback(
+    () => goToIndex(activeIndex + 1, { animate: true }),
+    [activeIndex, goToIndex],
+  );
+
+  useEffect(() => {
+    if (prefersReducedMotion && transitionStage !== 'idle') {
+      if (pendingIndex != null) {
+        setIndexClamped(pendingIndex);
+      }
+      if (transitionTimer.current != null) {
+        window.clearTimeout(transitionTimer.current);
+        transitionTimer.current = null;
+      }
+      setPendingIndex(null);
+      setTransitionStage('idle');
+    }
+  }, [prefersReducedMotion, pendingIndex, setIndexClamped, transitionStage]);
+
+  useEffect(() => {
+    if (prefersReducedMotion) return undefined;
+    if (transitionStage === 'out') {
+      if (transitionTimer.current != null) {
+        window.clearTimeout(transitionTimer.current);
+        transitionTimer.current = null;
+      }
+      transitionTimer.current = window.setTimeout(() => {
+        if (pendingIndex != null) {
+          setIndexClamped(pendingIndex);
+        }
+        transitionTimer.current = null;
+        setTransitionStage('in');
+      }, 220);
+      return () => {
+        if (transitionTimer.current != null) {
+          window.clearTimeout(transitionTimer.current);
+          transitionTimer.current = null;
+        }
+      };
+    }
+    if (transitionStage === 'in') {
+      if (transitionTimer.current != null) {
+        window.clearTimeout(transitionTimer.current);
+        transitionTimer.current = null;
+      }
+      transitionTimer.current = window.setTimeout(() => {
+        setTransitionStage('idle');
+        setPendingIndex(null);
+        transitionTimer.current = null;
+      }, 320);
+      return () => {
+        if (transitionTimer.current != null) {
+          window.clearTimeout(transitionTimer.current);
+          transitionTimer.current = null;
+        }
+      };
+    }
+    return undefined;
+  }, [transitionStage, pendingIndex, setIndexClamped, prefersReducedMotion]);
 
   const handleSelect = (choiceIdx: number) => {
     if (answered) return;
@@ -347,16 +457,33 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
       advanceTimer.current = null;
     }
     if (correct && activeIndex < total - 1) {
+      const delay = prefersReducedMotion ? 220 : 650;
       advanceTimer.current = window.setTimeout(() => {
-        goToIndex(activeIndex + 1);
+        goToIndex(activeIndex + 1, { animate: true });
         advanceTimer.current = null;
-      }, 250);
+      }, delay);
     }
   };
 
+  const cardTransitionClass = prefersReducedMotion
+    ? ''
+    : transitionStage === 'out'
+      ? 'opacity-0 translate-y-4 scale-[0.97]'
+      : 'opacity-100 translate-y-0 scale-100';
+  const transitionBase = prefersReducedMotion
+    ? ''
+    : 'transition-all duration-400 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-transform will-change-opacity';
+  const cardClassName = [
+    'rounded-md border border-border bg-surface p-3',
+    transitionBase,
+    cardTransitionClass,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-border bg-surface p-3">
+      <div className={cardClassName}>
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             Question {activeIndex + 1} / {total}
@@ -369,7 +496,7 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
               if (!attempt?.done) return 'pending';
               return attempt.correct ? 'correct' : 'incorrect';
             }}
-            onSelect={goToIndex}
+            onSelect={(idx) => goToIndex(idx, { animate: true })}
           />
         </div>
 
