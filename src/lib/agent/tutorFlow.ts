@@ -3,6 +3,7 @@
 
 import { buildTutorContextFull, buildTutorContextSummary } from '@/lib/agent/tutor';
 import type { Message } from '@/lib/types';
+import { applyTutorDefaults } from '@/lib/store/normalize';
 
 export function buildHiddenTutorContent(tutor: unknown): string {
   try {
@@ -17,39 +18,7 @@ export function buildHiddenTutorContent(tutor: unknown): string {
   }
 }
 
-export function ensureTutorDefaults(args: {
-  ui: any;
-  chat: { settings: any };
-  fallbackDefaultModelId: string;
-}): { nextSettings: any; changed: boolean; defaultModelId: string } {
-  const { ui, chat, fallbackDefaultModelId } = args;
-  let tutorDefaultModelId = ui?.tutorDefaultModelId || chat.settings.tutor_default_model;
-  if (!tutorDefaultModelId) tutorDefaultModelId = fallbackDefaultModelId;
-
-  const next = { ...chat.settings };
-  let changed = false;
-
-  if (next.model !== tutorDefaultModelId) {
-    next.model = tutorDefaultModelId;
-    changed = true;
-  }
-
-  if (next.tutor_default_model !== tutorDefaultModelId) {
-    next.tutor_default_model = tutorDefaultModelId;
-    changed = true;
-  }
-
-  if (next.enableLearnerModel !== true) {
-    next.enableLearnerModel = true;
-    changed = true;
-  }
-
-  return {
-    nextSettings: next,
-    changed,
-    defaultModelId: tutorDefaultModelId,
-  };
-}
+export const ensureTutorDefaults = applyTutorDefaults;
 
 export function mergeTutorPayload(prev: any, patch: any): { merged: any; hiddenContent: string } {
   const merged = { ...(prev || {}), ...(patch || {}) };

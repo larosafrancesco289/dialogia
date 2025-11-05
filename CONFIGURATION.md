@@ -72,4 +72,5 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
   `src/lib/api/openrouterClient.ts`. Update the client if new headers are required.
 - Access gate secrets should be long random hex strings. Regenerate when rotating codes.
 - Zero Data Retention (ZDR) lists fetch from OpenRouter. Cache them via the store (see Phase 4 of
-  the refactor plan) and update documentation if new flags or endpoints appear.
+  the refactor plan); Dialogia automatically refreshes these lists every 6 hours to prevent stale
+  provider/model data. Update documentation if new flags or endpoints appear.

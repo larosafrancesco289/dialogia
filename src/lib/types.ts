@@ -31,6 +31,18 @@ export type ChatSettings = {
   enableLearnerModel?: boolean; // Whether to track mastery
 };
 
+export type GenSettingsSnapshot = Pick<ChatSettings,
+  | 'temperature'
+  | 'top_p'
+  | 'max_tokens'
+  | 'reasoning_effort'
+  | 'reasoning_tokens'
+  | 'search_enabled'
+  | 'search_provider'
+  | 'tutor_mode'> & {
+  providerSort?: ProviderSort;
+};
+
 export type ToolCallLogEntry = {
   id: string;
   name: string;
@@ -69,17 +81,7 @@ export type Message = {
   systemSnapshot?: string;
   // Snapshot of generation settings used for this assistant message
   // (temperature, top_p, tokens, reasoning, and feature toggles)
-  genSettings?: {
-    temperature?: number;
-    top_p?: number;
-    max_tokens?: number;
-    reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
-    reasoning_tokens?: number;
-    search_enabled?: boolean;
-    search_provider?: 'brave' | 'openrouter';
-    tutor_mode?: boolean;
-    providerSort?: ProviderSort;
-  };
+  genSettings?: GenSettingsSnapshot;
   // OpenRouter: file parsing annotations returned by assistant (e.g., PDF parsing)
   // When present, we include them in subsequent requests to skip re-parsing costs.
   annotations?: any;

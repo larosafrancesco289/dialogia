@@ -12,6 +12,7 @@ import type {
   StoreAccess,
   StoreSetter,
   StoreGetter,
+  TurnContext,
 } from '@/lib/agent/types';
 import { ProviderSort } from '@/lib/agent/types';
 
@@ -158,4 +159,17 @@ export function recordDebugIfEnabled(store: StoreAccess, messageId: string, body
       },
     };
   });
+}
+
+export function captureDebugPayload(
+  turn: TurnContext,
+  messageId: string,
+  build: () => unknown,
+): void {
+  try {
+    const payload = build();
+    recordDebugIfEnabled({ set: turn.set, get: turn.get }, messageId, payload);
+  } catch {
+    /* ignore debug capture failures */
+  }
 }

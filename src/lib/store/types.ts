@@ -144,6 +144,8 @@ export type StoreState = {
   zdrModelIds?: string[];
   // Cached ZDR provider ids (ephemeral; not persisted)
   zdrProviderIds?: string[];
+  // Timestamp when ZDR lists were last fetched
+  zdrFetchedAt?: number;
 
   ui: UIState;
 

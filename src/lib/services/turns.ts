@@ -5,10 +5,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Attachment, Message, ModelTransport, LearnerModel, Chat } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
-import { type StoreSetter, type StoreGetter, type StoreAccess } from '@/lib/agent/types';
+import { type StoreSetter, type StoreGetter, type StoreAccess, type TurnContext } from '@/lib/agent/types';
 import { saveMessage, saveChat } from '@/lib/db';
 import { prepareAttachmentsForModel } from '@/lib/agent/attachments';
-import { requireClientKeyOrProxy, requireAnthropicClientKeyOrProxy } from '@/lib/config';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { attachTutorUiState, ensureTutorDefaults, mergeTutorPayload } from '@/lib/agent/tutorFlow';
 import { composeTurn } from '@/lib/agent/compose';
@@ -29,6 +28,10 @@ import {
 } from '@/lib/store/notices';
 import { resolveModelTransport } from '@/lib/providers';
 import { getLatestLearnerModel, initializeLearnerModel } from '@/lib/agent/learnerModel';
+import { resetEphemeralUi } from '@/lib/ui/defaults';
+import { requireModelAuth } from '@/lib/auth/require';
+import { normalizeParallelModels } from '@/lib/store/normalize';
+import { updateMessageInChat } from '@/lib/store/messageUtils';
 
 export type SendTurnOptions = {
   content: string;
@@ -166,9 +169,10 @@ export async function sendUserTurn({
       DEFAULT_TUTOR_MODEL_ID;
   }
 
-  const parallelModels = Array.isArray(chat.settings.parallel_models)
-    ? chat.settings.parallel_models.filter((id): id is string => typeof id === 'string' && id.length > 0)
-    : [];
+  const parallelModels = normalizeParallelModels(
+    chat.settings.model,
+    chat.settings.parallel_models,
+  );
   const activeModelIds = Array.from(
     new Set(
       [chat.settings.model, ...parallelModels].filter(
@@ -180,33 +184,23 @@ export async function sendUserTurn({
   const primaryModelId = activeModelIds[0];
 
   const modelIndexSnapshot = get().modelIndex;
-  const authByTransport = new Map<ModelTransport, { key?: string; useProxy: boolean }>();
-  const authByModelId = new Map<string, { transport: ModelTransport; apiKey: string }>();
+  const authByModelId = new Map<string, ReturnType<typeof requireModelAuth>>();
 
-  const ensureAuthForTransport = (transport: ModelTransport) => {
-    if (authByTransport.has(transport)) return authByTransport.get(transport)!;
-    try {
-      const status =
-        transport === 'anthropic' ? requireAnthropicClientKeyOrProxy() : requireClientKeyOrProxy();
-      authByTransport.set(transport, status);
-      return status;
-    } catch (error) {
-      const notice =
-        transport === 'anthropic' ? NOTICE_MISSING_ANTHROPIC_KEY : NOTICE_MISSING_CLIENT_KEY;
-      set((state) => ({ ui: { ...state.ui, notice } }));
-      throw error;
-    }
+  const captureMissingAuthNotice = (err: unknown) => {
+    const transport = ((err as any)?.transport ??
+      'openrouter') as ModelTransport | undefined;
+    const notice =
+      transport === 'anthropic' ? NOTICE_MISSING_ANTHROPIC_KEY : NOTICE_MISSING_CLIENT_KEY;
+    set((state) => ({ ui: { ...state.ui, notice } }));
   };
 
-  const ensureAuthForModel = (modelId?: string) => {
+  const fetchAuthForModel = (modelId: string) => {
     if (!modelId) return null;
-    if (authByModelId.has(modelId)) return authByModelId.get(modelId)!;
-    const meta = modelIndexSnapshot.get(modelId);
-    const transport = resolveModelTransport(modelId, meta);
-    const transportAuth = ensureAuthForTransport(transport);
-    const entry = { transport, apiKey: transportAuth.key || '' };
-    authByModelId.set(modelId, entry);
-    return entry;
+    const cached = authByModelId.get(modelId);
+    if (cached) return cached;
+    const auth = requireModelAuth(modelId, modelIndexSnapshot);
+    authByModelId.set(modelId, auth);
+    return auth;
   };
 
   try {
@@ -218,9 +212,11 @@ export async function sendUserTurn({
       modelsNeedingAuth.add(tutorDefaultModelId);
     }
     for (const id of modelsNeedingAuth) {
-      ensureAuthForModel(id);
+      if (!id) continue;
+      fetchAuthForModel(id);
     }
-  } catch {
+  } catch (error) {
+    captureMissingAuthNotice(error);
     return;
   }
 
@@ -378,12 +374,31 @@ export async function sendUserTurn({
     const controller = new AbortController();
     const abortListener = () => controller.abort();
     masterController.signal.addEventListener('abort', abortListener);
-    const auth = authByModelId.get(modelId) || ensureAuthForModel(modelId);
+    let auth = authByModelId.get(modelId);
+    if (!auth) {
+      try {
+        auth = fetchAuthForModel(modelId) ?? undefined;
+      } catch (error) {
+        captureMissingAuthNotice(error);
+        masterController.signal.removeEventListener('abort', abortListener);
+        onComplete();
+        return;
+      }
+    }
     if (!auth) {
       masterController.signal.removeEventListener('abort', abortListener);
       onComplete();
       return;
     }
+    const turnContext = {
+      apiKey: auth.apiKey,
+      transport: auth.transport,
+      set,
+      get,
+      models: snapshot.models,
+      modelIndex: snapshot.modelIndex,
+      persistMessage: saveMessage,
+    } satisfies TurnContext;
     const composition = await composeTurn({
       chat: chatForModel,
       ui: snapshot.ui,
@@ -394,7 +409,7 @@ export async function sendUserTurn({
     });
 
     if (isPrimary && composition.consumedTutorNudge) {
-      set((state) => ({ ui: { ...state.ui, nextTutorNudge: undefined } }));
+      set((state) => ({ ui: resetEphemeralUi(state.ui) }));
     }
 
     const composedMessages = composition.messages;
@@ -415,13 +430,7 @@ export async function sendUserTurn({
         patch.planUpdates = pendingPlanUpdates;
       }
       Object.assign(assistantMessage, patch);
-      set((state) => {
-        const list = state.messages[chatId] ?? [];
-        const updated = list.map((m) =>
-          m.id === assistantMessage.id ? ({ ...m, ...patch } as Message) : m,
-        );
-        return { messages: { ...state.messages, [chatId]: updated } };
-      });
+      set((state) => updateMessageInChat(state, chatId, assistantMessage.id, patch));
     };
 
     try {
@@ -437,14 +446,8 @@ export async function sendUserTurn({
           searchEnabled,
           searchProvider,
           providerSort,
-          apiKey: auth.apiKey,
-          transport: auth.transport,
           controller,
-          set,
-          get,
-          models: snapshot.models,
-          modelIndex: snapshot.modelIndex,
-          persistMessage: saveMessage,
+          turn: turnContext,
         });
 
         if (planResult.learnerModel) {
@@ -499,15 +502,12 @@ export async function sendUserTurn({
             searchProvider,
             providerSort,
           });
-          set((state) => {
-            const list = state.messages[chatId] ?? [];
-            const updated = list.map((m) =>
-              m.id === assistantMessage.id
-                ? ({ ...m, systemSnapshot: planResult.finalSystem, genSettings: gen } as any)
-                : m,
-            );
-            return { messages: { ...state.messages, [chatId]: updated } };
-          });
+          set((state) =>
+            updateMessageInChat(state, chatId, assistantMessage.id, {
+              systemSnapshot: planResult.finalSystem,
+              genSettings: gen,
+            }),
+          );
         } catch {
           /* best effort snapshot */
         }
@@ -527,11 +527,7 @@ export async function sendUserTurn({
             learnerModel: pendingLearnerModel ?? baseMessage.learnerModel,
             planUpdates: pendingPlanUpdates ?? baseMessage.planUpdates,
           };
-          set((state) => {
-            const list = state.messages[chatId] ?? [];
-            const updated = list.map((m) => (m.id === assistantMessage.id ? finalMsg : m));
-            return { messages: { ...state.messages, [chatId]: updated } };
-          });
+          set((state) => updateMessageInChat(state, chatId, assistantMessage.id, finalMsg));
           await saveMessage(finalMsg);
           return;
         }
@@ -548,14 +544,8 @@ export async function sendUserTurn({
           assistantMessage,
           messages: streamingMessages,
           controller,
-          apiKey: auth.apiKey,
-          transport: auth.transport,
           providerSort,
-          set,
-          get,
-          models: snapshot.models,
-          modelIndex: snapshot.modelIndex,
-          persistMessage: saveMessage,
+          turn: turnContext,
           plugins,
           toolDefinition,
           startBuffered: false,
@@ -571,14 +561,8 @@ export async function sendUserTurn({
         assistantMessage,
         messages: composedMessages,
         controller,
-        apiKey: auth.apiKey,
-        transport: auth.transport,
         providerSort,
-        set,
-        get,
-        models: snapshot.models,
-        modelIndex: snapshot.modelIndex,
-        persistMessage: saveMessage,
+        turn: turnContext,
         plugins,
         toolDefinition,
         startBuffered: false,
@@ -678,19 +662,22 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
   try {
     const controller = new AbortController();
     setTurnController(chatId, controller);
+    const turnContext = {
+      apiKey: targetAuth.apiKey,
+      transport: targetAuth.transport,
+      set,
+      get,
+      models: get().models,
+      modelIndex: modelIndexSnapshot,
+      persistMessage: saveMessage,
+    } satisfies TurnContext;
     await regenerate({
       chat,
       chatId,
       targetMessageId: messageId,
       messages,
-      models: get().models,
-      modelIndex: get().modelIndex,
-      apiKey: targetAuth.apiKey,
-      transport: targetAuth.transport,
+      turn: turnContext,
       controller,
-      set,
-      get,
-      persistMessage: saveMessage,
       overrideModelId,
     });
   } catch (error: any) {
@@ -743,15 +730,14 @@ function resolveModelAuthForSingle({
   modelId?: string;
   modelIndex: ModelIndex;
   set: StoreSetter;
-}): { transport: ModelTransport; apiKey: string } | null {
+}): { transport: ModelTransport; apiKey: string; useProxy: boolean } | null {
   if (!modelId) return null;
-  const meta = modelIndex.get(modelId);
-  const transport = resolveModelTransport(modelId, meta);
   try {
-    const status =
-      transport === 'anthropic' ? requireAnthropicClientKeyOrProxy() : requireClientKeyOrProxy();
-    return { transport, apiKey: status.key || '' };
-  } catch {
+    return requireModelAuth(modelId, modelIndex);
+  } catch (error) {
+    const meta = modelIndex.get(modelId);
+    const transport = ((error as any)?.transport ??
+      resolveModelTransport(modelId, meta)) as ModelTransport | undefined;
     const notice =
       transport === 'anthropic' ? NOTICE_MISSING_ANTHROPIC_KEY : NOTICE_MISSING_CLIENT_KEY;
     set((state) => ({ ui: { ...state.ui, notice } }));

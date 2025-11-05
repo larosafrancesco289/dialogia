@@ -83,6 +83,16 @@ export type ToolDefinition = {
 
 export type StoreAccess = { set: StoreSetter; get: StoreGetter };
 
+export type TurnContext = {
+  apiKey: string;
+  transport: ModelTransport;
+  set: StoreSetter;
+  get: StoreGetter;
+  models: ORModel[];
+  modelIndex: ModelIndex;
+  persistMessage: PersistMessage;
+};
+
 export type ToolCall = {
   id: string;
   type: 'function';
@@ -137,14 +147,8 @@ export type PlanTurnOptions = {
   searchEnabled: boolean;
   searchProvider: SearchProvider;
   providerSort?: ProviderSort;
-  apiKey: string;
-  transport?: ModelTransport;
   controller: AbortController;
-  set: StoreSetter;
-  get: StoreGetter;
-  models: ORModel[];
-  modelIndex: ModelIndex;
-  persistMessage: PersistMessage;
+  turn: TurnContext;
 };
 
 export type PlanTurnResult = {
@@ -200,14 +204,8 @@ export type StreamFinalOptions = {
   assistantMessage: Message;
   messages: ModelMessage[];
   controller: AbortController;
-  apiKey: string;
-  transport?: ModelTransport;
   providerSort?: ProviderSort;
-  set: StoreSetter;
-  get: StoreGetter;
-  models: ORModel[];
-  modelIndex: ModelIndex;
-  persistMessage: PersistMessage;
+  turn: TurnContext;
   plugins?: PluginConfig[];
   toolDefinition?: ToolDefinition[];
   startBuffered: boolean;
@@ -218,14 +216,8 @@ export type RegenerateOptions = {
   chatId: string;
   targetMessageId: string;
   messages: Message[];
-  models: ORModel[];
-  modelIndex: ModelIndex;
-  apiKey: string;
-  transport?: ModelTransport;
+  turn: TurnContext;
   controller: AbortController;
-  set: StoreSetter;
-  get: StoreGetter;
-  persistMessage: PersistMessage;
   overrideModelId?: string;
 };
 

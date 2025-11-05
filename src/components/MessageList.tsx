@@ -17,6 +17,7 @@ import { MessageCard } from '@/components/message/MessageCard';
 import { useMessageScrolling } from '@/components/message/useMessageScrolling';
 import { useMessageWindow } from '@/components/message/hooks/useMessageWindow';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { useMessagePanelsToggles } from '@/components/message/hooks/useMessagePanelsToggles';
 
 const EMPTY_MESSAGES: Message[] = [];
 export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
@@ -101,20 +102,18 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   // Composer is now rendered outside this scroll container in ChatPane.
 
   const showByDefault = chat?.settings.show_thinking_by_default ?? false;
-  const [expandedReasoningIds, setExpandedReasoningIds] = useState<Record<string, boolean>>({});
-  const toggle = (id: string) => setExpandedReasoningIds((s) => ({ ...s, [id]: !s[id] }));
-  const isExpanded = (id: string) => expandedReasoningIds[id] ?? showByDefault;
-  const [expandedSourcesIds, setExpandedSourcesIds] = useState<Record<string, boolean>>({});
-  const toggleSources = (id: string) => setExpandedSourcesIds((s) => ({ ...s, [id]: !s[id] }));
-  const isSourcesExpanded = (id: string) => expandedSourcesIds[id] ?? true;
-  const [expandedDebugIds, setExpandedDebugIds] = useState<Record<string, boolean>>({});
-  const toggleDebug = (id: string) => setExpandedDebugIds((s) => ({ ...s, [id]: !s[id] }));
-  const isDebugExpanded = (id: string) => expandedDebugIds[id] ?? false;
+  const {
+    isReasoningExpanded,
+    toggleReasoning,
+    isSourcesExpanded,
+    toggleSources,
+    isDebugExpanded,
+    toggleDebug,
+    isStatsExpanded,
+    toggleStats,
+  } = useMessagePanelsToggles({ showReasoningByDefault: showByDefault });
   const editUserMessage = useChatStore((s) => s.editUserMessage);
   const editAssistantMessage = useChatStore((s) => s.editAssistantMessage);
-  const [expandedStatsIds, setExpandedStatsIds] = useState<Record<string, boolean>>({});
-  const toggleStats = (id: string) => setExpandedStatsIds((s) => ({ ...s, [id]: !s[id] }));
-  const isStatsExpanded = (id: string) => expandedStatsIds[id] ?? false;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   // Subtle indicator for long time-to-first-token
@@ -271,8 +270,8 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
           autoReasoningModelIds,
           isStreaming,
           lastMessageId,
-          reasoningExpanded: isExpanded(message.id),
-          onToggleReasoning: () => toggle(message.id),
+          reasoningExpanded: isReasoningExpanded(message.id),
+          onToggleReasoning: () => toggleReasoning(message.id),
           showToolCallLog: !!chat?.settings?.showToolCallLog,
           showDebugRawJson: chat?.settings?.showDebugRawJson ?? true,
           toolCalls: Array.isArray(message.toolCalls) ? message.toolCalls : undefined,

@@ -3,8 +3,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import { createModelIndex } from '@/lib/models';
 import type { StoreState, UIState } from '@/lib/store/types';
 import type { Chat, Message, ORModel } from '@/lib/types';
-import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { getDefaultZdrOnly, getRoutePreferenceDefault } from '@/lib/config';
+import { buildDefaultUIState } from '@/lib/ui/defaults';
 
 export type HeadlessStoreOptions = {
   chat: Chat;
@@ -14,54 +13,12 @@ export type HeadlessStoreOptions = {
   uiOverrides?: Partial<UIState>;
 };
 
-function buildDefaultUiState(overrides?: Partial<UIState>): UIState {
-  const base: UIState = {
-    showSettings: false,
-    isStreaming: false,
-    sidebarCollapsed: false,
-    notice: undefined,
-    debugMode: true,
-    debugByMessageId: {},
-    autoReasoningModelIds: {},
-    tutorDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-    learnerModelDebugByMessageId: {},
-    forceTutorMode: true,
-    nextModel: undefined,
-    nextSearchEnabled: false,
-    nextSearchProvider: 'openrouter',
-    nextDeepResearch: false,
-    nextTutorMode: true,
-    nextTutorNudge: undefined,
-    nextReasoningEffort: undefined,
-    nextReasoningTokens: undefined,
-    nextSystem: undefined,
-    nextTemperature: undefined,
-    nextTopP: undefined,
-    nextMaxTokens: undefined,
-    nextShowThinking: undefined,
-    nextShowStats: undefined,
-    nextShowToolCallLog: undefined,
-    nextShowDebugRawJson: undefined,
-    nextParallelModels: undefined,
-    tutorContextMode: 'full',
-    zdrOnly: getDefaultZdrOnly(),
-    routePreference: getRoutePreferenceDefault(),
-    experimentalBrave: false,
-    experimentalDeepResearch: false,
-    experimentalTutor: true,
-    enableMultiModelChat: false,
-    braveByMessageId: {},
-    tutorByMessageId: {},
-    tutorProfileByChatId: {},
-    tutorGreetedByChatId: {},
-    planSheetOpen: false,
-    planSheetPlanOverride: null,
-    planGenerationByChatId: {},
-    tutorWelcomeByChatId: {},
-    tutorWelcomePreview: undefined,
-  };
-  return overrides ? { ...base, ...overrides } : base;
-}
+const HEADLESS_UI_OVERRIDES: Partial<UIState> = {
+  debugMode: true,
+  forceTutorMode: true,
+  nextTutorMode: true,
+  nextSearchProvider: 'openrouter',
+};
 
 export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<StoreState> {
   const { chat, messages = [], models = [], uiOverrides, modelIndex } = options;
@@ -79,7 +36,10 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
     hiddenModelIds: [],
     zdrModelIds: undefined,
     zdrProviderIds: undefined,
-    ui: buildDefaultUiState(uiOverrides),
+    ui: buildDefaultUIState({
+      ...HEADLESS_UI_OVERRIDES,
+      ...(uiOverrides ?? {}),
+    }),
 
     initializeApp: async () => {},
 
