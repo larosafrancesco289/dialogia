@@ -1,5 +1,4 @@
 'use client';
-import { CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import type { LearningPlan } from '@/lib/types';
 import { calculatePlanProgress } from '@/lib/agent/planGenerator';
 
@@ -7,55 +6,28 @@ export function ProgressIndicator({ plan }: { plan: LearningPlan }) {
   const progress = calculatePlanProgress(plan);
 
   return (
-    <div className="space-y-2">
-      {/* Progress bar */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1">
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full transition-all duration-300"
-              style={{
-                width: `${progress.percentComplete}%`,
-                background: 'color-mix(in oklab, var(--color-accent) 85%, transparent)',
-              }}
-            />
-          </div>
-        </div>
-        <div className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-          {progress.percentComplete}%
-        </div>
+    <div className="space-y-4">
+      <div className="h-2 rounded-full bg-muted/60">
+        <div
+          className="h-full rounded-full bg-accent/80 transition-all duration-300 ease-out"
+          style={{
+            width: `${progress.percentComplete}%`,
+          }}
+        />
       </div>
-
-      {/* Stats */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <CheckCircleIcon
-            className="h-3.5 w-3.5"
-            style={{ color: 'color-mix(in oklab, var(--color-accent) 80%, var(--color-fg) 20%)' }}
-          />
-          <span>
-            {progress.completed} completed
-          </span>
+      <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
+        <div className="space-y-1 text-center">
+          <div className="text-lg font-semibold text-foreground">{progress.completed}</div>
+          <div className="text-[10px] uppercase tracking-wide leading-tight">Done</div>
         </div>
-        {progress.inProgress > 0 && (
-          <div className="flex items-center gap-1.5">
-            <ClockIcon
-              className="h-3.5 w-3.5"
-              style={{ color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)' }}
-            />
-            <span>
-              {progress.inProgress} in progress
-            </span>
-          </div>
-        )}
-        {progress.notStarted > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground" />
-            <span>
-              {progress.notStarted} to go
-            </span>
-          </div>
-        )}
+        <div className="space-y-1 text-center">
+          <div className="text-lg font-semibold text-foreground">{progress.inProgress}</div>
+          <div className="text-[10px] uppercase tracking-wide leading-tight">Active</div>
+        </div>
+        <div className="space-y-1 text-center">
+          <div className="text-lg font-semibold text-foreground">{progress.notStarted}</div>
+          <div className="text-[10px] uppercase tracking-wide leading-tight">Left</div>
+        </div>
       </div>
     </div>
   );

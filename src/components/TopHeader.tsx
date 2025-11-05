@@ -14,7 +14,7 @@ import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { PlanSheet } from '@/components/plan/PlanSheet';
@@ -81,6 +81,19 @@ export function TopHeader() {
     shallow,
   );
   const planSheetOverride = useChatStore((s) => s.ui.planSheetPlanOverride ?? null);
+
+  const hasPlanRef = useRef<boolean>(!!learningPlan);
+
+  useEffect(() => {
+    if (!learningPlan) {
+      hasPlanRef.current = false;
+      return;
+    }
+    if (!hasPlanRef.current && !planSheetOpen) {
+      setUI({ planSheetOpen: true, planSheetPlanOverride: null });
+    }
+    hasPlanRef.current = true;
+  }, [learningPlan, planSheetOpen, setUI]);
 
   const renameCurrentChat = () => {
     if (!chat) return;
