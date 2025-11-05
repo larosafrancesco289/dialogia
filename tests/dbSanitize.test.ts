@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sanitizeMessageRecord } from '@/lib/db';
+import { sanitizeMessageRecord } from '@/lib/db/sanitize';
 import type { Message } from '@/lib/types';
 
 test('sanitizeMessageRecord trims hidden content and drops empty fields', () => {

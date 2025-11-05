@@ -2,22 +2,15 @@
 // Responsibility: Handle multi-round planning for assistant turns before final streaming.
 
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
-import { buildDebugBody, recordDebugIfEnabled } from '@/lib/agent/request';
-import {
-  applyTutorToolCall,
-  extractTutorToolCalls,
-  extractWebSearchArgs,
-  isTutorToolName,
-  performWebSearchTool,
-} from '@/lib/agent/tools';
-import { formatSourcesBlock, mergeSearchResults } from '@/lib/agent/searchFlow';
+import { buildDebugBody, captureDebugPayload } from '@/lib/agent/request';
+import { extractTutorToolCalls, extractWebSearchArgs } from '@/lib/agent/tools';
+import { formatSourcesBlock } from '@/lib/agent/searchFlow';
 import {
   DEFAULT_BASE_SYSTEM,
   followUpPrompt,
   MAX_PLANNING_ROUNDS,
   shouldAppendSources,
 } from '@/lib/agent/policy';
-import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 import { isToolCallingSupported } from '@/lib/models';
 import { createToolCall, normalizeToolCalls, parseToolArguments } from '@/lib/agent/parsers';
 import { combineSystem } from '@/lib/agent/system';
@@ -30,9 +23,7 @@ import type {
   ToolDefinition,
   WebSearchArgs,
 } from '@/lib/agent/types';
-import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
-import { startToolCallLogEntry, updateToolCallLogEntry } from '@/lib/services/toolCallLog';
-import type { ToolCallLogEntry } from '@/lib/types';
+import { executePlanningToolCall } from '@/lib/agent/tools/exec';
 
 export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const {
@@ -46,14 +37,10 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     searchEnabled,
     searchProvider,
     providerSort,
-    apiKey,
-    transport = 'openrouter',
     controller,
-    set,
-    get,
-    modelIndex,
-    persistMessage,
+    turn,
   } = opts;
+  const { apiKey, transport, set, get, modelIndex, persistMessage } = turn;
 
   const planningSystem =
     combinedSystem != null ? ({ role: 'system', content: combinedSystem } as const) : undefined;
@@ -82,8 +69,8 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
         ? (toolDefinition as ToolDefinition[])
         : undefined;
 
-    try {
-      const dbg = buildDebugBody({
+    captureDebugPayload(turn, assistantMessage.id, () =>
+      buildDebugBody({
         modelId: chat.settings.model,
         messages: convo,
         stream: false,
@@ -95,11 +82,8 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
         tools: toolsForPlanning,
         toolChoice: toolsForPlanning ? 'auto' : undefined,
         providerSort,
-      });
-      recordDebugIfEnabled({ set, get }, assistantMessage.id, dbg);
-    } catch {
-      // ignore debug capture issues
-    }
+      }),
+    );
 
     const resp = await getChatCompletion()({
       apiKey,
@@ -148,183 +132,38 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     }
 
     for (const tc of toolCalls) {
-      const callName = tc.function.name;
       const parsedArgs = parseToolArguments(tc);
-      const shouldLog = callName === 'web_search' || isTutorToolName(callName);
-      const roundMeta: ToolCallLogEntry['metadata'] | undefined =
-        shouldLog && Number.isFinite(rounds)
+      const roundMeta =
+        Number.isFinite(rounds) && Number.isFinite(rounds + 1)
           ? { round: rounds + 1 }
           : undefined;
-      const logEntry = shouldLog
-        ? startToolCallLogEntry({
-            set,
-            chatId,
-            messageId: assistantMessage.id,
-            name: callName,
-            input: parsedArgs,
-            category: callName === 'web_search' ? 'search' : isTutorToolName(callName) ? 'tutor' : 'other',
-            metadata:
-              callName === 'web_search'
-                ? { ...(roundMeta || {}), provider: searchProvider }
-                : roundMeta,
-          })
-        : undefined;
-      const startedAt = logEntry ? performance.now() : undefined;
-      const finalizeLog = (
-        status: 'success' | 'error',
-        output?: Record<string, unknown>,
-        errorMessage?: string,
-        metadataPatch?: ToolCallLogEntry['metadata'],
-      ) => {
-        if (!logEntry) return;
-        updateToolCallLogEntry({
-          set,
+      const execution = await executePlanningToolCall({
+        toolCall: tc,
+        parsedArgs,
+        roundMeta,
+        context: {
+          chat,
           chatId,
-          messageId: assistantMessage.id,
-          toolCallId: logEntry.id,
-          updates: {
-            status,
-            output,
-            error: errorMessage,
-            duration:
-              startedAt != null
-                ? Math.max(0, Math.round(performance.now() - startedAt))
-                : undefined,
-            metadata: metadataPatch,
-          },
-        });
-      };
-
-      try {
-        if (callName === 'web_search') {
-          const searchArgs: WebSearchArgs = {
-            query: typeof parsedArgs.query === 'string' ? parsedArgs.query : '',
-            count: typeof parsedArgs.count === 'number' ? parsedArgs.count : undefined,
-          };
-          const searchResult = await performWebSearchTool({
-            args: searchArgs,
-            fallbackQuery: userContent,
-            searchProvider,
-            controller,
-            assistantMessageId: assistantMessage.id,
-            chatId,
-            set,
-          });
-          const output: Record<string, unknown> = {
-            ok: searchResult.ok,
-            query: searchResult.query,
-          };
-          if (searchResult.ok) {
-            aggregatedResults = mergeSearchResults([aggregatedResults, searchResult.results]);
-            const payload = searchResult.results
-              .slice(0, MAX_FALLBACK_RESULTS)
-              .map((r) => ({
-                title: r?.title,
-                url: r?.url,
-                description: r?.description,
-              }));
-            convo.push({
-              role: 'tool',
-              name: 'web_search',
-              tool_call_id: tc.id,
-              content: JSON.stringify(payload),
-            });
-            output.resultsPreview = payload.slice(0, 3);
-            const metadataPatch: ToolCallLogEntry['metadata'] = {
-              ...(roundMeta || {}),
-              ...(typeof searchArgs.count === 'number' ? { requested: searchArgs.count } : {}),
-              results: searchResult.results.length,
-            };
-            finalizeLog('success', output, undefined, metadataPatch);
-          } else {
-            if (searchResult.error === NOTICE_MISSING_BRAVE_KEY) {
-              set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_BRAVE_KEY } }));
-            }
-            convo.push({
-              role: 'tool',
-              name: 'web_search',
-              tool_call_id: tc.id,
-              content: 'No results',
-            });
-            const metadataPatch = roundMeta
-              ? {
-                  ...roundMeta,
-                  ...(typeof searchArgs.count === 'number'
-                    ? { requested: searchArgs.count }
-                    : {}),
-                }
-              : undefined;
-            finalizeLog(
-              'error',
-              output,
-              searchResult.error || 'Search returned no results',
-              metadataPatch,
-            );
-          }
-          usedTool = true;
-          continue;
-        }
-
-        if (isTutorToolName(callName)) {
-          const tutorOutcome = await applyTutorToolCall({
-            name: callName,
-            args: parsedArgs,
-            chat,
-            chatId,
-            assistantMessage,
-            set,
-            get,
-            persistMessage,
-          });
-          const output: Record<string, unknown> = {
-            handled: tutorOutcome.handled,
-            usedContent: tutorOutcome.usedContent,
-          };
-          if (tutorOutcome.payload) output.payload = tutorOutcome.payload;
-          if (tutorOutcome.learnerModelDebug) {
-            output.learnerModelDebug = tutorOutcome.learnerModelDebug;
-            learnerModelDebugResult = tutorOutcome.learnerModelDebug;
-          }
-          if (tutorOutcome.planUpdates) output.planUpdates = tutorOutcome.planUpdates;
-          if (tutorOutcome.learnerModel) learnerModelResult = tutorOutcome.learnerModel;
-          if (tutorOutcome.planUpdates) planUpdatesResult = tutorOutcome.planUpdates;
-          if (tutorOutcome.updatedPlan) updatedPlanResult = tutorOutcome.updatedPlan;
-          if (tutorOutcome.handled) {
-            if (tutorOutcome.usedContent) usedTutorContentTool = true;
-            if (tutorOutcome.payload) {
-              convo.push({
-                role: 'tool',
-                name: callName,
-                tool_call_id: tc.id,
-                content: tutorOutcome.payload,
-              });
-            }
-            usedTool = true;
-            const metadataPatch: ToolCallLogEntry['metadata'] = {
-              ...(roundMeta || {}),
-              ...(tutorOutcome.usedContent ? { usedContent: true } : {}),
-              ...(tutorOutcome.learnerModel ? { modelUpdated: true } : {}),
-              ...(tutorOutcome.planUpdates ? { planUpdated: true } : {}),
-            };
-            finalizeLog('success', output, undefined, metadataPatch);
-          } else {
-            const metadataPatch = roundMeta ? { ...roundMeta } : undefined;
-            finalizeLog('error', output, 'Tutor tool call was not handled', metadataPatch);
-          }
-          continue;
-        }
-
-        finalizeLog(
-          'error',
-          undefined,
-          `Unsupported tool: ${callName}`,
-          roundMeta ? { ...roundMeta } : undefined,
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        finalizeLog('error', undefined, message, roundMeta ? { ...roundMeta } : undefined);
-        throw error;
+          assistantMessage,
+          userContent,
+          searchProvider,
+          controller,
+          set,
+          get,
+          persistMessage,
+        },
+        aggregatedResults,
+      });
+      if (execution.convoMessages.length > 0) {
+        convo.push(...execution.convoMessages);
       }
+      aggregatedResults = execution.aggregatedResults;
+      if (execution.learnerModel) learnerModelResult = execution.learnerModel;
+      if (execution.planUpdates) planUpdatesResult = execution.planUpdates;
+      if (execution.updatedPlan) updatedPlanResult = execution.updatedPlan;
+      if (execution.learnerModelDebug) learnerModelDebugResult = execution.learnerModelDebug;
+      if (execution.usedTool) usedTool = true;
+      if (execution.usedTutorContentTool) usedTutorContentTool = true;
     }
 
     const followup = followUpPrompt({ searchEnabled, searchProvider });

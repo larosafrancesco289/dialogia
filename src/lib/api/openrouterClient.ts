@@ -1,4 +1,5 @@
 import { apiDefaults } from '@/lib/api/config';
+import { buildApiHeaders, toBodyInit, withAbortTimeout } from '@/lib/api/http';
 import { isOpenRouterProxyEnabled } from '@/lib/config';
 import type { ModelContentBlock, ToolCall } from '@/lib/agent/types';
 
@@ -59,23 +60,13 @@ type OrFetchOptions = {
   headers?: Record<string, string>;
 };
 
-function toBodyInit(body: any): BodyInit | undefined {
-  if (body == null) return undefined;
-  if (typeof body === 'string') return body;
-  if (body instanceof ReadableStream) return body as unknown as BodyInit;
-  return JSON.stringify(body);
-}
-
 async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Response> {
   const useProxy = apiDefaults.isBrowser && isOpenRouterProxyEnabled();
   const authRequired = options.authRequired ?? !useProxy;
   const headers: Record<string, string> = { ...(options.headers || {}) };
   const body = toBodyInit(options.body);
-  if (body != null && !headers['Content-Type']) {
-    headers['Content-Type'] = 'application/json';
-  }
+  let includeDefaults = !useProxy;
 
-  const origin = apiDefaults.resolveOrigin(options.origin);
   if (!useProxy) {
     if (authRequired) {
       if (!options.apiKey) throw new Error('missing_openrouter_api_key');
@@ -83,38 +74,38 @@ async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Resp
     } else if (options.apiKey) {
       headers.Authorization = `Bearer ${options.apiKey}`;
     }
-    Object.assign(headers, apiDefaults.headers(origin));
+    includeDefaults = true;
   }
 
-  const controller = new AbortController();
+  const { headers: requestHeaders } = buildApiHeaders({
+    origin: options.origin,
+    headers,
+    body,
+    includeDefaults,
+  });
+
   const timeoutMs =
-    options.timeoutMs ??
-    (options.stream ? undefined : apiDefaults.timeouts.chat);
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  if (timeoutMs && timeoutMs > 0) {
-    timeout = setTimeout(() => controller.abort(), timeoutMs);
-  }
-  if (options.signal) {
-    if (options.signal.aborted) {
-      controller.abort(options.signal.reason);
-    } else {
-      const onAbort = () => controller.abort(options.signal?.reason);
-      options.signal.addEventListener('abort', onAbort, { once: true });
-    }
-  }
+    options.timeoutMs ?? (options.stream ? undefined : apiDefaults.timeouts.chat);
+  const { signal, cleanup } = withAbortTimeout({
+    signal: options.signal,
+    timeoutMs,
+  });
+
+  const url = `${useProxy ? apiDefaults.proxyPath : apiDefaults.baseUrl}${path}`;
 
   try {
-    const url = `${useProxy ? apiDefaults.proxyPath : apiDefaults.baseUrl}${path}`;
     const response = await fetch(url, {
       method: options.method ?? 'GET',
-      headers,
+      headers: requestHeaders,
       body,
-      signal: controller.signal,
+      signal,
       cache: 'no-store',
     });
     return response;
-  } finally {
-    if (timeout) clearTimeout(timeout);
+  }
+
+  finally {
+    cleanup();
   }
 }
 

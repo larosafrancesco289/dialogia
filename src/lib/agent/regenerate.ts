@@ -3,7 +3,7 @@
 
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { composePlugins } from '@/lib/agent/request';
-import type { Chat, Message } from '@/lib/types';
+import type { Chat, Message, GenSettingsSnapshot } from '@/lib/types';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { RegenerateOptions, SearchProvider } from '@/lib/agent/types';
 import { streamFinal } from '@/lib/agent/streaming';
@@ -15,16 +15,11 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     chatId,
     targetMessageId,
     messages,
-    models,
-    modelIndex,
-    apiKey,
-    transport = 'openrouter',
+    turn,
     controller,
-    set,
-    get,
-    persistMessage,
     overrideModelId,
   } = opts;
+  const { apiKey, transport, models, modelIndex, set, get, persistMessage } = turn;
 
   const index = messages.findIndex((msg) => msg.id === targetMessageId);
   if (index < 0) return;
@@ -49,7 +44,9 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   const caps = modelIndex.caps(modelIdForTurn);
   const supportsReasoning = caps.canReason;
 
-  const snapshotSettings = ((original as any)?.genSettings as Record<string, unknown>) || {};
+  const snapshotSettings: GenSettingsSnapshot = original.genSettings
+    ? { ...original.genSettings }
+    : {};
   const previousModelId =
     typeof (original as any)?.model === 'string' ? (original as any).model : undefined;
   const modelChanged = typeof modelIdForTurn === 'string' && modelIdForTurn !== previousModelId;
@@ -128,7 +125,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
       ? (providerSortSnapshot as ProviderSort)
       : undefined;
 
-  const appliedGenSettings: Record<string, unknown> = {};
+  const appliedGenSettings: GenSettingsSnapshot = {};
   if (typeof temperature === 'number') appliedGenSettings.temperature = temperature;
   if (typeof topP === 'number') appliedGenSettings.top_p = topP;
   if (typeof maxTokens === 'number') appliedGenSettings.max_tokens = maxTokens;
@@ -191,14 +188,8 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     assistantMessage: replacement,
     messages: convo,
     controller,
-    apiKey,
-    transport,
     providerSort: providerSort ?? undefined,
-    set,
-    get,
-    models,
-    modelIndex,
-    persistMessage,
+    turn,
     plugins,
     toolDefinition: undefined,
     startBuffered: false,

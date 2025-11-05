@@ -4,9 +4,11 @@ import type { StoreState } from '@/lib/store/types';
 import type { Chat, Folder, Message } from '@/lib/types';
 import type { StoreSetter } from '@/lib/agent/types';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { buildHiddenTutorContent, ensureTutorDefaults } from '@/lib/agent/tutorFlow';
+import { buildHiddenTutorContent } from '@/lib/agent/tutorFlow';
 import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
 import { primeTutorWelcome } from '@/lib/services/turns';
+import { applyTutorDefaults, normalizeParallelModels } from '@/lib/store/normalize';
+import { resetEphemeralUi } from '@/lib/ui/defaults';
 
 export function createChatSlice(
   set: StoreSetter,
@@ -123,27 +125,7 @@ export function createChatSlice(
       saveChat(chat).catch(() => undefined);
       // Reset ephemeral "next" flags so they only apply to this new chat
       set((s) => ({
-        ui: {
-          ...s.ui,
-          nextModel: undefined,
-          nextSearchEnabled: false,
-          nextSearchProvider: undefined,
-          // Ensure DeepResearch is not auto-enabled for new chats
-          nextDeepResearch: false,
-          nextTutorMode: false,
-          nextTutorNudge: undefined,
-          nextReasoningEffort: undefined,
-          nextReasoningTokens: undefined,
-          nextSystem: undefined,
-          nextTemperature: undefined,
-          nextTopP: undefined,
-          nextMaxTokens: undefined,
-          nextShowThinking: undefined,
-          nextShowStats: undefined,
-          nextShowToolCallLog: undefined,
-          nextShowDebugRawJson: undefined,
-          nextParallelModels: undefined,
-        },
+        ui: resetEphemeralUi(s.ui),
       }));
     },
 
@@ -229,20 +211,15 @@ export function createChatSlice(
       const forceTutorMode = !!(uiState.forceTutorMode ?? false);
       let appliedPartial = { ...partial } as Partial<Chat['settings']>;
       if (Array.isArray(appliedPartial.parallel_models)) {
-        const next = appliedPartial.parallel_models.filter(
-          (id): id is string => typeof id === 'string' && id.length > 0,
-        );
         const base = appliedPartial.model ?? before?.settings.model;
-        appliedPartial.parallel_models = Array.from(
-          new Set(next.filter((id) => !base || id !== base)),
-        );
+        appliedPartial.parallel_models = normalizeParallelModels(base, appliedPartial.parallel_models);
       }
-      const applyTutorDefaults = () => {
+      const ensureTutor = () => {
         const baseSettings = {
           ...(before?.settings || {}),
           ...appliedPartial,
-        };
-        const ensured = ensureTutorDefaults({
+        } as Chat['settings'];
+        const ensured = applyTutorDefaults({
           ui: uiState,
           chat: { settings: baseSettings },
           fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
@@ -257,8 +234,8 @@ export function createChatSlice(
         };
       };
 
-      if (appliedPartial.tutor_mode === true) applyTutorDefaults();
-      if (forceTutorMode) applyTutorDefaults();
+      if (appliedPartial.tutor_mode === true) ensureTutor();
+      if (forceTutorMode) ensureTutor();
       set((s) => ({
         chats: s.chats.map((c) => {
           if (c.id !== id) return c;
@@ -266,15 +243,9 @@ export function createChatSlice(
           // If forceTutorMode is active, never allow tutor_mode to be false
           if (forceTutorMode) updatedSettings.tutor_mode = true;
           if (Array.isArray(updatedSettings.parallel_models)) {
-            updatedSettings.parallel_models = Array.from(
-              new Set(
-                updatedSettings.parallel_models.filter(
-                  (modelId): modelId is string =>
-                    typeof modelId === 'string' &&
-                    modelId.length > 0 &&
-                    modelId !== updatedSettings.model,
-                ),
-              ),
+            updatedSettings.parallel_models = normalizeParallelModels(
+              updatedSettings.model,
+              updatedSettings.parallel_models,
             );
           }
           return { ...c, settings: updatedSettings, updatedAt: Date.now() };

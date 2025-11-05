@@ -4,6 +4,7 @@
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import type { ChatSettings } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
+import { applyTutorDefaults, normalizeParallelModels } from '@/lib/store/normalize';
 
 export function deriveChatSettingsFromUi(opts: {
   ui: UIState;
@@ -53,11 +54,7 @@ export function deriveChatSettingsFromUi(opts: {
   const parallelFromUi = Array.isArray(ui.nextParallelModels)
     ? ui.nextParallelModels
     : previous?.parallel_models;
-  const normalizedParallel = Array.isArray(parallelFromUi)
-    ? Array.from(
-        new Set(parallelFromUi.filter((id): id is string => !!id && id !== baseModel)),
-      )
-    : [];
+  const normalizedParallel = normalizeParallelModels(baseModel, parallelFromUi);
 
   const settings: ChatSettings = {
     model: baseModel,
@@ -78,12 +75,15 @@ export function deriveChatSettingsFromUi(opts: {
   };
 
   if (tutor_mode) {
-    const tutor_default_model =
-      ui.tutorDefaultModelId || previous?.tutor_default_model || DEFAULT_TUTOR_MODEL_ID;
-    settings.model = tutor_default_model;
-    settings.parallel_models = [];
-    settings.tutor_default_model = tutor_default_model;
-    settings.enableLearnerModel = true;
+    const ensured = applyTutorDefaults({
+      ui,
+      chat: { settings },
+      fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
+    });
+    Object.assign(settings, ensured.nextSettings, {
+      tutor_mode: true,
+      parallel_models: [],
+    });
   }
 
   return settings;

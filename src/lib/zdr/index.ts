@@ -98,10 +98,14 @@ export function filterZdrModels<T extends { id?: string }>(
   return { status: 'unknown', models: [] };
 }
 
-export function toZdrState(lists: ZdrLists): { zdrModelIds: string[]; zdrProviderIds: string[] } {
+export function toZdrState(
+  lists: ZdrLists,
+  fetchedAt: number = Date.now(),
+): { zdrModelIds: string[]; zdrProviderIds: string[]; zdrFetchedAt: number } {
   return {
     zdrModelIds: Array.from(lists.modelIds),
     zdrProviderIds: Array.from(lists.providerIds),
+    zdrFetchedAt: fetchedAt,
   };
 }
 

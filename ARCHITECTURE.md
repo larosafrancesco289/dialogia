@@ -24,7 +24,7 @@ business logic that is easy to test.
 - **Services** — Cross-cutting orchestrators in `src/lib/services/*` that connect the store to the
   agent layer. `services/turns.ts` owns send/regenerate flows, while `services/controllers.ts`
   isolates AbortController lifecycles outside persistence. Pipeline helpers now live in
-  `src/lib/agent/planning.ts`, `streaming.ts`, and `regenerate.ts`; `services/messagePipeline.ts`
+  `src/lib/agent/planning.ts`, `streaming.ts`, and `regenerate.ts`
   re-exports them for backward compatibility.
 - **Transport** — HTTP clients in `src/lib/api/*` and protocol adapters such as
   `src/lib/openrouter.ts`. Shared helpers in `src/lib/api/config.ts`, `src/lib/api/stream.ts`, and

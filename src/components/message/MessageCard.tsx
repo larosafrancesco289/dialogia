@@ -3,19 +3,18 @@ import { useMemo } from 'react';
 import {
   PencilSquareIcon,
   CheckIcon,
-  XMarkIcon,
   ClipboardIcon,
-  ArrowPathIcon,
   ArrowUturnRightIcon,
 } from '@heroicons/react/24/outline';
 import { Markdown } from '@/lib/markdown';
 import { RegenerateMenu } from '@/components/RegenerateMenu';
-import { MessageMeta } from '@/components/message/MessageMeta';
 import { MessagePanels, type MessagePanelsProps } from '@/components/message/MessagePanels';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { LearnerModelUpdates } from '@/components/message/LearnerModelUpdates';
 import styles from './MessageCard.module.css';
 import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
+import { MessageActions, ActionButton } from '@/components/message/MessageActions';
+import { StatsToggle } from '@/components/message/StatsToggle';
 
 export type MessageCardProps = {
   message: Message;
@@ -321,69 +320,44 @@ function AssistantMessageContent({
   return (
     <div className="relative">
       {showInlineActions && (
-        <div
-          className={`${styles.actions} absolute bottom-2 right-2 z-30 transition-opacity`}
-          style={isMobile ? { opacity: 1 } : undefined}
+        <MessageActions
+          isEditing={isEditing}
+          isMobile={isMobile}
+          onSave={saveEdit}
+          onCancel={() => {
+            setEditingId(null);
+            setDraft('');
+          }}
         >
-          {isEditing ? (
-            <div className="flex items-center gap-1">
-              <button
-                className="icon-button"
-                aria-label="Save edit"
-                title="Save edit"
-                onClick={saveEdit}
-              >
+          <ActionButton
+            icon={
+              copiedId === message.id ? (
                 <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-              </button>
-              <button
-                className="icon-button"
-                aria-label="Cancel edit"
-                title="Cancel edit"
-                onClick={() => {
-                  setEditingId(null);
-                  setDraft('');
-                }}
-              >
-                <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1">
-              <button
-                className="icon-button"
-                aria-label="Copy message"
-                title={copiedId === message.id ? 'Copied' : 'Copy message'}
-                onClick={copyMessage}
-              >
-                {copiedId === message.id ? (
-                  <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                ) : (
-                  <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                )}
-              </button>
-              {!isStreaming && (
-                <button
-                  className="icon-button"
-                  aria-label="Edit message"
-                  title="Edit message"
-                  onClick={startEditingMessage}
-                >
-                  <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                </button>
-              )}
-              <button
-                className="icon-button"
-                title="Create a new chat starting from this reply"
-                aria-label="Branch chat from here"
-                disabled={isStreaming}
-                onClick={branchFromMessage}
-              >
-                <ArrowUturnRightIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-              </button>
-              {!tutorEnabled && <RegenerateMenu onChoose={onChooseRegenerateModel} />}
-            </div>
+              ) : (
+                <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+              )
+            }
+            title={copiedId === message.id ? 'Copied' : 'Copy message'}
+            ariaLabel="Copy message"
+            onClick={copyMessage}
+          />
+          {!isStreaming && (
+            <ActionButton
+              icon={<PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />}
+              title="Edit message"
+              ariaLabel="Edit message"
+              onClick={startEditingMessage}
+            />
           )}
-        </div>
+          <ActionButton
+            icon={<ArrowUturnRightIcon className="h-5 w-5 sm:h-4 sm:w-4" />}
+            title="Create a new chat starting from this reply"
+            ariaLabel="Branch chat from here"
+            onClick={branchFromMessage}
+            disabled={isStreaming}
+          />
+          {!tutorEnabled && <RegenerateMenu onChoose={onChooseRegenerateModel} />}
+        </MessageActions>
       )}
 
       {messagePanelsNode}
@@ -423,30 +397,16 @@ function AssistantMessageContent({
       {/* Learner Model Updates */}
       {!isEditing && <LearnerModelUpdates message={message} />}
 
-      {showStats && !(waitingForFirstToken && message.id === lastMessageId) && (
-        <div className="px-4 pb-3 -mt-2">
-          {isStatsExpanded(message.id) ? (
-            <div className="text-xs text-muted-foreground">
-              <MessageMeta
-                message={message}
-                modelId={message.model || chat?.settings.model || 'unknown'}
-                chatSettings={chat!.settings}
-                models={models}
-                showStats={true}
-              />
-              <div className="mt-1">
-                <button className="badge" onClick={() => toggleStats(message.id)}>
-                  Hide stats
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button className="badge" onClick={() => toggleStats(message.id)}>
-              stats
-            </button>
-          )}
-        </div>
-      )}
+      <StatsToggle
+        showStats={showStats}
+        waitingForFirstToken={waitingForFirstToken}
+        isLatestAssistant={isLatestAssistant}
+        isExpanded={isStatsExpanded(message.id)}
+        onToggle={() => toggleStats(message.id)}
+        message={message}
+        chat={chat}
+        models={models}
+      />
     </div>
   );
 }
@@ -488,57 +448,35 @@ function UserMessageContent({
   return (
     <div className="relative">
       {showInlineActions && (
-        <div
-          className={`${styles.actions} absolute bottom-2 right-2 z-30 transition-opacity`}
-          style={isMobile ? { opacity: 1 } : undefined}
+        <MessageActions
+          isEditing={isEditing}
+          isMobile={isMobile}
+          onSave={saveEdit}
+          onCancel={() => {
+            setEditingId(null);
+            setDraft('');
+          }}
         >
-          {isEditing ? (
-            <div className="flex items-center gap-1">
-              <button
-                className="icon-button"
-                aria-label="Save edit"
-                title="Save edit"
-                onClick={saveEdit}
-              >
-                <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-              </button>
-              <button
-                className="icon-button"
-                aria-label="Cancel edit"
-                title="Cancel edit"
-                onClick={() => {
-                  setEditingId(null);
-                  setDraft('');
-                }}
-              >
-                <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-              </button>
-            </div>
-          ) : (
-            <button
-              className="icon-button"
-              aria-label="Edit message"
-              title="Edit message"
-              onClick={startEditingMessage}
-            >
-              <PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-            </button>
-          )}
-          {!isEditing && (
-            <button
-              className="icon-button ml-1"
-              aria-label="Copy message"
-              title={copiedId === message.id ? 'Copied' : 'Copy message'}
-              onClick={copyMessage}
-            >
-              {copiedId === message.id ? (
+          <ActionButton
+            icon={<PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />}
+            title="Edit message"
+            ariaLabel="Edit message"
+            onClick={startEditingMessage}
+          />
+          <ActionButton
+            className="ml-1"
+            icon={
+              copiedId === message.id ? (
                 <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
               ) : (
                 <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-              )}
-            </button>
-          )}
-        </div>
+              )
+            }
+            title={copiedId === message.id ? 'Copied' : 'Copy message'}
+            ariaLabel="Copy message"
+            onClick={copyMessage}
+          />
+        </MessageActions>
       )}
 
       <MessageAttachments attachments={attachments} onOpenLightbox={setLightbox} />

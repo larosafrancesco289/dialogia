@@ -2,7 +2,7 @@
 // Responsibility: Provide helpers for capturing per-turn generation settings snapshots.
 
 import { isReasoningSupported } from '@/lib/models';
-import type { ChatSettings, ORModel } from '@/lib/types';
+import type { ChatSettings, GenSettingsSnapshot, ORModel } from '@/lib/types';
 import type { ProviderSort } from '@/lib/agent/types';
 
 export function snapshotGenSettings(opts: {
@@ -10,10 +10,10 @@ export function snapshotGenSettings(opts: {
   modelMeta: ORModel | undefined;
   searchProvider: 'brave' | 'openrouter';
   providerSort?: ProviderSort;
-}) {
+}): GenSettingsSnapshot {
   const { settings, modelMeta, searchProvider, providerSort } = opts;
   const supportsReasoning = isReasoningSupported(modelMeta);
-  const snapshot: Record<string, unknown> = {
+  const snapshot: GenSettingsSnapshot = {
     temperature: settings.temperature,
     top_p: settings.top_p,
     max_tokens: settings.max_tokens,

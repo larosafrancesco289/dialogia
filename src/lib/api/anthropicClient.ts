@@ -1,5 +1,6 @@
 import { apiDefaults } from '@/lib/api/config';
 import { isAnthropicProxyEnabled } from '@/lib/config';
+import { buildApiHeaders, toBodyInit, withAbortTimeout } from '@/lib/api/http';
 
 const BROWSER =
   typeof window !== 'undefined' && typeof window.document !== 'undefined' && window.document !== null;
@@ -28,58 +29,50 @@ type AnthropicFetchOptions = {
   origin?: string;
 };
 
-function toBodyInit(body: any): BodyInit | undefined {
-  if (body == null) return undefined;
-  if (typeof body === 'string') return body;
-  if (body instanceof ReadableStream) return body as unknown as BodyInit;
-  return JSON.stringify(body);
-}
-
 async function anthropicFetch(path: string, options: AnthropicFetchOptions = {}): Promise<Response> {
   const useProxy = anthropicDefaults.isBrowser && isAnthropicProxyEnabled();
   const headers: Record<string, string> = {
     'anthropic-version': anthropicDefaults.version,
     ...(options.headers || {}),
   };
-  const origin = apiDefaults.resolveOrigin(options.origin);
   const body = toBodyInit(options.body);
-  if (body != null && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  let includeDefaults = !useProxy;
 
   if (!useProxy) {
     if (!options.apiKey) throw new Error('missing_anthropic_api_key');
     headers['x-api-key'] = options.apiKey;
-    Object.assign(headers, apiDefaults.headers(origin));
+    includeDefaults = true;
   } else if (options.apiKey) {
     // When proxying with a client-provided key (rare), still forward for parity.
     headers['x-api-key'] = options.apiKey;
   }
 
-  const controller = new AbortController();
+  const { headers: requestHeaders } = buildApiHeaders({
+    origin: options.origin,
+    headers,
+    body,
+    includeDefaults,
+  });
+
   const timeoutMs = options.timeoutMs ?? (options.stream ? undefined : anthropicDefaults.timeouts.chat);
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  if (timeoutMs && timeoutMs > 0) timeout = setTimeout(() => controller.abort(), timeoutMs);
-  if (options.signal) {
-    if (options.signal.aborted) {
-      controller.abort(options.signal.reason);
-    } else {
-      const onAbort = () => controller.abort(options.signal?.reason);
-      options.signal.addEventListener('abort', onAbort, { once: true });
-    }
-  }
+  const { signal, cleanup } = withAbortTimeout({
+    signal: options.signal,
+    timeoutMs,
+  });
 
   try {
     const base = useProxy ? anthropicDefaults.proxyPath : anthropicDefaults.baseUrl;
     const url = `${base}${path}`;
     const response = await fetch(url, {
       method: options.method ?? 'GET',
-      headers,
+      headers: requestHeaders,
       body,
-      signal: controller.signal,
+      signal,
       cache: 'no-store',
     });
     return response;
   } finally {
-    if (timeout) clearTimeout(timeout);
+    cleanup();
   }
 }
 

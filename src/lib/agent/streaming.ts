@@ -2,7 +2,7 @@
 // Responsibility: Stream final assistant responses and propagate token callbacks.
 
 import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
-import { buildDebugBody, recordDebugIfEnabled } from '@/lib/agent/request';
+import { buildDebugBody, captureDebugPayload } from '@/lib/agent/request';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
 import { clearTurnController } from '@/lib/services/controllers';
@@ -75,17 +75,13 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     assistantMessage,
     messages,
     controller,
-    apiKey,
-    transport = 'openrouter',
     providerSort,
-    set,
-    get,
-    modelIndex,
-    persistMessage,
+    turn,
     plugins,
     toolDefinition,
     startBuffered,
   } = opts;
+  const { apiKey, transport, set, get, modelIndex, persistMessage } = turn;
 
   const modelMeta = modelIndex.get(chat.settings.model);
   const caps = modelIndex.caps(chat.settings.model);
@@ -97,8 +93,8 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
   const combinedPlugins = Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined;
   const toolsForStreaming = includeTools ? (toolDefinition as ToolDefinition[]) : undefined;
 
-  try {
-    const dbg = buildDebugBody({
+  captureDebugPayload(turn, assistantMessage.id, () =>
+    buildDebugBody({
       modelId: chat.settings.model,
       messages: messages as any,
       stream: true,
@@ -113,11 +109,8 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
       toolChoice: includeTools ? 'none' : undefined,
       providerSort,
       plugins: combinedPlugins,
-    });
-    recordDebugIfEnabled({ set, get }, assistantMessage.id, dbg);
-  } catch {
-    // ignore debug capture issues
-  }
+    }),
+  );
 
   const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
   const requestedTokensRaw = supportsReasoning ? chat.settings.reasoning_tokens : undefined;

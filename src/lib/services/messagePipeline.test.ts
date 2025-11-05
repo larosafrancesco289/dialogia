@@ -1,11 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planTurn, regenerate, __setOpenRouterMocksForTests } from '@/lib/services/messagePipeline';
+import { planTurn } from '@/lib/agent/planning';
+import { regenerate } from '@/lib/agent/regenerate';
+import { setOpenRouterMocksForTests as __setOpenRouterMocksForTests } from '@/lib/agent/pipelineClient';
 import { createModelIndex } from '@/lib/models';
-import type { Message, Chat, ORModel } from '@/lib/types';
+import type { Message, Chat, ORModel, ModelTransport } from '@/lib/types';
 import { getTutorToolDefinitions } from '@/lib/agent/tutor';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
-import type { StoreSetter } from '@/lib/agent/types';
+import type { StoreSetter, TurnContext } from '@/lib/agent/types';
 import { ProviderSort } from '@/lib/models/providerSort';
 
 const baseModels: ORModel[] = [
@@ -163,6 +165,20 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     streamChatCompletion: undefined,
   });
 
+  const modelIndex = createModelIndex(baseModels);
+  const persistMessage = async (message: Message) => {
+    savedMessages.push(message);
+  };
+  const turnContext = {
+    apiKey: 'test',
+    transport: 'openrouter' as ModelTransport,
+    set,
+    get,
+    models: baseModels,
+    modelIndex,
+    persistMessage,
+  } satisfies TurnContext;
+
   const result = await planTurn({
     chat,
     chatId: chat.id,
@@ -177,16 +193,8 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     searchEnabled: true,
     searchProvider: 'brave',
     providerSort: ProviderSort.Throughput,
-    apiKey: 'test',
-    transport: 'openrouter',
     controller: new AbortController(),
-    set,
-    get,
-    models: baseModels,
-    modelIndex: createModelIndex(baseModels),
-    persistMessage: async (message) => {
-      savedMessages.push(message);
-    },
+    turn: turnContext,
   });
 
   const braveEntry = state.ui.braveByMessageId[assistantMessage.id];
@@ -311,21 +319,27 @@ test('regenerate reuses snapshots and records debug payload', async () => {
     },
   });
 
+  const modelIndexReg = createModelIndex(baseModels);
+  const persistRegenerateMessage = async (message: Message) => {
+    saved.push(message);
+  };
+  const regenerateTurn = {
+    apiKey: 'test',
+    transport: 'openrouter' as ModelTransport,
+    set,
+    get,
+    models: baseModels,
+    modelIndex: modelIndexReg,
+    persistMessage: persistRegenerateMessage,
+  } satisfies TurnContext;
+
   await regenerate({
     chat,
     chatId: chat.id,
     targetMessageId: assistantMessage.id,
     messages: state.messages[chat.id],
-    models: baseModels,
-    modelIndex: createModelIndex(baseModels),
-    apiKey: 'test',
-    transport: 'openrouter',
+    turn: regenerateTurn,
     controller: new AbortController(),
-    set,
-    get,
-    persistMessage: async (message) => {
-      saved.push(message);
-    },
   });
 
   const updatedMessage = state.messages[chat.id][1];

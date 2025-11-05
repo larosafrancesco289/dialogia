@@ -10,7 +10,13 @@ import type {
   ORModel,
   ToolCallLogEntry,
 } from '@/lib/types';
-import { type PlanTurnResult, type ModelMessage, type PersistMessage, type TurnComposition } from '@/lib/agent/types';
+import {
+  type PlanTurnResult,
+  type ModelMessage,
+  type PersistMessage,
+  type TurnComposition,
+  type TurnContext,
+} from '@/lib/agent/types';
 import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
 import { streamFinal } from '@/lib/agent/streaming';
@@ -200,6 +206,17 @@ export class HeadlessTutorSession {
 
     let finalAssistant: Message | undefined;
 
+    const stateSnapshot = this.store.getState();
+    const turnContext: TurnContext = {
+      apiKey,
+      transport,
+      set: this.store.setState.bind(this.store),
+      get: this.store.getState.bind(this.store),
+      models: stateSnapshot.models,
+      modelIndex: stateSnapshot.modelIndex,
+      persistMessage: this.persistMessage,
+    };
+
     try {
       if (composition.shouldPlan) {
         const plan = await planTurn({
@@ -213,14 +230,8 @@ export class HeadlessTutorSession {
           searchEnabled: composition.search.enabled,
           searchProvider: composition.search.provider,
           providerSort: composition.providerSort,
-          apiKey,
-          transport,
           controller,
-          set: this.store.setState.bind(this.store),
-          get: this.store.getState.bind(this.store),
-          models: this.store.getState().models,
-          modelIndex: this.store.getState().modelIndex,
-          persistMessage: this.persistMessage,
+          turn: turnContext,
         });
         planResult = plan;
 
@@ -264,7 +275,7 @@ export class HeadlessTutorSession {
           });
           this.updateMessage(assistantMessage.id, {
             systemSnapshot: plan.finalSystem,
-            genSettings: genSettings as Message['genSettings'],
+            genSettings,
           });
         } catch {
           // best-effort snapshot
@@ -317,14 +328,8 @@ export class HeadlessTutorSession {
         assistantMessage,
         messages: streamMessages,
         controller,
-        apiKey,
-        transport,
         providerSort: composition.providerSort,
-        set: this.store.setState.bind(this.store),
-        get: this.store.getState.bind(this.store),
-        models: this.store.getState().models,
-        modelIndex: this.store.getState().modelIndex,
-        persistMessage: this.persistMessage,
+        turn: turnContext,
         plugins: composition.plugins,
         toolDefinition: composition.tools,
         startBuffered: false,

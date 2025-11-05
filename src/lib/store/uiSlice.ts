@@ -1,49 +1,9 @@
 import type { StoreState, UIState } from '@/lib/store/types';
-import { getDefaultZdrOnly, getRoutePreferenceDefault } from '@/lib/config';
-import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { createStoreSlice } from '@/lib/store/createSlice';
+import { buildDefaultUIState } from '@/lib/ui/defaults';
 
 export const createUiSlice = createStoreSlice((set, get) => {
-  const initial: UIState = {
-    showSettings: false,
-    isStreaming: false,
-    sidebarCollapsed: false,
-    debugMode: false,
-    debugByMessageId: {},
-    autoReasoningModelIds: {},
-    tutorDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-    learnerModelDebugByMessageId: {},
-    forceTutorMode: false,
-    nextModel: undefined,
-    nextSearchEnabled: false,
-    nextDeepResearch: false,
-    nextTutorMode: false,
-    nextTutorNudge: undefined,
-    nextReasoningEffort: undefined,
-    nextReasoningTokens: undefined,
-    nextSystem: undefined,
-    nextTemperature: undefined,
-    nextTopP: undefined,
-    nextMaxTokens: undefined,
-    nextShowThinking: undefined,
-    nextShowStats: undefined,
-    nextParallelModels: undefined,
-    tutorContextMode: 'full',
-    zdrOnly: getDefaultZdrOnly(),
-    routePreference: getRoutePreferenceDefault(),
-    // Experimental feature toggles (Tutor defaults on; others opt-in via Settings)
-    experimentalBrave: false,
-    experimentalDeepResearch: false,
-    experimentalTutor: true,
-    enableMultiModelChat: false,
-    braveByMessageId: {},
-    tutorByMessageId: {},
-    tutorProfileByChatId: {},
-    tutorGreetedByChatId: {},
-    planSheetOpen: false,
-    planSheetPlanOverride: null,
-    planGenerationByChatId: {},
-  };
+  const initial: UIState = buildDefaultUIState();
 
   return {
     ui: initial,
