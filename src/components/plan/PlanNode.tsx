@@ -23,6 +23,8 @@ export function PlanNode({
   onStatusChange?: (status: 'not_started' | 'in_progress' | 'completed') => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const isLocked = !isReady && node.status === 'not_started';
+  const canModifyStatus = !!onStatusChange && node.status !== 'completed' && !isLocked;
 
   // Determine status icon and styling
   const getStatusIcon = () => {
@@ -55,39 +57,35 @@ export function PlanNode({
     switch (node.status) {
       case 'completed':
         return {
-          borderColor: 'color-mix(in oklab, var(--color-accent) 45%, var(--color-border))',
-          background: 'color-mix(in oklab, var(--color-accent) 14%, var(--color-surface))',
+          borderColor: 'color-mix(in oklab, var(--color-accent) 30%, var(--color-border))',
+          background: 'color-mix(in oklab, var(--color-accent) 10%, var(--color-surface))',
         };
       case 'in_progress':
         return {
-          borderColor: 'color-mix(in oklab, var(--color-accent-2) 45%, var(--color-border))',
-          background: 'color-mix(in oklab, var(--color-accent-2) 14%, var(--color-surface))',
+          borderColor: 'color-mix(in oklab, var(--color-accent-2) 30%, var(--color-border))',
+          background: 'color-mix(in oklab, var(--color-accent-2) 10%, var(--color-surface))',
         };
       default:
-        return isReady
+        return isLocked
           ? {
               borderColor: 'color-mix(in oklab, var(--color-border) 85%, transparent)',
-              background: 'color-mix(in oklab, var(--color-surface) 92%, transparent)',
+              background: 'color-mix(in oklab, var(--color-muted) 35%, transparent)',
             }
           : {
-              borderColor: 'color-mix(in oklab, var(--color-border) 80%, transparent)',
-              background: 'color-mix(in oklab, var(--color-muted) 65%, transparent)',
+              borderColor: 'color-mix(in oklab, var(--color-border) 85%, transparent)',
+              background: 'color-mix(in oklab, var(--color-surface) 94%, transparent)',
             };
     }
-  }, [node.status, isReady]);
-
-  const canInteract = isReady || node.status !== 'not_started';
+  }, [node.status, isLocked]);
 
   return (
-    <div
-      className="group relative overflow-hidden rounded-[20px] border shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-0.5 focus-within:-translate-y-0.5"
-      style={containerStyle}
-    >
+    <div className="group relative rounded-xl border border-border/60 bg-surface transition-colors" style={containerStyle}>
       {/* Node header */}
       <button
-        onClick={() => setExpanded(!expanded)}
-        className="relative flex w-full items-center gap-3 rounded-[inherit] px-4 py-3 text-left transition-colors hover:bg-muted/30"
-        disabled={!canInteract}
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="relative flex w-full items-center gap-3 rounded-[inherit] px-4 py-3 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-[color-mix(in oklab,var(--color-accent)70%,transparent)]"
+        aria-expanded={expanded}
       >
         {/* Status icon */}
         {getStatusIcon()}
@@ -95,6 +93,12 @@ export function PlanNode({
         {/* Node name */}
         <div className="flex-1 min-w-0">
           <div className="truncate text-sm font-semibold text-foreground">{node.name}</div>
+          {isLocked && (
+            <div className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-muted/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <LockClosedIcon className="h-3 w-3" />
+              Locked
+            </div>
+          )}
           {node.estimatedMinutes && (
             <div className="mt-0.5 text-xs text-muted-foreground">
               ~{node.estimatedMinutes} min
@@ -103,25 +107,28 @@ export function PlanNode({
         </div>
 
         {/* Expand icon */}
-        {canInteract && (
-          <div>
-            {expanded ? (
-              <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
-            )}
-          </div>
-        )}
+        <div>
+          {expanded ? (
+            <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
       </button>
 
       {/* Expanded content */}
-      {expanded && canInteract && (
-        <div className="space-y-3 border-t border-border/60 bg-muted/30 px-4 pb-4 pt-3">
+      {expanded && (
+        <div className="space-y-3 border-t border-border/60 bg-muted/20 px-4 pb-4 pt-3">
+          {isLocked && (
+            <div className="flex items-start gap-2 rounded-md border border-dashed border-border/70 bg-transparent px-3 py-2 text-xs text-muted-foreground">
+              <LockClosedIcon className="h-4 w-4 flex-shrink-0" />
+              <span>Complete the prerequisites first to unlock this topic.</span>
+            </div>
+          )}
+
           {/* Description */}
           {node.description && (
-            <div className="pt-3">
-              <div className="text-xs text-muted-foreground">{node.description}</div>
-            </div>
+            <div className="text-xs text-muted-foreground">{node.description}</div>
           )}
 
           {/* Learning objectives */}
@@ -173,11 +180,11 @@ export function PlanNode({
           )}
 
           {/* Status change actions */}
-          {onStatusChange && node.status !== 'completed' && (
+          {canModifyStatus && (
             <div className="flex gap-2 pt-2">
               {node.status === 'not_started' && (
                 <button
-                  onClick={() => onStatusChange('in_progress')}
+                  onClick={() => onStatusChange?.('in_progress')}
                   className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors hover:opacity-90"
                   style={{
                     background: 'color-mix(in oklab, var(--color-accent-2) 65%, transparent)',
@@ -190,7 +197,7 @@ export function PlanNode({
               {node.status === 'in_progress' && (
                 <>
                   <button
-                    onClick={() => onStatusChange('completed')}
+                    onClick={() => onStatusChange?.('completed')}
                     className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors hover:opacity-90"
                     style={{
                       background: 'color-mix(in oklab, var(--color-accent) 70%, transparent)',
@@ -200,7 +207,7 @@ export function PlanNode({
                     Mark Complete
                   </button>
                   <button
-                    onClick={() => onStatusChange('not_started')}
+                    onClick={() => onStatusChange?.('not_started')}
                     className="px-3 py-1.5 text-xs font-medium rounded-md border border-border hover:bg-muted transition-colors"
                   >
                     Reset
@@ -221,15 +228,6 @@ export function PlanNode({
               )}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Locked message */}
-      {expanded && !canInteract && (
-        <div className="border-t border-border/60 px-4 pb-4 pt-3">
-          <div className="text-xs italic text-muted-foreground">
-            Complete the prerequisites first to unlock this topic.
-          </div>
         </div>
       )}
     </div>

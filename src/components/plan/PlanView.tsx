@@ -1,5 +1,5 @@
 'use client';
-import { AcademicCapIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 import type { LearningPlan } from '@/lib/types';
 import {
   isNodeReady,
@@ -24,153 +24,127 @@ export function PlanView({
   const allCompleted = plan.nodes.every((n) => n.status === 'completed');
   const progress = useMemo(() => calculatePlanProgress(plan), [plan]);
   const totalTopics = plan.nodes.length;
+  const metadataChips = useMemo(() => {
+    const chips: string[] = [];
+    chips.push(`${totalTopics} topics`);
+    const estimatedHours = plan.metadata?.estimatedHours;
+    if (estimatedHours) chips.push(`~${estimatedHours}h total`);
+    const difficulty = plan.metadata?.difficulty;
+    if (difficulty)
+      chips.push(`${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1)} level`);
+    return chips;
+  }, [plan.metadata?.difficulty, plan.metadata?.estimatedHours, totalTopics]);
+  const planUpdatedLabel = useMemo(() => {
+    const timestamp = plan.updatedAt || plan.generatedAt;
+    if (!timestamp) return null;
+    try {
+      return new Date(timestamp).toLocaleDateString();
+    } catch {
+      return null;
+    }
+  }, [plan.updatedAt, plan.generatedAt]);
+  const nextPrerequisites = useMemo(
+    () => (nextNode ? getAllPrerequisites(nextNode.id, plan) : []),
+    [nextNode, plan],
+  );
+  const pendingPrereqs = useMemo(
+    () => nextPrerequisites.filter((prereq) => prereq.status !== 'completed').length,
+    [nextPrerequisites],
+  );
+  const overviewSummary = useMemo(() => {
+    const parts: string[] = [];
+    const difficulty = plan.metadata?.difficulty;
+    if (difficulty) {
+      parts.push(`${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1)} pace`);
+    }
+    const estimatedHours = plan.metadata?.estimatedHours;
+    if (estimatedHours) {
+      parts.push(`~${estimatedHours}h commitment`);
+    }
+    const starterTopic =
+      nextNode?.name ||
+      plan.nodes.find((node) => node.status === 'in_progress')?.name ||
+      plan.nodes[0]?.name;
+    if (starterTopic) {
+      parts.push(`beginning with ${starterTopic.toLowerCase()}`);
+    }
+    return `Structured across ${totalTopics} topics${parts.length ? ` · ${parts.join(' · ')}` : ''}.`;
+  }, [totalTopics, plan.metadata?.difficulty, plan.metadata?.estimatedHours, nextNode, plan.nodes]);
+  const readyToStartNext =
+    !!nextNode && pendingPrereqs === 0 && nextNode.status === 'not_started' && !!onNodeStatusChange;
 
   return (
     <div className="space-y-6">
       {/* Overview */}
-      <section className="rounded-2xl border border-border/60 bg-surface px-5 py-6 shadow-[var(--shadow-card)]">
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="flex min-w-0 flex-col gap-2">
-              <div
-                className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider"
-                style={{
-                  color: 'color-mix(in oklab, var(--color-accent) 75%, var(--color-fg) 25%)',
-                  border: '1px solid color-mix(in oklab, var(--color-accent) 40%, var(--color-border))',
-                  background: 'color-mix(in oklab, var(--color-accent) 12%, var(--color-surface))',
-                }}
-              >
-                <AcademicCapIcon className="h-4 w-4" />
-                Personalized Journey
+      <section className="rounded-2xl border border-border/60 bg-surface px-5 py-5 shadow-[var(--shadow-card)]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
+          <div className="flex flex-col gap-4">
+            {planUpdatedLabel && (
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                Updated {planUpdatedLabel}
               </div>
-              <h3
-                className="text-xl font-semibold leading-tight md:text-2xl"
-                style={{ color: 'var(--color-fg)' }}
-              >
+            )}
+
+            <div className="max-w-2xl space-y-2.5">
+              <h3 className="text-xl font-semibold leading-tight text-foreground md:text-2xl">
                 {plan.goal}
               </h3>
-              <p className="text-sm text-muted-foreground">
-                {totalTopics} curated topics with adaptive checkpoints and mastery tracking.
-              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">{overviewSummary}</p>
             </div>
-            <div
-              className="flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-xs text-muted-foreground shadow-[var(--shadow-1)]"
-              style={{
-                border: '1px solid color-mix(in oklab, var(--color-accent) 28%, var(--color-border))',
-                background: 'color-mix(in oklab, var(--color-accent) 10%, var(--color-surface))',
-              }}
-            >
-              <div className="flex flex-col">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/75">
-                  Progress
-                </span>
-                <span className="text-lg font-semibold text-foreground">{progress.percentComplete}%</span>
+            {metadataChips.length > 0 && (
+              <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                {metadataChips.join(' · ')}
               </div>
-              <div className="hidden h-9 w-px bg-border/70 md:block" />
-              <div className="hidden flex-col md:flex">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/75">
-                  Topics
-                </span>
-                <span className="text-lg font-semibold text-foreground">
-                  {progress.completed}/{plan.nodes.length}
-                </span>
+            )}
+            {nextNode && !allCompleted && (
+              <div className="max-w-xl rounded-xl border border-border/60 bg-muted/20 px-4 py-3.5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/80">
+                      Up next
+                    </div>
+                    <div className="text-base font-semibold leading-snug text-foreground">
+                      {nextNode.name}
+                    </div>
+                    {nextNode.description && (
+                      <p className="text-xs leading-relaxed text-muted-foreground">{nextNode.description}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {nextNode.estimatedMinutes && (
+                        <span className="badge">~{nextNode.estimatedMinutes} min</span>
+                      )}
+                      {pendingPrereqs > 0 && <span className="badge">{pendingPrereqs} prereqs left</span>}
+                    </div>
+                  </div>
+                  {readyToStartNext && (
+                    <button
+                      type="button"
+                      onClick={() => onNodeStatusChange?.(nextNode.id, 'in_progress')}
+                      className="btn btn-sm btn-primary"
+                    >
+                      Start topic
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
-
-          <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-3">
-            <div
-              className="rounded-xl px-4 py-3 shadow-[var(--shadow-1)]"
-              style={{
-                border: '1px solid color-mix(in oklab, var(--color-accent) 26%, var(--color-border))',
-                background: 'color-mix(in oklab, var(--color-accent) 8%, var(--color-surface))',
-              }}
-            >
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/75">
-                Completed
+          <div className="w-full rounded-2xl border border-border/50 bg-muted/10 px-4 py-4 shadow-[var(--shadow-card)] sm:max-w-sm">
+            <div className="flex flex-col gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                Overall progress
               </span>
-              <div className="mt-1 text-base font-semibold text-foreground">{progress.completed}</div>
-            </div>
-            <div
-              className="rounded-xl px-4 py-3 shadow-[var(--shadow-1)]"
-              style={{
-                border: '1px solid color-mix(in oklab, var(--color-accent-2) 30%, var(--color-border))',
-                background: 'color-mix(in oklab, var(--color-accent-2) 10%, var(--color-surface))',
-              }}
-            >
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/75">
-                In Progress
+              <span className="text-4xl font-semibold text-foreground">{progress.percentComplete}%</span>
+              <span className="text-[11px] text-muted-foreground">
+                {progress.completed} of {totalTopics} topics complete
               </span>
-              <div className="mt-1 text-base font-semibold text-foreground">
-                {progress.inProgress || 0}
-              </div>
             </div>
-            <div
-              className="rounded-xl px-4 py-3 shadow-[var(--shadow-1)]"
-              style={{
-                border: '1px solid color-mix(in oklab, var(--color-border) 85%, transparent)',
-                background: 'color-mix(in oklab, var(--color-muted) 55%, transparent)',
-              }}
-            >
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/75">
-                Remaining
-              </span>
-              <div className="mt-1 text-base font-semibold text-foreground">
-                {progress.notStarted}
-              </div>
+            <div className="mt-5 rounded-xl border border-border/60 bg-surface px-3 py-3">
+              <ProgressIndicator plan={plan} />
             </div>
-          </div>
-
-          <div
-            className="rounded-xl px-4 py-4"
-            style={{
-              border: '1px solid color-mix(in oklab, var(--color-accent) 24%, var(--color-border))',
-              background: 'color-mix(in oklab, var(--color-accent) 8%, var(--color-surface))',
-            }}
-          >
-            <ProgressIndicator plan={plan} />
           </div>
         </div>
       </section>
-
-      {/* Current focus highlight */}
-      {nextNode && !allCompleted && (
-        <div
-          className="rounded-2xl px-5 py-5 shadow-[var(--shadow-1)]"
-          style={{
-            border: '1px solid color-mix(in oklab, var(--color-accent-2) 35%, var(--color-border))',
-            background: 'color-mix(in oklab, var(--color-accent-2) 12%, var(--color-surface))',
-          }}
-        >
-          <div className="flex items-start gap-3">
-            <div
-              className="rounded-full p-2.5 shadow-[var(--shadow-1)]"
-              style={{ background: 'color-mix(in oklab, var(--color-accent-2) 22%, var(--color-surface))' }}
-            >
-              <SparklesIcon className="h-5 w-5" style={{ color: 'var(--color-accent-2)' }} />
-            </div>
-            <div className="min-w-0">
-              <p
-                className="text-xs font-semibold uppercase tracking-wide"
-                style={{ color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)' }}
-              >
-                Current focus
-              </p>
-              <p className="text-base font-semibold" style={{ color: 'var(--color-fg)' }}>
-                {nextNode.name}
-              </p>
-              {nextNode.description && (
-                <p
-                  className="mt-1 text-xs"
-                  style={{ color: 'color-mix(in oklab, var(--color-accent-2) 60%, var(--color-fg-muted) 40%)' }}
-                >
-                  {nextNode.description}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Completion message */}
       {allCompleted && (
@@ -194,9 +168,9 @@ export function PlanView({
       )}
 
       {/* Node list */}
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground/80">
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
             Topics & milestones
           </h4>
           <span
@@ -229,8 +203,8 @@ export function PlanView({
 
       {/* Metadata footer */}
       {plan.metadata && (
-        <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
-          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <div className="rounded-2xl border border-border/60 bg-muted/20 px-5 py-4">
+          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
             {plan.metadata.difficulty && (
               <div>
                 <span className="font-medium">Difficulty:</span>{' '}

@@ -1478,9 +1478,12 @@ function PlanProposalCard({
       const currentNode = getNextNode(adoptedPlan);
       const nextTopic = currentNode ? currentNode.name : 'our next topic';
       const content = `Plan approved. Let's get started with ${nextTopic}!`;
-      await sendUserMessage(content);
-      // Encourage learner to open the detailed plan view
-      setUI({ planSheetOpen: true, planSheetPlanOverride: null });
+      await sendUserMessage(content, {
+        metadata: {
+          hiddenFromUser: true,
+          kind: 'tutor_plan_adoption',
+        },
+      });
     } catch {
       // Surface failure via UI notice
       setUI({ notice: 'Failed to apply learning plan. Please try again.' });
