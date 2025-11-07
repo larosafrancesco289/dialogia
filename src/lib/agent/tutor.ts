@@ -385,7 +385,7 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       function: {
         name: 'ask_student_question',
         description:
-          'Present a structured questionnaire to the learner. Use to clarify goals, timeline, and preferences before generating a plan.',
+          'Deliver a targeted intake questionnaire that gathers goals, constraints, and preferences before you plan or diagnose. Use it when you need structured answers instead of inferring from chat context, especially at the start of a session or after the learner’s circumstances change. Frame the questions as the basis for diagnostics, plan scope, and tutoring strategy so the learner understands why you are asking.',
         parameters: {
           type: 'object',
           properties: {
@@ -443,7 +443,7 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       function: {
         name: 'create_diagnostic',
         description:
-          'Create a short diagnostic assessment from supplied items. Use before plan generation or when verifying mastery claims.',
+          'Assemble a short diagnostic assessment to verify prior knowledge, surface misconceptions, or confirm a learner’s claimed mastery before teaching. Use it when you need objective evidence about readiness, and clearly describe topic, depth, and how results will guide the upcoming plan. Provide high-quality items with explanations so the UI can render, score, and report outcomes without extra clarification.',
         parameters: {
           type: 'object',
           properties: {
@@ -515,7 +515,7 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       function: {
         name: 'generate_plan',
         description:
-          'Submit a fully-formed learning plan for student review. Include prerequisite structure, objectives, and estimates.',
+          'Submit a complete learning plan ready for learner review, including goals, prerequisite structure, estimated effort, and sequencing. Use this only after you have gathered requirements (and diagnostics if needed) so the plan feels personalized and actionable. Explain what approval or next steps are required so the learner knows when the plan will be adopted.',
         parameters: {
           type: 'object',
           properties: {
@@ -615,7 +615,7 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       function: {
         name: 'update_plan',
         description:
-          'Propose modifications to the active learning plan (e.g., add review, reprioritize topics). Provide an updated plan snapshot.',
+          'Propose targeted modifications to the in-progress learning plan—adding review, reprioritizing objectives, or adjusting pacing based on new evidence. Use it instead of regenerating from scratch so approvals and progress tracking remain intact. Always include the updated plan snapshot plus notes about why the learner should accept the change.',
         parameters: {
           type: 'object',
           properties: {
@@ -687,7 +687,7 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       function: {
         name: 'get_plan_suggestions',
         description:
-          'Record structured plan improvement suggestions (used when learner struggles or excels).',
+          'Capture structured plan improvement ideas that should influence future revisions but do not immediately alter the current plan. Use it when the learner is notably stuck or excelling and you want to log hypotheses—like adding spaced review, changing resources, or adjusting goals—with clear priority. Include rationale and expected impact so later plan updates can act on the evidence.',
         parameters: {
           type: 'object',
           properties: {
@@ -718,7 +718,7 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       function: {
         name: 'assess_answer',
         description:
-          'Log assessment of a student response and extract evidence (correctness, misconceptions).',
+          'Log a detailed assessment of a learner response, capturing the prompt, their answer, correctness, hints used, and any misconceptions or strengths observed. Use it immediately after meaningful answers so evidence stays aligned with the relevant plan node. The structured record feeds both learner feedback and downstream model updates, so be explicit about skills, difficulty, and what the learner should do next.',
         parameters: {
           type: 'object',
           properties: {
@@ -750,7 +750,7 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       function: {
         name: 'update_learner_model',
         description:
-          'Update the learner model with structured evidence and notes (confidence adjustments, misconceptions).',
+          'Write structured evidence back to the learner model to adjust confidence, log misconceptions, and capture qualitative notes tied to a specific plan node. Use it after assessments, quizzes, or reflective tutoring moments so longitudinal progress is measurable. Include weighted evidence, before/after confidence, and recommended follow-ups so future planning knows exactly what changed and why.',
         parameters: {
           type: 'object',
           properties: {
@@ -803,7 +803,7 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       function: {
         name: 'quiz_mcq',
         description:
-          'Render multiple-choice questions as interactive widgets. Supply fully-formed items or describe generation parameters.',
+          'Create a short multiple-choice quiz (typically 2-5 items) for retrieval practice or targeted checks on a specific skill. Use it when you want auto-graded interactions with immediate feedback, and either supply fully formed items or provide generation parameters the UI can expand. Clearly mark the correct option, include explanations, and tag each question with topic, skill, and difficulty so the learner understands the takeaway.',
         parameters: {
           type: 'object',
           properties: {
@@ -861,7 +861,8 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       type: 'function',
       function: {
         name: 'quiz_fill_blank',
-        description: 'Render fill-in-the-blank practice items.',
+        description:
+          'Create fill-in-the-blank items that force the learner to recall exact terms, formulas, or steps without answer choices. Use this immediately after instruction or before advancing to confirm that key language is memorized. Provide accepted answers, aliases, and explanations so the UI can auto-check responses and clarify mistakes.',
         parameters: {
           type: 'object',
           properties: {
@@ -894,7 +895,8 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       type: 'function',
       function: {
         name: 'quiz_open_ended',
-        description: 'Render open-ended prompts for written responses.',
+        description:
+          'Deliver open-ended prompts that ask the learner to explain reasoning, show work, or synthesize ideas in their own words. Use it sparingly for deeper checks where automated grading is hard, and include rubrics or sample answers so later grading and feedback stay grounded. Clarify the skill focus, difficulty, and any constraints (length, format) so the learner knows what a strong response looks like.',
         parameters: {
           type: 'object',
           properties: {
@@ -926,7 +928,8 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       type: 'function',
       function: {
         name: 'flashcards',
-        description: 'Render flashcards for active recall practice.',
+        description:
+          'Deliver a small bundle of flashcards for active recall, typically 2-10 cards tied to the learner’s current plan nodes. Use it when spaced repetition or lightweight reinforcement will help, and include hints or topics so the learner can connect each card to prior instruction. Keep both sides concise and actionable so the cards can later be stored or reviewed in decks.',
         parameters: {
           type: 'object',
           properties: {
@@ -959,7 +962,7 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       function: {
         name: 'grade_open_response',
         description:
-          'Provide grading feedback for an open-ended response previously rendered via quiz_open_ended.',
+          'Score and provide feedback on a learner’s open-ended response that was previously delivered via quiz_open_ended. Use it after the learner submits substantial work so you can capture both a rubric-aligned score and narrative coaching. Highlight strengths, specific revision advice, and any rubric criteria that were missed so future plan updates know whether mastery improved.',
         parameters: {
           type: 'object',
           properties: {
@@ -976,7 +979,8 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       type: 'function',
       function: {
         name: 'add_to_deck',
-        description: 'Add flashcards to the spaced repetition deck for this chat.',
+        description:
+          'Add newly created flashcards to the learner’s long-term spaced-repetition deck. Use it when the learner requests persistent review material or when you generate high-value cards that should resurface in future sessions. Provide clear fronts, backs, hints, and topical tags so the deck stays organized.',
         parameters: {
           type: 'object',
           properties: {
@@ -1003,7 +1007,8 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
       type: 'function',
       function: {
         name: 'srs_review',
-        description: 'Retrieve upcoming spaced-repetition cards for review.',
+        description:
+          'Fetch the next batch of due spaced-repetition cards so you can walk the learner through a timed review set. Use it when the learner requests SRS practice or when you want to resume a deck mid-session, and specify how many cards (1-40) to pull. The tool returns card fronts, backs, hints, and metadata so you can reference them or surface them in the UI.',
         parameters: {
           type: 'object',
           properties: {

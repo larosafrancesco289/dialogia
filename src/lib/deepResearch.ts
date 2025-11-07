@@ -50,7 +50,7 @@ export const DEEP_TOOLS: ToolDefinition[] = [
     function: {
       name: 'web_search',
       description:
-        'Search the public web via Brave for up-to-date results. Use specific queries and small result counts. Avoid redundant calls.',
+        'Run a Brave web search to pull current public information complete with URLs and snippets for sourcing. Use this when you need fresh facts or citations that are not already in context, and skip it for background knowledge you can reason through without external evidence. Supply focused queries, request only the number of results you plan to read (1-10), and avoid redundant calls so subsequent fetches stay efficient.',
       parameters: {
         type: 'object',
         properties: {
