@@ -63,6 +63,13 @@ export function getSupportedParameters(model?: ORModel | null): string[] {
   return [];
 }
 
+function isAnthropicModel(model?: ORModel | null): boolean {
+  if (!model) return false;
+  if (model.transport === 'anthropic') return true;
+  const id = String(model.id || '').toLowerCase();
+  return /^anthropic[:/#]/.test(id);
+}
+
 export function isReasoningSupported(model?: ORModel | null): boolean {
   const supported = getSupportedParameters(model);
   if (supported.includes('reasoning')) return true;
@@ -73,7 +80,10 @@ export function isReasoningSupported(model?: ORModel | null): boolean {
 
 export function isToolCallingSupported(model?: ORModel | null): boolean {
   const supported = getSupportedParameters(model);
-  return supported.includes('tools');
+  if (supported.includes('tools')) return true;
+  // Anthropics models all support Messages API tool use even if metadata omits the flag.
+  if (isAnthropicModel(model)) return true;
+  return false;
 }
 
 export function isVisionSupported(model?: ORModel | null): boolean {

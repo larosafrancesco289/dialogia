@@ -13,7 +13,7 @@ export function getSearchToolDefinition(): ToolDefinition[] {
       function: {
         name: 'web_search',
         description:
-          'Search the public web for up-to-date information. Use only when necessary. Return results to ground your answer and cite sources as [n].',
+          'Query the public web via Brave to gather up-to-date, verifiable references with titles, URLs, and summary snippets. Use this when you need fresh facts, statistics, or citations that are not already in context, and skip it for subjective brainstorming or information older than a year that you can confidently recall. Craft a precise query and optionally request a small number of results (1-10) so the tool can return high-quality matches that you must cite inline as [n] in the final response.',
         parameters: {
           type: 'object',
           properties: {
