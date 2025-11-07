@@ -5,8 +5,8 @@ import { computeCost, describeModelPricing } from './cost';
 test('describeModelPricing formats prompt/completion rates from numbers or strings', () => {
   const model: any = {
     pricing: {
-      prompt: 0.005,
-      completion: '0.015',
+      prompt: 0.000005,
+      completion: '0.000015',
       currency: 'USD',
     },
   };
@@ -26,8 +26,8 @@ test('describeModelPricing falls back to undefined when rates missing or invalid
 test('computeCost sums prompt and completion usage in model currency', () => {
   const model: any = {
     pricing: {
-      prompt: 0.004,
-      completion: 0.02,
+      prompt: 0.000004,
+      completion: 0.00002,
       currency: 'USD',
     },
   };

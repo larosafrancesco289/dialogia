@@ -7,14 +7,11 @@ export function computeCost(opts: {
 }): { currency?: string; total?: number } {
   const { model, promptTokens, completionTokens } = opts;
   const currency = model?.pricing?.currency || 'USD';
-  const promptRate = model?.pricing?.prompt; // per 1K tokens
-  const completionRate = model?.pricing?.completion; // per 1K tokens
-  const pCost =
-    promptRate != null && promptTokens != null ? (promptRate / 1_000) * promptTokens : 0;
+  const promptRate = model?.pricing?.prompt; // per token
+  const completionRate = model?.pricing?.completion; // per token
+  const pCost = promptRate != null && promptTokens != null ? promptRate * promptTokens : 0;
   const cCost =
-    completionRate != null && completionTokens != null
-      ? (completionRate / 1_000) * completionTokens
-      : 0;
+    completionRate != null && completionTokens != null ? completionRate * completionTokens : 0;
   const total = pCost + cCost;
   return { currency, total: total || undefined };
 }
@@ -38,7 +35,7 @@ function toNumber(val: unknown): number | undefined {
 // Convert per-token price to per-million for display
 function perMillion(perToken?: number): number | undefined {
   if (typeof perToken !== 'number' || !Number.isFinite(perToken)) return undefined;
-  return perToken * 1_000;
+  return perToken * 1_000_000;
 }
 
 // Build a compact pricing descriptor for a model, e.g. "in $5/M, out $15/M"
