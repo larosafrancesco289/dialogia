@@ -2,14 +2,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
-import {
-  EyeIcon,
-  MicrophoneIcon,
-  PhotoIcon,
-  LightBulbIcon,
-  MagnifyingGlassIcon,
-  SparklesIcon,
-} from '@heroicons/react/24/outline';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { estimateTokens } from '@/lib/tokenEstimate';
@@ -21,7 +13,6 @@ import {
   isAudioInputSupported,
   isImageOutputSupported,
 } from '@/lib/models';
-import type { Attachment } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
@@ -29,6 +20,9 @@ import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
 import { getNextNode } from '@/lib/agent/planGenerator';
+import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
+import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
+import { ComposerChips } from '@/components/composer/ComposerChips';
 // PDFs are sent directly to OpenRouter as file blocks; no local parsing.
 
 export function Composer({
@@ -48,7 +42,6 @@ export function Composer({
   const chat = chats.find((c) => c.id === selectedChatId);
   const models = useChatStore((s) => s.models);
   const [text, setText] = useState('');
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
   // No local PDF parsing; keep state simple
   const taRef = useRef<HTMLTextAreaElement>(null);
   const isStreaming = useChatStore((s) => s.ui.isStreaming);
@@ -83,100 +76,51 @@ export function Composer({
     [learningPlan],
   );
 
-  // Slash commands: /model id, /search on|off|toggle, /reasoning none|low|medium|high
-  const trySlashCommand = async (raw: string): Promise<boolean> => {
-    const s = (raw || '').trim();
-    if (!s.startsWith('/')) return false;
-    const parts = s.slice(1).split(/\s+/);
-    const cmd = (parts.shift() || '').toLowerCase();
-    const arg = parts.join(' ').trim();
-    const applyToChat = !!chat;
+  const modelId = chat?.settings.model || uiNext.nextModel || DEFAULT_MODEL_ID;
+  const modelMeta = findModelById(models, modelId);
+  const canVision = isVisionSupported(modelMeta);
+  const canAudio = isAudioInputSupported(modelMeta);
+  const supportsReasoning = isReasoningSupported(modelMeta);
+  const canImageOut = isImageOutputSupported(modelMeta);
 
-    const currentModelId = chat?.settings.model || uiNext.nextModel || DEFAULT_MODEL_ID;
-    const currentModel = findModelById(models, currentModelId);
+  const {
+    attachments,
+    attachmentsHint,
+    fileInputRef,
+    handleFileInputChange,
+    handlePaste,
+    handleDrop,
+    openFilePicker,
+    removeAttachment,
+    resetAttachments,
+  } = useComposerAttachments({ canVision, canAudio });
 
-    const setNotice = (msg: string) => setUI({ notice: msg });
-
-    if (cmd === 'search' || cmd === 'web') {
-      let on: boolean | undefined;
-      if (arg === 'on') on = true;
-      else if (arg === 'off') on = false;
-      else if (arg === 'toggle' || arg === '')
-        on = undefined; // toggle
-      else return false;
-      if (applyToChat) {
-        const next = on == null ? !chat!.settings.search_enabled : on;
-        await updateSettings({ search_enabled: next });
-        setNotice(`Web search: ${next ? 'On' : 'Off'}`);
-      } else {
-        const prev = !!uiNext.nextSearchEnabled;
-        const next = on == null ? !prev : on;
-        setUI({ nextSearchEnabled: next });
-        setNotice(`Web search (next): ${next ? 'On' : 'Off'}`);
-      }
-      return true;
-    }
-
-    if (cmd === 'reasoning' || cmd === 'think') {
-      const allowed = ['none', 'low', 'medium', 'high'] as const;
-      const pick = (arg || '').toLowerCase();
-      if (!allowed.includes(pick as any)) return false;
-      const supported = isReasoningSupported(currentModel);
-      if (!supported) {
-        setNotice('Reasoning not supported by current model');
-        return true;
-      }
-      if (applyToChat) await updateSettings({ reasoning_effort: pick as any });
-      else setUI({ nextReasoningEffort: pick as any });
-      setNotice(`Reasoning effort: ${pick}`);
-      return true;
-    }
-
-    if (cmd === 'model' || cmd === 'm') {
-      const id = arg.trim();
-      if (!id) return false;
-      // Accept exact id or exact name match (case-insensitive)
-      const byId = findModelById(models, id);
-      const byName = models.find((m) => m.name?.toLowerCase() === id.toLowerCase());
-      const chosen = byId || byName;
-      if (!chosen) {
-        setNotice(`Unknown model: ${id}`);
-        return true;
-      }
-      if (applyToChat) await updateSettings({ model: chosen.id });
-      else setUI({ nextModel: chosen.id });
-      setNotice(`Model set to ${chosen.name || chosen.id}`);
-      return true;
-    }
-
-    if (cmd === 'help') {
-      setNotice('Slash: /model <id>, /search on|off|toggle, /reasoning none|low|medium|high');
-      return true;
-    }
-
-    return false;
-  };
+  const { handleSubmit } = useComposerShortcuts({
+    chat,
+    models,
+    nextOverrides: uiNext,
+    updateChatSettings: updateSettings,
+    setUI,
+    newChat,
+    sendMessage: (value, options) => send(value, options),
+  });
 
   const onSend = async () => {
-    const value = text.trim();
-    if (!value) return;
-    // Handle slash commands locally
-    if (value.startsWith('/')) {
-      const handled = await trySlashCommand(value);
-      if (handled) {
+    const result = await handleSubmit({
+      text,
+      attachments: attachments.slice(),
+      onBeforeSend: () => {
+        setText('');
+        resetAttachments();
+        if (isTablet) taRef.current?.blur();
+        else taRef.current?.focus();
+      },
+      onCommandHandled: () => {
         setText('');
         taRef.current?.focus();
-        return;
-      }
-    }
-    setText('');
-    const toSend = attachments.slice();
-    setAttachments([]);
-    // On mobile, blur to close the keyboard; on desktop keep focus for fast follow-ups
-    if (isTablet) taRef.current?.blur();
-    else taRef.current?.focus();
-    if (!chat) await newChat();
-    await send(value, { attachments: toSend });
+      },
+    });
+    if (result === 'noop') return;
   };
 
   // DeepResearch toggles like web search; actual call happens on send
@@ -225,12 +169,6 @@ export function Composer({
     return { promptTokens, currency: cost.currency, total: cost.total };
   }, [text, chat?.settings.model, uiNext.nextModel, models]);
 
-  const modelId = chat?.settings.model || uiNext.nextModel || DEFAULT_MODEL_ID;
-  const modelMeta = findModelById(models, modelId);
-  const canVision = isVisionSupported(modelMeta);
-  const canAudio = isAudioInputSupported(modelMeta);
-  const supportsReasoning = isReasoningSupported(modelMeta);
-  const canImageOut = isImageOutputSupported(modelMeta);
   const experimentalBrave = useChatStore((s) => !!s.ui.experimentalBrave);
   const searchEnabled = chat ? !!chat.settings.search_enabled : !!uiNext.nextSearchEnabled;
   const rawProvider =
@@ -242,83 +180,6 @@ export function Composer({
       ? (chat.settings.reasoning_effort as Effort | undefined)
       : (uiNext.nextReasoningEffort as Effort | undefined)
   ) as Effort | undefined;
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const onFilesChosen = async (files: FileList | File[]) => {
-    if (!canVision) return;
-    const toProcess = clampImages(attachments.filter((a) => a.kind === 'image').length, files);
-    const next: Attachment[] = [];
-    for (const f of toProcess) {
-      const att = await toImageAttachment(f);
-      if (att) next.push(att);
-    }
-    if (next.length) setAttachments((prev) => [...prev, ...next]);
-  };
-
-  const onPdfChosen = async (files: FileList | File[]) => {
-    const arr = Array.from(files || []);
-    const maxDocs = 2;
-    const existingDocs = attachments.filter((a) => a.kind === 'pdf').length;
-    const remain = Math.max(0, maxDocs - existingDocs);
-    const toProcess = arr.slice(0, remain);
-    const next: Attachment[] = [];
-    for (const f of toProcess) {
-      const att = await toPdfAttachment(f);
-      if (att) next.push(att);
-    }
-    if (next.length) setAttachments((prev) => [...prev, ...next]);
-  };
-
-  const onPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = e.clipboardData?.items || [];
-    const files: File[] = [];
-    for (const it of Array.from(items)) {
-      if (it.kind === 'file') {
-        const f = it.getAsFile();
-        if (f) files.push(f);
-      }
-    }
-    if (files.length) {
-      e.preventDefault();
-      const pdfs = files.filter((f) => f.type === 'application/pdf');
-      const imgs = files.filter((f) => f.type.startsWith('image/'));
-      if (imgs.length && canVision) await onFilesChosen(imgs);
-      if (pdfs.length) await onPdfChosen(pdfs);
-    }
-  };
-
-  const onDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const files = e.dataTransfer?.files;
-    if (files && files.length) {
-      const arr = Array.from(files);
-      const pdfs = arr.filter((f) => f.type === 'application/pdf');
-      const imgs = arr.filter((f) => f.type.startsWith('image/'));
-      const auds = arr.filter(
-        (f) =>
-          f.type.startsWith('audio/') ||
-          f.name.toLowerCase().endsWith('.wav') ||
-          f.name.toLowerCase().endsWith('.mp3'),
-      );
-      if (imgs.length && canVision) await onFilesChosen(imgs);
-      if (pdfs.length) await onPdfChosen(pdfs);
-      if (auds.length && canAudio) await onAudioChosen(auds);
-    }
-  };
-
-  const onAudioChosen = async (files: FileList | File[]) => {
-    const arr = Array.from(files || []);
-    const maxAud = 1;
-    const existingAud = attachments.filter((a) => a.kind === 'audio').length;
-    const remain = Math.max(0, maxAud - existingAud);
-    const toProcess = arr.slice(0, remain);
-    const next: Attachment[] = [];
-    for (const f of toProcess) {
-      const att = await toAudioAttachment(f);
-      if (att) next.push(att);
-    }
-    if (next.length) setAttachments((prev) => [...prev, ...next]);
-  };
 
   const shouldPinToViewport =
     isCompact && variant !== 'hero' && (focused || keyboardMetrics.offset > 0);
@@ -372,15 +233,6 @@ export function Composer({
 
   const isHeroVariant = variant === 'hero';
 
-  const attachmentsHint =
-    canVision && canAudio
-      ? 'Attach images, audio (mp3/wav), or PDFs'
-      : canVision
-        ? 'Attach images or PDFs'
-        : canAudio
-          ? 'Attach audio (mp3/wav) or PDFs'
-          : 'Attach PDFs';
-
   const showReasoningMenu = supportsReasoning && !tutorEnabled;
   const toggleSearch = () => {
     if (chat) {
@@ -400,8 +252,6 @@ export function Composer({
     if (!isTablet) setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0);
   };
 
-  const openFilePicker = () => fileInputRef.current?.click();
-
   return (
     <>
       {shouldPinToViewport && composerHeight > 0 && !isHeroVariant && (
@@ -415,53 +265,30 @@ export function Composer({
         ref={wrapperRef}
         className={wrapperClass}
         onDragOver={(e) => e.preventDefault()}
-        onDrop={onDrop}
+        onDrop={handleDrop}
       >
-        <AttachmentPreviewList
-          attachments={attachments}
-          onRemove={(id) =>
-            setAttachments((prev) => prev.filter((attachment) => attachment.id !== id))
-          }
-        />
+        <AttachmentPreviewList attachments={attachments} onRemove={removeAttachment} />
         <input
           ref={fileInputRef}
           type="file"
           accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,audio/wav,audio/mpeg"
           multiple
           className="hidden"
-          onChange={async (event) => {
-            const inputEl = event.currentTarget;
-            const files = inputEl?.files;
-            if (files) {
-              const arr = Array.from(files);
-              const pdfs = arr.filter((f) => f.type === 'application/pdf');
-              const imgs = arr.filter((f) => f.type.startsWith('image/'));
-              const auds = arr.filter(
-                (f) =>
-                  f.type.startsWith('audio/') ||
-                  f.name.toLowerCase().endsWith('.wav') ||
-                  f.name.toLowerCase().endsWith('.mp3'),
-              );
-              if (pdfs.length) await onPdfChosen(pdfs);
-              if (imgs.length && canVision) await onFilesChosen(imgs);
-              if (auds.length && canAudio) await onAudioChosen(auds);
-            }
-            if (inputEl) inputEl.value = '';
-          }}
+          onChange={(event) => handleFileInputChange(event.currentTarget)}
         />
 
         <div className="flex flex-wrap items-center gap-3">
           <ComposerInput
             value={text}
             onChange={setText}
-            onSend={onSend}
-            isStreaming={isStreaming}
-            textareaRef={taRef}
-            maxHeight={maxTextareaHeight}
-            models={models}
-            onPaste={onPaste}
-            onFocusChange={setFocused}
-          />
+          onSend={onSend}
+          isStreaming={isStreaming}
+          textareaRef={taRef}
+          maxHeight={maxTextareaHeight}
+          models={models}
+          onPaste={handlePaste}
+          onFocusChange={setFocused}
+        />
           <ComposerActions
             isStreaming={isStreaming}
             onStop={handleStop}
@@ -476,98 +303,22 @@ export function Composer({
             onSelectEffort={handleSelectEffort}
           />
         </div>
-        {/* Helper chips row: current model, capabilities, web search, reasoning, token estimate */}
-        {/* Hide helper chips on small screens to reduce clutter */}
-        <div className="mt-2 hidden sm:flex items-center gap-2 flex-wrap text-xs">
-          {
-            <button
-              className="badge"
-              title="Change model (opens Settings)"
-              onClick={() => setUI({ showSettings: true })}
-            >
-              {tutorEnabled ? 'Tutor' : findModelById(models, modelId)?.name || modelId}
-            </button>
-          }
-          {currentNode && (
-            <span
-              className="badge flex items-center gap-1"
-              style={{
-                background: 'color-mix(in oklab, var(--color-accent-2) 15%, transparent)',
-                borderColor: 'color-mix(in oklab, var(--color-accent-2) 35%, var(--color-border))',
-                color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
-              }}
-              title={`Currently learning: ${currentNode.name}`}
-              aria-label="Current learning focus"
-            >
-              <SparklesIcon className="h-3.5 w-3.5" />
-              {currentNode.name}
-            </span>
-          )}
-          {canVision && (
-            <span
-              className="badge flex items-center gap-1"
-              title="Vision input supported"
-              aria-label="Vision supported"
-            >
-              <EyeIcon className="h-3.5 w-3.5" />
-            </span>
-          )}
-          {canImageOut && (
-            <span
-              className="badge flex items-center gap-1"
-              title="Image generation supported"
-              aria-label="Image generation supported"
-            >
-              <PhotoIcon className="h-3.5 w-3.5" />
-            </span>
-          )}
-          {canAudio && (
-            <span
-              className="badge flex items-center gap-1"
-              title="Audio input supported (mp3/wav)"
-              aria-label="Audio input supported"
-            >
-              <MicrophoneIcon className="h-3.5 w-3.5" />
-            </span>
-          )}
-          <button
-            className="badge flex items-center gap-1"
-            title={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} web search for next message`}
-            onClick={toggleSearch}
-            aria-pressed={!!searchEnabled}
-          >
-            <MagnifyingGlassIcon className="h-3.5 w-3.5" />{' '}
-            {(searchProvider === 'openrouter' ? 'OR' : 'Brave') +
-              ' ' +
-              (searchEnabled ? 'On' : 'Off')}
-          </button>
-          {!tutorEnabled &&
-            (() => {
-              const effort = currentEffort;
-              if (!supportsReasoning) return null;
-              if (!effort || effort === 'none') return null;
-              const letter = effort === 'high' ? 'H' : effort === 'medium' ? 'M' : 'L';
-              return (
-                <span
-                  className="badge flex items-center gap-1"
-                  title={`Reasoning effort: ${effort}`}
-                  aria-label={`Reasoning ${effort}`}
-                >
-                  <LightBulbIcon className="h-3.5 w-3.5" /> {letter}
-                </span>
-              );
-            })()}
-          <span className="text-xs text-muted-foreground">
-            Press Enter to send · Shift+Enter for newline
-          </span>
-        </div>
+        <ComposerChips
+          tutorEnabled={tutorEnabled}
+          modelId={modelId}
+          models={models}
+          openSettings={() => setUI({ showSettings: true })}
+          currentNode={currentNode}
+          canVision={canVision}
+          canImageOut={canImageOut}
+          canAudio={canAudio}
+          searchProvider={searchProvider}
+          searchEnabled={searchEnabled}
+          toggleSearch={toggleSearch}
+          supportsReasoning={supportsReasoning}
+          currentEffort={currentEffort}
+        />
       </div>
     </>
   );
 }
-import {
-  toImageAttachment,
-  toPdfAttachment,
-  toAudioAttachment,
-  clampImages,
-} from '@/lib/attachments';

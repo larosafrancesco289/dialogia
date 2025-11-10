@@ -4,6 +4,7 @@ import { useChatStore } from '@/lib/store';
 import { LightBulbIcon, BeakerIcon } from '@heroicons/react/24/outline';
 import { findModelById, isReasoningSupported } from '@/lib/models';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
+import { readNextOverrides } from '@/lib/ui/next';
 
 type Effort = 'none' | 'low' | 'medium' | 'high';
 
@@ -14,23 +15,24 @@ export function ReasoningEffortMenu() {
   const updateSettings = useChatStore((s) => s.updateChatSettings);
   const ui = useChatStore((s) => s.ui);
   const setUI = useChatStore((s) => s.setUI);
-  const deepEnabled = useChatStore((s) => !!s.ui.nextDeepResearch);
   const deepGloballyEnabled = useChatStore((s) => !!s.ui.experimentalDeepResearch);
+  const nextOverrides = readNextOverrides(ui);
+  const deepEnabled = !!nextOverrides.deepResearch;
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const modelId = chat?.settings.model || ui.nextModel || DEFAULT_MODEL_ID;
+  const modelId = chat?.settings.model || nextOverrides.model || DEFAULT_MODEL_ID;
   const selectedModel = useMemo(() => findModelById(models, modelId), [models, modelId]);
   const supportsReasoning = useMemo(() => isReasoningSupported(selectedModel), [selectedModel]);
 
   const current: Effort | undefined = (
-    chat ? (chat.settings.reasoning_effort as any) : (ui.nextReasoningEffort as any)
+    chat ? (chat.settings.reasoning_effort as any) : (nextOverrides.reasoning?.effort as any)
   ) as Effort | undefined;
   const active = current && current !== 'none';
 
   const choose = async (effort: Effort) => {
     if (chat) await updateSettings({ reasoning_effort: effort });
-    else setUI({ nextReasoningEffort: effort });
+    else setUI({ next: { reasoning: { effort } } });
     setOpen(false);
   };
 
@@ -84,7 +86,7 @@ export function ReasoningEffortMenu() {
               <div className="divider my-2" />
               <button
                 className={`menu-item flex items-center gap-2 ${deepEnabled ? 'font-semibold' : ''}`}
-                onClick={() => setUI({ nextDeepResearch: !deepEnabled })}
+                onClick={() => setUI({ next: { deepResearch: !deepEnabled } })}
                 title="DeepResearch: multi-step web research for the next send"
                 aria-pressed={deepEnabled}
               >

@@ -3,7 +3,7 @@ import { fetchModels as fetchOpenRouterModels } from '@/lib/openrouter';
 import { fetchModels as fetchAnthropicModels } from '@/lib/anthropic';
 import { requireClientKeyOrProxy, requireAnthropicClientKeyOrProxy } from '@/lib/config';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
-import { ensureListsAndFilterCached } from '@/lib/zdr/cache';
+import { computeZdrFilterCached } from '@/lib/zdr/cache';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { createModelIndex, EMPTY_MODEL_INDEX, formatModelLabel } from '@/lib/models';
@@ -75,7 +75,7 @@ export const createModelSlice = createStoreSlice((set, get) => {
               );
             }
 
-            const { filter, filtered } = await ensureListsAndFilterCached(
+            const { filter, filtered } = await computeZdrFilterCached(
               openrouterModels,
               zdrOnly ? 'enforce' : 'informational',
               set,

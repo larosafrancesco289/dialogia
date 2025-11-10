@@ -1,6 +1,7 @@
 import type { StoreState, UIState } from '@/lib/store/types';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
+import { applyNextOverrides, deriveNextPatchFromLegacy } from '@/lib/ui/next';
 
 export const createUiSlice = createStoreSlice((set, get) => {
   const initial: UIState = buildDefaultUIState();
@@ -9,13 +10,21 @@ export const createUiSlice = createStoreSlice((set, get) => {
     ui: initial,
     setUI(partial: Partial<UIState>) {
       set((s) => {
-        const nextUi: UIState = { ...s.ui, ...partial };
+        const { next: nextPatch, ...rest } = partial;
+        let nextUi: UIState = { ...s.ui, ...rest };
+        if (nextPatch) {
+          nextUi = applyNextOverrides(nextUi, nextPatch);
+        }
+        const legacyPatch = deriveNextPatchFromLegacy(partial);
+        if (Object.keys(legacyPatch).length > 0) {
+          nextUi = applyNextOverrides(nextUi, legacyPatch);
+        }
         if (partial.experimentalTutor === false) {
           nextUi.forceTutorMode = false;
-          nextUi.nextTutorMode = false;
+          nextUi = applyNextOverrides(nextUi, { tutorMode: false });
         }
         if (partial.enableMultiModelChat === false) {
-          nextUi.nextParallelModels = undefined;
+          nextUi = applyNextOverrides(nextUi, { parallelModels: undefined });
         }
         if (partial.planSheetOpen === false) {
           nextUi.planSheetPlanOverride = null;

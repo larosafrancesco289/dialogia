@@ -10,13 +10,7 @@ import type {
   ORModel,
   ToolCallLogEntry,
 } from '@/lib/types';
-import {
-  type PlanTurnResult,
-  type ModelMessage,
-  type PersistMessage,
-  type TurnComposition,
-  type TurnContext,
-} from '@/lib/agent/types';
+import { type PlanTurnResult, type PersistMessage, type TurnComposition, type TurnContext } from '@/lib/agent/types';
 import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
 import { streamFinal } from '@/lib/agent/streaming';
@@ -26,6 +20,7 @@ import { resolveModelTransport } from '@/lib/providers';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
 import { getLatestLearnerModel, initializeLearnerModel } from '@/lib/agent/learnerModel';
 import type { ModelIndex } from '@/lib/models';
+import { runTurn } from '@/lib/orchestrator/turn';
 
 export type ApiKeyResolver = (params: { modelId: string; transport: ModelTransport }) => string;
 
@@ -157,44 +152,24 @@ export class HeadlessTutorSession {
       };
     });
 
-    const composition = await composeTurn({
-      chat,
-      ui: this.store.getState().ui,
-      modelIndex: this.store.getState().modelIndex,
-      prior: priorMessages,
-      newUser: { content },
-      attachments: [],
-    });
-
-    const transport = resolveModelTransport(
-      chat.settings.model,
-      this.store.getState().modelIndex.get(chat.settings.model),
-    );
-    const apiKey = this.resolveApiKey({ modelId: chat.settings.model, transport });
-    if (!apiKey) throw new Error(`Missing API key for ${transport} transport`);
-
     const controller = new AbortController();
     setTurnController(this.chatId, controller);
 
-    let pendingLearnerModel: LearnerModel | undefined;
-    let pendingPlanUpdates: Message['planUpdates'] | undefined;
-    let planResult: PlanTurnResult = {
-      finalSystem:
-        composition.system ??
-        chat.settings.system ??
-        DEFAULT_BASE_SYSTEM,
-      usedTutorContentTool: false,
-      hasSearchResults: false,
+    const baseTurnContext: Omit<TurnContext, 'apiKey' | 'transport'> = {
+      set: this.store.setState.bind(this.store),
+      get: this.store.getState.bind(this.store),
+      models: this.store.getState().models,
+      modelIndex: this.store.getState().modelIndex,
+      persistMessage: this.persistMessage,
     };
 
-    const tutorEnabled = composition.tutor.enabled;
+    let pendingLearnerModel: LearnerModel | undefined;
+    let pendingPlanUpdates: Message['planUpdates'] | undefined;
     let priorLearnerModel: LearnerModel | undefined;
-    if (tutorEnabled && chat.settings.learningPlan) {
-      priorLearnerModel = getLatestLearnerModel(priorMessages);
-      if (!priorLearnerModel) {
-        priorLearnerModel = initializeLearnerModel(this.chatId, chat.settings.learningPlan);
-      }
-    }
+    let finalAssistant: Message | undefined;
+    let latestComposition: TurnComposition | undefined;
+    let latestPlan: PlanTurnResult | undefined;
+    let runArtifacts: Awaited<ReturnType<typeof runTurn>> | undefined;
 
     const attachLearnerContextToAssistant = () => {
       if (!pendingLearnerModel && !pendingPlanUpdates) return;
@@ -204,136 +179,131 @@ export class HeadlessTutorSession {
       this.updateMessage(assistantMessage.id, patch);
     };
 
-    let finalAssistant: Message | undefined;
-
-    const stateSnapshot = this.store.getState();
-    const turnContext: TurnContext = {
-      apiKey,
-      transport,
-      set: this.store.setState.bind(this.store),
-      get: this.store.getState.bind(this.store),
-      models: stateSnapshot.models,
-      modelIndex: stateSnapshot.modelIndex,
-      persistMessage: this.persistMessage,
+    const authResolver = (modelId: string) => {
+      const modelMeta = baseTurnContext.modelIndex.get(modelId);
+      const transport = resolveModelTransport(modelId, modelMeta);
+      const apiKey = this.resolveApiKey({ modelId, transport });
+      if (!apiKey) throw new Error(`Missing API key for ${transport} transport`);
+      return { transport, apiKey };
     };
 
     try {
-      if (composition.shouldPlan) {
-        const plan = await planTurn({
-          chat,
-          chatId: this.chatId,
-          assistantMessage,
-          userContent: content,
-          combinedSystem: composition.system,
-          baseMessages: composition.messages as ModelMessage[],
-          toolDefinition: composition.tools,
-          searchEnabled: composition.search.enabled,
-          searchProvider: composition.search.provider,
-          providerSort: composition.providerSort,
-          controller,
-          turn: turnContext,
-        });
-        planResult = plan;
-
-        if (plan.learnerModel) pendingLearnerModel = plan.learnerModel;
-        if (plan.planUpdates) pendingPlanUpdates = plan.planUpdates;
-
-        if (plan.updatedPlan) {
-          this.store.setState((draft) => ({
-            chats: draft.chats.map((c) =>
-              c.id === chat.id
-                ? { ...c, settings: { ...c.settings, learningPlan: plan.updatedPlan } }
-                : c,
-            ),
-          }));
-        }
-
-        if (plan.learnerModel && plan.learnerModelDebug && priorLearnerModel) {
-          this.store.setState((draft) => ({
-            ui: {
-              ...draft.ui,
-              learnerModelDebugByMessageId: {
-                ...(draft.ui.learnerModelDebugByMessageId || {}),
-                [assistantMessage.id]: {
-                  before: priorLearnerModel,
-                  after: plan.learnerModel,
-                  debug: plan.learnerModelDebug,
-                  planUpdates: plan.planUpdates,
-                },
-              },
-            },
-          }));
-        }
-
-        try {
-          const modelMeta = this.store.getState().modelIndex.get(chat.settings.model);
-          const genSettings = snapshotGenSettings({
-            settings: chat.settings,
-            modelMeta,
-            searchProvider: composition.search.provider,
-            providerSort: composition.providerSort,
-          });
-          this.updateMessage(assistantMessage.id, {
-            systemSnapshot: plan.finalSystem,
-            genSettings,
-          });
-        } catch {
-          // best-effort snapshot
-        }
-
-        if (shouldShortCircuitTutor(plan)) {
-          const currentList = this.store.getState().messages[this.chatId] ?? [];
-          const current = currentList.find((m) => m.id === assistantMessage.id);
-          const base = (current as Message | undefined) ?? assistantMessage;
-          const finalMsg: Message = {
-            ...base,
-            content: base.content ?? '',
-            reasoning: base.reasoning,
-            attachments: base.attachments,
-            tutor: (base as any)?.tutor,
-            hiddenContent: (base as any)?.hiddenContent,
-            learnerModel: pendingLearnerModel ?? base.learnerModel,
-            planUpdates: pendingPlanUpdates ?? base.planUpdates,
-          };
-          this.updateMessage(assistantMessage.id, finalMsg);
-          await this.persistMessage(finalMsg);
-          return this.finishTurn(userMessage, finalMsg, {
-            composition: {
-              system: composition.system,
-              tools: composition.tools,
-              plugins: composition.plugins,
-              providerSort: composition.providerSort,
-              shouldPlan: composition.shouldPlan,
-            },
-            plan,
-            tutorUi: this.store.getState().ui.tutorByMessageId?.[assistantMessage.id],
-            toolCalls: finalMsg.toolCalls,
-            debugPayload: this.store.getState().ui.debugByMessageId?.[assistantMessage.id]?.body,
-          });
-        }
-      }
-
-      attachLearnerContextToAssistant();
-
-      const streamMessages: ModelMessage[] =
-        composition.shouldPlan && planResult.finalSystem
-          ? ([{ role: 'system', content: planResult.finalSystem }] as ModelMessage[]).concat(
-              (composition.messages as ModelMessage[]).filter((m) => m.role !== 'system'),
-            )
-          : (composition.messages as ModelMessage[]);
-
-      await streamFinal({
+      runArtifacts = await runTurn({
         chat,
         chatId: this.chatId,
+        modelId: chat.settings.model,
+        userContent: content,
         assistantMessage,
-        messages: streamMessages,
+        priorMessages,
+        ui: this.store.getState().ui,
         controller,
-        providerSort: composition.providerSort,
-        turn: turnContext,
-        plugins: composition.plugins,
-        toolDefinition: composition.tools,
-        startBuffered: false,
+        baseTurnContext,
+        compose: composeTurn,
+        plan: planTurn,
+        streamFinal,
+        authResolver,
+        attachmentPreparer: async () => [],
+        shouldShortCircuit: shouldShortCircuitTutor,
+        hooks: {
+          onComposition: (composition) => {
+            latestComposition = composition;
+            if (composition.tutor.enabled && chat.settings.learningPlan) {
+              priorLearnerModel =
+                getLatestLearnerModel(priorMessages) ??
+                initializeLearnerModel(this.chatId, chat.settings.learningPlan);
+            }
+          },
+          onPlanResult: (plan) => {
+            latestPlan = plan;
+            if (plan.learnerModel) pendingLearnerModel = plan.learnerModel;
+            if (plan.planUpdates) pendingPlanUpdates = plan.planUpdates;
+            if (plan.updatedPlan) {
+              this.store.setState((draft) => ({
+                chats: draft.chats.map((c) =>
+                  c.id === chat.id
+                    ? { ...c, settings: { ...c.settings, learningPlan: plan.updatedPlan } }
+                    : c,
+                ),
+              }));
+            }
+            if (plan.learnerModel && plan.learnerModelDebug && priorLearnerModel) {
+              this.store.setState((draft) => ({
+                ui: {
+                  ...draft.ui,
+                  learnerModelDebugByMessageId: {
+                    ...(draft.ui.learnerModelDebugByMessageId || {}),
+                    [assistantMessage.id]: {
+                      before: priorLearnerModel,
+                      after: plan.learnerModel,
+                      debug: plan.learnerModelDebug,
+                      planUpdates: plan.planUpdates,
+                    },
+                  },
+                },
+              }));
+            }
+            if (latestComposition) {
+              try {
+                const modelMeta = baseTurnContext.modelIndex.get(chat.settings.model);
+                const genSettings = snapshotGenSettings({
+                  settings: chat.settings,
+                  modelMeta,
+                  searchProvider: latestComposition.search.provider,
+                  providerSort: latestComposition.providerSort,
+                });
+                this.updateMessage(assistantMessage.id, {
+                  systemSnapshot: plan.finalSystem,
+                  genSettings,
+                });
+              } catch {
+                /* best-effort snapshot */
+              }
+            }
+          },
+          beforeStream: () => {
+            attachLearnerContextToAssistant();
+          },
+        },
       });
+
+      if (runArtifacts.shortCircuited) {
+        const currentList = this.store.getState().messages[this.chatId] ?? [];
+        const current = currentList.find((m) => m.id === assistantMessage.id);
+        const base = (current as Message | undefined) ?? assistantMessage;
+        const finalMsg: Message = {
+          ...base,
+          content: base.content ?? '',
+          reasoning: base.reasoning,
+          attachments: base.attachments,
+          tutor: (base as any)?.tutor,
+          hiddenContent: (base as any)?.hiddenContent,
+          learnerModel: pendingLearnerModel ?? base.learnerModel,
+          planUpdates: pendingPlanUpdates ?? base.planUpdates,
+        };
+        this.updateMessage(assistantMessage.id, finalMsg);
+        await this.persistMessage(finalMsg);
+        const planArtifacts: PlanTurnResult =
+          latestPlan ??
+          runArtifacts.plan ?? {
+            finalSystem:
+              runArtifacts.composition.system ?? chat.settings.system ?? DEFAULT_BASE_SYSTEM,
+            usedTutorContentTool: false,
+            hasSearchResults: false,
+          };
+        return this.finishTurn(userMessage, finalMsg, {
+          composition: {
+            system: runArtifacts.composition.system,
+            tools: runArtifacts.composition.tools,
+            plugins: runArtifacts.composition.plugins,
+            providerSort: runArtifacts.composition.providerSort,
+            shouldPlan: runArtifacts.composition.shouldPlan,
+          },
+          plan: planArtifacts,
+          tutorUi: this.store.getState().ui.tutorByMessageId?.[assistantMessage.id],
+          toolCalls: finalMsg.toolCalls,
+          debugPayload: this.store.getState().ui.debugByMessageId?.[assistantMessage.id]?.body,
+        });
+      }
 
       const messageList = this.store.getState().messages[this.chatId] ?? [];
       finalAssistant = messageList.find((msg) => msg.id === assistantMessage.id);
@@ -355,16 +325,24 @@ export class HeadlessTutorSession {
     const assistantFinal =
       finalAssistant ?? finalMessages.find((msg) => msg.id === assistantMessage.id);
     if (!assistantFinal) throw new Error('Assistant message missing after streaming');
+    const planArtifacts: PlanTurnResult =
+      latestPlan ??
+      runArtifacts?.plan ?? {
+        finalSystem:
+          runArtifacts?.composition.system ?? chat.settings.system ?? DEFAULT_BASE_SYSTEM,
+        usedTutorContentTool: false,
+        hasSearchResults: false,
+      };
 
     return this.finishTurn(userMessage, assistantFinal, {
       composition: {
-        system: composition.system,
-        tools: composition.tools,
-        plugins: composition.plugins,
-        providerSort: composition.providerSort,
-        shouldPlan: composition.shouldPlan,
+        system: runArtifacts?.composition.system,
+        tools: runArtifacts?.composition.tools,
+        plugins: runArtifacts?.composition.plugins,
+        providerSort: runArtifacts?.composition.providerSort,
+        shouldPlan: runArtifacts?.composition.shouldPlan ?? false,
       },
-      plan: planResult,
+      plan: planArtifacts,
       tutorUi: this.store.getState().ui.tutorByMessageId?.[assistantMessage.id],
       toolCalls: assistantFinal.toolCalls,
       debugPayload: this.store.getState().ui.debugByMessageId?.[assistantMessage.id]?.body,

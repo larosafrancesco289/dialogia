@@ -226,6 +226,7 @@ Progress indicators use color coding:
 - Markdown: `react-markdown` + GFM, Prism, KaTeX, Mermaid
 - Styles: Tailwind v4 base + `styles/francesco-bootstrap.css` tokens; `app/globals.css` layout
 - Agent services: `src/lib/agent/request.ts`, `searchFlow.ts`, and `tutorFlow.ts` centralize request building, web search orchestration, and tutor memory composition for slices.
+- DeepResearch: `src/lib/deepResearch.ts` orchestrates the research loop while tool adapters and HTML parsing live in `src/lib/deepResearch/tools.ts` and `html.ts`.
 - Capabilities: Derived from OpenRouter model metadata (vision, audio input, image output, reasoning)
 - PDFs: Routed with OpenRouter’s file parser plugin — no local parsing required
 

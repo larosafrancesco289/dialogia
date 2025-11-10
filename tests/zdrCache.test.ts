@@ -1,10 +1,14 @@
-import { test, mock } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { refreshZdrListsIfNeeded, ensureListsAndFilterCached, guardZdrOrNotify } from '@/lib/zdr/cache';
-import * as openrouter from '@/lib/openrouter';
+import {
+  refreshZdrListsIfNeeded,
+  computeZdrFilterCached,
+  guardZdrOrNotifyCached,
+} from '@/lib/zdr/cache';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createModelIndex } from '@/lib/models';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
+import type { ZdrFetchers } from '@/lib/zdr';
 
 function createStore(): { state: any; set: StoreSetter; get: StoreGetter } {
   const state: any = {
@@ -30,24 +34,35 @@ function createStore(): { state: any; set: StoreSetter; get: StoreGetter } {
   return { state, set, get };
 }
 
+const createFetchers = (models: string[], providers: string[]) => {
+  const calls = { models: 0, providers: 0 };
+  const fetchers: ZdrFetchers = {
+    fetchModelIds: async () => {
+      calls.models += 1;
+      return new Set(models);
+    },
+    fetchProviderIds: async () => {
+      calls.providers += 1;
+      return new Set(providers);
+    },
+  };
+  return { fetchers, calls };
+};
+
 test('refreshZdrListsIfNeeded reuses fresh cache without fetching', async () => {
   const { state, set, get } = createStore();
   state.zdrModelIds = ['provider/model'];
   state.zdrProviderIds = ['provider'];
   state.zdrFetchedAt = Date.now() - 1_000; // fresh
 
-  const modelsMock = mock.method(openrouter, 'fetchZdrModelIds', async () => new Set<string>());
-  const providersMock = mock.method(openrouter, 'fetchZdrProviderIds', async () => new Set<string>());
+  const fetchers = createFetchers([], []);
 
-  const lists = await refreshZdrListsIfNeeded(set, get);
+  const lists = await refreshZdrListsIfNeeded(set, get, fetchers.fetchers);
 
-  assert.equal(modelsMock.mock.calls.length, 0);
-  assert.equal(providersMock.mock.calls.length, 0);
+  assert.equal(fetchers.calls.models, 0);
+  assert.equal(fetchers.calls.providers, 0);
   assert.ok(lists.modelIds.has('provider/model'));
   assert.ok(lists.providerIds.has('provider'));
-
-  modelsMock.mock.restore();
-  providersMock.mock.restore();
 });
 
 test('refreshZdrListsIfNeeded refreshes when cache stale', async () => {
@@ -56,66 +71,54 @@ test('refreshZdrListsIfNeeded refreshes when cache stale', async () => {
   state.zdrProviderIds = ['old'];
   state.zdrFetchedAt = Date.now() - 1000 * 60 * 60 * 24; // stale (24h)
 
-  const modelsMock = mock.method(openrouter, 'fetchZdrModelIds', async () => new Set(['new/model']));
-  const providersMock = mock.method(openrouter, 'fetchZdrProviderIds', async () => new Set(['new']));
+  const fetchers = createFetchers(['new/model'], ['new']);
 
   const before = Date.now();
-  const lists = await refreshZdrListsIfNeeded(set, get);
+  const lists = await refreshZdrListsIfNeeded(set, get, fetchers.fetchers);
   const after = Date.now();
 
-  assert.equal(modelsMock.mock.calls.length, 1);
-  assert.equal(providersMock.mock.calls.length, 1);
+  assert.equal(fetchers.calls.models, 1);
+  assert.equal(fetchers.calls.providers, 1);
   assert.ok(lists.modelIds.has('new/model'));
   assert.ok(state.zdrModelIds?.includes('new/model'));
   assert.ok(state.zdrProviderIds?.includes('new'));
   assert.ok(typeof state.zdrFetchedAt === 'number');
   assert.ok((state.zdrFetchedAt ?? 0) >= before && (state.zdrFetchedAt ?? 0) <= after);
-
-  modelsMock.mock.restore();
-  providersMock.mock.restore();
 });
 
-test('guardZdrOrNotify refreshes stale cache and posts notice when blocked', async () => {
+test('guardZdrOrNotifyCached refreshes stale cache and posts notice when blocked', async () => {
   const { state, set, get } = createStore();
   state.zdrModelIds = [];
   state.zdrProviderIds = [];
   state.zdrFetchedAt = Date.now() - 1000 * 60 * 60 * 24;
   state.ui = {} as any;
 
-  const modelsMock = mock.method(openrouter, 'fetchZdrModelIds', async () => new Set<string>());
-  const providersMock = mock.method(openrouter, 'fetchZdrProviderIds', async () => new Set<string>());
-
-  const allowed = await guardZdrOrNotify('provider/model', set, get);
+  const fetchers = createFetchers([], []);
+  const allowed = await guardZdrOrNotifyCached('provider/model', set, get, fetchers.fetchers);
 
   assert.equal(allowed, false);
-  assert.equal(modelsMock.mock.calls.length, 1);
-  assert.equal(providersMock.mock.calls.length, 1);
+  assert.equal(fetchers.calls.models, 1);
+  assert.equal(fetchers.calls.providers, 1);
   assert.equal(state.ui.notice, ZDR_UNAVAILABLE_NOTICE);
-
-  modelsMock.mock.restore();
-  providersMock.mock.restore();
 });
 
-test('ensureListsAndFilterCached uses fresh cache without refetching', async () => {
+test('computeZdrFilterCached uses fresh cache without refetching', async () => {
   const { state, set, get } = createStore();
   state.zdrModelIds = ['provider/model'];
   state.zdrProviderIds = ['provider'];
   state.zdrFetchedAt = Date.now() - 5_000;
 
-  const modelsMock = mock.method(openrouter, 'fetchZdrModelIds', async () => new Set<string>());
-  const providersMock = mock.method(openrouter, 'fetchZdrProviderIds', async () => new Set<string>());
+  const fetchers = createFetchers(['provider/model'], []);
 
-  const result = await ensureListsAndFilterCached(
+  const result = await computeZdrFilterCached(
     [{ id: 'provider/model' }],
     'informational',
     set,
     get,
+    fetchers.fetchers,
   );
 
-  assert.equal(modelsMock.mock.calls.length, 0);
-  assert.equal(providersMock.mock.calls.length, 0);
+  assert.equal(fetchers.calls.models, 0);
+  assert.equal(fetchers.calls.providers, 0);
   assert.equal(result.filter.status, 'model');
-
-  modelsMock.mock.restore();
-  providersMock.mock.restore();
 });

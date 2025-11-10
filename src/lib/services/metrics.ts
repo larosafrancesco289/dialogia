@@ -1,7 +1,8 @@
 // Module: services/metrics
 // Responsibility: Shared helpers for deriving timing and token metrics from OpenRouter responses.
 
-import type { Usage } from '@/lib/api/openrouterClient';
+import type { Usage } from '@/lib/api/normalizers';
+import type { MessageMetrics } from '@/lib/types';
 
 export type ComputeMetricsArgs = {
   startedAt: number;
@@ -10,13 +11,7 @@ export type ComputeMetricsArgs = {
   usage?: Usage;
 };
 
-export type TurnMetrics = {
-  ttftMs?: number;
-  completionMs: number;
-  promptTokens?: number;
-  completionTokens?: number;
-  tokensPerSec?: number;
-};
+export type TurnMetrics = MessageMetrics;
 
 export function computeMetrics(args: ComputeMetricsArgs): TurnMetrics {
   const { startedAt, firstTokenAt, finishedAt, usage } = args;
@@ -31,4 +26,14 @@ export function computeMetrics(args: ComputeMetricsArgs): TurnMetrics {
       ? Number((completionTokens / (completionMs / 1000)).toFixed(2))
       : undefined;
   return { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec };
+}
+
+export function formatMetricsForDisplay(metrics?: TurnMetrics): string[] {
+  if (!metrics) return [];
+  const labels: string[] = [];
+  if (metrics.ttftMs != null) labels.push(`TTFT ${metrics.ttftMs} ms`);
+  if (metrics.promptTokens != null) labels.push(`in ${metrics.promptTokens}`);
+  if (metrics.completionTokens != null) labels.push(`out ${metrics.completionTokens}`);
+  if (metrics.tokensPerSec != null) labels.push(`${metrics.tokensPerSec} tok/s`);
+  return labels;
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractWebSearchArgs, normalizeTutorQuizPayload, parseJsonAfter } from './tools';
+import { extractWebSearchArgs, normalizeTutorQuizPayload, parseJsonAfter } from '@/lib/agent/tools';
 
 test('extractWebSearchArgs finds inline JSON payloads', () => {
   const content = 'Let me call web_search with {"query":"latest news","count":3}.';

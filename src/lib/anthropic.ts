@@ -4,6 +4,7 @@ import type { ChatCompletionPayload } from '@/lib/api/openrouterClient';
 import { anthropicFetchModels, anthropicMessages } from '@/lib/api/anthropicClient';
 import { responseError, API_ERROR_CODES, ApiError } from '@/lib/api/errors';
 import { consumeSse } from '@/lib/api/stream';
+import { fromAnthropicUsage, type Usage } from '@/lib/api/normalizers';
 
 type AnthropicToolDefinition = {
   name: string;
@@ -28,11 +29,6 @@ type AnthropicMessage = {
   content: AnthropicContentBlock[];
 };
 
-type AnthropicUsage = {
-  input_tokens?: number;
-  output_tokens?: number;
-};
-
 type AnthropicResponse = {
   id: string;
   type: 'message';
@@ -40,7 +36,10 @@ type AnthropicResponse = {
   model: string;
   content: AnthropicContentBlock[];
   stop_reason?: string | null;
-  usage?: AnthropicUsage;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+  };
 };
 
 const DEFAULT_MAX_TOKENS = 1024;
@@ -213,20 +212,6 @@ function toAnthropicMessages(messages: ModelMessage[]): AnthropicMessage[] {
   return out;
 }
 
-function anthropicUsageToOpenAI(usage?: AnthropicUsage) {
-  if (!usage) return undefined;
-  return {
-    prompt_tokens: usage.input_tokens,
-    completion_tokens: usage.output_tokens,
-    total_tokens:
-      typeof usage.input_tokens === 'number' && typeof usage.output_tokens === 'number'
-        ? usage.input_tokens + usage.output_tokens
-        : undefined,
-    input_tokens: usage.input_tokens,
-    output_tokens: usage.output_tokens,
-  };
-}
-
 function extractTextFromContent(blocks: AnthropicContentBlock[]): string {
   const parts: string[] = [];
   for (const block of blocks) {
@@ -270,7 +255,7 @@ function toChatCompletionPayload(payload: AnthropicResponse, appModelId: string)
         },
       },
     ],
-    usage: anthropicUsageToOpenAI(payload.usage),
+    usage: fromAnthropicUsage(payload.usage),
   };
 }
 
@@ -359,7 +344,7 @@ type StreamParams = ChatParams & {
     onStart?: () => void;
     onToken?: (delta: string) => void;
     onReasoningToken?: (delta: string) => void;
-    onDone?: (full: string, extras?: { usage?: ReturnType<typeof anthropicUsageToOpenAI> }) => void;
+    onDone?: (full: string, extras?: { usage?: Usage }) => void;
     onError?: (err: Error) => void;
   };
 };
@@ -402,7 +387,7 @@ export async function streamChatCompletion(params: StreamParams): Promise<void> 
   }
 
   let full = '';
-  let usage: ReturnType<typeof anthropicUsageToOpenAI> | undefined;
+  let usage: Usage | undefined;
   const callbacks = params.callbacks;
 
   await consumeSse(res, {
@@ -420,7 +405,7 @@ export async function streamChatCompletion(params: StreamParams): Promise<void> 
             }
             break;
           case 'message_delta':
-            usage = anthropicUsageToOpenAI(event.usage);
+            usage = fromAnthropicUsage(event.usage);
             break;
           case 'error':
             callbacks?.onError?.(new Error(event.error?.message || 'Anthropic stream error'));

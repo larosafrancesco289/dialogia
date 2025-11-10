@@ -3,6 +3,7 @@
 
 import type { StoreState } from '@/lib/store/types';
 import type { ModelCapabilityFlags } from '@/lib/models';
+import { readNextOverrides } from '@/lib/ui/next';
 
 export const selectCurrentChat = (state: StoreState) => {
   const chatId = state.selectedChatId;
@@ -45,4 +46,6 @@ export const selectNotice = (state: StoreState) => state.ui.notice;
 
 export const selectModels = (state: StoreState) => state.models;
 
-export const selectNextModel = (state: StoreState) => state.ui.nextModel;
+export const selectNextOverrides = (state: StoreState) => readNextOverrides(state.ui);
+
+export const selectNextModel = (state: StoreState) => selectNextOverrides(state).model;

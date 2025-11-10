@@ -94,3 +94,44 @@ export function buildApiHeaders({
 
   return { headers: nextHeaders, origin: resolvedOrigin };
 }
+
+type SendApiRequestOptions = {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  origin?: string;
+  includeDefaults?: boolean;
+  defaultContentType?: string | null;
+  cache?: RequestCache;
+};
+
+export async function sendApiRequest(options: SendApiRequestOptions): Promise<Response> {
+  const body = toBodyInit(options.body);
+  const { headers } = buildApiHeaders({
+    origin: options.origin,
+    headers: options.headers,
+    body,
+    includeDefaults: options.includeDefaults,
+    defaultContentType: options.defaultContentType,
+  });
+
+  const { signal, cleanup } = withAbortTimeout({
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+  });
+
+  try {
+    return await fetch(options.url, {
+      method: options.method ?? 'GET',
+      headers,
+      body,
+      signal,
+      cache: options.cache ?? 'no-store',
+    });
+  } finally {
+    cleanup();
+  }
+}
