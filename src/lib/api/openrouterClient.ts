@@ -1,5 +1,5 @@
 import { apiDefaults } from '@/lib/api/config';
-import { buildApiHeaders, toBodyInit, withAbortTimeout } from '@/lib/api/http';
+import { sendApiRequest } from '@/lib/api/http';
 import { isOpenRouterProxyEnabled } from '@/lib/config';
 import type { ModelContentBlock, ToolCall } from '@/lib/agent/types';
 
@@ -64,7 +64,6 @@ async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Resp
   const useProxy = apiDefaults.isBrowser && isOpenRouterProxyEnabled();
   const authRequired = options.authRequired ?? !useProxy;
   const headers: Record<string, string> = { ...(options.headers || {}) };
-  const body = toBodyInit(options.body);
   let includeDefaults = !useProxy;
 
   if (!useProxy) {
@@ -77,36 +76,21 @@ async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Resp
     includeDefaults = true;
   }
 
-  const { headers: requestHeaders } = buildApiHeaders({
-    origin: options.origin,
-    headers,
-    body,
-    includeDefaults,
-  });
-
   const timeoutMs =
     options.timeoutMs ?? (options.stream ? undefined : apiDefaults.timeouts.chat);
-  const { signal, cleanup } = withAbortTimeout({
-    signal: options.signal,
-    timeoutMs,
-  });
 
   const url = `${useProxy ? apiDefaults.proxyPath : apiDefaults.baseUrl}${path}`;
 
-  try {
-    const response = await fetch(url, {
-      method: options.method ?? 'GET',
-      headers: requestHeaders,
-      body,
-      signal,
-      cache: 'no-store',
-    });
-    return response;
-  }
-
-  finally {
-    cleanup();
-  }
+  return sendApiRequest({
+    url,
+    method: options.method ?? 'GET',
+    headers,
+    body: options.body,
+    signal: options.signal,
+    timeoutMs,
+    includeDefaults,
+    origin: options.origin,
+  });
 }
 
 export async function orFetchModels(

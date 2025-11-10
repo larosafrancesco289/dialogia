@@ -11,9 +11,13 @@ export function updateMessageInChat(
   if (!Array.isArray(list) || list.length === 0) {
     return {};
   }
-  const nextList = list.map((message) =>
-    message.id === messageId ? ({ ...message, ...patch } as Message) : message,
-  );
+  let changed = false;
+  const nextList = list.map((message) => {
+    if (message.id !== messageId) return message;
+    changed = true;
+    return { ...message, ...patch } as Message;
+  });
+  if (!changed) return {};
   return {
     messages: {
       ...state.messages,

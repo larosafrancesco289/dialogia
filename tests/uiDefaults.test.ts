@@ -27,4 +27,5 @@ test('resetEphemeralUi clears staged next values', () => {
   assert.equal(reset.nextSearchEnabled, false);
   assert.equal(reset.nextTutorMode, false);
   assert.equal(reset.forceTutorMode, true);
+  assert.equal(reset.next, undefined);
 });

@@ -10,6 +10,7 @@ import {
 import { buildChatBody } from '@/lib/agent/request';
 import { consumeSse, type SseEvent } from '@/lib/api/stream';
 import { ApiError, API_ERROR_CODES, responseError } from '@/lib/api/errors';
+import { normalizeUsage, shouldIncludeUsage, type Usage } from '@/lib/api/normalizers';
 
 // Transport-only client for OpenRouter.
 // Request payload construction lives in agent/request.buildChatBody to keep one source of truth
@@ -210,7 +211,7 @@ export async function streamChatCompletion(params: {
     parallel_tool_calls: params.parallel_tool_calls,
     providerSort: params.providerSort,
     plugins: params.plugins,
-    includeUsage: true,
+    includeUsage: shouldIncludeUsage(true),
   });
 
   const res = await orChatCompletions({
@@ -228,7 +229,7 @@ export async function streamChatCompletion(params: {
   if (!res.ok) throw responseError(res, { code: API_ERROR_CODES.OPENROUTER_CHAT_FAILED });
 
   let full = '';
-  let usage: any | undefined;
+  let usage: Usage | undefined;
   let annotations: any | undefined;
 
   const emitImages = (arr: any[]) => {
@@ -278,7 +279,7 @@ export async function streamChatCompletion(params: {
         callbacks?.onToken?.(deltaContent);
       }
 
-      if (json.usage) usage = json.usage;
+      if (json.usage) usage = normalizeUsage(json.usage);
     } catch {
       // swallow malformed chunk
     }

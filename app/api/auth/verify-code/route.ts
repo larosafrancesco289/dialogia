@@ -9,17 +9,18 @@ import {
   hmacCode,
 } from '@/lib/auth';
 import { getAccessCookieDomain } from '@/lib/config';
+import { jsonAuthError } from '@/lib/auth/errors';
 
 export async function POST(req: NextRequest) {
   try {
     const { code } = (await req.json()) as { code?: string };
     const plain = String(code || '').trim();
-    if (!plain) return NextResponse.json({ ok: false, error: 'missing_code' }, { status: 400 });
+    if (!plain) return jsonAuthError('missing_code', 400);
 
     const pepper = getAccessCodePepper();
     const hashes = getAccessCodeHashes();
     if (hashes.length === 0) {
-      return NextResponse.json({ ok: false, error: 'codes_unconfigured' }, { status: 500 });
+      return jsonAuthError('codes_unconfigured', 500);
     }
 
     // Hash and match
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     if (idx === -1) {
       // small randomized delay to reduce trivial timing
       await new Promise((r) => setTimeout(r, 50 + Math.floor(Math.random() * 120)));
-      return NextResponse.json({ ok: false, error: 'invalid_code' }, { status: 401 });
+      return jsonAuthError('invalid_code', 401);
     }
 
     // Create signed cookie with limited TTL
@@ -58,6 +59,6 @@ export async function POST(req: NextRequest) {
     });
     return res;
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 });
+    return jsonAuthError('bad_request', 400);
   }
 }

@@ -1,6 +1,5 @@
-import { apiDefaults } from '@/lib/api/config';
 import { isAnthropicProxyEnabled } from '@/lib/config';
-import { buildApiHeaders, toBodyInit, withAbortTimeout } from '@/lib/api/http';
+import { sendApiRequest } from '@/lib/api/http';
 
 const BROWSER =
   typeof window !== 'undefined' && typeof window.document !== 'undefined' && window.document !== null;
@@ -35,7 +34,6 @@ async function anthropicFetch(path: string, options: AnthropicFetchOptions = {})
     'anthropic-version': anthropicDefaults.version,
     ...(options.headers || {}),
   };
-  const body = toBodyInit(options.body);
   let includeDefaults = !useProxy;
 
   if (!useProxy) {
@@ -47,33 +45,20 @@ async function anthropicFetch(path: string, options: AnthropicFetchOptions = {})
     headers['x-api-key'] = options.apiKey;
   }
 
-  const { headers: requestHeaders } = buildApiHeaders({
-    origin: options.origin,
-    headers,
-    body,
-    includeDefaults,
-  });
-
   const timeoutMs = options.timeoutMs ?? (options.stream ? undefined : anthropicDefaults.timeouts.chat);
-  const { signal, cleanup } = withAbortTimeout({
+
+  const base = useProxy ? anthropicDefaults.proxyPath : anthropicDefaults.baseUrl;
+  const url = `${base}${path}`;
+  return sendApiRequest({
+    url,
+    method: options.method ?? 'GET',
+    headers,
+    body: options.body,
     signal: options.signal,
     timeoutMs,
+    includeDefaults,
+    origin: options.origin,
   });
-
-  try {
-    const base = useProxy ? anthropicDefaults.proxyPath : anthropicDefaults.baseUrl;
-    const url = `${base}${path}`;
-    const response = await fetch(url, {
-      method: options.method ?? 'GET',
-      headers: requestHeaders,
-      body,
-      signal,
-      cache: 'no-store',
-    });
-    return response;
-  } finally {
-    cleanup();
-  }
 }
 
 export async function anthropicFetchModels(

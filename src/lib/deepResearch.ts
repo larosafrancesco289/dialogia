@@ -1,10 +1,17 @@
 import { chatCompletion, fetchModels } from '@/lib/openrouter';
 import { apiDefaults } from '@/lib/api/config';
-import { getBraveSearchKey, getDeepResearchReasoningOnly } from '@/lib/config';
-import { extractMainText } from '@/lib/html';
+import { getDeepResearchReasoningOnly } from '@/lib/config';
 import type { ModelMessage, ToolDefinition } from '@/lib/agent/types';
 import type { ProviderSort } from '@/lib/models/providerSort';
 import { normalizeToolCalls, parseToolArguments } from '@/lib/agent/parsers';
+import {
+  runWebSearch,
+  fetchUrl,
+  getCurrentTime,
+  type DeepSearchResult,
+  type WebSearchToolArgs,
+  type FetchUrlToolArgs,
+} from '@/lib/deepResearch/tools';
 
 // System prompt for DeepResearch with interleaved tool reasoning
 export function buildDeepResearchPrompt(opts?: {
@@ -137,22 +144,6 @@ export const DEEP_TOOLS: ToolDefinition[] = [
   },
 ];
 
-export type DeepSearchResult = {
-  title?: string;
-  url: string;
-  description?: string;
-};
-
-export type DeepFetchedPage = {
-  url: string;
-  title?: string;
-  description?: string;
-  published?: string;
-  headings?: string[];
-  text?: string;
-  bytes?: number;
-};
-
 export type DeepResearchParams = {
   apiKey: string; // OPENROUTER_API_KEY (server)
   task: string;
@@ -167,7 +158,7 @@ export type DeepResearchParams = {
 
 export type DeepResearchOutput = {
   answer: string;
-  sources: Array<{ title?: string; url: string; description?: string }>;
+  sources: DeepSearchResult[];
   trace?: Array<{
     type: 'search' | 'fetch' | 'time' | 'note';
     input?: any;
@@ -177,100 +168,16 @@ export type DeepResearchOutput = {
   model: string;
 };
 
-async function braveSearch(args: {
-  query: string;
-  count?: number;
-  freshness?: 'd' | 'w' | 'm' | 'y' | 'all';
-  country?: string;
-  include_domains?: string[];
-  exclude_domains?: string[];
-}): Promise<DeepSearchResult[]> {
-  const apiKey = getBraveSearchKey();
-  if (!apiKey) throw new Error('brave_missing_key');
-  const url = new URL('https://api.search.brave.com/res/v1/web/search');
-  url.searchParams.set('q', args.query);
-  url.searchParams.set('count', String(Math.min(Math.max(args.count ?? 5, 1), 10)));
-  url.searchParams.set('country', (args.country || 'us').toLowerCase());
-  url.searchParams.set('safesearch', 'moderate');
-  if (args.freshness && args.freshness !== 'all') url.searchParams.set('freshness', args.freshness);
-  if (args.include_domains?.length)
-    url.searchParams.set('include_domains', args.include_domains.join(','));
-  if (args.exclude_domains?.length)
-    url.searchParams.set('exclude_domains', args.exclude_domains.join(','));
-  const res = await fetch(url.toString(), {
-    headers: {
-      Accept: 'application/json',
-      'Accept-Encoding': 'gzip',
-      'X-Subscription-Token': apiKey,
-    },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`brave_error_${res.status}`);
-  const data: any = await res.json();
-  const web = data?.web?.results || [];
-  return web.slice(0, Math.min(Math.max(args.count ?? 5, 1), 10)).map((r: any) => ({
-    title: r?.title,
-    url: r?.url,
-    description: r?.description,
-  }));
-}
-
-async function fetchPage(args: {
-  url: string;
-  max_bytes?: number;
-  timeout_ms?: number;
-}): Promise<DeepFetchedPage> {
-  const maxBytes = Math.min(Math.max(args.max_bytes ?? 800000, 1024), 4_000_000);
-  const timeoutMs = Math.min(Math.max(args.timeout_ms ?? 15000, 2000), 30000);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+async function requiresReasoningModel(apiKey: string, modelId: string, origin: string) {
   try {
-    const res = await fetch(args.url, {
-      headers: {
-        'User-Agent': 'Dialogia-DeepResearch/1.0 (+https://github.com/openai/codex-cli)',
-      },
-      signal: controller.signal,
-      cache: 'no-store',
-    });
-    if (!res.ok) throw new Error(`fetch_error_${res.status}`);
-    const reader = res.body?.getReader();
-    let html = '';
-    if (reader) {
-      const decoder = new TextDecoder();
-      let total = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        total += value.byteLength;
-        if (total > maxBytes) break;
-        html += decoder.decode(value, { stream: true });
-      }
-    } else {
-      html = await res.text();
-      if (html.length > maxBytes) html = html.slice(0, maxBytes);
-    }
-    const { title, description, headings, text } = extractMainText(html);
-    // Try to pick a published time from common meta tags
-    const published = (() => {
-      const m =
-        html.match(
-          /<meta[^>]+property=["']article:published_time["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-        ) ||
-        html.match(/<meta[^>]+name=["']pubdate["'][^>]+content=["']([^"']+)["'][^>]*>/i) ||
-        html.match(/<meta[^>]+itemprop=["']datePublished["'][^>]+content=["']([^"']+)["'][^>]*>/i);
-      return m ? m[1] : undefined;
-    })();
-    return {
-      url: args.url,
-      title,
-      description,
-      headings,
-      text,
-      published,
-      bytes: (text || '').length,
-    };
-  } finally {
-    clearTimeout(timer);
+    const models = await fetchModels(apiKey, { origin });
+    const entry = models.find((m) => m.id.toLowerCase() === modelId.toLowerCase());
+    const supported = Array.isArray((entry?.raw as any)?.supported_parameters)
+      ? (entry?.raw as any).supported_parameters.map((p: any) => String(p).toLowerCase())
+      : [];
+    return supported.includes('reasoning');
+  } catch {
+    return false;
   }
 }
 
@@ -281,19 +188,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
   // Enforce reasoning-only usage when configured via env (default true)
   const strict = getDeepResearchReasoningOnly();
   if (strict) {
-    // Verify using OpenRouter metadata instead of name heuristics
-    const ok = await (async () => {
-      try {
-        const models = await fetchModels(apiKey, { origin });
-        const entry = models.find((m) => m.id.toLowerCase() === model.toLowerCase());
-        const supported = Array.isArray((entry?.raw as any)?.supported_parameters)
-          ? (entry?.raw as any).supported_parameters.map((p: any) => String(p).toLowerCase())
-          : [];
-        return supported.includes('reasoning');
-      } catch {
-        return false;
-      }
-    })();
+    const ok = await requiresReasoningModel(apiKey, model, origin);
     if (!ok) throw new Error('reasoning_model_required');
   }
 
@@ -305,7 +200,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
 
   const tools = DEEP_TOOLS;
   const trace: DeepResearchOutput['trace'] = [];
-  const collectedSources: Array<{ title?: string; url: string; description?: string }> = [];
+  const collectedSources: DeepSearchResult[] = [];
   const seenUrls = new Set<string>();
   let usage: any | undefined;
   let lastSourceCount = 0;
@@ -386,7 +281,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
                 typeof entry === 'string',
               )
             : undefined;
-          const searchArgs: Parameters<typeof braveSearch>[0] = {
+          const searchArgs: WebSearchToolArgs = {
             query: typeof (args as any).query === 'string' ? (args as any).query : '',
             count: typeof (args as any).count === 'number' ? (args as any).count : undefined,
             freshness:
@@ -402,7 +297,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
             include_domains: includeDomains,
             exclude_domains: excludeDomains,
           };
-          const results = await braveSearch(searchArgs);
+          const results = await runWebSearch(searchArgs);
           trace?.push({ type: 'search', input: args, output: results });
           for (const r of results) {
             if (!r?.url) continue;
@@ -427,14 +322,14 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
 
       if (name === 'fetch_url') {
         try {
-          const fetchArgs = {
+          const fetchArgs: FetchUrlToolArgs = {
             url: typeof (args as any).url === 'string' ? (args as any).url : '',
             max_bytes: typeof (args as any).max_bytes === 'number' ? (args as any).max_bytes : undefined,
             timeout_ms:
               typeof (args as any).timeout_ms === 'number' ? (args as any).timeout_ms : undefined,
-          } satisfies Parameters<typeof fetchPage>[0];
+          };
           if (!fetchArgs.url) throw new Error('fetch_missing_url');
-          const page = await fetchPage(fetchArgs);
+          const page = await fetchUrl(fetchArgs);
           trace?.push({
             type: 'fetch',
             input: fetchArgs,
@@ -450,13 +345,13 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
       }
 
       if (name === 'get_time') {
-        const now = new Date().toISOString();
-        trace?.push({ type: 'time', input: {}, output: { now } });
+        const timePayload = getCurrentTime();
+        trace?.push({ type: 'time', input: {}, output: timePayload });
         messages.push({
           role: 'tool',
           tool_call_id: tc.id,
           name,
-          content: JSON.stringify({ now }),
+          content: JSON.stringify(timePayload),
         });
         continue;
       }

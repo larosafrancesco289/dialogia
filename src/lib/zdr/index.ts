@@ -26,21 +26,30 @@ function getProviderFromModel(modelId: string): string {
   return modelId.split(PROVIDER_SPLIT)[0] || '';
 }
 
-export async function ensureZdrLists(existing?: {
-  modelIds?: Iterable<string> | null;
-  providerIds?: Iterable<string> | null;
-}): Promise<ZdrLists> {
+export type ZdrFetchers = {
+  fetchModelIds?: () => Promise<Set<string>>;
+  fetchProviderIds?: () => Promise<Set<string>>;
+};
+
+export async function ensureZdrLists(
+  existing?: {
+    modelIds?: Iterable<string> | null;
+    providerIds?: Iterable<string> | null;
+  },
+  fetchers?: ZdrFetchers,
+): Promise<ZdrLists> {
   let modelIds = toSet(existing?.modelIds);
   let providerIds = toSet(existing?.providerIds);
 
   const needsModels = modelIds.size === 0;
   const needsProviders = providerIds.size === 0;
 
+  const fetchModels = fetchers?.fetchModelIds ?? fetchZdrModelIds;
+  const fetchProviders = fetchers?.fetchProviderIds ?? fetchZdrProviderIds;
+
   const [fetchedModels, fetchedProviders] = await Promise.all([
-    needsModels ? fetchZdrModelIds().catch(() => new Set<string>()) : Promise.resolve(modelIds),
-    needsProviders
-      ? fetchZdrProviderIds().catch(() => new Set<string>())
-      : Promise.resolve(providerIds),
+    needsModels ? fetchModels().catch(() => new Set<string>()) : Promise.resolve(modelIds),
+    needsProviders ? fetchProviders().catch(() => new Set<string>()) : Promise.resolve(providerIds),
   ]);
 
   modelIds = needsModels ? fetchedModels : modelIds;
@@ -120,3 +129,6 @@ export const ZDR_UNAVAILABLE_NOTICE =
   'Could not fetch ZDR list; enable internet or disable ZDR-only to list all.';
 
 export const ZDR_NO_MATCH_NOTICE = 'ZDR-only is enabled. None of the selected models are ZDR.';
+
+export { computeZdrFilter, guardModelOrNotice, buildZdrNotice } from './enforce';
+export { computeZdrFilterCached, guardZdrOrNotifyCached, refreshZdrListsIfNeeded } from './cache';

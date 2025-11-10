@@ -3,6 +3,7 @@ import { getDefaultZdrOnly, getRoutePreferenceDefault } from '@/lib/config';
 import type { UIState } from '@/lib/store/types';
 
 const EPHEMERAL_DEFAULTS: Partial<UIState> = {
+  next: undefined,
   nextModel: undefined,
   nextSearchEnabled: false,
   nextSearchProvider: undefined,

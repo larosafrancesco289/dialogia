@@ -5,6 +5,7 @@ import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import type { ChatSettings } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
 import { applyTutorDefaults, normalizeParallelModels } from '@/lib/store/normalize';
+import { readNextOverrides } from '@/lib/ui/next';
 
 export function deriveChatSettingsFromUi(opts: {
   ui: UIState;
@@ -27,32 +28,33 @@ export function deriveChatSettingsFromUi(opts: {
     forceTutorMode,
   } = opts;
 
-  const baseModel = ui.nextModel ?? previous?.model ?? lastUsedModelId ?? fallbackModelId;
-  const system = ui.nextSystem ?? previous?.system ?? fallbackSystem;
-  const temperature = ui.nextTemperature ?? previous?.temperature;
-  const top_p = ui.nextTopP ?? previous?.top_p;
-  const max_tokens = ui.nextMaxTokens ?? previous?.max_tokens;
-  const reasoning_effort = ui.nextReasoningEffort ?? previous?.reasoning_effort ?? undefined;
-  const reasoning_tokens = ui.nextReasoningTokens ?? previous?.reasoning_tokens;
+  const next = readNextOverrides(ui);
+  const baseModel = next.model ?? previous?.model ?? lastUsedModelId ?? fallbackModelId;
+  const system = next.system ?? previous?.system ?? fallbackSystem;
+  const temperature = next.temperature ?? previous?.temperature;
+  const top_p = next.topP ?? previous?.top_p;
+  const max_tokens = next.maxTokens ?? previous?.max_tokens;
+  const reasoning_effort = next.reasoning?.effort ?? previous?.reasoning_effort ?? undefined;
+  const reasoning_tokens = next.reasoning?.tokens ?? previous?.reasoning_tokens;
   const show_thinking_by_default =
-    ui.nextShowThinking ?? previous?.show_thinking_by_default ?? false;
-  const show_stats = ui.nextShowStats ?? previous?.show_stats ?? false;
-  const showToolCallLog = ui.nextShowToolCallLog ?? previous?.showToolCallLog ?? false;
-  const showDebugRawJson = ui.nextShowDebugRawJson ?? previous?.showDebugRawJson ?? true;
+    next.show?.thinking ?? previous?.show_thinking_by_default ?? false;
+  const show_stats = next.show?.stats ?? previous?.show_stats ?? false;
+  const showToolCallLog = next.show?.toolCallLog ?? previous?.showToolCallLog ?? false;
+  const showDebugRawJson = next.show?.debugRawJson ?? previous?.showDebugRawJson ?? true;
 
-  const search_enabled = ui.nextSearchEnabled ?? previous?.search_enabled ?? false;
-  const nextProvider = ui.nextSearchProvider ?? previous?.search_provider;
+  const search_enabled = next.search?.enabled ?? previous?.search_enabled ?? false;
+  const nextProvider = next.search?.provider ?? previous?.search_provider;
   const search_provider =
     braveEnabled && nextProvider === 'brave' ? 'brave' : 'openrouter';
 
   const tutor_mode = forceTutorMode
     ? true
     : tutorEnabled
-      ? (ui.nextTutorMode ?? previous?.tutor_mode ?? false)
+    ? (next.tutorMode ?? previous?.tutor_mode ?? false)
       : false;
 
-  const parallelFromUi = Array.isArray(ui.nextParallelModels)
-    ? ui.nextParallelModels
+  const parallelFromUi = Array.isArray(next.parallelModels)
+    ? next.parallelModels
     : previous?.parallel_models;
   const normalizedParallel = normalizeParallelModels(baseModel, parallelFromUi);
 

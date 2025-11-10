@@ -2,11 +2,12 @@
 // Responsibility: Stream final assistant responses and propagate token callbacks.
 
 import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
-import { buildDebugBody, captureDebugPayload } from '@/lib/agent/request';
+import { captureRequestDebug } from '@/lib/agent/debug';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
 import { clearTurnController } from '@/lib/services/controllers';
 import type { StreamFinalOptions, ToolDefinition } from '@/lib/agent/types';
+import { shouldIncludeUsage } from '@/lib/api/normalizers';
 
 const TOOL_FENCE_REGEX = /^\s*```([a-z0-9_-]+)?\s*\n([\s\S]*?)\n```\s*/i;
 const TOOL_LANGS = new Set(['json', 'jsonc', 'tool', 'function', 'callback']);
@@ -93,24 +94,24 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
   const combinedPlugins = Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined;
   const toolsForStreaming = includeTools ? (toolDefinition as ToolDefinition[]) : undefined;
 
-  captureDebugPayload(turn, assistantMessage.id, () =>
-    buildDebugBody({
-      modelId: chat.settings.model,
-      messages: messages as any,
-      stream: true,
-      includeUsage: true,
-      canImageOut,
-      temperature: chat.settings.temperature,
-      top_p: chat.settings.top_p,
-      max_tokens: chat.settings.max_tokens,
-      reasoningEffort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-      reasoningTokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-      tools: toolsForStreaming,
-      toolChoice: includeTools ? 'none' : undefined,
-      providerSort,
-      plugins: combinedPlugins,
-    }),
-  );
+  captureRequestDebug({
+    turn,
+    messageId: assistantMessage.id,
+    modelId: chat.settings.model,
+    messages,
+    stream: true,
+    includeUsage: shouldIncludeUsage(true),
+    canImageOut,
+    temperature: chat.settings.temperature,
+    topP: chat.settings.top_p,
+    maxTokens: chat.settings.max_tokens,
+    reasoningEffort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
+    reasoningTokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+    tools: toolsForStreaming,
+    toolChoice: includeTools ? 'none' : undefined,
+    providerSort,
+    plugins: combinedPlugins,
+  });
 
   const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
   const requestedTokensRaw = supportsReasoning ? chat.settings.reasoning_tokens : undefined;

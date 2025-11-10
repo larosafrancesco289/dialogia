@@ -19,6 +19,7 @@ import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { PlanSheet } from '@/components/plan/PlanSheet';
 import { calculatePlanProgress, getNextNode } from '@/lib/agent/planGenerator';
+import { readNextOverrides } from '@/lib/ui/next';
 export function TopHeader() {
   const {
     chats,
@@ -52,7 +53,8 @@ export function TopHeader() {
   const models = useChatStore((s) => s.models);
   const experimentalTutor = !!uiState.experimentalTutor;
   const forceTutorMode = !!uiState.forceTutorMode;
-  const nextTutorMode = !!uiState.nextTutorMode;
+  const nextOverrides = readNextOverrides(uiState);
+  const nextTutorMode = !!nextOverrides.tutorMode;
   const tutorDefaultModelId = uiState.tutorDefaultModelId;
   const tutorActive =
     experimentalTutor && (forceTutorMode || (!!chat ? !!chat.settings?.tutor_mode : nextTutorMode));
@@ -150,7 +152,7 @@ export function TopHeader() {
               if (chat) {
                 await updateChatSettings({ tutor_mode: !chat.settings.tutor_mode });
               } else {
-                setUI({ nextTutorMode: !nextTutorMode });
+                setUI({ next: { tutorMode: !nextTutorMode } });
               }
             }}
             disabled={forceTutorMode}

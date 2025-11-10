@@ -2,7 +2,6 @@
 // Responsibility: Handle multi-round planning for assistant turns before final streaming.
 
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
-import { buildDebugBody, captureDebugPayload } from '@/lib/agent/request';
 import { extractTutorToolCalls, extractWebSearchArgs } from '@/lib/agent/tools';
 import { formatSourcesBlock } from '@/lib/agent/searchFlow';
 import {
@@ -24,6 +23,8 @@ import type {
   WebSearchArgs,
 } from '@/lib/agent/types';
 import { executePlanningToolCall } from '@/lib/agent/tools/exec';
+import { captureRequestDebug } from '@/lib/agent/debug';
+import { shouldIncludeUsage } from '@/lib/api/normalizers';
 
 export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const {
@@ -69,21 +70,22 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
         ? (toolDefinition as ToolDefinition[])
         : undefined;
 
-    captureDebugPayload(turn, assistantMessage.id, () =>
-      buildDebugBody({
-        modelId: chat.settings.model,
-        messages: convo,
-        stream: false,
-        temperature: chat.settings.temperature,
-        top_p: chat.settings.top_p,
-        max_tokens: chat.settings.max_tokens,
-        reasoningEffort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-        reasoningTokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-        tools: toolsForPlanning,
-        toolChoice: toolsForPlanning ? 'auto' : undefined,
-        providerSort,
-      }),
-    );
+    captureRequestDebug({
+      turn,
+      messageId: assistantMessage.id,
+      modelId: chat.settings.model,
+      messages: convo,
+      stream: false,
+      includeUsage: shouldIncludeUsage(false),
+      temperature: chat.settings.temperature,
+      topP: chat.settings.top_p,
+      maxTokens: chat.settings.max_tokens,
+      reasoningEffort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
+      reasoningTokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+      tools: toolsForPlanning,
+      toolChoice: toolsForPlanning ? 'auto' : undefined,
+      providerSort,
+    });
 
     const resp = await getChatCompletion()({
       apiKey,

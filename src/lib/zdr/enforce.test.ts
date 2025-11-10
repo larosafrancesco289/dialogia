@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ensureListsAndFilter, guardModelOrNotice } from '@/lib/zdr/enforce';
+import { computeZdrFilter, guardModelOrNotice } from '@/lib/zdr/enforce';
 
 const mergeState = (target: any, patch: any) => {
   if (!patch) return;
@@ -9,9 +9,9 @@ const mergeState = (target: any, patch: any) => {
   });
 };
 
-test('ensureListsAndFilter enforces allowed models', async () => {
+test('computeZdrFilter enforces allowed models', async () => {
   const models = [{ id: 'allowed' }, { id: 'blocked' }];
-  const result = await ensureListsAndFilter(models, 'enforce', {
+  const result = await computeZdrFilter(models, 'enforce', {
     modelIds: ['allowed'],
     providerIds: [],
   });

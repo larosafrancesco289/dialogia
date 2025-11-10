@@ -9,6 +9,26 @@ import type {
 } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 
+export type UINextOverrides = {
+  model?: string;
+  search?: { enabled?: boolean; provider?: 'brave' | 'openrouter' };
+  deepResearch?: boolean;
+  tutorMode?: boolean;
+  tutorNudge?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
+  reasoning?: { effort?: 'none' | 'low' | 'medium' | 'high'; tokens?: number };
+  system?: string;
+  temperature?: number;
+  topP?: number;
+  maxTokens?: number;
+  show?: {
+    thinking?: boolean;
+    stats?: boolean;
+    toolCallLog?: boolean;
+    debugRawJson?: boolean;
+  };
+  parallelModels?: string[];
+};
+
 export type UIState = {
   showSettings: boolean;
   isStreaming: boolean;
@@ -23,6 +43,7 @@ export type UIState = {
   tutorDefaultModelId?: string;
   forceTutorMode?: boolean;
   learnerModelDebugByMessageId?: Record<string, any>;
+  next?: UINextOverrides;
   nextModel?: string;
   nextSearchEnabled?: boolean;
   nextSearchProvider?: 'brave' | 'openrouter';
