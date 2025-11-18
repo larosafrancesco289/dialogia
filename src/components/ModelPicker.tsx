@@ -714,7 +714,7 @@ export function ModelPicker({
                   id={`model-opt-${idx}`}
                   role="option"
                   aria-selected={isSelected}
-                  className={`relative w-full rounded-xl border transition-colors ${
+                  className={`group relative w-full rounded-xl border transition-colors ${
                     isActive
                       ? 'border-primary/40 bg-muted/50'
                       : 'border-transparent hover:bg-muted/30'
@@ -751,47 +751,49 @@ export function ModelPicker({
                       }
                     }}
                   >
-                    <div className="min-w-0 flex-1 space-y-1.5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div
-                            className="font-semibold text-sm leading-tight truncate"
-                            title={label}
-                          >
-                            {label}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-                            {providerLabel && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5">
-                                {providerLabel}
-                              </span>
-                            )}
-                            <span
-                              className="font-mono text-[11px] tracking-tight truncate"
-                              title={o.id}
-                            >
-                              {o.id}
-                            </span>
-                            {context && (
-                              <span className="inline-flex items-center gap-1 text-xs">
-                                {numberFormatter.format(context)} ctx
-                              </span>
-                            )}
-                          </div>
+                    <div className="min-w-0 flex-1 flex flex-col gap-1.5">
+                      {/* Top Row: Name + Price */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-medium text-sm text-foreground truncate" title={label}>
+                          {label}
                         </div>
                         {showPrice && priceStr && (
-                          <span className="text-xs text-muted-foreground whitespace-nowrap leading-tight">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap font-mono opacity-80">
                             {priceStr}
                           </span>
                         )}
                       </div>
 
+                      {/* Middle Row: Provider • ID • Context */}
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        {providerLabel && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md border border-border/40 bg-muted/30 text-[10px] uppercase tracking-wider font-medium text-muted-foreground/80">
+                            {providerLabel}
+                          </span>
+                        )}
+                        <span
+                          className="font-mono text-[11px] opacity-60 truncate max-w-[180px]"
+                          title={o.id}
+                        >
+                          {o.id}
+                        </span>
+                        {context && (
+                          <>
+                            <span className="opacity-20 select-none">•</span>
+                            <span className="text-[11px] opacity-80">
+                              {numberFormatter.format(context)} ctx
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Bottom Row: Capabilities */}
                       {capabilityChips.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap gap-1.5 mt-0.5">
                           {capabilityChips.map((chip, idxChip) => (
                             <span
                               key={`${o.id}-cap-${idxChip}`}
-                              className="inline-flex items-center gap-1 rounded-full bg-muted/70 px-2 py-[3px]"
+                              className="inline-flex items-center gap-1 rounded-md bg-muted/50 border border-transparent px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors group-hover:border-border/30 group-hover:bg-muted/70"
                             >
                               {chip.icon}
                               <span>{chip.text}</span>
@@ -800,10 +802,12 @@ export function ModelPicker({
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="flex flex-col items-end gap-2 shrink-0 pl-2 self-start pt-0.5">
                       {isSelected && (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-                          <CheckIcon className="h-4 w-4" />
+                        <span
+                          className={`inline-flex items-center gap-1 text-xs font-medium ${isPrimary ? 'text-primary' : 'text-muted-foreground'}`}
+                        >
+                          {isPrimary && <CheckIcon className="h-4 w-4" />}
                           {isPrimary ? 'Primary' : 'Selected'}
                         </span>
                       )}
@@ -811,7 +815,7 @@ export function ModelPicker({
                         <span
                           role="button"
                           tabIndex={0}
-                          className="btn btn-ghost btn-xs px-2 py-1"
+                          className="text-xs text-primary hover:underline cursor-pointer"
                           onClick={(event) => {
                             event.stopPropagation();
                             setPrimaryModel(o.id);
@@ -829,20 +833,17 @@ export function ModelPicker({
                     </div>
                   </button>
                   {o.id !== PINNED_MODEL_ID && (
-                    <div className="flex justify-end px-3 pb-1 -mt-1">
-                      <button
-                        className="inline-flex items-center gap-1 rounded-full border border-transparent px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                        title="Hide from dropdown"
-                        aria-label="Hide model from dropdown"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          removeModelFromDropdown(o.id);
-                        }}
-                      >
-                        <XMarkIcon className="h-3.5 w-3.5" />
-                        <span>Hide</span>
-                      </button>
-                    </div>
+                    <button
+                      className="absolute top-2 right-2 p-1 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors focus-visible:ring-1 focus-visible:ring-ring focus:outline-none group-hover:text-foreground group-hover:bg-muted"
+                      title="Hide from dropdown"
+                      aria-label="Hide model from dropdown"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        removeModelFromDropdown(o.id);
+                      }}
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
                   )}
                 </div>
               );
