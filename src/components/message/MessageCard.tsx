@@ -332,7 +332,10 @@ function AssistantMessageContent({
           <ActionButton
             icon={
               copiedId === message.id ? (
-                <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 transition-all">
+                  <CheckIcon className="h-4 w-4" />
+                  <span className="text-xs font-medium">Copied</span>
+                </div>
               ) : (
                 <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
               )
@@ -340,6 +343,7 @@ function AssistantMessageContent({
             title={copiedId === message.id ? 'Copied' : 'Copy message'}
             ariaLabel="Copy message"
             onClick={copyMessage}
+            className={copiedId === message.id ? 'bg-green-500/10 border-green-500/20' : ''}
           />
           {!isStreaming && (
             <ActionButton
@@ -385,9 +389,9 @@ function AssistantMessageContent({
           />
         ) : waitingForFirstToken && message.id === lastMessageId ? (
           <div className={styles.typingIndicator} aria-live="polite" aria-label="Generating">
-            <span className={styles.typingDot} />
-            <span className={styles.typingDot} />
-            <span className={styles.typingDot} />
+            <span className={styles.typingBar} />
+            <span className={styles.typingBar} />
+            <span className={styles.typingBar} />
           </div>
         ) : (
           <Markdown content={message.content} />
@@ -467,7 +471,10 @@ function UserMessageContent({
             className="ml-1"
             icon={
               copiedId === message.id ? (
-                <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 transition-all">
+                  <CheckIcon className="h-4 w-4" />
+                  <span className="text-xs font-medium">Copied</span>
+                </div>
               ) : (
                 <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
               )

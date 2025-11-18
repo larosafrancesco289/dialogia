@@ -93,45 +93,85 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
             return;
           }
 
+          // Be more aggressive: assume we hit bottom if programmatic
           const target = Math.max(element.scrollHeight - element.clientHeight, 0);
-          const distance = target - element.scrollTop;
-
-          if (Math.abs(distance) <= 1) {
-            programmaticScrollRef.current = false;
-            syncScrollState();
-            return;
-          }
-
+          
           try {
             element.scrollTo({ top: target, behavior });
           } catch {
             element.scrollTop = target;
           }
 
-          requestAnimationFrame(() => {
-            syncScrollState();
-          });
+          // Give the smooth scroll time to start before syncing
+          if (behavior === 'smooth') {
+            setTimeout(() => {
+              programmaticScrollRef.current = false;
+              syncScrollState();
+            }, 300); 
+          } else {
+            requestAnimationFrame(() => {
+              programmaticScrollRef.current = false;
+              syncScrollState();
+            });
+          }
         });
       });
     },
     [syncScrollState],
   );
 
+  // Force unlock autoscroll immediately on user interaction
+  const onUserScroll = useCallback(() => {
+    // Only break lock if it was active
+    if (autoScrollEnabledRef.current) {
+      autoScrollEnabledRef.current = false;
+      if (onScrollAwayRef.current) onScrollAwayRef.current();
+    }
+  }, []);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
-    const handleScroll = () => {
-      const { wasProgrammatic, scrolledAway } = syncScrollState();
-      if (wasProgrammatic || !isMobile || !scrolledAway) return;
-      const onScrollAwayFn = onScrollAwayRef.current;
-      if (onScrollAwayFn) onScrollAwayFn();
+    const handleWheel = (event: WheelEvent) => {
+      if (atBottomRef.current) {
+        const scrollingUp = event.deltaY < 0;
+        if (!scrollingUp) return;
+      }
+      onUserScroll();
     };
 
+    const handleTouchStart = () => {
+      if (atBottomRef.current) return;
+      onUserScroll();
+    };
+
+    // Scroll event for checking if we're back at bottom
+    const handleScroll = () => {
+      // If programmatic, ignore
+      if (programmaticScrollRef.current) {
+        // Re-enable autoscroll once the animation settles if we're at bottom?
+        // Actually syncScrollState handles re-enabling if at bottom.
+        return;
+      }
+      
+      // Check position
+      const { wasProgrammatic } = syncScrollState();
+      if (wasProgrammatic) return;
+    };
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    el.addEventListener('wheel', handleWheel, { passive: true });
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+
     syncScrollState();
-    el.addEventListener('scroll', handleScroll, { passive: true } as any);
-    return () => el.removeEventListener('scroll', handleScroll as any);
-  }, [isMobile, syncScrollState]);
+
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('touchstart', handleTouchStart);
+    };
+  }, [isMobile, syncScrollState, onUserScroll]);
 
   useEffect(() => {
     syncScrollState();
@@ -210,7 +250,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
   const jumpToLatest = useCallback(() => {
     autoScrollEnabledRef.current = true;
-    setShowJump((prev) => (prev === false ? prev : false));
+    setShowJump(false); // Explicitly hide it immediately on click
     scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
   }, [prefersReducedMotion, scrollToBottom, setShowJump]);
 

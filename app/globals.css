@@ -380,7 +380,7 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 .jump-to-latest {
   position: sticky;
   bottom: calc(
-    var(--space-5) + max(10px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px)
+    var(--space-8) + max(10px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px)
   );
   display: flex;
   justify-content: center;
@@ -399,13 +399,13 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 @media (max-width: 640px) {
   .jump-to-latest {
     bottom: calc(
-      var(--space-6) + max(14px, env(safe-area-inset-bottom)) + var(--composer-height, 0px)
+      var(--space-8) + max(14px, env(safe-area-inset-bottom)) + var(--composer-height, 0px)
     );
   }
 
   html.keyboard-active .jump-to-latest {
     bottom: calc(
-      var(--space-6) + max(14px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) +
+      var(--space-8) + max(14px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) +
         var(--keyboard-offset, 0px)
     );
   }

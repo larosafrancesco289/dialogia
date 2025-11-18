@@ -355,15 +355,15 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       {showJump && (
         <div className="jump-to-latest">
           <button
-            className="icon-button glass jump-to-latest__button"
-            aria-label="Jump to latest"
-            title="Jump to latest"
+            className="btn-fab pointer-events-auto !w-12 !h-12 !p-0"
+            aria-label="Scroll to bottom"
+            title="Scroll to bottom"
             onClick={() => {
               jumpToLatest();
-              setShowJump(false);
+              // Intentionally not setting setShowJump(false) here; let the scroll handler do it
             }}
           >
-            <ChevronDownIcon className="h-5 w-5" />
+            <ChevronDownIcon className="h-6 w-6" />
           </button>
         </div>
       )}
