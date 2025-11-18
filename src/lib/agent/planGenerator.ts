@@ -9,20 +9,19 @@ export const PLAN_GENERATOR_SYSTEM = `You are an expert curriculum designer and 
 
 **Output Requirements**:
 - Return a JSON object matching the LearningPlan schema
-- Break the goal into 4-8 major topics (nodes)
+- Break the goal into 4-12 major topics (nodes)
+- **Crucial**: Organize nodes into logical "Phases" or "Modules" (e.g., "Foundation", "Core Concepts", "Advanced Application").
 - Each node should have:
-  - Clear, specific name
+  - Clear, specific name (optionally prefixed with phase, e.g., "Phase 1: Basics")
   - 2-4 measurable learning objectives
   - Appropriate prerequisites (use node IDs)
   - Estimated time in minutes (realistic for mastery)
-- Use a logical prerequisite structure (simple → complex)
-- Consider cognitive load (don't overwhelm)
+  - A "phase" field in the node object is NOT part of the schema, so ensure the *sequence* and *prerequisites* create clear clusters.
+- Use a logical prerequisite structure (simple → complex) that forms a clear dependency tree.
 - Node IDs should be lowercase with underscores (e.g., "limits", "basic_derivatives")
 
 **Example structure**:
-- Prerequisites (review/foundation)
-- Core concepts (main topics)
-- Applications (practice/synthesis)
+- Phase 1: Foundations (Nodes A, B) -> Phase 2: Core (Nodes C, D, E) -> Phase 3: Mastery (Nodes F, G)
 
 Be realistic about time estimates. Prefer depth over breadth.
 

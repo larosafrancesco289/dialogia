@@ -1,6 +1,6 @@
 'use client';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import type { LearningPlan } from '@/lib/types';
+import type { LearningPlan, LearnerModel } from '@/lib/types';
 import { PlanView } from './PlanView';
 import { updateNodeStatus } from '@/lib/agent/planGenerator';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -11,11 +11,15 @@ export function PlanSheet({
   isOpen,
   onClose,
   onUpdate,
+  onStartLesson,
+  learnerModel,
 }: {
   plan: LearningPlan | null;
   isOpen: boolean;
   onClose: () => void;
   onUpdate?: (updatedPlan: LearningPlan) => void;
+  onStartLesson?: (nodeId: string) => void;
+  learnerModel?: LearnerModel;
 }) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [closing, setClosing] = useState(false);
@@ -174,7 +178,12 @@ export function PlanSheet({
 
         {/* Content */}
         <div className="plan-sheet__body space-y-6 px-5 pb-10 pt-6 sm:px-8 max-w-3xl mx-auto w-full">
-          <PlanView plan={plan} onNodeStatusChange={handleNodeStatusChange} />
+          <PlanView
+            plan={plan}
+            onNodeStatusChange={handleNodeStatusChange}
+            onStartLesson={onStartLesson}
+            learnerModel={learnerModel}
+          />
         </div>
       </div>
     </>
