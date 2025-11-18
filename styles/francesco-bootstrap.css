@@ -403,6 +403,67 @@ a.badge {
   border-bottom-right-radius: 12px;
 }
 
+/* Markdown Typography - Imperial Theme */
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  color: var(--color-fg);
+}
+
+.markdown h1 {
+  font-size: 2.25em;
+  line-height: 1.2;
+}
+
+.markdown h2 {
+  font-size: 1.8em;
+  line-height: 1.3;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-border) 50%, transparent);
+  padding-bottom: 0.3em;
+}
+
+.markdown h3 {
+  font-size: 1.4em;
+  line-height: 1.4;
+}
+
+/* FAB - Floating Action Button */
+.btn-fab {
+  height: var(--control-lg);
+  padding: 0 var(--space-4);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  background: var(--glass-panel-bg);
+  backdrop-filter: var(--glass-blur-panel);
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  border: 1px solid color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+  color: var(--color-accent);
+  box-shadow: var(--shadow-3);
+  transition: all var(--duration-med) var(--ease-spring);
+}
+
+.btn-fab:hover {
+  transform: translateY(-2px);
+  background: var(--glass-strong-bg);
+  border-color: var(--color-accent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+
+.btn-fab:active {
+  transform: scale(0.96);
+}
+
 /* Code / Pre */
 pre,
 code {
