@@ -1,6 +1,6 @@
 'use client';
-import { SparklesIcon } from '@heroicons/react/24/outline';
-import type { LearningPlan } from '@/lib/types';
+import { SparklesIcon, PlayIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import type { LearningPlan, LearnerModel, LearningPlanNode } from '@/lib/types';
 import {
   isNodeReady,
   getAllPrerequisites,
@@ -8,224 +8,252 @@ import {
   calculatePlanProgress,
 } from '@/lib/agent/planGenerator';
 import { PlanNode } from './PlanNode';
-import { ProgressIndicator } from './ProgressIndicator';
 import { useMemo } from 'react';
 
 export function PlanView({
   plan,
   onUpdate,
   onNodeStatusChange,
+  onStartLesson,
+  learnerModel,
 }: {
   plan: LearningPlan;
   onUpdate?: (updatedPlan: LearningPlan) => void;
   onNodeStatusChange?: (nodeId: string, status: 'not_started' | 'in_progress' | 'completed') => void;
+  onStartLesson?: (nodeId: string) => void;
+  learnerModel?: LearnerModel;
 }) {
   const nextNode = getNextNode(plan);
   const allCompleted = plan.nodes.every((n) => n.status === 'completed');
   const progress = useMemo(() => calculatePlanProgress(plan), [plan]);
   const totalTopics = plan.nodes.length;
-  const metadataChips = useMemo(() => {
-    const chips: string[] = [];
-    chips.push(`${totalTopics} topics`);
-    const estimatedHours = plan.metadata?.estimatedHours;
-    if (estimatedHours) chips.push(`~${estimatedHours}h total`);
-    const difficulty = plan.metadata?.difficulty;
-    if (difficulty)
-      chips.push(`${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1)} level`);
-    return chips;
-  }, [plan.metadata?.difficulty, plan.metadata?.estimatedHours, totalTopics]);
-  const planUpdatedLabel = useMemo(() => {
-    const timestamp = plan.updatedAt || plan.generatedAt;
-    if (!timestamp) return null;
-    try {
-      return new Date(timestamp).toLocaleDateString();
-    } catch {
-      return null;
+
+  const phases = useMemo(() => {
+    const groups: { name: string; nodes: LearningPlanNode[] }[] = [];
+    let currentGroup: { name: string; nodes: LearningPlanNode[] } | null = null;
+    let fallbackGroup: { name: string; nodes: LearningPlanNode[] } | null = null;
+
+    plan.nodes.forEach((node) => {
+      const match = node.name.match(/^(Phase|Module|Part|Section)\s+(\d+|[A-Za-z]+):?\s*(.*)/i);
+      if (match) {
+        const phaseName = `${match[1]} ${match[2]}`;
+        if (!currentGroup || currentGroup.name !== phaseName) {
+          if (currentGroup) groups.push(currentGroup);
+          currentGroup = { name: phaseName, nodes: [] };
+        }
+        currentGroup.nodes.push(node);
+      } else {
+        if (currentGroup) {
+          currentGroup.nodes.push(node);
+        } else {
+          if (!fallbackGroup) fallbackGroup = { name: 'Topics', nodes: [] };
+          fallbackGroup.nodes.push(node);
+        }
+      }
+    });
+
+    if (currentGroup) groups.push(currentGroup);
+    if (fallbackGroup) {
+      if (groups.length === 0) {
+        groups.push(fallbackGroup);
+      } else {
+        groups.unshift(fallbackGroup);
+      }
     }
-  }, [plan.updatedAt, plan.generatedAt]);
-  const nextPrerequisites = useMemo(
-    () => (nextNode ? getAllPrerequisites(nextNode.id, plan) : []),
-    [nextNode, plan],
-  );
-  const pendingPrereqs = useMemo(
-    () => nextPrerequisites.filter((prereq) => prereq.status !== 'completed').length,
-    [nextPrerequisites],
-  );
-  const overviewSummary = useMemo(() => {
-    const parts: string[] = [];
-    const difficulty = plan.metadata?.difficulty;
-    if (difficulty) {
-      parts.push(`${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1)} pace`);
+    
+    if (groups.length === 1 && groups[0].name === 'Topics') {
+       groups[0].name = 'Your Journey';
     }
-    const estimatedHours = plan.metadata?.estimatedHours;
-    if (estimatedHours) {
-      parts.push(`~${estimatedHours}h commitment`);
-    }
-    const starterTopic =
-      nextNode?.name ||
-      plan.nodes.find((node) => node.status === 'in_progress')?.name ||
-      plan.nodes[0]?.name;
-    if (starterTopic) {
-      parts.push(`beginning with ${starterTopic.toLowerCase()}`);
-    }
-    return `Structured across ${totalTopics} topics${parts.length ? ` · ${parts.join(' · ')}` : ''}.`;
-  }, [totalTopics, plan.metadata?.difficulty, plan.metadata?.estimatedHours, nextNode, plan.nodes]);
+
+    return groups;
+  }, [plan.nodes]);
+
   const readyToStartNext =
-    !!nextNode && pendingPrereqs === 0 && nextNode.status === 'not_started' && !!onNodeStatusChange;
+    !!nextNode && nextNode.status === 'not_started' && !!onNodeStatusChange;
+
+  const getMastery = (nodeId: string) => {
+    if (!learnerModel) return undefined;
+    const m = learnerModel.mastery[nodeId];
+    return m ? { confidence: m.confidence } : undefined;
+  };
+
+  // Metadata badges with theme variables instead of hardcoded tailwind colors
+  const metadataBadges = [
+    plan.metadata?.difficulty && { 
+      label: plan.metadata.difficulty, 
+      className: 'bg-[color-mix(in_oklab,var(--color-accent)_10%,var(--color-surface))] text-[var(--color-accent)] border-[color-mix(in_oklab,var(--color-accent)_20%,var(--color-border))]' 
+    },
+    plan.metadata?.estimatedHours && { 
+      label: `~${plan.metadata.estimatedHours}h`, 
+      className: 'bg-[color-mix(in_oklab,var(--color-accent-2)_10%,var(--color-surface))] text-[var(--color-accent-2)] border-[color-mix(in_oklab,var(--color-accent-2)_20%,var(--color-border))]' 
+    },
+    { 
+      label: `${totalTopics} topics`, 
+      className: 'bg-muted text-muted-foreground border-border' 
+    },
+  ].filter(Boolean) as { label: string; className: string }[];
 
   return (
-    <div className="space-y-6">
-      {/* Overview */}
-      <section className="rounded-2xl border border-border/60 bg-surface px-5 py-5 shadow-[var(--shadow-card)]">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
-          <div className="flex flex-col gap-4">
-            {planUpdatedLabel && (
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
-                Updated {planUpdatedLabel}
-              </div>
-            )}
-
-            <div className="max-w-2xl space-y-2.5">
-              <h3 className="text-xl font-semibold leading-tight text-foreground md:text-2xl">
-                {plan.goal}
-              </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">{overviewSummary}</p>
-            </div>
-            {metadataChips.length > 0 && (
-              <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80">
-                {metadataChips.join(' · ')}
-              </div>
-            )}
-            {nextNode && !allCompleted && (
-              <div className="max-w-xl rounded-xl border border-border/60 bg-muted/20 px-4 py-3.5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 space-y-2">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/80">
-                      Up next
-                    </div>
-                    <div className="text-base font-semibold leading-snug text-foreground">
-                      {nextNode.name}
-                    </div>
-                    {nextNode.description && (
-                      <p className="text-xs leading-relaxed text-muted-foreground">{nextNode.description}</p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {nextNode.estimatedMinutes && (
-                        <span className="badge">~{nextNode.estimatedMinutes} min</span>
-                      )}
-                      {pendingPrereqs > 0 && <span className="badge">{pendingPrereqs} prereqs left</span>}
-                    </div>
-                  </div>
-                  {readyToStartNext && (
-                    <button
-                      type="button"
-                      onClick={() => onNodeStatusChange?.(nextNode.id, 'in_progress')}
-                      className="btn btn-sm btn-primary"
-                    >
-                      Start topic
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+    <div className="space-y-10">
+      {/* Modern Hero Header */}
+      <header className="relative space-y-6">
+        <div className="space-y-3">
+           {/* Title Area */}
+          <div>
+             <h1 className="text-xl font-bold tracking-tight text-foreground leading-tight">
+               Learning Journey
+             </h1>
+             <p className="text-sm text-muted-foreground mt-1 leading-relaxed max-w-2xl">
+               {plan.goal}
+             </p>
           </div>
-          <div className="w-full rounded-2xl border border-border/50 bg-muted/10 px-4 py-4 shadow-[var(--shadow-card)] sm:max-w-sm">
-            <div className="flex flex-col gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Overall progress
+
+          {/* Badges */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {metadataBadges.map((badge, i) => (
+              <span
+                key={i}
+                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badge.className}`}
+              >
+                {badge.label}
               </span>
-              <span className="text-4xl font-semibold text-foreground">{progress.percentComplete}%</span>
-              <span className="text-[11px] text-muted-foreground">
-                {progress.completed} of {totalTopics} topics complete
-              </span>
+            ))}
+          </div>
+          
+          {/* Progress */}
+          <div className="mt-4 flex items-center gap-4">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/50">
+              <div 
+                className="h-full bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-accent-2)] transition-all duration-500"
+                style={{ width: `${progress.percentComplete}%` }}
+              />
             </div>
-            <div className="mt-5 rounded-xl border border-border/60 bg-surface px-3 py-3">
-              <ProgressIndicator plan={plan} />
+            <div className="text-xs font-medium text-muted-foreground tabular-nums">
+              {progress.percentComplete}% complete
             </div>
           </div>
         </div>
-      </section>
 
-      {/* Completion message */}
-      {allCompleted && (
-        <div
-          className="rounded-3xl p-4 shadow-[var(--shadow-1)]"
-          style={{
-            border: '1px solid color-mix(in oklab, var(--color-accent) 35%, var(--color-border))',
-            background: 'color-mix(in oklab, var(--color-accent) 12%, var(--color-surface))',
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <SparklesIcon className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
-            <p
-              className="text-sm font-medium"
-              style={{ color: 'color-mix(in oklab, var(--color-accent) 80%, var(--color-fg) 20%)' }}
-            >
-              🎉 Congratulations! You've completed every topic in this learning plan.
-            </p>
+        {/* "Up Next" Callout Card */}
+        {nextNode && !allCompleted && (
+          <div className="group relative overflow-hidden rounded-2xl border border-border/50 bg-surface p-5 shadow-sm transition-all hover:shadow-md">
+            {/* Background Pattern */}
+            <div 
+              className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full blur-3xl"
+              style={{ background: 'color-mix(in oklab, var(--color-accent) 5%, transparent)' }}
+            />
+            <div className="pointer-events-none absolute right-0 top-0 p-6 opacity-[0.05]">
+               <SparklesIcon className="h-32 w-32" />
+            </div>
+
+            <div className="relative z-10">
+               <div className="flex items-center gap-2 mb-3">
+                 <span 
+                   className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                   style={{ 
+                     background: 'color-mix(in oklab, var(--color-accent) 10%, transparent)', 
+                     color: 'var(--color-accent)' 
+                   }}
+                 >
+                   <SparklesIcon className="h-3 w-3" />
+                   Current Focus
+                 </span>
+               </div>
+               
+               <h2 className="text-lg font-semibold text-foreground mb-2">
+                 {nextNode.name}
+               </h2>
+               
+               {nextNode.description && (
+                 <p className="mb-5 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                   {nextNode.description}
+                 </p>
+               )}
+
+               <button
+                  type="button"
+                  onClick={() => {
+                     if (onStartLesson) onStartLesson(nextNode.id);
+                     else onNodeStatusChange?.(nextNode.id, 'in_progress');
+                  }}
+                  className="group/btn inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:brightness-110 active:scale-95"
+                >
+                  <PlayIcon className="h-4 w-4" />
+                  {nextNode.status === 'in_progress' ? 'Continue Lesson' : 'Start Lesson'}
+                </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Node list */}
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-            Topics & milestones
-          </h4>
-          <span
-            className="rounded-full px-3 py-1 text-xs text-muted-foreground"
+        {/* Completion Hero */}
+        {allCompleted && (
+          <div 
+            className="relative overflow-hidden rounded-2xl border p-8 text-center"
             style={{
-              border: '1px solid color-mix(in oklab, var(--color-accent) 26%, var(--color-border))',
-              background: 'color-mix(in oklab, var(--color-accent) 10%, var(--color-surface))',
+              background: 'color-mix(in oklab, var(--color-accent) 5%, var(--color-surface))',
+              borderColor: 'color-mix(in oklab, var(--color-accent) 20%, transparent)'
             }}
           >
-            {progress.completed}/{plan.nodes.length} complete
-          </span>
-        </div>
-        {plan.nodes.map((node) => {
-          const ready = isNodeReady(node.id, plan);
-          const prerequisites = getAllPrerequisites(node.id, plan);
-
-          return (
-            <PlanNode
-              key={node.id}
-              node={node}
-              isReady={ready}
-              prerequisites={prerequisites}
-              onStatusChange={
-                onNodeStatusChange ? (status) => onNodeStatusChange(node.id, status) : undefined
-              }
-            />
-          );
-        })}
-      </section>
-
-      {/* Metadata footer */}
-      {plan.metadata && (
-        <div className="rounded-2xl border border-border/60 bg-muted/20 px-5 py-4">
-          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-            {plan.metadata.difficulty && (
-              <div>
-                <span className="font-medium">Difficulty:</span>{' '}
-                <span className="capitalize">{plan.metadata.difficulty}</span>
-              </div>
-            )}
-            {plan.metadata.estimatedHours && (
-              <div>
-                <span className="font-medium">Est. Time:</span>{' '}
-                <span>{plan.metadata.estimatedHours}h</span>
-              </div>
-            )}
-            {plan.metadata.prerequisites && plan.metadata.prerequisites.length > 0 && (
-              <div>
-                <span className="font-medium">Prerequisites:</span>{' '}
-                <span>{plan.metadata.prerequisites.join(', ')}</span>
-              </div>
-            )}
+            <div 
+              className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full"
+              style={{
+                 background: 'color-mix(in oklab, var(--color-accent) 20%, transparent)',
+                 color: 'var(--color-accent)'
+              }}
+            >
+              <CheckCircleIcon className="h-6 w-6" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground">Journey Completed!</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              You have mastered all topics in this learning plan. Great job!
+            </p>
           </div>
-        </div>
-      )}
+        )}
+      </header>
+
+      {/* Timeline */}
+      <div className="space-y-8 pl-2">
+         {phases.map((phase, groupIdx) => (
+           <section key={groupIdx} className="relative">
+             {/* Phase Header */}
+             {phases.length > 1 && (
+               <div className="mb-6 flex items-center gap-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface border border-border font-mono text-xs font-bold text-muted-foreground shadow-sm">
+                    {groupIdx + 1}
+                  </div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">
+                    {phase.name}
+                  </h4>
+                  <div className="h-px flex-1 bg-border/40" />
+               </div>
+             )}
+             
+             {/* Nodes */}
+             <div className={`space-y-0 ${phases.length > 1 ? 'ml-4 border-l border-dashed border-border/40 pl-6' : ''}`}>
+               {phase.nodes.map((node, idx) => {
+                 const ready = isNodeReady(node.id, plan);
+                 const prerequisites = getAllPrerequisites(node.id, plan);
+                 const isLast = idx === phase.nodes.length - 1 && groupIdx === phases.length - 1;
+
+                 return (
+                   <PlanNode
+                     key={node.id}
+                     node={node}
+                     isReady={ready}
+                     prerequisites={prerequisites}
+                     onStatusChange={
+                       onNodeStatusChange ? (status) => onNodeStatusChange(node.id, status) : undefined
+                     }
+                     onStartLesson={onStartLesson}
+                     mastery={getMastery(node.id)}
+                     isLast={isLast}
+                   />
+                 );
+               })}
+             </div>
+           </section>
+         ))}
+      </div>
     </div>
   );
 }

@@ -18,7 +18,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { PlanSheet } from '@/components/plan/PlanSheet';
-import { calculatePlanProgress, getNextNode } from '@/lib/agent/planGenerator';
+import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/agent/planGenerator';
+import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
 import { readNextOverrides } from '@/lib/ui/next';
 export function TopHeader() {
   const {
@@ -28,6 +29,7 @@ export function TopHeader() {
     setUI,
     newChat,
     updateChatSettings,
+    sendUserMessage,
   } =
     useChatStore(
       (s) => ({
@@ -37,10 +39,12 @@ export function TopHeader() {
         setUI: s.setUI,
         newChat: s.newChat,
         updateChatSettings: s.updateChatSettings,
+        sendUserMessage: s.sendUserMessage,
       }),
       shallow,
     );
   const chat = chats.find((c) => c.id === selectedChatId);
+  const messages = useChatStore((s) => (selectedChatId ? s.messages[selectedChatId] : undefined));
   const { collapsed, isSettingsOpen, planSheetOpen } = useChatStore(
     (s) => ({
       collapsed: s.ui.sidebarCollapsed ?? false,
@@ -108,6 +112,37 @@ export function TopHeader() {
   const handlePlanUpdate = async (updatedPlan: any) => {
     await updateChatSettings({ learningPlan: updatedPlan });
   };
+
+  const handleStartLesson = async (nodeId: string) => {
+    if (!learningPlan) return;
+    const node = learningPlan.nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    const isStartingLesson = node.status === 'not_started';
+
+    if (isStartingLesson) {
+      // 1. Update local plan status
+      const updatedPlan = updateNodeStatus(learningPlan, nodeId, 'in_progress');
+      await updateChatSettings({ learningPlan: updatedPlan });
+
+      // 2. Send message to tutor
+      const prompt = `I am ready to start the topic '${node.name}'. Please introduce this concept and guide me through it.`;
+      sendUserMessage(prompt, {
+        metadata: {
+          hiddenFromUser: false, // Visible so user sees the action
+          kind: 'tutor_start_lesson',
+        },
+      });
+    }
+
+    // 3. Close sheet
+    setUI({ planSheetOpen: false, planSheetPlanOverride: null });
+  };
+
+  // Derive learner model from messages
+  const learnerModel = useMemo(
+    () => (messages ? getLatestLearnerModel(messages) : undefined),
+    [messages],
+  );
 
   return (
     <div className="app-header gap-3 flex-wrap sm:flex-nowrap top-header">
@@ -285,6 +320,8 @@ export function TopHeader() {
         isOpen={planSheetOpen}
         onClose={() => setUI({ planSheetOpen: false, planSheetPlanOverride: null })}
         onUpdate={handlePlanUpdate}
+        onStartLesson={handleStartLesson}
+        learnerModel={learnerModel}
       />
     </div>
   );
