@@ -5,5 +5,4 @@ cd "$(dirname "$0")/.."
 
 export NODE_OPTIONS=${NODE_OPTIONS:-""}
 
-npm run dev
-
+bun run dev

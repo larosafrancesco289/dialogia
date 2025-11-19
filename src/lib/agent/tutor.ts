@@ -3,6 +3,9 @@
 // supplies it as arguments, which the UI renders as interactive widgets.
 
 import type { ToolDefinition } from '@/lib/agent/types';
+import type { MessageTutor } from '@/lib/types';
+
+const tutorContextCache = new WeakMap<MessageTutor, { summary?: string; full?: string }>();
 
 export function getTutorPreamble() {
   return [
@@ -74,7 +77,7 @@ export function getTutorGreeting(): string {
 // Build a compact, textual summary of the most recent tutor interaction
 // so the model can reference what was asked and how the learner answered
 // in subsequent turns. Keep it brief to avoid prompt bloat.
-export function buildTutorContextSummary(t: any | undefined): string | undefined {
+export function buildTutorContextSummary(t: MessageTutor | undefined): string | undefined {
   if (!t) return undefined;
   const lines: string[] = [];
   if (t.title) lines.push(`Title: ${String(t.title)}`);
@@ -242,7 +245,7 @@ export function buildTutorContextSummary(t: any | undefined): string | undefined
 // Build a full, structured JSON block for the last practice so the model
 // has exact items, choices, correct answers, and attempts. This is larger
 // than the summary and should be controlled by a UI preference.
-export function buildTutorContextFull(t: any | undefined): string | undefined {
+export function buildTutorContextFull(t: MessageTutor | undefined): string | undefined {
   if (!t) return undefined;
   try {
     const out: any = {};
@@ -376,6 +379,20 @@ export function buildTutorContextFull(t: any | undefined): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+export function getTutorContext(tutor: MessageTutor | undefined): {
+  summary?: string;
+  full?: string;
+} {
+  if (!tutor || typeof tutor !== 'object') return {};
+  const cached = tutorContextCache.get(tutor);
+  if (cached) return cached;
+  const summary = buildTutorContextSummary(tutor);
+  const full = buildTutorContextFull(tutor);
+  const snapshot = { summary, full };
+  tutorContextCache.set(tutor, snapshot);
+  return snapshot;
 }
 
 export function getTutorToolDefinitions(): ToolDefinition[] {

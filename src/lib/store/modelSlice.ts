@@ -133,7 +133,10 @@ export const createModelSlice = createStoreSlice((set, get) => {
           set((s) => ({
             ui: {
               ...s.ui,
-              nextModel: s.ui.nextModel ?? fallbackModelId ?? s.ui.nextModel,
+              next: {
+                ...(s.ui.next || {}),
+                model: s.ui.next?.model ?? fallbackModelId ?? s.ui.next?.model,
+              },
               notice: s.ui.notice ?? (noticeSegments.length ? noticeSegments.join(' ') : s.ui.notice),
             },
           }));

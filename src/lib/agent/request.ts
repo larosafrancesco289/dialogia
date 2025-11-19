@@ -15,14 +15,9 @@ import type {
   TurnContext,
 } from '@/lib/agent/types';
 import { ProviderSort } from '@/lib/agent/types';
+import { providerSortFromRoutePref } from '@/lib/policy/provider';
 
-export function providerSortFromRoutePref(
-  pref?: 'speed' | 'cost' | null,
-): ProviderSort | undefined {
-  if (pref === 'cost') return ProviderSort.Price;
-  if (pref === 'speed') return ProviderSort.Throughput;
-  return undefined;
-}
+export { providerSortFromRoutePref };
 
 export function pdfPlugins(hasPdf: boolean): PluginConfig[] | undefined {
   if (!hasPdf) return undefined;

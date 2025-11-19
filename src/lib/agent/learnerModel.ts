@@ -14,7 +14,7 @@ import type {
   Message,
   ModelTransport,
 } from '@/lib/types';
-import { getNextNode } from '@/lib/agent/planGenerator';
+import { getNextNode } from '@/lib/learningPlan/service';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 
 /**

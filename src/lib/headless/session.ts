@@ -2,25 +2,22 @@ import { v4 as uuidv4 } from 'uuid';
 import type { StoreApi } from 'zustand/vanilla';
 import { createHeadlessStore, type HeadlessStoreOptions } from '@/lib/headless/store';
 import type { StoreState, UIState } from '@/lib/store/types';
-import type {
-  Chat,
-  LearnerModel,
-  Message,
-  ModelTransport,
-  ORModel,
-  ToolCallLogEntry,
-} from '@/lib/types';
-import { type PlanTurnResult, type PersistMessage, type TurnComposition, type TurnContext } from '@/lib/agent/types';
+import type { Chat, Message, ModelTransport, ORModel, ToolCallLogEntry } from '@/lib/types';
+import {
+  type PlanTurnResult,
+  type PersistMessage,
+  type TurnComposition,
+  type TurnContext,
+} from '@/lib/agent/types';
 import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
 import { streamFinal } from '@/lib/agent/streaming';
-import { snapshotGenSettings } from '@/lib/agent/generation';
 import { DEFAULT_BASE_SYSTEM, shouldShortCircuitTutor } from '@/lib/agent/policy';
 import { resolveModelTransport } from '@/lib/providers';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
-import { getLatestLearnerModel, initializeLearnerModel } from '@/lib/agent/learnerModel';
 import type { ModelIndex } from '@/lib/models';
 import { runTurn } from '@/lib/orchestrator/turn';
+import { createTurnLifecycle } from '@/lib/orchestrator/lifecycle';
 
 export type ApiKeyResolver = (params: { modelId: string; transport: ModelTransport }) => string;
 
@@ -118,7 +115,7 @@ export class HeadlessTutorSession {
 
   async runTurn(content: string): Promise<HeadlessTurnResult> {
     const state = this.store.getState();
-    const chat = state.chats.find((c) => c.id === this.chatId);
+    let chat = state.chats.find((c) => c.id === this.chatId);
     if (!chat) throw new Error('Headless tutor chat not found');
 
     const now = Date.now();
@@ -163,21 +160,8 @@ export class HeadlessTutorSession {
       persistMessage: this.persistMessage,
     };
 
-    let pendingLearnerModel: LearnerModel | undefined;
-    let pendingPlanUpdates: Message['planUpdates'] | undefined;
-    let priorLearnerModel: LearnerModel | undefined;
     let finalAssistant: Message | undefined;
-    let latestComposition: TurnComposition | undefined;
-    let latestPlan: PlanTurnResult | undefined;
     let runArtifacts: Awaited<ReturnType<typeof runTurn>> | undefined;
-
-    const attachLearnerContextToAssistant = () => {
-      if (!pendingLearnerModel && !pendingPlanUpdates) return;
-      const patch: Partial<Message> = {};
-      if (pendingLearnerModel) patch.learnerModel = pendingLearnerModel;
-      if (pendingPlanUpdates) patch.planUpdates = pendingPlanUpdates;
-      this.updateMessage(assistantMessage.id, patch);
-    };
 
     const authResolver = (modelId: string) => {
       const modelMeta = baseTurnContext.modelIndex.get(modelId);
@@ -186,6 +170,23 @@ export class HeadlessTutorSession {
       if (!apiKey) throw new Error(`Missing API key for ${transport} transport`);
       return { transport, apiKey };
     };
+
+    const lifecycle = createTurnLifecycle({
+      chatId: this.chatId,
+      assistantMessageId: assistantMessage.id,
+      isPrimary: true,
+      priorMessages,
+      getChatForTurn: () =>
+        this.store.getState().chats.find((c) => c.id === this.chatId) ?? chat,
+      set: this.store.setState.bind(this.store),
+      get: this.store.getState.bind(this.store),
+      updateChat: (nextChat) => {
+        chat = nextChat;
+      },
+      updateMessage: (patch) => {
+        this.updateMessage(assistantMessage.id, patch);
+      },
+    });
 
     try {
       runArtifacts = await runTurn({
@@ -204,86 +205,25 @@ export class HeadlessTutorSession {
         authResolver,
         attachmentPreparer: async () => [],
         shouldShortCircuit: shouldShortCircuitTutor,
-        hooks: {
-          onComposition: (composition) => {
-            latestComposition = composition;
-            if (composition.tutor.enabled && chat.settings.learningPlan) {
-              priorLearnerModel =
-                getLatestLearnerModel(priorMessages) ??
-                initializeLearnerModel(this.chatId, chat.settings.learningPlan);
-            }
-          },
-          onPlanResult: (plan) => {
-            latestPlan = plan;
-            if (plan.learnerModel) pendingLearnerModel = plan.learnerModel;
-            if (plan.planUpdates) pendingPlanUpdates = plan.planUpdates;
-            if (plan.updatedPlan) {
-              this.store.setState((draft) => ({
-                chats: draft.chats.map((c) =>
-                  c.id === chat.id
-                    ? { ...c, settings: { ...c.settings, learningPlan: plan.updatedPlan } }
-                    : c,
-                ),
-              }));
-            }
-            if (plan.learnerModel && plan.learnerModelDebug && priorLearnerModel) {
-              this.store.setState((draft) => ({
-                ui: {
-                  ...draft.ui,
-                  learnerModelDebugByMessageId: {
-                    ...(draft.ui.learnerModelDebugByMessageId || {}),
-                    [assistantMessage.id]: {
-                      before: priorLearnerModel,
-                      after: plan.learnerModel,
-                      debug: plan.learnerModelDebug,
-                      planUpdates: plan.planUpdates,
-                    },
-                  },
-                },
-              }));
-            }
-            if (latestComposition) {
-              try {
-                const modelMeta = baseTurnContext.modelIndex.get(chat.settings.model);
-                const genSettings = snapshotGenSettings({
-                  settings: chat.settings,
-                  modelMeta,
-                  searchProvider: latestComposition.search.provider,
-                  providerSort: latestComposition.providerSort,
-                });
-                this.updateMessage(assistantMessage.id, {
-                  systemSnapshot: plan.finalSystem,
-                  genSettings,
-                });
-              } catch {
-                /* best-effort snapshot */
-              }
-            }
-          },
-          beforeStream: () => {
-            attachLearnerContextToAssistant();
-          },
-        },
+        hooks: lifecycle.hooks,
       });
 
       if (runArtifacts.shortCircuited) {
         const currentList = this.store.getState().messages[this.chatId] ?? [];
         const current = currentList.find((m) => m.id === assistantMessage.id);
         const base = (current as Message | undefined) ?? assistantMessage;
-        const finalMsg: Message = {
+        const finalMsg: Message = lifecycle.buildShortCircuitMessage({
           ...base,
           content: base.content ?? '',
           reasoning: base.reasoning,
           attachments: base.attachments,
           tutor: (base as any)?.tutor,
           hiddenContent: (base as any)?.hiddenContent,
-          learnerModel: pendingLearnerModel ?? base.learnerModel,
-          planUpdates: pendingPlanUpdates ?? base.planUpdates,
-        };
+        });
         this.updateMessage(assistantMessage.id, finalMsg);
         await this.persistMessage(finalMsg);
         const planArtifacts: PlanTurnResult =
-          latestPlan ??
+          lifecycle.latestPlan() ??
           runArtifacts.plan ?? {
             finalSystem:
               runArtifacts.composition.system ?? chat.settings.system ?? DEFAULT_BASE_SYSTEM,
@@ -326,7 +266,7 @@ export class HeadlessTutorSession {
       finalAssistant ?? finalMessages.find((msg) => msg.id === assistantMessage.id);
     if (!assistantFinal) throw new Error('Assistant message missing after streaming');
     const planArtifacts: PlanTurnResult =
-      latestPlan ??
+      lifecycle.latestPlan() ??
       runArtifacts?.plan ?? {
         finalSystem:
           runArtifacts?.composition.system ?? chat.settings.system ?? DEFAULT_BASE_SYSTEM,

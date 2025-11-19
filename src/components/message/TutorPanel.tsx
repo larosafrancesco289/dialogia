@@ -24,7 +24,7 @@ import type {
   TutorLearnerModelUpdate,
 } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
-import { getNextNode, updateNodeStatus } from '@/lib/agent/planGenerator';
+import { getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
 
 function safeKey(val: any, idx: number, prefix = 'item'): string {
   const s = typeof val === 'string' ? val.trim() : '';

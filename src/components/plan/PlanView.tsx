@@ -6,7 +6,7 @@ import {
   getAllPrerequisites,
   getNextNode,
   calculatePlanProgress,
-} from '@/lib/agent/planGenerator';
+} from '@/lib/learningPlan/service';
 import { PlanNode } from './PlanNode';
 import { useMemo } from 'react';
 

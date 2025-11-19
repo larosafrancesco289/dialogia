@@ -14,12 +14,13 @@ import {
   isImageOutputSupported,
 } from '@/lib/models';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
+import { readNextOverrides } from '@/lib/ui/next';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
 import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
-import { getNextNode } from '@/lib/agent/planGenerator';
+import { getNextNode } from '@/lib/learningPlan/service';
 import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
 import { ComposerChips } from '@/components/composer/ComposerChips';
@@ -48,17 +49,7 @@ export function Composer({
   const stop = useChatStore((s) => s.stopStreaming);
   const updateSettings = useChatStore((s) => s.updateChatSettings);
   const setUI = useChatStore((s) => s.setUI);
-  const uiNext = useChatStore(
-    (s) => ({
-      nextTutorMode: s.ui.nextTutorMode,
-      nextSearchEnabled: s.ui.nextSearchEnabled,
-      nextSearchProvider: s.ui.nextSearchProvider,
-      nextModel: s.ui.nextModel,
-      nextReasoningEffort: s.ui.nextReasoningEffort,
-      nextReasoningTokens: s.ui.nextReasoningTokens,
-    }),
-    shallow,
-  );
+  const uiNext = useChatStore((s) => readNextOverrides(s.ui));
   const [focused, setFocused] = useState(false);
   const isCompact = useIsMobile();
   const isTablet = useIsMobile(768);
@@ -67,7 +58,7 @@ export function Composer({
   const forceTutorMode = useChatStore((s) => !!s.ui.forceTutorMode);
   const tutorEnabled =
     tutorGloballyEnabled &&
-    (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.nextTutorMode));
+    (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.tutorMode));
 
   // Learning plan current focus
   const learningPlan = chat?.settings?.learningPlan;
@@ -76,7 +67,7 @@ export function Composer({
     [learningPlan],
   );
 
-  const modelId = chat?.settings.model || uiNext.nextModel || DEFAULT_MODEL_ID;
+  const modelId = chat?.settings.model || uiNext.model || DEFAULT_MODEL_ID;
   const modelMeta = findModelById(models, modelId);
   const canVision = isVisionSupported(modelMeta);
   const canAudio = isAudioInputSupported(modelMeta);
@@ -163,22 +154,20 @@ export function Composer({
   // Lightweight, live prompt token and cost estimate
   const tokenAndCost = useMemo(() => {
     const promptTokens = estimateTokens(text) || 0;
-    const mid = chat?.settings.model || uiNext.nextModel || DEFAULT_MODEL_ID;
+    const mid = chat?.settings.model || uiNext.model || DEFAULT_MODEL_ID;
     const modelMeta = findModelById(models, mid);
     const cost = computeCost({ model: modelMeta, promptTokens });
     return { promptTokens, currency: cost.currency, total: cost.total };
-  }, [text, chat?.settings.model, uiNext.nextModel, models]);
+  }, [text, chat?.settings.model, uiNext.model, models]);
 
   const experimentalBrave = useChatStore((s) => !!s.ui.experimentalBrave);
-  const searchEnabled = chat ? !!chat.settings.search_enabled : !!uiNext.nextSearchEnabled;
+  const searchEnabled = chat ? !!chat.settings.search_enabled : !!uiNext.search?.enabled;
   const rawProvider =
-    (chat?.settings as any)?.search_provider || uiNext.nextSearchProvider || 'openrouter';
+    (chat?.settings as any)?.search_provider || uiNext.search?.provider || 'openrouter';
   const searchProvider: 'brave' | 'openrouter' =
     experimentalBrave && rawProvider === 'brave' ? 'brave' : 'openrouter';
   const currentEffort = (
-    chat
-      ? (chat.settings.reasoning_effort as Effort | undefined)
-      : (uiNext.nextReasoningEffort as Effort | undefined)
+    chat ? (chat.settings.reasoning_effort as Effort | undefined) : (uiNext.reasoning?.effort as Effort | undefined)
   ) as Effort | undefined;
 
   const shouldPinToViewport =
@@ -238,13 +227,15 @@ export function Composer({
     if (chat) {
       void updateSettings({ search_enabled: !chat.settings.search_enabled });
     } else {
-      setUI({ nextSearchEnabled: !uiNext.nextSearchEnabled });
+      setUI({
+        next: { search: { enabled: !uiNext.search?.enabled } },
+      });
     }
   };
 
   const handleSelectEffort = async (effort: Effort) => {
     if (chat) await updateSettings({ reasoning_effort: effort });
-    else setUI({ nextReasoningEffort: effort });
+    else setUI({ next: { reasoning: { effort } } });
   };
 
   const handleStop = () => {

@@ -15,7 +15,7 @@ import {
   getNextNode,
   updateNodeStatus,
   summarizeLearningPlan,
-} from '@/lib/agent/planGenerator';
+} from '@/lib/learningPlan/service';
 import { generateModelSummary } from '@/lib/agent/learnerModel';
 
 /**

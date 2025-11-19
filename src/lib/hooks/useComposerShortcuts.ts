@@ -3,17 +3,11 @@ import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
 import type { ChatSettings } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { findModelById, isReasoningSupported } from '@/lib/models';
-import type { UIState } from '@/lib/store/types';
+import type { UIState, UINextOverrides } from '@/lib/store/types';
 
 type Effort = 'none' | 'low' | 'medium' | 'high';
 
-type NextOverrides = {
-  nextTutorMode?: boolean;
-  nextSearchEnabled?: boolean;
-  nextSearchProvider?: 'brave' | 'openrouter';
-  nextModel?: string;
-  nextReasoningEffort?: Effort;
-};
+type NextOverrides = UINextOverrides;
 
 type SlashCommandContext = {
   chat: Chat | undefined;
@@ -31,7 +25,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
   const arg = parts.join(' ').trim();
   const applyToChat = !!ctx.chat;
   const currentModelId =
-    ctx.chat?.settings.model || ctx.nextOverrides.nextModel || DEFAULT_MODEL_ID;
+    ctx.chat?.settings.model || ctx.nextOverrides.model || DEFAULT_MODEL_ID;
   const currentModel = findModelById(ctx.models, currentModelId);
 
   const setNotice = (msg: string) => ctx.setUI({ notice: msg });
@@ -47,9 +41,9 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
       await ctx.updateChatSettings({ search_enabled: next });
       setNotice(`Web search: ${next ? 'On' : 'Off'}`);
     } else {
-      const prev = !!ctx.nextOverrides.nextSearchEnabled;
+      const prev = !!ctx.nextOverrides.search?.enabled;
       const next = enabled == null ? !prev : enabled;
-      ctx.setUI({ nextSearchEnabled: next });
+      ctx.setUI({ next: { search: { enabled: next } } });
       setNotice(`Web search (next): ${next ? 'On' : 'Off'}`);
     }
     return true;
@@ -66,7 +60,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (applyToChat) {
       await ctx.updateChatSettings({ reasoning_effort: effort });
     } else {
-      ctx.setUI({ nextReasoningEffort: effort });
+      ctx.setUI({ next: { reasoning: { effort } } });
     }
     setNotice(`Reasoning effort: ${effort}`);
     return true;
@@ -85,7 +79,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (applyToChat) {
       await ctx.updateChatSettings({ model: chosen.id });
     } else {
-      ctx.setUI({ nextModel: chosen.id });
+      ctx.setUI({ next: { model: chosen.id } });
     }
     setNotice(`Model set to ${chosen.name || chosen.id}`);
     return true;

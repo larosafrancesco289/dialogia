@@ -4,11 +4,12 @@ import type { StoreState } from '@/lib/store/types';
 import type { Chat, Folder, Message } from '@/lib/types';
 import type { StoreSetter } from '@/lib/agent/types';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { buildHiddenTutorContent } from '@/lib/agent/tutorFlow';
 import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
 import { primeTutorWelcome } from '@/lib/services/turns';
 import { applyTutorDefaults, normalizeParallelModels } from '@/lib/store/normalize';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
+import { loadRepositorySnapshot } from '@/lib/db/repository';
+import { mergeTutorMap } from '@/lib/ui/tutorSelectors';
 
 export function createChatSlice(
   set: StoreSetter,
@@ -17,66 +18,21 @@ export function createChatSlice(
 ) {
   return {
     async initializeApp() {
-      const compareMessages = (a: Message, b: Message) => {
-        if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
-        const rolePriority: Record<Message['role'], number> = { system: 0, user: 1, assistant: 2 };
-        if (rolePriority[a.role] !== rolePriority[b.role])
-          return rolePriority[a.role] - rolePriority[b.role];
-        return a.id.localeCompare(b.id);
-      };
-      const chats = await db.chats.toArray();
-      const folders = await db.folders.toArray();
-      const messagesArray = await db.messages.toArray();
-      const messages: Record<string, Message[]> = {};
-      for (const m of messagesArray) {
-        if (!messages[m.chatId]) messages[m.chatId] = [];
-        messages[m.chatId].push(m);
-      }
-      for (const key of Object.keys(messages)) {
-        messages[key] = messages[key].slice().sort(compareMessages);
-      }
-      let selectedChatId = get().selectedChatId;
-      if (chats.length && !selectedChatId) {
-        selectedChatId = chats[0].id;
-      }
-      set({ chats, folders, messages, selectedChatId } as any);
-      // Rehydrate tutor panels from persisted message payloads
+      const snapshot = await loadRepositorySnapshot(get().selectedChatId);
+      set((s) => ({
+        chats: snapshot.chats,
+        folders: snapshot.folders,
+        messages: snapshot.messages,
+        selectedChatId: snapshot.selectedChatId,
+        ui: mergeTutorMap(s.ui, snapshot.tutorByMessageId),
+      }) as any);
       try {
-        const tutorMap: Record<string, any> = {};
-        const updates: { chatId: string; msg: any }[] = [];
-        for (const [cid, list] of Object.entries(messages)) {
-          for (const m of list) {
-            if (m.role === 'assistant' && (m as any)?.tutor) {
-              const tutor = (m as any).tutor;
-              tutorMap[m.id] = tutor;
-              // Backfill hiddenContent if missing so the model sees data without UI showing it
-              if (!(m as any).hiddenContent) {
-                try {
-                  const hidden = buildHiddenTutorContent(tutor);
-                  if (hidden) {
-                    (m as any).hiddenContent = hidden;
-                    updates.push({ chatId: cid, msg: m });
-                  }
-                } catch {}
-              }
-            }
-          }
+        if (snapshot.selectedChatId) {
+          await (get().loadTutorProfileIntoUI as any)(snapshot.selectedChatId);
         }
-        if (Object.keys(tutorMap).length > 0)
-          set((s) => ({
-            ui: { ...s.ui, tutorByMessageId: { ...(s.ui.tutorByMessageId || {}), ...tutorMap } },
-          }));
-        // Persist any hiddenContent backfills
-        for (const u of updates) {
-          try {
-            await (await import('@/lib/db')).saveMessage(u.msg);
-          } catch {}
-        }
-      } catch {}
-      // Preload tutor profile for the selected chat into UI (if available)
-      try {
-        if (selectedChatId) await (get().loadTutorProfileIntoUI as any)(selectedChatId);
-      } catch {}
+      } catch {
+        /* ignore tutor profile preload errors */
+      }
     },
 
     async newChat() {

@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractWebSearchArgs, normalizeTutorQuizPayload, parseJsonAfter } from '@/lib/agent/tools';
+import {
+  detectPlanningToolCalls,
+  extractWebSearchArgs,
+  normalizeTutorQuizPayload,
+  parseJsonAfter,
+} from '@/lib/agent/tools';
+import type { ToolDefinition } from '@/lib/agent/types';
 
 test('extractWebSearchArgs finds inline JSON payloads', () => {
   const content = 'Let me call web_search with {"query":"latest news","count":3}.';
@@ -34,4 +40,39 @@ test('parseJsonAfter extracts nested JSON payloads', () => {
   if (!parsed) return;
   assert.equal((parsed.value as any)?.name, 'web_search');
   assert.equal((parsed.value as any)?.arguments?.query, 'mars');
+});
+
+test('detectPlanningToolCalls returns provided tool_calls before inline hints', () => {
+  const message = {
+    tool_calls: [
+      {
+        id: 'abc',
+        type: 'function',
+        function: { name: 'web_search', arguments: '{"query":"mars"}' },
+      },
+    ],
+  };
+  const calls = detectPlanningToolCalls({
+    message,
+    toolDefinition: [],
+    searchProvider: 'brave',
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].id, 'abc');
+});
+
+test('detectPlanningToolCalls synthesizes inline tutor calls and respects tool definitions', () => {
+  const toolDefinition: ToolDefinition[] = [
+    { type: 'function', function: { name: 'quiz_mcq', parameters: {} } },
+  ];
+  const message = {
+    content: 'quiz_mcq: {"items":[{"id":"q1","question":"1+1?","choices":["1","2"],"correct":1}]}',
+  };
+  const calls = detectPlanningToolCalls({
+    message,
+    toolDefinition,
+    searchProvider: 'brave',
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].function.name, 'quiz_mcq');
 });

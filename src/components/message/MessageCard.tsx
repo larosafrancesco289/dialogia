@@ -15,6 +15,7 @@ import styles from './MessageCard.module.css';
 import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
+import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
 
 export type MessageCardProps = {
   message: Message;
@@ -112,58 +113,13 @@ export function MessageCard({
 
   const attachments = Array.isArray(message.attachments) ? message.attachments : [];
 
-  const handleTouchStart = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!isMobile) return;
-    if ((event as any).pointerType === 'mouse') return;
-    const target = event.target as HTMLElement | null;
-    if (
-      target &&
-      target.closest('button, .icon-button, a, input, textarea, [role="button"], .badge')
-    )
-      return;
-    const startX = event.clientX;
-    const startY = event.clientY;
-    let moved = false;
-    const slop = 12;
-    let fired = false;
-    const timer = window.setTimeout(() => {
-      fired = true;
+  const { onPointerDown, onContextMenu } = useLongPressSheet({
+    isEnabled: isMobile,
+    onTrigger: () => {
       setActiveMessageId(message.id);
       setMobileSheet({ id: message.id, role: message.role as 'assistant' | 'user' });
-    }, 320);
-    const onMove = (ev: PointerEvent) => {
-      const dx = Math.abs(ev.clientX - startX);
-      const dy = Math.abs(ev.clientY - startY);
-      if (dx > slop || dy > slop) {
-        moved = true;
-        window.clearTimeout(timer);
-        cleanup();
-      }
-    };
-    const onUp = () => {
-      window.clearTimeout(timer);
-      cleanup();
-    };
-    const onCancel = () => {
-      window.clearTimeout(timer);
-      cleanup();
-    };
-    const cleanup = () => {
-      window.removeEventListener('pointermove', onMove as any);
-      window.removeEventListener('pointerup', onUp as any);
-      window.removeEventListener('pointercancel', onCancel as any);
-    };
-    window.addEventListener('pointermove', onMove as any, { passive: true } as any);
-    window.addEventListener('pointerup', onUp as any);
-    window.addEventListener('pointercancel', onCancel as any);
-  };
-
-  const handleContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!isMobile) return;
-    event.preventDefault();
-    setActiveMessageId(message.id);
-    setMobileSheet({ id: message.id, role: message.role as 'assistant' | 'user' });
-  };
+    },
+  });
 
   const messagePanelsNode = useMemo(
     () => (
@@ -201,8 +157,8 @@ export function MessageCard({
       className={messageClassName}
       data-mid={message.id}
       aria-label={message.role === 'assistant' ? 'Assistant message' : 'Your message'}
-      onPointerDown={handleTouchStart}
-      onContextMenu={handleContextMenu}
+      onPointerDown={onPointerDown}
+      onContextMenu={onContextMenu}
     >
       {isAssistant ? (
         <AssistantMessageContent

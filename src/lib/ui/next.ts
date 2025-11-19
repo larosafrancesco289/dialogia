@@ -26,31 +26,32 @@ const pruneNext = (next: UINextOverrides): UINextOverrides | undefined => {
 
 export const readNextOverrides = (ui: UIState): UINextOverrides => {
   const base = ui.next ?? {};
+  const legacy = ui as Record<string, any>;
   return {
     ...base,
-    model: base.model ?? ui.nextModel,
+    model: base.model ?? legacy.nextModel,
     search: {
-      enabled: base.search?.enabled ?? ui.nextSearchEnabled,
-      provider: base.search?.provider ?? ui.nextSearchProvider,
+      enabled: base.search?.enabled ?? legacy.nextSearchEnabled,
+      provider: base.search?.provider ?? legacy.nextSearchProvider,
     },
-    deepResearch: base.deepResearch ?? ui.nextDeepResearch,
-    tutorMode: base.tutorMode ?? ui.nextTutorMode,
-    tutorNudge: base.tutorNudge ?? ui.nextTutorNudge,
+    deepResearch: base.deepResearch ?? legacy.nextDeepResearch,
+    tutorMode: base.tutorMode ?? legacy.nextTutorMode,
+    tutorNudge: base.tutorNudge ?? legacy.nextTutorNudge,
     reasoning: {
-      effort: base.reasoning?.effort ?? ui.nextReasoningEffort,
-      tokens: base.reasoning?.tokens ?? ui.nextReasoningTokens,
+      effort: base.reasoning?.effort ?? legacy.nextReasoningEffort,
+      tokens: base.reasoning?.tokens ?? legacy.nextReasoningTokens,
     },
-    system: base.system ?? ui.nextSystem,
-    temperature: base.temperature ?? ui.nextTemperature,
-    topP: base.topP ?? ui.nextTopP,
-    maxTokens: base.maxTokens ?? ui.nextMaxTokens,
+    system: base.system ?? legacy.nextSystem,
+    temperature: base.temperature ?? legacy.nextTemperature,
+    topP: base.topP ?? legacy.nextTopP,
+    maxTokens: base.maxTokens ?? legacy.nextMaxTokens,
     show: {
-      thinking: base.show?.thinking ?? ui.nextShowThinking,
-      stats: base.show?.stats ?? ui.nextShowStats,
-      toolCallLog: base.show?.toolCallLog ?? ui.nextShowToolCallLog,
-      debugRawJson: base.show?.debugRawJson ?? ui.nextShowDebugRawJson,
+      thinking: base.show?.thinking ?? legacy.nextShowThinking,
+      stats: base.show?.stats ?? legacy.nextShowStats,
+      toolCallLog: base.show?.toolCallLog ?? legacy.nextShowToolCallLog,
+      debugRawJson: base.show?.debugRawJson ?? legacy.nextShowDebugRawJson,
     },
-    parallelModels: base.parallelModels ?? ui.nextParallelModels,
+    parallelModels: base.parallelModels ?? legacy.nextParallelModels,
   };
 };
 
@@ -71,23 +72,6 @@ export const applyNextOverrides = (
   return {
     ...ui,
     next: nextValue,
-    nextModel: merged.model,
-    nextSearchEnabled: merged.search?.enabled,
-    nextSearchProvider: merged.search?.provider,
-    nextDeepResearch: merged.deepResearch,
-    nextTutorMode: merged.tutorMode,
-    nextTutorNudge: merged.tutorNudge,
-    nextReasoningEffort: merged.reasoning?.effort,
-    nextReasoningTokens: merged.reasoning?.tokens,
-    nextSystem: merged.system,
-    nextTemperature: merged.temperature,
-    nextTopP: merged.topP,
-    nextMaxTokens: merged.maxTokens,
-    nextShowThinking: merged.show?.thinking,
-    nextShowStats: merged.show?.stats,
-    nextShowToolCallLog: merged.show?.toolCallLog,
-    nextShowDebugRawJson: merged.show?.debugRawJson,
-    nextParallelModels: merged.parallelModels,
   };
 };
 

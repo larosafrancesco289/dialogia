@@ -58,7 +58,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
                 if (chat) {
                   updateChatSettings({ model: result.id }).catch(() => void 0);
                 } else {
-                  setUI({ nextModel: result.id });
+                  setUI({ next: { model: result.id } });
                 }
               }}
             />
@@ -91,24 +91,24 @@ export function ModelsPanel(props: ModelsPanelProps) {
               <div className="segmented">
                 {experimentalBrave && (
                   <button
-                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'openrouter') === 'brave' ? 'is-active' : ''}`}
+                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.next?.search?.provider ?? 'openrouter') === 'brave' ? 'is-active' : ''}`}
                     onClick={() => {
                       if (chat)
                         updateChatSettings({ search_provider: 'brave' } as any).catch(() => void 0);
-                      else setUI({ nextSearchProvider: 'brave' } as any);
+                      else setUI({ next: { search: { provider: 'brave' } } } as any);
                     }}
                   >
                     Brave
                   </button>
                 )}
                 <button
-                  className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.nextSearchProvider ?? 'openrouter') === 'openrouter' ? 'is-active' : ''}`}
+                  className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.next?.search?.provider ?? 'openrouter') === 'openrouter' ? 'is-active' : ''}`}
                   onClick={() => {
                     if (chat)
                       updateChatSettings({
                         search_provider: 'openrouter',
                       } as any).catch(() => void 0);
-                    else setUI({ nextSearchProvider: 'openrouter' } as any);
+                    else setUI({ next: { search: { provider: 'openrouter' } } } as any);
                   }}
                 >
                   OpenRouter

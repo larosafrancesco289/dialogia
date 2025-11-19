@@ -136,10 +136,7 @@ export function useModelPickerController(): Controller {
           chat.settings.model || DEFAULT_MODEL_ID,
           ...((chat.settings.parallel_models as string[] | undefined) ?? []),
         ]
-      : [
-          ui?.nextModel || DEFAULT_MODEL_ID,
-          ...((ui?.nextParallelModels as string[] | undefined) ?? []),
-        ];
+      : [ui?.next?.model || DEFAULT_MODEL_ID, ...((ui?.next?.parallelModels as string[] | undefined) ?? [])];
     const cleaned = fromChat.filter(
       (id): id is string => typeof id === 'string' && id.length > 0,
     );
@@ -149,7 +146,7 @@ export function useModelPickerController(): Controller {
     }
     if (deduped.length === 0) deduped.push(DEFAULT_MODEL_ID);
     return deduped;
-  }, [chat, ui?.nextModel, ui?.nextParallelModels]);
+  }, [chat, ui?.next?.model, ui?.next?.parallelModels]);
 
   const selectedId = selectedIds[0];
   const effectiveSelectedId =
@@ -170,7 +167,7 @@ export function useModelPickerController(): Controller {
     if (chat) {
       updateChatSettings({ model: primary, parallel_models: rest });
     } else {
-      setUI({ nextModel: primary, nextParallelModels: rest });
+      setUI({ next: { model: primary, parallelModels: rest } });
     }
   };
 

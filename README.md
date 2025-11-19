@@ -76,18 +76,18 @@ NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-v1_your_client_key_here
 Install dependencies:
 
 ```
-npm install
+bun install
 ```
 
 ### Run
 
-- Dev server: `npm run dev` → http://localhost:3000
-- Build: `npm run build`
-- Start (prod): `npm start`
-- Format: `npm run format`
-- Lint: `npm run lint`
-- Type check: `npm run lint:types`
-- Tests: `npm run test`
+- Dev server: `bun run dev` → http://localhost:3000
+- Build: `bun run build`
+- Start (prod): `bun start`
+- Format: `bun run format`
+- Lint: `bun run lint`
+- Type check: `bun run lint:types`
+- Tests: `bun run test`
 
 Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/start.sh`.
 
@@ -114,7 +114,7 @@ Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/star
 Run the complete tutoring pipeline (tutor agent, simulated learner, and LLM judge) without the UI:
 
 ```
-npm run tutor:simulate -- --goal "Limits revision"
+bun run tutor:simulate -- --goal "Limits revision"
 ```
 
 Key details:
@@ -122,10 +122,10 @@ Key details:
 - **API keys**: The runner talks directly to model APIs. Set `OPENROUTER_API_KEY` for the simulated student/judge models and `ANTHROPIC_API_KEY` for the default tutor model (`anthropic/claude-haiku-4.5`). Override with `--openrouter-key` / `--anthropic-key` if needed. Proxy-only setups are not supported for the headless flow.
 - **Env loading**: The script now reads `.env.local` (and `.env`) on startup, so keys placed there are picked up automatically without passing CLI flags.
 - **Defaults**: Uses the curated defaults from `src/data/curatedModels.ts` (tutor = `DEFAULT_TUTOR_MODEL_ID`, student/judge = `DEFAULT_MODEL_ID`). Override via `--tutor-model`, `--student-model`, and `--judge-model`.
-- **Presets**: Run `npm run tutor:simulate -- --list-presets` to view canned scenarios (e.g. `--preset python_basics` runs a five-turn Python onboarding flow). You can still provide `--goal` manually to craft new scenarios.
+- **Presets**: Run `bun run tutor:simulate -- --list-presets` to view canned scenarios (e.g. `--preset python_basics` runs a five-turn Python onboarding flow). You can still provide `--goal` manually to craft new scenarios.
 - **Output**: Shows a concise turn-by-turn summary in the terminal and writes the full JSON payload (transcripts, tool calls, tutor UI, learner model snapshots, judge verdict) to `tmp/tutor-sim-*.json`. Override the destination with `--json-out path/to/report.json`.
 - **Customizing**: Pass `--turns <n>` to limit the dialogue length, provide `--initial-user` to seed the first learner utterance, or supply different model IDs per role.
-- **Testing**: The orchestration layer is covered by `tests/headlessSession.test.ts`. Run with `npm run test` once your environment allows TSX to spawn its IPC socket (some sandboxes may block this by default).
+- **Testing**: The orchestration layer is covered by `tests/headlessSession.test.ts`. Run with `bun run test` once your environment allows TSX to spawn its IPC socket (some sandboxes may block this by default).
 
 ### Tutor Mode: Adaptive Learning Plans
 
@@ -258,7 +258,7 @@ public/                 # Static assets served by Next
 assets/                 # Screenshots
 styles/                 # Global CSS tokens (francesco-bootstrap.css)
 scripts/                # Helper scripts (dev/build/start)
-tests/                  # Legacy Node-based unit tests (`npm run test` also runs colocated *.test.ts)
+tests/                  # Legacy Node-based unit tests (`bun run test` also runs colocated *.test.ts)
 ```
 
 ### Development
@@ -266,8 +266,8 @@ tests/                  # Legacy Node-based unit tests (`npm run test` also runs
 - Language: TypeScript + React 18; Next.js App Router
 - Formatting: Prettier (`.prettierrc`) — single quotes, semicolons, trailing commas=all, width=100
 - Naming: PascalCase components in `src/components/`; named exports favored
-- Linting & types: run `npm run lint` and `npm run lint:types` before pushing
-- Testing: `npm run test` (Node test runner via `tsx`); add colocated `*.test.ts(x)` for unit coverage.
+- Linting & types: run `bun run lint` and `bun run lint:types` before pushing
+- Testing: `bun run test` (Node test runner via `tsx`); add colocated `*.test.ts(x)` for unit coverage.
 
 ### License
 

@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { PlanSheet } from '@/components/plan/PlanSheet';
-import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/agent/planGenerator';
+import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
 import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
 import { readNextOverrides } from '@/lib/ui/next';
 export function TopHeader() {

@@ -2,7 +2,7 @@
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { LearningPlan, LearnerModel } from '@/lib/types';
 import { PlanView } from './PlanView';
-import { updateNodeStatus } from '@/lib/agent/planGenerator';
+import { updateNodeStatus } from '@/lib/learningPlan/service';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 

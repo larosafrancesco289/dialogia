@@ -77,7 +77,7 @@ function parseArgs(argv: string[]): ArgMap {
 function usage() {
   console.log(
     [
-      'Usage: npm run tutor:simulate -- --goal "Study topic" [options]',
+      'Usage: bun run tutor:simulate -- --goal "Study topic" [options]',
       '',
       'Options:',
       '  --goal "<text>"            Goal or scenario for the student (required unless --preset)',

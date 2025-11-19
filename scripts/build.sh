@@ -3,5 +3,4 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-npm run build
-
+bun run build
