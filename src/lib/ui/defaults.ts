@@ -4,23 +4,6 @@ import type { UIState } from '@/lib/store/types';
 
 const EPHEMERAL_DEFAULTS: Partial<UIState> = {
   next: undefined,
-  nextModel: undefined,
-  nextSearchEnabled: false,
-  nextSearchProvider: undefined,
-  nextDeepResearch: false,
-  nextTutorMode: false,
-  nextTutorNudge: undefined,
-  nextReasoningEffort: undefined,
-  nextReasoningTokens: undefined,
-  nextSystem: undefined,
-  nextTemperature: undefined,
-  nextTopP: undefined,
-  nextMaxTokens: undefined,
-  nextShowThinking: undefined,
-  nextShowStats: undefined,
-  nextShowToolCallLog: undefined,
-  nextShowDebugRawJson: undefined,
-  nextParallelModels: undefined,
 };
 
 export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {

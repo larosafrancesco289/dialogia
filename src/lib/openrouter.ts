@@ -11,27 +11,46 @@ import { buildChatBody } from '@/lib/agent/request';
 import { consumeSse, type SseEvent } from '@/lib/api/stream';
 import { ApiError, API_ERROR_CODES, responseError } from '@/lib/api/errors';
 import { normalizeUsage, shouldIncludeUsage, type Usage } from '@/lib/api/normalizers';
+import { ZDR_CACHE_TTL_MS } from '@/lib/zdr/constants';
 
 // Transport-only client for OpenRouter.
 // Request payload construction lives in agent/request.buildChatBody to keep one source of truth
 // between debug captures and outbound network requests.
 
-async function loadZdrEndpoints(signal?: AbortSignal): Promise<any[]> {
-  const res = await orFetchZdrEndpoints({ signal });
+const MODEL_CACHE_TTL_MS = 1000 * 60 * 5;
+let modelCache = new Map<string, { models: ORModel[]; fetchedAt: number; origin?: string }>();
+let zdrEndpointCache: { endpoints: any[]; fetchedAt: number } | null = null;
+
+async function loadZdrEndpoints(
+  signal?: AbortSignal,
+  fetcher: typeof orFetchZdrEndpoints = orFetchZdrEndpoints,
+): Promise<any[]> {
+  const now = Date.now();
+  if (zdrEndpointCache && now - zdrEndpointCache.fetchedAt < ZDR_CACHE_TTL_MS) {
+    return zdrEndpointCache.endpoints;
+  }
+  const res = await fetcher({ signal });
   if (!res.ok) throw responseError(res, { code: API_ERROR_CODES.OPENROUTER_ZDR_FAILED });
   const payload = await res.json().catch(() => null);
   if (!payload) return [];
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.endpoints)) return payload.endpoints;
-  if (Array.isArray(payload)) return payload;
-  return [];
+  const endpoints = Array.isArray(payload?.data)
+    ? payload.data
+    : Array.isArray(payload?.endpoints)
+      ? payload.endpoints
+      : Array.isArray(payload)
+        ? payload
+        : [];
+  zdrEndpointCache = { endpoints, fetchedAt: now };
+  return endpoints;
 }
 
 // Fetch provider identifiers for endpoints that are Zero Data Retention (ZDR)
 // Returns a set of provider prefixes (e.g., 'moonshotai') to match against model ids
-export async function fetchZdrProviderIds(): Promise<Set<string>> {
+export async function fetchZdrProviderIds(
+  fetcher: typeof orFetchZdrEndpoints = orFetchZdrEndpoints,
+): Promise<Set<string>> {
   try {
-    const items = await loadZdrEndpoints();
+    const items = await loadZdrEndpoints(undefined, fetcher);
     const providers = new Set<string>();
     for (const ep of items) {
       const tryAdd = (val: unknown) => {
@@ -61,9 +80,11 @@ export async function fetchZdrProviderIds(): Promise<Set<string>> {
 }
 
 // Fetch a set of model ids that are explicitly ZDR-enabled, when provided by the endpoint
-export async function fetchZdrModelIds(): Promise<Set<string>> {
+export async function fetchZdrModelIds(
+  fetcher: typeof orFetchZdrEndpoints = orFetchZdrEndpoints,
+): Promise<Set<string>> {
   try {
-    const items = await loadZdrEndpoints();
+    const items = await loadZdrEndpoints(undefined, fetcher);
     const modelIds = new Set<string>();
     for (const ep of items) {
       if (typeof ep?.name === 'string' && ep.name.includes('|')) {
@@ -82,11 +103,24 @@ export async function fetchZdrModelIds(): Promise<Set<string>> {
   }
 }
 
+export function clearOpenRouterCachesForTest() {
+  modelCache = new Map();
+  zdrEndpointCache = null;
+}
+
 export async function fetchModels(
   apiKey: string,
-  opts: { origin?: string; signal?: AbortSignal } = {},
+  opts: { origin?: string; signal?: AbortSignal; fetchFn?: typeof orFetchModels } = {},
 ): Promise<ORModel[]> {
-  const res = await orFetchModels(apiKey, { signal: opts.signal, origin: opts.origin });
+  const fetchFn = opts.fetchFn ?? orFetchModels;
+  const cacheKey = `${opts.origin || 'default'}::${apiKey}`;
+  const cached = modelCache.get(cacheKey);
+  const now = Date.now();
+  if (cached && now - cached.fetchedAt < MODEL_CACHE_TTL_MS) {
+    return cached.models;
+  }
+
+  const res = await fetchFn(apiKey, { signal: opts.signal, origin: opts.origin });
   if (res.status === 401 || res.status === 403) {
     throw responseError(res, {
       code: API_ERROR_CODES.UNAUTHORIZED,
@@ -98,7 +132,7 @@ export async function fetchModels(
   }
   const data = await res.json();
   const items = Array.isArray(data?.data) ? data.data : data;
-  return (items as any[]).map((m) => ({
+  const models = (items as any[]).map((m) => ({
     id: m.id,
     name: m.name,
     context_length: m.context_length,
@@ -108,6 +142,8 @@ export async function fetchModels(
     transportModelId: m.id,
     providerDisplay: 'OpenRouter',
   }));
+  modelCache.set(cacheKey, { models, fetchedAt: now, origin: opts.origin });
+  return models;
 }
 
 export type StreamCallbacks = {

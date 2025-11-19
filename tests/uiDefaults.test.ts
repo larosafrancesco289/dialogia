@@ -16,16 +16,15 @@ test('buildDefaultUIState applies overrides without mutating defaults', () => {
 test('resetEphemeralUi clears staged next values', () => {
   const state: UIState = {
     ...buildDefaultUIState(),
-    nextModel: 'test-model',
-    nextSearchEnabled: true,
-    nextTutorMode: true,
+    next: {
+      model: 'test-model',
+      search: { enabled: true },
+      tutorMode: true,
+    },
     forceTutorMode: true,
   };
 
   const reset = resetEphemeralUi(state);
-  assert.equal(reset.nextModel, undefined);
-  assert.equal(reset.nextSearchEnabled, false);
-  assert.equal(reset.nextTutorMode, false);
-  assert.equal(reset.forceTutorMode, true);
   assert.equal(reset.next, undefined);
+  assert.equal(reset.forceTutorMode, true);
 });

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+BUN_BIN=$(command -v bun || command -v ~/.bun/bin/bun || true)
 
-if command -v npm >/dev/null 2>&1; then
-  npm ci || npm install
-else
-  echo "npm is required"
+if [ -z "$BUN_BIN" ]; then
+  echo "bun is required"
   exit 1
 fi
 
+cd "$(dirname "$0")/.."
+
+"$BUN_BIN" install --frozen-lockfile

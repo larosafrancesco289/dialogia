@@ -5,7 +5,7 @@ import type { StoreSetter } from '@/lib/agent/types';
 import { updateTutorProfile, loadTutorProfile } from '@/lib/tutorProfile';
 import { saveMessage } from '@/lib/db';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { getNextNode } from '@/lib/agent/planGenerator';
+import { getNextNode } from '@/lib/learningPlan/service';
 
 const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
   if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {
@@ -53,7 +53,8 @@ export function createTutorSlice(
     async primeTutorWelcomePreview() {
       const state = get();
       const tutorActive =
-        !!state.ui.experimentalTutor && (state.ui.forceTutorMode || state.ui.nextTutorMode);
+        !!state.ui.experimentalTutor &&
+        (state.ui.forceTutorMode || state.ui.next?.tutorMode);
       if (!tutorActive) {
         set((s) => ({
           ui: {

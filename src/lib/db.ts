@@ -1,6 +1,7 @@
 import Dexie, { Table } from 'dexie';
 import type { Chat, Message, KVRecord, Folder } from '@/lib/types';
 import { sanitizeMessageRecord } from '@/lib/db/sanitize';
+import { DB_SCHEMA_VERSION } from '@/lib/db/versions';
 
 export { sanitizeMessageRecord } from '@/lib/db/sanitize';
 
@@ -149,7 +150,7 @@ export class DialogiaDB extends Dexie {
       folders: 'id, updatedAt, createdAt, parentId',
       kv: 'key',
     });
-    this.version(3)
+    this.version(DB_SCHEMA_VERSION)
       .stores({
         chats: 'id, updatedAt, createdAt, folderId',
         messages: 'id, chatId, createdAt',

@@ -2,7 +2,6 @@
 // Responsibility: Handle multi-round planning for assistant turns before final streaming.
 
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
-import { extractTutorToolCalls, extractWebSearchArgs } from '@/lib/agent/tools';
 import { formatSourcesBlock } from '@/lib/agent/searchFlow';
 import {
   DEFAULT_BASE_SYSTEM,
@@ -11,20 +10,20 @@ import {
   shouldAppendSources,
 } from '@/lib/agent/policy';
 import { isToolCallingSupported } from '@/lib/models';
-import { createToolCall, normalizeToolCalls, parseToolArguments } from '@/lib/agent/parsers';
+import { parseToolArguments } from '@/lib/agent/parsers';
 import { combineSystem } from '@/lib/agent/system';
 import type {
   ModelMessage,
   PlanTurnOptions,
   PlanTurnResult,
   SearchResult,
-  ToolCall,
   ToolDefinition,
-  WebSearchArgs,
+  ToolCall,
 } from '@/lib/agent/types';
 import { executePlanningToolCall } from '@/lib/agent/tools/exec';
 import { captureRequestDebug } from '@/lib/agent/debug';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
+import { detectPlanningToolCalls } from '@/lib/agent/tools/router';
 
 export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const {
@@ -106,23 +105,10 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
 
     const choice = resp?.choices?.[0];
     const message = choice?.message || {};
-    let toolCalls: ToolCall[] = normalizeToolCalls(message);
-
-    if (toolCalls.length === 0 && typeof message?.content === 'string') {
-      const inlineSearch = extractWebSearchArgs(message.content);
-      if (inlineSearch) {
-        toolCalls = [
-          createToolCall('web_search', inlineSearch as Record<string, unknown>, 'inline_web_search'),
-        ];
-      } else {
-        const tutorCalls = extractTutorToolCalls(message.content);
-        if (tutorCalls.length > 0) {
-          toolCalls = tutorCalls.map((call, index) =>
-            createToolCall(call.name, call.args, `inline_tutor_${index}`),
-          );
-        }
-      }
-    }
+    const toolCalls: ToolCall[] = detectPlanningToolCalls({
+      message,
+      toolDefinition,
+    });
 
     if (toolCalls.length > 0) {
       usedTool = true;

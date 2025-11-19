@@ -1,4 +1,8 @@
-import { buildDebugBody, captureDebugPayload } from '@/lib/agent/request';
+import {
+  buildDebugBody,
+  DEBUG_LOG_MAX_ENTRIES,
+  DEBUG_LOG_TTL_MS,
+} from '@/lib/agent/request';
 import type { ProviderSort } from '@/lib/models/providerSort';
 import type { PluginConfig, ToolDefinition, TurnContext } from '@/lib/agent/types';
 
@@ -45,5 +49,37 @@ export function captureRequestDebug({
   messageId,
   ...rest
 }: { turn: TurnContext; messageId: string } & RequestDebugOptions) {
-  captureDebugPayload(turn, messageId, () => buildRequestDebugBody(rest));
+  const current = turn.get();
+  if (!current?.ui?.debugMode) return;
+  try {
+    const payload = buildRequestDebugBody(rest);
+    const now = Date.now();
+    const existing = current.ui.debugByMessageId || {};
+    const entries = Object.entries(existing).filter(([id, value]) => {
+      if (id === messageId) return false;
+      const createdAt = typeof value?.createdAt === 'number' ? value.createdAt : 0;
+      return now - createdAt <= DEBUG_LOG_TTL_MS;
+    });
+    let bodyStr = '';
+    if (typeof payload === 'string') bodyStr = payload;
+    else {
+      try {
+        bodyStr = JSON.stringify(payload);
+      } catch {
+        bodyStr = String(payload);
+      }
+    }
+    entries.push([messageId, { body: bodyStr, createdAt: now }]);
+    entries.sort((a, b) => (a[1].createdAt ?? 0) - (b[1].createdAt ?? 0));
+    const trimmed = entries.slice(-DEBUG_LOG_MAX_ENTRIES);
+
+    turn.set({
+      ui: {
+        ...current.ui,
+        debugByMessageId: Object.fromEntries(trimmed),
+      },
+    });
+  } catch {
+    /* ignore debug capture failures */
+  }
 }

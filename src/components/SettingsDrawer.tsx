@@ -633,21 +633,28 @@ export function SettingsDrawer() {
                     : {}),
                 });
               } else {
+                const provider =
+                  (ui as any)?.next?.search?.provider ??
+                  (chat as any)?.settings?.search_provider ??
+                  'openrouter';
                 setUI({
-                  nextSystem: system,
-                  nextTemperature: temperature,
-                  nextTopP: top_p,
-                  nextMaxTokens: max_tokens,
-                  nextReasoningEffort: (reasoningEffort || undefined) as any,
-                  nextReasoningTokens: reasoningTokens,
-                  nextShowThinking: showThinking,
-                  nextShowStats: showStats,
-                  nextShowToolCallLog: showToolCallLog,
-                  nextShowDebugRawJson: showDebugRawJson,
-                  nextSearchProvider:
-                    (ui as any)?.nextSearchProvider ??
-                    (chat as any)?.settings?.search_provider ??
-                    'openrouter',
+                  next: {
+                    system,
+                    temperature,
+                    topP: top_p,
+                    maxTokens: max_tokens,
+                    reasoning: {
+                      effort: (reasoningEffort || undefined) as any,
+                      tokens: reasoningTokens,
+                    },
+                    show: {
+                      thinking: showThinking,
+                      stats: showStats,
+                      toolCallLog: showToolCallLog,
+                      debugRawJson: showDebugRawJson,
+                    },
+                    search: { provider },
+                  },
                 });
               }
               closeWithAnim();

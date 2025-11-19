@@ -88,7 +88,7 @@ test('composeTurn merges tutor and search context with plugins and tools', async
     forceTutorMode: false,
     experimentalBrave: true,
     routePreference: 'speed',
-    nextTutorNudge: 'more_practice',
+    next: { tutorNudge: 'more_practice' },
   } as any;
   const prior: Message[] = [
     {

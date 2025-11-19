@@ -1,8 +1,10 @@
 import type { StoreState } from '@/lib/store/types';
+import { applyNextOverrides, deriveNextPatchFromLegacy } from '@/lib/ui/next';
+import { STORE_MIGRATION_VERSION } from '@/lib/db/versions';
 
 type PersistedState = Partial<StoreState> & Record<string, any>;
 
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = STORE_MIGRATION_VERSION;
 
 const stripDeprecatedUiFields = (ui: Record<string, any>): Record<string, any> => {
   const next = { ...ui };
@@ -16,6 +18,38 @@ const stripDeprecatedUiFields = (ui: Record<string, any>): Record<string, any> =
     delete next.nextSearchWithBrave;
   }
   return next;
+};
+
+const LEGACY_NEXT_KEYS = [
+  'nextModel',
+  'nextSearchEnabled',
+  'nextSearchProvider',
+  'nextDeepResearch',
+  'nextTutorMode',
+  'nextTutorNudge',
+  'nextReasoningEffort',
+  'nextReasoningTokens',
+  'nextSystem',
+  'nextTemperature',
+  'nextTopP',
+  'nextMaxTokens',
+  'nextShowThinking',
+  'nextShowStats',
+  'nextShowToolCallLog',
+  'nextShowDebugRawJson',
+  'nextParallelModels',
+];
+
+const flattenNextOverrides = (ui: Record<string, any>): Record<string, any> => {
+  const base = stripDeprecatedUiFields(ui);
+  const nextPatch = deriveNextPatchFromLegacy(base as any);
+  const merged =
+    nextPatch && Object.keys(nextPatch).length > 0 ? applyNextOverrides(base as any, nextPatch) : base;
+  const cleaned = { ...merged };
+  for (const key of LEGACY_NEXT_KEYS) {
+    delete (cleaned as any)[key];
+  }
+  return cleaned;
 };
 
 const migrateSearchSettings = (input: any) => {
@@ -68,10 +102,23 @@ export const migrateToV2 = (state: PersistedState): PersistedState => {
   return next;
 };
 
-export const migrate = (persistedState: unknown, version?: number): Partial<StoreState> => {
-  if (!persistedState || typeof persistedState !== 'object') return {};
-  const state = persistedState as PersistedState;
-  if ((version ?? 0) >= CURRENT_VERSION) return state;
-  return migrateToV2(state);
+export const migrateToV3 = (state: PersistedState): PersistedState => {
+  const next = { ...state } as PersistedState;
+  if (next.ui && typeof next.ui === 'object') {
+    next.ui = flattenNextOverrides(next.ui as Record<string, any>) as any;
+  }
+  return next;
 };
 
+export const migrate = (persistedState: unknown, version?: number): Partial<StoreState> => {
+  if (!persistedState || typeof persistedState !== 'object') return {};
+  const currentVersion = version ?? 0;
+  let state = persistedState as PersistedState;
+  if (currentVersion < 2) {
+    state = migrateToV2(state);
+  }
+  if (currentVersion < CURRENT_VERSION) {
+    state = migrateToV3(state);
+  }
+  return state;
+};

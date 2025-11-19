@@ -1,6 +1,6 @@
 'use client';
 import type { LearningPlan } from '@/lib/types';
-import { calculatePlanProgress } from '@/lib/agent/planGenerator';
+import { calculatePlanProgress } from '@/lib/learningPlan/service';
 
 export function ProgressIndicator({ plan }: { plan: LearningPlan }) {
   const progress = calculatePlanProgress(plan);

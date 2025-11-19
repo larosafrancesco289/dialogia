@@ -4,11 +4,13 @@
 
 import { buildChatCompletionMessages } from '@/lib/agent/conversation';
 import { getTutorPreamble, getTutorToolDefinitions } from '@/lib/agent/tutor';
-import { composePlugins, providerSortFromRoutePref } from '@/lib/agent/request';
+import { composePlugins } from '@/lib/agent/request';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
 import { type ComposeTurnArgs, type TurnComposition, type ToolDefinition } from '@/lib/agent/types';
 import tutorProfileService from '@/lib/tutorProfile';
 import { combineSystem } from '@/lib/agent/system';
+import { readNextOverrides } from '@/lib/ui/next';
+import { buildProviderPolicy } from '@/lib/policy/provider';
 
 const TOOL_PREAMBLE =
   'You have access to a function tool named "web_search" that retrieves up-to-date web results.\n\nWhen you need current, factual, or source-backed information, call the tool first. If you call a tool, respond with ONLY tool_calls (no user-facing text). After the tool returns, write the final answer that cites sources inline as [n] using the numbering provided.\n\nweb_search(args): { query: string, count?: integer 1-10 }. Choose a focused query and a small count, and avoid unnecessary calls.';
@@ -21,17 +23,14 @@ export async function composeTurn({
   newUser,
   attachments,
 }: ComposeTurnArgs): Promise<TurnComposition> {
+  const nextOverrides = readNextOverrides(ui as any);
   const tutorGloballyEnabled = !!ui.experimentalTutor;
   const forceTutorMode = !!(ui.forceTutorMode ?? false);
   const tutorEnabled =
     tutorGloballyEnabled && (forceTutorMode || Boolean(chat.settings.tutor_mode));
 
-  const searchEnabled = !!chat.settings.search_enabled;
-  const configuredProvider =
-    ((chat.settings as any)?.search_provider as TurnComposition['search']['provider']) ||
-    'openrouter';
-  const searchProvider =
-    ui.experimentalBrave && configuredProvider === 'brave' ? 'brave' : 'openrouter';
+  const providerPolicy = buildProviderPolicy({ settings: chat.settings, ui });
+  const { searchEnabled, searchProvider, providerSort } = providerPolicy;
 
   const priorMessages = prior ?? [];
   const preparedAttachments = attachments ?? newUser?.attachments ?? [];
@@ -79,8 +78,8 @@ export async function composeTurn({
       if (planContext) preambles.push(planContext);
     }
 
-    if (ui.nextTutorNudge) {
-      preambles.push(`Learner Preference: ${ui.nextTutorNudge.replace(/_/g, ' ')}`);
+    if (nextOverrides.tutorNudge) {
+      preambles.push(`Learner Preference: ${nextOverrides.tutorNudge.replace(/_/g, ' ')}`);
     }
   }
 
@@ -99,7 +98,6 @@ export async function composeTurn({
     newUserAttachments: userAttachments,
   });
 
-  const providerSort = providerSortFromRoutePref(ui.routePreference);
   const shouldPlan = tutorEnabled || (searchEnabled && searchProvider === 'brave');
 
   return {
@@ -117,6 +115,6 @@ export async function composeTurn({
     tutor: {
       enabled: tutorEnabled,
     },
-    consumedTutorNudge: tutorEnabled ? ui.nextTutorNudge : undefined,
+    consumedTutorNudge: tutorEnabled ? nextOverrides.tutorNudge : undefined,
   };
 }

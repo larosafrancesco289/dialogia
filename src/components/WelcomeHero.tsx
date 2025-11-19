@@ -10,7 +10,7 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
   const ui = useChatStore((s) => s.ui);
   const experimentalTutor = !!ui.experimentalTutor;
   const forceTutorMode = !!ui.forceTutorMode;
-  const nextTutorMode = !!ui.nextTutorMode;
+  const nextTutorMode = !!(ui.next?.tutorMode ?? false);
   const tutorActive = experimentalTutor && (forceTutorMode || nextTutorMode);
   const quickStartPhrases = tutorActive
     ? ['Review my algebra notes', 'Quiz me on world history', 'Explain photosynthesis']

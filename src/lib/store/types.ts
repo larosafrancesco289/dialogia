@@ -44,26 +44,6 @@ export type UIState = {
   forceTutorMode?: boolean;
   learnerModelDebugByMessageId?: Record<string, any>;
   next?: UINextOverrides;
-  nextModel?: string;
-  nextSearchEnabled?: boolean;
-  nextSearchProvider?: 'brave' | 'openrouter';
-  // Toggle DeepResearch for the next send from composer
-  nextDeepResearch?: boolean;
-  // If no chat is open yet, allow toggling tutor mode for the next chat
-  nextTutorMode?: boolean;
-  // Tutor steering: set before next turn to bias planning
-  nextTutorNudge?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
-  nextReasoningEffort?: 'none' | 'low' | 'medium' | 'high';
-  nextReasoningTokens?: number;
-  nextSystem?: string;
-  nextTemperature?: number;
-  nextTopP?: number;
-  nextMaxTokens?: number;
-  nextShowThinking?: boolean;
-  nextShowStats?: boolean;
-  nextShowToolCallLog?: boolean;
-  nextShowDebugRawJson?: boolean;
-  nextParallelModels?: string[];
   // Tutor context fidelity for follow-up turns
   // 'summary' keeps prompts compact; 'full' injects full quiz JSON
   tutorContextMode?: 'summary' | 'full';

@@ -1,5 +1,5 @@
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
-import { runBraveSearch, updateBraveUi } from '@/lib/agent/searchFlow';
+import { runBraveSearch } from '@/lib/agent/searchFlow';
 import { withAbort } from '@/lib/utils/abort';
 import type {
   SearchProvider,
@@ -9,6 +9,7 @@ import type {
   WebSearchArgs,
 } from '@/lib/agent/types';
 import { parseJsonAfter } from './json';
+import { setSearchUiStatus } from '@/lib/agent/searchService';
 
 function readSearchPayload(value: unknown): WebSearchArgs | null {
   if (!value || typeof value !== 'object') return null;
@@ -73,7 +74,7 @@ export async function performWebSearchTool(opts: {
   if (!rawQuery) rawQuery = fallbackQuery.trim().slice(0, 256);
 
   if (searchProvider === 'brave') {
-    updateBraveUi(set, assistantMessageId, { query: rawQuery, status: 'loading' });
+    setSearchUiStatus(set, assistantMessageId, { query: rawQuery, status: 'loading' });
   }
 
   return withAbort(controller.signal, async (fetchController) => {
@@ -86,7 +87,7 @@ export async function performWebSearchTool(opts: {
 
       if (result.ok) {
         if (searchProvider === 'brave') {
-          updateBraveUi(set, assistantMessageId, {
+          setSearchUiStatus(set, assistantMessageId, {
             query: rawQuery,
             status: 'done',
             results: result.results,
@@ -96,7 +97,7 @@ export async function performWebSearchTool(opts: {
       }
 
       if (searchProvider === 'brave') {
-        updateBraveUi(set, assistantMessageId, {
+        setSearchUiStatus(set, assistantMessageId, {
           query: rawQuery,
           status: 'error',
           results: [],
@@ -110,7 +111,7 @@ export async function performWebSearchTool(opts: {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : undefined;
       if (searchProvider === 'brave') {
-        updateBraveUi(set, assistantMessageId, {
+        setSearchUiStatus(set, assistantMessageId, {
           query: rawQuery,
           status: 'error',
           results: [],

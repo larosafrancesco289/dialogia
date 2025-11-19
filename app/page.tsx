@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useSidebarGestures } from '@/lib/hooks/useSidebarGestures';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
 
 export default function HomePage() {
   const initialize = useChatStore((s) => s.initializeApp);
@@ -30,19 +31,13 @@ export default function HomePage() {
     shallow,
   );
   const setUI = useChatStore((s) => s.setUI);
-  const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
-    update();
-    window.addEventListener('resize', update, { passive: true } as any);
-    return () => window.removeEventListener('resize', update as any);
-  }, []);
+  const isMobile = useIsMobile(768);
   useEffect(() => setMounted(true), []);
   // Ensure sidebar is collapsed on small screens so it doesn't cover content by default
   useEffect(() => {
     if (isMobile && !collapsed) setUI({ sidebarCollapsed: true });
-  }, [isMobile]);
+  }, [isMobile, collapsed, setUI]);
   useEffect(() => {
     initialize();
   }, [initialize]);

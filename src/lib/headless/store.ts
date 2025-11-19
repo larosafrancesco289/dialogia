@@ -16,8 +16,10 @@ export type HeadlessStoreOptions = {
 const HEADLESS_UI_OVERRIDES: Partial<UIState> = {
   debugMode: true,
   forceTutorMode: true,
-  nextTutorMode: true,
-  nextSearchProvider: 'openrouter',
+  next: {
+    tutorMode: true,
+    search: { provider: 'openrouter' },
+  },
 };
 
 export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<StoreState> {

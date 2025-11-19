@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { migrate } from '@/lib/store/migrations';
 import type { StoreState } from '@/lib/store/types';
 
+import { STORE_MIGRATION_VERSION } from '@/lib/db/versions';
+
 test('migrateToV2 normalizes search settings and strips deprecated ui fields', () => {
   const persisted: Partial<StoreState> = {
     chats: [
@@ -51,15 +53,15 @@ test('migrateToV2 normalizes search settings and strips deprecated ui fields', (
   assert.equal(migratedMessage.settings.search_enabled, true);
 
   const migratedUi = migrated.ui as Record<string, any>;
-  assert.equal(migratedUi.nextSearchEnabled, true);
+  assert.equal(migratedUi.next?.search?.enabled, true);
   assert.ok(!('nextSearchWithBrave' in migratedUi));
+  assert.ok(!('nextSearchEnabled' in migratedUi));
   assert.ok(!('tutorMemoryModelId' in migratedUi));
   assert.ok(!('tutorGlobalMemory' in migratedUi));
 });
 
 test('migrate short-circuits when version is current', () => {
   const persisted = { foo: 'bar' } as any;
-  const result = migrate(persisted, 2);
+  const result = migrate(persisted, STORE_MIGRATION_VERSION);
   assert.strictEqual(result, persisted);
 });
-

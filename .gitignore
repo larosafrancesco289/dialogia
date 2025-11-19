@@ -1,5 +1,6 @@
 # Dependencies
 node_modules
+package-lock.json
 
 # Next.js
 .next
@@ -31,4 +32,5 @@ tmp/
 .eslintcache
 
 AGENTS.md
+GEMINI.md
 CLAUDE.md

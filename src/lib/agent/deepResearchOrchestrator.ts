@@ -1,8 +1,7 @@
 import type { Message } from '@/lib/types';
-import type { StoreState } from '@/lib/store/types';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
-import { updateBraveUi } from '@/lib/agent/searchFlow';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
+import { setSearchUiStatus } from '@/lib/agent/searchService';
 
 export type DeepResearchContext = {
   task: string;
@@ -29,7 +28,7 @@ export async function runDeepResearchTurn({
   const controller = new AbortController();
   setTurnController(chatId, controller);
   set((state) => ({ ui: { ...state.ui, isStreaming: true } }));
-  updateBraveUi(set, assistantMessage.id, { query: trimmedTask, status: 'loading' });
+  setSearchUiStatus(set, assistantMessage.id, { query: trimmedTask, status: 'loading' });
 
   try {
     const res = await fetch('/api/deep-research', {
@@ -43,13 +42,7 @@ export async function runDeepResearchTurn({
     const sources = Array.isArray(json?.sources) ? json.sources : [];
     if (!res.ok) throw new Error(json?.error || `deep_failed_${res.status}`);
 
-    set((state) => ({
-      ui: {
-        ...state.ui,
-        nextDeepResearch: state.ui.nextDeepResearch,
-      },
-    }));
-    updateBraveUi(set, assistantMessage.id, {
+    setSearchUiStatus(set, assistantMessage.id, {
       query: trimmedTask,
       status: 'done',
       results: sources,
@@ -77,7 +70,7 @@ export async function runDeepResearchTurn({
         notice: `DeepResearch: ${errorMessage}`,
       },
     }));
-    updateBraveUi(set, assistantMessage.id, {
+    setSearchUiStatus(set, assistantMessage.id, {
       query: trimmedTask,
       status: 'error',
       error: errorMessage,

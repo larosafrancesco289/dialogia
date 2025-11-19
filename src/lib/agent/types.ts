@@ -195,7 +195,7 @@ export type TurnComposition = {
   tutor: {
     enabled: boolean;
   };
-  consumedTutorNudge?: UIState['nextTutorNudge'];
+  consumedTutorNudge?: import('@/lib/store/types').UINextOverrides['tutorNudge'];
 };
 
 export type StreamFinalOptions = {
