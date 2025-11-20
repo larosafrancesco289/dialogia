@@ -1,0 +1,5 @@
+/* Enhance logo rendering */
+.logo-enhanced {
+  image-rendering: -webkit-optimize-contrast; /* Try to crisp up edges */
+  object-fit: cover;
+}
