@@ -5,6 +5,48 @@ import type { StoreState } from '@/lib/store/types';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { computeMetrics } from '@/lib/services/metrics';
 
+export function buildTutorFallbackContent(state: StoreState, assistantId: string): string | undefined {
+  const tutorEntry = state.ui.tutorByMessageId?.[assistantId];
+  if (!tutorEntry) return undefined;
+
+  const snippets: string[] = [];
+  const questionnaire = tutorEntry.questionnaire;
+  if (questionnaire?.questions?.length) {
+    snippets.push(
+      `I posted a quick questionnaire (${questionnaire.questions.length} question${
+        questionnaire.questions.length === 1 ? '' : 's'
+      }) to tailor the plan—please fill it in first.`,
+    );
+  }
+
+  const plan = tutorEntry.planProposal?.plan;
+  if (plan?.goal) {
+    const nodes = Array.isArray(plan.nodes) ? plan.nodes.length : undefined;
+    const summaryParts = [
+      `I drafted a plan "${plan.goal}"`,
+      nodes ? `(${nodes} step${nodes === 1 ? '' : 's'})` : undefined,
+    ].filter(Boolean);
+    const summary = summaryParts.join(' ');
+    const needsConfirmation = tutorEntry.planProposal?.requiresConfirmation;
+    const ask = needsConfirmation
+      ? 'Approve or suggest tweaks and I will guide you through the first step.'
+      : 'Tell me if you want to start or adjust it.';
+    snippets.push(`${summary}. ${ask}`);
+  }
+
+  const quizCount = Array.isArray(tutorEntry.mcq) ? tutorEntry.mcq.length : 0;
+  if (quizCount > 0) {
+    const title = tutorEntry.title || 'a quick check';
+    snippets.push(
+      `I added ${title} (${quizCount} MCQ). Try it now for a fast readiness check.`,
+    );
+  }
+
+  if (snippets.length === 0) return undefined;
+  const nextStep = 'If you prefer, ask for a brief summary or a quick checklist and I will share it.';
+  return `${snippets.join(' ')} ${nextStep}`.trim();
+}
+
 export type StreamExtras = {
   usage?: {
     prompt_tokens?: number;
@@ -153,7 +195,8 @@ export function createMessageStreamCallbacks(
     },
     onDone: async (full: string, extras?: StreamExtras) => {
       set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
-      const currentMessages = getMessages();
+      const state = get();
+      const currentMessages = state.messages[chatId] ?? [];
       const current = currentMessages.find((msg) => msg.id === assistantMessage.id);
       const finishedAt = performance.now();
       const metrics = computeMetrics({
@@ -162,9 +205,15 @@ export function createMessageStreamCallbacks(
         finishedAt,
         usage: extras?.usage,
       });
+      const rawContent = stripLeadingToolJson(full || '');
+      const content =
+        rawContent && rawContent.trim()
+          ? rawContent
+          : buildTutorFallbackContent(state as StoreState, assistantMessage.id) ??
+            'I added new tutor content above. Let me know when you are ready.';
       const finalMessage: Message = {
         ...assistantMessage,
-        content: stripLeadingToolJson(full || ''),
+        content,
         reasoning: current?.reasoning,
         attachments: current?.attachments,
         systemSnapshot: (current as any)?.systemSnapshot,

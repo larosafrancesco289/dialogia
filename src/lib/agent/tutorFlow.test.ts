@@ -46,6 +46,7 @@ test('mergeTutorPayload merges patches and rebuilds hidden content', () => {
   const patch = { mcq: [{ id: 'q', question: 'Question?', choices: ['a', 'b'], correct: 0 }] };
   const { merged, hiddenContent } = mergeTutorPayload(prev, patch);
   assert.equal(merged.title, 'Session');
+  if (!merged.mcq) throw new Error('expected mcq array on merged tutor payload');
   assert.equal(merged.mcq.length, 1);
   assert.ok(hiddenContent.includes('Tutor Data JSON'));
 });
