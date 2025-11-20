@@ -1,5 +1,4 @@
 'use client';
-import type { ReactNode } from 'react';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { IconButton } from '@/components/IconButton';
 import { CheckIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';

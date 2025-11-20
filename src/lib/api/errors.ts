@@ -12,8 +12,7 @@ export const API_ERROR_CODES = Object.freeze({
   PROVIDER_MODELS_FAILED: 'provider_models_failed',
 } as const);
 
-export type ApiErrorCode =
-  (typeof API_ERROR_CODES)[keyof typeof API_ERROR_CODES] | (string & {});
+export type ApiErrorCode = (typeof API_ERROR_CODES)[keyof typeof API_ERROR_CODES] | string;
 
 export type ApiErrorInit = {
   code: ApiErrorCode;

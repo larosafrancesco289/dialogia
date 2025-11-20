@@ -1,7 +1,5 @@
 import type { UIState, UINextOverrides } from '@/lib/store/types';
 
-type NestedFields = 'search' | 'reasoning' | 'show';
-
 const mergeNested = <T extends Record<string, unknown>>(
   current?: T,
   patch?: T,
@@ -79,38 +77,58 @@ export const deriveNextPatchFromLegacy = (
   partial: Partial<UIState>,
 ): Partial<UINextOverrides> => {
   const patch: Partial<UINextOverrides> = {};
-  if ('nextModel' in partial) patch.model = partial.nextModel;
-  if ('nextDeepResearch' in partial) patch.deepResearch = partial.nextDeepResearch;
-  if ('nextTutorMode' in partial) patch.tutorMode = partial.nextTutorMode;
-  if ('nextTutorNudge' in partial) patch.tutorNudge = partial.nextTutorNudge;
-  if ('nextSystem' in partial) patch.system = partial.nextSystem;
-  if ('nextTemperature' in partial) patch.temperature = partial.nextTemperature;
-  if ('nextTopP' in partial) patch.topP = partial.nextTopP;
-  if ('nextMaxTokens' in partial) patch.maxTokens = partial.nextMaxTokens;
-  if ('nextParallelModels' in partial) patch.parallelModels = partial.nextParallelModels;
-  if ('nextSearchEnabled' in partial || 'nextSearchProvider' in partial) {
+  const legacy = partial as Record<string, unknown>;
+  if (typeof legacy.nextModel === 'string') patch.model = legacy.nextModel as string;
+  if (typeof legacy.nextDeepResearch === 'boolean')
+    patch.deepResearch = legacy.nextDeepResearch as boolean;
+  if (typeof legacy.nextTutorMode === 'boolean') patch.tutorMode = legacy.nextTutorMode as boolean;
+  if (typeof legacy.nextTutorNudge === 'string') {
+    const nudge = legacy.nextTutorNudge as string;
+    const allowed = ['more_practice', 'harder', 'easier', 'review_mistakes', 'new_concept'];
+    if (allowed.includes(nudge)) patch.tutorNudge = nudge as UINextOverrides['tutorNudge'];
+  }
+  if (typeof legacy.nextSystem === 'string') patch.system = legacy.nextSystem as string;
+  if (typeof legacy.nextTemperature === 'number')
+    patch.temperature = legacy.nextTemperature as number;
+  if (typeof legacy.nextTopP === 'number') patch.topP = legacy.nextTopP as number;
+  if (typeof legacy.nextMaxTokens === 'number') patch.maxTokens = legacy.nextMaxTokens as number;
+  if (Array.isArray(legacy.nextParallelModels))
+    patch.parallelModels = legacy.nextParallelModels as string[];
+  if ('nextSearchEnabled' in legacy || 'nextSearchProvider' in legacy) {
     patch.search = {
-      enabled: partial.nextSearchEnabled,
-      provider: partial.nextSearchProvider,
+      enabled:
+        typeof legacy.nextSearchEnabled === 'boolean' ? (legacy.nextSearchEnabled as boolean) : undefined,
+      provider: typeof legacy.nextSearchProvider === 'string' ? (legacy.nextSearchProvider as any) : undefined,
     };
   }
-  if ('nextReasoningEffort' in partial || 'nextReasoningTokens' in partial) {
+  if ('nextReasoningEffort' in legacy || 'nextReasoningTokens' in legacy) {
     patch.reasoning = {
-      effort: partial.nextReasoningEffort,
-      tokens: partial.nextReasoningTokens,
+      effort:
+        typeof legacy.nextReasoningEffort === 'string'
+          ? (legacy.nextReasoningEffort as UINextOverrides['reasoning'] extends { effort?: infer E }
+              ? E
+              : never)
+          : undefined,
+      tokens: typeof legacy.nextReasoningTokens === 'number' ? (legacy.nextReasoningTokens as number) : undefined,
     };
   }
   if (
-    'nextShowThinking' in partial ||
-    'nextShowStats' in partial ||
-    'nextShowToolCallLog' in partial ||
-    'nextShowDebugRawJson' in partial
+    'nextShowThinking' in legacy ||
+    'nextShowStats' in legacy ||
+    'nextShowToolCallLog' in legacy ||
+    'nextShowDebugRawJson' in legacy
   ) {
     patch.show = {
-      thinking: partial.nextShowThinking,
-      stats: partial.nextShowStats,
-      toolCallLog: partial.nextShowToolCallLog,
-      debugRawJson: partial.nextShowDebugRawJson,
+      thinking: typeof legacy.nextShowThinking === 'boolean' ? (legacy.nextShowThinking as boolean) : undefined,
+      stats: typeof legacy.nextShowStats === 'boolean' ? (legacy.nextShowStats as boolean) : undefined,
+      toolCallLog:
+        typeof legacy.nextShowToolCallLog === 'boolean'
+          ? (legacy.nextShowToolCallLog as boolean)
+          : undefined,
+      debugRawJson:
+        typeof legacy.nextShowDebugRawJson === 'boolean'
+          ? (legacy.nextShowDebugRawJson as boolean)
+          : undefined,
     };
   }
   return patch;

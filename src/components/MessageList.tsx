@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import {
@@ -10,9 +10,9 @@ import {
   ArrowPathIcon,
   ArrowUturnRightIcon,
 } from '@heroicons/react/24/outline';
-import type { Attachment, Message } from '@/lib/types';
+import type { Message } from '@/lib/types';
 import { ImageLightbox } from '@/components/ImageLightbox';
-import { MessagePanels, type MessagePanelsProps } from '@/components/message/MessagePanels';
+import { type MessagePanelsProps } from '@/components/message/MessagePanels';
 import { MessageCard } from '@/components/message/MessageCard';
 import { useMessageScrolling } from '@/components/message/useMessageScrolling';
 import { useMessageWindow } from '@/components/message/hooks/useMessageWindow';
@@ -76,9 +76,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   const {
     containerRef,
     endRef,
-    atBottom,
     showJump,
-    setShowJump,
     jumpToLatest,
   } = useMessageScrolling({
     messages,
@@ -149,7 +147,9 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       await navigator.clipboard.writeText(msg.content || '');
       setCopiedId(messageId);
       setTimeout(() => setCopiedId((id) => (id === messageId ? null : id)), 1200);
-    } catch {}
+    } catch (error) {
+      console.error('Copy message failed', error);
+    }
   };
 
   const startEditingMessage = (messageId: string) => {
@@ -265,7 +265,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
           isDebugExpanded: isDebugExpanded(message.id),
           onToggleDebug: () => toggleDebug(message.id),
           tutorGloballyEnabled,
-          tutorEnabled,
           tutorEntry: tutorByMessageId[message.id] || (message as any)?.tutor,
           autoReasoningModelIds,
           isStreaming,
@@ -289,7 +288,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
             showInlineActions={showInlineActions}
             isStreaming={isStreaming}
             isEditing={isEditingThisMessage}
-            editingId={editingId}
             draft={draft}
             setDraft={setDraft}
             setEditingId={setEditingId}
@@ -298,7 +296,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
             copyMessage={copyMessage}
             copiedId={copiedId}
             branchFromMessage={branchFromMessage}
-            regenerateMessage={regenerateMessage}
             onChooseRegenerateModel={(modelId) => {
               if (!modelId) return;
               regenerate(message.id, { modelId });
@@ -310,12 +307,9 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
             isStatsExpanded={isStatsExpanded}
             toggleStats={toggleStats}
             messagePanels={messagePanels}
-            activeMessageId={activeMessageId}
+            tutorEnabled={tutorEnabled}
             setActiveMessageId={setActiveMessageId}
             setMobileSheet={setMobileSheet}
-            mobileSheet={mobileSheet}
-            closeMobileSheet={closeMobileSheet}
-            tutorEnabled={tutorEnabled}
           />
         );
       })}

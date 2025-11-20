@@ -46,7 +46,8 @@ export function MobileHeader() {
   const tutorDefaultModelId = uiState.tutorDefaultModelId;
   const models = useChatStore((s) => s.models);
   const tutorActive =
-    experimentalTutor && (forceTutorMode || (!!chat ? !!chat.settings?.tutor_mode : nextTutorMode));
+    experimentalTutor &&
+    (forceTutorMode || (chat ? Boolean(chat.settings?.tutor_mode) : nextTutorMode));
   const tutorModelId =
     chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
@@ -240,9 +241,7 @@ export function MobileHeader() {
                   onClick={() => {
                     setMenuOpen(false);
                     setUI({ showSettings: true });
-                    try {
-                      import('@/components/SettingsDrawer');
-                    } catch {}
+                    import('@/components/SettingsDrawer').catch(() => undefined);
                   }}
                 >
                   <Cog6ToothIcon className="h-4 w-4" />

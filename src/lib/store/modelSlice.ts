@@ -11,7 +11,6 @@ import { createStoreSlice } from '@/lib/store/createSlice';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import {
   NOTICE_INVALID_KEY,
-  NOTICE_MISSING_CLIENT_KEY,
   NOTICE_NO_PROVIDER_KEY,
 } from '@/lib/store/notices';
 

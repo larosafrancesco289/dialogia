@@ -22,9 +22,6 @@ import type { ModelSearchHandle } from '@/components/ModelSearch';
 import { XCircleIcon } from '@heroicons/react/24/outline';
 import {
   getSystemPresets,
-  addSystemPreset,
-  updateSystemPreset,
-  deleteSystemPreset,
   type SystemPreset,
 } from '@/lib/presets';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
@@ -75,12 +72,9 @@ export function SettingsDrawer() {
     loadModels,
     toggleFavoriteModel,
     favoriteModelIds,
-    models,
     hiddenModelIds,
     resetHiddenModels,
     initializeApp,
-    zdrModelIds,
-    zdrProviderIds,
   } = useChatStore();
   const chat = chats.find((c) => c.id === selectedChatId);
   const [system, setSystem] = useState(chat?.settings.system ?? '');
@@ -141,7 +135,6 @@ export function SettingsDrawer() {
   // System prompt presets
   const [presets, setPresets] = useState<SystemPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
-  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const closeWithAnim = () => {
     setClosing(true);
@@ -170,6 +163,14 @@ export function SettingsDrawer() {
     setTutorDefaultModel(ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID);
   }, [
     chat?.id,
+    chat?.settings.system,
+    chat?.settings.temperature,
+    chat?.settings.top_p,
+    chat?.settings.max_tokens,
+    chat?.settings.reasoning_effort,
+    chat?.settings.reasoning_tokens,
+    chat?.settings.show_thinking_by_default,
+    chat?.settings.show_stats,
     ui?.tutorDefaultModelId,
     chat?.settings.showToolCallLog,
     chat?.settings.showDebugRawJson,
@@ -192,9 +193,7 @@ export function SettingsDrawer() {
   // Focus model search shortly after opening for quick access
   useEffect(() => {
     const tid = window.setTimeout(() => {
-      try {
-        modelSearchRef.current?.focus();
-      } catch {}
+      modelSearchRef.current?.focus();
     }, 80);
     return () => window.clearTimeout(tid);
   }, []);
@@ -291,19 +290,22 @@ export function SettingsDrawer() {
       behavior: prefersReducedMotion ? 'auto' : 'smooth',
     });
     setActiveSection(sectionId);
-  }, []);
+  }, [setActiveSection, sectionRefs, tabBarRef]);
 
-  const handleTabKey = useCallback((event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      event.preventDefault();
-      const next = (index + 1) % TAB_LIST.length;
-      setActiveTab(TAB_LIST[next].id);
-    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      const prev = (index - 1 + TAB_LIST.length) % TAB_LIST.length;
-      setActiveTab(TAB_LIST[prev].id);
-    }
-  }, []);
+  const handleTabKey = useCallback(
+    (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        const next = (index + 1) % TAB_LIST.length;
+        setActiveTab(TAB_LIST[next].id);
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const prev = (index - 1 + TAB_LIST.length) % TAB_LIST.length;
+        setActiveTab(TAB_LIST[prev].id);
+      }
+    },
+    [setActiveTab],
+  );
 
   useEffect(() => {
     const firstSection = TAB_SECTIONS[activeTab]?.[0] ?? null;
@@ -311,7 +313,7 @@ export function SettingsDrawer() {
     if (drawerRef.current) {
       drawerRef.current.scrollTo({ top: 0 });
     }
-  }, [activeTab]);
+  }, [activeTab, setActiveSection]);
 
   useEffect(() => {
     const container = drawerRef.current;
@@ -342,7 +344,7 @@ export function SettingsDrawer() {
     });
 
     return () => observer.disconnect();
-  }, [activeTab]);
+  }, [activeTab, activeSection, setActiveSection, sectionRefs]);
 
   const navSections = TAB_SECTIONS[activeTab] ?? [];
   const showDesktopNav = navSections.length > 1;

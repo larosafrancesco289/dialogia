@@ -240,7 +240,6 @@ export function createModelIndex(models: ORModel[] | undefined): ModelIndex {
 
 export const EMPTY_MODEL_INDEX: ModelIndex = (() => {
   const byId = new Map<string, ORModel>();
-  const capsCache = new Map<string, ModelCapabilityFlags>();
   return {
     all: [],
     byId,

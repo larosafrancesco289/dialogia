@@ -95,7 +95,9 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
     addTopics(t.fillBlank);
     addTopics(t.openEnded);
     if (topics.size > 0) lines.push(`Topics: ${Array.from(topics).slice(0, 5).join(', ')}`);
-  } catch {}
+  } catch (error) {
+    console.error('Failed to collect tutor topics', error);
+  }
 
   // Helper: trim a string to a max length
   const clip = (s: any, n = 80) => {
@@ -105,14 +107,14 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
 
   try {
     const attempts = (t.attempts || {}) as any;
-    if (t.questionnaire && Array.isArray(t.questionnaire.questions)) {
-      const status =
-        t.questionnaire.status === 'submitted' ? 'submitted' : 'awaiting-response';
+    const questionnaire = t.questionnaire;
+    if (questionnaire && Array.isArray(questionnaire.questions)) {
+      const status = questionnaire.status === 'submitted' ? 'submitted' : 'awaiting-response';
       lines.push(`Questionnaire: ${status}`);
-      if (status === 'submitted' && t.questionnaire.responses) {
-        const entries = Object.entries(t.questionnaire.responses).slice(0, 3);
+      if (status === 'submitted' && questionnaire.responses) {
+        const entries = Object.entries(questionnaire.responses).slice(0, 3);
         entries.forEach(([qid, answers]) => {
-          const question = t.questionnaire.questions.find((q: any) => q.id === qid);
+          const question = questionnaire.questions.find((q: any) => q.id === qid);
           const label = question?.question ? clip(question.question, 70) : qid;
           const formatted = Array.isArray(answers) ? answers.join(', ') : String(answers);
           lines.push(`  · ${label}: ${clip(formatted, 60)}`);
@@ -236,7 +238,9 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
         lines.push(`  ${i + 1}. ${qText}${suffix}`);
       });
     }
-  } catch {}
+  } catch (error) {
+    console.error('Failed to build tutor summary details', error);
+  }
 
   if (lines.length === 0) return undefined;
   return lines.join('\n');

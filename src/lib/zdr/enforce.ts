@@ -1,4 +1,3 @@
-import type { StoreState } from '@/lib/store/types';
 import {
   ensureZdrLists,
   evaluateZdrModel,
@@ -7,7 +6,6 @@ import {
   toZdrState,
   ZDR_UNAVAILABLE_NOTICE,
   type ZdrFetchers,
-  type ZdrFilterResult,
   type ZdrLists,
 } from '@/lib/zdr';
 import type { StoreSetter } from '@/lib/agent/types';

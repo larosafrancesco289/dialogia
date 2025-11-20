@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db, saveChat, saveFolder, saveMessage } from '@/lib/db';
 import type { StoreState } from '@/lib/store/types';
-import type { Chat, Folder, Message } from '@/lib/types';
+import type { Chat, Folder } from '@/lib/types';
 import type { StoreSetter } from '@/lib/agent/types';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
@@ -210,16 +210,14 @@ export function createChatSlice(
       }));
       const chat = get().chats.find((c) => c.id === id)!;
       await saveChat(chat);
-      try {
-        const turnedOn =
-          typeof appliedPartial?.tutor_mode === 'boolean' &&
-          before &&
-          before.settings.tutor_mode !== appliedPartial.tutor_mode &&
-          appliedPartial.tutor_mode === true;
-        if (turnedOn && !!get().ui.experimentalTutor) {
-          primeTutorWelcome(id, { set, get });
-        }
-      } catch {}
+      const turnedOn =
+        typeof appliedPartial?.tutor_mode === 'boolean' &&
+        before &&
+        before.settings.tutor_mode !== appliedPartial.tutor_mode &&
+        appliedPartial.tutor_mode === true;
+      if (turnedOn && !!get().ui.experimentalTutor) {
+        Promise.resolve(primeTutorWelcome(id, { set, get })).catch(() => undefined);
+      }
     },
 
     async moveChatToFolder(chatId: string, folderId?: string) {

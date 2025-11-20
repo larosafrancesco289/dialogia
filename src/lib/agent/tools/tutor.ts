@@ -155,9 +155,7 @@ export async function applyTutorToolCall(opts: {
       } as Partial<StoreState>;
     });
     if (updatedMsg) {
-      try {
-        await persistMessage(updatedMsg);
-      } catch {}
+      await persistMessage(updatedMsg).catch(() => undefined);
     }
     return updatedMsg;
   };
@@ -758,7 +756,9 @@ export async function applyTutorToolCall(opts: {
       const payload: Record<string, unknown> = { items: normalized.items };
       if (titleFromArgs) payload.title = titleFromArgs;
       return { handled: true, usedContent: true, payload: JSON.stringify(payload) } as const;
-    } catch {}
+    } catch (error) {
+      console.error('Failed to serialize tutor items', error);
+    }
     return { handled: true, usedContent: true } as const;
   };
 
@@ -774,20 +774,25 @@ export async function applyTutorToolCall(opts: {
       typeof args['feedback'] === 'string' ? (args['feedback'] as string).trim() : '';
     if (!feedback) return { handled: false, usedContent: false };
     const score = typeof args['score'] === 'number' ? (args['score'] as number) : undefined;
-    const criteria = Array.isArray(args['criteria']) ? (args['criteria'] as unknown[]) : undefined;
+    const criteriaRaw = Array.isArray(args['criteria']) ? (args['criteria'] as unknown[]) : undefined;
+    const criteria = criteriaRaw
+      ?.map((entry) => (typeof entry === 'string' ? entry.trim() : undefined))
+      .filter((value): value is string => typeof value === 'string' && value.length > 0);
     let updatedMsg: Message | undefined;
     set((state) => {
       const list = state.messages[chatId] ?? [];
+      const existingGrading =
+        ((state.ui.tutorByMessageId || {})[assistantMessage.id]?.grading as Record<
+          string,
+          { score?: number; feedback: string; criteria?: string[] }
+        >) || {};
       const result = attachTutorUiState({
         currentUi: state.ui.tutorByMessageId,
         currentMessages: list,
         messageId: assistantMessage.id,
         patch: {
           grading: {
-            ...(((state.ui.tutorByMessageId || {})[assistantMessage.id]?.grading as Record<
-              string,
-              unknown
-            >) || {}),
+            ...existingGrading,
             [rawId]: { feedback, score, criteria },
           },
         },
@@ -799,9 +804,7 @@ export async function applyTutorToolCall(opts: {
       } as Partial<StoreState>;
     });
     if (updatedMsg) {
-      try {
-        await persistMessage(updatedMsg);
-      } catch {}
+      await persistMessage(updatedMsg).catch(() => undefined);
     }
     return { handled: true, usedContent: false };
   }
@@ -810,7 +813,9 @@ export async function applyTutorToolCall(opts: {
     try {
       const cards = Array.isArray(args['cards']) ? (args['cards'] as any[]) : [];
       if (cards.length > 0) await addCardsToDeck(chat.id, cards);
-    } catch {}
+    } catch (error) {
+      console.error('Failed to add cards to deck', error);
+    }
     return { handled: true, usedContent: false };
   }
 
@@ -830,7 +835,9 @@ export async function applyTutorToolCall(opts: {
         topic: c.topic,
         skill: c.skill,
       }));
-    } catch {}
+    } catch (error) {
+      console.error('Failed to fetch due cards', error);
+    }
     return { handled: true, usedContent: false, payload: JSON.stringify(due) };
   }
 

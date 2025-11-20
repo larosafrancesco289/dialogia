@@ -329,7 +329,9 @@ export function Markdown({ content }: { content: string }) {
         if (!cancelled) {
           zoom = mediumZoom('.markdown img', { background: 'rgba(0,0,0,0.7)', margin: 24 });
         }
-      } catch {}
+      } catch (error) {
+        console.error('Failed to initialize image zoom', error);
+      }
     };
     if (typeof (window as any).requestIdleCallback === 'function') {
       (window as any).requestIdleCallback(run, { timeout: 2000 });
@@ -340,7 +342,9 @@ export function Markdown({ content }: { content: string }) {
       cancelled = true;
       try {
         zoom?.detach?.();
-      } catch {}
+      } catch (error) {
+        console.error('Failed to detach zoom', error);
+      }
     };
   }, [content]);
 

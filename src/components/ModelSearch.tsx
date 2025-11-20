@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useCallback,
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
@@ -170,7 +171,10 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
 
     const [query, setQuery] = useState('');
     const normalizedQuery = query.trim().toLowerCase().replace(/\s+/g, ' ');
-    const queryWords = normalizedQuery ? normalizedQuery.split(' ') : [];
+    const queryWords = useMemo(
+      () => (normalizedQuery ? normalizedQuery.split(' ') : []),
+      [normalizedQuery],
+    );
     const selectedSet = useMemo(() => new Set(selectedIds || []), [selectedIds]);
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement | null>(null);
@@ -195,12 +199,12 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
         .map((model) => buildResult(model, { zdrModelIds, zdrProviderIds }));
     }, [models, normalizedQuery, queryWords, maxResults, zdrModelIds, zdrProviderIds]);
 
-    const closeDropdown = () => {
+    const closeDropdown = useCallback(() => {
       setQuery('');
       setPosition(null);
       setHighlightedIndex(0);
       onOpenChange?.(false);
-    };
+    }, [onOpenChange]);
 
     const open = normalizedQuery.length > 0 && position !== null;
 
@@ -263,7 +267,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
         window.removeEventListener('scroll', update, true);
         window.removeEventListener('blur', closeOnResize);
       };
-    }, [normalizedQuery]);
+    }, [normalizedQuery, closeDropdown]);
 
     useEffect(() => {
       if (!normalizedQuery) return;
@@ -276,7 +280,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
       };
       document.addEventListener('pointerdown', onPointerDown, true);
       return () => document.removeEventListener('pointerdown', onPointerDown, true);
-    }, [normalizedQuery]);
+    }, [normalizedQuery, closeDropdown]);
 
     useEffect(() => {
       if (!results.length) {

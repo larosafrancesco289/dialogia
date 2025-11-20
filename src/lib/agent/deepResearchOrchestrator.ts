@@ -19,7 +19,7 @@ export async function runDeepResearchTurn({
   chatId,
   assistantMessage,
   set,
-  get,
+  get: _get,
   persistMessage,
 }: DeepResearchContext): Promise<boolean> {
   const trimmedTask = task.trim();

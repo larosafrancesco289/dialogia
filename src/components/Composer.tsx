@@ -4,8 +4,6 @@ import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
-import { estimateTokens } from '@/lib/tokenEstimate';
-import { computeCost } from '@/lib/cost';
 import {
   findModelById,
   isReasoningSupported,
@@ -120,24 +118,14 @@ export function Composer({
   const canAutoFocus = !isTablet;
 
   useEffect(() => {
-    if (canAutoFocus) {
-      taRef.current?.focus({ preventScroll: true } as any);
+    const target = taRef.current;
+    if (!target) return;
+    if (canAutoFocus && !isStreaming) {
+      target.focus({ preventScroll: true } as any);
     } else {
-      taRef.current?.blur();
+      target.blur();
     }
-  }, []);
-  useEffect(() => {
-    if (canAutoFocus) {
-      taRef.current?.focus({ preventScroll: true } as any);
-    } else {
-      taRef.current?.blur();
-    }
-  }, [selectedChatId]);
-  useEffect(() => {
-    if (!isStreaming && canAutoFocus) {
-      taRef.current?.focus({ preventScroll: true } as any);
-    }
-  }, [isStreaming]);
+  }, [canAutoFocus, isStreaming, selectedChatId]);
 
   const maxTextareaHeight = useMemo(() => {
     // Use a stable fallback so SSR and first client render match before we measure
@@ -150,15 +138,6 @@ export function Composer({
   }, [keyboardMetrics?.viewportHeight]);
 
   useAutogrowTextarea(taRef, [text], maxTextareaHeight);
-
-  // Lightweight, live prompt token and cost estimate
-  const tokenAndCost = useMemo(() => {
-    const promptTokens = estimateTokens(text) || 0;
-    const mid = chat?.settings.model || uiNext.model || DEFAULT_MODEL_ID;
-    const modelMeta = findModelById(models, mid);
-    const cost = computeCost({ model: modelMeta, promptTokens });
-    return { promptTokens, currency: cost.currency, total: cost.total };
-  }, [text, chat?.settings.model, uiNext.model, models]);
 
   const experimentalBrave = useChatStore((s) => !!s.ui.experimentalBrave);
   const searchEnabled = chat ? !!chat.settings.search_enabled : !!uiNext.search?.enabled;

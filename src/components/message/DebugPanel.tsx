@@ -61,7 +61,6 @@ export function DebugPanel({
 }) {
   const hasBody = typeof body === 'string' && body.trim().length > 0;
   const hasToolCalls = showToolCalls && Array.isArray(toolCalls) && toolCalls.length > 0;
-  if (!hasBody && !hasToolCalls) return null;
 
   const parsed = useMemo(() => {
     if (!hasBody) return null;
@@ -206,6 +205,8 @@ export function DebugPanel({
     }
   }, [body, hasBody, parsed, showRawJson]);
 
+  if (!hasBody && !hasToolCalls) return null;
+
   const headerLabel = hasBody ? 'Debug request' : 'Tool activity';
   const canCopyRaw = expanded && showRawJson && hasBody && rawJson;
 
@@ -223,7 +224,9 @@ export function DebugPanel({
                 onClick={async () => {
                   try {
                     await navigator.clipboard.writeText(rawJson);
-                  } catch {}
+                  } catch (error) {
+                    console.error('Unable to copy raw request', error);
+                  }
                 }}
               >
                 <DocumentDuplicateIcon className="h-4 w-4" />

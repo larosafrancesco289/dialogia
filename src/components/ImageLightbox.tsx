@@ -38,7 +38,9 @@ export function ImageLightbox({
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch {}
+    } catch (error) {
+      console.error('Failed to download image', error);
+    }
   };
 
   return createPortal(

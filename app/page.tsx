@@ -15,7 +15,7 @@ const GlobalNotice = dynamic(
   () => import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
   { ssr: false },
 );
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useSidebarGestures } from '@/lib/hooks/useSidebarGestures';
@@ -52,21 +52,27 @@ export default function HomePage() {
   // Warm-up: prefetch drawer bundles on idle so first open feels instant
   useEffect(() => {
     const warm = () => {
-      try {
-        import('@/components/SettingsDrawer');
-      } catch {}
+      import('@/components/SettingsDrawer').catch(() => undefined);
     };
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(warm);
-    } else {
-      // Small delay so it never competes with first paint
-      const tid = setTimeout(warm, 300);
-      return () => clearTimeout(tid);
+      const idle = (window as Window & { requestIdleCallback?: (cb: IdleRequestCallback) => number })
+        .requestIdleCallback;
+      if (idle) {
+        idle(warm, { timeout: 1500 });
+        return;
+      }
     }
+    // Small delay so it never competes with first paint
+    const tid = setTimeout(warm, 300);
+    return () => clearTimeout(tid);
   }, []);
 
+  const sidebarStyle = {
+    '--sidebar-width': collapsed ? '0px' : '320px',
+  } as CSSProperties;
+
   return (
-    <div className="app-shell" style={{ ['--sidebar-width' as any]: collapsed ? '0px' : '320px' }}>
+    <div className="app-shell" style={sidebarStyle}>
       {/* Sidebar column (hidden via CSS on small screens) */}
       <aside
         className={`sidebar ${collapsed ? '' : 'glass-panel border border-border rounded-2xl p-2'}`}

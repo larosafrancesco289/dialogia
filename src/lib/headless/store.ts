@@ -27,7 +27,7 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
   const resolvedIndex = modelIndex ?? createModelIndex(models);
   const initialMessages: Record<string, Message[]> = { [chat.id]: messages.slice() };
 
-  return createStore<StoreState>((set, get) => ({
+  return createStore<StoreState>((set, _get) => ({
     chats: [chat],
     folders: [],
     messages: initialMessages,

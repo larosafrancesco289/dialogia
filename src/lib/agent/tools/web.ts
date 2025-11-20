@@ -40,23 +40,27 @@ export function extractWebSearchArgs(text: string): WebSearchArgs | null {
       const direct = readSearchPayload(payload);
       if (direct) return direct;
       const payloadName = typeof payload.name === 'string' ? payload.name : '';
-      if (payloadName === 'web_search') {
-        const args = payload.arguments;
-        if (typeof args === 'string') {
-          try {
-            const inner = JSON.parse(args);
-            const nested = readSearchPayload(inner);
+        if (payloadName === 'web_search') {
+          const args = payload.arguments;
+          if (typeof args === 'string') {
+            try {
+              const inner = JSON.parse(args);
+              const nested = readSearchPayload(inner);
+              if (nested) return nested;
+            } catch {
+              continue;
+            }
+          } else if (args && typeof args === 'object') {
+            const nested = readSearchPayload(args);
             if (nested) return nested;
-          } catch {}
-        } else if (args && typeof args === 'object') {
-          const nested = readSearchPayload(args);
-          if (nested) return nested;
+          }
         }
       }
+    } catch (error) {
+      console.error('Failed to extract web search args', error);
     }
-  } catch {}
-  return null;
-}
+    return null;
+  }
 
 export async function performWebSearchTool(opts: {
   args: WebSearchArgs;
@@ -67,7 +71,8 @@ export async function performWebSearchTool(opts: {
   chatId: string;
   set: StoreSetter;
 }): Promise<ToolExecutionResult> {
-  const { args, fallbackQuery, searchProvider, controller, assistantMessageId, chatId, set } = opts;
+  const { args, fallbackQuery, searchProvider, controller, assistantMessageId, chatId: _chatId, set } =
+    opts;
   let rawQuery = typeof args?.query === 'string' ? args.query.trim() : '';
   const parsedCount = Number.parseInt(String(args?.count ?? ''), 10);
   const count = Math.min(Math.max(Number.isFinite(parsedCount) ? parsedCount : 5, 1), 10);

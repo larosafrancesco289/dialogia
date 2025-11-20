@@ -176,8 +176,11 @@ export class HeadlessTutorSession {
       assistantMessageId: assistantMessage.id,
       isPrimary: true,
       priorMessages,
-      getChatForTurn: () =>
-        this.store.getState().chats.find((c) => c.id === this.chatId) ?? chat,
+      getChatForTurn: () => {
+        const found = this.store.getState().chats.find((c) => c.id === this.chatId);
+        const fallback = this.store.getState().chats[0];
+        return found ?? chat ?? fallback!;
+      },
       set: this.store.setState.bind(this.store),
       get: this.store.getState.bind(this.store),
       updateChat: (nextChat) => {

@@ -19,6 +19,7 @@ import type {
   SearchResult,
   ToolDefinition,
   ToolCall,
+  AssistantModelMessage,
 } from '@/lib/agent/types';
 import { executePlanningToolCall } from '@/lib/agent/tools/exec';
 import { captureRequestDebug } from '@/lib/agent/debug';
@@ -49,9 +50,8 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     ? [planningSystem, ...baseMessages.filter((entry) => entry.role !== 'system')]
     : baseMessages.slice();
 
-  let convo = planningMessages.slice();
+  const convo = planningMessages.slice();
   let rounds = 0;
-  let usedTool = false;
   let usedTutorContentTool = false;
   let aggregatedResults: SearchResult[] = [];
   let learnerModelResult: PlanTurnResult['learnerModel'] | undefined;
@@ -104,14 +104,13 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     });
 
     const choice = resp?.choices?.[0];
-    const message = choice?.message || {};
+    const message = (choice?.message || {}) as Partial<AssistantModelMessage>;
     const toolCalls: ToolCall[] = detectPlanningToolCalls({
       message,
       toolDefinition,
     });
 
     if (toolCalls.length > 0) {
-      usedTool = true;
       convo.push({ role: 'assistant', content: null, tool_calls: toolCalls });
     }
 
@@ -150,7 +149,6 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
       if (execution.planUpdates) planUpdatesResult = execution.planUpdates;
       if (execution.updatedPlan) updatedPlanResult = execution.updatedPlan;
       if (execution.learnerModelDebug) learnerModelDebugResult = execution.learnerModelDebug;
-      if (execution.usedTool) usedTool = true;
       if (execution.usedTutorContentTool) usedTutorContentTool = true;
     }
 

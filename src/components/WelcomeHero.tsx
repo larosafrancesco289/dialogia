@@ -111,14 +111,10 @@ function TutorGreetingCard() {
 
   useEffect(() => {
     if (!selectedChatId) {
-      try {
-        primeTutorWelcomePreview();
-      } catch {}
+      Promise.resolve(primeTutorWelcomePreview()).catch(() => undefined);
       return;
     }
-    try {
-      prepareTutorWelcomeMessage(selectedChatId);
-    } catch {}
+    Promise.resolve(prepareTutorWelcomeMessage(selectedChatId)).catch(() => undefined);
   }, [selectedChatId, prepareTutorWelcomeMessage, primeTutorWelcomePreview]);
 
   useEffect(() => {
@@ -129,7 +125,7 @@ function TutorGreetingCard() {
     }
     setReadyForReveal(false);
     return undefined;
-  }, [welcomeState?.status, previewState?.status, selectedChatId]);
+  }, [welcomeState, previewState, selectedChatId]);
 
   const state = selectedChatId ? (welcomeState ?? previewState) : previewState;
   const status = state?.status ?? 'loading';

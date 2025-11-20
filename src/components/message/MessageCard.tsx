@@ -26,7 +26,6 @@ export type MessageCardProps = {
   showInlineActions: boolean;
   isStreaming: boolean;
   isEditing: boolean;
-  editingId: string | null;
   draft: string;
   setDraft: (value: string) => void;
   setEditingId: (id: string | null) => void;
@@ -35,7 +34,6 @@ export type MessageCardProps = {
   copyMessage: (messageId: string) => Promise<void> | void;
   copiedId: string | null;
   branchFromMessage: (messageId: string) => void;
-  regenerateMessage: (messageId: string) => void;
   onChooseRegenerateModel: (modelId?: string) => void;
   setLightbox: (
     value: {
@@ -49,12 +47,9 @@ export type MessageCardProps = {
   isStatsExpanded: (messageId: string) => boolean;
   toggleStats: (messageId: string) => void;
   messagePanels: Omit<MessagePanelsProps, 'message'>;
-  activeMessageId: string | null;
+  tutorEnabled: boolean;
   setActiveMessageId: (id: string | null) => void;
   setMobileSheet: (sheet: { id: string; role: 'assistant' | 'user' } | null) => void;
-  mobileSheet: { id: string; role: 'assistant' | 'user' } | null;
-  closeMobileSheet: () => void;
-  tutorEnabled: boolean;
 };
 
 export function MessageCard({
@@ -66,7 +61,6 @@ export function MessageCard({
   showInlineActions,
   isStreaming,
   isEditing,
-  editingId,
   draft,
   setDraft,
   setEditingId,
@@ -75,7 +69,6 @@ export function MessageCard({
   copyMessage,
   copiedId,
   branchFromMessage,
-  regenerateMessage,
   onChooseRegenerateModel,
   setLightbox,
   waitingForFirstToken,
@@ -84,12 +77,9 @@ export function MessageCard({
   isStatsExpanded,
   toggleStats,
   messagePanels,
-  activeMessageId,
+  tutorEnabled,
   setActiveMessageId,
   setMobileSheet,
-  mobileSheet,
-  closeMobileSheet,
-  tutorEnabled,
 }: MessageCardProps) {
   const isAssistant = message.role === 'assistant';
   const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
@@ -109,8 +99,6 @@ export function MessageCard({
   const handleStartEdit = () => startEditingMessage(message.id);
   const handleSaveEdit = () => saveEdit(message.id);
   const handleBranch = () => branchFromMessage(message.id);
-  const handleRegenerate = () => regenerateMessage(message.id);
-
   const attachments = Array.isArray(message.attachments) ? message.attachments : [];
 
   const { onPointerDown, onContextMenu } = useLongPressSheet({
@@ -136,7 +124,6 @@ export function MessageCard({
         isDebugExpanded={messagePanels.isDebugExpanded}
         onToggleDebug={messagePanels.onToggleDebug}
         tutorGloballyEnabled={messagePanels.tutorGloballyEnabled}
-        tutorEnabled={messagePanels.tutorEnabled}
         tutorEntry={messagePanels.tutorEntry}
         autoReasoningModelIds={messagePanels.autoReasoningModelIds}
         isStreaming={messagePanels.isStreaming}
@@ -183,7 +170,6 @@ export function MessageCard({
           isStatsExpanded={isStatsExpanded}
           toggleStats={toggleStats}
           branchFromMessage={handleBranch}
-          regenerateMessage={handleRegenerate}
           onChooseRegenerateModel={onChooseRegenerateModel}
           setLightbox={setLightbox}
           attachments={attachments}
@@ -233,7 +219,6 @@ function AssistantMessageContent({
   isStatsExpanded,
   toggleStats,
   branchFromMessage,
-  regenerateMessage,
   onChooseRegenerateModel,
   setLightbox,
   attachments,
@@ -261,7 +246,6 @@ function AssistantMessageContent({
   isStatsExpanded: (id: string) => boolean;
   toggleStats: (id: string) => void;
   branchFromMessage: () => void;
-  regenerateMessage: () => void;
   onChooseRegenerateModel: (modelId?: string) => void;
   setLightbox: (
     value: {

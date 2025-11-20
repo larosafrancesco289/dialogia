@@ -65,7 +65,6 @@ export async function anthropicFetchModels(
   apiKey: string | undefined,
   options: { signal?: AbortSignal; origin?: string } = {},
 ): Promise<Response> {
-  const useProxy = anthropicDefaults.isBrowser && isAnthropicProxyEnabled();
   const normalizedKey = typeof apiKey === 'string' && apiKey.trim().length > 0 ? apiKey.trim() : undefined;
   return anthropicFetch('/models', {
     method: 'GET',
@@ -85,7 +84,6 @@ type AnthropicChatOptions = {
 };
 
 export async function anthropicMessages(options: AnthropicChatOptions): Promise<Response> {
-  const useProxy = anthropicDefaults.isBrowser && isAnthropicProxyEnabled();
   const normalizedKey =
     typeof options.apiKey === 'string' && options.apiKey.trim().length > 0
       ? options.apiKey.trim()

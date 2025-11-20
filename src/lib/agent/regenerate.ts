@@ -19,7 +19,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     controller,
     overrideModelId,
   } = opts;
-  const { apiKey, transport, models, modelIndex, set, get, persistMessage } = turn;
+  const { models, modelIndex, set } = turn;
 
   const index = messages.findIndex((msg) => msg.id === targetMessageId);
   if (index < 0) return;
@@ -40,7 +40,6 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   );
 
   const modelIdForTurn = overrideModelId || chat.settings.model;
-  const modelMeta = modelIndex.get(modelIdForTurn);
   const caps = modelIndex.caps(modelIdForTurn);
   const supportsReasoning = caps.canReason;
 

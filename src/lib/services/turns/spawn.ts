@@ -19,7 +19,7 @@ export const spawnTurnMessages = async ({
   primaryAttachments,
   activeModelIds,
   set,
-  get,
+  get: _get,
 }: {
   chatId: string;
   content: string;
