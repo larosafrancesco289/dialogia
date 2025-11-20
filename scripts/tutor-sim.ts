@@ -2,8 +2,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { HeadlessTutorSession, type HeadlessTurnArtifacts } from '@/lib/headless/session';
+import { createHeadlessRunner } from '@/lib/headless/runner';
 import { LLMJudge, LLMUserSimulator } from '@/lib/headless/simulators';
+import { renderSnapshotTranscript } from '@/lib/headless/transcript';
+import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 import { createModelIndex } from '@/lib/models';
 import type { Chat, Message, ORModel, ModelTransport, ToolCallLogEntry } from '@/lib/types';
 import type { PlanTurnResult } from '@/lib/agent/types';
@@ -200,11 +202,17 @@ type SimulationTurn = {
   turn: number;
   student: string;
   tutor: string;
-  composition: HeadlessTurnArtifacts['composition'];
+  composition: HeadlessTurnSnapshot['composition'];
   toolCalls?: ToolCallLogEntry[];
-  tutorUi?: Record<string, unknown>;
+  tutorUi?: HeadlessTurnSnapshot['assistant']['tutorUi'];
   plan: PlanTurnResult;
   debugPayload?: string;
+  reasoning?: string;
+  metrics?: Message['metrics'];
+  genSettings?: Message['genSettings'];
+  systemSnapshot?: string;
+  hiddenContent?: string;
+  learnerModelDebug?: unknown;
 };
 
 type SimulationReport = {
@@ -213,6 +221,9 @@ type SimulationReport = {
   studentModel: string;
   judgeModel: string;
   turns: SimulationTurn[];
+  snapshots: HeadlessTurnSnapshot[];
+  messages: Message[];
+  transcriptText: string;
   transcript: Array<{
     id: string;
     role: Message['role'];
@@ -222,6 +233,10 @@ type SimulationReport = {
     learnerModel?: Message['learnerModel'];
     planUpdates?: Message['planUpdates'];
     toolCalls?: ToolCallLogEntry[];
+    reasoning?: string;
+    metrics?: Message['metrics'];
+    systemSnapshot?: string;
+    genSettings?: Message['genSettings'];
   }>;
   judge: {
     raw: string;
@@ -266,14 +281,14 @@ function printSection(title: string) {
 }
 
 function summarizeToolDefinitions(
-  tools: HeadlessTurnArtifacts['composition']['tools'],
+  tools: HeadlessTurnSnapshot['composition']['tools'],
 ): string {
   if (!tools || tools.length === 0) return 'none';
   const names = tools.map((tool) => tool.function?.name ?? '(unnamed)');
   return names.join(', ');
 }
 
-function summarizePlugins(plugins: HeadlessTurnArtifacts['composition']['plugins']): string {
+function summarizePlugins(plugins: HeadlessTurnSnapshot['composition']['plugins']): string {
   if (!plugins || plugins.length === 0) return 'none';
   return plugins.map((plugin) => plugin.id).join(', ');
 }
@@ -321,6 +336,18 @@ function learnerModelSummary(plan: PlanTurnResult): string | undefined {
   return parts.join(', ');
 }
 
+function summarizeMetrics(metrics: Message['metrics'] | undefined): string | undefined {
+  if (!metrics) return undefined;
+  const parts: string[] = [];
+  if (typeof metrics.ttftMs === 'number') parts.push(`ttft ${Math.round(metrics.ttftMs)}ms`);
+  if (typeof metrics.completionMs === 'number')
+    parts.push(`latency ${Math.round(metrics.completionMs)}ms`);
+  if (typeof metrics.promptTokens === 'number') parts.push(`prompt ${metrics.promptTokens}`);
+  if (typeof metrics.completionTokens === 'number')
+    parts.push(`completion ${metrics.completionTokens}`);
+  return parts.length ? parts.join(', ') : undefined;
+}
+
 function printToolCallDetails(entries: ToolCallLogEntry[] | undefined) {
   if (!entries || entries.length === 0) {
     console.log('Tool calls: none');
@@ -352,7 +379,7 @@ function printToolCallDetails(entries: ToolCallLogEntry[] | undefined) {
   });
 }
 
-function printTutorUiSummary(tutorUi: Record<string, unknown> | undefined) {
+function printTutorUiSummary(tutorUi: HeadlessTurnSnapshot['assistant']['tutorUi']) {
   if (!tutorUi) {
     console.log('Tutor UI: none');
     return;
@@ -417,6 +444,16 @@ function printSummary(report: SimulationReport, jsonPath: string) {
     console.log('');
     printToolCallDetails(turn.toolCalls);
     printTutorUiSummary(turn.tutorUi);
+    const metricsSummary = summarizeMetrics(turn.metrics);
+    if (metricsSummary) {
+      console.log(`Metrics: ${metricsSummary}`);
+    }
+    if (turn.reasoning) {
+      console.log('Reasoning: captured (see JSON report)');
+    }
+    if (turn.hiddenContent) {
+      console.log('Hidden tutor content: captured (see JSON report)');
+    }
     console.log(`Debug payload: ${turn.debugPayload ? 'available (see JSON report)' : 'none'}`);
     console.log('');
   });
@@ -549,7 +586,7 @@ async function main() {
 
   const modelIndex = createModelIndex(models);
 
-  const session = new HeadlessTutorSession({
+  const runner = createHeadlessRunner({
     chat,
     models,
     modelIndex,
@@ -579,17 +616,6 @@ async function main() {
     apiKey: resolveApiKey({ modelId: judgeModel, transport: judgeTransport }),
   });
 
-  const turnsReport: Array<{
-    turn: number;
-    user: string;
-    assistant: string;
-    composition: HeadlessTurnArtifacts['composition'];
-    toolCalls?: ToolCallLogEntry[];
-    tutorUi?: Record<string, unknown>;
-    plan: PlanTurnResult;
-    debugPayload?: string;
-  }> = [];
-
   let studentMessage =
     typeof args['initial-user'] === 'string'
       ? args['initial-user']
@@ -604,59 +630,69 @@ async function main() {
   }
 
   for (let turn = 1; turn <= turns; turn += 1) {
-    const turnResult = await session.runTurn(studentMessage);
-    const tutorUi = (turnResult.artifacts.tutorUi ?? undefined) as
-      | Record<string, unknown>
-      | undefined;
-
-    turnsReport.push({
-      turn,
-      user: turnResult.user.content,
-      assistant: turnResult.assistant.content,
-      composition: turnResult.artifacts.composition,
-      toolCalls: turnResult.artifacts.toolCalls,
-      tutorUi,
-      plan: turnResult.artifacts.plan,
-      debugPayload: turnResult.artifacts.debugPayload,
-    });
+    const snapshot = await runner.runTurn({ content: studentMessage, turnIndex: turn - 1 });
 
     if (turn === turns) break;
 
-    const planSummary = summarizePlan(tutorUi);
-    studentMessage = await studentSim.respond(turnResult.assistant.content, {
+    const planSummary = summarizePlan(
+      snapshot.assistant.tutorUi as Record<string, unknown> | undefined,
+    );
+    studentMessage = await studentSim.respond(snapshot.assistant.content, {
       planSummary,
       turn,
     });
   }
 
-  const transcript: Message[] = session.getMessages();
-  const judgeAssessment = await judge.evaluate(transcript, { goal });
+  const runResult = runner.toResult();
+  const judgeAssessment = await judge.evaluate({
+    snapshots: runResult.snapshots,
+    messages: runResult.messages,
+    goal,
+  });
 
-  const output = {
+  const turnsReport = runResult.snapshots.map((snapshot, idx) => ({
+    turn: idx + 1,
+    student: snapshot.user.content,
+    tutor: snapshot.assistant.content,
+    composition: snapshot.composition,
+    toolCalls: snapshot.assistant.toolCalls,
+    tutorUi: snapshot.assistant.tutorUi,
+    plan: snapshot.plan,
+    debugPayload: snapshot.assistant.debugRequestBody,
+    reasoning: snapshot.assistant.reasoning,
+    metrics: snapshot.assistant.metrics,
+    genSettings: snapshot.assistant.genSettings,
+    systemSnapshot: snapshot.assistant.systemSnapshot,
+    hiddenContent: snapshot.assistant.hiddenContent,
+    learnerModelDebug: snapshot.assistant.learnerModelDebug,
+  }));
+
+  const transcriptText = renderSnapshotTranscript(runResult.snapshots);
+  const transcript = runResult.messages.map((msg) => ({
+    id: msg.id,
+    role: msg.role,
+    content: msg.content,
+    hiddenContent: (msg as any).hiddenContent,
+    tutor: (msg as any).tutor,
+    learnerModel: msg.learnerModel,
+    planUpdates: msg.planUpdates,
+    toolCalls: msg.toolCalls,
+    reasoning: msg.reasoning,
+    metrics: msg.metrics,
+    systemSnapshot: msg.systemSnapshot,
+    genSettings: msg.genSettings,
+  }));
+
+  const output: SimulationReport = {
     goal,
     tutorModel,
     studentModel,
     judgeModel,
-    turns: turnsReport.map((entry) => ({
-      turn: entry.turn,
-      student: entry.user,
-      tutor: entry.assistant,
-      composition: entry.composition,
-      toolCalls: entry.toolCalls,
-      tutorUi: entry.tutorUi,
-      plan: entry.plan,
-      debugPayload: entry.debugPayload,
-    })),
-    transcript: transcript.map((msg) => ({
-      id: msg.id,
-      role: msg.role,
-      content: msg.content,
-      hiddenContent: (msg as any).hiddenContent,
-      tutor: (msg as any).tutor,
-      learnerModel: msg.learnerModel,
-      planUpdates: msg.planUpdates,
-      toolCalls: msg.toolCalls,
-    })),
+    turns: turnsReport,
+    snapshots: runResult.snapshots,
+    messages: runResult.messages,
+    transcriptText,
+    transcript,
     judge: judgeAssessment,
   };
 

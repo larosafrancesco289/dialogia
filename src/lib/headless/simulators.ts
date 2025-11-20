@@ -1,3 +1,6 @@
+import { renderSnapshotTranscript, renderTutorTranscript } from '@/lib/headless/transcript';
+import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
+import type { HeadlessRunResult } from '@/lib/headless/runner';
 import type { ModelTransport, Message } from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
@@ -133,17 +136,70 @@ export type LLMJudgeOptions = {
   temperature?: number;
 };
 
-function renderTranscript(messages: Message[]): string {
-  return messages
-    .map((msg) => {
-      const role = msg.role === 'assistant' ? 'Tutor' : msg.role === 'user' ? 'Student' : 'System';
-      const hidden =
-        msg.role === 'assistant' && typeof (msg as any)?.hiddenContent === 'string'
-          ? `\n[Tutor Hidden Content]\n${String((msg as any).hiddenContent)}`
-          : '';
-      return `${role} (${new Date(msg.createdAt).toISOString()}):\n${msg.content}${hidden}`;
-    })
-    .join('\n\n');
+export type LLMJudgeInput =
+  | Message[]
+  | (Partial<HeadlessRunResult> & {
+      goal?: string;
+      transcript?: string;
+      messages?: Message[];
+      snapshots?: HeadlessTurnSnapshot[];
+    });
+
+type NormalizedJudgeInput = {
+  messages?: Message[];
+  snapshots?: HeadlessTurnSnapshot[];
+  transcript?: string;
+  goal?: string;
+};
+
+function normalizeJudgeInput(
+  input: LLMJudgeInput,
+  contextGoal?: string,
+): NormalizedJudgeInput {
+  if (Array.isArray(input)) {
+    return { messages: input, goal: contextGoal };
+  }
+  const payload = input ?? {};
+  return {
+    messages: 'messages' in payload ? ((payload as any).messages as Message[]) : undefined,
+    snapshots: 'snapshots' in payload ? ((payload as any).snapshots as HeadlessTurnSnapshot[]) : undefined,
+    transcript: (payload as any).transcript,
+    goal: (payload as any).goal ?? contextGoal,
+  };
+}
+
+function buildSnapshotSignals(snapshots?: HeadlessTurnSnapshot[]): string[] {
+  if (!snapshots || snapshots.length === 0) return [];
+  const total = snapshots.length;
+  const toolTurns = snapshots.filter((snap) => (snap.assistant.toolCalls?.length ?? 0) > 0).length;
+  const tutorUiTurns = snapshots.filter((snap) => snap.assistant.tutorUi).length;
+  const learnerTurns = snapshots.filter(
+    (snap) => snap.plan.learnerModel || snap.assistant.learnerModel,
+  ).length;
+  const planUpdates = snapshots.reduce((sum, snap) => {
+    const updates = snap.plan.planUpdates;
+    const statusChanges = updates?.statusChanges?.length ?? 0;
+    const masteryChanges = updates?.masteryChanges?.length ?? 0;
+    return sum + statusChanges + masteryChanges;
+  }, 0);
+  const searchTurns = snapshots.filter((snap) => snap.plan.hasSearchResults).length;
+  const reasoningTurns = snapshots.filter(
+    (snap) => snap.assistant.reasoning && snap.assistant.reasoning.trim().length > 0,
+  ).length;
+
+  const signals: string[] = [];
+  signals.push(`turns: ${total}`);
+  if (toolTurns) signals.push(`tool calls in ${toolTurns} turn${toolTurns === 1 ? '' : 's'}`);
+  if (tutorUiTurns)
+    signals.push(`tutor UI payload in ${tutorUiTurns} turn${tutorUiTurns === 1 ? '' : 's'}`);
+  if (searchTurns)
+    signals.push(`search cited in ${searchTurns} turn${searchTurns === 1 ? '' : 's'}`);
+  if (learnerTurns)
+    signals.push(`learner model touched in ${learnerTurns} turn${learnerTurns === 1 ? '' : 's'}`);
+  if (planUpdates) signals.push(`plan updates recorded: ${planUpdates}`);
+  if (reasoningTurns)
+    signals.push(`reasoning traces in ${reasoningTurns} turn${reasoningTurns === 1 ? '' : 's'}`);
+  return signals;
 }
 
 export class LLMJudge {
@@ -173,16 +229,29 @@ export class LLMJudge {
       ].join('\n');
   }
 
-  async evaluate(conversation: Message[], context?: { goal?: string }): Promise<{
+  async evaluate(payload: LLMJudgeInput, context?: { goal?: string }): Promise<{
     raw: string;
     verdict: string;
     score?: number;
     strengths?: string[];
     improvements?: string[];
   }> {
-    const transcript = renderTranscript(conversation);
+    const normalized = normalizeJudgeInput(payload, context?.goal);
+    const transcript =
+      normalized.transcript ??
+      (normalized.snapshots?.length
+        ? renderSnapshotTranscript(normalized.snapshots)
+        : undefined) ??
+      (normalized.messages?.length ? renderTutorTranscript(normalized.messages) : undefined);
+
+    if (!transcript) {
+      throw new Error('LLMJudge requires messages, snapshots, or transcript text.');
+    }
+
+    const signals = buildSnapshotSignals(normalized.snapshots);
     const userPrompt = [
-      context?.goal ? `Learner goal: ${context.goal}` : undefined,
+      normalized.goal ? `Learner goal: ${normalized.goal}` : undefined,
+      signals.length ? `Signals:\n- ${signals.join('\n- ')}` : undefined,
       'Conversation transcript:',
       transcript,
       '',

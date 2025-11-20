@@ -2,13 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import type { StoreApi } from 'zustand/vanilla';
 import { createHeadlessStore, type HeadlessStoreOptions } from '@/lib/headless/store';
 import type { StoreState, UIState } from '@/lib/store/types';
-import type { Chat, Message, ModelTransport, ORModel, ToolCallLogEntry } from '@/lib/types';
-import {
-  type PlanTurnResult,
-  type PersistMessage,
-  type TurnComposition,
-  type TurnContext,
-} from '@/lib/agent/types';
+import type { Chat, Message, ModelTransport, ORModel } from '@/lib/types';
+import { type PlanTurnResult, type PersistMessage, type TurnContext } from '@/lib/agent/types';
 import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
 import { streamFinal } from '@/lib/agent/streaming';
@@ -18,6 +13,8 @@ import { setTurnController, clearTurnController } from '@/lib/services/controlle
 import type { ModelIndex } from '@/lib/models';
 import { runTurn } from '@/lib/orchestrator/turn';
 import { createTurnLifecycle } from '@/lib/orchestrator/lifecycle';
+import { buildTutorFallbackContent } from '@/lib/agent/streamHandlers';
+import type { HeadlessTurnArtifacts, HeadlessTurnResult } from '@/lib/headless/types';
 
 export type ApiKeyResolver = (params: { modelId: string; transport: ModelTransport }) => string;
 
@@ -29,26 +26,6 @@ export type HeadlessTutorSessionOptions = {
   initialMessages?: Message[];
   resolveApiKey: ApiKeyResolver;
   store?: StoreApi<StoreState>;
-};
-
-export type HeadlessTurnArtifacts = {
-  composition: {
-    system?: string;
-    tools?: TurnComposition['tools'];
-    plugins?: TurnComposition['plugins'];
-    providerSort?: TurnComposition['providerSort'];
-    shouldPlan: boolean;
-  };
-  plan: PlanTurnResult;
-  tutorUi?: Record<string, unknown>;
-  toolCalls?: ToolCallLogEntry[];
-  debugPayload?: string;
-};
-
-export type HeadlessTurnResult = {
-  user: Message;
-  assistant: Message;
-  artifacts: HeadlessTurnArtifacts;
 };
 
 export class HeadlessTutorSession {
@@ -215,7 +192,7 @@ export class HeadlessTutorSession {
         const currentList = this.store.getState().messages[this.chatId] ?? [];
         const current = currentList.find((m) => m.id === assistantMessage.id);
         const base = (current as Message | undefined) ?? assistantMessage;
-        const finalMsg: Message = lifecycle.buildShortCircuitMessage({
+        const finalMsgBase: Message = lifecycle.buildShortCircuitMessage({
           ...base,
           content: base.content ?? '',
           reasoning: base.reasoning,
@@ -223,6 +200,11 @@ export class HeadlessTutorSession {
           tutor: (base as any)?.tutor,
           hiddenContent: (base as any)?.hiddenContent,
         });
+        const fallbackContent =
+          (finalMsgBase.content || '').trim() ||
+          buildTutorFallbackContent(this.store.getState(), assistantMessage.id) ||
+          'I added new tutor content above. Let me know when you are ready.';
+        const finalMsg: Message = { ...finalMsgBase, content: fallbackContent };
         this.updateMessage(assistantMessage.id, finalMsg);
         await this.persistMessage(finalMsg);
         const planArtifacts: PlanTurnResult =

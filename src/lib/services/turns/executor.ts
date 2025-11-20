@@ -7,6 +7,7 @@ import { streamFinal } from '@/lib/agent/streaming';
 import { shouldShortCircuitTutor } from '@/lib/agent/policy';
 import { saveChat, saveMessage } from '@/lib/db';
 import { updateMessageInChat } from '@/lib/store/messageUtils';
+import { buildTutorFallbackContent } from '@/lib/agent/streamHandlers';
 import type { SendRuntime } from '@/lib/services/turns/runtime';
 import type { Attachment, Chat, Message } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
@@ -111,7 +112,7 @@ export const executeModelTurn = async ({
       const current = currentList.find((m) => m.id === assistantMessage.id);
       const baseMessage: Message =
         (current as Message | undefined) ?? ({ ...assistantMessage } as Message);
-      const finalMsg: Message = lifecycle.buildShortCircuitMessage({
+      const finalMsgBase: Message = lifecycle.buildShortCircuitMessage({
         ...baseMessage,
         content: current?.content ?? baseMessage.content ?? '',
         reasoning: current?.reasoning ?? baseMessage.reasoning,
@@ -120,6 +121,11 @@ export const executeModelTurn = async ({
         hiddenContent:
           (current as any)?.hiddenContent ?? (baseMessage as any)?.hiddenContent ?? undefined,
       });
+      const fallbackContent =
+        (finalMsgBase.content || '').trim() ||
+        buildTutorFallbackContent(get() as any, assistantMessage.id) ||
+        'I added new tutor content above. Let me know when you are ready.';
+      const finalMsg: Message = { ...finalMsgBase, content: fallbackContent };
       set((state) => updateMessageInChat(state, runtime.chatId, assistantMessage.id, finalMsg));
       await saveMessage(finalMsg);
       return;
