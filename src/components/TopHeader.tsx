@@ -14,7 +14,7 @@ import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { PlanSheet } from '@/components/plan/PlanSheet';
@@ -61,7 +61,8 @@ export function TopHeader() {
   const nextTutorMode = !!nextOverrides.tutorMode;
   const tutorDefaultModelId = uiState.tutorDefaultModelId;
   const tutorActive =
-    experimentalTutor && (forceTutorMode || (!!chat ? !!chat.settings?.tutor_mode : nextTutorMode));
+    experimentalTutor &&
+    (forceTutorMode || (chat ? Boolean(chat.settings?.tutor_mode) : nextTutorMode));
   const tutorModelId =
     chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
@@ -292,14 +293,10 @@ export function TopHeader() {
           aria-pressed={isSettingsOpen}
           onClick={() => setUI({ showSettings: !isSettingsOpen })}
           onMouseEnter={() => {
-            try {
-              import('@/components/SettingsDrawer');
-            } catch {}
+            import('@/components/SettingsDrawer').catch(() => undefined);
           }}
           onFocus={() => {
-            try {
-              import('@/components/SettingsDrawer');
-            } catch {}
+            import('@/components/SettingsDrawer').catch(() => undefined);
           }}
         >
           <Cog6ToothIcon className="h-5 w-5" />

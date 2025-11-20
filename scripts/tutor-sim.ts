@@ -558,7 +558,7 @@ async function main() {
       debugMode: true,
       experimentalTutor: true,
       forceTutorMode: true,
-      nextTutorMode: true,
+      next: { tutorMode: true },
     },
   });
 

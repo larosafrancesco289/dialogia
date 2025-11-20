@@ -234,7 +234,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     } else if (!atBottom) {
       setShowJump((prev) => (prev === true ? prev : true));
     }
-  }, [messages, prefersReducedMotion, scrollToBottom, isAssistantPlaceholder]);
+  }, [messages, prefersReducedMotion, scrollToBottom, isAssistantPlaceholder, atBottom]);
 
   useEffect(() => {
     if (!autoScrollEnabledRef.current) return;

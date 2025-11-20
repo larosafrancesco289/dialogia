@@ -179,7 +179,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     persistMessage,
   } satisfies TurnContext;
 
-  const result = await planTurn({
+  await planTurn({
     chat,
     chatId: chat.id,
     assistantMessage,

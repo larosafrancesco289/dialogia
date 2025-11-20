@@ -106,7 +106,7 @@ export function useModelPickerController(): Controller {
       if (!acc.find((x) => x.id === m.id)) acc.push(m);
       return acc;
     }, []);
-  }, [customOptions]);
+  }, [customOptions, curated]);
 
   const options = useMemo(() => {
     const hidden = new Set(hiddenModelIds || []);

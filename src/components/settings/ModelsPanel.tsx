@@ -1,5 +1,5 @@
 'use client';
-import type { ReactNode, Ref } from 'react';
+import type { Ref } from 'react';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ModelSearch, type ModelSearchHandle } from '@/components/ModelSearch';
 import type { Chat } from '@/lib/types';

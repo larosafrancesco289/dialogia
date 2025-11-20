@@ -3,7 +3,6 @@ import type {
   ChatSettings,
   Message,
   ORModel,
-  MessageMetrics,
   Folder,
   LearningPlan,
 } from '@/lib/types';

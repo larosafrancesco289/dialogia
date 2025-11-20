@@ -12,13 +12,11 @@ import { useMemo } from 'react';
 
 export function PlanView({
   plan,
-  onUpdate,
   onNodeStatusChange,
   onStartLesson,
   learnerModel,
 }: {
   plan: LearningPlan;
-  onUpdate?: (updatedPlan: LearningPlan) => void;
   onNodeStatusChange?: (nodeId: string, status: 'not_started' | 'in_progress' | 'completed') => void;
   onStartLesson?: (nodeId: string) => void;
   learnerModel?: LearnerModel;
@@ -67,9 +65,6 @@ export function PlanView({
 
     return groups;
   }, [plan.nodes]);
-
-  const readyToStartNext =
-    !!nextNode && nextNode.status === 'not_started' && !!onNodeStatusChange;
 
   const getMastery = (nodeId: string) => {
     if (!learnerModel) return undefined;

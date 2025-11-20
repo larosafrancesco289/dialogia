@@ -136,15 +136,7 @@ export function useComposerShortcuts(options: {
       onAfterSend?.();
       return 'sent';
     },
-    [
-      options.chat,
-      options.models,
-      options.nextOverrides,
-      options.updateChatSettings,
-      options.setUI,
-      options.newChat,
-      options.sendMessage,
-    ],
+    [options],
   );
 
   return { handleSubmit };

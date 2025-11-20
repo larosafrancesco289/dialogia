@@ -112,7 +112,7 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
     top = Math.min(top, maxTopFinal);
     top = Math.max(margin, top);
     setCoords({ left, top, placement });
-  }, []);
+  }, [margin, widthPx]);
   useEffect(() => {
     if (!open) return;
     updateCoords();

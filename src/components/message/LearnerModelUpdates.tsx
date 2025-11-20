@@ -1,6 +1,6 @@
 'use client';
 import { CheckCircleIcon, ArrowTrendingUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
-import type { Message, LearnerModel, TopicMastery } from '@/lib/types';
+import type { Message, TopicMastery } from '@/lib/types';
 import { useState } from 'react';
 
 export function LearnerModelUpdates({ message }: { message: Message }) {

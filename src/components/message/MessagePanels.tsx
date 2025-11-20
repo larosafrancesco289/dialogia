@@ -19,7 +19,6 @@ export type MessagePanelsProps = {
   isDebugExpanded: boolean;
   onToggleDebug: () => void;
   tutorGloballyEnabled: boolean;
-  tutorEnabled: boolean;
   tutorEntry?: any;
   autoReasoningModelIds: Record<string, boolean>;
   isStreaming: boolean;
@@ -45,7 +44,6 @@ export function MessagePanels({
   isDebugExpanded,
   onToggleDebug,
   tutorGloballyEnabled,
-  tutorEnabled,
   tutorEntry,
   autoReasoningModelIds,
   isStreaming,

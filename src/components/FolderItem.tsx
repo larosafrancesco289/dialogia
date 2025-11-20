@@ -128,7 +128,7 @@ export function FolderItem({ folder, depth = 0 }: FolderItemProps) {
             handleDragStart(folder.id, 'folder');
           }}
           onDragEnd={handleDragEnd}
-          onClick={(e) => {
+          onClick={() => {
             if (isEditing) return;
             if (isMobile && suppressTap.current) {
               suppressTap.current = false;

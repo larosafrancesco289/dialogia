@@ -1,5 +1,4 @@
 'use client';
-import type { ReactNode } from 'react';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';

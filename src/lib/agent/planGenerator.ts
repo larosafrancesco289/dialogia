@@ -158,8 +158,6 @@ export function detectLearningGoal(message: string): {
   goal?: string;
   confidence: number;
 } {
-  const normalizedMessage = message.toLowerCase().trim();
-
   // High-confidence patterns
   const highConfidencePatterns = [
     /(?:i want to|i'd like to|help me|teach me|can you teach me)\s+(?:learn|understand|master)\s+(.+)/i,

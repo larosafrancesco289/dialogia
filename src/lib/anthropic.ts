@@ -2,7 +2,7 @@ import type { ORModel } from '@/lib/types';
 import type { ModelMessage, ToolDefinition, ToolCall } from '@/lib/agent/types';
 import type { ChatCompletionPayload } from '@/lib/api/openrouterClient';
 import { anthropicFetchModels, anthropicMessages } from '@/lib/api/anthropicClient';
-import { responseError, API_ERROR_CODES, ApiError } from '@/lib/api/errors';
+import { responseError, API_ERROR_CODES } from '@/lib/api/errors';
 import { consumeSse } from '@/lib/api/stream';
 import { fromAnthropicUsage, type Usage } from '@/lib/api/normalizers';
 

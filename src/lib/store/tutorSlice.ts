@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StoreState } from '@/lib/store/types';
-import type { LearningPlan, Message, TutorEvent, TutorProfile } from '@/lib/types';
+import type { LearningPlan, Message, TutorEvent } from '@/lib/types';
 import type { StoreSetter } from '@/lib/agent/types';
 import { updateTutorProfile, loadTutorProfile } from '@/lib/tutorProfile';
 import { saveMessage } from '@/lib/db';
@@ -184,9 +184,7 @@ export function createTutorSlice(
       };
 
       const welcome = upsertWelcomeMessage(planMessage);
-      try {
-        await saveMessage(welcome);
-      } catch {}
+      await saveMessage(welcome).catch(() => undefined);
       return planMessage;
     },
   } satisfies Partial<StoreState>;

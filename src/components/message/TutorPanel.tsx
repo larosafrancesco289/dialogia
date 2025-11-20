@@ -245,9 +245,12 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
   const setUI = useChatStore((s) => s.setUI);
   const persistTutor = useChatStore((s) => s.persistTutorStateForMessage);
   const tutorMap = useChatStore((s) => s.ui.tutorByMessageId || {});
-  const attempts = (tutorMap[messageId]?.attempts as any) || {};
-  const mcq =
-    (attempts.mcq as Record<string, { choice?: number; done?: boolean; correct?: boolean }>) || {};
+  const attempts = useMemo(() => (tutorMap[messageId]?.attempts as any) || {}, [tutorMap, messageId]);
+  const mcq = useMemo(
+    () =>
+      (attempts.mcq as Record<string, { choice?: number; done?: boolean; correct?: boolean }>) || {},
+    [attempts],
+  );
   const total = items.length;
   const firstPendingIndex = useMemo(() => {
     for (let i = 0; i < total; i += 1) {
@@ -297,15 +300,11 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
     }
   }, [items, total, activeIndex, firstPendingIndex]);
 
-  if (!total) return null;
-
-  const activeItem = items[Math.min(activeIndex, total - 1)];
-  if (!activeItem) return null;
-
-  const activeAttempt = mcq[activeItem.id] || {};
+  const activeItem = total > 0 ? items[Math.min(activeIndex, total - 1)] : null;
+  const activeAttempt = activeItem ? mcq[activeItem.id] || {} : {};
   const picked = activeAttempt.choice;
   const answered = !!activeAttempt.done;
-  const correctIdx = typeof activeItem.correct === 'number' ? activeItem.correct : -1;
+  const correctIdx = typeof activeItem?.correct === 'number' ? activeItem.correct : -1;
 
   const clampIndex = useCallback(
     (idx: number) => {
@@ -423,6 +422,7 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
   }, [transitionStage, pendingIndex, setIndexClamped, prefersReducedMotion]);
 
   const handleSelect = (choiceIdx: number) => {
+    if (!activeItem) return;
     if (answered) return;
     const correct = choiceIdx === correctIdx;
     log({
@@ -464,6 +464,8 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
       }, delay);
     }
   };
+
+  if (!total || !activeItem) return null;
 
   const cardTransitionClass = prefersReducedMotion
     ? ''
@@ -582,12 +584,15 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
   const setUI = useChatStore((s) => s.setUI);
   const persistTutor = useChatStore((s) => s.persistTutorStateForMessage);
   const tutorMap = useChatStore((s) => s.ui.tutorByMessageId || {});
-  const attempts = (tutorMap[messageId]?.attempts as any) || {};
-  const fb =
-    (attempts.fillBlank as Record<
-      string,
-      { answer?: string; revealed?: boolean; correct?: boolean }
-    >) || {};
+  const attempts = useMemo(() => (tutorMap[messageId]?.attempts as any) || {}, [tutorMap, messageId]);
+  const fb = useMemo(
+    () =>
+      (attempts.fillBlank as Record<
+        string,
+        { answer?: string; revealed?: boolean; correct?: boolean }
+      >) || {},
+    [attempts],
+  );
   const normalize = (s: string) => s.trim().toLowerCase();
   const isAccepted = (it: TutorFillBlankItem, val: string) => {
     const v = normalize(val);
@@ -828,8 +833,11 @@ function OpenEndedList({
   const send = useChatStore((s) => s.sendUserMessage);
   const persistTutor = useChatStore((s) => s.persistTutorStateForMessage);
   const tutorMap = useChatStore((s) => s.ui.tutorByMessageId || {});
-  const attempts = (tutorMap[messageId]?.attempts as any) || {};
-  const open = (attempts.open as Record<string, { answer?: string }>) || {};
+  const attempts = useMemo(() => (tutorMap[messageId]?.attempts as any) || {}, [tutorMap, messageId]);
+  const open = useMemo(
+    () => (attempts.open as Record<string, { answer?: string }>) || {},
+    [attempts],
+  );
   const total = items.length;
   const firstPendingIndex = useMemo(() => {
     for (let i = 0; i < total; i += 1) {

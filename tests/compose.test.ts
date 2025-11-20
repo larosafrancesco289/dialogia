@@ -1,8 +1,8 @@
-import { test, mock } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { composeTurn } from '@/lib/agent/compose';
 import { ProviderSort } from '@/lib/models/providerSort';
-import type { Chat, Message, Attachment } from '@/lib/types';
+import type { Chat, Message, Attachment, TutorProfile } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import tutorProfileService from '@/lib/tutorProfile';
 
@@ -75,12 +75,25 @@ const modelIndexStub: ModelIndex = {
 };
 
 test('composeTurn merges tutor and search context with plugins and tools', async () => {
-  const loadProfile = mock.method(tutorProfileService, 'loadTutorProfile', async () => ({ id: 'profile-1' }));
-  const summarizeProfile = mock.method(
-    tutorProfileService,
-    'summarizeTutorProfile',
-    () => 'Prefers visuals',
-  );
+  const profileStub: TutorProfile = {
+    chatId: 'chat-1',
+    updatedAt: Date.now(),
+    totalAnswered: 0,
+    totalCorrect: 0,
+    topics: {},
+    skills: {},
+    difficulty: {
+      easy: { correct: 0, wrong: 0 },
+      medium: { correct: 0, wrong: 0 },
+      hard: { correct: 0, wrong: 0 },
+    },
+  };
+
+  const originalLoadProfile = tutorProfileService.loadTutorProfile;
+  const originalSummarizeProfile = tutorProfileService.summarizeTutorProfile;
+
+  tutorProfileService.loadTutorProfile = async () => profileStub;
+  tutorProfileService.summarizeTutorProfile = () => 'Prefers visuals';
 
   const chat = baseChat();
   const ui = {
@@ -109,34 +122,36 @@ test('composeTurn merges tutor and search context with plugins and tools', async
     },
   ];
 
-  const result = await composeTurn({
-    chat,
-    ui,
-    modelIndex: modelIndexStub,
-    prior,
-    newUser: { content: 'Here are my notes.', attachments },
-    attachments,
-  });
+  try {
+    const result = await composeTurn({
+      chat,
+      ui,
+      modelIndex: modelIndexStub,
+      prior,
+      newUser: { content: 'Here are my notes.', attachments },
+      attachments,
+    });
 
-  assert.equal(result.tutor.enabled, true);
-  assert.equal(result.search.provider, 'brave');
-  assert.equal(result.search.enabled, true);
-  assert.equal(result.hasPdf, true);
-  assert.equal(result.shouldPlan, true);
-  assert.equal(result.providerSort, ProviderSort.Throughput);
-  assert.equal(result.consumedTutorNudge, 'more_practice');
-  assert.ok(result.system && result.system.includes('Learner Profile:'));
-  assert.ok(result.system && result.system.includes('Always respond enthusiastically.'));
-  assert.ok(result.system && result.system.includes('LEARNING PLAN CONTEXT'));
-  assert.ok(result.system && result.system.includes('CURRENT FOCUS: Linear Equations'));
+    assert.equal(result.tutor.enabled, true);
+    assert.equal(result.search.provider, 'brave');
+    assert.equal(result.search.enabled, true);
+    assert.equal(result.hasPdf, true);
+    assert.equal(result.shouldPlan, true);
+    assert.equal(result.providerSort, ProviderSort.Throughput);
+    assert.equal(result.consumedTutorNudge, 'more_practice');
+    assert.ok(result.system && result.system.includes('Learner Profile:'));
+    assert.ok(result.system && result.system.includes('Always respond enthusiastically.'));
+    assert.ok(result.system && result.system.includes('LEARNING PLAN CONTEXT'));
+    assert.ok(result.system && result.system.includes('CURRENT FOCUS: Linear Equations'));
 
-  assert.ok(result.plugins && result.plugins.some((plugin) => plugin.id === 'file-parser'));
-  const toolNames = (result.tools || []).map((tool) => tool.function.name);
-  assert.ok(toolNames.includes('web_search'), 'expected web_search tool');
-  assert.ok(toolNames.length > 1, 'expected tutor tools to be included');
-
-  loadProfile.mock.restore();
-  summarizeProfile.mock.restore();
+    assert.ok(result.plugins && result.plugins.some((plugin) => plugin.id === 'file-parser'));
+    const toolNames = (result.tools || []).map((tool) => tool.function.name);
+    assert.ok(toolNames.includes('web_search'), 'expected web_search tool');
+    assert.ok(toolNames.length > 1, 'expected tutor tools to be included');
+  } finally {
+    tutorProfileService.loadTutorProfile = originalLoadProfile;
+    tutorProfileService.summarizeTutorProfile = originalSummarizeProfile;
+  }
 });
 
 test('composeTurn falls back to OpenRouter search when Brave experiment disabled', async () => {

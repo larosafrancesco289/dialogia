@@ -1,7 +1,6 @@
 // Module: agent/searchFlow
 // Responsibility: Centralize web search tool schema, Brave API calls, and result formatting.
 
-import type { StoreState } from '@/lib/store/types';
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 import type { SearchProvider, SearchResult, ToolDefinition, StoreSetter } from '@/lib/agent/types';
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';

@@ -33,7 +33,6 @@ export function ChatPane() {
     return deduped.length ? deduped : base;
   }, [chatSettings?.model, chatSettings?.parallel_models]);
   const multiColumn = activeModelIds.length > 1 && enableMultiModelChat;
-  const primaryModelId = activeModelIds[0] || chatSettings?.model;
 
   if (!chat) return <WelcomeHero keyboardMetrics={keyboardMetrics} />;
   return (

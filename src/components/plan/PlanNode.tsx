@@ -1,11 +1,9 @@
 'use client';
-import { useMemo, useState } from 'react';
-import type { CSSProperties } from 'react';
+import { useState } from 'react';
 import {
   CheckCircleIcon,
   ClockIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
   LockClosedIcon,
   PlayIcon,
   SparklesIcon,
@@ -33,14 +31,6 @@ export function PlanNode({
   const [expanded, setExpanded] = useState(false);
   const isLocked = !isReady && node.status === 'not_started';
   const canModifyStatus = !!onStatusChange && node.status !== 'completed' && !isLocked;
-
-  // Timeline connector style
-  const timelineLineColor =
-    node.status === 'completed'
-      ? 'var(--color-accent)'
-      : node.status === 'in_progress'
-        ? 'var(--color-accent-2)'
-        : 'var(--color-border)';
 
   const statusColor =
     node.status === 'completed'

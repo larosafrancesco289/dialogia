@@ -16,7 +16,6 @@ export function ReasoningPanel({
   isStreaming = false,
 }: ReasoningPanelProps) {
   const hasReasoning = !!(reasoning && reasoning.trim().length > 0);
-  if (!hasReasoning && !isStreaming) return null;
 
   const bodyId = useId();
   const [copied, setCopied] = useState(false);
@@ -91,8 +90,12 @@ export function ReasoningPanel({
       await navigator.clipboard.writeText(reasoning);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
-    } catch {}
+    } catch (error) {
+      console.error('Failed to copy reasoning', error);
+    }
   };
+
+  if (!hasReasoning && !isStreaming) return null;
 
   return (
     <div className="px-4 pt-3">

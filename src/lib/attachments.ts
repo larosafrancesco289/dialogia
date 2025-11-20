@@ -39,7 +39,10 @@ export async function toImageAttachment(file: File): Promise<Attachment | null> 
       img.onerror = () => resolve();
       img.src = dataURL;
     });
-  } catch {}
+  } catch {
+    width = undefined;
+    height = undefined;
+  }
   return {
     id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     kind: 'image',
