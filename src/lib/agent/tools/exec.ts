@@ -18,6 +18,7 @@ import type {
 import type { Chat, LearningPlan, LearnerModel, Message, ToolCallLogEntry } from '@/lib/types';
 import { startToolCallLogEntry, updateToolCallLogEntry } from '@/lib/services/toolCallLog';
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
+import { isTutorContentTool } from '@/lib/agent/tools/categories';
 
 export type PlanningToolExecutionContext = {
   chat: Chat;
@@ -191,6 +192,7 @@ export async function executePlanningToolCall(opts: {
     }
 
     if (isTutorToolName(callName)) {
+      const contentTool = isTutorContentTool(callName);
       const tutorOutcome = await applyTutorToolCall({
         name: callName,
         args: parsedArgs,
@@ -235,7 +237,7 @@ export async function executePlanningToolCall(opts: {
             : [],
           aggregatedResults,
           usedTool: true,
-          usedTutorContentTool: !!tutorOutcome.usedContent,
+          usedTutorContentTool: contentTool ? tutorOutcome.handled : !!tutorOutcome.usedContent,
           learnerModel: tutorOutcome.learnerModel,
           planUpdates: tutorOutcome.planUpdates,
           updatedPlan: tutorOutcome.updatedPlan,

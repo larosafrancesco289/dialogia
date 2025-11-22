@@ -28,8 +28,8 @@ import { getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
 
 function safeKey(val: any, idx: number, prefix = 'item'): string {
   const s = typeof val === 'string' ? val.trim() : '';
-  if (!s || s === 'null' || s === 'undefined') return `${prefix}_${idx}`;
-  return s;
+  const base = !s || s === 'null' || s === 'undefined' ? prefix : s;
+  return `${base}-${idx}`;
 }
 
 type StepStatus = 'pending' | 'correct' | 'incorrect' | 'answered';

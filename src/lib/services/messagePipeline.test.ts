@@ -51,6 +51,21 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
       max_tokens: 256,
       tutor_mode: true,
       tutor_default_model: 'provider/model',
+      learningPlan: {
+        goal: 'Test mastery',
+        generatedAt: Date.now(),
+        updatedAt: Date.now(),
+        version: 1,
+        nodes: [
+          {
+            id: 'node-1',
+            name: 'Algebra basics',
+            objectives: ['Solve linear equations'],
+            prerequisites: [],
+            status: 'in_progress',
+          },
+        ],
+      },
     },
   };
   const assistantMessage: Message = {
@@ -157,6 +172,38 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
                   }),
                 },
               },
+              {
+                id: 'call_2',
+                type: 'function',
+                function: {
+                  name: 'quiz_fill_blank',
+                  arguments: JSON.stringify({
+                    title: 'Extra',
+                    items: [
+                      {
+                        id: 'blank1',
+                        prompt: '1 + 1 = ____',
+                        answer: '2',
+                      },
+                    ],
+                  }),
+                },
+              },
+              {
+                id: 'call_3',
+                type: 'function',
+                function: {
+                  name: 'assess_answer',
+                  arguments: JSON.stringify({
+                    nodeId: 'node-1',
+                    interaction: {
+                      question: 'Q?',
+                      studentAnswer: 'A',
+                      correct: true,
+                    },
+                  }),
+                },
+              },
             ],
           },
         },
@@ -205,12 +252,17 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   const savedTutor = savedMessages.find((msg) => Array.isArray((msg as any)?.tutor?.mcq))
     ?.tutor as any;
   assert.ok(Array.isArray(savedTutor?.mcq) && savedTutor.mcq.length === 1);
+  assert.equal(Array.isArray(savedTutor?.fillBlank), false);
   const toolLog = state.messages[chat.id][0]?.toolCalls;
   assert.ok(Array.isArray(toolLog) && toolLog.length >= 2);
   const searchEntries = toolLog.filter((entry: any) => entry?.name === 'web_search');
   const tutorEntries = toolLog.filter((entry: any) => entry?.name === 'quiz_mcq');
+  const skippedFill = toolLog.filter((entry: any) => entry?.name === 'quiz_fill_blank');
+  const assessEntries = toolLog.filter((entry: any) => entry?.name === 'assess_answer');
   assert.ok(searchEntries.length >= 1);
   assert.ok(tutorEntries.length >= 1);
+  assert.equal(skippedFill.length, 0);
+  assert.ok(assessEntries.length >= 1);
   assert.equal(searchEntries[0]?.category, 'search');
   assert.equal(searchEntries[0]?.metadata?.provider, 'brave');
   assert.equal(searchEntries[0]?.metadata?.round, 1);
