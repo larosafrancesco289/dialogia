@@ -30,9 +30,3 @@ yarn-error.log*
 tmp/
 *.log
 .eslintcache
-
-AGENTS.md
-GEMINI.md
-CLAUDE.md
-
-TOOL_CALLING.md
