@@ -12,7 +12,6 @@ import {
 } from '@heroicons/react/24/outline';
 import type { Message } from '@/lib/types';
 import { ImageLightbox } from '@/components/ImageLightbox';
-import { type MessagePanelsProps } from '@/components/message/MessagePanels';
 import { MessageCard } from '@/components/message/MessageCard';
 import { useMessageScrolling } from '@/components/message/useMessageScrolling';
 import { useMessageWindow } from '@/components/message/hooks/useMessageWindow';
@@ -254,28 +253,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       {visibleMessages.map((message) => {
         const isEditingThisMessage = editingId === message.id;
         const showInlineActions = !isMobile || isEditingThisMessage;
-        const messagePanels = {
-          models,
-          braveGloballyEnabled,
-          braveEntry: braveByMessageId[message.id],
-          isSourcesExpanded: isSourcesExpanded(message.id),
-          onToggleSources: () => toggleSources(message.id),
-          debugMode,
-          debugEntry: debugByMessageId[message.id],
-          isDebugExpanded: isDebugExpanded(message.id),
-          onToggleDebug: () => toggleDebug(message.id),
-          tutorGloballyEnabled,
-          tutorEntry: tutorByMessageId[message.id] || (message as any)?.tutor,
-          autoReasoningModelIds,
-          isStreaming,
-          lastMessageId,
-          reasoningExpanded: isReasoningExpanded(message.id),
-          onToggleReasoning: () => toggleReasoning(message.id),
-          showToolCallLog: !!chat?.settings?.showToolCallLog,
-          showDebugRawJson: chat?.settings?.showDebugRawJson ?? true,
-          toolCalls: Array.isArray(message.toolCalls) ? message.toolCalls : undefined,
-          highlightToolCalls: message.id === lastMessageId,
-        } satisfies Omit<MessagePanelsProps, 'message'>;
 
         return (
           <MessageCard
@@ -306,10 +283,26 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
             showStats={showStats}
             isStatsExpanded={isStatsExpanded}
             toggleStats={toggleStats}
-            messagePanels={messagePanels}
             tutorEnabled={tutorEnabled}
             setActiveMessageId={setActiveMessageId}
             setMobileSheet={setMobileSheet}
+            braveGloballyEnabled={braveGloballyEnabled}
+            braveEntry={braveByMessageId[message.id]}
+            isSourcesExpanded={isSourcesExpanded(message.id)}
+            onToggleSources={toggleSources}
+            debugMode={debugMode}
+            debugEntry={debugByMessageId[message.id]}
+            isDebugExpanded={isDebugExpanded(message.id)}
+            onToggleDebug={toggleDebug}
+            tutorGloballyEnabled={tutorGloballyEnabled}
+            tutorEntry={tutorByMessageId[message.id] || (message as any)?.tutor}
+            autoReasoningModelIds={autoReasoningModelIds}
+            isReasoningExpanded={isReasoningExpanded(message.id)}
+            onToggleReasoning={toggleReasoning}
+            showToolCallLog={!!chat?.settings?.showToolCallLog}
+            showDebugRawJson={chat?.settings?.showDebugRawJson ?? true}
+            toolCalls={Array.isArray(message.toolCalls) ? message.toolCalls : undefined}
+            highlightToolCalls={message.id === lastMessageId}
           />
         );
       })}
