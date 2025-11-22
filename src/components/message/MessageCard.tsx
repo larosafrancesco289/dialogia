@@ -1,5 +1,5 @@
 'use client';
-import { useMemo } from 'react';
+import { useMemo, memo, useCallback } from 'react';
 import {
   PencilSquareIcon,
   CheckIcon,
@@ -8,11 +8,11 @@ import {
 } from '@heroicons/react/24/outline';
 import { Markdown } from '@/lib/markdown';
 import { RegenerateMenu } from '@/components/RegenerateMenu';
-import { MessagePanels, type MessagePanelsProps } from '@/components/message/MessagePanels';
+import { MessagePanels } from '@/components/message/MessagePanels';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { LearnerModelUpdates } from '@/components/message/LearnerModelUpdates';
 import styles from './MessageCard.module.css';
-import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
+import type { Attachment, Chat, Message, ORModel, ToolCallLogEntry } from '@/lib/types';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
@@ -46,13 +46,30 @@ export type MessageCardProps = {
   showStats: boolean;
   isStatsExpanded: (messageId: string) => boolean;
   toggleStats: (messageId: string) => void;
-  messagePanels: Omit<MessagePanelsProps, 'message'>;
   tutorEnabled: boolean;
   setActiveMessageId: (id: string | null) => void;
   setMobileSheet: (sheet: { id: string; role: 'assistant' | 'user' } | null) => void;
+  // Flattened MessagePanels props
+  braveGloballyEnabled: boolean;
+  braveEntry?: any;
+  isSourcesExpanded: boolean;
+  onToggleSources: (id: string) => void;
+  debugMode: boolean;
+  debugEntry?: { body: string; createdAt: number } | null;
+  isDebugExpanded: boolean;
+  onToggleDebug: (id: string) => void;
+  tutorGloballyEnabled: boolean;
+  tutorEntry?: any;
+  autoReasoningModelIds: Record<string, boolean>;
+  isReasoningExpanded: boolean;
+  onToggleReasoning: (id: string) => void;
+  showToolCallLog: boolean;
+  showDebugRawJson: boolean;
+  toolCalls?: ToolCallLogEntry[];
+  highlightToolCalls?: boolean;
 };
 
-export function MessageCard({
+function MessageCardComponent({
   message,
   chat,
   models,
@@ -76,10 +93,26 @@ export function MessageCard({
   showStats,
   isStatsExpanded,
   toggleStats,
-  messagePanels,
   tutorEnabled,
   setActiveMessageId,
   setMobileSheet,
+  braveGloballyEnabled,
+  braveEntry,
+  isSourcesExpanded,
+  onToggleSources,
+  debugMode,
+  debugEntry,
+  isDebugExpanded,
+  onToggleDebug,
+  tutorGloballyEnabled,
+  tutorEntry,
+  autoReasoningModelIds,
+  isReasoningExpanded,
+  onToggleReasoning,
+  showToolCallLog,
+  showDebugRawJson,
+  toolCalls,
+  highlightToolCalls,
 }: MessageCardProps) {
   const isAssistant = message.role === 'assistant';
   const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
@@ -109,34 +142,70 @@ export function MessageCard({
     },
   });
 
+  const handleToggleSources = useCallback(
+    () => onToggleSources(message.id),
+    [message.id, onToggleSources],
+  );
+  const handleToggleDebug = useCallback(
+    () => onToggleDebug(message.id),
+    [message.id, onToggleDebug],
+  );
+  const handleToggleReasoning = useCallback(
+    () => onToggleReasoning(message.id),
+    [message.id, onToggleReasoning],
+  );
+
   const messagePanelsNode = useMemo(
     () => (
       <MessagePanels
         message={message}
         chat={chat ?? undefined}
         models={models}
-        braveGloballyEnabled={messagePanels.braveGloballyEnabled}
-        braveEntry={messagePanels.braveEntry}
-        isSourcesExpanded={messagePanels.isSourcesExpanded}
-        onToggleSources={messagePanels.onToggleSources}
-        debugMode={messagePanels.debugMode}
-        debugEntry={messagePanels.debugEntry}
-        isDebugExpanded={messagePanels.isDebugExpanded}
-        onToggleDebug={messagePanels.onToggleDebug}
-        tutorGloballyEnabled={messagePanels.tutorGloballyEnabled}
-        tutorEntry={messagePanels.tutorEntry}
-        autoReasoningModelIds={messagePanels.autoReasoningModelIds}
-        isStreaming={messagePanels.isStreaming}
-        lastMessageId={messagePanels.lastMessageId}
-        reasoningExpanded={messagePanels.reasoningExpanded}
-        onToggleReasoning={messagePanels.onToggleReasoning}
-        showToolCallLog={messagePanels.showToolCallLog}
-        showDebugRawJson={messagePanels.showDebugRawJson}
-        toolCalls={messagePanels.toolCalls}
-        highlightToolCalls={messagePanels.highlightToolCalls}
+        braveGloballyEnabled={braveGloballyEnabled}
+        braveEntry={braveEntry}
+        isSourcesExpanded={isSourcesExpanded}
+        onToggleSources={handleToggleSources}
+        debugMode={debugMode}
+        debugEntry={debugEntry}
+        isDebugExpanded={isDebugExpanded}
+        onToggleDebug={handleToggleDebug}
+        tutorGloballyEnabled={tutorGloballyEnabled}
+        tutorEntry={tutorEntry}
+        autoReasoningModelIds={autoReasoningModelIds}
+        isStreaming={isStreaming}
+        lastMessageId={lastMessageId}
+        reasoningExpanded={isReasoningExpanded}
+        onToggleReasoning={handleToggleReasoning}
+        showToolCallLog={showToolCallLog}
+        showDebugRawJson={showDebugRawJson}
+        toolCalls={toolCalls}
+        highlightToolCalls={highlightToolCalls}
       />
     ),
-    [message, chat, models, messagePanels],
+    [
+      message,
+      chat,
+      models,
+      braveGloballyEnabled,
+      braveEntry,
+      isSourcesExpanded,
+      handleToggleSources,
+      debugMode,
+      debugEntry,
+      isDebugExpanded,
+      handleToggleDebug,
+      tutorGloballyEnabled,
+      tutorEntry,
+      autoReasoningModelIds,
+      isStreaming,
+      lastMessageId,
+      isReasoningExpanded,
+      handleToggleReasoning,
+      showToolCallLog,
+      showDebugRawJson,
+      toolCalls,
+      highlightToolCalls,
+    ],
   );
 
   return (
@@ -196,6 +265,8 @@ export function MessageCard({
     </div>
   );
 }
+
+export const MessageCard = memo(MessageCardComponent);
 
 function AssistantMessageContent({
   message,

@@ -11,10 +11,10 @@ export function useMessageWindow<T>(items: T[], opts?: { pageSize?: number; rese
 
   useEffect(() => {
     setCount((prev) => {
-      const next = Math.min(total, Math.max(pageSize, prev));
+      const next = Math.max(pageSize, prev);
       return next === prev ? prev : next;
     });
-  }, [total, pageSize]);
+  }, [pageSize]);
 
   const startIndex = Math.max(0, total - count);
   const visibleItems = useMemo(() => items.slice(startIndex), [items, startIndex]);
