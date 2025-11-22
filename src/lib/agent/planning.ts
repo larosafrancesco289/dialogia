@@ -25,6 +25,10 @@ import { executePlanningToolCall } from '@/lib/agent/tools/exec';
 import { captureRequestDebug } from '@/lib/agent/debug';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
 import { detectPlanningToolCalls } from '@/lib/agent/tools/router';
+import { schedulePlanningToolCalls } from '@/lib/agent/tools/scheduler';
+import { allowedTutorToolsForPhase, getTutorPhase } from '@/lib/agent/tutor/state';
+import { isTutorToolName } from '@/lib/agent/tools';
+import type { Message } from '@/lib/types';
 
 export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const {
@@ -42,6 +46,19 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     turn,
   } = opts;
   const { apiKey, transport, set, get, modelIndex, persistMessage } = turn;
+  const storeState = get?.();
+  const messagesForChat = (storeState?.messages?.[chatId] ?? []) as Message[];
+  const phase = getTutorPhase(chat, messagesForChat, storeState?.ui);
+  const allowedTutorTools = new Set(allowedTutorToolsForPhase(phase));
+  const planningToolDefinition =
+    Array.isArray(toolDefinition) && toolDefinition.length > 0
+      ? toolDefinition.filter((def) => {
+          const name = def.function?.name;
+          if (!name) return false;
+          if (isTutorToolName(name)) return allowedTutorTools.has(name);
+          return true;
+        })
+      : undefined;
 
   const planningSystem =
     combinedSystem != null ? ({ role: 'system', content: combinedSystem } as const) : undefined;
@@ -58,6 +75,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   let planUpdatesResult: PlanTurnResult['planUpdates'] | undefined;
   let updatedPlanResult: PlanTurnResult['updatedPlan'] | undefined;
   let learnerModelDebugResult: PlanTurnResult['learnerModelDebug'] | undefined;
+  let currentPlan = chat.settings.learningPlan;
 
   while (rounds < MAX_PLANNING_ROUNDS) {
     const modelMeta = modelIndex.get(chat.settings.model);
@@ -65,8 +83,8 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     const supportsReasoning = caps.canReason;
     const supportsTools = isToolCallingSupported(modelMeta);
     const toolsForPlanning =
-      supportsTools && Array.isArray(toolDefinition) && toolDefinition.length > 0
-        ? (toolDefinition as ToolDefinition[])
+      supportsTools && Array.isArray(planningToolDefinition) && planningToolDefinition.length > 0
+        ? planningToolDefinition
         : undefined;
 
     captureRequestDebug({
@@ -107,18 +125,36 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     const message = (choice?.message || {}) as Partial<AssistantModelMessage>;
     const toolCalls: ToolCall[] = detectPlanningToolCalls({
       message,
-      toolDefinition,
+      toolDefinition: planningToolDefinition,
     });
 
-    if (toolCalls.length > 0) {
-      convo.push({ role: 'assistant', content: null, tool_calls: toolCalls });
+    const filteredToolCalls =
+      toolCalls.length === 0
+        ? []
+        : toolCalls.filter((call) => {
+            const name = call.function?.name ?? '';
+            if (!name) return false;
+            if (isTutorToolName(name)) return allowedTutorTools.has(name);
+            return true;
+          });
+
+    const scheduled = schedulePlanningToolCalls(filteredToolCalls, {
+      hasPlan: Boolean(currentPlan),
+      hasActiveNode: Boolean(currentPlan?.nodes.some((node) => node.status === 'in_progress')),
+      alreadyUsedContent: usedTutorContentTool,
+      allowSearch: searchEnabled && searchProvider === 'brave',
+      phase,
+    });
+
+    if (scheduled.length > 0) {
+      convo.push({ role: 'assistant', content: null, tool_calls: scheduled });
     }
 
-    if (toolCalls.length === 0) {
+    if (scheduled.length === 0) {
       break;
     }
 
-    for (const tc of toolCalls) {
+    for (const tc of scheduled) {
       const parsedArgs = parseToolArguments(tc);
       const roundMeta =
         Number.isFinite(rounds) && Number.isFinite(rounds + 1)
@@ -147,9 +183,14 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
       aggregatedResults = execution.aggregatedResults;
       if (execution.learnerModel) learnerModelResult = execution.learnerModel;
       if (execution.planUpdates) planUpdatesResult = execution.planUpdates;
-      if (execution.updatedPlan) updatedPlanResult = execution.updatedPlan;
+      if (execution.updatedPlan) {
+        updatedPlanResult = execution.updatedPlan;
+        currentPlan = execution.updatedPlan;
+      }
       if (execution.learnerModelDebug) learnerModelDebugResult = execution.learnerModelDebug;
-      if (execution.usedTutorContentTool) usedTutorContentTool = true;
+      if (execution.usedTutorContentTool) {
+        usedTutorContentTool = true;
+      }
     }
 
     const followup = followUpPrompt({ searchEnabled, searchProvider });

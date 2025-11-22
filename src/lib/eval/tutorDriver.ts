@@ -1,0 +1,330 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { createHeadlessRunner } from '@/lib/headless/runner';
+import { renderSnapshotTranscript } from '@/lib/headless/transcript';
+import { LLMUserSimulator } from '@/lib/headless/simulators';
+import { createModelIndex } from '@/lib/models';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
+import { TutorScenario } from '@/lib/eval/tutorScenarios';
+import { buildJudgeMessages, type JudgeVerdict } from '@/lib/eval/judgePrompts';
+import { getChatCompletion } from '@/lib/agent/pipelineClient';
+import { resolveModelTransport } from '@/lib/providers';
+import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
+import type { Chat, Message, ORModel, ModelTransport } from '@/lib/types';
+import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learnerModel';
+import { generatePlanContextPreamble } from '@/lib/agent/planAwareTutor';
+import { isTutorContentTool, isTutorMetaTool, isSearchTool } from '@/lib/agent/tools/categories';
+
+export type TutorEvalOptions = {
+  apiKeys?: {
+    openrouter?: string;
+    anthropic?: string;
+  };
+  outputDir?: string;
+  maxTurnsOverride?: number;
+};
+
+export type ToolUsageStats = {
+  totalCalls: number;
+  byName: Record<string, number>;
+  contentTurns: number;
+  metaCalls: number;
+  searchCalls: number;
+  maxContentCallsPerTurn: number;
+};
+
+export type TutorEvalResult = {
+  scenario: TutorScenario;
+  transcript: string;
+  snapshots: HeadlessTurnSnapshot[];
+  messages: Message[];
+  planSummary?: string;
+  learnerModelSummary?: string;
+  toolUsage: ToolUsageStats;
+  judge: {
+    raw: string;
+    parsed?: JudgeVerdict;
+  };
+  outputPath?: string;
+};
+
+function createStubModel(id: string, transport: ModelTransport, supportsTools: boolean): ORModel {
+  const supported: string[] = supportsTools ? ['tools', 'reasoning'] : ['reasoning'];
+  return {
+    id,
+    name: id,
+    transport,
+    context_length: 16000,
+    raw: { supported_parameters: supported },
+  };
+}
+
+function normalizeContent(input: unknown): string {
+  if (typeof input === 'string') return input;
+  if (Array.isArray(input)) {
+    return input
+      .map((entry) => {
+        if (typeof entry === 'string') return entry;
+        if (entry && typeof entry === 'object' && 'text' in entry) {
+          const block = entry as { text?: string };
+          return typeof block.text === 'string' ? block.text : '';
+        }
+        return '';
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+  if (input && typeof input === 'object' && 'text' in input) {
+    return typeof (input as any).text === 'string' ? ((input as any).text as string) : '';
+  }
+  return '';
+}
+
+function resolveApiKeyFactory(keys: TutorEvalOptions['apiKeys']): (params: {
+  modelId: string;
+  transport: ModelTransport;
+}) => string {
+  return ({ transport }) => {
+    if (transport === 'anthropic') {
+      if (!keys?.anthropic) {
+        throw new Error('Missing ANTHROPIC_API_KEY for anthropic transport');
+      }
+      return keys.anthropic;
+    }
+    if (!keys?.openrouter) {
+      throw new Error('Missing OPENROUTER_API_KEY for OpenRouter transport');
+    }
+    return keys.openrouter;
+  };
+}
+
+function buildInitialStudentMessage(scenario: TutorScenario): string {
+  const parts = [
+    `Hi! I need help with ${scenario.topic} (${scenario.level}).`,
+    `My goal: ${scenario.goal}`,
+    scenario.constraints?.length ? `Constraints: ${scenario.constraints.join('; ')}` : undefined,
+    `Persona: ${scenario.studentPersona}`,
+  ].filter(Boolean);
+  return parts.join(' ');
+}
+
+function summarizeToolUsage(snapshots: HeadlessTurnSnapshot[]): ToolUsageStats {
+  const byName: Record<string, number> = {};
+  let contentTurns = 0;
+  let metaCalls = 0;
+  let searchCalls = 0;
+  let maxContentCallsPerTurn = 0;
+
+  snapshots.forEach((snap) => {
+    const toolCalls = snap.assistant.toolCalls ?? [];
+    let contentThisTurn = 0;
+    toolCalls.forEach((entry) => {
+      const name = entry.name;
+      byName[name] = (byName[name] ?? 0) + 1;
+      if (isTutorContentTool(name)) {
+        contentThisTurn += 1;
+      } else if (isTutorMetaTool(name)) {
+        metaCalls += 1;
+      } else if (isSearchTool(name)) {
+        searchCalls += 1;
+      }
+    });
+    if (contentThisTurn > 0) contentTurns += 1;
+    if (contentThisTurn > maxContentCallsPerTurn) {
+      maxContentCallsPerTurn = contentThisTurn;
+    }
+  });
+
+  const totalCalls = Object.values(byName).reduce((sum, n) => sum + n, 0);
+  return { totalCalls, byName, contentTurns, metaCalls, searchCalls, maxContentCallsPerTurn };
+}
+
+async function persistResult(outputDir: string, scenarioId: string, payload: unknown): Promise<string> {
+  const targetDir = path.resolve(process.cwd(), outputDir);
+  await fs.mkdir(targetDir, { recursive: true });
+  const filepath = path.join(targetDir, `${scenarioId}.json`);
+  await fs.writeFile(filepath, JSON.stringify(payload, null, 2), 'utf8');
+  return filepath;
+}
+
+function parseJudgeResponse(raw: string): JudgeVerdict | undefined {
+  try {
+    return JSON.parse(raw) as JudgeVerdict;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function runTutorScenario(
+  scenario: TutorScenario,
+  options: TutorEvalOptions = {},
+): Promise<TutorEvalResult> {
+  const maxTurns = options.maxTurnsOverride ?? scenario.maxTurns;
+  const apiKeys = {
+    openrouter:
+      options.apiKeys?.openrouter ||
+      process.env.OPENROUTER_API_KEY ||
+      process.env.NEXT_PUBLIC_OPENROUTER_API_KEY ||
+      process.env.OPENROUTER_KEY,
+    anthropic:
+      options.apiKeys?.anthropic ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY ||
+      process.env.ANTHROPIC_KEY,
+  };
+  const teacherModelId = scenario.teacherModelId || DEFAULT_TUTOR_MODEL_ID;
+  const studentModelId = scenario.studentModelId || DEFAULT_MODEL_ID;
+  const judgeModelId = scenario.judgeModelId || DEFAULT_MODEL_ID;
+
+  const teacherTransport = resolveModelTransport(teacherModelId) || 'openrouter';
+  const studentTransport = resolveModelTransport(studentModelId) || 'openrouter';
+  const judgeTransport = resolveModelTransport(judgeModelId) || 'openrouter';
+
+  const models: ORModel[] = [
+    createStubModel(teacherModelId, teacherTransport, true),
+    createStubModel(studentModelId, studentTransport, false),
+    createStubModel(judgeModelId, judgeTransport, false),
+  ];
+  const modelIndex = createModelIndex(models);
+  const resolveApiKey = resolveApiKeyFactory(apiKeys);
+
+  const chat: Chat = {
+    id: `chat_${scenario.id}`,
+    title: scenario.title,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    settings: {
+      model: teacherModelId,
+      tutor_mode: true,
+      tutor_default_model: teacherModelId,
+      enableLearnerModel: true,
+      system: DEFAULT_BASE_SYSTEM,
+      search_enabled: false,
+      search_provider: 'openrouter',
+      showToolCallLog: true,
+      showDebugRawJson: true,
+    },
+  };
+
+  const runner = createHeadlessRunner({
+    chat,
+    models,
+    modelIndex,
+    resolveApiKey,
+    uiOverrides: {
+      debugMode: true,
+      experimentalTutor: true,
+      forceTutorMode: true,
+      next: { tutorMode: true },
+    },
+  });
+
+  const studentSim = new LLMUserSimulator({
+    modelId: studentModelId,
+    transport: studentTransport,
+    apiKey: resolveApiKey({ modelId: studentModelId, transport: studentTransport }),
+    personaPrompt: [
+      'You are a student in a simulated tutoring session.',
+      `Topic: ${scenario.topic} (${scenario.level})`,
+      `Goal: ${scenario.goal}`,
+      `Persona: ${scenario.studentPersona}`,
+      'Answer naturally, include mistakes that fit your persona, and ask clarifying questions when unsure.',
+      scenario.constraints?.length ? `Constraints: ${scenario.constraints.join('; ')}` : undefined,
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    temperature: 0.7,
+  });
+
+  let studentMessage = buildInitialStudentMessage(scenario);
+  const snapshots: HeadlessTurnSnapshot[] = [];
+
+  for (let turn = 0; turn < maxTurns; turn += 1) {
+    const snapshot = await runner.runTurn({ content: studentMessage, turnIndex: turn });
+    snapshots.push(snapshot);
+    if (turn === maxTurns - 1) break;
+
+    const tutorMessage = snapshot.assistant.content;
+    const tutorUiSummary =
+      typeof snapshot.assistant.tutorUi?.session === 'object'
+        ? JSON.stringify(snapshot.assistant.tutorUi.session)
+        : undefined;
+
+    studentMessage = await studentSim.respond(tutorMessage, {
+      planSummary: tutorUiSummary,
+      turn,
+    });
+  }
+
+  const result = runner.toResult();
+  const toolUsage = summarizeToolUsage(result.snapshots);
+  const transcript = renderSnapshotTranscript(result.snapshots);
+  const finalPlan =
+    runner.getSession().getState().chats.find((c) => c.id === chat.id)?.settings.learningPlan;
+  const learnerModel = getLatestLearnerModel(result.messages);
+  const planSummary =
+    finalPlan && planUsageNeeded(toolUsage)
+      ? generatePlanContextPreamble(finalPlan, learnerModel)
+      : undefined;
+  const learnerModelSummary =
+    learnerModel && finalPlan ? generateModelSummary(learnerModel, finalPlan) : undefined;
+
+  const judgeMessages = buildJudgeMessages({
+    scenario,
+    transcript,
+    planSummary,
+    learnerModelSummary,
+    toolUsageSummary: formatToolUsage(toolUsage),
+  });
+  const judgeResponse = await getChatCompletion()({
+    apiKey: resolveApiKey({ modelId: judgeModelId, transport: judgeTransport }),
+    transport: judgeTransport,
+    model: judgeModelId,
+    messages: judgeMessages,
+    temperature: 0,
+    max_tokens: 256,
+  });
+  const judgeRaw =
+    judgeResponse?.choices?.[0]?.message?.content != null
+      ? normalizeContent(judgeResponse.choices[0].message.content)
+      : '';
+  const parsedJudge = parseJudgeResponse(judgeRaw);
+
+  const payload: TutorEvalResult = {
+    scenario,
+    transcript,
+    snapshots: result.snapshots,
+    messages: result.messages,
+    planSummary,
+    learnerModelSummary,
+    toolUsage,
+    judge: {
+      raw: judgeRaw,
+      parsed: parsedJudge,
+    },
+  };
+
+  if (options.outputDir) {
+    payload.outputPath = await persistResult(options.outputDir, scenario.id, payload);
+  }
+
+  return payload;
+}
+
+function planUsageNeeded(stats: ToolUsageStats): boolean {
+  return stats.contentTurns > 0 || stats.metaCalls > 0;
+}
+
+function formatToolUsage(stats: ToolUsageStats): string {
+  const entries = Object.entries(stats.byName)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => `${name}: ${count}`);
+  const extras = [
+    `content_turns=${stats.contentTurns}`,
+    `meta_calls=${stats.metaCalls}`,
+    `search_calls=${stats.searchCalls}`,
+    `max_content_per_turn=${stats.maxContentCallsPerTurn}`,
+  ];
+  return [...entries, ...extras].join(' | ');
+}

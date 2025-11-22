@@ -4,6 +4,7 @@ import type {
   LearningPlan,
   LearnerModel,
   Message,
+  MessageTutor,
   TutorPlanSuggestion,
   Evidence,
   Misconception,
@@ -41,6 +42,16 @@ const TUTOR_TOOL_NAME_SET = new Set<TutorToolName>([
   'add_to_deck',
   'srs_review',
 ]);
+
+const CONTENT_KEYS: Array<keyof MessageTutor> = [
+  'questionnaire',
+  'diagnostic',
+  'planProposal',
+  'mcq',
+  'fillBlank',
+  'openEnded',
+  'flashcards',
+];
 
 export function isTutorToolName(name: string): name is TutorToolName {
   return TUTOR_TOOL_NAME_SET.has(name as TutorToolName);
@@ -104,6 +115,20 @@ function normalizePlanSuggestions(items: unknown[]): TutorPlanSuggestion[] {
       };
     })
     .filter(Boolean) as TutorPlanSuggestion[];
+}
+
+function withContentReset(
+  activeKey: keyof MessageTutor,
+  patch: Partial<MessageTutor>,
+): Partial<MessageTutor> {
+  const reset: Partial<MessageTutor> = {};
+  CONTENT_KEYS.forEach((key) => {
+    if (key === activeKey) return;
+    (reset as any)[key] = undefined;
+  });
+  reset.attempts = undefined;
+  reset.grading = undefined;
+  return { ...reset, ...patch };
 }
 
 export async function applyTutorToolCall(opts: {
@@ -241,21 +266,17 @@ export async function applyTutorToolCall(opts: {
           ? args['prompt'].trim()
           : undefined;
 
-    await applyTutorPatch((prev) => {
-      const nextQuestionnaire = {
-        questions: normalizedQuestions,
-        status: 'awaiting' as const,
-        submittedAt: undefined,
-        responses: undefined,
-      };
-      const patch: Record<string, unknown> = {
-        questionnaire: nextQuestionnaire,
-      };
-      if (title && (!prev.title || typeof prev.title !== 'string')) {
-        patch.title = title;
-      }
-      return patch;
-    });
+    await applyTutorPatch((prev) =>
+      withContentReset('questionnaire', {
+        questionnaire: {
+          questions: normalizedQuestions,
+          status: 'awaiting' as const,
+          submittedAt: undefined,
+          responses: undefined,
+        },
+        title: title || (typeof prev.title === 'string' ? prev.title : undefined),
+      }),
+    );
 
     try {
       return {
@@ -343,17 +364,19 @@ export async function applyTutorToolCall(opts: {
         ? (quiz.interpretation as Record<string, string>)
         : undefined;
 
-    await applyTutorPatch(() => ({
-      diagnostic: {
-        diagnosticId,
-        topic: topic || '',
-        depth,
-        items: normalizedItems,
-        adaptToAnswers,
-        interpretation,
-        status: 'pending',
-      },
-    }));
+    await applyTutorPatch(() =>
+      withContentReset('diagnostic', {
+        diagnostic: {
+          diagnosticId,
+          topic: topic || '',
+          depth,
+          items: normalizedItems,
+          adaptToAnswers,
+          interpretation,
+          status: 'pending',
+        },
+      }),
+    );
 
     try {
       return {
@@ -452,8 +475,8 @@ export async function applyTutorToolCall(opts: {
       ? normalizePlanSuggestions(source.suggestions as unknown[])
       : undefined;
 
-    await applyTutorPatch((prev) => {
-      const patch: Record<string, unknown> = {
+    await applyTutorPatch((prev) =>
+      withContentReset('planProposal', {
         planProposal: {
           plan,
           requiresConfirmation,
@@ -461,14 +484,14 @@ export async function applyTutorToolCall(opts: {
           status: 'pending' as const,
           requestedAt: Date.now(),
         },
-      };
-      if (normalizedSuggestions && normalizedSuggestions.length > 0) {
-        patch.planSuggestions = normalizedSuggestions;
-      } else if (prev.planSuggestions && Array.isArray(prev.planSuggestions)) {
-        patch.planSuggestions = prev.planSuggestions;
-      }
-      return patch;
-    });
+        planSuggestions:
+          normalizedSuggestions && normalizedSuggestions.length > 0
+            ? normalizedSuggestions
+            : Array.isArray(prev.planSuggestions)
+              ? prev.planSuggestions
+              : undefined,
+      }),
+    );
 
     try {
       return {
@@ -506,13 +529,13 @@ export async function applyTutorToolCall(opts: {
     try {
       return {
         handled: true,
-        usedContent: true,
+        usedContent: false,
         payload: JSON.stringify({
           suggestionCount: normalized.length,
         }),
       };
     } catch {
-      return { handled: true, usedContent: true };
+      return { handled: true, usedContent: false };
     }
   }
 
@@ -573,7 +596,7 @@ export async function applyTutorToolCall(opts: {
       };
     });
 
-    return { handled: true, usedContent: true };
+    return { handled: true, usedContent: false };
   }
 
   if (name === 'update_learner_model') {
@@ -676,7 +699,7 @@ export async function applyTutorToolCall(opts: {
     if (!currentModel || evidence.length === 0) {
       return {
         handled: true,
-        usedContent: true,
+        usedContent: false,
         learnerModel: currentModel,
         updatedPlan: plan,
       };
@@ -723,7 +746,7 @@ export async function applyTutorToolCall(opts: {
 
     return {
       handled: true,
-      usedContent: true,
+      usedContent: false,
       learnerModel: updatedModel,
       planUpdates: planResult.planUpdates,
       updatedPlan: planResult.updatedPlan,
@@ -738,20 +761,19 @@ export async function applyTutorToolCall(opts: {
     };
   }
 
-  const patchTutorItems = async (mapKey: string) => {
+  const patchTutorItems = async (mapKey: keyof Pick<MessageTutor, 'mcq' | 'fillBlank' | 'openEnded' | 'flashcards'>) => {
     const normalized = normalizeTutorQuizPayload(args);
     if (!normalized) return { handled: false, usedContent: false } as const;
     const titleFromArgs =
       typeof args['title'] === 'string' ? (args['title'] as string) : undefined;
-    await applyTutorPatch((prev) => {
-      const existingTitle = typeof prev.title === 'string' && prev.title.trim().length > 0 ? prev.title : titleFromArgs;
-      const existingItems = Array.isArray(prev[mapKey]) ? (prev[mapKey] as unknown[]) : [];
-      const nextPatch: Record<string, unknown> = {
-        [mapKey]: [...existingItems, ...normalized.items],
-      };
-      if (existingTitle) nextPatch.title = existingTitle;
-      return nextPatch;
-    });
+    await applyTutorPatch((prev) =>
+      withContentReset(mapKey, {
+        [mapKey]: normalized.items,
+        title:
+          titleFromArgs ||
+          (typeof prev.title === 'string' && prev.title.trim().length > 0 ? prev.title : undefined),
+      }),
+    );
     try {
       const payload: Record<string, unknown> = { items: normalized.items };
       if (titleFromArgs) payload.title = titleFromArgs;
