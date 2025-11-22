@@ -74,6 +74,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
 
   const {
     containerRef,
+    contentRef,
     endRef,
     showJump,
     jumpToLatest,
@@ -239,105 +240,110 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   return (
     <div
       ref={containerRef}
-      className="scroll-area message-list space-y-2 h-full"
+      className="scroll-area message-list h-full"
       style={{ background: 'var(--color-canvas)' }}
     >
-      {hiddenCount > 0 && (
-        <div className="flex justify-center py-2">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={showMore}>
-            Show earlier messages ({hiddenCount})
-          </button>
-        </div>
-      )}
+      <div ref={contentRef} className="space-y-2 pb-4">
+        {hiddenCount > 0 && (
+          <div className="flex justify-center py-2">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={showMore}>
+              Show earlier messages ({hiddenCount})
+            </button>
+          </div>
+        )}
 
-      {visibleMessages.map((message) => {
-        const isEditingThisMessage = editingId === message.id;
-        const showInlineActions = !isMobile || isEditingThisMessage;
+        {visibleMessages.map((message) => {
+          const isEditingThisMessage = editingId === message.id;
+          const showInlineActions = !isMobile || isEditingThisMessage;
 
-        return (
-          <MessageCard
-            key={message.id}
-            message={message}
-            chat={chat}
-            models={models}
-            isMobile={isMobile}
-            isActive={isMobile && activeMessageId === message.id}
-            showInlineActions={showInlineActions}
-            isStreaming={isStreaming}
-            isEditing={isEditingThisMessage}
-            draft={draft}
-            setDraft={setDraft}
-            setEditingId={setEditingId}
-            saveEdit={saveEdit}
-            startEditingMessage={startEditingMessage}
-            copyMessage={copyMessage}
-            copiedId={copiedId}
-            branchFromMessage={branchFromMessage}
-            onChooseRegenerateModel={(modelId) => {
-              if (!modelId) return;
-              regenerate(message.id, { modelId });
-            }}
-            setLightbox={setLightbox}
-            waitingForFirstToken={waitingForFirstToken && message.id === lastMessageId}
-            lastMessageId={lastMessageId}
-            showStats={showStats}
-            isStatsExpanded={isStatsExpanded}
-            toggleStats={toggleStats}
-            tutorEnabled={tutorEnabled}
-            setActiveMessageId={setActiveMessageId}
-            setMobileSheet={setMobileSheet}
-            braveGloballyEnabled={braveGloballyEnabled}
-            braveEntry={braveByMessageId[message.id]}
-            isSourcesExpanded={isSourcesExpanded(message.id)}
-            onToggleSources={toggleSources}
-            debugMode={debugMode}
-            debugEntry={debugByMessageId[message.id]}
-            isDebugExpanded={isDebugExpanded(message.id)}
-            onToggleDebug={toggleDebug}
-            tutorGloballyEnabled={tutorGloballyEnabled}
-            tutorEntry={tutorByMessageId[message.id] || (message as any)?.tutor}
-            autoReasoningModelIds={autoReasoningModelIds}
-            isReasoningExpanded={isReasoningExpanded(message.id)}
-            onToggleReasoning={toggleReasoning}
-            showToolCallLog={!!chat?.settings?.showToolCallLog}
-            showDebugRawJson={chat?.settings?.showDebugRawJson ?? true}
-            toolCalls={Array.isArray(message.toolCalls) ? message.toolCalls : undefined}
-            highlightToolCalls={message.id === lastMessageId}
-          />
-        );
-      })}
+          return (
+            <MessageCard
+              key={message.id}
+              message={message}
+              chat={chat}
+              models={models}
+              isMobile={isMobile}
+              isActive={isMobile && activeMessageId === message.id}
+              showInlineActions={showInlineActions}
+              isStreaming={isStreaming}
+              isEditing={isEditingThisMessage}
+              draft={draft}
+              setDraft={setDraft}
+              setEditingId={setEditingId}
+              saveEdit={saveEdit}
+              startEditingMessage={startEditingMessage}
+              copyMessage={copyMessage}
+              copiedId={copiedId}
+              branchFromMessage={branchFromMessage}
+              onChooseRegenerateModel={(modelId) => {
+                if (!modelId) return;
+                regenerate(message.id, { modelId });
+              }}
+              setLightbox={setLightbox}
+              waitingForFirstToken={waitingForFirstToken && message.id === lastMessageId}
+              lastMessageId={lastMessageId}
+              showStats={showStats}
+              isStatsExpanded={isStatsExpanded}
+              toggleStats={toggleStats}
+              tutorEnabled={tutorEnabled}
+              setActiveMessageId={setActiveMessageId}
+              setMobileSheet={setMobileSheet}
+              braveGloballyEnabled={braveGloballyEnabled}
+              braveEntry={braveByMessageId[message.id]}
+              isSourcesExpanded={isSourcesExpanded(message.id)}
+              onToggleSources={toggleSources}
+              debugMode={debugMode}
+              debugEntry={debugByMessageId[message.id]}
+              isDebugExpanded={isDebugExpanded(message.id)}
+              onToggleDebug={toggleDebug}
+              tutorGloballyEnabled={tutorGloballyEnabled}
+              tutorEntry={tutorByMessageId[message.id] || (message as any)?.tutor}
+              autoReasoningModelIds={autoReasoningModelIds}
+              isReasoningExpanded={isReasoningExpanded(message.id)}
+              onToggleReasoning={toggleReasoning}
+              showToolCallLog={!!chat?.settings?.showToolCallLog}
+              showDebugRawJson={chat?.settings?.showDebugRawJson ?? true}
+              toolCalls={Array.isArray(message.toolCalls) ? message.toolCalls : undefined}
+              highlightToolCalls={message.id === lastMessageId}
+            />
+          );
+        })}
 
-      {planGeneration?.status === 'loading' && (
-        <div className="mx-auto w-full max-w-2xl px-2">
-          <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-primary/5 px-5 py-4 shadow-[var(--shadow-card)]">
-            <div
-              className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen"
-              aria-hidden="true"
-            >
-              <div className="absolute -top-24 -left-6 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
-              <div className="absolute -bottom-16 right-0 h-52 w-52 rounded-full bg-primary/15 blur-[80px]" />
-            </div>
-            <div className="relative flex items-start gap-3">
-              <div className="mt-0.5 rounded-full bg-primary/15 p-2">
-                <ArrowPathIcon className="h-5 w-5 text-primary animate-spin" />
+        {planGeneration?.status === 'loading' && (
+          <div className="mx-auto w-full max-w-2xl px-2">
+            <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-primary/5 px-5 py-4 shadow-[var(--shadow-card)]">
+              <div
+                className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen"
+                aria-hidden="true"
+              >
+                <div className="absolute -top-24 -left-6 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+                <div className="absolute -bottom-16 right-0 h-52 w-52 rounded-full bg-primary/15 blur-[80px]" />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-primary">
-                  Designing your personalized learning plan…
-                </p>
-                <p className="mt-1 text-xs text-primary/80">
-                  {planGeneration.goal
-                    ? `Goal: ${planGeneration.goal}`
-                    : 'Mapping out topics, objectives, and prerequisites for you.'}
-                </p>
-                <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-primary/15">
-                  <div className="plan-loading-bar h-full" />
+              <div className="relative flex items-start gap-3">
+                <div className="mt-0.5 rounded-full bg-primary/15 p-2">
+                  <ArrowPathIcon className="h-5 w-5 text-primary animate-spin" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-primary">
+                    Designing your personalized learning plan…
+                  </p>
+                  <p className="mt-1 text-xs text-primary/80">
+                    {planGeneration.goal
+                      ? `Goal: ${planGeneration.goal}`
+                      : 'Mapping out topics, objectives, and prerequisites for you.'}
+                  </p>
+                  <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-primary/15">
+                    <div className="plan-loading-bar h-full" />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Typing indicator is now rendered inline within the latest assistant message */}
+        <div ref={endRef} />
+      </div>
 
       {showJump && (
         <div className="jump-to-latest">
@@ -355,8 +361,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         </div>
       )}
 
-      {/* Typing indicator is now rendered inline within the latest assistant message */}
-      <div ref={endRef} />
       {/* Mobile action sheet */}
       {isMobile &&
         mobileSheet &&

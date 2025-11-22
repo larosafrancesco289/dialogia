@@ -23,6 +23,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   } = options;
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [showJump, setShowJump] = useState(false);
@@ -128,6 +129,39 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       if (onScrollAwayRef.current) onScrollAwayRef.current();
     }
   }, []);
+
+  // Watch for content size changes (e.g. syntax highlighting loading, images loading)
+  useEffect(() => {
+    const contentEl = contentRef.current;
+    const containerEl = containerRef.current;
+    if (!contentEl || !containerEl || typeof ResizeObserver === 'undefined') return;
+
+    let prevScrollHeight = containerEl.scrollHeight;
+
+    const observer = new ResizeObserver(() => {
+      const currentScrollHeight = containerEl.scrollHeight;
+      const delta = currentScrollHeight - prevScrollHeight;
+      
+      // Calculate where we were relative to the bottom BEFORE the resize
+      const oldDistanceFromBottom = prevScrollHeight - containerEl.scrollTop - containerEl.clientHeight;
+      
+      prevScrollHeight = currentScrollHeight;
+
+      // Only adjust if we were effectively at the bottom (strict threshold)
+      // This prevents snapping if the user is reading slightly up
+      if (delta > 0 && oldDistanceFromBottom < 20) {
+        containerEl.scrollTop += delta;
+        syncScrollState();
+      } else {
+        // If we didn't auto-scroll, we should still update our state 
+        // because we might no longer be at the bottom
+        syncScrollState();
+      }
+    });
+
+    observer.observe(contentEl);
+    return () => observer.disconnect();
+  }, [syncScrollState]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -256,6 +290,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
   return {
     containerRef,
+    contentRef,
     endRef,
     atBottom,
     showJump,
