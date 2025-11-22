@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeZdrFilter, guardModelOrNotice } from '@/lib/zdr/enforce';
+import { computeZdrFilter, guardModelOrNotice } from './enforce';
 
 const mergeState = (target: any, patch: any) => {
   if (!patch) return;

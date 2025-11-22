@@ -7,9 +7,9 @@ import {
   ZDR_UNAVAILABLE_NOTICE,
   type ZdrFetchers,
   type ZdrLists,
-} from '@/lib/zdr';
+} from './index';
 import type { StoreSetter } from '@/lib/agent/types';
-import type { EnsureListsResult, ZdrFilterMode } from '@/lib/zdr/types';
+import type { EnsureListsResult, ZdrFilterMode } from './types';
 
 export async function computeZdrFilter<T extends { id?: string }>(
   models: T[],

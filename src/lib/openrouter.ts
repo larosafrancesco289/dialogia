@@ -11,7 +11,7 @@ import { buildChatBody } from '@/lib/agent/request';
 import { consumeSse, type SseEvent } from '@/lib/api/stream';
 import { ApiError, API_ERROR_CODES, responseError } from '@/lib/api/errors';
 import { normalizeUsage, shouldIncludeUsage, type Usage } from '@/lib/api/normalizers';
-import { ZDR_CACHE_TTL_MS } from '@/lib/zdr/constants';
+import { ZDR_CACHE_TTL_MS } from '@/lib/policy/zdr/constants';
 
 // Transport-only client for OpenRouter.
 // Request payload construction lives in agent/request.buildChatBody to keep one source of truth

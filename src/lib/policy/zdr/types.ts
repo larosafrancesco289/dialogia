@@ -1,4 +1,4 @@
-import type { ZdrFilterResult, ZdrLists } from '@/lib/zdr';
+import type { ZdrFilterResult, ZdrLists } from './index';
 
 export type ZdrFilterMode = 'enforce' | 'informational';
 

@@ -28,8 +28,8 @@ import { describeModelPricing } from '@/lib/cost';
 import { shallow } from 'zustand/shallow';
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
-import { evaluateZdrModel, ZDR_NO_MATCH_NOTICE } from '@/lib/zdr';
-import type { ZdrLists } from '@/lib/zdr';
+import { evaluateZdrModel, ZDR_NO_MATCH_NOTICE } from '@/lib/policy/zdr';
+import type { ZdrLists } from '@/lib/policy/zdr';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { getModelTransportLabel } from '@/lib/providers';
 

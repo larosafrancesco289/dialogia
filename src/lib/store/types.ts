@@ -65,37 +65,7 @@ export type UIState = {
     }
   >;
   // Tutor tool payloads keyed by assistant message id
-  tutorByMessageId?: Record<
-    string,
-    {
-      title?: string;
-      mcq?: import('@/lib/types').TutorMCQItem[];
-      fillBlank?: import('@/lib/types').TutorFillBlankItem[];
-      openEnded?: import('@/lib/types').TutorOpenItem[];
-      flashcards?: import('@/lib/types').TutorFlashcardItem[];
-      // Session and planning metadata
-      session?: {
-        goal?: string;
-        duration_min?: number;
-        stage?: 'baseline' | 'teach' | 'practice' | 'reflect' | 'review';
-        focus?: string;
-        next?: string;
-        skills?: string[];
-      };
-      recommendation?: {
-        reason?: string;
-        recommendation?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
-      };
-      // User attempts (stateful, per assistant message)
-      attempts?: {
-        mcq?: Record<string, { choice?: number; done?: boolean; correct?: boolean }>;
-        fillBlank?: Record<string, { answer?: string; revealed?: boolean; correct?: boolean }>;
-        open?: Record<string, { answer?: string }>;
-      };
-      // Grading results keyed by item id
-      grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
-    }
-  >;
+  tutorByMessageId?: Record<string, import('@/lib/types').MessageTutor>;
   tutorProfileByChatId?: Record<string, import('@/lib/types').TutorProfile>;
   tutorWelcomeByChatId?: Record<
     string,
