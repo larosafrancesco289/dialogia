@@ -52,7 +52,6 @@ export type UIState = {
   routePreference?: 'speed' | 'cost';
   // Experimental feature toggles (global visibility/usage)
   experimentalBrave?: boolean; // show Brave web search and related UI
-  experimentalDeepResearch?: boolean; // show DeepResearch toggle and enable API path
   experimentalTutor?: boolean; // show Tutor mode UI and enable tutor tools
   enableMultiModelChat?: boolean; // allow selecting and chatting with multiple models simultaneously
   braveByMessageId?: Record<
@@ -186,7 +185,6 @@ export type PersistedUIState = Pick<
   | 'zdrOnly'
   | 'routePreference'
   | 'experimentalBrave'
-  | 'experimentalDeepResearch'
   | 'experimentalTutor'
   | 'enableMultiModelChat'
   | 'tutorDefaultModelId'

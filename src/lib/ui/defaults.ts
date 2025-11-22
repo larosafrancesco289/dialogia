@@ -23,7 +23,6 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
     zdrOnly: getDefaultZdrOnly(),
     routePreference: getRoutePreferenceDefault(),
     experimentalBrave: false,
-    experimentalDeepResearch: false,
     experimentalTutor: true,
     enableMultiModelChat: false,
     braveByMessageId: {},

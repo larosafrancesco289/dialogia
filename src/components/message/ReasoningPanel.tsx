@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ChevronDownIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import { Markdown } from '@/lib/markdown';
+import { DeepResearchTimeline, type DeepResearchEvent } from './DeepResearchTimeline';
 
 type ReasoningPanelProps = {
   reasoning: string;
@@ -17,6 +19,19 @@ export function ReasoningPanel({
 }: ReasoningPanelProps) {
   const hasReasoning = !!(reasoning && reasoning.trim().length > 0);
 
+  // Try to parse deep research trace
+  const trace = useMemo(() => {
+    if (!hasReasoning) return null;
+    try {
+      const parsed = JSON.parse(reasoning);
+      return Array.isArray(parsed) ? (parsed as DeepResearchEvent[]) : null;
+    } catch {
+      return null;
+    }
+  }, [reasoning, hasReasoning]);
+
+  const isDeepResearch = !!trace;
+
   const bodyId = useId();
   const [copied, setCopied] = useState(false);
   const [pulse, setPulse] = useState(false);
@@ -24,6 +39,14 @@ export function ReasoningPanel({
   const throttledRef = useRef(0);
 
   const previewText = useMemo(() => {
+    if (isDeepResearch && trace && trace.length > 0) {
+      const last = trace[trace.length - 1];
+      if (last.type === 'thought') return last.output || 'Thinking...';
+      if (last.type === 'search') return `Searching: ${last.input?.query || ''}`;
+      if (last.type === 'fetch') return `Reading: ${last.input?.url || ''}`;
+      return 'Deep Research active...';
+    }
+
     if (hasReasoning) {
       const trimmed = reasoning.trim().replace(/\s+/g, ' ');
       if (!isStreaming) {
@@ -38,7 +61,7 @@ export function ReasoningPanel({
     }
     if (isStreaming) return 'Reasoning stream in progress…';
     return 'Reasoning hidden — tap to reveal the full trace.';
-  }, [hasReasoning, reasoning, isStreaming]);
+  }, [hasReasoning, reasoning, isStreaming, isDeepResearch, trace]);
 
   const [displayPreview, setDisplayPreview] = useState(previewText);
 
@@ -112,13 +135,15 @@ export function ReasoningPanel({
           onClick={onToggle}
         >
           <span className="reasoning-labels">
-            <span className="reasoning-title">Thinking</span>
+            <span className="reasoning-title">
+              {isDeepResearch ? 'Deep Research' : 'Thinking'}
+            </span>
             <span className={`reasoning-status ${isStreaming ? 'is-live' : ''}`}>
               {isStreaming
-                ? 'Reasoning in progress'
+                ? isDeepResearch ? 'Researching...' : 'Reasoning in progress'
                 : expanded
-                  ? 'Hide reasoning'
-                  : 'View the model’s chain of thought'}
+                  ? 'Hide details'
+                  : 'View process'}
             </span>
             <span
               className={`reasoning-subtitle reasoning-preview ${isStreaming ? 'is-live' : ''}`}
@@ -138,8 +163,12 @@ export function ReasoningPanel({
           hidden={!expanded}
         >
           <div className="reasoning-scroll">
-            {hasReasoning ? (
-              <pre className="reasoning-text">{reasoning}</pre>
+            {isDeepResearch && trace ? (
+              <DeepResearchTimeline trace={trace} />
+            ) : hasReasoning ? (
+              <div className="reasoning-text">
+                <Markdown content={reasoning} />
+              </div>
             ) : (
               <div className="reasoning-loader" role="status" aria-live="polite">
                 <div className="reasoning-loader__bar" />
@@ -148,7 +177,7 @@ export function ReasoningPanel({
               </div>
             )}
           </div>
-          {hasReasoning && (
+          {!isDeepResearch && hasReasoning && (
             <button
               type="button"
               className="reasoning-copy icon-button"

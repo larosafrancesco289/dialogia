@@ -129,7 +129,6 @@ export function SettingsDrawer() {
     (useChatStore.getState().ui.routePreference as any) || 'speed',
   );
   const experimentalBrave = useChatStore((s) => !!s.ui.experimentalBrave);
-  const experimentalDeepResearch = useChatStore((s) => !!s.ui.experimentalDeepResearch);
   const experimentalTutor = useChatStore((s) => !!s.ui.experimentalTutor);
   const enableMultiModelChat = useChatStore((s) => !!s.ui.enableMultiModelChat);
   // System prompt presets
@@ -553,7 +552,6 @@ export function SettingsDrawer() {
                         <LabsPanel
                           renderSection={renderSection}
                           experimentalBrave={experimentalBrave}
-                          experimentalDeepResearch={experimentalDeepResearch}
                           setUI={setUI}
                         />
                       );
