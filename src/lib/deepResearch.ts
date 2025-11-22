@@ -25,28 +25,30 @@ export function buildDeepResearchPrompt(opts?: {
   return [
     'You are DeepResearch, a meticulous research agent with access to web search and page fetching tools.',
     '',
-    'Goals:',
-    '- Plan your research before answering. Formulate 2–4 focused queries.',
-    '- Use web_search to gather diverse, recent, high-authority sources.',
-    '- Fetch promising URLs with fetch_url to read the primary content and extract quotes.',
-    '- Resolve conflicts across sources and double-check claims. Prefer primary and reputable sources.',
-    '- Track sources with stable URLs; avoid paywalled/transient spam when possible.',
+    'Core Objective:',
+    'Answer the user\'s request by gathering verifiable facts from high-quality online sources. You must reason step-by-step, explaining your research plan and every action you take.',
     '',
-    'Operating rules:',
-    '- Interleave reasoning between tool calls. After tool results, decide the next best action.',
-    '- Call tools with precise arguments; avoid redundant queries and unnecessary calls.',
-    '- If a tool fails, adjust queries or pick alternative sources.',
-    '- Prefer a small, strong set of sources (3–8) over many weak ones.',
-    '- Extract short quotes with context where useful; never fabricate quotes.',
-    '- If the answer is uncertain, say so and suggest how to verify.',
+    'Research Loop:',
+    '1. **Analyze**: specificy what information is needed to answer the request.',
+    '2. **Search**: Use `web_search` to find relevant pages. Use focused, diverse queries. If a search yields poor results, refine the query and try again.',
+    '3. **Read**: Use `fetch_url` to read the full content of promising search results to extract specific details, quotes, and data.',
+    '4. **Synthesize**: Compare information from multiple sources to ensure accuracy. Resolve conflicts.',
+    '5. **Repeat**: Continue this loop until you have sufficient information to provide a comprehensive answer.',
     '',
-    `Audience: ${audience}. Style: ${style}. Citations: ${cite === 'inline' ? 'cite inline as [n]' : 'append footnotes'}.`,
+    'Operating Rules:',
+    '- **Always reason before acting**: Explicitly state what you are looking for and why before calling a tool.',
+    '- **Verify, don\'t guess**: If you are unsure, search again. Do not halluncinate information.',
+    '- **Cite sources**: Keep track of URLs. In your final answer, cite every claim.',
+    '- **Be efficient**: Call tools with precise arguments. Avoid redundant queries.',
     '',
-    'Output format:',
-    '- Start with a crisp executive summary (3–6 bullets).',
-    '- Follow with a balanced analysis that distinguishes facts from interpretation.',
-    '- Include a brief timeline or key numbers section when relevant.',
-    `- ${cite === 'inline' ? 'Cite sources inline as [n]' : 'Add footnotes [n] at the end'} with stable URLs.`,
+    `Target Audience: ${audience}.`,
+    `Tone & Style: ${style}.`,
+    `Citations: ${cite === 'inline' ? 'cite inline as [n]' : 'append footnotes'}.`,
+    '',
+    'Output Format:',
+    '- Start with a clear "Thinking:" block (implicit in your reasoning) explaining your plan.',
+    '- Execute tool calls as needed.',
+    '- When finished, provide the **Final Answer** starting with a crisp summary, followed by detailed analysis and citations.',
   ].join('\n');
 }
 
@@ -144,6 +146,12 @@ export const DEEP_TOOLS: ToolDefinition[] = [
   },
 ];
 
+export type DeepResearchEvent = {
+  type: 'search' | 'fetch' | 'time' | 'note' | 'thought';
+  input?: any;
+  output?: any;
+};
+
 export type DeepResearchParams = {
   apiKey: string; // OPENROUTER_API_KEY (server)
   task: string;
@@ -153,17 +161,14 @@ export type DeepResearchParams = {
   cite?: 'inline' | 'footnotes';
   maxIterations?: number;
   providerSort?: ProviderSort;
+  onProgress?: (event: DeepResearchEvent) => void;
   // Brave options defaults are handled in tool impl
 };
 
 export type DeepResearchOutput = {
   answer: string;
   sources: DeepSearchResult[];
-  trace?: Array<{
-    type: 'search' | 'fetch' | 'time' | 'note';
-    input?: any;
-    output?: any;
-  }>;
+  trace?: Array<DeepResearchEvent>;
   usage?: any;
   model: string;
 };
@@ -182,7 +187,17 @@ async function requiresReasoningModel(apiKey: string, modelId: string, origin: s
 }
 
 export async function deepResearch(params: DeepResearchParams): Promise<DeepResearchOutput> {
-  const { apiKey, task, model, audience, style, cite, maxIterations = 10, providerSort } = params;
+  const {
+    apiKey,
+    task,
+    model,
+    audience,
+    style,
+    cite,
+    maxIterations = 10,
+    providerSort,
+    onProgress,
+  } = params;
   const origin = apiDefaults.resolveOrigin();
 
   // Enforce reasoning-only usage when configured via env (default true)
@@ -237,8 +252,16 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
     const msg = choice?.message || {};
     const toolCalls = normalizeToolCalls(msg);
 
+    // Capture interleaved thought if present
+    const thought = typeof msg?.content === 'string' ? msg.content : '';
+    if (thought) {
+      const event: DeepResearchEvent = { type: 'thought', input: {}, output: thought };
+      trace?.push(event);
+      onProgress?.(event);
+    }
+
     if (!allowTools || toolCalls.length === 0) {
-      const final = typeof msg?.content === 'string' ? msg.content : '';
+      const final = thought;
       return {
         answer: final,
         sources: collectedSources,
@@ -248,8 +271,8 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
       };
     }
 
-    // Append assistant tool_calls to maintain full context
-    messages.push({ role: 'assistant', content: null, tool_calls: toolCalls });
+    // Append assistant tool_calls to maintain full context, including the thought
+    messages.push({ role: 'assistant', content: thought || null, tool_calls: toolCalls });
 
     for (const tc of toolCalls) {
       const name = tc.function.name;
@@ -262,7 +285,9 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
             : 'brave';
           if (provider !== 'brave') {
             const unsupported = { error: `unsupported_provider_${provider}` };
-            trace?.push({ type: 'search', input: args, output: unsupported });
+            const event: DeepResearchEvent = { type: 'search', input: args, output: unsupported };
+            trace?.push(event);
+            onProgress?.(event);
             messages.push({
               role: 'tool',
               tool_call_id: tc.id,
@@ -298,7 +323,9 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
             exclude_domains: excludeDomains,
           };
           const results = await runWebSearch(searchArgs);
-          trace?.push({ type: 'search', input: args, output: results });
+          const event: DeepResearchEvent = { type: 'search', input: args, output: results };
+          trace?.push(event);
+          onProgress?.(event);
           for (const r of results) {
             if (!r?.url) continue;
             if (!seenUrls.has(r.url)) {
@@ -314,7 +341,9 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
           });
         } catch (e: any) {
           const err = { error: String(e?.message || 'search_failed') };
-          trace?.push({ type: 'search', input: args, output: err });
+          const event: DeepResearchEvent = { type: 'search', input: args, output: err };
+          trace?.push(event);
+          onProgress?.(event);
           messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify(err) });
         }
         continue;
@@ -330,15 +359,19 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
           };
           if (!fetchArgs.url) throw new Error('fetch_missing_url');
           const page = await fetchUrl(fetchArgs);
-          trace?.push({
+          const event: DeepResearchEvent = {
             type: 'fetch',
             input: fetchArgs,
             output: { ...page, text: page.text?.slice(0, 4000) },
-          });
+          };
+          trace?.push(event);
+          onProgress?.(event);
           messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify(page) });
         } catch (e: any) {
           const err = { error: String(e?.message || 'fetch_failed') };
-          trace?.push({ type: 'fetch', input: args, output: err });
+          const event: DeepResearchEvent = { type: 'fetch', input: args, output: err };
+          trace?.push(event);
+          onProgress?.(event);
           messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify(err) });
         }
         continue;
@@ -346,7 +379,9 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
 
       if (name === 'get_time') {
         const timePayload = getCurrentTime();
-        trace?.push({ type: 'time', input: {}, output: timePayload });
+        const event: DeepResearchEvent = { type: 'time', input: {}, output: timePayload };
+        trace?.push(event);
+        onProgress?.(event);
         messages.push({
           role: 'tool',
           tool_call_id: tc.id,

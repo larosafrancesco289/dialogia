@@ -1,7 +1,6 @@
 import type { Message } from '@/lib/types';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
-import { setSearchUiStatus } from '@/lib/agent/searchService';
 
 export type DeepResearchContext = {
   task: string;
@@ -28,7 +27,6 @@ export async function runDeepResearchTurn({
   const controller = new AbortController();
   setTurnController(chatId, controller);
   set((state) => ({ ui: { ...state.ui, isStreaming: true } }));
-  setSearchUiStatus(set, assistantMessage.id, { query: trimmedTask, status: 'loading' });
 
   try {
     const res = await fetch('/api/deep-research', {
@@ -38,19 +36,70 @@ export async function runDeepResearchTurn({
       cache: 'no-store',
       signal: controller.signal,
     } as RequestInit);
-    const json: any = await res.json().catch(() => ({}));
-    const sources = Array.isArray(json?.sources) ? json.sources : [];
-    if (!res.ok) throw new Error(json?.error || `deep_failed_${res.status}`);
 
-    setSearchUiStatus(set, assistantMessage.id, {
-      query: trimmedTask,
-      status: 'done',
-      results: sources,
-    });
+    if (!res.ok) {
+      // Try to read error from body if possible, otherwise default
+      const errText = await res.text().catch(() => '');
+      let errJson: any = {};
+      try {
+        errJson = JSON.parse(errText);
+      } catch {
+        // ignore
+      }
+      throw new Error(errJson?.error || `deep_failed_${res.status}`);
+    }
+
+    if (!res.body) throw new Error('no_body');
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    const trace: any[] = [];
+    let finalResult: any = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || ''; // Keep incomplete line
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const msg = JSON.parse(line);
+          if (msg.type === 'trace') {
+            trace.push(msg.data);
+            // Update store with incremental trace
+            // We store the structured trace as a JSON string in the 'reasoning' field
+            // This allows the UI to parse it back and render the rich timeline
+            const reasoningStr = JSON.stringify(trace);
+
+            set((state) => {
+              const list = state.messages[chatId] ?? [];
+              const updated = list.map((m) =>
+                m.id === assistantMessage.id ? { ...m, reasoning: reasoningStr } : m,
+              );
+              return { messages: { ...state.messages, [chatId]: updated } } as any;
+            });
+          } else if (msg.type === 'result') {
+            finalResult = msg.data;
+          } else if (msg.type === 'error') {
+            throw new Error(msg.error || 'deep_stream_error');
+          }
+        } catch (e) {
+          // Only swallow JSON parse errors from partial chunks; let real stream errors bubble up
+          if (!(e instanceof SyntaxError)) throw e;
+        }
+      }
+    }
+
+    if (!finalResult) throw new Error('stream_ended_no_result');
 
     const finalMessage: Message = {
       ...assistantMessage,
-      content: json?.answer || '',
+      content: finalResult?.answer || '',
+      reasoning: JSON.stringify(trace), // Ensure final trace is saved
     };
     set((state) => {
       const list = state.messages[chatId] ?? [];
@@ -70,11 +119,6 @@ export async function runDeepResearchTurn({
         notice: `DeepResearch: ${errorMessage}`,
       },
     }));
-    setSearchUiStatus(set, assistantMessage.id, {
-      query: trimmedTask,
-      status: 'error',
-      error: errorMessage,
-    });
     clearTurnController(chatId);
     return false;
   }

@@ -20,6 +20,7 @@ import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { resolveSingleModelAuth } from '@/lib/services/auth';
 import { enforceZdrGate } from '@/lib/policy/runtime';
 import { selectTutorEntry } from '@/lib/ui/tutorSelectors';
+import { findModelById, isReasoningSupported } from '@/lib/models';
 
 export type SendTurnOptions = {
   content: string;
@@ -162,7 +163,16 @@ export async function sendUserTurn({
     return;
   }
 
-  if (ui.experimentalDeepResearch && next.deepResearch) {
+  // Auto-activate DeepResearch if:
+  // 1. Search is enabled in chat settings
+  // 2. Primary model supports reasoning
+  // 3. We are not in tutor mode (simplification, tutor has its own tools)
+  // 4. Transport is OpenRouter (DeepResearch requirement)
+  const searchEnabled = !!currentChat.settings.search_enabled;
+  const modelMeta = findModelById(get().models, primaryModelId);
+  const isReasoning = modelMeta ? isReasoningSupported(modelMeta) : false;
+
+  if (searchEnabled && isReasoning && !tutorEnabled) {
     if (primaryContext.auth.transport !== 'openrouter') {
       set((state) => {
         const updated = applyNextOverrides(state.ui, { deepResearch: false });

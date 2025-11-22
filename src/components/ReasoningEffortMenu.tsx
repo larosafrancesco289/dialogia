@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import { LightBulbIcon, BeakerIcon } from '@heroicons/react/24/outline';
+import { LightBulbIcon } from '@heroicons/react/24/outline';
 import { findModelById, isReasoningSupported } from '@/lib/models';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { readNextOverrides } from '@/lib/ui/next';
@@ -13,11 +13,9 @@ export function ReasoningEffortMenu() {
   const chat = chats.find((c) => c.id === selectedChatId);
   const models = useChatStore((s) => s.models);
   const updateSettings = useChatStore((s) => s.updateChatSettings);
-  const ui = useChatStore((s) => s.ui);
   const setUI = useChatStore((s) => s.setUI);
-  const deepGloballyEnabled = useChatStore((s) => !!s.ui.experimentalDeepResearch);
+  const ui = useChatStore((s) => s.ui);
   const nextOverrides = readNextOverrides(ui);
-  const deepEnabled = !!nextOverrides.deepResearch;
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -81,25 +79,6 @@ export function ReasoningEffortMenu() {
               {o.label}
             </div>
           ))}
-          {deepGloballyEnabled && (
-            <>
-              <div className="divider my-2" />
-              <button
-                className={`menu-item flex items-center gap-2 ${deepEnabled ? 'font-semibold' : ''}`}
-                onClick={() => setUI({ next: { deepResearch: !deepEnabled } })}
-                title="DeepResearch: multi-step web research for the next send"
-                aria-pressed={deepEnabled}
-              >
-                <BeakerIcon className="h-4 w-4" />
-                <span>DeepResearch</span>
-                <span
-                  className={`ml-auto text-xs ${deepEnabled ? 'text-primary' : 'text-muted-foreground'}`}
-                >
-                  {deepEnabled ? 'On' : 'Off'}
-                </span>
-              </button>
-            </>
-          )}
         </div>
       )}
     </div>
