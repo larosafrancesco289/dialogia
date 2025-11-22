@@ -1,7 +1,7 @@
 // Module: agent/regenerate
 // Responsibility: Support regeneration of assistant messages with preserved settings.
 
-import { buildChatCompletionMessages } from '@/lib/agent/conversation';
+import { buildChatCompletionMessages } from '@/lib/agent/prompt-builder';
 import { composePlugins } from '@/lib/agent/request';
 import type { Chat, Message, GenSettingsSnapshot } from '@/lib/types';
 import { ProviderSort } from '@/lib/models/providerSort';

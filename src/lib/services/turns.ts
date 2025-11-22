@@ -10,7 +10,7 @@ import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { attachTutorUiState, ensureTutorDefaults, mergeTutorPayload } from '@/lib/agent/tutorFlow';
 import { runDeepResearchTurn } from '@/lib/agent/deepResearchOrchestrator';
 import { regenerate } from '@/lib/agent/regenerate';
-import { guardZdrOrNotifyCached } from '@/lib/zdr/cache';
+import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
 import { clearTurnController, setTurnController } from '@/lib/services/controllers';
 import { applyNextOverrides } from '@/lib/ui/next';
 import { prepareSendRuntime } from '@/lib/services/turns/runtime';

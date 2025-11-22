@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateZdrModel } from '@/lib/zdr';
+import { evaluateZdrModel } from '@/lib/policy/zdr';
 
 test('evaluateZdrModel allows models in explicit list', () => {
   const result = evaluateZdrModel('provider/model-a', {

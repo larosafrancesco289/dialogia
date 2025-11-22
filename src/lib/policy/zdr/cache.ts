@@ -3,10 +3,10 @@
 // expose helpers that reuse computeZdrFilter without duplicating logic in slices.
 
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
-import { ensureZdrLists, toZdrState, type ZdrLists, type ZdrFetchers } from '@/lib/zdr';
-import { computeZdrFilter, guardModelOrNotice } from '@/lib/zdr/enforce';
-import { ZDR_CACHE_TTL_MS } from '@/lib/zdr/constants';
-import type { EnsureListsResult, ZdrFilterMode, ZdrSnapshot } from '@/lib/zdr/types';
+import { ensureZdrLists, toZdrState, type ZdrLists, type ZdrFetchers } from './index';
+import { computeZdrFilter, guardModelOrNotice } from './enforce';
+import { ZDR_CACHE_TTL_MS } from './constants';
+import type { EnsureListsResult, ZdrFilterMode, ZdrSnapshot } from './types';
 
 function hasValues(values?: Iterable<string> | null): boolean {
   if (!values) return false;

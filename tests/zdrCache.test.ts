@@ -4,11 +4,11 @@ import {
   refreshZdrListsIfNeeded,
   computeZdrFilterCached,
   guardZdrOrNotifyCached,
-} from '@/lib/zdr/cache';
+} from '@/lib/policy/zdr/cache';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createModelIndex } from '@/lib/models';
-import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/zdr';
-import type { ZdrFetchers } from '@/lib/zdr';
+import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
+import type { ZdrFetchers } from '@/lib/policy/zdr';
 
 function createStore(): { state: any; set: StoreSetter; get: StoreGetter } {
   const state: any = {

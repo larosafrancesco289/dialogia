@@ -1,15 +1,14 @@
-import { v4 as uuidv4 } from 'uuid';
-import { db, saveChat, saveFolder, saveMessage } from '@/lib/db';
-import type { StoreState } from '@/lib/store/types';
-import type { Chat, Folder } from '@/lib/types';
-import type { StoreSetter } from '@/lib/agent/types';
-import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
+import { ChatService } from '@/lib/services/chatService';
+import { normalizeParallelModels } from '@/lib/models/normalization';
+import { applyTutorDefaults } from '@/lib/agent/tutor/policy';
 import { primeTutorWelcome } from '@/lib/services/turns';
-import { applyTutorDefaults, normalizeParallelModels } from '@/lib/store/normalize';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { loadRepositorySnapshot } from '@/lib/db/repository';
 import { mergeTutorMap } from '@/lib/ui/tutorSelectors';
+import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import type { StoreState } from '@/lib/store/types';
+import type { StoreSetter } from '@/lib/agent/types';
+import type { Chat } from '@/lib/types';
 
 export function createChatSlice(
   set: StoreSetter,
@@ -36,49 +35,16 @@ export function createChatSlice(
     },
 
     async newChat() {
-      const id = uuidv4();
-      const now = Date.now();
-      // Prefer last used model from the currently selected chat when creating a new chat.
-      const selected = get().selectedChatId
-        ? get().chats.find((c) => c.id === get().selectedChatId)
-        : undefined;
-      const lastNonTutorModel = (() => {
-        let candidate: { model: string; updatedAt: number } | undefined;
-        for (const c of get().chats) {
-          const model = c.settings?.model;
-          if (!model || c.settings?.tutor_mode) continue;
-          if (!candidate || (c.updatedAt ?? 0) > candidate.updatedAt) {
-            candidate = { model, updatedAt: c.updatedAt ?? 0 };
-          }
-        }
-        return candidate?.model;
-      })();
-      const lastUsedModel = !selected?.settings?.tutor_mode
-        ? selected?.settings?.model
-        : lastNonTutorModel;
-      const tutorEnabledGlobally = !!get().ui.experimentalTutor;
-      const braveEnabled = !!get().ui.experimentalBrave;
-      const forceTutorMode = !!(get().ui.forceTutorMode ?? false);
-      const uiState = get().ui;
-      const baseSettings = deriveChatSettingsFromUi({
-        ui: uiState,
-        fallbackModelId: DEFAULT_MODEL_ID,
-        fallbackSystem: 'You are a helpful assistant.',
-        lastUsedModelId: lastUsedModel,
-        braveEnabled,
-        tutorEnabled: tutorEnabledGlobally,
-        forceTutorMode,
+      const chat = await ChatService.createChat({
+        ui: get().ui,
+        chats: get().chats,
+        selectedChatId: get().selectedChatId,
       });
-      const chat: Chat = {
-        id,
-        title: 'New Chat',
-        createdAt: now,
-        updatedAt: now,
-        settings: baseSettings,
-      };
-      set((s) => ({ chats: [chat, ...s.chats], selectedChatId: id }));
-      if (baseSettings.tutor_mode) primeTutorWelcome(id, { set, get });
-      saveChat(chat).catch(() => undefined);
+
+      set((s) => ({ chats: [chat, ...s.chats], selectedChatId: chat.id }));
+
+      if (chat.settings.tutor_mode) primeTutorWelcome(chat.id, { set, get });
+
       // Reset ephemeral "next" flags so they only apply to this new chat
       set((s) => ({
         ui: resetEphemeralUi(s.ui),
@@ -90,18 +56,16 @@ export function createChatSlice(
     },
 
     async renameChat(id: string, title: string) {
+      const chat = get().chats.find((c) => c.id === id);
+      if (!chat) return;
+      const updated = await ChatService.updateChat(chat, { title });
       set((s) => ({
-        chats: s.chats.map((c) => (c.id === id ? { ...c, title, updatedAt: Date.now() } : c)),
+        chats: s.chats.map((c) => (c.id === id ? updated : c)),
       }));
-      const chat = get().chats.find((c) => c.id === id)!;
-      await saveChat(chat);
     },
 
     async deleteChat(id: string) {
-      await db.transaction('rw', db.chats, db.messages, async () => {
-        await db.chats.delete(id);
-        await db.messages.where({ chatId: id }).delete();
-      });
+      await ChatService.deleteChat(id);
       set((s) => {
         const chats = s.chats.filter((c) => c.id !== id);
         const selectedChatId = s.selectedChatId === id ? chats[0]?.id : s.selectedChatId;
@@ -111,51 +75,32 @@ export function createChatSlice(
     },
 
     async branchChatFromMessage(messageId: string) {
-      // Find the source chat and message index
       const st = get();
       let sourceChatId: string | undefined;
-      let msgIndex = -1;
       for (const [cid, list] of Object.entries(st.messages)) {
         const idx = list.findIndex((m) => m.id === messageId);
         if (idx >= 0) {
           sourceChatId = cid;
-          msgIndex = idx;
           break;
         }
       }
-      if (!sourceChatId || msgIndex < 0) return;
+      if (!sourceChatId) return;
       const sourceChat = st.chats.find((c) => c.id === sourceChatId);
       if (!sourceChat) return;
       const sourceMessages = st.messages[sourceChatId] || [];
-      const slice = sourceMessages.slice(0, msgIndex + 1);
-      const now = Date.now();
-      const newChatId = uuidv4();
-      const newChat: import('@/lib/types').Chat = {
-        id: newChatId,
-        title: `${sourceChat.title || 'Chat'} (branch)`,
-        createdAt: now,
-        updatedAt: now,
-        settings: { ...sourceChat.settings },
-        folderId: sourceChat.folderId,
-      };
 
-      // Clone messages into the new chat with fresh IDs
-      const cloned = slice.map((m) => ({
-        ...m,
-        id: uuidv4(),
-        chatId: newChatId,
-      }));
-
-      await db.transaction('rw', db.chats, db.messages, async () => {
-        await saveChat(newChat);
-        for (const cm of cloned) await saveMessage(cm as any);
+      const result = await ChatService.branchChat({
+        sourceChat,
+        messages: sourceMessages,
+        messageId,
       });
 
-      // Update in-memory state and focus the new branch
+      if (!result) return;
+
       set((s) => ({
-        chats: [newChat, ...s.chats],
-        messages: { ...s.messages, [newChatId]: cloned as any },
-        selectedChatId: newChatId,
+        chats: [result.chat, ...s.chats],
+        messages: { ...s.messages, [result.chat.id]: result.messages },
+        selectedChatId: result.chat.id,
       }));
     },
 
@@ -163,16 +108,23 @@ export function createChatSlice(
       const id = get().selectedChatId;
       if (!id) return;
       const before = get().chats.find((c) => c.id === id);
+      if (!before) return;
+
       const uiState = get().ui;
       const forceTutorMode = !!(uiState.forceTutorMode ?? false);
       let appliedPartial = { ...partial } as Partial<Chat['settings']>;
+
       if (Array.isArray(appliedPartial.parallel_models)) {
-        const base = appliedPartial.model ?? before?.settings.model;
-        appliedPartial.parallel_models = normalizeParallelModels(base, appliedPartial.parallel_models);
+        const base = appliedPartial.model ?? before.settings.model;
+        appliedPartial.parallel_models = normalizeParallelModels(
+          base,
+          appliedPartial.parallel_models,
+        );
       }
+
       const ensureTutor = () => {
         const baseSettings = {
-          ...(before?.settings || {}),
+          ...(before.settings || {}),
           ...appliedPartial,
         } as Chat['settings'];
         const ensured = applyTutorDefaults({
@@ -192,94 +144,85 @@ export function createChatSlice(
 
       if (appliedPartial.tutor_mode === true) ensureTutor();
       if (forceTutorMode) ensureTutor();
+
+      const finalSettings = { ...before.settings, ...appliedPartial };
+      if (forceTutorMode) finalSettings.tutor_mode = true;
+      if (Array.isArray(finalSettings.parallel_models)) {
+        finalSettings.parallel_models = normalizeParallelModels(
+          finalSettings.model,
+          finalSettings.parallel_models,
+        );
+      }
+
+      const updatedChat = await ChatService.updateChat(before, { settings: finalSettings });
+
       set((s) => ({
-        chats: s.chats.map((c) => {
-          if (c.id !== id) return c;
-          const updatedSettings = { ...c.settings, ...appliedPartial };
-          // If forceTutorMode is active, never allow tutor_mode to be false
-          if (forceTutorMode) updatedSettings.tutor_mode = true;
-          if (Array.isArray(updatedSettings.parallel_models)) {
-            updatedSettings.parallel_models = normalizeParallelModels(
-              updatedSettings.model,
-              updatedSettings.parallel_models,
-            );
-          }
-          return { ...c, settings: updatedSettings, updatedAt: Date.now() };
-        }),
+        chats: s.chats.map((c) => (c.id === id ? updatedChat : c)),
         ui: { ...s.ui },
       }));
-      const chat = get().chats.find((c) => c.id === id)!;
-      await saveChat(chat);
+
       const turnedOn =
         typeof appliedPartial?.tutor_mode === 'boolean' &&
-        before &&
         before.settings.tutor_mode !== appliedPartial.tutor_mode &&
         appliedPartial.tutor_mode === true;
+
       if (turnedOn && !!get().ui.experimentalTutor) {
         Promise.resolve(primeTutorWelcome(id, { set, get })).catch(() => undefined);
       }
     },
 
     async moveChatToFolder(chatId: string, folderId?: string) {
+      const chat = get().chats.find((c) => c.id === chatId);
+      if (!chat) return;
+      const updated = await ChatService.moveChatToFolder(chat, folderId);
       set((s) => ({
-        chats: s.chats.map((c) =>
-          c.id === chatId ? { ...c, folderId, updatedAt: Date.now() } : c,
-        ),
+        chats: s.chats.map((c) => (c.id === chatId ? updated : c)),
       }));
-      const chat = get().chats.find((c) => c.id === chatId)!;
-      await saveChat(chat);
     },
 
     async createFolder(name: string, parentId?: string) {
-      const id = uuidv4();
-      const now = Date.now();
-      const folder: Folder = {
-        id,
-        name,
-        createdAt: now,
-        updatedAt: now,
-        isExpanded: true,
-        parentId,
-      };
-      await saveFolder(folder);
+      const folder = await ChatService.createFolder(name, parentId);
       set((s) => ({ folders: [...s.folders, folder] }));
     },
 
     async renameFolder(id: string, name: string) {
+      const folder = get().folders.find((f) => f.id === id);
+      if (!folder) return;
+      const updated = await ChatService.updateFolder(folder, { name });
       set((s) => ({
-        folders: s.folders.map((f) => (f.id === id ? { ...f, name, updatedAt: Date.now() } : f)),
+        folders: s.folders.map((f) => (f.id === id ? updated : f)),
       }));
-      const folder = get().folders.find((f) => f.id === id)!;
-      await saveFolder(folder);
     },
 
     async deleteFolder(id: string) {
-      const chatsInFolder = get().chats.filter((c) => c.folderId === id);
-      for (const chat of chatsInFolder) await get().moveChatToFolder(chat.id, undefined);
+      const { updatedChats, updatedFolders } = await ChatService.deleteFolder(
+        id,
+        get().chats,
+        get().folders,
+      );
 
-      const childFolders = get().folders.filter((f) => f.parentId === id);
-      for (const childFolder of childFolders) {
-        set((s) => ({
-          folders: s.folders.map((f) =>
-            f.id === childFolder.id ? { ...f, parentId: undefined, updatedAt: Date.now() } : f,
-          ),
-        }));
-        const updatedFolder = get().folders.find((f) => f.id === childFolder.id)!;
-        await saveFolder(updatedFolder);
-      }
+      set((s) => {
+        const chatMap = new Map(s.chats.map((c) => [c.id, c]));
+        for (const u of updatedChats) chatMap.set(u.id, u);
 
-      await db.folders.delete(id);
-      set((s) => ({ folders: s.folders.filter((f) => f.id !== id) }));
+        const folderMap = new Map(s.folders.map((f) => [f.id, f]));
+        for (const u of updatedFolders) folderMap.set(u.id, u);
+        folderMap.delete(id);
+
+        return {
+          chats: Array.from(chatMap.values()),
+          folders: Array.from(folderMap.values()),
+        };
+      });
     },
 
     async toggleFolderExpanded(id: string) {
+      const folder = get().folders.find((f) => f.id === id);
+      if (!folder) return;
+      const updated = await ChatService.updateFolder(folder, { isExpanded: !folder.isExpanded });
       set((s) => ({
-        folders: s.folders.map((f) =>
-          f.id === id ? { ...f, isExpanded: !f.isExpanded, updatedAt: Date.now() } : f,
-        ),
+        folders: s.folders.map((f) => (f.id === id ? updated : f)),
       }));
-      const folder = get().folders.find((f) => f.id === id)!;
-      await saveFolder(folder);
     },
   } satisfies Partial<StoreState>;
 }

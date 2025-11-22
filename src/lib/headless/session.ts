@@ -11,8 +11,8 @@ import { DEFAULT_BASE_SYSTEM, shouldShortCircuitTutor } from '@/lib/agent/policy
 import { resolveModelTransport } from '@/lib/providers';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
 import type { ModelIndex } from '@/lib/models';
-import { runTurn } from '@/lib/orchestrator/turn';
-import { createTurnLifecycle } from '@/lib/orchestrator/lifecycle';
+import { runTurn } from '@/lib/agent/orchestrator/turn';
+import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { buildTutorFallbackContent } from '@/lib/agent/streamHandlers';
 import type { HeadlessTurnArtifacts, HeadlessTurnResult } from '@/lib/headless/types';
 

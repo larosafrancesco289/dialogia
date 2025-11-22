@@ -2,7 +2,7 @@
 // Responsibility: Build per-turn request payload pieces (system, messages, tools, plugins, routing)
 // by inspecting chat state, UI preferences, and prepared attachments.
 
-import { buildChatCompletionMessages } from '@/lib/agent/conversation';
+import { buildChatCompletionMessages } from '@/lib/agent/prompt-builder';
 import { getTutorPreamble, getTutorToolDefinitions } from '@/lib/agent/tutor';
 import { composePlugins } from '@/lib/agent/request';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';

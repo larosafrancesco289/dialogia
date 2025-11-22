@@ -1,6 +1,6 @@
 import { handleTurnApiError } from '@/lib/services/turns/errors';
-import { createTurnLifecycle } from '@/lib/orchestrator/lifecycle';
-import { runTurn } from '@/lib/orchestrator/turn';
+import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
+import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
 import { streamFinal } from '@/lib/agent/streaming';
