@@ -1,8 +1,10 @@
 'use client';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ChevronDownIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+
+import { useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { ChevronDownIcon, DocumentDuplicateIcon, SparklesIcon, CpuChipIcon } from '@heroicons/react/24/outline';
 import { Markdown } from '@/lib/markdown';
 import { DeepResearchTimeline, type DeepResearchEvent } from './DeepResearchTimeline';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type ReasoningPanelProps = {
   reasoning: string;
@@ -107,7 +109,8 @@ export function ReasoningPanel({
     if (!expanded) setCopied(false);
   }, [expanded]);
 
-  const handleCopy = async () => {
+  const handleCopy = async (e: MouseEvent) => {
+    e.stopPropagation();
     if (!hasReasoning) return;
     try {
       await navigator.clipboard.writeText(reasoning);
@@ -121,75 +124,129 @@ export function ReasoningPanel({
   if (!hasReasoning && !isStreaming) return null;
 
   return (
-    <div className="px-4 pt-3">
-      <div
-        className={`thinking-panel reasoning-shell ${expanded ? 'is-open' : 'is-collapsed'} ${
-          isStreaming ? 'is-streaming' : 'is-idle'
-        } ${pulse ? 'is-fresh' : ''}`.trim()}
+    <div className="px-4 pt-4 pb-2">
+      <motion.div
+        layout
+        initial={false}
+        animate={{
+          backgroundColor: expanded ? 'rgba(var(--surface-rgb), 0.6)' : 'rgba(var(--surface-rgb), 0.4)',
+          borderColor: isStreaming
+            ? 'rgba(var(--accent-rgb), 0.5)'
+            : expanded
+              ? 'rgba(var(--border-rgb), 0.8)'
+              : 'rgba(var(--border-rgb), 0.5)',
+          boxShadow: isStreaming ? '0 0 0 1px rgba(var(--accent-rgb), 0.2)' : 'none'
+        }}
+        className={`relative overflow-hidden rounded-2xl border backdrop-blur-md transition-colors duration-300 ${pulse ? 'ring-2 ring-accent/20' : ''
+          }`}
       >
+        {/* Streaming shimmer effect */}
+        {isStreaming && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+          </div>
+        )}
+
         <button
           type="button"
-          className="reasoning-trigger"
+          className="w-full flex items-center gap-3 p-3.5 text-left relative z-10 group"
           aria-expanded={expanded}
           aria-controls={bodyId}
           onClick={onToggle}
         >
-          <span className="reasoning-labels">
-            <span className="reasoning-title">
-              {isDeepResearch ? 'Deep Research' : 'Thinking'}
-            </span>
-            <span className={`reasoning-status ${isStreaming ? 'is-live' : ''}`}>
-              {isStreaming
-                ? isDeepResearch ? 'Researching...' : 'Reasoning in progress'
-                : expanded
-                  ? 'Hide details'
-                  : 'View process'}
-            </span>
-            <span
-              className={`reasoning-subtitle reasoning-preview ${isStreaming ? 'is-live' : ''}`}
-              aria-live={isStreaming ? 'polite' : undefined}
-            >
-              <span className="reasoning-preview__text">{displayPreview}</span>
-              {isStreaming && <span className="reasoning-caret" aria-hidden />}
-            </span>
-          </span>
-          <span className="reasoning-chevron" aria-hidden>
-            <ChevronDownIcon className="h-4 w-4" />
-          </span>
-        </button>
-        <div
-          id={bodyId}
-          className={`reasoning-body ${expanded ? 'is-visible' : ''}`.trim()}
-          hidden={!expanded}
-        >
-          <div className="reasoning-scroll">
-            {isDeepResearch && trace ? (
-              <DeepResearchTimeline trace={trace} />
-            ) : hasReasoning ? (
-              <div className="reasoning-text">
-                <Markdown content={reasoning} />
-              </div>
+          <div className={`flex items-center justify-center w-8 h-8 rounded-xl border transition-all duration-300 ${isStreaming
+              ? 'bg-accent/10 border-accent/30 text-accent animate-pulse'
+              : expanded
+                ? 'bg-primary/10 border-primary/20 text-primary'
+                : 'bg-surface border-border text-muted-foreground group-hover:text-foreground group-hover:border-border/80'
+            }`}>
+            {isDeepResearch ? (
+              <CpuChipIcon className="w-4 h-4" />
             ) : (
-              <div className="reasoning-loader" role="status" aria-live="polite">
-                <div className="reasoning-loader__bar" />
-                <div className="reasoning-loader__bar" />
-                <div className="reasoning-loader__bar" />
-              </div>
+              <SparklesIcon className="w-4 h-4" />
             )}
           </div>
-          {!isDeepResearch && hasReasoning && (
-            <button
-              type="button"
-              className="reasoning-copy icon-button"
-              aria-label={copied ? 'Thinking copied' : 'Copy thinking'}
-              title={copied ? 'Copied' : 'Copy thinking'}
-              onClick={handleCopy}
+
+          <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-bold uppercase tracking-wider ${isStreaming ? 'text-accent' : 'text-muted-foreground group-hover:text-foreground'
+                } transition-colors`}>
+                {isDeepResearch ? 'Deep Research' : 'Reasoning Process'}
+              </span>
+              {isStreaming && (
+                <span className="flex h-1.5 w-1.5 rounded-full bg-accent animate-ping" />
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="truncate opacity-80 group-hover:opacity-100 transition-opacity">
+                {displayPreview}
+              </span>
+              {isStreaming && <span className="w-1.5 h-4 bg-accent/50 animate-pulse" />}
+            </div>
+          </div>
+
+          <motion.div
+            animate={{ rotate: expanded ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="text-muted-foreground/50 group-hover:text-foreground transition-colors"
+          >
+            <ChevronDownIcon className="w-4 h-4" />
+          </motion.div>
+        </button>
+
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              id={bodyId}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
             >
-              <DocumentDuplicateIcon className="h-4 w-4" />
-            </button>
+              <div className="px-4 pb-4 pt-0 relative">
+                <div className="h-px w-full bg-border/40 mb-4" />
+
+                <div className="max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent">
+                  {isDeepResearch && trace ? (
+                    <DeepResearchTimeline trace={trace} />
+                  ) : hasReasoning ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-fg/90 leading-relaxed">
+                      <Markdown content={reasoning} />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-muted-foreground py-4">
+                      <div className="flex gap-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                      <span className="text-xs font-medium">Initializing process...</span>
+                    </div>
+                  )}
+                </div>
+
+                {!isDeepResearch && hasReasoning && (
+                  <div className="absolute top-4 right-4">
+                    <button
+                      type="button"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                      onClick={handleCopy}
+                      title={copied ? 'Copied' : 'Copy reasoning'}
+                    >
+                      {copied ? (
+                        <span className="text-xs font-bold text-emerald-500">Copied!</span>
+                      ) : (
+                        <DocumentDuplicateIcon className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
           )}
-        </div>
-      </div>
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 }
