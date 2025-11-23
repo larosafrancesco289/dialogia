@@ -6,7 +6,10 @@ import type { Chat, Message } from '@/lib/types';
 test('getTutorPhase returns intake when no plan and questionnaire pending', () => {
   const chat = {
     id: 'chat-1',
-    settings: {},
+    title: 'Test chat',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    settings: { model: 'test-model' },
   } as Chat;
   const messages = [
     {
@@ -35,7 +38,11 @@ test('getTutorPhase returns intake when no plan and questionnaire pending', () =
 test('getTutorPhase returns practice when plan active and practice widget present', () => {
   const chat = {
     id: 'chat-2',
+    title: 'Practice chat',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
     settings: {
+      model: 'test-model',
       learningPlan: {
         goal: 'Practice algebra',
         generatedAt: Date.now(),

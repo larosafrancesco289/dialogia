@@ -6,6 +6,7 @@ import type {
   Message,
   MessageTutor,
   TutorPlanSuggestion,
+  TutorDiagnosticItem,
   Evidence,
   Misconception,
 } from '@/lib/types';
@@ -22,9 +23,11 @@ import type {
 import {
   getLatestLearnerModel,
   initializeLearnerModel,
+  applyLearnerModelFeedback,
   updateLearnerModel,
 } from '@/lib/agent/learnerModel';
 import { processPlanProgress } from '@/lib/agent/planAwareTutor';
+import { getNextNode } from '@/lib/learningPlan/service';
 
 const TUTOR_TOOL_NAME_SET = new Set<TutorToolName>([
   'ask_student_question',
@@ -33,6 +36,7 @@ const TUTOR_TOOL_NAME_SET = new Set<TutorToolName>([
   'update_plan',
   'assess_answer',
   'update_learner_model',
+  'apply_learner_model_feedback',
   'get_plan_suggestions',
   'quiz_mcq',
   'quiz_fill_blank',
@@ -42,6 +46,53 @@ const TUTOR_TOOL_NAME_SET = new Set<TutorToolName>([
   'add_to_deck',
   'srs_review',
 ]);
+
+const QUIZ_TOOLS = new Set<TutorToolName>(['quiz_mcq', 'quiz_fill_blank', 'quiz_open_ended']);
+const DIAGNOSTIC_DIFFICULTIES = new Set<TutorDiagnosticItem['difficulty']>([
+  'beginner',
+  'intermediate',
+  'advanced',
+  'mixed',
+  'easy',
+  'medium',
+  'hard',
+]);
+
+export function recordTutorToolUsage(opts: {
+  set: StoreSetter;
+  chatId: string;
+  assistantMessageId: string;
+  plan?: LearningPlan | null;
+  name: TutorToolName;
+}) {
+  const { set, chatId, assistantMessageId, plan, name } = opts;
+  set((state) => {
+    const usageByChat = state.ui.tutorToolUsageByChatId || {};
+    const prev = usageByChat[chatId] || {};
+    const sameTurn = prev.lastMessageId === assistantMessageId;
+    const activeNodeId = plan ? getNextNode(plan)?.id ?? '__global__' : '__global__';
+    const nextUsage = {
+      ...prev,
+      lastMessageId: assistantMessageId,
+      toolsThisTurn: (sameTurn ? prev.toolsThisTurn || 0 : 0) + 1,
+      mcqByNode: { ...(prev.mcqByNode || {}) },
+    };
+
+    if (QUIZ_TOOLS.has(name)) {
+      nextUsage.mcqByNode[activeNodeId] = (nextUsage.mcqByNode[activeNodeId] || 0) + 1;
+    }
+    if (name === 'create_diagnostic') {
+      nextUsage.diagnosticsUsed = (nextUsage.diagnosticsUsed ?? 0) + 1;
+    }
+
+    return {
+      ui: {
+        ...state.ui,
+        tutorToolUsageByChatId: { ...usageByChat, [chatId]: nextUsage },
+      },
+    } as Partial<StoreState>;
+  });
+}
 
 const CONTENT_KEYS: Array<keyof MessageTutor> = [
   'questionnaire',
@@ -154,6 +205,7 @@ export async function applyTutorToolCall(opts: {
     weight?: number;
     oldConfidence?: number;
     newConfidence?: number;
+    note?: string;
   };
 }> {
   const { name, args, chat, chatId, assistantMessage, set, get, persistMessage } = opts;
@@ -327,8 +379,12 @@ export async function applyTutorToolCall(opts: {
         const explanation =
           typeof item.explanation === 'string' ? item.explanation.trim() : undefined;
         const skill = typeof item.skill === 'string' ? item.skill.trim() : undefined;
-        const difficulty =
+        const rawDifficulty =
           typeof item.difficulty === 'string' ? item.difficulty.trim() : undefined;
+        const difficulty =
+          rawDifficulty && DIAGNOSTIC_DIFFICULTIES.has(rawDifficulty as TutorDiagnosticItem['difficulty'])
+            ? (rawDifficulty as TutorDiagnosticItem['difficulty'])
+            : undefined;
         return {
           id,
           question,
@@ -339,15 +395,7 @@ export async function applyTutorToolCall(opts: {
           difficulty,
         };
       })
-      .filter(Boolean) as Array<{
-      id: string;
-      question: string;
-      choices: string[];
-      correct?: number;
-      explanation?: string;
-      skill?: string;
-      difficulty?: string;
-    }>;
+      .filter(Boolean) as TutorDiagnosticItem[];
 
     if (normalizedItems.length === 0) {
       return { handled: false, usedContent: false };
@@ -743,12 +791,20 @@ export async function applyTutorToolCall(opts: {
     const newConfidence = updatedModel.mastery[nodeId]?.confidence ?? oldConfidence;
 
     const planResult = await processPlanProgress(plan, updatedModel);
+    const summary = nodeMeta
+      ? `${nodeMeta.name}: ${Math.round(oldConfidence * 100)}% → ${Math.round(newConfidence * 100)}%`
+      : `Updated mastery for ${nodeId}`;
+    const planUpdatesWithSummary: Message['planUpdates'] =
+      planResult.planUpdates ?? {
+        masteryChanges: [{ nodeId, from: oldConfidence, to: newConfidence }],
+      };
+    planUpdatesWithSummary.summary = planUpdatesWithSummary.summary ?? summary;
 
     return {
       handled: true,
       usedContent: false,
       learnerModel: updatedModel,
-      planUpdates: planResult.planUpdates,
+      planUpdates: planUpdatesWithSummary,
       updatedPlan: planResult.updatedPlan,
       learnerModelDebug: {
         nodeId,
@@ -757,6 +813,83 @@ export async function applyTutorToolCall(opts: {
         weight: appliedWeight,
         oldConfidence,
         newConfidence,
+      },
+    };
+  }
+
+  if (name === 'apply_learner_model_feedback') {
+    const nodeId =
+      typeof args['nodeId'] === 'string' ? (args['nodeId'] as string).trim() : undefined;
+    if (!nodeId) return { handled: false, usedContent: false };
+    const plan = chat.settings.learningPlan;
+    const state = get();
+    const messagesForChat = (state.messages?.[chatId] ?? []) as Message[];
+    let currentModel = getLatestLearnerModel(messagesForChat);
+    if (!currentModel && plan) {
+      currentModel = initializeLearnerModel(chatId, plan);
+    }
+    const nodeMeta = plan?.nodes.find((node) => node.id === nodeId);
+    if (!currentModel) {
+      return { handled: true, usedContent: false, updatedPlan: plan };
+    }
+
+    const result = applyLearnerModelFeedback(currentModel, {
+      nodeId,
+      direction:
+        typeof args['direction'] === 'string'
+          ? ((args['direction'] as string).trim() as 'up' | 'down')
+          : undefined,
+      magnitude:
+        typeof args['magnitude'] === 'number' && Number.isFinite(args['magnitude'] as number)
+          ? (args['magnitude'] as number)
+          : undefined,
+      reason: typeof args['reason'] === 'string' ? (args['reason'] as string).trim() : undefined,
+      estimatedConfidence:
+        typeof args['estimatedConfidence'] === 'number'
+          ? (args['estimatedConfidence'] as number)
+          : undefined,
+      confidenceFloor:
+        typeof args['confidenceFloor'] === 'number'
+          ? (args['confidenceFloor'] as number)
+          : undefined,
+      misconceptionId:
+        typeof args['misconceptionId'] === 'string'
+          ? (args['misconceptionId'] as string).trim()
+          : undefined,
+      misconceptionDescription:
+        typeof args['misconceptionDescription'] === 'string'
+          ? (args['misconceptionDescription'] as string).trim()
+          : undefined,
+    });
+
+    const planResult = plan ? await processPlanProgress(plan, result.model) : undefined;
+    const summary =
+      nodeMeta && result.from != null && result.to != null
+        ? `${nodeMeta.name}: ${Math.round((result.from || 0) * 100)}% → ${Math.round((result.to || 0) * 100)}% (learner feedback)`
+        : `Adjusted mastery for ${nodeId}`;
+    const planUpdatesWithSummary: Message['planUpdates'] | undefined =
+      (planResult?.planUpdates as Message['planUpdates'] | undefined) ?? {
+        masteryChanges:
+          result.from != null && result.to != null
+            ? [{ nodeId, from: result.from, to: result.to }]
+            : undefined,
+      };
+    if (planUpdatesWithSummary) {
+      planUpdatesWithSummary.summary = planUpdatesWithSummary.summary ?? summary;
+    }
+
+    return {
+      handled: true,
+      usedContent: false,
+      learnerModel: result.model,
+      planUpdates: planUpdatesWithSummary,
+      updatedPlan: planResult?.updatedPlan ?? plan,
+      learnerModelDebug: {
+        nodeId,
+        weight: (result.to ?? 0) - (result.from ?? 0),
+        oldConfidence: result.from,
+        newConfidence: result.to,
+        note: result.note,
       },
     };
   }

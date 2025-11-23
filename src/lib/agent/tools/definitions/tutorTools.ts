@@ -370,6 +370,28 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
     {
       type: 'function',
       function: {
+        name: 'apply_learner_model_feedback',
+        description:
+          'Apply learner-provided adjustments to the learner model (nudging confidence up/down, honoring self-reported confidence floors, or resolving misconceptions). Use this when the learner explicitly states their understanding or disputes a misconception so the model stays transparent and editable.',
+        parameters: {
+          type: 'object',
+          properties: {
+            nodeId: { type: 'string', description: 'Plan node to adjust' },
+            direction: { type: 'string', enum: ['up', 'down'], description: 'Nudge confidence up or down by a small, bounded amount' },
+            magnitude: { type: 'number', minimum: 0, maximum: 1, description: 'Optional weight for the nudge (default ~0.15)' },
+            reason: { type: 'string', description: 'Learner-provided rationale for the adjustment' },
+            estimatedConfidence: { type: 'number', minimum: 0, maximum: 1, description: 'Learner-stated confidence to respect as a floor if higher than current' },
+            confidenceFloor: { type: 'number', minimum: 0, maximum: 1, description: 'Minimum confidence to keep unless future evidence lowers it' },
+            misconceptionId: { type: 'string', description: 'Misconception identifier to resolve if incorrect' },
+            misconceptionDescription: { type: 'string', description: 'Text label of the misconception to resolve' },
+          },
+          required: ['nodeId'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
         name: 'update_learner_model',
         description:
           'Write structured evidence back to the learner model to adjust confidence, log misconceptions, and capture qualitative notes tied to a specific plan node. Use it after assessments, quizzes, or reflective tutoring moments so longitudinal progress is measurable. Include weighted evidence, before/after confidence, and recommended follow-ups so future planning knows exactly what changed and why.',

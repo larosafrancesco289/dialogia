@@ -1,22 +1,25 @@
 'use client';
-import { CheckCircleIcon, ArrowTrendingUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ArrowTrendingUpIcon, ChevronDownIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import type { Message, TopicMastery } from '@/lib/types';
 import { useState } from 'react';
+import { useChatStore } from '@/lib/store';
 
 export function LearnerModelUpdates({ message }: { message: Message }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const setUI = useChatStore((s) => s.setUI);
 
   const { planUpdates, learnerModel } = message;
   const masteryEntries: Array<[string, TopicMastery]> = learnerModel
     ? (Object.entries(learnerModel.mastery ?? {}) as Array<[string, TopicMastery]>)
     : [];
+  const hasSummary = !!planUpdates?.summary;
 
   // Only show if there are updates or learner model data
   if (!planUpdates && !learnerModel) return null;
 
   const hasStatusChanges = planUpdates?.statusChanges && planUpdates.statusChanges.length > 0;
   const hasMasteryChanges = planUpdates?.masteryChanges && planUpdates.masteryChanges.length > 0;
-  const hasAnyUpdates = hasStatusChanges || hasMasteryChanges;
+  const hasAnyUpdates = hasStatusChanges || hasMasteryChanges || hasSummary;
 
   if (!hasAnyUpdates && !learnerModel) return null;
 
@@ -29,6 +32,18 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
           background: 'color-mix(in oklab, var(--color-accent-2) 8%, var(--color-surface))',
         }}
       >
+        {hasSummary && (
+          <div className="border-b border-border/60 px-3 py-2 text-sm font-medium text-foreground flex items-center justify-between">
+            <span>{planUpdates?.summary}</span>
+            <button 
+              className="text-xs text-accent hover:underline flex items-center gap-1"
+              onClick={() => setUI({ planSheetOpen: true })}
+            >
+              <SparklesIcon className="w-3 h-3" />
+              Hub
+            </button>
+          </div>
+        )}
         {/* Status Changes (Node completions/transitions) */}
         {hasStatusChanges && (
           <div className="px-3 py-2 space-y-1">

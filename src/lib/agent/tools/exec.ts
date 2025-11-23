@@ -4,6 +4,7 @@ import {
   applyTutorToolCall,
   isTutorToolName,
   performWebSearchTool,
+  recordTutorToolUsage,
 } from '@/lib/agent/tools';
 import type {
   ModelMessage,
@@ -213,6 +214,13 @@ export async function executePlanningToolCall(opts: {
       if (tutorOutcome.learnerModel) output.learnerModel = tutorOutcome.learnerModel;
 
       if (tutorOutcome.handled) {
+        recordTutorToolUsage({
+          set,
+          chatId,
+          assistantMessageId: assistantMessage.id,
+          plan: tutorOutcome.updatedPlan ?? chat.settings.learningPlan,
+          name: callName as any,
+        });
         finalizeLog(
           'success',
           output,

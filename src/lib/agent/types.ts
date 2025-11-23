@@ -109,6 +109,7 @@ export type TutorToolName =
   | 'update_plan'
   | 'assess_answer'
   | 'update_learner_model'
+  | 'apply_learner_model_feedback'
   | 'get_plan_suggestions'
   | 'quiz_mcq'
   | 'quiz_fill_blank'
@@ -165,6 +166,7 @@ export type PlanTurnResult = {
     weight?: number;
     oldConfidence?: number;
     newConfidence?: number;
+    note?: string;
   };
 };
 

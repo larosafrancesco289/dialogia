@@ -229,32 +229,129 @@ export function updateLearnerModel(
 
   mastery[update.nodeId] = updatedTopic;
 
-  // Recalculate global metrics
-  const allConfidences = Object.values(mastery).map((t) => t.confidence);
-  const avgConfidence =
-    allConfidences.reduce((a, b) => a + b, 0) / allConfidences.length;
-
-  const correctCount = Object.values(mastery)
-    .flatMap((t) => t.evidence)
-    .filter((e) => e.type === 'correct_answer').length;
-
-  const totalEvidence = Object.values(mastery)
-    .flatMap((t) => t.evidence)
-    .filter((e) =>
-      ['correct_answer', 'incorrect_answer', 'partial_answer'].includes(e.type),
-    ).length;
-
-  const accuracyRate = totalEvidence > 0 ? correctCount / totalEvidence : 0;
+  const globalMetrics = computeGlobalMetrics(
+    mastery,
+    model.globalMetrics,
+    1,
+  );
 
   return {
     ...model,
     mastery,
     updatedAt: Date.now(),
-    globalMetrics: {
-      totalInteractions: (model.globalMetrics?.totalInteractions || 0) + 1,
-      accuracyRate,
-      averageConfidence: avgConfidence,
-    },
+    globalMetrics,
+  };
+}
+
+export type LearnerModelFeedback = {
+  nodeId: string;
+  direction?: 'up' | 'down';
+  magnitude?: number;
+  reason?: string;
+  estimatedConfidence?: number;
+  confidenceFloor?: number;
+  misconceptionId?: string;
+  misconceptionDescription?: string;
+};
+
+export function applyLearnerModelFeedback(
+  model: LearnerModel,
+  feedback: LearnerModelFeedback,
+): {
+  model: LearnerModel;
+  from?: number;
+  to?: number;
+  resolved?: string[];
+  appliedFloor?: number;
+  note?: string;
+} {
+  const topic = model.mastery[feedback.nodeId];
+  if (!topic) {
+    return { model, note: 'Topic not found in learner model' };
+  }
+
+  const magnitude = clamp(Math.abs(feedback.magnitude ?? 0.15), 0.05, 0.4);
+  const weight = feedback.direction === 'down' ? -magnitude : magnitude;
+  const evidence: Evidence = {
+    timestamp: Date.now(),
+    type: 'insight_demonstrated',
+    weight,
+    details:
+      feedback.reason ||
+      (weight >= 0
+        ? 'Learner reported this topic feels easier than estimated.'
+        : 'Learner reported this topic feels harder than estimated.'),
+  };
+
+  const updatedWithEvidence = updateLearnerModel(model, {
+    nodeId: feedback.nodeId,
+    evidence,
+  });
+
+  const mastery = { ...updatedWithEvidence.mastery };
+  const target = { ...mastery[feedback.nodeId] };
+  mastery[feedback.nodeId] = target;
+  const resolved: string[] = [];
+  let appliedFloor: number | undefined;
+  let adjusted = false;
+
+  const desiredFloor = clamp(
+    Math.max(
+      feedback.confidenceFloor ?? 0,
+      feedback.estimatedConfidence != null ? feedback.estimatedConfidence : 0,
+    ),
+    0,
+    1,
+  );
+  if (desiredFloor > 0 && target.confidence < desiredFloor) {
+    target.confidence = desiredFloor;
+    appliedFloor = desiredFloor;
+    adjusted = true;
+  } else if (feedback.estimatedConfidence != null) {
+    const selfReported = clamp(feedback.estimatedConfidence, 0, 1);
+    if (selfReported > target.confidence) {
+      target.confidence = selfReported;
+      appliedFloor = selfReported;
+      adjusted = true;
+    }
+  }
+
+  if (feedback.misconceptionId || feedback.misconceptionDescription) {
+    const matchIndex = target.misconceptions.findIndex((m) => {
+      if (feedback.misconceptionId && m.id === feedback.misconceptionId) return true;
+      if (!feedback.misconceptionDescription) return false;
+      return (
+        m.description.toLowerCase() === feedback.misconceptionDescription.toLowerCase()
+      );
+    });
+    if (matchIndex >= 0 && !target.misconceptions[matchIndex].resolved) {
+      target.misconceptions = target.misconceptions.map((m, idx) =>
+        idx === matchIndex ? { ...m, resolved: true } : m,
+      );
+      resolved.push(target.misconceptions[matchIndex].description);
+      adjusted = true;
+    }
+  }
+
+  const nextModel: LearnerModel = adjusted
+    ? {
+        ...updatedWithEvidence,
+        mastery,
+        globalMetrics: computeGlobalMetrics(
+          mastery,
+          updatedWithEvidence.globalMetrics,
+          0,
+        ),
+      }
+    : updatedWithEvidence;
+
+  return {
+    model: nextModel,
+    from: topic.confidence,
+    to: nextModel.mastery[feedback.nodeId]?.confidence ?? topic.confidence,
+    resolved: resolved.length ? resolved : undefined,
+    appliedFloor,
+    note: feedback.reason,
   };
 }
 
@@ -362,6 +459,34 @@ export function getLatestLearnerModel(
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+function computeGlobalMetrics(
+  mastery: Record<string, TopicMastery>,
+  prior?: LearnerModel['globalMetrics'],
+  interactionDelta = 0,
+): NonNullable<LearnerModel['globalMetrics']> {
+  const allConfidences = Object.values(mastery).map((t) => t.confidence);
+  const avgConfidence =
+    allConfidences.reduce((a, b) => a + b, 0) / (allConfidences.length || 1);
+
+  const correctCount = Object.values(mastery)
+    .flatMap((t) => t.evidence)
+    .filter((e) => e.type === 'correct_answer').length;
+
+  const totalEvidence = Object.values(mastery)
+    .flatMap((t) => t.evidence)
+    .filter((e) =>
+      ['correct_answer', 'incorrect_answer', 'partial_answer'].includes(e.type),
+    ).length;
+
+  const accuracyRate = totalEvidence > 0 ? correctCount / totalEvidence : 0;
+
+  return {
+    totalInteractions: (prior?.totalInteractions || 0) + interactionDelta,
+    accuracyRate,
+    averageConfidence: avgConfidence,
+  };
+}
 
 /**
  * Extract text content from message
