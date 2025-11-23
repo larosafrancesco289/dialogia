@@ -42,6 +42,8 @@ export type TutorEvalResult = {
   planSummary?: string;
   learnerModelSummary?: string;
   toolUsage: ToolUsageStats;
+  planTimeline?: Array<{ id: string; createdAt: number; planUpdates?: Message['planUpdates'] }>;
+  learnerModelTimeline?: Array<{ id: string; createdAt: number; learnerModel?: Message['learnerModel'] }>;
   judge: {
     raw: string;
     parsed?: JudgeVerdict;
@@ -247,8 +249,8 @@ export async function runTutorScenario(
 
     const tutorMessage = snapshot.assistant.content;
     const tutorUiSummary =
-      typeof snapshot.assistant.tutorUi?.session === 'object'
-        ? JSON.stringify(snapshot.assistant.tutorUi.session)
+      snapshot.assistant.tutorUi && typeof snapshot.assistant.tutorUi === 'object'
+        ? JSON.stringify(snapshot.assistant.tutorUi)
         : undefined;
 
     studentMessage = await studentSim.respond(tutorMessage, {
@@ -269,6 +271,18 @@ export async function runTutorScenario(
       : undefined;
   const learnerModelSummary =
     learnerModel && finalPlan ? generateModelSummary(learnerModel, finalPlan) : undefined;
+  const planTimeline =
+    result.messages
+      ?.filter((m) => m.planUpdates)
+      .map((m) => ({ id: m.id, createdAt: m.createdAt, planUpdates: m.planUpdates })) || [];
+  const learnerModelTimeline =
+    result.messages
+      ?.filter((m) => m.learnerModel)
+      .map((m) => ({
+        id: m.id,
+        createdAt: m.createdAt,
+        learnerModel: m.learnerModel,
+      })) || [];
 
   const judgeMessages = buildJudgeMessages({
     scenario,
@@ -299,6 +313,8 @@ export async function runTutorScenario(
     planSummary,
     learnerModelSummary,
     toolUsage,
+    planTimeline,
+    learnerModelTimeline,
     judge: {
       raw: judgeRaw,
       parsed: parsedJudge,

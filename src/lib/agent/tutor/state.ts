@@ -1,6 +1,6 @@
 import type { TutorToolName } from '@/lib/agent/types';
-import type { UIState } from '@/lib/store/types';
-import type { Chat, Message, MessageTutor } from '@/lib/types';
+import type { TutorToolUsage, UIState } from '@/lib/store/types';
+import type { Chat, Message, MessageTutor, TutorResearchMode } from '@/lib/types';
 
 export type TutorPhase =
   | 'intake'
@@ -60,48 +60,193 @@ export function getTutorPhase(
   return 'teaching';
 }
 
-export function allowedTutorToolsForPhase(phase: TutorPhase): TutorToolName[] {
+const QUIZ_TOOLS = new Set<TutorToolName>([
+  'quiz_mcq',
+  'quiz_fill_blank',
+  'quiz_open_ended',
+  'flashcards',
+  'srs_review',
+  'grade_open_response',
+  'add_to_deck',
+]);
+
+const PLAN_TOOLS = new Set<TutorToolName>(['generate_plan', 'update_plan', 'get_plan_suggestions']);
+const LEARNER_MODEL_TOOLS = new Set<TutorToolName>([
+  'update_learner_model',
+  'apply_learner_model_feedback',
+]);
+const THESIS_CORE_TOOLS = new Set<TutorToolName>([
+  'ask_student_question',
+  'create_diagnostic',
+  'generate_plan',
+  'update_plan',
+  'get_plan_suggestions',
+  'assess_answer',
+  'update_learner_model',
+  'apply_learner_model_feedback',
+]);
+const BASELINE_TOOLS: TutorToolName[] = ['ask_student_question', 'assess_answer'];
+
+export type TutorToolFilters = {
+  thesisMode?: boolean;
+  researchMode?: TutorResearchMode;
+  allowPlanTools?: boolean;
+  allowLearnerModel?: boolean;
+  quizzesRemaining?: number;
+  diagnosticsRemaining?: number;
+};
+
+export type TutorToolPolicy = TutorToolFilters & {
+  maxToolsPerTurn: number;
+};
+
+export function allowedTutorToolsForPhase(
+  phase: TutorPhase,
+  filters?: TutorToolFilters,
+): TutorToolName[] {
   switch (phase) {
     case 'intake':
-      return ['ask_student_question', 'create_diagnostic', 'generate_plan'];
+      return applyTutorFilters(['ask_student_question', 'create_diagnostic', 'generate_plan'], phase, filters);
     case 'diagnostic':
-      return [
-        'create_diagnostic',
-        'quiz_mcq',
-        'quiz_fill_blank',
-        'assess_answer',
-        'update_learner_model',
-      ];
+      return applyTutorFilters(
+        ['create_diagnostic', 'quiz_mcq', 'quiz_fill_blank', 'assess_answer', 'update_learner_model', 'apply_learner_model_feedback'],
+        phase,
+        filters,
+      );
     case 'planning':
-      return ['generate_plan', 'update_plan', 'get_plan_suggestions'];
+      return applyTutorFilters(['generate_plan', 'update_plan', 'get_plan_suggestions'], phase, filters);
     case 'practice':
-      return [
-        'quiz_mcq',
-        'quiz_fill_blank',
-        'quiz_open_ended',
-        'flashcards',
-        'assess_answer',
-        'grade_open_response',
-        'update_learner_model',
-        'add_to_deck',
-      ];
+      return applyTutorFilters(
+        [
+          'quiz_mcq',
+          'quiz_fill_blank',
+          'quiz_open_ended',
+          'flashcards',
+          'assess_answer',
+          'grade_open_response',
+          'update_learner_model',
+          'apply_learner_model_feedback',
+          'add_to_deck',
+        ],
+        phase,
+        filters,
+      );
     case 'review':
-      return ['flashcards', 'srs_review', 'assess_answer', 'update_learner_model'];
+      return applyTutorFilters(
+        ['flashcards', 'srs_review', 'assess_answer', 'update_learner_model', 'apply_learner_model_feedback'],
+        phase,
+        filters,
+      );
     case 'teaching':
     default:
-      return [
-        'quiz_mcq',
-        'quiz_fill_blank',
-        'quiz_open_ended',
-        'flashcards',
-        'assess_answer',
-        'grade_open_response',
-        'update_learner_model',
-        'add_to_deck',
-      ];
+      return applyTutorFilters(
+        [
+          'quiz_mcq',
+          'quiz_fill_blank',
+          'quiz_open_ended',
+          'flashcards',
+          'assess_answer',
+          'grade_open_response',
+          'update_learner_model',
+          'apply_learner_model_feedback',
+          'add_to_deck',
+        ],
+        phase,
+        filters,
+      );
   }
 }
 
-export function isTutorToolAllowedInPhase(name: TutorToolName, phase: TutorPhase): boolean {
-  return allowedTutorToolsForPhase(phase).includes(name);
+export function isTutorToolAllowedInPhase(
+  name: TutorToolName,
+  phase: TutorPhase,
+  filters?: TutorToolFilters,
+): boolean {
+  return allowedTutorToolsForPhase(phase, filters).includes(name);
+}
+
+function applyTutorFilters(
+  base: TutorToolName[],
+  phase: TutorPhase,
+  filters?: TutorToolFilters,
+): TutorToolName[] {
+  let tools = [...base];
+  const researchMode = filters?.researchMode;
+
+  if (researchMode === 'baseline_chat') {
+    tools = BASELINE_TOOLS.slice();
+  }
+
+  if (researchMode === 'plan_only' || filters?.allowLearnerModel === false) {
+    tools = tools.filter((name) => !LEARNER_MODEL_TOOLS.has(name));
+  }
+
+  if (researchMode === 'model_only' || filters?.allowPlanTools === false) {
+    tools = tools.filter((name) => !PLAN_TOOLS.has(name));
+  }
+
+  if (filters?.diagnosticsRemaining === 0) {
+    tools = tools.filter((name) => name !== 'create_diagnostic');
+  }
+
+  const hasQuizAllowance =
+    filters?.quizzesRemaining == null ? true : filters.quizzesRemaining > 0;
+  if (!hasQuizAllowance) {
+    tools = tools.filter((name) => !QUIZ_TOOLS.has(name));
+  }
+
+  if (filters?.thesisMode) {
+    const allowReadinessChecks =
+      hasQuizAllowance && phase !== 'intake' && phase !== 'planning';
+    tools = tools.filter((name) => {
+      if (THESIS_CORE_TOOLS.has(name)) return true;
+      if (!allowReadinessChecks) return false;
+      return name === 'quiz_mcq';
+    });
+  }
+
+  return Array.from(new Set(tools));
+}
+
+const DEFAULT_TOOL_BUDGET = {
+  maxToolsPerTurn: 2,
+  maxQuizzesPerNode: 1,
+  maxDiagnosticsPerSession: 1,
+};
+
+export function deriveTutorToolPolicy(args: {
+  chat: Chat;
+  ui?: UIState;
+  activeNodeId?: string | null;
+}): TutorToolPolicy {
+  const { chat, ui, activeNodeId } = args;
+  const budget = {
+    ...DEFAULT_TOOL_BUDGET,
+    ...(chat.settings.tutor_tool_budget || {}),
+  };
+  const usage: TutorToolUsage | undefined = ui?.tutorToolUsageByChatId?.[chat.id];
+  const activeKey = activeNodeId || '__global__';
+  const quizzesUsed = usage?.mcqByNode?.[activeKey] ?? 0;
+  const diagnosticsUsed = usage?.diagnosticsUsed ?? 0;
+  const researchMode =
+    chat.settings.tutor_research_mode || ui?.tutorResearchMode || 'plan_plus_model';
+  const thesisMode =
+    chat.settings.tutor_thesis_mode ?? ui?.tutorThesisMode ?? false;
+
+  return {
+    thesisMode,
+    researchMode,
+    allowPlanTools: researchMode !== 'model_only',
+    allowLearnerModel:
+      chat.settings.enableLearnerModel !== false && researchMode !== 'plan_only',
+    quizzesRemaining:
+      budget.maxQuizzesPerNode == null
+        ? undefined
+        : Math.max(0, budget.maxQuizzesPerNode - quizzesUsed),
+    diagnosticsRemaining:
+      budget.maxDiagnosticsPerSession == null
+        ? undefined
+        : Math.max(0, budget.maxDiagnosticsPerSession - diagnosticsUsed),
+    maxToolsPerTurn: budget.maxToolsPerTurn ?? DEFAULT_TOOL_BUDGET.maxToolsPerTurn,
+  };
 }

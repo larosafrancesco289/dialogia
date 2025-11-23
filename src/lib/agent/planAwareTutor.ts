@@ -246,11 +246,17 @@ export async function processPlanProgress(
     }
   }
 
+  if (progressMessage) {
+    planUpdates.summary = progressMessage;
+  }
+
   // Return results
   return {
     updatedPlan,
     planUpdates:
-      planUpdates.statusChanges!.length > 0 ? planUpdates : undefined,
+      planUpdates.statusChanges!.length > 0 || planUpdates.summary
+        ? planUpdates
+        : undefined,
     progressMessage,
   };
 }

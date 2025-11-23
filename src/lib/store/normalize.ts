@@ -50,6 +50,16 @@ export function applyTutorDefaults({
     changed = true;
   }
 
+  if (next.tutor_thesis_mode !== true) {
+    next.tutor_thesis_mode = true;
+    changed = true;
+  }
+
+  if (!next.tutor_research_mode) {
+    next.tutor_research_mode = 'plan_plus_model';
+    changed = true;
+  }
+
   if (next.enableLearnerModel !== true) {
     next.enableLearnerModel = true;
     changed = true;

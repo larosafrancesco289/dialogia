@@ -5,8 +5,17 @@ import type {
   ORModel,
   Folder,
   LearningPlan,
+  TutorResearchMode,
 } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
+import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
+
+export type TutorToolUsage = {
+  mcqByNode?: Record<string, number>;
+  diagnosticsUsed?: number;
+  lastMessageId?: string;
+  toolsThisTurn?: number;
+};
 
 export type UINextOverrides = {
   model?: string;
@@ -54,6 +63,8 @@ export type UIState = {
   experimentalBrave?: boolean; // show Brave web search and related UI
   experimentalTutor?: boolean; // show Tutor mode UI and enable tutor tools
   enableMultiModelChat?: boolean; // allow selecting and chatting with multiple models simultaneously
+  tutorThesisMode?: boolean;
+  tutorResearchMode?: TutorResearchMode;
   braveByMessageId?: Record<
     string,
     {
@@ -83,6 +94,7 @@ export type UIState = {
   };
   // Per-chat ephemeral flags (not persisted)
   tutorGreetedByChatId?: Record<string, boolean>;
+  tutorToolUsageByChatId?: Record<string, TutorToolUsage>;
   // Learning plan UI state
   planSheetOpen?: boolean;
   planSheetPlanOverride?: LearningPlan | null;
@@ -143,6 +155,7 @@ export type StoreState = {
   loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
   primeTutorWelcomePreview: () => Promise<string | undefined>;
   prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
+  applyLearnerModelFeedbackFromUser: (input: LearnerModelFeedback) => Promise<void>;
 
   // models
   loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
@@ -182,6 +195,8 @@ export type PersistedUIState = Pick<
   | 'sidebarCollapsed'
   | 'debugMode'
   | 'tutorContextMode'
+  | 'tutorThesisMode'
+  | 'tutorResearchMode'
   | 'zdrOnly'
   | 'routePreference'
   | 'experimentalBrave'

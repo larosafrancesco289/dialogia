@@ -5,6 +5,7 @@ import { PlanView } from './PlanView';
 import { updateNodeStatus } from '@/lib/learningPlan/service';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
 
 export function PlanSheet({
   plan,
@@ -13,6 +14,9 @@ export function PlanSheet({
   onUpdate,
   onStartLesson,
   learnerModel,
+  focusNodeId,
+  onLearnerModelFeedback,
+  latestUpdateSummary,
 }: {
   plan: LearningPlan | null;
   isOpen: boolean;
@@ -20,6 +24,9 @@ export function PlanSheet({
   onUpdate?: (updatedPlan: LearningPlan) => void;
   onStartLesson?: (nodeId: string) => void;
   learnerModel?: LearnerModel;
+  focusNodeId?: string;
+  onLearnerModelFeedback?: (feedback: LearnerModelFeedback) => void;
+  latestUpdateSummary?: string;
 }) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [closing, setClosing] = useState(false);
@@ -110,7 +117,7 @@ export function PlanSheet({
 
       {/* Side Sheet */}
       <div
-        className={`plan-sheet settings-drawer fixed inset-y-0 right-0 z-[80] w-full overflow-y-auto border-l border-border shadow-[var(--shadow-card)] sm:w-[640px]${closing ? ' is-closing' : ''}`}
+        className={`plan-sheet settings-drawer fixed inset-y-0 right-0 z-[80] w-full overflow-y-auto border-l border-border shadow-[var(--shadow-card)] sm:w-[90vw] md:max-w-7xl${closing ? ' is-closing' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="plan-sheet-title"
@@ -141,7 +148,7 @@ export function PlanSheet({
               className="text-xl font-semibold leading-tight"
               style={{ color: 'var(--color-fg)' }}
             >
-              Learning Plan
+              Learning Hub
             </h2>
             <span className="mt-1 truncate text-xs text-muted-foreground">{headingSubtitle}</span>
           </div>
@@ -159,7 +166,7 @@ export function PlanSheet({
             <button
               onClick={handleRequestClose}
               className="icon-button glass"
-              aria-label="Close plan view"
+              aria-label="Close learning hub"
               title="Close (Esc)"
             >
               <XMarkIcon className="h-5 w-5" />
@@ -177,12 +184,15 @@ export function PlanSheet({
         />
 
         {/* Content */}
-        <div className="plan-sheet__body space-y-6 px-5 pb-10 pt-6 sm:px-8 max-w-3xl mx-auto w-full">
+        <div className="plan-sheet__body px-5 pb-10 pt-6 sm:px-8 w-full h-full">
           <PlanView
             plan={plan}
             onNodeStatusChange={handleNodeStatusChange}
             onStartLesson={onStartLesson}
             learnerModel={learnerModel}
+            focusNodeId={focusNodeId}
+            onLearnerModelFeedback={onLearnerModelFeedback}
+            latestUpdateSummary={latestUpdateSummary}
           />
         </div>
       </div>

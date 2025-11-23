@@ -53,6 +53,8 @@ export const useChatStore = create<StoreState>()(
           enableMultiModelChat: s.ui.enableMultiModelChat,
           tutorDefaultModelId: s.ui.tutorDefaultModelId,
           forceTutorMode: s.ui.forceTutorMode,
+          tutorThesisMode: s.ui.tutorThesisMode,
+          tutorResearchMode: s.ui.tutorResearchMode,
         },
       }) as Partial<StoreState>,
     },

@@ -78,6 +78,7 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
     loadTutorProfileIntoUI: async () => {},
     primeTutorWelcomePreview: async () => undefined,
     prepareTutorWelcomeMessage: async () => undefined,
+    applyLearnerModelFeedbackFromUser: async () => {},
 
     loadModels: async () => {},
     toggleFavoriteModel: (id: string) =>

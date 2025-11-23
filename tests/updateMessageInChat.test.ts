@@ -39,6 +39,7 @@ const baseState = (messages: Record<string, Message[]>): StoreState =>
     loadTutorProfileIntoUI: noopAsync,
     primeTutorWelcomePreview: async () => undefined,
     prepareTutorWelcomeMessage: async () => undefined,
+    applyLearnerModelFeedbackFromUser: noopAsync,
     loadModels: noopAsync,
     toggleFavoriteModel: noop,
     hideModel: noop,

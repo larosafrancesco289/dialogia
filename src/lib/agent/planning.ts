@@ -26,9 +26,16 @@ import { captureRequestDebug } from '@/lib/agent/debug';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
 import { detectPlanningToolCalls } from '@/lib/agent/tools/router';
 import { schedulePlanningToolCalls } from '@/lib/agent/tools/scheduler';
-import { allowedTutorToolsForPhase, getTutorPhase } from '@/lib/agent/tutor/state';
+import {
+  allowedTutorToolsForPhase,
+  deriveTutorToolPolicy,
+  getTutorPhase,
+} from '@/lib/agent/tutor/state';
 import { isTutorToolName } from '@/lib/agent/tools';
+import { getNextNode } from '@/lib/learningPlan/service';
 import type { Message } from '@/lib/types';
+
+const QUIZ_TOOL_NAMES = new Set(['quiz_mcq', 'quiz_fill_blank', 'quiz_open_ended']);
 
 export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const {
@@ -49,7 +56,14 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const storeState = get?.();
   const messagesForChat = (storeState?.messages?.[chatId] ?? []) as Message[];
   const phase = getTutorPhase(chat, messagesForChat, storeState?.ui);
-  const allowedTutorTools = new Set(allowedTutorToolsForPhase(phase));
+  let currentPlan = chat.settings.learningPlan;
+  const activeNodeId = currentPlan ? getNextNode(currentPlan)?.id : undefined;
+  const toolPolicy = deriveTutorToolPolicy({
+    chat,
+    ui: storeState?.ui,
+    activeNodeId,
+  });
+  const allowedTutorTools = new Set(allowedTutorToolsForPhase(phase, toolPolicy));
   const planningToolDefinition =
     Array.isArray(toolDefinition) && toolDefinition.length > 0
       ? toolDefinition.filter((def) => {
@@ -75,7 +89,12 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   let planUpdatesResult: PlanTurnResult['planUpdates'] | undefined;
   let updatedPlanResult: PlanTurnResult['updatedPlan'] | undefined;
   let learnerModelDebugResult: PlanTurnResult['learnerModelDebug'] | undefined;
-  let currentPlan = chat.settings.learningPlan;
+  let toolsUsedThisTurn = 0;
+  let quizCallsThisTurn = 0;
+  const maxToolsPerTurn =
+    toolPolicy.maxToolsPerTurn && Number.isFinite(toolPolicy.maxToolsPerTurn)
+      ? Math.max(1, toolPolicy.maxToolsPerTurn)
+      : Infinity;
 
   while (rounds < MAX_PLANNING_ROUNDS) {
     const modelMeta = modelIndex.get(chat.settings.model);
@@ -138,13 +157,29 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
             return true;
           });
 
-    const scheduled = schedulePlanningToolCalls(filteredToolCalls, {
+    const scheduledRaw = schedulePlanningToolCalls(filteredToolCalls, {
       hasPlan: Boolean(currentPlan),
       hasActiveNode: Boolean(currentPlan?.nodes.some((node) => node.status === 'in_progress')),
       alreadyUsedContent: usedTutorContentTool,
       allowSearch: searchEnabled && searchProvider === 'brave',
       phase,
     });
+
+    let remainingQuizBudget =
+      (toolPolicy.quizzesRemaining ?? Number.POSITIVE_INFINITY) - quizCallsThisTurn;
+    let remainingTools = Math.max(0, maxToolsPerTurn - toolsUsedThisTurn);
+    const scheduled: ToolCall[] = [];
+
+    for (const call of scheduledRaw) {
+      if (remainingTools <= 0) break;
+      const name = call.function?.name ?? '';
+      if (QUIZ_TOOL_NAMES.has(name)) {
+        if (remainingQuizBudget <= 0) continue;
+        remainingQuizBudget -= 1;
+      }
+      scheduled.push(call);
+      remainingTools -= 1;
+    }
 
     if (scheduled.length > 0) {
       convo.push({ role: 'assistant', content: null, tool_calls: scheduled });
@@ -155,6 +190,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     }
 
     for (const tc of scheduled) {
+      const toolName = tc.function?.name ?? '';
       const parsedArgs = parseToolArguments(tc);
       const roundMeta =
         Number.isFinite(rounds) && Number.isFinite(rounds + 1)
@@ -191,6 +227,10 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
       if (execution.usedTutorContentTool) {
         usedTutorContentTool = true;
       }
+      if (QUIZ_TOOL_NAMES.has(toolName)) {
+        quizCallsThisTurn += 1;
+      }
+      toolsUsedThisTurn += 1;
     }
 
     const followup = followUpPrompt({ searchEnabled, searchProvider });

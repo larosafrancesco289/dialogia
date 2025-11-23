@@ -11,6 +11,7 @@ import {
   ChartBarIcon,
   ArrowPathIcon,
   HandThumbUpIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import type {
   TutorMCQItem,
@@ -1794,59 +1795,45 @@ function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpdate[] })
     const chat = s.chats.find((c) => c.id === s.selectedChatId);
     return chat?.settings?.learningPlan ?? null;
   });
+  const setUI = useChatStore((s) => s.setUI);
 
   const resolveNodeName = (nodeId: string) =>
     plan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
 
   return (
-    <div className="rounded-md border border-border bg-surface p-4">
-      <div className="text-sm font-semibold mb-3">Learner model updates</div>
-      <div className="space-y-3 text-xs text-muted-foreground">
+    <div className="rounded-md border border-border bg-surface/50 p-3">
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+           <SparklesIcon className="w-3.5 h-3.5 text-accent" />
+           Learner Model Updated
+        </div>
+        <button 
+          className="text-xs text-accent hover:underline font-medium"
+          onClick={() => setUI({ planSheetOpen: true })}
+        >
+          View Learning Hub
+        </button>
+      </div>
+      <div className="mt-2 space-y-2">
         {updates.map((update, idx) => {
           const before = update.confidenceBefore ?? null;
           const after = update.confidenceAfter ?? null;
           const delta =
             before != null && after != null ? Math.round((after - before) * 100) : null;
+            
           return (
             <div
               key={safeKey(update.nodeId, idx, 'lm')}
-              className="rounded-md border border-border/70 bg-muted/20 p-3"
+              className="text-sm flex items-center justify-between"
             >
-              <div className="flex items-center justify-between text-foreground text-sm font-medium">
-                <span>{resolveNodeName(update.nodeId)}</span>
-                <span>
-                  {before != null ? `${Math.round(before * 100)}%` : '—'} →{' '}
-                  {after != null ? `${Math.round(after * 100)}%` : '—'}{' '}
-                  {delta != null && (
-                    <span className={delta >= 0 ? 'text-emerald-500' : 'text-red-500'}>
-                      ({delta >= 0 ? '+' : ''}
-                      {delta}%)
+              <span className="font-medium">{resolveNodeName(update.nodeId)}</span>
+              <span className="text-muted-foreground text-xs">
+                 {delta != null && delta !== 0 ? (
+                    <span className={delta > 0 ? 'text-green-500' : 'text-amber-500'}>
+                      {delta > 0 ? '+' : ''}{delta}% confidence
                     </span>
-                  )}
-                </span>
-              </div>
-              {update.tutorComment && (
-                <div className="mt-2 text-xs text-muted-foreground/90">
-                  {update.tutorComment}
-                </div>
-              )}
-              {Array.isArray(update.evidence) && update.evidence.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {update.evidence.map((ev, evIdx) => (
-                    <div key={safeKey(ev.question, evIdx, 'evidence')}>
-                      <span className="font-medium text-foreground/80">{ev.question}</span>
-                      {ev.result && (
-                        <span className="ml-2 uppercase tracking-wide text-[10px]">
-                          · {String(ev.result).toUpperCase()}
-                        </span>
-                      )}
-                      {ev.feedback && (
-                        <div className="text-muted-foreground">{ev.feedback}</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+                 ) : 'Updated'}
+              </span>
             </div>
           );
         })}

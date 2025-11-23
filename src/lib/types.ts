@@ -21,6 +21,9 @@ export type ChatSettings = {
   // Tutor mode: enables pedagogy prompt + tutor tools
   tutor_mode?: boolean;
   tutor_default_model?: string;
+  tutor_thesis_mode?: boolean;
+  tutor_research_mode?: TutorResearchMode;
+  tutor_tool_budget?: TutorToolBudget;
   // Learning Plan System
   learningPlan?: LearningPlan;
   planGenerated?: boolean; // Flag to track if plan was generated
@@ -29,6 +32,14 @@ export type ChatSettings = {
   showDebugRawJson?: boolean; // Toggle raw request payload in debug panel
   // Learner Model Tracking
   enableLearnerModel?: boolean; // Whether to track mastery
+};
+
+export type TutorResearchMode = 'baseline_chat' | 'plan_only' | 'model_only' | 'plan_plus_model';
+
+export type TutorToolBudget = {
+  maxToolsPerTurn?: number;
+  maxQuizzesPerNode?: number;
+  maxDiagnosticsPerSession?: number;
 };
 
 export type GenSettingsSnapshot = Pick<ChatSettings,
@@ -107,6 +118,7 @@ export type Message = {
   planUpdates?: {
     statusChanges?: { nodeId: string; from: string; to: string }[];
     masteryChanges?: { nodeId: string; from: number; to: number }[];
+    summary?: string;
   };
   // Tool call transparency log for this assistant turn
   toolCalls?: ToolCallLogEntry[];

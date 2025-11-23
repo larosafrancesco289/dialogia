@@ -15,6 +15,7 @@ const TUTOR_CONTENT_TOOLS: TutorToolName[] = [
 const TUTOR_META_TOOLS: TutorToolName[] = [
   'assess_answer',
   'update_learner_model',
+  'apply_learner_model_feedback',
   'get_plan_suggestions',
   'grade_open_response',
   'add_to_deck',

@@ -6,6 +6,12 @@ import { updateTutorProfile, loadTutorProfile } from '@/lib/tutorProfile';
 import { saveMessage } from '@/lib/db';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { getNextNode } from '@/lib/learningPlan/service';
+import {
+  applyLearnerModelFeedback,
+  getLatestLearnerModel,
+  initializeLearnerModel,
+} from '@/lib/agent/learnerModel';
+import { processPlanProgress } from '@/lib/agent/planAwareTutor';
 
 const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
   if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {
@@ -186,6 +192,76 @@ export function createTutorSlice(
       const welcome = upsertWelcomeMessage(planMessage);
       await saveMessage(welcome).catch(() => undefined);
       return planMessage;
+    },
+
+    async applyLearnerModelFeedbackFromUser(input: Parameters<typeof applyLearnerModelFeedback>[1]) {
+      const state = get();
+      const chatId = state.selectedChatId;
+      if (!chatId) return;
+      const chat = state.chats.find((c) => c.id === chatId);
+      if (!chat || !chat.settings.learningPlan) return;
+
+      const plan = chat.settings.learningPlan;
+      const messages = state.messages[chatId] ?? [];
+      const baseModel =
+        getLatestLearnerModel(messages) ?? initializeLearnerModel(chatId, plan);
+      const feedback = applyLearnerModelFeedback(baseModel, input);
+      const planResult = await processPlanProgress(plan, feedback.model);
+      const updatedPlan = planResult.updatedPlan ?? plan;
+
+      if (typeof state.updateChatSettings === 'function') {
+        await state.updateChatSettings({ learningPlan: updatedPlan });
+      }
+
+      const nodeMeta = plan.nodes.find((n) => n.id === input.nodeId);
+      const beforePct =
+        feedback.from != null ? Math.round((feedback.from || 0) * 100) : undefined;
+      const afterPct =
+        feedback.to != null ? Math.round((feedback.to || 0) * 100) : undefined;
+      const summaryParts = [
+        `Adjusted mastery for ${nodeMeta?.name || input.nodeId}.`,
+      ];
+      if (beforePct != null && afterPct != null) {
+        summaryParts.push(`Confidence ${beforePct}% → ${afterPct}%.`);
+      }
+      if (feedback.resolved?.length) {
+        summaryParts.push(`Resolved: ${feedback.resolved.join(', ')}`);
+      }
+      if (input.reason) summaryParts.push(input.reason);
+
+      const planUpdates =
+        planResult.planUpdates ??
+        ({
+          masteryChanges:
+            feedback.from != null && feedback.to != null
+              ? [{ nodeId: input.nodeId, from: feedback.from, to: feedback.to }]
+              : undefined,
+          summary: summaryParts.join(' '),
+        } as Message['planUpdates']);
+      if (planUpdates && !planUpdates.summary) {
+        planUpdates.summary = summaryParts.join(' ');
+      }
+
+      const assistantMessage: Message = {
+        id: uuidv4(),
+        chatId,
+        role: 'assistant',
+        content: summaryParts.join(' '),
+        createdAt: Date.now(),
+        model: chat.settings.model || DEFAULT_TUTOR_MODEL_ID,
+        learnerModel: feedback.model,
+        planUpdates,
+        metadata: { kind: 'learner_model_feedback' },
+      };
+
+      set((s) => ({
+        messages: {
+          ...s.messages,
+          [chatId]: [...(s.messages[chatId] ?? []), assistantMessage],
+        },
+      }));
+
+      await saveMessage(assistantMessage).catch(() => undefined);
     },
   } satisfies Partial<StoreState>;
 }
