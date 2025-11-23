@@ -117,7 +117,7 @@ export function PlanSheet({
 
       {/* Side Sheet */}
       <div
-        className={`plan-sheet settings-drawer fixed inset-y-0 right-0 z-[80] w-full overflow-y-auto border-l border-border shadow-[var(--shadow-card)] sm:w-[90vw] md:max-w-7xl${closing ? ' is-closing' : ''}`}
+        className={`plan-sheet settings-drawer fixed inset-y-0 right-0 z-[80] w-full overflow-y-auto border-l border-border shadow-[var(--shadow-card)] sm:w-[55vw] md:max-w-xl${closing ? ' is-closing' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="plan-sheet-title"
@@ -137,24 +137,18 @@ export function PlanSheet({
           }}
         >
           <div className="flex min-w-0 flex-col">
-            <span
-              className="text-[11px] font-semibold uppercase tracking-wider"
-              style={{ color: 'color-mix(in oklab, var(--color-accent) 80%, var(--color-fg) 20%)' }}
-            >
-              Personalized journey
-            </span>
             <h2
               id="plan-sheet-title"
-              className="text-xl font-semibold leading-tight"
+              className="text-lg font-bold leading-tight"
               style={{ color: 'var(--color-fg)' }}
             >
               Learning Hub
             </h2>
-            <span className="mt-1 truncate text-xs text-muted-foreground">{headingSubtitle}</span>
+            <span className="mt-0.5 truncate text-xs text-muted-foreground">{headingSubtitle}</span>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <span
-              className="hidden rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider sm:inline-flex"
+              className="hidden rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider sm:inline-flex"
               style={{
                 color: 'color-mix(in oklab, var(--color-accent) 80%, var(--color-fg) 20%)',
                 border: '1px solid color-mix(in oklab, var(--color-accent) 45%, var(--color-border))',
@@ -184,7 +178,7 @@ export function PlanSheet({
         />
 
         {/* Content */}
-        <div className="plan-sheet__body px-5 pb-10 pt-6 sm:px-8 w-full h-full">
+        <div className="plan-sheet__body px-4 pt-5 pb-10 sm:px-6 w-full h-full">
           <PlanView
             plan={plan}
             onNodeStatusChange={handleNodeStatusChange}
