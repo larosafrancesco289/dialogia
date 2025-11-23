@@ -33,7 +33,14 @@ import {
 } from '@/lib/agent/tutor/state';
 import { isTutorToolName } from '@/lib/agent/tools';
 import { getNextNode } from '@/lib/learningPlan/service';
-import type { Message } from '@/lib/types';
+import type { Message, Evidence, Misconception } from '@/lib/types';
+import {
+  extractEvidence,
+  updateLearnerModel,
+  getLatestLearnerModel,
+  initializeLearnerModel,
+} from '@/lib/agent/learnerModel';
+import { processPlanProgress } from '@/lib/agent/planAwareTutor';
 
 const QUIZ_TOOL_NAMES = new Set(['quiz_mcq', 'quiz_fill_blank', 'quiz_open_ended']);
 
@@ -67,11 +74,11 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const planningToolDefinition =
     Array.isArray(toolDefinition) && toolDefinition.length > 0
       ? toolDefinition.filter((def) => {
-          const name = def.function?.name;
-          if (!name) return false;
-          if (isTutorToolName(name)) return allowedTutorTools.has(name);
-          return true;
-        })
+        const name = def.function?.name;
+        if (!name) return false;
+        if (isTutorToolName(name)) return allowedTutorTools.has(name);
+        return true;
+      })
       : undefined;
 
   const planningSystem =
@@ -89,6 +96,76 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   let planUpdatesResult: PlanTurnResult['planUpdates'] | undefined;
   let updatedPlanResult: PlanTurnResult['updatedPlan'] | undefined;
   let learnerModelDebugResult: PlanTurnResult['learnerModelDebug'] | undefined;
+
+  // Automatic Learner Model Update
+  // Analyze student response to update mastery before planning the next move
+  if (chat.settings.learningPlan && userContent) {
+    try {
+      const plan = chat.settings.learningPlan;
+      const currentModel =
+        getLatestLearnerModel(messagesForChat) ?? initializeLearnerModel(chatId, plan);
+      const activeNode = getNextNode(plan);
+
+      if (activeNode) {
+        // Construct conversation window for analysis
+        const window = [
+          ...messagesForChat.slice(-10), // Last 10 messages context
+          { role: 'user', content: userContent, id: 'temp-user', createdAt: Date.now() } as Message,
+        ];
+
+        const evidence = await extractEvidence(
+          activeNode.id,
+          activeNode.name,
+          activeNode.objectives,
+          window,
+          { apiKey, transport, model: chat.settings.model },
+        );
+
+        const misconceptionDescription = evidence.misconception?.trim();
+        const shouldApplyEvidence = evidence.weight !== 0 || !!misconceptionDescription;
+
+        if (shouldApplyEvidence) {
+          const timestamp = Date.now();
+          const fullEvidence: Evidence = {
+            type: evidence.type,
+            details: evidence.details,
+            weight: evidence.weight,
+            timestamp,
+            skill: activeNode.id,
+          };
+          const misconception: Misconception | undefined = misconceptionDescription
+            ? {
+                id: `misc_${activeNode.id}_${timestamp}`,
+                description: misconceptionDescription,
+                firstObserved: timestamp,
+                occurrences: 1,
+                resolved: false,
+              }
+            : undefined;
+
+          const updatedModel = updateLearnerModel(currentModel, {
+            nodeId: activeNode.id,
+            evidence: fullEvidence,
+            misconception,
+          });
+
+          learnerModelResult = updatedModel;
+
+          // Check for plan progression
+          const progress = await processPlanProgress(plan, updatedModel);
+          if (progress.updatedPlan !== plan) {
+            updatedPlanResult = progress.updatedPlan;
+            currentPlan = progress.updatedPlan;
+            planUpdatesResult = progress.planUpdates;
+          } else if (progress.planUpdates) {
+            planUpdatesResult = progress.planUpdates;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update learner model:', err);
+    }
+  }
   let toolsUsedThisTurn = 0;
   let quizCallsThisTurn = 0;
   const maxToolsPerTurn =
@@ -151,11 +228,11 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
       toolCalls.length === 0
         ? []
         : toolCalls.filter((call) => {
-            const name = call.function?.name ?? '';
-            if (!name) return false;
-            if (isTutorToolName(name)) return allowedTutorTools.has(name);
-            return true;
-          });
+          const name = call.function?.name ?? '';
+          if (!name) return false;
+          if (isTutorToolName(name)) return allowedTutorTools.has(name);
+          return true;
+        });
 
     const scheduledRaw = schedulePlanningToolCalls(filteredToolCalls, {
       hasPlan: Boolean(currentPlan),

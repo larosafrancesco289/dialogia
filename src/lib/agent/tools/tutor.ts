@@ -108,7 +108,7 @@ export function isTutorToolName(name: string): name is TutorToolName {
   return TUTOR_TOOL_NAME_SET.has(name as TutorToolName);
 }
 export type TutorQuizPayload = {
-  items: Array<{ id: string; [key: string]: unknown }>;
+  items: Array<{ id: string;[key: string]: unknown }>;
 };
 
 export function normalizeTutorQuizPayload(args: unknown): TutorQuizPayload | null {
@@ -216,8 +216,8 @@ export async function applyTutorToolCall(opts: {
     let updatedMsg: Message | undefined;
     set((state) => {
       const list = state.messages[chatId] ?? [];
-       const prev =
-         ((state.ui.tutorByMessageId || {})[assistantMessage.id] as Record<string, unknown>) || {};
+      const prev =
+        ((state.ui.tutorByMessageId || {})[assistantMessage.id] as Record<string, unknown>) || {};
       const patch = buildPatch(prev);
       const result = attachTutorUiState({
         currentUi: state.ui.tutorByMessageId,
@@ -246,14 +246,14 @@ export async function applyTutorToolCall(opts: {
         const questionText =
           typeof record.question === 'string' ? record.question.trim() : undefined;
         if (!questionText) return null;
-    const optionsRaw = Array.isArray(record.options) ? (record.options as unknown[]) : [];
-    const options = optionsRaw
-      .map((opt) => {
-        if (!opt || typeof opt !== 'object') return null;
-        const optRecord = opt as Record<string, unknown>;
-        const label =
-          typeof optRecord.label === 'string'
-            ? optRecord.label.trim()
+        const optionsRaw = Array.isArray(record.options) ? (record.options as unknown[]) : [];
+        const options = optionsRaw
+          .map((opt) => {
+            if (!opt || typeof opt !== 'object') return null;
+            const optRecord = opt as Record<string, unknown>;
+            const label =
+              typeof optRecord.label === 'string'
+                ? optRecord.label.trim()
                 : typeof optRecord.title === 'string'
                   ? optRecord.title.trim()
                   : '';
@@ -299,13 +299,13 @@ export async function applyTutorToolCall(opts: {
         };
       })
       .filter(Boolean) as Array<{
-      id: string;
-      question: string;
-      category?: string;
-      allowMultiple?: boolean;
-      followUpBehavior: 'required' | 'optional' | 'none';
-      options: Array<{ label: string; description?: string }>;
-    }>;
+        id: string;
+        question: string;
+        category?: string;
+        allowMultiple?: boolean;
+        followUpBehavior: 'required' | 'optional' | 'none';
+        options: Array<{ label: string; description?: string }>;
+      }>;
 
     if (normalizedQuestions.length === 0) {
       return { handled: false, usedContent: false };
@@ -651,7 +651,11 @@ export async function applyTutorToolCall(opts: {
     const nodeId =
       typeof args['nodeId'] === 'string' ? (args['nodeId'] as string).trim() : undefined;
     if (!nodeId) return { handled: false, usedContent: false };
-    const evidenceRaw = Array.isArray(args['evidence']) ? args['evidence'] : [];
+    const evidenceRaw = Array.isArray(args['evidence'])
+      ? args['evidence']
+      : args['evidence'] && typeof args['evidence'] === 'object'
+        ? [args['evidence']]
+        : [];
     const evidence = evidenceRaw
       .map((item) => {
         if (!item || typeof item !== 'object') return null;
@@ -678,7 +682,9 @@ export async function applyTutorToolCall(opts: {
 
     const misconceptionsRaw = Array.isArray(args['misconceptions'])
       ? args['misconceptions']
-      : [];
+      : args['misconceptions'] && typeof args['misconceptions'] === 'object'
+        ? [args['misconceptions']]
+        : [];
     const misconceptions = misconceptionsRaw
       .map((item) => {
         if (!item || typeof item !== 'object') return null;
@@ -744,6 +750,17 @@ export async function applyTutorToolCall(opts: {
       currentModel = initializeLearnerModel(chatId, plan);
     }
 
+    // If no evidence but we have misconceptions, synthesize a neutral evidence item
+    // to ensure the misconception is recorded.
+    if (evidence.length === 0 && misconceptions.length > 0) {
+      evidence.push({
+        type: 'misconception_detected',
+        weight: 0,
+        details: 'Misconception observed without specific evidence weight',
+        skill: nodeId,
+      });
+    }
+
     if (!currentModel || evidence.length === 0) {
       return {
         handled: true,
@@ -764,14 +781,14 @@ export async function applyTutorToolCall(opts: {
       const misconceptionMeta = misconceptionQueue.shift();
       const misconceptionObj: Misconception | undefined = misconceptionMeta
         ? {
-            id: `misc_${nodeId}_${now + index}`,
-            description: misconceptionMeta.description,
-            firstObserved: now + index,
-            occurrences: 1,
-            resolved: false,
-            severity: misconceptionMeta.severity,
-            examples: misconceptionMeta.examples,
-          }
+          id: `misc_${nodeId}_${now + index}`,
+          description: misconceptionMeta.description,
+          firstObserved: now + index,
+          occurrences: 1,
+          resolved: false,
+          severity: misconceptionMeta.severity,
+          examples: misconceptionMeta.examples,
+        }
         : undefined;
       const evidenceObj: Evidence = {
         timestamp: now + index,
