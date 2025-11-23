@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   AcademicCapIcon,
   CheckIcon,
@@ -12,6 +13,9 @@ import {
   ArrowPathIcon,
   HandThumbUpIcon,
   SparklesIcon,
+  ChevronRightIcon,
+  ChevronLeftIcon,
+  ArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import type {
   TutorMCQItem,
@@ -35,57 +39,17 @@ function safeKey(val: any, idx: number, prefix = 'item'): string {
 
 type StepStatus = 'pending' | 'correct' | 'incorrect' | 'answered';
 
-function usePrefersReducedMotion() {
-  const [prefers, setPrefers] = useState(false);
+const cardVariants = {
+  hidden: { opacity: 0, y: 10, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3 } },
+  exit: { opacity: 0, scale: 0.98, transition: { duration: 0.2 } },
+};
 
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('matchMedia' in window)) return;
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const handleChange = () => setPrefers(media.matches);
-    handleChange();
-    try {
-      media.addEventListener('change', handleChange);
-      return () => media.removeEventListener('change', handleChange);
-    } catch {
-      media.addListener(handleChange);
-      return () => media.removeListener(handleChange);
-    }
-  }, []);
-
-  return prefers;
-}
-
-function AnimatedStep({
-  stepKey,
-  className,
-  children,
-}: {
-  stepKey: string | number;
-  className?: string;
-  children: ReactNode;
-}) {
-  const reduceMotion = usePrefersReducedMotion();
-  const [phase, setPhase] = useState<'enter' | 'entered'>('entered');
-
-  useEffect(() => {
-    if (reduceMotion) return;
-    setPhase('enter');
-    const raf = window.requestAnimationFrame(() => setPhase('entered'));
-    return () => window.cancelAnimationFrame(raf);
-  }, [stepKey, reduceMotion]);
-
-  if (reduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
-  const animationClass =
-    phase === 'entered'
-      ? 'transition-all duration-450 ease-[cubic-bezier(0.16,0.84,0.44,1)] opacity-100 translate-y-0'
-      : 'transition-all duration-450 ease-[cubic-bezier(0.16,0.84,0.44,1)] opacity-0 translate-y-3';
-  const merged = className ? `${className} ${animationClass}` : animationClass;
-
-  return <div className={merged}>{children}</div>;
-}
+const contentVariants = {
+  hidden: { opacity: 0, x: 10 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.3 } },
+  exit: { opacity: 0, x: -10, transition: { duration: 0.2 } },
+};
 
 function StepperDots<T>({
   items,
@@ -100,33 +64,25 @@ function StepperDots<T>({
 }) {
   if (!Array.isArray(items) || items.length === 0) return null;
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5">
       {items.map((item, idx) => {
         const status = resolveStatus(item, idx);
-        const color =
-          status === 'correct'
-            ? 'bg-emerald-500 border-emerald-500'
-            : status === 'incorrect'
-              ? 'bg-destructive/70 border-destructive/60'
-              : status === 'answered'
-                ? 'bg-primary/40 border-primary/50'
-                : 'bg-muted border-border';
-        const ring = idx === activeIndex ? 'ring-2 ring-primary/60 ring-offset-1' : '';
-        const statusLabel =
-          status === 'correct'
-            ? 'answered correctly'
-            : status === 'incorrect'
-              ? 'answered incorrectly'
-              : status === 'answered'
-                ? 'answered'
-                : 'not answered yet';
+        const isActive = idx === activeIndex;
+
+        let colorClass = 'bg-muted border-border';
+        if (status === 'correct') colorClass = 'bg-emerald-500 border-emerald-500';
+        else if (status === 'incorrect') colorClass = 'bg-rose-500 border-rose-500';
+        else if (status === 'answered') colorClass = 'bg-primary/60 border-primary/60';
+        else if (isActive) colorClass = 'bg-primary border-primary';
+
         return (
           <button
             type="button"
             key={idx}
-            className={`h-2.5 w-2.5 rounded-full border transition-all duration-150 ${color} ${ring}`}
+            className={`h-2 w-2 rounded-full border transition-all duration-300 ${colorClass} ${isActive ? 'scale-125 ring-2 ring-primary/20 ring-offset-1' : 'opacity-70 hover:opacity-100'
+              }`}
             onClick={() => onSelect(idx)}
-            aria-label={`Go to item ${idx + 1} (${statusLabel})`}
+            aria-label={`Go to item ${idx + 1}`}
           />
         );
       })}
@@ -178,15 +134,20 @@ export function TutorPanel(props: {
   if (!hasAny) return null;
 
   return (
-    <div className="px-4 pt-3">
-      <div className="rounded-lg border border-border bg-muted/40">
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border justify-between">
-          <div className="flex items-center gap-2 min-w-0">
+    <div className="px-4 py-2">
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={cardVariants}
+        className="overflow-hidden rounded-xl border border-border/50 bg-surface/40 backdrop-blur-sm shadow-sm"
+      >
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border/40 bg-muted/20">
+          <div className="flex items-center gap-2 min-w-0 text-muted-foreground">
             <AcademicCapIcon className="h-4 w-4" />
-            <div className="text-sm font-medium truncate">{title || 'Tutor Tools'}</div>
+            <div className="text-xs font-bold uppercase tracking-wider truncate">{title || 'Tutor Tools'}</div>
           </div>
         </div>
-        <div className="p-3 space-y-4">
+        <div className="p-4 space-y-6">
           {questionnaire && questionnaire.questions?.length ? (
             <QuestionnaireCard messageId={messageId} questionnaire={questionnaire} />
           ) : null}
@@ -215,19 +176,26 @@ export function TutorPanel(props: {
             <LearnerUpdatesCard updates={assessmentUpdates} />
           )}
           {grading && Object.keys(grading).length > 0 && (
-            <div className="rounded-md border border-border bg-surface p-3">
-              <div className="text-sm font-medium mb-2">Grading</div>
-              <div className="space-y-2 text-sm">
+            <div className="rounded-lg border border-border/60 bg-surface/50 p-4">
+              <div className="text-sm font-medium mb-3 flex items-center gap-2">
+                <ClipboardDocumentCheckIcon className="h-4 w-4 text-primary" />
+                Grading Feedback
+              </div>
+              <div className="space-y-4 text-sm">
                 {Object.entries(grading).map(([id, g], idx) => (
-                  <div key={safeKey(id, idx, 'grade')}>
-                    <div className="font-medium">
+                  <div key={safeKey(id, idx, 'grade')} className="space-y-1">
+                    <div className="font-medium text-foreground">
                       Item {id}
                       {g.score != null ? ` · Score: ${Math.round(g.score * 100)}%` : ''}
                     </div>
-                    <div className="text-muted-foreground whitespace-pre-wrap">{g.feedback}</div>
+                    <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{g.feedback}</div>
                     {Array.isArray(g.criteria) && g.criteria.length > 0 && (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        Criteria: {g.criteria.join(', ')}
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {g.criteria.map((c, i) => (
+                          <span key={i} className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            {c}
+                          </span>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -236,7 +204,7 @@ export function TutorPanel(props: {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -261,24 +229,17 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
     }
     return total > 0 ? 0 : -1;
   }, [items, mcq, total]);
+
   const [activeIndex, setActiveIndex] = useState(
     firstPendingIndex >= 0 ? firstPendingIndex : 0,
   );
   const advanceTimer = useRef<number | null>(null);
-  const transitionTimer = useRef<number | null>(null);
-  const prefersReducedMotion = usePrefersReducedMotion();
-  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
-  const [transitionStage, setTransitionStage] = useState<'idle' | 'out' | 'in'>('idle');
 
   useEffect(
     () => () => {
       if (advanceTimer.current != null) {
         window.clearTimeout(advanceTimer.current);
         advanceTimer.current = null;
-      }
-      if (transitionTimer.current != null) {
-        window.clearTimeout(transitionTimer.current);
-        transitionTimer.current = null;
       }
     },
     [],
@@ -307,120 +268,18 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
   const answered = !!activeAttempt.done;
   const correctIdx = typeof activeItem?.correct === 'number' ? activeItem.correct : -1;
 
-  const clampIndex = useCallback(
+  const goToIndex = useCallback(
     (idx: number) => {
-      if (!total) return 0;
-      if (Number.isNaN(idx)) return 0;
-      if (idx < 0) return 0;
-      if (idx >= total) return total - 1;
-      return idx;
+      if (!total) return;
+      if (idx < 0) idx = 0;
+      if (idx >= total) idx = total - 1;
+      setActiveIndex(idx);
     },
     [total],
   );
 
-  const setIndexClamped = useCallback(
-    (idx: number) => {
-      const target = clampIndex(idx);
-      setActiveIndex(target);
-    },
-    [clampIndex],
-  );
-
-  const requestAnimatedIndex = useCallback(
-    (idx: number) => {
-      const target = clampIndex(idx);
-      if (!total || target === activeIndex) return;
-      if (prefersReducedMotion) {
-        setIndexClamped(target);
-        return;
-      }
-      if (transitionStage !== 'idle') return;
-      setPendingIndex(target);
-      setTransitionStage('out');
-    },
-    [activeIndex, clampIndex, prefersReducedMotion, setIndexClamped, total, transitionStage],
-  );
-
-  const goToIndex = useCallback(
-    (idx: number, opts?: { animate?: boolean }) => {
-      if (opts?.animate) {
-        requestAnimatedIndex(idx);
-        return;
-      }
-      if (transitionTimer.current != null) {
-        window.clearTimeout(transitionTimer.current);
-        transitionTimer.current = null;
-      }
-      setPendingIndex(null);
-      setTransitionStage('idle');
-      setIndexClamped(idx);
-    },
-    [requestAnimatedIndex, setIndexClamped],
-  );
-
-  const goPrevious = useCallback(
-    () => goToIndex(activeIndex - 1, { animate: true }),
-    [activeIndex, goToIndex],
-  );
-  const goNext = useCallback(
-    () => goToIndex(activeIndex + 1, { animate: true }),
-    [activeIndex, goToIndex],
-  );
-
-  useEffect(() => {
-    if (prefersReducedMotion && transitionStage !== 'idle') {
-      if (pendingIndex != null) {
-        setIndexClamped(pendingIndex);
-      }
-      if (transitionTimer.current != null) {
-        window.clearTimeout(transitionTimer.current);
-        transitionTimer.current = null;
-      }
-      setPendingIndex(null);
-      setTransitionStage('idle');
-    }
-  }, [prefersReducedMotion, pendingIndex, setIndexClamped, transitionStage]);
-
-  useEffect(() => {
-    if (prefersReducedMotion) return undefined;
-    if (transitionStage === 'out') {
-      if (transitionTimer.current != null) {
-        window.clearTimeout(transitionTimer.current);
-        transitionTimer.current = null;
-      }
-      transitionTimer.current = window.setTimeout(() => {
-        if (pendingIndex != null) {
-          setIndexClamped(pendingIndex);
-        }
-        transitionTimer.current = null;
-        setTransitionStage('in');
-      }, 220);
-      return () => {
-        if (transitionTimer.current != null) {
-          window.clearTimeout(transitionTimer.current);
-          transitionTimer.current = null;
-        }
-      };
-    }
-    if (transitionStage === 'in') {
-      if (transitionTimer.current != null) {
-        window.clearTimeout(transitionTimer.current);
-        transitionTimer.current = null;
-      }
-      transitionTimer.current = window.setTimeout(() => {
-        setTransitionStage('idle');
-        setPendingIndex(null);
-        transitionTimer.current = null;
-      }, 320);
-      return () => {
-        if (transitionTimer.current != null) {
-          window.clearTimeout(transitionTimer.current);
-          transitionTimer.current = null;
-        }
-      };
-    }
-    return undefined;
-  }, [transitionStage, pendingIndex, setIndexClamped, prefersReducedMotion]);
+  const goPrevious = useCallback(() => goToIndex(activeIndex - 1), [activeIndex, goToIndex]);
+  const goNext = useCallback(() => goToIndex(activeIndex + 1), [activeIndex, goToIndex]);
 
   const handleSelect = (choiceIdx: number) => {
     if (!activeItem) return;
@@ -458,38 +317,21 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
       advanceTimer.current = null;
     }
     if (correct && activeIndex < total - 1) {
-      const delay = prefersReducedMotion ? 220 : 650;
       advanceTimer.current = window.setTimeout(() => {
-        goToIndex(activeIndex + 1, { animate: true });
+        goToIndex(activeIndex + 1);
         advanceTimer.current = null;
-      }, delay);
+      }, 1200); // Longer delay to read feedback
     }
   };
 
   if (!total || !activeItem) return null;
 
-  const cardTransitionClass = prefersReducedMotion
-    ? ''
-    : transitionStage === 'out'
-      ? 'opacity-0 translate-y-4 scale-[0.97]'
-      : 'opacity-100 translate-y-0 scale-100';
-  const transitionBase = prefersReducedMotion
-    ? ''
-    : 'transition-all duration-400 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-transform will-change-opacity';
-  const cardClassName = [
-    'rounded-md border border-border bg-surface p-3',
-    transitionBase,
-    cardTransitionClass,
-  ]
-    .filter(Boolean)
-    .join(' ');
-
   return (
-    <div className="space-y-3">
-      <div className={cardClassName}>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Question {activeIndex + 1} / {total}
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+          <span className="font-medium uppercase tracking-wider">
+            Question {activeIndex + 1} of {total}
           </span>
           <StepperDots
             items={items}
@@ -499,80 +341,116 @@ function MCQList({ items, messageId }: { items: TutorMCQItem[]; messageId: strin
               if (!attempt?.done) return 'pending';
               return attempt.correct ? 'correct' : 'incorrect';
             }}
-            onSelect={(idx) => goToIndex(idx, { animate: true })}
+            onSelect={goToIndex}
           />
         </div>
 
-        <AnimatedStep
-          stepKey={activeItem.id}
-          className="mt-4 rounded-md border border-border bg-muted/20"
-        >
-          <div className="px-3 py-2 text-sm font-medium">
-            {activeIndex + 1}. {activeItem.question}
-          </div>
-          <div className="px-3 pb-3 pt-1 grid gap-2">
-            {activeItem.choices.map((choice, idx) => {
-              const isPicked = picked === idx;
-              const isCorrect = correctIdx === idx;
-              const intent = answered
-                ? isCorrect
-                  ? 'btn-primary answer-pop'
-                  : isPicked
-                    ? 'btn-destructive answer-pop'
-                    : 'btn-outline'
-                : isPicked
-                  ? 'btn'
-                  : 'btn-outline';
-              return (
-                <button
-                  type="button"
-                  key={idx}
-                  className={`btn ${intent} justify-start`}
-                  onClick={() => handleSelect(idx)}
-                  disabled={answered}
-                >
-                  <span className="min-w-5 text-xs font-semibold">
-                    {String.fromCharCode(65 + idx)}
-                  </span>
-                  <span className="ml-2">{choice}</span>
-                </button>
-              );
-            })}
-            {answered && typeof picked === 'number' && (
-              <span className="badge inline-flex items-center gap-1 w-fit">
-                {picked === correctIdx ? (
-                  <>
-                    <CheckIcon className="h-3.5 w-3.5" /> Correct
-                  </>
-                ) : (
-                  <>
-                    <XMarkIcon className="h-3.5 w-3.5" /> Incorrect
-                  </>
-                )}
-              </span>
-            )}
-            {answered && activeItem.explanation && (
-              <div className="text-xs text-muted-foreground">{activeItem.explanation}</div>
-            )}
-          </div>
-        </AnimatedStep>
+        <div className="relative min-h-[200px]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeItem.id}
+              variants={contentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="space-y-4"
+            >
+              <div className="text-sm font-medium leading-relaxed">
+                {activeItem.question}
+              </div>
+              <div className="grid gap-2.5">
+                {activeItem.choices.map((choice, idx) => {
+                  const isPicked = picked === idx;
+                  const isCorrect = correctIdx === idx;
+                  let btnClass = 'btn-outline hover:bg-muted/50';
 
-        <div className="mt-4 flex items-center justify-between">
+                  if (answered) {
+                    if (isCorrect) btnClass = 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20';
+                    else if (isPicked) btnClass = 'bg-rose-500/10 border-rose-500/50 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20';
+                    else btnClass = 'btn-outline opacity-50';
+                  } else if (isPicked) {
+                    btnClass = 'btn-primary';
+                  }
+
+                  return (
+                    <button
+                      type="button"
+                      key={idx}
+                      className={`btn justify-start relative overflow-hidden transition-all duration-200 ${btnClass} ${answered ? 'cursor-default' : ''}`}
+                      onClick={() => handleSelect(idx)}
+                      disabled={answered}
+                    >
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold mr-3 ${answered && isCorrect ? 'border-emerald-500 bg-emerald-500 text-white' :
+                        answered && isPicked ? 'border-rose-500 bg-rose-500 text-white' :
+                          'border-current opacity-60'
+                        }`}>
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <span className="text-left">{choice}</span>
+                      {answered && (isCorrect || isPicked) && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2"
+                        >
+                          {isCorrect ? (
+                            <CheckIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <XMarkIcon className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                          )}
+                        </motion.div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <AnimatePresence>
+                {answered && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className={`rounded-lg p-3 text-xs ${picked === correctIdx
+                      ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-800 dark:text-rose-300 border border-rose-500/20'
+                      }`}>
+                      <div className="font-bold mb-1 flex items-center gap-1.5">
+                        {picked === correctIdx ? (
+                          <><CheckIcon className="h-3.5 w-3.5" /> Correct</>
+                        ) : (
+                          <><XMarkIcon className="h-3.5 w-3.5" /> Incorrect</>
+                        )}
+                      </div>
+                      {activeItem.explanation && (
+                        <div className="opacity-90 leading-relaxed">{activeItem.explanation}</div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between border-t border-border/40 pt-4">
           <button
             type="button"
-            className="btn btn-outline btn-sm"
+            className="btn btn-ghost btn-sm gap-1 pl-0 text-muted-foreground hover:text-foreground"
             onClick={goPrevious}
             disabled={activeIndex === 0}
           >
-            Previous
+            <ChevronLeftIcon className="h-3 w-3" /> Previous
           </button>
           <button
             type="button"
-            className="btn btn-outline btn-sm"
+            className="btn btn-ghost btn-sm gap-1 pr-0 text-muted-foreground hover:text-foreground"
             onClick={goNext}
             disabled={activeIndex >= total - 1}
           >
-            Next
+            Next <ChevronRightIcon className="h-3 w-3" />
           </button>
         </div>
       </div>
@@ -736,16 +614,16 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
       advanceTimer.current = window.setTimeout(() => {
         goToIndex(activeIndex + 1);
         advanceTimer.current = null;
-      }, 350);
+      }, 1200);
     }
   };
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-md border border-border bg-surface p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Question {activeIndex + 1} / {total}
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+          <span className="font-medium uppercase tracking-wider">
+            Question {activeIndex + 1} of {total}
           </span>
           <StepperDots
             items={items}
@@ -759,60 +637,112 @@ function FillBlankList({ items, messageId }: { items: TutorFillBlankItem[]; mess
           />
         </div>
 
-        <AnimatedStep
-          stepKey={activeItem.id}
-          className="mt-4 rounded-md border border-border bg-muted/20 p-3"
-        >
-          <div className="text-sm font-medium mb-3">
-            {activeIndex + 1}. {activeItem.prompt}
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <input
-              className="input flex-1"
-              placeholder="Type your answer"
-              value={value}
-              onChange={(event) => persistAnswer(event.currentTarget.value)}
-              disabled={revealed}
-            />
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={revealAnswer}
-              disabled={revealed || !String(value || '').trim()}
+        <div className="relative min-h-[150px]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeItem.id}
+              variants={contentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="space-y-4"
             >
-              Check
-            </button>
-            {revealed && (
-              <span className="badge inline-flex items-center gap-1">
-                {correct ? <CheckIcon className="h-3.5 w-3.5" /> : <XMarkIcon className="h-3.5 w-3.5" />}
-                {correct ? 'Correct' : 'Try again'}
-              </span>
-            )}
-          </div>
-          {revealed && !correct && (
-            <div className="mt-2 text-xs text-muted-foreground">Answer: {activeItem.answer}</div>
-          )}
-          {revealed && activeItem.explanation && (
-            <div className="mt-1 text-xs text-muted-foreground">{activeItem.explanation}</div>
-          )}
-        </AnimatedStep>
+              <div className="text-sm font-medium leading-relaxed">
+                {activeItem.prompt}
+              </div>
 
-        <div className="mt-4 flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <input
+                    className={`input w-full pr-10 ${revealed
+                      ? correct
+                        ? 'border-emerald-500/50 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300'
+                        : 'border-rose-500/50 bg-rose-500/5 text-rose-700 dark:text-rose-300'
+                      : ''
+                      }`}
+                    placeholder="Type your answer..."
+                    value={value}
+                    onChange={(event) => persistAnswer(event.currentTarget.value)}
+                    disabled={revealed}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !revealed && String(value || '').trim()) {
+                        revealAnswer();
+                      }
+                    }}
+                  />
+                  {revealed && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {correct ? (
+                        <CheckIcon className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <XMarkIcon className="h-4 w-4 text-rose-500" />
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className={`btn ${revealed ? 'btn-ghost opacity-50' : 'btn-primary'}`}
+                  onClick={revealAnswer}
+                  disabled={revealed || !String(value || '').trim()}
+                >
+                  Check
+                </button>
+              </div>
+
+              <AnimatePresence>
+                {revealed && !correct && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-800 dark:text-rose-300">
+                      <div className="font-bold mb-1">Correct Answer:</div>
+                      <div className="font-mono bg-white/50 dark:bg-black/20 p-1.5 rounded w-fit mb-2">
+                        {activeItem.answer}
+                      </div>
+                      {activeItem.explanation && (
+                        <div className="opacity-90 leading-relaxed">{activeItem.explanation}</div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+                {revealed && correct && activeItem.explanation && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-300">
+                      <div className="font-bold mb-1">Explanation:</div>
+                      <div className="opacity-90 leading-relaxed">{activeItem.explanation}</div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between border-t border-border/40 pt-4">
           <button
             type="button"
-            className="btn btn-outline btn-sm"
+            className="btn btn-ghost btn-sm gap-1 pl-0 text-muted-foreground hover:text-foreground"
             onClick={goPrevious}
             disabled={activeIndex === 0}
           >
-            Previous
+            <ChevronLeftIcon className="h-3 w-3" /> Previous
           </button>
           <button
             type="button"
-            className="btn btn-outline btn-sm"
+            className="btn btn-ghost btn-sm gap-1 pr-0 text-muted-foreground hover:text-foreground"
             onClick={goNext}
             disabled={activeIndex >= total - 1}
           >
-            Next
+            Next <ChevronRightIcon className="h-3 w-3" />
           </button>
         </div>
       </div>
@@ -923,11 +853,11 @@ function OpenEndedList({
   const isSampleVisible = !!revealed[activeItem.id];
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-md border border-border bg-surface p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Question {activeIndex + 1} / {total}
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+          <span className="font-medium uppercase tracking-wider">
+            Question {activeIndex + 1} of {total}
           </span>
           <StepperDots
             items={items}
@@ -947,99 +877,139 @@ function OpenEndedList({
           />
         </div>
 
-        <AnimatedStep
-          stepKey={activeItem.id}
-          className="mt-4 rounded-md border border-border bg-muted/20 p-3"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="text-sm font-medium leading-snug">
-              {activeIndex + 1}. {activeItem.prompt}
-            </div>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm shrink-0"
-              onClick={() =>
-                setRevealed((state) => ({ ...state, [activeItem.id]: !state[activeItem.id] }))
-              }
+        <div className="relative min-h-[250px]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeItem.id}
+              variants={contentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="space-y-4"
             >
-              <EyeIcon className="h-4 w-4" />
-              <span className="ml-1">{isSampleVisible ? 'Hide' : 'Show'} sample</span>
-            </button>
-          </div>
-          {isSampleVisible && (
-            <div className="mt-2 text-sm">
-              {activeItem.sample_answer ? (
-                <div>
-                  <div className="font-medium mb-1">Sample answer</div>
-                  <div className="text-muted-foreground whitespace-pre-wrap">
-                    {activeItem.sample_answer}
-                  </div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="text-sm font-medium leading-relaxed">
+                  {activeItem.prompt}
                 </div>
-              ) : activeItem.rubric ? (
-                <div>
-                  <div className="font-medium mb-1">Rubric</div>
-                  <div className="text-muted-foreground whitespace-pre-wrap">{activeItem.rubric}</div>
-                </div>
-              ) : null}
-            </div>
-          )}
-          <div className="mt-3 flex flex-col gap-3">
-            <textarea
-              className="textarea flex-1 text-sm"
-              rows={4}
-              placeholder="Type your response"
-              value={answer}
-              onChange={(event) => persistAnswer(event.currentTarget.value)}
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" className="btn btn-outline" onClick={requestFeedback}>
-                Get feedback
-              </button>
-              {gradingEntry && (
-                <span className="text-xs text-muted-foreground">
-                  Last graded {gradingEntry.score != null
-                    ? `· ${Math.round((gradingEntry.score || 0) * 100)}%`
-                    : ''}
-                </span>
-              )}
-            </div>
-          </div>
-          {gradingEntry && (
-            <div className="mt-3 text-sm">
-              <div className="font-medium">
-                Feedback{' '}
-                {gradingEntry.score != null
-                  ? `(score: ${Math.round((gradingEntry.score || 0) * 100)}%)`
-                  : ''}
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs text-muted-foreground hover:text-foreground shrink-0"
+                  onClick={() =>
+                    setRevealed((state) => ({ ...state, [activeItem.id]: !state[activeItem.id] }))
+                  }
+                >
+                  <EyeIcon className="h-3.5 w-3.5 mr-1" />
+                  {isSampleVisible ? 'Hide' : 'Show'} sample
+                </button>
               </div>
-              <div className="text-muted-foreground whitespace-pre-wrap">
-                {gradingEntry.feedback}
-              </div>
-              {Array.isArray(gradingEntry.criteria) && gradingEntry.criteria!.length > 0 && (
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Criteria: {gradingEntry.criteria!.join(', ')}
-                </div>
-              )}
-            </div>
-          )}
-        </AnimatedStep>
 
-        <div className="mt-4 flex items-center justify-between">
+              <AnimatePresence>
+                {isSampleVisible && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="rounded-lg border border-border/50 bg-muted/30 p-3 text-xs text-muted-foreground mb-4">
+                      {activeItem.sample_answer ? (
+                        <div>
+                          <div className="font-bold mb-1 text-foreground">Sample answer</div>
+                          <div className="whitespace-pre-wrap leading-relaxed">
+                            {activeItem.sample_answer}
+                          </div>
+                        </div>
+                      ) : activeItem.rubric ? (
+                        <div>
+                          <div className="font-bold mb-1 text-foreground">Rubric</div>
+                          <div className="whitespace-pre-wrap leading-relaxed">{activeItem.rubric}</div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="flex flex-col gap-3">
+                <textarea
+                  className="textarea flex-1 text-sm min-h-[120px] resize-y"
+                  placeholder="Type your response..."
+                  value={answer}
+                  onChange={(event) => persistAnswer(event.currentTarget.value)}
+                />
+                <div className="flex flex-wrap items-center gap-2 justify-between">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={requestFeedback}
+                    disabled={!answer.trim()}
+                  >
+                    Get feedback
+                  </button>
+                  {gradingEntry && (
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Last graded {gradingEntry.score != null
+                        ? `· ${Math.round((gradingEntry.score || 0) * 100)}%`
+                        : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <AnimatePresence>
+                {gradingEntry && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
+                      <div className="font-bold mb-1 flex items-center gap-2">
+                        <SparklesIcon className="h-4 w-4 text-primary" />
+                        Feedback
+                        {gradingEntry.score != null && (
+                          <span className="badge badge-sm bg-primary/20 text-primary border-transparent">
+                            {Math.round((gradingEntry.score || 0) * 100)}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                        {gradingEntry.feedback}
+                      </div>
+                      {Array.isArray(gradingEntry.criteria) && gradingEntry.criteria!.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {gradingEntry.criteria!.map((c, i) => (
+                            <span key={i} className="inline-flex items-center rounded-full bg-surface border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between border-t border-border/40 pt-4">
           <button
             type="button"
-            className="btn btn-outline btn-sm"
+            className="btn btn-ghost btn-sm gap-1 pl-0 text-muted-foreground hover:text-foreground"
             onClick={goPrevious}
             disabled={activeIndex === 0}
           >
-            Previous
+            <ChevronLeftIcon className="h-3 w-3" /> Previous
           </button>
           <button
             type="button"
-            className="btn btn-outline btn-sm"
+            className="btn btn-ghost btn-sm gap-1 pr-0 text-muted-foreground hover:text-foreground"
             onClick={goNext}
             disabled={activeIndex >= total - 1}
           >
-            Next
+            Next <ChevronRightIcon className="h-3 w-3" />
           </button>
         </div>
       </div>
@@ -1054,64 +1024,47 @@ function FlashcardList({ items }: { items: TutorFlashcardItem[] }) {
   const send = useChatStore((s) => s.sendUserMessage);
   const total = items.length;
   const cur = items[Math.min(index, total - 1)];
+
   if (!cur) return null;
+
   return (
-    <div className="rounded-md border border-border bg-surface p-3">
-      <div className="text-xs text-muted-foreground mb-2">
-        Card {index + 1} / {total}
+    <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
+      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4 flex justify-between items-center">
+        <span>Flashcard {index + 1} of {total}</span>
+        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">Click to flip</span>
       </div>
-      <div
-        className={`flashcard ${flipped ? 'is-flipped' : ''}`}
-        onClick={() => setFlipped((x) => !x)}
-      >
-        <div className="flashcard-inner">
-          <div className="flashcard-face flashcard-front">
-            <div className="rounded-md border border-border p-4 bg-muted/30 min-h-24 whitespace-pre-wrap">
-              {cur.front}
-            </div>
+
+      <div className="perspective-1000 relative h-64 w-full cursor-pointer group" onClick={() => setFlipped(!flipped)}>
+        <motion.div
+          className="relative h-full w-full preserve-3d transition-all duration-500"
+          animate={{ rotateY: flipped ? 180 : 0 }}
+          transition={{ duration: 0.6, type: "spring", stiffness: 260, damping: 20 }}
+          style={{ transformStyle: 'preserve-3d' }}
+        >
+          {/* Front */}
+          <div className="absolute inset-0 backface-hidden rounded-xl border border-border bg-surface shadow-sm flex flex-col items-center justify-center p-6 text-center hover:border-primary/50 transition-colors">
+            <div className="text-lg font-medium leading-relaxed">{cur.front}</div>
+            {cur.hint && (
+              <div className="mt-4 text-xs text-muted-foreground italic opacity-0 group-hover:opacity-100 transition-opacity">
+                Hint: {cur.hint}
+              </div>
+            )}
           </div>
-          <div className="flashcard-face flashcard-back">
-            <div className="rounded-md border border-border p-4 bg-muted/30 min-h-24 whitespace-pre-wrap">
-              {cur.back}
-            </div>
+
+          {/* Back */}
+          <div
+            className="absolute inset-0 backface-hidden rounded-xl border border-primary/20 bg-primary/5 shadow-sm flex flex-col items-center justify-center p-6 text-center"
+            style={{ transform: 'rotateY(180deg)' }}
+          >
+            <div className="text-lg font-medium leading-relaxed">{cur.back}</div>
           </div>
-        </div>
+        </motion.div>
       </div>
-      {cur.hint && !flipped && (
-        <div className="mt-2 text-xs text-muted-foreground">Hint: {cur.hint}</div>
-      )}
-      <div className="mt-3 flex items-center gap-2">
-        <button className="btn btn-outline" onClick={() => setFlipped((x) => !x)}>
-          Flip
-        </button>
+
+      <div className="mt-6 flex items-center justify-center gap-3">
         <button
-          className="btn"
+          className="btn btn-outline btn-sm min-w-[100px]"
           onClick={() => {
-            setFlipped(false);
-            setIndex((i) => Math.min(i + 1, total - 1));
-          }}
-          disabled={index >= total - 1}
-        >
-          Next
-        </button>
-        <button
-          className="btn btn-outline"
-          onClick={() =>
-            log({
-              kind: 'flashcard',
-              itemId: cur.id,
-              correct: true,
-              topic: cur.topic,
-              skill: cur.skill,
-              difficulty: cur.difficulty,
-            })
-          }
-        >
-          I knew it
-        </button>
-        <button
-          className="btn btn-outline"
-          onClick={() =>
             log({
               kind: 'flashcard',
               itemId: cur.id,
@@ -1119,15 +1072,38 @@ function FlashcardList({ items }: { items: TutorFlashcardItem[] }) {
               topic: cur.topic,
               skill: cur.skill,
               difficulty: cur.difficulty,
-            })
-          }
+            });
+            setFlipped(false);
+            setIndex((i) => Math.min(i + 1, total - 1));
+          }}
         >
-          Need review
+          Need Review
         </button>
         <button
-          className="btn btn-outline"
-          title="Save card to your review deck"
+          className="btn btn-primary btn-sm min-w-[100px]"
           onClick={() => {
+            log({
+              kind: 'flashcard',
+              itemId: cur.id,
+              correct: true,
+              topic: cur.topic,
+              skill: cur.skill,
+              difficulty: cur.difficulty,
+            });
+            setFlipped(false);
+            setIndex((i) => Math.min(i + 1, total - 1));
+          }}
+        >
+          Got it
+        </button>
+      </div>
+
+      <div className="mt-4 flex justify-center">
+        <button
+          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+          title="Save card to your review deck"
+          onClick={(e) => {
+            e.stopPropagation();
             const payload = {
               cards: [
                 {
@@ -1212,7 +1188,7 @@ function QuestionnaireCard({
           if (prev >= questionCount - 1) return prev;
           return prev + 1;
         });
-      }, 220);
+      }, 250);
     }
   };
   const answeredCount = questionnaire.questions.reduce(
@@ -1276,7 +1252,7 @@ function QuestionnaireCard({
         },
       });
     } catch {
-      // No-op; UI will remain consistent from state updates above
+      // No-op
     } finally {
       setSubmitting(false);
     }
@@ -1288,8 +1264,8 @@ function QuestionnaireCard({
       : null;
 
   return (
-    <div className="rounded-md border border-border bg-surface p-4">
-      <div className="flex items-center gap-3 mb-3">
+    <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
+      <div className="flex items-center gap-3 mb-4">
         <div className="rounded-full bg-primary/10 p-2">
           <QuestionMarkCircleIcon className="h-5 w-5 text-primary" />
         </div>
@@ -1305,8 +1281,8 @@ function QuestionnaireCard({
         </div>
       </div>
 
-      <div className="rounded-md border border-border/60 bg-muted/10 p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
           <span>
             Question {activeIndex + 1} / {questionCount}
           </span>
@@ -1322,73 +1298,90 @@ function QuestionnaireCard({
           />
         </div>
 
-        <AnimatedStep
-          stepKey={activeQuestion.id}
-          className="mt-3 rounded-md border border-border bg-muted/30 p-3"
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              {activeQuestion.category && (
-                <span className="badge badge-sm mr-2 uppercase tracking-wide">
-                  {activeQuestion.category}
-                </span>
-              )}
-              <div className="text-sm font-medium leading-snug">{activeQuestion.question}</div>
-            </div>
-            {allowMultiple && (
-              <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                Multi-select
-              </span>
-            )}
-          </div>
-          <div className="mt-3 grid gap-2">
-            {activeQuestion.options.map((option, idx) => {
-              const isSelected = activeSelected.includes(option.label);
-              return (
-                <button
-                  key={safeKey(option.label, idx, activeQuestion.id)}
-                  className={`btn justify-start ${
-                    isSubmitted
-                      ? isSelected
-                        ? 'btn-primary'
-                        : 'btn-outline'
-                      : isSelected
-                        ? 'btn'
-                        : 'btn-outline'
-                  }`}
-                  onClick={() => handleToggle(activeQuestion.id, option.label, allowMultiple)}
-                  disabled={isSubmitted}
-                >
-                  <span className="font-medium">{option.label}</span>
-                  {option.description && (
-                    <span className="ml-2 text-xs text-muted-foreground text-left">
-                      {option.description}
+        <div className="relative min-h-[200px]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeQuestion.id}
+              variants={contentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="space-y-4"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  {activeQuestion.category && (
+                    <span className="badge badge-sm mr-2 uppercase tracking-wide bg-primary/10 text-primary border-primary/20">
+                      {activeQuestion.category}
                     </span>
                   )}
-                </button>
-              );
-            })}
-          </div>
-        </AnimatedStep>
+                  <div className="text-sm font-medium leading-relaxed mt-1">{activeQuestion.question}</div>
+                </div>
+                {allowMultiple && (
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide bg-muted px-1.5 py-0.5 rounded">
+                    Multi-select
+                  </span>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                {activeQuestion.options.map((option, idx) => {
+                  const isSelected = activeSelected.includes(option.label);
+                  return (
+                    <button
+                      key={safeKey(option.label, idx, activeQuestion.id)}
+                      className={`btn justify-start h-auto py-2.5 px-3 transition-all duration-200 ${isSubmitted
+                        ? isSelected
+                          ? 'btn-primary opacity-90'
+                          : 'btn-outline opacity-50'
+                        : isSelected
+                          ? 'btn-primary ring-2 ring-primary/20 ring-offset-1'
+                          : 'btn-outline hover:bg-muted/50'
+                        }`}
+                      onClick={() => handleToggle(activeQuestion.id, option.label, allowMultiple)}
+                      disabled={isSubmitted}
+                    >
+                      <div className="flex flex-col items-start text-left w-full">
+                        <span className="font-medium text-sm">{option.label}</span>
+                        {option.description && (
+                          <span className="text-xs opacity-80 mt-0.5 font-normal">
+                            {option.description}
+                          </span>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <CheckIcon className="h-4 w-4 ml-auto shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
 
       {isSubmitted ? (
-        <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 flex items-center gap-2 text-xs text-muted-foreground bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 p-2 rounded-md border border-emerald-500/20"
+        >
           <HandThumbUpIcon className="h-4 w-4" />
           <span>
             Responses submitted{submittedTimestamp ? ` · ${submittedTimestamp}` : ''}. Let me
             incorporate this into your learning journey!
           </span>
-        </div>
+        </motion.div>
       ) : (
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
+        <div className="mt-4 flex items-center justify-between pt-2">
+          <span className="text-xs text-muted-foreground font-medium">
             {answeredCount}/{questionCount} answered
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="btn btn-outline"
+              className="btn btn-ghost btn-sm"
               onClick={goPrevious}
               disabled={activeIndex === 0}
             >
@@ -1397,7 +1390,7 @@ function QuestionnaireCard({
             {activeIndex === questionCount - 1 ? (
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary btn-sm"
                 onClick={handleSubmit}
                 disabled={!allAnswered || submitting}
               >
@@ -1406,7 +1399,7 @@ function QuestionnaireCard({
             ) : (
               <button
                 type="button"
-                className="btn btn-outline"
+                className="btn btn-ghost btn-sm"
                 onClick={goNext}
                 disabled={!isCurrentAnswered}
               >
@@ -1528,7 +1521,7 @@ function PlanProposalCard({
         : null;
 
   return (
-    <div className="rounded-md border border-border bg-surface p-4">
+    <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
       <div className="flex items-start gap-3">
         <div className="rounded-full bg-accent/10 p-2">
           <ClipboardDocumentCheckIcon className="h-5 w-5 text-accent" />
@@ -1540,20 +1533,20 @@ function PlanProposalCard({
               {nodesCount} topics{estimatedHours ? ` · ~${estimatedHours}h commitment` : ''}
             </span>
           </div>
-          <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+          <div className="mt-3 space-y-3 text-sm text-muted-foreground">
             <div className="font-medium text-foreground">{proposal.plan.goal}</div>
             {confirmationNeeded && !resolved && proposal.confirmationMessage && (
-              <div className="rounded-md border border-border/80 bg-muted/20 p-2 text-xs">
+              <div className="rounded-md border border-border/80 bg-muted/20 p-3 text-xs leading-relaxed">
                 {proposal.confirmationMessage}
               </div>
             )}
           </div>
           {suggestions && suggestions.length > 0 && (
-            <div className="mt-3">
+            <div className="mt-4">
               <PlanSuggestionsCard suggestions={suggestions} compact />
             </div>
           )}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
             <button
               className="btn btn-outline btn-sm"
               onClick={() =>
@@ -1577,7 +1570,7 @@ function PlanProposalCard({
               {declining ? 'Recording…' : 'Suggest changes'}
             </button>
             {resolvedLabel && (
-              <span className="badge badge-outline uppercase tracking-wide text-[11px]">
+              <span className="badge badge-outline uppercase tracking-wide text-[11px] ml-auto">
                 {resolvedLabel}
               </span>
             )}
@@ -1598,30 +1591,30 @@ function PlanSuggestionsCard({
   if (!suggestions.length) return null;
   return (
     <div
-      className={`rounded-md border border-dashed border-border/80 bg-muted/10 ${
-        compact ? 'p-3' : 'p-4'
-      }`}
+      className={`rounded-lg border border-dashed border-border/80 bg-muted/10 ${compact ? 'p-3' : 'p-4'
+        }`}
     >
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-3">
         <ArrowPathIcon className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium">Plan recommendations</span>
       </div>
-      <div className="space-y-2 text-xs text-muted-foreground">
+      <div className="space-y-3 text-xs text-muted-foreground">
         {suggestions.map((s, idx) => (
-          <div key={safeKey(`${s.action}-${idx}`, idx, 'suggestion')} className="leading-snug">
-            <div className="font-medium text-foreground">
+          <div key={safeKey(`${s.action}-${idx}`, idx, 'suggestion')} className="leading-snug p-2 rounded bg-surface/50 border border-border/30">
+            <div className="font-medium text-foreground flex items-center gap-2">
               {s.action}
               {s.priority && (
-                <span className="ml-1 uppercase tracking-wide text-[10px] text-muted-foreground">
-                  · {s.priority}
+                <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${s.priority === 'high' ? 'bg-rose-500/10 text-rose-500' : 'bg-muted text-muted-foreground'
+                  }`}>
+                  {s.priority}
                 </span>
               )}
             </div>
-            {s.description && <div>{s.description}</div>}
+            {s.description && <div className="mt-1">{s.description}</div>}
             {s.rationale && (
-              <div className="italic text-muted-foreground/80">Rationale: {s.rationale}</div>
+              <div className="italic text-muted-foreground/80 mt-1">Rationale: {s.rationale}</div>
             )}
-            {s.estimatedImpact && <div>Impact: {s.estimatedImpact}</div>}
+            {s.estimatedImpact && <div className="mt-1 text-accent">Impact: {s.estimatedImpact}</div>}
           </div>
         ))}
       </div>
@@ -1750,8 +1743,8 @@ function DiagnosticCard({
   }, [diagnostic.interpretation, answered, total, scorePercent]);
 
   return (
-    <div className="rounded-md border border-border bg-surface p-4">
-      <div className="flex items-center gap-3 mb-3">
+    <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
+      <div className="flex items-center gap-3 mb-4">
         <div className="rounded-full bg-accent/10 p-2">
           <ChartBarIcon className="h-5 w-5 text-accent" />
         </div>
@@ -1771,20 +1764,30 @@ function DiagnosticCard({
         </div>
       </div>
       <div className="flex items-center gap-2 mb-4">
-        <div className="h-2 flex-1 rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-accent"
-            style={{ width: `${percentComplete}%` }}
+        <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+          <motion.div
+            className="h-full bg-primary/60"
+            initial={{ width: 0 }}
+            animate={{ width: `${percentComplete}%` }}
+            transition={{ duration: 0.5 }}
           />
         </div>
-        <span className="text-xs text-muted-foreground">{percentComplete}%</span>
+        <span className="text-xs text-muted-foreground font-medium w-8 text-right">{percentComplete}%</span>
       </div>
-      <MCQList messageId={messageId} items={mcqItems} />
+
+      <div className="mt-4">
+        <MCQList messageId={messageId} items={mcqItems} />
+      </div>
+
       {answered === total && total > 0 && (
-        <div className="mt-4 rounded-md border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground">
-          <div className="font-medium text-foreground">Score: {scorePercent}%</div>
-          {interpretation && <div className="mt-1">{interpretation}</div>}
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 rounded-lg border border-border/60 bg-muted/20 p-4 text-xs text-muted-foreground"
+        >
+          <div className="font-bold text-foreground text-sm mb-1">Score: {scorePercent}%</div>
+          {interpretation && <div className="leading-relaxed">{interpretation}</div>}
+        </motion.div>
       )}
     </div>
   );
@@ -1804,10 +1807,10 @@ function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpdate[] })
     <div className="rounded-md border border-border bg-surface/50 p-3">
       <div className="flex items-center justify-between">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-           <SparklesIcon className="w-3.5 h-3.5 text-accent" />
-           Learner Model Updated
+          <SparklesIcon className="w-3.5 h-3.5 text-accent" />
+          Learner Model Updated
         </div>
-        <button 
+        <button
           className="text-xs text-accent hover:underline font-medium"
           onClick={() => setUI({ planSheetOpen: true })}
         >
@@ -1820,7 +1823,7 @@ function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpdate[] })
           const after = update.confidenceAfter ?? null;
           const delta =
             before != null && after != null ? Math.round((after - before) * 100) : null;
-            
+
           return (
             <div
               key={safeKey(update.nodeId, idx, 'lm')}
@@ -1828,11 +1831,11 @@ function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpdate[] })
             >
               <span className="font-medium">{resolveNodeName(update.nodeId)}</span>
               <span className="text-muted-foreground text-xs">
-                 {delta != null && delta !== 0 ? (
-                    <span className={delta > 0 ? 'text-green-500' : 'text-amber-500'}>
-                      {delta > 0 ? '+' : ''}{delta}% confidence
-                    </span>
-                 ) : 'Updated'}
+                {delta != null && delta !== 0 ? (
+                  <span className={delta > 0 ? 'text-green-500' : 'text-amber-500'}>
+                    {delta > 0 ? '+' : ''}{delta}% confidence
+                  </span>
+                ) : 'Updated'}
               </span>
             </div>
           );
