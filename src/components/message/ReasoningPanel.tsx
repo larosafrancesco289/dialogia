@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 're
 import { ChevronDownIcon, DocumentDuplicateIcon, SparklesIcon, CpuChipIcon } from '@heroicons/react/24/outline';
 import { Markdown } from '@/lib/markdown';
 import { DeepResearchTimeline, type DeepResearchEvent } from './DeepResearchTimeline';
+import { parsePartialJson } from '@/lib/partial-json';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type ReasoningPanelProps = {
@@ -25,14 +26,43 @@ export function ReasoningPanel({
   const trace = useMemo(() => {
     if (!hasReasoning) return null;
     try {
-      const parsed = JSON.parse(reasoning);
+      const parsed = parsePartialJson(reasoning);
       return Array.isArray(parsed) ? (parsed as DeepResearchEvent[]) : null;
     } catch {
       return null;
     }
   }, [reasoning, hasReasoning]);
 
-  const isDeepResearch = !!trace;
+  const filteredTrace = useMemo(() => {
+    if (!trace || trace.length === 0) return null;
+    let finalAnswerFound = false;
+
+    const cleaned = trace.filter((item) => {
+      if (item?.type !== 'thought') return true;
+
+      // If we already found the start of the final answer, hide subsequent thought parts
+      // assuming they are part of the answer being streamed.
+      if (finalAnswerFound) return false;
+
+      const output = typeof item.output === 'string' ? item.output.trim().toLowerCase() : '';
+      if (!output) return true;
+
+      const normalized = output
+        .replace(/^#+\s*/, '')
+        .replace(/^\*\*|^\*|^__|^_/, '')
+        .trim();
+
+      if (normalized.startsWith('final answer')) {
+        finalAnswerFound = true;
+        return false;
+      }
+
+      return true;
+    });
+    return cleaned.length > 0 ? cleaned : null;
+  }, [trace]);
+
+  const isDeepResearch = !!filteredTrace;
 
   const bodyId = useId();
   const [copied, setCopied] = useState(false);
@@ -41,8 +71,8 @@ export function ReasoningPanel({
   const throttledRef = useRef(0);
 
   const previewText = useMemo(() => {
-    if (isDeepResearch && trace && trace.length > 0) {
-      const last = trace[trace.length - 1];
+    if (isDeepResearch && filteredTrace && filteredTrace.length > 0) {
+      const last = filteredTrace[filteredTrace.length - 1];
       if (last.type === 'thought') return last.output || 'Thinking...';
       if (last.type === 'search') return `Searching: ${last.input?.query || ''}`;
       if (last.type === 'fetch') return `Reading: ${last.input?.url || ''}`;
@@ -63,7 +93,7 @@ export function ReasoningPanel({
     }
     if (isStreaming) return 'Reasoning stream in progress…';
     return 'Reasoning hidden — tap to reveal the full trace.';
-  }, [hasReasoning, reasoning, isStreaming, isDeepResearch, trace]);
+  }, [hasReasoning, reasoning, isStreaming, isDeepResearch, filteredTrace]);
 
   const [displayPreview, setDisplayPreview] = useState(previewText);
 
@@ -155,10 +185,10 @@ export function ReasoningPanel({
           onClick={onToggle}
         >
           <div className={`flex items-center justify-center w-8 h-8 rounded-xl border transition-all duration-300 ${isStreaming
-              ? 'bg-accent/10 border-accent/30 text-accent animate-pulse'
-              : expanded
-                ? 'bg-primary/10 border-primary/20 text-primary'
-                : 'bg-surface border-border text-muted-foreground group-hover:text-foreground group-hover:border-border/80'
+            ? 'bg-accent/10 border-accent/30 text-accent animate-pulse'
+            : expanded
+              ? 'bg-primary/10 border-primary/20 text-primary'
+              : 'bg-surface border-border text-muted-foreground group-hover:text-foreground group-hover:border-border/80'
             }`}>
             {isDeepResearch ? (
               <CpuChipIcon className="w-4 h-4" />
@@ -208,8 +238,8 @@ export function ReasoningPanel({
                 <div className="h-px w-full bg-border/40 mb-4" />
 
                 <div className="max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent">
-                  {isDeepResearch && trace ? (
-                    <DeepResearchTimeline trace={trace} />
+                  {isDeepResearch && filteredTrace ? (
+                    <DeepResearchTimeline trace={filteredTrace} />
                   ) : hasReasoning ? (
                     <div className="prose prose-sm dark:prose-invert max-w-none text-fg/90 leading-relaxed">
                       <Markdown content={reasoning} />

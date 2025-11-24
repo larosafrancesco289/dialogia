@@ -5,13 +5,11 @@ import {
   isNodeReady,
   getAllPrerequisites,
   getNextNode,
-  calculatePlanProgress,
 } from '@/lib/learningPlan/service';
 import { PlanNode } from './PlanNode';
 import { useMemo } from 'react';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
 import { LearnerStats, LearnerInsights } from './LearnerModelView';
-import { generateProgressReport } from '@/lib/agent/planAwareTutor';
 
 export function PlanView({
   plan,
@@ -32,8 +30,6 @@ export function PlanView({
 }) {
   const nextNode = getNextNode(plan);
   const allCompleted = plan.nodes.every((n) => n.status === 'completed');
-  const progress = useMemo(() => calculatePlanProgress(plan), [plan]);
-
   const phases = useMemo(() => {
     const groups: { name: string; nodes: LearningPlanNode[] }[] = [];
     let currentGroup: { name: string; nodes: LearningPlanNode[] } | null = null;
@@ -232,4 +228,3 @@ export function PlanView({
     </div>
   );
 }
-

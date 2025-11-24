@@ -89,8 +89,6 @@ export function createMessageStreamCallbacks(
   let leadingBuffer = '';
   let firstTokenAt: number | undefined;
 
-  const getMessages = () => get().messages[chatId] ?? [];
-
   const flushDelta = (delta: string) => {
     if (!delta) return;
     set((state) => {

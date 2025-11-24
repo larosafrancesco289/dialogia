@@ -1,6 +1,5 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AcademicCapIcon,
@@ -15,7 +14,6 @@ import {
   SparklesIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
-  ArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import type {
   TutorMCQItem,

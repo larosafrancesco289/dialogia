@@ -123,7 +123,6 @@ export async function sendUserTurn({
   const {
     chatId,
     ui,
-    next,
     tutorEnabled,
     activeModelIds,
     primaryModelId,
@@ -194,6 +193,7 @@ export async function sendUserTurn({
         set,
         get,
         persistMessage: saveMessage,
+        controller: masterController,
       });
       if (handled) {
         completeAll();

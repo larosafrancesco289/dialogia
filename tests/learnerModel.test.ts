@@ -9,7 +9,6 @@ import {
 } from '@/lib/agent/learnerModel';
 import type {
   LearningPlan,
-  LearnerModel,
   Evidence,
   Misconception,
   Message,

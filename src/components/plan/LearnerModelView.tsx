@@ -1,7 +1,6 @@
 'use client';
 import { LearnerModel, LearningPlan } from '@/lib/types';
 import { 
-  ChartBarIcon, 
   CheckCircleIcon, 
   ClockIcon, 
   ExclamationTriangleIcon, 
@@ -92,10 +91,6 @@ export function LearnerInsights({ learnerModel, plan }: { learnerModel?: Learner
           const confidence = mastery?.confidence || 0;
           const pct = Math.round(confidence * 100);
           
-          const statusColor = 
-             (mastery?.misconceptions?.length || 0) > 0 ? 'text-amber-600 bg-amber-500/10 border-amber-500/20' :
-             'text-blue-600 bg-blue-500/10 border-blue-500/20';
-
           return (
             <div 
               key={node.id}

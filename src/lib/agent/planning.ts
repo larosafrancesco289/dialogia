@@ -17,7 +17,6 @@ import type {
   PlanTurnOptions,
   PlanTurnResult,
   SearchResult,
-  ToolDefinition,
   ToolCall,
   AssistantModelMessage,
 } from '@/lib/agent/types';
