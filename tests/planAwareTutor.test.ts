@@ -11,7 +11,7 @@ import {
   generateProgressReport,
 } from '@/lib/agent/planAwareTutor';
 import { initializeLearnerModel, updateLearnerModel } from '@/lib/agent/learnerModel';
-import type { LearningPlan, LearnerModel, Evidence } from '@/lib/types';
+import type { LearningPlan, LearnerModel } from '@/lib/types';
 
 // ============================================================================
 // Helper Functions

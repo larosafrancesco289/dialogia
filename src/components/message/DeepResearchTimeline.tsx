@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   DocumentTextIcon,
   ClockIcon,
@@ -23,17 +23,17 @@ type Props = {
   trace: DeepResearchEvent[];
 };
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
+      when: "beforeChildren"
     }
   }
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, x: -10, y: 10 },
   visible: {
     opacity: 1,
@@ -48,7 +48,7 @@ export function DeepResearchTimeline({ trace }: Props) {
 
   return (
     <motion.div
-      className="relative pl-4 space-y-8 my-6 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gradient-to-b before:from-transparent before:via-border/60 before:to-transparent"
+      className="relative pl-4 space-y-8 my-6 text-fg before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gradient-to-b before:from-transparent before:via-border/60 before:to-transparent"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -65,7 +65,12 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
 
   if (type === 'thought') {
     return (
-      <motion.div variants={itemVariants} className="relative pl-10 group">
+      <motion.div
+        variants={itemVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative pl-10 group"
+      >
         <div className="absolute left-0 top-1.5 w-10 h-10 flex items-center justify-center">
           <div className="w-3 h-3 rounded-full bg-surface border-2 border-primary/40 group-hover:border-primary group-hover:scale-125 transition-all duration-300 shadow-[0_0_0_4px_rgba(var(--surface-rgb),1)]" />
         </div>
@@ -88,7 +93,12 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
     const isError = !!output?.error;
 
     return (
-      <motion.div variants={itemVariants} className="relative pl-10">
+      <motion.div
+        variants={itemVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative pl-10"
+      >
         <div className="absolute left-0 top-0 w-10 h-10 flex items-center justify-center z-10">
           <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shadow-sm ring-4 ring-surface">
             <MagnifyingGlassIcon className="w-4 h-4 text-blue-500" />
@@ -159,7 +169,12 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
     const hostname = tryGetHostname(url);
 
     return (
-      <motion.div variants={itemVariants} className="relative pl-10">
+      <motion.div
+        variants={itemVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative pl-10"
+      >
         <div className="absolute left-0 top-0 w-10 h-10 flex items-center justify-center z-10">
           <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shadow-sm ring-4 ring-surface">
             <DocumentTextIcon className="w-4 h-4 text-emerald-500" />
@@ -204,7 +219,12 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
 
   if (type === 'time') {
     return (
-      <motion.div variants={itemVariants} className="relative pl-10">
+      <motion.div
+        variants={itemVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative pl-10"
+      >
         <div className="absolute left-0 top-0 w-10 h-10 flex items-center justify-center z-10">
           <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shadow-sm ring-4 ring-surface">
             <ClockIcon className="w-3 h-3 text-amber-500" />

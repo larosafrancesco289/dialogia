@@ -10,6 +10,7 @@ export type DeepResearchContext = {
   set: StoreSetter;
   get: StoreGetter;
   persistMessage: (message: Message) => Promise<void>;
+  controller?: AbortController;
 };
 
 export async function runDeepResearchTurn({
@@ -20,13 +21,18 @@ export async function runDeepResearchTurn({
   set,
   get: _get,
   persistMessage,
+  controller: providedController,
 }: DeepResearchContext): Promise<boolean> {
   const trimmedTask = task.trim();
   if (!trimmedTask) return false;
 
-  const controller = new AbortController();
-  setTurnController(chatId, controller);
-  set((state) => ({ ui: { ...state.ui, isStreaming: true } }));
+  const controller = providedController ?? new AbortController();
+  const manageController = !providedController;
+
+  if (manageController) {
+    setTurnController(chatId, controller);
+    set((state) => ({ ui: { ...state.ui, isStreaming: true } }));
+  }
 
   try {
     const res = await fetch('/api/deep-research', {
@@ -107,19 +113,19 @@ export async function runDeepResearchTurn({
       return { messages: { ...state.messages, [chatId]: updated } } as any;
     });
     await persistMessage(finalMessage);
-    set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
-    clearTurnController(chatId);
+    if (manageController) set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
+    if (manageController) clearTurnController(chatId);
     return true;
   } catch (err: any) {
     const errorMessage = String(err?.message || 'DeepResearch failed');
     set((state) => ({
       ui: {
         ...state.ui,
-        isStreaming: false,
+        isStreaming: manageController ? false : state.ui.isStreaming,
         notice: `DeepResearch: ${errorMessage}`,
       },
     }));
-    clearTurnController(chatId);
+    if (manageController) clearTurnController(chatId);
     return false;
   }
 }

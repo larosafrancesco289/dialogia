@@ -16,6 +16,7 @@ import type { Attachment, Chat, Message, ORModel, ToolCallLogEntry } from '@/lib
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
+import { parsePartialJson } from '@/lib/partial-json';
 
 export type MessageCardProps = {
   message: Message;
@@ -266,7 +267,84 @@ function MessageCardComponent({
   );
 }
 
-export const MessageCard = memo(MessageCardComponent);
+export const MessageCard = memo(MessageCardComponent, (prev, next) => {
+  // If the message ID changed, it's a different message
+  if (prev.message.id !== next.message.id) return false;
+
+  // If streaming state changed, re-render
+  if (prev.isStreaming !== next.isStreaming) return false;
+
+  // If latest message marker changed (affects typing indicator and stats), re-render
+  if (prev.lastMessageId !== next.lastMessageId) return false;
+
+  // Force re-render for the active streaming message (last message)
+  // This ensures that even if the store mutates the message object in place,
+  // or if updates are frequent, we always reflect the latest content/reasoning.
+  if (next.isStreaming && next.message.id === next.lastMessageId) return false;
+
+  // If active state changed (mobile), re-render
+  if (prev.isActive !== next.isActive) return false;
+
+  // Device/layout and inline actions toggle
+  if (prev.isMobile !== next.isMobile) return false;
+  if (prev.showInlineActions !== next.showInlineActions) return false;
+  if (prev.copiedId !== next.copiedId) return false;
+
+  // If editing state changed, re-render
+  if (prev.isEditing !== next.isEditing) return false;
+
+  // If draft changed, re-render
+  if (prev.draft !== next.draft) return false;
+
+  // If waiting for first token changed, re-render
+  if (prev.waitingForFirstToken !== next.waitingForFirstToken) return false;
+
+  // If stats expanded state changed, re-render
+  if (prev.showStats !== next.showStats) return false;
+  if (prev.isStatsExpanded(prev.message.id) !== next.isStatsExpanded(next.message.id)) return false;
+
+  // If panels expanded state changed, re-render
+  if (prev.isSourcesExpanded !== next.isSourcesExpanded) return false;
+  if (prev.isDebugExpanded !== next.isDebugExpanded) return false;
+  if (prev.isReasoningExpanded !== next.isReasoningExpanded) return false;
+  if (prev.showToolCallLog !== next.showToolCallLog) return false;
+  if (prev.showDebugRawJson !== next.showDebugRawJson) return false;
+  if (prev.highlightToolCalls !== next.highlightToolCalls) return false;
+  if (prev.tutorEnabled !== next.tutorEnabled) return false;
+  if (prev.braveGloballyEnabled !== next.braveGloballyEnabled) return false;
+  if (prev.tutorGloballyEnabled !== next.tutorGloballyEnabled) return false;
+  if (prev.debugMode !== next.debugMode) return false;
+
+  // If content changed, re-render
+  if (prev.message.content !== next.message.content) return false;
+
+  // Role or model metadata can affect inline actions / stats display
+  if (prev.message.role !== next.message.role) return false;
+  if (prev.message.model !== next.message.model) return false;
+
+  // If reasoning changed, re-render
+  // This is the critical fix for DeepResearch streaming
+  if (prev.message.reasoning !== next.message.reasoning) return false;
+
+  // If attachments changed, re-render (shallow check length/ref)
+  if (prev.message.attachments !== next.message.attachments) return false;
+
+  // If tool calls changed
+  if (prev.message.toolCalls !== next.message.toolCalls) return false;
+
+  // If external data changed (brave, tutor, debug)
+  if (prev.braveEntry !== next.braveEntry) return false;
+  if (prev.tutorEntry !== next.tutorEntry) return false;
+  if (prev.debugEntry !== next.debugEntry) return false;
+
+  // If chat/model context changed (affects panels and stats), re-render
+  if (prev.chat !== next.chat) return false;
+  if (prev.models !== next.models) return false;
+  if (prev.autoReasoningModelIds !== next.autoReasoningModelIds) return false;
+
+  // Default: assume equal if all above are equal
+  return true;
+});
 
 function AssistantMessageContent({
   message,
@@ -328,6 +406,45 @@ function AssistantMessageContent({
   tutorEnabled: boolean;
   messagePanelsNode: React.ReactNode;
 }) {
+  // Fallback: If content is empty but we have a "Final Answer" in the reasoning trace, show it.
+  // This handles cases where the backend streams the final answer as a thought event first.
+  const displayContent = useMemo(() => {
+    if (message.content) return message.content;
+    if (!message.reasoning) return '';
+
+    try {
+      const trace = parsePartialJson(message.reasoning);
+      if (Array.isArray(trace) && trace.length > 0) {
+        let finalAnswerFound = false;
+        let combinedContent = '';
+
+        for (const item of trace) {
+          if (item.type === 'thought' && typeof item.output === 'string') {
+            if (finalAnswerFound) {
+              combinedContent += item.output;
+              continue;
+            }
+
+            const normalized = item.output.trim().toLowerCase()
+              .replace(/^#+\s*/, '')
+              .replace(/^\*\*|^\*|^__|^_/, '')
+              .trim();
+
+            if (normalized.startsWith('final answer')) {
+              finalAnswerFound = true;
+              combinedContent += item.output.replace(/^([#\s]*|[*_]+)\s*final answer[*_]*[:\s]*/i, '');
+            }
+          }
+        }
+
+        if (finalAnswerFound) return combinedContent;
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  }, [message.content, message.reasoning]);
+
   return (
     <div className="relative">
       {showInlineActions && (
@@ -398,14 +515,14 @@ function AssistantMessageContent({
             }}
             placeholder="Edit assistant message..."
           />
-        ) : waitingForFirstToken && message.id === lastMessageId ? (
+        ) : waitingForFirstToken && message.id === lastMessageId && !displayContent ? (
           <div className={styles.typingIndicator} aria-live="polite" aria-label="Generating">
             <span className={styles.typingBar} />
             <span className={styles.typingBar} />
             <span className={styles.typingBar} />
           </div>
         ) : (
-          <Markdown content={message.content} />
+          <Markdown content={displayContent} />
         )}
       </div>
 
