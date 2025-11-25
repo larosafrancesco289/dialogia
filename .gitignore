@@ -30,3 +30,6 @@ yarn-error.log*
 tmp/
 *.log
 .eslintcache
+
+# Thesis files
+thesis/

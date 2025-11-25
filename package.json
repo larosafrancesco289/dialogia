@@ -10,7 +10,8 @@
     "lint": "eslint --cache --ext .ts,.tsx app src tests",
     "lint:types": "tsc --noEmit",
     "test": "tsx --test 'tests/**/*.test.ts' 'src/**/*.test.ts'",
-    "tutor:simulate": "tsx scripts/tutor-sim.ts"
+    "tutor:simulate": "tsx scripts/tutor-sim.ts",
+    "ablation": "tsx scripts/run-ablation.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.5",
