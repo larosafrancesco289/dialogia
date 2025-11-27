@@ -43,7 +43,7 @@ export const MINIMAX_VOICES = {
 export const DEFAULT_VOICE_CONFIG: VoiceConfig = {
   voiceId: MINIMAX_VOICES.FRIENDLY_PERSON,
   speed: 1.0,
-  inputMode: 'push-to-talk',
+  inputMode: 'vad',
   vadSensitivity: 'medium',
   silenceThresholdMs: 1500,
 };
@@ -64,22 +64,40 @@ export const MAX_CONCURRENT_TTS = 3;
 /** Number of audio chunks to buffer before starting playback */
 export const AUDIO_BUFFER_AHEAD = 2;
 
-/** VAD silence thresholds by sensitivity (dB) */
+/** VAD silence thresholds by sensitivity (dB) - higher = less sensitive */
 export const VAD_THRESHOLDS = {
-  low: -30,
-  medium: -40,
-  high: -50,
+  low: -25,    // Only loud speech
+  medium: -35, // Normal speech
+  high: -45,   // Quiet speech
 } as const;
 
-/** VAD silence duration by sensitivity (ms) */
+/** VAD silence duration by sensitivity (ms) - how long silence before end */
 export const VAD_SILENCE_DURATION = {
-  low: 2000,
-  medium: 1500,
-  high: 1000,
+  low: 1800,
+  medium: 1200,
+  high: 800,
 } as const;
+
+/** Maximum listening time without valid speech before auto-reset (ms) */
+export const MAX_LISTEN_WITHOUT_SPEECH_MS = 10000;
 
 /** Recording timeout (max duration in ms) */
 export const MAX_RECORDING_DURATION_MS = 60000;
+
+/** Minimum recording duration before allowing stop (ms) - prevents accidental short recordings */
+export const MIN_RECORDING_DURATION_MS = 500;
+
+/** Minimum speech duration before triggering onSpeechEnd (ms) - prevents false triggers */
+export const MIN_SPEECH_DURATION_MS = 300;
+
+/** Cooldown after interruption before allowing new recording (ms) */
+export const INTERRUPT_COOLDOWN_MS = 500;
+
+/** Minimum audio blob size in bytes (smaller is likely empty/silent) */
+export const MIN_AUDIO_BLOB_SIZE = 1000;
+
+/** Debounce time for speech start detection (ms) */
+export const SPEECH_START_DEBOUNCE_MS = 100;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // System Prompt

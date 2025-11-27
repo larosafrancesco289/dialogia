@@ -177,7 +177,7 @@ export function Composer({
       <AttachmentPreviewList attachments={attachments} onRemove={removeAttachment} />
 
       {/* Voice mode indicator */}
-      {isVoiceActive && <VoiceIndicator className="mb-2" />}
+      {isVoiceActive && <VoiceIndicator className="mb-2" variant="compact" />}
 
       <input
         ref={fileInputRef}

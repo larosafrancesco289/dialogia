@@ -9,9 +9,16 @@ import {
   PREFERRED_AUDIO_FORMAT,
   SUPPORTED_AUDIO_FORMATS,
   MAX_RECORDING_DURATION_MS,
+  MIN_RECORDING_DURATION_MS,
+  MIN_AUDIO_BLOB_SIZE,
 } from '@/lib/voice/constants';
 
 export type RecordingState = 'idle' | 'requesting' | 'recording' | 'stopping' | 'error';
+
+export interface UseVoiceRecordingOptions {
+  /** External stream to use (if provided, won't request new microphone access) */
+  externalStream?: MediaStream | null;
+}
 
 export interface UseVoiceRecordingResult {
   /** Current recording state */
@@ -24,9 +31,11 @@ export interface UseVoiceRecordingResult {
   durationMs: number;
   /** Error message if any */
   error: string | null;
-  /** Start recording */
-  startRecording: () => Promise<void>;
-  /** Stop recording and return audio blob */
+  /** Whether recording meets minimum duration for processing */
+  isValidDuration: boolean;
+  /** Start recording (optionally with external stream) */
+  startRecording: (stream?: MediaStream) => Promise<void>;
+  /** Stop recording and return audio blob (returns null if too short or empty) */
   stopRecording: () => Promise<Blob | null>;
   /** Cancel recording without returning data */
   cancelRecording: () => void;
@@ -34,8 +43,11 @@ export interface UseVoiceRecordingResult {
 
 /**
  * Hook for handling microphone recording with MediaRecorder API
+ * Includes minimum duration and blob size validation
  */
-export function useVoiceRecording(): UseVoiceRecordingResult {
+export function useVoiceRecording(options: UseVoiceRecordingOptions = {}): UseVoiceRecordingResult {
+  const { externalStream } = options;
+  
   const [state, setState] = useState<RecordingState>('idle');
   const [audioLevel, setAudioLevel] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
@@ -45,13 +57,18 @@ export function useVoiceRecording(): UseVoiceRecordingResult {
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const ownsStreamRef = useRef(false); // Track if we created the stream
   const chunksRef = useRef<Blob[]>([]);
   const startTimeRef = useRef<number>(0);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const levelAnimationRef = useRef<number>(0);
   const resolveStopRef = useRef<((blob: Blob | null) => void) | null>(null);
+  const mimeTypeRef = useRef<string>(PREFERRED_AUDIO_FORMAT);
 
   const { setAudioLevel: setStoreAudioLevel, setRecordingDuration } = useChatStore();
+
+  // Whether recording meets minimum duration
+  const isValidDuration = durationMs >= MIN_RECORDING_DURATION_MS;
 
   // Cleanup on unmount
   useEffect(() => {
@@ -79,11 +96,12 @@ export function useVoiceRecording(): UseVoiceRecordingResult {
       audioContextRef.current = null;
     }
 
-    // Stop media stream tracks
-    if (streamRef.current) {
+    // Only stop stream tracks if we own the stream
+    if (streamRef.current && ownsStreamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
     }
+    streamRef.current = null;
+    ownsStreamRef.current = false;
 
     analyserRef.current = null;
     mediaRecorderRef.current = null;
@@ -134,12 +152,38 @@ export function useVoiceRecording(): UseVoiceRecordingResult {
   }, []);
 
   /**
-   * Start recording from microphone
+   * Validate audio blob - returns true if blob is valid for processing
    */
-  const startRecording = useCallback(async () => {
-    if (state === 'recording' || state === 'requesting') {
+  const validateBlob = useCallback((blob: Blob, recordingDuration: number): boolean => {
+    // Check minimum size
+    if (blob.size < MIN_AUDIO_BLOB_SIZE) {
+      console.log(`Recording rejected: blob size ${blob.size} < ${MIN_AUDIO_BLOB_SIZE}`);
+      return false;
+    }
+
+    // Check minimum duration
+    if (recordingDuration < MIN_RECORDING_DURATION_MS) {
+      console.log(
+        `Recording rejected: duration ${recordingDuration}ms < ${MIN_RECORDING_DURATION_MS}ms`
+      );
+      return false;
+    }
+
+    return true;
+  }, []);
+
+  /**
+   * Start recording from microphone
+   * @param stream Optional external stream to use instead of requesting new microphone access
+   */
+  const startRecording = useCallback(async (stream?: MediaStream) => {
+    // If already recording or in process, don't start again
+    if (state === 'recording' || state === 'requesting' || state === 'stopping') {
       return;
     }
+
+    // Clean up any previous state first
+    cleanup();
 
     setState('requesting');
     setError(null);
@@ -147,27 +191,52 @@ export function useVoiceRecording(): UseVoiceRecordingResult {
     chunksRef.current = [];
 
     try {
-      // Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      // Use provided stream, external stream from options, or request new one
+      let activeStream = stream || externalStream;
+      
+      if (activeStream) {
+        // Use provided stream - don't own it
+        streamRef.current = activeStream;
+        ownsStreamRef.current = false;
+        console.log('Recording: Using provided stream');
+      } else {
+        // Request microphone access
+        console.log('Recording: Requesting new microphone stream');
+        activeStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+        streamRef.current = activeStream;
+        ownsStreamRef.current = true;
+      }
 
-      streamRef.current = stream;
+      // Verify stream has audio tracks
+      const audioTracks = activeStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        throw new Error('No audio tracks in stream');
+      }
+      console.log('Recording: Audio tracks:', audioTracks.length, 'enabled:', audioTracks[0]?.enabled);
 
       // Set up audio analysis for level monitoring
       audioContextRef.current = new AudioContext();
-      const source = audioContextRef.current.createMediaStreamSource(stream);
+      
+      // Resume AudioContext if suspended
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+      
+      const source = audioContextRef.current.createMediaStreamSource(activeStream);
       analyserRef.current = audioContextRef.current.createAnalyser();
       analyserRef.current.fftSize = 256;
       source.connect(analyserRef.current);
 
       // Create MediaRecorder
       const mimeType = getSupportedMimeType();
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mimeTypeRef.current = mimeType;
+      const mediaRecorder = new MediaRecorder(activeStream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
 
       // Collect data chunks
@@ -179,9 +248,16 @@ export function useVoiceRecording(): UseVoiceRecordingResult {
 
       // Handle stop
       mediaRecorder.onstop = () => {
+        const recordingDuration = Date.now() - startTimeRef.current;
         const blob = new Blob(chunksRef.current, { type: mimeType });
+
         if (resolveStopRef.current) {
-          resolveStopRef.current(blob);
+          // Validate before returning
+          if (validateBlob(blob, recordingDuration)) {
+            resolveStopRef.current(blob);
+          } else {
+            resolveStopRef.current(null);
+          }
           resolveStopRef.current = null;
         }
         cleanup();
@@ -191,6 +267,7 @@ export function useVoiceRecording(): UseVoiceRecordingResult {
       // Handle errors
       mediaRecorder.onerror = (event) => {
         const errorMessage = (event as any).error?.message || 'Recording failed';
+        console.error('MediaRecorder error:', errorMessage);
         setError(errorMessage);
         setState('error');
         if (resolveStopRef.current) {
@@ -204,6 +281,7 @@ export function useVoiceRecording(): UseVoiceRecordingResult {
       mediaRecorder.start(100); // Collect data every 100ms
       startTimeRef.current = Date.now();
       setState('recording');
+      console.log('Recording: Started, AudioContext state:', audioContextRef.current.state);
 
       // Start monitoring audio level
       monitorAudioLevel();
@@ -232,14 +310,24 @@ export function useVoiceRecording(): UseVoiceRecordingResult {
         }
       }
 
+      console.error('Recording start error:', errorMessage);
       setError(errorMessage);
       setState('error');
       cleanup();
     }
-  }, [state, getSupportedMimeType, monitorAudioLevel, cleanup, setRecordingDuration]);
+  }, [
+    state,
+    externalStream,
+    getSupportedMimeType,
+    monitorAudioLevel,
+    cleanup,
+    setRecordingDuration,
+    validateBlob,
+  ]);
 
   /**
    * Stop recording and return audio blob
+   * Returns null if recording was too short or blob is too small
    */
   const stopRecording = useCallback(async (): Promise<Blob | null> => {
     if (state !== 'recording' || !mediaRecorderRef.current) {
@@ -250,7 +338,15 @@ export function useVoiceRecording(): UseVoiceRecordingResult {
 
     return new Promise((resolve) => {
       resolveStopRef.current = resolve;
-      mediaRecorderRef.current?.stop();
+
+      // Request final data before stopping
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.requestData();
+        mediaRecorderRef.current.stop();
+      } else {
+        // If not recording, resolve immediately with null
+        resolve(null);
+      }
     });
   }, [state]);
 
@@ -258,6 +354,11 @@ export function useVoiceRecording(): UseVoiceRecordingResult {
    * Cancel recording without returning data
    */
   const cancelRecording = useCallback(() => {
+    // Stop MediaRecorder if it's running
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+
     if (resolveStopRef.current) {
       resolveStopRef.current(null);
       resolveStopRef.current = null;
@@ -276,6 +377,7 @@ export function useVoiceRecording(): UseVoiceRecordingResult {
     audioLevel,
     durationMs,
     error,
+    isValidDuration,
     startRecording,
     stopRecording,
     cancelRecording,

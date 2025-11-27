@@ -4,6 +4,7 @@ import { ChatSidebar } from '@/components/ChatSidebar';
 import { ChatPane } from '@/components/ChatPane';
 import { TopHeader } from '@/components/TopHeader';
 import { MobileHeader } from '@/components/MobileHeader';
+import { VoiceProvider } from '@/components/voice/VoiceProvider';
 const SettingsDrawer = dynamic(
   () =>
     import(/* webpackPrefetch: true */ '@/components/SettingsDrawer').then(
@@ -13,6 +14,10 @@ const SettingsDrawer = dynamic(
 );
 const GlobalNotice = dynamic(
   () => import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
+  { ssr: false },
+);
+const VoiceOverlay = dynamic(
+  () => import('@/components/voice/VoiceOverlay').then((mod) => mod.VoiceOverlay),
   { ssr: false },
 );
 import { useEffect, useState, type CSSProperties } from 'react';
@@ -72,36 +77,39 @@ export default function HomePage() {
   } as CSSProperties;
 
   return (
-    <div className="app-shell" style={sidebarStyle}>
-      {/* Sidebar column (hidden via CSS on small screens) */}
-      <aside
-        className={`sidebar ${collapsed ? '' : 'glass-panel border border-border rounded-2xl p-2'}`}
-      >
-        {!collapsed && <ChatSidebar />}
-      </aside>
-      <main className="content">
-        {isMobile ? <MobileHeader /> : <TopHeader />}
-        <div className="flex-1 min-h-0">
-          <ChatPane />
-        </div>
-        {isSettingsOpen && <SettingsDrawer />}
-        <GlobalNotice />
-      </main>
-      {/* Mobile sidebar overlay */}
-      {mounted && isMobile && !collapsed && (
-        <>
-          <button
-            className="fixed inset-0 z-[75] settings-overlay"
-            aria-label="Close sidebar"
-            onClick={() => setUI({ sidebarCollapsed: true })}
-          />
-          <div className="fixed inset-y-0 left-0 z-[80] w-[96%] max-w-[420px] p-2">
-            <div className="glass-panel border border-border rounded-2xl p-3 h-full overflow-hidden">
-              <ChatSidebar />
-            </div>
+    <VoiceProvider>
+      <div className="app-shell" style={sidebarStyle}>
+        {/* Sidebar column (hidden via CSS on small screens) */}
+        <aside
+          className={`sidebar ${collapsed ? '' : 'glass-panel border border-border rounded-2xl p-2'}`}
+        >
+          {!collapsed && <ChatSidebar />}
+        </aside>
+        <main className="content">
+          {isMobile ? <MobileHeader /> : <TopHeader />}
+          <div className="flex-1 min-h-0">
+            <ChatPane />
           </div>
-        </>
-      )}
-    </div>
+          {isSettingsOpen && <SettingsDrawer />}
+          <GlobalNotice />
+          <VoiceOverlay />
+        </main>
+        {/* Mobile sidebar overlay */}
+        {mounted && isMobile && !collapsed && (
+          <>
+            <button
+              className="fixed inset-0 z-[75] settings-overlay"
+              aria-label="Close sidebar"
+              onClick={() => setUI({ sidebarCollapsed: true })}
+            />
+            <div className="fixed inset-y-0 left-0 z-[80] w-[96%] max-w-[420px] p-2">
+              <div className="glass-panel border border-border rounded-2xl p-3 h-full overflow-hidden">
+                <ChatSidebar />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </VoiceProvider>
   );
 }

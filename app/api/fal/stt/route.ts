@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fal } from '@fal-ai/client';
 import { requireFalKey } from '@/lib/config';
 
-const FAL_STT_ENDPOINT = 'https://fal.run/fal-ai/wizper';
+const FAL_STT_ID = 'fal-ai/speech-to-text/turbo/stream';
 
 // Map MIME types to file extensions for FAL storage
 const MIME_TO_EXT: Record<string, string> = {
@@ -14,6 +14,9 @@ const MIME_TO_EXT: Record<string, string> = {
   'audio/ogg': 'ogg',
   'audio/flac': 'flac',
 };
+
+// STT request timeout (10 seconds)
+const STT_TIMEOUT_MS = 10000;
 
 export async function POST(req: NextRequest) {
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -38,6 +41,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing audio file' }, { status: 400 });
     }
 
+    // Reject tiny audio files (likely empty/silent)
+    if (audioFile.size < 1000) {
+      return NextResponse.json({ error: 'Audio file too small', text: '' }, { status: 200 });
+    }
+
     // Use explicit MIME type from client (most reliable), fallback to blob type, then default
     const rawMime = explicitMimeType || audioFile.type || 'audio/webm';
     const mimeType = rawMime.split(';')[0].trim().toLowerCase();
@@ -45,67 +53,57 @@ export async function POST(req: NextRequest) {
 
     // Wrap in a File with explicit name + type so storage keeps the extension
     const namedFile = new File([audioFile], `audio.${ext}`, { type: mimeType });
-    try {
-      Object.defineProperty(namedFile, 'name', { value: `audio.${ext}` });
-    } catch {
-      // Ignore if defineProperty is not allowed; File constructor already sets name
-    }
 
     // Upload to FAL storage to get a URL
     const audioUrl = await fal.storage.upload(namedFile);
 
-    // Call Fal.AI STT with the uploaded URL
-    const response = await fetch(FAL_STT_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Authorization: `Key ${falKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        audio_url: audioUrl,
-        task: 'transcribe',
-        language: 'en',
-        chunk_level: 'segment',
+    // Use fal.subscribe for complete audio transcription (not streaming)
+    // This properly handles the queue and returns the full result
+    const result = await Promise.race([
+      fal.subscribe(FAL_STT_ID, {
+        input: {
+          audio_url: audioUrl,
+          use_pnc: true, // Enable punctuation and capitalization
+        },
       }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return NextResponse.json(
-        { error: 'fal_stt_error', detail: errorText },
-        { status: response.status }
-      );
-    }
-
-    const result = await response.json();
-    const transcript = result.text || '';
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('STT request timed out')), STT_TIMEOUT_MS)
+      ),
+    ]);
 
     const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const dur = Math.max(0, t1 - t0);
 
-    // Return as SSE format for consistency with streaming interface
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      start(controller) {
-        // Emit final transcript
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ final: transcript })}\n\n`));
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
-      },
-    });
+    // Extract text from the result - handle various response shapes
+    const data = result.data as Record<string, unknown>;
+    const text =
+      (data?.text as string) ||
+      (data?.transcript as string) ||
+      (data?.transcription as string) ||
+      '';
 
-    return new NextResponse(stream, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-store',
-        Connection: 'keep-alive',
-        'Server-Timing': `proxy;dur=${dur.toFixed(1)}`,
+    return NextResponse.json(
+      {
+        text: text.trim(),
+        requestId: result.requestId,
       },
-    });
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store',
+          'Server-Timing': `proxy;dur=${dur.toFixed(1)}`,
+        },
+      }
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'unknown_error';
     console.error('STT error:', err);
+
+    // Return empty text for timeout/network errors (allow graceful recovery)
+    if (message.includes('timed out') || message.includes('network')) {
+      return NextResponse.json({ error: message, text: '' }, { status: 200 });
+    }
+
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
