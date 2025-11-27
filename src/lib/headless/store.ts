@@ -4,6 +4,7 @@ import { createModelIndex } from '@/lib/models';
 import type { StoreState, UIState } from '@/lib/store/types';
 import type { Chat, Message, ORModel } from '@/lib/types';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
+import { buildDefaultVoiceState } from '@/lib/voice/constants';
 
 export type HeadlessStoreOptions = {
   chat: Chat;
@@ -42,6 +43,7 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
       ...HEADLESS_UI_OVERRIDES,
       ...(uiOverrides ?? {}),
     }),
+    voice: buildDefaultVoiceState(),
 
     initializeApp: async () => {},
 
@@ -128,5 +130,28 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
       });
     },
     persistTutorStateForMessage: async () => {},
+
+    // Voice actions (no-ops for headless mode)
+    startVoiceMode: () => {},
+    stopVoiceMode: () => {},
+    setVoiceMode: () => {},
+    startRecording: async () => {},
+    stopRecording: () => {},
+    interruptPlayback: () => {},
+    updatePartialTranscript: () => {},
+    commitTranscript: () => {},
+    appendLlmText: () => {},
+    completeLlmResponse: () => {},
+    queueAudio: () => {},
+    playNextAudio: () => {},
+    clearAudioQueue: () => {},
+    setIsPlaying: () => {},
+    setAudioLevel: () => {},
+    setRecordingDuration: () => {},
+    setVoiceConfig: () => {},
+    setVoiceError: () => {},
+    clearVoiceError: () => {},
+    resetVoiceState: () => {},
+    updateMetrics: () => {},
   }));
 }

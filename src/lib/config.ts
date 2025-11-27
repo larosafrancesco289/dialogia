@@ -44,6 +44,20 @@ export function getBraveSearchKey(): string | undefined {
   return readEnv('BRAVE_SEARCH_API_KEY');
 }
 
+export function hasFalKey(): boolean {
+  return Boolean(readEnv('FAL_KEY'));
+}
+
+export function getFalKey(): string | undefined {
+  return readEnv('FAL_KEY');
+}
+
+export function requireFalKey(): string {
+  const key = getFalKey();
+  if (!key) throw new Error('Missing env: FAL_KEY');
+  return key;
+}
+
 export function getServerOpenRouterKey(): string | undefined {
   return readEnv('OPENROUTER_API_KEY');
 }

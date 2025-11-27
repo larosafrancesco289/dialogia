@@ -6,8 +6,8 @@ export const DEFAULT_CHAT_MODEL: CuratedModel = {
 };
 
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
-  id: 'anthropic/claude-haiku-4.5',
-  name: 'Claude Haiku 4.5',
+  id: 'x-ai/grok-4.1-fast',
+  name: 'Grok 4.1 Fast',
 };
 
 export const DEFAULT_MODEL_ID = DEFAULT_CHAT_MODEL.id;

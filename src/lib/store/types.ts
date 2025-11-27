@@ -9,6 +9,7 @@ import type {
 } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
+import type { VoiceState, VoiceActions } from '@/lib/voice/types';
 
 export type TutorToolUsage = {
   mcqByNode?: Record<string, number>;
@@ -129,6 +130,10 @@ export type StoreState = {
   zdrFetchedAt?: number;
 
   ui: UIState;
+
+  // Voice agent state
+  voice: VoiceState;
+} & VoiceActions & {
 
   // lifecycle
   initializeApp: () => Promise<void>;

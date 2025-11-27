@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import type { StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
 import { updateMessageInChat } from '@/lib/store/messageUtils';
+import { buildDefaultVoiceState } from '@/lib/voice/constants';
 
 const noop = () => undefined;
 const noopAsync = async () => undefined;
@@ -23,6 +24,7 @@ const baseState = (messages: Record<string, Message[]>): StoreState =>
     favoriteModelIds: [],
     hiddenModelIds: [],
     ui: {} as StoreState['ui'],
+    voice: buildDefaultVoiceState(),
     initializeApp: noopAsync,
     newChat: noopAsync,
     selectChat: noop,
@@ -54,6 +56,28 @@ const baseState = (messages: Record<string, Message[]>): StoreState =>
     editAssistantMessage: noopAsync,
     appendAssistantMessage: noopAsync,
     persistTutorStateForMessage: noopAsync,
+    // Voice actions (no-ops for tests)
+    startVoiceMode: noop,
+    stopVoiceMode: noop,
+    setVoiceMode: noop,
+    startRecording: noopAsync,
+    stopRecording: noop,
+    interruptPlayback: noop,
+    updatePartialTranscript: noop,
+    commitTranscript: noop,
+    appendLlmText: noop,
+    completeLlmResponse: noop,
+    queueAudio: noop,
+    playNextAudio: noop,
+    clearAudioQueue: noop,
+    setIsPlaying: noop,
+    setAudioLevel: noop,
+    setRecordingDuration: noop,
+    setVoiceConfig: noop,
+    setVoiceError: noop,
+    clearVoiceError: noop,
+    resetVoiceState: noop,
+    updateMetrics: noop,
   }) as StoreState;
 
 const createMessage = (overrides: Partial<Message> = {}): Message => ({
