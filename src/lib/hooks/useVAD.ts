@@ -233,25 +233,30 @@ export function useVAD(options: UseVADOptions = {}): UseVADResult {
         if (!silenceTimerRef.current) {
           const silenceDuration = getSilenceDuration();
           silenceTimerRef.current = setTimeout(() => {
-            console.log('VAD: Silence detected, ending speech. Valid:', hasValidSpeechRef.current);
+            const hadValidSpeech = hasValidSpeechRef.current;
+            console.log('VAD: Silence detected, ending speech. Valid:', hadValidSpeech);
             
-            // Trigger onSpeechEnd if we had valid speech (minimum duration met)
-            const shouldTriggerEnd = hasValidSpeechRef.current;
-
+            // IMPORTANT: Set isSpeaking to false BEFORE resetting hasValidSpeech
+            // This allows the consumer (useVoicePipeline) to detect the transition
+            // with hasValidSpeech still being true
             isSpeakingRef.current = false;
             setIsSpeaking(false);
             silenceTimerRef.current = null;
 
-            if (shouldTriggerEnd) {
+            // Reset speech start time
+            speechStartTimeRef.current = null;
+            setSpeechDurationMs(0);
+            listenStartTimeRef.current = Date.now(); // Reset timeout tracker
+
+            // NOTE: We do NOT reset hasValidSpeech here!
+            // The consumer should call reset() after processing the speech.
+            // This fixes the race condition where hasValidSpeech was being
+            // reset before the useEffect in useVoicePipeline could detect it.
+            
+            // Trigger callback if we had valid speech
+            if (hadValidSpeech) {
               onSpeechEnd?.();
             }
-
-            // Reset tracking for next utterance
-            speechStartTimeRef.current = null;
-            hasValidSpeechRef.current = false;
-            setSpeechDurationMs(0);
-            setHasValidSpeech(false);
-            listenStartTimeRef.current = Date.now(); // Reset timeout tracker
           }, silenceDuration);
         }
       }

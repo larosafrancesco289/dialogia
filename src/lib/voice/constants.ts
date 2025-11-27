@@ -8,8 +8,8 @@ import { ProviderSort } from '@/lib/models/providerSort';
 // Model Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Fal.AI Speech-to-Text model */
-export const STT_MODEL = 'fal-ai/speech-to-text/turbo/stream';
+/** Fal.AI Speech-to-Text model (using Whisper for better format support) */
+export const STT_MODEL = 'fal-ai/wizper';
 
 /** Fal.AI Text-to-Speech model */
 export const TTS_MODEL = 'fal-ai/minimax/speech-2.6-turbo';

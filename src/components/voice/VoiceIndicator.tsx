@@ -48,19 +48,19 @@ export function VoiceIndicator({ className = '', variant = 'full' }: VoiceIndica
     }
   }, [voiceMode]);
 
-  // Get status color
-  const statusColor = useMemo(() => {
+  // Get status color - using CSS custom properties from design tokens
+  const statusColorStyle = useMemo(() => {
     switch (voiceMode) {
       case 'listening':
-        return 'text-red-500';
+        return { color: 'var(--color-accent)' }; // gold
       case 'processing':
-        return 'text-purple-500';
+        return { color: 'var(--color-accent-2)' }; // purple
       case 'speaking':
-        return 'text-green-500';
+        return { color: 'var(--color-success)' }; // green
       case 'interrupted':
-        return 'text-yellow-500';
+        return { color: 'var(--color-accent)' }; // gold
       default:
-        return 'text-muted';
+        return { color: 'var(--color-fg-muted)' };
     }
   }, [voiceMode]);
 
@@ -76,7 +76,7 @@ export function VoiceIndicator({ className = '', variant = 'full' }: VoiceIndica
           className={`flex items-center gap-2 ${className}`}
         >
           <WaveformBars level={audioLevel} mode={voiceMode} size="small" />
-          <span className={`text-xs font-medium ${statusColor}`}>{statusText}</span>
+          <span className="text-xs font-medium" style={statusColorStyle}>{statusText}</span>
         </motion.div>
       </AnimatePresence>
     );
@@ -95,7 +95,7 @@ export function VoiceIndicator({ className = '', variant = 'full' }: VoiceIndica
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <WaveformBars level={audioLevel} mode={voiceMode} />
-            <span className={`text-sm font-medium ${statusColor}`}>{statusText}</span>
+            <span className="text-sm font-medium" style={statusColorStyle}>{statusText}</span>
           </div>
           {voiceMode === 'listening' && (
             <span className="text-xs text-muted font-mono">{formattedDuration}</span>
@@ -141,17 +141,17 @@ function WaveformBars({ level, mode, size = 'medium' }: WaveformBarsProps) {
   const barCount = 5;
   const isAnimating = mode === 'listening' || mode === 'speaking';
 
-  // Get bar color based on mode
-  const barColor = useMemo(() => {
+  // Get bar color based on mode - using design tokens
+  const barColorStyle = useMemo(() => {
     switch (mode) {
       case 'listening':
-        return 'bg-red-500';
+        return { background: 'var(--color-accent)' }; // gold
       case 'processing':
-        return 'bg-purple-500';
+        return { background: 'var(--color-accent-2)' }; // purple
       case 'speaking':
-        return 'bg-green-500';
+        return { background: 'var(--color-success)' }; // green
       default:
-        return 'bg-muted';
+        return { background: 'var(--color-fg-muted)' };
     }
   }, [mode]);
 
@@ -169,7 +169,7 @@ function WaveformBars({ level, mode, size = 'medium' }: WaveformBarsProps) {
         return (
           <motion.div
             key={i}
-            className={`${barWidth} rounded-full ${barColor}`}
+            className={`${barWidth} rounded-full`}
             animate={{
               scaleY: animatedHeight,
             }}
@@ -182,6 +182,7 @@ function WaveformBars({ level, mode, size = 'medium' }: WaveformBarsProps) {
             style={{
               height: '100%',
               transformOrigin: 'center',
+              ...barColorStyle,
             }}
           />
         );
