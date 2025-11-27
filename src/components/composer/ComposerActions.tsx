@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { ReasoningEffortMenu } from '@/components/ReasoningEffortMenu';
 import { ComposerMobileMenu, type Effort } from '@/components/composer/ComposerMobileMenu';
+import { VoiceButton } from '@/components/voice/VoiceButton';
 
 export type ComposerActionsProps = {
   isStreaming: boolean;
@@ -90,6 +91,8 @@ export function ComposerActions({
           setMobileMenuOpen(false);
         }}
       />
+
+      <VoiceButton className="self-center" />
 
       <button className="btn self-center" onClick={onSend} aria-label="Send" title="Send">
         <PaperAirplaneIcon className="h-4 w-4" />

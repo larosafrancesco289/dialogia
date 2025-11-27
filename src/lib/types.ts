@@ -108,6 +108,10 @@ export type Message = {
   metadata?: {
     hiddenFromUser?: boolean;
     kind?: string;
+    /** Source of the message (e.g., 'voice' for voice agent) */
+    source?: 'voice' | 'text';
+    /** Audio length in ms (for voice messages) */
+    audioLengthMs?: number;
   };
   // Optional: persisted tutor payload for interactive content and attempts
   tutor?: MessageTutor;

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePartialJson } from './partial-json.ts';
+import { parsePartialJson } from './partial-json';
 
 describe('parsePartialJson', () => {
   it('parses valid JSON', () => {
