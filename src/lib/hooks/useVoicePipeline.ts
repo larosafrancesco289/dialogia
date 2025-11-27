@@ -3,14 +3,19 @@
 // Module: hooks/useVoicePipeline
 // Responsibility: Orchestrate the voice agent pipeline: STT → LLM → TTS
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { useVoiceRecording } from './useVoiceRecording';
 import { useAudioPlayback } from './useAudioPlayback';
 import { useVAD } from './useVAD';
-import { transcribeAudio, synthesizeSpeech, prewarmConnections } from '@/lib/api/falClient';
+import { transcribeAudioSync, synthesizeSpeech, prewarmConnections } from '@/lib/api/falClient';
 import { createSentenceChunkerStream } from '@/lib/voice/sentenceChunker';
-import { VOICE_LLM_CONFIG, VOICE_AGENT_SYSTEM_PROMPT } from '@/lib/voice/constants';
+import {
+  VOICE_LLM_CONFIG,
+  VOICE_AGENT_SYSTEM_PROMPT,
+  MIN_AUDIO_BLOB_SIZE,
+  INTERRUPT_COOLDOWN_MS,
+} from '@/lib/voice/constants';
 import { streamChatCompletion } from '@/lib/openrouter';
 import { requireClientKeyOrProxy } from '@/lib/config';
 import type { ModelMessage } from '@/lib/agent/types';
@@ -27,6 +32,8 @@ export interface UseVoicePipelineResult {
   isPlaying: boolean;
   /** Audio level for visualization */
   audioLevel: number;
+  /** Current dB level (for debugging) */
+  currentDb: number;
   /** Partial transcript (while speaking) */
   partialTranscript: string;
   /** Final transcript */
@@ -37,12 +44,14 @@ export interface UseVoicePipelineResult {
   error: string | undefined;
   /** Start voice mode */
   start: () => Promise<void>;
-  /** Stop voice mode */
+  /** Stop voice mode completely */
   stop: () => void;
   /** Start recording (push-to-talk) */
   startRecording: () => Promise<void>;
   /** Stop recording and process */
   stopRecording: () => Promise<void>;
+  /** Manually finish recording and process (for manual "done" button) */
+  finishRecording: () => Promise<void>;
   /** Interrupt current playback */
   interrupt: () => void;
 }
@@ -64,17 +73,27 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     interruptPlayback,
     updateMetrics,
     setVoiceError,
-    resetVoiceState,
+    clearVoiceError,
   } = useChatStore();
 
-  // Recording hook
+  // Recording hook - will receive shared stream
   const recording = useVoiceRecording();
   const {
-    startRecording: beginRecording,
+    startRecording: beginRecordingInternal,
     stopRecording: endRecording,
     cancelRecording,
     isRecording,
+    isValidDuration,
   } = recording;
+
+  // Wrapper to pass shared stream to recording
+  const beginRecording = useCallback(async () => {
+    if (streamRef.current) {
+      await beginRecordingInternal(streamRef.current);
+    } else {
+      await beginRecordingInternal();
+    }
+  }, [beginRecordingInternal]);
 
   // Playback hook
   const playback = useAudioPlayback();
@@ -96,7 +115,11 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     { role: 'system', content: VOICE_AGENT_SYSTEM_PROMPT },
   ]);
 
-  // VAD for interruption detection during playback
+  // Cooldown state to prevent immediate re-recording after interrupt
+  const [isInCooldown, setIsInCooldown] = useState(false);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // VAD for interruption detection during playback and automatic recording end
   const vad = useVAD({
     sensitivity: voice.voiceConfig.vadSensitivity,
     silenceThresholdMs: voice.voiceConfig.silenceThresholdMs,
@@ -106,18 +129,37 @@ export function useVoicePipeline(): UseVoicePipelineResult {
         handleInterrupt();
       }
     },
+    onTimeout: () => {
+      // Listening timed out without valid speech - restart recording
+      console.log('Voice pipeline: VAD timeout, restarting recording');
+      if (isRecording) {
+        cancelRecording();
+      }
+      // Small delay then restart
+      setTimeout(() => {
+        if (voice.voiceConfig.inputMode === 'vad' && voice.voiceMode !== 'idle') {
+          beginRecording().catch(console.error);
+        }
+      }, 200);
+    },
   });
   const {
     start: startVad,
     stop: stopVad,
+    reset: resetVad,
     isSpeaking: vadIsSpeaking,
+    hasValidSpeech: vadHasValidSpeech,
     audioLevel: vadAudioLevel,
+    currentDb: vadCurrentDb,
   } = vad;
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       abortAll();
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+      }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
@@ -143,6 +185,20 @@ export function useVoicePipeline(): UseVoicePipelineResult {
   }, []);
 
   /**
+   * Start cooldown period
+   */
+  const startCooldown = useCallback(() => {
+    setIsInCooldown(true);
+    if (cooldownTimerRef.current) {
+      clearTimeout(cooldownTimerRef.current);
+    }
+    cooldownTimerRef.current = setTimeout(() => {
+      setIsInCooldown(false);
+      cooldownTimerRef.current = null;
+    }, INTERRUPT_COOLDOWN_MS);
+  }, []);
+
+  /**
    * Handle interruption
    */
   const handleInterrupt = useCallback(() => {
@@ -151,24 +207,61 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     interruptPlayback();
     chunkerRef.current?.reset();
     isProcessingRef.current = false;
+    resetVad();
 
-    // Resume listening after short delay
+    // Start cooldown to prevent immediate re-recording
+    startCooldown();
+
+    // Set interrupted mode
+    setVoiceMode('interrupted');
+
+    // Resume to appropriate mode after cooldown
     setTimeout(() => {
       if (voice.voiceConfig.inputMode === 'vad') {
         setVoiceMode('listening');
+        // Restart recording after cooldown
+        beginRecording().catch((err) => {
+          console.error('Failed to restart recording:', err);
+        });
       } else {
         setVoiceMode('idle');
       }
-    }, 100);
-  }, [abortAll, stopPlayback, interruptPlayback, voice.voiceConfig.inputMode, setVoiceMode]);
+    }, INTERRUPT_COOLDOWN_MS);
+  }, [
+    abortAll,
+    stopPlayback,
+    interruptPlayback,
+    resetVad,
+    startCooldown,
+    voice.voiceConfig.inputMode,
+    setVoiceMode,
+    beginRecording,
+  ]);
 
   /**
    * Process audio through the pipeline: STT → LLM → TTS
    */
   const processPipeline = useCallback(
     async (audioBlob: Blob) => {
-      if (isProcessingRef.current) return;
+      if (isProcessingRef.current) {
+        console.log('Pipeline already processing, skipping');
+        return;
+      }
+
+      // Validate blob size
+      if (audioBlob.size < MIN_AUDIO_BLOB_SIZE) {
+        console.log(`Audio blob too small (${audioBlob.size} bytes), skipping`);
+        // Return to listening mode in VAD, idle in PTT
+        const nextMode = voice.voiceConfig.inputMode === 'vad' ? 'listening' : 'idle';
+        setVoiceMode(nextMode);
+        if (nextMode === 'listening' && !isRecording) {
+          beginRecording().catch(console.error);
+        }
+        return;
+      }
+
       isProcessingRef.current = true;
+      clearVoiceError();
 
       const sttStartTime = Date.now();
 
@@ -183,28 +276,22 @@ export function useVoicePipeline(): UseVoicePipelineResult {
         // === STAGE 1: Speech-to-Text ===
         setVoiceMode('processing');
 
-        let finalText = '';
-
-        await transcribeAudio(
+        // Use synchronous transcription (no streaming needed for complete audio)
+        const finalText = await transcribeAudioSync(
           audioBlob,
-          {
-            onPartial: (text) => {
-              updatePartialTranscript(text);
-            },
-            onFinal: (text) => {
-              finalText = text;
-            },
-            onError: (err) => {
-              throw err;
-            },
-          },
           controllersRef.current.stt?.signal
         );
 
         if (!finalText.trim()) {
-          // No speech detected
-          setVoiceMode('idle');
+          // No speech detected - return to listening/idle
+          console.log('No speech detected in audio');
+          const nextMode = voice.voiceConfig.inputMode === 'vad' ? 'listening' : 'idle';
+          setVoiceMode(nextMode);
           isProcessingRef.current = false;
+
+          if (nextMode === 'listening' && !isRecording) {
+            beginRecording().catch(console.error);
+          }
           return;
         }
 
@@ -323,15 +410,11 @@ export function useVoicePipeline(): UseVoicePipelineResult {
           setVoiceMode('speaking');
           await playAudio();
         } else if (playbackQueueLength === 0) {
+          // No audio to play, go back to listening/idle
           const nextMode = voice.voiceConfig.inputMode === 'vad' ? 'listening' : 'idle';
           setVoiceMode(nextMode);
           if (nextMode === 'listening' && !isRecording) {
-            try {
-              await beginRecording();
-            } catch (recErr) {
-              const message = recErr instanceof Error ? recErr.message : 'Microphone error';
-              setVoiceError(message);
-            }
+            beginRecording().catch(console.error);
           }
         }
       } catch (err) {
@@ -343,6 +426,9 @@ export function useVoicePipeline(): UseVoicePipelineResult {
         const errorMessage = err instanceof Error ? err.message : 'Pipeline error';
         setVoiceError(errorMessage);
         console.error('Voice pipeline error:', err);
+
+        // Return to idle on error
+        setVoiceMode('idle');
       } finally {
         isProcessingRef.current = false;
         ttsQueueRef.current = [];
@@ -356,6 +442,7 @@ export function useVoicePipeline(): UseVoicePipelineResult {
       completeLlmResponse,
       updateMetrics,
       setVoiceError,
+      clearVoiceError,
       voice.voiceConfig,
       isAudioPlaying,
       playbackQueueLength,
@@ -372,6 +459,9 @@ export function useVoicePipeline(): UseVoicePipelineResult {
   const start = useCallback(async () => {
     // Pre-warm connections
     prewarmConnections();
+    clearVoiceError();
+
+    console.log('Voice Pipeline: Starting...');
 
     // Request microphone permission
     try {
@@ -382,6 +472,14 @@ export function useVoicePipeline(): UseVoicePipelineResult {
           autoGainControl: true,
         },
       });
+
+      // Log stream info
+      const tracks = streamRef.current.getAudioTracks();
+      console.log('Voice Pipeline: Got stream with', tracks.length, 'audio tracks');
+      if (tracks.length > 0) {
+        const track = tracks[0];
+        console.log('Voice Pipeline: Track settings:', track.getSettings());
+      }
     } catch (err) {
       const message =
         err instanceof Error
@@ -389,6 +487,7 @@ export function useVoicePipeline(): UseVoicePipelineResult {
             ? 'Microphone permission denied'
             : err.message
           : 'Microphone error';
+      console.error('Voice Pipeline: Microphone error:', message);
       setVoiceError(message);
       return;
     }
@@ -397,14 +496,19 @@ export function useVoicePipeline(): UseVoicePipelineResult {
 
     // Start VAD monitoring for interruption detection
     if (streamRef.current) {
-      startVad(streamRef.current);
+      console.log('Voice Pipeline: Starting VAD...');
+      await startVad(streamRef.current);
     }
 
     // In VAD mode, start recording immediately
     if (voice.voiceConfig.inputMode === 'vad') {
+      setVoiceMode('listening');
+      console.log('Voice Pipeline: Starting recording (VAD mode)...');
       await beginRecording();
     }
-  }, [startVoiceMode, setVoiceError, voice.voiceConfig.inputMode, beginRecording, startVad]);
+
+    console.log('Voice Pipeline: Started successfully');
+  }, [startVoiceMode, setVoiceError, clearVoiceError, voice.voiceConfig.inputMode, beginRecording, startVad, setVoiceMode]);
 
   /**
    * Stop voice mode completely
@@ -417,6 +521,12 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     stopVoiceMode();
     resetVoiceHistory();
 
+    if (cooldownTimerRef.current) {
+      clearTimeout(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+    }
+    setIsInCooldown(false);
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -428,9 +538,12 @@ export function useVoicePipeline(): UseVoicePipelineResult {
    */
   const startRecordingPTT = useCallback(async () => {
     if (voice.voiceConfig.inputMode !== 'push-to-talk') return;
+    if (isInCooldown) return;
+
+    clearVoiceError();
     await beginRecording();
     setVoiceMode('listening');
-  }, [voice.voiceConfig.inputMode, beginRecording, setVoiceMode]);
+  }, [voice.voiceConfig.inputMode, isInCooldown, beginRecording, setVoiceMode, clearVoiceError]);
 
   /**
    * Stop recording and process (push-to-talk mode)
@@ -439,25 +552,86 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     const audioBlob = await endRecording();
     if (audioBlob) {
       await processPipeline(audioBlob);
+    } else {
+      // Recording was invalid (too short), return to idle
+      setVoiceMode('idle');
     }
-  }, [endRecording, processPipeline]);
+  }, [endRecording, processPipeline, setVoiceMode]);
 
-  // Handle VAD-based recording end
-  useEffect(() => {
-    if (voice.voiceConfig.inputMode === 'vad' && !vadIsSpeaking && isRecording) {
-      // Silence detected, stop and process
-      endRecording().then((blob) => {
-        if (blob) {
-          processPipeline(blob);
-        }
-      });
+  /**
+   * Manually finish recording and process (for "Done Speaking" button)
+   * Works in any input mode
+   */
+  const finishRecording = useCallback(async () => {
+    if (!isRecording) {
+      console.log('finishRecording: Not recording, ignoring');
+      return;
     }
-  }, [vadIsSpeaking, voice.voiceConfig.inputMode, isRecording, endRecording, processPipeline]);
+
+    console.log('finishRecording: Manually ending recording');
+    resetVad(); // Reset VAD state
+
+    const audioBlob = await endRecording();
+    if (audioBlob) {
+      await processPipeline(audioBlob);
+    } else {
+      // Recording was invalid, go back to listening or idle
+      const nextMode = voice.voiceConfig.inputMode === 'vad' ? 'listening' : 'idle';
+      setVoiceMode(nextMode);
+      if (nextMode === 'listening') {
+        await beginRecording();
+      }
+    }
+  }, [isRecording, resetVad, endRecording, processPipeline, voice.voiceConfig.inputMode, setVoiceMode, beginRecording]);
+
+  // Handle VAD-based recording end - only when valid speech has been detected
+  useEffect(() => {
+    // Only process in VAD mode
+    if (voice.voiceConfig.inputMode !== 'vad') return;
+    // Skip during cooldown
+    if (isInCooldown) return;
+    // Only when VAD was speaking but now stopped (silence detected)
+    if (vadIsSpeaking) return;
+    // Only if we're currently recording
+    if (!isRecording) return;
+    // Only if valid speech was detected
+    if (!vadHasValidSpeech) return;
+    // Don't process if already processing
+    if (isProcessingRef.current) return;
+
+    // Silence detected after valid speech - stop and process
+    endRecording().then((blob) => {
+      resetVad(); // Reset VAD for next utterance
+      if (blob) {
+        processPipeline(blob);
+      } else {
+        // No valid recording, restart listening
+        setVoiceMode('listening');
+        beginRecording().catch(console.error);
+      }
+    });
+  }, [
+    vadIsSpeaking,
+    vadHasValidSpeech,
+    voice.voiceConfig.inputMode,
+    isRecording,
+    isInCooldown,
+    endRecording,
+    processPipeline,
+    resetVad,
+    setVoiceMode,
+    beginRecording,
+  ]);
 
   // When playback finishes, return to listening/idle so the user can continue talking
   useEffect(() => {
+    // Skip if audio is still playing
     if (isAudioPlaying) return;
+    // Skip if processing
     if (isProcessingRef.current) return;
+    // Skip if in cooldown
+    if (isInCooldown) return;
+    // Only transition from speaking/processing modes
     if (voice.voiceMode !== 'speaking' && voice.voiceMode !== 'processing') return;
 
     const nextMode = voice.voiceConfig.inputMode === 'vad' ? 'listening' : 'idle';
@@ -474,6 +648,7 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     voice.voiceMode,
     voice.voiceConfig.inputMode,
     isRecording,
+    isInCooldown,
     beginRecording,
     setVoiceMode,
     setVoiceError,
@@ -485,6 +660,7 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     isRecording,
     isPlaying: isAudioPlaying,
     audioLevel: recording.audioLevel || vadAudioLevel,
+    currentDb: vadCurrentDb,
     partialTranscript: voice.partialTranscript,
     finalTranscript: voice.finalTranscript,
     llmText: voice.llmStreamingText,
@@ -493,6 +669,7 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     stop,
     startRecording: startRecordingPTT,
     stopRecording: stopRecordingPTT,
+    finishRecording,
     interrupt: handleInterrupt,
   };
 }
