@@ -35,10 +35,10 @@ export function VoiceButton({ className = '' }: VoiceButtonProps) {
       disabled={isStarting}
       aria-pressed={isActive}
       aria-label={isActive ? 'End voice conversation' : 'Start voice conversation'}
-      className={`btn flex items-center gap-2 ${isActive ? 'btn-primary' : 'btn-outline'} ${className}`}
+      title={isActive ? 'End voice conversation' : 'Start voice conversation'}
+      className={`btn ${isActive ? 'btn-primary' : 'btn-outline'} ${className}`}
     >
       {isActive ? <XMarkIcon className="h-4 w-4" /> : <MicrophoneIcon className="h-4 w-4" />}
-      <span>{isStarting ? 'Starting...' : isActive ? 'End Voice' : 'Voice'}</span>
     </button>
   );
 }

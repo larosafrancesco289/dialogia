@@ -229,8 +229,19 @@ export function useAudioPlayback(): UseAudioPlaybackResult {
     setStoreIsPlaying(true);
     setVoiceMode('speaking');
 
+    // Ensure AudioContext is resumed and warmed up before playing
+    // This prevents the first few words from being cut off
+    const audioContext = getAudioContext();
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+    
+    // Small delay to ensure audio context is fully ready
+    // This helps prevent audio cutoff at the beginning
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
     await playNext();
-  }, [playNext, setStoreIsPlaying, setVoiceMode]);
+  }, [playNext, setStoreIsPlaying, setVoiceMode, getAudioContext]);
 
   /**
    * Pause playback

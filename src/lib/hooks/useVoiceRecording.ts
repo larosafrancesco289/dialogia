@@ -177,8 +177,11 @@ export function useVoiceRecording(options: UseVoiceRecordingOptions = {}): UseVo
    * @param stream Optional external stream to use instead of requesting new microphone access
    */
   const startRecording = useCallback(async (stream?: MediaStream) => {
+    console.log('startRecording called, current state:', state);
+    
     // If already recording or in process, don't start again
     if (state === 'recording' || state === 'requesting' || state === 'stopping') {
+      console.log('startRecording: Skipping - already in state:', state);
       return;
     }
 

@@ -9,6 +9,36 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useVoice } from '@/components/voice/VoiceProvider';
 import { useChatStore } from '@/lib/store';
 
+// CSS custom property colors from the design system
+// listening: accent (gold), processing: accent-2 (purple), speaking: success (green)
+const VOICE_COLORS = {
+  listening: {
+    primary: 'var(--color-accent)',
+    bg: 'color-mix(in oklab, var(--color-accent) 20%, transparent)',
+    bgAlt: 'color-mix(in oklab, var(--color-accent) 10%, transparent)',
+  },
+  processing: {
+    primary: 'var(--color-accent-2)',
+    bg: 'color-mix(in oklab, var(--color-accent-2) 20%, transparent)',
+    bgAlt: 'color-mix(in oklab, var(--color-accent-2) 10%, transparent)',
+  },
+  speaking: {
+    primary: 'var(--color-success)',
+    bg: 'color-mix(in oklab, var(--color-success) 20%, transparent)',
+    bgAlt: 'color-mix(in oklab, var(--color-success) 10%, transparent)',
+  },
+  interrupted: {
+    primary: 'var(--color-accent)',
+    bg: 'color-mix(in oklab, var(--color-accent) 15%, transparent)',
+    bgAlt: 'color-mix(in oklab, var(--color-accent) 8%, transparent)',
+  },
+  idle: {
+    primary: 'var(--color-fg-muted)',
+    bg: 'color-mix(in oklab, var(--color-fg-muted) 20%, transparent)',
+    bgAlt: 'color-mix(in oklab, var(--color-fg-muted) 10%, transparent)',
+  },
+};
+
 /**
  * Full-screen voice conversation overlay
  * Provides immersive UX for natural voice interaction
@@ -31,6 +61,9 @@ export function VoiceOverlay() {
 
   const inputMode = useChatStore((s) => s.voice.voiceConfig.inputMode);
   const recordingDurationMs = useChatStore((s) => s.voice.recordingDurationMs);
+
+  // Get colors for current mode
+  const colors = VOICE_COLORS[voiceMode] || VOICE_COLORS.idle;
 
   // Format duration
   const formattedDuration = useMemo(() => {
@@ -65,53 +98,33 @@ export function VoiceOverlay() {
     }
   }, [voiceMode, isPlaying, interrupt]);
 
-  // Get state config
+  // Get state config - using design system colors
   const stateConfig = useMemo(() => {
     switch (voiceMode) {
       case 'listening':
         return {
           label: 'Listening',
           sublabel: inputMode === 'vad' ? 'Speak naturally, I\'ll know when you\'re done' : 'Recording your voice...',
-          bgGradient: 'from-rose-500/20 via-red-500/10 to-orange-500/20',
-          ringColor: 'ring-rose-500',
-          pulseColor: 'bg-rose-500',
-          textColor: 'text-rose-400',
         };
       case 'processing':
         return {
           label: 'Thinking',
           sublabel: 'Processing your request...',
-          bgGradient: 'from-violet-500/20 via-purple-500/10 to-indigo-500/20',
-          ringColor: 'ring-violet-500',
-          pulseColor: 'bg-violet-500',
-          textColor: 'text-violet-400',
         };
       case 'speaking':
         return {
           label: 'Speaking',
           sublabel: 'Tap anywhere to interrupt',
-          bgGradient: 'from-emerald-500/20 via-green-500/10 to-teal-500/20',
-          ringColor: 'ring-emerald-500',
-          pulseColor: 'bg-emerald-500',
-          textColor: 'text-emerald-400',
         };
       case 'interrupted':
         return {
           label: 'Interrupted',
           sublabel: 'Resuming shortly...',
-          bgGradient: 'from-amber-500/20 via-yellow-500/10 to-orange-500/20',
-          ringColor: 'ring-amber-500',
-          pulseColor: 'bg-amber-500',
-          textColor: 'text-amber-400',
         };
       default:
         return {
           label: 'Ready',
           sublabel: 'Initializing...',
-          bgGradient: 'from-slate-500/20 via-gray-500/10 to-zinc-500/20',
-          ringColor: 'ring-slate-500',
-          pulseColor: 'bg-slate-500',
-          textColor: 'text-slate-400',
         };
     }
   }, [voiceMode, inputMode]);
@@ -126,15 +139,25 @@ export function VoiceOverlay() {
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex flex-col"
         onClick={handleMainClick}
+        style={{
+          // Apply CSS custom properties for theming
+          ['--voice-primary' as string]: colors.primary,
+          ['--voice-bg' as string]: colors.bg,
+          ['--voice-bg-alt' as string]: colors.bgAlt,
+        }}
       >
-        {/* Animated gradient background */}
+        {/* Animated gradient background using design tokens */}
         <motion.div
-          className={`absolute inset-0 bg-gradient-to-br ${stateConfig.bgGradient} transition-all duration-700`}
-          style={{ backdropFilter: 'blur(60px)' }}
+          className="absolute inset-0 transition-all duration-700"
+          style={{
+            background: `radial-gradient(ellipse at 30% 20%, ${colors.bg}, transparent 60%),
+                         radial-gradient(ellipse at 70% 80%, ${colors.bgAlt}, transparent 50%)`,
+            backdropFilter: 'blur(60px)',
+          }}
         />
-        <div className="absolute inset-0 bg-black/80" />
+        <div className="absolute inset-0 bg-canvas/90" style={{ background: 'color-mix(in oklab, var(--color-canvas) 90%, transparent)' }} />
 
-        {/* Close button - prominent and always visible */}
+        {/* Close button - using danger color */}
         <motion.button
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -143,7 +166,13 @@ export function VoiceOverlay() {
             e.stopPropagation();
             stop();
           }}
-          className="absolute top-6 right-6 z-10 flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors text-white font-medium"
+          className="absolute top-6 right-6 z-10 flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-medium"
+          style={{
+            background: 'color-mix(in oklab, var(--color-danger) 80%, transparent)',
+            color: 'white',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-danger)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'color-mix(in oklab, var(--color-danger) 80%, transparent)')}
           aria-label="End conversation"
         >
           <XMarkIcon className="w-5 h-5" />
@@ -163,7 +192,7 @@ export function VoiceOverlay() {
             {(voiceMode === 'listening' || voiceMode === 'speaking') && (
               <>
                 <motion.div
-                  className={`absolute inset-0 rounded-full ${stateConfig.pulseColor}/20`}
+                  className="absolute inset-0 rounded-full"
                   animate={{
                     scale: [1, 1.5 + audioLevel * 0.5],
                     opacity: [0.6, 0],
@@ -173,10 +202,10 @@ export function VoiceOverlay() {
                     repeat: Infinity,
                     ease: 'easeOut',
                   }}
-                  style={{ width: 200, height: 200, margin: -50 }}
+                  style={{ width: 200, height: 200, margin: -50, background: colors.bg }}
                 />
                 <motion.div
-                  className={`absolute inset-0 rounded-full ${stateConfig.pulseColor}/10`}
+                  className="absolute inset-0 rounded-full"
                   animate={{
                     scale: [1, 2 + audioLevel * 0.5],
                     opacity: [0.4, 0],
@@ -187,38 +216,52 @@ export function VoiceOverlay() {
                     ease: 'easeOut',
                     delay: 0.5,
                   }}
-                  style={{ width: 200, height: 200, margin: -50 }}
+                  style={{ width: 200, height: 200, margin: -50, background: colors.bgAlt }}
                 />
               </>
             )}
 
-            {/* Processing spinner */}
+            {/* Processing spinner - counter-clockwise */}
             {voiceMode === 'processing' && (
               <motion.div
-                className="absolute inset-0 rounded-full border-4 border-violet-500/30 border-t-violet-500"
-                animate={{ rotate: 360 }}
+                className="absolute inset-0 rounded-full"
+                animate={{ rotate: -360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                style={{ width: 140, height: 140, margin: -20 }}
+                style={{
+                  width: 140,
+                  height: 140,
+                  margin: -20,
+                  border: '4px solid color-mix(in oklab, var(--color-accent-2) 30%, transparent)',
+                  borderTopColor: 'var(--color-accent-2)',
+                }}
               />
             )}
 
             {/* Main orb */}
             <motion.div
-              className={`relative w-24 h-24 rounded-full ring-4 ${stateConfig.ringColor} shadow-2xl overflow-hidden`}
+              className="relative w-24 h-24 rounded-full shadow-2xl overflow-hidden"
               animate={{
                 scale: 1 + audioLevel * 0.2,
               }}
               transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              style={{
+                boxShadow: `0 0 0 4px ${colors.primary}`,
+              }}
             >
               {/* Inner gradient */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${stateConfig.bgGradient}`} />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `radial-gradient(circle at 30% 30%, ${colors.bg}, ${colors.bgAlt})`,
+                }}
+              />
 
               {/* Audio level bars */}
               <div className="absolute inset-0 flex items-center justify-center gap-1">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <motion.div
                     key={i}
-                    className={`w-1.5 rounded-full ${stateConfig.pulseColor}`}
+                    className="w-1.5 rounded-full"
                     animate={{
                       height: voiceMode === 'listening' || voiceMode === 'speaking'
                         ? 8 + audioLevel * 40 + Math.sin(Date.now() / 200 + i) * 8
@@ -231,6 +274,7 @@ export function VoiceOverlay() {
                         ? { duration: 0.6, repeat: Infinity, delay: i * 0.1 }
                         : { type: 'spring', stiffness: 300, damping: 20 }
                     }
+                    style={{ background: colors.primary }}
                   />
                 ))}
               </div>
@@ -244,18 +288,21 @@ export function VoiceOverlay() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
-            <h2 className={`text-3xl font-semibold ${stateConfig.textColor} mb-2`}>
+            <h2
+              className="text-3xl font-semibold mb-2"
+              style={{ color: colors.primary }}
+            >
               {stateConfig.label}
             </h2>
-            <p className="text-white/60 text-lg">
+            <p className="text-lg" style={{ color: 'var(--color-fg-muted)' }}>
               {stateConfig.sublabel}
             </p>
             {voiceMode === 'listening' && (
               <div className="mt-2 space-y-1">
-                <p className="text-white/40 text-sm font-mono">
+                <p className="text-sm font-mono" style={{ color: 'color-mix(in oklab, var(--color-fg-muted) 60%, transparent)' }}>
                   {formattedDuration}
                 </p>
-                <p className="text-white/30 text-xs font-mono">
+                <p className="text-xs font-mono" style={{ color: 'color-mix(in oklab, var(--color-fg-muted) 40%, transparent)' }}>
                   {currentDb.toFixed(1)} dB {currentDb > -35 ? '(speech)' : '(silence)'}
                 </p>
               </div>
@@ -274,13 +321,17 @@ export function VoiceOverlay() {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/10"
+                className="mb-6 p-4 rounded-2xl"
+                style={{
+                  background: 'color-mix(in oklab, var(--color-surface) 8%, transparent)',
+                  border: '1px solid color-mix(in oklab, var(--color-border) 30%, transparent)',
+                }}
               >
-                <p className="text-xs text-white/40 mb-2 uppercase tracking-wider">You said</p>
-                <p className="text-white text-lg leading-relaxed">
+                <p className="text-xs mb-2 uppercase tracking-wider" style={{ color: 'var(--color-fg-muted)' }}>You said</p>
+                <p className="text-lg leading-relaxed" style={{ color: 'var(--color-fg)' }}>
                   {finalTranscript || partialTranscript}
                   {!finalTranscript && partialTranscript && (
-                    <span className="inline-block w-0.5 h-5 bg-white/60 ml-1 animate-pulse" />
+                    <span className="inline-block w-0.5 h-5 ml-1 animate-pulse" style={{ background: 'var(--color-fg-muted)' }} />
                   )}
                 </p>
               </motion.div>
@@ -291,13 +342,17 @@ export function VoiceOverlay() {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 rounded-2xl bg-white/5 border border-white/10"
+                className="p-4 rounded-2xl"
+                style={{
+                  background: 'color-mix(in oklab, var(--color-surface) 8%, transparent)',
+                  border: '1px solid color-mix(in oklab, var(--color-border) 30%, transparent)',
+                }}
               >
-                <p className="text-xs text-white/40 mb-2 uppercase tracking-wider">Response</p>
-                <p className="text-white text-lg leading-relaxed">
+                <p className="text-xs mb-2 uppercase tracking-wider" style={{ color: 'var(--color-fg-muted)' }}>Response</p>
+                <p className="text-lg leading-relaxed" style={{ color: 'var(--color-fg)' }}>
                   {llmText}
                   {voiceMode === 'processing' && (
-                    <span className="inline-block w-0.5 h-5 bg-white/60 ml-1 animate-pulse" />
+                    <span className="inline-block w-0.5 h-5 ml-1 animate-pulse" style={{ background: 'var(--color-fg-muted)' }} />
                   )}
                 </p>
               </motion.div>
@@ -309,9 +364,13 @@ export function VoiceOverlay() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="absolute bottom-32 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl bg-red-500/20 border border-red-500/30"
+              className="absolute bottom-32 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl"
+              style={{
+                background: 'color-mix(in oklab, var(--color-danger) 20%, transparent)',
+                border: '1px solid color-mix(in oklab, var(--color-danger) 30%, transparent)',
+              }}
             >
-              <p className="text-red-400 text-sm">{error}</p>
+              <p className="text-sm" style={{ color: 'var(--color-danger)' }}>{error}</p>
             </motion.div>
           )}
         </div>
@@ -323,7 +382,7 @@ export function VoiceOverlay() {
           transition={{ delay: 0.4 }}
           className="relative pb-12 flex flex-col items-center gap-4"
         >
-          {/* Manual send button when listening */}
+          {/* Manual send button when listening - using accent color */}
           {voiceMode === 'listening' && (
             <motion.button
               initial={{ scale: 0.9 }}
@@ -332,16 +391,21 @@ export function VoiceOverlay() {
               whileTap={{ scale: 0.95 }}
               onClick={(e) => {
                 e.stopPropagation();
-                // Manually finish recording and process
                 finishRecording();
               }}
-              className="px-8 py-4 rounded-full bg-emerald-500/80 hover:bg-emerald-500 text-white font-medium text-lg transition-colors shadow-lg"
+              className="px-8 py-4 rounded-full font-medium text-lg transition-colors shadow-lg"
+              style={{
+                background: 'color-mix(in oklab, var(--color-accent) 85%, transparent)',
+                color: 'var(--color-canvas)',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-accent)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'color-mix(in oklab, var(--color-accent) 85%, transparent)')}
             >
               Done Speaking →
             </motion.button>
           )}
 
-          <p className="text-white/40 text-sm">
+          <p className="text-sm" style={{ color: 'var(--color-fg-muted)' }}>
             {voiceMode === 'listening'
               ? 'Tap "Done Speaking" when finished, or wait for auto-detect'
               : voiceMode === 'speaking'

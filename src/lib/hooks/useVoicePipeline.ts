@@ -86,15 +86,6 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     isValidDuration,
   } = recording;
 
-  // Wrapper to pass shared stream to recording
-  const beginRecording = useCallback(async () => {
-    if (streamRef.current) {
-      await beginRecordingInternal(streamRef.current);
-    } else {
-      await beginRecordingInternal();
-    }
-  }, [beginRecordingInternal]);
-
   // Playback hook
   const playback = useAudioPlayback();
   const {
@@ -119,6 +110,10 @@ export function useVoicePipeline(): UseVoicePipelineResult {
   const [isInCooldown, setIsInCooldown] = useState(false);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Refs to hold functions to avoid circular dependency with VAD callbacks
+  const beginRecordingRef = useRef<(() => Promise<void>) | null>(null);
+  const handleInterruptRef = useRef<(() => void) | null>(null);
+
   // VAD for interruption detection during playback and automatic recording end
   const vad = useVAD({
     sensitivity: voice.voiceConfig.vadSensitivity,
@@ -126,7 +121,7 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     onSpeechStart: () => {
       // If playing audio and user starts speaking, interrupt
       if (voice.voiceMode === 'speaking' || isAudioPlaying) {
-        handleInterrupt();
+        handleInterruptRef.current?.();
       }
     },
     onTimeout: () => {
@@ -138,7 +133,7 @@ export function useVoicePipeline(): UseVoicePipelineResult {
       // Small delay then restart
       setTimeout(() => {
         if (voice.voiceConfig.inputMode === 'vad' && voice.voiceMode !== 'idle') {
-          beginRecording().catch(console.error);
+          beginRecordingRef.current?.().catch(console.error);
         }
       }, 200);
     },
@@ -152,6 +147,53 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     audioLevel: vadAudioLevel,
     currentDb: vadCurrentDb,
   } = vad;
+
+  // Wrapper to pass shared stream to recording
+  const beginRecording = useCallback(async () => {
+    console.log('beginRecording called:', {
+      hasStream: !!streamRef.current,
+      streamActive: streamRef.current?.active,
+      trackCount: streamRef.current?.getAudioTracks().length,
+      trackStates: streamRef.current?.getAudioTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState })),
+    });
+    
+    // Check if stream is still valid
+    if (streamRef.current) {
+      const tracks = streamRef.current.getAudioTracks();
+      const hasLiveTracks = tracks.some(t => t.readyState === 'live');
+      
+      if (hasLiveTracks) {
+        console.log('Using existing stream for recording');
+        await beginRecordingInternal(streamRef.current);
+      } else {
+        console.log('Stream tracks are ended, requesting new stream');
+        // Stream is dead, need to request new one
+        try {
+          streamRef.current = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          });
+          // Also restart VAD with new stream
+          await startVad(streamRef.current);
+          await beginRecordingInternal(streamRef.current);
+        } catch (err) {
+          console.error('Failed to get new microphone stream:', err);
+          throw err;
+        }
+      }
+    } else {
+      console.log('No stream, requesting new microphone access');
+      await beginRecordingInternal();
+    }
+  }, [beginRecordingInternal, startVad]);
+
+  // Update beginRecording ref (handleInterrupt ref updated later after it's defined)
+  useEffect(() => {
+    beginRecordingRef.current = beginRecording;
+  }, [beginRecording]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -237,6 +279,11 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     setVoiceMode,
     beginRecording,
   ]);
+
+  // Update handleInterrupt ref (defined after the function to avoid initialization order issues)
+  useEffect(() => {
+    handleInterruptRef.current = handleInterrupt;
+  }, [handleInterrupt]);
 
   /**
    * Process audio through the pipeline: STT → LLM → TTS
@@ -427,8 +474,20 @@ export function useVoicePipeline(): UseVoicePipelineResult {
         setVoiceError(errorMessage);
         console.error('Voice pipeline error:', err);
 
-        // Return to idle on error
-        setVoiceMode('idle');
+        // On error, return to listening mode in VAD so user can try again
+        // Don't just go idle - that leaves the user stuck
+        const nextMode = voice.voiceConfig.inputMode === 'vad' ? 'listening' : 'idle';
+        setVoiceMode(nextMode);
+        
+        // Reset VAD and restart recording so user can try again
+        if (nextMode === 'listening') {
+          resetVad();
+          setTimeout(() => {
+            beginRecording().catch((restartErr) => {
+              console.error('Failed to restart recording after error:', restartErr);
+            });
+          }, 200);
+        }
       } finally {
         isProcessingRef.current = false;
         ttsQueueRef.current = [];
@@ -450,6 +509,7 @@ export function useVoicePipeline(): UseVoicePipelineResult {
       queueAudio,
       beginRecording,
       isRecording,
+      resetVad,
     ]
   );
 
@@ -563,8 +623,14 @@ export function useVoicePipeline(): UseVoicePipelineResult {
    * Works in any input mode
    */
   const finishRecording = useCallback(async () => {
+    console.log('finishRecording called:', {
+      isRecording,
+      recordingState: recording.state,
+      voiceMode: voice.voiceMode,
+    });
+    
     if (!isRecording) {
-      console.log('finishRecording: Not recording, ignoring');
+      console.log('finishRecording: Not recording, ignoring. Recording state:', recording.state);
       return;
     }
 
@@ -582,22 +648,52 @@ export function useVoicePipeline(): UseVoicePipelineResult {
         await beginRecording();
       }
     }
-  }, [isRecording, resetVad, endRecording, processPipeline, voice.voiceConfig.inputMode, setVoiceMode, beginRecording]);
+  }, [isRecording, recording.state, voice.voiceMode, resetVad, endRecording, processPipeline, voice.voiceConfig.inputMode, setVoiceMode, beginRecording]);
 
   // Handle VAD-based recording end - only when valid speech has been detected
   useEffect(() => {
+    // Debug: log state changes
+    console.log('VAD Effect Check:', {
+      inputMode: voice.voiceConfig.inputMode,
+      isInCooldown,
+      vadIsSpeaking,
+      isRecording,
+      vadHasValidSpeech,
+      isProcessing: isProcessingRef.current,
+    });
+
     // Only process in VAD mode
-    if (voice.voiceConfig.inputMode !== 'vad') return;
+    if (voice.voiceConfig.inputMode !== 'vad') {
+      console.log('VAD Effect: Not in VAD mode, skipping');
+      return;
+    }
     // Skip during cooldown
-    if (isInCooldown) return;
+    if (isInCooldown) {
+      console.log('VAD Effect: In cooldown, skipping');
+      return;
+    }
     // Only when VAD was speaking but now stopped (silence detected)
-    if (vadIsSpeaking) return;
+    if (vadIsSpeaking) {
+      console.log('VAD Effect: Still speaking, skipping');
+      return;
+    }
     // Only if we're currently recording
-    if (!isRecording) return;
+    if (!isRecording) {
+      console.log('VAD Effect: Not recording, skipping');
+      return;
+    }
     // Only if valid speech was detected
-    if (!vadHasValidSpeech) return;
+    if (!vadHasValidSpeech) {
+      console.log('VAD Effect: No valid speech detected, skipping');
+      return;
+    }
     // Don't process if already processing
-    if (isProcessingRef.current) return;
+    if (isProcessingRef.current) {
+      console.log('VAD Effect: Already processing, skipping');
+      return;
+    }
+
+    console.log('VAD Effect: All conditions met! Triggering auto-process');
 
     // Silence detected after valid speech - stop and process
     endRecording().then((blob) => {
@@ -634,19 +730,37 @@ export function useVoicePipeline(): UseVoicePipelineResult {
     // Only transition from speaking/processing modes
     if (voice.voiceMode !== 'speaking' && voice.voiceMode !== 'processing') return;
 
+    console.log('Playback finished, transitioning to next mode. Current state:', {
+      isRecording,
+      voiceMode: voice.voiceMode,
+      inputMode: voice.voiceConfig.inputMode,
+      hasStream: !!streamRef.current,
+      streamActive: streamRef.current?.active,
+    });
+
     const nextMode = voice.voiceConfig.inputMode === 'vad' ? 'listening' : 'idle';
     setVoiceMode(nextMode);
 
-    if (nextMode === 'listening' && !isRecording) {
-      beginRecording().catch((err) => {
-        const message = err instanceof Error ? err.message : 'Microphone error';
-        setVoiceError(message);
-      });
+    if (nextMode === 'listening') {
+      // IMPORTANT: Reset VAD state before starting new recording cycle
+      // This clears hasValidSpeech from the previous turn
+      resetVad();
+      
+      // Small delay to ensure state has settled before starting recording
+      setTimeout(() => {
+        console.log('Starting new recording cycle after playback');
+        beginRecording().catch((err) => {
+          console.error('Failed to restart recording after playback:', err);
+          const message = err instanceof Error ? err.message : 'Microphone error';
+          setVoiceError(message);
+        });
+      }, 100);
     }
   }, [
     isAudioPlaying,
     voice.voiceMode,
     voice.voiceConfig.inputMode,
+    resetVad,
     isRecording,
     isInCooldown,
     beginRecording,
