@@ -20,7 +20,8 @@ export type TestAdminOptions = {
   studentPersona?: string;
   priorKnowledge?: string; // Description of what the student knows
   testType: 'pre' | 'post'; // Whether this is pre or post test
-  knowledgeGaps?: KnowledgeGap[]; // Topics the student doesn't know (for pre-test)
+  knowledgeGaps?: KnowledgeGap[]; // Topics the student doesn't know
+  sessionTranscript?: string; // NEW: The actual tutoring session content
 };
 
 /**
@@ -85,7 +86,7 @@ async function askQuestion(
     transport: options.transport,
     model: options.model,
     messages: [{ role: 'user', content: prompt }],
-    temperature: 0.3, // Some randomness to simulate realistic student behavior
+    temperature: options.testType === 'post' ? 0.1 : 0.3, // Lower temp for post-test reasoning
     max_tokens: 10,
   });
 
@@ -98,49 +99,82 @@ function buildStudentPrompt(
   optionsText: string,
   options: TestAdminOptions,
 ): string {
-  // Check if this topic has a knowledge gap (for pre-test calibration)
   const gap = options.knowledgeGaps?.find((g) => g.topicId === question.topicId);
-  const hasGap = options.testType === 'pre' && !!gap;
-  const gapErrorRate = gap ? Math.min(Math.max(gap.errorRate, 0), 1) : 0;
-  const shouldForceIncorrect = hasGap && Math.random() < gapErrorRate;
+  
+  // Pre-Test Logic:
+  // If there is a gap, force incorrect answer based on errorRate
+  const isPreTest = options.testType === 'pre';
+  const shouldForceIncorrect = isPreTest && !!gap && Math.random() < (gap.errorRate ?? 0.8);
 
-  const gapInstruction = (() => {
-    if (!hasGap) return null;
-    const misconception = gap?.misconception ? `Your misconception: ${gap.misconception}` : null;
+  // Post-Test Logic:
+  // If there is a transcript, the student must prove the transcript taught them.
+  // Otherwise, they fall back to the misconception.
+  const isPostTest = options.testType === 'post';
+  const hasTranscript = !!options.sessionTranscript;
+  
+  let contextInstruction = '';
 
-    if (shouldForceIncorrect) {
-      return [
-        `CRITICAL INSTRUCTION: You do NOT understand the topic "${question.topicId}" well.`,
-        misconception,
-        'You MUST answer this question INCORRECTLY. Do NOT pick the correct answer. Pick a plausible wrong answer based on your misconception.',
-      ]
-        .filter(Boolean)
-        .join(' ');
+  if (isPreTest) {
+    if (gap) {
+      if (shouldForceIncorrect) {
+        contextInstruction = `
+CRITICAL INSTRUCTION: You do NOT understand the topic "${question.topicId}" well.
+Your specific misconception: "${gap.misconception}".
+You MUST answer this question INCORRECTLY based on this misconception. 
+Do NOT pick the correct answer. Pick a plausible wrong answer.
+`;
+      } else {
+        contextInstruction = `
+You are unsure about the topic "${question.topicId}".
+Misconception: "${gap.misconception}".
+Try to answer to the best of your knowledge, but you are prone to mistakes on this topic.
+`;
+      }
+    } else {
+      contextInstruction = `
+You are taking a pre-test to measure what you already know about "${question.topicId}".
+Answer honestly based on your current knowledge. If you are unsure, make your best guess.
+`;
     }
+  } else if (isPostTest) {
+    if (hasTranscript) {
+      if (gap) {
+        contextInstruction = `
+INSTRUCTION: You have just finished a tutoring session.
+Read the transcript below carefully.
+- If the tutor effectively explained "${question.topicId}" or corrected your misconception ("${gap.misconception}"), answer CORRECTLY.
+- If the topic was NOT discussed or the explanation was unclear, you MUST stick to your original misconception: "${gap.misconception}" and answer INCORRECTLY.
+- Do not assume you learned it if it wasn't mentioned.
 
-    return [
-      `You are unsure about the topic "${question.topicId}" and may hold a misconception.`,
-      misconception,
-      'Try to answer to the best of your knowledge, but this uncertainty might still cause mistakes.',
-    ]
-      .filter(Boolean)
-      .join(' ');
-  })();
+--- SESSION TRANSCRIPT ---
+${options.sessionTranscript}
+-------------------------
+`;
+      } else {
+        contextInstruction = `
+INSTRUCTION: You have just finished a tutoring session.
+Read the transcript below carefully.
+- Answer based on what was actually covered about "${question.topicId}".
+- If the topic was NOT discussed or the explanation was unclear, rely on your existing understanding and make your best guess.
+- Do not assume you learned it if it wasn't mentioned.
+
+--- SESSION TRANSCRIPT ---
+${options.sessionTranscript}
+-------------------------
+`;
+      }
+    } else {
+      // Fallback if no transcript provided (legacy behavior)
+      contextInstruction = 'You just completed tutoring on this topic. Answer to the best of your improved knowledge.';
+    }
+  }
 
   const parts = [
     'You are a student taking a test.',
     options.studentPersona ? `Student persona: ${options.studentPersona}` : null,
     options.priorKnowledge ? `Prior knowledge: ${options.priorKnowledge}` : null,
     '',
-
-    // For pre-test with knowledge gaps: probabilistically force incorrect answers
-    gapInstruction,
-
-    // For post-test: acknowledge learning happened
-    options.testType === 'post'
-      ? 'You just completed tutoring on this topic and now understand it much better. Answer to the best of your improved knowledge.'
-      : null,
-
+    contextInstruction,
     '',
     'Answer the following multiple choice question by responding with ONLY the number (0, 1, 2, or 3) of your chosen answer.',
     'Do not explain your reasoning, just output the number.',

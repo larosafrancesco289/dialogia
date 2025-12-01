@@ -379,16 +379,19 @@ async function runSingleAblation(
   const result = runner.toResult();
   console.log(`  [${runId}] Session complete. ${result.snapshots.length} turns.`);
 
-  // Run post-test (no knowledge gaps - student has learned from tutoring)
+  // Run post-test (student checks transcript to see if gaps were closed)
   console.log(`  [${runId}] Running post-test...`);
+  const transcript = renderSnapshotTranscript(result.snapshots);
+  
   const postTest = await administerTest(scenario.postTestQuestions, 'post', {
     apiKey: resolveApiKey({ modelId: config.studentModel, transport: studentTransport }),
     transport: studentTransport,
     model: config.studentModel,
     studentPersona: scenario.studentPersona,
-    priorKnowledge: `Just completed tutoring on ${scenario.topic}. May have learned new concepts.`,
+    priorKnowledge: `Just completed tutoring on ${scenario.topic}.`,
     testType: 'post',
-    knowledgeGaps: [], // No gaps after tutoring - student has learned
+    knowledgeGaps: scenario.knowledgeGaps, // Pass gaps so the simulator knows what to check against the transcript
+    sessionTranscript: transcript,
   });
   console.log(`  [${runId}] Post-test score: ${postTest.score.toFixed(1)}%`);
 
@@ -409,7 +412,6 @@ async function runSingleAblation(
 
   // Run judge evaluation
   console.log(`  [${runId}] Running judge evaluation...`);
-  const transcript = renderSnapshotTranscript(result.snapshots);
   const finalPlan = runner.getSession().getState().chats.find((c) => c.id === chat.id)?.settings.learningPlan;
   const planSummary = finalPlan ? generatePlanContextPreamble(finalPlan, finalLearnerModel) : undefined;
   const modelSummary = finalLearnerModel && finalPlan ? generateModelSummary(finalLearnerModel, finalPlan) : undefined;
