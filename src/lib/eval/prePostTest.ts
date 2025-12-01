@@ -1,4 +1,4 @@
-import type { TestQuestion } from '@/lib/eval/ablationScenarios';
+import type { TestQuestion, KnowledgeGap } from '@/lib/eval/ablationScenarios';
 import type { ModelTransport } from '@/lib/types';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 
@@ -19,6 +19,8 @@ export type TestAdminOptions = {
   model: string;
   studentPersona?: string;
   priorKnowledge?: string; // Description of what the student knows
+  testType: 'pre' | 'post'; // Whether this is pre or post test
+  knowledgeGaps?: KnowledgeGap[]; // Topics the student doesn't know (for pre-test)
 };
 
 /**
@@ -96,10 +98,49 @@ function buildStudentPrompt(
   optionsText: string,
   options: TestAdminOptions,
 ): string {
+  // Check if this topic has a knowledge gap (for pre-test calibration)
+  const gap = options.knowledgeGaps?.find((g) => g.topicId === question.topicId);
+  const hasGap = options.testType === 'pre' && !!gap;
+  const gapErrorRate = gap ? Math.min(Math.max(gap.errorRate, 0), 1) : 0;
+  const shouldForceIncorrect = hasGap && Math.random() < gapErrorRate;
+
+  const gapInstruction = (() => {
+    if (!hasGap) return null;
+    const misconception = gap?.misconception ? `Your misconception: ${gap.misconception}` : null;
+
+    if (shouldForceIncorrect) {
+      return [
+        `CRITICAL INSTRUCTION: You do NOT understand the topic "${question.topicId}" well.`,
+        misconception,
+        'You MUST answer this question INCORRECTLY. Do NOT pick the correct answer. Pick a plausible wrong answer based on your misconception.',
+      ]
+        .filter(Boolean)
+        .join(' ');
+    }
+
+    return [
+      `You are unsure about the topic "${question.topicId}" and may hold a misconception.`,
+      misconception,
+      'Try to answer to the best of your knowledge, but this uncertainty might still cause mistakes.',
+    ]
+      .filter(Boolean)
+      .join(' ');
+  })();
+
   const parts = [
     'You are a student taking a test.',
     options.studentPersona ? `Student persona: ${options.studentPersona}` : null,
     options.priorKnowledge ? `Prior knowledge: ${options.priorKnowledge}` : null,
+    '',
+
+    // For pre-test with knowledge gaps: probabilistically force incorrect answers
+    gapInstruction,
+
+    // For post-test: acknowledge learning happened
+    options.testType === 'post'
+      ? 'You just completed tutoring on this topic and now understand it much better. Answer to the best of your improved knowledge.'
+      : null,
+
     '',
     'Answer the following multiple choice question by responding with ONLY the number (0, 1, 2, or 3) of your chosen answer.',
     'Do not explain your reasoning, just output the number.',

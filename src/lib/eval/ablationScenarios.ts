@@ -14,6 +14,16 @@ export type TestQuestion = {
 };
 
 /**
+ * Knowledge gap definition for simulating realistic student knowledge.
+ * Used to calibrate pre-test scores so learning gains can be measured.
+ */
+export type KnowledgeGap = {
+  topicId: string;
+  misconception?: string; // What the student wrongly believes
+  errorRate: number; // 0-1, probability of answering incorrectly
+};
+
+/**
  * Ablation scenario with pre/post tests and DAG structure.
  */
 export type AblationScenario = TutorScenario & {
@@ -23,6 +33,7 @@ export type AblationScenario = TutorScenario & {
   };
   preTestQuestions: TestQuestion[];
   postTestQuestions: TestQuestion[]; // Isomorphic to pre-test
+  knowledgeGaps: KnowledgeGap[]; // Topics the student doesn't know initially
 };
 
 /**
@@ -183,6 +194,20 @@ const linearEquationsScenario: AblationScenario = {
       correctIndex: 0,
       topicId: 'word_problems',
       difficulty: 'medium',
+    },
+  ],
+
+  // Knowledge gaps: Student struggles with multi-step and word problems (target pre-test: ~60%)
+  knowledgeGaps: [
+    {
+      topicId: 'two_step',
+      errorRate: 0.8,
+      misconception: 'Often applies operations in wrong order (divides before subtracting)',
+    },
+    {
+      topicId: 'word_problems',
+      errorRate: 0.9,
+      misconception: 'Confuses "doubled and increased by" with "increased then doubled"',
     },
   ],
 };
@@ -355,6 +380,25 @@ const derivativesScenario: AblationScenario = {
       difficulty: 'hard',
     },
   ],
+
+  // Knowledge gaps: Student weak on conceptual and application topics (target pre-test: ~40%)
+  knowledgeGaps: [
+    {
+      topicId: 'limit_definition',
+      errorRate: 0.7,
+      misconception: 'Confuses derivative with integral - thinks derivative finds area',
+    },
+    {
+      topicId: 'sum_rule',
+      errorRate: 0.8,
+      misconception: 'Forgets to differentiate each term separately',
+    },
+    {
+      topicId: 'applications',
+      errorRate: 0.9,
+      misconception: 'Confuses velocity (derivative) with position (original function)',
+    },
+  ],
 };
 
 // ============================================================================
@@ -519,6 +563,20 @@ const pythonDebuggingScenario: AblationScenario = {
       correctIndex: 1,
       topicId: 'print_debugging',
       difficulty: 'easy',
+    },
+  ],
+
+  // Knowledge gaps: Student struggles with logic errors (target pre-test: ~60%)
+  knowledgeGaps: [
+    {
+      topicId: 'logic_errors',
+      errorRate: 0.8,
+      misconception: 'Thinks range(1, 5) produces [1, 2, 3, 4, 5] including the end value',
+    },
+    {
+      topicId: 'print_debugging',
+      errorRate: 0.5,
+      misconception: 'Not sure when print debugging is useful vs other approaches',
     },
   ],
 };
@@ -693,6 +751,25 @@ const bayesRuleScenario: AblationScenario = {
       correctIndex: 1,
       topicId: 'medical_application',
       difficulty: 'hard',
+    },
+  ],
+
+  // Knowledge gaps: Student falls for classic base rate neglect (target pre-test: ~40%)
+  knowledgeGaps: [
+    {
+      topicId: 'base_rate',
+      errorRate: 0.7,
+      misconception: 'Ignores base rate when evaluating test results',
+    },
+    {
+      topicId: 'bayes_formula',
+      errorRate: 0.8,
+      misconception: 'Confuses P(A|B) with P(B|A) - the prosecutor\'s fallacy',
+    },
+    {
+      topicId: 'medical_application',
+      errorRate: 0.9,
+      misconception: 'Thinks high test accuracy means high probability of disease given positive test',
     },
   ],
 };
