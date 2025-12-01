@@ -278,7 +278,7 @@ async function runSingleAblation(
 
   const resolveApiKey = resolveApiKeyFactory(config.apiKeys);
 
-  // Run pre-test
+  // Run pre-test (with knowledge gaps to simulate realistic student knowledge)
   console.log(`  [${runId}] Running pre-test...`);
   const preTest = await administerTest(scenario.preTestQuestions, 'pre', {
     apiKey: resolveApiKey({ modelId: config.studentModel, transport: studentTransport }),
@@ -286,6 +286,8 @@ async function runSingleAblation(
     model: config.studentModel,
     studentPersona: scenario.studentPersona,
     priorKnowledge: `Level: ${scenario.level}. Topic: ${scenario.topic}`,
+    testType: 'pre',
+    knowledgeGaps: scenario.knowledgeGaps, // Student has gaps before tutoring
   });
   console.log(`  [${runId}] Pre-test score: ${preTest.score.toFixed(1)}%`);
 
@@ -377,7 +379,7 @@ async function runSingleAblation(
   const result = runner.toResult();
   console.log(`  [${runId}] Session complete. ${result.snapshots.length} turns.`);
 
-  // Run post-test
+  // Run post-test (no knowledge gaps - student has learned from tutoring)
   console.log(`  [${runId}] Running post-test...`);
   const postTest = await administerTest(scenario.postTestQuestions, 'post', {
     apiKey: resolveApiKey({ modelId: config.studentModel, transport: studentTransport }),
@@ -385,6 +387,8 @@ async function runSingleAblation(
     model: config.studentModel,
     studentPersona: scenario.studentPersona,
     priorKnowledge: `Just completed tutoring on ${scenario.topic}. May have learned new concepts.`,
+    testType: 'post',
+    knowledgeGaps: [], // No gaps after tutoring - student has learned
   });
   console.log(`  [${runId}] Post-test score: ${postTest.score.toFixed(1)}%`);
 
