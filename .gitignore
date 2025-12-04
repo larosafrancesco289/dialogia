@@ -33,3 +33,6 @@ tmp/
 
 # Thesis files
 thesis/
+
+# Speech files
+speech/

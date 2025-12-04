@@ -59,6 +59,18 @@ import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 // Types
 // ============================================================================
 
+/**
+ * Tracks when a student exercises editability (plan or mastery adjustments).
+ * Used to measure whether editability features are actually used.
+ */
+type EditEvent = {
+  turn: number;
+  type: 'plan_modification' | 'mastery_override';
+  toolName: string;
+  nodeId?: string;
+  details?: string;
+};
+
 type AblationRunResult = {
   id: string;
   condition: AblationCondition;
@@ -71,6 +83,7 @@ type AblationRunResult = {
   transcript: string;
   turnsUsed: number;
   toolUsage: Record<string, number>;
+  editEvents: EditEvent[];
   finalLearnerModel?: LearnerModel;
   masteryTrajectory: Array<{ turn: number; avgConfidence: number }>;
   judgeVerdict?: JudgeVerdict;
@@ -335,7 +348,23 @@ async function runSingleAblation(
     },
   });
 
-  // Setup student simulator
+  // Setup student simulator with condition-aware editability instructions
+  const conditionConfig = CONDITION_CONFIGS[condition];
+  const editabilityInstructions: string[] = [];
+
+  if (conditionConfig.planEditable) {
+    editabilityInstructions.push(
+      'You can ask the tutor to modify the learning plan if you want to skip topics you already know, ' +
+      'add topics you want to learn, or change the order of topics.',
+    );
+  }
+  if (conditionConfig.learnerModelEditable) {
+    editabilityInstructions.push(
+      'If you feel the tutor has misjudged your understanding (too high or too low), ' +
+      'you can tell them directly and ask them to adjust their assessment of your mastery.',
+    );
+  }
+
   const studentSim = new LLMUserSimulator({
     modelId: config.studentModel,
     transport: studentTransport,
@@ -348,6 +377,12 @@ async function runSingleAblation(
       `Your pre-test score was ${preTest.score.toFixed(0)}%.`,
       'Respond naturally, ask questions when confused, and occasionally make mistakes fitting your persona.',
       scenario.constraints?.length ? `Constraints: ${scenario.constraints.join('; ')}` : '',
+      editabilityInstructions.length > 0 ? '' : null,
+      editabilityInstructions.length > 0 ? 'IMPORTANT - You have control over the tutoring process:' : null,
+      ...editabilityInstructions,
+      editabilityInstructions.length > 0
+        ? 'Use these abilities naturally when appropriate (e.g., if you already know a topic, or if the tutor seems to misunderstand your level).'
+        : null,
     ]
       .filter(Boolean)
       .join('\n'),
@@ -407,6 +442,14 @@ async function runSingleAblation(
     }
   }
 
+  // Extract edit events (plan modifications, mastery overrides)
+  const editEvents = extractEditEvents(result.snapshots, {
+    planEditable: conditionConfig.planEditable,
+  });
+  if (editEvents.length > 0) {
+    console.log(`  [${runId}] Edit events: ${editEvents.length} (${editEvents.map(e => e.type).join(', ')})`);
+  }
+
   // Get final learner model
   const finalLearnerModel = getLatestLearnerModel(result.messages);
 
@@ -457,6 +500,7 @@ async function runSingleAblation(
     transcript,
     turnsUsed: result.snapshots.length,
     toolUsage,
+    editEvents,
     finalLearnerModel,
     masteryTrajectory,
     judgeVerdict,
@@ -488,6 +532,78 @@ function parseJudgeVerdict(raw: string): JudgeVerdict | undefined {
     // Parsing failed
   }
   return undefined;
+}
+
+/**
+ * Extract edit events from session snapshots.
+ * Tracks when plan modifications or mastery overrides occur.
+ */
+function extractEditEvents(
+  snapshots: HeadlessTurnSnapshot[],
+  options?: { planEditable?: boolean },
+): EditEvent[] {
+  const events: EditEvent[] = [];
+  const planEventsAllowed = options?.planEditable !== false;
+  let initialPlanGenerated = false;
+
+  for (let i = 0; i < snapshots.length; i++) {
+    const snap = snapshots[i];
+    const toolCalls = snap.assistant.toolCalls || [];
+
+    for (const tc of toolCalls) {
+      const input = tc.input || {};
+      const isGeneratePlan = tc.name === 'generate_plan';
+      const isFirstPlanGeneration = isGeneratePlan && !initialPlanGenerated;
+      if (isGeneratePlan) initialPlanGenerated = true;
+      const succeeded = (tc.status ?? 'success') === 'success';
+
+      // Skip failed tool calls
+      if (!succeeded) continue;
+
+      // Plan modification tools
+      if (planEventsAllowed && (tc.name === 'update_plan' || isGeneratePlan)) {
+        // Tutor auto-generates the initial plan; ignore that so we only count learner-driven edits.
+        if (isFirstPlanGeneration) continue;
+
+        const plan = input.plan as Record<string, unknown> | undefined;
+        events.push({
+          turn: i + 1,
+          type: 'plan_modification',
+          toolName: tc.name,
+          details: (input.reason as string) || (plan?.goal as string) || undefined,
+        });
+      }
+
+      // Mastery override tool
+      if (tc.name === 'apply_learner_model_feedback') {
+        const direction = input.direction as string | undefined;
+        events.push({
+          turn: i + 1,
+          type: 'mastery_override',
+          toolName: tc.name,
+          nodeId: input.nodeId as string | undefined,
+          details: (input.reason as string) || (direction ? `${direction} adjustment` : undefined),
+        });
+      }
+
+      // Also track update_learner_model if it includes student-initiated feedback
+      if (tc.name === 'update_learner_model') {
+        const notes = input.notes as string | undefined;
+        // Only count if there's explicit feedback/notes suggesting student input
+        if (notes && /student (said|reported|indicated|claimed|believes)/i.test(notes)) {
+          events.push({
+            turn: i + 1,
+            type: 'mastery_override',
+            toolName: tc.name,
+            nodeId: input.nodeId as string | undefined,
+            details: notes,
+          });
+        }
+      }
+    }
+  }
+
+  return events;
 }
 
 // ============================================================================
