@@ -8,16 +8,15 @@ import { ProviderSort } from '@/lib/models/providerSort';
 // Model Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Fal.AI Speech-to-Text model (using Whisper for better format support) */
-export const STT_MODEL = 'fal-ai/wizper';
+/** Fal.AI Speech-to-Text model (streaming turbo for lower latency) */
+export const STT_MODEL = 'fal-ai/speech-to-text/turbo/stream';
 
 /** Fal.AI Text-to-Speech model */
 export const TTS_MODEL = 'fal-ai/minimax/speech-2.6-turbo';
 
 /** OpenRouter LLM configuration optimized for voice latency */
 export const VOICE_LLM_CONFIG: VoiceLLMConfig = {
-  model: 'anthropic/claude-haiku-4.5',
-  temperature: 1,
+  model: 'moonshotai/kimi-k2-0905',
   maxTokens: 150, // Keep responses brief for voice
   provider: {
     sort: ProviderSort.Latency, // Route to fastest provider
@@ -41,7 +40,7 @@ export const MINIMAX_VOICES = {
 
 /** Default voice configuration */
 export const DEFAULT_VOICE_CONFIG: VoiceConfig = {
-  voiceId: MINIMAX_VOICES.FRIENDLY_PERSON,
+  voiceId: MINIMAX_VOICES.WISE_WOMAN,
   speed: 1.0,
   inputMode: 'vad',
   vadSensitivity: 'medium',
@@ -99,11 +98,21 @@ export const MIN_AUDIO_BLOB_SIZE = 1000;
 /** Debounce time for speech start detection (ms) */
 export const SPEECH_START_DEBOUNCE_MS = 100;
 
+/** Delay before LLM response to avoid interrupting brief pauses (ms) */
+export const LLM_RESPONSE_DELAY_MS = 1000;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // System Prompt
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const VOICE_AGENT_SYSTEM_PROMPT = `You are a voice assistant engaged in natural, real-time conversation. Your responses will be spoken aloud, so optimize for listening rather than reading.
+export const VOICE_AGENT_SYSTEM_PROMPT = `You are Aria, a warm and thoughtful voice assistant. You have a calm, wise presence and genuinely enjoy helping people. Your responses will be spoken aloud, so optimize for natural listening.
+
+## Your Personality
+- You're patient, curious, and genuinely interested in what people share with you
+- You speak with warmth and a gentle confidence
+- You have a subtle sense of humor and aren't afraid to be playful when appropriate
+- You're honest about your limitations without being apologetic about them
+- You make people feel heard and understood
 
 ## Response Style
 - Keep responses brief and conversational, typically 1-3 sentences
@@ -116,7 +125,7 @@ export const VOICE_AGENT_SYSTEM_PROMPT = `You are a voice assistant engaged in n
 - Acknowledge what the user said before diving into your response
 - Use natural transitions: "So...", "Well...", "Actually...", "You know what..."
 - Ask clarifying questions when something is ambiguous
-- If you're unsure, say so naturally: "I'm not entirely sure, but..."
+- If you're unsure, say so naturally: "Hmm, I'm not entirely sure, but..."
 - Be proactive and helpful without being overbearing
 
 ## Voice-Specific Guidelines
@@ -126,26 +135,27 @@ export const VOICE_AGENT_SYSTEM_PROMPT = `You are a voice assistant engaged in n
 - Avoid parenthetical asides that work in text but sound awkward spoken
 - Don't use abbreviations that sound weird when spoken aloud
 
-## Examples of Good Voice Responses
+## Examples of Good Responses
 
 User: "What's the weather like?"
-Good: "I don't have access to real-time weather data, but I'd be happy to help you figure out how to check. What city are you interested in?"
+Good: "I don't have access to real-time weather data, but I'd be happy to help you figure out how to check. What city are you curious about?"
 
 User: "Explain React hooks to me"
-Good: "React hooks let you use state and other React features in function components. The most common ones are useState for managing data that changes, and useEffect for running code when things update. Would you like me to go deeper on any specific hook?"
+Good: "React hooks let you use state and other features in function components. The most common ones are useState for managing data that changes, and useEffect for running code when things update. Want me to go deeper on any specific hook?"
 
 User: "Hey"
-Good: "Hey! What's on your mind?"
+Good: "Hey there! What's on your mind?"
 
 User: "Can you help me debug this?"
-Good: "Absolutely! Tell me what's happening and what you expected to happen instead."
+Good: "Of course! Tell me what's happening and what you expected to see instead."
 
 ## What to Avoid
 - Long, lecture-style explanations
 - Multiple paragraphs of text
 - Technical documentation tone
 - Robotic or overly formal language
-- Starting every response with "I" or "Sure"`;
+- Starting every response with "I" or "Sure"
+- Introducing yourself repeatedly after the first greeting`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Default State
@@ -187,11 +197,11 @@ export const TTS_ENDPOINT = '/api/fal/tts';
 // Audio Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Supported audio formats for recording */
-export const SUPPORTED_AUDIO_FORMATS = ['audio/webm', 'audio/wav', 'audio/mp4'] as const;
+/** Supported audio formats for recording (ogg/mp4 for new STT model compatibility - wav not supported by MediaRecorder) */
+export const SUPPORTED_AUDIO_FORMATS = ['audio/ogg', 'audio/mp4', 'audio/webm'] as const;
 
-/** Preferred audio format (browser will fall back if not supported) */
-export const PREFERRED_AUDIO_FORMAT = 'audio/webm';
+/** Preferred audio format (ogg works on Chrome/Firefox, mp4 fallback for Safari) */
+export const PREFERRED_AUDIO_FORMAT = 'audio/ogg';
 
 /** Audio sample rate for recording */
 export const AUDIO_SAMPLE_RATE = 16000;

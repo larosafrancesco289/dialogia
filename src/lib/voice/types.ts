@@ -194,7 +194,7 @@ export interface TTSResponse {
 export interface VoiceLLMConfig {
   model: string;
   maxTokens: number;
-  temperature: number;
+  temperature?: number;
   provider: {
     sort: import('@/lib/models/providerSort').ProviderSort;
   };

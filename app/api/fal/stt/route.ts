@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fal } from '@fal-ai/client';
 import { requireFalKey, getFalKey } from '@/lib/config';
 
-// Use Whisper model which has better audio format support (including webm)
-// Options: 'fal-ai/whisper' or 'fal-ai/wizper' (faster)
-const FAL_STT_ID = 'fal-ai/wizper';
+// Use streaming turbo model for lower latency
+// Accepted formats: mp3, ogg, wav, m4a, aac (NOT webm)
+const FAL_STT_ID = 'fal-ai/speech-to-text/turbo/stream';
 
 // Map MIME types to file extensions for FAL storage
+// Note: New STT model accepts mp3, ogg, wav, m4a, aac (NOT webm)
+// If browser records webm, we upload as-is and hope the model handles it
 const MIME_TO_EXT: Record<string, string> = {
-  'audio/webm': 'webm',
-  'audio/mp4': 'mp4',
+  'audio/ogg': 'ogg',
+  'audio/mp4': 'm4a',
   'audio/mpeg': 'mp3',
   'audio/wav': 'wav',
   'audio/x-wav': 'wav',
-  'audio/ogg': 'ogg',
+  'audio/aac': 'aac',
+  'audio/webm': 'webm', // Fallback - may not work with new model
   'audio/flac': 'flac',
 };
 
@@ -73,17 +76,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Audio upload failed: ${uploadMsg}` }, { status: 500 });
     }
 
-    // Use fal.subscribe for complete audio transcription (not streaming)
-    // This properly handles the queue and returns the full result
-    // Using Whisper (wizper) model which supports many audio formats including webm
+    // Use fal.subscribe for audio transcription
+    // New turbo/stream model uses audio_url and use_pnc parameters
     let result: { data: unknown; requestId: string };
     try {
       result = await Promise.race([
         fal.subscribe(FAL_STT_ID, {
           input: {
             audio_url: audioUrl,
-            task: 'transcribe',
-            // chunk_level: 'segment', // Optional: can be 'segment' or 'word'
+            use_pnc: true, // Enable punctuation & capitalization
           },
           logs: true,
           onQueueUpdate: (update) => {
