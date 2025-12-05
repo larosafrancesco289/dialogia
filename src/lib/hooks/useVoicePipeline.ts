@@ -15,6 +15,7 @@ import {
   VOICE_AGENT_SYSTEM_PROMPT,
   MIN_AUDIO_BLOB_SIZE,
   INTERRUPT_COOLDOWN_MS,
+  LLM_RESPONSE_DELAY_MS,
 } from '@/lib/voice/constants';
 import { streamChatCompletion } from '@/lib/openrouter';
 import { requireClientKeyOrProxy } from '@/lib/config';
@@ -348,6 +349,9 @@ export function useVoicePipeline(): UseVoicePipelineResult {
         commitTranscript(finalText);
 
         // === STAGE 2: LLM Response with Streaming TTS ===
+        // Add delay before LLM response to avoid interrupting brief pauses
+        await new Promise((resolve) => setTimeout(resolve, LLM_RESPONSE_DELAY_MS));
+
         const llmStartTime = Date.now();
         let ttftRecorded = false;
         let ttsStartTime: number | null = null;
@@ -358,6 +362,28 @@ export function useVoicePipeline(): UseVoicePipelineResult {
           { role: 'user', content: finalText },
         ] satisfies ModelMessage[];
 
+        // Track sentence order for correct audio playback sequence
+        let sentenceIndex = 0;
+        const orderedTtsResults = new Map<number, { id: string; url: string; text: string }>();
+        let nextToQueue = 0;
+
+        // Helper to queue audio in order (skips empty entries from errors)
+        const queueInOrder = () => {
+          while (orderedTtsResults.has(nextToQueue)) {
+            const item = orderedTtsResults.get(nextToQueue)!;
+            orderedTtsResults.delete(nextToQueue);
+            nextToQueue++;
+            // Skip empty entries (from TTS errors)
+            if (item.url) {
+              queueAudio({
+                id: item.id,
+                url: item.url,
+                text: item.text,
+              });
+            }
+          }
+        };
+
         // Set up sentence chunker for incremental TTS
         chunkerRef.current = createSentenceChunkerStream({
           onSentence: async (sentence) => {
@@ -365,6 +391,9 @@ export function useVoicePipeline(): UseVoicePipelineResult {
             if (!ttsStartTime) {
               ttsStartTime = Date.now();
             }
+
+            // Capture current index for this sentence
+            const currentIndex = sentenceIndex++;
 
             const ttsPromise = synthesizeSpeech(
               {
@@ -376,17 +405,23 @@ export function useVoicePipeline(): UseVoicePipelineResult {
             )
               .then((result) => {
                 if (result.audioUrl) {
-                  queueAudio({
+                  // Store result with its order index
+                  orderedTtsResults.set(currentIndex, {
                     id: crypto.randomUUID(),
                     url: result.audioUrl,
                     text: sentence,
                   });
+                  // Queue any consecutive results that are ready
+                  queueInOrder();
                 }
               })
               .catch((err) => {
                 if (err.name !== 'AbortError') {
                   console.error('TTS error:', err);
                 }
+                // On error, skip this index to avoid blocking subsequent audio
+                orderedTtsResults.set(currentIndex, { id: '', url: '', text: '' });
+                queueInOrder();
               });
 
             ttsQueueRef.current.push(ttsPromise);
@@ -405,7 +440,7 @@ export function useVoicePipeline(): UseVoicePipelineResult {
           model: VOICE_LLM_CONFIG.model,
           messages: voiceHistory,
           max_tokens: VOICE_LLM_CONFIG.maxTokens,
-          temperature: VOICE_LLM_CONFIG.temperature,
+          ...(VOICE_LLM_CONFIG.temperature !== undefined && { temperature: VOICE_LLM_CONFIG.temperature }),
           providerSort: VOICE_LLM_CONFIG.provider.sort,
           signal: controllersRef.current.llm?.signal,
           callbacks: {

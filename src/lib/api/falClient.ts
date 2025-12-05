@@ -2,6 +2,7 @@
 // Responsibility: Client-side wrapper for Fal.AI voice API calls via proxy routes
 
 import { STT_ENDPOINT, TTS_ENDPOINT } from '@/lib/voice/constants';
+import { ensureSttCompatibleAudio } from '@/lib/voice/audioConversion';
 import type { TTSRequest } from '@/lib/voice/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,11 +31,12 @@ export async function transcribeAudioSync(
   audioBlob: Blob,
   signal?: AbortSignal
 ): Promise<string> {
+  // Convert to a model-accepted format (webm → wav) when needed
+  const { blob: sttBlob, mimeType } = await ensureSttCompatibleAudio(audioBlob);
+
   const formData = new FormData();
-  // Include MIME type in filename and add explicit mimeType field
-  const mimeType = audioBlob.type || 'audio/webm';
   const ext = mimeType.split('/')[1]?.split(';')[0] || 'webm';
-  formData.append('audio', audioBlob, `recording.${ext}`);
+  formData.append('audio', sttBlob, `recording.${ext}`);
   formData.append('mimeType', mimeType);
 
   try {
