@@ -1,10 +1,13 @@
 // Module: store/voiceSlice
-// Responsibility: Zustand slice for voice agent state management
+// Responsibility: Zustand slice for xAI voice agent state management
 
+import { v4 as uuidv4 } from 'uuid';
 import { createStoreSlice } from '@/lib/store/createSlice';
-import { buildDefaultVoiceState } from '@/lib/voice/constants';
-import type { VoiceMode, VoiceConfig, VoiceMetrics, AudioQueueItem } from '@/lib/voice/types';
+import { buildDefaultVoiceState } from '@/lib/voice/types';
+import type { VoiceConfig } from '@/lib/voice/types';
 import type { StoreState } from '@/lib/store/types';
+import type { Message } from '@/lib/types';
+import { saveMessage } from '@/lib/db';
 
 export const createVoiceSlice = createStoreSlice((set, get) => {
   const initialVoice = buildDefaultVoiceState();
@@ -12,232 +15,132 @@ export const createVoiceSlice = createStoreSlice((set, get) => {
   return {
     voice: initialVoice,
 
-    // Mode management
-    startVoiceMode: () => {
+    setVoiceActive: (active: boolean) => {
       set((s) => ({
         voice: {
           ...s.voice,
-          voiceMode: 'listening' as VoiceMode,
-          error: undefined,
+          isActive: active,
         },
       }));
     },
 
-    stopVoiceMode: () => {
-      set((s) => ({
-        voice: {
-          ...buildDefaultVoiceState(),
-          voiceConfig: s.voice.voiceConfig, // Preserve config
-        },
-      }));
-    },
-
-    setVoiceMode: (mode: VoiceMode) => {
+    setVoiceConnected: (connected: boolean) => {
       set((s) => ({
         voice: {
           ...s.voice,
-          voiceMode: mode,
+          isConnected: connected,
         },
       }));
     },
 
-    // Recording
-    startRecording: async () => {
+    setVoiceListening: (listening: boolean) => {
       set((s) => ({
         voice: {
           ...s.voice,
-          isRecording: true,
-          voiceMode: 'listening' as VoiceMode,
-          partialTranscript: '',
-          finalTranscript: '',
-          recordingDurationMs: 0,
-          error: undefined,
+          isListening: listening,
         },
       }));
     },
 
-    stopRecording: () => {
+    setVoiceSpeaking: (speaking: boolean) => {
       set((s) => ({
         voice: {
           ...s.voice,
-          isRecording: false,
+          isSpeaking: speaking,
         },
       }));
     },
 
-    // Interruption
-    interruptPlayback: () => {
+    setVoiceError: (error: string | null) => {
       set((s) => ({
         voice: {
           ...s.voice,
-          voiceMode: 'interrupted' as VoiceMode,
-          isPlaying: false,
-          audioQueue: [],
-          currentAudioIndex: 0,
-          llmStreamingText: '',
-          llmComplete: false,
+          error,
         },
       }));
     },
 
-    // Transcription
-    updatePartialTranscript: (text: string) => {
-      set((s) => ({
-        voice: {
-          ...s.voice,
-          partialTranscript: text,
-        },
-      }));
-    },
-
-    commitTranscript: (text: string) => {
-      set((s) => ({
-        voice: {
-          ...s.voice,
-          finalTranscript: text,
-          partialTranscript: '',
-          voiceMode: 'processing' as VoiceMode,
-        },
-      }));
-    },
-
-    // LLM streaming
-    appendLlmText: (delta: string) => {
-      set((s) => ({
-        voice: {
-          ...s.voice,
-          llmStreamingText: s.voice.llmStreamingText + delta,
-        },
-      }));
-    },
-
-    completeLlmResponse: () => {
-      set((s) => ({
-        voice: {
-          ...s.voice,
-          llmComplete: true,
-        },
-      }));
-    },
-
-    // Audio playback
-    queueAudio: (item: AudioQueueItem) => {
-      set((s) => ({
-        voice: {
-          ...s.voice,
-          audioQueue: [...s.voice.audioQueue, item],
-        },
-      }));
-    },
-
-    playNextAudio: () => {
-      set((s) => {
-        const nextIndex = s.voice.currentAudioIndex + 1;
-        return {
-          voice: {
-            ...s.voice,
-            currentAudioIndex: nextIndex,
-            isPlaying: nextIndex < s.voice.audioQueue.length,
-          },
-        };
-      });
-    },
-
-    clearAudioQueue: () => {
-      set((s) => ({
-        voice: {
-          ...s.voice,
-          audioQueue: [],
-          currentAudioIndex: 0,
-          isPlaying: false,
-        },
-      }));
-    },
-
-    setIsPlaying: (playing: boolean) => {
-      set((s) => ({
-        voice: {
-          ...s.voice,
-          isPlaying: playing,
-          voiceMode: playing ? ('speaking' as VoiceMode) : s.voice.voiceMode,
-        },
-      }));
-    },
-
-    // Audio level for visualization
-    setAudioLevel: (level: number) => {
-      set((s) => ({
-        voice: {
-          ...s.voice,
-          audioLevel: Math.max(0, Math.min(1, level)),
-        },
-      }));
-    },
-
-    // Recording duration
-    setRecordingDuration: (ms: number) => {
-      set((s) => ({
-        voice: {
-          ...s.voice,
-          recordingDurationMs: ms,
-        },
-      }));
-    },
-
-    // Configuration
     setVoiceConfig: (config: Partial<VoiceConfig>) => {
       set((s) => ({
         voice: {
           ...s.voice,
-          voiceConfig: {
-            ...s.voice.voiceConfig,
+          config: {
+            ...s.voice.config,
             ...config,
           },
         },
       }));
     },
 
-    // Error handling
-    setVoiceError: (error: string | undefined) => {
-      set((s) => ({
-        voice: {
-          ...s.voice,
-          error,
-          voiceMode: error ? ('idle' as VoiceMode) : s.voice.voiceMode,
-        },
-      }));
-    },
-
-    clearVoiceError: () => {
-      set((s) => ({
-        voice: {
-          ...s.voice,
-          error: undefined,
-        },
-      }));
-    },
-
-    // Reset
     resetVoiceState: () => {
       set((s) => ({
         voice: {
           ...buildDefaultVoiceState(),
-          voiceConfig: s.voice.voiceConfig, // Preserve config
+          config: s.voice.config, // Preserve config
         },
       }));
     },
 
-    // Metrics
-    updateMetrics: (metrics: Partial<VoiceMetrics>) => {
+    // Ensure there's a chat for voice messages
+    async ensureChatForVoice(): Promise<string> {
+      const state = get();
+      if (state.selectedChatId) {
+        return state.selectedChatId;
+      }
+
+      // Use the existing newChat action
+      await state.newChat();
+      return get().selectedChatId!;
+    },
+
+    // Add a voice user message without triggering LLM
+    async addVoiceUserMessage(content: string): Promise<void> {
+      const chatId = await get().ensureChatForVoice();
+
+      const message: Message = {
+        id: uuidv4(),
+        chatId,
+        role: 'user',
+        content,
+        createdAt: Date.now(),
+        toolCalls: [],
+        metadata: { source: 'voice' },
+      };
+
       set((s) => ({
-        voice: {
-          ...s.voice,
-          metrics: {
-            ...s.voice.metrics,
-            ...metrics,
-          },
+        messages: {
+          ...s.messages,
+          [chatId]: [...(s.messages[chatId] ?? []), message],
         },
       }));
+
+      await saveMessage(message);
+    },
+
+    // Add a voice assistant message without triggering anything
+    async addVoiceAssistantMessage(content: string): Promise<void> {
+      const chatId = await get().ensureChatForVoice();
+
+      const message: Message = {
+        id: uuidv4(),
+        chatId,
+        role: 'assistant',
+        content,
+        createdAt: Date.now(),
+        model: 'xai-voice',
+        toolCalls: [],
+        reasoning: '',
+        metadata: { source: 'voice' },
+      };
+
+      set((s) => ({
+        messages: {
+          ...s.messages,
+          [chatId]: [...(s.messages[chatId] ?? []), message],
+        },
+      }));
+
+      await saveMessage(message);
     },
   } satisfies Partial<StoreState>;
 });

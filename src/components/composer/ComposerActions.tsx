@@ -5,6 +5,7 @@ import {
   MagnifyingGlassIcon,
   PaperClipIcon,
   PaperAirplaneIcon,
+  MicrophoneIcon,
 } from '@heroicons/react/24/outline';
 import { ReasoningEffortMenu } from '@/components/ReasoningEffortMenu';
 import { ComposerMobileMenu, type Effort } from '@/components/composer/ComposerMobileMenu';

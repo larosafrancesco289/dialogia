@@ -23,7 +23,6 @@ import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
 import { ComposerChips } from '@/components/composer/ComposerChips';
 import { ComposerLayout } from '@/components/composer/ComposerLayout';
-import { VoiceIndicator } from '@/components/voice/VoiceIndicator';
 
 export function Composer({
   variant = 'sticky',
@@ -52,8 +51,6 @@ export function Composer({
 
   const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
   const forceTutorMode = useChatStore((s) => !!s.ui.forceTutorMode);
-  const voiceMode = useChatStore((s) => s.voice.voiceMode);
-  const isVoiceActive = voiceMode !== 'idle';
   const tutorEnabled =
     tutorGloballyEnabled &&
     (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.tutorMode));
@@ -175,9 +172,6 @@ export function Composer({
       onDrop={handleDrop}
     >
       <AttachmentPreviewList attachments={attachments} onRemove={removeAttachment} />
-
-      {/* Voice mode indicator */}
-      {isVoiceActive && <VoiceIndicator className="mb-2" variant="compact" />}
 
       <input
         ref={fileInputRef}
