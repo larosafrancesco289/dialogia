@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import type { StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
 import { updateMessageInChat } from '@/lib/store/messageUtils';
-import { buildDefaultVoiceState } from '@/lib/voice/constants';
+import { buildDefaultVoiceState } from '@/lib/voice/types';
 
 const noop = () => undefined;
 const noopAsync = async () => undefined;
@@ -57,27 +57,16 @@ const baseState = (messages: Record<string, Message[]>): StoreState =>
     appendAssistantMessage: noopAsync,
     persistTutorStateForMessage: noopAsync,
     // Voice actions (no-ops for tests)
-    startVoiceMode: noop,
-    stopVoiceMode: noop,
-    setVoiceMode: noop,
-    startRecording: noopAsync,
-    stopRecording: noop,
-    interruptPlayback: noop,
-    updatePartialTranscript: noop,
-    commitTranscript: noop,
-    appendLlmText: noop,
-    completeLlmResponse: noop,
-    queueAudio: noop,
-    playNextAudio: noop,
-    clearAudioQueue: noop,
-    setIsPlaying: noop,
-    setAudioLevel: noop,
-    setRecordingDuration: noop,
-    setVoiceConfig: noop,
+    setVoiceActive: noop,
+    setVoiceConnected: noop,
+    setVoiceListening: noop,
+    setVoiceSpeaking: noop,
     setVoiceError: noop,
-    clearVoiceError: noop,
+    setVoiceConfig: noop,
     resetVoiceState: noop,
-    updateMetrics: noop,
+    ensureChatForVoice: async () => 'chat-1',
+    addVoiceUserMessage: noopAsync,
+    addVoiceAssistantMessage: noopAsync,
   }) as StoreState;
 
 const createMessage = (overrides: Partial<Message> = {}): Message => ({
