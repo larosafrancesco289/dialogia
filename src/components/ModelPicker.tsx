@@ -1,12 +1,11 @@
 'use client';
 import {
   useCallback,
-  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
+  type KeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
@@ -18,20 +17,21 @@ import {
   ShieldCheckIcon,
   PhotoIcon,
   ChevronDownIcon,
+  ChevronUpIcon,
   CheckIcon,
-  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
-import { CURATED_MODELS } from '@/data/curatedModels';
+import { CURATED_MODELS, type CuratedModel } from '@/data/curatedModels';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
 import { findModelById, formatModelLabel, getModelCapabilities } from '@/lib/models';
 import { describeModelPricing } from '@/lib/cost';
 import { shallow } from 'zustand/shallow';
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
-import { evaluateZdrModel, ZDR_NO_MATCH_NOTICE } from '@/lib/policy/zdr';
+import { evaluateZdrModel } from '@/lib/policy/zdr';
 import type { ZdrLists } from '@/lib/policy/zdr';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { getModelTransportLabel } from '@/lib/providers';
+import { ModelSearch, type ModelSearchResult } from './ModelSearch';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -49,6 +49,8 @@ type Controller = {
   selectedIds: string[];
   setModels: (modelIds: string[]) => void;
   removeModelFromDropdown: (id: string) => void;
+  toggleFavoriteModel: (id: string) => void;
+  favoriteModelIds: string[];
   modelMap: Map<string, ReturnType<typeof findModelById>>;
   ui: ReturnType<typeof useChatStore.getState>['ui'];
   zdrModelIds?: string[];
@@ -69,6 +71,7 @@ export function useModelPickerController(): Controller {
     favoriteModelIds,
     hiddenModelIds,
     removeModelFromDropdown,
+    toggleFavoriteModel,
     models,
     zdrModelIds,
     zdrProviderIds,
@@ -82,6 +85,7 @@ export function useModelPickerController(): Controller {
       favoriteModelIds: state.favoriteModelIds,
       hiddenModelIds: state.hiddenModelIds,
       removeModelFromDropdown: state.removeModelFromDropdown,
+      toggleFavoriteModel: state.toggleFavoriteModel,
       models: state.models,
       zdrModelIds: state.zdrModelIds,
       zdrProviderIds: state.zdrProviderIds,
@@ -188,6 +192,8 @@ export function useModelPickerController(): Controller {
     selectedIds,
     setModels,
     removeModelFromDropdown,
+    toggleFavoriteModel,
+    favoriteModelIds: favoriteModelIds || [],
     modelMap,
     ui,
     zdrModelIds,
@@ -199,26 +205,228 @@ export function useModelPickerController(): Controller {
   };
 }
 
+function ModelCard({
+  model,
+  isSelected,
+  onSelect,
+  modelMap,
+  zdrLists,
+  numberFormatter,
+}: {
+  model: CuratedModel;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+  modelMap: Map<string, ReturnType<typeof findModelById>>;
+  zdrLists: ZdrLists;
+  numberFormatter: Intl.NumberFormat;
+}) {
+  const { Icon } = model;
+  const meta = modelMap.get(model.id);
+  const { canReason, canSee, canImageOut } = getModelCapabilities(meta);
+  const zdrStatus = evaluateZdrModel(model.id, zdrLists);
+  const isZdr = zdrStatus.status === 'allowed';
+  const price = describeModelPricing(meta);
+  const context = meta?.context_length;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(model.id)}
+      className={`card p-4 text-left transition-all hover:border-primary/40 ${
+        isSelected ? 'ring-2 ring-primary border-primary/50 bg-primary/5' : ''
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="h-5 w-5 text-muted-foreground" />
+        <span className="font-medium truncate flex-1">{model.name}</span>
+        {isSelected && <CheckIcon className="h-4 w-4 text-primary shrink-0" />}
+      </div>
+
+      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{model.description}</p>
+
+      <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground/70">
+        {canReason && (
+          <span className="inline-flex items-center gap-1">
+            <LightBulbIcon className="h-3 w-3" /> Reasoning
+          </span>
+        )}
+        {canSee && (
+          <span className="inline-flex items-center gap-1">
+            <EyeIcon className="h-3 w-3" /> Vision
+          </span>
+        )}
+        {canImageOut && (
+          <span className="inline-flex items-center gap-1">
+            <PhotoIcon className="h-3 w-3" /> Images
+          </span>
+        )}
+        {isZdr && (
+          <span className="inline-flex items-center gap-1">
+            <ShieldCheckIcon className="h-3 w-3" /> ZDR
+          </span>
+        )}
+        {context && <span>{numberFormatter.format(context)} ctx</span>}
+        {price && <span>• {price}</span>}
+      </div>
+    </button>
+  );
+}
+
+function FavoriteModelCard({
+  modelId,
+  isSelected,
+  onSelect,
+  onRemove,
+  modelMap,
+  zdrLists,
+  numberFormatter,
+}: {
+  modelId: string;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+  onRemove: (id: string) => void;
+  modelMap: Map<string, ReturnType<typeof findModelById>>;
+  zdrLists: ZdrLists;
+  numberFormatter: Intl.NumberFormat;
+}) {
+  const meta = modelMap.get(modelId);
+  const { canReason, canSee, canImageOut } = getModelCapabilities(meta);
+  const zdrStatus = evaluateZdrModel(modelId, zdrLists);
+  const isZdr = zdrStatus.status === 'allowed';
+  const price = describeModelPricing(meta);
+  const context = meta?.context_length;
+  const label = formatModelLabel({ model: meta, fallbackId: modelId, fallbackName: modelId });
+  const providerLabel = getModelTransportLabel(meta);
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+      event.preventDefault();
+      onSelect(modelId);
+    }
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
+      onClick={() => onSelect(modelId)}
+      onKeyDown={handleKeyDown}
+      className={`group card p-3 pr-10 relative transition-all hover:border-primary/40 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${
+        isSelected ? 'ring-2 ring-primary border-primary/50 bg-primary/5' : ''
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <span className="font-medium truncate">{label}</span>
+        {isSelected && <CheckIcon className="h-4 w-4 text-primary shrink-0" />}
+      </div>
+      <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground/70">
+        {providerLabel && (
+          <span className="uppercase text-[10px] tracking-wide">{providerLabel}</span>
+        )}
+        {canReason && (
+          <span className="inline-flex items-center gap-0.5">
+            <LightBulbIcon className="h-3 w-3" />
+          </span>
+        )}
+        {canSee && (
+          <span className="inline-flex items-center gap-0.5">
+            <EyeIcon className="h-3 w-3" />
+          </span>
+        )}
+        {canImageOut && (
+          <span className="inline-flex items-center gap-0.5">
+            <PhotoIcon className="h-3 w-3" />
+          </span>
+        )}
+        {isZdr && (
+          <span className="inline-flex items-center gap-0.5">
+            <ShieldCheckIcon className="h-3 w-3" />
+          </span>
+        )}
+        {context && <span>{numberFormatter.format(context)} ctx</span>}
+        {price && <span>• {price}</span>}
+      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(modelId);
+        }}
+        onKeyDown={(event) => {
+          event.stopPropagation();
+        }}
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"
+        title="Remove from favorites"
+        aria-label="Remove from favorites"
+      >
+        <XMarkIcon className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function AddModelSearch({
+  onAddFavorite,
+  favoriteIds,
+  curatedIds,
+}: {
+  onAddFavorite: (result: ModelSearchResult) => void;
+  favoriteIds: string[];
+  curatedIds: string[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const alreadyAddedIds = useMemo(
+    () => [...favoriteIds, ...curatedIds],
+    [favoriteIds, curatedIds],
+  );
+
+  return (
+    <div className="border-t border-border/50 pt-5 mt-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground w-full transition-colors"
+      >
+        {expanded ? (
+          <ChevronUpIcon className="h-4 w-4" />
+        ) : (
+          <ChevronDownIcon className="h-4 w-4" />
+        )}
+        <span>Add more models to favorites</span>
+        <span className="text-xs text-muted-foreground/60 ml-1">(200+ available)</span>
+      </button>
+
+      {expanded && (
+        <div className="mt-4">
+          <ModelSearch
+            onSelect={onAddFavorite}
+            selectedIds={alreadyAddedIds}
+            clearOnSelect
+            placeholder="Search models to add..."
+            actionLabel="Add"
+            selectedLabel="Added"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ModelPicker({
-  variant = 'auto',
   className = '',
 }: {
   variant?: ModelPickerVariant;
   className?: string;
 }) {
   const {
-    options,
     current,
-    selectedId,
     selectedIds,
     setModels,
-    removeModelFromDropdown,
+    toggleFavoriteModel,
+    favoriteModelIds,
     modelMap,
     zdrModelIds,
     zdrProviderIds,
-    setUI,
-    zdrHiddenCount,
-    zdrRestricted,
     enableMultiModelChat,
   } = useModelPickerController();
 
@@ -230,24 +438,21 @@ export function ModelPicker({
     [zdrModelIds, zdrProviderIds],
   );
 
+  const curatedIds = useMemo(() => CURATED_MODELS.map((m) => m.id), []);
+
+  // Filter out favorites that are already in curated list
+  const uniqueFavorites = useMemo(() => {
+    const curatedSet = new Set(curatedIds);
+    return favoriteModelIds.filter((id) => !curatedSet.has(id));
+  }, [favoriteModelIds, curatedIds]);
+
   const [open, setOpen] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const [filter, setFilter] = useState('');
-  const deferredFilter = useDeferredValue(filter);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const listboxRef = useRef<HTMLDivElement | null>(null);
-  const filterInputRef = useRef<HTMLInputElement | null>(null);
-  const mountedRef = useRef(false);
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const favoritesEndRef = useRef<HTMLDivElement | null>(null);
   const isMobile = useIsMobile();
   const maxSelectable = enableMultiModelChat ? (isMobile ? 2 : 4) : 1;
   const limitTimeoutRef = useRef<number | null>(null);
   const [limitPulse, setLimitPulse] = useState(false);
-  const [popoverPos, setPopoverPos] = useState<{
-    left: number;
-    top: number;
-    width: number;
-    maxHeight: number;
-  } | null>(null);
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
   const deriveLabel = useCallback(
@@ -263,25 +468,6 @@ export function ModelPicker({
     },
     [modelMap],
   );
-
-  const normalizedFilter = useMemo(
-    () => deferredFilter.trim().toLowerCase().replace(/\s+/g, ' '),
-    [deferredFilter],
-  );
-  const filterWords = useMemo(
-    () => (normalizedFilter ? normalizedFilter.split(' ') : []),
-    [normalizedFilter],
-  );
-
-  const visibleOptions = useMemo(() => {
-    if (!filterWords.length) return options;
-    return options.filter((option) => {
-      const meta = modelMap.get(option.id);
-      const providerText = getModelTransportLabel(meta);
-      const haystack = `${deriveLabel(option)} ${option.id} ${providerText}`.toLowerCase();
-      return filterWords.every((word) => haystack.includes(word));
-    });
-  }, [options, filterWords, deriveLabel, modelMap]);
 
   useEffect(() => {
     if (selectedIds.length > maxSelectable) {
@@ -308,7 +494,6 @@ export function ModelPicker({
         return;
       }
       if (selectedIds.length >= maxSelectable) {
-        // If multi-model is disabled, replace the current selection
         if (!enableMultiModelChat) {
           setModels([id]);
           setOpen(false);
@@ -322,7 +507,6 @@ export function ModelPicker({
         return;
       }
       setModels([...selectedIds, id]);
-      // Close dropdown in single-model mode after selection
       if (!enableMultiModelChat) {
         setOpen(false);
       }
@@ -330,13 +514,30 @@ export function ModelPicker({
     [selectedIds, maxSelectable, enableMultiModelChat, setModels],
   );
 
-  const setPrimaryModel = useCallback(
-    (id: string) => {
-      if (!selectedIds.includes(id) || selectedIds[0] === id) return;
-      const next = [id, ...selectedIds.filter((value) => value !== id)];
-      setModels(next);
+  const handleAddFavorite = useCallback(
+    (result: ModelSearchResult) => {
+      // Add to favorites if not already there
+      const isFavorite = favoriteModelIds.includes(result.id) || curatedIds.includes(result.id);
+      if (!isFavorite) {
+        toggleFavoriteModel(result.id);
+        // Scroll to show the new favorite after a short delay
+        setTimeout(() => {
+          favoritesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+      }
+      // Also select the model
+      if (!selectedIds.includes(result.id)) {
+        toggleModel(result.id);
+      }
     },
-    [selectedIds, setModels],
+    [favoriteModelIds, curatedIds, selectedIds, toggleFavoriteModel, toggleModel],
+  );
+
+  const handleRemoveFavorite = useCallback(
+    (id: string) => {
+      toggleFavoriteModel(id);
+    },
+    [toggleFavoriteModel],
   );
 
   const selectionSummary = useMemo(() => {
@@ -371,30 +572,7 @@ export function ModelPicker({
     return { button, tooltip };
   }, [selectedIds, deriveLabel, modelMap, current]);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!open) {
-      setPopoverPos(null);
-      setFilter('');
-      return;
-    }
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (rootRef.current && rootRef.current.contains(target)) return;
-      if (listboxRef.current && listboxRef.current.contains(target)) return;
-      setOpen(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown, true);
-    return () => document.removeEventListener('pointerdown', onPointerDown, true);
-  }, [open]);
-
+  // Close on escape
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -404,96 +582,27 @@ export function ModelPicker({
     return () => document.removeEventListener('keydown', onKeyDown, true);
   }, [open]);
 
+  // Close on click outside (but not on search dropdown portals)
   useEffect(() => {
-    if (!open || !mountedRef.current) return;
-    const updatePosition = () => {
-      const rect = rootRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const viewportW = window.innerWidth;
-      const viewportH = window.innerHeight;
-      const margin = 16;
-      const gap = 8;
-      const triggerW = rect.width;
-      const minWidth = variant === 'sheet' ? 280 : 320;
-      const minHeight = variant === 'sheet' ? 220 : 200;
-      const baseWidth = Math.max(triggerW, minWidth);
-      const width = Math.min(viewportW - margin * 2, baseWidth);
-      const left = Math.min(Math.max(rect.left, margin), viewportW - width - margin);
-      const top = rect.bottom + gap;
-      const availableHeight = Math.max(minHeight, viewportH - top - margin);
-      const cappedHeight = Math.max(minHeight, Math.min(availableHeight, viewportH * 0.7));
-      setPopoverPos({ left, top, width, maxHeight: cappedHeight });
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (modalRef.current && modalRef.current.contains(target)) return;
+      // Don't close if clicking on ModelSearch dropdown (which is portaled to body)
+      const searchDropdown = document.getElementById('model-search-results');
+      if (searchDropdown && searchDropdown.contains(target)) return;
+      setOpen(false);
     };
-    updatePosition();
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
-    const idx = Math.max(
-      0,
-      visibleOptions.findIndex((o) => o.id === (current?.id || '')),
-    );
-    setHighlightedIndex(idx === -1 ? 0 : idx);
-    const timer = window.setTimeout(() => {
-      if (filterInputRef.current) filterInputRef.current.focus();
-      else listboxRef.current?.focus();
-    }, 0);
-    return () => {
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
-      window.clearTimeout(timer);
-    };
-  }, [open, visibleOptions, current?.id, variant]);
-
-  useEffect(() => {
-    setHighlightedIndex((idx) => {
-      if (!visibleOptions.length) return 0;
-      if (idx >= visibleOptions.length) return Math.max(visibleOptions.length - 1, 0);
-      return idx;
-    });
-  }, [visibleOptions.length]);
-
-  const renderCapabilities = useCallback(
-    (id: string) => {
-      const meta = modelMap.get(id);
-      const { canReason, canSee, canAudio, canImageOut } = getModelCapabilities(meta);
-      const zdrStatus = evaluateZdrModel(id, zdrLists);
-      const priceStr = describeModelPricing(meta);
-      const context = meta?.context_length;
-      return {
-        canReason,
-        canSee,
-        canAudio,
-        canImageOut,
-        isZdr: zdrStatus.status === 'allowed',
-        priceStr,
-        context,
-      };
-    },
-    [modelMap, zdrLists],
-  );
-
-  const zdrHiddenMessage = useMemo(() => {
-    if (!zdrRestricted || zdrHiddenCount <= 0) return null;
-    const countText =
-      zdrHiddenCount === 1
-        ? '1 model is hidden by the ZDR-only preference.'
-        : `${zdrHiddenCount} models are hidden by the ZDR-only preference.`;
-    return `${ZDR_NO_MATCH_NOTICE} ${countText}`;
-  }, [zdrRestricted, zdrHiddenCount]);
-
-  const focusOptionButton = (index: number) => {
-    const container = listboxRef.current;
-    if (!container) return;
-    const button = container.querySelector<HTMLButtonElement>(
-      `button[data-option-index="${index}"]`,
-    );
-    button?.focus();
-  };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+  }, [open]);
 
   return (
-    <div className={`relative min-w-0 ${className}`.trim()} ref={rootRef}>
+    <div className={`relative min-w-0 ${className}`.trim()}>
       <button
         className={`btn btn-outline min-w-0 w-full whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-between gap-2${limitPulse ? ' ring-2 ring-primary/50 border-primary/40' : ''}`}
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         aria-expanded={open}
         title={selectionSummary.tooltip}
         onClick={() => setOpen((v) => !v)}
@@ -503,348 +612,98 @@ export function ModelPicker({
       </button>
 
       {open &&
-        popoverPos &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div
-            ref={listboxRef}
-            className="card p-2 overflow-auto popover z-[90] fixed flex flex-col gap-2"
-            style={{
-              left: popoverPos.left,
-              top: popoverPos.top,
-              width: popoverPos.width,
-              maxHeight: popoverPos.maxHeight,
-            }}
-            role="listbox"
-            aria-label="Select a model"
-            aria-activedescendant={
-              visibleOptions.length ? `model-opt-${highlightedIndex}` : undefined
-            }
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                setOpen(false);
-                return;
-              }
-              if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (!visibleOptions.length) return;
-                setHighlightedIndex((i) => {
-                  const next = (i + 1) % visibleOptions.length;
-                  focusOptionButton(next);
-                  return next;
-                });
-                return;
-              }
-              if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (!visibleOptions.length) return;
-                setHighlightedIndex((i) => {
-                  const prev = (i - 1 + visibleOptions.length) % visibleOptions.length;
-                  focusOptionButton(prev);
-                  return prev;
-                });
-                return;
-              }
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                const target = visibleOptions[highlightedIndex];
-                if (target) toggleModel(target.id);
-              }
-            }}
-          >
-            <div className="sticky top-0 z-10 flex items-center gap-2 rounded-full border border-border/30 bg-muted/15 px-3 py-1.5 backdrop-blur-sm focus-within:ring-2 focus-within:ring-primary/30 focus-within:bg-muted/30">
-              <MagnifyingGlassIcon className="h-4 w-4 text-muted-foreground/80 shrink-0" />
-              <input
-                ref={filterInputRef}
-                className="w-full rounded-full bg-transparent text-sm leading-tight text-muted-foreground focus:text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0"
-                placeholder="Filter models"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'ArrowDown') {
-                    event.preventDefault();
-                  if (!visibleOptions.length) return;
-                  setHighlightedIndex(0);
-                  focusOptionButton(0);
-                  return;
-                }
-                if (event.key === 'Enter' && visibleOptions.length > 0) {
-                  event.preventDefault();
-                  toggleModel(visibleOptions[0].id);
-                  return;
-                }
-                  if (event.key === 'Escape') {
-                    event.preventDefault();
-                    if (filter) setFilter('');
-                    else setOpen(false);
-                  }
-                }}
-              />
-            </div>
+          <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+            {/* Overlay */}
+            <div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setOpen(false)}
+            />
 
-            {enableMultiModelChat && (
-              <div className="px-1 space-y-2">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    Selected models {selectedIds.length}/{maxSelectable}
-                  </span>
-                  <span className="text-muted-foreground/70">
-                    Primary column streams first
-                  </span>
-                </div>
-              <div className="flex flex-wrap gap-2">
-                {selectedIds.map((id, index) => {
-                  const meta = modelMap.get(id);
-                  const label = deriveLabel({
-                    id,
-                    name: meta?.name || id,
-                  });
-                  const providerLabel = getModelTransportLabel(meta);
-                  const isPrimary = index === 0;
-                  return (
-                    <span
-                      key={`selected-${id}`}
-                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs ${
-                        isPrimary
-                          ? 'border-primary/60 bg-primary/10 text-primary'
-                          : 'border-border/60 bg-muted/40'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        className="flex items-center gap-1 focus:outline-none"
-                        onClick={() => setPrimaryModel(id)}
-                        disabled={isPrimary}
-                        title={isPrimary ? 'Primary model' : 'Make primary'}
-                      >
-                        {isPrimary && <CheckIcon className="h-3.5 w-3.5" />}
-                        <span className="flex flex-col leading-tight">
-                          <span className="truncate max-w-[140px]">{label}</span>
-                          {providerLabel && (
-                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground/80">
-                              {providerLabel}
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                      {selectedIds.length > 1 && (
-                        <button
-                          type="button"
-                          className="p-0.5 rounded-full hover:bg-muted/70 focus:outline-none"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            toggleModel(id);
-                          }}
-                          title="Remove model"
-                          aria-label={`Remove ${label}`}
-                        >
-                          <XMarkIcon className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </span>
-                  );
-                })}
-              </div>
-              {selectedIds.length >= maxSelectable && (
-                <div className="text-xs text-amber-600">
-                  Maximum of {maxSelectable} models on {isMobile ? 'mobile' : 'desktop'}.
-                </div>
-              )}
-              </div>
-            )}
-
-            {zdrHiddenMessage && (
-              <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
-                <ShieldCheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                <div className="flex-1 space-y-1">
-                  <div>{zdrHiddenMessage}</div>
-                  <button
-                    type="button"
-                    className="text-xs font-medium text-primary hover:underline focus:outline-none focus:underline"
-                    onClick={() => setUI({ zdrOnly: false })}
-                  >
-                    Show all models
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {visibleOptions.length === 0 && (
-              <div className="text-sm text-muted-foreground px-3 py-4 text-center">
-                No models found.
-              </div>
-            )}
-
-            {visibleOptions.map((o, idx) => {
-              const { canReason, canSee, canAudio, canImageOut, isZdr, priceStr, context } =
-                renderCapabilities(o.id);
-              const showPrice = variant !== 'sheet';
-              const isSelected = selectedIds.includes(o.id);
-              const isPrimary = selectedId === o.id;
-              const isActive = idx === highlightedIndex;
-              const meta = modelMap.get(o.id);
-              const label = deriveLabel(o);
-              const providerLabel = getModelTransportLabel(meta);
-
-              const capabilityChips = (
-                [
-                  canReason
-                    ? { icon: <LightBulbIcon className="h-3.5 w-3.5" />, text: 'Reasoning' }
-                    : null,
-                  canSee ? { icon: <EyeIcon className="h-3.5 w-3.5" />, text: 'Vision' } : null,
-                  canAudio
-                    ? { icon: <MicrophoneIcon className="h-3.5 w-3.5" />, text: 'Audio' }
-                    : null,
-                  canImageOut
-                    ? { icon: <PhotoIcon className="h-3.5 w-3.5" />, text: 'Images' }
-                    : null,
-                  isZdr ? { icon: <ShieldCheckIcon className="h-3.5 w-3.5" />, text: 'ZDR' } : null,
-                ] as Array<{ icon: ReactNode; text: string } | null>
-              ).filter((chip): chip is { icon: ReactNode; text: string } => chip !== null);
-
-              return (
-                <div
-                  key={o.id}
-                  id={`model-opt-${idx}`}
-                  role="option"
-                  aria-selected={isSelected}
-                  className={`group relative w-full rounded-xl border transition-colors ${
-                    isActive
-                      ? 'border-primary/40 bg-muted/50'
-                      : 'border-transparent hover:bg-muted/30'
-                  } ${
-                    isSelected
-                      ? isPrimary
-                        ? 'ring-2 ring-primary/60 border-primary/50 bg-primary/5'
-                        : 'ring-1 ring-primary/40 bg-muted/60'
-                      : ''
-                  }`}
-                  onMouseEnter={() => setHighlightedIndex(idx)}
+            {/* Modal */}
+            <div
+              ref={modalRef}
+              className="relative card p-6 w-full max-w-4xl max-h-[85vh] overflow-auto"
+              role="dialog"
+              aria-label="Choose a model"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-semibold">Choose a Model</h2>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-muted transition-colors"
+                  aria-label="Close"
                 >
-                  <button
-                    type="button"
-                    data-option-index={idx}
-                    className="w-full text-left px-3 py-2.5 flex items-start gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-                    onClick={() => toggleModel(o.id)}
-                    onFocus={() => setHighlightedIndex(idx)}
-                    onKeyDown={(event) => {
-                      if (!visibleOptions.length) return;
-                      if (event.key === 'ArrowDown') {
-                        event.preventDefault();
-                        const next = (idx + 1) % visibleOptions.length;
-                        setHighlightedIndex(next);
-                        focusOptionButton(next);
-                      } else if (event.key === 'ArrowUp') {
-                        event.preventDefault();
-                        const prev = (idx - 1 + visibleOptions.length) % visibleOptions.length;
-                        setHighlightedIndex(prev);
-                        focusOptionButton(prev);
-                      } else if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        toggleModel(o.id);
-                      }
-                    }}
-                  >
-                    <div className="min-w-0 flex-1 flex flex-col gap-1.5">
-                      {/* Top Row: Name + Price */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="font-medium text-sm text-foreground truncate" title={label}>
-                          {label}
-                        </div>
-                        {showPrice && priceStr && (
-                          <span className="text-xs text-muted-foreground whitespace-nowrap font-mono opacity-80">
-                            {priceStr}
-                          </span>
-                        )}
-                      </div>
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
 
-                      {/* Middle Row: Provider • ID • Context */}
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        {providerLabel && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md border border-border/40 bg-muted/30 text-[10px] uppercase tracking-wider font-medium text-muted-foreground/80">
-                            {providerLabel}
-                          </span>
-                        )}
-                        <span
-                          className="font-mono text-[11px] opacity-60 truncate max-w-[180px]"
-                          title={o.id}
-                        >
-                          {o.id}
-                        </span>
-                        {context && (
-                          <>
-                            <span className="opacity-20 select-none">•</span>
-                            <span className="text-[11px] opacity-80">
-                              {numberFormatter.format(context)} ctx
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Bottom Row: Capabilities */}
-                      {capabilityChips.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-0.5">
-                          {capabilityChips.map((chip, idxChip) => (
-                            <span
-                              key={`${o.id}-cap-${idxChip}`}
-                              className="inline-flex items-center gap-1 rounded-md bg-muted/50 border border-transparent px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors group-hover:border-border/30 group-hover:bg-muted/70"
-                            >
-                              {chip.icon}
-                              <span>{chip.text}</span>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0 pl-2 self-start pt-0.5">
-                      {isSelected && (
-                        <span
-                          className={`inline-flex items-center gap-1 text-xs font-medium ${isPrimary ? 'text-primary' : 'text-muted-foreground'}`}
-                        >
-                          {isPrimary && <CheckIcon className="h-4 w-4" />}
-                          {isPrimary ? 'Primary' : 'Selected'}
-                        </span>
-                      )}
-                      {isSelected && !isPrimary && (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          className="text-xs text-primary hover:underline cursor-pointer"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setPrimaryModel(o.id);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              setPrimaryModel(o.id);
-                            }
-                          }}
-                        >
-                          Make primary
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                  {o.id !== PINNED_MODEL_ID && (
-                    <button
-                      className="absolute top-2 right-2 p-1 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors focus-visible:ring-1 focus-visible:ring-ring focus:outline-none group-hover:text-foreground group-hover:bg-muted"
-                      title="Hide from dropdown"
-                      aria-label="Hide model from dropdown"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        removeModelFromDropdown(o.id);
-                      }}
-                    >
-                      <XMarkIcon className="h-4 w-4" />
-                    </button>
+              {/* Multi-model selection indicator */}
+              {enableMultiModelChat && selectedIds.length > 0 && (
+                <div className="mb-4 text-xs text-muted-foreground">
+                  Selected: {selectedIds.length}/{maxSelectable} models
+                  {selectedIds.length >= maxSelectable && (
+                    <span className="ml-2 text-amber-600">
+                      (max {maxSelectable} on {isMobile ? 'mobile' : 'desktop'})
+                    </span>
                   )}
                 </div>
-              );
-            })}
+              )}
+
+              {/* Recommended Section */}
+              <div className="mb-6">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                  Recommended
+                </h3>
+                <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                  {CURATED_MODELS.map((model) => (
+                    <ModelCard
+                      key={model.id}
+                      model={model}
+                      isSelected={selectedIds.includes(model.id)}
+                      onSelect={toggleModel}
+                      modelMap={modelMap}
+                      zdrLists={zdrLists}
+                      numberFormatter={numberFormatter}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Favorites Section */}
+              {uniqueFavorites.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                    Your Favorites
+                  </h3>
+                  <div className={`grid gap-2 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                    {uniqueFavorites.map((modelId) => (
+                      <FavoriteModelCard
+                        key={modelId}
+                        modelId={modelId}
+                        isSelected={selectedIds.includes(modelId)}
+                        onSelect={toggleModel}
+                        onRemove={handleRemoveFavorite}
+                        modelMap={modelMap}
+                        zdrLists={zdrLists}
+                        numberFormatter={numberFormatter}
+                      />
+                    ))}
+                  </div>
+                  <div ref={favoritesEndRef} />
+                </div>
+              )}
+
+              {/* Add more models section */}
+              <AddModelSearch
+                onAddFavorite={handleAddFavorite}
+                favoriteIds={favoriteModelIds}
+                curatedIds={curatedIds}
+              />
+            </div>
           </div>,
           document.body,
         )}

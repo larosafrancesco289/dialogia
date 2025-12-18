@@ -232,15 +232,33 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const margin = 12;
-      const top = rect.bottom + 8;
+      const gap = 8;
       const viewportHeight = window.innerHeight;
-      const maxHeight = Math.max(220, viewportHeight - top - margin);
-      setPosition({
-        left: rect.left,
-        top,
-        width: rect.width,
-        maxHeight,
-      });
+      const spaceBelow = viewportHeight - rect.bottom - margin;
+      const spaceAbove = rect.top - margin;
+      const minDropdownHeight = 220;
+
+      // Open upward if not enough space below but more space above
+      const openUpward = spaceBelow < minDropdownHeight && spaceAbove > spaceBelow;
+
+      if (openUpward) {
+        const maxHeight = Math.max(minDropdownHeight, spaceAbove - gap);
+        setPosition({
+          left: rect.left,
+          top: rect.top - gap - Math.min(maxHeight, 400),
+          width: rect.width,
+          maxHeight: Math.min(maxHeight, 400),
+        });
+      } else {
+        const top = rect.bottom + gap;
+        const maxHeight = Math.max(minDropdownHeight, viewportHeight - top - margin);
+        setPosition({
+          left: rect.left,
+          top,
+          width: rect.width,
+          maxHeight,
+        });
+      }
       onOpenChange?.(true);
     }, [normalizedQuery, onOpenChange]);
 
@@ -251,10 +269,27 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
         if (!el) return;
         const rect = el.getBoundingClientRect();
         const margin = 12;
-        const top = rect.bottom + 8;
+        const gap = 8;
         const viewportHeight = window.innerHeight;
-        const maxHeight = Math.max(220, viewportHeight - top - margin);
-        setPosition({ left: rect.left, top, width: rect.width, maxHeight });
+        const spaceBelow = viewportHeight - rect.bottom - margin;
+        const spaceAbove = rect.top - margin;
+        const minDropdownHeight = 220;
+
+        const openUpward = spaceBelow < minDropdownHeight && spaceAbove > spaceBelow;
+
+        if (openUpward) {
+          const maxHeight = Math.max(minDropdownHeight, spaceAbove - gap);
+          setPosition({
+            left: rect.left,
+            top: rect.top - gap - Math.min(maxHeight, 400),
+            width: rect.width,
+            maxHeight: Math.min(maxHeight, 400),
+          });
+        } else {
+          const top = rect.bottom + gap;
+          const maxHeight = Math.max(minDropdownHeight, viewportHeight - top - margin);
+          setPosition({ left: rect.left, top, width: rect.width, maxHeight });
+        }
       };
       const closeOnResize = () => {
         if (!document.contains(inputRef.current)) closeDropdown();
