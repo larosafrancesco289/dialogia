@@ -5,9 +5,7 @@ import type { ToolCall } from '@/lib/agent/types';
 
 export function normalizeToolCalls(message: unknown): ToolCall[] {
   const calls: ToolCall[] = [];
-  const rawCalls = Array.isArray((message as any)?.tool_calls)
-    ? (message as any).tool_calls
-    : [];
+  const rawCalls = Array.isArray((message as any)?.tool_calls) ? (message as any).tool_calls : [];
   rawCalls.forEach((call: any, index: number) => {
     const name = typeof call?.function?.name === 'string' ? call.function.name : '';
     const args = typeof call?.function?.arguments === 'string' ? call.function.arguments : '';
@@ -28,11 +26,7 @@ export function normalizeToolCalls(message: unknown): ToolCall[] {
   return [];
 }
 
-export function createToolCall(
-  name: string,
-  args: Record<string, unknown>,
-  id: string,
-): ToolCall {
+export function createToolCall(name: string, args: Record<string, unknown>, id: string): ToolCall {
   return {
     id,
     type: 'function',

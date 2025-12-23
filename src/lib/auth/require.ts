@@ -9,9 +9,7 @@ export type TransportAuthStatus = {
 };
 
 export function requireTransportAuth(transport: ModelTransport): TransportAuthStatus {
-  return transport === 'anthropic'
-    ? requireAnthropicClientKeyOrProxy()
-    : requireClientKeyOrProxy();
+  return transport === 'anthropic' ? requireAnthropicClientKeyOrProxy() : requireClientKeyOrProxy();
 }
 
 export function requireModelAuth(

@@ -2,8 +2,8 @@ import type { Chat } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
 
 export const isTutorRuntimeEnabled = (ui: UIState, chat: Chat): boolean => {
-  const tutorGloballyEnabled = !!ui.experimentalTutor;
-  const forceTutorMode = !!(ui.forceTutorMode ?? false);
+  const tutorGloballyEnabled = !!ui.flags.experimentalTutor;
+  const forceTutorMode = !!(ui.tutor.forceMode ?? false);
   return tutorGloballyEnabled && (forceTutorMode || !!chat.settings.tutor_mode);
 };
 
@@ -12,7 +12,7 @@ export const selectTutorDefaultModelId = (
   chat: Chat,
   fallback?: string,
 ): string | undefined =>
-  ui.tutorDefaultModelId || chat.settings.tutor_default_model || fallback;
+  ui.tutor.defaultModelId || chat.settings.tutor_default_model || fallback;
 
 export const enforceZdrGate = async (
   ui: UIState,

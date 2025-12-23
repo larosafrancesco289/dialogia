@@ -19,50 +19,50 @@ export function createSidebarGestureController(opts: {
   setCollapsed: (value: boolean) => void;
 }): SidebarGestureController {
   const { getCollapsed, setCollapsed } = opts;
-    let startX = 0;
-    let startY = 0;
-    let active = false;
+  let startX = 0;
+  let startY = 0;
+  let active = false;
 
-    const onDown = (e: PointerEvent) => {
-      if ((e.pointerType as any) === 'mouse') return;
-      const t = e.target as Element | null;
-      if (
-        t &&
-        (t.closest('[data-row-press]') ||
-          t.closest('[data-chat-swipe]') ||
-          t.closest('[data-folder-swipe]'))
-      ) {
-        active = false;
-        return;
-      }
-      startX = e.clientX;
-      startY = e.clientY;
-      const fromEdge = startX <= EDGE_PX;
-      const collapsed = getCollapsed();
-      const sidebarOpen = !collapsed;
-      const inSidebarRegion = startX <= 360 + 40;
-      active = (collapsed && fromEdge) || (sidebarOpen && inSidebarRegion);
-    };
-    const onMove = (e: PointerEvent) => {
-      if (!active) return;
-      const dx = e.clientX - startX;
-      const adx = Math.abs(dx);
-      const ady = Math.abs(e.clientY - startY);
-      if (adx < HYSTERESIS_PX || adx < ady) return;
-      const collapsed = getCollapsed();
-      const sidebarOpen = !collapsed;
-      if (collapsed && dx > SWIPE_THRESHOLD_PX) {
-        setCollapsed(false);
-        active = false;
-      } else if (sidebarOpen && dx < -SWIPE_THRESHOLD_PX) {
-        setCollapsed(true);
-        active = false;
-      }
-    };
-    const onEnd = () => {
+  const onDown = (e: PointerEvent) => {
+    if ((e.pointerType as any) === 'mouse') return;
+    const t = e.target as Element | null;
+    if (
+      t &&
+      (t.closest('[data-row-press]') ||
+        t.closest('[data-chat-swipe]') ||
+        t.closest('[data-folder-swipe]'))
+    ) {
       active = false;
-    };
-    return { onPointerDown: onDown, onPointerMove: onMove, onPointerEnd: onEnd };
+      return;
+    }
+    startX = e.clientX;
+    startY = e.clientY;
+    const fromEdge = startX <= EDGE_PX;
+    const collapsed = getCollapsed();
+    const sidebarOpen = !collapsed;
+    const inSidebarRegion = startX <= 360 + 40;
+    active = (collapsed && fromEdge) || (sidebarOpen && inSidebarRegion);
+  };
+  const onMove = (e: PointerEvent) => {
+    if (!active) return;
+    const dx = e.clientX - startX;
+    const adx = Math.abs(dx);
+    const ady = Math.abs(e.clientY - startY);
+    if (adx < HYSTERESIS_PX || adx < ady) return;
+    const collapsed = getCollapsed();
+    const sidebarOpen = !collapsed;
+    if (collapsed && dx > SWIPE_THRESHOLD_PX) {
+      setCollapsed(false);
+      active = false;
+    } else if (sidebarOpen && dx < -SWIPE_THRESHOLD_PX) {
+      setCollapsed(true);
+      active = false;
+    }
+  };
+  const onEnd = () => {
+    active = false;
+  };
+  return { onPointerDown: onDown, onPointerMove: onMove, onPointerEnd: onEnd };
 }
 
 export function useSidebarGestures(opts: {

@@ -1,5 +1,8 @@
 import { getBraveSearchKey } from '@/lib/config';
 import { summarizeHtmlDocument } from '@/lib/deepResearch/html';
+import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
+
+export type { WebSearchToolArgs } from '@/lib/tools/webSearch';
 
 export type DeepSearchResult = {
   title?: string;
@@ -15,15 +18,6 @@ export type DeepFetchedPage = {
   headings?: string[];
   text?: string;
   bytes?: number;
-};
-
-export type WebSearchToolArgs = {
-  query: string;
-  count?: number;
-  freshness?: 'd' | 'w' | 'm' | 'y' | 'all';
-  country?: string;
-  include_domains?: string[];
-  exclude_domains?: string[];
 };
 
 export async function runWebSearch(args: WebSearchToolArgs): Promise<DeepSearchResult[]> {

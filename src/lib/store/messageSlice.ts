@@ -12,11 +12,7 @@ import { abortAllTurns } from '@/lib/services/controllers';
 
 // telemetry removed for commit cleanliness
 
-export function createMessageSlice(
-  set: StoreSetter,
-  get: () => StoreState,
-  _store?: unknown,
-) {
+export function createMessageSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
   return {
     async appendAssistantMessage(content: string, opts?: { modelId?: string }) {
       await appendAssistantTurn({ content, modelId: opts?.modelId, set, get });

@@ -12,8 +12,7 @@ export function renderTutorTranscript(
   const includeHidden = options?.includeHiddenContent ?? true;
   return messages
     .map((msg) => {
-      const role =
-        msg.role === 'assistant' ? 'Tutor' : msg.role === 'user' ? 'Student' : 'System';
+      const role = msg.role === 'assistant' ? 'Tutor' : msg.role === 'user' ? 'Student' : 'System';
       const timestamp = msg.createdAt ? new Date(msg.createdAt).toISOString() : undefined;
       const hidden =
         includeHidden &&

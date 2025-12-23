@@ -29,7 +29,7 @@ test('buildHiddenTutorContent includes recap and JSON snapshot', () => {
 
 test('ensureTutorDefaults fills missing tutor defaults and enables learner model', () => {
   const chat = baseChat();
-  const ui = { tutorDefaultModelId: '' } as any;
+  const ui = { tutor: { defaultModelId: '' } } as any;
   const result = ensureTutorDefaults({
     ui,
     chat,

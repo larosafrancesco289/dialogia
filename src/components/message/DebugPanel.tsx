@@ -14,7 +14,11 @@ function formatNumber(value: unknown): string | undefined {
   return value.toFixed(2);
 }
 
-function coerceBooleanLabel(value: unknown, trueLabel: string, falseLabel?: string): string | undefined {
+function coerceBooleanLabel(
+  value: unknown,
+  trueLabel: string,
+  falseLabel?: string,
+): string | undefined {
   if (value === true) return trueLabel;
   if (value === false && falseLabel) return falseLabel;
   return undefined;
@@ -37,7 +41,8 @@ function extractContentSnippet(content: unknown): string {
   }
   if (typeof content === 'object') {
     if (typeof (content as any).text === 'string') return (content as any).text.trim();
-    if (Array.isArray((content as any).content)) return extractContentSnippet((content as any).content);
+    if (Array.isArray((content as any).content))
+      return extractContentSnippet((content as any).content);
   }
   return '';
 }
@@ -166,7 +171,9 @@ export function DebugPanel({
     messages.forEach((entry, index) => {
       if (!entry || typeof entry !== 'object') return;
       const role =
-        typeof (entry as any).role === 'string' ? ((entry as any).role as string) : `message ${index + 1}`;
+        typeof (entry as any).role === 'string'
+          ? ((entry as any).role as string)
+          : `message ${index + 1}`;
       const snippetRaw = extractContentSnippet((entry as any).content);
       const snippet = snippetRaw || '';
       const toolCallsRaw = Array.isArray((entry as any).tool_calls)
@@ -255,10 +262,7 @@ export function DebugPanel({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {summaryItems.map((item) => (
-                    <div
-                      key={item.label}
-                      className="rounded bg-muted/40 px-2 py-1.5"
-                    >
+                    <div key={item.label} className="rounded bg-muted/40 px-2 py-1.5">
                       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
                         {item.label}
                       </div>

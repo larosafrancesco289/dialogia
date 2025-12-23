@@ -94,7 +94,10 @@ export class LLMUserSimulator {
     return this.generate(prompt);
   }
 
-  async respond(tutorMessage: string, context?: { planSummary?: string; turn?: number }): Promise<string> {
+  async respond(
+    tutorMessage: string,
+    context?: { planSummary?: string; turn?: number },
+  ): Promise<string> {
     const cues: string[] = [
       tutorMessage,
       '',
@@ -152,17 +155,15 @@ type NormalizedJudgeInput = {
   goal?: string;
 };
 
-function normalizeJudgeInput(
-  input: LLMJudgeInput,
-  contextGoal?: string,
-): NormalizedJudgeInput {
+function normalizeJudgeInput(input: LLMJudgeInput, contextGoal?: string): NormalizedJudgeInput {
   if (Array.isArray(input)) {
     return { messages: input, goal: contextGoal };
   }
   const payload = input ?? {};
   return {
     messages: 'messages' in payload ? ((payload as any).messages as Message[]) : undefined,
-    snapshots: 'snapshots' in payload ? ((payload as any).snapshots as HeadlessTurnSnapshot[]) : undefined,
+    snapshots:
+      'snapshots' in payload ? ((payload as any).snapshots as HeadlessTurnSnapshot[]) : undefined,
     transcript: (payload as any).transcript,
     goal: (payload as any).goal ?? contextGoal,
   };
@@ -229,7 +230,10 @@ export class LLMJudge {
       ].join('\n');
   }
 
-  async evaluate(payload: LLMJudgeInput, context?: { goal?: string }): Promise<{
+  async evaluate(
+    payload: LLMJudgeInput,
+    context?: { goal?: string },
+  ): Promise<{
     raw: string;
     verdict: string;
     score?: number;
@@ -239,9 +243,7 @@ export class LLMJudge {
     const normalized = normalizeJudgeInput(payload, context?.goal);
     const transcript =
       normalized.transcript ??
-      (normalized.snapshots?.length
-        ? renderSnapshotTranscript(normalized.snapshots)
-        : undefined) ??
+      (normalized.snapshots?.length ? renderSnapshotTranscript(normalized.snapshots) : undefined) ??
       (normalized.messages?.length ? renderTutorTranscript(normalized.messages) : undefined);
 
     if (!transcript) {

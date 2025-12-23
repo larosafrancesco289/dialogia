@@ -328,7 +328,9 @@ export async function streamChatCompletion(params: {
     });
   } catch (error) {
     callbacks?.onError?.(
-      error instanceof Error ? error : new ApiError({ code: API_ERROR_CODES.OPENROUTER_CHAT_FAILED }),
+      error instanceof Error
+        ? error
+        : new ApiError({ code: API_ERROR_CODES.OPENROUTER_CHAT_FAILED }),
     );
     throw error;
   }

@@ -1,36 +1,8 @@
 #!/usr/bin/env tsx
 import { defaultTutorScenarios, type TutorScenario } from '@/lib/eval/tutorScenarios';
 import { runTutorScenario } from '@/lib/eval/tutorDriver';
-
-type ArgMap = Record<string, string | boolean>;
-
-function parseArgs(argv: string[]): ArgMap {
-  const result: ArgMap = {};
-  for (let i = 0; i < argv.length; i += 1) {
-    const token = argv[i];
-    if (!token.startsWith('-')) continue;
-    if (token === '--list') {
-      result.list = true;
-      continue;
-    }
-    if (token === '--help' || token === '-h') {
-      result.help = true;
-      continue;
-    }
-    const next = argv[i + 1];
-    if (token === '--scenario' && next) {
-      result.scenario = next;
-      i += 1;
-      continue;
-    }
-    if (token === '--out' && next) {
-      result.out = next;
-      i += 1;
-      continue;
-    }
-  }
-  return result;
-}
+import { parseArgs } from '@/lib/cli/args';
+import { loadEnvDefaults } from '@/lib/cli/env';
 
 function usage() {
   console.log(
@@ -66,6 +38,8 @@ async function main() {
     });
     return;
   }
+
+  await loadEnvDefaults();
 
   const scenarios = pickScenarios(typeof args.scenario === 'string' ? args.scenario : undefined);
   const outputDir =

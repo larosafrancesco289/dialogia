@@ -6,6 +6,8 @@ import type {
   Folder,
   LearningPlan,
   TutorResearchMode,
+  LearnerModel,
+  LearnerModelDebugSnapshot,
 } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
@@ -38,34 +40,27 @@ export type UINextOverrides = {
   parallelModels?: string[];
 };
 
-export type UIState = {
-  showSettings: boolean;
-  isStreaming: boolean;
-  notice?: string;
-  sidebarCollapsed?: boolean;
-  // Debugging
-  debugMode?: boolean;
-  // Raw request payloads keyed by assistant message id (ephemeral)
-  debugByMessageId?: Record<string, { body: string; createdAt: number }>;
-  // Models that emit reasoning traces even when no effort was requested
+export type UIFlags = {
+  experimentalBrave?: boolean;
+  experimentalTutor?: boolean;
+  enableMultiModelChat?: boolean;
+};
+
+export type UIDebugState = {
+  mode?: boolean;
+  byMessageId?: Record<string, { body: string; createdAt: number }>;
   autoReasoningModelIds?: Record<string, true>;
-  tutorDefaultModelId?: string;
-  forceTutorMode?: boolean;
-  learnerModelDebugByMessageId?: Record<string, any>;
-  next?: UINextOverrides;
-  // Tutor context fidelity for follow-up turns
-  // 'summary' keeps prompts compact; 'full' injects full quiz JSON
-  tutorContextMode?: 'summary' | 'full';
-  // Privacy preference: only allow/show Zero Data Retention endpoints
-  zdrOnly?: boolean;
-  // Routing preference: prioritize speed or cost
-  routePreference?: 'speed' | 'cost';
-  // Experimental feature toggles (global visibility/usage)
-  experimentalBrave?: boolean; // show Brave web search and related UI
-  experimentalTutor?: boolean; // show Tutor mode UI and enable tutor tools
-  enableMultiModelChat?: boolean; // allow selecting and chatting with multiple models simultaneously
-  tutorThesisMode?: boolean;
-  tutorResearchMode?: TutorResearchMode;
+  learnerModelDebugByMessageId?: Record<string, LearnerModelDebugEntry>;
+};
+
+export type LearnerModelDebugEntry = {
+  before: LearnerModel;
+  after: LearnerModel;
+  debug?: LearnerModelDebugSnapshot;
+  planUpdates?: Message['planUpdates'];
+};
+
+export type UISearchState = {
   braveByMessageId?: Record<
     string,
     {
@@ -75,10 +70,12 @@ export type UIState = {
       error?: string;
     }
   >;
-  // Tutor tool payloads keyed by assistant message id
-  tutorByMessageId?: Record<string, import('@/lib/types').MessageTutor>;
-  tutorProfileByChatId?: Record<string, import('@/lib/types').TutorProfile>;
-  tutorWelcomeByChatId?: Record<
+};
+
+export type UITutorState = {
+  byMessageId?: Record<string, import('@/lib/types').MessageTutor>;
+  profileByChatId?: Record<string, import('@/lib/types').TutorProfile>;
+  welcomeByChatId?: Record<
     string,
     {
       status: 'idle' | 'loading' | 'ready' | 'error';
@@ -87,19 +84,25 @@ export type UIState = {
       generatedAt?: number;
     }
   >;
-  tutorWelcomePreview?: {
+  welcomePreview?: {
     status: 'idle' | 'loading' | 'ready' | 'error';
     message?: string;
     error?: string;
     generatedAt?: number;
   };
-  // Per-chat ephemeral flags (not persisted)
-  tutorGreetedByChatId?: Record<string, boolean>;
-  tutorToolUsageByChatId?: Record<string, TutorToolUsage>;
-  // Learning plan UI state
-  planSheetOpen?: boolean;
-  planSheetPlanOverride?: LearningPlan | null;
-  planGenerationByChatId?: Record<
+  greetedByChatId?: Record<string, boolean>;
+  toolUsageByChatId?: Record<string, TutorToolUsage>;
+  contextMode?: 'summary' | 'full';
+  defaultModelId?: string;
+  forceMode?: boolean;
+  thesisMode?: boolean;
+  researchMode?: TutorResearchMode;
+};
+
+export type UIPlanState = {
+  sheetOpen?: boolean;
+  sheetPlanOverride?: LearningPlan | null;
+  generationByChatId?: Record<
     string,
     {
       status: 'idle' | 'loading' | 'ready' | 'error';
@@ -110,6 +113,23 @@ export type UIState = {
       modelId?: string;
     }
   >;
+};
+
+export type UIState = {
+  showSettings: boolean;
+  isStreaming: boolean;
+  notice?: string;
+  sidebarCollapsed?: boolean;
+  overrides?: UINextOverrides;
+  // Privacy preference: only allow/show Zero Data Retention endpoints
+  zdrOnly?: boolean;
+  // Routing preference: prioritize speed or cost
+  routePreference?: 'speed' | 'cost';
+  flags: UIFlags;
+  debug: UIDebugState;
+  search: UISearchState;
+  tutor: UITutorState;
+  plan: UIPlanState;
 };
 
 export type StoreState = {
@@ -134,82 +154,103 @@ export type StoreState = {
   // Voice agent state
   voice: VoiceState;
 } & VoiceActions & {
+    // lifecycle
+    initializeApp: () => Promise<void>;
 
-  // lifecycle
-  initializeApp: () => Promise<void>;
+    // chats
+    newChat: () => Promise<void>;
+    selectChat: (id: string) => void;
+    renameChat: (id: string, title: string) => Promise<void>;
+    deleteChat: (id: string) => Promise<void>;
+    updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
+    moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
 
-  // chats
-  newChat: () => Promise<void>;
-  selectChat: (id: string) => void;
-  renameChat: (id: string, title: string) => Promise<void>;
-  deleteChat: (id: string) => Promise<void>;
-  updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
-  moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
+    // folders
+    createFolder: (name: string, parentId?: string) => Promise<void>;
+    renameFolder: (id: string, name: string) => Promise<void>;
+    deleteFolder: (id: string) => Promise<void>;
+    toggleFolderExpanded: (id: string) => Promise<void>;
 
-  // folders
-  createFolder: (name: string, parentId?: string) => Promise<void>;
-  renameFolder: (id: string, name: string) => Promise<void>;
-  deleteFolder: (id: string) => Promise<void>;
-  toggleFolderExpanded: (id: string) => Promise<void>;
+    // ui
+    setUI: (partial: Partial<UIState>) => void;
+    setSearchStatus: (
+      messageId: string,
+      entry: NonNullable<UISearchState['braveByMessageId']>[string],
+    ) => void;
 
-  // ui
-  setUI: (partial: Partial<UIState>) => void;
+    // tutor
+    logTutorResult: (evt: import('@/lib/types').TutorEvent) => Promise<void>;
+    loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
+    primeTutorWelcomePreview: () => Promise<string | undefined>;
+    prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
+    applyLearnerModelFeedbackFromUser: (input: LearnerModelFeedback) => Promise<void>;
+    patchTutorEntry: (
+      messageId: string,
+      patch: Partial<import('@/lib/types').MessageTutor>,
+      opts?: { persist?: boolean },
+    ) => Promise<void>;
+    setTutorAttemptMcq: (
+      messageId: string,
+      itemId: string,
+      choiceIdx: number,
+      correct: boolean,
+    ) => void;
+    setTutorAttemptFillBlank: (
+      messageId: string,
+      itemId: string,
+      answer: string,
+      revealed?: boolean,
+      correct?: boolean,
+    ) => void;
+    setTutorAttemptOpen: (messageId: string, itemId: string, answer: string) => void;
+    setTutorPlanProposalStatus: (
+      messageId: string,
+      status: 'pending' | 'approved' | 'declined',
+    ) => void;
 
-  // tutor
-  logTutorResult: (evt: import('@/lib/types').TutorEvent) => Promise<void>;
-  loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
-  primeTutorWelcomePreview: () => Promise<string | undefined>;
-  prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
-  applyLearnerModelFeedbackFromUser: (input: LearnerModelFeedback) => Promise<void>;
+    // models
+    loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
+    toggleFavoriteModel: (id: string) => void;
+    hideModel: (id: string) => void;
+    unhideModel: (id: string) => void;
+    resetHiddenModels: () => void;
+    removeModelFromDropdown: (id: string) => void;
 
-  // models
-  loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
-  toggleFavoriteModel: (id: string) => void;
-  hideModel: (id: string) => void;
-  unhideModel: (id: string) => void;
-  resetHiddenModels: () => void;
-  removeModelFromDropdown: (id: string) => void;
-
-  // messaging
-  sendUserMessage: (
-    content: string,
-    opts?: {
-      attachments?: import('@/lib/types').Attachment[];
-      metadata?: Message['metadata'];
-    },
-  ) => Promise<void>;
-  // chat branching
-  branchChatFromMessage: (messageId: string) => Promise<void>;
-  stopStreaming: () => void;
-  regenerateAssistantMessage: (messageId: string, opts?: { modelId?: string }) => Promise<void>;
-  editUserMessage: (
-    messageId: string,
-    newContent: string,
-    opts?: { rerun?: boolean },
-  ) => Promise<void>;
-  editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
-  // utility for UI features (e.g., multi-model responses inserting a result)
-  appendAssistantMessage: (content: string, opts?: { modelId?: string }) => Promise<void>;
-  // tutor persistence
-  persistTutorStateForMessage: (messageId: string) => Promise<void>;
-};
+    // messaging
+    sendUserMessage: (
+      content: string,
+      opts?: {
+        attachments?: import('@/lib/types').Attachment[];
+        metadata?: Message['metadata'];
+      },
+    ) => Promise<void>;
+    // chat branching
+    branchChatFromMessage: (messageId: string) => Promise<void>;
+    stopStreaming: () => void;
+    regenerateAssistantMessage: (messageId: string, opts?: { modelId?: string }) => Promise<void>;
+    editUserMessage: (
+      messageId: string,
+      newContent: string,
+      opts?: { rerun?: boolean },
+    ) => Promise<void>;
+    editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
+    // utility for UI features (e.g., multi-model responses inserting a result)
+    appendAssistantMessage: (content: string, opts?: { modelId?: string }) => Promise<void>;
+    // tutor persistence
+    persistTutorStateForMessage: (messageId: string) => Promise<void>;
+  };
 
 export type PersistedUIState = Pick<
   UIState,
-  | 'showSettings'
-  | 'sidebarCollapsed'
-  | 'debugMode'
-  | 'tutorContextMode'
-  | 'tutorThesisMode'
-  | 'tutorResearchMode'
-  | 'zdrOnly'
-  | 'routePreference'
-  | 'experimentalBrave'
-  | 'experimentalTutor'
-  | 'enableMultiModelChat'
-  | 'tutorDefaultModelId'
-  | 'forceTutorMode'
->;
+  'showSettings' | 'sidebarCollapsed' | 'zdrOnly' | 'routePreference'
+> & {
+  flags?: Pick<UIFlags, 'experimentalBrave' | 'experimentalTutor' | 'enableMultiModelChat'>;
+  debug?: Pick<UIDebugState, 'mode'>;
+  tutor?: Pick<
+    UITutorState,
+    'contextMode' | 'thesisMode' | 'researchMode' | 'defaultModelId' | 'forceMode'
+  >;
+};
 
 export type PersistedStoreState = Pick<
   StoreState,

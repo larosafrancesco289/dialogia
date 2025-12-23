@@ -25,8 +25,8 @@ export function VoicePanel() {
             ))}
           </select>
           <div className="text-xs text-muted-foreground">
-            Select the voice for the xAI voice assistant. Click the microphone button in the composer
-            to start a voice conversation.
+            Select the voice for the xAI voice assistant. Click the microphone button in the
+            composer to start a voice conversation.
           </div>
         </div>
       </div>

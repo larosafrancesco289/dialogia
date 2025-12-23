@@ -55,8 +55,9 @@ export default function HomePage() {
       import('@/components/SettingsDrawer').catch(() => undefined);
     };
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      const idle = (window as Window & { requestIdleCallback?: (cb: IdleRequestCallback) => number })
-        .requestIdleCallback;
+      const idle = (
+        window as Window & { requestIdleCallback?: (cb: IdleRequestCallback) => number }
+      ).requestIdleCallback;
       if (idle) {
         idle(warm, { timeout: 1500 });
         return;

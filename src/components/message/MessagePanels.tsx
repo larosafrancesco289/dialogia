@@ -1,17 +1,18 @@
 'use client';
 import { findModelById, isReasoningSupported } from '@/lib/models';
-import type { Chat, Message, ORModel, ToolCallLogEntry } from '@/lib/types';
+import type { Chat, Message, MessageTutor, ORModel, ToolCallLogEntry } from '@/lib/types';
+import type { UISearchState } from '@/lib/store/types';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
 import { ReasoningPanel } from '@/components/message/ReasoningPanel';
 import { DebugPanel } from '@/components/message/DebugPanel';
-import { TutorPanel } from '@/components/message/TutorPanel';
+import { TutorPanel } from '@/components/message/tutor/TutorPanel';
 
 export type MessagePanelsProps = {
   message: Message;
   chat?: Chat | null;
   models: ORModel[];
   braveGloballyEnabled: boolean;
-  braveEntry?: any;
+  braveEntry?: NonNullable<UISearchState['braveByMessageId']>[string];
   isSourcesExpanded: boolean;
   onToggleSources: () => void;
   debugMode: boolean;
@@ -19,7 +20,7 @@ export type MessagePanelsProps = {
   isDebugExpanded: boolean;
   onToggleDebug: () => void;
   tutorGloballyEnabled: boolean;
-  tutorEntry?: any;
+  tutorEntry?: MessageTutor;
   autoReasoningModelIds: Record<string, boolean>;
   isStreaming: boolean;
   lastMessageId?: string;
@@ -147,8 +148,8 @@ function buildReasoningPanel({
   const modelAllowsReasoning = !!modelMeta && isReasoningSupported(modelMeta);
   const hasReasoning = reasoningText.trim().length > 0;
 
-  const messageEffort = (message as any).genSettings?.reasoning_effort;
-  const messageTokens = (message as any).genSettings?.reasoning_tokens;
+  const messageEffort = message.genSettings?.reasoning_effort;
+  const messageTokens = message.genSettings?.reasoning_tokens;
   const chatEffort = chat?.settings.reasoning_effort;
   const chatTokens = chat?.settings.reasoning_tokens;
   const effortRequested =

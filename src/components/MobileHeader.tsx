@@ -18,32 +18,24 @@ import { findModelById, formatModelLabel } from '@/lib/models';
 import { readNextOverrides } from '@/lib/ui/next';
 
 export function MobileHeader() {
-  const {
-    chats,
-    selectedChatId,
-    renameChat,
-    newChat,
-    setUI,
-    updateChatSettings,
-  } =
-    useChatStore(
-      (state) => ({
-        chats: state.chats,
-        selectedChatId: state.selectedChatId,
-        renameChat: state.renameChat,
-        newChat: state.newChat,
-        setUI: state.setUI,
-        updateChatSettings: state.updateChatSettings,
-      }),
-      shallow,
-    );
+  const { chats, selectedChatId, renameChat, newChat, setUI, updateChatSettings } = useChatStore(
+    (state) => ({
+      chats: state.chats,
+      selectedChatId: state.selectedChatId,
+      renameChat: state.renameChat,
+      newChat: state.newChat,
+      setUI: state.setUI,
+      updateChatSettings: state.updateChatSettings,
+    }),
+    shallow,
+  );
   const chat = chats.find((c) => c.id === selectedChatId);
   const uiState = useChatStore((s) => s.ui, shallow);
-  const experimentalTutor = !!uiState.experimentalTutor;
-  const forceTutorMode = !!uiState.forceTutorMode;
+  const experimentalTutor = !!uiState.flags.experimentalTutor;
+  const forceTutorMode = !!uiState.tutor.forceMode;
   const nextOverrides = readNextOverrides(uiState);
   const nextTutorMode = !!nextOverrides.tutorMode;
-  const tutorDefaultModelId = uiState.tutorDefaultModelId;
+  const tutorDefaultModelId = uiState.tutor.defaultModelId;
   const models = useChatStore((s) => s.models);
   const tutorActive =
     experimentalTutor &&
@@ -149,7 +141,7 @@ export function MobileHeader() {
               if (chat) {
                 await updateChatSettings({ tutor_mode: !chat.settings.tutor_mode });
               } else {
-                setUI({ next: { tutorMode: !nextTutorMode } });
+                setUI({ overrides: { tutorMode: !nextTutorMode } });
               }
             }}
             disabled={forceTutorMode}

@@ -1,32 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { composePlugins, pdfPlugins, providerSortFromRoutePref } from './request';
 import {
-  providerSortFromRoutePref,
-  composePlugins,
-  buildDebugBody,
-  pdfPlugins,
-  recordDebugIfEnabled,
-  DEBUG_LOG_TTL_MS,
   DEBUG_LOG_MAX_ENTRIES,
-} from './request';
+  DEBUG_LOG_TTL_MS,
+  buildDebugBody,
+  recordDebugIfEnabled,
+} from './debug';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { StoreAccess } from '@/lib/agent/types';
+import { createTestStoreState } from '../../../tests/helpers/createTestStoreState';
 
 const createTestStore = (initialUi: any): StoreAccess & { state: { ui: any } } => {
-  const store = {
-    state: { ui: initialUi },
-    get() {
-      return store.state;
-    },
-    set(update: any) {
-      if (!update) return;
-      const next = typeof update === 'function' ? update(store.state) : update;
-      if (next) {
-        store.state = { ...store.state, ...next };
-      }
-    },
-  };
-  return store as StoreAccess & { state: { ui: any } };
+  const { state, set, get } = createTestStoreState({ ui: initialUi as any });
+  return { state, set, get } as StoreAccess & { state: { ui: any } };
 };
 
 test('providerSortFromRoutePref maps UI preferences to provider sort', () => {
@@ -99,10 +86,12 @@ test('buildDebugBody includes optional knobs when provided', () => {
 test('recordDebugIfEnabled prunes stale debug entries', () => {
   const now = Date.now();
   const store = createTestStore({
-    debugMode: true,
-    debugByMessageId: {
-      stale: { body: 'old', createdAt: now - DEBUG_LOG_TTL_MS - 10 },
-      fresh: { body: 'fresh', createdAt: now - 5000 },
+    debug: {
+      mode: true,
+      byMessageId: {
+        stale: { body: 'old', createdAt: now - DEBUG_LOG_TTL_MS - 10 },
+        fresh: { body: 'fresh', createdAt: now - 5000 },
+      },
     },
   });
   const originalNow = Date.now;
@@ -112,13 +101,13 @@ test('recordDebugIfEnabled prunes stale debug entries', () => {
   } finally {
     Date.now = originalNow;
   }
-  const entries = store.state.ui.debugByMessageId;
+  const entries = store.state.ui.debug.byMessageId;
   assert.deepEqual(Object.keys(entries).sort(), ['fresh', 'new']);
   assert.equal(typeof entries.new.body, 'string');
 });
 
 test('recordDebugIfEnabled caps debug entries to the configured limit', () => {
-  const store = createTestStore({ debugMode: true, debugByMessageId: {} });
+  const store = createTestStore({ debug: { mode: true, byMessageId: {} } });
   const originalNow = Date.now;
   let current = Date.now();
   try {
@@ -130,7 +119,7 @@ test('recordDebugIfEnabled caps debug entries to the configured limit', () => {
   } finally {
     Date.now = originalNow;
   }
-  const entries = store.state.ui.debugByMessageId;
+  const entries = store.state.ui.debug.byMessageId;
   const keys = Object.keys(entries);
   assert.equal(keys.length, DEBUG_LOG_MAX_ENTRIES);
   assert.equal(keys.includes(`id-${DEBUG_LOG_MAX_ENTRIES + 4}`), true);

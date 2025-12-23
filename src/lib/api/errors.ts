@@ -40,5 +40,10 @@ export function isApiError(error: unknown): error is ApiError {
 
 export function responseError(res: Response, init: ApiErrorInit): ApiError {
   const baseMessage = init.message ?? `${init.code}${res.status ? ` (${res.status})` : ''}`;
-  return new ApiError({ code: init.code, status: res.status, message: baseMessage, detail: init.detail });
+  return new ApiError({
+    code: init.code,
+    status: res.status,
+    message: baseMessage,
+    detail: init.detail,
+  });
 }

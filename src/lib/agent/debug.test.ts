@@ -3,28 +3,26 @@ import assert from 'node:assert/strict';
 import { buildRequestDebugBody, captureRequestDebug } from '@/lib/agent/debug';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { TurnContext } from '@/lib/agent/types';
+import { createTestStoreState } from '../../../tests/helpers/createTestStoreState';
+import { buildDefaultUIState } from '@/lib/ui/defaults';
 
 const createStubTurn = () => {
-  const state = {
+  const baseUi = buildDefaultUIState();
+  const { state, set, get } = createTestStoreState({
     ui: {
-      debugMode: true,
-      debugByMessageId: {} as Record<string, { body: string; createdAt: number }>,
+      ...baseUi,
+      debug: {
+        ...baseUi.debug,
+        mode: true,
+        byMessageId: {} as Record<string, { body: string; createdAt: number }>,
+      },
     },
-  };
+  });
   const turn: TurnContext = {
     apiKey: 'key',
     transport: 'openrouter',
-    set(updater: any) {
-      const patch = typeof updater === 'function' ? updater(state) : updater;
-      if (patch?.ui) {
-        state.ui = patch.ui;
-      } else if (patch) {
-        Object.assign(state, patch);
-      }
-    },
-    get() {
-      return state as any;
-    },
+    set,
+    get,
     models: [],
     modelIndex: {} as any,
     persistMessage: async () => {},
@@ -72,8 +70,9 @@ test('captureRequestDebug records payloads when debug mode is enabled', () => {
     messages: [],
     stream: false,
   });
-  const entry = state.ui.debugByMessageId['m1'];
+  const entry = state.ui.debug.byMessageId?.['m1'];
   assert.ok(entry);
   assert.ok(typeof entry.body === 'string');
-  assert.ok(entry.body.includes('"model":"provider/model"'));
+  const parsed = JSON.parse(entry.body);
+  assert.equal(parsed.model, 'provider/model');
 });

@@ -22,15 +22,7 @@ import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/lear
 import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
 import { readNextOverrides } from '@/lib/ui/next';
 export function TopHeader() {
-  const {
-    chats,
-    selectedChatId,
-    renameChat,
-    setUI,
-    newChat,
-    updateChatSettings,
-    sendUserMessage,
-  } =
+  const { chats, selectedChatId, renameChat, setUI, newChat, updateChatSettings, sendUserMessage } =
     useChatStore(
       (s) => ({
         chats: s.chats,
@@ -49,17 +41,17 @@ export function TopHeader() {
     (s) => ({
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
-      planSheetOpen: s.ui.planSheetOpen ?? false,
+      planSheetOpen: s.ui.plan.sheetOpen ?? false,
     }),
     shallow,
   );
   const uiState = useChatStore((s) => s.ui, shallow);
   const models = useChatStore((s) => s.models);
-  const experimentalTutor = !!uiState.experimentalTutor;
-  const forceTutorMode = !!uiState.forceTutorMode;
+  const experimentalTutor = !!uiState.flags.experimentalTutor;
+  const forceTutorMode = !!uiState.tutor.forceMode;
   const nextOverrides = readNextOverrides(uiState);
   const nextTutorMode = !!nextOverrides.tutorMode;
-  const tutorDefaultModelId = uiState.tutorDefaultModelId;
+  const tutorDefaultModelId = uiState.tutor.defaultModelId;
   const tutorActive =
     experimentalTutor &&
     (forceTutorMode || (chat ? Boolean(chat.settings?.tutor_mode) : nextTutorMode));
@@ -84,10 +76,10 @@ export function TopHeader() {
     [learningPlan],
   );
   const planGeneration = useChatStore(
-    (s) => (s.selectedChatId ? s.ui.planGenerationByChatId?.[s.selectedChatId] : undefined),
+    (s) => (s.selectedChatId ? s.ui.plan.generationByChatId?.[s.selectedChatId] : undefined),
     shallow,
   );
-  const planSheetOverride = useChatStore((s) => s.ui.planSheetPlanOverride ?? null);
+  const planSheetOverride = useChatStore((s) => s.ui.plan.sheetPlanOverride ?? null);
 
   const hasPlanRef = useRef<boolean>(!!learningPlan);
 
@@ -97,7 +89,7 @@ export function TopHeader() {
       return;
     }
     if (!hasPlanRef.current && !planSheetOpen) {
-      setUI({ planSheetOpen: true, planSheetPlanOverride: null });
+      setUI({ plan: { sheetOpen: true, sheetPlanOverride: null } });
     }
     hasPlanRef.current = true;
   }, [learningPlan, planSheetOpen, setUI]);
@@ -136,7 +128,7 @@ export function TopHeader() {
     }
 
     // 3. Close sheet
-    setUI({ planSheetOpen: false, planSheetPlanOverride: null });
+    setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
   };
 
   // Derive learner model from messages
@@ -188,7 +180,7 @@ export function TopHeader() {
               if (chat) {
                 await updateChatSettings({ tutor_mode: !chat.settings.tutor_mode });
               } else {
-                setUI({ next: { tutorMode: !nextTutorMode } });
+                setUI({ overrides: { tutorMode: !nextTutorMode } });
               }
             }}
             disabled={forceTutorMode}
@@ -239,16 +231,21 @@ export function TopHeader() {
                 className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs"
                 style={{
                   background: 'color-mix(in oklab, var(--color-accent-2) 15%, transparent)',
-                  border: '1px solid color-mix(in oklab, var(--color-accent-2) 35%, var(--color-border))',
+                  border:
+                    '1px solid color-mix(in oklab, var(--color-accent-2) 35%, var(--color-border))',
                 }}
               >
                 <SparklesIcon
                   className="h-3.5 w-3.5"
-                  style={{ color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)' }}
+                  style={{
+                    color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
+                  }}
                 />
                 <span
                   className="font-medium"
-                  style={{ color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)' }}
+                  style={{
+                    color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
+                  }}
                 >
                   {currentNode.name}
                 </span>
@@ -265,7 +262,7 @@ export function TopHeader() {
             {/* View Plan button */}
             <button
               className="btn btn-ghost shrink-0"
-              onClick={() => setUI({ planSheetOpen: true, planSheetPlanOverride: null })}
+              onClick={() => setUI({ plan: { sheetOpen: true, sheetPlanOverride: null } })}
               title="View Learning Plan"
               aria-label="View Learning Plan"
             >
@@ -315,7 +312,7 @@ export function TopHeader() {
       <PlanSheet
         plan={planSheetOverride ?? learningPlan ?? null}
         isOpen={planSheetOpen}
-        onClose={() => setUI({ planSheetOpen: false, planSheetPlanOverride: null })}
+        onClose={() => setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } })}
         onUpdate={handlePlanUpdate}
         onStartLesson={handleStartLesson}
         learnerModel={learnerModel}

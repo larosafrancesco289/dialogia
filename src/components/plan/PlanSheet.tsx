@@ -151,7 +151,8 @@ export function PlanSheet({
               className="hidden rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider sm:inline-flex"
               style={{
                 color: 'color-mix(in oklab, var(--color-accent) 80%, var(--color-fg) 20%)',
-                border: '1px solid color-mix(in oklab, var(--color-accent) 45%, var(--color-border))',
+                border:
+                  '1px solid color-mix(in oklab, var(--color-accent) 45%, var(--color-border))',
                 background: 'color-mix(in oklab, var(--color-accent) 15%, var(--color-surface))',
               }}
             >

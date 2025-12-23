@@ -1,5 +1,10 @@
 'use client';
-import { CheckCircleIcon, ArrowTrendingUpIcon, ChevronDownIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import {
+  CheckCircleIcon,
+  ArrowTrendingUpIcon,
+  ChevronDownIcon,
+  SparklesIcon,
+} from '@heroicons/react/24/outline';
 import type { Message, TopicMastery } from '@/lib/types';
 import { useState } from 'react';
 import { useChatStore } from '@/lib/store';
@@ -35,9 +40,9 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
         {hasSummary && (
           <div className="border-b border-border/60 px-3 py-2 text-sm font-medium text-foreground flex items-center justify-between">
             <span>{planUpdates?.summary}</span>
-            <button 
+            <button
               className="text-xs text-accent hover:underline flex items-center gap-1"
-              onClick={() => setUI({ planSheetOpen: true })}
+              onClick={() => setUI({ plan: { sheetOpen: true } })}
             >
               <SparklesIcon className="w-3 h-3" />
               Hub
@@ -62,13 +67,15 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
                     <ArrowTrendingUpIcon
                       className="h-4 w-4 shrink-0"
                       style={{
-                        color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
+                        color:
+                          'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
                       }}
                     />
                     <span
                       className="font-medium"
                       style={{
-                        color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
+                        color:
+                          'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
                       }}
                     >
                       Started: {change.nodeId}
@@ -88,7 +95,8 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
               hasStatusChanges
                 ? {
                     borderTop: '1px solid',
-                    borderColor: 'color-mix(in oklab, var(--color-accent-2) 30%, var(--color-border))',
+                    borderColor:
+                      'color-mix(in oklab, var(--color-accent-2) 30%, var(--color-border))',
                   }
                 : {}
             }
@@ -105,8 +113,8 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
                     className={`h-4 w-4 shrink-0 ${increase ? 'text-green-500' : 'text-orange-500'}`}
                   />
                   <span className="text-muted-foreground">
-                    <span className="font-medium text-foreground">{change.nodeId}</span>
-                    {' '}mastery: {percentFrom}% → {percentTo}%
+                    <span className="font-medium text-foreground">{change.nodeId}</span> mastery:{' '}
+                    {percentFrom}% → {percentTo}%
                     {increase && (
                       <span className="text-green-600 dark:text-green-400 ml-1">
                         (+{Math.round(delta * 100)}%)
@@ -126,7 +134,8 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
               hasAnyUpdates
                 ? {
                     borderTop: '1px solid',
-                    borderColor: 'color-mix(in oklab, var(--color-accent-2) 30%, var(--color-border))',
+                    borderColor:
+                      'color-mix(in oklab, var(--color-accent-2) 30%, var(--color-border))',
                   }
                 : {}
             }
@@ -153,19 +162,19 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
                   const confidence = Math.round((mastery.confidence ?? 0) * 100);
                   const label = mastery.nodeId || topicId;
                   const interactions = mastery.interactions ?? 0;
-              const confidenceColor =
-                confidence >= 70
-                  ? 'color-mix(in oklab, var(--color-accent) 80%, var(--color-fg) 20%)'
-                  : confidence >= 40
-                    ? 'color-mix(in oklab, var(--color-accent-2) 70%, var(--color-fg) 30%)'
-                    : 'color-mix(in oklab, var(--color-danger) 75%, var(--color-fg) 25%)';
+                  const confidenceColor =
+                    confidence >= 70
+                      ? 'color-mix(in oklab, var(--color-accent) 80%, var(--color-fg) 20%)'
+                      : confidence >= 40
+                        ? 'color-mix(in oklab, var(--color-accent-2) 70%, var(--color-fg) 30%)'
+                        : 'color-mix(in oklab, var(--color-danger) 75%, var(--color-fg) 25%)';
 
-              const barColor =
-                confidence >= 70
-                  ? 'color-mix(in oklab, var(--color-accent) 75%, transparent)'
-                  : confidence >= 40
-                    ? 'color-mix(in oklab, var(--color-accent-2) 70%, transparent)'
-                    : 'color-mix(in oklab, var(--color-danger) 70%, transparent)';
+                  const barColor =
+                    confidence >= 70
+                      ? 'color-mix(in oklab, var(--color-accent) 75%, transparent)'
+                      : confidence >= 40
+                        ? 'color-mix(in oklab, var(--color-accent-2) 70%, transparent)'
+                        : 'color-mix(in oklab, var(--color-danger) 70%, transparent)';
 
                   return (
                     <div key={topicId} className="space-y-1">

@@ -33,9 +33,9 @@ export const defaultTutorScenarios: TutorScenario[] = [
   {
     id: 'probability_practice',
     title: 'Conditional Probability',
-    topic: 'Conditional probability and Bayes\' rule',
+    topic: "Conditional probability and Bayes' rule",
     level: 'intermediate',
-    goal: 'Refresh conditional probability intuition and apply Bayes\' rule to a medical test scenario.',
+    goal: "Refresh conditional probability intuition and apply Bayes' rule to a medical test scenario.",
     constraints: ['Student rushes and occasionally overestimates confidence'],
     maxTurns: 6,
     teacherModelId: 'x-ai/grok-4.1-fast',

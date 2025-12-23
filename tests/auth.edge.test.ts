@@ -1,12 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { webcrypto } from 'node:crypto';
+import { installWebCryptoPolyfill } from './helpers/installWebCryptoPolyfill';
 import { verifyAuthTokenEdge } from '@/lib/auth/edge';
 import { base64UrlEncode } from '@/lib/auth/shared';
 
-if (!(globalThis as any).crypto) {
-  (globalThis as any).crypto = webcrypto;
-}
+installWebCryptoPolyfill();
 
 const encoder = new TextEncoder();
 

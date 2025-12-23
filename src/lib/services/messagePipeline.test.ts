@@ -9,6 +9,7 @@ import { getTutorToolDefinitions } from '@/lib/agent/tutor';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
 import type { StoreSetter, TurnContext } from '@/lib/agent/types';
 import { ProviderSort } from '@/lib/models/providerSort';
+import { mockFetch } from '../../../tests/helpers/mockFetch';
 
 const baseModels: ORModel[] = [
   {
@@ -88,15 +89,22 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     modelIndex: createModelIndex(baseModels),
     ui: {
       notice: undefined,
-      debugMode: false,
-      debugByMessageId: {},
-      tutorByMessageId: {},
-      braveByMessageId: {},
-      experimentalTutor: true,
-      experimentalBrave: true,
-      forceTutorMode: false,
-      autoReasoningModelIds: {},
       routePreference: 'speed',
+      flags: {
+        experimentalTutor: true,
+        experimentalBrave: true,
+      },
+      debug: {
+        mode: false,
+        byMessageId: {},
+        autoReasoningModelIds: {},
+        learnerModelDebugByMessageId: {},
+      },
+      search: { braveByMessageId: {} },
+      tutor: { byMessageId: {}, forceMode: false },
+    },
+    setSearchStatus: (messageId: string, entry: any) => {
+      state.ui.search.braveByMessageId[messageId] = entry;
     },
   };
 
@@ -116,20 +124,21 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   };
   const get = () => state;
 
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = (async () => ({
-    ok: true,
-    status: 200,
-    json: async () => ({
-      results: [
-        {
-          title: 'Result',
-          url: 'https://example.com',
-          description: 'Example',
-        },
-      ],
-    }),
-  })) as any;
+  const restoreFetch = mockFetch(
+    (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        results: [
+          {
+            title: 'Result',
+            url: 'https://example.com',
+            description: 'Example',
+          },
+        ],
+      }),
+    })) as any,
+  );
 
   __setOpenRouterMocksForTests({
     chatCompletion: async () => ({
@@ -244,7 +253,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     turn: turnContext,
   });
 
-  const braveEntry = state.ui.braveByMessageId[assistantMessage.id];
+  const braveEntry = state.ui.search.braveByMessageId[assistantMessage.id];
   assert.ok(braveEntry);
   assert.equal(braveEntry.status, 'done');
   assert.equal(braveEntry.query, 'brave query');
@@ -272,7 +281,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   assert.equal(tutorEntries[0]?.metadata?.usedContent, true);
 
   __setOpenRouterMocksForTests();
-  globalThis.fetch = originalFetch;
+  restoreFetch();
 });
 
 test('regenerate reuses snapshots and records debug payload', async () => {
@@ -334,15 +343,19 @@ test('regenerate reuses snapshots and records debug payload', async () => {
     modelIndex: createModelIndex(baseModels),
     ui: {
       notice: undefined,
-      debugMode: true,
-      debugByMessageId: {},
-      tutorByMessageId: {},
-      braveByMessageId: {},
-      experimentalTutor: false,
-      experimentalBrave: false,
-      forceTutorMode: false,
-      autoReasoningModelIds: {},
       routePreference: 'speed',
+      flags: {
+        experimentalTutor: false,
+        experimentalBrave: false,
+      },
+      debug: {
+        mode: true,
+        byMessageId: {},
+        autoReasoningModelIds: {},
+        learnerModelDebugByMessageId: {},
+      },
+      search: { braveByMessageId: {} },
+      tutor: { byMessageId: {}, forceMode: false },
       isStreaming: false,
     },
   };
@@ -398,7 +411,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
   assert.equal(updatedMessage.content, 'Hello');
   assert.equal(updatedMessage.genSettings.providerSort, ProviderSort.Price);
   assert.equal(updatedMessage.genSettings.search_enabled, true);
-  const debugEntry = state.ui.debugByMessageId[assistantMessage.id];
+  const debugEntry = state.ui.debug.byMessageId[assistantMessage.id];
   assert.ok(debugEntry);
   const parsed = JSON.parse(debugEntry.body);
   assert.equal(parsed.model, 'provider/model');

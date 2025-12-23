@@ -11,8 +11,13 @@ export function useLongPressSheet(opts: {
   ignoreSelector?: string;
   onTrigger: () => void;
 }) {
-  const { isEnabled, onTrigger, delayMs = 320, slopPx = 12, ignoreSelector = DEFAULT_IGNORE_SELECTOR } =
-    opts;
+  const {
+    isEnabled,
+    onTrigger,
+    delayMs = 320,
+    slopPx = 12,
+    ignoreSelector = DEFAULT_IGNORE_SELECTOR,
+  } = opts;
   const timerRef = useRef<number | undefined>();
   const startRef = useRef<{ x: number; y: number } | null>(null);
 

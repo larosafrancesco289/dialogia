@@ -67,9 +67,9 @@ test('headless tutor session streams a response and captures artifacts', async (
     modelIndex: createModelIndex([model]),
     resolveApiKey: () => 'test-key',
     uiOverrides: {
-      debugMode: true,
-      experimentalTutor: true,
-      forceTutorMode: true,
+      debug: { mode: true },
+      flags: { experimentalTutor: true },
+      tutor: { forceMode: true },
     },
   });
 

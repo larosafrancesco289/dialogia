@@ -9,7 +9,7 @@ const baseSettings = {
 };
 
 const baseUi = {
-  experimentalBrave: true,
+  flags: { experimentalBrave: true },
   routePreference: 'speed' as const,
 } as any;
 
@@ -21,8 +21,17 @@ test('providerSortFromRoutePref maps UI preference', () => {
 
 test('selectSearchProvider respects UI brave toggle', () => {
   assert.equal(selectSearchProvider(baseSettings as any, baseUi), 'brave');
-  assert.equal(selectSearchProvider(baseSettings as any, { ...baseUi, experimentalBrave: false } as any), 'openrouter');
-  assert.equal(selectSearchProvider({ ...baseSettings, search_provider: 'openrouter' } as any, baseUi), 'openrouter');
+  assert.equal(
+    selectSearchProvider(
+      baseSettings as any,
+      { ...baseUi, flags: { experimentalBrave: false } } as any,
+    ),
+    'openrouter',
+  );
+  assert.equal(
+    selectSearchProvider({ ...baseSettings, search_provider: 'openrouter' } as any, baseUi),
+    'openrouter',
+  );
 });
 
 test('buildProviderPolicy surfaces unified routing decisions', () => {

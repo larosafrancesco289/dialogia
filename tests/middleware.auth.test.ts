@@ -3,11 +3,9 @@ import assert from 'node:assert/strict';
 import { NextRequest } from 'next/server';
 import middleware from '../middleware';
 import { AUTH_COOKIE_NAME } from '@/lib/auth/shared';
-import { webcrypto } from 'node:crypto';
+import { installWebCryptoPolyfill } from './helpers/installWebCryptoPolyfill';
 
-if (!(globalThis as any).crypto) {
-  (globalThis as any).crypto = webcrypto;
-}
+installWebCryptoPolyfill();
 
 const ORIGINAL_ENV = process.env.NODE_ENV;
 const ORIGINAL_SECRET = process.env.AUTH_COOKIE_SECRET;
@@ -32,7 +30,11 @@ const signToken = async (payload: Record<string, unknown>, secret: string) => {
   );
   const signature = await crypto.subtle.sign('HMAC', key, payloadBytes);
   const encode = (bytes: Uint8Array) =>
-    Buffer.from(bytes).toString('base64').replace(/=+$/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    Buffer.from(bytes)
+      .toString('base64')
+      .replace(/=+$/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
   return `${encode(payloadBytes)}.${encode(new Uint8Array(signature))}`;
 };
 

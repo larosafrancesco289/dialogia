@@ -10,15 +10,7 @@ import { streamFinal } from '@/lib/agent/streaming';
 import { setTurnController } from '@/lib/services/controllers';
 
 export async function regenerate(opts: RegenerateOptions): Promise<void> {
-  const {
-    chat,
-    chatId,
-    targetMessageId,
-    messages,
-    turn,
-    controller,
-    overrideModelId,
-  } = opts;
+  const { chat, chatId, targetMessageId, messages, turn, controller, overrideModelId } = opts;
   const { models, modelIndex, set } = turn;
 
   const index = messages.findIndex((msg) => msg.id === targetMessageId);
@@ -83,10 +75,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     return fromSnapshot ?? fromChat ?? fallback;
   };
 
-  const pickProvider = (
-    snapshotVal: unknown,
-    chatVal: unknown,
-  ): SearchProvider | undefined => {
+  const pickProvider = (snapshotVal: unknown, chatVal: unknown): SearchProvider | undefined => {
     const fromSnapshot = typeof snapshotVal === 'string' ? (snapshotVal as any) : undefined;
     const fromChat = typeof chatVal === 'string' ? (chatVal as any) : undefined;
     if (modelChanged) return fromChat ?? fromSnapshot;

@@ -5,8 +5,54 @@ import type { StoreState } from '@/lib/store/types';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { computeMetrics } from '@/lib/services/metrics';
 
-export function buildTutorFallbackContent(state: StoreState, assistantId: string): string | undefined {
-  const tutorEntry = state.ui.tutorByMessageId?.[assistantId];
+type MessageUpdater = (message: Message) => Message;
+
+const buildMessageUpdate = (
+  state: StoreState,
+  chatId: string,
+  messageId: string,
+  updater: MessageUpdater,
+): { messages?: Record<string, Message[]>; updated?: Message } => {
+  const list = state.messages[chatId];
+  if (!Array.isArray(list) || list.length === 0) return {};
+  let updated: Message | undefined;
+  let changed = false;
+  const nextList = list.map((message) => {
+    if (message.id !== messageId) return message;
+    updated = updater(message);
+    changed = true;
+    return updated;
+  });
+  if (!changed) return { updated };
+  return {
+    messages: {
+      ...state.messages,
+      [chatId]: nextList,
+    },
+    updated,
+  };
+};
+
+const applyMessageUpdate = (
+  set: StoreSetter,
+  chatId: string,
+  messageId: string,
+  updater: MessageUpdater,
+): Message | undefined => {
+  let updated: Message | undefined;
+  set((state) => {
+    const result = buildMessageUpdate(state, chatId, messageId, updater);
+    updated = result.updated;
+    return result.messages ? ({ messages: result.messages } as Partial<StoreState>) : {};
+  });
+  return updated;
+};
+
+export function buildTutorFallbackContent(
+  state: StoreState,
+  assistantId: string,
+): string | undefined {
+  const tutorEntry = state.ui.tutor.byMessageId?.[assistantId];
   if (!tutorEntry) return undefined;
 
   const snippets: string[] = [];
@@ -37,13 +83,12 @@ export function buildTutorFallbackContent(state: StoreState, assistantId: string
   const quizCount = Array.isArray(tutorEntry.mcq) ? tutorEntry.mcq.length : 0;
   if (quizCount > 0) {
     const title = tutorEntry.title || 'a quick check';
-    snippets.push(
-      `I added ${title} (${quizCount} MCQ). Try it now for a fast readiness check.`,
-    );
+    snippets.push(`I added ${title} (${quizCount} MCQ). Try it now for a fast readiness check.`);
   }
 
   if (snippets.length === 0) return undefined;
-  const nextStep = 'If you prefer, ask for a brief summary or a quick checklist and I will share it.';
+  const nextStep =
+    'If you prefer, ask for a brief summary or a quick checklist and I will share it.';
   return `${snippets.join(' ')} ${nextStep}`.trim();
 }
 
@@ -91,31 +136,31 @@ export function createMessageStreamCallbacks(
 
   const flushDelta = (delta: string) => {
     if (!delta) return;
-    set((state) => {
-      const list = state.messages[chatId] ?? [];
-      const updated = list.map((msg) =>
-        msg.id === assistantMessage.id ? { ...msg, content: msg.content + delta } : msg,
-      );
-      return { messages: { ...state.messages, [chatId]: updated } } as Partial<StoreState>;
-    });
+    applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({
+      ...msg,
+      content: msg.content + delta,
+    }));
   };
 
   const updateReasoning = (delta: string) => {
     if (!delta) return;
     set((state) => {
-      const list = state.messages[chatId] ?? [];
-      const updated = list.map((msg) =>
-        msg.id === assistantMessage.id ? { ...msg, reasoning: (msg.reasoning || '') + delta } : msg,
-      );
-      const partial: Partial<StoreState> = {
-        messages: { ...state.messages, [chatId]: updated },
-      } as any;
+      const result = buildMessageUpdate(state, chatId, assistantMessage.id, (msg) => ({
+        ...msg,
+        reasoning: (msg.reasoning || '') + delta,
+      }));
+      const partial: Partial<StoreState> = result.messages
+        ? { messages: result.messages }
+        : {};
       if (autoReasoningEligible && modelIdUsed) {
-        const prev = state.ui.autoReasoningModelIds || {};
+        const prev = state.ui.debug.autoReasoningModelIds || {};
         if (!prev[modelIdUsed]) {
           partial.ui = {
             ...state.ui,
-            autoReasoningModelIds: { ...prev, [modelIdUsed]: true },
+            debug: {
+              ...state.ui.debug,
+              autoReasoningModelIds: { ...prev, [modelIdUsed]: true },
+            },
           } as any;
         }
       }
@@ -125,42 +170,31 @@ export function createMessageStreamCallbacks(
 
   const callbacks = {
     onAnnotations: (annotations: any) => {
-      set((state) => {
-        const list = state.messages[chatId] ?? [];
-        const updated = list.map((msg) =>
-          msg.id === assistantMessage.id ? ({ ...msg, annotations } as Message) : msg,
-        );
-        return { messages: { ...state.messages, [chatId]: updated } } as Partial<StoreState>;
-      });
+      applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({
+        ...msg,
+        annotations,
+      }));
     },
     onImage: (dataUrl: string) => {
-      set((state) => {
-        const list = state.messages[chatId] ?? [];
-        const updated = list.map((msg) => {
-          if (msg.id !== assistantMessage.id) return msg;
-          const prev = Array.isArray(msg.attachments) ? msg.attachments : [];
-          if (
-            prev.some((attachment) => attachment.kind === 'image' && attachment.dataURL === dataUrl)
-          ) {
-            return msg;
-          }
-          const mime = (() => {
-            const slice = dataUrl.slice(5, dataUrl.indexOf(';'));
-            return slice || 'image/png';
-          })();
-          const next = [
-            ...prev,
-            {
-              id: uuidv4(),
-              kind: 'image' as const,
-              name: 'generated',
-              mime,
-              dataURL: dataUrl,
-            },
-          ];
-          return { ...msg, attachments: next } as Message;
-        });
-        return { messages: { ...state.messages, [chatId]: updated } } as Partial<StoreState>;
+      applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => {
+        const prev = Array.isArray(msg.attachments) ? msg.attachments : [];
+        if (prev.some((attachment) => attachment.kind === 'image' && attachment.dataURL === dataUrl))
+          return msg;
+        const mime = (() => {
+          const slice = dataUrl.slice(5, dataUrl.indexOf(';'));
+          return slice || 'image/png';
+        })();
+        const next = [
+          ...prev,
+          {
+            id: uuidv4(),
+            kind: 'image' as const,
+            name: 'generated',
+            mime,
+            dataURL: dataUrl,
+          },
+        ];
+        return { ...msg, attachments: next } as Message;
       });
     },
     onToken: (delta: string) => {
@@ -207,8 +241,8 @@ export function createMessageStreamCallbacks(
       const content =
         rawContent && rawContent.trim()
           ? rawContent
-          : buildTutorFallbackContent(state as StoreState, assistantMessage.id) ??
-            'I added new tutor content above. Let me know when you are ready.';
+          : (buildTutorFallbackContent(state as StoreState, assistantMessage.id) ??
+            'I added new tutor content above. Let me know when you are ready.');
       const finalMessage: Message = {
         ...assistantMessage,
         content,
@@ -224,11 +258,7 @@ export function createMessageStreamCallbacks(
         tokensOut: metrics.completionTokens,
         annotations: current?.annotations ?? extras?.annotations,
       } as any;
-      set((state) => {
-        const list = state.messages[chatId] ?? [];
-        const updated = list.map((msg) => (msg.id === assistantMessage.id ? finalMessage : msg));
-        return { messages: { ...state.messages, [chatId]: updated } } as Partial<StoreState>;
-      });
+      applyMessageUpdate(set, chatId, assistantMessage.id, () => finalMessage);
       await persistMessage(finalMessage);
       clearController?.();
     },

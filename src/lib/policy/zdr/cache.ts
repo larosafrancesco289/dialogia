@@ -68,7 +68,7 @@ export async function computeZdrFilterCached<T extends { id?: string }>(
       }
     : undefined;
   const result = await computeZdrFilter(models, mode, existing, fetchers);
-  const fetchedAt = fresh ? snapshot.fetchedAt ?? now : now;
+  const fetchedAt = fresh ? (snapshot.fetchedAt ?? now) : now;
   hydrateZdrCache(set, result.lists, fetchedAt);
   return result;
 }
@@ -79,12 +79,6 @@ export async function guardZdrOrNotifyCached(
   get: StoreGetter,
   fetchers?: ZdrFetchers,
 ): Promise<boolean> {
-  const result = await computeZdrFilterCached(
-    [{ id: modelId }],
-    'enforce',
-    set,
-    get,
-    fetchers,
-  );
+  const result = await computeZdrFilterCached([{ id: modelId }], 'enforce', set, get, fetchers);
   return guardModelOrNotice(modelId, set, result.lists);
 }

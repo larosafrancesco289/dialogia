@@ -3,7 +3,7 @@ import { estimateTokens } from '@/lib/tokenEstimate';
 export class TokenBudgeter {
   constructor(
     private readonly maxTokens: number,
-    private readonly reservedForCompletion: number = 1024
+    private readonly reservedForCompletion: number = 1024,
   ) {}
 
   public budget(messages: { role: 'user' | 'assistant'; content: string }[]): number[] {

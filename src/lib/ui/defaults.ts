@@ -3,7 +3,7 @@ import { getDefaultZdrOnly, getRoutePreferenceDefault } from '@/lib/config';
 import type { UIState } from '@/lib/store/types';
 
 const EPHEMERAL_DEFAULTS: Partial<UIState> = {
-  next: undefined,
+  overrides: undefined,
 };
 
 export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
@@ -12,31 +12,41 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
     isStreaming: false,
     notice: undefined,
     sidebarCollapsed: false,
-    debugMode: false,
-    debugByMessageId: {},
-    autoReasoningModelIds: {},
-    tutorDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-    tutorThesisMode: true,
-    tutorResearchMode: 'plan_plus_model',
-    learnerModelDebugByMessageId: {},
-    forceTutorMode: false,
     ...EPHEMERAL_DEFAULTS,
-    tutorContextMode: 'full',
     zdrOnly: getDefaultZdrOnly(),
     routePreference: getRoutePreferenceDefault(),
-    experimentalBrave: false,
-    experimentalTutor: true,
-    enableMultiModelChat: false,
-    braveByMessageId: {},
-    tutorByMessageId: {},
-    tutorToolUsageByChatId: {},
-    tutorProfileByChatId: {},
-    tutorWelcomeByChatId: {},
-    tutorWelcomePreview: undefined,
-    tutorGreetedByChatId: {},
-    planSheetOpen: false,
-    planSheetPlanOverride: null,
-    planGenerationByChatId: {},
+    flags: {
+      experimentalBrave: false,
+      experimentalTutor: true,
+      enableMultiModelChat: false,
+    },
+    debug: {
+      mode: false,
+      byMessageId: {},
+      autoReasoningModelIds: {},
+      learnerModelDebugByMessageId: {},
+    },
+    search: {
+      braveByMessageId: {},
+    },
+    tutor: {
+      byMessageId: {},
+      profileByChatId: {},
+      welcomeByChatId: {},
+      welcomePreview: undefined,
+      greetedByChatId: {},
+      toolUsageByChatId: {},
+      contextMode: 'full',
+      defaultModelId: DEFAULT_TUTOR_MODEL_ID,
+      forceMode: false,
+      thesisMode: true,
+      researchMode: 'plan_plus_model',
+    },
+    plan: {
+      sheetOpen: false,
+      sheetPlanOverride: null,
+      generationByChatId: {},
+    },
   };
 
   return overrides ? { ...base, ...overrides } : base;

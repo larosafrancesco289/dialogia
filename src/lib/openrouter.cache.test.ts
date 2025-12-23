@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clearOpenRouterCachesForTest, fetchModels, fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
+import {
+  clearOpenRouterCachesForTest,
+  fetchModels,
+  fetchZdrModelIds,
+  fetchZdrProviderIds,
+} from '@/lib/openrouter';
 
 const okResponse = (payload: unknown) =>
   ({
@@ -14,7 +19,9 @@ test('fetchModels caches repeated lookups for the same API key', async () => {
   let calls = 0;
   const fakeFetcher = async () => {
     calls += 1;
-    return okResponse({ data: [{ id: 'test/model', name: 'Model', context_length: 1, pricing: {} }] });
+    return okResponse({
+      data: [{ id: 'test/model', name: 'Model', context_length: 1, pricing: {} }],
+    });
   };
 
   const first = await fetchModels('key-123', { fetchFn: fakeFetcher });

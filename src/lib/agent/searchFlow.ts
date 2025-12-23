@@ -4,31 +4,10 @@
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 import type { SearchProvider, SearchResult, ToolDefinition, StoreSetter } from '@/lib/agent/types';
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
+import { getWebSearchToolDefinition } from '@/lib/tools/webSearch';
 
 export function getSearchToolDefinition(): ToolDefinition[] {
-  return [
-    {
-      type: 'function',
-      function: {
-        name: 'web_search',
-        description:
-          'Query the public web via Brave to gather up-to-date, verifiable references with titles, URLs, and summary snippets. Use this when you need fresh facts, statistics, or citations that are not already in context, and skip it for subjective brainstorming or information older than a year that you can confidently recall. Craft a precise query and optionally request a small number of results (1-10) so the tool can return high-quality matches that you must cite inline as [n] in the final response.',
-        parameters: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'The search query to run.' },
-            count: {
-              type: 'integer',
-              description: 'How many results to retrieve (1-10).',
-              minimum: 1,
-              maximum: 10,
-            },
-          },
-          required: ['query'],
-        },
-      },
-    },
-  ];
+  return getWebSearchToolDefinition();
 }
 
 export async function runBraveSearch(
@@ -73,9 +52,12 @@ export function updateBraveUi(
   set((state) => ({
     ui: {
       ...state.ui,
-      braveByMessageId: {
-        ...(state.ui.braveByMessageId || {}),
-        [messageId]: entry,
+      search: {
+        ...state.ui.search,
+        braveByMessageId: {
+          ...(state.ui.search.braveByMessageId || {}),
+          [messageId]: entry,
+        },
       },
     },
   }));

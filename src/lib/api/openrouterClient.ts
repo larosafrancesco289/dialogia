@@ -2,6 +2,7 @@ import { apiDefaults } from '@/lib/api/config';
 import { sendApiRequest } from '@/lib/api/http';
 import { isOpenRouterProxyEnabled } from '@/lib/config';
 import type { ModelContentBlock, ToolCall } from '@/lib/agent/types';
+import type { OpenRouterChatRequest } from '@/lib/types/transport';
 
 export type Usage = {
   prompt_tokens?: number;
@@ -51,7 +52,7 @@ export type SseDelta = {
 type OrFetchOptions = {
   method?: string;
   apiKey?: string;
-  body?: any;
+  body?: unknown;
   signal?: AbortSignal;
   timeoutMs?: number;
   stream?: boolean;
@@ -76,8 +77,7 @@ async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Resp
     includeDefaults = true;
   }
 
-  const timeoutMs =
-    options.timeoutMs ?? (options.stream ? undefined : apiDefaults.timeouts.chat);
+  const timeoutMs = options.timeoutMs ?? (options.stream ? undefined : apiDefaults.timeouts.chat);
 
   const url = `${useProxy ? apiDefaults.proxyPath : apiDefaults.baseUrl}${path}`;
 
@@ -120,7 +120,7 @@ export async function orFetchZdrEndpoints(
 
 type ChatOptions = {
   apiKey: string;
-  body: any;
+  body: OpenRouterChatRequest | string;
   signal?: AbortSignal;
   stream?: boolean;
   origin?: string;

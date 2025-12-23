@@ -24,8 +24,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
   const command = (parts.shift() || '').toLowerCase();
   const arg = parts.join(' ').trim();
   const applyToChat = !!ctx.chat;
-  const currentModelId =
-    ctx.chat?.settings.model || ctx.nextOverrides.model || DEFAULT_MODEL_ID;
+  const currentModelId = ctx.chat?.settings.model || ctx.nextOverrides.model || DEFAULT_MODEL_ID;
   const currentModel = findModelById(ctx.models, currentModelId);
 
   const setNotice = (msg: string) => ctx.setUI({ notice: msg });
@@ -43,7 +42,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     } else {
       const prev = !!ctx.nextOverrides.search?.enabled;
       const next = enabled == null ? !prev : enabled;
-      ctx.setUI({ next: { search: { enabled: next } } });
+      ctx.setUI({ overrides: { search: { enabled: next } } });
       setNotice(`Web search (next): ${next ? 'On' : 'Off'}`);
     }
     return true;
@@ -60,7 +59,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (applyToChat) {
       await ctx.updateChatSettings({ reasoning_effort: effort });
     } else {
-      ctx.setUI({ next: { reasoning: { effort } } });
+      ctx.setUI({ overrides: { reasoning: { effort } } });
     }
     setNotice(`Reasoning effort: ${effort}`);
     return true;
@@ -79,7 +78,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (applyToChat) {
       await ctx.updateChatSettings({ model: chosen.id });
     } else {
-      ctx.setUI({ next: { model: chosen.id } });
+      ctx.setUI({ overrides: { model: chosen.id } });
     }
     setNotice(`Model set to ${chosen.name || chosen.id}`);
     return true;
@@ -111,10 +110,20 @@ export function useComposerShortcuts(options: {
   updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
   setUI: (partial: Partial<UIState>) => void;
   newChat: () => Promise<void>;
-  sendMessage: (text: string, opts: { attachments?: Attachment[]; metadata?: Message['metadata'] }) => Promise<void>;
+  sendMessage: (
+    text: string,
+    opts: { attachments?: Attachment[]; metadata?: Message['metadata'] },
+  ) => Promise<void>;
 }) {
   const handleSubmit = useCallback(
-    async ({ text, attachments, metadata, onBeforeSend, onAfterSend, onCommandHandled }: SubmitArgs): Promise<ComposerSubmitResult> => {
+    async ({
+      text,
+      attachments,
+      metadata,
+      onBeforeSend,
+      onAfterSend,
+      onCommandHandled,
+    }: SubmitArgs): Promise<ComposerSubmitResult> => {
       const trimmed = text.trim();
       if (!trimmed) return 'noop';
       const commandHandled = await runSlashCommand(trimmed, {

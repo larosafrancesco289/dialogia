@@ -96,7 +96,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
           // Be more aggressive: assume we hit bottom if programmatic
           const target = Math.max(element.scrollHeight - element.clientHeight, 0);
-          
+
           try {
             element.scrollTo({ top: target, behavior });
           } catch {
@@ -108,7 +108,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
             setTimeout(() => {
               programmaticScrollRef.current = false;
               syncScrollState();
-            }, 300); 
+            }, 300);
           } else {
             requestAnimationFrame(() => {
               programmaticScrollRef.current = false;
@@ -141,10 +141,11 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     const observer = new ResizeObserver(() => {
       const currentScrollHeight = containerEl.scrollHeight;
       const delta = currentScrollHeight - prevScrollHeight;
-      
+
       // Calculate where we were relative to the bottom BEFORE the resize
-      const oldDistanceFromBottom = prevScrollHeight - containerEl.scrollTop - containerEl.clientHeight;
-      
+      const oldDistanceFromBottom =
+        prevScrollHeight - containerEl.scrollTop - containerEl.clientHeight;
+
       prevScrollHeight = currentScrollHeight;
 
       // Only adjust if we were effectively at the bottom (strict threshold)
@@ -153,7 +154,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
         containerEl.scrollTop += delta;
         syncScrollState();
       } else {
-        // If we didn't auto-scroll, we should still update our state 
+        // If we didn't auto-scroll, we should still update our state
         // because we might no longer be at the bottom
         syncScrollState();
       }
@@ -188,7 +189,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
         // Actually syncScrollState handles re-enabling if at bottom.
         return;
       }
-      
+
       // Check position
       const { wasProgrammatic } = syncScrollState();
       if (wasProgrammatic) return;

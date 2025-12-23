@@ -97,7 +97,10 @@ export function ComposerChips({
         {(searchProvider === 'openrouter' ? 'OR' : 'Brave') + ' ' + (searchEnabled ? 'On' : 'Off')}
       </button>
       {!tutorEnabled && supportsReasoning && effortLabel && (
-        <span className="badge flex items-center gap-1" title={`Reasoning effort: ${currentEffort}`}>
+        <span
+          className="badge flex items-center gap-1"
+          title={`Reasoning effort: ${currentEffort}`}
+        >
           <LightBulbIcon className="h-3.5 w-3.5" /> {effortLabel}
         </span>
       )}

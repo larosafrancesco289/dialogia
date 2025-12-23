@@ -11,23 +11,21 @@ export const selectCurrentChat = (state: StoreState) => {
   return state.chats.find((chat) => chat.id === chatId);
 };
 
-export const selectMessagesForChat =
-  (chatId?: string) =>
-  (state: StoreState) =>
-    chatId ? state.messages[chatId] ?? [] : [];
+export const selectMessagesForChat = (chatId?: string) => (state: StoreState) =>
+  chatId ? (state.messages[chatId] ?? []) : [];
 
 export const selectMessagesForCurrentChat = (state: StoreState) => {
   const chatId = state.selectedChatId;
-  return chatId ? state.messages[chatId] ?? [] : [];
+  return chatId ? (state.messages[chatId] ?? []) : [];
 };
 
 export const selectIsStreaming = (state: StoreState) => state.ui.isStreaming;
 
 export const selectIsTutorEnabled = (state: StoreState) => {
   const chat = selectCurrentChat(state);
-  const tutorGloballyEnabled = !!state.ui.experimentalTutor;
+  const tutorGloballyEnabled = !!state.ui.flags.experimentalTutor;
   if (!tutorGloballyEnabled) return false;
-  if (state.ui.forceTutorMode) return true;
+  if (state.ui.tutor.forceMode) return true;
   return !!chat?.settings.tutor_mode;
 };
 

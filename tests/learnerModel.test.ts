@@ -7,12 +7,7 @@ import {
   generateModelSummary,
   getLatestLearnerModel,
 } from '@/lib/agent/learnerModel';
-import type {
-  LearningPlan,
-  Evidence,
-  Misconception,
-  Message,
-} from '@/lib/types';
+import type { LearningPlan, Evidence, Misconception, Message } from '@/lib/types';
 
 // ============================================================================
 // Helper Functions
@@ -56,10 +51,7 @@ function createMockPlan(): LearningPlan {
   };
 }
 
-function createMockMessage(
-  role: 'user' | 'assistant',
-  content: string,
-): Message {
+function createMockMessage(role: 'user' | 'assistant', content: string): Message {
   return {
     id: `msg_${Date.now()}_${Math.random()}`,
     chatId: 'chat_test',

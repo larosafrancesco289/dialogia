@@ -5,6 +5,7 @@ import { ModelSearch, type ModelSearchHandle } from '@/components/ModelSearch';
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
+import { readNextOverrides } from '@/lib/ui/next';
 
 type ModelsPanelProps = {
   chat: Chat | undefined;
@@ -40,6 +41,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
     experimentalBrave,
     ui,
   } = props;
+  const nextOverrides = readNextOverrides(ui);
 
   return (
     <>
@@ -58,7 +60,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
                 if (chat) {
                   updateChatSettings({ model: result.id }).catch(() => void 0);
                 } else {
-                  setUI({ next: { model: result.id } });
+                  setUI({ overrides: { model: result.id } });
                 }
               }}
             />
@@ -91,24 +93,24 @@ export function ModelsPanel(props: ModelsPanelProps) {
               <div className="segmented">
                 {experimentalBrave && (
                   <button
-                    className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.next?.search?.provider ?? 'openrouter') === 'brave' ? 'is-active' : ''}`}
+                    className={`segment ${(chat?.settings?.search_provider ?? nextOverrides.search?.provider ?? 'openrouter') === 'brave' ? 'is-active' : ''}`}
                     onClick={() => {
                       if (chat)
-                        updateChatSettings({ search_provider: 'brave' } as any).catch(() => void 0);
-                      else setUI({ next: { search: { provider: 'brave' } } } as any);
+                        updateChatSettings({ search_provider: 'brave' }).catch(() => void 0);
+                      else setUI({ overrides: { search: { provider: 'brave' } } });
                     }}
                   >
                     Brave
                   </button>
                 )}
                 <button
-                  className={`segment ${(((chat?.settings as any)?.search_provider as any) ?? (ui as any)?.next?.search?.provider ?? 'openrouter') === 'openrouter' ? 'is-active' : ''}`}
+                  className={`segment ${(chat?.settings?.search_provider ?? nextOverrides.search?.provider ?? 'openrouter') === 'openrouter' ? 'is-active' : ''}`}
                   onClick={() => {
                     if (chat)
                       updateChatSettings({
                         search_provider: 'openrouter',
-                      } as any).catch(() => void 0);
-                    else setUI({ next: { search: { provider: 'openrouter' } } } as any);
+                      }).catch(() => void 0);
+                    else setUI({ overrides: { search: { provider: 'openrouter' } } });
                   }}
                 >
                   OpenRouter

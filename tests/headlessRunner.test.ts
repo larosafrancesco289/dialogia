@@ -70,9 +70,9 @@ test('headless runner builds snapshots with debug payloads and metrics', async (
     modelIndex: createModelIndex([model]),
     resolveApiKey: () => 'test-key',
     uiOverrides: {
-      debugMode: true,
-      experimentalTutor: true,
-      forceTutorMode: true,
+      debug: { mode: true },
+      flags: { experimentalTutor: true },
+      tutor: { forceMode: true },
     },
   });
 

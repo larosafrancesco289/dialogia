@@ -1,8 +1,6 @@
 import type { Message } from '@/lib/types';
 
-export function sanitizeMessageRecord(
-  message: Message,
-): { next: Message; changed: boolean } {
+export function sanitizeMessageRecord(message: Message): { next: Message; changed: boolean } {
   const next: Message = { ...message };
   let changed = false;
 

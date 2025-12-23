@@ -89,8 +89,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
   const supportsReasoning = caps.canReason;
   const canImageOut = caps.canImageOut;
   const supportsTools = isToolCallingSupported(modelMeta);
-  const includeTools =
-    supportsTools && Array.isArray(toolDefinition) && toolDefinition.length > 0;
+  const includeTools = supportsTools && Array.isArray(toolDefinition) && toolDefinition.length > 0;
   const combinedPlugins = Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined;
   const toolsForStreaming = includeTools ? (toolDefinition as ToolDefinition[]) : undefined;
 

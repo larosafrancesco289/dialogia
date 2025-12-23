@@ -24,18 +24,18 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const models = useChatStore((s) => s.models);
   const isStreaming = useChatStore((s) => s.ui.isStreaming);
-  const braveByMessageId = useChatStore((s) => s.ui.braveByMessageId || {});
-  const braveGloballyEnabled = useChatStore((s) => !!s.ui.experimentalBrave);
-  const tutorByMessageId = useChatStore((s) => s.ui.tutorByMessageId || {});
-  const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
-  const forceTutorMode = useChatStore((s) => !!s.ui.forceTutorMode);
-  const planGeneration = useChatStore((s) => s.ui.planGenerationByChatId?.[chatId]);
+  const braveByMessageId = useChatStore((s) => s.ui.search.braveByMessageId || {});
+  const braveGloballyEnabled = useChatStore((s) => !!s.ui.flags.experimentalBrave);
+  const tutorByMessageId = useChatStore((s) => s.ui.tutor.byMessageId || {});
+  const tutorGloballyEnabled = useChatStore((s) => !!s.ui.flags.experimentalTutor);
+  const forceTutorMode = useChatStore((s) => !!s.ui.tutor.forceMode);
+  const planGeneration = useChatStore((s) => s.ui.plan.generationByChatId?.[chatId]);
   const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
   const branchFrom = useChatStore((s) => s.branchChatFromMessage);
-  const autoReasoningModelIds = useChatStore((s) => s.ui.autoReasoningModelIds || {});
+  const autoReasoningModelIds = useChatStore((s) => s.ui.debug.autoReasoningModelIds || {});
   const showStats = chat?.settings.show_stats ?? false;
-  const debugMode = useChatStore((s) => s.ui.debugMode || false);
-  const debugByMessageId = useChatStore((s) => s.ui.debugByMessageId || {});
+  const debugMode = useChatStore((s) => s.ui.debug.mode || false);
+  const debugByMessageId = useChatStore((s) => s.ui.debug.byMessageId || {});
   const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat?.settings?.tutor_mode);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const prefersReducedMotion = useMemo(() => {
@@ -55,9 +55,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
           const target = typeof message.model === 'string' ? message.model : undefined;
           return target === modelFilter;
         });
-    return base.filter(
-      (message) => !(message.role === 'user' && message.metadata?.hiddenFromUser),
-    );
+    return base.filter((message) => !(message.role === 'user' && message.metadata?.hiddenFromUser));
   }, [allMessages, modelFilter]);
 
   const isAssistantPlaceholder = useCallback((message?: Message, previous?: Message) => {
@@ -72,13 +70,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   // Tap-to-highlight state for mobile actions
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
 
-  const {
-    containerRef,
-    contentRef,
-    endRef,
-    showJump,
-    jumpToLatest,
-  } = useMessageScrolling({
+  const { containerRef, contentRef, endRef, showJump, jumpToLatest } = useMessageScrolling({
     messages,
     isStreaming,
     isMobile,
@@ -213,7 +205,11 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     if (!exists) closeMobileSheet();
   }, [mobileSheet, messages, closeMobileSheet]);
 
-  const { visibleItems: visibleMessages, hiddenCount, showMore } = useMessageWindow(messages, {
+  const {
+    visibleItems: visibleMessages,
+    hiddenCount,
+    showMore,
+  } = useMessageWindow(messages, {
     pageSize: WINDOW_PAGE_SIZE,
     resetKey: chatId,
   });

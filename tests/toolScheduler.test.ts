@@ -31,7 +31,11 @@ test('scheduler keeps meta, one search, and one prioritized content tool', () =>
 });
 
 test('scheduler drops content when already used and search disabled', () => {
-  const calls = [buildCall('web_search'), buildCall('create_diagnostic'), buildCall('update_learner_model')];
+  const calls = [
+    buildCall('web_search'),
+    buildCall('create_diagnostic'),
+    buildCall('update_learner_model'),
+  ];
 
   const scheduled = schedulePlanningToolCalls(calls, {
     allowSearch: false,

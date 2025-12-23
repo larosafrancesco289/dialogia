@@ -1,9 +1,6 @@
 import type { StoreApi } from 'zustand/vanilla';
 import { HeadlessTutorSession, type ApiKeyResolver } from '@/lib/headless/session';
-import {
-  buildHeadlessTurnSnapshot,
-  type HeadlessTurnSnapshot,
-} from '@/lib/headless/types';
+import { buildHeadlessTurnSnapshot, type HeadlessTurnSnapshot } from '@/lib/headless/types';
 import type { Chat, Message, ORModel } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import type { StoreState, UIState } from '@/lib/store/types';
