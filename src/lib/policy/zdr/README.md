@@ -12,13 +12,13 @@ In certain enterprise or privacy-focused environments, it is critical to ensure 
 
 ## Key Concepts
 
--   **ZDR Only Mode**: A user preference or system policy that strictly forbids non-ZDR models.
--   **ZDR List**: A list of models and providers known to support ZDR. This is typically fetched from a remote configuration or API.
--   **Enforcement**: If ZDR mode is on, the application will block requests to models not on the allowlist and display a notice to the user.
+- **ZDR Only Mode**: A user preference or system policy that strictly forbids non-ZDR models.
+- **ZDR List**: A list of models and providers known to support ZDR. This is typically fetched from a remote configuration or API.
+- **Enforcement**: If ZDR mode is on, the application will block requests to models not on the allowlist and display a notice to the user.
 
 ## Structure
 
--   `enforce.ts`: Core logic for checking model compliance against the lists.
--   `cache.ts`: Manages the caching of the ZDR allowlists in the application state/store.
--   `types.ts`: TypeScript definitions for ZDR structures.
--   `constants.ts`: Configuration constants (e.g., cache TTL).
+- `enforce.ts`: Core logic for checking model compliance against the lists.
+- `cache.ts`: Manages the caching of the ZDR allowlists in the application state/store.
+- `types.ts`: TypeScript definitions for ZDR structures.
+- `constants.ts`: Configuration constants (e.g., cache TTL).

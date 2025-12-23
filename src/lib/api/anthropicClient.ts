@@ -1,8 +1,11 @@
 import { isAnthropicProxyEnabled } from '@/lib/config';
 import { sendApiRequest } from '@/lib/api/http';
+import type { AnthropicMessagesRequest } from '@/lib/types/transport';
 
 const BROWSER =
-  typeof window !== 'undefined' && typeof window.document !== 'undefined' && window.document !== null;
+  typeof window !== 'undefined' &&
+  typeof window.document !== 'undefined' &&
+  window.document !== null;
 
 const DEFAULT_VERSION = '2023-06-01';
 
@@ -20,7 +23,7 @@ const anthropicDefaults = Object.freeze({
 type AnthropicFetchOptions = {
   method?: string;
   apiKey?: string;
-  body?: any;
+  body?: unknown;
   signal?: AbortSignal;
   stream?: boolean;
   timeoutMs?: number;
@@ -28,7 +31,10 @@ type AnthropicFetchOptions = {
   origin?: string;
 };
 
-async function anthropicFetch(path: string, options: AnthropicFetchOptions = {}): Promise<Response> {
+async function anthropicFetch(
+  path: string,
+  options: AnthropicFetchOptions = {},
+): Promise<Response> {
   const useProxy = anthropicDefaults.isBrowser && isAnthropicProxyEnabled();
   const headers: Record<string, string> = {
     'anthropic-version': anthropicDefaults.version,
@@ -45,7 +51,8 @@ async function anthropicFetch(path: string, options: AnthropicFetchOptions = {})
     headers['x-api-key'] = options.apiKey;
   }
 
-  const timeoutMs = options.timeoutMs ?? (options.stream ? undefined : anthropicDefaults.timeouts.chat);
+  const timeoutMs =
+    options.timeoutMs ?? (options.stream ? undefined : anthropicDefaults.timeouts.chat);
 
   const base = useProxy ? anthropicDefaults.proxyPath : anthropicDefaults.baseUrl;
   const url = `${base}${path}`;
@@ -65,7 +72,8 @@ export async function anthropicFetchModels(
   apiKey: string | undefined,
   options: { signal?: AbortSignal; origin?: string } = {},
 ): Promise<Response> {
-  const normalizedKey = typeof apiKey === 'string' && apiKey.trim().length > 0 ? apiKey.trim() : undefined;
+  const normalizedKey =
+    typeof apiKey === 'string' && apiKey.trim().length > 0 ? apiKey.trim() : undefined;
   return anthropicFetch('/models', {
     method: 'GET',
     apiKey: normalizedKey,
@@ -77,7 +85,7 @@ export async function anthropicFetchModels(
 
 type AnthropicChatOptions = {
   apiKey?: string;
-  body: any;
+  body: AnthropicMessagesRequest | string;
   signal?: AbortSignal;
   stream?: boolean;
   origin?: string;

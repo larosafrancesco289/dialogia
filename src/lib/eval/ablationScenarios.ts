@@ -77,7 +77,8 @@ const linearEquationsScenario: AblationScenario = {
       {
         id: 'inverse_operations',
         name: 'Inverse Operations',
-        description: 'Understanding addition/subtraction and multiplication/division as inverse operations',
+        description:
+          'Understanding addition/subtraction and multiplication/division as inverse operations',
         objectives: ['Identify inverse operations', 'Apply to isolate terms'],
         prerequisites: [],
         estimatedMinutes: 10,
@@ -86,7 +87,10 @@ const linearEquationsScenario: AblationScenario = {
         id: 'one_step',
         name: 'One-Step Equations',
         description: 'Solving equations like x + 5 = 12 or 3x = 15',
-        objectives: ['Solve addition/subtraction equations', 'Solve multiplication/division equations'],
+        objectives: [
+          'Solve addition/subtraction equations',
+          'Solve multiplication/division equations',
+        ],
         prerequisites: ['inverse_operations'],
         estimatedMinutes: 15,
       },
@@ -102,7 +106,11 @@ const linearEquationsScenario: AblationScenario = {
         id: 'word_problems',
         name: 'Word Problems',
         description: 'Translating word problems into equations',
-        objectives: ['Identify unknown variable', 'Set up equation from context', 'Solve and interpret'],
+        objectives: [
+          'Identify unknown variable',
+          'Set up equation from context',
+          'Solve and interpret',
+        ],
         prerequisites: ['two_step'],
         estimatedMinutes: 20,
       },
@@ -144,8 +152,7 @@ const linearEquationsScenario: AblationScenario = {
     },
     {
       id: 'pre_5',
-      question:
-        'A number doubled and increased by 6 equals 20. What equation represents this?',
+      question: 'A number doubled and increased by 6 equals 20. What equation represents this?',
       options: ['2x + 6 = 20', 'x + 6 = 20', '2(x + 6) = 20', '6x + 2 = 20'],
       correctIndex: 0,
       topicId: 'word_problems',
@@ -188,8 +195,7 @@ const linearEquationsScenario: AblationScenario = {
     },
     {
       id: 'post_5',
-      question:
-        'Three times a number minus 8 equals 16. What equation represents this?',
+      question: 'Three times a number minus 8 equals 16. What equation represents this?',
       options: ['3x - 8 = 16', 'x - 8 = 16', '3(x - 8) = 16', '8x - 3 = 16'],
       correctIndex: 0,
       topicId: 'word_problems',
@@ -237,8 +243,11 @@ const derivativesScenario: AblationScenario = {
       {
         id: 'limit_definition',
         name: 'Limit Definition of Derivative',
-        description: 'Understanding f\'(x) = lim(h→0) [f(x+h) - f(x)]/h',
-        objectives: ['State the limit definition', 'Compute simple derivatives from first principles'],
+        description: "Understanding f'(x) = lim(h→0) [f(x+h) - f(x)]/h",
+        objectives: [
+          'State the limit definition',
+          'Compute simple derivatives from first principles',
+        ],
         prerequisites: [],
         estimatedMinutes: 20,
       },
@@ -253,7 +262,7 @@ const derivativesScenario: AblationScenario = {
       {
         id: 'constant_rule',
         name: 'Constant Rule',
-        description: 'd/dx[c] = 0 and d/dx[cf(x)] = c·f\'(x)',
+        description: "d/dx[c] = 0 and d/dx[cf(x)] = c·f'(x)",
         objectives: ['Differentiate constants', 'Factor out constant multipliers'],
         prerequisites: ['limit_definition'],
         estimatedMinutes: 10,
@@ -261,7 +270,7 @@ const derivativesScenario: AblationScenario = {
       {
         id: 'sum_rule',
         name: 'Sum and Difference Rule',
-        description: 'd/dx[f(x) ± g(x)] = f\'(x) ± g\'(x)',
+        description: "d/dx[f(x) ± g(x)] = f'(x) ± g'(x)",
         objectives: ['Differentiate term by term', 'Combine with power and constant rules'],
         prerequisites: ['power_rule', 'constant_rule'],
         estimatedMinutes: 15,
@@ -442,7 +451,7 @@ const pythonDebuggingScenario: AblationScenario = {
       {
         id: 'logic_errors',
         name: 'Logic Errors',
-        description: 'Bugs that don\'t cause crashes but produce wrong results',
+        description: "Bugs that don't cause crashes but produce wrong results",
         objectives: ['Identify off-by-one errors', 'Trace variable values'],
         prerequisites: ['syntax_errors'],
         estimatedMinutes: 15,
@@ -465,7 +474,7 @@ const pythonDebuggingScenario: AblationScenario = {
       options: [
         'A logical error in the code',
         'A typo or missing punctuation',
-        'A variable that doesn\'t exist',
+        "A variable that doesn't exist",
         'Division by zero',
       ],
       correctIndex: 1,
@@ -490,8 +499,7 @@ const pythonDebuggingScenario: AblationScenario = {
     },
     {
       id: 'pre_4',
-      question:
-        'If a loop should run 5 times but runs 4 times, what is this bug called?',
+      question: 'If a loop should run 5 times but runs 4 times, what is this bug called?',
       options: ['Syntax error', 'Off-by-one error', 'Type error', 'Name error'],
       correctIndex: 1,
       topicId: 'logic_errors',
@@ -529,7 +537,12 @@ const pythonDebuggingScenario: AblationScenario = {
     {
       id: 'post_2',
       question: 'Which line has a syntax error?\n1: if x == 5:\n2: print("five")',
-      options: ['Line 1 (missing parentheses)', 'Line 2 (wrong indentation)', 'Both lines', 'No error'],
+      options: [
+        'Line 1 (missing parentheses)',
+        'Line 2 (wrong indentation)',
+        'Both lines',
+        'No error',
+      ],
       correctIndex: 1,
       topicId: 'syntax_errors',
       difficulty: 'easy',
@@ -544,8 +557,7 @@ const pythonDebuggingScenario: AblationScenario = {
     },
     {
       id: 'post_4',
-      question:
-        'A function should return items at indices 0-4 but returns 0-3. This is:',
+      question: 'A function should return items at indices 0-4 but returns 0-3. This is:',
       options: ['A syntax error', 'An off-by-one error', 'A type error', 'A name error'],
       correctIndex: 1,
       topicId: 'logic_errors',
@@ -586,11 +598,15 @@ const pythonDebuggingScenario: AblationScenario = {
 // ============================================================================
 const bayesRuleScenario: AblationScenario = {
   id: 'bayes_rule',
-  title: 'Statistics: Conditional Probability and Bayes\' Rule',
+  title: "Statistics: Conditional Probability and Bayes' Rule",
   topic: 'Conditional probability and Bayesian reasoning',
   level: 'intermediate',
-  goal: 'Apply Bayes\' rule to medical test and real-world scenarios',
-  constraints: ['Overconfident learner', 'Tends to rush through problems', 'Strong intuitions that may be wrong'],
+  goal: "Apply Bayes' rule to medical test and real-world scenarios",
+  constraints: [
+    'Overconfident learner',
+    'Tends to rush through problems',
+    'Strong intuitions that may be wrong',
+  ],
   maxTurns: 7,
   teacherModelId: 'anthropic/claude-haiku-4.5',
   studentModelId: 'x-ai/grok-4.1-fast',
@@ -601,13 +617,16 @@ const bayesRuleScenario: AblationScenario = {
     'Student correctly computes posterior probability in a medical test scenario and can explain why base rates matter.',
 
   planStructure: {
-    goal: 'Master Bayes\' Rule application',
+    goal: "Master Bayes' Rule application",
     nodes: [
       {
         id: 'basic_probability',
         name: 'Basic Probability Review',
         description: 'Events, P(A), P(A and B), independent events',
-        objectives: ['Calculate simple probabilities', 'Distinguish independent vs dependent events'],
+        objectives: [
+          'Calculate simple probabilities',
+          'Distinguish independent vs dependent events',
+        ],
         prerequisites: [],
         estimatedMinutes: 10,
       },
@@ -629,16 +648,16 @@ const bayesRuleScenario: AblationScenario = {
       },
       {
         id: 'bayes_formula',
-        name: 'Bayes\' Rule Formula',
+        name: "Bayes' Rule Formula",
         description: 'P(A|B) = P(B|A)·P(A) / P(B)',
-        objectives: ['State Bayes\' formula', 'Identify each component in context'],
+        objectives: ["State Bayes' formula", 'Identify each component in context'],
         prerequisites: ['base_rate'],
         estimatedMinutes: 15,
       },
       {
         id: 'medical_application',
         name: 'Medical Test Application',
-        description: 'Applying Bayes\' rule to diagnostic testing',
+        description: "Applying Bayes' rule to diagnostic testing",
         objectives: ['Calculate positive predictive value', 'Explain false positive paradox'],
         prerequisites: ['bayes_formula'],
         estimatedMinutes: 20,
@@ -678,7 +697,7 @@ const bayesRuleScenario: AblationScenario = {
     },
     {
       id: 'pre_4',
-      question: 'In Bayes\' formula P(A|B) = P(B|A)·P(A)/P(B), what is P(A)?',
+      question: "In Bayes' formula P(A|B) = P(B|A)·P(A)/P(B), what is P(A)?",
       options: ['Likelihood', 'Prior probability of A', 'Posterior probability', 'Evidence'],
       correctIndex: 1,
       topicId: 'bayes_formula',
@@ -725,14 +744,19 @@ const bayesRuleScenario: AblationScenario = {
     {
       id: 'post_3',
       question: '5% of emails are spam. This 5% is the:',
-      options: ['Likelihood of spam', 'Posterior probability', 'Prior/base rate of spam', 'False positive rate'],
+      options: [
+        'Likelihood of spam',
+        'Posterior probability',
+        'Prior/base rate of spam',
+        'False positive rate',
+      ],
       correctIndex: 2,
       topicId: 'base_rate',
       difficulty: 'medium',
     },
     {
       id: 'post_4',
-      question: 'In Bayes\' formula, P(B|A) is called the:',
+      question: "In Bayes' formula, P(B|A) is called the:",
       options: ['Prior', 'Posterior', 'Likelihood', 'Evidence'],
       correctIndex: 2,
       topicId: 'bayes_formula',
@@ -764,12 +788,13 @@ const bayesRuleScenario: AblationScenario = {
     {
       topicId: 'bayes_formula',
       errorRate: 0.8,
-      misconception: 'Confuses P(A|B) with P(B|A) - the prosecutor\'s fallacy',
+      misconception: "Confuses P(A|B) with P(B|A) - the prosecutor's fallacy",
     },
     {
       topicId: 'medical_application',
       errorRate: 0.9,
-      misconception: 'Thinks high test accuracy means high probability of disease given positive test',
+      misconception:
+        'Thinks high test accuracy means high probability of disease given positive test',
     },
   ],
 };

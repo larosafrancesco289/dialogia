@@ -4,8 +4,7 @@ export const MAX_PLANNING_ROUNDS = 3;
 
 export const DEFAULT_BASE_SYSTEM = 'You are a helpful assistant.';
 
-const FOLLOW_UP_WITH_SEARCH =
-  'Write the final answer. Cite sources inline as [n].';
+const FOLLOW_UP_WITH_SEARCH = 'Write the final answer. Cite sources inline as [n].';
 
 const FOLLOW_UP_DEFAULT =
   'Continue the lesson concisely. Give brief guidance and a next step. Do not repeat items already rendered.';

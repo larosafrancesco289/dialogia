@@ -4,7 +4,11 @@
 
 import { buildChatCompletionMessages } from '@/lib/agent/prompt-builder';
 import { getTutorPreamble, getTutorToolDefinitions } from '@/lib/agent/tutor';
-import { getTutorPhase, allowedTutorToolsForPhase, deriveTutorToolPolicy } from '@/lib/agent/tutor/state';
+import {
+  getTutorPhase,
+  allowedTutorToolsForPhase,
+  deriveTutorToolPolicy,
+} from '@/lib/agent/tutor/state';
 import { composePlugins } from '@/lib/agent/request';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
 import { type ComposeTurnArgs, type TurnComposition, type ToolDefinition } from '@/lib/agent/types';
@@ -27,9 +31,9 @@ export async function composeTurn({
   newUser,
   attachments,
 }: ComposeTurnArgs): Promise<TurnComposition> {
-  const nextOverrides = readNextOverrides(ui as any);
-  const tutorGloballyEnabled = !!ui.experimentalTutor;
-  const forceTutorMode = !!(ui.forceTutorMode ?? false);
+  const nextOverrides = readNextOverrides(ui);
+  const tutorGloballyEnabled = !!ui.flags.experimentalTutor;
+  const forceTutorMode = !!(ui.tutor.forceMode ?? false);
   const tutorEnabled =
     tutorGloballyEnabled && (forceTutorMode || Boolean(chat.settings.tutor_mode));
 
@@ -38,8 +42,8 @@ export async function composeTurn({
 
   const priorMessages = prior ?? [];
   const preparedAttachments = attachments ?? newUser?.attachments ?? [];
-  const hadPdfEarlier = priorMessages.some((m) =>
-    Array.isArray(m.attachments) && m.attachments.some((att: any) => att?.kind === 'pdf'),
+  const hadPdfEarlier = priorMessages.some(
+    (m) => Array.isArray(m.attachments) && m.attachments.some((att: any) => att?.kind === 'pdf'),
   );
   const hasPdf =
     preparedAttachments.some((att: any) => att?.kind === 'pdf') || (hadPdfEarlier ? true : false);
@@ -51,11 +55,14 @@ export async function composeTurn({
   });
 
   const tutorPhase = tutorEnabled ? getTutorPhase(chat, priorMessages as Message[], ui) : undefined;
-  const activeNodeId = tutorEnabled && chat.settings.learningPlan ? getNextNode(chat.settings.learningPlan)?.id : undefined;
+  const activeNodeId =
+    tutorEnabled && chat.settings.learningPlan
+      ? getNextNode(chat.settings.learningPlan)?.id
+      : undefined;
   const tutorToolPolicy = tutorEnabled
     ? deriveTutorToolPolicy({
         chat,
-        ui: ui as any,
+        ui,
         activeNodeId,
       })
     : undefined;
@@ -118,10 +125,7 @@ export async function composeTurn({
       const learnerModel = allowLearnerModelContext
         ? getLatestLearnerModel(priorMessages)
         : undefined;
-      const planContext = generatePlanContextPreamble(
-        chat.settings.learningPlan,
-        learnerModel,
-      );
+      const planContext = generatePlanContextPreamble(chat.settings.learningPlan, learnerModel);
       if (planContext) preambles.push(planContext);
     }
 
@@ -130,8 +134,7 @@ export async function composeTurn({
     }
   }
 
-  const baseSystem =
-    typeof chat.settings.system === 'string' ? chat.settings.system : undefined;
+  const baseSystem = typeof chat.settings.system === 'string' ? chat.settings.system : undefined;
   const system = combineSystem(baseSystem, preambles);
 
   const newUserContent = newUser?.content;

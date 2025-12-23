@@ -10,7 +10,7 @@ business logic that is easy to test.
   Hooks and presentational helpers that only touch the DOM live next to the component that uses
   them, while shared interaction hooks (composer shortcuts, attachment helpers) live under
   `src/lib/hooks/*` so both desktop and mobile variants reuse the same behavior.
-- **State** — Zustand slices in `src/lib/store/*`. Composition happens in `src/lib/store.ts`, which
+- **State** — Zustand slices in `src/lib/store/*`. Composition happens in `src/lib/store/index.ts`, which
   wires persistence, migrations, and selectors. Each slice owns a bounded feature area (models,
   chat history, UI flags, multi-model state, tutor context, etc.).
   Versioned persistence migrations now live in `src/lib/store/migrations.ts`, keeping the root
@@ -42,6 +42,12 @@ business logic that is easy to test.
 - **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Anthropic routes in
   `app/api/anthropic/*`, Brave search proxy in `app/api/brave/route.ts`, and any additional
   integrations. These never import UI modules.
+
+## Module Boundaries
+
+- UI may import store selectors/actions and `src/lib/ui/*` helpers, but never transport clients
+  (`src/lib/api/*`, `src/lib/openrouter.ts`, `src/lib/anthropic.ts`).
+- API routes under `app/api/*` must remain server-only and never import UI modules or components.
 
 ```
             ┌──────────┐

@@ -1,40 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { deepResearch } from '@/lib/deepResearch';
-import { getBraveSearchKey, requireServerOpenRouterKey } from '@/lib/config';
 import { ProviderSort } from '@/lib/models/providerSort';
+import { createNdjsonStream } from '@/lib/server/ndjson';
+import { jsonError, requireEnv, withTiming } from '@/lib/server/route';
 
 export async function POST(req: NextRequest) {
-  let apiKey: string;
-  try {
-    apiKey = requireServerOpenRouterKey();
-  } catch {
-    return NextResponse.json({ error: 'Missing OPENROUTER_API_KEY' }, { status: 500 });
-  }
-  const braveKey = getBraveSearchKey();
-  if (!braveKey)
-    return NextResponse.json({ error: 'Missing BRAVE_SEARCH_API_KEY' }, { status: 500 });
+  return withTiming('deep-research', async () => {
+    let apiKey: string;
+    try {
+      apiKey = requireEnv('OPENROUTER_API_KEY');
+    } catch {
+      return jsonError(500, 'missing_env', 'OPENROUTER_API_KEY');
+    }
+    try {
+      requireEnv('BRAVE_SEARCH_API_KEY');
+    } catch {
+      return jsonError(500, 'missing_env', 'BRAVE_SEARCH_API_KEY');
+    }
 
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
-  }
-  const task = String(body?.task || '').trim();
-  const model = String(body?.model || '').trim();
-  if (!task) return NextResponse.json({ error: 'Missing task' }, { status: 400 });
-  if (!model) return NextResponse.json({ error: 'Missing model' }, { status: 400 });
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return jsonError(400, 'invalid_json');
+    }
+    const task = String(body?.task || '').trim();
+    const model = String(body?.model || '').trim();
+    if (!task) return jsonError(400, 'missing_task');
+    if (!model) return jsonError(400, 'missing_model');
 
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const rawProviderSort = body?.providerSort;
-        const providerSort =
-          rawProviderSort === ProviderSort.Price || rawProviderSort === ProviderSort.Throughput
-            ? (rawProviderSort as ProviderSort)
-            : undefined;
+    const rawProviderSort = body?.providerSort;
+    const providerSort =
+      rawProviderSort === ProviderSort.Price || rawProviderSort === ProviderSort.Throughput
+        ? (rawProviderSort as ProviderSort)
+        : undefined;
 
+    const stream = createNdjsonStream(
+      async ({ send }) => {
         const result = await deepResearch({
           apiKey,
           task,
@@ -45,30 +47,26 @@ export async function POST(req: NextRequest) {
           maxIterations: typeof body?.maxIterations === 'number' ? body.maxIterations : undefined,
           providerSort,
           onProgress: (event) => {
-            const chunk = JSON.stringify({ type: 'trace', data: event }) + '\n';
-            controller.enqueue(encoder.encode(chunk));
+            send({ type: 'trace', data: event });
           },
         });
 
-        const chunk = JSON.stringify({ type: 'result', data: result }) + '\n';
-        controller.enqueue(encoder.encode(chunk));
-        controller.close();
-      } catch (e: any) {
-        const msg = String(e?.message || 'deep_research_error');
-        // If it's a known client error, we might want to communicate that differently,
-        // but for a stream, we just send an error event.
-        const chunk = JSON.stringify({ type: 'error', error: msg }) + '\n';
-        controller.enqueue(encoder.encode(chunk));
-        controller.close();
-      }
-    },
-  });
+        send({ type: 'result', data: result });
+      },
+      {
+        onError: (error) => ({
+          type: 'error',
+          error: String((error as Error)?.message || 'deep_research_error'),
+        }),
+      },
+    );
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'application/x-ndjson',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'application/x-ndjson',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      },
+    });
   });
 }

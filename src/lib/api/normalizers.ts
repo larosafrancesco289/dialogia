@@ -23,13 +23,7 @@ export function normalizeUsage(fields?: UsageLike): Usage | undefined {
   const input = toNumber(fields.input_tokens) ?? prompt;
   const output = toNumber(fields.output_tokens) ?? completion;
 
-  if (
-    prompt == null &&
-    completion == null &&
-    total == null &&
-    input == null &&
-    output == null
-  ) {
+  if (prompt == null && completion == null && total == null && input == null && output == null) {
     return undefined;
   }
 

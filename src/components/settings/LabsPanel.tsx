@@ -26,13 +26,13 @@ export function LabsPanel(props: LabsPanelProps) {
                 <div className="segmented">
                   <button
                     className={`segment ${experimentalBrave ? 'is-active' : ''}`}
-                    onClick={() => setUI({ experimentalBrave: true })}
+                    onClick={() => setUI({ flags: { experimentalBrave: true } })}
                   >
                     On
                   </button>
                   <button
                     className={`segment ${!experimentalBrave ? 'is-active' : ''}`}
-                    onClick={() => setUI({ experimentalBrave: false })}
+                    onClick={() => setUI({ flags: { experimentalBrave: false } })}
                   >
                     Off
                   </button>

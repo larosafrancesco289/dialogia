@@ -20,12 +20,10 @@ import type { TabId, RenderSection } from '@/components/settings/types';
 import { IconButton } from '@/components/IconButton';
 import type { ModelSearchHandle } from '@/components/ModelSearch';
 import { XCircleIcon } from '@heroicons/react/24/outline';
-import {
-  getSystemPresets,
-  type SystemPreset,
-} from '@/lib/presets';
+import { getSystemPresets, type SystemPreset } from '@/lib/presets';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { useSettingsTabs } from '@/components/settings/useSettingsTabs';
+import { applySettingsSavePatch, buildSettingsSavePatch } from '@/components/settings/saveSettings';
 
 const TAB_LIST: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: 'models', label: 'Models' },
@@ -101,7 +99,7 @@ export function SettingsDrawer() {
     chat?.settings.reasoning_tokens != null ? String(chat.settings.reasoning_tokens) : '',
   );
   const [tutorDefaultModel, setTutorDefaultModel] = useState<string>(
-    ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID,
+    ui?.tutor.defaultModelId || DEFAULT_TUTOR_MODEL_ID,
   );
   const [showThinking, setShowThinking] = useState<boolean>(
     chat?.settings.show_thinking_by_default ?? false,
@@ -128,9 +126,9 @@ export function SettingsDrawer() {
   const [routePref, setRoutePref] = useState<'speed' | 'cost'>(
     (useChatStore.getState().ui.routePreference as any) || 'speed',
   );
-  const experimentalBrave = useChatStore((s) => !!s.ui.experimentalBrave);
-  const experimentalTutor = useChatStore((s) => !!s.ui.experimentalTutor);
-  const enableMultiModelChat = useChatStore((s) => !!s.ui.enableMultiModelChat);
+  const experimentalBrave = useChatStore((s) => !!s.ui.flags.experimentalBrave);
+  const experimentalTutor = useChatStore((s) => !!s.ui.flags.experimentalTutor);
+  const enableMultiModelChat = useChatStore((s) => !!s.ui.flags.enableMultiModelChat);
   // System prompt presets
   const [presets, setPresets] = useState<SystemPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
@@ -159,7 +157,7 @@ export function SettingsDrawer() {
     setShowStats(chat?.settings.show_stats ?? false);
     setShowToolCallLog(chat?.settings.showToolCallLog ?? false);
     setShowDebugRawJson(chat?.settings.showDebugRawJson ?? true);
-    setTutorDefaultModel(ui?.tutorDefaultModelId || DEFAULT_TUTOR_MODEL_ID);
+    setTutorDefaultModel(ui?.tutor.defaultModelId || DEFAULT_TUTOR_MODEL_ID);
   }, [
     chat?.id,
     chat?.settings.system,
@@ -170,7 +168,7 @@ export function SettingsDrawer() {
     chat?.settings.reasoning_tokens,
     chat?.settings.show_thinking_by_default,
     chat?.settings.show_stats,
-    ui?.tutorDefaultModelId,
+    ui?.tutor.defaultModelId,
     chat?.settings.showToolCallLog,
     chat?.settings.showDebugRawJson,
   ]);
@@ -269,27 +267,30 @@ export function SettingsDrawer() {
     [activeTab, registerSection],
   );
 
-  const scrollToSection = useCallback((sectionId: string) => {
-    const container = drawerRef.current;
-    const target = sectionRefs.current[sectionId];
-    if (!container || !target) return;
+  const scrollToSection = useCallback(
+    (sectionId: string) => {
+      const container = drawerRef.current;
+      const target = sectionRefs.current[sectionId];
+      if (!container || !target) return;
 
-    const header = container.querySelector('[data-settings-header]') as HTMLElement | null;
-    const headerHeight = header?.offsetHeight ?? 0;
-    const tabBarHeight = tabBarRef.current?.offsetHeight ?? 0;
-    const offset = headerHeight + tabBarHeight + 16;
+      const header = container.querySelector('[data-settings-header]') as HTMLElement | null;
+      const headerHeight = header?.offsetHeight ?? 0;
+      const tabBarHeight = tabBarRef.current?.offsetHeight ?? 0;
+      const offset = headerHeight + tabBarHeight + 16;
 
-    const prefersReducedMotion =
-      typeof window !== 'undefined' && window.matchMedia
-        ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        : false;
+      const prefersReducedMotion =
+        typeof window !== 'undefined' && window.matchMedia
+          ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          : false;
 
-    container.scrollTo({
-      top: Math.max(0, target.offsetTop - offset),
-      behavior: prefersReducedMotion ? 'auto' : 'smooth',
-    });
-    setActiveSection(sectionId);
-  }, [setActiveSection, sectionRefs, tabBarRef]);
+      container.scrollTo({
+        top: Math.max(0, target.offsetTop - offset),
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      });
+      setActiveSection(sectionId);
+    },
+    [setActiveSection, sectionRefs, tabBarRef],
+  );
 
   const handleTabKey = useCallback(
     (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -517,15 +518,15 @@ export function SettingsDrawer() {
                           showToolCallLog={showToolCallLog}
                           showDebugRawJson={showDebugRawJson}
                           enableMultiModelChat={enableMultiModelChat}
-                          uiDebugMode={!!ui?.debugMode}
+                          uiDebugMode={!!ui?.debug.mode}
                           setShowThinking={setShowThinking}
                           setShowStats={setShowStats}
                           setShowToolCallLog={setShowToolCallLog}
                           setShowDebugRawJson={setShowDebugRawJson}
                           setEnableMultiModelChat={(value: boolean) =>
-                            setUI({ enableMultiModelChat: value })
+                            setUI({ flags: { enableMultiModelChat: value } })
                           }
-                          setDebugMode={(value: boolean) => setUI({ debugMode: value })}
+                          setDebugMode={(value: boolean) => setUI({ debug: { mode: value } })}
                         />,
                       );
                       break;
@@ -610,54 +611,27 @@ export function SettingsDrawer() {
           <button
             className="btn w-full max-w-sm"
             onClick={() => {
-              const trimmedTutorModel = tutorDefaultModel.trim() || DEFAULT_TUTOR_MODEL_ID;
-              setUI({
-                tutorDefaultModelId: trimmedTutorModel,
+              const patch = buildSettingsSavePatch({
+                chat,
+                ui,
+                system,
+                temperature,
+                topP: top_p,
+                maxTokens: max_tokens,
+                reasoningEffort,
+                reasoningTokens,
+                showThinking,
+                showStats,
+                showToolCallLog,
+                showDebugRawJson,
+                tutorDefaultModel,
               });
-              if (chat) {
-                updateChatSettings({
-                  system,
-                  temperature,
-                  top_p,
-                  max_tokens,
-                  reasoning_effort: (reasoningEffort || undefined) as any,
-                  reasoning_tokens: reasoningTokens,
-                  show_thinking_by_default: showThinking,
-                  show_stats: showStats,
-                  showToolCallLog,
-                  showDebugRawJson,
-                  ...(chat.settings.tutor_mode || ui?.forceTutorMode
-                    ? {
-                        tutor_default_model: trimmedTutorModel,
-                      }
-                    : {}),
-                });
-              } else {
-                const provider =
-                  (ui as any)?.next?.search?.provider ??
-                  (chat as any)?.settings?.search_provider ??
-                  'openrouter';
-                setUI({
-                  next: {
-                    system,
-                    temperature,
-                    topP: top_p,
-                    maxTokens: max_tokens,
-                    reasoning: {
-                      effort: (reasoningEffort || undefined) as any,
-                      tokens: reasoningTokens,
-                    },
-                    show: {
-                      thinking: showThinking,
-                      stats: showStats,
-                      toolCallLog: showToolCallLog,
-                      debugRawJson: showDebugRawJson,
-                    },
-                    search: { provider },
-                  },
-                });
-              }
-              closeWithAnim();
+              applySettingsSavePatch({
+                patch,
+                setUI,
+                updateChatSettings,
+                onClose: closeWithAnim,
+              });
             }}
           >
             Save

@@ -49,8 +49,8 @@ export function Composer({
   const [focused, setFocused] = useState(false);
   const isTablet = useIsMobile(768);
 
-  const tutorGloballyEnabled = useChatStore((s) => !!s.ui.experimentalTutor);
-  const forceTutorMode = useChatStore((s) => !!s.ui.forceTutorMode);
+  const tutorGloballyEnabled = useChatStore((s) => !!s.ui.flags.experimentalTutor);
+  const forceTutorMode = useChatStore((s) => !!s.ui.tutor.forceMode);
   const tutorEnabled =
     tutorGloballyEnabled &&
     (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.tutorMode));
@@ -131,7 +131,7 @@ export function Composer({
 
   useAutogrowTextarea(taRef, [text], maxTextareaHeight);
 
-  const experimentalBrave = useChatStore((s) => !!s.ui.experimentalBrave);
+  const experimentalBrave = useChatStore((s) => !!s.ui.flags.experimentalBrave);
   const searchEnabled = chat ? !!chat.settings.search_enabled : !!uiNext.search?.enabled;
   const rawProvider =
     (chat?.settings as any)?.search_provider || uiNext.search?.provider || 'openrouter';
@@ -149,14 +149,14 @@ export function Composer({
       void updateSettings({ search_enabled: !chat.settings.search_enabled });
     } else {
       setUI({
-        next: { search: { enabled: !uiNext.search?.enabled } },
+        overrides: { search: { enabled: !uiNext.search?.enabled } },
       });
     }
   };
 
   const handleSelectEffort = async (effort: Effort) => {
     if (chat) await updateSettings({ reasoning_effort: effort });
-    else setUI({ next: { reasoning: { effort } } });
+    else setUI({ overrides: { reasoning: { effort } } });
   };
 
   const handleStop = () => {

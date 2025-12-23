@@ -43,7 +43,11 @@ export type TutorEvalResult = {
   learnerModelSummary?: string;
   toolUsage: ToolUsageStats;
   planTimeline?: Array<{ id: string; createdAt: number; planUpdates?: Message['planUpdates'] }>;
-  learnerModelTimeline?: Array<{ id: string; createdAt: number; learnerModel?: Message['learnerModel'] }>;
+  learnerModelTimeline?: Array<{
+    id: string;
+    createdAt: number;
+    learnerModel?: Message['learnerModel'];
+  }>;
   judge: {
     raw: string;
     parsed?: JudgeVerdict;
@@ -83,10 +87,9 @@ function normalizeContent(input: unknown): string {
   return '';
 }
 
-function resolveApiKeyFactory(keys: TutorEvalOptions['apiKeys']): (params: {
-  modelId: string;
-  transport: ModelTransport;
-}) => string {
+function resolveApiKeyFactory(
+  keys: TutorEvalOptions['apiKeys'],
+): (params: { modelId: string; transport: ModelTransport }) => string {
   return ({ transport }) => {
     if (transport === 'anthropic') {
       if (!keys?.anthropic) {
@@ -142,7 +145,11 @@ function summarizeToolUsage(snapshots: HeadlessTurnSnapshot[]): ToolUsageStats {
   return { totalCalls, byName, contentTurns, metaCalls, searchCalls, maxContentCallsPerTurn };
 }
 
-async function persistResult(outputDir: string, scenarioId: string, payload: unknown): Promise<string> {
+async function persistResult(
+  outputDir: string,
+  scenarioId: string,
+  payload: unknown,
+): Promise<string> {
   const targetDir = path.resolve(process.cwd(), outputDir);
   await fs.mkdir(targetDir, { recursive: true });
   const filepath = path.join(targetDir, `${scenarioId}.json`);
@@ -215,10 +222,10 @@ export async function runTutorScenario(
     modelIndex,
     resolveApiKey,
     uiOverrides: {
-      debugMode: true,
-      experimentalTutor: true,
-      forceTutorMode: true,
-      next: { tutorMode: true },
+      debug: { mode: true },
+      flags: { experimentalTutor: true },
+      tutor: { forceMode: true },
+      overrides: { tutorMode: true },
     },
   });
 
@@ -262,8 +269,10 @@ export async function runTutorScenario(
   const result = runner.toResult();
   const toolUsage = summarizeToolUsage(result.snapshots);
   const transcript = renderSnapshotTranscript(result.snapshots);
-  const finalPlan =
-    runner.getSession().getState().chats.find((c) => c.id === chat.id)?.settings.learningPlan;
+  const finalPlan = runner
+    .getSession()
+    .getState()
+    .chats.find((c) => c.id === chat.id)?.settings.learningPlan;
   const learnerModel = getLatestLearnerModel(result.messages);
   const planSummary =
     finalPlan && planUsageNeeded(toolUsage)

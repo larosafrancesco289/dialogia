@@ -3,14 +3,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { Composer } from '@/components/Composer';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
+import { readNextOverrides } from '@/lib/ui/next';
 
 export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetrics }) {
   const newChat = useChatStore((s) => s.newChat);
   const send = useChatStore((s) => s.sendUserMessage);
   const ui = useChatStore((s) => s.ui);
-  const experimentalTutor = !!ui.experimentalTutor;
-  const forceTutorMode = !!ui.forceTutorMode;
-  const nextTutorMode = !!(ui.next?.tutorMode ?? false);
+  const experimentalTutor = !!ui.flags.experimentalTutor;
+  const forceTutorMode = !!ui.tutor.forceMode;
+  const nextTutorMode = !!readNextOverrides(ui).tutorMode;
   const tutorActive = experimentalTutor && (forceTutorMode || nextTutorMode);
   const quickStartPhrases = tutorActive
     ? ['Review my algebra notes', 'Quiz me on world history', 'Explain photosynthesis']
@@ -103,8 +104,8 @@ function TutorGreetingCard() {
       selectedChatId: id,
       prepareTutorWelcomeMessage: s.prepareTutorWelcomeMessage,
       primeTutorWelcomePreview: s.primeTutorWelcomePreview,
-      welcomeState: id ? s.ui.tutorWelcomeByChatId?.[id] : undefined,
-      previewState: s.ui.tutorWelcomePreview,
+      welcomeState: id ? s.ui.tutor.welcomeByChatId?.[id] : undefined,
+      previewState: s.ui.tutor.welcomePreview,
     };
   });
   const [readyForReveal, setReadyForReveal] = useState(false);

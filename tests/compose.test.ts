@@ -97,11 +97,10 @@ test('composeTurn merges tutor and search context with plugins and tools', async
 
   const chat = baseChat();
   const ui = {
-    experimentalTutor: true,
-    forceTutorMode: false,
-    experimentalBrave: true,
+    flags: { experimentalTutor: true, experimentalBrave: true },
+    tutor: { forceMode: false },
     routePreference: 'speed',
-    next: { tutorNudge: 'more_practice' },
+    overrides: { tutorNudge: 'more_practice' },
   } as any;
   const prior: Message[] = [
     {
@@ -160,9 +159,8 @@ test('composeTurn falls back to OpenRouter search when Brave experiment disabled
   const result = await composeTurn({
     chat,
     ui: {
-      experimentalBrave: false,
-      experimentalTutor: false,
-      forceTutorMode: false,
+      flags: { experimentalBrave: false, experimentalTutor: false },
+      tutor: { forceMode: false },
       routePreference: 'speed',
     } as any,
     modelIndex: modelIndexStub,

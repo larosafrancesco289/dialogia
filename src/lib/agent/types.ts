@@ -6,12 +6,13 @@ import type {
   ModelTransport,
   LearnerModel,
   LearningPlan,
-  Evidence,
+  LearnerModelDebugSnapshot,
 } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { SetState, GetState } from 'zustand';
 import type { StoreState, UIState } from '@/lib/store/types';
+import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
 
 export type StoreSetter = SetState<StoreState>;
 export type StoreGetter = GetState<StoreState>;
@@ -121,10 +122,7 @@ export type TutorToolName =
 
 export type ToolName = 'web_search' | TutorToolName;
 
-export type WebSearchArgs = {
-  query: string;
-  count?: number;
-};
+export type WebSearchArgs = WebSearchToolArgs;
 
 export type TutorToolCall = {
   name: TutorToolName;
@@ -159,15 +157,7 @@ export type PlanTurnResult = {
   learnerModel?: LearnerModel;
   planUpdates?: Message['planUpdates'];
   updatedPlan?: LearningPlan;
-  learnerModelDebug?: {
-    nodeId: string;
-    nodeName?: string;
-    evidenceType?: Evidence['type'];
-    weight?: number;
-    oldConfidence?: number;
-    newConfidence?: number;
-    note?: string;
-  };
+  learnerModelDebug?: LearnerModelDebugSnapshot;
 };
 
 export type ComposeTurnArgs = {

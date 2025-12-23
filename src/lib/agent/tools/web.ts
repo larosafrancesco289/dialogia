@@ -4,6 +4,7 @@ import { withAbort } from '@/lib/utils/abort';
 import type {
   SearchProvider,
   SearchResult,
+  StoreGetter,
   StoreSetter,
   ToolExecutionResult,
   WebSearchArgs,
@@ -40,27 +41,27 @@ export function extractWebSearchArgs(text: string): WebSearchArgs | null {
       const direct = readSearchPayload(payload);
       if (direct) return direct;
       const payloadName = typeof payload.name === 'string' ? payload.name : '';
-        if (payloadName === 'web_search') {
-          const args = payload.arguments;
-          if (typeof args === 'string') {
-            try {
-              const inner = JSON.parse(args);
-              const nested = readSearchPayload(inner);
-              if (nested) return nested;
-            } catch {
-              continue;
-            }
-          } else if (args && typeof args === 'object') {
-            const nested = readSearchPayload(args);
+      if (payloadName === 'web_search') {
+        const args = payload.arguments;
+        if (typeof args === 'string') {
+          try {
+            const inner = JSON.parse(args);
+            const nested = readSearchPayload(inner);
             if (nested) return nested;
+          } catch {
+            continue;
           }
+        } else if (args && typeof args === 'object') {
+          const nested = readSearchPayload(args);
+          if (nested) return nested;
         }
       }
-    } catch (error) {
-      console.error('Failed to extract web search args', error);
     }
-    return null;
+  } catch (error) {
+    console.error('Failed to extract web search args', error);
   }
+  return null;
+}
 
 export async function performWebSearchTool(opts: {
   args: WebSearchArgs;
@@ -70,16 +71,25 @@ export async function performWebSearchTool(opts: {
   assistantMessageId: string;
   chatId: string;
   set: StoreSetter;
+  get: StoreGetter;
 }): Promise<ToolExecutionResult> {
-  const { args, fallbackQuery, searchProvider, controller, assistantMessageId, chatId: _chatId, set } =
-    opts;
+  const {
+    args,
+    fallbackQuery,
+    searchProvider,
+    controller,
+    assistantMessageId,
+    chatId: _chatId,
+    set,
+    get,
+  } = opts;
   let rawQuery = typeof args?.query === 'string' ? args.query.trim() : '';
   const parsedCount = Number.parseInt(String(args?.count ?? ''), 10);
   const count = Math.min(Math.max(Number.isFinite(parsedCount) ? parsedCount : 5, 1), 10);
   if (!rawQuery) rawQuery = fallbackQuery.trim().slice(0, 256);
 
   if (searchProvider === 'brave') {
-    setSearchUiStatus(set, assistantMessageId, { query: rawQuery, status: 'loading' });
+    setSearchUiStatus({ set, get }, assistantMessageId, { query: rawQuery, status: 'loading' });
   }
 
   return withAbort(controller.signal, async (fetchController) => {
@@ -92,7 +102,7 @@ export async function performWebSearchTool(opts: {
 
       if (result.ok) {
         if (searchProvider === 'brave') {
-          setSearchUiStatus(set, assistantMessageId, {
+          setSearchUiStatus({ set, get }, assistantMessageId, {
             query: rawQuery,
             status: 'done',
             results: result.results,
@@ -102,7 +112,7 @@ export async function performWebSearchTool(opts: {
       }
 
       if (searchProvider === 'brave') {
-        setSearchUiStatus(set, assistantMessageId, {
+        setSearchUiStatus({ set, get }, assistantMessageId, {
           query: rawQuery,
           status: 'error',
           results: [],
@@ -116,7 +126,7 @@ export async function performWebSearchTool(opts: {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : undefined;
       if (searchProvider === 'brave') {
-        setSearchUiStatus(set, assistantMessageId, {
+        setSearchUiStatus({ set, get }, assistantMessageId, {
           query: rawQuery,
           status: 'error',
           results: [],

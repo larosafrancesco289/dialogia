@@ -110,25 +110,12 @@ export async function persistTutorForMessage({ messageId, store }: PersistTutorA
   }
 }
 
-export async function sendUserTurn({
-  content,
-  attachments,
-  metadata,
-  set,
-  get,
-}: SendTurnOptions) {
+export async function sendUserTurn({ content, attachments, metadata, set, get }: SendTurnOptions) {
   const runtime = await prepareSendRuntime({ attachments, set, get });
   if (!runtime) return;
   let currentChat = runtime.chat;
-  const {
-    chatId,
-    ui,
-    tutorEnabled,
-    activeModelIds,
-    primaryModelId,
-    priorMessages,
-    modelContexts,
-  } = runtime;
+  const { chatId, ui, tutorEnabled, activeModelIds, primaryModelId, priorMessages, modelContexts } =
+    runtime;
   if (!activeModelIds.length || !primaryModelId) return;
 
   const zdrAllowed = await enforceZdrGate(ui, modelContexts.keys(), (modelId) =>
@@ -179,8 +166,7 @@ export async function sendUserTurn({
           ui: {
             ...updated,
             notice:
-              state.ui.notice ??
-              'DeepResearch currently requires an OpenRouter model selection.',
+              state.ui.notice ?? 'DeepResearch currently requires an OpenRouter model selection.',
           },
         };
       });
@@ -244,8 +230,8 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
   let chat: Chat = initialChat;
 
   const uiState = get().ui;
-  const tutorGloballyEnabled = !!uiState.experimentalTutor;
-  const forceTutorMode = !!(uiState.forceTutorMode ?? false);
+  const tutorGloballyEnabled = !!uiState.flags.experimentalTutor;
+  const forceTutorMode = !!(uiState.tutor.forceMode ?? false);
   const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat.settings.tutor_mode);
 
   if (tutorEnabled) {
@@ -256,7 +242,7 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
     });
     overrideModelId =
       ensured.defaultModelId ||
-      uiState.tutorDefaultModelId ||
+      uiState.tutor.defaultModelId ||
       chat.settings.tutor_default_model ||
       overrideModelId;
     if (ensured.changed) {
@@ -330,7 +316,7 @@ export function attachTutorState({ messageId, patch, store }: AttachTutorUiArgs)
   const { ui, messages, selectedChatId } = snapshot;
   if (!selectedChatId) return undefined;
   const { nextUi, nextMessages, updatedMessage } = attachTutorUiState({
-    currentUi: ui.tutorByMessageId,
+    currentUi: ui.tutor.byMessageId,
     currentMessages: messages[selectedChatId] ?? [],
     messageId,
     patch,
@@ -342,7 +328,10 @@ export function attachTutorState({ messageId, patch, store }: AttachTutorUiArgs)
     },
     ui: {
       ...state.ui,
-      tutorByMessageId: nextUi,
+      tutor: {
+        ...state.ui.tutor,
+        byMessageId: nextUi,
+      },
     },
   }));
   return updatedMessage;

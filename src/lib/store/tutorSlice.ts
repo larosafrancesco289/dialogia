@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StoreState } from '@/lib/store/types';
-import type { LearningPlan, Message, TutorEvent } from '@/lib/types';
+import type { LearningPlan, Message, MessageTutor, TutorEvent } from '@/lib/types';
 import type { StoreSetter } from '@/lib/agent/types';
 import { updateTutorProfile, loadTutorProfile } from '@/lib/tutorProfile';
 import { saveMessage } from '@/lib/db';
@@ -12,10 +12,11 @@ import {
   initializeLearnerModel,
 } from '@/lib/agent/learnerModel';
 import { processPlanProgress } from '@/lib/agent/planAwareTutor';
+import { readNextOverrides } from '@/lib/ui/next';
 
 const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
   if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {
-    return 'Welcome! Share what you want to learn and I\'ll build a personalized plan with adaptive mastery tracking. Feel free to upload any materials you have to help me understand your learning context.';
+    return "Welcome! Share what you want to learn and I'll build a personalized plan with adaptive mastery tracking. Feel free to upload any materials you have to help me understand your learning context.";
   }
 
   const nextNode = getNextNode(plan);
@@ -27,11 +28,28 @@ const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
   return `Welcome back! We're working toward "${plan.goal}". Our next focus is ${nextNode.name}${description}. Ask a question or request practice when you're ready. You can also upload any relevant materials to support your learning.`;
 };
 
-export function createTutorSlice(
-  set: StoreSetter,
-  get: () => StoreState,
-  _store?: unknown,
-) {
+export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
+  const updateTutorEntry = (
+    messageId: string,
+    updater: (prev: MessageTutor) => MessageTutor,
+  ) => {
+    if (!messageId) return;
+    set((state) => {
+      const current = state.ui.tutor.byMessageId || {};
+      const prevEntry = (current[messageId] || {}) as MessageTutor;
+      const nextEntry = updater(prevEntry);
+      return {
+        ui: {
+          ...state.ui,
+          tutor: {
+            ...state.ui.tutor,
+            byMessageId: { ...current, [messageId]: nextEntry },
+          },
+        },
+      };
+    });
+  };
+
   return {
     async logTutorResult(evt: TutorEvent) {
       const chatId = get().selectedChatId!;
@@ -40,7 +58,10 @@ export function createTutorSlice(
       set((s) => ({
         ui: {
           ...s.ui,
-          tutorProfileByChatId: { ...(s.ui.tutorProfileByChatId || {}), [chatId]: prof },
+          tutor: {
+            ...s.ui.tutor,
+            profileByChatId: { ...(s.ui.tutor.profileByChatId || {}), [chatId]: prof },
+          },
         },
       }));
     },
@@ -52,20 +73,27 @@ export function createTutorSlice(
         set((s) => ({
           ui: {
             ...s.ui,
-            tutorProfileByChatId: { ...(s.ui.tutorProfileByChatId || {}), [id]: prof },
+            tutor: {
+              ...s.ui.tutor,
+              profileByChatId: { ...(s.ui.tutor.profileByChatId || {}), [id]: prof },
+            },
           },
         }));
     },
     async primeTutorWelcomePreview() {
       const state = get();
+      const nextOverrides = readNextOverrides(state.ui);
       const tutorActive =
-        !!state.ui.experimentalTutor &&
-        (state.ui.forceTutorMode || state.ui.next?.tutorMode);
+        !!state.ui.flags.experimentalTutor &&
+        (state.ui.tutor.forceMode || nextOverrides.tutorMode);
       if (!tutorActive) {
         set((s) => ({
           ui: {
             ...s.ui,
-            tutorWelcomePreview: { status: 'idle' },
+            tutor: {
+              ...s.ui.tutor,
+              welcomePreview: { status: 'idle' },
+            },
           },
         }));
         return undefined;
@@ -78,10 +106,13 @@ export function createTutorSlice(
       set((s) => ({
         ui: {
           ...s.ui,
-          tutorWelcomePreview: {
-            status: 'ready',
-            message,
-            generatedAt: Date.now(),
+          tutor: {
+            ...s.ui.tutor,
+            welcomePreview: {
+              status: 'ready',
+              message,
+              generatedAt: Date.now(),
+            },
           },
         },
       }));
@@ -96,9 +127,12 @@ export function createTutorSlice(
         set((s) => ({
           ui: {
             ...s.ui,
-            tutorWelcomeByChatId: {
-              ...(s.ui.tutorWelcomeByChatId || {}),
-              [id]: { status: 'error', error: 'tutor_disabled' },
+            tutor: {
+              ...s.ui.tutor,
+              welcomeByChatId: {
+                ...(s.ui.tutor.welcomeByChatId || {}),
+                [id]: { status: 'error', error: 'tutor_disabled' },
+              },
             },
           },
         }));
@@ -138,9 +172,7 @@ export function createTutorSlice(
           const existing = welcomeIndex >= 0 ? list[welcomeIndex] : undefined;
           const createdAt = existing?.createdAt ?? resolveInsertionTimestamp(list);
           const modelId =
-            chat.settings.tutor_default_model ||
-            chat.settings.model ||
-            DEFAULT_TUTOR_MODEL_ID;
+            chat.settings.tutor_default_model || chat.settings.model || DEFAULT_TUTOR_MODEL_ID;
           welcomeMessage = existing
             ? { ...existing, content: trimmed, model: modelId, tutorWelcome: true }
             : {
@@ -174,15 +206,18 @@ export function createTutorSlice(
             },
             ui: {
               ...s.ui,
-              tutorWelcomeByChatId: {
-                ...(s.ui.tutorWelcomeByChatId || {}),
-                [id]: {
-                  status: 'ready',
-                  message: trimmed,
-                  generatedAt: Date.now(),
+              tutor: {
+                ...s.ui.tutor,
+                welcomeByChatId: {
+                  ...(s.ui.tutor.welcomeByChatId || {}),
+                  [id]: {
+                    status: 'ready',
+                    message: trimmed,
+                    generatedAt: Date.now(),
+                  },
                 },
+                greetedByChatId: { ...(s.ui.tutor.greetedByChatId || {}), [id]: true },
               },
-              tutorGreetedByChatId: { ...(s.ui.tutorGreetedByChatId || {}), [id]: true },
             },
           };
         });
@@ -194,7 +229,9 @@ export function createTutorSlice(
       return planMessage;
     },
 
-    async applyLearnerModelFeedbackFromUser(input: Parameters<typeof applyLearnerModelFeedback>[1]) {
+    async applyLearnerModelFeedbackFromUser(
+      input: Parameters<typeof applyLearnerModelFeedback>[1],
+    ) {
       const state = get();
       const chatId = state.selectedChatId;
       if (!chatId) return;
@@ -203,8 +240,7 @@ export function createTutorSlice(
 
       const plan = chat.settings.learningPlan;
       const messages = state.messages[chatId] ?? [];
-      const baseModel =
-        getLatestLearnerModel(messages) ?? initializeLearnerModel(chatId, plan);
+      const baseModel = getLatestLearnerModel(messages) ?? initializeLearnerModel(chatId, plan);
       const feedback = applyLearnerModelFeedback(baseModel, input);
       const planResult = await processPlanProgress(plan, feedback.model);
       const updatedPlan = planResult.updatedPlan ?? plan;
@@ -214,13 +250,9 @@ export function createTutorSlice(
       }
 
       const nodeMeta = plan.nodes.find((n) => n.id === input.nodeId);
-      const beforePct =
-        feedback.from != null ? Math.round((feedback.from || 0) * 100) : undefined;
-      const afterPct =
-        feedback.to != null ? Math.round((feedback.to || 0) * 100) : undefined;
-      const summaryParts = [
-        `Adjusted mastery for ${nodeMeta?.name || input.nodeId}.`,
-      ];
+      const beforePct = feedback.from != null ? Math.round((feedback.from || 0) * 100) : undefined;
+      const afterPct = feedback.to != null ? Math.round((feedback.to || 0) * 100) : undefined;
+      const summaryParts = [`Adjusted mastery for ${nodeMeta?.name || input.nodeId}.`];
       if (beforePct != null && afterPct != null) {
         summaryParts.push(`Confidence ${beforePct}% → ${afterPct}%.`);
       }
@@ -262,6 +294,92 @@ export function createTutorSlice(
       }));
 
       await saveMessage(assistantMessage).catch(() => undefined);
+    },
+
+    async patchTutorEntry(
+      messageId: string,
+      patch: Partial<MessageTutor>,
+      opts?: { persist?: boolean },
+    ) {
+      updateTutorEntry(messageId, (prev) => ({ ...prev, ...patch }));
+      if (opts?.persist === false) return;
+      await get().persistTutorStateForMessage(messageId).catch(() => undefined);
+    },
+
+    setTutorPlanProposalStatus(messageId, status) {
+      updateTutorEntry(messageId, (prev) => {
+        if (!prev.planProposal) return prev;
+        return {
+          ...prev,
+          planProposal: {
+            ...prev.planProposal,
+            status,
+            resolvedAt: Date.now(),
+          },
+        };
+      });
+      void get().persistTutorStateForMessage(messageId);
+    },
+
+    setTutorAttemptMcq(messageId, itemId, choiceIdx, correct) {
+      updateTutorEntry(messageId, (prev) => {
+        const prevAttempts = prev.attempts || {};
+        const prevMcq = (prevAttempts.mcq || {}) as Record<string, any>;
+        return {
+          ...prev,
+          attempts: {
+            ...prevAttempts,
+            mcq: {
+              ...prevMcq,
+              [itemId]: { choice: choiceIdx, done: true, correct },
+            },
+          },
+        };
+      });
+      void get().persistTutorStateForMessage(messageId);
+    },
+
+    setTutorAttemptFillBlank(messageId, itemId, answer, revealed, correct) {
+      updateTutorEntry(messageId, (prev) => {
+        const prevAttempts = prev.attempts || {};
+        const prevFill = (prevAttempts.fillBlank || {}) as Record<string, any>;
+        const prevEntry = prevFill[itemId] || {};
+        const nextEntry = {
+          ...prevEntry,
+          answer,
+          ...(typeof revealed === 'boolean' ? { revealed } : {}),
+          ...(typeof correct === 'boolean' ? { correct } : {}),
+        };
+        return {
+          ...prev,
+          attempts: {
+            ...prevAttempts,
+            fillBlank: {
+              ...prevFill,
+              [itemId]: nextEntry,
+            },
+          },
+        };
+      });
+      void get().persistTutorStateForMessage(messageId);
+    },
+
+    setTutorAttemptOpen(messageId, itemId, answer) {
+      updateTutorEntry(messageId, (prev) => {
+        const prevAttempts = prev.attempts || {};
+        const prevOpen = (prevAttempts.open || {}) as Record<string, any>;
+        return {
+          ...prev,
+          attempts: {
+            ...prevAttempts,
+            open: {
+              ...prevOpen,
+              [itemId]: { ...(prevOpen[itemId] || {}), answer },
+            },
+          },
+        };
+      });
+      void get().persistTutorStateForMessage(messageId);
     },
   } satisfies Partial<StoreState>;
 }

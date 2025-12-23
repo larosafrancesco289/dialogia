@@ -13,7 +13,7 @@ import { setTurnController, clearTurnController } from '@/lib/services/controlle
 import type { ModelIndex } from '@/lib/models';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
-import { buildTutorFallbackContent } from '@/lib/agent/streamHandlers';
+import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
 import type { HeadlessTurnArtifacts, HeadlessTurnResult } from '@/lib/headless/types';
 
 export type ApiKeyResolver = (params: { modelId: string; transport: ModelTransport }) => string;
@@ -189,26 +189,17 @@ export class HeadlessTutorSession {
       });
 
       if (runArtifacts.shortCircuited) {
-        const currentList = this.store.getState().messages[this.chatId] ?? [];
-        const current = currentList.find((m) => m.id === assistantMessage.id);
-        const base = (current as Message | undefined) ?? assistantMessage;
-        const finalMsgBase: Message = lifecycle.buildShortCircuitMessage({
-          ...base,
-          content: base.content ?? '',
-          reasoning: base.reasoning,
-          attachments: base.attachments,
-          tutor: (base as any)?.tutor,
-          hiddenContent: (base as any)?.hiddenContent,
+        const finalMsg = await finalizeShortCircuitMessage({
+          chatId: this.chatId,
+          assistantMessage,
+          lifecycle,
+          getState: () => this.store.getState(),
+          updateMessage: (messageId, patch) => {
+            this.updateMessage(messageId, patch);
+          },
+          persistMessage: this.persistMessage,
         });
-        const fallbackContent =
-          (finalMsgBase.content || '').trim() ||
-          buildTutorFallbackContent(this.store.getState(), assistantMessage.id) ||
-          'I added new tutor content above. Let me know when you are ready.';
-        const finalMsg: Message = { ...finalMsgBase, content: fallbackContent };
-        this.updateMessage(assistantMessage.id, finalMsg);
-        await this.persistMessage(finalMsg);
-        const planArtifacts: PlanTurnResult =
-          lifecycle.latestPlan() ??
+        const planArtifacts: PlanTurnResult = lifecycle.latestPlan() ??
           runArtifacts.plan ?? {
             finalSystem:
               runArtifacts.composition.system ?? chat.settings.system ?? DEFAULT_BASE_SYSTEM,
@@ -224,9 +215,9 @@ export class HeadlessTutorSession {
             shouldPlan: runArtifacts.composition.shouldPlan,
           },
           plan: planArtifacts,
-          tutorUi: this.store.getState().ui.tutorByMessageId?.[assistantMessage.id],
+          tutorUi: this.store.getState().ui.tutor.byMessageId?.[assistantMessage.id],
           toolCalls: finalMsg.toolCalls,
-          debugPayload: this.store.getState().ui.debugByMessageId?.[assistantMessage.id]?.body,
+          debugPayload: this.store.getState().ui.debug.byMessageId?.[assistantMessage.id]?.body,
         });
       }
 
@@ -234,7 +225,11 @@ export class HeadlessTutorSession {
       finalAssistant = messageList.find((msg) => msg.id === assistantMessage.id);
     } catch (error) {
       const text =
-        error instanceof Error ? error.message : typeof error === 'string' ? error : 'Unknown error';
+        error instanceof Error
+          ? error.message
+          : typeof error === 'string'
+            ? error
+            : 'Unknown error';
       const fallback = this.updateMessage(assistantMessage.id, {
         content: `Tutor execution error: ${text}`,
       });
@@ -250,8 +245,7 @@ export class HeadlessTutorSession {
     const assistantFinal =
       finalAssistant ?? finalMessages.find((msg) => msg.id === assistantMessage.id);
     if (!assistantFinal) throw new Error('Assistant message missing after streaming');
-    const planArtifacts: PlanTurnResult =
-      lifecycle.latestPlan() ??
+    const planArtifacts: PlanTurnResult = lifecycle.latestPlan() ??
       runArtifacts?.plan ?? {
         finalSystem:
           runArtifacts?.composition.system ?? chat.settings.system ?? DEFAULT_BASE_SYSTEM,
@@ -268,9 +262,9 @@ export class HeadlessTutorSession {
         shouldPlan: runArtifacts?.composition.shouldPlan ?? false,
       },
       plan: planArtifacts,
-      tutorUi: this.store.getState().ui.tutorByMessageId?.[assistantMessage.id],
+      tutorUi: this.store.getState().ui.tutor.byMessageId?.[assistantMessage.id],
       toolCalls: assistantFinal.toolCalls,
-      debugPayload: this.store.getState().ui.debugByMessageId?.[assistantMessage.id]?.body,
+      debugPayload: this.store.getState().ui.debug.byMessageId?.[assistantMessage.id]?.body,
     });
   }
 

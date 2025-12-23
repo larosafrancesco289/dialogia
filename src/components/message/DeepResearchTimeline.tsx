@@ -8,7 +8,7 @@ import {
   ArrowTopRightOnSquareIcon,
   SparklesIcon,
   GlobeAltIcon,
-  BeakerIcon
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import { Markdown } from '@/lib/markdown';
@@ -28,9 +28,9 @@ const containerVariants: Variants = {
   visible: {
     opacity: 1,
     transition: {
-      when: "beforeChildren"
-    }
-  }
+      when: 'beforeChildren',
+    },
+  },
 };
 
 const itemVariants: Variants = {
@@ -39,8 +39,8 @@ const itemVariants: Variants = {
     opacity: 1,
     x: 0,
     y: 0,
-    transition: { type: 'spring', stiffness: 500, damping: 30 }
-  }
+    transition: { type: 'spring', stiffness: 500, damping: 30 },
+  },
 };
 
 export function DeepResearchTimeline({ trace }: Props) {
@@ -232,10 +232,12 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
         </div>
         <div className="text-xs text-fg-muted flex items-center gap-2 py-1">
           <span className="font-bold text-amber-500/80 tracking-wider">TIME CHECK</span>
-          <span className="font-mono opacity-70">{output?.iso ? new Date(output.iso).toLocaleTimeString() : ''}</span>
+          <span className="font-mono opacity-70">
+            {output?.iso ? new Date(output.iso).toLocaleTimeString() : ''}
+          </span>
         </div>
       </motion.div>
-    )
+    );
   }
 
   return null;

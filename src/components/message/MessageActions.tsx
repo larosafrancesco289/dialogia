@@ -27,7 +27,12 @@ export function MessageActions({
           <button className="icon-button" aria-label="Save edit" title="Save edit" onClick={onSave}>
             <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
           </button>
-          <button className="icon-button" aria-label="Cancel edit" title="Cancel edit" onClick={onCancel}>
+          <button
+            className="icon-button"
+            aria-label="Cancel edit"
+            title="Cancel edit"
+            onClick={onCancel}
+          >
             <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
           </button>
         </div>

@@ -17,10 +17,7 @@ test('tutor tool definitions expose agentic planning tools', () => {
     'quiz_mcq',
   ];
   for (const name of expected) {
-    assert.ok(
-      toolNames.includes(name),
-      `expected tutor tool definitions to include ${name}`,
-    );
+    assert.ok(toolNames.includes(name), `expected tutor tool definitions to include ${name}`);
   }
 });
 
@@ -42,7 +39,7 @@ test('ask_student_question tool stores questionnaire for the message', async () 
       'chat-test': [assistantMessage],
     },
     ui: {
-      tutorByMessageId: {},
+      tutor: { byMessageId: {} },
     },
   };
 
@@ -94,7 +91,7 @@ test('ask_student_question tool stores questionnaire for the message', async () 
   assert.equal(outcome.usedContent, true);
   assert.ok(persisted, 'expected tutor state to be persisted');
 
-  const stored = state.ui.tutorByMessageId?.['assistant-1']?.questionnaire;
+  const stored = state.ui.tutor.byMessageId?.['assistant-1']?.questionnaire;
   assert.ok(stored, 'questionnaire should be stored on tutor state');
   assert.equal(stored.status, 'awaiting');
   assert.equal(stored.questions.length, 1);
@@ -119,7 +116,7 @@ test('content tools replace previous tutor widgets to enforce one active payload
       'chat-test': [assistantMessage],
     },
     ui: {
-      tutorByMessageId: {},
+      tutor: { byMessageId: {} },
     },
   };
 
@@ -182,7 +179,7 @@ test('content tools replace previous tutor widgets to enforce one active payload
     persistMessage: async () => Promise.resolve(),
   });
 
-  const tutorState = state.ui.tutorByMessageId?.['assistant-1'];
+  const tutorState = state.ui.tutor.byMessageId?.['assistant-1'];
   assert.ok(Array.isArray(tutorState?.fillBlank));
   assert.equal(Array.isArray(tutorState?.mcq), false);
   assert.equal(tutorState?.attempts, undefined);

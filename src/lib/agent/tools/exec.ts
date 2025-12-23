@@ -73,7 +73,8 @@ export async function executePlanningToolCall(opts: {
         messageId: assistantMessage.id,
         name: callName,
         input: parsedArgs,
-        category: callName === 'web_search' ? 'search' : isTutorToolName(callName) ? 'tutor' : 'other',
+        category:
+          callName === 'web_search' ? 'search' : isTutorToolName(callName) ? 'tutor' : 'other',
         metadata:
           callName === 'web_search'
             ? { ...(roundMeta || {}), provider: searchProvider }
@@ -125,6 +126,7 @@ export async function executePlanningToolCall(opts: {
         assistantMessageId: assistantMessage.id,
         chatId,
         set,
+        get,
       });
       const output: Record<string, unknown> = {
         ok: searchResult.ok,
@@ -221,17 +223,12 @@ export async function executePlanningToolCall(opts: {
           plan: tutorOutcome.updatedPlan ?? chat.settings.learningPlan,
           name: callName as any,
         });
-        finalizeLog(
-          'success',
-          output,
-          undefined,
-          {
-            ...(roundMeta || {}),
-            ...(tutorOutcome.usedContent ? { usedContent: true } : {}),
-            ...(tutorOutcome.learnerModel ? { modelUpdated: true } : {}),
-            ...(tutorOutcome.planUpdates ? { planUpdated: true } : {}),
-          },
-        );
+        finalizeLog('success', output, undefined, {
+          ...(roundMeta || {}),
+          ...(tutorOutcome.usedContent ? { usedContent: true } : {}),
+          ...(tutorOutcome.learnerModel ? { modelUpdated: true } : {}),
+          ...(tutorOutcome.planUpdates ? { planUpdated: true } : {}),
+        });
         return {
           convoMessages: tutorOutcome.payload
             ? [

@@ -40,13 +40,13 @@ export function TutorPanel(props: TutorPanelProps) {
               <div className="segmented">
                 <button
                   className={`segment ${experimentalTutor ? 'is-active' : ''}`}
-                  onClick={() => setUI({ experimentalTutor: true })}
+                  onClick={() => setUI({ flags: { experimentalTutor: true } })}
                 >
                   On
                 </button>
                 <button
                   className={`segment ${!experimentalTutor ? 'is-active' : ''}`}
-                  onClick={() => setUI({ experimentalTutor: false })}
+                  onClick={() => setUI({ flags: { experimentalTutor: false } })}
                 >
                   Off
                 </button>
@@ -61,17 +61,17 @@ export function TutorPanel(props: TutorPanelProps) {
                   <label className="text-sm block">Force Tutor Mode</label>
                   <div className="segmented">
                     <button
-                      className={`segment ${ui?.forceTutorMode ? 'is-active' : ''}`}
+                      className={`segment ${ui?.tutor.forceMode ? 'is-active' : ''}`}
                       onClick={async () => {
-                        setUI({ forceTutorMode: true });
+                        setUI({ tutor: { forceMode: true } });
                         if (chat) await updateChatSettings({ tutor_mode: true });
                       }}
                     >
                       On
                     </button>
                     <button
-                      className={`segment ${!ui?.forceTutorMode ? 'is-active' : ''}`}
-                      onClick={() => setUI({ forceTutorMode: false })}
+                      className={`segment ${!ui?.tutor.forceMode ? 'is-active' : ''}`}
+                      onClick={() => setUI({ tutor: { forceMode: false } })}
                     >
                       Off
                     </button>

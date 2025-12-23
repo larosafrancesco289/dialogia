@@ -1,5 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
-import { db, saveChat, saveFolder, saveMessage } from '@/lib/db';
+import {
+  deleteChatAndMessages,
+  deleteFolder,
+  saveChat,
+  saveChatWithMessages,
+  saveFolder,
+  saveMessage,
+} from '@/lib/db';
 import type { Chat, Folder, Message } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
@@ -16,26 +23,26 @@ export class ChatService {
     const now = Date.now();
 
     const selected = selectedChatId ? chats.find((c) => c.id === selectedChatId) : undefined;
-    
+
     const lastNonTutorModel = (() => {
-        let candidate: { model: string; updatedAt: number } | undefined;
-        for (const c of chats) {
-          const model = c.settings?.model;
-          if (!model || c.settings?.tutor_mode) continue;
-          if (!candidate || (c.updatedAt ?? 0) > candidate.updatedAt) {
-            candidate = { model, updatedAt: c.updatedAt ?? 0 };
-          }
+      let candidate: { model: string; updatedAt: number } | undefined;
+      for (const c of chats) {
+        const model = c.settings?.model;
+        if (!model || c.settings?.tutor_mode) continue;
+        if (!candidate || (c.updatedAt ?? 0) > candidate.updatedAt) {
+          candidate = { model, updatedAt: c.updatedAt ?? 0 };
         }
-        return candidate?.model;
-      })();
+      }
+      return candidate?.model;
+    })();
 
     const lastUsedModel = !selected?.settings?.tutor_mode
       ? selected?.settings?.model
       : lastNonTutorModel;
 
-    const tutorEnabledGlobally = !!ui.experimentalTutor;
-    const braveEnabled = !!ui.experimentalBrave;
-    const forceTutorMode = !!(ui.forceTutorMode ?? false);
+    const tutorEnabledGlobally = !!ui.flags.experimentalTutor;
+    const braveEnabled = !!ui.flags.experimentalBrave;
+    const forceTutorMode = !!(ui.tutor.forceMode ?? false);
 
     const baseSettings = deriveChatSettingsFromUi({
       ui,
@@ -65,7 +72,7 @@ export class ChatService {
     messageId: string;
   }): Promise<{ chat: Chat; messages: Message[] } | null> {
     const { sourceChat, messages, messageId } = params;
-    const msgIndex = messages.findIndex(m => m.id === messageId);
+    const msgIndex = messages.findIndex((m) => m.id === messageId);
     if (msgIndex < 0) return null;
 
     const slice = messages.slice(0, msgIndex + 1);
@@ -87,19 +94,13 @@ export class ChatService {
       chatId: newChatId,
     }));
 
-    await db.transaction('rw', db.chats, db.messages, async () => {
-      await saveChat(newChat);
-      for (const cm of cloned) await saveMessage(cm);
-    });
+    await saveChatWithMessages(newChat, cloned);
 
     return { chat: newChat, messages: cloned };
   }
 
   static async deleteChat(chatId: string): Promise<void> {
-    await db.transaction('rw', db.chats, db.messages, async () => {
-      await db.chats.delete(chatId);
-      await db.messages.where({ chatId }).delete();
-    });
+    await deleteChatAndMessages(chatId);
   }
 
   static async updateChat(chat: Chat, changes: Partial<Chat>): Promise<Chat> {
@@ -107,52 +108,56 @@ export class ChatService {
     await saveChat(updated);
     return updated;
   }
-  
+
   static async moveChatToFolder(chat: Chat, folderId?: string): Promise<Chat> {
-      const updated = { ...chat, folderId, updatedAt: Date.now() };
-      await saveChat(updated);
-      return updated;
+    const updated = { ...chat, folderId, updatedAt: Date.now() };
+    await saveChat(updated);
+    return updated;
   }
 
   static async createFolder(name: string, parentId?: string): Promise<Folder> {
-      const id = uuidv4();
-      const now = Date.now();
-      const folder: Folder = {
-        id,
-        name,
-        createdAt: now,
-        updatedAt: now,
-        isExpanded: true,
-        parentId,
-      };
-      await saveFolder(folder);
-      return folder;
+    const id = uuidv4();
+    const now = Date.now();
+    const folder: Folder = {
+      id,
+      name,
+      createdAt: now,
+      updatedAt: now,
+      isExpanded: true,
+      parentId,
+    };
+    await saveFolder(folder);
+    return folder;
   }
 
   static async updateFolder(folder: Folder, changes: Partial<Folder>): Promise<Folder> {
-      const updated = { ...folder, ...changes, updatedAt: Date.now() };
-      await saveFolder(updated);
-      return updated;
+    const updated = { ...folder, ...changes, updatedAt: Date.now() };
+    await saveFolder(updated);
+    return updated;
   }
 
-  static async deleteFolder(folderId: string, allChats: Chat[], allFolders: Folder[]): Promise<{ updatedChats: Chat[], updatedFolders: Folder[] }> {
-      const chatsInFolder = allChats.filter((c) => c.folderId === folderId);
-      const updatedChats: Chat[] = [];
-      for (const chat of chatsInFolder) {
-          const u = { ...chat, folderId: undefined, updatedAt: Date.now() };
-          await saveChat(u);
-          updatedChats.push(u);
-      }
+  static async deleteFolder(
+    folderId: string,
+    allChats: Chat[],
+    allFolders: Folder[],
+  ): Promise<{ updatedChats: Chat[]; updatedFolders: Folder[] }> {
+    const chatsInFolder = allChats.filter((c) => c.folderId === folderId);
+    const updatedChats: Chat[] = [];
+    for (const chat of chatsInFolder) {
+      const u = { ...chat, folderId: undefined, updatedAt: Date.now() };
+      await saveChat(u);
+      updatedChats.push(u);
+    }
 
-      const childFolders = allFolders.filter((f) => f.parentId === folderId);
-      const updatedFolders: Folder[] = [];
-      for (const childFolder of childFolders) {
-          const u = { ...childFolder, parentId: undefined, updatedAt: Date.now() };
-          await saveFolder(u);
-          updatedFolders.push(u);
-      }
+    const childFolders = allFolders.filter((f) => f.parentId === folderId);
+    const updatedFolders: Folder[] = [];
+    for (const childFolder of childFolders) {
+      const u = { ...childFolder, parentId: undefined, updatedAt: Date.now() };
+      await saveFolder(u);
+      updatedFolders.push(u);
+    }
 
-      await db.folders.delete(folderId);
-      return { updatedChats, updatedFolders };
+    await deleteFolder(folderId);
+    return { updatedChats, updatedFolders };
   }
 }

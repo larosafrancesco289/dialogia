@@ -1042,7 +1042,6 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   transform: translateY(0);
 }
 
-
 /* Traffic lights */
 .traffic-lights {
   display: inline-flex;
@@ -1294,7 +1293,6 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   transition: height 120ms ease;
 }
 
-
 /* Landing gradient similar to blurred GPT hero, but in our palette */
 .hero-gradient::before {
   content: '';
@@ -1324,8 +1322,7 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)) top;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)) top;
   mix-blend-mode: overlay;
   opacity: 0.5;
 }

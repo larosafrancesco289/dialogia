@@ -85,8 +85,7 @@ export function buildApiHeaders({
   };
 
   if (body != null) {
-    const contentType =
-      defaultContentType === undefined ? 'application/json' : defaultContentType;
+    const contentType = defaultContentType === undefined ? 'application/json' : defaultContentType;
     if (contentType && !hasContentType(nextHeaders)) {
       nextHeaders['Content-Type'] = contentType;
     }

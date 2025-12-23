@@ -12,6 +12,7 @@ import {
   type WebSearchToolArgs,
   type FetchUrlToolArgs,
 } from '@/lib/deepResearch/tools';
+import { WEB_SEARCH_TOOL } from '@/lib/tools/webSearch';
 
 // System prompt for DeepResearch with interleaved tool reasoning
 export function buildDeepResearchPrompt(opts?: {
@@ -26,7 +27,7 @@ export function buildDeepResearchPrompt(opts?: {
     'You are DeepResearch, a meticulous research agent with access to web search and page fetching tools.',
     '',
     'Core Objective:',
-    'Answer the user\'s request by gathering verifiable facts from high-quality online sources. You must reason step-by-step, explaining your research plan and every action you take.',
+    "Answer the user's request by gathering verifiable facts from high-quality online sources. You must reason step-by-step, explaining your research plan and every action you take.",
     '',
     'Research Loop:',
     '1. **Analyze**: specificy what information is needed to answer the request.',
@@ -37,7 +38,7 @@ export function buildDeepResearchPrompt(opts?: {
     '',
     'Operating Rules:',
     '- **Always reason before acting**: Explicitly state what you are looking for and why before calling a tool.',
-    '- **Verify, don\'t guess**: If you are unsure, search again. Do not halluncinate information.',
+    "- **Verify, don't guess**: If you are unsure, search again. Do not halluncinate information.",
     '- **Cite sources**: Keep track of URLs. In your final answer, cite every claim.',
     '- **Be efficient**: Call tools with precise arguments. Avoid redundant queries.',
     '',
@@ -54,55 +55,7 @@ export function buildDeepResearchPrompt(opts?: {
 
 // Tool definitions following OpenRouter tool-calling spec
 export const DEEP_TOOLS: ToolDefinition[] = [
-  {
-    type: 'function',
-    function: {
-      name: 'web_search',
-      description:
-        'Run a Brave web search to pull current public information complete with URLs and snippets for sourcing. Use this when you need fresh facts or citations that are not already in context, and skip it for background knowledge you can reason through without external evidence. Supply focused queries, request only the number of results you plan to read (1-10), and avoid redundant calls so subsequent fetches stay efficient.',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: { type: 'string', description: 'Search query (keep focused and specific).' },
-          count: {
-            type: 'integer',
-            description: 'Number of results (1-10). Use 3–6 typically.',
-            minimum: 1,
-            maximum: 10,
-            default: 5,
-          },
-          freshness: {
-            type: 'string',
-            description: 'Recency filter: d (day), w (week), m (month), y (year), all',
-            enum: ['d', 'w', 'm', 'y', 'all'],
-            default: 'all',
-          },
-          country: {
-            type: 'string',
-            description: '2-letter country code (e.g., us, gb, de).',
-            default: 'us',
-          },
-          include_domains: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Restrict results to these domains (optional).',
-          },
-          exclude_domains: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Exclude results from these domains (optional).',
-          },
-          provider: {
-            type: 'string',
-            description: 'Search provider to use. Defaults to brave.',
-            enum: ['brave'],
-            default: 'brave',
-          },
-        },
-        required: ['query'],
-      },
-    },
-  },
+  WEB_SEARCH_TOOL,
   {
     type: 'function',
     function: {
@@ -280,9 +233,10 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
 
       if (name === 'web_search') {
         try {
-          const provider = typeof (args as { provider?: unknown }).provider === 'string'
-            ? ((args as { provider?: string }).provider as string)
-            : 'brave';
+          const provider =
+            typeof (args as { provider?: unknown }).provider === 'string'
+              ? ((args as { provider?: string }).provider as string)
+              : 'brave';
           if (provider !== 'brave') {
             const unsupported = { error: `unsupported_provider_${provider}` };
             const event: DeepResearchEvent = { type: 'search', input: args, output: unsupported };
@@ -297,13 +251,13 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
             continue;
           }
           const includeDomains = Array.isArray((args as any).include_domains)
-            ? (args as any).include_domains.filter((entry: unknown): entry is string =>
-                typeof entry === 'string',
+            ? (args as any).include_domains.filter(
+                (entry: unknown): entry is string => typeof entry === 'string',
               )
             : undefined;
           const excludeDomains = Array.isArray((args as any).exclude_domains)
-            ? (args as any).exclude_domains.filter((entry: unknown): entry is string =>
-                typeof entry === 'string',
+            ? (args as any).exclude_domains.filter(
+                (entry: unknown): entry is string => typeof entry === 'string',
               )
             : undefined;
           const searchArgs: WebSearchToolArgs = {
@@ -317,8 +271,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
               (args as any).freshness === 'all'
                 ? ((args as any).freshness as 'd' | 'w' | 'm' | 'y' | 'all')
                 : undefined,
-            country:
-              typeof (args as any).country === 'string' ? (args as any).country : undefined,
+            country: typeof (args as any).country === 'string' ? (args as any).country : undefined,
             include_domains: includeDomains,
             exclude_domains: excludeDomains,
           };
@@ -353,7 +306,8 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
         try {
           const fetchArgs: FetchUrlToolArgs = {
             url: typeof (args as any).url === 'string' ? (args as any).url : '',
-            max_bytes: typeof (args as any).max_bytes === 'number' ? (args as any).max_bytes : undefined,
+            max_bytes:
+              typeof (args as any).max_bytes === 'number' ? (args as any).max_bytes : undefined,
             timeout_ms:
               typeof (args as any).timeout_ms === 'number' ? (args as any).timeout_ms : undefined,
           };

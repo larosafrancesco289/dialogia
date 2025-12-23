@@ -5,17 +5,8 @@
  * Provides plan context for system prompts and manages plan progression.
  */
 
-import type {
-  LearningPlan,
-  LearnerModel,
-  LearningPlanNode,
-  Message,
-} from '@/lib/types';
-import {
-  getNextNode,
-  updateNodeStatus,
-  summarizeLearningPlan,
-} from '@/lib/learningPlan/service';
+import type { LearningPlan, LearnerModel, LearningPlanNode, Message } from '@/lib/types';
+import { getNextNode, updateNodeStatus, summarizeLearningPlan } from '@/lib/learningPlan/service';
 import { generateModelSummary } from '@/lib/agent/learnerModel';
 
 /**
@@ -140,9 +131,7 @@ export function shouldCompleteNode(
   }
 
   // Check for unresolved misconceptions
-  const activeMisconceptions = mastery.misconceptions.filter(
-    (m) => !m.resolved,
-  );
+  const activeMisconceptions = mastery.misconceptions.filter((m) => !m.resolved);
   if (activeMisconceptions.length > 0) {
     return {
       shouldComplete: false,
@@ -189,11 +178,7 @@ export async function processPlanProgress(
   }
 
   // Check if current node should be completed
-  const { shouldComplete, reasoning } = shouldCompleteNode(
-    currentNode.id,
-    learnerModel,
-    plan,
-  );
+  const { shouldComplete, reasoning } = shouldCompleteNode(currentNode.id, learnerModel, plan);
 
   // Initialize plan updates
   const planUpdates: Message['planUpdates'] = {
@@ -254,9 +239,7 @@ export async function processPlanProgress(
   return {
     updatedPlan,
     planUpdates:
-      planUpdates.statusChanges!.length > 0 || planUpdates.summary
-        ? planUpdates
-        : undefined,
+      planUpdates.statusChanges!.length > 0 || planUpdates.summary ? planUpdates : undefined,
     progressMessage,
   };
 }
@@ -272,9 +255,7 @@ export function isPlanComplete(plan: LearningPlan): boolean {
  * Get plan completion percentage
  */
 export function getPlanCompletionPercentage(plan: LearningPlan): number {
-  const completed = plan.nodes.filter(
-    (node) => node.status === 'completed',
-  ).length;
+  const completed = plan.nodes.filter((node) => node.status === 'completed').length;
   return Math.round((completed / plan.nodes.length) * 100);
 }
 
@@ -313,13 +294,8 @@ export function getReadyTopics(plan: LearningPlan): LearningPlanNode[] {
 /**
  * Generate progress report for student
  */
-export function generateProgressReport(
-  plan: LearningPlan,
-  learnerModel: LearnerModel,
-): string {
-  const completed = plan.nodes.filter(
-    (node) => node.status === 'completed',
-  ).length;
+export function generateProgressReport(plan: LearningPlan, learnerModel: LearnerModel): string {
+  const completed = plan.nodes.filter((node) => node.status === 'completed').length;
   const total = plan.nodes.length;
   const percentage = Math.round((completed / total) * 100);
 
@@ -334,9 +310,7 @@ export function generateProgressReport(
   lines.push('Topic Status:');
   for (const node of plan.nodes) {
     const mastery = learnerModel.mastery[node.id];
-    const confidence = mastery
-      ? Math.round(mastery.confidence * 100)
-      : 0;
+    const confidence = mastery ? Math.round(mastery.confidence * 100) : 0;
 
     let status = '○ Not started';
     if (node.status === 'completed') {
@@ -352,15 +326,11 @@ export function generateProgressReport(
   if (learnerModel.globalMetrics) {
     lines.push('');
     lines.push('Overall Performance:');
-    lines.push(
-      `• Accuracy: ${Math.round(learnerModel.globalMetrics.accuracyRate * 100)}%`,
-    );
+    lines.push(`• Accuracy: ${Math.round(learnerModel.globalMetrics.accuracyRate * 100)}%`);
     lines.push(
       `• Average Confidence: ${Math.round(learnerModel.globalMetrics.averageConfidence * 100)}%`,
     );
-    lines.push(
-      `• Total Interactions: ${learnerModel.globalMetrics.totalInteractions}`,
-    );
+    lines.push(`• Total Interactions: ${learnerModel.globalMetrics.totalInteractions}`);
   }
 
   // Add time estimate
@@ -369,9 +339,7 @@ export function generateProgressReport(
     lines.push('');
     const hours = Math.floor(remainingTime / 60);
     const mins = remainingTime % 60;
-    lines.push(
-      `Estimated time remaining: ${hours}h ${mins}m`,
-    );
+    lines.push(`Estimated time remaining: ${hours}h ${mins}m`);
   }
 
   return lines.join('\n');

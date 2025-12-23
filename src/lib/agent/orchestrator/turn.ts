@@ -21,12 +21,10 @@ export type RunTurnHooks = {
   beforeStream?: (args: { composition: TurnComposition; plan?: PlanTurnResult }) => void;
 };
 
-export type AuthResolver = (modelId: string) =>
-  | {
-      transport: ModelTransport;
-      apiKey: string;
-    }
-  | null;
+export type AuthResolver = (modelId: string) => {
+  transport: ModelTransport;
+  apiKey: string;
+} | null;
 
 export type AttachmentPreparer = (modelId: string) => Promise<Attachment[]>;
 
@@ -90,7 +88,7 @@ export const runTurn = async ({
 }: RunTurnArgs): Promise<RunTurnResult> => {
   const attachments = attachmentPreparer
     ? await attachmentPreparer(modelId)
-    : fallbackAttachments ?? [];
+    : (fallbackAttachments ?? []);
 
   const composition = await compose({
     chat,

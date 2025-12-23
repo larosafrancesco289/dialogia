@@ -64,7 +64,9 @@ export function PlanNode({
         {/* Node Dot */}
         <div
           className={`z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 bg-surface transition-colors duration-300 ${
-            node.status === 'in_progress' ? 'ring-4 ring-[color-mix(in_oklab,var(--color-accent-2)_20%,transparent)]' : ''
+            node.status === 'in_progress'
+              ? 'ring-4 ring-[color-mix(in_oklab,var(--color-accent-2)_20%,transparent)]'
+              : ''
           }`}
           style={{
             borderColor: statusColor,
@@ -123,41 +125,39 @@ export function PlanNode({
           >
             <div className="flex-1 min-w-0 space-y-0.5">
               <div className="flex items-center gap-2">
-                <span className={`font-semibold ${node.status === 'completed' ? 'text-muted-foreground line-through decoration-border' : 'text-foreground'}`}>
+                <span
+                  className={`font-semibold ${node.status === 'completed' ? 'text-muted-foreground line-through decoration-border' : 'text-foreground'}`}
+                >
                   {node.name}
                 </span>
                 {confidence && confidence > 80 && (
                   <SparklesIcon className="h-3.5 w-3.5 text-amber-500" />
                 )}
               </div>
-              
+
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                {node.estimatedMinutes && (
-                  <span>~{node.estimatedMinutes} min</span>
-                )}
-                {node.objectives.length > 0 && (
-                  <span>· {node.objectives.length} objectives</span>
-                )}
+                {node.estimatedMinutes && <span>~{node.estimatedMinutes} min</span>}
+                {node.objectives.length > 0 && <span>· {node.objectives.length} objectives</span>}
               </div>
             </div>
 
             {/* Primary Action (Start/Continue) */}
             {isReady && node.status !== 'completed' && (
-               <div
-                 onClick={(e) => {
-                   e.stopPropagation();
-                   if (onStartLesson) onStartLesson(node.id);
-                   else onStatusChange?.('in_progress');
-                 }}
-                 className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer ${
-                   node.status === 'in_progress'
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onStartLesson) onStartLesson(node.id);
+                  else onStatusChange?.('in_progress');
+                }}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer ${
+                  node.status === 'in_progress'
                     ? 'bg-[color-mix(in_oklab,var(--color-accent-2)_15%,var(--color-surface))] text-[var(--color-accent-2)] hover:bg-[color-mix(in_oklab,var(--color-accent-2)_25%,var(--color-surface))]'
                     : 'bg-primary text-primary-foreground hover:brightness-110 shadow-sm'
-                 }`}
-               >
-                 <PlayIcon className="h-3 w-3" />
-                 {node.status === 'in_progress' ? 'Continue' : 'Start'}
-               </div>
+                }`}
+              >
+                <PlayIcon className="h-3 w-3" />
+                {node.status === 'in_progress' ? 'Continue' : 'Start'}
+              </div>
             )}
 
             <div className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>
@@ -226,7 +226,11 @@ export function PlanNode({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onAdjust({ nodeId: node.id, direction: 'up', reason: 'Learner marked this as easier than expected.' });
+                          onAdjust({
+                            nodeId: node.id,
+                            direction: 'up',
+                            reason: 'Learner marked this as easier than expected.',
+                          });
                         }}
                         className="rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/60 hover:text-primary"
                       >
@@ -235,7 +239,11 @@ export function PlanNode({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onAdjust({ nodeId: node.id, direction: 'down', reason: 'Learner marked this as harder than expected.' });
+                          onAdjust({
+                            nodeId: node.id,
+                            direction: 'down',
+                            reason: 'Learner marked this as harder than expected.',
+                          });
                         }}
                         className="rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/60 hover:text-primary"
                       >
@@ -292,7 +300,7 @@ export function PlanNode({
 
               {prerequisites.length > 0 && (
                 <div className="mt-3">
-                   <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mb-1.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mb-1.5">
                     Prerequisites
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -300,8 +308,8 @@ export function PlanNode({
                       <span
                         key={p.id}
                         className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium border ${
-                          p.status === 'completed' 
-                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600' 
+                          p.status === 'completed'
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600'
                             : 'border-border bg-surface text-muted-foreground'
                         }`}
                       >

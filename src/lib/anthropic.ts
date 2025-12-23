@@ -5,29 +5,13 @@ import { anthropicFetchModels, anthropicMessages } from '@/lib/api/anthropicClie
 import { responseError, API_ERROR_CODES } from '@/lib/api/errors';
 import { consumeSse } from '@/lib/api/stream';
 import { fromAnthropicUsage, type Usage } from '@/lib/api/normalizers';
-
-type AnthropicToolDefinition = {
-  name: string;
-  description?: string;
-  input_schema: Record<string, unknown>;
-};
-
-type AnthropicContentBlock =
-  | { type: 'text'; text: string }
-  | {
-      type: 'image';
-      source:
-        | { type: 'base64'; media_type: string; data: string }
-        | { type: 'url'; url: string };
-    }
-  | { type: 'tool_use'; id: string; name: string; input: any }
-  | { type: 'tool_result'; tool_use_id: string; content?: Array<{ type: 'text'; text: string }>; is_error?: boolean }
-  | { type: 'thinking'; thinking: string };
-
-type AnthropicMessage = {
-  role: 'user' | 'assistant';
-  content: AnthropicContentBlock[];
-};
+import type {
+  AnthropicContentBlock,
+  AnthropicMessage,
+  AnthropicMessagesRequest,
+  AnthropicToolChoice,
+  AnthropicToolDefinition,
+} from '@/lib/types/transport';
 
 type AnthropicResponse = {
   id: string;
@@ -53,10 +37,15 @@ function toAnthropicModelId(appModelId: string): string {
   return appModelId;
 }
 
-function parseJson(value: string | undefined): any {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object';
+}
+
+function parseJson(value: string | undefined): Record<string, unknown> {
   if (!value) return {};
   try {
-    return JSON.parse(value);
+    const parsed = JSON.parse(value);
+    return isRecord(parsed) ? parsed : {};
   } catch {
     return {};
   }
@@ -64,10 +53,9 @@ function parseJson(value: string | undefined): any {
 
 function convertToolDefinition(tool: ToolDefinition): AnthropicToolDefinition | null {
   if (!tool?.function?.name) return null;
-  const input_schema =
-    (tool.function.parameters && typeof tool.function.parameters === 'object'
-      ? tool.function.parameters
-      : { type: 'object', properties: {} }) ?? { type: 'object', properties: {} };
+  const input_schema = (tool.function.parameters && typeof tool.function.parameters === 'object'
+    ? tool.function.parameters
+    : { type: 'object', properties: {} }) ?? { type: 'object', properties: {} };
   return {
     name: tool.function.name,
     description: tool.function.description,
@@ -75,7 +63,9 @@ function convertToolDefinition(tool: ToolDefinition): AnthropicToolDefinition | 
   };
 }
 
-function convertToolChoice(choice: 'auto' | 'none' | { type: 'function'; function: { name: string } } | undefined) {
+function convertToolChoice(
+  choice: 'auto' | 'none' | { type: 'function'; function: { name: string } } | undefined,
+): AnthropicToolChoice | undefined {
   if (!choice) return undefined;
   if (choice === 'auto') return { type: 'auto' };
   if (choice === 'none') return { type: 'none' };
@@ -138,7 +128,10 @@ function convertModelContentToAnthropic(content: ModelMessage['content']): Anthr
   return results;
 }
 
-function partitionSystemMessages(messages: ModelMessage[]): { system?: string; rest: ModelMessage[] } {
+function partitionSystemMessages(messages: ModelMessage[]): {
+  system?: string;
+  rest: ModelMessage[];
+} {
   const rest: ModelMessage[] = [];
   const systemParts: string[] = [];
   for (const msg of messages) {
@@ -167,7 +160,7 @@ function toAnthropicMessages(messages: ModelMessage[]): AnthropicMessage[] {
       const blocks: AnthropicContentBlock[] = [
         {
           type: 'tool_result',
-          tool_use_id: (msg as any).tool_call_id || 'tool',
+          tool_use_id: msg.tool_call_id || 'tool',
           content: msg.content
             ? [
                 {
@@ -188,7 +181,9 @@ function toAnthropicMessages(messages: ModelMessage[]): AnthropicMessage[] {
           const args =
             typeof toolCall.function?.arguments === 'string'
               ? parseJson(toolCall.function.arguments)
-              : toolCall.function?.arguments || {};
+              : isRecord(toolCall.function?.arguments)
+                ? toolCall.function.arguments
+                : {};
           blocks.push({
             type: 'tool_use',
             id: toolCall.id || toolCall.function?.name || `tool_${blocks.length}`,
@@ -197,7 +192,10 @@ function toAnthropicMessages(messages: ModelMessage[]): AnthropicMessage[] {
           });
         }
       }
-      out.push({ role: 'assistant', content: blocks.length ? blocks : [{ type: 'text', text: '' }] });
+      out.push({
+        role: 'assistant',
+        content: blocks.length ? blocks : [{ type: 'text', text: '' }],
+      });
       continue;
     }
     if (msg.role === 'user') {
@@ -236,7 +234,10 @@ function extractToolCalls(blocks: AnthropicContentBlock[]): ToolCall[] {
   return calls;
 }
 
-function toChatCompletionPayload(payload: AnthropicResponse, appModelId: string): ChatCompletionPayload {
+function toChatCompletionPayload(
+  payload: AnthropicResponse,
+  appModelId: string,
+): ChatCompletionPayload {
   const messageContent = extractTextFromContent(payload.content);
   const toolCalls = extractToolCalls(payload.content);
   return {
@@ -273,14 +274,16 @@ export async function fetchModels(
   if (!res.ok) {
     throw responseError(res, { code: API_ERROR_CODES.PROVIDER_MODELS_FAILED });
   }
-  const data = await res.json().catch(() => null);
-  const items: any[] = Array.isArray(data?.data) ? data.data : [];
+  const data: { data?: unknown[] } | null = await res.json().catch(() => null);
+  const items = Array.isArray(data?.data) ? data.data : [];
   return items.map((entry) => {
-    const rawId = typeof entry?.id === 'string' ? entry.id : '';
+    const record = isRecord(entry) ? entry : {};
+    const rawId = typeof record.id === 'string' ? record.id : '';
     const canonicalId = rawId.includes('/') ? rawId : `anthropic/${rawId}`;
+    const displayName = typeof record.display_name === 'string' ? record.display_name : undefined;
     return {
       id: canonicalId,
-      name: entry.display_name || entry.id,
+      name: displayName || rawId,
       raw: entry,
       transport: 'anthropic' as const,
       transportModelId: rawId,
@@ -306,9 +309,11 @@ export async function chatCompletion(params: ChatParams): Promise<ChatCompletion
   const anthropicMessagesPayload = toAnthropicMessages(rest);
   const tools =
     Array.isArray(params.tools) && params.tools.length
-      ? params.tools.map(convertToolDefinition).filter(Boolean)
+      ? params.tools
+          .map(convertToolDefinition)
+          .filter((tool): tool is AnthropicToolDefinition => Boolean(tool))
       : undefined;
-  const body: any = {
+  const body: AnthropicMessagesRequest = {
     model: toAnthropicModelId(params.model),
     max_tokens: params.max_tokens ?? DEFAULT_MAX_TOKENS,
     messages: anthropicMessagesPayload,
@@ -330,7 +335,10 @@ export async function chatCompletion(params: ChatParams): Promise<ChatCompletion
     });
   }
   if (res.status === 429) {
-    throw responseError(res, { code: API_ERROR_CODES.RATE_LIMITED, message: 'Anthropic rate limited' });
+    throw responseError(res, {
+      code: API_ERROR_CODES.RATE_LIMITED,
+      message: 'Anthropic rate limited',
+    });
   }
   if (!res.ok) {
     throw responseError(res, { code: API_ERROR_CODES.PROVIDER_CHAT_FAILED });
@@ -354,9 +362,11 @@ export async function streamChatCompletion(params: StreamParams): Promise<void> 
   const anthropicMessagesPayload = toAnthropicMessages(rest);
   const tools =
     Array.isArray(params.tools) && params.tools.length
-      ? params.tools.map(convertToolDefinition).filter(Boolean)
+      ? params.tools
+          .map(convertToolDefinition)
+          .filter((tool): tool is AnthropicToolDefinition => Boolean(tool))
       : undefined;
-  const body: any = {
+  const body: AnthropicMessagesRequest = {
     model: toAnthropicModelId(params.model),
     max_tokens: params.max_tokens ?? DEFAULT_MAX_TOKENS,
     messages: anthropicMessagesPayload,
@@ -380,7 +390,10 @@ export async function streamChatCompletion(params: StreamParams): Promise<void> 
     });
   }
   if (res.status === 429) {
-    throw responseError(res, { code: API_ERROR_CODES.RATE_LIMITED, message: 'Anthropic rate limited' });
+    throw responseError(res, {
+      code: API_ERROR_CODES.RATE_LIMITED,
+      message: 'Anthropic rate limited',
+    });
   }
   if (!res.ok || !res.body) {
     throw responseError(res, { code: API_ERROR_CODES.PROVIDER_CHAT_FAILED });
@@ -400,7 +413,10 @@ export async function streamChatCompletion(params: StreamParams): Promise<void> 
             if (event.delta?.type === 'text_delta' && typeof event.delta?.text === 'string') {
               full += event.delta.text;
               callbacks?.onToken?.(event.delta.text);
-            } else if (event.delta?.type === 'thinking_delta' && typeof event.delta?.text === 'string') {
+            } else if (
+              event.delta?.type === 'thinking_delta' &&
+              typeof event.delta?.text === 'string'
+            ) {
               callbacks?.onReasoningToken?.(event.delta.text);
             }
             break;

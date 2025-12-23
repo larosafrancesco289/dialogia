@@ -2,13 +2,9 @@ import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { getLatestLearnerModel, initializeLearnerModel } from '@/lib/agent/learnerModel';
 import { snapshotGenSettings } from '@/lib/agent/generation';
 import type { RunTurnHooks } from './turn';
-import type {
-  StoreGetter,
-  StoreSetter,
-  TurnComposition,
-  PlanTurnResult,
-} from '@/lib/agent/types';
+import type { StoreGetter, StoreSetter, TurnComposition, PlanTurnResult } from '@/lib/agent/types';
 import type { Chat, LearnerModel, Message } from '@/lib/types';
+import type { LearnerModelDebugEntry } from '@/lib/store/types';
 import { diffPlanUpdates, persistLearningPlan } from '@/lib/learningPlan/service';
 
 export type TurnLifecycleOptions = {
@@ -78,7 +74,8 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
       if (plan.planUpdates) pendingPlanUpdates = plan.planUpdates;
       const chat = getChatForTurn();
       if (plan.updatedPlan && plan.updatedPlan !== chat.settings.learningPlan) {
-        const diff = plan.planUpdates ?? diffPlanUpdates(chat.settings.learningPlan, plan.updatedPlan);
+        const diff =
+          plan.planUpdates ?? diffPlanUpdates(chat.settings.learningPlan, plan.updatedPlan);
         if (diff) pendingPlanUpdates = diff;
         void persistLearningPlan({
           chat,
@@ -90,16 +87,20 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
         });
       }
       if (isPrimary && plan.learnerModel && plan.learnerModelDebug && priorLearnerModel) {
+        const entry: LearnerModelDebugEntry = {
+          before: priorLearnerModel,
+          after: plan.learnerModel,
+          debug: plan.learnerModelDebug,
+          planUpdates: plan.planUpdates,
+        };
         set((state) => ({
           ui: {
             ...state.ui,
-            learnerModelDebugByMessageId: {
-              ...(state.ui.learnerModelDebugByMessageId || {}),
-              [assistantMessageId]: {
-                before: priorLearnerModel,
-                after: plan.learnerModel,
-                debug: plan.learnerModelDebug,
-                planUpdates: plan.planUpdates,
+            debug: {
+              ...state.ui.debug,
+              learnerModelDebugByMessageId: {
+                ...(state.ui.debug.learnerModelDebugByMessageId || {}),
+                [assistantMessageId]: entry,
               },
             },
           },

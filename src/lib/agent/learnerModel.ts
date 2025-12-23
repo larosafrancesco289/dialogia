@@ -20,10 +20,7 @@ import { getChatCompletion } from '@/lib/agent/pipelineClient';
 /**
  * Initialize an empty learner model for a learning plan
  */
-export function initializeLearnerModel(
-  chatId: string,
-  plan: LearningPlan,
-): LearnerModel {
+export function initializeLearnerModel(chatId: string, plan: LearningPlan): LearnerModel {
   const mastery: Record<string, TopicMastery> = {};
 
   // Create initial mastery entry for each node
@@ -84,7 +81,7 @@ export async function extractEvidence(
 
   const systemPrompt = [
     'You are a learning analyst evaluating student understanding.',
-    'Analyze the student\'s response to determine learning evidence.',
+    "Analyze the student's response to determine learning evidence.",
     'Be objective and focus on demonstrated understanding vs gaps.',
   ].join('\n');
 
@@ -95,7 +92,7 @@ export async function extractEvidence(
     'Recent dialogue:',
     formatted,
     '',
-    'Extract learning evidence from the student\'s most recent response:',
+    "Extract learning evidence from the student's most recent response:",
     '',
     '1. Evidence type (choose one):',
     '   - correct_answer: Student answered correctly with good understanding',
@@ -142,15 +139,9 @@ export async function extractEvidence(
       'explanation_requested',
     ];
 
-    const type = validTypes.includes(result.type)
-      ? result.type
-      : 'partial_answer';
+    const type = validTypes.includes(result.type) ? result.type : 'partial_answer';
 
-    const weight = clamp(
-      typeof result.weight === 'number' ? result.weight : 0,
-      -0.5,
-      0.5,
-    );
+    const weight = clamp(typeof result.weight === 'number' ? result.weight : 0, -0.5, 0.5);
 
     return {
       type,
@@ -200,10 +191,7 @@ export function updateLearnerModel(
   };
 
   // Calculate new confidence using Bayesian-style update
-  updatedTopic.confidence = calculateMastery(
-    topic.confidence,
-    update.evidence,
-  );
+  updatedTopic.confidence = calculateMastery(topic.confidence, update.evidence);
 
   // Handle misconceptions
   if (update.misconception) {
@@ -214,26 +202,17 @@ export function updateLearnerModel(
     if (existingIndex >= 0) {
       // Increment occurrence count (with proper cloning)
       updatedTopic.misconceptions = updatedTopic.misconceptions.map((m, i) =>
-        i === existingIndex
-          ? { ...m, occurrences: m.occurrences + 1 }
-          : m
+        i === existingIndex ? { ...m, occurrences: m.occurrences + 1 } : m,
       );
     } else {
       // Add new misconception
-      updatedTopic.misconceptions = [
-        ...updatedTopic.misconceptions,
-        update.misconception,
-      ];
+      updatedTopic.misconceptions = [...updatedTopic.misconceptions, update.misconception];
     }
   }
 
   mastery[update.nodeId] = updatedTopic;
 
-  const globalMetrics = computeGlobalMetrics(
-    mastery,
-    model.globalMetrics,
-    1,
-  );
+  const globalMetrics = computeGlobalMetrics(mastery, model.globalMetrics, 1);
 
   return {
     ...model,
@@ -320,9 +299,7 @@ export function applyLearnerModelFeedback(
     const matchIndex = target.misconceptions.findIndex((m) => {
       if (feedback.misconceptionId && m.id === feedback.misconceptionId) return true;
       if (!feedback.misconceptionDescription) return false;
-      return (
-        m.description.toLowerCase() === feedback.misconceptionDescription.toLowerCase()
-      );
+      return m.description.toLowerCase() === feedback.misconceptionDescription.toLowerCase();
     });
     if (matchIndex >= 0 && !target.misconceptions[matchIndex].resolved) {
       target.misconceptions = target.misconceptions.map((m, idx) =>
@@ -337,11 +314,7 @@ export function applyLearnerModelFeedback(
     ? {
         ...updatedWithEvidence,
         mastery,
-        globalMetrics: computeGlobalMetrics(
-          mastery,
-          updatedWithEvidence.globalMetrics,
-          0,
-        ),
+        globalMetrics: computeGlobalMetrics(mastery, updatedWithEvidence.globalMetrics, 0),
       }
     : updatedWithEvidence;
 
@@ -364,10 +337,7 @@ export function applyLearnerModelFeedback(
  * - Negative evidence to decrease confidence
  * - Confidence bounded to [0, 1]
  */
-export function calculateMastery(
-  currentConfidence: number,
-  evidence: Evidence,
-): number {
+export function calculateMastery(currentConfidence: number, evidence: Evidence): number {
   const weight = evidence.weight;
 
   // Bayesian update with diminishing returns
@@ -389,10 +359,7 @@ export function calculateMastery(
  * Generate learner model summary for tutor context
  * Formats mastery data in a concise, readable format
  */
-export function generateModelSummary(
-  model: LearnerModel,
-  plan: LearningPlan,
-): string {
+export function generateModelSummary(model: LearnerModel, plan: LearningPlan): string {
   const lines: string[] = ['STUDENT MASTERY'];
 
   // Find current node
@@ -419,9 +386,7 @@ export function generateModelSummary(
     );
 
     // Include active misconceptions
-    const activeMisconceptions = mastery.misconceptions.filter(
-      (m) => !m.resolved,
-    );
+    const activeMisconceptions = mastery.misconceptions.filter((m) => !m.resolved);
     if (activeMisconceptions.length > 0) {
       for (const m of activeMisconceptions) {
         lines.push(`  ⚠️  ${m.description} (seen ${m.occurrences}x)`);
@@ -444,9 +409,7 @@ export function generateModelSummary(
 /**
  * Get latest learner model from message history
  */
-export function getLatestLearnerModel(
-  messages: Message[],
-): LearnerModel | undefined {
+export function getLatestLearnerModel(messages: Message[]): LearnerModel | undefined {
   // Search backwards for most recent assistant message with learnerModel
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === 'assistant' && messages[i].learnerModel) {
@@ -466,8 +429,7 @@ function computeGlobalMetrics(
   interactionDelta = 0,
 ): NonNullable<LearnerModel['globalMetrics']> {
   const allConfidences = Object.values(mastery).map((t) => t.confidence);
-  const avgConfidence =
-    allConfidences.reduce((a, b) => a + b, 0) / (allConfidences.length || 1);
+  const avgConfidence = allConfidences.reduce((a, b) => a + b, 0) / (allConfidences.length || 1);
 
   const correctCount = Object.values(mastery)
     .flatMap((t) => t.evidence)

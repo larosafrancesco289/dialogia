@@ -15,9 +15,9 @@ export type HeadlessStoreOptions = {
 };
 
 const HEADLESS_UI_OVERRIDES: Partial<UIState> = {
-  debugMode: true,
-  forceTutorMode: true,
-  next: {
+  debug: { mode: true },
+  tutor: { forceMode: true },
+  overrides: {
     tutorMode: true,
     search: { provider: 'openrouter' },
   },
@@ -81,6 +81,12 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
     primeTutorWelcomePreview: async () => undefined,
     prepareTutorWelcomeMessage: async () => undefined,
     applyLearnerModelFeedbackFromUser: async () => {},
+    patchTutorEntry: async () => {},
+    setTutorAttemptMcq: () => {},
+    setTutorAttemptFillBlank: () => {},
+    setTutorAttemptOpen: () => {},
+    setTutorPlanProposalStatus: () => {},
+    setSearchStatus: () => {},
 
     loadModels: async () => {},
     toggleFavoriteModel: (id: string) =>

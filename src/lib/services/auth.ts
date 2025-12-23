@@ -81,8 +81,9 @@ export const resolveSingleModelAuth = ({
     return requireModelAuth(modelId, modelIndex);
   } catch (error) {
     const meta = modelIndex.get(modelId);
-    const transport = ((error as any)?.transport ??
-      resolveModelTransport(modelId, meta)) as ModelTransport | undefined;
+    const transport = ((error as any)?.transport ?? resolveModelTransport(modelId, meta)) as
+      | ModelTransport
+      | undefined;
     notifyMissingAuth(set, transport);
     return null;
   }

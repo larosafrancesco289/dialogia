@@ -3,7 +3,7 @@ import type { StoreState } from '@/lib/store/types';
 
 export type StoreSlice<T extends Partial<StoreState>> = StateCreator<
   StoreState,
-  [['zustand/persist', Partial<StoreState>]],
+  [['zustand/persist', unknown]],
   [],
   T
 >;

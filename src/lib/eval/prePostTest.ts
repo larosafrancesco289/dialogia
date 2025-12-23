@@ -71,13 +71,8 @@ export async function administerTest(
 /**
  * Ask a single MCQ question to the simulated student.
  */
-async function askQuestion(
-  question: TestQuestion,
-  options: TestAdminOptions,
-): Promise<number> {
-  const optionsText = question.options
-    .map((opt, i) => `${i}. ${opt}`)
-    .join('\n');
+async function askQuestion(question: TestQuestion, options: TestAdminOptions): Promise<number> {
+  const optionsText = question.options.map((opt, i) => `${i}. ${opt}`).join('\n');
 
   const prompt = buildStudentPrompt(question, optionsText, options);
 
@@ -100,7 +95,7 @@ function buildStudentPrompt(
   options: TestAdminOptions,
 ): string {
   const gap = options.knowledgeGaps?.find((g) => g.topicId === question.topicId);
-  
+
   // Pre-Test Logic:
   // If there is a gap, force incorrect answer based on errorRate
   const isPreTest = options.testType === 'pre';
@@ -111,7 +106,7 @@ function buildStudentPrompt(
   // Otherwise, they fall back to the misconception.
   const isPostTest = options.testType === 'post';
   const hasTranscript = !!options.sessionTranscript;
-  
+
   let contextInstruction = '';
 
   if (isPreTest) {
@@ -165,7 +160,8 @@ ${options.sessionTranscript}
       }
     } else {
       // Fallback if no transcript provided (legacy behavior)
-      contextInstruction = 'You just completed tutoring on this topic. Answer to the best of your improved knowledge.';
+      contextInstruction =
+        'You just completed tutoring on this topic. Answer to the best of your improved knowledge.';
     }
   }
 
@@ -196,7 +192,7 @@ function extractText(response: unknown): string {
   if (typeof content === 'string') return content.trim();
   if (Array.isArray(content)) {
     return content
-      .map((c) => (typeof c === 'string' ? c : c?.text ?? ''))
+      .map((c) => (typeof c === 'string' ? c : (c?.text ?? '')))
       .join('')
       .trim();
   }
@@ -246,8 +242,7 @@ export function calculateCohenD(
 
   // Pooled standard deviation
   const pooledSD = Math.sqrt(
-    ((group1.length - 1) * var1 + (group2.length - 1) * var2) /
-      (group1.length + group2.length - 2),
+    ((group1.length - 1) * var1 + (group2.length - 1) * var2) / (group1.length + group2.length - 2),
   );
 
   if (!Number.isFinite(pooledSD) || pooledSD <= 0) {

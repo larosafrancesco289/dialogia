@@ -24,7 +24,9 @@ export function detectPlanningToolCalls({
 
   const inlineSearch = extractWebSearchArgs(content);
   if (inlineSearch) {
-    return [createToolCall('web_search', inlineSearch as Record<string, unknown>, 'inline_web_search')];
+    return [
+      createToolCall('web_search', inlineSearch as Record<string, unknown>, 'inline_web_search'),
+    ];
   }
 
   const tutorCalls = extractTutorToolCalls(content);

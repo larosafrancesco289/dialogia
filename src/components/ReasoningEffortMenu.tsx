@@ -30,7 +30,7 @@ export function ReasoningEffortMenu() {
 
   const choose = async (effort: Effort) => {
     if (chat) await updateSettings({ reasoning_effort: effort });
-    else setUI({ next: { reasoning: { effort } } });
+    else setUI({ overrides: { reasoning: { effort } } });
     setOpen(false);
   };
 

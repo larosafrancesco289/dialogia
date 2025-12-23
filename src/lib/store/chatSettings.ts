@@ -44,13 +44,12 @@ export function deriveChatSettingsFromUi(opts: {
 
   const search_enabled = next.search?.enabled ?? previous?.search_enabled ?? false;
   const nextProvider = next.search?.provider ?? previous?.search_provider;
-  const search_provider =
-    braveEnabled && nextProvider === 'brave' ? 'brave' : 'openrouter';
+  const search_provider = braveEnabled && nextProvider === 'brave' ? 'brave' : 'openrouter';
 
   const tutor_mode = forceTutorMode
     ? true
     : tutorEnabled
-    ? (next.tutorMode ?? previous?.tutor_mode ?? false)
+      ? (next.tutorMode ?? previous?.tutor_mode ?? false)
       : false;
 
   const parallelFromUi = Array.isArray(next.parallelModels)

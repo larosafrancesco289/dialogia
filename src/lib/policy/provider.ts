@@ -18,14 +18,11 @@ export function providerSortFromRoutePref(
 export function selectSearchProvider(settings: ChatSettings, ui: UIState): SearchProvider {
   const configuredProvider =
     (settings.search_provider as SearchProvider | undefined) || ('openrouter' as const);
-  if (ui.experimentalBrave && configuredProvider === 'brave') return 'brave';
+  if (ui.flags.experimentalBrave && configuredProvider === 'brave') return 'brave';
   return 'openrouter';
 }
 
-export function buildProviderPolicy(opts: {
-  settings: ChatSettings;
-  ui: UIState;
-}): {
+export function buildProviderPolicy(opts: { settings: ChatSettings; ui: UIState }): {
   providerSort?: ProviderSort;
   searchEnabled: boolean;
   searchProvider: SearchProvider;

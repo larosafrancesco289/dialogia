@@ -5,26 +5,29 @@ import type { UIState } from '@/lib/store/types';
 
 test('buildDefaultUIState applies overrides without mutating defaults', () => {
   const base = buildDefaultUIState();
-  const overridden = buildDefaultUIState({ debugMode: true, forceTutorMode: true });
+  const overridden = buildDefaultUIState({
+    debug: { mode: true },
+    tutor: { forceMode: true },
+  });
 
-  assert.equal(base.debugMode, false);
-  assert.equal(overridden.debugMode, true);
-  assert.equal(base.forceTutorMode, false);
-  assert.equal(overridden.forceTutorMode, true);
+  assert.equal(base.debug.mode, false);
+  assert.equal(overridden.debug.mode, true);
+  assert.equal(base.tutor.forceMode, false);
+  assert.equal(overridden.tutor.forceMode, true);
 });
 
 test('resetEphemeralUi clears staged next values', () => {
   const state: UIState = {
     ...buildDefaultUIState(),
-    next: {
+    overrides: {
       model: 'test-model',
       search: { enabled: true },
       tutorMode: true,
     },
-    forceTutorMode: true,
+    tutor: { ...buildDefaultUIState().tutor, forceMode: true },
   };
 
   const reset = resetEphemeralUi(state);
-  assert.equal(reset.next, undefined);
-  assert.equal(reset.forceTutorMode, true);
+  assert.equal(reset.overrides, undefined);
+  assert.equal(reset.tutor.forceMode, true);
 });

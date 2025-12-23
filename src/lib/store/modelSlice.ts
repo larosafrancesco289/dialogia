@@ -9,10 +9,8 @@ import { CURATED_MODELS } from '@/data/curatedModels';
 import { createModelIndex, EMPTY_MODEL_INDEX, formatModelLabel } from '@/lib/models';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
-import {
-  NOTICE_INVALID_KEY,
-  NOTICE_NO_PROVIDER_KEY,
-} from '@/lib/store/notices';
+import { NOTICE_INVALID_KEY, NOTICE_NO_PROVIDER_KEY } from '@/lib/store/notices';
+import { applyNextOverrides, readNextOverrides } from '@/lib/ui/next';
 
 export const createModelSlice = createStoreSlice((set, get) => {
   let isLoadingModels = false;
@@ -130,14 +128,18 @@ export const createModelSlice = createStoreSlice((set, get) => {
         }
         if (noticeSegments.length > 0 || fallbackModelId) {
           set((s) => ({
-            ui: {
-              ...s.ui,
-              next: {
-                ...(s.ui.next || {}),
-                model: s.ui.next?.model ?? fallbackModelId ?? s.ui.next?.model,
-              },
-              notice: s.ui.notice ?? (noticeSegments.length ? noticeSegments.join(' ') : s.ui.notice),
-            },
+            ui: (() => {
+              const nextOverrides = readNextOverrides(s.ui);
+              const modelOverride = nextOverrides.model ?? fallbackModelId;
+              const updatedUi = modelOverride
+                ? applyNextOverrides(s.ui, { model: modelOverride })
+                : s.ui;
+              return {
+                ...updatedUi,
+                notice:
+                  s.ui.notice ?? (noticeSegments.length ? noticeSegments.join(' ') : s.ui.notice),
+              };
+            })(),
           }));
         }
         set({ models: combinedModels, modelIndex: createModelIndex(combinedModels) });

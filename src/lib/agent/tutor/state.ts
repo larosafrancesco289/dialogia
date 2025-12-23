@@ -1,34 +1,22 @@
 import type { TutorToolName } from '@/lib/agent/types';
 import type { TutorToolUsage, UIState } from '@/lib/store/types';
 import type { Chat, Message, MessageTutor, TutorResearchMode } from '@/lib/types';
+import { getTutorToolsByPhase, getTutorToolsByTag } from '@/lib/agent/tools/metadata';
 
-export type TutorPhase =
-  | 'intake'
-  | 'diagnostic'
-  | 'planning'
-  | 'teaching'
-  | 'practice'
-  | 'review';
+export type TutorPhase = 'intake' | 'diagnostic' | 'planning' | 'teaching' | 'practice' | 'review';
 
-function latestTutorPayload(
-  messages: Message[],
-  ui?: UIState,
-): MessageTutor | undefined {
+function latestTutorPayload(messages: Message[], ui?: UIState): MessageTutor | undefined {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const msg = messages[i];
     if (msg.role !== 'assistant') continue;
     if (msg.tutor) return msg.tutor;
-    const uiTutor = ui?.tutorByMessageId?.[msg.id];
+    const uiTutor = ui?.tutor.byMessageId?.[msg.id];
     if (uiTutor) return uiTutor;
   }
   return undefined;
 }
 
-export function getTutorPhase(
-  chat: Chat,
-  messages: Message[],
-  ui?: UIState,
-): TutorPhase {
+export function getTutorPhase(chat: Chat, messages: Message[], ui?: UIState): TutorPhase {
   const plan = chat.settings.learningPlan;
   const tutor = latestTutorPayload(messages, ui);
 
@@ -60,32 +48,12 @@ export function getTutorPhase(
   return 'teaching';
 }
 
-const QUIZ_TOOLS = new Set<TutorToolName>([
-  'quiz_mcq',
-  'quiz_fill_blank',
-  'quiz_open_ended',
-  'flashcards',
-  'srs_review',
-  'grade_open_response',
-  'add_to_deck',
-]);
-
-const PLAN_TOOLS = new Set<TutorToolName>(['generate_plan', 'update_plan', 'get_plan_suggestions']);
-const LEARNER_MODEL_TOOLS = new Set<TutorToolName>([
-  'update_learner_model',
-  'apply_learner_model_feedback',
-]);
-const THESIS_CORE_TOOLS = new Set<TutorToolName>([
-  'ask_student_question',
-  'create_diagnostic',
-  'generate_plan',
-  'update_plan',
-  'get_plan_suggestions',
-  'assess_answer',
-  'update_learner_model',
-  'apply_learner_model_feedback',
-]);
-const BASELINE_TOOLS: TutorToolName[] = ['ask_student_question', 'assess_answer'];
+const QUIZ_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('quiz'));
+const PLAN_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('plan'));
+const LEARNER_MODEL_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('learnerModel'));
+const THESIS_CORE_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('thesisCore'));
+const BASELINE_TOOLS: TutorToolName[] = getTutorToolsByTag('baseline');
+const DIAGNOSTIC_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('diagnostic'));
 
 export type TutorToolFilters = {
   thesisMode?: boolean;
@@ -104,57 +72,7 @@ export function allowedTutorToolsForPhase(
   phase: TutorPhase,
   filters?: TutorToolFilters,
 ): TutorToolName[] {
-  switch (phase) {
-    case 'intake':
-      return applyTutorFilters(['ask_student_question', 'create_diagnostic', 'generate_plan'], phase, filters);
-    case 'diagnostic':
-      return applyTutorFilters(
-        ['create_diagnostic', 'quiz_mcq', 'quiz_fill_blank', 'assess_answer', 'update_learner_model', 'apply_learner_model_feedback'],
-        phase,
-        filters,
-      );
-    case 'planning':
-      return applyTutorFilters(['generate_plan', 'update_plan', 'get_plan_suggestions'], phase, filters);
-    case 'practice':
-      return applyTutorFilters(
-        [
-          'quiz_mcq',
-          'quiz_fill_blank',
-          'quiz_open_ended',
-          'flashcards',
-          'assess_answer',
-          'grade_open_response',
-          'update_learner_model',
-          'apply_learner_model_feedback',
-          'add_to_deck',
-        ],
-        phase,
-        filters,
-      );
-    case 'review':
-      return applyTutorFilters(
-        ['flashcards', 'srs_review', 'assess_answer', 'update_learner_model', 'apply_learner_model_feedback'],
-        phase,
-        filters,
-      );
-    case 'teaching':
-    default:
-      return applyTutorFilters(
-        [
-          'quiz_mcq',
-          'quiz_fill_blank',
-          'quiz_open_ended',
-          'flashcards',
-          'assess_answer',
-          'grade_open_response',
-          'update_learner_model',
-          'apply_learner_model_feedback',
-          'add_to_deck',
-        ],
-        phase,
-        filters,
-      );
-  }
+  return applyTutorFilters(getTutorToolsByPhase(phase), phase, filters);
 }
 
 export function isTutorToolAllowedInPhase(
@@ -186,18 +104,16 @@ function applyTutorFilters(
   }
 
   if (filters?.diagnosticsRemaining === 0) {
-    tools = tools.filter((name) => name !== 'create_diagnostic');
+    tools = tools.filter((name) => !DIAGNOSTIC_TOOLS.has(name));
   }
 
-  const hasQuizAllowance =
-    filters?.quizzesRemaining == null ? true : filters.quizzesRemaining > 0;
+  const hasQuizAllowance = filters?.quizzesRemaining == null ? true : filters.quizzesRemaining > 0;
   if (!hasQuizAllowance) {
     tools = tools.filter((name) => !QUIZ_TOOLS.has(name));
   }
 
   if (filters?.thesisMode) {
-    const allowReadinessChecks =
-      hasQuizAllowance && phase !== 'intake' && phase !== 'planning';
+    const allowReadinessChecks = hasQuizAllowance && phase !== 'intake' && phase !== 'planning';
     tools = tools.filter((name) => {
       if (THESIS_CORE_TOOLS.has(name)) return true;
       if (!allowReadinessChecks) return false;
@@ -224,21 +140,19 @@ export function deriveTutorToolPolicy(args: {
     ...DEFAULT_TOOL_BUDGET,
     ...(chat.settings.tutor_tool_budget || {}),
   };
-  const usage: TutorToolUsage | undefined = ui?.tutorToolUsageByChatId?.[chat.id];
+  const usage: TutorToolUsage | undefined = ui?.tutor.toolUsageByChatId?.[chat.id];
   const activeKey = activeNodeId || '__global__';
   const quizzesUsed = usage?.mcqByNode?.[activeKey] ?? 0;
   const diagnosticsUsed = usage?.diagnosticsUsed ?? 0;
   const researchMode =
-    chat.settings.tutor_research_mode || ui?.tutorResearchMode || 'plan_plus_model';
-  const thesisMode =
-    chat.settings.tutor_thesis_mode ?? ui?.tutorThesisMode ?? false;
+    chat.settings.tutor_research_mode || ui?.tutor.researchMode || 'plan_plus_model';
+  const thesisMode = chat.settings.tutor_thesis_mode ?? ui?.tutor.thesisMode ?? false;
 
   return {
     thesisMode,
     researchMode,
     allowPlanTools: researchMode !== 'model_only',
-    allowLearnerModel:
-      chat.settings.enableLearnerModel !== false && researchMode !== 'plan_only',
+    allowLearnerModel: chat.settings.enableLearnerModel !== false && researchMode !== 'plan_only',
     quizzesRemaining:
       budget.maxQuizzesPerNode == null
         ? undefined

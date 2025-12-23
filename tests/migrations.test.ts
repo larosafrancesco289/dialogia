@@ -7,7 +7,7 @@ test('store and Dexie versions stay aligned', () => {
   assert.equal(STORE_MIGRATION_VERSION, DB_SCHEMA_VERSION);
 });
 
-test('migrate flattens legacy overrides and search flags', () => {
+test('migrate drops legacy overrides and normalizes search flags', () => {
   const legacyState: any = {
     chats: [
       {
@@ -33,9 +33,7 @@ test('migrate flattens legacy overrides and search flags', () => {
 
   const migrated = migrate(legacyState, 1) as any;
   assert.ok(migrated.ui);
-  assert.equal(migrated.ui.next?.model, 'model-x');
-  assert.equal(migrated.ui.next?.search?.enabled, true);
-  assert.equal(migrated.ui.next?.tutorMode, true);
+  assert.equal(migrated.ui.overrides, undefined);
   assert.ok(!('nextModel' in migrated.ui));
   assert.ok(!('nextSearchEnabled' in migrated.ui));
   assert.equal(migrated.chats?.[0]?.settings?.search_enabled, true);

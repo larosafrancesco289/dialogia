@@ -53,7 +53,7 @@ test('migrateToV2 normalizes search settings and strips deprecated ui fields', (
   assert.equal(migratedMessage.settings.search_enabled, true);
 
   const migratedUi = migrated.ui as Record<string, any>;
-  assert.equal(migratedUi.next?.search?.enabled, true);
+  assert.equal(migratedUi.overrides, undefined);
   assert.ok(!('nextSearchWithBrave' in migratedUi));
   assert.ok(!('nextSearchEnabled' in migratedUi));
   assert.ok(!('tutorMemoryModelId' in migratedUi));

@@ -9,28 +9,11 @@ import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createModelIndex } from '@/lib/models';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
 import type { ZdrFetchers } from '@/lib/policy/zdr';
+import { createTestStoreState } from './helpers/createTestStoreState';
 
 function createStore(): { state: any; set: StoreSetter; get: StoreGetter } {
-  const state: any = {
-    chats: [],
-    folders: [],
-    messages: {},
-    selectedChatId: undefined,
-    models: [],
-    modelIndex: createModelIndex([]),
-    favoriteModelIds: [],
-    hiddenModelIds: [],
-    ui: {} as any,
-  };
-
-  const set: StoreSetter = (updater) => {
-    const patch = typeof updater === 'function' ? (updater as any)(state) : updater;
-    if (!patch) return;
-    Object.assign(state, patch);
-  };
-
-  const get: StoreGetter = () => state;
-
+  const { state, set, get } = createTestStoreState();
+  state.modelIndex = createModelIndex([]);
   return { state, set, get };
 }
 

@@ -10,10 +10,11 @@ import {
   isNodeReady,
   summarizeLearningPlan,
   updateNodeStatus as updateNodeStatusImpl,
-} from '@/lib/agent/planGenerator';
+} from '@/lib/learningPlan/progress';
+import { detectLearningGoal, generateLearningPlan, PLAN_GENERATOR_SYSTEM } from '@/lib/learningPlan/generator';
+import { validateLearningPlan } from '@/lib/learningPlan/validate';
 
-export const getNextNode = (plan: LearningPlan): LearningPlanNode | null =>
-  getNextNodeImpl(plan);
+export const getNextNode = (plan: LearningPlan): LearningPlanNode | null => getNextNodeImpl(plan);
 
 export const updatePlanStatus = (
   plan: LearningPlan,
@@ -25,6 +26,8 @@ export const updateNodeStatus = updatePlanStatus;
 export { getAllPrerequisites, isNodeReady };
 
 export { calculatePlanProgress, summarizeLearningPlan };
+
+export { detectLearningGoal, generateLearningPlan, PLAN_GENERATOR_SYSTEM, validateLearningPlan };
 
 export function diffPlanUpdates(
   prev: LearningPlan | undefined,

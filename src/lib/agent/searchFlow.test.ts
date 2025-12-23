@@ -1,8 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getSearchToolDefinition, mergeSearchResults, formatSourcesBlock, runBraveSearch } from './searchFlow';
+import {
+  getSearchToolDefinition,
+  mergeSearchResults,
+  formatSourcesBlock,
+  runBraveSearch,
+} from './searchFlow';
 import type { SearchResult } from '@/lib/agent/types';
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
+import { mockFetch } from '../../../tests/helpers/mockFetch';
 
 test('getSearchToolDefinition exposes web_search function schema', () => {
   const tools = getSearchToolDefinition();
@@ -42,31 +48,33 @@ test('formatSourcesBlock renders provider-specific heading', () => {
 });
 
 test('runBraveSearch returns results and propagates errors', async () => {
-  const originalFetch = globalThis.fetch;
-  try {
-    globalThis.fetch = (async () => ({
+  const restoreOk = mockFetch(
+    (async () => ({
       ok: true,
       json: async () => ({
         results: [{ title: 'Alpha', url: 'https://alpha.test', description: 'alpha desc' }],
       }),
-    })) as any;
-    const okResult = await runBraveSearch('alpha', 3);
-    assert.equal(okResult.ok, true);
-    assert.equal(okResult.results.length, 1);
-    assert.equal(okResult.results[0]?.url, 'https://alpha.test');
+    })) as any,
+  );
+  const okResult = await runBraveSearch('alpha', 3);
+  restoreOk();
+  assert.equal(okResult.ok, true);
+  assert.equal(okResult.results.length, 1);
+  assert.equal(okResult.results[0]?.url, 'https://alpha.test');
 
-    globalThis.fetch = (async () => ({ ok: false, status: 400 })) as any;
-    const missingKey = await runBraveSearch('beta', 2);
-    assert.equal(missingKey.ok, false);
-    assert.equal(missingKey.error, NOTICE_MISSING_BRAVE_KEY);
+  const restoreMissing = mockFetch((async () => ({ ok: false, status: 400 })) as any);
+  const missingKey = await runBraveSearch('beta', 2);
+  restoreMissing();
+  assert.equal(missingKey.ok, false);
+  assert.equal(missingKey.error, NOTICE_MISSING_BRAVE_KEY);
 
-    globalThis.fetch = (async () => {
+  const restoreNetwork = mockFetch(
+    (async () => {
       throw new Error('network down');
-    }) as any;
-    const network = await runBraveSearch('gamma', 2);
-    assert.equal(network.ok, false);
-    assert.equal(network.error, 'network down');
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+    }) as any,
+  );
+  const network = await runBraveSearch('gamma', 2);
+  restoreNetwork();
+  assert.equal(network.ok, false);
+  assert.equal(network.error, 'network down');
 });

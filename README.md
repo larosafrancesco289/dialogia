@@ -268,6 +268,7 @@ tests/                  # Legacy Node-based unit tests (`bun run test` also runs
 - Naming: PascalCase components in `src/components/`; named exports favored
 - Linting & types: run `bun run lint` and `bun run lint:types` before pushing
 - Testing: `bun run test` (Node test runner via `tsx`); add colocated `*.test.ts(x)` for unit coverage.
+- CI/local checklist: `scripts/ci.sh` (runs `lint:types`, `test`, `format`).
 
 ### License
 

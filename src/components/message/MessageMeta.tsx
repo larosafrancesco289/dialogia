@@ -37,8 +37,7 @@ export function MessageMeta({
     }
   }
 
-  const metricLabels =
-    showStats && message.metrics ? formatMetricsForDisplay(message.metrics) : [];
+  const metricLabels = showStats && message.metrics ? formatMetricsForDisplay(message.metrics) : [];
 
   return (
     <>

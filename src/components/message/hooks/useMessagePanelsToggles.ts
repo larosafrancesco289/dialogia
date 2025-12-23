@@ -6,9 +6,7 @@ type UseMessagePanelsTogglesArgs = {
   showReasoningByDefault: boolean;
 };
 
-export function useMessagePanelsToggles({
-  showReasoningByDefault,
-}: UseMessagePanelsTogglesArgs) {
+export function useMessagePanelsToggles({ showReasoningByDefault }: UseMessagePanelsTogglesArgs) {
   const [reasoningState, setReasoningState] = useState<ToggleState>({});
   const [sourcesState, setSourcesState] = useState<ToggleState>({});
   const [debugState, setDebugState] = useState<ToggleState>({});
@@ -27,10 +25,7 @@ export function useMessagePanelsToggles({
     (id: string) => setSourcesState((prev) => ({ ...prev, [id]: !prev[id] })),
     [],
   );
-  const isSourcesExpanded = useCallback(
-    (id: string) => sourcesState[id] ?? true,
-    [sourcesState],
-  );
+  const isSourcesExpanded = useCallback((id: string) => sourcesState[id] ?? true, [sourcesState]);
 
   const toggleDebug = useCallback(
     (id: string) => setDebugState((prev) => ({ ...prev, [id]: !prev[id] })),

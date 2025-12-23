@@ -1,4 +1,5 @@
 import { isTutorContentTool, isTutorMetaTool, isSearchTool } from '@/lib/agent/tools/categories';
+import { getTutorToolsByPriorityGroup } from '@/lib/agent/tools/metadata';
 import type { ToolCall } from '@/lib/agent/types';
 import type { TutorPhase } from '@/lib/agent/tutor/state';
 
@@ -10,17 +11,10 @@ export type ScheduleContext = {
   phase?: TutorPhase;
 };
 
-const PRACTICE_TOOLS = [
-  'quiz_mcq',
-  'quiz_fill_blank',
-  'quiz_open_ended',
-  'flashcards',
-  'srs_review',
-] as const;
-
-const PLAN_TOOLS = ['generate_plan', 'update_plan'] as const;
-const DIAGNOSTIC_TOOLS = ['create_diagnostic'] as const;
-const INTAKE_TOOLS = ['ask_student_question'] as const;
+const PRACTICE_TOOLS = getTutorToolsByPriorityGroup('practice');
+const PLAN_TOOLS = getTutorToolsByPriorityGroup('plan');
+const DIAGNOSTIC_TOOLS = getTutorToolsByPriorityGroup('diagnostic');
+const INTAKE_TOOLS = getTutorToolsByPriorityGroup('intake');
 
 function uniqueList<T extends string>(items: readonly T[]): string[] {
   const seen = new Set<string>();
@@ -63,10 +57,7 @@ function buildContentPriority(context: ScheduleContext): string[] {
   return uniqueList([...PRACTICE_TOOLS, ...PLAN_TOOLS]);
 }
 
-function pickContentTool(
-  candidates: ToolCall[],
-  context: ScheduleContext,
-): ToolCall | undefined {
+function pickContentTool(candidates: ToolCall[], context: ScheduleContext): ToolCall | undefined {
   if (context.alreadyUsedContent || candidates.length === 0) return undefined;
   const priority = buildContentPriority(context);
   const firstByName = new Map<string, ToolCall>();

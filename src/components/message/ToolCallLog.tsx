@@ -9,7 +9,7 @@ import {
   ChevronUpIcon,
   DocumentDuplicateIcon,
 } from '@heroicons/react/20/solid';
-import type { ToolCallLogEntry } from '@/lib/types';
+import type { LearnerModelDebugSnapshot, ToolCallLogEntry } from '@/lib/types';
 
 type ToolCallLogMode = 'compact' | 'full';
 type ToolCallBadge = { id: string; label: string };
@@ -87,10 +87,13 @@ function summaryForCall(call: ToolCallLogEntry): string {
       return `Assessed: ${result ?? 'n/a'}`;
     }
     case 'update_learner_model': {
-      const debug = (call.output as Record<string, any> | undefined)?.learnerModelDebug as
-        | Record<string, any>
-        | undefined;
-      if (debug && typeof debug.oldConfidence === 'number' && typeof debug.newConfidence === 'number') {
+      const debug = (call.output as { learnerModelDebug?: LearnerModelDebugSnapshot } | undefined)
+        ?.learnerModelDebug;
+      if (
+        debug &&
+        typeof debug.oldConfidence === 'number' &&
+        typeof debug.newConfidence === 'number'
+      ) {
         const prev = Math.round(debug.oldConfidence * 100);
         const next = Math.round(debug.newConfidence * 100);
         const delta = next - prev;
@@ -101,7 +104,9 @@ function summaryForCall(call: ToolCallLogEntry): string {
     }
     case 'generate_plan': {
       const nodeCount = (call.output as Record<string, any> | undefined)?.nodes?.length;
-      return typeof nodeCount === 'number' ? `Generated plan with ${nodeCount} steps` : 'Generated plan';
+      return typeof nodeCount === 'number'
+        ? `Generated plan with ${nodeCount} steps`
+        : 'Generated plan';
     }
     case 'create_diagnostic': {
       const topic = (call.output as Record<string, any> | undefined)?.topic;
@@ -110,7 +115,9 @@ function summaryForCall(call: ToolCallLogEntry): string {
     case 'web_search': {
       const output = (call.output as Record<string, any> | undefined) || undefined;
       const ok = typeof output?.ok === 'boolean' ? (output.ok as boolean) : undefined;
-      const resultsCount = Array.isArray(output?.resultsPreview) ? output?.resultsPreview.length : undefined;
+      const resultsCount = Array.isArray(output?.resultsPreview)
+        ? output?.resultsPreview.length
+        : undefined;
       if (ok === true) return `Web search (${resultsCount ?? 0} results)`;
       if (ok === false) return 'Web search error';
       return 'Web search';
@@ -215,8 +222,7 @@ export function ToolCallLog({
 
   if (!sortedCalls.length) return null;
 
-  const toggleCall = (id: string) =>
-    setExpandedCalls((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleCall = (id: string) => setExpandedCalls((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const containerClassName = [
     'border border-muted rounded-lg overflow-hidden bg-muted/30 my-2',
@@ -242,7 +248,11 @@ export function ToolCallLog({
         </div>
         {collapsible && (
           <span className="text-muted-foreground">
-            {expanded ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
+            {expanded ? (
+              <ChevronUpIcon className="h-4 w-4" />
+            ) : (
+              <ChevronDownIcon className="h-4 w-4" />
+            )}
           </span>
         )}
       </div>
@@ -258,10 +268,7 @@ export function ToolCallLog({
             const badges = collectBadges(call);
             const metadataPairs = metadataEntries(call.metadata);
             return (
-              <div
-                key={call.id}
-                className={`bg-background ${recentHighlight}`}
-              >
+              <div key={call.id} className={`bg-background ${recentHighlight}`}>
                 <button
                   type="button"
                   onClick={() => {
@@ -307,7 +314,11 @@ export function ToolCallLog({
                     )}
                     {mode !== 'full' && (
                       <span className="text-muted-foreground">
-                        {isExpanded ? <ChevronUpIcon className="h-3 w-3" /> : <ChevronDownIcon className="h-3 w-3" />}
+                        {isExpanded ? (
+                          <ChevronUpIcon className="h-3 w-3" />
+                        ) : (
+                          <ChevronDownIcon className="h-3 w-3" />
+                        )}
                       </span>
                     )}
                   </div>

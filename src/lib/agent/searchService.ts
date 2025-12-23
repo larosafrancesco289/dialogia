@@ -1,9 +1,8 @@
 // Module: agent/searchService
 // Responsibility: Wrap Brave/OpenRouter search UI updates so search tools and deep research share one pathway.
 
-import type { StoreSetter } from '@/lib/agent/types';
+import type { StoreAccess } from '@/lib/agent/types';
 import type { SearchResult } from '@/lib/agent/types';
-import { updateBraveUi } from '@/lib/agent/searchFlow';
 
 export type SearchUiPayload = {
   query: string;
@@ -13,9 +12,9 @@ export type SearchUiPayload = {
 };
 
 export function setSearchUiStatus(
-  set: StoreSetter,
+  store: StoreAccess,
   messageId: string,
   payload: SearchUiPayload,
 ) {
-  updateBraveUi(set, messageId, payload);
+  store.get().setSearchStatus(messageId, payload);
 }

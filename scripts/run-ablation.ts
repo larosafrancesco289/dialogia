@@ -54,6 +54,8 @@ import {
 } from '@/lib/eval/prePostTest';
 import type { Chat, Message, ORModel, ModelTransport, LearnerModel } from '@/lib/types';
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
+import { parseArgs } from '@/lib/cli/args';
+import { loadEnvDefaults } from '@/lib/cli/env';
 
 // ============================================================================
 // Types
@@ -126,39 +128,9 @@ type AblationSummary = {
   };
 };
 
-type ArgMap = Record<string, string | boolean>;
-
 // ============================================================================
 // Argument Parsing
 // ============================================================================
-
-function parseArgs(argv: string[]): ArgMap {
-  const result: ArgMap = {};
-  for (let i = 0; i < argv.length; i++) {
-    const token = argv[i];
-    if (!token.startsWith('-')) continue;
-    if (token === '-h' || token === '--help') {
-      result.help = true;
-      continue;
-    }
-    if (token.startsWith('--')) {
-      const eqIndex = token.indexOf('=');
-      if (eqIndex > 2) {
-        result[token.slice(2, eqIndex)] = token.slice(eqIndex + 1);
-      } else {
-        const key = token.slice(2);
-        const next = argv[i + 1];
-        if (next && !next.startsWith('-')) {
-          result[key] = next;
-          i++;
-        } else {
-          result[key] = true;
-        }
-      }
-    }
-  }
-  return result;
-}
 
 function usage() {
   console.log(`
@@ -194,8 +166,12 @@ function listAvailable() {
     const config = CONDITION_CONFIGS[condition];
     console.log(`  ${condition}`);
     console.log(`    ${config.description}`);
-    console.log(`    Plan: ${config.planVisible ? (config.planEditable ? 'editable' : 'read-only') : 'hidden'}`);
-    console.log(`    Model: ${config.learnerModelVisible ? (config.learnerModelEditable ? 'editable' : 'visible') : 'hidden'}`);
+    console.log(
+      `    Plan: ${config.planVisible ? (config.planEditable ? 'editable' : 'read-only') : 'hidden'}`,
+    );
+    console.log(
+      `    Model: ${config.learnerModelVisible ? (config.learnerModelEditable ? 'editable' : 'visible') : 'hidden'}`,
+    );
     console.log('');
   }
 
@@ -206,35 +182,6 @@ function listAvailable() {
     console.log(`    Level: ${scenario.level}, Turns: ${scenario.maxTurns}`);
     console.log(`    Topics: ${scenario.planStructure.nodes.length} nodes`);
     console.log('');
-  }
-}
-
-// ============================================================================
-// Environment Loading
-// ============================================================================
-
-async function loadEnvDefaults(): Promise<void> {
-  const envFiles = ['.env.local', '.env'];
-  for (const filename of envFiles) {
-    try {
-      const fullPath = path.resolve(process.cwd(), filename);
-      const content = await fs.readFile(fullPath, 'utf8');
-      for (const line of content.split(/\r?\n/)) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) continue;
-        const idx = trimmed.indexOf('=');
-        if (idx <= 0) continue;
-        const key = trimmed.slice(0, idx).trim();
-        if (!key || process.env[key]) continue;
-        let value = trimmed.slice(idx + 1).trim();
-        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-          value = value.slice(1, -1);
-        }
-        process.env[key] = value.replace(/\\n/g, '\n');
-      }
-    } catch {
-      // File not found, continue
-    }
   }
 }
 
@@ -285,9 +232,15 @@ async function runSingleAblation(
   console.log(`\n  [${runId}] Starting...`);
 
   // When forceOpenRouter is true, always use OpenRouter regardless of model ID pattern
-  const tutorTransport = config.forceOpenRouter ? 'openrouter' : (resolveModelTransport(config.tutorModel) || 'openrouter');
-  const studentTransport = config.forceOpenRouter ? 'openrouter' : (resolveModelTransport(config.studentModel) || 'openrouter');
-  const judgeTransport = config.forceOpenRouter ? 'openrouter' : (resolveModelTransport(config.judgeModel) || 'openrouter');
+  const tutorTransport = config.forceOpenRouter
+    ? 'openrouter'
+    : resolveModelTransport(config.tutorModel) || 'openrouter';
+  const studentTransport = config.forceOpenRouter
+    ? 'openrouter'
+    : resolveModelTransport(config.studentModel) || 'openrouter';
+  const judgeTransport = config.forceOpenRouter
+    ? 'openrouter'
+    : resolveModelTransport(config.judgeModel) || 'openrouter';
 
   const resolveApiKey = resolveApiKeyFactory(config.apiKeys);
 
@@ -340,11 +293,13 @@ async function runSingleAblation(
     modelIndex,
     resolveApiKey,
     uiOverrides: {
-      debugMode: true,
-      experimentalTutor: true,
-      forceTutorMode: true,
-      tutorResearchMode: conditionSettings.tutor_research_mode,
-      next: { tutorMode: true },
+      debug: { mode: true },
+      flags: { experimentalTutor: true },
+      tutor: {
+        forceMode: true,
+        researchMode: conditionSettings.tutor_research_mode,
+      },
+      overrides: { tutorMode: true },
     },
   });
 
@@ -355,13 +310,13 @@ async function runSingleAblation(
   if (conditionConfig.planEditable) {
     editabilityInstructions.push(
       'You can ask the tutor to modify the learning plan if you want to skip topics you already know, ' +
-      'add topics you want to learn, or change the order of topics.',
+        'add topics you want to learn, or change the order of topics.',
     );
   }
   if (conditionConfig.learnerModelEditable) {
     editabilityInstructions.push(
       'If you feel the tutor has misjudged your understanding (too high or too low), ' +
-      'you can tell them directly and ask them to adjust their assessment of your mastery.',
+        'you can tell them directly and ask them to adjust their assessment of your mastery.',
     );
   }
 
@@ -378,7 +333,9 @@ async function runSingleAblation(
       'Respond naturally, ask questions when confused, and occasionally make mistakes fitting your persona.',
       scenario.constraints?.length ? `Constraints: ${scenario.constraints.join('; ')}` : '',
       editabilityInstructions.length > 0 ? '' : null,
-      editabilityInstructions.length > 0 ? 'IMPORTANT - You have control over the tutoring process:' : null,
+      editabilityInstructions.length > 0
+        ? 'IMPORTANT - You have control over the tutoring process:'
+        : null,
       ...editabilityInstructions,
       editabilityInstructions.length > 0
         ? 'Use these abilities naturally when appropriate (e.g., if you already know a topic, or if the tutor seems to misunderstand your level).'
@@ -401,7 +358,8 @@ async function runSingleAblation(
     const learnerModel = getLatestLearnerModel(runner.toResult().messages);
     if (learnerModel?.mastery) {
       const confidences = Object.values(learnerModel.mastery).map((m) => m.confidence);
-      const avgConfidence = confidences.length > 0 ? confidences.reduce((a, b) => a + b, 0) / confidences.length : 0;
+      const avgConfidence =
+        confidences.length > 0 ? confidences.reduce((a, b) => a + b, 0) / confidences.length : 0;
       masteryTrajectory.push({ turn: turn + 1, avgConfidence });
     }
 
@@ -417,7 +375,7 @@ async function runSingleAblation(
   // Run post-test (student checks transcript to see if gaps were closed)
   console.log(`  [${runId}] Running post-test...`);
   const transcript = renderSnapshotTranscript(result.snapshots);
-  
+
   const postTest = await administerTest(scenario.postTestQuestions, 'post', {
     apiKey: resolveApiKey({ modelId: config.studentModel, transport: studentTransport }),
     transport: studentTransport,
@@ -447,7 +405,9 @@ async function runSingleAblation(
     planEditable: conditionConfig.planEditable,
   });
   if (editEvents.length > 0) {
-    console.log(`  [${runId}] Edit events: ${editEvents.length} (${editEvents.map(e => e.type).join(', ')})`);
+    console.log(
+      `  [${runId}] Edit events: ${editEvents.length} (${editEvents.map((e) => e.type).join(', ')})`,
+    );
   }
 
   // Get final learner model
@@ -455,9 +415,15 @@ async function runSingleAblation(
 
   // Run judge evaluation
   console.log(`  [${runId}] Running judge evaluation...`);
-  const finalPlan = runner.getSession().getState().chats.find((c) => c.id === chat.id)?.settings.learningPlan;
-  const planSummary = finalPlan ? generatePlanContextPreamble(finalPlan, finalLearnerModel) : undefined;
-  const modelSummary = finalLearnerModel && finalPlan ? generateModelSummary(finalLearnerModel, finalPlan) : undefined;
+  const finalPlan = runner
+    .getSession()
+    .getState()
+    .chats.find((c) => c.id === chat.id)?.settings.learningPlan;
+  const planSummary = finalPlan
+    ? generatePlanContextPreamble(finalPlan, finalLearnerModel)
+    : undefined;
+  const modelSummary =
+    finalLearnerModel && finalPlan ? generateModelSummary(finalLearnerModel, finalPlan) : undefined;
 
   const judgeMessages = buildJudgeMessages({
     scenario,
@@ -516,7 +482,7 @@ function extractJudgeText(response: unknown): string {
   const content = resp.choices?.[0]?.message?.content;
   if (typeof content === 'string') return content;
   if (Array.isArray(content)) {
-    return content.map((c) => (typeof c === 'string' ? c : c?.text ?? '')).join('');
+    return content.map((c) => (typeof c === 'string' ? c : (c?.text ?? ''))).join('');
   }
   return '';
 }
@@ -637,8 +603,12 @@ function calculateStatistics(
   const comparisons = COMPARISON_PAIRS.filter(
     (p) => conditions.includes(p.conditions[0]) && conditions.includes(p.conditions[1]),
   ).map((pair) => {
-    const gains1 = results.filter((r) => r.condition === pair.conditions[0]).map((r) => r.normalizedGain);
-    const gains2 = results.filter((r) => r.condition === pair.conditions[1]).map((r) => r.normalizedGain);
+    const gains1 = results
+      .filter((r) => r.condition === pair.conditions[0])
+      .map((r) => r.normalizedGain);
+    const gains2 = results
+      .filter((r) => r.condition === pair.conditions[1])
+      .map((r) => r.normalizedGain);
     const { d, interpretation } = calculateCohenD(gains1, gains2);
     return {
       name: pair.name,
@@ -718,7 +688,13 @@ function generateMarkdownTables(summary: AblationSummary): string {
     );
   }
 
-  lines.push('', '## Pairwise Comparisons', '', '| Comparison | Cohen\'s d | Interpretation | C1 Mean | C2 Mean |', '|------------|-----------|----------------|---------|---------|');
+  lines.push(
+    '',
+    '## Pairwise Comparisons',
+    '',
+    "| Comparison | Cohen's d | Interpretation | C1 Mean | C2 Mean |",
+    '|------------|-----------|----------------|---------|---------|',
+  );
 
   for (const comp of summary.statistics.comparisons) {
     lines.push(
@@ -752,7 +728,7 @@ function generateStatsReport(summary: AblationSummary): string {
     `- Runs per cell: ${summary.config.runsPerCell}`,
     `- Tutor model: ${summary.config.tutorModel}`,
     '',
-    '## Effect Size Interpretation (Cohen\'s d)',
+    "## Effect Size Interpretation (Cohen's d)",
     '',
     '- |d| < 0.2: Negligible',
     '- |d| < 0.5: Small',
@@ -821,18 +797,26 @@ async function main() {
   // Parse configuration
   const conditionArg = typeof args.conditions === 'string' ? args.conditions : '';
   const conditions: AblationCondition[] = conditionArg
-    ? (conditionArg.split(',').filter((c) => ABLATION_CONDITIONS.includes(c as AblationCondition)) as AblationCondition[])
+    ? (conditionArg
+        .split(',')
+        .filter((c) => ABLATION_CONDITIONS.includes(c as AblationCondition)) as AblationCondition[])
     : [...ABLATION_CONDITIONS];
 
   const scenarioArg = typeof args.scenarios === 'string' ? args.scenarios : '';
   const scenarios = scenarioArg
-    ? scenarioArg.split(',').map((id) => getScenarioById(id)).filter(Boolean) as AblationScenario[]
+    ? (scenarioArg
+        .split(',')
+        .map((id) => getScenarioById(id))
+        .filter(Boolean) as AblationScenario[])
     : [...ABLATION_SCENARIOS];
 
   const runsPerCell = typeof args.runs === 'string' ? parseInt(args.runs, 10) : 3;
-  const tutorModel = typeof args['tutor-model'] === 'string' ? args['tutor-model'] : DEFAULT_TUTOR_MODEL_ID;
-  const studentModel = typeof args['student-model'] === 'string' ? args['student-model'] : 'x-ai/grok-4.1-fast';
-  const judgeModel = typeof args['judge-model'] === 'string' ? args['judge-model'] : 'x-ai/grok-4.1-fast';
+  const tutorModel =
+    typeof args['tutor-model'] === 'string' ? args['tutor-model'] : DEFAULT_TUTOR_MODEL_ID;
+  const studentModel =
+    typeof args['student-model'] === 'string' ? args['student-model'] : 'x-ai/grok-4.1-fast';
+  const judgeModel =
+    typeof args['judge-model'] === 'string' ? args['judge-model'] : 'x-ai/grok-4.1-fast';
   const outputDir = typeof args.out === 'string' ? args.out : 'tmp/ablation';
   // Default: route all models through OpenRouter; opt-in to direct Anthropic API
   const forceOpenRouter = args['use-anthropic-direct'] !== true;
@@ -860,7 +844,9 @@ async function main() {
   console.log(`Student:    ${studentModel}`);
   console.log(`Judge:      ${judgeModel}`);
   console.log(`Output:     ${outputDir}`);
-  console.log(`Routing:    ${forceOpenRouter ? 'OpenRouter (all models)' : 'Native (Anthropic direct for anthropic/* models)'}`);
+  console.log(
+    `Routing:    ${forceOpenRouter ? 'OpenRouter (all models)' : 'Native (Anthropic direct for anthropic/* models)'}`,
+  );
 
   if (args['dry-run']) {
     console.log('\n[DRY RUN] Would execute the above configuration.');

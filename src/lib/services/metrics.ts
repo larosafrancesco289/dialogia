@@ -17,7 +17,9 @@ export function computeMetrics(args: ComputeMetricsArgs): TurnMetrics {
   const { startedAt, firstTokenAt, finishedAt, usage } = args;
   const end = typeof finishedAt === 'number' ? finishedAt : performance.now();
   const ttftMs =
-    typeof firstTokenAt === 'number' ? Math.max(0, Math.round(firstTokenAt - startedAt)) : undefined;
+    typeof firstTokenAt === 'number'
+      ? Math.max(0, Math.round(firstTokenAt - startedAt))
+      : undefined;
   const completionMs = Math.max(0, Math.round(end - startedAt));
   const promptTokens = usage?.prompt_tokens ?? usage?.input_tokens;
   const completionTokens = usage?.completion_tokens ?? usage?.output_tokens;

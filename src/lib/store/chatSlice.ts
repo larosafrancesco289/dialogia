@@ -1,33 +1,31 @@
 import { ChatService } from '@/lib/services/chatService';
 import { normalizeParallelModels } from '@/lib/models/normalization';
-import { applyTutorDefaults } from '@/lib/agent/tutor/policy';
+import { applyTutorDefaults } from '@/lib/store/normalize';
 import { primeTutorWelcome } from '@/lib/services/turns';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
-import { loadRepositorySnapshot } from '@/lib/db/repository';
+import { loadRepositorySnapshot } from '@/lib/db';
 import { mergeTutorMap } from '@/lib/ui/tutorSelectors';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import type { StoreState } from '@/lib/store/types';
 import type { StoreSetter } from '@/lib/agent/types';
 import type { Chat } from '@/lib/types';
 
-export function createChatSlice(
-  set: StoreSetter,
-  get: () => StoreState,
-  _store?: unknown,
-) {
+export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
   return {
     async initializeApp() {
       const snapshot = await loadRepositorySnapshot(get().selectedChatId);
-      set((s) => ({
-        chats: snapshot.chats,
-        folders: snapshot.folders,
-        messages: snapshot.messages,
-        selectedChatId: snapshot.selectedChatId,
-        ui: mergeTutorMap(s.ui, snapshot.tutorByMessageId),
-      }) as any);
+      set(
+        (s) => ({
+          chats: snapshot.chats,
+          folders: snapshot.folders,
+          messages: snapshot.messages,
+          selectedChatId: snapshot.selectedChatId,
+          ui: mergeTutorMap(s.ui, snapshot.tutorByMessageId),
+        }),
+      );
       try {
         if (snapshot.selectedChatId) {
-          await (get().loadTutorProfileIntoUI as any)(snapshot.selectedChatId);
+          await get().loadTutorProfileIntoUI(snapshot.selectedChatId);
         }
       } catch {
         /* ignore tutor profile preload errors */
@@ -52,7 +50,7 @@ export function createChatSlice(
     },
 
     selectChat(id: string) {
-      set({ selectedChatId: id } as any);
+      set({ selectedChatId: id });
     },
 
     async renameChat(id: string, title: string) {
@@ -70,7 +68,7 @@ export function createChatSlice(
         const chats = s.chats.filter((c) => c.id !== id);
         const selectedChatId = s.selectedChatId === id ? chats[0]?.id : s.selectedChatId;
         const { [id]: _, ...rest } = s.messages;
-        return { chats, messages: rest, selectedChatId } as any;
+        return { chats, messages: rest, selectedChatId };
       });
     },
 
@@ -111,7 +109,7 @@ export function createChatSlice(
       if (!before) return;
 
       const uiState = get().ui;
-      const forceTutorMode = !!(uiState.forceTutorMode ?? false);
+      const forceTutorMode = !!(uiState.tutor.forceMode ?? false);
       let appliedPartial = { ...partial } as Partial<Chat['settings']>;
 
       if (Array.isArray(appliedPartial.parallel_models)) {
@@ -166,7 +164,7 @@ export function createChatSlice(
         before.settings.tutor_mode !== appliedPartial.tutor_mode &&
         appliedPartial.tutor_mode === true;
 
-      if (turnedOn && !!get().ui.experimentalTutor) {
+      if (turnedOn && !!get().ui.flags.experimentalTutor) {
         Promise.resolve(primeTutorWelcome(id, { set, get })).catch(() => undefined);
       }
     },

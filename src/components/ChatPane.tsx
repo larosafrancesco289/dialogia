@@ -11,7 +11,7 @@ import { formatModelLabel, findModelById } from '@/lib/models';
 export function ChatPane() {
   const chat = useChatStore(selectCurrentChat);
   const models = useChatStore((s) => s.models);
-  const enableMultiModelChat = useChatStore((s) => !!s.ui.enableMultiModelChat);
+  const enableMultiModelChat = useChatStore((s) => !!s.ui.flags.enableMultiModelChat);
   const keyboardMetrics = useKeyboardInsets();
   const keyboardVars = {
     '--keyboard-offset': `${Math.max(0, Math.round(keyboardMetrics.offset))}px`,
@@ -23,9 +23,9 @@ export function ChatPane() {
     const extras = Array.isArray(chatSettings?.parallel_models)
       ? (chatSettings?.parallel_models as string[])
       : [];
-    const combined = base.concat(extras).filter(
-      (id): id is string => typeof id === 'string' && id.length > 0,
-    );
+    const combined = base
+      .concat(extras)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
     const deduped: string[] = [];
     for (const id of combined) {
       if (!deduped.includes(id)) deduped.push(id);
@@ -50,7 +50,9 @@ export function ChatPane() {
                 >
                   <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3 bg-canvas/60">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-semibold leading-tight tracking-wide">{label}</span>
+                      <span className="text-sm font-semibold leading-tight tracking-wide">
+                        {label}
+                      </span>
                       <span className="text-[11px] text-muted-foreground font-mono tracking-tight uppercase">
                         {modelId}
                       </span>

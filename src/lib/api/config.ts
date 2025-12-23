@@ -2,7 +2,9 @@
 // Responsibility: Provide shared transport configuration defaults for OpenRouter requests.
 
 const BROWSER =
-  typeof window !== 'undefined' && typeof window.document !== 'undefined' && window.document !== null;
+  typeof window !== 'undefined' &&
+  typeof window.document !== 'undefined' &&
+  window.document !== null;
 
 const DEFAULT_ORIGIN = 'http://localhost:3000';
 

@@ -53,9 +53,7 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
       const plan = t.planProposal.plan;
       const status = t.planProposal.status || 'pending';
       const nodes = Array.isArray(plan.nodes) ? plan.nodes.length : 0;
-      lines.push(
-        `Plan Proposal: ${clip(plan.goal, 60)} · ${nodes} topics · status: ${status}`,
-      );
+      lines.push(`Plan Proposal: ${clip(plan.goal, 60)} · ${nodes} topics · status: ${status}`);
     }
     if (Array.isArray(t.planSuggestions) && t.planSuggestions.length > 0) {
       lines.push(

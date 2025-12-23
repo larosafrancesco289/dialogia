@@ -32,7 +32,8 @@ export interface VoiceActions {
 
 export const DEFAULT_VOICE_CONFIG: VoiceConfig = {
   voice: 'eve',
-  instructions: 'You are a helpful voice assistant. Be concise and natural in your responses. Keep answers brief unless the user asks for detail.',
+  instructions:
+    'You are a helpful voice assistant. Be concise and natural in your responses. Keep answers brief unless the user asks for detail.',
 };
 
 export const VOICE_OPTIONS: { value: XAIVoice; label: string; description: string }[] = [

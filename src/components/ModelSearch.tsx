@@ -9,8 +9,10 @@ import {
   useRef,
   useState,
   useCallback,
+  useId,
   type KeyboardEvent,
   type MouseEvent,
+  type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { shallow } from 'zustand/shallow';
@@ -77,6 +79,7 @@ export type ModelSearchProps = {
   onOpenChange?: (isOpen: boolean) => void;
   actionLabel?: string;
   selectedLabel?: string;
+  dropdownRef?: RefObject<HTMLDivElement>;
 };
 
 function buildResult(
@@ -157,6 +160,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
       onOpenChange,
       actionLabel = 'Add',
       selectedLabel = 'Added',
+      dropdownRef: dropdownRefProp,
     },
     ref,
   ) {
@@ -178,6 +182,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
     const selectedSet = useMemo(() => new Set(selectedIds || []), [selectedIds]);
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement | null>(null);
+    const dropdownRef = dropdownRefProp ?? listRef;
     const [highlightedIndex, setHighlightedIndex] = useState(0);
     const [position, setPosition] = useState<{
       left: number;
@@ -185,6 +190,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
       width: number;
       maxHeight: number;
     } | null>(null);
+    const listboxId = useId();
 
     const results = useMemo(() => {
       if (!normalizedQuery) return [] as ModelSearchResult[];
@@ -310,12 +316,12 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
         const target = event.target as Node | null;
         if (!target) return;
         if (inputRef.current && inputRef.current.contains(target)) return;
-        if (listRef.current && listRef.current.contains(target)) return;
+        if (dropdownRef.current && dropdownRef.current.contains(target)) return;
         closeDropdown();
       };
       document.addEventListener('pointerdown', onPointerDown, true);
       return () => document.removeEventListener('pointerdown', onPointerDown, true);
-    }, [normalizedQuery, closeDropdown]);
+    }, [normalizedQuery, closeDropdown, dropdownRef]);
 
     useEffect(() => {
       if (!results.length) {
@@ -420,7 +426,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
             onKeyDown={onInputKeyDown}
             aria-haspopup="listbox"
             aria-expanded={open}
-            aria-controls="model-search-results"
+            aria-controls={open ? listboxId : undefined}
             autoComplete="off"
           />
         </div>
@@ -430,8 +436,8 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
           typeof document !== 'undefined' &&
           createPortal(
             <div
-              ref={listRef}
-              id="model-search-results"
+              ref={dropdownRef}
+              id={listboxId}
               role="listbox"
               className="fixed z-[95] card p-2 overflow-auto shadow-[var(--shadow-card)]"
               style={{

@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { ChevronDownIcon, DocumentDuplicateIcon, SparklesIcon, CpuChipIcon } from '@heroicons/react/24/outline';
+import {
+  ChevronDownIcon,
+  DocumentDuplicateIcon,
+  SparklesIcon,
+  CpuChipIcon,
+} from '@heroicons/react/24/outline';
 import { Markdown } from '@/lib/markdown';
 import { DeepResearchTimeline, type DeepResearchEvent } from './DeepResearchTimeline';
 import { parsePartialJson } from '@/lib/partial-json';
@@ -159,16 +164,19 @@ export function ReasoningPanel({
         layout
         initial={false}
         animate={{
-          backgroundColor: expanded ? 'rgba(var(--surface-rgb), 0.6)' : 'rgba(var(--surface-rgb), 0.4)',
+          backgroundColor: expanded
+            ? 'rgba(var(--surface-rgb), 0.6)'
+            : 'rgba(var(--surface-rgb), 0.4)',
           borderColor: isStreaming
             ? 'rgba(var(--accent-rgb), 0.5)'
             : expanded
               ? 'rgba(var(--border-rgb), 0.8)'
               : 'rgba(var(--border-rgb), 0.5)',
-          boxShadow: isStreaming ? '0 0 0 1px rgba(var(--accent-rgb), 0.2)' : 'none'
+          boxShadow: isStreaming ? '0 0 0 1px rgba(var(--accent-rgb), 0.2)' : 'none',
         }}
-        className={`relative overflow-hidden rounded-2xl border backdrop-blur-md transition-colors duration-300 ${pulse ? 'ring-2 ring-accent/20' : ''
-          }`}
+        className={`relative overflow-hidden rounded-2xl border backdrop-blur-md transition-colors duration-300 ${
+          pulse ? 'ring-2 ring-accent/20' : ''
+        }`}
       >
         {/* Streaming shimmer effect */}
         {isStreaming && (
@@ -184,12 +192,15 @@ export function ReasoningPanel({
           aria-controls={bodyId}
           onClick={onToggle}
         >
-          <div className={`flex items-center justify-center w-8 h-8 rounded-xl border transition-all duration-300 ${isStreaming
-            ? 'bg-accent/10 border-accent/30 text-accent animate-pulse'
-            : expanded
-              ? 'bg-primary/10 border-primary/20 text-primary'
-              : 'bg-surface border-border text-muted-foreground group-hover:text-foreground group-hover:border-border/80'
-            }`}>
+          <div
+            className={`flex items-center justify-center w-8 h-8 rounded-xl border transition-all duration-300 ${
+              isStreaming
+                ? 'bg-accent/10 border-accent/30 text-accent animate-pulse'
+                : expanded
+                  ? 'bg-primary/10 border-primary/20 text-primary'
+                  : 'bg-surface border-border text-muted-foreground group-hover:text-foreground group-hover:border-border/80'
+            }`}
+          >
             {isDeepResearch ? (
               <CpuChipIcon className="w-4 h-4" />
             ) : (
@@ -199,8 +210,11 @@ export function ReasoningPanel({
 
           <div className="flex-1 min-w-0 flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
-              <span className={`text-xs font-bold uppercase tracking-wider ${isStreaming ? 'text-accent' : 'text-muted-foreground group-hover:text-foreground'
-                } transition-colors`}>
+              <span
+                className={`text-xs font-bold uppercase tracking-wider ${
+                  isStreaming ? 'text-accent' : 'text-muted-foreground group-hover:text-foreground'
+                } transition-colors`}
+              >
                 {isDeepResearch ? 'Deep Research' : 'Reasoning Process'}
               </span>
               {isStreaming && (
@@ -247,9 +261,18 @@ export function ReasoningPanel({
                   ) : (
                     <div className="flex items-center gap-2 text-muted-foreground py-4">
                       <div className="flex gap-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div
+                          className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
+                          style={{ animationDelay: '0ms' }}
+                        />
+                        <div
+                          className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
+                          style={{ animationDelay: '150ms' }}
+                        />
+                        <div
+                          className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
+                          style={{ animationDelay: '300ms' }}
+                        />
                       </div>
                       <span className="text-xs font-medium">Initializing process...</span>
                     </div>

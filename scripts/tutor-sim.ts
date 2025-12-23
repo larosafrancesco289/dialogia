@@ -14,8 +14,8 @@ import { resolveModelTransport } from '@/lib/providers';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { CURATED_MODELS } from '@/data/curatedModels';
-
-type ArgMap = Record<string, string | boolean>;
+import { parseArgs } from '@/lib/cli/args';
+import { loadEnvDefaults } from '@/lib/cli/env';
 
 type PresetDefinition = {
   goal: string;
@@ -46,36 +46,6 @@ const PRESET_SCENARIOS: Record<string, PresetDefinition> = {
   },
 };
 
-function parseArgs(argv: string[]): ArgMap {
-  const result: ArgMap = {};
-  for (let i = 0; i < argv.length; i += 1) {
-    const token = argv[i];
-    if (!token.startsWith('-')) continue;
-    if (token === '-h' || token === '--help') {
-      result.help = true;
-      continue;
-    }
-    if (token.startsWith('--')) {
-      const eqIndex = token.indexOf('=');
-      if (eqIndex > 2) {
-        const key = token.slice(2, eqIndex);
-        const value = token.slice(eqIndex + 1);
-        result[key] = value;
-      } else {
-        const key = token.slice(2);
-        const next = argv[i + 1];
-        if (next && !next.startsWith('-')) {
-          result[key] = next;
-          i += 1;
-        } else {
-          result[key] = true;
-        }
-      }
-    }
-  }
-  return result;
-}
-
 function usage() {
   console.log(
     [
@@ -95,42 +65,6 @@ function usage() {
       '  --json-out <path>          Write full JSON report to this path (defaults to tmp/)',
     ].join('\n'),
   );
-}
-
-function normalizeEnvValue(value: string): string {
-  const trimmed = value.trim();
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    return trimmed.slice(1, -1);
-  }
-  return trimmed;
-}
-
-async function loadEnvDefaults(): Promise<void> {
-  const envFiles = ['.env.local', '.env'];
-  for (const filename of envFiles) {
-    try {
-      const fullPath = path.resolve(process.cwd(), filename);
-      const content = await fs.readFile(fullPath, 'utf8');
-      const lines = content.split(/\r?\n/);
-      for (const rawLine of lines) {
-        const line = rawLine.trim();
-        if (!line || line.startsWith('#')) continue;
-        const idx = line.indexOf('=');
-        if (idx <= 0) continue;
-        const key = line.slice(0, idx).trim();
-        if (!key) continue;
-        if (process.env[key]) continue;
-        const value = normalizeEnvValue(line.slice(idx + 1));
-        if (!value) continue;
-        process.env[key] = value.replace(/\\n/g, '\n');
-      }
-    } catch {
-      // Missing env file is fine; continue to the next candidate.
-    }
-  }
 }
 
 function coerceInt(value: string | boolean | undefined, fallback: number): number {
@@ -280,9 +214,7 @@ function printSection(title: string) {
   console.log('-'.repeat(title.length));
 }
 
-function summarizeToolDefinitions(
-  tools: HeadlessTurnSnapshot['composition']['tools'],
-): string {
+function summarizeToolDefinitions(tools: HeadlessTurnSnapshot['composition']['tools']): string {
   if (!tools || tools.length === 0) return 'none';
   const names = tools.map((tool) => tool.function?.name ?? '(unnamed)');
   return names.join(', ');
@@ -535,15 +467,15 @@ async function main() {
   const tutorModel =
     typeof args['tutor-model'] === 'string' && args['tutor-model']
       ? args['tutor-model']
-      : preset?.tutorModel ?? DEFAULT_TUTOR_MODEL_ID;
+      : (preset?.tutorModel ?? DEFAULT_TUTOR_MODEL_ID);
   const studentModel =
     typeof args['student-model'] === 'string' && args['student-model']
       ? args['student-model']
-      : preset?.studentModel ?? DEFAULT_MODEL_ID;
+      : (preset?.studentModel ?? DEFAULT_MODEL_ID);
   const judgeModel =
     typeof args['judge-model'] === 'string' && args['judge-model']
       ? args['judge-model']
-      : preset?.judgeModel ?? DEFAULT_MODEL_ID;
+      : (preset?.judgeModel ?? DEFAULT_MODEL_ID);
 
   const openrouterKey =
     (typeof args['openrouter-key'] === 'string' && args['openrouter-key']) ||
@@ -582,7 +514,10 @@ async function main() {
     },
   };
 
-  const resolveApiKey = resolveApiKeyFactory({ openrouter: openrouterKey, anthropic: anthropicKey });
+  const resolveApiKey = resolveApiKeyFactory({
+    openrouter: openrouterKey,
+    anthropic: anthropicKey,
+  });
 
   const modelIndex = createModelIndex(models);
 
@@ -592,10 +527,10 @@ async function main() {
     modelIndex,
     resolveApiKey,
     uiOverrides: {
-      debugMode: true,
-      experimentalTutor: true,
-      forceTutorMode: true,
-      next: { tutorMode: true },
+      debug: { mode: true },
+      flags: { experimentalTutor: true },
+      tutor: { forceMode: true },
+      overrides: { tutorMode: true },
     },
   });
 
@@ -609,7 +544,10 @@ async function main() {
     apiKey: resolveApiKey({ modelId: studentModel, transport: studentTransport }),
   });
 
-  const judgeTransport = resolveModelTransport(judgeModel, models.find((m) => m.id === judgeModel));
+  const judgeTransport = resolveModelTransport(
+    judgeModel,
+    models.find((m) => m.id === judgeModel),
+  );
   const judge = new LLMJudge({
     modelId: judgeModel,
     transport: judgeTransport,
@@ -619,13 +557,11 @@ async function main() {
   let studentMessage =
     typeof args['initial-user'] === 'string'
       ? args['initial-user']
-      : preset?.initialUser ?? (await studentSim.initialMessage(goal));
+      : (preset?.initialUser ?? (await studentSim.initialMessage(goal)));
 
   if (presetName) {
     console.log(
-      `Using preset "${presetName}" -- goal "${goal}" (${turns} turn${
-        turns === 1 ? '' : 's'
-      }).\n`,
+      `Using preset "${presetName}" -- goal "${goal}" (${turns} turn${turns === 1 ? '' : 's'}).\n`,
     );
   }
 

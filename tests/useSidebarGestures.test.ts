@@ -13,12 +13,13 @@ const createPointerEvent = (
   y: number,
   target = createTarget({}),
   pointerType: string = 'touch',
-) => ({
-  clientX: x,
-  clientY: y,
-  pointerType,
-  target,
-}) as unknown as PointerEvent;
+) =>
+  ({
+    clientX: x,
+    clientY: y,
+    pointerType,
+    target,
+  }) as unknown as PointerEvent;
 
 test('sidebar opens from edge swipe when collapsed', () => {
   let collapsed = true;

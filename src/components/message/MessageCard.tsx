@@ -12,7 +12,8 @@ import { MessagePanels } from '@/components/message/MessagePanels';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { LearnerModelUpdates } from '@/components/message/LearnerModelUpdates';
 import styles from './MessageCard.module.css';
-import type { Attachment, Chat, Message, ORModel, ToolCallLogEntry } from '@/lib/types';
+import type { Attachment, Chat, Message, MessageTutor, ORModel, ToolCallLogEntry } from '@/lib/types';
+import type { UISearchState } from '@/lib/store/types';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
@@ -52,7 +53,7 @@ export type MessageCardProps = {
   setMobileSheet: (sheet: { id: string; role: 'assistant' | 'user' } | null) => void;
   // Flattened MessagePanels props
   braveGloballyEnabled: boolean;
-  braveEntry?: any;
+  braveEntry?: NonNullable<UISearchState['braveByMessageId']>[string];
   isSourcesExpanded: boolean;
   onToggleSources: (id: string) => void;
   debugMode: boolean;
@@ -60,7 +61,7 @@ export type MessageCardProps = {
   isDebugExpanded: boolean;
   onToggleDebug: (id: string) => void;
   tutorGloballyEnabled: boolean;
-  tutorEntry?: any;
+  tutorEntry?: MessageTutor;
   autoReasoningModelIds: Record<string, boolean>;
   isReasoningExpanded: boolean;
   onToggleReasoning: (id: string) => void;
@@ -425,14 +426,19 @@ function AssistantMessageContent({
               continue;
             }
 
-            const normalized = item.output.trim().toLowerCase()
+            const normalized = item.output
+              .trim()
+              .toLowerCase()
               .replace(/^#+\s*/, '')
               .replace(/^\*\*|^\*|^__|^_/, '')
               .trim();
 
             if (normalized.startsWith('final answer')) {
               finalAnswerFound = true;
-              combinedContent += item.output.replace(/^([#\s]*|[*_]+)\s*final answer[*_]*[:\s]*/i, '');
+              combinedContent += item.output.replace(
+                /^([#\s]*|[*_]+)\s*final answer[*_]*[:\s]*/i,
+                '',
+              );
             }
           }
         }

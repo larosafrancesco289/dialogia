@@ -1,12 +1,8 @@
 import type { PlanTurnResult, TurnComposition } from '@/lib/agent/types';
 import type { StoreState } from '@/lib/store/types';
 import { selectTutorEntry } from '@/lib/ui/tutorSelectors';
-import type {
-  Message,
-  MessageTutor,
-  ToolCallLogEntry,
-  Attachment,
-} from '@/lib/types';
+import type { Message, MessageTutor, ToolCallLogEntry, Attachment } from '@/lib/types';
+import type { LearnerModelDebugEntry } from '@/lib/store/types';
 
 export type HeadlessTurnArtifacts = {
   composition: {
@@ -57,7 +53,7 @@ export type HeadlessTurnSnapshot = {
     genSettings?: Message['genSettings'];
     debugRequestBody?: string;
     tutorUi?: ReturnType<typeof selectTutorEntry>;
-    learnerModelDebug?: unknown;
+    learnerModelDebug?: LearnerModelDebugEntry;
   };
   composition: HeadlessTurnArtifacts['composition'];
   plan: PlanTurnResult;
@@ -88,8 +84,8 @@ export function buildHeadlessTurnSnapshot(
   }
 
   const tutorUi = selectTutorEntry(state.ui, assistantMessageId) ?? artifacts.tutorUi;
-  const debugEntry = state.ui.debugByMessageId?.[assistantMessageId];
-  const learnerModelDebug = state.ui.learnerModelDebugByMessageId?.[assistantMessageId];
+  const debugEntry = state.ui.debug.byMessageId?.[assistantMessageId];
+  const learnerModelDebug = state.ui.debug.learnerModelDebugByMessageId?.[assistantMessageId];
 
   return {
     chatId,
