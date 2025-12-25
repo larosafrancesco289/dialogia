@@ -1583,7 +1583,7 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   right: var(--space-3);
   z-index: 30;
   transition: opacity var(--duration-fast) var(--ease-standard);
-  transform: translateY(50%);
+  transform: translateY(20%);
 }
 
 .message-actions__group {
