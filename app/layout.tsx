@@ -4,6 +4,22 @@ import 'katex/dist/katex.min.css';
 import Script from 'next/script';
 import type { Metadata } from 'next';
 import { injectThemeClass } from '@/lib/html';
+import { Newsreader, Plus_Jakarta_Sans } from 'next/font/google';
+
+const newsreader = Newsreader({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-serif-display',
+  weight: ['400', '500', '600'],
+  style: ['normal', 'italic'],
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-sans-display',
+  weight: ['400', '500', '600', '700'],
+});
 
 export const metadata: Metadata = {
   title: 'Dialogia — Private Multi-Model Chat',
@@ -16,7 +32,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="bg-surface text-fg" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`bg-surface text-fg ${newsreader.variable} ${plusJakartaSans.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <Script id="theme-init" strategy="beforeInteractive">
