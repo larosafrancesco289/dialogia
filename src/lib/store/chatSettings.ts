@@ -2,6 +2,7 @@
 // Responsibility: Map transient UI preferences into chat settings for new conversations.
 
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
 import type { ChatSettings } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
 import { applyTutorDefaults, normalizeParallelModels } from '@/lib/store/normalize';
@@ -20,7 +21,7 @@ export function deriveChatSettingsFromUi(opts: {
   const {
     ui,
     fallbackModelId,
-    fallbackSystem = 'You are a helpful assistant.',
+    fallbackSystem = DEFAULT_BASE_SYSTEM,
     lastUsedModelId,
     previous,
     braveEnabled,

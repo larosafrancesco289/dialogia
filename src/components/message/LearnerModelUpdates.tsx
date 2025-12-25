@@ -56,8 +56,8 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
               <div key={idx} className="flex items-center gap-2 text-sm">
                 {change.to === 'completed' && (
                   <>
-                    <CheckCircleIcon className="h-4 w-4 text-green-500 shrink-0" />
-                    <span className="text-green-700 dark:text-green-400 font-medium">
+                    <CheckCircleIcon className="h-4 w-4 shrink-0" style={{ color: 'var(--color-success)' }} />
+                    <span className="font-medium" style={{ color: 'var(--color-success)' }}>
                       Completed: {change.nodeId}
                     </span>
                   </>
@@ -110,13 +110,14 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
               return (
                 <div key={idx} className="flex items-center gap-2 text-sm">
                   <ArrowTrendingUpIcon
-                    className={`h-4 w-4 shrink-0 ${increase ? 'text-green-500' : 'text-orange-500'}`}
+                    className="h-4 w-4 shrink-0"
+                    style={{ color: increase ? 'var(--color-success)' : 'var(--color-accent)' }}
                   />
                   <span className="text-muted-foreground">
                     <span className="font-medium text-foreground">{change.nodeId}</span> mastery:{' '}
                     {percentFrom}% → {percentTo}%
                     {increase && (
-                      <span className="text-green-600 dark:text-green-400 ml-1">
+                      <span className="ml-1" style={{ color: 'var(--color-success)' }}>
                         (+{Math.round(delta * 100)}%)
                       </span>
                     )}

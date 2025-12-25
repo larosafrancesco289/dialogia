@@ -41,6 +41,15 @@
   --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.08);
   --shadow-3: 0 24px 48px rgba(0, 0, 0, 0.12);
   --shadow-card: var(--shadow-2);
+  /* Warm layered shadows for depth — like cards resting on a surface */
+  --shadow-message:
+    0 1px 2px rgba(120, 90, 50, 0.04),
+    0 4px 8px rgba(100, 80, 40, 0.03),
+    0 8px 24px rgba(80, 60, 30, 0.04);
+  --shadow-message-hover:
+    0 2px 4px rgba(120, 90, 50, 0.05),
+    0 8px 16px rgba(100, 80, 40, 0.04),
+    0 16px 32px rgba(80, 60, 30, 0.05);
 
   /* Motion */
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -61,9 +70,17 @@
   --color-accent-2: #6d2a8a;
   --color-border: #d5cfc4;
 
-  /* Status palette */
-  --color-success: #2ecc71;
-  --color-danger: #e74c3c;
+  /* Status palette — muted, scholarly tones */
+  --color-success: #4a8c5a;
+  --color-danger: #b35a4a;
+
+  /* Interactive feedback — correct/incorrect states */
+  --feedback-correct-bg: color-mix(in oklab, var(--color-success) 10%, var(--marginalia-bg));
+  --feedback-correct-border: color-mix(in oklab, var(--color-success) 35%, var(--color-border));
+  --feedback-correct-text: color-mix(in oklab, var(--color-success) 75%, var(--color-fg));
+  --feedback-incorrect-bg: color-mix(in oklab, var(--color-danger) 10%, var(--marginalia-bg));
+  --feedback-incorrect-border: color-mix(in oklab, var(--color-danger) 35%, var(--color-border));
+  --feedback-incorrect-text: color-mix(in oklab, var(--color-danger) 75%, var(--color-fg));
 
   /* Effects */
   --focus-ring: color-mix(in oklab, var(--color-accent) 50%, transparent);
@@ -73,6 +90,23 @@
   --glass-saturate: saturate(180%);
   --glass-blur-surface: blur(18px);
   --glass-blur-panel: blur(22px);
+
+  /* Editorial: Solid paper-like surfaces */
+  --surface-paper: var(--color-surface);
+  --surface-paper-warm: color-mix(in oklab, var(--color-surface) 96%, var(--color-accent));
+  --surface-inset: color-mix(in oklab, var(--color-muted) 70%, var(--color-canvas));
+
+  /* Editorial: Ornamental rules */
+  --rule-light: color-mix(in oklab, var(--color-border) 50%, transparent);
+  --rule-accent: color-mix(in oklab, var(--color-accent) 40%, var(--color-border));
+
+  /* Editorial: Tighter radius for print feel */
+  --radius-editorial: 6px;
+  /* Slightly larger on mobile for better touch affordance */
+  --radius-editorial-mobile: 10px;
+
+  /* Editorial: Marginalia styling */
+  --marginalia-bg: color-mix(in oklab, var(--color-muted) 50%, transparent);
 
   /* Message role styling */
   --message-assistant-bg: color-mix(in oklab, var(--color-surface) 90%, var(--color-accent));
@@ -88,26 +122,46 @@
 .dark {
   color-scheme: dark;
 
-  --color-canvas: #08070a;
-  --color-surface: #121017;
-  --color-muted: #17131e;
-  --color-fg: #f1efef;
-  --color-fg-muted: #c8c3d1;
-  --color-accent: #d4af37;
-  --color-accent-2: #5b2c6f;
-  --color-border: #2e2533;
+  /* Warmer dark surfaces — aged leather and candlelit study */
+  --color-canvas: #0a0908;
+  --color-surface: #14120f;
+  --color-muted: #1c1814;
+  --color-fg: #f4f1ec;
+  --color-fg-muted: #b8b0a4;
+  /* Softer, warmer gold that glows rather than glares */
+  --color-accent: #c9a227;
+  --color-accent-2: #8b5a9e;
+  --color-border: #2a2420;
 
-  --color-success: #3ddc84;
-  --color-danger: #ff6b6b;
-  --focus-ring: rgba(106, 90, 224, 0.45);
+  --color-success: #7cb87a;
+  --color-danger: #d4645a;
+  --focus-ring: color-mix(in oklab, var(--color-accent) 50%, transparent);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --shadow-3: 0 24px 48px rgba(0, 0, 0, 0.6);
+  /* Warm shadows — subtle amber undertones */
+  --shadow-1: 0 1px 2px rgba(20, 15, 10, 0.5);
+  --shadow-2: 0 8px 24px rgba(20, 15, 10, 0.5);
+  --shadow-3: 0 24px 48px rgba(20, 15, 10, 0.65);
   --shadow-card: var(--shadow-2);
+  /* Warm shadows with subtle gold tint for dark mode */
+  --shadow-message:
+    0 1px 3px rgba(20, 15, 10, 0.3),
+    0 4px 12px rgba(20, 15, 10, 0.25),
+    0 8px 24px rgba(201, 162, 39, 0.05);
+  --shadow-message-hover:
+    0 2px 6px rgba(20, 15, 10, 0.35),
+    0 8px 20px rgba(20, 15, 10, 0.3),
+    0 16px 40px rgba(201, 162, 39, 0.08);
 
   --message-assistant-bg: color-mix(in oklab, var(--color-surface) 94%, var(--color-accent-2));
   --message-assistant-border: color-mix(in oklab, var(--color-border) 88%, var(--color-accent-2));
   --message-user-bg: color-mix(in oklab, var(--color-surface) 94.5%, var(--color-accent));
   --message-user-border: color-mix(in oklab, var(--color-border) 88%, var(--color-accent));
+
+  /* Interactive feedback — dark mode adjustments */
+  --feedback-correct-bg: color-mix(in oklab, var(--color-success) 12%, var(--color-muted));
+  --feedback-correct-border: color-mix(in oklab, var(--color-success) 40%, var(--color-border));
+  --feedback-correct-text: var(--color-success);
+  --feedback-incorrect-bg: color-mix(in oklab, var(--color-danger) 12%, var(--color-muted));
+  --feedback-incorrect-border: color-mix(in oklab, var(--color-danger) 40%, var(--color-border));
+  --feedback-incorrect-text: var(--color-danger);
 }

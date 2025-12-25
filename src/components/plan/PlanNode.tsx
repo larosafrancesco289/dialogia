@@ -61,16 +61,15 @@ export function PlanNode({
     <div className="relative flex gap-4">
       {/* Timeline Column */}
       <div className="flex flex-col items-center">
-        {/* Node Dot */}
+        {/* Node Dot - editorial style */}
         <div
-          className={`z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 bg-surface transition-colors duration-300 ${
-            node.status === 'in_progress'
-              ? 'ring-4 ring-[color-mix(in_oklab,var(--color-accent-2)_20%,transparent)]'
-              : ''
-          }`}
+          className="z-10 flex h-7 w-7 items-center justify-center border transition-colors duration-300"
           style={{
+            background: 'var(--surface-paper)',
             borderColor: statusColor,
             color: statusColor,
+            borderRadius: 'var(--radius-editorial)',
+            boxShadow: node.status === 'in_progress' ? '0 0 0 3px var(--marginalia-bg)' : undefined,
           }}
         >
           {node.status === 'completed' ? (
@@ -96,14 +95,17 @@ export function PlanNode({
         )}
       </div>
 
-      {/* Content Card */}
+      {/* Content Card - editorial style */}
       <div className="flex-1 pb-8">
         <div
-          className={`group relative overflow-hidden rounded-xl border bg-surface transition-all duration-300 ${
-            node.status === 'in_progress'
-              ? 'border-[color-mix(in_oklab,var(--color-accent-2)_40%,var(--color-border))] shadow-md'
-              : 'border-border/60 hover:border-border hover:shadow-sm'
-          }${focused ? ' ring-2 ring-[color-mix(in_oklab,var(--color-accent)_50%,transparent)]' : ''}`}
+          className="group relative overflow-hidden transition-all duration-300"
+          style={{
+            background: 'var(--surface-paper)',
+            border: node.status === 'in_progress' ? '1px solid var(--rule-accent)' : '1px solid var(--rule-light)',
+            borderLeft: node.status === 'in_progress' ? '2px solid var(--color-accent-2)' : '2px solid var(--rule-light)',
+            borderRadius: 'var(--radius-editorial)',
+            boxShadow: focused ? '0 0 0 2px var(--focus-ring)' : undefined,
+          }}
         >
           {/* Progress Bar (Top) */}
           {mastery && (
@@ -141,7 +143,7 @@ export function PlanNode({
               </div>
             </div>
 
-            {/* Primary Action (Start/Continue) */}
+            {/* Primary Action (Start/Continue) - editorial style */}
             {isReady && node.status !== 'completed' && (
               <div
                 onClick={(e) => {
@@ -149,11 +151,13 @@ export function PlanNode({
                   if (onStartLesson) onStartLesson(node.id);
                   else onStatusChange?.('in_progress');
                 }}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer ${
-                  node.status === 'in_progress'
-                    ? 'bg-[color-mix(in_oklab,var(--color-accent-2)_15%,var(--color-surface))] text-[var(--color-accent-2)] hover:bg-[color-mix(in_oklab,var(--color-accent-2)_25%,var(--color-surface))]'
-                    : 'bg-primary text-primary-foreground hover:brightness-110 shadow-sm'
-                }`}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer"
+                style={{
+                  background: node.status === 'in_progress' ? 'var(--marginalia-bg)' : 'var(--color-accent)',
+                  color: node.status === 'in_progress' ? 'var(--color-accent-2)' : '#0b0b0b',
+                  border: node.status === 'in_progress' ? '1px solid var(--rule-light)' : 'none',
+                  borderRadius: 'var(--radius-editorial)',
+                }}
               >
                 <PlayIcon className="h-3 w-3" />
                 {node.status === 'in_progress' ? 'Continue' : 'Start'}
@@ -165,11 +169,14 @@ export function PlanNode({
             </div>
           </button>
 
-          {/* Expanded Details */}
+          {/* Expanded Details - editorial style */}
           {expanded && (
-            <div className="border-t border-border/50 bg-muted/20 px-4 pb-4 pt-3">
+            <div className="px-4 pb-4 pt-3" style={{ borderTop: '1px solid var(--rule-light)', background: 'var(--marginalia-bg)' }}>
               {isLocked && (
-                <div className="mb-3 flex items-start gap-2 rounded-md border border-dashed border-border/70 p-2 text-xs text-muted-foreground">
+                <div
+                  className="mb-3 flex items-start gap-2 p-2 text-xs text-muted-foreground"
+                  style={{ border: '1px dashed var(--rule-light)', borderRadius: 'var(--radius-editorial)' }}
+                >
                   <LockClosedIcon className="h-4 w-4 flex-shrink-0" />
                   <span>Complete the prerequisites first to unlock this topic.</span>
                 </div>
@@ -182,7 +189,14 @@ export function PlanNode({
               )}
 
               {mastery && (
-                <div className="mb-3 rounded-lg border border-border/60 bg-surface/80 p-3 shadow-[var(--shadow-card)]">
+                <div
+                  className="mb-3 p-3"
+                  style={{
+                    background: 'var(--surface-paper)',
+                    border: '1px solid var(--rule-light)',
+                    borderRadius: 'var(--radius-editorial)',
+                  }}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
@@ -196,10 +210,10 @@ export function PlanNode({
                       {mastery.interactions} interaction{mastery.interactions === 1 ? '' : 's'}
                     </div>
                   </div>
-                  <div className="mt-2 h-1.5 w-full rounded-full bg-muted/30">
+                  <div className="mt-2 h-1 w-full" style={{ background: 'var(--rule-light)', borderRadius: '2px' }}>
                     <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${confidence ?? 0}%`, background: barColor }}
+                      className="h-full transition-all"
+                      style={{ width: `${confidence ?? 0}%`, background: barColor, borderRadius: '2px' }}
                     />
                   </div>
                   {unresolved.length > 0 && (
@@ -232,7 +246,8 @@ export function PlanNode({
                             reason: 'Learner marked this as easier than expected.',
                           });
                         }}
-                        className="rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/60 hover:text-primary"
+                        className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
+                        style={{ border: '1px solid var(--rule-light)', borderRadius: 'var(--radius-editorial)' }}
                       >
                         Feels easier
                       </button>
@@ -245,7 +260,8 @@ export function PlanNode({
                             reason: 'Learner marked this as harder than expected.',
                           });
                         }}
-                        className="rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/60 hover:text-primary"
+                        className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
+                        style={{ border: '1px solid var(--rule-light)', borderRadius: 'var(--radius-editorial)' }}
                       >
                         Feels harder
                       </button>
@@ -258,7 +274,8 @@ export function PlanNode({
                             reason: 'Learner is confident and wants a higher floor.',
                           });
                         }}
-                        className="rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/60 hover:text-primary"
+                        className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
+                        style={{ border: '1px solid var(--rule-light)', borderRadius: 'var(--radius-editorial)' }}
                       >
                         Set 70% floor
                       </button>
@@ -274,7 +291,8 @@ export function PlanNode({
                               direction: 'up',
                             });
                           }}
-                          className="rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/60 hover:text-primary"
+                          className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
+                          style={{ border: '1px solid var(--rule-light)', borderRadius: 'var(--radius-editorial)' }}
                         >
                           Resolve misconception
                         </button>
@@ -307,11 +325,13 @@ export function PlanNode({
                     {prerequisites.map((p) => (
                       <span
                         key={p.id}
-                        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium border ${
-                          p.status === 'completed'
-                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600'
-                            : 'border-border bg-surface text-muted-foreground'
-                        }`}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium"
+                        style={{
+                          border: p.status === 'completed' ? '1px solid var(--color-success)' : '1px solid var(--rule-light)',
+                          background: p.status === 'completed' ? 'color-mix(in oklab, var(--color-success) 10%, var(--surface-paper))' : 'var(--surface-paper)',
+                          color: p.status === 'completed' ? 'var(--color-success)' : 'var(--color-fg-muted)',
+                          borderRadius: 'var(--radius-editorial)',
+                        }}
                       >
                         {p.status === 'completed' && <CheckCircleIcon className="h-3 w-3" />}
                         {p.name}
@@ -327,7 +347,8 @@ export function PlanNode({
                   {node.status === 'in_progress' && (
                     <button
                       onClick={() => onStatusChange?.('completed')}
-                      className="text-[10px] font-medium text-emerald-600 hover:underline"
+                      className="text-[10px] font-medium hover:underline"
+                      style={{ color: 'var(--color-success)' }}
                     >
                       Mark as Complete
                     </button>

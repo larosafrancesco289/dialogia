@@ -129,11 +129,13 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
   }, [open, updateCoords]);
 
   return (
-    <div className="relative" ref={rootRef}>
+    <div className="inline-flex" ref={rootRef}>
       <button
-        className="icon-button"
-        aria-label="Regenerate"
-        title="Regenerate"
+        className="message-action-btn"
+        aria-label="Regenerate with different model"
+        title="Regenerate with different model"
+        aria-haspopup="menu"
+        aria-expanded={open}
         onClick={() =>
           setOpen((v) => {
             if (!v) updateCoords();
@@ -141,7 +143,7 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
           })
         }
       >
-        <ArrowPathIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+        <ArrowPathIcon className="h-4 w-4" />
       </button>
       {open &&
         createPortal(

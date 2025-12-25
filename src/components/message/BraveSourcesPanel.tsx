@@ -21,9 +21,9 @@ export function BraveSourcesPanel({
 }) {
   if (data.status === 'loading') {
     return (
-      <div className="px-4 pt-3">
-        <div className="thinking-panel">
-          <div className="flex items-center gap-2 text-sm">
+      <div className="mt-4 mb-2">
+        <div className="marginalia">
+          <div className="flex items-center gap-2 text-sm text-[var(--color-fg)]">
             <span className="loading-dot" aria-hidden />
             <span>Searching the web with {provider}…</span>
           </div>
@@ -34,10 +34,9 @@ export function BraveSourcesPanel({
   }
   if (data.status === 'error') {
     return (
-      <div className="px-4 pt-3">
-        <div className="thinking-panel">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="loading-dot" aria-hidden />
+      <div className="mt-4 mb-2">
+        <div className="marginalia marginalia-incorrect">
+          <div className="flex items-center gap-2 text-sm text-[var(--color-danger)]">
             <span>{data.error || 'Web search failed'}</span>
           </div>
         </div>
@@ -47,10 +46,9 @@ export function BraveSourcesPanel({
   const items = data.results || [];
   if (data.status === 'done' && items.length === 0) {
     return (
-      <div className="px-4 pt-3">
-        <div className="thinking-panel">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="loading-dot" aria-hidden />
+      <div className="mt-4 mb-2">
+        <div className="marginalia">
+          <div className="flex items-center gap-2 text-sm text-[var(--color-fg-muted)]">
             <span>No web results found</span>
           </div>
         </div>
@@ -59,10 +57,12 @@ export function BraveSourcesPanel({
   }
   if (data.status === 'done' && items.length > 0) {
     return (
-      <div className="px-4 pt-3">
-        <div className="thinking-panel">
-          <div className="flex items-center justify-between mb-1">
-            <div className="text-xs text-muted-foreground">Web search results ({provider})</div>
+      <div className="mt-4 mb-2">
+        <div className="marginalia">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-accent)]">
+              Web search results ({provider})
+            </div>
             <button
               className="icon-button"
               aria-label={expanded ? 'Hide sources' : 'Show sources'}
@@ -77,14 +77,21 @@ export function BraveSourcesPanel({
             </button>
           </div>
           {expanded && (
-            <ol className="text-sm space-y-1 pl-5 list-decimal">
+            <ol className="text-sm space-y-2 pl-5 list-decimal pt-2 border-t border-[var(--rule-light)]">
               {items.map((r, i) => (
-                <li key={i}>
-                  <a className="underline" href={r.url} target="_blank" rel="noreferrer">
+                <li key={i} className="text-[var(--color-fg)]">
+                  <a
+                    className="underline text-[var(--color-accent)] hover:text-[var(--color-fg)]"
+                    href={r.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     {r.title || r.url || `Result ${i + 1}`}
                   </a>
                   {r.description && (
-                    <div className="text-xs text-muted-foreground">{r.description}</div>
+                    <div className="text-xs text-[var(--color-fg-muted)] mt-0.5">
+                      {r.description}
+                    </div>
                   )}
                 </li>
               ))}

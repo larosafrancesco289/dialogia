@@ -15,7 +15,7 @@ export function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpda
     plan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
 
   return (
-    <div className="rounded-md border border-border bg-surface/50 p-3">
+    <div className="marginalia">
       <div className="flex items-center justify-between">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <SparklesIcon className="w-3.5 h-3.5 text-accent" />
@@ -39,7 +39,7 @@ export function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpda
               <span className="font-medium">{resolveNodeName(update.nodeId)}</span>
               <span className="text-muted-foreground text-xs">
                 {delta != null && delta !== 0 ? (
-                  <span className={delta > 0 ? "text-green-500" : "text-amber-500"}>
+                  <span style={{ color: delta > 0 ? 'var(--color-success)' : 'var(--color-accent)' }}>
                     {delta > 0 ? "+" : ""}
                     {delta}% confidence
                   </span>

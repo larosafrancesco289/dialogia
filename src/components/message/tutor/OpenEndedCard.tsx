@@ -63,8 +63,8 @@ export function OpenEndedCard({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+      <div className="marginalia">
+        <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
           <span className="font-medium uppercase tracking-wider">
             Question {activeIndex + 1} of {total}
           </span>
@@ -97,7 +97,7 @@ export function OpenEndedCard({
               className="space-y-4"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="text-sm font-medium leading-relaxed">{activeItem.prompt}</div>
+                <div className="text-base font-medium leading-relaxed">{activeItem.prompt}</div>
                 <button
                   type="button"
                   className="btn btn-ghost btn-xs text-muted-foreground hover:text-foreground shrink-0"
@@ -118,7 +118,7 @@ export function OpenEndedCard({
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="rounded-lg border border-border/50 bg-muted/30 p-3 text-xs text-muted-foreground mb-4">
+                    <div className="rounded-lg border border-border/50 bg-muted/30 p-3 text-sm text-muted-foreground mb-4">
                       {activeItem.sample_answer ? (
                         <div>
                           <div className="font-bold mb-1 text-foreground">Sample answer</div>

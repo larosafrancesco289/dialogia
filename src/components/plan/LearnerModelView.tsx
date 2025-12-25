@@ -25,17 +25,33 @@ export function LearnerStats({
 
   return (
     <div className="grid grid-cols-3 gap-3">
-      <div className="p-3 rounded-xl border border-border bg-surface/50 space-y-1 shadow-sm">
+      <div
+        className="p-3 space-y-1"
+        style={{
+          background: 'var(--marginalia-bg)',
+          border: '1px solid var(--rule-light)',
+          borderLeft: '2px solid var(--color-accent)',
+          borderRadius: 'var(--radius-editorial)',
+        }}
+      >
         <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider flex items-center gap-1.5">
-          <SparklesIcon className="w-3.5 h-3.5 text-[var(--color-accent)]" />
+          <SparklesIcon className="w-3.5 h-3.5" style={{ color: 'var(--color-accent)' }} />
           Mastery
         </div>
         <div className="text-xl font-bold text-foreground">{Math.round(avgConfidence * 100)}%</div>
       </div>
 
-      <div className="p-3 rounded-xl border border-border bg-surface/50 space-y-1 shadow-sm">
+      <div
+        className="p-3 space-y-1"
+        style={{
+          background: 'var(--marginalia-bg)',
+          border: '1px solid var(--rule-light)',
+          borderLeft: '2px solid var(--color-success)',
+          borderRadius: 'var(--radius-editorial)',
+        }}
+      >
         <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider flex items-center gap-1.5">
-          <CheckCircleIcon className="w-3.5 h-3.5 text-emerald-500" />
+          <CheckCircleIcon className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} />
           Topics
         </div>
         <div className="text-xl font-bold text-foreground">
@@ -44,9 +60,17 @@ export function LearnerStats({
         </div>
       </div>
 
-      <div className="p-3 rounded-xl border border-border bg-surface/50 space-y-1 shadow-sm">
+      <div
+        className="p-3 space-y-1"
+        style={{
+          background: 'var(--marginalia-bg)',
+          border: '1px solid var(--rule-light)',
+          borderLeft: '2px solid var(--color-accent-2)',
+          borderRadius: 'var(--radius-editorial)',
+        }}
+      >
         <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider flex items-center gap-1.5">
-          <ClockIcon className="w-3.5 h-3.5 text-blue-500" />
+          <ClockIcon className="w-3.5 h-3.5" style={{ color: 'var(--color-accent-2)' }} />
           Activity
         </div>
         <div className="text-xl font-bold text-foreground">
@@ -67,7 +91,14 @@ export function LearnerInsights({
 }) {
   if (!learnerModel) {
     return (
-      <div className="p-4 rounded-lg border border-dashed border-border bg-surface/30 text-xs text-muted-foreground text-center">
+      <div
+        className="p-4 text-xs text-muted-foreground text-center"
+        style={{
+          background: 'var(--marginalia-bg)',
+          border: '1px dashed var(--rule-light)',
+          borderRadius: 'var(--radius-editorial)',
+        }}
+      >
         No learning data yet. Start a lesson to track your progress!
       </div>
     );
@@ -86,16 +117,26 @@ export function LearnerInsights({
 
   if (interestingTopics.length === 0) {
     return (
-      <div className="p-4 rounded-lg border border-border bg-surface text-sm text-muted-foreground text-center">
+      <div
+        className="p-4 text-sm text-muted-foreground text-center"
+        style={{
+          background: 'var(--marginalia-bg)',
+          border: '1px solid var(--rule-light)',
+          borderRadius: 'var(--radius-editorial)',
+        }}
+      >
         No specific insights yet. Start learning to generate data!
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-        <ExclamationTriangleIcon className="w-4 h-4" />
+    <div
+      className="marginalia p-4"
+      style={{ borderLeftColor: 'var(--color-accent-2)' }}
+    >
+      <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-2 mb-3">
+        <ExclamationTriangleIcon className="w-3.5 h-3.5" />
         Focus Areas & Insights
       </h3>
 
@@ -108,16 +149,38 @@ export function LearnerInsights({
           return (
             <div
               key={node.id}
-              className="p-3 rounded-lg border border-border bg-surface hover:bg-surface/80 transition-colors"
+              className="p-3"
+              style={{
+                background: 'var(--surface-paper)',
+                border: '1px solid var(--rule-light)',
+                borderRadius: 'var(--radius-editorial)',
+              }}
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="font-semibold text-xs text-foreground">{node.name}</div>
-                <div className="text-xs font-mono font-bold">{pct}%</div>
+                <div
+                  className="text-[10px] font-mono font-bold px-1.5 py-0.5"
+                  style={{
+                    background: 'var(--marginalia-bg)',
+                    border: '1px solid var(--rule-light)',
+                    borderRadius: 'var(--radius-editorial)',
+                  }}
+                >
+                  {pct}%
+                </div>
               </div>
 
               {/* Misconceptions */}
               {mastery?.misconceptions && mastery.misconceptions.length > 0 && (
-                <div className="mt-2 text-[11px] p-2 rounded border bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200 border-amber-200 dark:border-amber-800">
+                <div
+                  className="mt-2 text-[11px] p-2"
+                  style={{
+                    background: 'color-mix(in oklab, var(--color-danger) 10%, var(--surface-paper))',
+                    border: '1px solid color-mix(in oklab, var(--color-danger) 30%, var(--rule-light))',
+                    borderRadius: 'var(--radius-editorial)',
+                    color: 'var(--color-danger)',
+                  }}
+                >
                   <strong>Misconception:</strong> {mastery.misconceptions[0].description}
                 </div>
               )}
@@ -125,7 +188,7 @@ export function LearnerInsights({
               {/* Recent Evidence (if no misconception) */}
               {(!mastery?.misconceptions || mastery.misconceptions.length === 0) &&
                 mastery?.evidence && (
-                  <div className="mt-2 text-[10px] text-muted-foreground line-clamp-2">
+                  <div className="mt-2 text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
                     {mastery.evidence[mastery.evidence.length - 1].details}
                   </div>
                 )}
@@ -148,7 +211,7 @@ export function LearnerModelView({
   return (
     <div className="space-y-6">
       <LearnerStats learnerModel={learnerModel} plan={plan} />
-      <div className="h-px bg-border/50" />
+      <div className="h-px" style={{ background: 'var(--rule-light)' }} />
       <LearnerInsights learnerModel={learnerModel} plan={plan} />
     </div>
   );

@@ -68,15 +68,15 @@ export function TutorPanel(props: {
   if (!hasAny) return null;
 
   return (
-    <div className="px-4 py-2">
+    <div className="mt-4 mb-2">
       <motion.div
         initial="hidden"
         animate="visible"
         variants={cardVariants}
-        className="overflow-hidden rounded-xl border border-border/50 bg-surface/40 backdrop-blur-sm shadow-sm"
+        className="marginalia overflow-hidden"
       >
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border/40 bg-muted/20">
-          <div className="flex items-center gap-2 min-w-0 text-muted-foreground">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--rule-light)] bg-[var(--color-muted)]/20">
+          <div className="flex items-center gap-2 min-w-0 text-[var(--color-accent)]">
             <AcademicCapIcon className="h-4 w-4" />
             <div className="text-xs font-bold uppercase tracking-wider truncate">
               {title || "Tutor Tools"}

@@ -7,26 +7,55 @@ export function ProgressIndicator({ plan }: { plan: LearningPlan }) {
 
   return (
     <div className="space-y-4">
-      <div className="h-2 rounded-full bg-muted/60">
+      {/* Editorial progress bar */}
+      <div
+        className="h-1.5 w-full"
+        style={{ background: 'var(--rule-light)', borderRadius: '2px' }}
+      >
         <div
-          className="h-full rounded-full bg-accent/80 transition-all duration-300 ease-out"
+          className="h-full transition-all duration-500 ease-out"
           style={{
             width: `${progress.percentComplete}%`,
+            background: 'linear-gradient(90deg, var(--color-accent), var(--color-accent-2))',
+            borderRadius: '2px',
           }}
         />
       </div>
-      <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
-        <div className="space-y-1 text-center">
-          <div className="text-lg font-semibold text-foreground">{progress.completed}</div>
-          <div className="text-[10px] uppercase tracking-wide leading-tight">Done</div>
+
+      {/* Stats in editorial style */}
+      <div className="flex justify-between text-xs">
+        <div
+          className="flex items-center gap-2 px-2.5 py-1"
+          style={{
+            background: 'var(--marginalia-bg)',
+            border: '1px solid var(--rule-light)',
+            borderRadius: 'var(--radius-editorial)',
+          }}
+        >
+          <span className="font-bold text-foreground">{progress.completed}</span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">done</span>
         </div>
-        <div className="space-y-1 text-center">
-          <div className="text-lg font-semibold text-foreground">{progress.inProgress}</div>
-          <div className="text-[10px] uppercase tracking-wide leading-tight">Active</div>
+        <div
+          className="flex items-center gap-2 px-2.5 py-1"
+          style={{
+            background: 'var(--marginalia-bg)',
+            border: '1px solid var(--color-accent-2)',
+            borderRadius: 'var(--radius-editorial)',
+          }}
+        >
+          <span className="font-bold text-foreground">{progress.inProgress}</span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">active</span>
         </div>
-        <div className="space-y-1 text-center">
-          <div className="text-lg font-semibold text-foreground">{progress.notStarted}</div>
-          <div className="text-[10px] uppercase tracking-wide leading-tight">Left</div>
+        <div
+          className="flex items-center gap-2 px-2.5 py-1"
+          style={{
+            background: 'var(--marginalia-bg)',
+            border: '1px solid var(--rule-light)',
+            borderRadius: 'var(--radius-editorial)',
+          }}
+        >
+          <span className="font-bold text-foreground">{progress.notStarted}</span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">left</span>
         </div>
       </div>
     </div>

@@ -130,14 +130,16 @@ export function QuestionnaireCard({
       : null;
 
   return (
-    <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
+    <div className="marginalia">
       <div className="flex items-center gap-3 mb-4">
-        <div className="rounded-full bg-primary/10 p-2">
-          <QuestionMarkCircleIcon className="h-5 w-5 text-primary" />
+        <div className="rounded-full bg-[var(--color-accent)]/10 p-2">
+          <QuestionMarkCircleIcon className="h-5 w-5 text-[var(--color-accent)]" />
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold leading-tight">Tell me about your goals</span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-sm font-semibold leading-tight text-[var(--color-fg)]">
+            Tell me about your goals
+          </span>
+          <span className="text-xs text-[var(--color-fg-muted)]">
             {isSubmitted
               ? "Thanks! I will tailor the plan with this in mind."
               : "Choose the options that best fit you."}
@@ -145,8 +147,8 @@ export function QuestionnaireCard({
         </div>
       </div>
 
-      <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+      <div className="rounded-[var(--radius-editorial)] border border-[var(--color-border)]/50 bg-[var(--color-muted)]/20 p-4">
+        <div className="flex items-center justify-between text-xs text-[var(--color-fg-muted)] mb-4">
           <span>
             Question {activeIndex + 1} / {questionCount}
           </span>
@@ -175,16 +177,16 @@ export function QuestionnaireCard({
               <div className="flex items-start justify-between gap-2">
                 <div>
                   {activeItem.category && (
-                    <span className="badge badge-sm mr-2 uppercase tracking-wide bg-primary/10 text-primary border-primary/20">
+                    <span className="badge badge-sm mr-2 uppercase tracking-wider bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-[var(--color-accent)]/20">
                       {activeItem.category}
                     </span>
                   )}
-                  <div className="text-sm font-medium leading-relaxed mt-1">
+                  <div className="text-sm font-medium leading-relaxed mt-1 text-[var(--color-fg)]">
                     {activeItem.question}
                   </div>
                 </div>
                 {allowMultiple && (
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide bg-muted px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] text-[var(--color-fg-muted)] uppercase tracking-wider bg-[var(--color-muted)] px-1.5 py-0.5 rounded-[var(--radius-editorial)]">
                     Multi-select
                   </span>
                 )}
@@ -202,8 +204,8 @@ export function QuestionnaireCard({
                             ? "btn-primary opacity-90"
                             : "btn-outline opacity-50"
                           : isSelected
-                            ? "btn-primary ring-2 ring-primary/20 ring-offset-1"
-                            : "btn-outline hover:bg-muted/50"
+                            ? "btn-primary ring-2 ring-[var(--color-accent)]/20 ring-offset-1"
+                            : "btn-outline hover:bg-[var(--color-muted)]/50"
                       }`}
                       onClick={() => handleToggle(activeItem.id, option.label, allowMultiple)}
                       disabled={isSubmitted}
@@ -230,7 +232,7 @@ export function QuestionnaireCard({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 flex items-center gap-2 text-xs text-muted-foreground bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 p-2 rounded-md border border-emerald-500/20"
+          className="mt-4 flex items-center gap-2 text-xs bg-[var(--color-success)]/10 text-[var(--color-success)] p-2 rounded-[var(--radius-editorial)] border border-[var(--color-success)]/20"
         >
           <HandThumbUpIcon className="h-4 w-4" />
           <span>
@@ -240,7 +242,7 @@ export function QuestionnaireCard({
         </motion.div>
       ) : (
         <div className="mt-4 flex items-center justify-between pt-2">
-          <span className="text-xs text-muted-foreground font-medium">
+          <span className="text-xs text-[var(--color-fg-muted)] font-medium">
             {answeredCount}/{questionCount} answered
           </span>
           <div className="flex items-center gap-2">

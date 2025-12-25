@@ -129,12 +129,12 @@ function summaryForCall(call: ToolCallLogEntry): string {
 
 function statusIcon(status: ToolCallLogEntry['status']) {
   if (status === 'success') {
-    return <CheckCircleIcon className="h-4 w-4 text-green-600 dark:text-green-400" />;
+    return <CheckCircleIcon className="h-4 w-4" style={{ color: 'var(--color-success)' }} />;
   }
   if (status === 'error') {
-    return <XCircleIcon className="h-4 w-4 text-red-600 dark:text-red-400" />;
+    return <XCircleIcon className="h-4 w-4" style={{ color: 'var(--color-danger)' }} />;
   }
-  return <ClockIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />;
+  return <ClockIcon className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />;
 }
 
 function stringify(value: unknown) {
@@ -225,7 +225,7 @@ export function ToolCallLog({
   const toggleCall = (id: string) => setExpandedCalls((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const containerClassName = [
-    'border border-muted rounded-lg overflow-hidden bg-muted/30 my-2',
+    'border border-[var(--color-border)] rounded-[var(--radius-editorial)] overflow-hidden bg-[var(--color-muted)]/30 my-2',
     className,
   ]
     .filter(Boolean)
@@ -234,7 +234,7 @@ export function ToolCallLog({
   return (
     <div className={containerClassName}>
       <div
-        className={`flex items-center justify-between px-3 py-2 bg-muted/50 ${
+        className={`flex items-center justify-between px-3 py-2 bg-[var(--color-muted)]/50 ${
           collapsible ? 'cursor-pointer' : ''
         }`}
         onClick={() => {
@@ -242,12 +242,11 @@ export function ToolCallLog({
           setExpanded((prev) => !prev);
         }}
       >
-        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <span>🔧</span>
+        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-fg-muted)] uppercase tracking-wider">
           <span>Tool Calls ({sortedCalls.length})</span>
         </div>
         {collapsible && (
-          <span className="text-muted-foreground">
+          <span className="text-[var(--color-fg-muted)]">
             {expanded ? (
               <ChevronUpIcon className="h-4 w-4" />
             ) : (
@@ -257,18 +256,18 @@ export function ToolCallLog({
         )}
       </div>
       {expanded && (
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-[var(--color-border)]">
           {sortedCalls.map((call) => {
             const isExpanded = mode === 'full' || !!expandedCalls[call.id];
             const recentHighlight =
               highlightRecent && Date.now() - call.timestamp < 10_000
-                ? 'bg-amber-50 dark:bg-amber-900/20'
+                ? 'bg-[var(--color-accent)]/5'
                 : '';
             const durationLabel = formatDuration(call.duration);
             const badges = collectBadges(call);
             const metadataPairs = metadataEntries(call.metadata);
             return (
-              <div key={call.id} className={`bg-background ${recentHighlight}`}>
+              <div key={call.id} className={`bg-[var(--color-surface)] ${recentHighlight}`}>
                 <button
                   type="button"
                   onClick={() => {
@@ -278,19 +277,19 @@ export function ToolCallLog({
                       onToolClick(call);
                     }
                   }}
-                  className="w-full text-left px-3 py-2 flex items-center justify-between gap-3 hover:bg-muted/40 focus:outline-none"
+                  className="w-full text-left px-3 py-2 flex items-center justify-between gap-3 hover:bg-[var(--color-muted)]/40 focus:outline-none"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     {statusIcon(call.status)}
                     {showTimestamps && (
-                      <span className="text-[11px] text-muted-foreground font-mono">
+                      <span className="text-[11px] text-[var(--color-fg-muted)] font-mono">
                         {formatTimestamp(call.timestamp)}
                       </span>
                     )}
-                    <span className="text-sm font-medium text-foreground truncate">
+                    <span className="text-sm font-medium text-[var(--color-fg)] truncate">
                       {call.name}
                     </span>
-                    <span className="text-xs text-muted-foreground truncate">
+                    <span className="text-xs text-[var(--color-fg-muted)] truncate">
                       {summaryForCall(call)}
                     </span>
                   </div>
@@ -300,7 +299,7 @@ export function ToolCallLog({
                         {badges.map((badge) => (
                           <span
                             key={badge.id}
-                            className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide"
+                            className="inline-flex items-center rounded-full bg-[var(--color-muted)] border border-[var(--color-border)]/50 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-fg-muted)] uppercase tracking-wider"
                           >
                             {badge.label}
                           </span>
@@ -308,12 +307,12 @@ export function ToolCallLog({
                       </span>
                     )}
                     {durationLabel && (
-                      <span className="text-[11px] text-muted-foreground font-mono">
+                      <span className="text-[11px] text-[var(--color-fg-muted)] font-mono">
                         {durationLabel}
                       </span>
                     )}
                     {mode !== 'full' && (
-                      <span className="text-muted-foreground">
+                      <span className="text-[var(--color-fg-muted)]">
                         {isExpanded ? (
                           <ChevronUpIcon className="h-3 w-3" />
                         ) : (
@@ -327,19 +326,19 @@ export function ToolCallLog({
                   <div className="px-3 pb-3 space-y-3">
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        <span className="text-[11px] font-semibold text-[var(--color-accent)] uppercase tracking-wider">
                           Input
                         </span>
                         <button
                           type="button"
-                          className="p-1 rounded hover:bg-muted"
+                          className="p-1 rounded-[var(--radius-editorial)] hover:bg-[var(--color-muted)]"
                           onClick={() => copyToClipboard(stringify(call.input))}
                           aria-label="Copy input JSON"
                         >
-                          <DocumentDuplicateIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          <DocumentDuplicateIcon className="h-3.5 w-3.5 text-[var(--color-fg-muted)]" />
                         </button>
                       </div>
-                      <pre className="text-xs bg-muted/30 rounded p-2 overflow-x-auto">
+                      <pre className="text-xs bg-[var(--color-muted)]/30 rounded-[var(--radius-editorial)] p-2 overflow-x-auto border border-[var(--color-border)]/30 font-mono">
                         <code>{stringify(call.input)}</code>
                       </pre>
                     </div>
@@ -347,26 +346,26 @@ export function ToolCallLog({
                     {call.output && (
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                          <span className="text-[11px] font-semibold text-[var(--color-accent)] uppercase tracking-wider">
                             Output
                           </span>
                           <button
                             type="button"
-                            className="p-1 rounded hover:bg-muted"
+                            className="p-1 rounded-[var(--radius-editorial)] hover:bg-[var(--color-muted)]"
                             onClick={() => copyToClipboard(stringify(call.output))}
                             aria-label="Copy output JSON"
                           >
-                            <DocumentDuplicateIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                            <DocumentDuplicateIcon className="h-3.5 w-3.5 text-[var(--color-fg-muted)]" />
                           </button>
                         </div>
-                        <pre className="text-xs bg-muted/30 rounded p-2 overflow-x-auto">
+                        <pre className="text-xs bg-[var(--color-muted)]/30 rounded-[var(--radius-editorial)] p-2 overflow-x-auto border border-[var(--color-border)]/30 font-mono">
                           <code>{stringify(call.output)}</code>
                         </pre>
                       </div>
                     )}
 
                     {call.error && (
-                      <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-2">
+                      <div className="text-xs text-[var(--color-danger)] bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 rounded-[var(--radius-editorial)] p-2">
                         {call.error}
                       </div>
                     )}
@@ -374,15 +373,15 @@ export function ToolCallLog({
                     {metadataPairs.length > 0 && (
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                          <span className="text-[11px] font-semibold text-[var(--color-accent)] uppercase tracking-wider">
                             Metadata
                           </span>
                         </div>
                         <dl className="grid grid-cols-1 gap-1 text-xs">
                           {metadataPairs.map(([key, value]) => (
                             <div key={key} className="flex justify-between gap-2">
-                              <dt className="font-medium text-muted-foreground">{key}</dt>
-                              <dd className="text-right text-foreground break-words">{value}</dd>
+                              <dt className="font-medium text-[var(--color-fg-muted)]">{key}</dt>
+                              <dd className="text-right text-[var(--color-fg)] break-words">{value}</dd>
                             </div>
                           ))}
                         </dl>

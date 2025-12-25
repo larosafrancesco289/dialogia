@@ -9,7 +9,7 @@ export function GradingFeedbackCard({
 }) {
   if (!grading || Object.keys(grading).length === 0) return null;
   return (
-    <div className="rounded-lg border border-border/60 bg-surface/50 p-4">
+    <div className="marginalia">
       <div className="text-sm font-medium mb-3 flex items-center gap-2">
         <ClipboardDocumentCheckIcon className="h-4 w-4 text-primary" />
         Grading Feedback

@@ -203,12 +203,6 @@ export function ChatSidebar() {
         </div>
       )}
 
-      {!collapsed && (
-        <div className="sidebar-section text-xs text-muted-foreground font-medium uppercase tracking-wider pb-2">
-          Chats
-        </div>
-      )}
-
       {/* Drop zone for root level */}
       <div
         className={`scroll-area flex-1 sidebar-section`}

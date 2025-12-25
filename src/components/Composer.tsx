@@ -9,7 +9,6 @@ import {
   isReasoningSupported,
   isVisionSupported,
   isAudioInputSupported,
-  isImageOutputSupported,
 } from '@/lib/models';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { readNextOverrides } from '@/lib/ui/next';
@@ -18,10 +17,8 @@ import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
 import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
-import { getNextNode } from '@/lib/learningPlan/service';
 import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
-import { ComposerChips } from '@/components/composer/ComposerChips';
 import { ComposerLayout } from '@/components/composer/ComposerLayout';
 
 export function Composer({
@@ -55,18 +52,11 @@ export function Composer({
     tutorGloballyEnabled &&
     (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.tutorMode));
 
-  const learningPlan = chat?.settings?.learningPlan;
-  const currentNode = useMemo(
-    () => (learningPlan ? getNextNode(learningPlan) : null),
-    [learningPlan],
-  );
-
   const modelId = chat?.settings.model || uiNext.model || DEFAULT_MODEL_ID;
   const modelMeta = findModelById(models, modelId);
   const canVision = isVisionSupported(modelMeta);
   const canAudio = isAudioInputSupported(modelMeta);
   const supportsReasoning = isReasoningSupported(modelMeta);
-  const canImageOut = isImageOutputSupported(modelMeta);
 
   const {
     attachments,
@@ -182,7 +172,7 @@ export function Composer({
         onChange={(event) => handleFileInputChange(event.currentTarget)}
       />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="composer-row">
         <ComposerInput
           value={text}
           onChange={setText}
@@ -206,23 +196,9 @@ export function Composer({
           showReasoningMenu={showReasoningMenu}
           currentEffort={currentEffort}
           onSelectEffort={handleSelectEffort}
+          hasContent={text.trim().length > 0 || attachments.length > 0}
         />
       </div>
-      <ComposerChips
-        tutorEnabled={tutorEnabled}
-        modelId={modelId}
-        models={models}
-        openSettings={() => setUI({ showSettings: true })}
-        currentNode={currentNode}
-        canVision={canVision}
-        canImageOut={canImageOut}
-        canAudio={canAudio}
-        searchProvider={searchProvider}
-        searchEnabled={searchEnabled}
-        toggleSearch={toggleSearch}
-        supportsReasoning={supportsReasoning}
-        currentEffort={currentEffort}
-      />
     </ComposerLayout>
   );
 }

@@ -218,10 +218,12 @@ export function DebugPanel({
   const canCopyRaw = expanded && showRawJson && hasBody && rawJson;
 
   return (
-    <div className="px-4 pt-3">
-      <div className="thinking-panel">
-        <div className="flex items-center justify-between mb-1">
-          <div className="text-xs text-muted-foreground">{headerLabel}</div>
+    <div className="mt-4 mb-2">
+      <div className="marginalia">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]">
+            {headerLabel}
+          </div>
           <div className="flex items-center gap-1">
             {canCopyRaw && (
               <button
@@ -254,19 +256,22 @@ export function DebugPanel({
           </div>
         </div>
         {expanded && (
-          <div className="space-y-3 text-xs leading-relaxed">
+          <div className="space-y-4 text-xs leading-relaxed pt-2 border-t border-[var(--rule-light)]">
             {summaryItems.length > 0 && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
                   Overview
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {summaryItems.map((item) => (
-                    <div key={item.label} className="rounded bg-muted/40 px-2 py-1.5">
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <div
+                      key={item.label}
+                      className="rounded-[var(--radius-editorial)] bg-[var(--color-muted)]/40 px-3 py-2 border border-[var(--color-border)]/30"
+                    >
+                      <div className="text-[10px] uppercase tracking-wider text-[var(--color-fg-muted)]">
                         {item.label}
                       </div>
-                      <div className="font-medium text-foreground">{item.value}</div>
+                      <div className="font-medium text-[var(--color-fg)]">{item.value}</div>
                     </div>
                   ))}
                 </div>
@@ -275,14 +280,14 @@ export function DebugPanel({
 
             {toolNames.length > 0 && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
                   Tool definitions
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {toolNames.map((name) => (
                     <span
                       key={name}
-                      className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                      className="rounded-full bg-[var(--color-muted)] border border-[var(--color-border)]/50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]"
                     >
                       {name}
                     </span>
@@ -293,14 +298,14 @@ export function DebugPanel({
 
             {pluginNames.length > 0 && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
                   Plugins
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {pluginNames.map((name) => (
                     <span
                       key={name}
-                      className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                      className="rounded-full bg-[var(--color-muted)] border border-[var(--color-border)]/50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]"
                     >
                       {name}
                     </span>
@@ -311,28 +316,30 @@ export function DebugPanel({
 
             {messageItems.length > 0 && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
                   Messages
                 </div>
                 <ol className="space-y-2">
                   {messageItems.map((msg, index) => (
                     <li
                       key={msg.key}
-                      className="rounded border border-border px-2 py-1.5 bg-background"
+                      className="rounded-[var(--radius-editorial)] border border-[var(--color-border)] px-3 py-2 bg-[var(--color-surface)]"
                     >
-                      <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-[var(--color-fg-muted)]">
                         <span>{msg.role}</span>
                         <span>#{index + 1}</span>
                       </div>
                       {msg.snippet ? (
-                        <div className="mt-1 whitespace-pre-wrap break-words text-foreground">
+                        <div className="mt-1 whitespace-pre-wrap break-words text-[var(--color-fg)]">
                           {msg.snippet}
                         </div>
                       ) : (
-                        <div className="mt-1 italic text-muted-foreground">No visible content</div>
+                        <div className="mt-1 italic text-[var(--color-fg-muted)]">
+                          No visible content
+                        </div>
                       )}
                       {msg.toolCalls && (
-                        <div className="mt-1 text-[11px] text-muted-foreground">
+                        <div className="mt-1 text-[11px] text-[var(--color-fg-muted)]">
                           Tool calls: {msg.toolCalls.join(', ')}
                         </div>
                       )}
@@ -344,7 +351,7 @@ export function DebugPanel({
 
             {hasToolCalls && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
                   Tool calls
                 </div>
                 <ToolCallLog
@@ -360,10 +367,10 @@ export function DebugPanel({
 
             {showRawJson && hasBody && rawJson && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
                   Raw request JSON
                 </div>
-                <pre className="whitespace-pre-wrap text-xs opacity-90 leading-relaxed bg-muted/30 rounded p-2 overflow-x-auto">
+                <pre className="whitespace-pre-wrap text-xs opacity-90 leading-relaxed bg-[var(--color-muted)]/30 rounded-[var(--radius-editorial)] p-3 overflow-x-auto border border-[var(--color-border)]/30 font-mono">
                   {rawJson}
                 </pre>
               </div>

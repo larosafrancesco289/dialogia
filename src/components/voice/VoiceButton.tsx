@@ -47,12 +47,12 @@ export function VoiceButton({ className }: VoiceButtonProps) {
     return 'Voice';
   };
 
-  const getStatusColor = () => {
-    if (error) return 'text-red-500';
-    if (isSpeaking) return 'text-purple-500';
-    if (isListening) return 'text-green-500';
-    if (isConnected) return 'text-blue-500';
-    return '';
+  const getStatusStyle = (): React.CSSProperties => {
+    if (error) return { color: 'var(--color-danger)' };
+    if (isSpeaking) return { color: 'var(--color-accent-2)' };
+    if (isListening) return { color: 'var(--color-success)' };
+    if (isConnected) return { color: 'var(--color-accent)' };
+    return {};
   };
 
   return (
@@ -65,7 +65,7 @@ export function VoiceButton({ className }: VoiceButtonProps) {
       {isActive ? (
         <span className="flex items-center gap-1.5">
           <XMarkIcon className="h-4 w-4" />
-          <span className={`text-xs hidden sm:inline ${getStatusColor()}`}>{getStatusText()}</span>
+          <span className="text-xs hidden sm:inline" style={getStatusStyle()}>{getStatusText()}</span>
         </span>
       ) : (
         <MicrophoneIcon className="h-4 w-4" />
