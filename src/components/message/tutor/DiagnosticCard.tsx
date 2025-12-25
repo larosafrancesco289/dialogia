@@ -108,16 +108,16 @@ export function DiagnosticCard({
   }, [diagnostic.interpretation, answered, total, scorePercent]);
 
   return (
-    <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
+    <div className="marginalia">
       <div className="flex items-center gap-3 mb-4">
-        <div className="rounded-full bg-accent/10 p-2">
-          <ChartBarIcon className="h-5 w-5 text-accent" />
+        <div className="rounded-full bg-[var(--color-accent)]/10 p-2">
+          <ChartBarIcon className="h-5 w-5 text-[var(--color-accent)]" />
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold leading-tight">
+          <span className="text-sm font-semibold leading-tight text-[var(--color-fg)]">
             Diagnostic · {diagnostic.topic}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-[var(--color-fg-muted)]">
             {diagnostic.depth === "comprehensive"
               ? "Comprehensive check"
               : diagnostic.depth === "moderate"
@@ -129,15 +129,15 @@ export function DiagnosticCard({
         </div>
       </div>
       <div className="flex items-center gap-2 mb-4">
-        <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+        <div className="h-2 flex-1 rounded-full bg-[var(--color-muted)] overflow-hidden">
           <motion.div
-            className="h-full bg-primary/60"
+            className="h-full bg-[var(--color-accent)]/60"
             initial={{ width: 0 }}
             animate={{ width: `${percentComplete}%` }}
             transition={{ duration: 0.5 }}
           />
         </div>
-        <span className="text-xs text-muted-foreground font-medium w-8 text-right">
+        <span className="text-xs text-[var(--color-fg-muted)] font-medium w-8 text-right">
           {percentComplete}%
         </span>
       </div>
@@ -150,9 +150,9 @@ export function DiagnosticCard({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 rounded-lg border border-border/60 bg-muted/20 p-4 text-xs text-muted-foreground"
+          className="mt-4 rounded-[var(--radius-editorial)] border border-[var(--color-border)]/60 bg-[var(--color-muted)]/20 p-4 text-xs text-[var(--color-fg-muted)]"
         >
-          <div className="font-bold text-foreground text-sm mb-1">Score: {scorePercent}%</div>
+          <div className="font-bold text-[var(--color-fg)] text-sm mb-1">Score: {scorePercent}%</div>
           {interpretation && <div className="leading-relaxed">{interpretation}</div>}
         </motion.div>
       )}

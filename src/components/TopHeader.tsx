@@ -223,7 +223,12 @@ export function TopHeader() {
         )}
         {planGeneration?.status === 'error' && !hasPlan && (
           <div
-            className="flex items-center gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 shadow-[var(--shadow-card)]"
+            className="flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-[var(--shadow-card)]"
+            style={{
+              borderColor: 'color-mix(in oklab, var(--color-danger) 40%, var(--color-border))',
+              background: 'var(--feedback-incorrect-bg)',
+              color: 'var(--feedback-incorrect-text)',
+            }}
             title={planGeneration.error || 'Plan generation failed'}
           >
             <ExclamationTriangleIcon className="h-4 w-4" />

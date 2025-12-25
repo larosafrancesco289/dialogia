@@ -16,6 +16,54 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Paper grain texture — aged parchment atmosphere */
+body {
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  mix-blend-mode: overlay;
+}
+
+/* Warm vignette — reading room atmosphere */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    ellipse 110% 90% at 50% 50%,
+    transparent 40%,
+    rgba(120, 95, 60, 0.08) 70%,
+    rgba(80, 60, 40, 0.16) 100%
+  );
+}
+
+.dark body::before {
+  opacity: 0.12;
+  mix-blend-mode: soft-light;
+}
+
+/* Deeper vignette in dark mode — warm candlelit atmosphere */
+.dark body::after {
+  background: radial-gradient(
+    ellipse 100% 85% at 50% 50%,
+    transparent 30%,
+    rgba(20, 12, 8, 0.35) 65%,
+    rgba(15, 10, 6, 0.6) 100%
+  );
+}
+
 :root {
   --keyboard-offset: 0px;
   --composer-height: 0px;
@@ -33,6 +81,11 @@ body {
   html.keyboard-active,
   html.keyboard-active body {
     overflow: hidden;
+  }
+
+  /* Mobile: use slightly larger radii for better touch comfort */
+  :root {
+    --radius-editorial: var(--radius-editorial-mobile, 10px);
   }
 }
 
@@ -72,6 +125,34 @@ body {
 
 .sidebar {
   overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+
+/* Subtle shadow cast from sidebar onto content — depth illusion */
+.sidebar:not(:empty)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -24px;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(100, 80, 50, 0.04),
+    transparent
+  );
+  opacity: 0.7;
+}
+
+.dark .sidebar:not(:empty)::after {
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.15),
+    transparent
+  );
+  opacity: 1;
 }
 
 .content {
@@ -98,11 +179,9 @@ body {
   top: 0;
   margin: 0 var(--space-2) var(--space-2);
   z-index: 30;
-  background: var(--glass-surface-bg);
-  -webkit-backdrop-filter: var(--glass-saturate) var(--glass-blur-surface);
-  backdrop-filter: var(--glass-saturate) var(--glass-blur-surface);
+  background: var(--surface-paper);
   border: 1px solid var(--color-border);
-  border-radius: 18px;
+  border-radius: var(--radius-editorial);
   box-shadow: var(--shadow-1);
 }
 @media (max-width: 640px) {
@@ -125,12 +204,10 @@ body {
     margin: var(--space-1);
     margin-bottom: var(--space-2);
     padding: calc(env(safe-area-inset-top) + var(--space-1)) var(--space-2) var(--space-2);
-    border-radius: 16px;
-    background: var(--glass-panel-bg);
-    -webkit-backdrop-filter: var(--glass-saturate) blur(16px);
-    backdrop-filter: var(--glass-saturate) blur(16px);
+    border-radius: var(--radius-editorial);
+    background: var(--surface-paper);
     border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--shadow-1);
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -467,18 +544,14 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   padding: 0 var(--space-6);
 }
 
-/* Reusable glass effect */
+/* Editorial solid surfaces (formerly glass) */
 .glass {
-  background: var(--glass-surface-bg);
-  -webkit-backdrop-filter: var(--glass-saturate) var(--glass-blur-surface);
-  backdrop-filter: var(--glass-saturate) var(--glass-blur-surface);
+  background: var(--surface-paper);
 }
 
-/* Stronger glass for panels/drawers */
+/* Panel surfaces */
 .glass-panel {
-  background: var(--glass-panel-bg);
-  -webkit-backdrop-filter: var(--glass-saturate) var(--glass-blur-panel);
-  backdrop-filter: var(--glass-saturate) var(--glass-blur-panel);
+  background: var(--surface-paper);
 }
 
 @media (max-width: 640px) {
@@ -492,14 +565,11 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
     column-gap: var(--space-1);
     padding: var(--space-1);
   }
-  .glass {
-    -webkit-backdrop-filter: var(--glass-saturate) blur(12px);
-    backdrop-filter: var(--glass-saturate) blur(12px);
-  }
+  /* Editorial: solid surfaces on mobile too */
+  .glass,
   .glass-panel,
   .sidebar.bg-surface {
-    -webkit-backdrop-filter: var(--glass-saturate) blur(16px);
-    backdrop-filter: var(--glass-saturate) blur(16px);
+    background: var(--surface-paper);
   }
   .app-header {
     margin: var(--space-1);
@@ -650,12 +720,11 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 
 .plan-sheet {
   animation: drawer-in var(--duration-slow) var(--ease-standard);
-  border-top-left-radius: 24px;
-  border-bottom-left-radius: 24px;
+  border-top-left-radius: 16px;
+  border-bottom-left-radius: 16px;
   overscroll-behavior: contain;
-  background: var(--glass-panel-bg);
-  -webkit-backdrop-filter: var(--glass-saturate) var(--glass-blur-panel);
-  backdrop-filter: var(--glass-saturate) var(--glass-blur-panel);
+  background: var(--surface-paper);
+  border-left: 1px solid var(--color-border);
 }
 .plan-sheet.is-closing {
   animation: drawer-out 200ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
@@ -707,15 +776,15 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
 }
 .mobile-sheet {
   width: min(100%, 520px);
-  border-radius: 22px;
+  border-radius: 16px;
   padding: var(--space-3);
   padding-bottom: var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  background: var(--glass-panel-bg);
-  -webkit-backdrop-filter: var(--glass-saturate) blur(18px);
-  backdrop-filter: var(--glass-saturate) blur(18px);
+  background: var(--surface-paper);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-2);
 }
 .mobile-sheet-compact {
   padding: var(--space-2) var(--space-2) var(--space-3);
@@ -1109,11 +1178,9 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   background: color-mix(in oklab, var(--color-fg-muted) 40%, transparent);
 }
 
-/* Sidebar vibrancy */
+/* Sidebar: solid surface */
 .sidebar.bg-surface {
-  background: var(--glass-panel-bg);
-  -webkit-backdrop-filter: var(--glass-saturate) var(--glass-blur-panel);
-  backdrop-filter: var(--glass-saturate) var(--glass-blur-panel);
+  background: var(--surface-paper);
 }
 
 /* Ensure the main content scrolls behind a sticky composer */
@@ -1121,21 +1188,18 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   min-height: 0;
 }
 
-/* Composer chrome */
+/* Composer chrome — writing desk aesthetic */
 .composer-chrome {
   position: sticky;
   bottom: calc(var(--space-3) + max(0px, env(safe-area-inset-bottom)));
   margin: 0 var(--space-4);
   padding: var(--space-3);
-  background:
-    radial-gradient(120% 140% at 0% 100%, rgba(120, 100, 255, 0.08), transparent 70%),
-    radial-gradient(150% 150% at 100% -10%, rgba(80, 140, 255, 0.05), transparent 65%),
-    color-mix(in oklab, var(--glass-panel-bg) 92%, rgba(18, 14, 32, 0.24));
-  -webkit-backdrop-filter: var(--glass-saturate) blur(22px);
-  backdrop-filter: var(--glass-saturate) blur(22px);
-  border: 1px solid color-mix(in oklab, var(--color-border) 70%, rgba(160, 140, 255, 0.25));
-  border-radius: 18px;
-  box-shadow: 0 18px 36px rgba(24, 18, 60, 0.22);
+  background: var(--surface-paper-warm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-editorial);
+  box-shadow:
+    0 -1px 0 var(--rule-light) inset,
+    0 4px 12px rgba(80, 60, 40, 0.08);
   /* Allow menus (slash suggestions, reasoning picker) to render outside */
   overflow: visible;
   isolation: isolate;
@@ -1150,8 +1214,8 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
     bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)));
     padding: var(--space-2);
     padding-bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)));
-    border-radius: 14px;
-    box-shadow: 0 16px 32px rgba(24, 18, 60, 0.24);
+    border-radius: var(--radius-editorial);
+    box-shadow: 0 4px 12px rgba(80, 60, 40, 0.1);
   }
 
   .composer-chrome.is-mobile-pinned {
@@ -1190,32 +1254,423 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   position: relative;
   margin: 0 auto;
   padding: var(--space-3);
-  background: var(--glass-panel-bg);
-  -webkit-backdrop-filter: var(--glass-saturate) blur(16px);
-  backdrop-filter: var(--glass-saturate) blur(16px);
+  background: var(--surface-paper-warm);
   border: 1px solid var(--color-border);
-  border-radius: 18px;
-  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-editorial);
+  box-shadow: var(--shadow-1);
   width: min(1120px, calc(100% - var(--space-8)));
   z-index: 60;
+}
+
+/* ===== Composer "Quill & Inkwell" Redesign ===== */
+
+/* Borderless textarea — let the card be the container */
+.composer-field {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  resize: none;
+  font-size: 1rem;
+  line-height: 1.5;
+  padding: var(--space-2) 0;
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
+.composer-field::placeholder {
+  color: var(--color-fg-muted);
+}
+.composer-field:focus {
+  outline: none;
+}
+
+/* Overflow menu button — muted, small */
+.composer-btn-overflow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-editorial);
+  background: transparent;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  position: relative;
+}
+.composer-btn-overflow:hover {
+  background: var(--color-muted);
+  color: var(--color-fg);
+}
+.composer-btn-overflow.is-open {
+  background: var(--color-muted);
+  color: var(--color-fg);
+}
+.composer-btn-overflow:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+/* Indicator dot for active states */
+.composer-btn-overflow__indicator {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+/* Overflow menu popover */
+.composer-overflow-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  min-width: 180px;
+  padding: var(--space-1);
+  background: var(--surface-paper);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-editorial);
+  box-shadow: var(--shadow-2);
+  animation: composer-menu-enter 160ms var(--ease-emphasized);
+}
+@keyframes composer-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Menu items */
+.composer-overflow-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: calc(var(--radius-editorial) - 2px);
+  background: transparent;
+  color: var(--color-fg);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+.composer-overflow-item:hover {
+  background: var(--color-muted);
+}
+.composer-overflow-item.is-active {
+  color: var(--color-accent);
+}
+.composer-overflow-item.is-active svg:last-child {
+  color: var(--color-accent);
+}
+
+.composer-overflow-divider {
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  background: var(--rule-light);
+}
+
+.composer-overflow-label {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-fg-muted);
+}
+
+/* Primary send button */
+.composer-btn-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-editorial);
+  background: var(--color-muted);
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+.composer-btn-send:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--color-muted) 80%, var(--color-accent));
+}
+.composer-btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.composer-btn-send.has-content {
+  background: var(--color-accent);
+  color: #0b0b0b;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    var(--shadow-1);
+}
+.composer-btn-send.has-content:hover {
+  filter: brightness(1.06);
+}
+.composer-btn-send:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+/* Stop button */
+.composer-btn-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-editorial);
+  background: var(--color-muted);
+  color: var(--color-fg);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+.composer-btn-stop:hover {
+  background: color-mix(in oklab, var(--color-danger) 15%, var(--color-muted));
+  border-color: color-mix(in oklab, var(--color-danger) 40%, var(--color-border));
+  color: var(--color-danger);
+}
+
+/* Main composer row layout */
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+/* Voice status pill — always visible when voice mode is active */
+.composer-voice-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 36px;
+  padding: 0 var(--space-3) 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-muted);
+  color: var(--color-fg);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  position: relative;
+  overflow: hidden;
+}
+.composer-voice-pill:hover {
+  background: color-mix(in oklab, var(--color-danger) 12%, var(--color-muted));
+  border-color: color-mix(in oklab, var(--color-danger) 30%, var(--color-border));
+}
+.composer-voice-pill:hover .composer-voice-pill__close {
+  opacity: 1;
+}
+.composer-voice-pill:hover .composer-voice-pill__text {
+  opacity: 0;
+}
+
+/* Pulsing indicator dot */
+.composer-voice-pill__indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-fg-muted);
+  animation: voice-pulse 1.5s ease-in-out infinite;
+}
+.composer-voice-pill.is-listening .composer-voice-pill__indicator {
+  background: var(--color-success);
+}
+.composer-voice-pill.is-speaking .composer-voice-pill__indicator {
+  background: var(--color-accent-2);
+}
+.composer-voice-pill.is-error .composer-voice-pill__indicator {
+  background: var(--color-danger);
+  animation: none;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.composer-voice-pill__text {
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.composer-voice-pill__close {
+  position: absolute;
+  right: 10px;
+  opacity: 0;
+  color: var(--color-danger);
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .composer-btn-overflow,
+  .composer-btn-send,
+  .composer-btn-stop {
+    width: 44px;
+    height: 44px;
+  }
+
+  .composer-overflow-menu {
+    min-width: 200px;
+    right: -8px;
+  }
+
+  .composer-overflow-item {
+    padding: var(--space-3);
+  }
+
+  .composer-voice-pill {
+    height: 40px;
+    padding: 0 var(--space-4) 0 var(--space-3);
+  }
+}
+
+/* ===== Message Edit Textarea — Matches Assistant Typography ===== */
+.message-edit-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: var(--space-3);
+  background: var(--marginalia-bg);
+  border: 1px solid var(--rule-light);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-editorial);
+  font-family: var(--font-serif-assistant);
+  font-size: 1.25rem;
+  line-height: 1.72;
+  letter-spacing: -0.006em;
+  color: var(--color-fg);
+  resize: vertical;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+.message-edit-textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.message-edit-textarea::placeholder {
+  color: var(--color-fg-muted);
+  font-style: italic;
+}
+
+/* User message variant — sans-serif to match user message styling */
+.message-edit-textarea--user {
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  letter-spacing: 0.002em;
+}
+
+/* ===== Message Actions — Marginalia Style ===== */
+.message-actions {
+  position: absolute;
+  bottom: calc(-1 * var(--space-1));
+  right: var(--space-3);
+  z-index: 30;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+  transform: translateY(50%);
+}
+
+.message-actions__group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-paper);
+  border: 1px solid var(--rule-light);
+  border-radius: var(--radius-editorial);
+  box-shadow: var(--shadow-1);
+}
+
+.message-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: calc(var(--radius-editorial) - 2px);
+  background: transparent;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+.message-action-btn:hover:not(:disabled) {
+  background: var(--color-muted);
+  color: var(--color-fg);
+}
+.message-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.message-action-btn.is-success {
+  color: var(--color-success);
+  background: color-mix(in oklab, var(--color-success) 12%, transparent);
+}
+.message-action-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+/* Mobile: larger touch targets */
+@media (max-width: 640px) {
+  .message-action-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .message-action-btn svg {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .tutor-greeting-card {
   position: relative;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: var(--radius-editorial);
   isolation: isolate;
+  font-size: 0.9375rem; /* 15px — match marginalia */
+  line-height: 1.65;
 }
+.tutor-greeting-card .text-xs {
+  font-size: 0.8125rem;
+}
+.tutor-greeting-card .text-sm {
+  font-size: 0.9375rem;
+}
+/* Warm scholarly glow — like lamplight on parchment */
 .tutor-greeting-card__glow {
   position: absolute;
   inset: -30%;
   background:
-    radial-gradient(52% 46% at 14% 22%, rgba(120, 108, 255, 0.22), transparent 70%),
-    radial-gradient(60% 60% at 84% 32%, rgba(68, 198, 255, 0.18), transparent 72%),
-    radial-gradient(48% 68% at 48% 88%, rgba(255, 196, 140, 0.16), transparent 80%);
+    radial-gradient(ellipse 55% 50% at 20% 25%, rgba(185, 151, 91, 0.2), transparent 65%),
+    radial-gradient(ellipse 60% 55% at 80% 30%, rgba(160, 130, 80, 0.16), transparent 68%),
+    radial-gradient(ellipse 50% 60% at 50% 85%, rgba(140, 110, 70, 0.14), transparent 75%);
   animation: tutor-greeting-pan 12s ease-in-out infinite;
-  opacity: 0.7;
+  opacity: 0.8;
   pointer-events: none;
+}
+.dark .tutor-greeting-card__glow {
+  background:
+    radial-gradient(ellipse 55% 50% at 20% 25%, rgba(201, 162, 39, 0.14), transparent 65%),
+    radial-gradient(ellipse 60% 55% at 80% 30%, rgba(139, 90, 158, 0.1), transparent 68%),
+    radial-gradient(ellipse 50% 60% at 50% 85%, rgba(180, 140, 60, 0.1), transparent 75%);
+  opacity: 0.65;
 }
 .tutor-greeting-card__icon {
   display: inline-flex;
@@ -1243,10 +1698,9 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3);
-  border-radius: 16px;
+  border-radius: var(--radius-editorial);
   border: 1px dashed color-mix(in oklab, var(--color-border) 68%, transparent);
-  background: color-mix(in oklab, var(--glass-panel-bg) 86%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-border) 18%, transparent);
+  background: var(--marginalia-bg);
 }
 .tutor-greeting-loading__spinner {
   width: 34px;
@@ -1298,21 +1752,80 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   }
 }
 
+/* ===== Editorial: Marginalia styling for tutor content ===== */
+.marginalia {
+  background: var(--marginalia-bg);
+  border: 1px solid var(--rule-light);
+  border-left: 3px solid var(--rule-accent);
+  border-radius: var(--radius-editorial);
+  padding: var(--space-4);
+  font-size: 0.9375rem; /* 15px base — comfortable reading */
+  line-height: 1.65;
+}
+/* Override small text utilities inside marginalia for better readability */
+.marginalia .text-xs {
+  font-size: 0.8125rem; /* 13px instead of 12px */
+}
+.marginalia .text-sm {
+  font-size: 0.9375rem; /* 15px instead of 14px */
+}
+.marginalia .text-base {
+  font-size: 1rem; /* 16px */
+}
+
+.marginalia-header {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+  border-bottom: 1px solid var(--rule-light);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.marginalia-item {
+  border-left: 2px solid var(--rule-light);
+  padding-left: var(--space-3);
+  margin: var(--space-2) 0;
+}
+
+.marginalia-correct {
+  background: color-mix(in oklab, var(--color-success) 8%, var(--marginalia-bg));
+  border-left-color: var(--color-success);
+}
+
+.marginalia-incorrect {
+  background: color-mix(in oklab, var(--color-danger) 8%, var(--marginalia-bg));
+  border-left-color: var(--color-danger);
+}
+
 /* Smoother auto-resize for message textarea */
 .textarea {
   transition: height 120ms ease;
 }
 
-/* Landing gradient similar to blurred GPT hero, but in our palette */
+/* Landing gradient — warm archival glow, like sunlight through old windows */
 .hero-gradient::before {
   content: '';
   position: absolute;
   inset: -20%;
   background:
-    radial-gradient(60% 60% at 50% 40%, rgba(185, 151, 91, 0.25), transparent 60%),
-    radial-gradient(40% 40% at 70% 60%, rgba(109, 42, 138, 0.22), transparent 60%),
-    radial-gradient(35% 35% at 30% 65%, rgba(212, 175, 55, 0.18), transparent 60%);
-  filter: blur(50px);
+    radial-gradient(ellipse 70% 50% at 50% 35%, rgba(185, 151, 91, 0.2), transparent 65%),
+    radial-gradient(ellipse 50% 40% at 65% 55%, rgba(160, 130, 80, 0.15), transparent 60%),
+    radial-gradient(ellipse 45% 45% at 35% 60%, rgba(140, 110, 70, 0.12), transparent 55%);
+  filter: blur(60px);
+  animation: hero-gradient-drift 20s ease-in-out infinite;
+}
+@keyframes hero-gradient-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(2%, -2%) scale(1.02); }
+}
+.dark .hero-gradient::before {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 35%, rgba(201, 162, 39, 0.12), transparent 65%),
+    radial-gradient(ellipse 50% 40% at 65% 55%, rgba(139, 90, 158, 0.1), transparent 60%),
+    radial-gradient(ellipse 45% 45% at 35% 60%, rgba(180, 140, 60, 0.08), transparent 55%);
 }
 
 /* Thinking panel effect */

@@ -59,7 +59,7 @@ export default function AccessPage() {
           >
             {loading ? 'Checking…' : 'Unlock'}
           </button>
-          {error && <div className="text-sm text-red-500">{String(error)}</div>}
+          {error && <div className="text-sm" style={{ color: 'var(--color-danger)' }}>{String(error)}</div>}
         </form>
       </div>
     </div>

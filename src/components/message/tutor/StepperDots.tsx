@@ -19,11 +19,22 @@ export function StepperDots<T>({
         const status = resolveStatus(item, idx);
         const isActive = idx === activeIndex;
 
+        // Use CSS custom properties for semantic colors
+        let dotStyle: React.CSSProperties = {};
         let colorClass = 'bg-muted border-border';
-        if (status === 'correct') colorClass = 'bg-emerald-500 border-emerald-500';
-        else if (status === 'incorrect') colorClass = 'bg-rose-500 border-rose-500';
-        else if (status === 'answered') colorClass = 'bg-primary/60 border-primary/60';
-        else if (isActive) colorClass = 'bg-primary border-primary';
+        if (status === 'correct') {
+          dotStyle = { backgroundColor: 'var(--color-success)', borderColor: 'var(--color-success)' };
+          colorClass = '';
+        } else if (status === 'incorrect') {
+          dotStyle = { backgroundColor: 'var(--color-danger)', borderColor: 'var(--color-danger)' };
+          colorClass = '';
+        } else if (status === 'answered') {
+          dotStyle = { backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)', opacity: 0.6 };
+          colorClass = '';
+        } else if (isActive) {
+          dotStyle = { backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)' };
+          colorClass = '';
+        }
 
         return (
           <button
@@ -31,9 +42,13 @@ export function StepperDots<T>({
             key={idx}
             className={`h-2 w-2 rounded-full border transition-all duration-300 ${colorClass} ${
               isActive
-                ? 'scale-125 ring-2 ring-primary/20 ring-offset-1'
+                ? 'scale-125 ring-2 ring-offset-1'
                 : 'opacity-70 hover:opacity-100'
             }`}
+            style={{
+              ...dotStyle,
+              ...(isActive ? { '--tw-ring-color': 'color-mix(in oklab, var(--color-accent) 20%, transparent)' } as React.CSSProperties : {}),
+            }}
             onClick={() => onSelect(idx)}
             aria-label={`Go to item ${idx + 1}`}
           />

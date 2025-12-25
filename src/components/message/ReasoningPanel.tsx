@@ -159,81 +159,70 @@ export function ReasoningPanel({
   if (!hasReasoning && !isStreaming) return null;
 
   return (
-    <div className="px-4 pt-4 pb-2">
+    <div className="mt-4 mb-2">
       <motion.div
         layout
         initial={false}
-        animate={{
-          backgroundColor: expanded
-            ? 'rgba(var(--surface-rgb), 0.6)'
-            : 'rgba(var(--surface-rgb), 0.4)',
-          borderColor: isStreaming
-            ? 'rgba(var(--accent-rgb), 0.5)'
-            : expanded
-              ? 'rgba(var(--border-rgb), 0.8)'
-              : 'rgba(var(--border-rgb), 0.5)',
-          boxShadow: isStreaming ? '0 0 0 1px rgba(var(--accent-rgb), 0.2)' : 'none',
-        }}
-        className={`relative overflow-hidden rounded-2xl border backdrop-blur-md transition-colors duration-300 ${
-          pulse ? 'ring-2 ring-accent/20' : ''
-        }`}
+        className={`marginalia relative overflow-hidden ${pulse ? 'ring-2 ring-[var(--color-accent)]/20' : ''} ${isStreaming ? 'border-[var(--color-accent)]/40' : ''}`}
       >
         {/* Streaming shimmer effect */}
         {isStreaming && (
-          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[var(--radius-editorial)]">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--color-accent)]/8 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
           </div>
         )}
 
         <button
           type="button"
-          className="w-full flex items-center gap-3 p-3.5 text-left relative z-10 group"
+          className="w-full flex items-center gap-3 text-left relative z-10 group"
           aria-expanded={expanded}
           aria-controls={bodyId}
           onClick={onToggle}
         >
           <div
-            className={`flex items-center justify-center w-8 h-8 rounded-xl border transition-all duration-300 ${
+            className={`rounded-full p-2 transition-all duration-300 ${
               isStreaming
-                ? 'bg-accent/10 border-accent/30 text-accent animate-pulse'
-                : expanded
-                  ? 'bg-primary/10 border-primary/20 text-primary'
-                  : 'bg-surface border-border text-muted-foreground group-hover:text-foreground group-hover:border-border/80'
+                ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] animate-pulse'
+                : 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] group-hover:bg-[var(--color-accent)]/20'
             }`}
           >
             {isDeepResearch ? (
-              <CpuChipIcon className="w-4 h-4" />
+              <CpuChipIcon className="w-5 h-5" />
             ) : (
-              <SparklesIcon className="w-4 h-4" />
+              <SparklesIcon className="w-5 h-5" />
             )}
           </div>
 
           <div className="flex-1 min-w-0 flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
               <span
-                className={`text-xs font-bold uppercase tracking-wider ${
-                  isStreaming ? 'text-accent' : 'text-muted-foreground group-hover:text-foreground'
+                className={`text-xs font-semibold uppercase tracking-wider ${
+                  isStreaming
+                    ? 'text-[var(--color-accent)]'
+                    : 'text-[var(--color-fg-muted)] group-hover:text-[var(--color-fg)]'
                 } transition-colors`}
               >
                 {isDeepResearch ? 'Deep Research' : 'Reasoning Process'}
               </span>
               {isStreaming && (
-                <span className="flex h-1.5 w-1.5 rounded-full bg-accent animate-ping" />
+                <span className="flex h-1.5 w-1.5 rounded-full bg-[var(--color-accent)] animate-ping" />
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-sm text-[var(--color-fg-muted)]">
               <span className="truncate opacity-80 group-hover:opacity-100 transition-opacity">
                 {displayPreview}
               </span>
-              {isStreaming && <span className="w-1.5 h-4 bg-accent/50 animate-pulse" />}
+              {isStreaming && (
+                <span className="w-1.5 h-4 bg-[var(--color-accent)]/50 animate-pulse rounded-sm" />
+              )}
             </div>
           </div>
 
           <motion.div
             animate={{ rotate: expanded ? 180 : 0 }}
             transition={{ duration: 0.2 }}
-            className="text-muted-foreground/50 group-hover:text-foreground transition-colors"
+            className="text-[var(--color-fg-muted)]/50 group-hover:text-[var(--color-fg)] transition-colors"
           >
             <ChevronDownIcon className="w-4 h-4" />
           </motion.div>
@@ -248,18 +237,18 @@ export function ReasoningPanel({
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
             >
-              <div className="px-4 pb-4 pt-0 relative">
-                <div className="h-px w-full bg-border/40 mb-4" />
+              <div className="pt-4 relative">
+                <div className="h-px w-full bg-[var(--rule-light)] mb-4" />
 
-                <div className="max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent">
+                <div className="max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[var(--color-border)]/50 scrollbar-track-transparent">
                   {isDeepResearch && filteredTrace ? (
                     <DeepResearchTimeline trace={filteredTrace} />
                   ) : hasReasoning ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none text-fg/90 leading-relaxed">
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-[var(--color-fg)]/90 leading-relaxed font-[var(--font-sans)]">
                       <Markdown content={reasoning} />
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-muted-foreground py-4">
+                    <div className="flex items-center gap-2 text-[var(--color-fg-muted)] py-4">
                       <div className="flex gap-1">
                         <div
                           className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
@@ -280,15 +269,15 @@ export function ReasoningPanel({
                 </div>
 
                 {!isDeepResearch && hasReasoning && (
-                  <div className="absolute top-4 right-4">
+                  <div className="absolute top-4 right-0">
                     <button
                       type="button"
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                      className="btn btn-ghost btn-sm p-1.5"
                       onClick={handleCopy}
                       title={copied ? 'Copied' : 'Copy reasoning'}
                     >
                       {copied ? (
-                        <span className="text-xs font-bold text-emerald-500">Copied!</span>
+                        <span className="text-xs font-bold text-[var(--color-success)]">Copied!</span>
                       ) : (
                         <DocumentDuplicateIcon className="h-4 w-4" />
                       )}

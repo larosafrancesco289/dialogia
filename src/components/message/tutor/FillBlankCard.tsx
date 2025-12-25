@@ -96,8 +96,8 @@ export function FillBlankCard({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+      <div className="marginalia">
+        <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
           <span className="font-medium uppercase tracking-wider">
             Question {activeIndex + 1} of {total}
           </span>
@@ -123,17 +123,13 @@ export function FillBlankCard({
               exit="exit"
               className="space-y-4"
             >
-              <div className="text-sm font-medium leading-relaxed">{activeItem.prompt}</div>
+              <div className="text-base font-medium leading-relaxed">{activeItem.prompt}</div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="relative flex-1">
                   <input
                     className={`input w-full pr-10 ${
-                      revealed
-                        ? correct
-                          ? 'border-emerald-500/50 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300'
-                          : 'border-rose-500/50 bg-rose-500/5 text-rose-700 dark:text-rose-300'
-                        : ''
+                      revealed ? (correct ? 'feedback-correct border' : 'feedback-incorrect border') : ''
                     }`}
                     placeholder="Type your answer..."
                     value={value}
@@ -148,9 +144,9 @@ export function FillBlankCard({
                   {revealed && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
                       {correct ? (
-                        <CheckIcon className="h-4 w-4 text-emerald-500" />
+                        <CheckIcon className="h-4 w-4" style={{ color: 'var(--color-success)' }} />
                       ) : (
-                        <XMarkIcon className="h-4 w-4 text-rose-500" />
+                        <XMarkIcon className="h-4 w-4" style={{ color: 'var(--color-danger)' }} />
                       )}
                     </div>
                   )}
@@ -173,13 +169,13 @@ export function FillBlankCard({
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-800 dark:text-rose-300">
+                    <div className="rounded-lg border p-3 feedback-incorrect">
                       <div className="font-bold mb-1">Correct Answer:</div>
-                      <div className="font-mono bg-white/50 dark:bg-black/20 p-1.5 rounded w-fit mb-2">
+                      <div className="font-mono bg-surface/50 p-1.5 rounded w-fit mb-2">
                         {activeItem.answer}
                       </div>
                       {activeItem.explanation && (
-                        <div className="opacity-90 leading-relaxed">{activeItem.explanation}</div>
+                        <div className="opacity-90 leading-relaxed text-sm">{activeItem.explanation}</div>
                       )}
                     </div>
                   </motion.div>
@@ -191,9 +187,9 @@ export function FillBlankCard({
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-300">
+                    <div className="rounded-lg border p-3 feedback-correct">
                       <div className="font-bold mb-1">Explanation:</div>
-                      <div className="opacity-90 leading-relaxed">{activeItem.explanation}</div>
+                      <div className="opacity-90 leading-relaxed text-sm">{activeItem.explanation}</div>
                     </div>
                   </motion.div>
                 )}

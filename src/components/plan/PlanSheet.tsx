@@ -124,23 +124,24 @@ export function PlanSheet({
         style={{
           overscrollBehavior: 'contain',
           paddingBottom: bottomSafePadding,
-          background: 'var(--glass-panel-bg)',
+          background: 'var(--surface-paper)',
         }}
       >
         {/* Header */}
         <div
-          className="plan-sheet__header glass sticky z-10 flex items-center gap-4 border-b border-border px-4 py-3 sm:px-6"
+          className="plan-sheet__header sticky z-10 flex items-center gap-4 border-b border-border px-4 py-3 sm:px-6"
           style={{
             top: 0,
             paddingTop: topSafePadding,
             paddingBottom: 'var(--space-3)',
+            background: 'var(--surface-paper)',
           }}
         >
           <div className="flex min-w-0 flex-col">
             <h2
               id="plan-sheet-title"
               className="text-lg font-bold leading-tight"
-              style={{ color: 'var(--color-fg)' }}
+              style={{ color: 'var(--color-fg)', fontFamily: 'var(--font-serif-assistant)' }}
             >
               Learning Hub
             </h2>
@@ -148,34 +149,32 @@ export function PlanSheet({
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <span
-              className="hidden rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider sm:inline-flex"
+              className="hidden px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider sm:inline-flex"
               style={{
-                color: 'color-mix(in oklab, var(--color-accent) 80%, var(--color-fg) 20%)',
-                border:
-                  '1px solid color-mix(in oklab, var(--color-accent) 45%, var(--color-border))',
-                background: 'color-mix(in oklab, var(--color-accent) 15%, var(--color-surface))',
+                color: 'var(--color-accent)',
+                border: '1px solid var(--rule-accent)',
+                background: 'var(--marginalia-bg)',
+                borderRadius: 'var(--radius-editorial)',
               }}
             >
               {plan.nodes.length} topics
             </span>
             <button
               onClick={handleRequestClose}
-              className="icon-button glass"
+              className="icon-button"
               aria-label="Close learning hub"
               title="Close (Esc)"
+              style={{ background: 'var(--marginalia-bg)' }}
             >
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* Gradient accent */}
+        {/* Subtle rule */}
         <div
-          className="pointer-events-none h-1"
-          style={{
-            background:
-              'linear-gradient(90deg, transparent, color-mix(in oklab, var(--color-accent) 45%, transparent), transparent)',
-          }}
+          className="pointer-events-none h-px"
+          style={{ background: 'var(--rule-accent)' }}
         />
 
         {/* Content */}

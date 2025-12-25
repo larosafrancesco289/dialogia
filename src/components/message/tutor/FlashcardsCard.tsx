@@ -15,12 +15,12 @@ export function FlashcardsCard({ items }: { items: TutorFlashcardItem[] }) {
   if (!cur) return null;
 
   return (
-    <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
-      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4 flex justify-between items-center">
+    <div className="marginalia">
+      <div className="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-4 flex justify-between items-center">
         <span>
           Flashcard {index + 1} of {total}
         </span>
-        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+        <span className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
           Click to flip
         </span>
       </div>
@@ -38,7 +38,7 @@ export function FlashcardsCard({ items }: { items: TutorFlashcardItem[] }) {
           <div className="absolute inset-0 backface-hidden rounded-xl border border-border bg-surface shadow-sm flex flex-col items-center justify-center p-6 text-center hover:border-primary/50 transition-colors">
             <div className="text-lg font-medium leading-relaxed">{cur.front}</div>
             {cur.hint && (
-              <div className="mt-4 text-xs text-muted-foreground italic opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="mt-4 text-sm text-muted-foreground italic opacity-0 group-hover:opacity-100 transition-opacity">
                 Hint: {cur.hint}
               </div>
             )}

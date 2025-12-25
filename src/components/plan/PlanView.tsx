@@ -74,23 +74,33 @@ export function PlanView({
     return learnerModel.mastery[nodeId];
   };
 
-  // Metadata badges
+  // Metadata badges - editorial style
   const metadataBadges = [
     plan.metadata?.difficulty && {
       label: plan.metadata.difficulty,
-      className:
-        'bg-[color-mix(in_oklab,var(--color-accent)_10%,var(--color-surface))] text-[var(--color-accent)] border-[color-mix(in_oklab,var(--color-accent)_20%,var(--color-border))]',
+      style: {
+        background: 'var(--marginalia-bg)',
+        color: 'var(--color-accent)',
+        border: '1px solid var(--rule-accent)',
+      },
     },
     plan.metadata?.estimatedHours && {
       label: `~${plan.metadata.estimatedHours}h`,
-      className:
-        'bg-[color-mix(in_oklab,var(--color-accent-2)_10%,var(--color-surface))] text-[var(--color-accent-2)] border-[color-mix(in_oklab,var(--color-accent-2)_20%,var(--color-border))]',
+      style: {
+        background: 'var(--marginalia-bg)',
+        color: 'var(--color-accent-2)',
+        border: '1px solid var(--rule-light)',
+      },
     },
     {
       label: `${plan.nodes.length} topics`,
-      className: 'bg-muted text-muted-foreground border-border',
+      style: {
+        background: 'var(--marginalia-bg)',
+        color: 'var(--color-fg-muted)',
+        border: '1px solid var(--rule-light)',
+      },
     },
-  ].filter(Boolean) as { label: string; className: string }[];
+  ].filter(Boolean) as { label: string; style: React.CSSProperties }[];
 
   return (
     <div className="space-y-6 max-w-full">
@@ -108,7 +118,8 @@ export function PlanView({
               {metadataBadges.map((badge, i) => (
                 <span
                   key={i}
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badge.className}`}
+                  className="inline-flex items-center px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                  style={{ ...badge.style, borderRadius: 'var(--radius-editorial)' }}
                 >
                   {badge.label}
                 </span>
@@ -123,13 +134,20 @@ export function PlanView({
               <section key={groupIdx} className="relative">
                 {phases.length > 1 && (
                   <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-surface border border-border font-mono text-[10px] font-bold text-muted-foreground shadow-sm">
+                    <div
+                      className="flex h-6 w-6 items-center justify-center font-mono text-[10px] font-bold text-muted-foreground"
+                      style={{
+                        background: 'var(--marginalia-bg)',
+                        border: '1px solid var(--rule-light)',
+                        borderRadius: 'var(--radius-editorial)',
+                      }}
+                    >
                       {groupIdx + 1}
                     </div>
                     <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
                       {phase.name}
                     </h4>
-                    <div className="h-px flex-1 bg-border/40" />
+                    <div className="h-px flex-1" style={{ background: 'var(--rule-light)' }} />
                   </div>
                 )}
 
@@ -168,17 +186,20 @@ export function PlanView({
 
         {/* RIGHT COLUMN: Sidebar (Next Up, Insights) */}
         <aside className="lg:col-span-5 xl:col-span-4 space-y-6 sticky top-4">
-          {/* Next Up Card */}
+          {/* Next Up Card - editorial marginalia style */}
           {nextNode && !allCompleted && (
-            <div className="rounded-xl border border-[color-mix(in_oklab,var(--color-accent)_30%,var(--color-border))] bg-[color-mix(in_oklab,var(--color-accent)_5%,var(--color-surface))] p-4 shadow-sm">
+            <div
+              className="marginalia p-4"
+              style={{ borderLeftColor: 'var(--color-accent)' }}
+            >
               <div className="mb-2 flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-accent)]">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>
                   <SparklesIcon className="h-3 w-3" />
                   Up Next
                 </span>
               </div>
 
-              <h3 className="text-sm font-semibold text-foreground mb-1">{nextNode.name}</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-serif-assistant)' }}>{nextNode.name}</h3>
               {nextNode.description && (
                 <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
                   {nextNode.description}
@@ -191,7 +212,7 @@ export function PlanView({
                   if (onStartLesson) onStartLesson(nextNode.id);
                   else onNodeStatusChange?.(nextNode.id, 'in_progress');
                 }}
-                className="w-full inline-flex justify-center items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:brightness-110"
+                className="btn w-full inline-flex justify-center items-center gap-2 px-3 py-1.5 text-xs font-semibold"
               >
                 <PlayIcon className="h-3 w-3" />
                 {nextNode.status === 'in_progress' ? 'Continue Lesson' : 'Start Lesson'}
@@ -199,17 +220,20 @@ export function PlanView({
             </div>
           )}
 
-          {/* Completion Card */}
+          {/* Completion Card - editorial style */}
           {allCompleted && (
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5 text-center">
-              <CheckCircleIcon className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
-              <h3 className="font-semibold text-foreground">Journey Complete!</h3>
+            <div
+              className="marginalia p-5 text-center"
+              style={{ borderLeftColor: 'var(--color-success)' }}
+            >
+              <CheckCircleIcon className="h-8 w-8 mx-auto mb-2" style={{ color: 'var(--color-success)' }} />
+              <h3 className="font-semibold text-foreground" style={{ fontFamily: 'var(--font-serif-assistant)' }}>Journey Complete!</h3>
             </div>
           )}
 
-          {/* Latest Update Summary */}
+          {/* Latest Update Summary - editorial style */}
           {latestUpdateSummary && (
-            <div className="rounded-lg border border-border bg-muted/30 p-3">
+            <div className="marginalia p-3">
               <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                 Latest Agent Update
               </div>

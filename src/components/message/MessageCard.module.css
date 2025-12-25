@@ -1,69 +1,82 @@
 @keyframes messageEnter {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.98);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
+/* Base message: passage-like, not bubble-like */
 .messageCard {
-  animation: messageEnter 500ms var(--ease-spring);
+  animation: messageEnter 400ms var(--ease-standard);
   border-color: transparent !important;
-  box-shadow: var(--shadow-1);
-  background: color-mix(in oklab, var(--color-surface) 98%, transparent);
-  overflow: hidden;
-  max-width: min(92%, 860px);
-  backface-visibility: hidden;
-  transform: translateZ(0);
-  will-change: transform, opacity;
-  contain: paint;
-  touch-action: manipulation;
-  position: relative;
-}
-
-.assistant {
-  background: var(--message-assistant-bg);
-  border-color: var(--message-assistant-border) !important;
-  margin-right: 0;
-  margin-left: 0;
-  border-radius: 18px;
+  box-shadow: none;
+  background: transparent;
+  overflow: visible;
   max-width: none;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  will-change: opacity;
+  touch-action: manipulation;
+}
+
+.messageCard:hover {
+  box-shadow: none;
+}
+
+/* Assistant: Clean, full-width scholarly passage — no box, just text */
+.assistant {
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: 0;
   width: 100%;
-  /* Scholarly serif typography for authoritative assistant voice */
+  max-width: none;
+
+  /* Scholarly serif typography for authoritative voice — comfortably readable */
   font-family: var(--font-serif-assistant);
-  font-size: 1.1rem;
-  line-height: 1.75;
-  letter-spacing: -0.008em;
+  font-size: 1.25rem;
+  line-height: 1.72;
+  letter-spacing: -0.006em;
+  color: var(--color-fg);
 }
 
+/* Remove any decorative elements */
 .assistant::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--color-accent);
-  opacity: 0.6;
+  display: none;
 }
 
+/* User: Right-positioned with warm box styling — like a note or query */
 .user {
-  background: var(--message-user-bg);
-  border-color: var(--message-user-border) !important;
+  background: var(--surface-paper-warm);
+  border: 1px solid var(--rule-accent);
+  border-left: 3px solid var(--color-accent);
   margin-left: auto;
   margin-right: 0;
-  border-radius: 18px;
-  border-top-left-radius: 12px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-editorial);
   width: fit-content;
-  max-width: clamp(160px, 72%, 560px);
-  /* Clean modern sans for user voice — conversational, contemporary */
+  max-width: min(85%, 640px);
+  text-align: left;
+  box-shadow: var(--shadow-message);
+  transition: box-shadow var(--duration-med) var(--ease-standard);
+
+  /* Contemporary sans for user — clear and direct */
   font-family: var(--font-sans);
-  font-size: 0.975rem;
-  line-height: 1.6;
-  letter-spacing: 0.004em;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  letter-spacing: 0.002em;
+  color: var(--color-fg);
+}
+
+.user:hover {
+  box-shadow: var(--shadow-message-hover);
 }
 
 .actions {
@@ -78,48 +91,47 @@
   max-width: none;
 }
 
-/* Imperial "Golden Pulse" Typing Indicator */
+/* Typing Indicator - simplified, inline feel */
 .typingIndicator {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--color-surface) 40%, transparent);
-  border: 1px solid color-mix(in oklab, var(--color-accent) 20%, transparent);
-  box-shadow: var(--shadow-1);
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--marginalia-bg);
+  border: 1px solid var(--rule-light);
 }
 
 .typingBar {
-  width: 3px;
-  height: 12px;
-  border-radius: 2px;
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
   background: var(--color-accent);
   animation: imperialPulse 1s var(--ease-standard) infinite;
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
 .typingBar:nth-child(1) {
-  height: 12px;
+  height: 10px;
 }
 .typingBar:nth-child(2) {
   animation-delay: 150ms;
-  height: 16px;
+  height: 14px;
 }
 .typingBar:nth-child(3) {
   animation-delay: 300ms;
-  height: 12px;
+  height: 10px;
 }
 
 @keyframes imperialPulse {
   0%,
   100% {
-    opacity: 0.4;
+    opacity: 0.5;
     transform: scaleY(1);
   }
   50% {
     opacity: 1;
-    transform: scaleY(1.3);
+    transform: scaleY(1.2);
   }
 }
 
@@ -153,6 +165,17 @@
 
   .active .actions {
     opacity: 1;
+  }
+
+  /* Mobile: slightly tighter padding */
+  .assistant {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .user {
+    padding: var(--space-2) var(--space-3);
+    max-width: 92%;
+    border-radius: var(--radius-editorial);
   }
 }
 

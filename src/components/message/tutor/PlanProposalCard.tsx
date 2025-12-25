@@ -106,7 +106,7 @@ export function PlanProposalCard({
         : null;
 
   return (
-    <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
+    <div className="marginalia">
       <div className="flex items-start gap-3">
         <div className="rounded-full bg-accent/10 p-2">
           <ClipboardDocumentCheckIcon className="h-5 w-5 text-accent" />

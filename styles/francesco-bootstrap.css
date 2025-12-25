@@ -44,19 +44,19 @@ a:hover {
 
 /* ===== Primitive components (utility-first, tokenized) ===== */
 
-/* Card */
+/* Card — editorial */
 .card {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-editorial);
+  box-shadow: var(--shadow-1);
 }
 
-/* Buttons */
+/* Buttons — editorial radius */
 .btn {
   height: var(--control-lg);
   padding: 0 var(--space-4);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-editorial);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -97,7 +97,7 @@ a:hover {
 .btn-outline {
   height: var(--control-lg);
   padding: 0 var(--space-4);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-editorial);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -132,7 +132,7 @@ a:hover {
 .btn-ghost {
   height: var(--control-lg);
   padding: 0 var(--space-4);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-editorial);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -247,6 +247,17 @@ a:hover {
   margin-top: 8px;
 }
 
+/* Sidebar section label — scholarly, not utilitarian */
+.sidebar-section-label {
+  padding: 0 10px;
+  padding-bottom: var(--space-2);
+  font-family: var(--font-serif);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--color-fg-muted);
+}
+
 /* Improved button styling */
 .btn.pressable {
   background: var(--color-accent);
@@ -290,17 +301,25 @@ a:hover {
   color: var(--color-fg) !important;
 }
 
-/* Inputs */
+/* Inputs — editorial, solid surfaces */
 .input {
   height: var(--control-md);
   width: 100%;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-xl);
-  background: color-mix(in oklab, var(--color-muted) 70%, transparent);
+  padding-block: 0;
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-editorial);
+  background: var(--surface-inset);
   border: 1px solid var(--color-border);
   color: var(--color-fg);
-  -webkit-backdrop-filter: saturate(180%) blur(10px);
-  backdrop-filter: saturate(180%) blur(10px);
+}
+
+/* When input is inside a search wrapper with icon, remove default padding, border and shadow */
+.input.bg-transparent,
+.input.bg-transparent:focus {
+  padding-inline: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 .input::placeholder {
   color: var(--color-fg-muted);
@@ -310,19 +329,17 @@ a:hover {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-/* Multiline text input, matches input look but non-resizable and auto-growing */
+/* Multiline text input — editorial, solid */
 .textarea {
   min-height: 48px;
   max-height: 200px;
   width: 100%;
   padding: 10px var(--space-3);
-  border-radius: var(--radius-xl);
-  background: color-mix(in oklab, var(--color-muted) 70%, transparent);
+  border-radius: var(--radius-editorial);
+  background: var(--surface-inset);
   border: 1px solid var(--color-border);
   color: var(--color-fg);
   resize: none; /* keep it clean and aligned with the button */
-  -webkit-backdrop-filter: saturate(180%) blur(10px);
-  backdrop-filter: saturate(180%) blur(10px);
 }
 .textarea::placeholder {
   color: var(--color-fg-muted);
@@ -353,12 +370,18 @@ a:hover {
   border-radius: 999px;
   border: 1px solid var(--color-border);
   background: color-mix(in oklab, var(--color-muted) 60%, transparent);
-  padding: 2px 8px;
-  font-size: 12px;
+  padding: 4px 12px;
+  font-size: 13px;
   color: var(--color-fg-muted);
+  min-height: 32px;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-spring);
 }
 .badge:hover {
   background: color-mix(in oklab, var(--color-muted) 70%, transparent);
+}
+.badge:active {
+  transform: scale(0.97);
 }
 button.badge,
 a.badge {
@@ -369,10 +392,20 @@ a.badge {
   align-items: center;
   gap: 8px;
   border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 12px;
+  padding: 4px 12px;
+  font-size: 13px;
   background: var(--color-accent);
   color: #0b0b0b;
+  min-height: 32px;
+}
+/* Mobile: larger touch targets for badges */
+@media (max-width: 640px) {
+  .badge,
+  .badge-accent {
+    min-height: 36px;
+    padding: 6px 14px;
+    font-size: 14px;
+  }
 }
 
 /* Table */
@@ -435,7 +468,7 @@ a.badge {
   line-height: 1.4;
 }
 
-/* FAB - Floating Action Button */
+/* FAB - Floating Action Button (editorial, solid) */
 .btn-fab {
   height: var(--control-lg);
   padding: 0 var(--space-4);
@@ -444,20 +477,18 @@ a.badge {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  background: var(--glass-panel-bg);
-  backdrop-filter: var(--glass-blur-panel);
-  -webkit-backdrop-filter: var(--glass-blur-panel);
+  background: var(--surface-paper);
   border: 1px solid color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
   color: var(--color-accent);
-  box-shadow: var(--shadow-3);
+  box-shadow: var(--shadow-2);
   transition: all var(--duration-med) var(--ease-spring);
 }
 
 .btn-fab:hover {
   transform: translateY(-2px);
-  background: var(--glass-strong-bg);
+  background: var(--surface-paper-warm);
   border-color: var(--color-accent);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-3);
 }
 
 .btn-fab:active {
@@ -517,4 +548,26 @@ pre {
   --glass-saturate: saturate(180%);
   --glass-blur-surface: blur(18px);
   --glass-blur-panel: blur(22px);
+}
+
+/* Feedback states for interactive tutor elements */
+.feedback-correct {
+  background: var(--feedback-correct-bg);
+  border-color: var(--feedback-correct-border);
+  color: var(--feedback-correct-text);
+}
+.feedback-incorrect {
+  background: var(--feedback-incorrect-bg);
+  border-color: var(--feedback-incorrect-border);
+  color: var(--feedback-incorrect-text);
+}
+.feedback-correct-icon {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--color-surface);
+}
+.feedback-incorrect-icon {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-surface);
 }

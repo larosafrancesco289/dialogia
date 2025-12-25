@@ -76,8 +76,8 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border/60 bg-surface/50 p-4 shadow-sm">
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+      <div className="marginalia">
+        <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
           <span className="font-medium uppercase tracking-wider">
             Question {activeIndex + 1} of {total}
           </span>
@@ -103,20 +103,16 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
               exit="exit"
               className="space-y-4"
             >
-              <div className="text-sm font-medium leading-relaxed">{activeItem.question}</div>
-              <div className="grid gap-2.5">
+              <div className="text-base font-medium leading-relaxed mb-2">{activeItem.question}</div>
+              <div className="grid gap-3">
                 {activeItem.choices.map((choice, idx) => {
                   const isPicked = picked === idx;
                   const isCorrect = correctIdx === idx;
                   let btnClass = 'btn-outline hover:bg-muted/50';
 
                   if (answered) {
-                    if (isCorrect)
-                      btnClass =
-                        'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20';
-                    else if (isPicked)
-                      btnClass =
-                        'bg-rose-500/10 border-rose-500/50 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20';
+                    if (isCorrect) btnClass = 'feedback-correct border';
+                    else if (isPicked) btnClass = 'feedback-incorrect border';
                     else btnClass = 'btn-outline opacity-50';
                   } else if (isPicked) {
                     btnClass = 'btn-primary';
@@ -126,16 +122,16 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
                     <button
                       type="button"
                       key={idx}
-                      className={`btn justify-start relative overflow-hidden transition-all duration-200 ${btnClass} ${answered ? 'cursor-default' : ''}`}
+                      className={`btn justify-start relative overflow-hidden transition-all duration-200 py-3 ${btnClass} ${answered ? 'cursor-default' : ''}`}
                       onClick={() => handleSelect(idx)}
                       disabled={answered}
                     >
                       <span
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold mr-3 ${
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold mr-3 ${
                           answered && isCorrect
-                            ? 'border-emerald-500 bg-emerald-500 text-white'
+                            ? 'feedback-correct-icon'
                             : answered && isPicked
-                              ? 'border-rose-500 bg-rose-500 text-white'
+                              ? 'feedback-incorrect-icon'
                               : 'border-current opacity-60'
                         }`}
                       >
@@ -149,9 +145,9 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
                           className="absolute right-3 top-1/2 -translate-y-1/2"
                         >
                           {isCorrect ? (
-                            <CheckIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            <CheckIcon className="h-4 w-4" style={{ color: 'var(--color-success)' }} />
                           ) : (
-                            <XMarkIcon className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                            <XMarkIcon className="h-4 w-4" style={{ color: 'var(--color-danger)' }} />
                           )}
                         </motion.div>
                       )}
@@ -169,20 +165,18 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
                     className="overflow-hidden"
                   >
                     <div
-                      className={`rounded-lg p-3 text-xs ${
-                        picked === correctIdx
-                          ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20'
-                          : 'bg-rose-500/10 text-rose-800 dark:text-rose-300 border border-rose-500/20'
+                      className={`rounded-lg p-4 border ${
+                        picked === correctIdx ? 'feedback-correct' : 'feedback-incorrect'
                       }`}
                     >
-                      <div className="font-bold mb-1 flex items-center gap-1.5">
+                      <div className="font-bold mb-1.5 flex items-center gap-2 text-base">
                         {picked === correctIdx ? (
                           <>
-                            <CheckIcon className="h-3.5 w-3.5" /> Correct
+                            <CheckIcon className="h-4 w-4" /> Correct
                           </>
                         ) : (
                           <>
-                            <XMarkIcon className="h-3.5 w-3.5" /> Incorrect
+                            <XMarkIcon className="h-4 w-4" /> Incorrect
                           </>
                         )}
                       </div>

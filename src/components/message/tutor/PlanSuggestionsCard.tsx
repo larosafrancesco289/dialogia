@@ -31,11 +31,12 @@ export function PlanSuggestionsCard({
               {s.action}
               {s.priority && (
                 <span
-                  className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${
+                  className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded"
+                  style={
                     s.priority === "high"
-                      ? "bg-rose-500/10 text-rose-500"
-                      : "bg-muted text-muted-foreground"
-                  }`}
+                      ? { background: 'var(--feedback-incorrect-bg)', color: 'var(--feedback-incorrect-text)' }
+                      : { background: 'var(--color-muted)', color: 'var(--color-fg-muted)' }
+                  }
                 >
                   {s.priority}
                 </span>

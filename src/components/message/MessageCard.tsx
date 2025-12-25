@@ -466,29 +466,26 @@ function AssistantMessageContent({
           <ActionButton
             icon={
               copiedId === message.id ? (
-                <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 transition-all">
-                  <CheckIcon className="h-4 w-4" />
-                  <span className="text-xs font-medium">Copied</span>
-                </div>
+                <CheckIcon className="h-4 w-4" />
               ) : (
-                <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                <ClipboardIcon className="h-4 w-4" />
               )
             }
-            title={copiedId === message.id ? 'Copied' : 'Copy message'}
+            title={copiedId === message.id ? 'Copied!' : 'Copy message'}
             ariaLabel="Copy message"
             onClick={copyMessage}
-            className={copiedId === message.id ? 'bg-green-500/10 border-green-500/20' : ''}
+            showFeedback={copiedId === message.id}
           />
           {!isStreaming && (
             <ActionButton
-              icon={<PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />}
+              icon={<PencilSquareIcon className="h-4 w-4" />}
               title="Edit message"
               ariaLabel="Edit message"
               onClick={startEditingMessage}
             />
           )}
           <ActionButton
-            icon={<ArrowUturnRightIcon className="h-5 w-5 sm:h-4 sm:w-4" />}
+            icon={<ArrowUturnRightIcon className="h-4 w-4" />}
             title="Create a new chat starting from this reply"
             ariaLabel="Branch chat from here"
             onClick={branchFromMessage}
@@ -505,8 +502,8 @@ function AssistantMessageContent({
       <div className="px-4 py-3">
         {isEditing ? (
           <textarea
-            className="textarea w-full text-sm"
-            rows={Math.min(8, Math.max(3, Math.ceil((draft.length || 1) / 60)))}
+            className="message-edit-textarea"
+            rows={Math.min(12, Math.max(4, Math.ceil((draft.length || 1) / 50)))}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -514,12 +511,9 @@ function AssistantMessageContent({
                 event.preventDefault();
                 saveEdit();
               }
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                saveEdit();
-              }
             }}
-            placeholder="Edit assistant message..."
+            placeholder="Edit message..."
+            autoFocus
           />
         ) : waitingForFirstToken && message.id === lastMessageId && !displayContent ? (
           <div className={styles.typingIndicator} aria-live="polite" aria-label="Generating">
@@ -602,10 +596,10 @@ function UserMessageContent({
             onClick={startEditingMessage}
           />
           <ActionButton
-            className="ml-1"
+            className={`ml-1 ${copiedId === message.id ? 'feedback-correct' : ''}`}
             icon={
               copiedId === message.id ? (
-                <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 transition-all">
+                <div className="flex items-center gap-1.5 transition-all" style={{ color: 'var(--color-success)' }}>
                   <CheckIcon className="h-4 w-4" />
                   <span className="text-xs font-medium">Copied</span>
                 </div>
@@ -625,8 +619,8 @@ function UserMessageContent({
       <div className="px-4 py-3">
         {isEditing ? (
           <textarea
-            className="textarea w-full text-sm"
-            rows={Math.min(8, Math.max(3, Math.ceil((draft.length || 1) / 60)))}
+            className="message-edit-textarea message-edit-textarea--user"
+            rows={Math.min(8, Math.max(3, Math.ceil((draft.length || 1) / 50)))}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -634,12 +628,9 @@ function UserMessageContent({
                 event.preventDefault();
                 saveEdit();
               }
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                saveEdit();
-              }
             }}
             placeholder="Edit your message..."
+            autoFocus
           />
         ) : (
           <Markdown content={message.content} />

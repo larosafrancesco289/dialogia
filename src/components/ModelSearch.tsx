@@ -409,7 +409,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
 
     const inputWrapperClasses =
       `relative rounded-xl border border-border bg-background focus-within:ring-2 focus-within:ring-primary/70 transition-shadow ${inputClassName}`.trim();
-    const inputClasses = 'input w-full border-0 bg-transparent focus:ring-0 focus:outline-none';
+    const inputClasses = 'input w-full bg-transparent focus:ring-0 focus:outline-none';
 
     return (
       <div className={`space-y-2 ${className}`.trim()}>
@@ -417,7 +417,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <input
             ref={inputRef}
-            className={`${inputClasses} pl-11 pr-3 py-3`}
+            className={`${inputClasses} !pl-11 !pr-3 !py-3 h-auto`}
             placeholder={placeholder}
             value={query}
             onChange={(event) => {

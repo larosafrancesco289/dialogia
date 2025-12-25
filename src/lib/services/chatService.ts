@@ -10,6 +10,7 @@ import {
 import type { Chat, Folder, Message } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
 import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
 
 export class ChatService {
@@ -47,7 +48,7 @@ export class ChatService {
     const baseSettings = deriveChatSettingsFromUi({
       ui,
       fallbackModelId: DEFAULT_MODEL_ID,
-      fallbackSystem: 'You are a helpful assistant.',
+      fallbackSystem: DEFAULT_BASE_SYSTEM,
       lastUsedModelId: lastUsedModel,
       braveEnabled,
       tutorEnabled: tutorEnabledGlobally,

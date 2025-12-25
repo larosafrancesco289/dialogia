@@ -19,25 +19,25 @@ export function MessageActions({
 }: MessageActionsProps) {
   return (
     <div
-      className={`${styles.actions} absolute bottom-2 right-2 z-30 transition-opacity`}
+      className={`${styles.actions} message-actions`}
       style={isMobile ? { opacity: 1 } : undefined}
     >
       {isEditing ? (
-        <div className="flex items-center gap-1">
-          <button className="icon-button" aria-label="Save edit" title="Save edit" onClick={onSave}>
-            <CheckIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+        <div className="message-actions__group">
+          <button className="message-action-btn" aria-label="Save edit" title="Save edit" onClick={onSave}>
+            <CheckIcon className="h-4 w-4" />
           </button>
           <button
-            className="icon-button"
+            className="message-action-btn"
             aria-label="Cancel edit"
             title="Cancel edit"
             onClick={onCancel}
           >
-            <XMarkIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+            <XMarkIcon className="h-4 w-4" />
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-1">{children}</div>
+        <div className="message-actions__group">{children}</div>
       )}
     </div>
   );
@@ -50,6 +50,7 @@ type ActionButtonProps = {
   onClick: () => void;
   disabled?: boolean;
   className?: string;
+  showFeedback?: boolean;
 };
 
 export function ActionButton({
@@ -59,10 +60,11 @@ export function ActionButton({
   onClick,
   disabled,
   className,
+  showFeedback,
 }: ActionButtonProps) {
   return (
     <button
-      className={`icon-button ${className ?? ''}`.trim()}
+      className={`message-action-btn ${showFeedback ? 'is-success' : ''} ${className ?? ''}`.trim()}
       aria-label={ariaLabel ?? title}
       title={title}
       onClick={onClick}

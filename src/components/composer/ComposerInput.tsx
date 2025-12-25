@@ -44,7 +44,7 @@ export function ComposerInput({
     <>
       <textarea
         ref={textareaRef}
-        className="textarea flex-1 min-w-0 text-base"
+        className="composer-field"
         rows={1}
         placeholder="Type a message..."
         value={value}
