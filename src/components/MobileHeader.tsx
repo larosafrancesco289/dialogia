@@ -139,7 +139,14 @@ export function MobileHeader() {
             onClick={async () => {
               if (forceTutorMode) return;
               if (chat) {
-                await updateChatSettings({ tutor_mode: !chat.settings.tutor_mode });
+                // If tutor mode is currently OFF, start a NEW chat with tutor enabled
+                // If tutor mode is currently ON, just disable it on this chat
+                if (!chat.settings.tutor_mode) {
+                  setUI({ overrides: { tutorMode: true } });
+                  await newChat();
+                } else {
+                  await updateChatSettings({ tutor_mode: false });
+                }
               } else {
                 setUI({ overrides: { tutorMode: !nextTutorMode } });
               }
