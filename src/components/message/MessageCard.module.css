@@ -32,6 +32,11 @@
   border-radius: 18px;
   max-width: none;
   width: 100%;
+  /* Scholarly serif typography for authoritative assistant voice */
+  font-family: var(--font-serif-assistant);
+  font-size: 1.1rem;
+  line-height: 1.75;
+  letter-spacing: -0.008em;
 }
 
 .assistant::before {
@@ -54,6 +59,11 @@
   border-top-left-radius: 12px;
   width: fit-content;
   max-width: clamp(160px, 72%, 560px);
+  /* Clean modern sans for user voice — conversational, contemporary */
+  font-family: var(--font-sans);
+  font-size: 0.975rem;
+  line-height: 1.6;
+  letter-spacing: 0.004em;
 }
 
 .actions {
