@@ -29,10 +29,10 @@ export const FREE_MODEL_IDS: string[] = [
  * Make sure this ID is in FREE_MODEL_IDS.
  */
 export const DEFAULT_FREE_MODEL: FreeCuratedModel = {
-  id: 'xiaomi/mimo-v2-flash:free',
-  name: 'Mimo V2 Flash',
-  description: 'Fast multimodal model with vision capabilities',
-  Icon: ChatBubbleLeftRightIcon,
+  id: 'allenai/olmo-3.1-32b-think:free',
+  name: 'OLMo 3.1 32B Think',
+  description: 'Strong reasoning with extended thinking capabilities',
+  Icon: SparklesIcon,
 };
 
 /**
@@ -42,10 +42,10 @@ export const DEFAULT_FREE_MODEL: FreeCuratedModel = {
 export const FREE_CURATED_MODELS: FreeCuratedModel[] = [
   DEFAULT_FREE_MODEL,
   {
-    id: 'allenai/olmo-3.1-32b-think:free',
-    name: 'OLMo 3.1 32B Think',
-    description: 'Strong reasoning with extended thinking capabilities',
-    Icon: SparklesIcon,
+    id: 'xiaomi/mimo-v2-flash:free',
+    name: 'Mimo V2 Flash',
+    description: 'Fast multimodal model with vision capabilities',
+    Icon: ChatBubbleLeftRightIcon,
   },
   {
     id: 'nvidia/nemotron-3-nano-30b-a3b:free',
