@@ -1,0 +1,65 @@
+import { cookies } from 'next/headers';
+import { TIER_COOKIE_NAME } from './shared';
+import type { AccessTier } from './types';
+
+/**
+ * Get the current access tier from cookies (server-side).
+ * Defaults to 'free' if no tier cookie is present.
+ */
+export async function getServerTier(): Promise<AccessTier> {
+  try {
+    const cookieStore = await cookies();
+    const tierCookie = cookieStore.get(TIER_COOKIE_NAME);
+    const tier = tierCookie?.value;
+    if (tier === 'developer' || tier === 'individual' || tier === 'free') {
+      return tier;
+    }
+    return 'free';
+  } catch {
+    return 'free';
+  }
+}
+
+/**
+ * Get the OpenRouter API key based on the current tier.
+ * - Free tier: uses OPENROUTER_FREE_API_KEY
+ * - Other tiers: uses OPENROUTER_API_KEY
+ *
+ * Falls back to OPENROUTER_API_KEY if free key is not configured.
+ */
+export async function getOpenRouterApiKeyForTier(): Promise<string> {
+  const tier = await getServerTier();
+
+  if (tier === 'free') {
+    const freeKey = process.env.OPENROUTER_FREE_API_KEY;
+    if (freeKey) {
+      return freeKey;
+    }
+    // Fall back to main key if free key not configured
+    console.warn('[tierApiKey] OPENROUTER_FREE_API_KEY not set, falling back to main key');
+  }
+
+  const mainKey = process.env.OPENROUTER_API_KEY;
+  if (!mainKey) {
+    throw new Error('Missing OPENROUTER_API_KEY');
+  }
+  return mainKey;
+}
+
+/**
+ * Check if the current tier is allowed to use a specific model.
+ * Free tier can only use models from the FREE_MODEL_IDS list.
+ */
+export async function canUseTierModel(modelId: string): Promise<boolean> {
+  const tier = await getServerTier();
+
+  // Non-free tiers can use any model
+  if (tier !== 'free') {
+    return true;
+  }
+
+  // Free tier - check against allowed models
+  // Import dynamically to avoid circular dependencies
+  const { FREE_MODEL_IDS } = await import('@/data/freeModels');
+  return FREE_MODEL_IDS.includes(modelId);
+}

@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
 import { useXAIVoice } from '@/lib/hooks/useXAIVoice';
+import { useCanUseVoice } from '@/lib/auth/tierContext';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
 
 export type ComposerActionsProps = {
@@ -46,6 +47,9 @@ export function ComposerActions({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Check if voice mode is available for the current tier
+  const canUseVoice = useCanUseVoice();
 
   // Voice hook lifted here so it doesn't unmount when menu closes
   const addVoiceUserMessage = useChatStore((s) => s.addVoiceUserMessage);
@@ -91,8 +95,8 @@ export function ComposerActions({
 
   return (
     <div className="flex items-center gap-1.5">
-      {/* Voice status pill — always visible when active */}
-      {isVoiceActive && <VoiceStatusPill onStop={stopVoice} />}
+      {/* Voice status pill — only visible when voice is active and tier allows it */}
+      {canUseVoice && isVoiceActive && <VoiceStatusPill onStop={stopVoice} />}
 
       {/* Overflow menu button — hide when voice is active */}
       {!isVoiceActive && <div className="relative">
@@ -147,14 +151,16 @@ export function ComposerActions({
               {searchEnabled && <CheckIcon className="h-3.5 w-3.5 ml-auto" />}
             </button>
 
-            {/* Voice mode */}
-            <VoiceMenuItem
-              onStart={async () => {
-                await ensureChatForVoice();
-                await startVoice();
-              }}
-              onClose={() => setMenuOpen(false)}
-            />
+            {/* Voice mode — only shown for developer tier */}
+            {canUseVoice && (
+              <VoiceMenuItem
+                onStart={async () => {
+                  await ensureChatForVoice();
+                  await startVoice();
+                }}
+                onClose={() => setMenuOpen(false)}
+              />
+            )}
 
             {/* Reasoning effort */}
             {showReasoningMenu && (
