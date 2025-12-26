@@ -27,5 +27,80 @@
       }
     ],
     "react-hooks/exhaustive-deps": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/**/*.ts", "src/**/*.tsx"],
+      "excludedFiles": ["src/**/*.test.ts", "src/**/*.test.tsx"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "warn"
+      }
+    },
+    {
+      "files": ["src/lib/db/**/*.ts", "src/lib/db/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@/lib/agent/**",
+                  "@/lib/store/**",
+                  "@/components/**",
+                  "../agent/**",
+                  "../../agent/**",
+                  "../../../agent/**",
+                  "../store/**",
+                  "../../store/**",
+                  "../../../store/**",
+                  "../components/**",
+                  "../../components/**",
+                  "../../../components/**"
+                ],
+                "message": "DB layer must not import agent, store, or component modules."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/lib/agent/**/*.ts", "src/lib/agent/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@/components/**",
+                  "../components/**",
+                  "../../components/**",
+                  "../../../components/**"
+                ],
+                "message": "Agent layer must not import UI components."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/components/**/*.ts", "src/components/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/lib/api/**", "@/lib/openrouter", "@/lib/anthropic"],
+                "message": "UI components must not import transport clients."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

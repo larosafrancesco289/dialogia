@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { ClipboardEvent, DragEvent } from 'react';
-import type { Attachment } from '@/lib/types';
+import type { DraftAttachment } from '@/lib/types';
 import {
   toImageAttachment,
   toPdfAttachment,
@@ -14,17 +14,17 @@ type UseComposerAttachmentsOptions = {
 };
 
 export function useComposerAttachments({ canVision, canAudio }: UseComposerAttachmentsOptions) {
-  const [attachmentsState, setAttachmentsState] = useState<Attachment[]>([]);
-  const attachmentsRef = useRef<Attachment[]>([]);
+  const [attachmentsState, setAttachmentsState] = useState<DraftAttachment[]>([]);
+  const attachmentsRef = useRef<DraftAttachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const setAttachments = useCallback((next: Attachment[]) => {
+  const setAttachments = useCallback((next: DraftAttachment[]) => {
     attachmentsRef.current = next;
     setAttachmentsState(next);
   }, []);
 
   const appendAttachments = useCallback(
-    (next: Attachment[]) => {
+    (next: DraftAttachment[]) => {
       if (!next.length) return;
       setAttachments([...attachmentsRef.current, ...next]);
     },
@@ -36,7 +36,7 @@ export function useComposerAttachments({ canVision, canAudio }: UseComposerAttac
       if (!canVision || files.length === 0) return;
       const existingImages = attachmentsRef.current.filter((att) => att.kind === 'image').length;
       const limited = clampImages(existingImages, files);
-      const converted: Attachment[] = [];
+      const converted: DraftAttachment[] = [];
       for (const file of limited) {
         const att = await toImageAttachment(file);
         if (att) converted.push(att);
@@ -53,7 +53,7 @@ export function useComposerAttachments({ canVision, canAudio }: UseComposerAttac
       const existingDocs = attachmentsRef.current.filter((att) => att.kind === 'pdf').length;
       const remaining = Math.max(0, maxDocs - existingDocs);
       const toConvert = files.slice(0, remaining);
-      const converted: Attachment[] = [];
+      const converted: DraftAttachment[] = [];
       for (const file of toConvert) {
         const att = await toPdfAttachment(file);
         if (att) converted.push(att);
@@ -70,7 +70,7 @@ export function useComposerAttachments({ canVision, canAudio }: UseComposerAttac
       const existing = attachmentsRef.current.filter((att) => att.kind === 'audio').length;
       const remaining = Math.max(0, maxAudio - existing);
       const toConvert = files.slice(0, remaining);
-      const converted: Attachment[] = [];
+      const converted: DraftAttachment[] = [];
       for (const file of toConvert) {
         const att = await toAudioAttachment(file);
         if (att) converted.push(att);

@@ -1,13 +1,13 @@
 import type { MessageTutor } from '@/lib/types';
-import type { UIState } from '@/lib/store/types';
+import type { UiSnapshot } from '@/lib/agent/contracts';
 
-export const selectTutorEntry = (ui: UIState, messageId: string) =>
+export const selectTutorEntry = (ui: UiSnapshot, messageId: string) =>
   ui.tutor.byMessageId?.[messageId];
 
-export const mergeTutorMap = (
-  ui: UIState,
+export const mergeTutorMap = <T extends UiSnapshot>(
+  ui: T,
   incoming: Record<string, MessageTutor>,
-): UIState => {
+): T => {
   if (!incoming || Object.keys(incoming).length === 0) return ui;
   return {
     ...ui,
@@ -15,14 +15,14 @@ export const mergeTutorMap = (
       ...ui.tutor,
       byMessageId: { ...(ui.tutor.byMessageId || {}), ...incoming },
     },
-  };
+  } as T;
 };
 
-export const upsertTutorEntry = (
-  ui: UIState,
+export const upsertTutorEntry = <T extends UiSnapshot>(
+  ui: T,
   messageId: string,
   entry: MessageTutor,
-): UIState => {
+): T => {
   if (!messageId) return ui;
   return mergeTutorMap(ui, { [messageId]: entry });
 };

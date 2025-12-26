@@ -1,21 +1,20 @@
 'use client';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { StoreState } from '@/lib/store/types';
+import type { StoreDataState, StoreGetter, StoreSetter, StoreState } from '@/lib/store/types';
 import { createModelSlice } from '@/lib/store/modelSlice';
 import { createChatSlice } from '@/lib/store/chatSlice';
 import { createMessageSlice } from '@/lib/store/messageSlice';
 import { createUiSlice } from '@/lib/store/uiSlice';
 import { createTutorSlice } from '@/lib/store/tutorSlice';
 import { createVoiceSlice } from '@/lib/store/voiceSlice';
-import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { migrate } from '@/lib/store/migrations';
 import { STORE_MIGRATION_VERSION } from '@/lib/db/versions';
 
 const mergeUiState = (
-  current: StoreState['ui'],
-  persisted?: Partial<StoreState['ui']>,
-): StoreState['ui'] => {
+  current: StoreDataState['ui'],
+  persisted?: Partial<StoreDataState['ui']>,
+): StoreDataState['ui'] => {
   if (!persisted) return current;
   return {
     ...current,

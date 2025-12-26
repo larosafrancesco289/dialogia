@@ -1,14 +1,14 @@
 import { v4 as uuidv4 } from 'uuid';
 import { stripLeadingToolJson } from '@/lib/agent/streaming';
 import type { Message } from '@/lib/types';
-import type { StoreState } from '@/lib/store/types';
+import type { TurnStoreState } from '@/lib/agent/contracts';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { computeMetrics } from '@/lib/services/metrics';
 
 type MessageUpdater = (message: Message) => Message;
 
 const buildMessageUpdate = (
-  state: StoreState,
+  state: TurnStoreState,
   chatId: string,
   messageId: string,
   updater: MessageUpdater,
@@ -43,13 +43,13 @@ const applyMessageUpdate = (
   set((state) => {
     const result = buildMessageUpdate(state, chatId, messageId, updater);
     updated = result.updated;
-    return result.messages ? ({ messages: result.messages } as Partial<StoreState>) : {};
+    return result.messages ? ({ messages: result.messages } as Partial<TurnStoreState>) : {};
   });
   return updated;
 };
 
 export function buildTutorFallbackContent(
-  state: StoreState,
+  state: TurnStoreState,
   assistantId: string,
 ): string | undefined {
   const tutorEntry = state.ui.tutor.byMessageId?.[assistantId];
@@ -99,7 +99,7 @@ export type StreamExtras = {
     completion_tokens?: number;
     output_tokens?: number;
   };
-  annotations?: any;
+  annotations?: unknown;
 };
 
 export type MessageStreamOptions = {
@@ -149,9 +149,7 @@ export function createMessageStreamCallbacks(
         ...msg,
         reasoning: (msg.reasoning || '') + delta,
       }));
-      const partial: Partial<StoreState> = result.messages
-        ? { messages: result.messages }
-        : {};
+      const partial: Partial<TurnStoreState> = result.messages ? { messages: result.messages } : {};
       if (autoReasoningEligible && modelIdUsed) {
         const prev = state.ui.debug.autoReasoningModelIds || {};
         if (!prev[modelIdUsed]) {
@@ -161,7 +159,7 @@ export function createMessageStreamCallbacks(
               ...state.ui.debug,
               autoReasoningModelIds: { ...prev, [modelIdUsed]: true },
             },
-          } as any;
+          };
         }
       }
       return partial;
@@ -169,7 +167,7 @@ export function createMessageStreamCallbacks(
   };
 
   const callbacks = {
-    onAnnotations: (annotations: any) => {
+    onAnnotations: (annotations: unknown) => {
       applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({
         ...msg,
         annotations,
@@ -241,7 +239,7 @@ export function createMessageStreamCallbacks(
       const content =
         rawContent && rawContent.trim()
           ? rawContent
-          : (buildTutorFallbackContent(state as StoreState, assistantMessage.id) ??
+          : (buildTutorFallbackContent(state, assistantMessage.id) ??
             'I added new tutor content above. Let me know when you are ready.');
       const finalMessage: Message = {
         ...assistantMessage,

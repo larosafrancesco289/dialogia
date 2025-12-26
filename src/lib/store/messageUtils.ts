@@ -1,12 +1,15 @@
-import type { StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
 
-export function updateMessageInChat(
-  state: StoreState,
+type MessageState = {
+  messages: Record<string, Message[]>;
+};
+
+export function updateMessageInChat<S extends MessageState>(
+  state: S,
   chatId: string,
   messageId: string,
   patch: Partial<Message>,
-): Partial<StoreState> {
+): Partial<S> {
   const list = state.messages[chatId];
   if (!Array.isArray(list) || list.length === 0) {
     return {};
@@ -23,5 +26,5 @@ export function updateMessageInChat(
       ...state.messages,
       [chatId]: nextList,
     },
-  };
+  } as Partial<S>;
 }

@@ -43,10 +43,10 @@ export async function composeTurn({
   const priorMessages = prior ?? [];
   const preparedAttachments = attachments ?? newUser?.attachments ?? [];
   const hadPdfEarlier = priorMessages.some(
-    (m) => Array.isArray(m.attachments) && m.attachments.some((att: any) => att?.kind === 'pdf'),
+    (m) => Array.isArray(m.attachments) && m.attachments.some((att) => att.kind === 'pdf'),
   );
   const hasPdf =
-    preparedAttachments.some((att: any) => att?.kind === 'pdf') || (hadPdfEarlier ? true : false);
+    preparedAttachments.some((att) => att.kind === 'pdf') || (hadPdfEarlier ? true : false);
 
   const plugins = composePlugins({
     hasPdf,

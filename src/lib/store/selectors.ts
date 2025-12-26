@@ -11,12 +11,21 @@ export const selectCurrentChat = (state: StoreState) => {
   return state.chats.find((chat) => chat.id === chatId);
 };
 
+export const selectSelectedChatId = (state: StoreState) => state.selectedChatId;
+
 export const selectMessagesForChat = (chatId?: string) => (state: StoreState) =>
   chatId ? (state.messages[chatId] ?? []) : [];
 
 export const selectMessagesForCurrentChat = (state: StoreState) => {
   const chatId = state.selectedChatId;
   return chatId ? (state.messages[chatId] ?? []) : [];
+};
+
+export const selectLastMessageId = (state: StoreState) => {
+  const chatId = state.selectedChatId;
+  if (!chatId) return undefined;
+  const list = state.messages[chatId] ?? [];
+  return list.length ? list[list.length - 1]?.id : undefined;
 };
 
 export const selectIsStreaming = (state: StoreState) => state.ui.isStreaming;

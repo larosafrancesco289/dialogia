@@ -1,5 +1,6 @@
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { addCardsToDeck } from '@/lib/tutorDeck';
+import { logger } from '@/lib/logger';
 
 type AddToDeckArgs = {
   cards: any[];
@@ -17,7 +18,7 @@ export const addToDeckHandler: TutorToolHandler<AddToDeckArgs> = {
     try {
       if (args.cards.length > 0) await addCardsToDeck(ctx.chat.id, args.cards);
     } catch (error) {
-      console.error('Failed to add cards to deck', error);
+      logger.error('Failed to add cards to deck', error);
     }
     return { handled: true, usedContent: false };
   },

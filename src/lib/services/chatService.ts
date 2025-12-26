@@ -14,12 +14,11 @@ import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
 import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
 import { DEFAULT_FREE_MODEL_ID } from '@/data/freeModels';
 import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
+import { getCookie } from '@/lib/auth/cookies.client';
 
 // Read tier from cookie on client side
 function getClientTier(): 'free' | 'individual' | 'developer' {
-  if (typeof document === 'undefined') return 'free';
-  const match = document.cookie.match(new RegExp('(^| )' + TIER_COOKIE_NAME + '=([^;]+)'));
-  const tier = match ? decodeURIComponent(match[2]) : null;
+  const tier = getCookie(TIER_COOKIE_NAME);
   if (tier === 'developer' || tier === 'individual' || tier === 'free') {
     return tier;
   }

@@ -12,21 +12,29 @@ import { MessagePanels } from '@/components/message/MessagePanels';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { LearnerModelUpdates } from '@/components/message/LearnerModelUpdates';
 import styles from './MessageCard.module.css';
-import type { Attachment, Chat, Message, MessageTutor, ORModel, ToolCallLogEntry } from '@/lib/types';
-import type { UISearchState } from '@/lib/store/types';
+import type { Chat, Message, ORModel, PersistedAttachment } from '@/lib/types';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
-import { parsePartialJson } from '@/lib/partial-json';
+import { useMessageCardController } from '@/components/message/useMessageCardController';
+
+export type MessagePanelControls = {
+  isSourcesExpanded: (messageId: string) => boolean;
+  toggleSources: (messageId: string) => void;
+  isDebugExpanded: (messageId: string) => boolean;
+  toggleDebug: (messageId: string) => void;
+  isReasoningExpanded: (messageId: string) => boolean;
+  toggleReasoning: (messageId: string) => void;
+  isStatsExpanded: (messageId: string) => boolean;
+  toggleStats: (messageId: string) => void;
+};
 
 export type MessageCardProps = {
-  message: Message;
-  chat?: Chat | null;
-  models: ORModel[];
+  chatId: string;
+  messageId: string;
   isMobile: boolean;
   isActive: boolean;
   showInlineActions: boolean;
-  isStreaming: boolean;
   isEditing: boolean;
   draft: string;
   setDraft: (value: string) => void;
@@ -35,8 +43,6 @@ export type MessageCardProps = {
   startEditingMessage: (messageId: string) => void;
   copyMessage: (messageId: string) => Promise<void> | void;
   copiedId: string | null;
-  branchFromMessage: (messageId: string) => void;
-  onChooseRegenerateModel: (modelId?: string) => void;
   setLightbox: (
     value: {
       images: { src: string; name?: string }[];
@@ -45,40 +51,16 @@ export type MessageCardProps = {
   ) => void;
   waitingForFirstToken: boolean;
   lastMessageId?: string;
-  showStats: boolean;
-  isStatsExpanded: (messageId: string) => boolean;
-  toggleStats: (messageId: string) => void;
-  tutorEnabled: boolean;
-  setActiveMessageId: (id: string | null) => void;
-  setMobileSheet: (sheet: { id: string; role: 'assistant' | 'user' } | null) => void;
-  // Flattened MessagePanels props
-  braveGloballyEnabled: boolean;
-  braveEntry?: NonNullable<UISearchState['braveByMessageId']>[string];
-  isSourcesExpanded: boolean;
-  onToggleSources: (id: string) => void;
-  debugMode: boolean;
-  debugEntry?: { body: string; createdAt: number } | null;
-  isDebugExpanded: boolean;
-  onToggleDebug: (id: string) => void;
-  tutorGloballyEnabled: boolean;
-  tutorEntry?: MessageTutor;
-  autoReasoningModelIds: Record<string, boolean>;
-  isReasoningExpanded: boolean;
-  onToggleReasoning: (id: string) => void;
-  showToolCallLog: boolean;
-  showDebugRawJson: boolean;
-  toolCalls?: ToolCallLogEntry[];
-  highlightToolCalls?: boolean;
+  panels: MessagePanelControls;
+  onOpenMobileSheet: (value: { id: string; role: 'assistant' | 'user' }) => void;
 };
 
 function MessageCardComponent({
-  message,
-  chat,
-  models,
+  chatId,
+  messageId,
   isMobile,
   isActive,
   showInlineActions,
-  isStreaming,
   isEditing,
   draft,
   setDraft,
@@ -87,35 +69,33 @@ function MessageCardComponent({
   startEditingMessage,
   copyMessage,
   copiedId,
-  branchFromMessage,
-  onChooseRegenerateModel,
   setLightbox,
   waitingForFirstToken,
   lastMessageId,
-  showStats,
-  isStatsExpanded,
-  toggleStats,
-  tutorEnabled,
-  setActiveMessageId,
-  setMobileSheet,
-  braveGloballyEnabled,
-  braveEntry,
-  isSourcesExpanded,
-  onToggleSources,
-  debugMode,
-  debugEntry,
-  isDebugExpanded,
-  onToggleDebug,
-  tutorGloballyEnabled,
-  tutorEntry,
-  autoReasoningModelIds,
-  isReasoningExpanded,
-  onToggleReasoning,
-  showToolCallLog,
-  showDebugRawJson,
-  toolCalls,
-  highlightToolCalls,
+  panels,
+  onOpenMobileSheet,
 }: MessageCardProps) {
+  const {
+    message,
+    chat,
+    models,
+    isStreaming,
+    braveGloballyEnabled,
+    braveEntry,
+    debugMode,
+    debugEntry,
+    tutorGloballyEnabled,
+    tutorEntry,
+    autoReasoningModelIds,
+    showToolCallLog,
+    showDebugRawJson,
+    showStats,
+    tutorEnabled,
+    actions,
+  } = useMessageCardController({ chatId, messageId });
+
+  if (!message) return null;
+
   const isAssistant = message.role === 'assistant';
   const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
 
@@ -133,82 +113,62 @@ function MessageCardComponent({
   const handleCopy = () => copyMessage(message.id);
   const handleStartEdit = () => startEditingMessage(message.id);
   const handleSaveEdit = () => saveEdit(message.id);
-  const handleBranch = () => branchFromMessage(message.id);
+  const handleBranch = actions.branchFromMessage;
+  const handleRegenerate = actions.regenerateMessage;
   const attachments = Array.isArray(message.attachments) ? message.attachments : [];
 
   const { onPointerDown, onContextMenu } = useLongPressSheet({
     isEnabled: isMobile,
     onTrigger: () => {
-      setActiveMessageId(message.id);
-      setMobileSheet({ id: message.id, role: message.role as 'assistant' | 'user' });
+      onOpenMobileSheet({ id: message.id, role: message.role as 'assistant' | 'user' });
     },
   });
 
+  const isSourcesExpanded = panels.isSourcesExpanded(message.id);
+  const isDebugExpanded = panels.isDebugExpanded(message.id);
+  const isReasoningExpanded = panels.isReasoningExpanded(message.id);
+  const statsExpanded = panels.isStatsExpanded(message.id);
+
   const handleToggleSources = useCallback(
-    () => onToggleSources(message.id),
-    [message.id, onToggleSources],
+    () => panels.toggleSources(message.id),
+    [message.id, panels],
   );
   const handleToggleDebug = useCallback(
-    () => onToggleDebug(message.id),
-    [message.id, onToggleDebug],
+    () => panels.toggleDebug(message.id),
+    [message.id, panels],
   );
   const handleToggleReasoning = useCallback(
-    () => onToggleReasoning(message.id),
-    [message.id, onToggleReasoning],
+    () => panels.toggleReasoning(message.id),
+    [message.id, panels],
   );
+  const handleToggleStats = useCallback(() => panels.toggleStats(message.id), [message.id, panels]);
 
-  const messagePanelsNode = useMemo(
-    () => (
-      <MessagePanels
-        message={message}
-        chat={chat ?? undefined}
-        models={models}
-        braveGloballyEnabled={braveGloballyEnabled}
-        braveEntry={braveEntry}
-        isSourcesExpanded={isSourcesExpanded}
-        onToggleSources={handleToggleSources}
-        debugMode={debugMode}
-        debugEntry={debugEntry}
-        isDebugExpanded={isDebugExpanded}
-        onToggleDebug={handleToggleDebug}
-        tutorGloballyEnabled={tutorGloballyEnabled}
-        tutorEntry={tutorEntry}
-        autoReasoningModelIds={autoReasoningModelIds}
-        isStreaming={isStreaming}
-        lastMessageId={lastMessageId}
-        reasoningExpanded={isReasoningExpanded}
-        onToggleReasoning={handleToggleReasoning}
-        showToolCallLog={showToolCallLog}
-        showDebugRawJson={showDebugRawJson}
-        toolCalls={toolCalls}
-        highlightToolCalls={highlightToolCalls}
-      />
-    ),
-    [
-      message,
-      chat,
-      models,
-      braveGloballyEnabled,
-      braveEntry,
-      isSourcesExpanded,
-      handleToggleSources,
-      debugMode,
-      debugEntry,
-      isDebugExpanded,
-      handleToggleDebug,
-      tutorGloballyEnabled,
-      tutorEntry,
-      autoReasoningModelIds,
-      isStreaming,
-      lastMessageId,
-      isReasoningExpanded,
-      handleToggleReasoning,
-      showToolCallLog,
-      showDebugRawJson,
-      toolCalls,
-      highlightToolCalls,
-    ],
-  );
+  const messagePanelsNode = isAssistant ? (
+    <MessagePanels
+      message={message}
+      chat={chat}
+      models={models}
+      braveGloballyEnabled={braveGloballyEnabled}
+      braveEntry={braveEntry}
+      isSourcesExpanded={isSourcesExpanded}
+      onToggleSources={handleToggleSources}
+      debugMode={debugMode}
+      debugEntry={debugEntry}
+      isDebugExpanded={isDebugExpanded}
+      onToggleDebug={handleToggleDebug}
+      tutorGloballyEnabled={tutorGloballyEnabled}
+      tutorEntry={tutorEntry}
+      autoReasoningModelIds={autoReasoningModelIds}
+      isStreaming={isStreaming}
+      lastMessageId={lastMessageId}
+      reasoningExpanded={isReasoningExpanded}
+      onToggleReasoning={handleToggleReasoning}
+      showToolCallLog={showToolCallLog}
+      showDebugRawJson={showDebugRawJson}
+      toolCalls={Array.isArray(message.toolCalls) ? message.toolCalls : undefined}
+      highlightToolCalls={message.id === lastMessageId}
+    />
+  ) : null;
 
   return (
     <div
@@ -238,10 +198,10 @@ function MessageCardComponent({
           models={models}
           chat={chat}
           showStats={showStats}
-          isStatsExpanded={isStatsExpanded}
-          toggleStats={toggleStats}
+          statsExpanded={statsExpanded}
+          onToggleStats={handleToggleStats}
           branchFromMessage={handleBranch}
-          onChooseRegenerateModel={onChooseRegenerateModel}
+          onChooseRegenerateModel={handleRegenerate}
           setLightbox={setLightbox}
           attachments={attachments}
           tutorEnabled={tutorEnabled}
@@ -268,84 +228,7 @@ function MessageCardComponent({
   );
 }
 
-export const MessageCard = memo(MessageCardComponent, (prev, next) => {
-  // If the message ID changed, it's a different message
-  if (prev.message.id !== next.message.id) return false;
-
-  // If streaming state changed, re-render
-  if (prev.isStreaming !== next.isStreaming) return false;
-
-  // If latest message marker changed (affects typing indicator and stats), re-render
-  if (prev.lastMessageId !== next.lastMessageId) return false;
-
-  // Force re-render for the active streaming message (last message)
-  // This ensures that even if the store mutates the message object in place,
-  // or if updates are frequent, we always reflect the latest content/reasoning.
-  if (next.isStreaming && next.message.id === next.lastMessageId) return false;
-
-  // If active state changed (mobile), re-render
-  if (prev.isActive !== next.isActive) return false;
-
-  // Device/layout and inline actions toggle
-  if (prev.isMobile !== next.isMobile) return false;
-  if (prev.showInlineActions !== next.showInlineActions) return false;
-  if (prev.copiedId !== next.copiedId) return false;
-
-  // If editing state changed, re-render
-  if (prev.isEditing !== next.isEditing) return false;
-
-  // If draft changed, re-render
-  if (prev.draft !== next.draft) return false;
-
-  // If waiting for first token changed, re-render
-  if (prev.waitingForFirstToken !== next.waitingForFirstToken) return false;
-
-  // If stats expanded state changed, re-render
-  if (prev.showStats !== next.showStats) return false;
-  if (prev.isStatsExpanded(prev.message.id) !== next.isStatsExpanded(next.message.id)) return false;
-
-  // If panels expanded state changed, re-render
-  if (prev.isSourcesExpanded !== next.isSourcesExpanded) return false;
-  if (prev.isDebugExpanded !== next.isDebugExpanded) return false;
-  if (prev.isReasoningExpanded !== next.isReasoningExpanded) return false;
-  if (prev.showToolCallLog !== next.showToolCallLog) return false;
-  if (prev.showDebugRawJson !== next.showDebugRawJson) return false;
-  if (prev.highlightToolCalls !== next.highlightToolCalls) return false;
-  if (prev.tutorEnabled !== next.tutorEnabled) return false;
-  if (prev.braveGloballyEnabled !== next.braveGloballyEnabled) return false;
-  if (prev.tutorGloballyEnabled !== next.tutorGloballyEnabled) return false;
-  if (prev.debugMode !== next.debugMode) return false;
-
-  // If content changed, re-render
-  if (prev.message.content !== next.message.content) return false;
-
-  // Role or model metadata can affect inline actions / stats display
-  if (prev.message.role !== next.message.role) return false;
-  if (prev.message.model !== next.message.model) return false;
-
-  // If reasoning changed, re-render
-  // This is the critical fix for DeepResearch streaming
-  if (prev.message.reasoning !== next.message.reasoning) return false;
-
-  // If attachments changed, re-render (shallow check length/ref)
-  if (prev.message.attachments !== next.message.attachments) return false;
-
-  // If tool calls changed
-  if (prev.message.toolCalls !== next.message.toolCalls) return false;
-
-  // If external data changed (brave, tutor, debug)
-  if (prev.braveEntry !== next.braveEntry) return false;
-  if (prev.tutorEntry !== next.tutorEntry) return false;
-  if (prev.debugEntry !== next.debugEntry) return false;
-
-  // If chat/model context changed (affects panels and stats), re-render
-  if (prev.chat !== next.chat) return false;
-  if (prev.models !== next.models) return false;
-  if (prev.autoReasoningModelIds !== next.autoReasoningModelIds) return false;
-
-  // Default: assume equal if all above are equal
-  return true;
-});
+export const MessageCard = memo(MessageCardComponent);
 
 function AssistantMessageContent({
   message,
@@ -366,8 +249,8 @@ function AssistantMessageContent({
   models,
   chat,
   showStats,
-  isStatsExpanded,
-  toggleStats,
+  statsExpanded,
+  onToggleStats,
   branchFromMessage,
   onChooseRegenerateModel,
   setLightbox,
@@ -393,8 +276,8 @@ function AssistantMessageContent({
   models: ORModel[];
   chat?: Chat | null;
   showStats: boolean;
-  isStatsExpanded: (id: string) => boolean;
-  toggleStats: (id: string) => void;
+  statsExpanded: boolean;
+  onToggleStats: () => void;
   branchFromMessage: () => void;
   onChooseRegenerateModel: (modelId?: string) => void;
   setLightbox: (
@@ -403,53 +286,15 @@ function AssistantMessageContent({
       index: number;
     } | null,
   ) => void;
-  attachments: Attachment[];
+  attachments: PersistedAttachment[];
   tutorEnabled: boolean;
   messagePanelsNode: React.ReactNode;
 }) {
-  // Fallback: If content is empty but we have a "Final Answer" in the reasoning trace, show it.
-  // This handles cases where the backend streams the final answer as a thought event first.
   const displayContent = useMemo(() => {
     if (message.content) return message.content;
-    if (!message.reasoning) return '';
-
-    try {
-      const trace = parsePartialJson(message.reasoning);
-      if (Array.isArray(trace) && trace.length > 0) {
-        let finalAnswerFound = false;
-        let combinedContent = '';
-
-        for (const item of trace) {
-          if (item.type === 'thought' && typeof item.output === 'string') {
-            if (finalAnswerFound) {
-              combinedContent += item.output;
-              continue;
-            }
-
-            const normalized = item.output
-              .trim()
-              .toLowerCase()
-              .replace(/^#+\s*/, '')
-              .replace(/^\*\*|^\*|^__|^_/, '')
-              .trim();
-
-            if (normalized.startsWith('final answer')) {
-              finalAnswerFound = true;
-              combinedContent += item.output.replace(
-                /^([#\s]*|[*_]+)\s*final answer[*_]*[:\s]*/i,
-                '',
-              );
-            }
-          }
-        }
-
-        if (finalAnswerFound) return combinedContent;
-      }
-    } catch {
-      // ignore
-    }
+    if (message.deepResearch?.answer) return message.deepResearch.answer;
     return '';
-  }, [message.content, message.reasoning]);
+  }, [message.content, message.deepResearch?.answer]);
 
   return (
     <div className="relative">
@@ -533,8 +378,8 @@ function AssistantMessageContent({
         showStats={showStats}
         waitingForFirstToken={waitingForFirstToken}
         isLatestAssistant={isLatestAssistant}
-        isExpanded={isStatsExpanded(message.id)}
-        onToggle={() => toggleStats(message.id)}
+        isExpanded={statsExpanded}
+        onToggle={onToggleStats}
         message={message}
         chat={chat}
         models={models}
@@ -575,7 +420,7 @@ function UserMessageContent({
       index: number;
     } | null,
   ) => void;
-  attachments: Attachment[];
+  attachments: PersistedAttachment[];
 }) {
   return (
     <div className="relative">

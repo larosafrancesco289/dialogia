@@ -36,6 +36,7 @@ export function ChatSidebar() {
     loadModels,
     createFolder,
     moveChatToFolder,
+    collapsed,
   } = useChatStore(
     (s) => ({
       chats: s.chats,
@@ -48,10 +49,10 @@ export function ChatSidebar() {
       loadModels: s.loadModels,
       createFolder: s.createFolder,
       moveChatToFolder: s.moveChatToFolder,
+      collapsed: s.ui.sidebarCollapsed ?? false,
     }),
     shallow,
   );
-  const collapsed = useChatStore((s) => s.ui.sidebarCollapsed ?? false);
 
   const { handleDragOver, handleDrop, handleDragStart, handleDragEnd, getDragData } =
     useDragAndDrop();

@@ -1,10 +1,10 @@
-import { v4 as uuidv4 } from 'uuid';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { createModelIndex } from '@/lib/models';
 import type { StoreState, UIState } from '@/lib/store/types';
 import type { Chat, Message, ORModel } from '@/lib/types';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
 import { buildDefaultVoiceState } from '@/lib/voice/types';
+import { createAssistantMessage } from '@/lib/messages/createMessage';
 
 export type HeadlessStoreOptions = {
   chat: Chat;
@@ -115,16 +115,11 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
     editUserMessage: async () => {},
     editAssistantMessage: async () => {},
     appendAssistantMessage: async (content, opts) => {
-      const message: Message = {
-        id: uuidv4(),
+      const message = createAssistantMessage({
         chatId: chat.id,
-        role: 'assistant',
         content,
-        createdAt: Date.now(),
         model: opts?.modelId ?? chat.settings.model,
-        reasoning: '',
-        toolCalls: [],
-      };
+      });
       set((state) => {
         const list = state.messages[chat.id] ?? [];
         return {

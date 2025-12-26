@@ -1,6 +1,7 @@
 import type { MessageTutor } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { normalizeTutorQuizPayload, withContentReset } from '@/lib/agent/tools/tutor/shared';
+import { logger } from '@/lib/logger';
 
 type QuizArgs = {
   items: Array<{ id: string; [key: string]: unknown }>;
@@ -35,7 +36,7 @@ export function createQuizHandler(
         if (title) payload.title = title;
         return { handled: true, usedContent: true, payload: JSON.stringify(payload) };
       } catch (error) {
-        console.error('Failed to serialize tutor items', error);
+        logger.error('Failed to serialize tutor items', error);
       }
       return { handled: true, usedContent: true };
     },

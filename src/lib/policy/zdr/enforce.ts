@@ -8,8 +8,18 @@ import {
   type ZdrFetchers,
   type ZdrLists,
 } from './index';
-import type { StoreSetter } from '@/lib/agent/types';
+import type { StoreSetter as ContractStoreSetter } from '@/lib/agent/contracts';
 import type { EnsureListsResult, ZdrFilterMode } from './types';
+
+// Minimal state type for ZDR enforcement
+type ZdrEnforceState = {
+  zdrModelIds?: string[];
+  zdrProviderIds?: string[];
+  zdrFetchedAt?: number;
+  ui: { notice?: string };
+};
+
+type StoreSetter<S extends ZdrEnforceState = ZdrEnforceState> = ContractStoreSetter<S>;
 
 export async function computeZdrFilter<T extends { id?: string }>(
   models: T[],
@@ -31,9 +41,9 @@ export function buildZdrNotice(
   return getZdrBlockNotice(modelId, verdict.reason);
 }
 
-export function guardModelOrNotice(
+export function guardModelOrNotice<S extends ZdrEnforceState>(
   modelId: string | undefined,
-  set: StoreSetter,
+  set: StoreSetter<S>,
   lists: ZdrLists,
 ): boolean {
   const trimmed = typeof modelId === 'string' ? modelId.trim() : '';
@@ -41,18 +51,18 @@ export function guardModelOrNotice(
     set((state) => ({
       ...toZdrState(lists),
       ui: { ...state.ui, notice: ZDR_UNAVAILABLE_NOTICE },
-    }));
+    } as Partial<S>));
     return false;
   }
   const verdict = evaluateZdrModel(trimmed, lists);
   if (verdict.status === 'allowed') {
-    set(() => toZdrState(lists));
+    set(() => toZdrState(lists) as Partial<S>);
     return true;
   }
   const notice = buildZdrNotice(trimmed, verdict);
   set((state) => ({
     ...toZdrState(lists),
     ui: { ...state.ui, notice },
-  }));
+  } as Partial<S>));
   return false;
 }

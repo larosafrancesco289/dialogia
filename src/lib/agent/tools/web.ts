@@ -11,6 +11,7 @@ import type {
 } from '@/lib/agent/types';
 import { parseJsonAfter } from './json';
 import { setSearchUiStatus } from '@/lib/agent/searchService';
+import { logger } from '@/lib/logger';
 
 function readSearchPayload(value: unknown): WebSearchArgs | null {
   if (!value || typeof value !== 'object') return null;
@@ -58,7 +59,7 @@ export function extractWebSearchArgs(text: string): WebSearchArgs | null {
       }
     }
   } catch (error) {
-    console.error('Failed to extract web search args', error);
+    logger.error('Failed to extract web search args', error);
   }
   return null;
 }

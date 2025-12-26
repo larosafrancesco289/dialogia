@@ -1,5 +1,4 @@
 import type {
-  Attachment,
   Chat,
   Message,
   ORModel,
@@ -7,15 +6,21 @@ import type {
   LearnerModel,
   LearningPlan,
   LearnerModelDebugSnapshot,
+  PersistedAttachment,
 } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import { ProviderSort } from '@/lib/models/providerSort';
-import type { SetState, GetState } from 'zustand';
-import type { StoreState, UIState } from '@/lib/store/types';
+import type {
+  StoreGetter as ContractStoreGetter,
+  StoreSetter as ContractStoreSetter,
+  TurnStoreState,
+  UiNextOverrides,
+  UiSnapshot,
+} from '@/lib/agent/contracts';
 import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
 
-export type StoreSetter = SetState<StoreState>;
-export type StoreGetter = GetState<StoreState>;
+export type StoreSetter = ContractStoreSetter<TurnStoreState>;
+export type StoreGetter = ContractStoreGetter<TurnStoreState>;
 export type PersistMessage = (message: Message) => Promise<void>;
 
 export type ModelContentBlock =
@@ -103,24 +108,29 @@ export type ToolCall = {
   };
 };
 
-export type TutorToolName =
-  | 'ask_student_question'
-  | 'create_diagnostic'
-  | 'generate_plan'
-  | 'update_plan'
-  | 'assess_answer'
-  | 'update_learner_model'
-  | 'apply_learner_model_feedback'
-  | 'get_plan_suggestions'
-  | 'quiz_mcq'
-  | 'quiz_fill_blank'
-  | 'quiz_open_ended'
-  | 'flashcards'
-  | 'grade_open_response'
-  | 'add_to_deck'
-  | 'srs_review';
+export const TUTOR_TOOL_NAMES = [
+  'ask_student_question',
+  'create_diagnostic',
+  'generate_plan',
+  'update_plan',
+  'assess_answer',
+  'update_learner_model',
+  'apply_learner_model_feedback',
+  'get_plan_suggestions',
+  'quiz_mcq',
+  'quiz_fill_blank',
+  'quiz_open_ended',
+  'flashcards',
+  'grade_open_response',
+  'add_to_deck',
+  'srs_review',
+] as const;
 
-export type ToolName = 'web_search' | TutorToolName;
+export type TutorToolName = (typeof TUTOR_TOOL_NAMES)[number];
+
+export const TOOL_NAMES = ['web_search', ...TUTOR_TOOL_NAMES] as const;
+
+export type ToolName = (typeof TOOL_NAMES)[number];
 
 export type WebSearchArgs = WebSearchToolArgs;
 
@@ -162,14 +172,14 @@ export type PlanTurnResult = {
 
 export type ComposeTurnArgs = {
   chat: Chat;
-  ui: UIState;
+  ui: UiSnapshot;
   modelIndex: ModelIndex;
   prior: Message[];
   newUser?: {
     content?: string;
-    attachments?: Attachment[];
+    attachments?: PersistedAttachment[];
   };
-  attachments?: Attachment[];
+  attachments?: PersistedAttachment[];
 };
 
 export type TurnComposition = {
@@ -187,7 +197,7 @@ export type TurnComposition = {
   tutor: {
     enabled: boolean;
   };
-  consumedTutorNudge?: import('@/lib/store/types').UINextOverrides['tutorNudge'];
+  consumedTutorNudge?: UiNextOverrides['tutorNudge'];
 };
 
 export type StreamFinalOptions = {

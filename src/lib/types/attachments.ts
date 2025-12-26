@@ -1,5 +1,4 @@
-// Attachments supported by the UI (phase 1: images only)
-export type Attachment = {
+type AttachmentBase = {
   id: string;
   kind: 'image' | 'pdf' | 'audio';
   name?: string;
@@ -14,9 +13,18 @@ export type Attachment = {
   pageCount?: number;
   // extracted plain text (pdf); trimmed/selected later for prompt
   text?: string;
-  // ephemeral: original file handle available in composer before sending (not relied on for persistence)
-  file?: File;
   // audio-only: base64-encoded payload (no data: prefix), and format hint for OpenRouter
   base64?: string;
   audioFormat?: 'wav' | 'mp3';
 };
+
+export type DraftAttachment = AttachmentBase & {
+  // ephemeral: original file handle available in composer before sending
+  file?: File;
+};
+
+export type PersistedAttachment = AttachmentBase & {
+  file?: never;
+};
+
+export type Attachment = PersistedAttachment;

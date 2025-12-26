@@ -2,16 +2,38 @@
 // Responsibility: Manage cached ZDR model/provider lists in the store and
 // expose helpers that reuse computeZdrFilter without duplicating logic in slices.
 
-import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
-import { ensureZdrLists, toZdrState, type ZdrLists, type ZdrFetchers } from './index';
+import type { StoreSetter as ContractStoreSetter, StoreGetter as ContractStoreGetter } from '@/lib/agent/contracts';
+import {
+  ensureZdrLists,
+  filterZdrModels,
+  toZdrState,
+  type ZdrLists,
+  type ZdrFetchers,
+} from './index';
 import { computeZdrFilter, guardModelOrNotice } from './enforce';
 import { ZDR_CACHE_TTL_MS } from './constants';
 import type { EnsureListsResult, ZdrFilterMode, ZdrSnapshot } from './types';
+
+// Minimal state type for ZDR cache operations
+type ZdrCacheState = {
+  zdrModelIds?: string[];
+  zdrProviderIds?: string[];
+  zdrFetchedAt?: number;
+  ui: { notice?: string };
+};
+
+type StoreSetter<S extends ZdrCacheState = ZdrCacheState> = ContractStoreSetter<S>;
+type StoreGetter<S extends ZdrCacheState = ZdrCacheState> = ContractStoreGetter<S>;
 
 function hasValues(values?: Iterable<string> | null): boolean {
   if (!values) return false;
   for (const _ of values) return true;
   return false;
+}
+
+function toSet(values?: Iterable<string> | null): Set<string> {
+  if (!values) return new Set<string>();
+  return new Set<string>(Array.from(values).filter((v) => typeof v === 'string' && v.trim()));
 }
 
 function isCacheFresh(snapshot: ZdrSnapshot, now: number): boolean {
@@ -20,7 +42,7 @@ function isCacheFresh(snapshot: ZdrSnapshot, now: number): boolean {
   return now - snapshot.fetchedAt < ZDR_CACHE_TTL_MS;
 }
 
-export function getZdrCacheSnapshot(get: StoreGetter): ZdrSnapshot {
+export function getZdrCacheSnapshot<S extends ZdrCacheState>(get: StoreGetter<S>): ZdrSnapshot {
   const state = get();
   return {
     modelIds: state.zdrModelIds,
@@ -29,13 +51,13 @@ export function getZdrCacheSnapshot(get: StoreGetter): ZdrSnapshot {
   };
 }
 
-export function hydrateZdrCache(set: StoreSetter, lists: ZdrLists, fetchedAt?: number) {
-  set(() => toZdrState(lists, fetchedAt ?? Date.now()));
+export function hydrateZdrCache<S extends ZdrCacheState>(set: StoreSetter<S>, lists: ZdrLists, fetchedAt?: number) {
+  set(() => toZdrState(lists, fetchedAt ?? Date.now()) as Partial<S>);
 }
 
-export async function refreshZdrListsIfNeeded(
-  set: StoreSetter,
-  get: StoreGetter,
+export async function refreshZdrListsIfNeeded<S extends ZdrCacheState>(
+  set: StoreSetter<S>,
+  get: StoreGetter<S>,
   fetchers?: ZdrFetchers,
 ): Promise<ZdrLists> {
   const snapshot = getZdrCacheSnapshot(get);
@@ -51,32 +73,29 @@ export async function refreshZdrListsIfNeeded(
   return lists;
 }
 
-export async function computeZdrFilterCached<T extends { id?: string }>(
+export async function computeZdrFilterCached<T extends { id?: string }, S extends ZdrCacheState>(
   models: T[],
   mode: ZdrFilterMode,
-  set: StoreSetter,
-  get: StoreGetter,
+  set: StoreSetter<S>,
+  get: StoreGetter<S>,
   fetchers?: ZdrFetchers,
 ): Promise<EnsureListsResult<T>> {
   const snapshot = getZdrCacheSnapshot(get);
-  const now = Date.now();
-  const fresh = isCacheFresh(snapshot, now);
-  const existing = fresh
-    ? {
-        modelIds: snapshot.modelIds,
-        providerIds: snapshot.providerIds,
-      }
-    : undefined;
-  const result = await computeZdrFilter(models, mode, existing, fetchers);
-  const fetchedAt = fresh ? (snapshot.fetchedAt ?? now) : now;
-  hydrateZdrCache(set, result.lists, fetchedAt);
-  return result;
+  const lists = fetchers
+    ? await refreshZdrListsIfNeeded(set, get, fetchers)
+    : {
+        modelIds: toSet(snapshot.modelIds),
+        providerIds: toSet(snapshot.providerIds),
+      };
+  const filter = filterZdrModels(models, lists);
+  const filtered = mode === 'enforce' ? filter.models : models;
+  return { lists, filter, filtered };
 }
 
-export async function guardZdrOrNotifyCached(
+export async function guardZdrOrNotifyCached<S extends ZdrCacheState>(
   modelId: string,
-  set: StoreSetter,
-  get: StoreGetter,
+  set: StoreSetter<S>,
+  get: StoreGetter<S>,
   fetchers?: ZdrFetchers,
 ): Promise<boolean> {
   const result = await computeZdrFilterCached([{ id: modelId }], 'enforce', set, get, fetchers);

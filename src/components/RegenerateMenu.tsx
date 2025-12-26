@@ -2,17 +2,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
+import { shallow } from 'zustand/shallow';
 import { formatModelLabel } from '@/lib/models';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 
 export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => void }) {
-  const { chats, selectedChatId } = useChatStore();
-  const chat = chats.find((c) => c.id === selectedChatId);
+  const { chat, favoriteModelIds, models } = useChatStore(
+    (s) => ({
+      chat: s.selectedChatId ? s.chats.find((c) => c.id === s.selectedChatId) : undefined,
+      favoriteModelIds: s.favoriteModelIds,
+      models: s.models,
+    }),
+    shallow,
+  );
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { favoriteModelIds, models } = useChatStore();
   const curatedModels = useTierCuratedModels();
   const tierDefaultModelId = useTierDefaultModelId();
   const modelMap = useMemo(() => {

@@ -1,5 +1,5 @@
-import type { Attachment, Chat, Message, ModelTransport } from '@/lib/types';
-import type { UIState } from '@/lib/store/types';
+import type { Chat, Message, ModelTransport, PersistedAttachment } from '@/lib/types';
+import type { UiSnapshot } from '@/lib/agent/contracts';
 import type {
   ComposeTurnArgs,
   ModelMessage,
@@ -26,7 +26,7 @@ export type AuthResolver = (modelId: string) => {
   apiKey: string;
 } | null;
 
-export type AttachmentPreparer = (modelId: string) => Promise<Attachment[]>;
+export type AttachmentPreparer = (modelId: string) => Promise<PersistedAttachment[]>;
 
 export type RunTurnArgs = {
   chat: Chat;
@@ -35,7 +35,7 @@ export type RunTurnArgs = {
   userContent: string;
   assistantMessage: Message;
   priorMessages: Message[];
-  ui: UIState;
+  ui: UiSnapshot;
   controller: AbortController;
   baseTurnContext: BaseTurnContext;
   compose: ComposeFn;
@@ -43,7 +43,7 @@ export type RunTurnArgs = {
   streamFinal: StreamFn;
   authResolver: AuthResolver;
   attachmentPreparer?: AttachmentPreparer;
-  fallbackAttachments?: Attachment[];
+  fallbackAttachments?: PersistedAttachment[];
   shouldShortCircuit?: (plan: PlanTurnResult) => boolean;
   hooks?: RunTurnHooks;
   startBuffered?: boolean;

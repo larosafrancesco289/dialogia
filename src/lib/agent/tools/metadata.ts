@@ -1,3 +1,4 @@
+import { TUTOR_TOOL_NAMES } from '@/lib/agent/types';
 import type { ToolName, TutorToolName } from '@/lib/agent/types';
 import type { TutorPhase } from '@/lib/agent/tutor/state';
 
@@ -110,10 +111,7 @@ export const TOOL_METADATA: Record<ToolName, ToolMetadata> = {
   },
 };
 
-const toolNames = Object.keys(TOOL_METADATA) as ToolName[];
-const tutorToolNames = toolNames.filter((name) =>
-  TOOL_METADATA[name].category.startsWith('tutor'),
-) as TutorToolName[];
+const tutorToolNames = [...TUTOR_TOOL_NAMES] as TutorToolName[];
 
 export function getToolCategory(name: string): ToolCategory {
   return TOOL_METADATA[name as ToolName]?.category ?? 'other';

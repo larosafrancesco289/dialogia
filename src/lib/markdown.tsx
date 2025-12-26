@@ -7,6 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { logger } from '@/lib/logger';
 
 const WRAP_STORAGE_KEY = 'dialogia:code-wrap';
 const WRAP_EVENT = 'dialogia:code-wrap-change';
@@ -330,7 +331,7 @@ export function Markdown({ content }: { content: string }) {
           zoom = mediumZoom('.markdown img', { background: 'rgba(0,0,0,0.7)', margin: 24 });
         }
       } catch (error) {
-        console.error('Failed to initialize image zoom', error);
+        logger.error('Failed to initialize image zoom', error);
       }
     };
     if (typeof (window as any).requestIdleCallback === 'function') {
@@ -343,7 +344,7 @@ export function Markdown({ content }: { content: string }) {
       try {
         zoom?.detach?.();
       } catch (error) {
-        console.error('Failed to detach zoom', error);
+        logger.error('Failed to detach zoom', error);
       }
     };
   }, [content]);

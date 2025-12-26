@@ -52,7 +52,6 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
   return overrides ? { ...base, ...overrides } : base;
 }
 
-export function resetEphemeralUi(next?: UIState): UIState {
-  const target = next ? { ...next } : buildDefaultUIState();
-  return { ...target, ...EPHEMERAL_DEFAULTS };
+export function resetEphemeralUi<T extends { overrides?: UIState['overrides'] }>(next: T): T {
+  return { ...next, overrides: undefined };
 }

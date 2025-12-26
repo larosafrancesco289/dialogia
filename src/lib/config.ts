@@ -107,6 +107,18 @@ export function getAccessCookieDomain(): string | undefined {
   return readEnv('ACCESS_COOKIE_DOMAIN');
 }
 
+export function isAuthTimingDebugEnabled(): boolean {
+  return readBooleanEnv('AUTH_TIMING_DEBUG', false);
+}
+
+export function isAuthDebugHeadersEnabled(): boolean {
+  return readBooleanEnv('AUTH_DEBUG_HEADERS', false);
+}
+
+export function isAuthDebugRouteEnabled(): boolean {
+  return readBooleanEnv('AUTH_DEBUG_ROUTE_ENABLED', false);
+}
+
 export function requireClientKeyOrProxy(): { key?: string; useProxy: boolean } {
   const key = getPublicOpenRouterKey();
   const useProxy = isOpenRouterProxyEnabled();

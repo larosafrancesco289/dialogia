@@ -1,4 +1,4 @@
-import type { Chat, Message, ORModel, Attachment } from '@/lib/types';
+import type { Chat, Message, ORModel, PersistedAttachment } from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
 import { TokenBudgeter } from './TokenBudgeter';
 import { AttachmentProcessor } from './AttachmentProcessor';
@@ -8,7 +8,7 @@ export function buildChatCompletionMessages(params: {
   priorMessages: Message[];
   models: ORModel[];
   newUserContent?: string;
-  newUserAttachments?: Attachment[];
+  newUserAttachments?: PersistedAttachment[];
 }): ModelMessage[] {
   const { chat, priorMessages, models, newUserContent, newUserAttachments } = params;
   const modelInfo = models.find((m) => m.id === chat.settings.model);
@@ -19,15 +19,15 @@ export function buildChatCompletionMessages(params: {
   const history: {
     role: 'user' | 'assistant';
     content: string;
-    attachments?: Attachment[];
-    annotations?: any;
+    attachments?: PersistedAttachment[];
+    annotations?: Message['annotations'];
   }[] = [];
 
   for (const m of priorMessages) {
     if (m.role === 'system') continue;
     if (m.role !== 'user' && m.role !== 'assistant') continue;
     const base = typeof m.content === 'string' ? m.content : '';
-    const hidden = (m as any).hiddenContent as string | undefined;
+    const hidden = m.hiddenContent;
     const combined =
       m.role === 'assistant'
         ? [base, typeof hidden === 'string' ? hidden : ''].filter((x) => x && x.trim()).join('\n\n')
@@ -37,7 +37,7 @@ export function buildChatCompletionMessages(params: {
       role: m.role,
       content: combined,
       attachments: m.attachments,
-      annotations: (m as any).annotations,
+      annotations: m.annotations,
     });
   }
 

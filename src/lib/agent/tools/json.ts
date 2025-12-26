@@ -1,3 +1,4 @@
+import { TUTOR_TOOL_NAMES } from '@/lib/agent/types';
 import type { TutorToolCall } from '@/lib/agent/types';
 
 export function parseJsonAfter(
@@ -43,18 +44,7 @@ export function parseJsonAfter(
 
 export function extractTutorToolCalls(text: string): TutorToolCall[] {
   if (typeof text !== 'string' || !text) return [];
-  const INLINE_TUTOR_TOOL_NAMES: TutorToolCall['name'][] = [
-    'ask_student_question',
-    'create_diagnostic',
-    'generate_plan',
-    'update_plan',
-    'assess_answer',
-    'update_learner_model',
-    'quiz_mcq',
-    'quiz_fill_blank',
-    'quiz_open_ended',
-    'flashcards',
-  ];
+  const INLINE_TUTOR_TOOL_NAMES = [...TUTOR_TOOL_NAMES] as TutorToolCall['name'][];
   const output: TutorToolCall[] = [];
   for (const tool of INLINE_TUTOR_TOOL_NAMES) {
     const idx = text.indexOf(tool);

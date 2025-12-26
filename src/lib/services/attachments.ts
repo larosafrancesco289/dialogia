@@ -1,16 +1,16 @@
 import { prepareAttachmentsForModel } from '@/lib/agent/attachments';
-import type { Attachment, ORModel } from '@/lib/types';
+import type { DraftAttachment, ORModel, PersistedAttachment } from '@/lib/types';
 
 export const prepareAttachmentsByModel = async ({
   attachments,
   modelIds,
   models,
 }: {
-  attachments?: Attachment[];
+  attachments?: DraftAttachment[];
   modelIds: string[];
   models: ORModel[];
-}): Promise<Map<string, Attachment[]>> => {
-  const map = new Map<string, Attachment[]>();
+}): Promise<Map<string, PersistedAttachment[]>> => {
+  const map = new Map<string, PersistedAttachment[]>();
   await Promise.all(
     modelIds.map(async (modelId) => {
       const prepared = await prepareAttachmentsForModel({

@@ -32,7 +32,7 @@ test('fetchModels caches repeated lookups for the same API key', async () => {
   assert.equal(second[0]?.id, 'test/model');
 });
 
-test('ZDR endpoint caching is shared between provider and model lookups', async () => {
+test('ZDR endpoint lookups do not share transport cache', async () => {
   clearOpenRouterCachesForTest();
   let calls = 0;
   const fakeFetcher = async () => {
@@ -48,7 +48,7 @@ test('ZDR endpoint caching is shared between provider and model lookups', async 
   const providers = await fetchZdrProviderIds(fakeFetcher);
   const modelIds = await fetchZdrModelIds(fakeFetcher);
 
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   assert.ok(providers.has('moonshotai'));
   assert.ok(modelIds.has('mistralai/mixtral-8x7b'));
 });

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AUTH_COOKIE_NAME, TIER_COOKIE_NAME, PUBLIC_AUTH_PATHS } from '@/lib/auth/shared';
+import {
+  AUTH_COOKIE_NAME,
+  TIER_COOKIE_NAME,
+  PUBLIC_AUTH_PATHS,
+  AUTH_MIDDLEWARE_MATCHER,
+} from '@/lib/auth/shared';
 import { verifyAuthTokenEdgeDetailed } from '@/lib/auth/edge';
-import { isProd } from '@/lib/config';
+import { isAuthDebugHeadersEnabled, isAuthTimingDebugEnabled, isProd } from '@/lib/config';
 import { redirectToAccess } from '@/lib/auth/errors';
+import { computeSecretFingerprintEdge } from '@/lib/auth/fingerprint.edge';
 import type { AccessTier } from '@/lib/auth/types';
 
 // Dynamic paths that remain public; static assets are excluded via the matcher.
@@ -11,9 +17,9 @@ function isPublicPath(pathname: string): boolean {
 }
 
 export default async function middleware(req: NextRequest) {
-  const shouldLogTiming = !isProd() && process.env.AUTH_TIMING_DEBUG === 'true';
+  const shouldLogTiming = !isProd() && isAuthTimingDebugEnabled();
   const startedAt = shouldLogTiming && typeof performance !== 'undefined' ? performance.now() : 0;
-  const shouldDebugAuth = process.env.AUTH_DEBUG_HEADERS === 'true';
+  const shouldDebugAuth = isAuthDebugHeadersEnabled();
   // Debug notes (Vercel redirect loop, Dec 2025):
   // - /api/auth/set-free-tier returns 200 and sets dlg_access/dlg_tier.
   // - GET / sends dlg_access but receives 307 with x-auth-reason=invalid_token.
@@ -37,15 +43,6 @@ export default async function middleware(req: NextRequest) {
       res.headers.set(`x-auth-${key}`, value);
     }
     return res;
-  };
-
-  // Compute secret fingerprint for debugging (first 8 chars of SHA-256 hash)
-  const computeSecretFingerprint = async (s: string | undefined): Promise<string> => {
-    if (!s) return 'none';
-    const data = new TextEncoder().encode(s);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.slice(0, 4).map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const { pathname } = req.nextUrl;
@@ -86,7 +83,7 @@ export default async function middleware(req: NextRequest) {
 
   const result = await verifyAuthTokenEdgeDetailed(token, secret);
   if (!result.ok) {
-    const fingerprint = await computeSecretFingerprint(secret);
+    const fingerprint = await computeSecretFingerprintEdge(secret);
     const res = redirectToAccess(req);
     return withTiming(withDebug(res, {
       reason: result.reason,
@@ -117,5 +114,5 @@ export default async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/|favicon.ico|assets|api).*)'],
+  matcher: AUTH_MIDDLEWARE_MATCHER,
 };

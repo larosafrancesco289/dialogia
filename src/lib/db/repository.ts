@@ -1,5 +1,6 @@
 import type { Chat, Folder, Message, MessageTutor } from '@/lib/types';
-import { buildHiddenTutorContent } from '@/lib/agent/tutorFlow';
+import { sanitizeMessageRecord } from '@/lib/db/sanitize';
+import { buildHiddenTutorContent } from '@/lib/tutor/hiddenContent';
 
 type DbCollection<T> = {
   toArray?: () => Promise<T[]>;
@@ -111,7 +112,8 @@ export function createRepository(db: DialogiaDbLike) {
   };
 
   const saveMessage = async (message: Message) => {
-    await db.messages.put(message);
+    const { next } = sanitizeMessageRecord(message);
+    await db.messages.put(next);
   };
 
   const saveFolder = async (folder: Folder) => {
@@ -156,8 +158,6 @@ export function createRepository(db: DialogiaDbLike) {
 
     const messages: Record<string, Message[]> = {};
     const tutorByMessageId: Record<string, MessageTutor> = {};
-    const updates: Message[] = [];
-
     for (const m of messagesArray) {
       if (!messages[m.chatId]) messages[m.chatId] = [];
       const nextMessage = { ...m } as Message;
@@ -168,7 +168,6 @@ export function createRepository(db: DialogiaDbLike) {
             const hidden = buildHiddenTutorContent(nextMessage.tutor);
             if (hidden) {
               nextMessage.hiddenContent = hidden;
-              updates.push(nextMessage);
             }
           } catch {
             /* ignore tutor content backfill failures */
@@ -182,12 +181,6 @@ export function createRepository(db: DialogiaDbLike) {
     }
 
     const resolvedSelected = selectedChatId || chats[0]?.id;
-    if (updates.length > 0) {
-      for (const msg of updates) {
-        void saveMessage(msg).catch(() => undefined);
-      }
-    }
-
     return { chats, folders, messages, selectedChatId: resolvedSelected, tutorByMessageId };
   };
 

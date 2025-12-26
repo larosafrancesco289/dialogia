@@ -8,6 +8,7 @@ import { ProviderSort } from '@/lib/models/providerSort';
 import type { RegenerateOptions, SearchProvider } from '@/lib/agent/types';
 import { streamFinal } from '@/lib/agent/streaming';
 import { setTurnController } from '@/lib/services/controllers';
+import { createAssistantMessage } from '@/lib/messages/createMessage';
 
 export async function regenerate(opts: RegenerateOptions): Promise<void> {
   const { chat, chatId, targetMessageId, messages, turn, controller, overrideModelId } = opts;
@@ -126,18 +127,16 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   appliedGenSettings.tutor_mode = !!tutorModeForTurn;
   if (providerSort) appliedGenSettings.providerSort = providerSort;
 
-  const replacement: Message = {
+  const replacement = createAssistantMessage({
     id: original.id,
     chatId,
-    role: 'assistant',
     content: '',
     createdAt: original.createdAt,
     model: modelIdForTurn,
-    reasoning: '',
     attachments: [],
     systemSnapshot,
     genSettings: appliedGenSettings,
-  } as Message;
+  });
 
   set((state) => ({
     messages: {

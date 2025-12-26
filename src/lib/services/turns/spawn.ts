@@ -1,8 +1,8 @@
-import { v4 as uuidv4 } from 'uuid';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
 import { saveMessage } from '@/lib/db';
-import type { Attachment, Message } from '@/lib/types';
+import type { PersistedAttachment, Message } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
+import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
 
 export type SpawnMessagesResult = {
   userMessage: Message;
@@ -24,34 +24,30 @@ export const spawnTurnMessages = async ({
   chatId: string;
   content: string;
   metadata?: Message['metadata'];
-  primaryAttachments: Attachment[];
+  primaryAttachments: PersistedAttachment[];
   activeModelIds: string[];
   set: StoreSetter;
   get: StoreGetter;
 }): Promise<SpawnMessagesResult | null> => {
   if (!activeModelIds.length) return null;
   const now = Date.now();
-  const userMessage: Message = {
-    id: uuidv4(),
+  const userMessage = createUserMessage({
     chatId,
-    role: 'user',
     content,
     createdAt: now,
     attachments: primaryAttachments.length ? primaryAttachments : undefined,
     metadata: metadata || undefined,
-  };
+  });
 
-  const assistantPlaceholders = activeModelIds.map((modelId, index) => ({
-    id: uuidv4(),
-    chatId,
-    role: 'assistant',
-    content: '',
-    createdAt: now + 1 + index,
-    model: modelId,
-    reasoning: '',
-    attachments: [],
-    toolCalls: [],
-  })) as Message[];
+  const assistantPlaceholders = activeModelIds.map((modelId, index) =>
+    createAssistantMessage({
+      chatId,
+      content: '',
+      createdAt: now + 1 + index,
+      model: modelId,
+      attachments: [],
+    }),
+  );
   const assistantByModel = new Map<string, Message>();
   assistantPlaceholders.forEach((msg, index) => {
     const modelId = activeModelIds[index];
@@ -62,7 +58,7 @@ export const spawnTurnMessages = async ({
   setTurnController(chatId, masterController);
   let pendingStreams = assistantPlaceholders.length;
   if (pendingStreams === 0) {
-    clearTurnController(chatId);
+    clearTurnController(chatId, masterController);
     return null;
   }
 
@@ -71,13 +67,13 @@ export const spawnTurnMessages = async ({
     pendingStreams -= 1;
     const stillRunning = pendingStreams > 0;
     set((state) => ({ ui: { ...state.ui, isStreaming: stillRunning } }));
-    if (!stillRunning) clearTurnController(chatId);
+    if (!stillRunning) clearTurnController(chatId, masterController);
   };
 
   const completeAll = () => {
     pendingStreams = 0;
     set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
-    clearTurnController(chatId);
+    clearTurnController(chatId, masterController);
   };
 
   set((state) => ({

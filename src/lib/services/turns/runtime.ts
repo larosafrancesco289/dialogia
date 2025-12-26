@@ -1,7 +1,13 @@
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import type { Attachment, Chat, Message, ModelTransport } from '@/lib/types';
+import type {
+  DraftAttachment,
+  PersistedAttachment,
+  Chat,
+  Message,
+  ModelTransport,
+} from '@/lib/types';
 import type { StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
-import type { UIState, UINextOverrides } from '@/lib/store/types';
+import type { UiNextOverrides, UiSnapshot } from '@/lib/agent/contracts';
 import type { ModelCapabilityFlags } from '@/lib/models';
 import { saveChat, saveMessage } from '@/lib/db';
 import { ensureTutorDefaults } from '@/lib/agent/tutorFlow';
@@ -15,14 +21,14 @@ export type TurnModelContext = {
   modelId: string;
   auth: ModelAuth & { transport: ModelTransport };
   caps: ModelCapabilityFlags;
-  attachments: Attachment[];
+  attachments: PersistedAttachment[];
 };
 
 export type SendRuntime = {
   chatId: string;
   chat: Chat;
-  ui: UIState;
-  next: UINextOverrides;
+  ui: UiSnapshot;
+  next: UiNextOverrides;
   tutorEnabled: boolean;
   activeModelIds: string[];
   primaryModelId?: string;
@@ -36,7 +42,7 @@ export const prepareSendRuntime = async ({
   set,
   get,
 }: {
-  attachments?: Attachment[];
+  attachments?: DraftAttachment[];
   set: StoreSetter;
   get: StoreGetter;
 }): Promise<SendRuntime | null> => {

@@ -408,23 +408,41 @@ export async function streamChatCompletion(params: StreamParams): Promise<void> 
     onMessage: ({ data }) => {
       try {
         const event = JSON.parse(data);
+        if (!isRecord(event) || typeof event.type !== 'string') return;
         switch (event.type) {
           case 'content_block_delta':
-            if (event.delta?.type === 'text_delta' && typeof event.delta?.text === 'string') {
-              full += event.delta.text;
-              callbacks?.onToken?.(event.delta.text);
-            } else if (
-              event.delta?.type === 'thinking_delta' &&
-              typeof event.delta?.text === 'string'
-            ) {
-              callbacks?.onReasoningToken?.(event.delta.text);
+            if (isRecord(event.delta)) {
+              const deltaType = event.delta.type;
+              if (deltaType === 'text_delta' && typeof event.delta.text === 'string') {
+                full += event.delta.text;
+                callbacks?.onToken?.(event.delta.text);
+              } else if (deltaType === 'thinking_delta' && typeof event.delta.text === 'string') {
+                callbacks?.onReasoningToken?.(event.delta.text);
+              }
             }
             break;
           case 'message_delta':
-            usage = fromAnthropicUsage(event.usage);
+            usage = isRecord(event.usage)
+              ? fromAnthropicUsage({
+                  input_tokens:
+                    typeof event.usage.input_tokens === 'number'
+                      ? event.usage.input_tokens
+                      : undefined,
+                  output_tokens:
+                    typeof event.usage.output_tokens === 'number'
+                      ? event.usage.output_tokens
+                      : undefined,
+                })
+              : undefined;
             break;
           case 'error':
-            callbacks?.onError?.(new Error(event.error?.message || 'Anthropic stream error'));
+            callbacks?.onError?.(
+              new Error(
+                isRecord(event.error) && typeof event.error.message === 'string'
+                  ? event.error.message
+                  : 'Anthropic stream error',
+              ),
+            );
             break;
           default:
             break;

@@ -1,5 +1,6 @@
 'use client';
 import { useChatStore } from '@/lib/store';
+import { shallow } from 'zustand/shallow';
 import {
   useCallback,
   useEffect,
@@ -73,7 +74,22 @@ export function SettingsDrawer() {
     hiddenModelIds,
     resetHiddenModels,
     initializeApp,
-  } = useChatStore();
+  } = useChatStore(
+    (s) => ({
+      chats: s.chats,
+      selectedChatId: s.selectedChatId,
+      updateChatSettings: s.updateChatSettings,
+      setUI: s.setUI,
+      ui: s.ui,
+      loadModels: s.loadModels,
+      toggleFavoriteModel: s.toggleFavoriteModel,
+      favoriteModelIds: s.favoriteModelIds,
+      hiddenModelIds: s.hiddenModelIds,
+      resetHiddenModels: s.resetHiddenModels,
+      initializeApp: s.initializeApp,
+    }),
+    shallow,
+  );
   const chat = chats.find((c) => c.id === selectedChatId);
   const [system, setSystem] = useState(chat?.settings.system ?? '');
   const [temperature, setTemperature] = useState<number | undefined>(chat?.settings.temperature);

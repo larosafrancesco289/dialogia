@@ -11,7 +11,7 @@ import { buildChatBody } from '@/lib/agent/request';
 import { consumeSse, type SseEvent } from '@/lib/api/stream';
 import { ApiError, API_ERROR_CODES, responseError } from '@/lib/api/errors';
 import { normalizeUsage, shouldIncludeUsage, type Usage } from '@/lib/api/normalizers';
-import { ZDR_CACHE_TTL_MS } from '@/lib/policy/zdr/constants';
+import { parseZdrEndpoints, type ZdrEndpoint } from '@/lib/policy/zdr/parsing';
 
 // Transport-only client for OpenRouter.
 // Request payload construction lives in agent/request.buildChatBody to keep one source of truth
@@ -19,29 +19,64 @@ import { ZDR_CACHE_TTL_MS } from '@/lib/policy/zdr/constants';
 
 const MODEL_CACHE_TTL_MS = 1000 * 60 * 5;
 let modelCache = new Map<string, { models: ORModel[]; fetchedAt: number; origin?: string }>();
-let zdrEndpointCache: { endpoints: any[]; fetchedAt: number } | null = null;
 
-async function loadZdrEndpoints(
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+const parsePricing = (
+  value: unknown,
+): { prompt?: number; completion?: number; currency?: string } | undefined => {
+  if (!isRecord(value)) return undefined;
+  const prompt = typeof value.prompt === 'number' ? value.prompt : undefined;
+  const completion = typeof value.completion === 'number' ? value.completion : undefined;
+  const currency = typeof value.currency === 'string' ? value.currency : undefined;
+  if (prompt == null && completion == null && currency == null) return undefined;
+  return { prompt, completion, currency };
+};
+
+const parseModelList = (payload: unknown): ORModel[] => {
+  const items = isRecord(payload)
+    ? Array.isArray(payload.data)
+      ? payload.data
+      : Array.isArray(payload.models)
+        ? payload.models
+        : Array.isArray(payload)
+          ? payload
+          : []
+    : Array.isArray(payload)
+      ? payload
+      : [];
+
+  return items
+    .map((entry): ORModel | null => {
+      if (!isRecord(entry)) return null;
+      const id = typeof entry.id === 'string' ? entry.id : '';
+      if (!id) return null;
+      const name = typeof entry.name === 'string' ? entry.name : undefined;
+      const context_length =
+        typeof entry.context_length === 'number' ? entry.context_length : undefined;
+      return {
+        id,
+        name,
+        context_length,
+        pricing: parsePricing(entry.pricing),
+        raw: entry,
+        transport: 'openrouter' as const,
+        transportModelId: id,
+        providerDisplay: 'OpenRouter',
+      };
+    })
+    .filter((model): model is ORModel => model !== null);
+};
+
+async function fetchZdrEndpoints(
   signal?: AbortSignal,
   fetcher: typeof orFetchZdrEndpoints = orFetchZdrEndpoints,
-): Promise<any[]> {
-  const now = Date.now();
-  if (zdrEndpointCache && now - zdrEndpointCache.fetchedAt < ZDR_CACHE_TTL_MS) {
-    return zdrEndpointCache.endpoints;
-  }
+): Promise<ZdrEndpoint[]> {
   const res = await fetcher({ signal });
   if (!res.ok) throw responseError(res, { code: API_ERROR_CODES.OPENROUTER_ZDR_FAILED });
   const payload = await res.json().catch(() => null);
-  if (!payload) return [];
-  const endpoints = Array.isArray(payload?.data)
-    ? payload.data
-    : Array.isArray(payload?.endpoints)
-      ? payload.endpoints
-      : Array.isArray(payload)
-        ? payload
-        : [];
-  zdrEndpointCache = { endpoints, fetchedAt: now };
-  return endpoints;
+  return parseZdrEndpoints(payload);
 }
 
 // Fetch provider identifiers for endpoints that are Zero Data Retention (ZDR)
@@ -50,21 +85,18 @@ export async function fetchZdrProviderIds(
   fetcher: typeof orFetchZdrEndpoints = orFetchZdrEndpoints,
 ): Promise<Set<string>> {
   try {
-    const items = await loadZdrEndpoints(undefined, fetcher);
+    const items = await fetchZdrEndpoints(undefined, fetcher);
     const providers = new Set<string>();
     for (const ep of items) {
       const tryAdd = (val: unknown) => {
         if (typeof val === 'string' && val.trim()) providers.add(val.trim());
       };
-      tryAdd((ep && (ep.provider || ep.provider_id || ep.slug || ep.id)) as any);
-      const models: any[] = Array.isArray(ep?.models) ? ep.models : [];
-      for (const m of models) {
-        const id: string | undefined = typeof m === 'string' ? m : m?.id;
-        if (id && id.includes('/')) tryAdd(id.split('/')[0]);
+      tryAdd(ep.providerId);
+      for (const modelId of ep.models) {
+        if (modelId.includes('/')) tryAdd(modelId.split('/')[0]);
       }
-      const eid: string | undefined = ep?.id;
-      if (eid && eid.includes('/')) tryAdd(eid.split('/')[0]);
-      const urlStr: string | undefined = ep?.url || ep?.endpoint || ep?.base_url;
+      if (ep.id && ep.id.includes('/')) tryAdd(ep.id.split('/')[0]);
+      const urlStr = ep.url;
       if (typeof urlStr === 'string') {
         const lower = urlStr.toLowerCase();
         if (lower.includes('moonshot')) providers.add('moonshotai');
@@ -84,16 +116,14 @@ export async function fetchZdrModelIds(
   fetcher: typeof orFetchZdrEndpoints = orFetchZdrEndpoints,
 ): Promise<Set<string>> {
   try {
-    const items = await loadZdrEndpoints(undefined, fetcher);
+    const items = await fetchZdrEndpoints(undefined, fetcher);
     const modelIds = new Set<string>();
     for (const ep of items) {
-      if (typeof ep?.name === 'string' && ep.name.includes('|')) {
+      if (ep.name && ep.name.includes('|')) {
         const rhs = ep.name.split('|')[1]?.trim();
         if (rhs && rhs.includes('/')) modelIds.add(rhs);
       }
-      const models: any[] = Array.isArray(ep?.models) ? ep.models : [];
-      for (const m of models) {
-        const id = typeof m === 'string' ? m : typeof m?.id === 'string' ? m.id : undefined;
+      for (const id of ep.models) {
         if (id && id.includes('/')) modelIds.add(id);
       }
     }
@@ -105,7 +135,6 @@ export async function fetchZdrModelIds(
 
 export function clearOpenRouterCachesForTest() {
   modelCache = new Map();
-  zdrEndpointCache = null;
 }
 
 export async function fetchModels(
@@ -130,18 +159,8 @@ export async function fetchModels(
   if (!res.ok) {
     throw responseError(res, { code: API_ERROR_CODES.OPENROUTER_MODELS_FAILED });
   }
-  const data = await res.json();
-  const items = Array.isArray(data?.data) ? data.data : data;
-  const models = (items as any[]).map((m) => ({
-    id: m.id,
-    name: m.name,
-    context_length: m.context_length,
-    pricing: m.pricing,
-    raw: m,
-    transport: 'openrouter' as const,
-    transportModelId: m.id,
-    providerDisplay: 'OpenRouter',
-  }));
+  const data = await res.json().catch(() => null);
+  const models = parseModelList(data);
   modelCache.set(cacheKey, { models, fetchedAt: now, origin: opts.origin });
   return models;
 }
@@ -151,8 +170,8 @@ export type StreamCallbacks = {
   onToken?: (delta: string) => void;
   onReasoningToken?: (delta: string) => void;
   onImage?: (dataUrl: string) => void; // base64 data URL for generated image
-  onAnnotations?: (annotations: any) => void;
-  onDone?: (full: string, extras?: { usage?: any; annotations?: any }) => void;
+  onAnnotations?: (annotations: unknown) => void;
+  onDone?: (full: string, extras?: { usage?: Usage; annotations?: unknown }) => void;
   onError?: (err: Error) => void;
 };
 
@@ -266,11 +285,19 @@ export async function streamChatCompletion(params: {
 
   let full = '';
   let usage: Usage | undefined;
-  let annotations: any | undefined;
+  let annotations: unknown;
 
-  const emitImages = (arr: any[]) => {
-    for (const img of arr || []) {
-      const url: string | undefined = img?.image_url?.url || img?.url;
+  const emitImages = (arr: unknown) => {
+    if (!Array.isArray(arr)) return;
+    for (const img of arr) {
+      if (!isRecord(img)) continue;
+      const imageUrl = isRecord(img.image_url) ? img.image_url.url : undefined;
+      const url =
+        typeof imageUrl === 'string'
+          ? imageUrl
+          : typeof img.url === 'string'
+            ? img.url
+            : undefined;
       if (typeof url === 'string' && url.startsWith('data:image/')) {
         callbacks?.onImage?.(url);
       }
@@ -282,32 +309,34 @@ export async function streamChatCompletion(params: {
     if (!payload) return;
     try {
       const json = JSON.parse(payload);
-      const choice = json.choices?.[0] ?? {};
-      const delta = choice?.delta ?? {};
-      const message = choice?.message ?? {};
+      if (!isRecord(json)) return;
+      const choices = Array.isArray(json.choices) ? json.choices : [];
+      const choice = isRecord(choices[0]) ? choices[0] : undefined;
+      const delta = choice && isRecord(choice.delta) ? choice.delta : undefined;
+      const message = choice && isRecord(choice.message) ? choice.message : undefined;
 
-      const deltaContent: string =
-        typeof delta.content === 'string'
+      const deltaContent =
+        typeof delta?.content === 'string'
           ? delta.content
-          : typeof message.content === 'string'
+          : typeof message?.content === 'string'
             ? message.content
             : '';
 
-      const deltaReasoning: string =
-        typeof (delta as any).reasoning === 'string'
-          ? (delta as any).reasoning
-          : typeof (message as any).reasoning === 'string'
-            ? (message as any).reasoning
+      const deltaReasoning =
+        typeof delta?.reasoning === 'string'
+          ? delta.reasoning
+          : typeof message?.reasoning === 'string'
+            ? message.reasoning
             : '';
 
-      const ann = (delta as any)?.annotations || (message as any)?.annotations;
-      if (ann && !annotations) {
+      const ann = delta?.annotations ?? message?.annotations;
+      if (ann !== undefined && annotations === undefined) {
         annotations = ann;
         callbacks?.onAnnotations?.(ann);
       }
 
-      if (Array.isArray(delta?.images)) emitImages(delta.images as any[]);
-      if (Array.isArray((message as any)?.images)) emitImages((message as any).images as any[]);
+      emitImages(delta?.images);
+      emitImages(message?.images);
 
       if (deltaReasoning) callbacks?.onReasoningToken?.(deltaReasoning);
       if (deltaContent) {
@@ -315,7 +344,7 @@ export async function streamChatCompletion(params: {
         callbacks?.onToken?.(deltaContent);
       }
 
-      if (json.usage) usage = normalizeUsage(json.usage);
+      if (isRecord(json.usage)) usage = normalizeUsage(json.usage as Record<string, number>);
     } catch {
       // swallow malformed chunk
     }

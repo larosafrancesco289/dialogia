@@ -26,7 +26,7 @@ import { executePlanningToolCall } from '@/lib/agent/tools/exec';
 import { captureRequestDebug } from '@/lib/agent/debug';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
 import { detectPlanningToolCalls } from '@/lib/agent/tools/router';
-import { schedulePlanningToolCalls } from '@/lib/agent/tools/scheduler';
+import { isQuizToolName, schedulePlanningTools } from '@/lib/agent/tools/schedulingPolicy';
 import {
   allowedTutorToolsForPhase,
   deriveTutorToolPolicy,
@@ -36,22 +36,14 @@ import {
 } from '@/lib/agent/tutor/state';
 import { isTutorToolName } from '@/lib/agent/tools';
 import { getNextNode } from '@/lib/learningPlan/service';
-import type { Message, Evidence, Misconception } from '@/lib/types';
-import {
-  extractEvidence,
-  updateLearnerModel,
-  getLatestLearnerModel,
-  initializeLearnerModel,
-} from '@/lib/agent/learnerModel';
-import { processPlanProgress } from '@/lib/agent/planAwareTutor';
-import type { UIState } from '@/lib/store/types';
-
-const QUIZ_TOOL_NAMES = new Set(['quiz_mcq', 'quiz_fill_blank', 'quiz_open_ended']);
+import type { Message } from '@/lib/types';
+import type { UiSnapshot } from '@/lib/agent/contracts';
+import { updateLearnerModelFromTurn } from '@/lib/agent/learnerModel/updateFromTurn';
 
 function filterAllowedToolsForPhase(args: {
   toolDefinition?: ToolDefinition[];
   chat: PlanTurnOptions['chat'];
-  ui?: UIState;
+  ui?: UiSnapshot;
   phase: TutorPhase;
   activeNodeId?: string;
 }): {
@@ -77,141 +69,6 @@ function filterAllowedToolsForPhase(args: {
       : undefined;
 
   return { planningToolDefinition, allowedTutorTools, toolPolicy };
-}
-
-async function updateLearnerModelFromTurn(args: {
-  chat: PlanTurnOptions['chat'];
-  chatId: string;
-  userContent?: string;
-  messagesForChat: Message[];
-  currentPlan?: PlanTurnOptions['chat']['settings']['learningPlan'];
-  turn: PlanTurnOptions['turn'];
-}): Promise<{
-  learnerModel?: PlanTurnResult['learnerModel'];
-  planUpdates?: PlanTurnResult['planUpdates'];
-  updatedPlan?: PlanTurnResult['updatedPlan'];
-  nextPlan?: PlanTurnOptions['chat']['settings']['learningPlan'];
-}> {
-  const { chat, chatId, userContent, messagesForChat, currentPlan, turn } = args;
-  if (!currentPlan || !userContent) return {};
-
-  try {
-    const plan = currentPlan;
-    const currentModel =
-      getLatestLearnerModel(messagesForChat) ?? initializeLearnerModel(chatId, plan);
-    const activeNode = getNextNode(plan);
-
-    if (!activeNode) return {};
-
-    const window = [
-      ...messagesForChat.slice(-10),
-      { role: 'user', content: userContent, id: 'temp-user', createdAt: Date.now() } as Message,
-    ];
-
-    const evidence = await extractEvidence(
-      activeNode.id,
-      activeNode.name,
-      activeNode.objectives,
-      window,
-      { apiKey: turn.apiKey, transport: turn.transport, model: chat.settings.model },
-    );
-
-    const misconceptionDescription = evidence.misconception?.trim();
-    const shouldApplyEvidence = evidence.weight !== 0 || !!misconceptionDescription;
-
-    if (!shouldApplyEvidence) return {};
-
-    const timestamp = Date.now();
-    const fullEvidence: Evidence = {
-      type: evidence.type,
-      details: evidence.details,
-      weight: evidence.weight,
-      timestamp,
-      skill: activeNode.id,
-    };
-    const misconception: Misconception | undefined = misconceptionDescription
-      ? {
-          id: `misc_${activeNode.id}_${timestamp}`,
-          description: misconceptionDescription,
-          firstObserved: timestamp,
-          occurrences: 1,
-          resolved: false,
-        }
-      : undefined;
-
-    const updatedModel = updateLearnerModel(currentModel, {
-      nodeId: activeNode.id,
-      evidence: fullEvidence,
-      misconception,
-    });
-
-    const progress = await processPlanProgress(plan, updatedModel);
-    const nextPlan = progress.updatedPlan !== plan ? progress.updatedPlan : plan;
-
-    return {
-      learnerModel: updatedModel,
-      updatedPlan: progress.updatedPlan !== plan ? progress.updatedPlan : undefined,
-      planUpdates: progress.planUpdates,
-      nextPlan,
-    };
-  } catch (err) {
-    console.error('Failed to update learner model:', err);
-    return {};
-  }
-}
-
-function scheduleTools(args: {
-  toolCalls: ToolCall[];
-  toolPolicy: TutorToolPolicy;
-  phase: TutorPhase;
-  hasPlan: boolean;
-  hasActiveNode: boolean;
-  usedTutorContentTool: boolean;
-  searchEnabled?: boolean;
-  searchProvider?: string;
-  quizCallsThisTurn: number;
-  maxToolsPerTurn: number;
-  toolsUsedThisTurn: number;
-}): ToolCall[] {
-  const {
-    toolCalls,
-    toolPolicy,
-    phase,
-    hasPlan,
-    hasActiveNode,
-    usedTutorContentTool,
-    searchEnabled,
-    searchProvider,
-    quizCallsThisTurn,
-    maxToolsPerTurn,
-    toolsUsedThisTurn,
-  } = args;
-
-  const scheduledRaw = schedulePlanningToolCalls(toolCalls, {
-    hasPlan,
-    hasActiveNode,
-    alreadyUsedContent: usedTutorContentTool,
-    allowSearch: searchEnabled && searchProvider === 'brave',
-    phase,
-  });
-
-  let remainingQuizBudget =
-    (toolPolicy.quizzesRemaining ?? Number.POSITIVE_INFINITY) - quizCallsThisTurn;
-  let remainingTools = Math.max(0, maxToolsPerTurn - toolsUsedThisTurn);
-  const scheduled: ToolCall[] = [];
-
-  for (const call of scheduledRaw) {
-    if (remainingTools <= 0) break;
-    const name = call.function?.name ?? '';
-    if (QUIZ_TOOL_NAMES.has(name)) {
-      if (remainingQuizBudget <= 0) continue;
-      remainingQuizBudget -= 1;
-    }
-    scheduled.push(call);
-    remainingTools -= 1;
-  }
-
-  return scheduled;
 }
 
 export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
@@ -341,7 +198,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
             return true;
           });
 
-    const scheduled = scheduleTools({
+    const scheduled = schedulePlanningTools({
       toolCalls: filteredToolCalls,
       toolPolicy,
       phase,
@@ -399,7 +256,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
       if (execution.usedTutorContentTool) {
         usedTutorContentTool = true;
       }
-      if (QUIZ_TOOL_NAMES.has(toolName)) {
+      if (isQuizToolName(toolName)) {
         quizCallsThisTurn += 1;
       }
       toolsUsedThisTurn += 1;

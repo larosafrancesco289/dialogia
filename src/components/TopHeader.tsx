@@ -20,38 +20,61 @@ import { findModelById, formatModelLabel } from '@/lib/models';
 import { PlanSheet } from '@/components/plan/PlanSheet';
 import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
 import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
-import { readNextOverrides } from '@/lib/ui/next';
+import type { UiNextOverrides } from '@/lib/agent/contracts';
+
+const EMPTY_OVERRIDES: UiNextOverrides = {};
+
 export function TopHeader() {
-  const { chats, selectedChatId, renameChat, setUI, newChat, updateChatSettings, sendUserMessage } =
-    useChatStore(
-      (s) => ({
-        chats: s.chats,
-        selectedChatId: s.selectedChatId,
+  const {
+    chat,
+    messages,
+    renameChat,
+    setUI,
+    newChat,
+    updateChatSettings,
+    sendUserMessage,
+    collapsed,
+    isSettingsOpen,
+    planSheetOpen,
+    overrides,
+    tutorDefaultModelId,
+    experimentalTutor,
+    forceTutorMode,
+    models,
+    planGeneration,
+    planSheetOverride,
+  } = useChatStore(
+    (s) => {
+      const chatEntry = s.selectedChatId
+        ? s.chats.find((c) => c.id === s.selectedChatId)
+        : undefined;
+      const messageList = s.selectedChatId ? s.messages[s.selectedChatId] : undefined;
+      return {
+        chat: chatEntry,
+        messages: messageList,
         renameChat: s.renameChat,
         setUI: s.setUI,
         newChat: s.newChat,
         updateChatSettings: s.updateChatSettings,
         sendUserMessage: s.sendUserMessage,
-      }),
-      shallow,
-    );
-  const chat = chats.find((c) => c.id === selectedChatId);
-  const messages = useChatStore((s) => (selectedChatId ? s.messages[selectedChatId] : undefined));
-  const { collapsed, isSettingsOpen, planSheetOpen } = useChatStore(
-    (s) => ({
-      collapsed: s.ui.sidebarCollapsed ?? false,
-      isSettingsOpen: s.ui.showSettings,
-      planSheetOpen: s.ui.plan.sheetOpen ?? false,
-    }),
+        collapsed: s.ui.sidebarCollapsed ?? false,
+        isSettingsOpen: s.ui.showSettings,
+        planSheetOpen: s.ui.plan.sheetOpen ?? false,
+        overrides: s.ui.overrides,
+        tutorDefaultModelId: s.ui.tutor.defaultModelId,
+        experimentalTutor: !!s.ui.flags.experimentalTutor,
+        forceTutorMode: !!s.ui.tutor.forceMode,
+        models: s.models,
+        planGeneration: s.selectedChatId
+          ? s.ui.plan.generationByChatId?.[s.selectedChatId]
+          : undefined,
+        planSheetOverride: s.ui.plan.sheetPlanOverride ?? null,
+      };
+    },
     shallow,
   );
-  const uiState = useChatStore((s) => s.ui, shallow);
-  const models = useChatStore((s) => s.models);
-  const experimentalTutor = !!uiState.flags.experimentalTutor;
-  const forceTutorMode = !!uiState.tutor.forceMode;
-  const nextOverrides = readNextOverrides(uiState);
+  const nextOverrides = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const nextTutorMode = !!nextOverrides.tutorMode;
-  const tutorDefaultModelId = uiState.tutor.defaultModelId;
   const tutorActive =
     experimentalTutor &&
     (forceTutorMode || (chat ? Boolean(chat.settings?.tutor_mode) : nextTutorMode));
@@ -75,12 +98,6 @@ export function TopHeader() {
     () => (learningPlan ? getNextNode(learningPlan) : null),
     [learningPlan],
   );
-  const planGeneration = useChatStore(
-    (s) => (s.selectedChatId ? s.ui.plan.generationByChatId?.[s.selectedChatId] : undefined),
-    shallow,
-  );
-  const planSheetOverride = useChatStore((s) => s.ui.plan.sheetPlanOverride ?? null);
-
   const hasPlanRef = useRef<boolean>(!!learningPlan);
 
   useEffect(() => {

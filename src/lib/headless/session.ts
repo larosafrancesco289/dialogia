@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import type { StoreApi } from 'zustand/vanilla';
 import { createHeadlessStore, type HeadlessStoreOptions } from '@/lib/headless/store';
 import type { StoreState, UIState } from '@/lib/store/types';
@@ -15,6 +14,7 @@ import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
 import type { HeadlessTurnArtifacts, HeadlessTurnResult } from '@/lib/headless/types';
+import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
 
 export type ApiKeyResolver = (params: { modelId: string; transport: ModelTransport }) => string;
 
@@ -96,23 +96,17 @@ export class HeadlessTutorSession {
     if (!chat) throw new Error('Headless tutor chat not found');
 
     const now = Date.now();
-    const userMessage: Message = {
-      id: uuidv4(),
+    const userMessage = createUserMessage({
       chatId: this.chatId,
-      role: 'user',
       content,
       createdAt: now,
-    };
-    const assistantMessage: Message = {
-      id: uuidv4(),
+    });
+    const assistantMessage = createAssistantMessage({
       chatId: this.chatId,
-      role: 'assistant',
       content: '',
       createdAt: now + 1,
       model: chat.settings.model,
-      reasoning: '',
-      toolCalls: [],
-    };
+    });
 
     const priorMessages = this.store.getState().messages[this.chatId] ?? [];
     this.store.setState((draft) => {
@@ -235,7 +229,7 @@ export class HeadlessTutorSession {
       });
       finalAssistant = fallback ?? assistantMessage;
     } finally {
-      clearTurnController(this.chatId);
+      clearTurnController(this.chatId, controller);
       this.store.setState((draft) => ({
         ui: { ...draft.ui, isStreaming: false },
       }));

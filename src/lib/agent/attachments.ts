@@ -1,36 +1,21 @@
 import { findModelById, isAudioInputSupported, isVisionSupported } from '@/lib/models';
-import type { ORModel, Attachment } from '@/lib/types';
+import type { DraftAttachment, ORModel, PersistedAttachment } from '@/lib/types';
+import { fileToDataUrl } from '@/lib/attachments/readers';
+import {
+  detectAudioFormatFromAttachment,
+  extractBase64FromDataUrl,
+} from '@/lib/attachments/audio';
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-function extractBase64(dataUrl: string | undefined): string | undefined {
-  if (!dataUrl) return undefined;
-  const idx = dataUrl.indexOf('base64,');
-  return idx >= 0 ? dataUrl.slice(idx + 'base64,'.length) : undefined;
-}
-
-function detectAudioFormat(attachment: Attachment): 'wav' | 'mp3' | undefined {
-  if (attachment.audioFormat) return attachment.audioFormat;
-  if (attachment.mime?.includes('wav')) return 'wav';
-  if (attachment.mime?.includes('mpeg') || attachment.mime?.includes('mp3')) return 'mp3';
-  const name = (attachment.name || '').toLowerCase();
-  if (name.endsWith('.wav')) return 'wav';
-  if (name.endsWith('.mp3')) return 'mp3';
-  return undefined;
+function stripFile(attachment: DraftAttachment): PersistedAttachment {
+  const { file: _file, ...rest } = attachment;
+  return rest;
 }
 
 export async function prepareAttachmentsForModel(opts: {
-  attachments?: Attachment[];
+  attachments?: DraftAttachment[];
   modelId: string;
   models: ORModel[];
-}): Promise<Attachment[]> {
+}): Promise<PersistedAttachment[]> {
   const { attachments = [], modelId, models } = opts;
   if (attachments.length === 0) return [];
 
@@ -49,9 +34,9 @@ export async function prepareAttachmentsForModel(opts: {
       if (attachment.kind === 'pdf' && attachment.file && !attachment.dataURL) {
         try {
           const dataURL = await fileToDataUrl(attachment.file);
-          return { ...attachment, dataURL };
+          return { ...stripFile(attachment), dataURL };
         } catch {
-          return attachment;
+          return stripFile(attachment);
         }
       }
       if (attachment.kind === 'audio') {
@@ -63,11 +48,11 @@ export async function prepareAttachmentsForModel(opts: {
             dataURL = undefined;
           }
         }
-        const base64 = attachment.base64 || extractBase64(dataURL);
-        const audioFormat = detectAudioFormat(attachment);
-        return { ...attachment, dataURL, base64, audioFormat };
+        const base64 = attachment.base64 || extractBase64FromDataUrl(dataURL);
+        const audioFormat = detectAudioFormatFromAttachment(attachment);
+        return { ...stripFile(attachment), dataURL, base64, audioFormat };
       }
-      return attachment;
+      return stripFile(attachment);
     }),
   );
 

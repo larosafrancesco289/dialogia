@@ -1,31 +1,16 @@
 // Module: attachments (UI-side)
 // Responsibility: Utilities for reading files and mapping them to UI attachments with guards.
 
-import type { Attachment } from '@/lib/types';
+import type { DraftAttachment } from '@/lib/types';
 import { MAX_AUDIO_SIZE_MB, MAX_IMAGES_PER_MESSAGE, MAX_PDF_SIZE_MB } from '@/lib/constants';
+import { fileToDataUrl } from '@/lib/attachments/readers';
+import { detectAudioFormatFromFile } from '@/lib/attachments/audio';
 
-export function readFileAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-export function detectAudioFormat(file: File): 'wav' | 'mp3' | undefined {
-  const name = file.name.toLowerCase();
-  if (file.type.includes('wav') || name.endsWith('.wav')) return 'wav';
-  if (file.type.includes('mpeg') || file.type.includes('mp3') || name.endsWith('.mp3'))
-    return 'mp3';
-  return undefined;
-}
-
-export async function toImageAttachment(file: File): Promise<Attachment | null> {
+export async function toImageAttachment(file: File): Promise<DraftAttachment | null> {
   const accepted = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
   if (!accepted.includes(file.type)) return null;
   if (file.size > 5 * 1024 * 1024) return null; // enforce 5MB cap per image
-  const dataURL = await readFileAsDataURL(file);
+  const dataURL = await fileToDataUrl(file);
   let width: number | undefined;
   let height: number | undefined;
   try {
@@ -55,7 +40,7 @@ export async function toImageAttachment(file: File): Promise<Attachment | null> 
   };
 }
 
-export async function toPdfAttachment(file: File): Promise<Attachment | null> {
+export async function toPdfAttachment(file: File): Promise<DraftAttachment | null> {
   if (file.type !== 'application/pdf') return null;
   if (file.size > MAX_PDF_SIZE_MB * 1024 * 1024) return null;
   return {
@@ -65,14 +50,14 @@ export async function toPdfAttachment(file: File): Promise<Attachment | null> {
     mime: file.type,
     size: file.size,
     file,
-  } as any;
+  };
 }
 
-export async function toAudioAttachment(file: File): Promise<Attachment | null> {
-  const fmt = detectAudioFormat(file);
+export async function toAudioAttachment(file: File): Promise<DraftAttachment | null> {
+  const fmt = detectAudioFormatFromFile(file);
   if (!fmt) return null;
   if (file.size > MAX_AUDIO_SIZE_MB * 1024 * 1024) return null;
-  const dataURL = await readFileAsDataURL(file);
+  const dataURL = await fileToDataUrl(file);
   return {
     id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     kind: 'audio',

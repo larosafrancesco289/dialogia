@@ -1,7 +1,7 @@
 import type { PlanTurnResult, TurnComposition } from '@/lib/agent/types';
 import type { StoreState } from '@/lib/store/types';
 import { selectTutorEntry } from '@/lib/ui/tutorSelectors';
-import type { Message, MessageTutor, ToolCallLogEntry, Attachment } from '@/lib/types';
+import type { Message, MessageTutor, ToolCallLogEntry, PersistedAttachment } from '@/lib/types';
 import type { LearnerModelDebugEntry } from '@/lib/store/types';
 
 export type HeadlessTurnArtifacts = {
@@ -44,7 +44,7 @@ export type HeadlessTurnSnapshot = {
     tokensIn?: number;
     tokensOut?: number;
     annotations?: Message['annotations'];
-    attachments?: Attachment[];
+    attachments?: PersistedAttachment[];
     toolCalls?: ToolCallLogEntry[];
     tutor?: MessageTutor;
     learnerModel?: Message['learnerModel'];

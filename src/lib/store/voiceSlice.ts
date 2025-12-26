@@ -1,13 +1,12 @@
 // Module: store/voiceSlice
 // Responsibility: Zustand slice for xAI voice agent state management
 
-import { v4 as uuidv4 } from 'uuid';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { buildDefaultVoiceState } from '@/lib/voice/types';
 import type { VoiceConfig } from '@/lib/voice/types';
 import type { StoreState } from '@/lib/store/types';
-import type { Message } from '@/lib/types';
 import { saveMessage } from '@/lib/db';
+import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
 
 export const createVoiceSlice = createStoreSlice((set, get) => {
   const initialVoice = buildDefaultVoiceState();
@@ -97,15 +96,11 @@ export const createVoiceSlice = createStoreSlice((set, get) => {
     async addVoiceUserMessage(content: string): Promise<void> {
       const chatId = await get().ensureChatForVoice();
 
-      const message: Message = {
-        id: uuidv4(),
+      const message = createUserMessage({
         chatId,
-        role: 'user',
         content,
-        createdAt: Date.now(),
-        toolCalls: [],
         metadata: { source: 'voice' },
-      };
+      });
 
       set((s) => ({
         messages: {
@@ -121,17 +116,12 @@ export const createVoiceSlice = createStoreSlice((set, get) => {
     async addVoiceAssistantMessage(content: string): Promise<void> {
       const chatId = await get().ensureChatForVoice();
 
-      const message: Message = {
-        id: uuidv4(),
+      const message = createAssistantMessage({
         chatId,
-        role: 'assistant',
         content,
-        createdAt: Date.now(),
         model: 'xai-voice',
-        toolCalls: [],
-        reasoning: '',
         metadata: { source: 'voice' },
-      };
+      });
 
       set((s) => ({
         messages: {

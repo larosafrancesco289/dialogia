@@ -10,9 +10,9 @@ import {
   isVisionSupported,
   isAudioInputSupported,
 } from '@/lib/models';
-import { readNextOverrides } from '@/lib/ui/next';
 import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
+import type { UiNextOverrides } from '@/lib/agent/contracts';
 import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
 import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
@@ -21,6 +21,8 @@ import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
 import { ComposerLayout } from '@/components/composer/ComposerLayout';
 
+const EMPTY_OVERRIDES: UiNextOverrides = {};
+
 export function Composer({
   variant = 'sticky',
   keyboardMetrics,
@@ -28,22 +30,42 @@ export function Composer({
   variant?: 'sticky' | 'hero';
   keyboardMetrics: KeyboardMetrics;
 }) {
-  const send = useChatStore((s) => s.sendUserMessage);
-  const newChat = useChatStore((s) => s.newChat);
-  const { chats, selectedChatId } = useChatStore(
-    (s) => ({ chats: s.chats, selectedChatId: s.selectedChatId }),
+  const {
+    send,
+    newChat,
+    chats,
+    selectedChatId,
+    models,
+    isStreaming,
+    stop,
+    updateSettings,
+    setUI,
+    overrides,
+    composerDraft,
+    tutorGloballyEnabled,
+    forceTutorMode,
+  } = useChatStore(
+    (s) => ({
+      send: s.sendUserMessage,
+      newChat: s.newChat,
+      chats: s.chats,
+      selectedChatId: s.selectedChatId,
+      models: s.models,
+      isStreaming: s.ui.isStreaming,
+      stop: s.stopStreaming,
+      updateSettings: s.updateChatSettings,
+      setUI: s.setUI,
+      overrides: s.ui.overrides,
+      composerDraft: s.ui.composerDraft,
+      tutorGloballyEnabled: !!s.ui.flags.experimentalTutor,
+      forceTutorMode: !!s.ui.tutor.forceMode,
+    }),
     shallow,
   );
   const chat = chats.find((c) => c.id === selectedChatId);
-  const models = useChatStore((s) => s.models);
   const [text, setText] = useState('');
   const taRef = useRef<HTMLTextAreaElement>(null);
-  const isStreaming = useChatStore((s) => s.ui.isStreaming);
-  const stop = useChatStore((s) => s.stopStreaming);
-  const updateSettings = useChatStore((s) => s.updateChatSettings);
-  const setUI = useChatStore((s) => s.setUI);
-  const uiNext = useChatStore((s) => readNextOverrides(s.ui));
-  const composerDraft = useChatStore((s) => s.ui.composerDraft);
+  const uiNext = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const [focused, setFocused] = useState(false);
   const isTablet = useIsMobile(768);
 
@@ -57,8 +79,6 @@ export function Composer({
     }
   }, [composerDraft, setUI]);
 
-  const tutorGloballyEnabled = useChatStore((s) => !!s.ui.flags.experimentalTutor);
-  const forceTutorMode = useChatStore((s) => !!s.ui.tutor.forceMode);
   const tutorEnabled =
     tutorGloballyEnabled &&
     (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.tutorMode));

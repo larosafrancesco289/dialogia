@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { jsonError } from '@/lib/server/route';
 
 const ACCESS_PATH = '/access';
 
@@ -11,6 +12,6 @@ export function redirectToAccess(req: NextRequest): NextResponse {
   return res;
 }
 
-export function jsonAuthError(code: string, status = 400): NextResponse {
-  return NextResponse.json({ ok: false, error: code }, { status });
+export function jsonAuthError(code: string, status = 400, detail?: string): Response {
+  return jsonError(status, code, detail);
 }

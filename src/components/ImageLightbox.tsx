@@ -1,6 +1,7 @@
 'use client';
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 
 type Img = { src: string; name?: string };
 
@@ -39,7 +40,7 @@ export function ImageLightbox({
       a.click();
       document.body.removeChild(a);
     } catch (error) {
-      console.error('Failed to download image', error);
+      logger.error('Failed to download image', error);
     }
   };
 

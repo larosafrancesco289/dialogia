@@ -8,35 +8,41 @@ import {
   CpuChipIcon,
 } from '@heroicons/react/24/outline';
 import { Markdown } from '@/lib/markdown';
-import { DeepResearchTimeline, type DeepResearchEvent } from './DeepResearchTimeline';
-import { parsePartialJson } from '@/lib/partial-json';
+import { logger } from '@/lib/logger';
+import { DeepResearchTimeline } from './DeepResearchTimeline';
+import type { MessageDeepResearch } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type ReasoningPanelProps = {
   reasoning: string;
+  deepResearch?: MessageDeepResearch;
   expanded: boolean;
   onToggle: () => void;
   isStreaming?: boolean;
 };
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
 export function ReasoningPanel({
   reasoning,
+  deepResearch,
   expanded,
   onToggle,
   isStreaming = false,
 }: ReasoningPanelProps) {
   const hasReasoning = !!(reasoning && reasoning.trim().length > 0);
 
-  // Try to parse deep research trace
   const trace = useMemo(() => {
-    if (!hasReasoning) return null;
-    try {
-      const parsed = parsePartialJson(reasoning);
-      return Array.isArray(parsed) ? (parsed as DeepResearchEvent[]) : null;
-    } catch {
-      return null;
-    }
-  }, [reasoning, hasReasoning]);
+    if (!deepResearch?.trace || deepResearch.trace.length === 0) return null;
+    return deepResearch.trace;
+  }, [deepResearch]);
 
   const filteredTrace = useMemo(() => {
     if (!trace || trace.length === 0) return null;
@@ -78,9 +84,17 @@ export function ReasoningPanel({
   const previewText = useMemo(() => {
     if (isDeepResearch && filteredTrace && filteredTrace.length > 0) {
       const last = filteredTrace[filteredTrace.length - 1];
-      if (last.type === 'thought') return last.output || 'Thinking...';
-      if (last.type === 'search') return `Searching: ${last.input?.query || ''}`;
-      if (last.type === 'fetch') return `Reading: ${last.input?.url || ''}`;
+      if (last.type === 'thought') {
+        return typeof last.output === 'string' ? last.output : 'Thinking...';
+      }
+      if (last.type === 'search') {
+        const input = asRecord(last.input);
+        return `Searching: ${getString(input?.query) || ''}`;
+      }
+      if (last.type === 'fetch') {
+        const input = asRecord(last.input);
+        return `Reading: ${getString(input?.url) || ''}`;
+      }
       return 'Deep Research active...';
     }
 
@@ -152,7 +166,7 @@ export function ReasoningPanel({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch (error) {
-      console.error('Failed to copy reasoning', error);
+      logger.error('Failed to copy reasoning', error);
     }
   };
 
