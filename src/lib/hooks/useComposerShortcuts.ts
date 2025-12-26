@@ -15,6 +15,7 @@ type SlashCommandContext = {
   nextOverrides: NextOverrides;
   updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
   setUI: (partial: Partial<UIState>) => void;
+  defaultModelId: string;
 };
 
 async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise<boolean> {
@@ -24,7 +25,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
   const command = (parts.shift() || '').toLowerCase();
   const arg = parts.join(' ').trim();
   const applyToChat = !!ctx.chat;
-  const currentModelId = ctx.chat?.settings.model || ctx.nextOverrides.model || DEFAULT_MODEL_ID;
+  const currentModelId = ctx.chat?.settings.model || ctx.nextOverrides.model || ctx.defaultModelId;
   const currentModel = findModelById(ctx.models, currentModelId);
 
   const setNotice = (msg: string) => ctx.setUI({ notice: msg });
@@ -114,6 +115,7 @@ export function useComposerShortcuts(options: {
     text: string,
     opts: { attachments?: Attachment[]; metadata?: Message['metadata'] },
   ) => Promise<void>;
+  defaultModelId?: string;
 }) {
   const handleSubmit = useCallback(
     async ({
@@ -132,6 +134,7 @@ export function useComposerShortcuts(options: {
         nextOverrides: options.nextOverrides,
         updateChatSettings: options.updateChatSettings,
         setUI: options.setUI,
+        defaultModelId: options.defaultModelId || DEFAULT_MODEL_ID,
       });
       if (commandHandled) {
         onCommandHandled?.();

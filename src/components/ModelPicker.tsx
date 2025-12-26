@@ -5,8 +5,10 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
 } from '@heroicons/react/24/outline';
-import { CURATED_MODELS } from '@/data/curatedModels';
 import { formatModelLabel } from '@/lib/models';
+import { useTierCuratedModels } from '@/lib/hooks/useTierModels';
+import { useTier } from '@/lib/auth/tierContext';
+import { FREE_MODEL_IDS } from '@/data/freeModels';
 import type { ZdrLists } from '@/lib/policy/zdr';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { getModelTransportLabel } from '@/lib/providers';
@@ -81,6 +83,9 @@ export function ModelPicker({
     enableMultiModelChat,
   } = useModelPickerController();
 
+  const curatedModels = useTierCuratedModels();
+  const { isFreeTier, isLoading: tierLoading } = useTier();
+
   const zdrLists = useMemo<ZdrLists>(
     () => ({
       modelIds: new Set(zdrModelIds || []),
@@ -89,13 +94,19 @@ export function ModelPicker({
     [zdrModelIds, zdrProviderIds],
   );
 
-  const curatedIds = useMemo(() => CURATED_MODELS.map((m) => m.id), []);
+  const curatedIds = useMemo(() => curatedModels.map((m) => m.id), [curatedModels]);
 
   // Filter out favorites that are already in curated list
+  // Also filter out paid models for free tier users
   const uniqueFavorites = useMemo(() => {
     const curatedSet = new Set(curatedIds);
-    return favoriteModelIds.filter((id) => !curatedSet.has(id));
-  }, [favoriteModelIds, curatedIds]);
+    return favoriteModelIds.filter((id) => {
+      if (curatedSet.has(id)) return false;
+      // For free tier, only show favorites that are free models
+      if (!tierLoading && isFreeTier && !FREE_MODEL_IDS.includes(id)) return false;
+      return true;
+    });
+  }, [favoriteModelIds, curatedIds, isFreeTier, tierLoading]);
 
   const [open, setOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
@@ -285,7 +296,7 @@ export function ModelPicker({
                 Recommended
               </h3>
               <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                {CURATED_MODELS.map((model) => (
+                {curatedModels.map((model) => (
                   <ModelCard
                     key={model.id}
                     model={model}

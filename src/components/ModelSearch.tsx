@@ -26,6 +26,7 @@ import {
 import { describeModelPricing } from '@/lib/cost';
 import { useChatStore } from '@/lib/store';
 import type { ORModel, ModelTransport } from '@/lib/types';
+import { useTierModels } from '@/lib/hooks/useTierModels';
 import { getModelTransport, getModelTransportLabel } from '@/lib/providers';
 import {
   CheckIcon,
@@ -164,14 +165,16 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
     },
     ref,
   ) {
-    const { models, zdrModelIds, zdrProviderIds } = useChatStore(
+    const { zdrModelIds, zdrProviderIds } = useChatStore(
       (state) => ({
-        models: state.models,
         zdrModelIds: state.zdrModelIds,
         zdrProviderIds: state.zdrProviderIds,
       }),
       shallow,
     );
+
+    // Use tier-filtered models - free tier only sees free models
+    const { models } = useTierModels();
 
     const [query, setQuery] = useState('');
     const normalizedQuery = query.trim().toLowerCase().replace(/\s+/g, ' ');
