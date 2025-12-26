@@ -10,15 +10,10 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_AUTH_PATHS.includes(pathname);
 }
 
-async function verifyTokenWithClaims(token: string) {
-  const secret = process.env.AUTH_COOKIE_SECRET;
-  if (!secret) return null;
-  return verifyAuthTokenEdgeWithClaims(token, secret);
-}
-
 export default async function middleware(req: NextRequest) {
   const shouldLogTiming = !isProd() && process.env.AUTH_TIMING_DEBUG === 'true';
   const startedAt = shouldLogTiming && typeof performance !== 'undefined' ? performance.now() : 0;
+  const shouldDebugAuth = process.env.AUTH_DEBUG_HEADERS === 'true';
 
   const withTiming = (res: NextResponse) => {
     // Prevent edge caching of auth decisions so cookie changes take effect immediately.
@@ -26,6 +21,14 @@ export default async function middleware(req: NextRequest) {
     if (shouldLogTiming && typeof performance !== 'undefined') {
       const duration = Math.max(0, performance.now() - startedAt);
       res.headers.set('Server-Timing', `auth;dur=${duration.toFixed(2)}`);
+    }
+    return res;
+  };
+
+  const withDebug = (res: NextResponse, info: Record<string, string>) => {
+    if (!shouldDebugAuth) return res;
+    for (const [key, value] of Object.entries(info)) {
+      res.headers.set(`x-auth-${key}`, value);
     }
     return res;
   };
@@ -56,12 +59,20 @@ export default async function middleware(req: NextRequest) {
 
   const token = req.cookies.get(AUTH_COOKIE_NAME)?.value;
   if (!token) {
-    return withTiming(redirectToAccess(req));
+    const res = redirectToAccess(req);
+    return withTiming(withDebug(res, { reason: 'missing_cookie' }));
   }
 
-  const claims = await verifyTokenWithClaims(token);
+  const secret = process.env.AUTH_COOKIE_SECRET;
+  if (!secret) {
+    const res = redirectToAccess(req);
+    return withTiming(withDebug(res, { reason: 'missing_secret' }));
+  }
+
+  const claims = await verifyAuthTokenEdgeWithClaims(token, secret);
   if (!claims) {
-    return withTiming(redirectToAccess(req));
+    const res = redirectToAccess(req);
+    return withTiming(withDebug(res, { reason: 'invalid_token', token_len: String(token.length) }));
   }
 
   // Token is valid - ensure tier cookie matches claims
