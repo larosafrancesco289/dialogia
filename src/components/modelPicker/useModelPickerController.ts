@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { CURATED_MODELS } from '@/data/curatedModels';
-import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
+import { PINNED_MODEL_ID } from '@/lib/constants';
 import { findModelById } from '@/lib/models';
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import { readNextOverrides } from '@/lib/ui/next';
+import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
+import { useTier } from '@/lib/auth/tierContext';
+import { FREE_MODEL_IDS } from '@/data/freeModels';
 
 export type ModelPickerOption = {
   id: string;
@@ -67,7 +69,9 @@ export function useModelPickerController(): ModelPickerController {
   );
 
   const chat = chats.find((c) => c.id === selectedChatId);
-  const curated = CURATED_MODELS;
+  const curated = useTierCuratedModels();
+  const tierDefaultModelId = useTierDefaultModelId();
+  const { isFreeTier, isLoading: tierLoading } = useTier();
   const nextOverrides = readNextOverrides(ui);
 
   const allowedIds = useMemo(() => new Set((models || []).map((m: any) => m.id)), [models]);
@@ -79,7 +83,10 @@ export function useModelPickerController(): ModelPickerController {
   }, [favoriteModelIds, allowedIds]);
 
   const allOptions = useMemo(() => {
-    const injectedDefault = [{ id: DEFAULT_MODEL_ID, name: DEFAULT_MODEL_NAME }];
+    // Use tier-aware default model, get the display name from curated models
+    const defaultCurated = curated.find((m) => m.id === tierDefaultModelId);
+    const defaultName = defaultCurated?.name || tierDefaultModelId.split('/').pop() || tierDefaultModelId;
+    const injectedDefault = [{ id: tierDefaultModelId, name: defaultName }];
     return [...injectedDefault, ...curated, ...customOptions].reduce(
       (acc: ModelPickerOption[], m: ModelPickerOption) => {
         if (!acc.find((x) => x.id === m.id)) acc.push(m);
@@ -87,7 +94,7 @@ export function useModelPickerController(): ModelPickerController {
       },
       [],
     );
-  }, [customOptions, curated]);
+  }, [customOptions, curated, tierDefaultModelId]);
 
   const options = useMemo(() => {
     const hidden = new Set(hiddenModelIds || []);
@@ -114,21 +121,29 @@ export function useModelPickerController(): ModelPickerController {
   const selectedIds = useMemo(() => {
     const fromChat = chat
       ? [
-          chat.settings.model || DEFAULT_MODEL_ID,
+          chat.settings.model || tierDefaultModelId,
           ...((chat.settings.parallel_models as string[] | undefined) ?? []),
         ]
       : [
-          nextOverrides.model || DEFAULT_MODEL_ID,
+          nextOverrides.model || tierDefaultModelId,
           ...((nextOverrides.parallelModels as string[] | undefined) ?? []),
         ];
     const cleaned = fromChat.filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+    // Validate models for free tier - filter out paid models
+    const validated = tierLoading
+      ? cleaned
+      : isFreeTier
+        ? cleaned.filter((id) => FREE_MODEL_IDS.includes(id))
+        : cleaned;
+
     const deduped: string[] = [];
-    for (const id of cleaned) {
+    for (const id of validated) {
       if (!deduped.includes(id)) deduped.push(id);
     }
-    if (deduped.length === 0) deduped.push(DEFAULT_MODEL_ID);
+    if (deduped.length === 0) deduped.push(tierDefaultModelId);
     return deduped;
-  }, [chat, nextOverrides.model, nextOverrides.parallelModels]);
+  }, [chat, nextOverrides.model, nextOverrides.parallelModels, tierDefaultModelId, isFreeTier, tierLoading]);
 
   const selectedId = selectedIds[0];
   const effectiveSelectedId =
@@ -144,7 +159,7 @@ export function useModelPickerController(): ModelPickerController {
     for (const id of cleaned) {
       if (!deduped.includes(id)) deduped.push(id);
     }
-    const final = deduped.length ? deduped : [DEFAULT_MODEL_ID];
+    const final = deduped.length ? deduped : [tierDefaultModelId];
     const [primary, ...rest] = final;
     if (chat) {
       updateChatSettings({ model: primary, parallel_models: rest });

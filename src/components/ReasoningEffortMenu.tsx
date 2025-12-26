@@ -3,8 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { LightBulbIcon } from '@heroicons/react/24/outline';
 import { findModelById, isReasoningSupported } from '@/lib/models';
-import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { readNextOverrides } from '@/lib/ui/next';
+import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 
 type Effort = 'none' | 'low' | 'medium' | 'high';
 
@@ -19,7 +19,8 @@ export function ReasoningEffortMenu() {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const modelId = chat?.settings.model || nextOverrides.model || DEFAULT_MODEL_ID;
+  const tierDefaultModelId = useTierDefaultModelId();
+  const modelId = chat?.settings.model || nextOverrides.model || tierDefaultModelId;
   const selectedModel = useMemo(() => findModelById(models, modelId), [models, modelId]);
   const supportsReasoning = useMemo(() => isReasoningSupported(selectedModel), [selectedModel]);
 

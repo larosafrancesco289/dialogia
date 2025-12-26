@@ -10,8 +10,8 @@ import {
   isVisionSupported,
   isAudioInputSupported,
 } from '@/lib/models';
-import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { readNextOverrides } from '@/lib/ui/next';
+import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
 import { ComposerInput } from '@/components/composer/ComposerInput';
@@ -63,7 +63,8 @@ export function Composer({
     tutorGloballyEnabled &&
     (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.tutorMode));
 
-  const modelId = chat?.settings.model || uiNext.model || DEFAULT_MODEL_ID;
+  const tierDefaultModelId = useTierDefaultModelId();
+  const modelId = chat?.settings.model || uiNext.model || tierDefaultModelId;
   const modelMeta = findModelById(models, modelId);
   const canVision = isVisionSupported(modelMeta);
   const canAudio = isAudioInputSupported(modelMeta);
@@ -89,6 +90,7 @@ export function Composer({
     setUI,
     newChat,
     sendMessage: (value, options) => send(value, options),
+    defaultModelId: tierDefaultModelId,
   });
 
   const onSend = async () => {

@@ -2,9 +2,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
-import { CURATED_MODELS } from '@/data/curatedModels';
 import { formatModelLabel } from '@/lib/models';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 
 export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => void }) {
   const { chats, selectedChatId } = useChatStore();
@@ -13,6 +13,8 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const { favoriteModelIds, models } = useChatStore();
+  const curatedModels = useTierCuratedModels();
+  const tierDefaultModelId = useTierDefaultModelId();
   const modelMap = useMemo(() => {
     const map = new Map<string, any>();
     for (const model of models || []) {
@@ -21,8 +23,8 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
     return map;
   }, [models]);
   const curated = [
-    { id: chat?.settings.model || CURATED_MODELS[0]?.id, name: 'Current' },
-    ...CURATED_MODELS,
+    { id: chat?.settings.model || curatedModels[0]?.id || tierDefaultModelId, name: 'Current' },
+    ...curatedModels,
   ];
   const customOptions = (favoriteModelIds || []).map((id) => ({ id, name: id }));
   const options = [...curated, ...customOptions].reduce((acc: any[], m: any) => {
