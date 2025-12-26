@@ -11,9 +11,8 @@ export async function GET(req: NextRequest) {
 
   const secret = process.env.AUTH_COOKIE_SECRET;
   const hasAuthSecret = !!secret;
-  const hasCodePepper = !!process.env.ACCESS_CODE_PEPPER;
-  const hasDevCodes = !!process.env.ACCESS_CODES_DEVELOPER_HASHED;
-  const hasIndividualCodes = !!process.env.ACCESS_CODES_INDIVIDUAL_HASHED;
+  const nodeEnv = process.env.NODE_ENV;
+  const isProd = nodeEnv?.toLowerCase() === 'production';
 
   // Try to verify the token using Edge runtime (same as middleware)
   let edgeVerification: any = null;
@@ -28,7 +27,19 @@ export async function GET(req: NextRequest) {
     edgeVerification = { valid: false, reason: 'no_secret_in_edge' };
   }
 
+  // Simulate middleware decision
+  let middlewareWouldAllow = false;
+  if (!isProd) {
+    middlewareWouldAllow = true; // dev mode bypasses auth
+  } else if (authCookie?.value && secret) {
+    const claims = await verifyAuthTokenEdgeWithClaims(authCookie.value, secret);
+    middlewareWouldAllow = !!claims;
+  }
+
   return NextResponse.json({
+    nodeEnv,
+    isProd,
+    middlewareWouldAllow,
     cookies: {
       auth: authCookie ? { exists: true, length: authCookie.value.length } : { exists: false },
       tier: tierCookie?.value || null,
@@ -36,9 +47,6 @@ export async function GET(req: NextRequest) {
     edgeVerification,
     envVars: {
       AUTH_COOKIE_SECRET: hasAuthSecret ? 'SET' : 'MISSING',
-      ACCESS_CODE_PEPPER: hasCodePepper ? 'SET' : 'MISSING',
-      ACCESS_CODES_DEVELOPER_HASHED: hasDevCodes ? 'SET' : 'MISSING',
-      ACCESS_CODES_INDIVIDUAL_HASHED: hasIndividualCodes ? 'SET' : 'MISSING',
     },
   });
 }
