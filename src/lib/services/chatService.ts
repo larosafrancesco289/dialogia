@@ -12,6 +12,25 @@ import type { UIState } from '@/lib/store/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
 import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
+import { DEFAULT_FREE_MODEL_ID } from '@/data/freeModels';
+import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
+
+// Read tier from cookie on client side
+function getClientTier(): 'free' | 'individual' | 'developer' {
+  if (typeof document === 'undefined') return 'free';
+  const match = document.cookie.match(new RegExp('(^| )' + TIER_COOKIE_NAME + '=([^;]+)'));
+  const tier = match ? decodeURIComponent(match[2]) : null;
+  if (tier === 'developer' || tier === 'individual' || tier === 'free') {
+    return tier;
+  }
+  return 'free';
+}
+
+// Get the appropriate default model based on tier
+function getTierDefaultModelId(): string {
+  const tier = getClientTier();
+  return tier === 'free' ? DEFAULT_FREE_MODEL_ID : DEFAULT_MODEL_ID;
+}
 
 export class ChatService {
   static async createChat(params: {
@@ -47,7 +66,7 @@ export class ChatService {
 
     const baseSettings = deriveChatSettingsFromUi({
       ui,
-      fallbackModelId: DEFAULT_MODEL_ID,
+      fallbackModelId: getTierDefaultModelId(),
       fallbackSystem: DEFAULT_BASE_SYSTEM,
       lastUsedModelId: lastUsedModel,
       braveEnabled,
