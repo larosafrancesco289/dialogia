@@ -11,6 +11,9 @@ tsconfig.tsbuildinfo
 .env
 .env.*
 .env.local
+vercel.env
+ACCESS_CODES_SECRET.txt
+DEBUG_AUTH_ISSUE.md
 
 # Logs
 npm-debug.log*
