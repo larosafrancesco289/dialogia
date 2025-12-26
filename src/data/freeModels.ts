@@ -1,10 +1,5 @@
 import type { ComponentType } from 'react';
-import {
-  ChatBubbleLeftRightIcon,
-  SparklesIcon,
-  LightBulbIcon,
-  CodeBracketIcon,
-} from '@heroicons/react/24/outline';
+import { ChatBubbleLeftRightIcon, CodeBracketIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
 type FreeCuratedModel = {
   id: string;
@@ -34,10 +29,9 @@ export const FREE_MODEL_IDS: string[] = [
  * Make sure this ID is in FREE_MODEL_IDS.
  */
 export const DEFAULT_FREE_MODEL: FreeCuratedModel = {
-  // Placeholder - replace with an actual free model
   id: 'xiaomi/mimo-v2-flash:free',
   name: 'Mimo V2 Flash',
-  description: 'Fast and capable free model for general chat',
+  description: 'Fast multimodal model with vision capabilities',
   Icon: ChatBubbleLeftRightIcon,
 };
 
@@ -48,28 +42,22 @@ export const DEFAULT_FREE_MODEL: FreeCuratedModel = {
 export const FREE_CURATED_MODELS: FreeCuratedModel[] = [
   DEFAULT_FREE_MODEL,
   {
-    id: 'xiaomi/mimo-v2-flash:free',
-    name: 'Mimo V2 Flash',
-    description: 'Fast and capable free model for general chat',
-    Icon: ChatBubbleLeftRightIcon,
-  },
-  {
     id: 'allenai/olmo-3.1-32b-think:free',
-  name: 'Olmo 3.1 32B Think',
-    description: 'Excellent for coding, creativity, and complex reasoning',
-    Icon: CodeBracketIcon,
+    name: 'OLMo 3.1 32B Think',
+    description: 'Strong reasoning with extended thinking capabilities',
+    Icon: SparklesIcon,
   },
   {
     id: 'nvidia/nemotron-3-nano-30b-a3b:free',
-    name: 'Nemotron 3 Nano 30B A3B',
-    description: 'Fast and capable free model for general chat',
+    name: 'Nemotron 3 Nano',
+    description: 'Efficient 30B model optimized for fast responses',
     Icon: ChatBubbleLeftRightIcon,
   },
   {
     id: 'mistralai/devstral-2512:free',
-  name: 'Devstral 2512',
-  description: 'Excellent for coding',
-  Icon: CodeBracketIcon,
+    name: 'Devstral',
+    description: 'Specialized for code generation and programming tasks',
+    Icon: CodeBracketIcon,
   },
 ];
 
