@@ -10,48 +10,51 @@ import type { ORModel } from '@/lib/types/models';
 /**
  * Hook that returns models filtered by the current access tier.
  * Free tier users only see models in FREE_MODEL_IDS.
+ * Defaults to free models while loading to prevent paid model selection.
  */
 export function useTierModels() {
   const allModels = useChatStore((s) => s.models);
   const { tier, isLoading, isFreeTier } = useTier();
 
   const filteredModels = useMemo(() => {
-    if (isLoading) return allModels;
-    if (!isFreeTier) return allModels;
-
-    // Free tier - filter to only free models
-    return allModels.filter((model) => FREE_MODEL_IDS.includes(model.id));
+    // Default to free models while loading to be safe
+    if (isLoading || isFreeTier) {
+      return allModels.filter((model) => FREE_MODEL_IDS.includes(model.id));
+    }
+    return allModels;
   }, [allModels, isLoading, isFreeTier]);
 
   return {
     models: filteredModels,
-    isFiltered: isFreeTier && !isLoading,
+    isFiltered: isLoading || isFreeTier,
     tier,
   };
 }
 
 /**
  * Hook that returns curated models for the current tier.
+ * Defaults to free models while loading to prevent paid model requests with free API key.
  */
 export function useTierCuratedModels() {
   const { isFreeTier, isLoading } = useTier();
 
   return useMemo(() => {
-    if (isLoading) return CURATED_MODELS;
-    if (isFreeTier) return FREE_CURATED_MODELS;
+    // Default to free models while loading to be safe
+    if (isLoading || isFreeTier) return FREE_CURATED_MODELS;
     return CURATED_MODELS;
   }, [isFreeTier, isLoading]);
 }
 
 /**
  * Hook that returns the default model ID for the current tier.
+ * Defaults to free model while loading to prevent paid model requests with free API key.
  */
 export function useTierDefaultModelId() {
   const { isFreeTier, isLoading } = useTier();
 
   return useMemo(() => {
-    if (isLoading) return DEFAULT_MODEL_ID;
-    if (isFreeTier) return DEFAULT_FREE_MODEL_ID;
+    // Default to free model while loading to be safe
+    if (isLoading || isFreeTier) return DEFAULT_FREE_MODEL_ID;
     return DEFAULT_MODEL_ID;
   }, [isFreeTier, isLoading]);
 }
