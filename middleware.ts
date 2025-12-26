@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AUTH_COOKIE_NAME, TIER_COOKIE_NAME, PUBLIC_AUTH_PATHS } from '@/lib/auth/shared';
-import { verifyAuthTokenEdgeWithClaims } from '@/lib/auth/edge';
+import { verifyAuthTokenEdgeDetailed } from '@/lib/auth/edge';
 import { isProd } from '@/lib/config';
 import { redirectToAccess } from '@/lib/auth/errors';
 import type { AccessTier } from '@/lib/auth/types';
@@ -84,16 +84,17 @@ export default async function middleware(req: NextRequest) {
     return withTiming(withDebug(res, { reason: 'missing_secret' }));
   }
 
-  const claims = await verifyAuthTokenEdgeWithClaims(token, secret);
-  if (!claims) {
+  const result = await verifyAuthTokenEdgeDetailed(token, secret);
+  if (!result.ok) {
     const fingerprint = await computeSecretFingerprint(secret);
     const res = redirectToAccess(req);
     return withTiming(withDebug(res, {
-      reason: 'invalid_token',
+      reason: result.reason,
       token_len: String(token.length),
       secret_fp: fingerprint,
     }));
   }
+  const claims = result.claims;
 
   // Token is valid - ensure tier cookie matches claims
   const res = NextResponse.next();
