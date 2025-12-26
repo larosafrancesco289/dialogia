@@ -12,7 +12,6 @@ import {
   hasTieredCodesConfigured,
 } from '@/lib/auth';
 import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
-import { isCodeConsumed, markCodeConsumed } from '@/lib/auth/codeStore';
 import { getAccessCookieDomain } from '@/lib/config';
 import { jsonAuthError } from '@/lib/auth/errors';
 
@@ -32,28 +31,17 @@ export async function POST(req: NextRequest) {
     // Hash the submitted code
     const hashed = hmacCode(plain, pepper);
 
-    // Check developer codes first (they're never consumed)
+    // Check developer codes first
     const devHashes = getDeveloperCodeHashes();
     const devIdx = devHashes.findIndex((h) => h === hashed);
     if (devIdx !== -1) {
       return createTokenResponse('developer', `dev:${devIdx}`);
     }
 
-    // Check individual codes (one-time use)
+    // Check individual codes
     const individualHashes = getIndividualCodeHashes();
     const individualIdx = individualHashes.findIndex((h) => h === hashed);
     if (individualIdx !== -1) {
-      // Check if this code has been consumed
-      const consumed = await isCodeConsumed(hashed);
-      if (consumed) {
-        // small randomized delay to reduce trivial timing
-        await new Promise((r) => setTimeout(r, 50 + Math.floor(Math.random() * 120)));
-        return jsonAuthError('code_already_used', 401);
-      }
-
-      // Mark code as consumed before creating token
-      await markCodeConsumed(hashed);
-
       return createTokenResponse('individual', `ind:${individualIdx}`);
     }
 
