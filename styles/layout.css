@@ -171,55 +171,99 @@
     min-height: 0;
   }
 
-  /* Unified header bar to keep borders aligned across sidebar and content */
+  /* Unified header bar — "Scholar's Ribbon" aesthetic */
   .app-header {
+    --header-accent-height: 3px;
     min-height: calc(var(--header-height) + env(safe-area-inset-top));
-    padding-top: calc(env(safe-area-inset-top) + var(--space-1));
-    padding-bottom: var(--space-1);
+    padding-top: calc(env(safe-area-inset-top) + var(--space-2));
+    padding-bottom: calc(var(--space-2) + var(--header-accent-height));
     padding-left: var(--space-4);
     padding-right: var(--space-4);
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: var(--space-3);
     row-gap: var(--space-2);
     position: sticky;
-    /* Keep flush with the top for maximum headroom */
     top: 0;
     margin: 0 var(--space-2) var(--space-2);
     z-index: 30;
     background: var(--surface-paper);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-editorial);
-    box-shadow: var(--shadow-1);
+    box-shadow: var(--shadow-message);
+    /* Gold accent rule at bottom — the scholarly signature */
+    position: relative;
+  }
+  .app-header::after {
+    content: '';
+    position: absolute;
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: 0;
+    height: var(--header-accent-height);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--rule-accent) 15%,
+      var(--rule-accent) 85%,
+      transparent
+    );
+    border-radius: var(--header-accent-height);
+    opacity: 0.7;
   }
   @media (max-width: 640px) {
     .app-header {
       margin: var(--space-1);
-      padding-left: var(--space-2);
-      padding-right: var(--space-2);
-      padding-bottom: calc(var(--space-1) + 2px);
-      gap: var(--space-1);
+      padding-left: var(--space-3);
+      padding-right: var(--space-3);
+      padding-bottom: calc(var(--space-2) + var(--header-accent-height));
+      gap: var(--space-2);
       row-gap: var(--space-1);
       border-radius: 14px;
+    }
+    .app-header::after {
+      left: var(--space-3);
+      right: var(--space-3);
     }
   }
 
   @media (max-width: 640px) {
     .mobile-app-bar {
+      --header-accent-height: 3px;
       position: sticky;
       top: 0;
       z-index: 45;
       margin: var(--space-1);
       margin-bottom: var(--space-2);
-      padding: calc(env(safe-area-inset-top) + var(--space-1)) var(--space-2) var(--space-2);
-      border-radius: var(--radius-editorial);
+      padding: calc(env(safe-area-inset-top) + var(--space-2)) var(--space-3) calc(var(--space-2) + var(--header-accent-height));
+      border-radius: 14px;
       background: var(--surface-paper);
       border: 1px solid var(--color-border);
-      box-shadow: var(--shadow-1);
+      box-shadow: var(--shadow-message);
       display: flex;
       flex-direction: column;
-      gap: var(--space-1);
+      gap: var(--space-2);
+      /* Needed for the ::after pseudo-element */
+      isolation: isolate;
+    }
+    /* Gold accent rule for mobile header */
+    .mobile-app-bar::after {
+      content: '';
+      position: absolute;
+      left: var(--space-3);
+      right: var(--space-3);
+      bottom: 0;
+      height: var(--header-accent-height);
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--rule-accent) 15%,
+        var(--rule-accent) 85%,
+        transparent
+      );
+      border-radius: var(--header-accent-height);
+      opacity: 0.7;
     }
     .mobile-app-bar-grid {
       display: grid;
@@ -250,25 +294,37 @@
     }
     .mobile-model-trigger > button {
       width: 100%;
-      height: 36px;
-      padding: 0 var(--space-3);
-      border-radius: 999px;
-      background: color-mix(in oklab, var(--color-surface) 88%, transparent);
-      border: 1px solid color-mix(in oklab, var(--color-border) 65%, transparent);
-      box-shadow: var(--shadow-1);
+      height: 40px;
+      padding: 0 var(--space-4);
+      border-radius: var(--radius-editorial);
+      background: color-mix(in oklab, var(--color-muted) 45%, transparent);
+      border: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+      box-shadow: none;
+      transition:
+        background-color var(--duration-fast) var(--ease-standard),
+        border-color var(--duration-fast) var(--ease-standard),
+        box-shadow var(--duration-fast) var(--ease-standard);
     }
-    .mobile-model-trigger > button:hover {
-      background: color-mix(in oklab, var(--color-muted) 85%, transparent);
+    .mobile-model-trigger > button:hover,
+    .mobile-model-trigger > button:active {
+      background: var(--surface-paper-warm);
+      border-color: var(--color-border);
+      box-shadow: var(--shadow-1);
     }
     .mobile-model-trigger > button:focus-visible {
       box-shadow: 0 0 0 2px var(--focus-ring);
     }
     .mobile-model-trigger > button .truncate {
       font-weight: 600;
+      letter-spacing: -0.005em;
+    }
+    .mobile-model-trigger > button svg {
+      color: var(--color-fg-muted);
+      opacity: 0.7;
     }
     .mobile-app-bar .icon-button {
-      height: 36px;
-      width: 36px;
+      height: 40px;
+      width: 40px;
     }
   }
 

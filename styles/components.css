@@ -54,26 +54,27 @@
   animation: header-shimmer 1.2s linear infinite;
 }
 
+/* Tutor model pill — marginalia-style display when tutor is active */
 .tutor-model-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--space-3);
-  padding: calc(var(--space-2) + 2px) calc(var(--space-4) + 2px);
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--color-muted) 78%, transparent);
-  border: 1px solid color-mix(in oklab, var(--color-border) 80%, transparent);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-editorial);
+  background: color-mix(in oklab, var(--color-accent) 12%, var(--surface-paper));
+  border: 1px solid color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
+  border-left: 3px solid var(--color-accent);
   box-shadow: var(--shadow-1);
 }
 .tutor-model-pill__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: color-mix(in oklab, var(--color-accent) 20%, transparent);
-  border: 1px solid color-mix(in oklab, var(--color-border) 75%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-accent) 18%, transparent);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-editorial);
+  background: color-mix(in oklab, var(--color-accent) 18%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-accent) 25%, var(--color-border));
   color: var(--color-accent);
 }
 .tutor-model-pill__icon svg {
@@ -87,15 +88,16 @@
   min-width: 0;
 }
 .tutor-model-pill__label {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--color-fg-muted);
+  color: var(--color-accent);
 }
 .tutor-model-pill__model {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
+  letter-spacing: -0.005em;
   color: var(--color-fg);
   white-space: nowrap;
   overflow: hidden;
@@ -108,11 +110,11 @@
     gap: var(--space-2);
   }
   .tutor-model-pill__icon {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
   }
   .tutor-model-pill__model {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 }
 @keyframes header-shimmer {
@@ -128,19 +130,27 @@
 /* .app-shell::after { } */
 /* Minimal icon button for floating controls */
 .icon-button {
-  height: 28px;
-  width: 28px;
-  border-radius: 9999px;
+  height: 32px;
+  width: 32px;
+  border-radius: var(--radius-editorial);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--color-border);
-  background: color-mix(in oklab, var(--color-surface) 85%, transparent);
-  color: var(--color-fg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+  background: transparent;
+  color: var(--color-fg-muted);
+  box-shadow: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
 }
 .icon-button:hover {
-  background: var(--color-muted);
+  background: var(--surface-paper-warm);
+  border-color: var(--color-border);
+  color: var(--color-fg);
+  box-shadow: var(--shadow-1);
 }
 .icon-button:focus-visible {
   box-shadow: 0 0 0 2px var(--focus-ring);
@@ -148,6 +158,13 @@
 .icon-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+/* Active state for icon buttons */
+.icon-button.text-primary,
+.icon-button[aria-pressed='true'] {
+  background: color-mix(in oklab, var(--color-accent) 15%, var(--surface-paper));
+  border-color: color-mix(in oklab, var(--color-accent) 35%, var(--color-border));
+  color: var(--color-accent);
 }
 
 /* Sidebar header actions spacing */
@@ -161,23 +178,113 @@ button[aria-label='Open settings'][aria-pressed='true'] > svg {
   transition: transform 200ms ease;
 }
 
-/* Make header icon buttons feel like soft chips */
+/* Header buttons — refined scholarly controls */
 .app-header .btn-ghost {
   height: var(--control-md);
   padding: 0 var(--space-3);
-  border-radius: 9999px;
-  background: color-mix(in oklab, var(--color-surface) 65%, transparent);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-1);
+  border-radius: var(--radius-editorial);
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+  box-shadow: none;
+  color: var(--color-fg-muted);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
 }
 .app-header .btn-ghost:hover {
-  background: var(--color-muted);
+  background: var(--surface-paper-warm);
+  border-color: var(--color-border);
+  color: var(--color-fg);
+  box-shadow: var(--shadow-1);
 }
+.app-header .btn-ghost:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+/* Active state — when settings is open, etc. */
+.app-header .btn-ghost[aria-pressed='true'] {
+  background: color-mix(in oklab, var(--color-accent) 12%, var(--surface-paper));
+  border-color: color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+  color: var(--color-fg);
+}
+
+/* Tutor toggle — marginalia badge style */
+.app-header .btn-outline {
+  height: var(--control-md);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-editorial);
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--color-border) 80%, transparent);
+  color: var(--color-fg-muted);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+.app-header .btn-outline:hover {
+  background: var(--surface-paper-warm);
+  border-color: var(--color-border);
+  color: var(--color-fg);
+}
+
+/* Tutor ON — gold marginalia accent */
+.app-header .btn-primary {
+  height: var(--control-md);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-editorial);
+  background: color-mix(in oklab, var(--color-accent) 18%, var(--surface-paper));
+  border: 1px solid color-mix(in oklab, var(--color-accent) 35%, var(--color-border));
+  border-left: 3px solid var(--color-accent);
+  color: var(--color-fg);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: var(--shadow-1);
+}
+.app-header .btn-primary:hover {
+  background: color-mix(in oklab, var(--color-accent) 25%, var(--surface-paper));
+  border-color: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
+}
+.app-header .btn-primary svg {
+  color: var(--color-accent);
+}
+
 @media (max-width: 640px) {
   .app-header .btn-ghost {
     height: var(--control-sm);
     padding: 0 var(--space-2);
   }
+  .app-header .btn-outline,
+  .app-header .btn-primary {
+    height: var(--control-sm);
+    padding: 0 var(--space-3);
+  }
+}
+
+/* Model picker button — styled as document subject/chapter title */
+.app-header .btn.btn-outline:has(.truncate) {
+  background: color-mix(in oklab, var(--color-muted) 40%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-border) 65%, transparent);
+  padding: 0 var(--space-4);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--color-fg);
+}
+.app-header .btn.btn-outline:has(.truncate):hover {
+  background: var(--surface-paper-warm);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-1);
+}
+.app-header .btn.btn-outline:has(.truncate) svg {
+  color: var(--color-fg-muted);
+  opacity: 0.7;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.app-header .btn.btn-outline:has(.truncate):hover svg {
+  opacity: 1;
 }
 
 .scroll-area {
