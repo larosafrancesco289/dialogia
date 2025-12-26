@@ -1,21 +1,28 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
+import { shallow } from 'zustand/shallow';
 import { LightBulbIcon } from '@heroicons/react/24/outline';
 import { findModelById, isReasoningSupported } from '@/lib/models';
-import { readNextOverrides } from '@/lib/ui/next';
 import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
+import type { UiNextOverrides } from '@/lib/agent/contracts';
 
 type Effort = 'none' | 'low' | 'medium' | 'high';
 
+const EMPTY_OVERRIDES: UiNextOverrides = {};
+
 export function ReasoningEffortMenu() {
-  const { chats, selectedChatId } = useChatStore();
-  const chat = chats.find((c) => c.id === selectedChatId);
-  const models = useChatStore((s) => s.models);
-  const updateSettings = useChatStore((s) => s.updateChatSettings);
-  const setUI = useChatStore((s) => s.setUI);
-  const ui = useChatStore((s) => s.ui);
-  const nextOverrides = readNextOverrides(ui);
+  const { chat, models, updateSettings, setUI, overrides } = useChatStore(
+    (s) => ({
+      chat: s.selectedChatId ? s.chats.find((c) => c.id === s.selectedChatId) : undefined,
+      models: s.models,
+      updateSettings: s.updateChatSettings,
+      setUI: s.setUI,
+      overrides: s.ui.overrides,
+    }),
+    shallow,
+  );
+  const nextOverrides = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 

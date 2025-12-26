@@ -2,12 +2,12 @@
 // Responsibility: Orchestrate chat turn lifecycle (send, regenerate, tutor persistence)
 // while keeping the Zustand message slice focused on state updates.
 
-import { v4 as uuidv4 } from 'uuid';
-import type { Attachment, Chat, Message, MessageTutor } from '@/lib/types';
+import type { DraftAttachment, Chat, Message, MessageTutor } from '@/lib/types';
 import type { StoreAccess, StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
 import { saveChat, saveMessage } from '@/lib/db';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { attachTutorUiState, ensureTutorDefaults, mergeTutorPayload } from '@/lib/agent/tutorFlow';
+import { attachTutorUiState, ensureTutorDefaults } from '@/lib/agent/tutorFlow';
+import { buildHiddenTutorContent } from '@/lib/tutor/hiddenContent';
 import { runDeepResearchTurn } from '@/lib/agent/deepResearchOrchestrator';
 import { regenerate } from '@/lib/agent/regenerate';
 import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
@@ -18,13 +18,15 @@ import { spawnTurnMessages } from '@/lib/services/turns/spawn';
 import { executeModelTurn } from '@/lib/services/turns/executor';
 import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { resolveSingleModelAuth } from '@/lib/services/auth';
+import { evaluateDeepResearchPolicy } from '@/lib/services/deepResearchPolicy';
 import { enforceZdrGate } from '@/lib/policy/runtime';
 import { selectTutorEntry } from '@/lib/ui/tutorSelectors';
-import { findModelById, isReasoningSupported } from '@/lib/models';
+import { findModelById } from '@/lib/models';
+import { createAssistantMessage } from '@/lib/messages/createMessage';
 
 export type SendTurnOptions = {
   content: string;
-  attachments?: Attachment[];
+  attachments?: DraftAttachment[];
   metadata?: Message['metadata'];
   set: StoreSetter;
   get: StoreGetter;
@@ -55,16 +57,12 @@ export async function appendAssistantTurn({ content, modelId, set, get }: Append
   const chat = get().chats.find((c) => c.id === chatId);
   if (!chat) return;
   const now = Date.now();
-  const assistantMsg: Message = {
-    id: uuidv4(),
+  const assistantMsg = createAssistantMessage({
     chatId,
-    role: 'assistant',
     content,
     createdAt: now,
     model: modelId || chat.settings.model,
-    reasoning: '',
-    toolCalls: [],
-  };
+  });
   set((state) => ({
     messages: {
       ...state.messages,
@@ -89,8 +87,9 @@ export async function persistTutorForMessage({ messageId, store }: PersistTutorA
     const idx = list.findIndex((m) => m.id === messageId);
     if (idx === -1) continue;
     const target = list[idx];
-    const prevTutor = (target as any)?.tutor;
-    const { merged, hiddenContent } = mergeTutorPayload(prevTutor, uiTutor);
+    const prevTutor = target.tutor;
+    const merged: MessageTutor = { ...(prevTutor || {}), ...(uiTutor || {}) };
+    const hiddenContent = buildHiddenTutorContent(merged);
     const nextMessage = { ...target, tutor: merged, hiddenContent } as Message;
     set((draft) => ({
       messages: {
@@ -154,37 +153,38 @@ export async function sendUserTurn({ content, attachments, metadata, set, get }:
   // 2. Primary model supports reasoning
   // 3. We are not in tutor mode (simplification, tutor has its own tools)
   // 4. Transport is OpenRouter (DeepResearch requirement)
-  const searchEnabled = !!currentChat.settings.search_enabled;
   const modelMeta = findModelById(get().models, primaryModelId);
-  const isReasoning = modelMeta ? isReasoningSupported(modelMeta) : false;
+  const deepResearchDecision = evaluateDeepResearchPolicy({
+    searchEnabled: !!currentChat.settings.search_enabled,
+    tutorEnabled,
+    transport: primaryContext.auth.transport,
+    modelMeta,
+  });
 
-  if (searchEnabled && isReasoning && !tutorEnabled) {
-    if (primaryContext.auth.transport !== 'openrouter') {
-      set((state) => {
-        const updated = applyNextOverrides(state.ui, { deepResearch: false });
-        return {
-          ui: {
-            ...updated,
-            notice:
-              state.ui.notice ?? 'DeepResearch currently requires an OpenRouter model selection.',
-          },
-        };
-      });
-    } else {
-      const handled = await runDeepResearchTurn({
-        task: content,
-        modelId: primaryModelId,
-        chatId,
-        assistantMessage: primaryAssistant,
-        set,
-        get,
-        persistMessage: saveMessage,
-        controller: masterController,
-      });
-      if (handled) {
-        completeAll();
-        return;
-      }
+  if (deepResearchDecision.notice) {
+    set((state) => {
+      const updated = applyNextOverrides(state.ui, { deepResearch: false });
+      return {
+        ui: {
+          ...updated,
+          notice: state.ui.notice ?? deepResearchDecision.notice,
+        },
+      };
+    });
+  } else if (deepResearchDecision.shouldRun) {
+    const handled = await runDeepResearchTurn({
+      task: content,
+      modelId: primaryModelId,
+      chatId,
+      assistantMessage: primaryAssistant,
+      set,
+      get,
+      persistMessage: saveMessage,
+      controller: masterController,
+    });
+    if (handled) {
+      completeAll();
+      return;
     }
   }
 
@@ -277,8 +277,8 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
   const messages = get().messages[chatId] ?? [];
   if (!messages.some((m) => m.id === messageId)) return;
 
+  const controller = new AbortController();
   try {
-    const controller = new AbortController();
     setTurnController(chatId, controller);
     const turnContext = {
       apiKey: targetAuth.apiKey,
@@ -300,7 +300,7 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
     });
   } catch (error: any) {
     handleTurnApiError(error, set);
-    clearTurnController(chatId);
+    clearTurnController(chatId, controller);
   }
 }
 

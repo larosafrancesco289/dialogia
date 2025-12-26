@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { StoreState } from '@/lib/store/types';
+import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { LearningPlan, Message, MessageTutor, TutorEvent } from '@/lib/types';
-import type { StoreSetter } from '@/lib/agent/types';
 import { updateTutorProfile, loadTutorProfile } from '@/lib/tutorProfile';
 import { saveMessage } from '@/lib/db';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';

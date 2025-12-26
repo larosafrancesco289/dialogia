@@ -1,6 +1,7 @@
 import type {
   Chat,
   ChatSettings,
+  DraftAttachment,
   Message,
   ORModel,
   Folder,
@@ -12,6 +13,7 @@ import type {
 import type { ModelIndex } from '@/lib/models';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
 import type { VoiceState, VoiceActions } from '@/lib/voice/types';
+import type { GetState, SetState } from 'zustand';
 
 export type TutorToolUsage = {
   mcqByNode?: Record<string, number>;
@@ -134,7 +136,7 @@ export type UIState = {
   plan: UIPlanState;
 };
 
-export type StoreState = {
+export type StoreDataState = {
   chats: Chat[];
   folders: Folder[];
   messages: Record<string, Message[]>;
@@ -155,92 +157,96 @@ export type StoreState = {
 
   // Voice agent state
   voice: VoiceState;
-} & VoiceActions & {
-    // lifecycle
-    initializeApp: () => Promise<void>;
+};
 
-    // chats
-    newChat: () => Promise<void>;
-    selectChat: (id: string) => void;
-    renameChat: (id: string, title: string) => Promise<void>;
-    deleteChat: (id: string) => Promise<void>;
-    updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
-    moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
+export type StoreActions = VoiceActions & {
+  // lifecycle
+  initializeApp: () => Promise<void>;
 
-    // folders
-    createFolder: (name: string, parentId?: string) => Promise<void>;
-    renameFolder: (id: string, name: string) => Promise<void>;
-    deleteFolder: (id: string) => Promise<void>;
-    toggleFolderExpanded: (id: string) => Promise<void>;
+  // chats
+  newChat: () => Promise<void>;
+  selectChat: (id: string) => void;
+  renameChat: (id: string, title: string) => Promise<void>;
+  deleteChat: (id: string) => Promise<void>;
+  updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
+  moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
 
-    // ui
-    setUI: (partial: Partial<UIState>) => void;
-    setSearchStatus: (
-      messageId: string,
-      entry: NonNullable<UISearchState['braveByMessageId']>[string],
-    ) => void;
+  // folders
+  createFolder: (name: string, parentId?: string) => Promise<void>;
+  renameFolder: (id: string, name: string) => Promise<void>;
+  deleteFolder: (id: string) => Promise<void>;
+  toggleFolderExpanded: (id: string) => Promise<void>;
 
-    // tutor
-    logTutorResult: (evt: import('@/lib/types').TutorEvent) => Promise<void>;
-    loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
-    primeTutorWelcomePreview: () => Promise<string | undefined>;
-    prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
-    applyLearnerModelFeedbackFromUser: (input: LearnerModelFeedback) => Promise<void>;
-    patchTutorEntry: (
-      messageId: string,
-      patch: Partial<import('@/lib/types').MessageTutor>,
-      opts?: { persist?: boolean },
-    ) => Promise<void>;
-    setTutorAttemptMcq: (
-      messageId: string,
-      itemId: string,
-      choiceIdx: number,
-      correct: boolean,
-    ) => void;
-    setTutorAttemptFillBlank: (
-      messageId: string,
-      itemId: string,
-      answer: string,
-      revealed?: boolean,
-      correct?: boolean,
-    ) => void;
-    setTutorAttemptOpen: (messageId: string, itemId: string, answer: string) => void;
-    setTutorPlanProposalStatus: (
-      messageId: string,
-      status: 'pending' | 'approved' | 'declined',
-    ) => void;
+  // ui
+  setUI: (partial: Partial<UIState>) => void;
+  setSearchStatus: (
+    messageId: string,
+    entry: NonNullable<UISearchState['braveByMessageId']>[string],
+  ) => void;
 
-    // models
-    loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
-    toggleFavoriteModel: (id: string) => void;
-    hideModel: (id: string) => void;
-    unhideModel: (id: string) => void;
-    resetHiddenModels: () => void;
-    removeModelFromDropdown: (id: string) => void;
+  // tutor
+  logTutorResult: (evt: import('@/lib/types').TutorEvent) => Promise<void>;
+  loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
+  primeTutorWelcomePreview: () => Promise<string | undefined>;
+  prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
+  applyLearnerModelFeedbackFromUser: (input: LearnerModelFeedback) => Promise<void>;
+  patchTutorEntry: (
+    messageId: string,
+    patch: Partial<import('@/lib/types').MessageTutor>,
+    opts?: { persist?: boolean },
+  ) => Promise<void>;
+  setTutorAttemptMcq: (
+    messageId: string,
+    itemId: string,
+    choiceIdx: number,
+    correct: boolean,
+  ) => void;
+  setTutorAttemptFillBlank: (
+    messageId: string,
+    itemId: string,
+    answer: string,
+    revealed?: boolean,
+    correct?: boolean,
+  ) => void;
+  setTutorAttemptOpen: (messageId: string, itemId: string, answer: string) => void;
+  setTutorPlanProposalStatus: (
+    messageId: string,
+    status: 'pending' | 'approved' | 'declined',
+  ) => void;
 
-    // messaging
-    sendUserMessage: (
-      content: string,
-      opts?: {
-        attachments?: import('@/lib/types').Attachment[];
-        metadata?: Message['metadata'];
-      },
-    ) => Promise<void>;
-    // chat branching
-    branchChatFromMessage: (messageId: string) => Promise<void>;
-    stopStreaming: () => void;
-    regenerateAssistantMessage: (messageId: string, opts?: { modelId?: string }) => Promise<void>;
-    editUserMessage: (
-      messageId: string,
-      newContent: string,
-      opts?: { rerun?: boolean },
-    ) => Promise<void>;
-    editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
-    // utility for UI features (e.g., multi-model responses inserting a result)
-    appendAssistantMessage: (content: string, opts?: { modelId?: string }) => Promise<void>;
-    // tutor persistence
-    persistTutorStateForMessage: (messageId: string) => Promise<void>;
-  };
+  // models
+  loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
+  toggleFavoriteModel: (id: string) => void;
+  hideModel: (id: string) => void;
+  unhideModel: (id: string) => void;
+  resetHiddenModels: () => void;
+  removeModelFromDropdown: (id: string) => void;
+
+  // messaging
+  sendUserMessage: (
+    content: string,
+    opts?: {
+      attachments?: DraftAttachment[];
+      metadata?: Message['metadata'];
+    },
+  ) => Promise<void>;
+  // chat branching
+  branchChatFromMessage: (messageId: string) => Promise<void>;
+  stopStreaming: () => void;
+  regenerateAssistantMessage: (messageId: string, opts?: { modelId?: string }) => Promise<void>;
+  editUserMessage: (
+    messageId: string,
+    newContent: string,
+    opts?: { rerun?: boolean },
+  ) => Promise<void>;
+  editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
+  // utility for UI features (e.g., multi-model responses inserting a result)
+  appendAssistantMessage: (content: string, opts?: { modelId?: string }) => Promise<void>;
+  // tutor persistence
+  persistTutorStateForMessage: (messageId: string) => Promise<void>;
+};
+
+export type StoreState = StoreDataState & StoreActions;
 
 export type PersistedUIState = Pick<
   UIState,
@@ -255,8 +261,11 @@ export type PersistedUIState = Pick<
 };
 
 export type PersistedStoreState = Pick<
-  StoreState,
+  StoreDataState,
   'selectedChatId' | 'favoriteModelIds' | 'hiddenModelIds'
 > & {
   ui: PersistedUIState;
 };
+
+export type StoreSetter = SetState<StoreState>;
+export type StoreGetter = GetState<StoreState>;

@@ -1,6 +1,8 @@
 import { cookies } from 'next/headers';
 import { TIER_COOKIE_NAME } from './shared';
 import type { AccessTier } from './types';
+import { canUseAllModelsForTier } from './tierPolicy';
+import { logger } from '@/lib/logger';
 
 /**
  * Get the current access tier from cookies (server-side).
@@ -29,14 +31,15 @@ export async function getServerTier(): Promise<AccessTier> {
  */
 export async function getOpenRouterApiKeyForTier(): Promise<string> {
   const tier = await getServerTier();
+  const allowAllModels = canUseAllModelsForTier(tier);
 
-  if (tier === 'free') {
+  if (!allowAllModels) {
     const freeKey = process.env.OPENROUTER_FREE_API_KEY;
     if (freeKey) {
       return freeKey;
     }
     // Fall back to main key if free key not configured
-    console.warn('[tierApiKey] OPENROUTER_FREE_API_KEY not set, falling back to main key');
+    logger.warn('[tierApiKey] OPENROUTER_FREE_API_KEY not set, falling back to main key');
   }
 
   const mainKey = process.env.OPENROUTER_API_KEY;
@@ -53,8 +56,8 @@ export async function getOpenRouterApiKeyForTier(): Promise<string> {
 export async function canUseTierModel(modelId: string): Promise<boolean> {
   const tier = await getServerTier();
 
-  // Non-free tiers can use any model
-  if (tier !== 'free') {
+  // Paid tiers can use any model
+  if (canUseAllModelsForTier(tier)) {
     return true;
   }
 

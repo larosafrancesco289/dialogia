@@ -1,7 +1,8 @@
 'use client';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
+import { shallow } from 'zustand/shallow';
 import {
   ChevronDownIcon,
   PencilSquareIcon,
@@ -17,27 +18,26 @@ import { useMessageScrolling } from '@/components/message/useMessageScrolling';
 import { useMessageWindow } from '@/components/message/hooks/useMessageWindow';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useMessagePanelsToggles } from '@/components/message/hooks/useMessagePanelsToggles';
+import { useMessageListController } from '@/components/message/useMessageListController';
 
 const EMPTY_MESSAGES: Message[] = [];
 export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
-  const allMessages = useChatStore((s) => s.messages[chatId] ?? EMPTY_MESSAGES);
-  const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
-  const models = useChatStore((s) => s.models);
-  const isStreaming = useChatStore((s) => s.ui.isStreaming);
-  const braveByMessageId = useChatStore((s) => s.ui.search.braveByMessageId || {});
-  const braveGloballyEnabled = useChatStore((s) => !!s.ui.flags.experimentalBrave);
-  const tutorByMessageId = useChatStore((s) => s.ui.tutor.byMessageId || {});
-  const tutorGloballyEnabled = useChatStore((s) => !!s.ui.flags.experimentalTutor);
-  const forceTutorMode = useChatStore((s) => !!s.ui.tutor.forceMode);
-  const planGeneration = useChatStore((s) => s.ui.plan.generationByChatId?.[chatId]);
-  const regenerate = useChatStore((s) => s.regenerateAssistantMessage);
-  const branchFrom = useChatStore((s) => s.branchChatFromMessage);
-  const autoReasoningModelIds = useChatStore((s) => s.ui.debug.autoReasoningModelIds || {});
-  const showStats = chat?.settings.show_stats ?? false;
-  const debugMode = useChatStore((s) => s.ui.debug.mode || false);
-  const debugByMessageId = useChatStore((s) => s.ui.debug.byMessageId || {});
-  const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat?.settings?.tutor_mode);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { allMessages, chat, isStreaming, planGeneration } = useChatStore(
+    (state) => ({
+      allMessages: state.messages[chatId] ?? EMPTY_MESSAGES,
+      chat: state.chats.find((c) => c.id === chatId),
+      isStreaming: state.ui.isStreaming,
+      planGeneration: state.ui.plan.generationByChatId?.[chatId],
+    }),
+    shallow,
+  );
+  const { regenerate, branchFrom } = useChatStore(
+    (state) => ({
+      regenerate: state.regenerateAssistantMessage,
+      branchFrom: state.branchChatFromMessage,
+    }),
+    shallow,
+  );
   const prefersReducedMotion = useMemo(() => {
     if (typeof window === 'undefined' || !('matchMedia' in window)) return false;
     try {
@@ -58,17 +58,52 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     return base.filter((message) => !(message.role === 'user' && message.metadata?.hiddenFromUser));
   }, [allMessages, modelFilter]);
 
+  const { editUserMessage, editAssistantMessage } = useChatStore(
+    (state) => ({
+      editUserMessage: state.editUserMessage,
+      editAssistantMessage: state.editAssistantMessage,
+    }),
+    shallow,
+  );
+  const {
+    copiedId,
+    editingId,
+    draft,
+    setDraft,
+    setEditingId,
+    saveEdit,
+    startEditingMessage,
+    copyMessage,
+    branchFromMessage,
+    regenerateMessage,
+    mobileSheet,
+    openMobileSheet,
+    closeMobileSheet,
+    mobileActionMessage,
+    mobileActionPreview,
+    activeMessageId,
+    setActiveMessageId,
+  } = useMessageListController({
+    messages,
+    isStreaming,
+    isMobile,
+    editUserMessage,
+    editAssistantMessage,
+    branchFrom,
+    regenerate,
+  });
+
   const isAssistantPlaceholder = useCallback((message?: Message, previous?: Message) => {
     if (!message || message.role !== 'assistant' || previous?.role !== 'user') return false;
     const hasContent = message.content.trim().length > 0;
     const hasReasoning = !!(message.reasoning && message.reasoning.trim().length > 0);
+    const hasDeepResearch =
+      !!(message.deepResearch?.trace && message.deepResearch.trace.length > 0) ||
+      !!message.deepResearch?.answer;
     const hasAttachments = Array.isArray(message.attachments) && message.attachments.length > 0;
     const hasTutorPayload = !!(message.tutor || message.tutorWelcome);
-    return !hasContent && !hasReasoning && !hasAttachments && !hasTutorPayload;
+    return !hasContent && !hasReasoning && !hasDeepResearch && !hasAttachments && !hasTutorPayload;
   }, []);
-
-  // Tap-to-highlight state for mobile actions
-  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
 
   const { containerRef, contentRef, endRef, showJump, jumpToLatest } = useMessageScrolling({
     messages,
@@ -84,10 +119,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     index: number;
   } | null>(null);
   const WINDOW_PAGE_SIZE = 150;
-  // Mobile contextual action sheet (bottom)
-  const [mobileSheet, setMobileSheet] = useState<{ id: string; role: 'assistant' | 'user' } | null>(
-    null,
-  );
 
   // Composer is now rendered outside this scroll container in ChatPane.
 
@@ -102,108 +133,41 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     isStatsExpanded,
     toggleStats,
   } = useMessagePanelsToggles({ showReasoningByDefault: showByDefault });
-  const editUserMessage = useChatStore((s) => s.editUserMessage);
-  const editAssistantMessage = useChatStore((s) => s.editAssistantMessage);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState('');
+  const panelControls = useMemo(
+    () => ({
+      isReasoningExpanded,
+      toggleReasoning,
+      isSourcesExpanded,
+      toggleSources,
+      isDebugExpanded,
+      toggleDebug,
+      isStatsExpanded,
+      toggleStats,
+    }),
+    [
+      isReasoningExpanded,
+      toggleReasoning,
+      isSourcesExpanded,
+      toggleSources,
+      isDebugExpanded,
+      toggleDebug,
+      isStatsExpanded,
+      toggleStats,
+    ],
+  );
   // Subtle indicator for long time-to-first-token
   const waitingForFirstToken = useMemo(() => {
     if (!isStreaming) return false;
     const last = messages[messages.length - 1];
     if (!last || last.role !== 'assistant') return false;
-    const hasText = (last.content || '').length > 0 || (last.reasoning || '').length > 0;
+    const hasText =
+      (last.content || '').length > 0 ||
+      (last.reasoning || '').length > 0 ||
+      !!last.deepResearch?.answer ||
+      !!(last.deepResearch?.trace && last.deepResearch.trace.length > 0);
     return !hasText;
   }, [isStreaming, messages]);
   const lastMessageId = useMemo(() => messages[messages.length - 1]?.id, [messages]);
-  const saveEdit = (messageId: string) => {
-    const text = draft.trim();
-    if (!text) return;
-    // Exit edit mode immediately for responsive UX
-    const payload = draft;
-    setEditingId(null);
-    setDraft('');
-    // Dispatch to appropriate editor depending on role
-    const role = messages.find((mm) => mm.id === messageId)?.role;
-    if (role === 'assistant') {
-      editAssistantMessage(messageId, payload).catch(() => void 0);
-    } else {
-      // Fire-and-forget; store will kick off regeneration for user messages
-      editUserMessage(messageId, payload, { rerun: true }).catch(() => void 0);
-    }
-  };
-
-  const copyMessage = async (messageId: string) => {
-    const msg = messages.find((x) => x.id === messageId);
-    if (!msg) return;
-    try {
-      await navigator.clipboard.writeText(msg.content || '');
-      setCopiedId(messageId);
-      setTimeout(() => setCopiedId((id) => (id === messageId ? null : id)), 1200);
-    } catch (error) {
-      console.error('Copy message failed', error);
-    }
-  };
-
-  const startEditingMessage = (messageId: string) => {
-    const msg = messages.find((x) => x.id === messageId);
-    if (!msg) return;
-    setEditingId(messageId);
-    setDraft(msg.content || '');
-  };
-
-  const branchFromMessage = (messageId: string) => {
-    if (isStreaming) return;
-    branchFrom(messageId);
-  };
-
-  const regenerateMessage = (messageId: string) => {
-    regenerate(messageId, {} as any);
-  };
-
-  const mobileActionMessage = useMemo(() => {
-    if (!mobileSheet) return null;
-    return messages.find((msg) => msg.id === mobileSheet.id) ?? null;
-  }, [mobileSheet, messages]);
-
-  const mobileActionPreview = useMemo(() => {
-    if (!mobileActionMessage) return null;
-    const text = (mobileActionMessage.content || '').trim();
-    if (text) {
-      const normalized = text.replace(/\s+/g, ' ');
-      return normalized.length > 160 ? `${normalized.slice(0, 160)}…` : normalized;
-    }
-    if (
-      Array.isArray(mobileActionMessage.attachments) &&
-      mobileActionMessage.attachments.length > 0
-    ) {
-      const first = mobileActionMessage.attachments[0];
-      return first?.name || first?.kind || 'Attachment';
-    }
-    return null;
-  }, [mobileActionMessage]);
-
-  const closeMobileSheet = useCallback(() => {
-    setMobileSheet(null);
-    setActiveMessageId(null);
-  }, [setMobileSheet, setActiveMessageId]);
-
-  useEffect(() => {
-    if (!isMobile || !mobileSheet) return;
-    if (typeof document === 'undefined') return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      closeMobileSheet();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [isMobile, mobileSheet, closeMobileSheet]);
-
-  useEffect(() => {
-    if (!mobileSheet) return;
-    const exists = messages.some((msg) => msg.id === mobileSheet.id);
-    if (!exists) closeMobileSheet();
-  }, [mobileSheet, messages, closeMobileSheet]);
 
   const {
     visibleItems: visibleMessages,
@@ -213,26 +177,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     pageSize: WINDOW_PAGE_SIZE,
     resetKey: chatId,
   });
-
-  useEffect(() => {
-    if (!isMobile || !mobileSheet) return;
-    if (activeMessageId === mobileSheet.id) return;
-    setActiveMessageId(mobileSheet.id);
-  }, [isMobile, mobileSheet, activeMessageId, setActiveMessageId]);
-  // Clear active highlight when tapping outside the active message on mobile
-  useEffect(() => {
-    if (!isMobile) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (!activeMessageId) return;
-      const target = e.target as Element | null;
-      if (!target) return;
-      const withinActive = target.closest(`[data-mid="${activeMessageId}"]`);
-      if (withinActive) return;
-      setActiveMessageId(null);
-    };
-    document.addEventListener('pointerdown', onPointerDown, true);
-    return () => document.removeEventListener('pointerdown', onPointerDown, true);
-  }, [isMobile, activeMessageId]);
   return (
     <div
       ref={containerRef}
@@ -255,13 +199,11 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
           return (
             <MessageCard
               key={message.id}
-              message={message}
-              chat={chat}
-              models={models}
+              chatId={chatId}
+              messageId={message.id}
               isMobile={isMobile}
               isActive={isMobile && activeMessageId === message.id}
               showInlineActions={showInlineActions}
-              isStreaming={isStreaming}
               isEditing={isEditingThisMessage}
               draft={draft}
               setDraft={setDraft}
@@ -270,37 +212,11 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
               startEditingMessage={startEditingMessage}
               copyMessage={copyMessage}
               copiedId={copiedId}
-              branchFromMessage={branchFromMessage}
-              onChooseRegenerateModel={(modelId) => {
-                if (!modelId) return;
-                regenerate(message.id, { modelId });
-              }}
               setLightbox={setLightbox}
               waitingForFirstToken={waitingForFirstToken && message.id === lastMessageId}
               lastMessageId={lastMessageId}
-              showStats={showStats}
-              isStatsExpanded={isStatsExpanded}
-              toggleStats={toggleStats}
-              tutorEnabled={tutorEnabled}
-              setActiveMessageId={setActiveMessageId}
-              setMobileSheet={setMobileSheet}
-              braveGloballyEnabled={braveGloballyEnabled}
-              braveEntry={braveByMessageId[message.id]}
-              isSourcesExpanded={isSourcesExpanded(message.id)}
-              onToggleSources={toggleSources}
-              debugMode={debugMode}
-              debugEntry={debugByMessageId[message.id]}
-              isDebugExpanded={isDebugExpanded(message.id)}
-              onToggleDebug={toggleDebug}
-              tutorGloballyEnabled={tutorGloballyEnabled}
-              tutorEntry={tutorByMessageId[message.id] || (message as any)?.tutor}
-              autoReasoningModelIds={autoReasoningModelIds}
-              isReasoningExpanded={isReasoningExpanded(message.id)}
-              onToggleReasoning={toggleReasoning}
-              showToolCallLog={!!chat?.settings?.showToolCallLog}
-              showDebugRawJson={chat?.settings?.showDebugRawJson ?? true}
-              toolCalls={Array.isArray(message.toolCalls) ? message.toolCalls : undefined}
-              highlightToolCalls={message.id === lastMessageId}
+              panels={panelControls}
+              onOpenMobileSheet={openMobileSheet}
             />
           );
         })}

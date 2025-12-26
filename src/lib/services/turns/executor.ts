@@ -9,14 +9,14 @@ import { saveChat, saveMessage } from '@/lib/db';
 import { updateMessageInChat } from '@/lib/store/messageUtils';
 import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
 import type { SendRuntime } from '@/lib/services/turns/runtime';
-import type { Attachment, Chat, Message } from '@/lib/types';
+import type { Chat, Message, PersistedAttachment } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 
 export type ExecuteModelTurnArgs = {
   modelId: string;
   isPrimary: boolean;
   assistantMessage?: Message;
-  attachments: Attachment[];
+  attachments: PersistedAttachment[];
   runtime: SendRuntime;
   content: string;
   priorMessages: Message[];

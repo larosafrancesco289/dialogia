@@ -1,4 +1,4 @@
-import type { UIState, UINextOverrides } from '@/lib/store/types';
+import type { UiNextOverrides, UiSnapshot } from '@/lib/agent/contracts';
 
 const mergeNested = <T extends Record<string, unknown>>(current?: T, patch?: T): T | undefined => {
   if (!patch) return current;
@@ -8,22 +8,25 @@ const mergeNested = <T extends Record<string, unknown>>(current?: T, patch?: T):
   return entries.length ? (Object.fromEntries(entries) as T) : undefined;
 };
 
-const pruneNext = (next: UINextOverrides): UINextOverrides | undefined => {
-  const cleaned: UINextOverrides = {
+const pruneNext = (next: UiNextOverrides): UiNextOverrides | undefined => {
+  const cleaned: UiNextOverrides = {
     ...next,
     search: mergeNested(next.search),
     reasoning: mergeNested(next.reasoning),
     show: mergeNested(next.show),
   };
   const entries = Object.entries(cleaned).filter(([, value]) => value !== undefined);
-  return entries.length ? (Object.fromEntries(entries) as UINextOverrides) : undefined;
+  return entries.length ? (Object.fromEntries(entries) as UiNextOverrides) : undefined;
 };
 
-export const readNextOverrides = (ui: UIState): UINextOverrides => ui.overrides ?? {};
+export const readNextOverrides = (ui: UiSnapshot): UiNextOverrides => ui.overrides ?? {};
 
-export const applyNextOverrides = (ui: UIState, patch: Partial<UINextOverrides>): UIState => {
+export const applyNextOverrides = <T extends UiSnapshot>(
+  ui: T,
+  patch: Partial<UiNextOverrides>,
+): T => {
   const current = readNextOverrides(ui);
-  const merged: UINextOverrides = {
+  const merged: UiNextOverrides = {
     ...current,
     ...patch,
     search: mergeNested(current.search, patch.search),
@@ -35,5 +38,5 @@ export const applyNextOverrides = (ui: UIState, patch: Partial<UINextOverrides>)
   return {
     ...ui,
     overrides: nextValue,
-  };
+  } as T;
 };

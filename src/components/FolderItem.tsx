@@ -34,7 +34,18 @@ export function FolderItem({ folder, depth = 0 }: FolderItemProps) {
     renameFolder,
     deleteFolder,
     toggleFolderExpanded,
-  } = useChatStore();
+  } = useChatStore(
+    (s) => ({
+      chats: s.chats,
+      folders: s.folders,
+      selectedChatId: s.selectedChatId,
+      selectChat: s.selectChat,
+      renameFolder: s.renameFolder,
+      deleteFolder: s.deleteFolder,
+      toggleFolderExpanded: s.toggleFolderExpanded,
+    }),
+    shallow,
+  );
 
   const { handleDragOver, handleDrop, handleDragStart, handleDragEnd, getDragData } =
     useDragAndDrop();

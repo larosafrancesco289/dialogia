@@ -11,7 +11,15 @@ test('sanitizeMessageRecord trims hidden content and drops empty fields', () => 
     content: 'Hi',
     createdAt: Date.now(),
     hiddenContent: '  Tutor recap  ',
-    attachments: [null as any, { id: 'img1', kind: 'image', mime: 'image/png' }],
+    attachments: [
+      null as any,
+      {
+        id: 'img1',
+        kind: 'image',
+        mime: 'image/png',
+        file: { name: 'image.png' } as unknown as File,
+      },
+    ],
     tutor: {},
     tutorWelcome: false,
   };
@@ -23,4 +31,22 @@ test('sanitizeMessageRecord trims hidden content and drops empty fields', () => 
   assert.equal('tutor' in next, false);
   assert.equal('tutorWelcome' in next, false);
   assert.equal(original.hiddenContent, '  Tutor recap  ');
+});
+
+test('sanitizeMessageRecord migrates deep research trace from reasoning', () => {
+  const trace = [{ type: 'thought', output: 'Thinking...' }];
+  const original: Message = {
+    id: 'm2',
+    chatId: 'chat2',
+    role: 'assistant',
+    content: 'Final answer',
+    createdAt: Date.now(),
+    reasoning: JSON.stringify(trace),
+  };
+
+  const { next, changed } = sanitizeMessageRecord(original);
+  assert.equal(changed, true);
+  assert.equal(next.reasoning, undefined);
+  assert.deepEqual(next.deepResearch?.trace, trace);
+  assert.equal(next.deepResearch?.answer, 'Final answer');
 });

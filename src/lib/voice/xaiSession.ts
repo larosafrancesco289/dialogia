@@ -1,6 +1,7 @@
 'use client';
 
 import type { XAIVoice } from '@/lib/voice/types';
+import { logger } from '@/lib/logger';
 
 const DEFAULT_SAMPLE_RATE = 24000;
 const DEFAULT_WS_URL = 'wss://api.x.ai/v1/realtime';
@@ -377,18 +378,18 @@ export class VoiceSessionManager {
   private log(message: string, payload?: unknown) {
     if (!this.debug) return;
     if (payload !== undefined) {
-      console.log('[xAI Voice]', message, payload);
+      logger.debug('[xAI Voice]', message, payload);
     } else {
-      console.log('[xAI Voice]', message);
+      logger.debug('[xAI Voice]', message);
     }
   }
 
   private error(message: string, payload?: unknown) {
     if (!this.debug) return;
     if (payload !== undefined) {
-      console.error('[xAI Voice]', message, payload);
+      logger.error('[xAI Voice]', message, payload);
     } else {
-      console.error('[xAI Voice]', message);
+      logger.error('[xAI Voice]', message);
     }
   }
 }

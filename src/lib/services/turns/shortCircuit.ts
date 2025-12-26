@@ -1,12 +1,12 @@
 import { buildTutorFallbackContent } from '@/lib/agent/streamHandlers';
-import type { StoreState } from '@/lib/store/types';
+import type { TurnStoreState } from '@/lib/agent/contracts';
 import type { Message } from '@/lib/types';
 
 type ShortCircuitFinalizeArgs = {
   chatId: string;
   assistantMessage: Message;
   lifecycle: { buildShortCircuitMessage: (message: Message) => Message };
-  getState: () => StoreState;
+  getState: () => TurnStoreState;
   updateMessage: (messageId: string, patch: Partial<Message>) => void;
   persistMessage: (message: Message) => Promise<void>;
   fallbackText?: string;

@@ -142,6 +142,8 @@ function buildReasoningPanel({
   onToggleReasoning: () => void;
 }): React.ReactNode {
   const reasoningText = typeof message.reasoning === 'string' ? (message.reasoning as string) : '';
+  const deepResearch = message.deepResearch;
+  const hasDeepResearch = !!(deepResearch?.trace && deepResearch.trace.length > 0);
   const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
   const messageModelId = (message.model || chat?.settings?.model) ?? undefined;
   const modelMeta = messageModelId ? findModelById(models, messageModelId) : undefined;
@@ -171,15 +173,18 @@ function buildReasoningPanel({
     isLatestAssistant &&
     isStreaming;
 
-  if (!hasReasoning && !allowStreaming) return null;
+  const shouldStream = isLatestAssistant && isStreaming && (allowStreaming || hasDeepResearch);
+
+  if (!hasReasoning && !allowStreaming && !hasDeepResearch) return null;
 
   return (
     <ReasoningPanel
       key="reasoning"
       reasoning={reasoningText}
+      deepResearch={deepResearch}
       expanded={reasoningExpanded}
       onToggle={onToggleReasoning}
-      isStreaming={allowStreaming}
+      isStreaming={shouldStream}
     />
   );
 }

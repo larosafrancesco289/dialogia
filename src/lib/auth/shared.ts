@@ -1,3 +1,5 @@
+import { isAuthDebugRouteEnabled, isProd } from '@/lib/config';
+
 export const AUTH_COOKIE_NAME = 'dlg_access';
 
 /**
@@ -10,16 +12,20 @@ export const TIER_COOKIE_NAME = 'dlg_tier';
  * Routes that remain accessible without an auth token. Middleware uses this
  * list before performing any verification to avoid unnecessary work.
  */
-export const PUBLIC_AUTH_PATHS = Object.freeze([
+const BASE_PUBLIC_AUTH_PATHS = [
   '/access',
   '/api/auth/verify-code',
   '/api/auth/logout',
   '/api/auth/set-free-tier',
-  '/api/auth/debug',
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',
-]);
+];
+
+const DEBUG_AUTH_PATHS =
+  !isProd() || isAuthDebugRouteEnabled() ? (['/api/auth/debug'] as const) : [];
+
+export const PUBLIC_AUTH_PATHS = Object.freeze([...BASE_PUBLIC_AUTH_PATHS, ...DEBUG_AUTH_PATHS]);
 
 /**
  * Matcher pattern for the auth middleware. Keeps static assets excluded while

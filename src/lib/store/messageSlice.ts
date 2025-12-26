@@ -1,6 +1,5 @@
-import type { StoreState } from '@/lib/store/types';
+import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
-import type { StoreSetter } from '@/lib/agent/types';
 import { saveMessage } from '@/lib/db';
 import {
   appendAssistantTurn,
@@ -25,7 +24,7 @@ export function createMessageSlice(set: StoreSetter, get: () => StoreState, _sto
     async sendUserMessage(
       content: string,
       opts?: {
-        attachments?: import('@/lib/types').Attachment[];
+        attachments?: import('@/lib/types').DraftAttachment[];
         metadata?: import('@/lib/types').Message['metadata'];
       },
     ) {

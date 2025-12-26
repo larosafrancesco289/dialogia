@@ -16,8 +16,11 @@ export function getTurnController(chatId: string): AbortController | undefined {
   return turnControllers.get(chatId);
 }
 
-export function clearTurnController(chatId: string) {
+export function clearTurnController(chatId: string, controller?: AbortController) {
   if (!chatId) return;
+  const existing = turnControllers.get(chatId);
+  if (!existing) return;
+  if (controller && existing !== controller) return;
   turnControllers.delete(chatId);
 }
 

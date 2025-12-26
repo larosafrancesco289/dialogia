@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { Attachment, Chat, Message, ORModel } from '@/lib/types';
+import type { Chat, DraftAttachment, Message, ORModel } from '@/lib/types';
 import type { ChatSettings } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { findModelById, isReasoningSupported } from '@/lib/models';
@@ -95,7 +95,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
 
 type SubmitArgs = {
   text: string;
-  attachments: Attachment[];
+  attachments: DraftAttachment[];
   metadata?: Message['metadata'];
   onBeforeSend?: () => void;
   onAfterSend?: () => void;
@@ -113,7 +113,7 @@ export function useComposerShortcuts(options: {
   newChat: () => Promise<void>;
   sendMessage: (
     text: string,
-    opts: { attachments?: Attachment[]; metadata?: Message['metadata'] },
+    opts: { attachments?: DraftAttachment[]; metadata?: Message['metadata'] },
   ) => Promise<void>;
   defaultModelId?: string;
 }) {

@@ -1,5 +1,10 @@
 'use client';
 import { useState } from 'react';
+import {
+  getAccessCodeErrorMessage,
+  setFreeTierAccess,
+  verifyAccessCode,
+} from '@/lib/auth/access.client';
 
 export default function AccessPage() {
   const [code, setCode] = useState('');
@@ -14,16 +19,9 @@ export default function AccessPage() {
     if (!plain) return setError('Enter access code');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ code: plain }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.ok) {
-        const errorMessage = getErrorMessage(data?.error);
-        setError(errorMessage);
+      const result = await verifyAccessCode(plain);
+      if (!result.ok) {
+        setError(getAccessCodeErrorMessage(result.error));
       } else {
         // Force full navigation so the new HttpOnly cookie is sent to the server
         window.location.replace('/');
@@ -39,13 +37,9 @@ export default function AccessPage() {
     setError(null);
     setFreeTierLoading(true);
     try {
-      const res = await fetch('/api/auth/set-free-tier', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.ok) {
-        setError(data?.error || 'Failed to set free tier');
+      const result = await setFreeTierAccess();
+      if (!result.ok) {
+        setError(result.error || 'Failed to set free tier');
       } else {
         window.location.replace('/');
       }
@@ -117,19 +111,4 @@ export default function AccessPage() {
       </div>
     </div>
   );
-}
-
-function getErrorMessage(errorCode: string | undefined): string {
-  switch (errorCode) {
-    case 'invalid_code':
-      return 'Invalid access code';
-    case 'code_already_used':
-      return 'This code has already been used';
-    case 'missing_code':
-      return 'Please enter an access code';
-    case 'codes_unconfigured':
-      return 'Access codes not configured';
-    default:
-      return errorCode || 'An error occurred';
-  }
 }

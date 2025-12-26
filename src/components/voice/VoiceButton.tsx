@@ -3,6 +3,7 @@
 import { MicrophoneIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
 import { useXAIVoice } from '@/lib/hooks/useXAIVoice';
+import { logger } from '@/lib/logger';
 
 interface VoiceButtonProps {
   className?: string;
@@ -28,7 +29,7 @@ export function VoiceButton({ className }: VoiceButtonProps) {
   });
 
   const handleClick = async () => {
-    console.log('[VoiceButton] Click, isActive:', isActive);
+    logger.debug('[VoiceButton] Click, isActive:', isActive);
     if (isActive) {
       stop();
     } else {

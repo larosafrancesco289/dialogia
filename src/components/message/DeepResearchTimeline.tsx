@@ -12,16 +12,38 @@ import {
 } from '@heroicons/react/24/outline';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import { Markdown } from '@/lib/markdown';
-
-export type DeepResearchEvent = {
-  type: 'search' | 'fetch' | 'time' | 'note' | 'thought';
-  input?: any;
-  output?: any;
-};
+import type { DeepResearchEvent } from '@/lib/types/deepResearch';
 
 type Props = {
   trace: DeepResearchEvent[];
 };
+
+type SearchResult = {
+  title?: string;
+  url: string;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function getSearchResults(output: unknown): SearchResult[] {
+  if (!Array.isArray(output)) return [];
+  return output
+    .map((item) => {
+      const record = asRecord(item);
+      const url = getString(record?.url);
+      if (!url) return null;
+      const title = getString(record?.title);
+      return { url, title } as SearchResult;
+    })
+    .filter((item): item is SearchResult => item !== null);
+}
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -84,7 +106,7 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
             <span>Thinking Process</span>
           </div>
           <div className="text-sm text-[var(--color-fg)]/90 leading-relaxed prose prose-sm dark:prose-invert max-w-none font-[var(--font-sans)]">
-            <Markdown content={output || ''} />
+            <Markdown content={typeof output === 'string' ? output : ''} />
           </div>
         </div>
       </motion.div>
@@ -92,9 +114,12 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
   }
 
   if (type === 'search') {
-    const query = input?.query || 'Unknown query';
-    const results = Array.isArray(output) ? output : [];
-    const isError = !!output?.error;
+    const inputRecord = asRecord(input);
+    const query = getString(inputRecord?.query) || 'Unknown query';
+    const results = getSearchResults(output);
+    const outputRecord = asRecord(output);
+    const errorMessage = getString(outputRecord?.error);
+    const isError = Boolean(errorMessage);
 
     return (
       <motion.div
@@ -123,13 +148,13 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
           {isError && (
             <div className="text-xs text-[var(--color-danger)] flex items-center gap-2 bg-[var(--color-danger)]/10 px-4 py-3 rounded-[var(--radius-editorial)] border border-[var(--color-danger)]/20 w-fit">
               <ExclamationCircleIcon className="w-4 h-4" />
-              <span>{output.error}</span>
+              <span>{errorMessage}</span>
             </div>
           )}
 
           {!isError && results.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-1">
-              {results.slice(0, 4).map((res: any, i: number) => (
+              {results.slice(0, 4).map((res, i) => (
                 <a
                   key={i}
                   href={res.url}
@@ -168,8 +193,11 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
   }
 
   if (type === 'fetch') {
-    const url = input?.url || '';
-    const isError = !!output?.error;
+    const inputRecord = asRecord(input);
+    const url = getString(inputRecord?.url) || '';
+    const outputRecord = asRecord(output);
+    const errorMessage = getString(outputRecord?.error);
+    const isError = Boolean(errorMessage);
     const hostname = tryGetHostname(url);
 
     return (
@@ -213,7 +241,7 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
 
           {isError && (
             <span className="text-[var(--color-danger)] text-xs bg-[var(--color-danger)]/10 px-3 py-2 rounded-[var(--radius-editorial)] border border-[var(--color-danger)]/20 w-fit">
-              {output.error}
+              {errorMessage}
             </span>
           )}
         </div>
@@ -222,6 +250,8 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
   }
 
   if (type === 'time') {
+    const outputRecord = asRecord(output);
+    const isoValue = getString(outputRecord?.iso);
     return (
       <motion.div
         variants={itemVariants}
@@ -237,7 +267,7 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
         <div className="text-xs text-[var(--color-fg-muted)] flex items-center gap-2 py-1">
           <span className="font-semibold text-[var(--color-accent)]/80 tracking-wider uppercase">Time Check</span>
           <span className="font-mono opacity-70">
-            {output?.iso ? new Date(output.iso).toLocaleTimeString() : ''}
+            {isoValue ? new Date(isoValue).toLocaleTimeString() : ''}
           </span>
         </div>
       </motion.div>

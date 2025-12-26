@@ -1,4 +1,4 @@
-import type { Message } from '@/lib/types';
+import type { DeepResearchEvent, Message, MessageDeepResearch } from '@/lib/types';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
 
@@ -60,8 +60,8 @@ export async function runDeepResearchTurn({
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-    const trace: any[] = [];
-    let finalResult: any = null;
+    const trace: DeepResearchEvent[] = [];
+    let finalResult: unknown = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -73,18 +73,18 @@ export async function runDeepResearchTurn({
       for (const line of lines) {
         if (!line.trim()) continue;
         try {
-          const msg = JSON.parse(line);
+          const msg = JSON.parse(line) as { type?: string; data?: unknown; error?: string };
           if (msg.type === 'trace') {
-            trace.push(msg.data);
+            if (isDeepResearchEvent(msg.data)) {
+              trace.push(msg.data);
+            }
             // Update store with incremental trace
-            // We store the structured trace as a JSON string in the 'reasoning' field
-            // This allows the UI to parse it back and render the rich timeline
-            const reasoningStr = JSON.stringify(trace);
+            const deepResearch: MessageDeepResearch = { trace: trace.slice() };
 
             set((state) => {
               const list = state.messages[chatId] ?? [];
               const updated = list.map((m) =>
-                m.id === assistantMessage.id ? { ...m, reasoning: reasoningStr } : m,
+                m.id === assistantMessage.id ? { ...m, deepResearch } : m,
               );
               return { messages: { ...state.messages, [chatId]: updated } } as any;
             });
@@ -102,10 +102,11 @@ export async function runDeepResearchTurn({
 
     if (!finalResult) throw new Error('stream_ended_no_result');
 
+    const answer = getDeepResearchAnswer(finalResult) || '';
     const finalMessage: Message = {
       ...assistantMessage,
-      content: finalResult?.answer || '',
-      reasoning: JSON.stringify(trace), // Ensure final trace is saved
+      content: answer,
+      deepResearch: { trace: trace.slice(), answer },
     };
     set((state) => {
       const list = state.messages[chatId] ?? [];
@@ -114,7 +115,7 @@ export async function runDeepResearchTurn({
     });
     await persistMessage(finalMessage);
     if (manageController) set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
-    if (manageController) clearTurnController(chatId);
+    if (manageController) clearTurnController(chatId, controller);
     return true;
   } catch (err: any) {
     const errorMessage = String(err?.message || 'DeepResearch failed');
@@ -125,7 +126,21 @@ export async function runDeepResearchTurn({
         notice: `DeepResearch: ${errorMessage}`,
       },
     }));
-    if (manageController) clearTurnController(chatId);
+    if (manageController) clearTurnController(chatId, controller);
     return false;
   }
+}
+
+const DEEP_RESEARCH_EVENT_TYPES = new Set(['search', 'fetch', 'time', 'note', 'thought']);
+
+function isDeepResearchEvent(value: unknown): value is DeepResearchEvent {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.type === 'string' && DEEP_RESEARCH_EVENT_TYPES.has(record.type);
+}
+
+function getDeepResearchAnswer(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  return typeof record.answer === 'string' ? record.answer : undefined;
 }

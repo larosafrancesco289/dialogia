@@ -1,8 +1,10 @@
 import type { Chat, LearningPlan, Message } from '@/lib/types';
-import type { StoreState } from '@/lib/store/types';
+import type { TurnStoreState } from '@/lib/agent/contracts';
+import { TUTOR_TOOL_NAMES } from '@/lib/agent/types';
 import type { PersistMessage, StoreGetter, StoreSetter, TutorToolName } from '@/lib/agent/types';
 import { attachTutorUiState } from '@/lib/agent/tutorFlow';
 import { getNextNode } from '@/lib/learningPlan/service';
+import { getTutorToolsByTag } from '@/lib/agent/tools/metadata';
 import type {
   TutorToolApplyResult,
   TutorToolContext,
@@ -28,29 +30,9 @@ import {
 
 export { normalizeTutorQuizPayload, type TutorQuizPayload } from '@/lib/agent/tools/tutor/shared';
 
-const TUTOR_TOOL_NAME_SET = new Set<TutorToolName>([
-  'ask_student_question',
-  'create_diagnostic',
-  'generate_plan',
-  'update_plan',
-  'assess_answer',
-  'update_learner_model',
-  'apply_learner_model_feedback',
-  'get_plan_suggestions',
-  'quiz_mcq',
-  'quiz_fill_blank',
-  'quiz_open_ended',
-  'flashcards',
-  'grade_open_response',
-  'add_to_deck',
-  'srs_review',
-]);
+const TUTOR_TOOL_NAME_SET = new Set<TutorToolName>(TUTOR_TOOL_NAMES);
 
-const QUIZ_TOOLS = new Set<TutorToolName>([
-  'quiz_mcq',
-  'quiz_fill_blank',
-  'quiz_open_ended',
-]);
+const QUIZ_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('quiz'));
 
 export function recordTutorToolUsage(opts: {
   set: StoreSetter;
@@ -87,7 +69,7 @@ export function recordTutorToolUsage(opts: {
           toolUsageByChatId: { ...usageByChat, [chatId]: nextUsage },
         },
       },
-    } as Partial<StoreState>;
+    } as Partial<TurnStoreState>;
   });
 }
 
@@ -148,7 +130,7 @@ export async function applyTutorToolCall(opts: {
           },
         },
         messages: { ...state.messages, [chatId]: result.nextMessages },
-      } as Partial<StoreState>;
+      } as Partial<TurnStoreState>;
     });
     if (updatedMsg) {
       await persistMessage(updatedMsg).catch(() => undefined);

@@ -1,9 +1,9 @@
 'use client';
 import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
-import type { Attachment } from '@/lib/types';
+import type { DraftAttachment } from '@/lib/types';
 
 export type AttachmentPreviewListProps = {
-  attachments: Attachment[];
+  attachments: DraftAttachment[];
   onRemove: (id: string) => void;
   className?: string;
 };
@@ -35,7 +35,7 @@ export function AttachmentPreviewList({
   );
 }
 
-function renderPreview(attachment: Attachment) {
+function renderPreview(attachment: DraftAttachment) {
   if (attachment.kind === 'image' && attachment.dataURL) {
     return (
       <img

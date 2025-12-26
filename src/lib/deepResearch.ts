@@ -3,6 +3,7 @@ import { apiDefaults } from '@/lib/api/config';
 import { getDeepResearchReasoningOnly } from '@/lib/config';
 import type { ModelMessage, ToolDefinition } from '@/lib/agent/types';
 import type { ProviderSort } from '@/lib/models/providerSort';
+import type { DeepResearchEvent } from '@/lib/types/deepResearch';
 import { normalizeToolCalls, parseToolArguments } from '@/lib/agent/parsers';
 import {
   runWebSearch,
@@ -98,12 +99,6 @@ export const DEEP_TOOLS: ToolDefinition[] = [
     },
   },
 ];
-
-export type DeepResearchEvent = {
-  type: 'search' | 'fetch' | 'time' | 'note' | 'thought';
-  input?: any;
-  output?: any;
-};
 
 export type DeepResearchParams = {
   apiKey: string; // OPENROUTER_API_KEY (server)

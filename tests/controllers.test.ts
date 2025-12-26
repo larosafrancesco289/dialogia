@@ -25,7 +25,7 @@ test('turn controller lifecycle replaces and aborts previous controllers', () =>
 test('clearTurnController removes without aborting', () => {
   const controller = new AbortController();
   setTurnController('chat-2', controller);
-  clearTurnController('chat-2');
+  clearTurnController('chat-2', controller);
   assert.equal(controller.signal.aborted, false);
   assert.equal(getTurnController('chat-2'), undefined);
 });

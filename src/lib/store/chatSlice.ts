@@ -6,9 +6,12 @@ import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { loadRepositorySnapshot } from '@/lib/db';
 import { mergeTutorMap } from '@/lib/ui/tutorSelectors';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import type { StoreState } from '@/lib/store/types';
-import type { StoreSetter } from '@/lib/agent/types';
+import { refreshZdrListsIfNeeded } from '@/lib/policy/zdr/cache';
+import { ZDR_CACHE_TTL_MS } from '@/lib/policy/zdr/constants';
+import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { Chat } from '@/lib/types';
+
+let zdrRefreshInterval: ReturnType<typeof setInterval> | null = null;
 
 export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
   return {
@@ -29,6 +32,18 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         }
       } catch {
         /* ignore tutor profile preload errors */
+      }
+
+      try {
+        await refreshZdrListsIfNeeded(set, get);
+      } catch {
+        /* ignore ZDR refresh failures */
+      }
+
+      if (typeof window !== 'undefined' && !zdrRefreshInterval) {
+        zdrRefreshInterval = setInterval(() => {
+          refreshZdrListsIfNeeded(set, get).catch(() => undefined);
+        }, ZDR_CACHE_TTL_MS);
       }
     },
 

@@ -1,11 +1,11 @@
 import type { TutorToolName } from '@/lib/agent/types';
-import type { TutorToolUsage, UIState } from '@/lib/store/types';
+import type { TutorToolUsageSnapshot, UiSnapshot } from '@/lib/agent/contracts';
 import type { Chat, Message, MessageTutor, TutorResearchMode } from '@/lib/types';
 import { getTutorToolsByPhase, getTutorToolsByTag } from '@/lib/agent/tools/metadata';
 
 export type TutorPhase = 'intake' | 'diagnostic' | 'planning' | 'teaching' | 'practice' | 'review';
 
-function latestTutorPayload(messages: Message[], ui?: UIState): MessageTutor | undefined {
+function latestTutorPayload(messages: Message[], ui?: UiSnapshot): MessageTutor | undefined {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const msg = messages[i];
     if (msg.role !== 'assistant') continue;
@@ -16,7 +16,7 @@ function latestTutorPayload(messages: Message[], ui?: UIState): MessageTutor | u
   return undefined;
 }
 
-export function getTutorPhase(chat: Chat, messages: Message[], ui?: UIState): TutorPhase {
+export function getTutorPhase(chat: Chat, messages: Message[], ui?: UiSnapshot): TutorPhase {
   const plan = chat.settings.learningPlan;
   const tutor = latestTutorPayload(messages, ui);
 
@@ -132,7 +132,7 @@ const DEFAULT_TOOL_BUDGET = {
 
 export function deriveTutorToolPolicy(args: {
   chat: Chat;
-  ui?: UIState;
+  ui?: UiSnapshot;
   activeNodeId?: string | null;
 }): TutorToolPolicy {
   const { chat, ui, activeNodeId } = args;
@@ -140,7 +140,7 @@ export function deriveTutorToolPolicy(args: {
     ...DEFAULT_TOOL_BUDGET,
     ...(chat.settings.tutor_tool_budget || {}),
   };
-  const usage: TutorToolUsage | undefined = ui?.tutor.toolUsageByChatId?.[chat.id];
+  const usage: TutorToolUsageSnapshot | undefined = ui?.tutor.toolUsageByChatId?.[chat.id];
   const activeKey = activeNodeId || '__global__';
   const quizzesUsed = usage?.mcqByNode?.[activeKey] ?? 0;
   const diagnosticsUsed = usage?.diagnosticsUsed ?? 0;

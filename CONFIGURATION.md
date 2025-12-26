@@ -2,6 +2,7 @@
 
 This guide lists required and optional environment variables, how proxy mode works, and the
 recommended defaults for development versus production.
+For architectural context and refactor phases, see `REFACTOR_PLAN.md`.
 
 ## Environment Files
 
@@ -52,6 +53,9 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
 - `NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT` — optional routing hint (`speed` | `cost`).
 - `AUTH_COOKIE_SECRET`, `ACCESS_CODE_PEPPER`, `ACCESS_CODES_HASHED` — configure the access gate in
   `middleware.ts` and `app/access` routes.
+- `AUTH_DEBUG_ROUTE_ENABLED` — when `true`, allows the `/api/auth/debug` route in production.
+- `AUTH_DEBUG_HEADERS` — when `true`, middleware adds `x-auth-*` headers to assist debugging.
+- `AUTH_TIMING_DEBUG` — when `true`, middleware emits `Server-Timing` for auth decisions.
 - `NEXT_PUBLIC_APP_BASE_URL` — optional absolute origin when deploying behind a proxy. Used for
   absolute URLs in share/export flows.
 
@@ -71,6 +75,6 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
 - Proxy mode adds CORS-friendly headers (`X-Title`, `HTTP-Referer`) inside
   `src/lib/api/openrouterClient.ts`. Update the client if new headers are required.
 - Access gate secrets should be long random hex strings. Regenerate when rotating codes.
-- Zero Data Retention (ZDR) lists fetch from OpenRouter. Cache them via the store (see Phase 4 of
-  the refactor plan); Dialogia automatically refreshes these lists every 6 hours to prevent stale
-  provider/model data. Update documentation if new flags or endpoints appear.
+- Zero Data Retention (ZDR) lists fetch from OpenRouter. Cache them via the store (see
+  `REFACTOR_PLAN.md` Phase 4); Dialogia automatically refreshes these lists every 6 hours to prevent
+  stale provider/model data. Update documentation if new flags or endpoints appear.

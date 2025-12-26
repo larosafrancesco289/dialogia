@@ -4,25 +4,25 @@
 
 import type { SearchProvider } from '@/lib/agent/types';
 import type { ChatSettings } from '@/lib/types';
-import type { UIState } from '@/lib/store/types';
+import type { UiSnapshot } from '@/lib/agent/contracts';
 import { ProviderSort } from '@/lib/models/providerSort';
 
 export function providerSortFromRoutePref(
-  pref?: UIState['routePreference'] | null,
+  pref?: UiSnapshot['routePreference'] | null,
 ): ProviderSort | undefined {
   if (pref === 'cost') return ProviderSort.Price;
   if (pref === 'speed') return ProviderSort.Throughput;
   return undefined;
 }
 
-export function selectSearchProvider(settings: ChatSettings, ui: UIState): SearchProvider {
+export function selectSearchProvider(settings: ChatSettings, ui: UiSnapshot): SearchProvider {
   const configuredProvider =
     (settings.search_provider as SearchProvider | undefined) || ('openrouter' as const);
   if (ui.flags.experimentalBrave && configuredProvider === 'brave') return 'brave';
   return 'openrouter';
 }
 
-export function buildProviderPolicy(opts: { settings: ChatSettings; ui: UIState }): {
+export function buildProviderPolicy(opts: { settings: ChatSettings; ui: UiSnapshot }): {
   providerSort?: ProviderSort;
   searchEnabled: boolean;
   searchProvider: SearchProvider;

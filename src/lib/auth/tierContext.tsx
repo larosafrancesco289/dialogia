@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import type { AccessTier } from './types';
 import { TIER_COOKIE_NAME } from './shared';
+import { getCookie } from '@/lib/auth/cookies.client';
+import { getTierPolicy } from '@/lib/auth/tierPolicy';
 
 interface TierContextValue {
   tier: AccessTier;
@@ -20,15 +22,8 @@ const TierContext = createContext<TierContextValue>({
   isFreeTier: true,
   isIndividualTier: false,
   isDeveloperTier: false,
-  canUseVoice: false,
-  canUseAllModels: false,
+  ...getTierPolicy('free'),
 });
-
-function getCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : null;
-}
 
 function isValidTier(value: string | null): value is AccessTier {
   return value === 'free' || value === 'individual' || value === 'developer';
@@ -67,8 +62,7 @@ export function TierProvider({ children }: { children: ReactNode }) {
     isFreeTier: tier === 'free',
     isIndividualTier: tier === 'individual',
     isDeveloperTier: tier === 'developer',
-    canUseVoice: tier === 'developer',
-    canUseAllModels: tier !== 'free',
+    ...getTierPolicy(tier),
   };
 
   return <TierContext.Provider value={value}>{children}</TierContext.Provider>;

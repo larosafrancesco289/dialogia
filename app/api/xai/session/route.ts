@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { jsonError, requireEnv, withTiming } from '@/lib/server/route';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: Request) {
   return withTiming('xai-session', async () => {
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Failed to get ephemeral token: ${response.status} ${errorText}`);
+        logger.error(`Failed to get ephemeral token: ${response.status} ${errorText}`);
         return jsonError(response.status, 'xai_session_error', errorText);
       }
 
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
         instructions,
       });
     } catch (error) {
-      console.error('Error creating xAI session:', error);
+      logger.error('Error creating xAI session:', error);
       return jsonError(
         500,
         'xai_session_error',

@@ -1,6 +1,7 @@
 import type { ProviderSort } from '@/lib/models/providerSort';
-import type { Attachment } from '@/lib/types/attachments';
+import type { PersistedAttachment } from '@/lib/types/attachments';
 import type { ChatSettings } from '@/lib/types/chat';
+import type { DeepResearchEvent } from '@/lib/types/deepResearch';
 import type { MessageMetrics } from '@/lib/types/metrics';
 import type { LearnerModel, MessageTutor } from '@/lib/types/tutor';
 
@@ -44,6 +45,11 @@ export type ToolCallLogEntry = {
   };
 };
 
+export type MessageDeepResearch = {
+  trace: DeepResearchEvent[];
+  answer?: string;
+};
+
 export type Message = {
   id: string;
   chatId: string;
@@ -66,9 +72,11 @@ export type Message = {
   model?: string;
   // For thinking models; accumulated via streaming
   reasoning?: string;
+  // DeepResearch trace data (separate from model reasoning tokens)
+  deepResearch?: MessageDeepResearch;
   metrics?: MessageMetrics;
   // Optional attachments (currently images) associated to the message
-  attachments?: Attachment[];
+  attachments?: PersistedAttachment[];
   metadata?: {
     hiddenFromUser?: boolean;
     kind?: string;

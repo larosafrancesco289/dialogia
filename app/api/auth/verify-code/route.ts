@@ -14,45 +14,49 @@ import {
 import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
 import { getAccessCookieDomain } from '@/lib/config';
 import { jsonAuthError } from '@/lib/auth/errors';
+import { withTiming } from '@/lib/server/route';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
-  try {
-    const { code } = (await req.json()) as { code?: string };
-    const plain = String(code || '').trim();
-    if (!plain) return jsonAuthError('missing_code', 400);
+  return withTiming('auth-verify-code', async () => {
+    try {
+      const { code } = (await req.json()) as { code?: string };
+      const plain = String(code || '').trim();
+      if (!plain) return jsonAuthError('missing_code', 400);
 
-    const pepper = getAccessCodePepper();
+      const pepper = getAccessCodePepper();
 
-    // Check if tiered codes are configured
-    if (!hasTieredCodesConfigured()) {
-      return jsonAuthError('codes_unconfigured', 500);
+      // Check if tiered codes are configured
+      if (!hasTieredCodesConfigured()) {
+        return jsonAuthError('codes_unconfigured', 500);
+      }
+
+      // Hash the submitted code
+      const hashed = hmacCode(plain, pepper);
+
+      // Check developer codes first
+      const devHashes = getDeveloperCodeHashes();
+      const devIdx = devHashes.findIndex((h) => h === hashed);
+      if (devIdx !== -1) {
+        return createTokenResponse('developer', `dev:${devIdx}`);
+      }
+
+      // Check individual codes
+      const individualHashes = getIndividualCodeHashes();
+      const individualIdx = individualHashes.findIndex((h) => h === hashed);
+      if (individualIdx !== -1) {
+        return createTokenResponse('individual', `ind:${individualIdx}`);
+      }
+
+      // No match found
+      // small randomized delay to reduce trivial timing
+      await new Promise((r) => setTimeout(r, 50 + Math.floor(Math.random() * 120)));
+      return jsonAuthError('invalid_code', 401);
+    } catch (e: any) {
+      logger.error('[verify-code] Error:', e);
+      return jsonAuthError('bad_request', 400);
     }
-
-    // Hash the submitted code
-    const hashed = hmacCode(plain, pepper);
-
-    // Check developer codes first
-    const devHashes = getDeveloperCodeHashes();
-    const devIdx = devHashes.findIndex((h) => h === hashed);
-    if (devIdx !== -1) {
-      return createTokenResponse('developer', `dev:${devIdx}`);
-    }
-
-    // Check individual codes
-    const individualHashes = getIndividualCodeHashes();
-    const individualIdx = individualHashes.findIndex((h) => h === hashed);
-    if (individualIdx !== -1) {
-      return createTokenResponse('individual', `ind:${individualIdx}`);
-    }
-
-    // No match found
-    // small randomized delay to reduce trivial timing
-    await new Promise((r) => setTimeout(r, 50 + Math.floor(Math.random() * 120)));
-    return jsonAuthError('invalid_code', 401);
-  } catch (e: any) {
-    console.error('[verify-code] Error:', e);
-    return jsonAuthError('bad_request', 400);
-  }
+  });
 }
 
 function createTokenResponse(tier: AccessTier, sub: string): NextResponse {

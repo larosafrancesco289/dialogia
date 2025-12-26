@@ -1,7 +1,7 @@
-import type { Attachment } from '@/lib/types';
+import type { PersistedAttachment } from '@/lib/types';
 
 export type MessageAttachmentsProps = {
-  attachments: Attachment[];
+  attachments: PersistedAttachment[];
   onOpenLightbox?: (
     value: {
       images: { src: string; name?: string }[];
@@ -37,7 +37,7 @@ export function MessageAttachments({
   const audioAttachments = attachments.filter((item) => item.kind === 'audio');
   const pdfAttachments = attachments.filter((item) => item.kind === 'pdf');
 
-  const handleOpenLightbox = (index: number, array: Attachment[]) => {
+  const handleOpenLightbox = (index: number, array: PersistedAttachment[]) => {
     if (!onOpenLightbox) return;
     const images = array
       .filter((item) => item.kind === 'image' && typeof item.dataURL === 'string')

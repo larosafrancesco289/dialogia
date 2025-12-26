@@ -16,6 +16,7 @@ import type {
 } from '@/lib/types';
 import { getNextNode } from '@/lib/learningPlan/service';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
+import { logger } from '@/lib/logger';
 
 /**
  * Initialize an empty learner model for a learning plan
@@ -151,7 +152,7 @@ export async function extractEvidence(
     };
   } catch (error) {
     // Fallback on error: neutral evidence
-    console.error('Evidence extraction failed:', error);
+    logger.error('Evidence extraction failed:', error);
     return {
       type: 'partial_answer',
       details: 'Evidence extraction failed',
@@ -177,7 +178,7 @@ export function updateLearnerModel(
   const topic = mastery[update.nodeId];
 
   if (!topic) {
-    console.warn(`Node ${update.nodeId} not found in learner model`);
+    logger.warn(`Node ${update.nodeId} not found in learner model`);
     return model;
   }
 

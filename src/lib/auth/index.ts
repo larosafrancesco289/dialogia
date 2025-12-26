@@ -20,18 +20,6 @@ export function getAuthCookieSecret(): string {
 }
 
 /**
- * @deprecated Use getIndividualCodeHashes() or getDeveloperCodeHashes() instead
- */
-export function getAccessCodeHashes(): string[] {
-  const raw = process.env.ACCESS_CODES_HASHED || '';
-  return raw
-    .split(',')
-    .map((segment) => segment.trim())
-    .filter(Boolean)
-    .map((segment) => segment.toLowerCase());
-}
-
-/**
  * Get hashed individual (one-time use) codes from environment.
  */
 export function getIndividualCodeHashes(): string[] {

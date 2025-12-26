@@ -1,5 +1,6 @@
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { getDueCards } from '@/lib/tutorDeck';
+import { logger } from '@/lib/logger';
 
 type SrsReviewArgs = {
   dueCount: number;
@@ -29,7 +30,7 @@ export const srsReviewHandler: TutorToolHandler<SrsReviewArgs> = {
         skill: c.skill,
       }));
     } catch (error) {
-      console.error('Failed to fetch due cards', error);
+      logger.error('Failed to fetch due cards', error);
     }
     return { handled: true, usedContent: false, payload: JSON.stringify(due) };
   },

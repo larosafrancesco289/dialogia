@@ -128,7 +128,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
       startBuffered,
       autoReasoningEligible,
       modelIdUsed,
-      clearController: () => clearTurnController(chatId),
+      clearController: () => clearTurnController(chatId, controller),
       persistMessage,
     },
     { startedAt: tStart },

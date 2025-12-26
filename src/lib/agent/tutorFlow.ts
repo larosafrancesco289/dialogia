@@ -1,21 +1,11 @@
 // Module: agent/tutorFlow
 // Responsibility: Build hidden tutor payloads and ensure tutor defaults stay consistent.
 
-import { getTutorContext } from '@/lib/agent/tutor';
 import type { Message, MessageTutor } from '@/lib/types';
-import { applyTutorDefaults } from '@/lib/store/normalize';
+import { buildHiddenTutorContent } from '@/lib/tutor/hiddenContent';
+import { applyTutorDefaults } from '@/lib/tutor/defaults';
 
-export function buildHiddenTutorContent(tutor: MessageTutor | undefined): string {
-  try {
-    const { summary: recap, full: json } = getTutorContext(tutor);
-    const parts: string[] = [];
-    if (recap) parts.push(`Tutor Recap:\n${recap}`);
-    if (json) parts.push(`Tutor Data JSON:\n${json}`);
-    return parts.join('\n\n');
-  } catch {
-    return '';
-  }
-}
+export { buildHiddenTutorContent };
 
 export const ensureTutorDefaults = applyTutorDefaults;
 

@@ -7,38 +7,28 @@ business logic that is easy to test.
 ## Layered Modules
 
 - **UI** — React components in `app/` (routes, layouts) and `src/components/*` (PascalCase modules).
-  Hooks and presentational helpers that only touch the DOM live next to the component that uses
-  them, while shared interaction hooks (composer shortcuts, attachment helpers) live under
-  `src/lib/hooks/*` so both desktop and mobile variants reuse the same behavior.
-- **State** — Zustand slices in `src/lib/store/*`. Composition happens in `src/lib/store/index.ts`, which
-  wires persistence, migrations, and selectors. Each slice owns a bounded feature area (models,
-  chat history, UI flags, multi-model state, tutor context, etc.).
-  Versioned persistence migrations now live in `src/lib/store/migrations.ts`, keeping the root
-  store focused on slice composition.
-- **Agent** — Request builders, planning, tools, and policies in `src/lib/agent/*`. The
-  `compose.ts` module is the single entry for per-turn system/message assembly so every consumer
-  (send, regenerate, tests) shares the exact same preamble logic. `planning.ts`, `streaming.ts`, and
+  Shared UI-only hooks and helpers live in `src/lib/ui/*` and `src/lib/hooks/*` so desktop and mobile
+  variants reuse the same behavior.
+- **State** — Zustand slices in `src/lib/store/*`. Composition happens in `src/lib/store/index.ts`,
+  which wires persistence, migrations, and selectors. Each slice owns a bounded feature area
+  (models, chat history, UI flags, multi-model state, tutor context, etc.). Versioned persistence
+  migrations live in `src/lib/store/migrations.ts`.
+- **Agent** — Request builders, planning, tools, and policies in `src/lib/agent/*`. `compose.ts` is
+  the single entry for per-turn system/message assembly. `planning.ts`, `streaming.ts`, and
   `regenerate.ts` separate multi-round planning, streaming, and regen logic so services stay thin.
-  These modules coordinate tool invocation, tutor flows, and research orchestration without touching
-  transport concerns directly.
-  - `request.ts` centralizes provider routing and the `composePlugins` helper. The PDF parser plugin
-    is only attached when uploads are present, and the OpenRouter web plugin is enabled when the UI
-    requests OpenRouter-backed search. Keeping this logic in one place avoids divergent payloads.
-  - DeepResearch orchestration lives in `src/lib/deepResearch.ts` with tool adapters in
-    `src/lib/deepResearch/tools.ts` and HTML parsing glue in `deepResearch/html.ts`.
+  `src/lib/agent/orchestrator/*` hosts the turn runner and lifecycle management. DeepResearch
+  orchestration lives in `src/lib/agent/deepResearchOrchestrator.ts`, backed by
+  `src/lib/deepResearch/*` for tool adapters and HTML parsing glue.
 - **Services** — Cross-cutting orchestrators in `src/lib/services/*` that connect the store to the
-  agent layer. `services/turns.ts` owns send/regenerate flows, while `services/controllers.ts`
-  isolates AbortController lifecycles outside persistence. Pipeline helpers now live in
-  `src/lib/agent/planning.ts`, `streaming.ts`, and `regenerate.ts`.
-  - A shared headless turn runner in `src/lib/orchestrator/turn.ts` keeps UI and headless tutoring
-    sessions in lockstep; services merely prepare context and hand off to the orchestrator.
-- **Transport** — HTTP clients in `src/lib/api/*` and protocol adapters such as
-  `src/lib/openrouter.ts`. Shared helpers in `src/lib/api/config.ts`, `src/lib/api/stream.ts`, and
-  `src/lib/api/errors.ts` encapsulate defaults, SSE parsing, and typed error construction so retry
-  logic stays consistent.
-  - ZDR cache helpers and enforcement live under `src/lib/zdr/*`, with `src/lib/zdr/index.ts`
-    re-exporting the renamed helpers (`computeZdrFilter`, `computeZdrFilterCached`,
-    `guardZdrOrNotifyCached`) so services can rely on a single façade.
+  agent layer. `services/turns.ts` owns send/regenerate flows, with shared helpers in
+  `src/lib/services/turns/*` and controller lifecycles isolated in `src/lib/services/controllers.ts`.
+  Services prepare context and hand off to the agent orchestrator.
+- **Transport** — HTTP clients in `src/lib/api/*` and protocol adapters such as `src/lib/openrouter.ts`
+  and `src/lib/anthropic.ts`. Shared helpers in `src/lib/api/config.ts`, `src/lib/api/stream.ts`, and
+  `src/lib/api/errors.ts` encapsulate defaults, SSE parsing, and typed error construction.
+  - ZDR cache helpers and enforcement live under `src/lib/policy/zdr/*`, with
+    `src/lib/policy/zdr/index.ts` re-exporting helpers (`computeZdrFilter`,
+    `computeZdrFilterCached`, `guardZdrOrNotifyCached`) so services can rely on a single façade.
 - **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Anthropic routes in
   `app/api/anthropic/*`, Brave search proxy in `app/api/brave/route.ts`, and any additional
   integrations. These never import UI modules.
@@ -47,7 +37,10 @@ business logic that is easy to test.
 
 - UI may import store selectors/actions and `src/lib/ui/*` helpers, but never transport clients
   (`src/lib/api/*`, `src/lib/openrouter.ts`, `src/lib/anthropic.ts`).
+- Agent modules never import UI components, and persistence (`src/lib/db/*`) never imports agent or
+  store types.
 - API routes under `app/api/*` must remain server-only and never import UI modules or components.
+- These boundaries are enforced via ESLint `no-restricted-imports` in `.eslintrc.json`.
 
 ```
             ┌──────────┐
@@ -81,8 +74,7 @@ business logic that is easy to test.
    `useMessageStore.getState().sendDraft()`). UI-only effects (shortcuts, resize) run through local
    hooks to keep the component tree declarative.
 2. The action invokes `src/lib/services/turns.ts`, which prepares chat/tutor state, manages
-   controllers, and delegates multi-round planning to `src/lib/agent/planning.ts` before streaming
-   the final response via `src/lib/agent/streaming.ts`.
+   controllers, and hands off to `src/lib/agent/orchestrator/turn.ts` (planning and streaming).
 3. Agent helpers in `src/lib/agent/compose.ts`, `src/lib/agent/request.ts`, and
    `src/lib/agent/policy.ts` determine planning rounds, tool eligibility (search, tutor), and build
    provider-specific payloads.
@@ -104,8 +96,8 @@ business logic that is easy to test.
 - Typed slices and pipeline DTOs ensure UI, agent, and services agree on a single contract.
 - IndexedDB (Dexie) manages long-lived chat history, while the persisted slice tracks session-level
   preferences. Ephemeral controllers stay outside persistence to avoid corrupting restores. A
-  versioned upgrade hook in `src/lib/db.ts` sanitizes historical messages (trimmed tutor context,
-  filtered attachments) so newer features do not have to guard every field.
+  versioned upgrade hook in `src/lib/db/dexie.ts` sanitizes historical messages via
+  `src/lib/db/sanitize.ts` so newer features do not have to guard every field.
 
 ## Extending Providers or Tools
 
