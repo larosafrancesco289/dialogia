@@ -220,18 +220,12 @@ export function ModelPicker({
       return { button: fallback, tooltip: fallback };
     }
     if (labels.length === 1) {
-      const providerLabel = entries[0]?.provider;
-      const buttonLabel = providerLabel ? `${labels[0]} · ${providerLabel}` : labels[0];
-      const tooltip = providerLabel ? `${labels[0]} (${providerLabel})` : labels[0];
-      return { button: buttonLabel, tooltip };
+      // Clean display: just the model name, no provider
+      return { button: labels[0], tooltip: labels[0] };
     }
-    const providerLabel = entries[0]?.provider;
-    const button = providerLabel
-      ? `${labels[0]} · ${providerLabel} +${labels.length - 1}`
-      : `${labels[0]} +${labels.length - 1}`;
-    const tooltip = entries
-      .map((entry) => (entry.provider ? `${entry.label} (${entry.provider})` : entry.label))
-      .join(', ');
+    // Multiple models: show first + count
+    const button = `${labels[0]} +${labels.length - 1}`;
+    const tooltip = labels.join(', ');
     return { button, tooltip };
   }, [selectedIds, deriveLabel, modelMap, current]);
 
