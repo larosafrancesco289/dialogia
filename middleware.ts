@@ -14,6 +14,12 @@ export default async function middleware(req: NextRequest) {
   const shouldLogTiming = !isProd() && process.env.AUTH_TIMING_DEBUG === 'true';
   const startedAt = shouldLogTiming && typeof performance !== 'undefined' ? performance.now() : 0;
   const shouldDebugAuth = process.env.AUTH_DEBUG_HEADERS === 'true';
+  // Debug notes (Vercel redirect loop, Dec 2025):
+  // - /api/auth/set-free-tier returns 200 and sets dlg_access/dlg_tier.
+  // - GET / sends dlg_access but receives 307 with x-auth-reason=invalid_token.
+  // - /api/auth/debug (edge) verifies the same token as valid.
+  // - ACCESS_COOKIE_DOMAIN unset; cookie is host-only and included on requests.
+  // => Indicates middleware is running with a different secret (stale Edge build/env).
 
   const withTiming = (res: NextResponse) => {
     // Prevent edge caching of auth decisions so cookie changes take effect immediately.
@@ -31,6 +37,15 @@ export default async function middleware(req: NextRequest) {
       res.headers.set(`x-auth-${key}`, value);
     }
     return res;
+  };
+
+  // Compute secret fingerprint for debugging (first 8 chars of SHA-256 hash)
+  const computeSecretFingerprint = async (s: string | undefined): Promise<string> => {
+    if (!s) return 'none';
+    const data = new TextEncoder().encode(s);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.slice(0, 4).map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const { pathname } = req.nextUrl;
@@ -71,8 +86,13 @@ export default async function middleware(req: NextRequest) {
 
   const claims = await verifyAuthTokenEdgeWithClaims(token, secret);
   if (!claims) {
+    const fingerprint = await computeSecretFingerprint(secret);
     const res = redirectToAccess(req);
-    return withTiming(withDebug(res, { reason: 'invalid_token', token_len: String(token.length) }));
+    return withTiming(withDebug(res, {
+      reason: 'invalid_token',
+      token_len: String(token.length),
+      secret_fp: fingerprint,
+    }));
   }
 
   // Token is valid - ensure tier cookie matches claims
