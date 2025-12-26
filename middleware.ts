@@ -21,6 +21,8 @@ export default async function middleware(req: NextRequest) {
   const startedAt = shouldLogTiming && typeof performance !== 'undefined' ? performance.now() : 0;
 
   const withTiming = (res: NextResponse) => {
+    // Prevent edge caching of auth decisions so cookie changes take effect immediately.
+    res.headers.set('x-middleware-cache', 'no-cache');
     if (shouldLogTiming && typeof performance !== 'undefined') {
       const duration = Math.max(0, performance.now() - startedAt);
       res.headers.set('Server-Timing', `auth;dur=${duration.toFixed(2)}`);
