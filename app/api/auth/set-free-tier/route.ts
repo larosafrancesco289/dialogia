@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { AUTH_COOKIE_NAME, AuthClaims, createAuthToken, getAuthCookieSecret } from '@/lib/auth';
 import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
 import { getAccessCookieDomain } from '@/lib/config';
+
+// Compute secret fingerprint for debugging (first 8 chars of SHA-256 hash)
+function computeSecretFingerprint(s: string | undefined): string {
+  if (!s) return 'none';
+  const hash = crypto.createHash('sha256').update(s).digest('hex');
+  return hash.slice(0, 8);
+}
 
 /**
  * Sets the free tier for users who want to access without a code.
@@ -18,10 +26,11 @@ export async function POST(req: NextRequest) {
     };
 
     // Ensure secret is present (throws if missing)
-    getAuthCookieSecret();
+    const secret = getAuthCookieSecret();
     const token = createAuthToken(claims);
+    const secretFp = computeSecretFingerprint(secret);
 
-    const res = NextResponse.json({ ok: true, tier: 'free' });
+    const res = NextResponse.json({ ok: true, tier: 'free', secretFp });
     const secure = process.env.NODE_ENV === 'production';
     const domain = getAccessCookieDomain();
     const maxAge = 60 * 60 * 24 * 14; // 14 days

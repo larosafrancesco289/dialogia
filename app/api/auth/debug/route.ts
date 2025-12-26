@@ -5,12 +5,22 @@ import { verifyAuthTokenEdgeWithClaims } from '@/lib/auth/edge';
 // Force Edge runtime to match middleware
 export const runtime = 'edge';
 
+// Compute secret fingerprint for debugging (first 8 chars of SHA-256 hash)
+async function computeSecretFingerprint(s: string | undefined): Promise<string> {
+  if (!s) return 'none';
+  const data = new TextEncoder().encode(s);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.slice(0, 4).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export async function GET(req: NextRequest) {
   const authCookie = req.cookies.get(AUTH_COOKIE_NAME);
   const tierCookie = req.cookies.get(TIER_COOKIE_NAME);
 
   const secret = process.env.AUTH_COOKIE_SECRET;
   const hasAuthSecret = !!secret;
+  const secretFingerprint = await computeSecretFingerprint(secret);
   const nodeEnv = process.env.NODE_ENV;
   const isProd = nodeEnv?.toLowerCase() === 'production';
 
@@ -47,6 +57,7 @@ export async function GET(req: NextRequest) {
     edgeVerification,
     envVars: {
       AUTH_COOKIE_SECRET: hasAuthSecret ? 'SET' : 'MISSING',
+      AUTH_COOKIE_SECRET_FINGERPRINT: secretFingerprint,
     },
   });
 }
