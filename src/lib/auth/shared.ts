@@ -15,6 +15,7 @@ export const PUBLIC_AUTH_PATHS = Object.freeze([
   '/api/auth/verify-code',
   '/api/auth/logout',
   '/api/auth/set-free-tier',
+  '/api/auth/debug',
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',
