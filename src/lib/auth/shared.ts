@@ -1,6 +1,12 @@
 export const AUTH_COOKIE_NAME = 'dlg_access';
 
 /**
+ * Cookie name for storing the access tier (readable by client).
+ * Unlike the auth token, this is NOT httpOnly so client can read it.
+ */
+export const TIER_COOKIE_NAME = 'dlg_tier';
+
+/**
  * Routes that remain accessible without an auth token. Middleware uses this
  * list before performing any verification to avoid unnecessary work.
  */
@@ -8,6 +14,7 @@ export const PUBLIC_AUTH_PATHS = Object.freeze([
   '/access',
   '/api/auth/verify-code',
   '/api/auth/logout',
+  '/api/auth/set-free-tier',
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',

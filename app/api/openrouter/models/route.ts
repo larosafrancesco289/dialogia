@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server';
 import { orFetchModels } from '@/lib/api/openrouterClient';
-import { jsonError, requireEnv, withTiming } from '@/lib/server/route';
+import { jsonError, withTiming } from '@/lib/server/route';
+import { getOpenRouterApiKeyForTier } from '@/lib/auth/tierApiKey';
 
 export async function GET(req: NextRequest) {
   return withTiming('openrouter-models', async () => {
     let apiKey: string;
     try {
-      apiKey = requireEnv('OPENROUTER_API_KEY');
+      apiKey = await getOpenRouterApiKeyForTier();
     } catch {
       return jsonError(500, 'missing_env', 'OPENROUTER_API_KEY');
     }

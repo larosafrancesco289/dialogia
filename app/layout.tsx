@@ -5,6 +5,7 @@ import Script from 'next/script';
 import type { Metadata } from 'next';
 import { injectThemeClass } from '@/lib/html';
 import { Newsreader, Plus_Jakarta_Sans } from 'next/font/google';
+import { TierProvider } from '@/lib/auth/tierContext';
 
 const newsreader = Newsreader({
   subsets: ['latin'],
@@ -43,7 +44,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {injectThemeClass()}
         </Script>
       </head>
-      <body>{children}</body>
+      <body>
+        <TierProvider>{children}</TierProvider>
+      </body>
     </html>
   );
 }
