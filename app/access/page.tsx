@@ -45,7 +45,7 @@ export default function AccessPage() {
       });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
-        setError('Failed to set free tier');
+        setError(data?.error || 'Failed to set free tier');
       } else {
         window.location.replace('/');
       }
