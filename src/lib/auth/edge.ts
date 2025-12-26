@@ -7,7 +7,11 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 function toArrayBuffer(view: Uint8Array): ArrayBuffer {
-  return Uint8Array.from(view).buffer;
+  // In Vercel Edge Runtime, we need to explicitly copy to a new ArrayBuffer
+  // because view.buffer may be a SharedArrayBuffer or have incorrect byteOffset
+  const buffer = new ArrayBuffer(view.byteLength);
+  new Uint8Array(buffer).set(view);
+  return buffer;
 }
 
 /**
