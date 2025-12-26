@@ -6,13 +6,6 @@ export type { AccessTier, AuthClaims };
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-function toArrayBuffer(view: Uint8Array): ArrayBuffer {
-  // In Vercel Edge Runtime, we need to explicitly copy to a new ArrayBuffer
-  // because view.buffer may be a SharedArrayBuffer or have incorrect byteOffset
-  const buffer = new ArrayBuffer(view.byteLength);
-  new Uint8Array(buffer).set(view);
-  return buffer;
-}
 
 /**
  * Verify auth token in edge runtime.
@@ -60,12 +53,10 @@ export async function verifyAuthTokenEdgeDetailed(
       false,
       ['verify'],
     );
-    const valid = await crypto.subtle.verify(
-      'HMAC',
-      key,
-      toArrayBuffer(signatureBytes),
-      toArrayBuffer(payloadBytes),
-    );
+    // Create fresh Uint8Arrays with dedicated ArrayBuffers for SubtleCrypto
+    const sigBuffer = new Uint8Array(signatureBytes);
+    const payloadBuffer = new Uint8Array(payloadBytes);
+    const valid = await crypto.subtle.verify('HMAC', key, sigBuffer, payloadBuffer);
     if (!valid) {
       return { ok: false, reason: 'sig_mismatch' };
     }
