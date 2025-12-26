@@ -43,8 +43,19 @@ export function Composer({
   const updateSettings = useChatStore((s) => s.updateChatSettings);
   const setUI = useChatStore((s) => s.setUI);
   const uiNext = useChatStore((s) => readNextOverrides(s.ui));
+  const composerDraft = useChatStore((s) => s.ui.composerDraft);
   const [focused, setFocused] = useState(false);
   const isTablet = useIsMobile(768);
+
+  // Consume pending composer draft from store (e.g., from quick start buttons)
+  useEffect(() => {
+    if (composerDraft) {
+      setText(composerDraft);
+      setUI({ composerDraft: undefined });
+      // Focus the textarea after filling
+      setTimeout(() => taRef.current?.focus(), 0);
+    }
+  }, [composerDraft, setUI]);
 
   const tutorGloballyEnabled = useChatStore((s) => !!s.ui.flags.experimentalTutor);
   const forceTutorMode = useChatStore((s) => !!s.ui.tutor.forceMode);

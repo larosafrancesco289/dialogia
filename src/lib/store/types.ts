@@ -125,6 +125,8 @@ export type UIState = {
   zdrOnly?: boolean;
   // Routing preference: prioritize speed or cost
   routePreference?: 'speed' | 'cost';
+  // Pending text to fill into the composer (consumed once read)
+  composerDraft?: string;
   flags: UIFlags;
   debug: UIDebugState;
   search: UISearchState;
