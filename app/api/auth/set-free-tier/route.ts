@@ -53,6 +53,11 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (e: any) {
     console.error('[set-free-tier] Error:', e);
+    const message = e?.message || 'internal_error';
+    // Surface missing env var errors to help with debugging
+    if (message.includes('Missing env')) {
+      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    }
     return NextResponse.json({ ok: false, error: 'internal_error' }, { status: 500 });
   }
 }
