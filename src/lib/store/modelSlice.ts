@@ -1,7 +1,7 @@
 import type { StoreState } from '@/lib/store/types';
 import { fetchModels as fetchOpenRouterModels } from '@/lib/openrouter';
 import { fetchModels as fetchAnthropicModels } from '@/lib/anthropic';
-import { requireClientKeyOrProxy, requireAnthropicClientKeyOrProxy } from '@/lib/config';
+import { requireAnthropicClientKeyOrProxy, requireClientKeyOrProxy } from '@/lib/env/public';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
 import { computeZdrFilterCached } from '@/lib/policy/zdr/cache';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';

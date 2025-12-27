@@ -5,7 +5,7 @@ import {
   getLatestLearnerModel,
   initializeLearnerModel,
 } from '@/lib/agent/learnerModel';
-import { processPlanProgress } from '@/lib/agent/planAwareTutor';
+import { processPlanProgress } from '@/lib/learningPlan/service';
 
 type ApplyLearnerModelFeedbackArgs = {
   nodeId: string;
@@ -77,18 +77,22 @@ export const applyLearnerModelFeedbackHandler: TutorToolHandler<ApplyLearnerMode
     });
 
     const planResult = plan ? await processPlanProgress(plan, result.model) : undefined;
+    const hasMasteryDelta = result.from != null && result.to != null && result.from !== result.to;
     const summary =
       nodeMeta && result.from != null && result.to != null
-        ? `${nodeMeta.name}: ${Math.round((result.from || 0) * 100)}% → ${Math.round((result.to || 0) * 100)}% (learner feedback)`
-        : `Adjusted mastery for ${args.nodeId}`;
-    const planUpdatesWithSummary: Message['planUpdates'] | undefined = (planResult?.planUpdates as
-      | Message['planUpdates']
-      | undefined) ?? {
-      masteryChanges:
-        result.from != null && result.to != null
-          ? [{ nodeId: args.nodeId, from: result.from, to: result.to }]
-          : undefined,
-    };
+        ? hasMasteryDelta
+          ? `${nodeMeta.name}: ${Math.round((result.from || 0) * 100)}% → ${Math.round((result.to || 0) * 100)}% (learner feedback)`
+          : `${nodeMeta.name}: mastery reviewed (learner feedback)`
+        : hasMasteryDelta
+          ? `Adjusted mastery for ${args.nodeId}`
+          : `Reviewed mastery for ${args.nodeId}`;
+    const planUpdatesWithSummary: Message['planUpdates'] | undefined =
+      (planResult?.planUpdates as Message['planUpdates'] | undefined) ??
+      (hasMasteryDelta
+        ? {
+            masteryChanges: [{ nodeId: args.nodeId, from: result.from!, to: result.to! }],
+          }
+        : undefined);
     if (planUpdatesWithSummary) {
       planUpdatesWithSummary.summary = planUpdatesWithSummary.summary ?? summary;
     }

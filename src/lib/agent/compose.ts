@@ -12,10 +12,11 @@ import {
 import { composePlugins } from '@/lib/agent/request';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
 import { type ComposeTurnArgs, type TurnComposition, type ToolDefinition } from '@/lib/agent/types';
-import tutorProfileService from '@/lib/tutorProfile';
+import tutorProfileService from '@/lib/tutor/profile';
 import { combineSystem } from '@/lib/agent/system';
 import { readNextOverrides } from '@/lib/ui/next';
 import { buildProviderPolicy } from '@/lib/policy/provider';
+import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { getNextNode } from '@/lib/learningPlan/service';
 import { isTutorToolName } from '@/lib/agent/tools';
 import type { Message } from '@/lib/types';
@@ -33,9 +34,7 @@ export async function composeTurn({
 }: ComposeTurnArgs): Promise<TurnComposition> {
   const nextOverrides = readNextOverrides(ui);
   const tutorGloballyEnabled = !!ui.flags.experimentalTutor;
-  const forceTutorMode = !!(ui.tutor.forceMode ?? false);
-  const tutorEnabled =
-    tutorGloballyEnabled && (forceTutorMode || Boolean(chat.settings.tutor_mode));
+  const tutorEnabled = isTutorRuntimeEnabled(ui, chat);
 
   const providerPolicy = buildProviderPolicy({ settings: chat.settings, ui });
   const { searchEnabled, searchProvider, providerSort } = providerPolicy;
@@ -120,7 +119,7 @@ export async function composeTurn({
     const allowPlanContext = tutorToolPolicy?.researchMode !== 'model_only';
     const allowLearnerModelContext = tutorToolPolicy?.researchMode !== 'plan_only';
     if (allowPlanContext && chat.settings.learningPlan) {
-      const { generatePlanContextPreamble } = await import('@/lib/agent/planAwareTutor');
+      const { generatePlanContextPreamble } = await import('@/lib/agent/tutor/planContext');
       const { getLatestLearnerModel } = await import('@/lib/agent/learnerModel');
       const learnerModel = allowLearnerModelContext
         ? getLatestLearnerModel(priorMessages)

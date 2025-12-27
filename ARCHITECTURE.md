@@ -4,6 +4,16 @@ Dialogia layers the product into UI, state, agent orchestration, transport, and 
 goals are predictable data flow, a single source of truth for network boundaries, and well-isolated
 business logic that is easy to test.
 
+## Architecture Quickstart
+
+- Start with the refactor roadmap in `REFACTOR_PLAN.md` for module boundaries and planned changes.
+- Golden path guide: `docs/GOLDEN_PATH.md` for common extension workflows.
+- Key entrypoints: `src/lib/store/index.ts` (state composition), `src/lib/services/turns.ts`
+  (send/regenerate flow), `src/lib/agent/compose.ts` (message assembly), and
+  `src/lib/agent/orchestrator/turn.ts` (turn runner).
+- Transport lives in `src/lib/api/*`, `src/lib/openrouter.ts`, and `src/lib/anthropic.ts`, while API
+  routes live under `app/api/*`.
+
 ## Layered Modules
 
 - **UI** — React components in `app/` (routes, layouts) and `src/components/*` (PascalCase modules).
@@ -40,7 +50,7 @@ business logic that is easy to test.
 - Agent modules never import UI components, and persistence (`src/lib/db/*`) never imports agent or
   store types.
 - API routes under `app/api/*` must remain server-only and never import UI modules or components.
-- These boundaries are enforced via ESLint `no-restricted-imports` in `.eslintrc.json`.
+- These boundaries are enforced via ESLint `no-restricted-imports` in `eslint.config.js`.
 
 ```
             ┌──────────┐

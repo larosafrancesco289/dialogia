@@ -11,7 +11,7 @@ import styles from './MobileSettingsSheet.module.css';
 // Dynamically load settings drawer
 const SettingsDrawer = dynamic(
   () =>
-    import('@/components/SettingsDrawer').then((mod) => ({
+    import('@/components/settings/SettingsDrawer').then((mod) => ({
       default: mod.SettingsDrawer,
     })),
   { ssr: false },

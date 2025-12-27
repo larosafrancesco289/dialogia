@@ -38,24 +38,30 @@ describe('parsePartialJson', () => {
   it('parses streaming final answer', () => {
     const base = '[{"type":"thought","output":"Final Answer: This is a long answer that is stre';
     const parsed = parsePartialJson(base);
-    assert.equal(parsed?.length, 1);
-    assert.equal(parsed?.[0].output, 'Final Answer: This is a long answer that is stre');
+    assert.ok(Array.isArray(parsed));
+    assert.equal(parsed.length, 1);
+    const first = parsed[0] as { output?: string };
+    assert.equal(first.output, 'Final Answer: This is a long answer that is stre');
   });
 
   it('parses string ending with backslash', () => {
     const base = '[{"type":"thought","output":"This ends with backslash \\';
     const parsed = parsePartialJson(base);
-    assert.equal(parsed?.length, 1);
+    assert.ok(Array.isArray(parsed));
+    assert.equal(parsed.length, 1);
     // We expect the backslash to be removed
-    assert.equal(parsed?.[0].output, 'This ends with backslash ');
+    const first = parsed[0] as { output?: string };
+    assert.equal(first.output, 'This ends with backslash ');
   });
 
   it('parses string ending with double backslash', () => {
     const base = '[{"type":"thought","output":"This ends with double backslash \\\\';
     const parsed = parsePartialJson(base);
-    assert.equal(parsed?.length, 1);
+    assert.ok(Array.isArray(parsed));
+    assert.equal(parsed.length, 1);
     // We expect the double backslash to be preserved (as a single backslash in the parsed string)
-    assert.equal(parsed?.[0].output, 'This ends with double backslash \\');
+    const first = parsed[0] as { output?: string };
+    assert.equal(first.output, 'This ends with double backslash \\');
   });
 
   it('simulates streaming final answer char by char', () => {
@@ -65,8 +71,10 @@ describe('parsePartialJson', () => {
       // Simulate the JSON structure being built
       const json = `[{"type":"thought","output":"${partial}`;
       const parsed = parsePartialJson(json);
-      assert.equal(parsed?.length, 1);
-      assert.equal(parsed?.[0].output, partial);
+      assert.ok(Array.isArray(parsed));
+      assert.equal(parsed.length, 1);
+      const first = parsed[0] as { output?: string };
+      assert.equal(first.output, partial);
     }
   });
 });

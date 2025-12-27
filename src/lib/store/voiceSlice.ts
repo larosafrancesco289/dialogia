@@ -5,11 +5,13 @@ import { createStoreSlice } from '@/lib/store/createSlice';
 import { buildDefaultVoiceState } from '@/lib/voice/types';
 import type { VoiceConfig } from '@/lib/voice/types';
 import type { StoreState } from '@/lib/store/types';
-import { saveMessage } from '@/lib/db';
+import { repository } from '@/lib/db';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
+import { createMessagePersister } from '@/lib/services/messagePersistence';
 
 export const createVoiceSlice = createStoreSlice((set, get) => {
   const initialVoice = buildDefaultVoiceState();
+  const persistMessage = createMessagePersister(repository);
 
   return {
     voice: initialVoice,
@@ -109,7 +111,7 @@ export const createVoiceSlice = createStoreSlice((set, get) => {
         },
       }));
 
-      await saveMessage(message);
+      await persistMessage(message);
     },
 
     // Add a voice assistant message without triggering anything
@@ -130,7 +132,7 @@ export const createVoiceSlice = createStoreSlice((set, get) => {
         },
       }));
 
-      await saveMessage(message);
+      await persistMessage(message);
     },
   } satisfies Partial<StoreState>;
 });

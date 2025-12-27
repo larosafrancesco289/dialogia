@@ -12,10 +12,11 @@ import {
   hasTieredCodesConfigured,
 } from '@/lib/auth';
 import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
-import { getAccessCookieDomain } from '@/lib/config';
+import { getAccessCookieDomain } from '@/lib/env/server';
 import { jsonAuthError } from '@/lib/auth/errors';
 import { withTiming } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
+import { isProd } from '@/lib/env/runtime';
 
 export async function POST(req: NextRequest) {
   return withTiming('auth-verify-code', async () => {
@@ -73,7 +74,7 @@ function createTokenResponse(tier: AccessTier, sub: string): NextResponse {
   const token = createAuthToken(claims);
 
   const res = NextResponse.json({ ok: true, tier });
-  const secure = process.env.NODE_ENV === 'production';
+  const secure = isProd();
   const domain = getAccessCookieDomain();
   const maxAge = 60 * 60 * 24 * 14; // 14 days
 

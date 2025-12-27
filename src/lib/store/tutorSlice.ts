@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { LearningPlan, Message, MessageTutor, TutorEvent } from '@/lib/types';
-import { updateTutorProfile, loadTutorProfile } from '@/lib/tutorProfile';
-import { saveMessage } from '@/lib/db';
+import { updateTutorProfile, loadTutorProfile } from '@/lib/tutor/profile';
+import { repository } from '@/lib/db';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { getNextNode } from '@/lib/learningPlan/service';
 import {
@@ -10,8 +10,10 @@ import {
   getLatestLearnerModel,
   initializeLearnerModel,
 } from '@/lib/agent/learnerModel';
-import { processPlanProgress } from '@/lib/agent/planAwareTutor';
+import { processPlanProgress } from '@/lib/learningPlan/service';
 import { readNextOverrides } from '@/lib/ui/next';
+import { createMessagePersister } from '@/lib/services/messagePersistence';
+import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 
 type McqAttempts = NonNullable<MessageTutor['attempts']>['mcq'];
 type FillBlankAttempts = NonNullable<MessageTutor['attempts']>['fillBlank'];
@@ -32,6 +34,7 @@ const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
 };
 
 export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
+  const persistMessage = createMessagePersister(repository);
   const updateTutorEntry = (messageId: string, updater: (prev: MessageTutor) => MessageTutor) => {
     if (!messageId) return;
     set((state) => {
@@ -122,7 +125,8 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
       if (!id) return undefined;
       const state = get();
       const chat = state.chats.find((c) => c.id === id);
-      if (!chat || !chat.settings?.tutor_mode) {
+      const tutorEnabled = chat ? isTutorRuntimeEnabled(state.ui, chat) : false;
+      if (!chat || !tutorEnabled) {
         set((s) => ({
           ui: {
             ...s.ui,
@@ -224,7 +228,7 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
       };
 
       const welcome = upsertWelcomeMessage(planMessage);
-      await saveMessage(welcome).catch(() => undefined);
+      await persistMessage(welcome).catch(() => undefined);
       return planMessage;
     },
 
@@ -251,8 +255,12 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
       const nodeMeta = plan.nodes.find((n) => n.id === input.nodeId);
       const beforePct = feedback.from != null ? Math.round((feedback.from || 0) * 100) : undefined;
       const afterPct = feedback.to != null ? Math.round((feedback.to || 0) * 100) : undefined;
-      const summaryParts = [`Adjusted mastery for ${nodeMeta?.name || input.nodeId}.`];
-      if (beforePct != null && afterPct != null) {
+      const hasMasteryDelta =
+        feedback.from != null && feedback.to != null && feedback.from !== feedback.to;
+      const summaryParts = [
+        `${hasMasteryDelta ? 'Adjusted' : 'Reviewed'} mastery for ${nodeMeta?.name || input.nodeId}.`,
+      ];
+      if (beforePct != null && afterPct != null && beforePct !== afterPct) {
         summaryParts.push(`Confidence ${beforePct}% → ${afterPct}%.`);
       }
       if (feedback.resolved?.length) {
@@ -263,10 +271,9 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
       const planUpdates =
         planResult.planUpdates ??
         ({
-          masteryChanges:
-            feedback.from != null && feedback.to != null
-              ? [{ nodeId: input.nodeId, from: feedback.from, to: feedback.to }]
-              : undefined,
+          masteryChanges: hasMasteryDelta
+            ? [{ nodeId: input.nodeId, from: feedback.from!, to: feedback.to! }]
+            : undefined,
           summary: summaryParts.join(' '),
         } as Message['planUpdates']);
       if (planUpdates && !planUpdates.summary) {
@@ -292,7 +299,7 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
         },
       }));
 
-      await saveMessage(assistantMessage).catch(() => undefined);
+      await persistMessage(assistantMessage).catch(() => undefined);
     },
 
     async patchTutorEntry(

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { jsonError, requireEnv, withTiming } from '@/lib/server/route';
+import { jsonError, requireServerEnv, withTiming } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
 
 export async function POST(request: Request) {
   return withTiming('xai-session', async () => {
     let apiKey: string;
     try {
-      apiKey = requireEnv('XAI_API_KEY');
+      apiKey = requireServerEnv('XAI_API_KEY');
     } catch {
       return jsonError(500, 'missing_env', 'XAI_API_KEY');
     }

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { orFetchModels } from '@/lib/api/openrouterClient';
 import { jsonError, withTiming } from '@/lib/server/route';
+import { getRequestOrigin, proxyJson, withProxyErrors } from '@/lib/server/proxy';
 import { getOpenRouterApiKeyForTier } from '@/lib/auth/tierApiKey';
 
 export async function GET(req: NextRequest) {
@@ -11,19 +12,9 @@ export async function GET(req: NextRequest) {
     } catch {
       return jsonError(500, 'missing_env', 'OPENROUTER_API_KEY');
     }
-    try {
-      const res = await orFetchModels(apiKey, { origin: req.headers.get('origin') || undefined });
-      const body = await res.text();
-      return new Response(body, {
-        status: res.status,
-        headers: {
-          'Content-Type': res.headers.get('content-type') || 'application/json',
-          'Cache-Control': 'no-store',
-        },
-      });
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'proxy_error';
-      return jsonError(500, 'proxy_error', message);
-    }
+    return withProxyErrors(async () => {
+      const res = await orFetchModels(apiKey, { origin: getRequestOrigin(req) });
+      return proxyJson(res);
+    }, 'proxy_error');
   });
 }

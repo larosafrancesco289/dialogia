@@ -7,7 +7,7 @@ import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useHaptics } from '@/lib/hooks/useHaptics';
 import { springs } from '@/lib/mobile/springConfig';
-import { ChatSidebar } from '@/components/ChatSidebar';
+import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import styles from './MobileChatsSheet.module.css';
 

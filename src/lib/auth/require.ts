@@ -1,4 +1,4 @@
-import { requireAnthropicClientKeyOrProxy, requireClientKeyOrProxy } from '@/lib/config';
+import { requireAnthropicClientKeyOrProxy, requireClientKeyOrProxy } from '@/lib/env/public';
 import { resolveModelTransport } from '@/lib/providers';
 import type { ModelIndex } from '@/lib/models';
 import type { ModelTransport } from '@/lib/types';

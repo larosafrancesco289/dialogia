@@ -1,5 +1,5 @@
 import type { Chat, Message, ModelTransport, PersistedAttachment } from '@/lib/types';
-import type { UiSnapshot } from '@/lib/agent/contracts';
+import type { UiSnapshot } from '@/lib/contracts/ui';
 import type {
   ComposeTurnArgs,
   ModelMessage,

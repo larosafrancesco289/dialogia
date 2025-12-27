@@ -2,18 +2,18 @@ import { NextRequest } from 'next/server';
 import { deepResearch } from '@/lib/deepResearch';
 import { ProviderSort } from '@/lib/models/providerSort';
 import { createNdjsonStream } from '@/lib/server/ndjson';
-import { jsonError, requireEnv, withTiming } from '@/lib/server/route';
+import { jsonError, requireServerEnv, withTiming } from '@/lib/server/route';
 
 export async function POST(req: NextRequest) {
   return withTiming('deep-research', async () => {
     let apiKey: string;
     try {
-      apiKey = requireEnv('OPENROUTER_API_KEY');
+      apiKey = requireServerEnv('OPENROUTER_API_KEY');
     } catch {
       return jsonError(500, 'missing_env', 'OPENROUTER_API_KEY');
     }
     try {
-      requireEnv('BRAVE_SEARCH_API_KEY');
+      requireServerEnv('BRAVE_SEARCH_API_KEY');
     } catch {
       return jsonError(500, 'missing_env', 'BRAVE_SEARCH_API_KEY');
     }

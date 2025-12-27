@@ -3,13 +3,14 @@ import { normalizeParallelModels } from '@/lib/models/normalization';
 import { applyTutorDefaults } from '@/lib/store/normalize';
 import { primeTutorWelcome } from '@/lib/services/turns';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
-import { loadRepositorySnapshot } from '@/lib/db';
+import { loadRepositorySnapshot, repository } from '@/lib/db';
 import { mergeTutorMap } from '@/lib/ui/tutorSelectors';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { refreshZdrListsIfNeeded } from '@/lib/policy/zdr/cache';
 import { ZDR_CACHE_TTL_MS } from '@/lib/policy/zdr/constants';
 import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { Chat } from '@/lib/types';
+import { hydrateRepositorySnapshot } from '@/lib/services/hydrate';
 
 let zdrRefreshInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -17,16 +18,17 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
   return {
     async initializeApp() {
       const snapshot = await loadRepositorySnapshot(get().selectedChatId);
+      const hydrated = hydrateRepositorySnapshot(snapshot);
       set((s) => ({
-        chats: snapshot.chats,
-        folders: snapshot.folders,
-        messages: snapshot.messages,
-        selectedChatId: snapshot.selectedChatId,
-        ui: mergeTutorMap(s.ui, snapshot.tutorByMessageId),
+        chats: hydrated.chats,
+        folders: hydrated.folders,
+        messages: hydrated.messages,
+        selectedChatId: hydrated.selectedChatId,
+        ui: mergeTutorMap(s.ui, hydrated.tutorByMessageId),
       }));
       try {
-        if (snapshot.selectedChatId) {
-          await get().loadTutorProfileIntoUI(snapshot.selectedChatId);
+        if (hydrated.selectedChatId) {
+          await get().loadTutorProfileIntoUI(hydrated.selectedChatId);
         }
       } catch {
         /* ignore tutor profile preload errors */
@@ -50,6 +52,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         ui: get().ui,
         chats: get().chats,
         selectedChatId: get().selectedChatId,
+        repository,
       });
 
       set((s) => ({ chats: [chat, ...s.chats], selectedChatId: chat.id }));
@@ -69,14 +72,14 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
     async renameChat(id: string, title: string) {
       const chat = get().chats.find((c) => c.id === id);
       if (!chat) return;
-      const updated = await ChatService.updateChat(chat, { title });
+      const updated = await ChatService.updateChat(chat, { title }, repository);
       set((s) => ({
         chats: s.chats.map((c) => (c.id === id ? updated : c)),
       }));
     },
 
     async deleteChat(id: string) {
-      await ChatService.deleteChat(id);
+      await ChatService.deleteChat(id, repository);
       set((s) => {
         const chats = s.chats.filter((c) => c.id !== id);
         const selectedChatId = s.selectedChatId === id ? chats[0]?.id : s.selectedChatId;
@@ -104,6 +107,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         sourceChat,
         messages: sourceMessages,
         messageId,
+        repository,
       });
 
       if (!result) return;
@@ -165,7 +169,11 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         );
       }
 
-      const updatedChat = await ChatService.updateChat(before, { settings: finalSettings });
+      const updatedChat = await ChatService.updateChat(
+        before,
+        { settings: finalSettings },
+        repository,
+      );
 
       set((s) => ({
         chats: s.chats.map((c) => (c.id === id ? updatedChat : c)),
@@ -185,21 +193,21 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
     async moveChatToFolder(chatId: string, folderId?: string) {
       const chat = get().chats.find((c) => c.id === chatId);
       if (!chat) return;
-      const updated = await ChatService.moveChatToFolder(chat, folderId);
+      const updated = await ChatService.moveChatToFolder(chat, folderId, repository);
       set((s) => ({
         chats: s.chats.map((c) => (c.id === chatId ? updated : c)),
       }));
     },
 
     async createFolder(name: string, parentId?: string) {
-      const folder = await ChatService.createFolder(name, parentId);
+      const folder = await ChatService.createFolder(name, parentId, repository);
       set((s) => ({ folders: [...s.folders, folder] }));
     },
 
     async renameFolder(id: string, name: string) {
       const folder = get().folders.find((f) => f.id === id);
       if (!folder) return;
-      const updated = await ChatService.updateFolder(folder, { name });
+      const updated = await ChatService.updateFolder(folder, { name }, repository);
       set((s) => ({
         folders: s.folders.map((f) => (f.id === id ? updated : f)),
       }));
@@ -210,6 +218,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         id,
         get().chats,
         get().folders,
+        repository,
       );
 
       set((s) => {
@@ -230,7 +239,11 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
     async toggleFolderExpanded(id: string) {
       const folder = get().folders.find((f) => f.id === id);
       if (!folder) return;
-      const updated = await ChatService.updateFolder(folder, { isExpanded: !folder.isExpanded });
+      const updated = await ChatService.updateFolder(
+        folder,
+        { isExpanded: !folder.isExpanded },
+        repository,
+      );
       set((s) => ({
         folders: s.folders.map((f) => (f.id === id ? updated : f)),
       }));

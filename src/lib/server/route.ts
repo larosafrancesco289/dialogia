@@ -1,4 +1,6 @@
+import 'server-only';
 import { NextResponse } from 'next/server';
+import { requireServerEnv } from '@/lib/env/server';
 
 const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -21,13 +23,7 @@ export async function withTiming(
   return response;
 }
 
-export function requireEnv(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new Error(`missing_env:${name}`);
-  }
-  return value;
-}
+export { requireServerEnv };
 
 export function jsonError(status: number, code: string, detail?: string): Response {
   const payload = detail ? { error: code, detail } : { error: code };

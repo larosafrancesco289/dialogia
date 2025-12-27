@@ -1,6 +1,4 @@
 import type { ORModel } from '@/lib/types';
-import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/agent/types';
-import type { ProviderSort } from '@/lib/models/providerSort';
 import {
   orChatCompletions,
   orFetchModels,
@@ -12,6 +10,12 @@ import { consumeSse, type SseEvent } from '@/lib/api/stream';
 import { ApiError, API_ERROR_CODES, responseError } from '@/lib/api/errors';
 import { normalizeUsage, shouldIncludeUsage, type Usage } from '@/lib/api/normalizers';
 import { parseZdrEndpoints, type ZdrEndpoint } from '@/lib/policy/zdr/parsing';
+import type {
+  TransportChatParams,
+  TransportClient,
+  TransportFetchModelsOptions,
+  TransportStreamParams,
+} from '@/lib/transport/types';
 
 // Transport-only client for OpenRouter.
 // Request payload construction lives in agent/request.buildChatBody to keep one source of truth
@@ -19,6 +23,14 @@ import { parseZdrEndpoints, type ZdrEndpoint } from '@/lib/policy/zdr/parsing';
 
 const MODEL_CACHE_TTL_MS = 1000 * 60 * 5;
 let modelCache = new Map<string, { models: ORModel[]; fetchedAt: number; origin?: string }>();
+
+const fingerprintKey = (value: string): string => {
+  let hash = 5381;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 33) ^ value.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(16);
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
@@ -137,12 +149,16 @@ export function clearOpenRouterCachesForTest() {
   modelCache = new Map();
 }
 
+type OpenRouterFetchModelsOptions = TransportFetchModelsOptions & {
+  fetchFn?: typeof orFetchModels;
+};
+
 export async function fetchModels(
   apiKey: string,
-  opts: { origin?: string; signal?: AbortSignal; fetchFn?: typeof orFetchModels } = {},
+  opts: OpenRouterFetchModelsOptions = {},
 ): Promise<ORModel[]> {
   const fetchFn = opts.fetchFn ?? orFetchModels;
-  const cacheKey = `${opts.origin || 'default'}::${apiKey}`;
+  const cacheKey = `${opts.origin || 'default'}::${fingerprintKey(apiKey)}`;
   const cached = modelCache.get(cacheKey);
   const now = Date.now();
   if (cached && now - cached.fetchedAt < MODEL_CACHE_TTL_MS) {
@@ -165,37 +181,29 @@ export async function fetchModels(
   return models;
 }
 
-export type StreamCallbacks = {
-  onStart?: () => void;
-  onToken?: (delta: string) => void;
-  onReasoningToken?: (delta: string) => void;
-  onImage?: (dataUrl: string) => void; // base64 data URL for generated image
-  onAnnotations?: (annotations: unknown) => void;
-  onDone?: (full: string, extras?: { usage?: Usage; annotations?: unknown }) => void;
-  onError?: (err: Error) => void;
-};
+// Helper to extract error message from OpenRouter response
+async function extractOpenRouterError(res: Response): Promise<string> {
+  try {
+    const text = await res.text();
+    const json = JSON.parse(text) as Record<string, unknown>;
+    if (isRecord(json.error)) {
+      const errorObj = json.error as Record<string, unknown>;
+      // Include all error fields for better debugging
+      const parts: string[] = [];
+      if (typeof errorObj.message === 'string') parts.push(errorObj.message);
+      if (typeof errorObj.code === 'string') parts.push(`code: ${errorObj.code}`);
+      if (typeof errorObj.type === 'string') parts.push(`type: ${errorObj.type}`);
+      if (errorObj.metadata) parts.push(`metadata: ${JSON.stringify(errorObj.metadata)}`);
+      return parts.length > 0 ? parts.join(' | ') : JSON.stringify(errorObj);
+    }
+    return text.slice(0, 500); // Truncate for safety
+  } catch {
+    return `HTTP ${res.status}`;
+  }
+}
 
 // OpenAI-compatible non-streaming chat completion with optional tool support
-export async function chatCompletion(params: {
-  apiKey: string;
-  model: string;
-  // Loosen type to allow multimodal content arrays and tool roles
-  messages: ModelMessage[];
-  // Enable image generation when model supports it
-  modalities?: Array<'image' | 'text'>;
-  temperature?: number;
-  top_p?: number;
-  max_tokens?: number;
-  reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
-  reasoning_tokens?: number;
-  tools?: ToolDefinition[];
-  tool_choice?: 'auto' | { type: 'function'; function: { name: string } };
-  parallel_tool_calls?: boolean;
-  signal?: AbortSignal;
-  providerSort?: ProviderSort;
-  plugins?: PluginConfig[];
-  origin?: string;
-}): Promise<ChatCompletionPayload> {
+export async function chatCompletion(params: TransportChatParams): Promise<ChatCompletionPayload> {
   const body = buildChatBody({
     model: params.model,
     messages: params.messages,
@@ -212,6 +220,7 @@ export async function chatCompletion(params: {
     providerSort: params.providerSort,
     plugins: params.plugins,
   });
+  
   const res = await orChatCompletions({
     apiKey: params.apiKey,
     body,
@@ -222,34 +231,21 @@ export async function chatCompletion(params: {
     throw responseError(res, { code: API_ERROR_CODES.UNAUTHORIZED, message: 'Invalid API key' });
   if (res.status === 429)
     throw responseError(res, { code: API_ERROR_CODES.RATE_LIMITED, message: 'Rate limited' });
-  if (!res.ok) throw responseError(res, { code: API_ERROR_CODES.OPENROUTER_CHAT_FAILED });
+  if (!res.ok) {
+    const errorDetail = await extractOpenRouterError(res);
+    console.error('[OpenRouter] Chat completion failed:', errorDetail);
+    throw new ApiError({
+      code: API_ERROR_CODES.OPENROUTER_CHAT_FAILED,
+      status: res.status,
+      message: `${API_ERROR_CODES.OPENROUTER_CHAT_FAILED} (${res.status}): ${errorDetail}`,
+      detail: errorDetail,
+    });
+  }
   const payload: ChatCompletionPayload = await res.json();
   return payload;
 }
 
-export async function streamChatCompletion(params: {
-  apiKey: string;
-  model: string;
-  // Allow multimodal content arrays
-  messages: ModelMessage[];
-  // Enable image generation when model supports it
-  modalities?: Array<'image' | 'text'>;
-  temperature?: number;
-  top_p?: number;
-  max_tokens?: number;
-  // Reasoning configuration (optional)
-  reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
-  reasoning_tokens?: number;
-  // Tool calling (optional)
-  tools?: ToolDefinition[];
-  tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
-  parallel_tool_calls?: boolean;
-  signal?: AbortSignal;
-  callbacks?: StreamCallbacks;
-  providerSort?: ProviderSort;
-  plugins?: PluginConfig[];
-  origin?: string;
-}) {
+export async function streamChatCompletion(params: TransportStreamParams): Promise<void> {
   const callbacks = params.callbacks;
   const body = buildChatBody({
     model: params.model,
@@ -281,7 +277,16 @@ export async function streamChatCompletion(params: {
     throw responseError(res, { code: API_ERROR_CODES.UNAUTHORIZED, message: 'Invalid API key' });
   if (res.status === 429)
     throw responseError(res, { code: API_ERROR_CODES.RATE_LIMITED, message: 'Rate limited' });
-  if (!res.ok) throw responseError(res, { code: API_ERROR_CODES.OPENROUTER_CHAT_FAILED });
+  if (!res.ok) {
+    const errorDetail = await extractOpenRouterError(res);
+    console.error('[OpenRouter] Stream chat completion failed:', errorDetail);
+    throw new ApiError({
+      code: API_ERROR_CODES.OPENROUTER_CHAT_FAILED,
+      status: res.status,
+      message: `${API_ERROR_CODES.OPENROUTER_CHAT_FAILED} (${res.status}): ${errorDetail}`,
+      detail: errorDetail,
+    });
+  }
 
   let full = '';
   let usage: Usage | undefined;
@@ -362,3 +367,9 @@ export async function streamChatCompletion(params: {
 
   callbacks?.onDone?.(full, { usage, annotations });
 }
+
+export const openrouterTransport: TransportClient = {
+  fetchModels: (apiKey, opts) => fetchModels(apiKey, opts),
+  chatCompletion,
+  streamChatCompletion,
+};

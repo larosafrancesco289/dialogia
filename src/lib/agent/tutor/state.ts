@@ -1,5 +1,5 @@
 import type { TutorToolName } from '@/lib/agent/types';
-import type { TutorToolUsageSnapshot, UiSnapshot } from '@/lib/agent/contracts';
+import type { TutorToolUsageSnapshot, UiSnapshot } from '@/lib/contracts/ui';
 import type { Chat, Message, MessageTutor, TutorResearchMode } from '@/lib/types';
 import { getTutorToolsByPhase, getTutorToolsByTag } from '@/lib/agent/tools/metadata';
 

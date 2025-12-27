@@ -13,8 +13,9 @@ import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 import type { Chat, Message, ORModel, ModelTransport } from '@/lib/types';
 import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learnerModel';
-import { generatePlanContextPreamble } from '@/lib/agent/planAwareTutor';
+import { generatePlanContextPreamble } from '@/lib/agent/tutor/planContext';
 import { isTutorContentTool, isTutorMetaTool, isSearchTool } from '@/lib/agent/tools/categories';
+import { getAnthropicKeyFallback, getOpenRouterKeyFallback } from '@/lib/env/server';
 
 export type TutorEvalOptions = {
   apiKeys?: {
@@ -174,16 +175,8 @@ export async function runTutorScenario(
 ): Promise<TutorEvalResult> {
   const maxTurns = options.maxTurnsOverride ?? scenario.maxTurns;
   const apiKeys = {
-    openrouter:
-      options.apiKeys?.openrouter ||
-      process.env.OPENROUTER_API_KEY ||
-      process.env.NEXT_PUBLIC_OPENROUTER_API_KEY ||
-      process.env.OPENROUTER_KEY,
-    anthropic:
-      options.apiKeys?.anthropic ||
-      process.env.ANTHROPIC_API_KEY ||
-      process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY ||
-      process.env.ANTHROPIC_KEY,
+    openrouter: options.apiKeys?.openrouter || getOpenRouterKeyFallback(),
+    anthropic: options.apiKeys?.anthropic || getAnthropicKeyFallback(),
   };
   const teacherModelId = scenario.teacherModelId || DEFAULT_TUTOR_MODEL_ID;
   const studentModelId = scenario.studentModelId || DEFAULT_MODEL_ID;

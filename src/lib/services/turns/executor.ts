@@ -5,12 +5,13 @@ import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
 import { streamFinal } from '@/lib/agent/streaming';
 import { shouldShortCircuitTutor } from '@/lib/agent/policy';
-import { saveChat, saveMessage } from '@/lib/db';
+import type { Repository } from '@/lib/db/repository';
 import { updateMessageInChat } from '@/lib/store/messageUtils';
 import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
 import type { SendRuntime } from '@/lib/services/turns/runtime';
 import type { Chat, Message, PersistedAttachment } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
+import { createMessagePersister } from '@/lib/services/messagePersistence';
 
 export type ExecuteModelTurnArgs = {
   modelId: string;
@@ -26,6 +27,7 @@ export type ExecuteModelTurnArgs = {
   get: StoreGetter;
   getCurrentChat: () => Chat;
   updateChat: (chat: Chat) => void;
+  repository: Repository;
 };
 
 export const executeModelTurn = async ({
@@ -42,6 +44,7 @@ export const executeModelTurn = async ({
   get,
   getCurrentChat,
   updateChat,
+  repository,
 }: ExecuteModelTurnArgs): Promise<void> => {
   if (!assistantMessage) {
     markComplete();
@@ -66,6 +69,7 @@ export const executeModelTurn = async ({
       modelIndex: get().modelIndex,
     };
 
+    const persistMessage = createMessagePersister(repository);
     const lifecycle = createTurnLifecycle({
       chatId: runtime.chatId,
       assistantMessageId: assistantMessage.id,
@@ -75,7 +79,7 @@ export const executeModelTurn = async ({
       set,
       get,
       updateChat,
-      persistChat: saveChat,
+      persistChat: repository.saveChat,
       updateMessage: (patch) =>
         set((state) => updateMessageInChat(state, runtime.chatId, assistantMessage.id, patch)),
     });
@@ -115,7 +119,7 @@ export const executeModelTurn = async ({
         getState: get,
         updateMessage: (messageId, patch) =>
           set((state) => updateMessageInChat(state, runtime.chatId, messageId, patch)),
-        persistMessage: saveMessage,
+        persistMessage,
       });
       return;
     }

@@ -1,8 +1,10 @@
+import 'server-only';
 import { cookies } from 'next/headers';
 import { TIER_COOKIE_NAME } from './shared';
 import type { AccessTier } from './types';
 import { canUseAllModelsForTier } from './tierPolicy';
 import { logger } from '@/lib/logger';
+import { getServerOpenRouterFreeKey, requireServerOpenRouterKey } from '@/lib/env/server';
 
 /**
  * Get the current access tier from cookies (server-side).
@@ -34,7 +36,7 @@ export async function getOpenRouterApiKeyForTier(): Promise<string> {
   const allowAllModels = canUseAllModelsForTier(tier);
 
   if (!allowAllModels) {
-    const freeKey = process.env.OPENROUTER_FREE_API_KEY;
+    const freeKey = getServerOpenRouterFreeKey();
     if (freeKey) {
       return freeKey;
     }
@@ -42,11 +44,7 @@ export async function getOpenRouterApiKeyForTier(): Promise<string> {
     logger.warn('[tierApiKey] OPENROUTER_FREE_API_KEY not set, falling back to main key');
   }
 
-  const mainKey = process.env.OPENROUTER_API_KEY;
-  if (!mainKey) {
-    throw new Error('Missing OPENROUTER_API_KEY');
-  }
-  return mainKey;
+  return requireServerOpenRouterKey();
 }
 
 /**

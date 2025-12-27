@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { generatePlanContextPreamble } from '@/lib/agent/tutor/planContext';
 import {
-  generatePlanContextPreamble,
   shouldCompleteNode,
   processPlanProgress,
   isPlanComplete,
@@ -9,7 +9,7 @@ import {
   getEstimatedRemainingTime,
   getReadyTopics,
   generateProgressReport,
-} from '@/lib/agent/planAwareTutor';
+} from '@/lib/learningPlan/service';
 import { initializeLearnerModel, updateLearnerModel } from '@/lib/agent/learnerModel';
 import type { LearningPlan, LearnerModel } from '@/lib/types';
 
@@ -311,7 +311,7 @@ test('processPlanProgress detects plan completion', async () => {
   const result = await processPlanProgress(plan, model);
 
   assert.ok(result.progressMessage);
-  assert.ok(result.progressMessage.includes('completed the entire learning plan'));
+  assert.ok(result.progressMessage.includes('Learning plan completed'));
 });
 
 test('processPlanProgress returns unchanged when plan complete', async () => {

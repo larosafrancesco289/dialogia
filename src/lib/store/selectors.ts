@@ -4,6 +4,8 @@
 import type { StoreState } from '@/lib/store/types';
 import type { ModelCapabilityFlags } from '@/lib/models';
 import { readNextOverrides } from '@/lib/ui/next';
+import { normalizeParallelModels } from '@/lib/store/normalize';
+import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 
 export const selectCurrentChat = (state: StoreState) => {
   const chatId = state.selectedChatId;
@@ -32,10 +34,8 @@ export const selectIsStreaming = (state: StoreState) => state.ui.isStreaming;
 
 export const selectIsTutorEnabled = (state: StoreState) => {
   const chat = selectCurrentChat(state);
-  const tutorGloballyEnabled = !!state.ui.flags.experimentalTutor;
-  if (!tutorGloballyEnabled) return false;
-  if (state.ui.tutor.forceMode) return true;
-  return !!chat?.settings.tutor_mode;
+  if (!chat) return false;
+  return isTutorRuntimeEnabled(state.ui, chat);
 };
 
 export const selectModelCaps =
@@ -56,3 +56,24 @@ export const selectModels = (state: StoreState) => state.models;
 export const selectNextOverrides = (state: StoreState) => readNextOverrides(state.ui);
 
 export const selectNextModel = (state: StoreState) => selectNextOverrides(state).model;
+
+export const selectActiveModelIds = (state: StoreState) => {
+  const chat = selectCurrentChat(state);
+  if (!chat) return [];
+  const baseId = chat.settings.model;
+  const parallel = normalizeParallelModels(baseId, chat.settings.parallel_models);
+  return baseId ? [baseId, ...parallel] : parallel;
+};
+
+export const selectSearchEnabled = (state: StoreState) => {
+  const chat = selectCurrentChat(state);
+  if (chat) return !!chat.settings.search_enabled;
+  return !!selectNextOverrides(state).search?.enabled;
+};
+
+export const selectSearchProvider = (state: StoreState) => {
+  const chat = selectCurrentChat(state);
+  const next = selectNextOverrides(state);
+  const configured = chat?.settings.search_provider ?? next.search?.provider ?? 'openrouter';
+  return state.ui.flags.experimentalBrave && configured === 'brave' ? 'brave' : 'openrouter';
+};

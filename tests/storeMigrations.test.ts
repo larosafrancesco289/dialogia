@@ -41,7 +41,7 @@ test('migrateToV2 normalizes search settings and strips deprecated ui fields', (
     } as any,
   };
 
-  const migrated = migrate(persisted, 1);
+  const migrated = migrate(persisted, 1) as Partial<StoreState> & Record<string, any>;
 
   const chatSettings = migrated.chats?.[0]?.settings as Record<string, any>;
   assert.equal(chatSettings.search_enabled, true);

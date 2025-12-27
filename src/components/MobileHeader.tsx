@@ -16,6 +16,7 @@ import { ModelPicker } from '@/components/ModelPicker';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { readNextOverrides } from '@/lib/ui/next';
+import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 
 export function MobileHeader() {
   const { chats, selectedChatId, renameChat, newChat, setUI, updateChatSettings } = useChatStore(
@@ -37,9 +38,9 @@ export function MobileHeader() {
   const nextTutorMode = !!nextOverrides.tutorMode;
   const tutorDefaultModelId = uiState.tutor.defaultModelId;
   const models = useChatStore((s) => s.models);
-  const tutorActive =
-    experimentalTutor &&
-    (forceTutorMode || (chat ? Boolean(chat.settings?.tutor_mode) : nextTutorMode));
+  const tutorActive = chat
+    ? isTutorRuntimeEnabled(uiState, chat)
+    : experimentalTutor && (forceTutorMode || nextTutorMode);
   const tutorModelId =
     chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
@@ -240,7 +241,7 @@ export function MobileHeader() {
                   onClick={() => {
                     setMenuOpen(false);
                     setUI({ showSettings: true });
-                    import('@/components/SettingsDrawer').catch(() => undefined);
+                    import('@/components/settings/SettingsDrawer').catch(() => undefined);
                   }}
                 >
                   <Cog6ToothIcon className="h-4 w-4" />

@@ -4,7 +4,7 @@
 
 import type { SearchProvider } from '@/lib/agent/types';
 import type { ChatSettings } from '@/lib/types';
-import type { UiSnapshot } from '@/lib/agent/contracts';
+import type { UiSnapshot } from '@/lib/contracts/ui';
 import { ProviderSort } from '@/lib/models/providerSort';
 
 export function providerSortFromRoutePref(

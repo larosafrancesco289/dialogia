@@ -3,11 +3,12 @@ import type { Chat, DraftAttachment, Message, ORModel } from '@/lib/types';
 import type { ChatSettings } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { findModelById, isReasoningSupported } from '@/lib/models';
-import type { UIState, UINextOverrides } from '@/lib/store/types';
+import type { UiNextOverrides } from '@/lib/contracts/ui';
+import type { UIState } from '@/lib/store/types';
 
 type Effort = 'none' | 'low' | 'medium' | 'high';
 
-type NextOverrides = UINextOverrides;
+type NextOverrides = UiNextOverrides;
 
 type SlashCommandContext = {
   chat: Chat | undefined;

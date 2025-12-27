@@ -28,7 +28,8 @@ import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { buildJudgeMessages, type JudgeVerdict } from '@/lib/eval/judgePrompts';
 import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learnerModel';
-import { generatePlanContextPreamble } from '@/lib/agent/planAwareTutor';
+import { generatePlanContextPreamble } from '@/lib/agent/tutor/planContext';
+import { getAnthropicKeyFallback, getOpenRouterKeyFallback } from '@/lib/env/server';
 import {
   ABLATION_CONDITIONS,
   CONDITION_CONFIGS,
@@ -53,7 +54,7 @@ import {
 import type { Chat, ORModel, ModelTransport, LearnerModel } from '@/lib/types';
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 import { parseArgs } from '@/lib/cli/args';
-import { loadEnvDefaults } from '@/lib/cli/env';
+import { loadEnvDefaults } from '@/lib/cli/env.node';
 
 // ============================================================================
 // Types
@@ -820,8 +821,8 @@ export async function runAblationCli(argv: string[]) {
   const forceOpenRouter = args['use-anthropic-direct'] !== true;
 
   const apiKeys = {
-    openrouter: process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY,
-    anthropic: process.env.ANTHROPIC_API_KEY || process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY,
+    openrouter: getOpenRouterKeyFallback(),
+    anthropic: getAnthropicKeyFallback(),
   };
 
   if (!apiKeys.openrouter) {

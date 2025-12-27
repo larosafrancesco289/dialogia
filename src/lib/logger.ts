@@ -1,3 +1,5 @@
+import { getDefaultLogLevel, getLogLevelSetting } from '@/lib/env/public';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent';
 
 const LEVELS: Record<LogLevel, number> = {
@@ -9,7 +11,7 @@ const LEVELS: Record<LogLevel, number> = {
 };
 
 function resolveLogLevel(): LogLevel {
-  const raw = process.env.NEXT_PUBLIC_LOG_LEVEL || process.env.LOG_LEVEL;
+  const raw = getLogLevelSetting();
   const normalized = raw?.toLowerCase();
   if (
     normalized === 'debug' ||
@@ -20,7 +22,7 @@ function resolveLogLevel(): LogLevel {
   ) {
     return normalized;
   }
-  return process.env.NODE_ENV === 'production' ? 'warn' : 'debug';
+  return getDefaultLogLevel() as LogLevel;
 }
 
 const ACTIVE_LEVEL = LEVELS[resolveLogLevel()];

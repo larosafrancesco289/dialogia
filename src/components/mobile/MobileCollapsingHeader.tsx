@@ -8,6 +8,7 @@ import { springs } from '@/lib/mobile/springConfig';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { ModelPicker } from '@/components/ModelPicker';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
+import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import styles from './MobileCollapsingHeader.module.css';
 
 /**
@@ -35,7 +36,9 @@ export function MobileCollapsingHeader() {
   const tutorDefaultModelId = uiState.tutor.defaultModelId;
 
   const chat = chats.find((c) => c.id === selectedChatId);
-  const tutorActive = experimentalTutor && (forceTutorMode || Boolean(chat?.settings?.tutor_mode));
+  const tutorActive = chat
+    ? isTutorRuntimeEnabled(uiState, chat)
+    : experimentalTutor && forceTutorMode;
 
   const tutorModelId =
     chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;

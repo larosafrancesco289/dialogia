@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
-import { ChatPane } from '@/components/ChatPane';
+import { ChatPane } from '@/components/chat/ChatPane';
 import { MobileBottomTabBar } from '@/components/mobile/MobileBottomTabBar';
 import { MobileCollapsingHeader } from '@/components/mobile/MobileCollapsingHeader';
 import { MobileChatsSheet } from '@/components/mobile/MobileChatsSheet';

@@ -1,4 +1,5 @@
-import { isAuthDebugRouteEnabled, isProd } from '@/lib/config';
+import { isAuthDebugRouteEnabled } from '@/lib/env/auth';
+import { isProd } from '@/lib/env/runtime';
 
 export const AUTH_COOKIE_NAME = 'dlg_access';
 

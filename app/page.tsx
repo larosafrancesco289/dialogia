@@ -1,13 +1,13 @@
 'use client';
 import dynamic from 'next/dynamic';
-import { ChatSidebar } from '@/components/ChatSidebar';
-import { ChatPane } from '@/components/ChatPane';
+import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
+import { ChatPane } from '@/components/chat/ChatPane';
 import { TopHeader } from '@/components/TopHeader';
 import { MobileHeader } from '@/components/MobileHeader';
 import { MobileShell } from '@/components/mobile/MobileShell';
 const SettingsDrawer = dynamic(
   () =>
-    import(/* webpackPrefetch: true */ '@/components/SettingsDrawer').then(
+    import(/* webpackPrefetch: true */ '@/components/settings/SettingsDrawer').then(
       (mod) => mod.SettingsDrawer,
     ),
   { ssr: false },
@@ -53,7 +53,7 @@ export default function HomePage() {
   // Warm-up: prefetch drawer bundles on idle so first open feels instant
   useEffect(() => {
     const warm = () => {
-      import('@/components/SettingsDrawer').catch(() => undefined);
+      import('@/components/settings/SettingsDrawer').catch(() => undefined);
     };
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
       const idle = (

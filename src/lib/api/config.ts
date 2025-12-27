@@ -1,6 +1,8 @@
 // Module: api/config
 // Responsibility: Provide shared transport configuration defaults for OpenRouter requests.
 
+import { getPublicAppBaseUrl } from '@/lib/env/public';
+
 const BROWSER =
   typeof window !== 'undefined' &&
   typeof window.document !== 'undefined' &&
@@ -9,10 +11,8 @@ const BROWSER =
 const DEFAULT_ORIGIN = 'http://localhost:3000';
 
 function readEnvOrigin(): string | undefined {
-  const envValue =
-    (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_APP_BASE_URL) || '';
-  const trimmed = envValue?.trim();
-  if (trimmed) return trimmed.replace(/\/+$/, '');
+  const envValue = getPublicAppBaseUrl();
+  if (envValue) return envValue.replace(/\/+$/, '');
   return undefined;
 }
 

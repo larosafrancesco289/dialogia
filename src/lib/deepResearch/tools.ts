@@ -1,4 +1,4 @@
-import { getBraveSearchKey } from '@/lib/config';
+import { getBraveSearchKey } from '@/lib/env/server';
 import { summarizeHtmlDocument } from '@/lib/deepResearch/html';
 import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
 

@@ -1,5 +1,5 @@
 import type { Chat } from '@/lib/types';
-import type { UiSnapshot } from '@/lib/agent/contracts';
+import type { UiSnapshot } from '@/lib/contracts/ui';
 
 export const isTutorRuntimeEnabled = (ui: UiSnapshot, chat: Chat): boolean => {
   const tutorGloballyEnabled = !!ui.flags.experimentalTutor;

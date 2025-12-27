@@ -17,8 +17,6 @@ type ModelsPanelProps = {
   hiddenModelIds?: string[];
   resetHiddenModels: () => void;
   renderSection: RenderSection;
-  routePref: 'speed' | 'cost';
-  setRoutePref: (pref: 'speed' | 'cost') => void;
   modelSearchRef: Ref<ModelSearchHandle | null>;
   experimentalBrave: boolean;
   ui: StoreState['ui'];
@@ -35,13 +33,12 @@ export function ModelsPanel(props: ModelsPanelProps) {
     hiddenModelIds,
     resetHiddenModels,
     renderSection,
-    routePref,
-    setRoutePref,
     modelSearchRef,
     experimentalBrave,
     ui,
   } = props;
   const nextOverrides = readNextOverrides(ui);
+  const routePref = ui.routePreference ?? 'speed';
 
   return (
     <>
@@ -136,7 +133,6 @@ export function ModelsPanel(props: ModelsPanelProps) {
               <button
                 className={`segment ${routePref === 'speed' ? 'is-active' : ''}`}
                 onClick={() => {
-                  setRoutePref('speed');
                   setUI({ routePreference: 'speed' });
                 }}
               >
@@ -145,7 +141,6 @@ export function ModelsPanel(props: ModelsPanelProps) {
               <button
                 className={`segment ${routePref === 'cost' ? 'is-active' : ''}`}
                 onClick={() => {
-                  setRoutePref('cost');
                   setUI({ routePreference: 'cost' });
                 }}
               >

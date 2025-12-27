@@ -63,7 +63,8 @@ AUTH_COOKIE_SECRET=replace-with-strong-random-hex
 ACCESS_CODE_PEPPER=replace-with-strong-random-hex
 
 # Comma-separated HMAC-SHA256(code, ACCESS_CODE_PEPPER) hex digests
-ACCESS_CODES_HASHED=
+ACCESS_CODES_INDIVIDUAL_HASHED=
+ACCESS_CODES_DEVELOPER_HASHED=
 ```
 
 Client-side mode (not recommended):
@@ -85,11 +86,16 @@ bun install
 - Build: `bun run build`
 - Start (prod): `bun start`
 - Format: `bun run format`
-- Lint: `bun run lint`
+- Lint: `bun run lint` (uses `eslint.config.js`)
 - Type check: `bun run lint:types`
 - Tests: `bun run test`
 
 Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/start.sh`.
+
+### Local Artifacts
+
+The following are local-only (already in `.gitignore`) and should not be committed: `.next/`,
+`node_modules/`, `.eslintcache`, `.DS_Store`.
 
 ### Usage
 

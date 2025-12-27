@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { anthropicFetchModels } from '@/lib/api/anthropicClient';
-import { jsonError, requireEnv, withTiming } from '@/lib/server/route';
+import { jsonError, requireServerEnv, withTiming } from '@/lib/server/route';
+import { getRequestOrigin, proxyJson, withProxyErrors } from '@/lib/server/proxy';
 
 export async function GET(req: NextRequest) {
   return withTiming('anthropic-models', async () => {
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
     let apiKey = headerKey;
     if (!apiKey) {
       try {
-        apiKey = requireEnv('ANTHROPIC_API_KEY');
+        apiKey = requireServerEnv('ANTHROPIC_API_KEY');
       } catch {
         apiKey = undefined;
       }
@@ -16,21 +17,11 @@ export async function GET(req: NextRequest) {
     if (!apiKey) {
       return jsonError(500, 'missing_env', 'ANTHROPIC_API_KEY');
     }
-    try {
+    return withProxyErrors(async () => {
       const res = await anthropicFetchModels(apiKey, {
-        origin: req.headers.get('origin') || undefined,
+        origin: getRequestOrigin(req),
       });
-      const body = await res.text();
-      return new Response(body, {
-        status: res.status,
-        headers: {
-          'Content-Type': res.headers.get('content-type') || 'application/json',
-          'Cache-Control': 'no-store',
-        },
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'anthropic_proxy_error';
-      return jsonError(500, 'anthropic_proxy_error', message);
-    }
+      return proxyJson(res);
+    }, 'anthropic_proxy_error');
   });
 }

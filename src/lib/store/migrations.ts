@@ -1,4 +1,4 @@
-import type { StoreState } from '@/lib/store/types';
+import type { PersistedStoreState } from '@/lib/store/types';
 import { STORE_MIGRATION_VERSION } from '@/lib/db/versions';
 
 type PersistedState = Record<string, unknown>;
@@ -125,9 +125,9 @@ export const migrateToV4 = (state: PersistedState): PersistedState => {
   return next;
 };
 
-export const migrate = (persistedState: unknown, version?: number): Partial<StoreState> => {
-  if (!isRecord(persistedState)) return {};
-  const currentVersion = version ?? 0;
+export const migrate = (persistedState: unknown, version = 0): PersistedStoreState => {
+  if (!isRecord(persistedState)) return {} as PersistedStoreState;
+  const currentVersion = version;
   let state: PersistedState = persistedState;
   if (currentVersion < 2) {
     state = migrateToV2(state);
@@ -135,5 +135,5 @@ export const migrate = (persistedState: unknown, version?: number): Partial<Stor
   if (currentVersion < CURRENT_VERSION) {
     state = migrateToV4(state);
   }
-  return state as Partial<StoreState>;
+  return state as PersistedStoreState;
 };

@@ -1,5 +1,5 @@
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { getDefaultZdrOnly, getRoutePreferenceDefault } from '@/lib/config';
+import { getDefaultZdrOnly, getRoutePreferenceDefault } from '@/lib/env/public';
 import type { UIState, UIMobileState } from '@/lib/store/types';
 
 const EPHEMERAL_DEFAULTS: Partial<UIState> = {

@@ -14,7 +14,8 @@ import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { parseArgs } from '@/lib/cli/args';
-import { loadEnvDefaults } from '@/lib/cli/env';
+import { loadEnvDefaults } from '@/lib/cli/env.node';
+import { getAnthropicKeyFallback, getOpenRouterKeyFallback } from '@/lib/env/server';
 
 type PresetDefinition = {
   goal: string;
@@ -478,12 +479,10 @@ export async function runTutorSimulationCli(argv: string[]) {
 
   const openrouterKey =
     (typeof args['openrouter-key'] === 'string' && args['openrouter-key']) ||
-    process.env.OPENROUTER_API_KEY ||
-    process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+    getOpenRouterKeyFallback();
   const anthropicKey =
     (typeof args['anthropic-key'] === 'string' && args['anthropic-key']) ||
-    process.env.ANTHROPIC_API_KEY ||
-    process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY;
+    getAnthropicKeyFallback();
 
   const remoteModels = await safeFetchModels(openrouterKey);
   const allModelIds = Array.from(new Set([tutorModel, studentModel, judgeModel]));

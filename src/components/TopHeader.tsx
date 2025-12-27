@@ -20,8 +20,9 @@ import { findModelById, formatModelLabel } from '@/lib/models';
 import { PlanSheet } from '@/components/plan/PlanSheet';
 import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
 import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
-import type { UiNextOverrides } from '@/lib/agent/contracts';
+import type { UiNextOverrides } from '@/lib/contracts/ui';
 import type { LearningPlan } from '@/lib/types';
+import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 
 const EMPTY_OVERRIDES: UiNextOverrides = {};
 
@@ -39,6 +40,7 @@ export function TopHeader() {
     planSheetOpen,
     overrides,
     tutorDefaultModelId,
+    uiSnapshot,
     experimentalTutor,
     forceTutorMode,
     models,
@@ -60,6 +62,7 @@ export function TopHeader() {
       planSheetOpen: s.ui.plan.sheetOpen ?? false,
       overrides: s.ui.overrides,
       tutorDefaultModelId: s.ui.tutor.defaultModelId,
+      uiSnapshot: s.ui,
       experimentalTutor: !!s.ui.flags.experimentalTutor,
       forceTutorMode: !!s.ui.tutor.forceMode,
       models: s.models,
@@ -71,9 +74,9 @@ export function TopHeader() {
   }, shallow);
   const nextOverrides = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const nextTutorMode = !!nextOverrides.tutorMode;
-  const tutorActive =
-    experimentalTutor &&
-    (forceTutorMode || (chat ? Boolean(chat.settings?.tutor_mode) : nextTutorMode));
+  const tutorActive = chat
+    ? isTutorRuntimeEnabled(uiSnapshot, chat)
+    : experimentalTutor && (forceTutorMode || nextTutorMode);
   const tutorModelId =
     chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
@@ -315,10 +318,10 @@ export function TopHeader() {
           aria-pressed={isSettingsOpen}
           onClick={() => setUI({ showSettings: !isSettingsOpen })}
           onMouseEnter={() => {
-            import('@/components/SettingsDrawer').catch(() => undefined);
+            import('@/components/settings/SettingsDrawer').catch(() => undefined);
           }}
           onFocus={() => {
-            import('@/components/SettingsDrawer').catch(() => undefined);
+            import('@/components/settings/SettingsDrawer').catch(() => undefined);
           }}
         >
           <Cog6ToothIcon className="h-5 w-5" />

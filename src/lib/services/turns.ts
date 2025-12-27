@@ -4,7 +4,7 @@
 
 import type { DraftAttachment, Chat, Message, MessageTutor } from '@/lib/types';
 import type { StoreAccess, StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
-import { saveChat, saveMessage } from '@/lib/db';
+import type { Repository } from '@/lib/db/repository';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { attachTutorUiState, ensureTutorDefaults } from '@/lib/agent/tutorFlow';
 import { buildHiddenTutorContent } from '@/lib/tutor/hiddenContent';
@@ -19,10 +19,11 @@ import { executeModelTurn } from '@/lib/services/turns/executor';
 import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { resolveSingleModelAuth } from '@/lib/services/auth';
 import { evaluateDeepResearchPolicy } from '@/lib/services/deepResearchPolicy';
-import { enforceZdrGate } from '@/lib/policy/runtime';
+import { enforceZdrGate, isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { selectTutorEntry } from '@/lib/ui/tutorSelectors';
 import { findModelById } from '@/lib/models';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
+import { createMessagePersister } from '@/lib/services/messagePersistence';
 
 export type SendTurnOptions = {
   content: string;
@@ -30,6 +31,7 @@ export type SendTurnOptions = {
   metadata?: Message['metadata'];
   set: StoreSetter;
   get: StoreGetter;
+  repository: Repository;
 };
 
 export function primeTutorWelcome(chatId: string | undefined, store: StoreAccess) {
@@ -49,9 +51,16 @@ export type AppendAssistantArgs = {
   modelId?: string;
   set: StoreSetter;
   get: StoreGetter;
+  repository: Repository;
 };
 
-export async function appendAssistantTurn({ content, modelId, set, get }: AppendAssistantArgs) {
+export async function appendAssistantTurn({
+  content,
+  modelId,
+  set,
+  get,
+  repository,
+}: AppendAssistantArgs) {
   const chatId = get().selectedChatId;
   if (!chatId) return;
   const chat = get().chats.find((c) => c.id === chatId);
@@ -69,15 +78,17 @@ export async function appendAssistantTurn({ content, modelId, set, get }: Append
       [chatId]: [...(state.messages[chatId] ?? []), assistantMsg],
     },
   }));
-  await saveMessage(assistantMsg);
+  const persistMessage = createMessagePersister(repository);
+  await persistMessage(assistantMsg);
 }
 
 export type PersistTutorArgs = {
   messageId: string;
   store: StoreAccess;
+  repository: Repository;
 };
 
-export async function persistTutorForMessage({ messageId, store }: PersistTutorArgs) {
+export async function persistTutorForMessage({ messageId, store, repository }: PersistTutorArgs) {
   const { get, set } = store;
   const state = get();
   const uiTutor = selectTutorEntry(state.ui, messageId);
@@ -102,15 +113,23 @@ export async function persistTutorForMessage({ messageId, store }: PersistTutorA
   }
   if (updatedMsg) {
     try {
-      await saveMessage(updatedMsg);
+      const persistMessage = createMessagePersister(repository);
+      await persistMessage(updatedMsg);
     } catch {
       /* noop */
     }
   }
 }
 
-export async function sendUserTurn({ content, attachments, metadata, set, get }: SendTurnOptions) {
-  const runtime = await prepareSendRuntime({ attachments, set, get });
+export async function sendUserTurn({
+  content,
+  attachments,
+  metadata,
+  set,
+  get,
+  repository,
+}: SendTurnOptions) {
+  const runtime = await prepareSendRuntime({ attachments, set, get, repository });
   if (!runtime) return;
   let currentChat = runtime.chat;
   const { chatId, ui, tutorEnabled, activeModelIds, primaryModelId, priorMessages, modelContexts } =
@@ -132,6 +151,7 @@ export async function sendUserTurn({ content, attachments, metadata, set, get }:
     activeModelIds,
     set,
     get,
+    repository,
   });
   if (!spawned) return;
 
@@ -179,7 +199,7 @@ export async function sendUserTurn({ content, attachments, metadata, set, get }:
       assistantMessage: primaryAssistant,
       set,
       get,
-      persistMessage: saveMessage,
+      persistMessage: createMessagePersister(repository),
       controller: masterController,
     });
     if (handled) {
@@ -210,6 +230,7 @@ export async function sendUserTurn({ content, attachments, metadata, set, get }:
       updateChat: (nextChat) => {
         currentChat = nextChat;
       },
+      repository,
     });
 
   await Promise.allSettled(activeModelIds.map(runPerModel));
@@ -220,9 +241,16 @@ export type RegenerateTurnArgs = {
   overrideModelId?: string;
   set: StoreSetter;
   get: StoreGetter;
+  repository: Repository;
 };
 
-export async function regenerateTurn({ messageId, overrideModelId, set, get }: RegenerateTurnArgs) {
+export async function regenerateTurn({
+  messageId,
+  overrideModelId,
+  set,
+  get,
+  repository,
+}: RegenerateTurnArgs) {
   const chatId = get().selectedChatId;
   if (!chatId) return;
   const initialChat = get().chats.find((c) => c.id === chatId);
@@ -230,9 +258,7 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
   let chat: Chat = initialChat;
 
   const uiState = get().ui;
-  const tutorGloballyEnabled = !!uiState.flags.experimentalTutor;
-  const forceTutorMode = !!(uiState.tutor.forceMode ?? false);
-  const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat.settings.tutor_mode);
+  const tutorEnabled = isTutorRuntimeEnabled(uiState, chat);
 
   if (tutorEnabled) {
     const ensured = ensureTutorDefaults({
@@ -254,7 +280,7 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
       set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
       chat = updatedChat;
       try {
-        await saveChat(updatedChat);
+        await repository.saveChat(updatedChat);
       } catch {
         /* ignore */
       }
@@ -287,7 +313,7 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
       get,
       models: get().models,
       modelIndex: modelIndexSnapshot,
-      persistMessage: saveMessage,
+      persistMessage: createMessagePersister(repository),
     } satisfies TurnContext;
     await regenerate({
       chat,

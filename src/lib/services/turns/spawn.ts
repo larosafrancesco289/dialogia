@@ -1,8 +1,9 @@
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
-import { saveMessage } from '@/lib/db';
+import type { Repository } from '@/lib/db/repository';
 import type { PersistedAttachment, Message } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
+import { createMessagePersister } from '@/lib/services/messagePersistence';
 
 export type SpawnMessagesResult = {
   userMessage: Message;
@@ -20,6 +21,7 @@ export const spawnTurnMessages = async ({
   activeModelIds,
   set,
   get: _get,
+  repository,
 }: {
   chatId: string;
   content: string;
@@ -28,6 +30,7 @@ export const spawnTurnMessages = async ({
   activeModelIds: string[];
   set: StoreSetter;
   get: StoreGetter;
+  repository: Repository;
 }): Promise<SpawnMessagesResult | null> => {
   if (!activeModelIds.length) return null;
   const now = Date.now();
@@ -84,9 +87,10 @@ export const spawnTurnMessages = async ({
     ui: { ...state.ui, isStreaming: true },
   }));
 
-  await saveMessage(userMessage);
+  const persistMessage = createMessagePersister(repository);
+  await persistMessage(userMessage);
   for (const placeholder of assistantPlaceholders) {
-    await saveMessage(placeholder);
+    await persistMessage(placeholder);
   }
 
   return { userMessage, assistantByModel, masterController, markComplete, completeAll };

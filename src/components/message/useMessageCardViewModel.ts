@@ -3,6 +3,7 @@ import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import type { Chat, Message, MessageTutor, ORModel } from '@/lib/types';
 import type { UIDebugState, UISearchState } from '@/lib/store/types';
+import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 
 const EMPTY_MESSAGES: Message[] = [];
 const EMPTY_AUTO_REASONING: Record<string, boolean> = {};
@@ -43,8 +44,7 @@ export function useMessageCardViewModel({
     const chat = state.chats.find((entry) => entry.id === chatId);
     const tutorEntry = state.ui.tutor.byMessageId?.[messageId] ?? message?.tutor;
     const tutorGloballyEnabled = !!state.ui.flags.experimentalTutor;
-    const forceTutorMode = !!state.ui.tutor.forceMode;
-    const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat?.settings?.tutor_mode);
+    const tutorEnabled = chat ? isTutorRuntimeEnabled(state.ui, chat) : false;
 
     return {
       message,

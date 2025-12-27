@@ -6,6 +6,12 @@ import { responseError, API_ERROR_CODES } from '@/lib/api/errors';
 import { consumeSse } from '@/lib/api/stream';
 import { fromAnthropicUsage, type Usage } from '@/lib/api/normalizers';
 import type {
+  TransportChatParams,
+  TransportClient,
+  TransportFetchModelsOptions,
+  TransportStreamParams,
+} from '@/lib/transport/types';
+import type {
   AnthropicContentBlock,
   AnthropicMessage,
   AnthropicMessagesRequest,
@@ -261,8 +267,8 @@ function toChatCompletionPayload(
 }
 
 export async function fetchModels(
-  apiKey: string | undefined,
-  opts: { signal?: AbortSignal; origin?: string } = {},
+  apiKey: string,
+  opts: TransportFetchModelsOptions = {},
 ): Promise<ORModel[]> {
   const res = await anthropicFetchModels(apiKey, opts);
   if (res.status === 401 || res.status === 403) {
@@ -292,17 +298,7 @@ export async function fetchModels(
   });
 }
 
-type ChatParams = {
-  apiKey: string;
-  model: string;
-  messages: ModelMessage[];
-  temperature?: number;
-  top_p?: number;
-  max_tokens?: number;
-  tools?: ToolDefinition[];
-  tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
-  signal?: AbortSignal;
-};
+type ChatParams = TransportChatParams;
 
 export async function chatCompletion(params: ChatParams): Promise<ChatCompletionPayload> {
   const { system, rest } = partitionSystemMessages(params.messages);
@@ -327,6 +323,7 @@ export async function chatCompletion(params: ChatParams): Promise<ChatCompletion
     apiKey: params.apiKey,
     body,
     signal: params.signal,
+    origin: params.origin,
   });
   if (res.status === 401 || res.status === 403) {
     throw responseError(res, {
@@ -347,15 +344,7 @@ export async function chatCompletion(params: ChatParams): Promise<ChatCompletion
   return toChatCompletionPayload(payload, params.model);
 }
 
-type StreamParams = ChatParams & {
-  callbacks?: {
-    onStart?: () => void;
-    onToken?: (delta: string) => void;
-    onReasoningToken?: (delta: string) => void;
-    onDone?: (full: string, extras?: { usage?: Usage }) => void;
-    onError?: (err: Error) => void;
-  };
-};
+type StreamParams = TransportStreamParams;
 
 export async function streamChatCompletion(params: StreamParams): Promise<void> {
   const { system, rest } = partitionSystemMessages(params.messages);
@@ -382,6 +371,7 @@ export async function streamChatCompletion(params: StreamParams): Promise<void> 
     body,
     signal: params.signal,
     stream: true,
+    origin: params.origin,
   });
   if (res.status === 401 || res.status === 403) {
     throw responseError(res, {
@@ -456,3 +446,9 @@ export async function streamChatCompletion(params: StreamParams): Promise<void> 
     },
   });
 }
+
+export const anthropicTransport: TransportClient = {
+  fetchModels: (apiKey, opts) => fetchModels(apiKey, opts),
+  chatCompletion,
+  streamChatCompletion,
+};

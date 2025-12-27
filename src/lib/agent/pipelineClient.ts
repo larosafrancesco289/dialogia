@@ -2,37 +2,27 @@
 // Responsibility: Provide overridable hooks for provider-aware client functions used by the agent.
 
 import type { ModelTransport } from '@/lib/types';
-import {
-  chatCompletion as openrouterChatCompletion,
-  streamChatCompletion as openrouterStreamChatCompletion,
-} from '@/lib/openrouter';
-import {
-  chatCompletion as anthropicChatCompletion,
-  streamChatCompletion as anthropicStreamChatCompletion,
-} from '@/lib/anthropic';
+import { getTransportClient } from '@/lib/transport/registry';
+import type {
+  TransportChatParams,
+  TransportClient,
+  TransportStreamParams,
+} from '@/lib/transport/types';
 
-type ChatParams = Parameters<typeof openrouterChatCompletion>[0] & { transport?: ModelTransport };
-type StreamParams = Parameters<typeof openrouterStreamChatCompletion>[0] & {
-  transport?: ModelTransport;
-};
+type ChatParams = TransportChatParams & { transport?: ModelTransport };
+type StreamParams = TransportStreamParams & { transport?: ModelTransport };
 
-type ChatHandler = (params: ChatParams) => ReturnType<typeof openrouterChatCompletion>;
-type StreamHandler = (params: StreamParams) => ReturnType<typeof openrouterStreamChatCompletion>;
+type ChatHandler = (params: ChatParams) => ReturnType<TransportClient['chatCompletion']>;
+type StreamHandler = (params: StreamParams) => ReturnType<TransportClient['streamChatCompletion']>;
 
 const defaultChatRouter: ChatHandler = (params) => {
   const { transport, ...rest } = params;
-  if (transport === 'anthropic') {
-    return anthropicChatCompletion(rest);
-  }
-  return openrouterChatCompletion(rest);
+  return getTransportClient(transport).chatCompletion(rest);
 };
 
 const defaultStreamRouter: StreamHandler = (params) => {
   const { transport, ...rest } = params;
-  if (transport === 'anthropic') {
-    return anthropicStreamChatCompletion(rest);
-  }
-  return openrouterStreamChatCompletion(rest);
+  return getTransportClient(transport).streamChatCompletion(rest);
 };
 
 let chatCompletionImpl: ChatHandler = defaultChatRouter;

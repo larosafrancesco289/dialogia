@@ -1,10 +1,10 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  isOpenRouterProxyEnabled,
   getDefaultZdrOnly,
   getRoutePreferenceDefault,
-} from '@/lib/config';
+  isOpenRouterProxyEnabled,
+} from '@/lib/env/public';
 
 const originalEnv = { ...process.env };
 

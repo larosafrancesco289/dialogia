@@ -6,8 +6,8 @@ import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop } from '@/lib/dragDrop';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
-import { IconButton } from './IconButton';
-import { ConfirmDialog } from './ConfirmDialog';
+import { IconButton } from '@/components/IconButton';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { MoveChatSheet } from '@/components/MoveChatSheet';
 import {
   FolderIcon,
@@ -20,12 +20,12 @@ import {
 } from '@heroicons/react/24/outline';
 import type { Folder, Chat } from '@/lib/types';
 
-interface FolderItemProps {
+interface FolderRowProps {
   folder: Folder;
   depth?: number;
 }
 
-export function FolderItem({ folder, depth = 0 }: FolderItemProps) {
+export function FolderRow({ folder, depth = 0 }: FolderRowProps) {
   const {
     chats,
     folders,
@@ -309,7 +309,7 @@ export function FolderItem({ folder, depth = 0 }: FolderItemProps) {
         <div>
           {/* Sub-folders */}
           {subFolders.map((subFolder) => (
-            <FolderItem key={subFolder.id} folder={subFolder} depth={depth + 1} />
+            <FolderRow key={subFolder.id} folder={subFolder} depth={depth + 1} />
           ))}
 
           {/* Chats in this folder */}

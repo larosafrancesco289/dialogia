@@ -1,4 +1,4 @@
-import type { LearningPlan, LearningPlanNode } from '@/lib/types';
+import type { LearnerModel, LearningPlan, LearningPlanNode, Message } from '@/lib/types';
 
 /**
  * Check if a node is ready to be taught (prerequisites met)
@@ -159,6 +159,253 @@ export function summarizeLearningPlan(plan: LearningPlan): string {
   );
   if (upcomingNodes.length > 0 && upcomingNodes.length <= 3) {
     lines.push(`Next up: ${upcomingNodes.map((n) => n.name).join(', ')}`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Determine if a node should be marked complete based on mastery
+ */
+export function shouldCompleteNode(
+  nodeId: string,
+  learnerModel: LearnerModel,
+  plan: LearningPlan,
+): {
+  shouldComplete: boolean;
+  reasoning: string;
+} {
+  const mastery = learnerModel.mastery[nodeId];
+  const node = plan.nodes.find((n) => n.id === nodeId);
+
+  if (!mastery) {
+    return {
+      shouldComplete: false,
+      reasoning: 'No mastery data available for this node',
+    };
+  }
+
+  if (!node) {
+    return {
+      shouldComplete: false,
+      reasoning: 'Node not found in plan',
+    };
+  }
+
+  // Already completed
+  if (node.status === 'completed') {
+    return {
+      shouldComplete: false,
+      reasoning: 'Node already marked as completed',
+    };
+  }
+
+  // Check confidence threshold (70% = 0.7)
+  if (mastery.confidence < 0.7) {
+    return {
+      shouldComplete: false,
+      reasoning: `Confidence too low: ${Math.round(mastery.confidence * 100)}% (need 70%+)`,
+    };
+  }
+
+  // Check for unresolved misconceptions
+  const activeMisconceptions = mastery.misconceptions.filter((m) => !m.resolved);
+  if (activeMisconceptions.length > 0) {
+    return {
+      shouldComplete: false,
+      reasoning: `Has ${activeMisconceptions.length} unresolved misconception(s): ${activeMisconceptions.map((m) => m.description).join(', ')}`,
+    };
+  }
+
+  // Check minimum interactions (at least 5 interactions needed)
+  if (mastery.interactions < 5) {
+    return {
+      shouldComplete: false,
+      reasoning: `Not enough practice: ${mastery.interactions} interactions (need 5+)`,
+    };
+  }
+
+  // All checks passed
+  return {
+    shouldComplete: true,
+    reasoning: `Confidence ${Math.round(mastery.confidence * 100)}%, ${mastery.interactions} interactions, no misconceptions`,
+  };
+}
+
+/**
+ * Process plan progress and auto-advance nodes when ready
+ * Returns updated plan and changes made
+ */
+export async function processPlanProgress(
+  plan: LearningPlan,
+  learnerModel: LearnerModel,
+): Promise<{
+  updatedPlan: LearningPlan;
+  planUpdates?: Message['planUpdates'];
+  progressMessage?: string;
+}> {
+  const currentNode = getNextNode(plan);
+
+  // If no current node, plan is complete
+  if (!currentNode) {
+    return {
+      updatedPlan: plan,
+      planUpdates: undefined,
+      progressMessage: undefined,
+    };
+  }
+
+  // Check if current node should be completed
+  const { shouldComplete, reasoning } = shouldCompleteNode(currentNode.id, learnerModel, plan);
+
+  // Initialize plan updates
+  const planUpdates: Message['planUpdates'] = {
+    statusChanges: [],
+  };
+
+  let updatedPlan = plan;
+  let progressMessage: string | undefined;
+
+  if (shouldComplete && currentNode.status !== 'completed') {
+    // Mark current node as completed
+    updatedPlan = updateNodeStatus(updatedPlan, currentNode.id, 'completed');
+
+    planUpdates.statusChanges!.push({
+      nodeId: currentNode.id,
+      from: currentNode.status,
+      to: 'completed',
+    });
+
+    progressMessage = `Completed topic: ${currentNode.name}. ${reasoning}`;
+
+    // Check for next node
+    const nextNode = getNextNode(updatedPlan);
+    if (nextNode) {
+      // Start next node
+      updatedPlan = updateNodeStatus(updatedPlan, nextNode.id, 'in_progress');
+
+      planUpdates.statusChanges!.push({
+        nodeId: nextNode.id,
+        from: 'not_started',
+        to: 'in_progress',
+      });
+
+      progressMessage += `\nMoving to next topic: ${nextNode.name}`;
+    } else {
+      // Plan complete!
+      progressMessage += '\n\nLearning plan completed.';
+    }
+  }
+
+  if (progressMessage) {
+    planUpdates.summary = progressMessage;
+  }
+
+  // Return results
+  return {
+    updatedPlan,
+    planUpdates:
+      planUpdates.statusChanges!.length > 0 || planUpdates.summary ? planUpdates : undefined,
+    progressMessage,
+  };
+}
+
+/**
+ * Check if plan is complete (all nodes completed)
+ */
+export function isPlanComplete(plan: LearningPlan): boolean {
+  return plan.nodes.every((node) => node.status === 'completed');
+}
+
+/**
+ * Get plan completion percentage
+ */
+export function getPlanCompletionPercentage(plan: LearningPlan): number {
+  const completed = plan.nodes.filter((node) => node.status === 'completed').length;
+  return Math.round((completed / plan.nodes.length) * 100);
+}
+
+/**
+ * Get estimated remaining time in minutes
+ */
+export function getEstimatedRemainingTime(plan: LearningPlan): number {
+  return plan.nodes
+    .filter((node) => node.status !== 'completed')
+    .reduce((total, node) => total + (node.estimatedMinutes || 0), 0);
+}
+
+/**
+ * Get topics that are ready to be worked on (prerequisites met, not completed)
+ */
+export function getReadyTopics(plan: LearningPlan): LearningPlanNode[] {
+  const ready: LearningPlanNode[] = [];
+
+  for (const node of plan.nodes) {
+    if (node.status === 'completed') continue;
+
+    // Check if all prerequisites are completed
+    const prereqsMet = node.prerequisites.every((prereqId) => {
+      const prereq = plan.nodes.find((n) => n.id === prereqId);
+      return prereq && prereq.status === 'completed';
+    });
+
+    if (prereqsMet) {
+      ready.push(node);
+    }
+  }
+
+  return ready;
+}
+
+/**
+ * Generate progress report for student
+ */
+export function generateProgressReport(plan: LearningPlan, learnerModel: LearnerModel): string {
+  const completed = plan.nodes.filter((node) => node.status === 'completed').length;
+  const total = plan.nodes.length;
+  const percentage = Math.round((completed / total) * 100);
+
+  const lines: string[] = [
+    `📊 Progress Report: ${plan.goal}`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `Completion: ${completed}/${total} topics (${percentage}%)`,
+    '',
+  ];
+
+  // Add per-topic summary
+  lines.push('Topic Status:');
+  for (const node of plan.nodes) {
+    const mastery = learnerModel.mastery[node.id];
+    const confidence = mastery ? Math.round(mastery.confidence * 100) : 0;
+
+    let status = '○ Not started';
+    if (node.status === 'completed') {
+      status = '✓ Completed';
+    } else if (node.status === 'in_progress') {
+      status = '⚡ In progress';
+    }
+
+    lines.push(`${status} | ${node.name} (${confidence}% confidence)`);
+  }
+
+  // Add global metrics
+  if (learnerModel.globalMetrics) {
+    lines.push('');
+    lines.push('Overall Performance:');
+    lines.push(`• Accuracy: ${Math.round(learnerModel.globalMetrics.accuracyRate * 100)}%`);
+    lines.push(
+      `• Average Confidence: ${Math.round(learnerModel.globalMetrics.averageConfidence * 100)}%`,
+    );
+    lines.push(`• Total Interactions: ${learnerModel.globalMetrics.totalInteractions}`);
+  }
+
+  // Add time estimate
+  const remainingTime = getEstimatedRemainingTime(plan);
+  if (remainingTime > 0) {
+    lines.push('');
+    const hours = Math.floor(remainingTime / 60);
+    const mins = remainingTime % 60;
+    lines.push(`Estimated time remaining: ${hours}h ${mins}m`);
   }
 
   return lines.join('\n');

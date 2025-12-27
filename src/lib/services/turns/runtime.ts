@@ -7,9 +7,13 @@ import type {
   ModelTransport,
 } from '@/lib/types';
 import type { StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
-import type { UiNextOverrides, UiSnapshot } from '@/lib/agent/contracts';
+import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelCapabilityFlags } from '@/lib/models';
-import { saveChat, saveMessage } from '@/lib/db';
+import type { Repository } from '@/lib/db/repository';
+import { getCookie } from '@/lib/auth/cookies.client';
+import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
+import { DEFAULT_FREE_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
+import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { ensureTutorDefaults } from '@/lib/agent/tutorFlow';
 import { createModelAuthResolver, type ModelAuth } from '@/lib/services/auth';
 import { prepareAttachmentsByModel } from '@/lib/services/attachments';
@@ -41,10 +45,12 @@ export const prepareSendRuntime = async ({
   attachments,
   set,
   get,
+  repository,
 }: {
   attachments?: DraftAttachment[];
   set: StoreSetter;
   get: StoreGetter;
+  repository: Repository;
 }): Promise<SendRuntime | null> => {
   const chatId = get().selectedChatId;
   if (!chatId) return null;
@@ -53,6 +59,7 @@ export const prepareSendRuntime = async ({
   let chat = initialChat;
 
   const ui = get().ui;
+  const modelIndex = get().modelIndex;
   const next = readNextOverrides(ui);
   const tutorEnabled = isTutorRuntimeEnabled(ui, chat);
   let tutorDefaultModelId = selectTutorDefaultModelId(ui, chat, DEFAULT_TUTOR_MODEL_ID);
@@ -68,16 +75,58 @@ export const prepareSendRuntime = async ({
       set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
       chat = updatedChat;
       try {
-        await saveChat(updatedChat);
+        await repository.saveChat(updatedChat);
       } catch {
         /* best effort */
       }
     }
-    tutorDefaultModelId =
+    const preferredTutorModelId =
       ensured.defaultModelId ||
       chat.settings.tutor_default_model ||
       tutorDefaultModelId ||
       DEFAULT_TUTOR_MODEL_ID;
+    const tierCookie = getCookie(TIER_COOKIE_NAME);
+    const isFreeTier = tierCookie !== 'developer' && tierCookie !== 'individual';
+    const freeFallbackFromIndex = modelIndex.all.find((model) =>
+      FREE_MODEL_IDS.includes(model.id),
+    )?.id;
+    let resolvedTutorModelId = preferredTutorModelId;
+    if (isFreeTier && resolvedTutorModelId && !FREE_MODEL_IDS.includes(resolvedTutorModelId)) {
+      resolvedTutorModelId = freeFallbackFromIndex ?? DEFAULT_FREE_MODEL_ID;
+    }
+    if (
+      modelIndex.all.length > 0 &&
+      resolvedTutorModelId &&
+      !modelIndex.get(resolvedTutorModelId)
+    ) {
+      resolvedTutorModelId =
+        (isFreeTier ? freeFallbackFromIndex : undefined) ??
+        modelIndex.all[0]?.id ??
+        resolvedTutorModelId;
+    }
+    tutorDefaultModelId = resolvedTutorModelId;
+    if (
+      resolvedTutorModelId &&
+      (chat.settings.model !== resolvedTutorModelId ||
+        chat.settings.tutor_default_model !== resolvedTutorModelId)
+    ) {
+      const updatedChat: Chat = {
+        ...chat,
+        settings: {
+          ...chat.settings,
+          model: resolvedTutorModelId,
+          tutor_default_model: resolvedTutorModelId,
+        },
+        updatedAt: Date.now(),
+      };
+      set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
+      chat = updatedChat;
+      try {
+        await repository.saveChat(updatedChat);
+      } catch {
+        /* best effort */
+      }
+    }
   }
 
   const parallelModels = normalizeParallelModels(
@@ -111,12 +160,13 @@ export const prepareSendRuntime = async ({
     models: get().models,
   });
 
+  const persistMessage = createMessagePersister(repository);
   const baseTurnContext: Omit<TurnContext, 'apiKey' | 'transport'> = {
     set,
     get,
     models: get().models,
     modelIndex: get().modelIndex,
-    persistMessage: saveMessage,
+    persistMessage,
   };
 
   const modelContexts = new Map<string, TurnModelContext>();
