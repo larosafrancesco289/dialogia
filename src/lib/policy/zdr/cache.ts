@@ -5,7 +5,7 @@
 import type {
   StoreSetter as ContractStoreSetter,
   StoreGetter as ContractStoreGetter,
-} from '@/lib/agent/contracts';
+} from '@/lib/contracts/store';
 import {
   ensureZdrLists,
   filterZdrModels,

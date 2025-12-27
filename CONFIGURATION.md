@@ -28,7 +28,8 @@ NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=false
 # Optional access gate
 AUTH_COOKIE_SECRET=
 ACCESS_CODE_PEPPER=
-ACCESS_CODES_HASHED=
+ACCESS_CODES_INDIVIDUAL_HASHED=
+ACCESS_CODES_DEVELOPER_HASHED=
 ```
 
 When `NEXT_PUBLIC_USE_OR_PROXY` is `true`, the client never reads `OPENROUTER_API_KEY`. Instead, the
@@ -51,13 +52,35 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
   DeepResearch always executes with the server-side `OPENROUTER_API_KEY`.
 - `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT` — if `true`, new sessions start with ZDR-only enforcement.
 - `NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT` — optional routing hint (`speed` | `cost`).
-- `AUTH_COOKIE_SECRET`, `ACCESS_CODE_PEPPER`, `ACCESS_CODES_HASHED` — configure the access gate in
-  `middleware.ts` and `app/access` routes.
+- `AUTH_COOKIE_SECRET`, `ACCESS_CODE_PEPPER`, `ACCESS_CODES_INDIVIDUAL_HASHED`,
+  `ACCESS_CODES_DEVELOPER_HASHED` — configure the access gate in `middleware.ts` and `app/access`
+  routes.
 - `AUTH_DEBUG_ROUTE_ENABLED` — when `true`, allows the `/api/auth/debug` route in production.
 - `AUTH_DEBUG_HEADERS` — when `true`, middleware adds `x-auth-*` headers to assist debugging.
 - `AUTH_TIMING_DEBUG` — when `true`, middleware emits `Server-Timing` for auth decisions.
 - `NEXT_PUBLIC_APP_BASE_URL` — optional absolute origin when deploying behind a proxy. Used for
   absolute URLs in share/export flows.
+
+## Runtime Checklist
+
+UI requires:
+
+- `NEXT_PUBLIC_USE_OR_PROXY=true` or `NEXT_PUBLIC_OPENROUTER_API_KEY`
+- If using Anthropic models: `NEXT_PUBLIC_USE_ANTHROPIC_PROXY=true` or `NEXT_PUBLIC_ANTHROPIC_API_KEY`
+- Optional defaults: `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT`, `NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT`
+
+Server API routes require:
+
+- `/api/openrouter/*` and DeepResearch: `OPENROUTER_API_KEY`
+- DeepResearch search: `BRAVE_SEARCH_API_KEY`
+- `/api/anthropic/*` proxy: `ANTHROPIC_API_KEY`
+- `/api/xai/session`: `XAI_API_KEY`
+- Access gate: `AUTH_COOKIE_SECRET`, `ACCESS_CODE_PEPPER`, access code hashes
+
+Headless scripts require:
+
+- `OPENROUTER_API_KEY` (or `NEXT_PUBLIC_OPENROUTER_API_KEY`) for simulated student/judge models
+- `ANTHROPIC_API_KEY` (or `NEXT_PUBLIC_ANTHROPIC_API_KEY`) for the default tutor model
 
 ## Build and Deployment
 

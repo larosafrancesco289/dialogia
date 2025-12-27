@@ -1,54 +1,25 @@
+import 'server-only';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
 import { AUTH_COOKIE_NAME, base64UrlDecode, base64UrlEncode } from './shared';
+import {
+  getAccessCodePepper,
+  getAuthCookieSecret,
+  getDeveloperCodeHashes,
+  getIndividualCodeHashes,
+  hasTieredCodesConfigured,
+} from '@/lib/env/server';
 import type { AccessTier, AuthClaims, CodeType } from './types';
 
 export type { AccessTier, AuthClaims, CodeType };
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
-}
-
-export function getAccessCodePepper(): string {
-  return requireEnv('ACCESS_CODE_PEPPER');
-}
-
-export function getAuthCookieSecret(): string {
-  return requireEnv('AUTH_COOKIE_SECRET');
-}
-
-/**
- * Get hashed individual (one-time use) codes from environment.
- */
-export function getIndividualCodeHashes(): string[] {
-  const raw = process.env.ACCESS_CODES_INDIVIDUAL_HASHED || '';
-  return raw
-    .split(',')
-    .map((segment) => segment.trim())
-    .filter(Boolean)
-    .map((segment) => segment.toLowerCase());
-}
-
-/**
- * Get hashed developer codes from environment.
- */
-export function getDeveloperCodeHashes(): string[] {
-  const raw = process.env.ACCESS_CODES_DEVELOPER_HASHED || '';
-  return raw
-    .split(',')
-    .map((segment) => segment.trim())
-    .filter(Boolean)
-    .map((segment) => segment.toLowerCase());
-}
-
-/**
- * Check if any tiered codes are configured.
- */
-export function hasTieredCodesConfigured(): boolean {
-  return getIndividualCodeHashes().length > 0 || getDeveloperCodeHashes().length > 0;
-}
+export {
+  getAccessCodePepper,
+  getAuthCookieSecret,
+  getDeveloperCodeHashes,
+  getIndividualCodeHashes,
+  hasTieredCodesConfigured,
+};
 
 export function hmacCode(code: string, pepper: string): string {
   return crypto.createHmac('sha256', pepper).update(code, 'utf8').digest('hex');

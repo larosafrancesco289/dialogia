@@ -1,4 +1,4 @@
-import type { UiNextOverrides, UiSnapshot } from '@/lib/agent/contracts';
+import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 
 const mergeNested = <T extends Record<string, unknown>>(current?: T, patch?: T): T | undefined => {
   if (!patch) return current;

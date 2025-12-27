@@ -5,7 +5,7 @@ import {
   initializeLearnerModel,
   updateLearnerModel,
 } from '@/lib/agent/learnerModel';
-import { processPlanProgress } from '@/lib/agent/planAwareTutor';
+import { processPlanProgress } from '@/lib/learningPlan/service';
 
 type UpdateLearnerModelArgs = {
   nodeId: string;
@@ -184,13 +184,24 @@ export const updateLearnerModelHandler: TutorToolHandler<UpdateLearnerModelArgs>
     const newConfidence = updatedModel.mastery[args.nodeId]?.confidence ?? oldConfidence;
 
     const planResult = await processPlanProgress(plan, updatedModel);
+    const hasMasteryDelta = oldConfidence !== newConfidence;
     const summary = nodeMeta
-      ? `${nodeMeta.name}: ${Math.round(oldConfidence * 100)}% → ${Math.round(newConfidence * 100)}%`
-      : `Updated mastery for ${args.nodeId}`;
-    const planUpdatesWithSummary: Message['planUpdates'] = planResult.planUpdates ?? {
-      masteryChanges: [{ nodeId: args.nodeId, from: oldConfidence, to: newConfidence }],
-    };
-    planUpdatesWithSummary.summary = planUpdatesWithSummary.summary ?? summary;
+      ? hasMasteryDelta
+        ? `${nodeMeta.name}: ${Math.round(oldConfidence * 100)}% → ${Math.round(newConfidence * 100)}%`
+        : `${nodeMeta.name}: mastery reviewed`
+      : hasMasteryDelta
+        ? `Updated mastery for ${args.nodeId}`
+        : `Reviewed mastery for ${args.nodeId}`;
+    const planUpdatesWithSummary: Message['planUpdates'] | undefined =
+      planResult.planUpdates ??
+      (hasMasteryDelta
+        ? {
+            masteryChanges: [{ nodeId: args.nodeId, from: oldConfidence, to: newConfidence }],
+          }
+        : undefined);
+    if (planUpdatesWithSummary) {
+      planUpdatesWithSummary.summary = planUpdatesWithSummary.summary ?? summary;
+    }
 
     return {
       handled: true,

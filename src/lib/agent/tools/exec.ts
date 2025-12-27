@@ -231,17 +231,18 @@ export async function executePlanningToolCall(opts: {
           ...(tutorOutcome.learnerModel ? { modelUpdated: true } : {}),
           ...(tutorOutcome.planUpdates ? { planUpdated: true } : {}),
         });
+        // Always return a tool result message - OpenRouter/OpenAI require every tool_call
+        // to have a corresponding tool result, even if the tool has no meaningful output
+        const toolResultContent = tutorOutcome.payload || JSON.stringify({ ok: true });
         return {
-          convoMessages: tutorOutcome.payload
-            ? [
-                {
-                  role: 'tool',
-                  name: callName,
-                  tool_call_id: toolCall.id,
-                  content: tutorOutcome.payload,
-                } as ModelMessage,
-              ]
-            : [],
+          convoMessages: [
+            {
+              role: 'tool',
+              name: callName,
+              tool_call_id: toolCall.id,
+              content: toolResultContent,
+            } as ModelMessage,
+          ],
           aggregatedResults,
           usedTool: true,
           usedTutorContentTool: contentTool ? tutorOutcome.handled : !!tutorOutcome.usedContent,
@@ -258,8 +259,16 @@ export async function executePlanningToolCall(opts: {
         'Tutor tool call was not handled',
         roundMeta ? { ...roundMeta } : undefined,
       );
+      // Return a tool result even for unhandled tools to maintain conversation integrity
       return {
-        convoMessages: [],
+        convoMessages: [
+          {
+            role: 'tool',
+            name: callName,
+            tool_call_id: toolCall.id,
+            content: JSON.stringify({ ok: false, error: 'Tool call was not handled' }),
+          } as ModelMessage,
+        ],
         aggregatedResults,
         usedTool: true,
         usedTutorContentTool: false,
@@ -272,7 +281,20 @@ export async function executePlanningToolCall(opts: {
       `Unsupported tool: ${callName}`,
       roundMeta ? { ...roundMeta } : undefined,
     );
-    return emptyResult;
+    // Return a tool result even for unsupported tools
+    return {
+      convoMessages: [
+        {
+          role: 'tool',
+          name: callName,
+          tool_call_id: toolCall.id,
+          content: JSON.stringify({ ok: false, error: `Unsupported tool: ${callName}` }),
+        } as ModelMessage,
+      ],
+      aggregatedResults,
+      usedTool: false,
+      usedTutorContentTool: false,
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     finalizeLog('error', undefined, message, roundMeta ? { ...roundMeta } : undefined);

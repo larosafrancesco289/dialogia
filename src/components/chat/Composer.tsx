@@ -12,7 +12,7 @@ import {
 } from '@/lib/models';
 import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
-import type { UiNextOverrides } from '@/lib/agent/contracts';
+import type { UiNextOverrides } from '@/lib/contracts/ui';
 import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
 import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
@@ -20,6 +20,11 @@ import type { Effort } from '@/components/composer/ComposerMobileMenu';
 import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
 import { ComposerLayout } from '@/components/composer/ComposerLayout';
+import {
+  selectIsTutorEnabled,
+  selectSearchEnabled,
+  selectSearchProvider,
+} from '@/lib/store/selectors';
 
 const EMPTY_OVERRIDES: UiNextOverrides = {};
 
@@ -69,6 +74,9 @@ export function Composer({
   const [focused, setFocused] = useState(false);
   const isTablet = useIsMobile(768);
   const isMobile = useIsMobile(640);
+  const tutorRuntimeEnabled = useChatStore(selectIsTutorEnabled);
+  const searchEnabled = useChatStore(selectSearchEnabled);
+  const searchProvider = useChatStore(selectSearchProvider);
 
   // Sync focus state to store for mobile tab bar visibility
   useEffect(() => {
@@ -87,9 +95,9 @@ export function Composer({
     }
   }, [composerDraft, setUI]);
 
-  const tutorEnabled =
-    tutorGloballyEnabled &&
-    (forceTutorMode || !!(chat ? chat.settings.tutor_mode : uiNext.tutorMode));
+  const tutorEnabled = chat
+    ? tutorRuntimeEnabled
+    : tutorGloballyEnabled && (forceTutorMode || !!uiNext.tutorMode);
 
   const tierDefaultModelId = useTierDefaultModelId();
   const modelId = chat?.settings.model || uiNext.model || tierDefaultModelId;
@@ -162,11 +170,6 @@ export function Composer({
 
   useAutogrowTextarea(taRef, [text], maxTextareaHeight);
 
-  const experimentalBrave = useChatStore((s) => !!s.ui.flags.experimentalBrave);
-  const searchEnabled = chat ? !!chat.settings.search_enabled : !!uiNext.search?.enabled;
-  const rawProvider = chat?.settings.search_provider || uiNext.search?.provider || 'openrouter';
-  const searchProvider: 'brave' | 'openrouter' =
-    experimentalBrave && rawProvider === 'brave' ? 'brave' : 'openrouter';
   const currentEffort = (
     chat
       ? (chat.settings.reasoning_effort as Effort | undefined)

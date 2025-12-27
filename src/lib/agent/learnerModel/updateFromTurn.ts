@@ -1,7 +1,6 @@
 import type { PlanTurnOptions, PlanTurnResult } from '@/lib/agent/types';
 import type { Evidence, Message, Misconception } from '@/lib/types';
-import { getNextNode } from '@/lib/learningPlan/service';
-import { processPlanProgress } from '@/lib/agent/planAwareTutor';
+import { getNextNode, processPlanProgress } from '@/lib/learningPlan/service';
 import {
   extractEvidence,
   getLatestLearnerModel,

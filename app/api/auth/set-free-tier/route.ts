@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AUTH_COOKIE_NAME, AuthClaims, createAuthToken, getAuthCookieSecret } from '@/lib/auth';
 import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
-import { getAccessCookieDomain } from '@/lib/config';
+import { getAccessCookieDomain } from '@/lib/env/server';
 import { computeSecretFingerprintNode } from '@/lib/auth/fingerprint.node';
 import { jsonError, withTiming } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
+import { isProd } from '@/lib/env/runtime';
 
 /**
  * Sets the free tier for users who want to access without a code.
@@ -25,13 +26,13 @@ export async function POST(_req: NextRequest) {
       const secret = getAuthCookieSecret();
       const token = createAuthToken(claims);
       const secretFp = computeSecretFingerprintNode(secret);
-      const isProd = process.env.NODE_ENV === 'production';
-      const responseBody = isProd
+      const inProd = isProd();
+      const responseBody = inProd
         ? { ok: true, tier: 'free' }
         : { ok: true, tier: 'free', secretFp };
 
       const res = NextResponse.json(responseBody);
-      const secure = process.env.NODE_ENV === 'production';
+      const secure = inProd;
       const domain = getAccessCookieDomain();
       const maxAge = 60 * 60 * 24 * 14; // 14 days
 
@@ -63,8 +64,8 @@ export async function POST(_req: NextRequest) {
     } catch (e: unknown) {
       logger.error('[set-free-tier] Error:', e);
       const message = e instanceof Error ? e.message : 'internal_error';
-      if (message.includes('Missing env')) {
-        return jsonError(500, 'missing_env', message.replace('Missing env: ', ''));
+      if (message.startsWith('missing_env:')) {
+        return jsonError(500, 'missing_env', message.replace('missing_env:', ''));
       }
       return jsonError(500, 'internal_error');
     }

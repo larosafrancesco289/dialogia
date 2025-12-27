@@ -8,7 +8,7 @@ import {
   type ZdrFetchers,
   type ZdrLists,
 } from './index';
-import type { StoreSetter as ContractStoreSetter } from '@/lib/agent/contracts';
+import type { StoreSetter as ContractStoreSetter } from '@/lib/contracts/store';
 import type { EnsureListsResult, ZdrFilterMode } from './types';
 
 // Minimal state type for ZDR enforcement

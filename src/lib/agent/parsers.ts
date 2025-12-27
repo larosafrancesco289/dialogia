@@ -17,7 +17,15 @@ export function normalizeToolCalls(message: unknown): ToolCall[] {
     const args = typeof fnRecord?.arguments === 'string' ? fnRecord.arguments : '';
     if (!name || !args) return;
     const id = typeof callRecord?.id === 'string' ? callRecord.id : `call_${index}`;
-    calls.push({ id, type: 'function', function: { name, arguments: args } });
+    // Preserve the original tool call object to retain provider-specific fields
+    // (e.g., Gemini's thought_signature required for function calling)
+    const normalizedCall: ToolCall = {
+      ...callRecord,
+      id,
+      type: 'function',
+      function: { name, arguments: args },
+    };
+    calls.push(normalizedCall);
   });
   if (calls.length > 0) return calls;
 

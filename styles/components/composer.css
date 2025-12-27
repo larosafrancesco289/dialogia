@@ -1,0 +1,373 @@
+@layer components {
+  /* Composer chrome — writing desk aesthetic */
+  .composer-chrome {
+    position: sticky;
+    bottom: calc(var(--space-3) + max(0px, env(safe-area-inset-bottom)));
+    margin: 0 var(--space-4);
+    padding: var(--space-3);
+    background: var(--surface-paper-warm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-editorial);
+    box-shadow:
+      0 -1px 0 var(--rule-light) inset,
+      0 4px 12px rgba(80, 60, 40, 0.08);
+    /* Allow menus (slash suggestions, reasoning picker) to render outside */
+    overflow: visible;
+    isolation: isolate;
+    z-index: 60; /* keep above drawer content lists by default */
+    padding-bottom: calc(var(--space-3) + max(0px, env(safe-area-inset-bottom)));
+    transform: translateY(calc(-1 * var(--keyboard-offset, 0px)));
+    transition: transform 160ms ease;
+  }
+  .composer-chrome:focus-within {
+    border-color: var(--rule-accent);
+  }
+  @media (max-width: 640px) {
+    .composer-chrome {
+      margin: 0 var(--space-1);
+      bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)));
+      padding: var(--space-2);
+      padding-bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)));
+      border-radius: var(--radius-editorial);
+      box-shadow: 0 4px 12px rgba(80, 60, 40, 0.1);
+      /* Remove transform on mobile - causes jank */
+      transform: none;
+      transition: none;
+    }
+
+    /* When keyboard is active, pin to bottom of visual viewport */
+    .composer-chrome.is-mobile-pinned,
+    html.keyboard-active .composer-chrome {
+      position: fixed;
+      left: var(--space-1);
+      right: var(--space-1);
+      /* On iOS, fixed bottom: 0 positions at bottom of visual viewport (above keyboard) */
+      bottom: var(--space-1);
+      padding-bottom: var(--space-2);
+      transform: none;
+      z-index: 90;
+    }
+
+    .composer-placeholder {
+      margin: 0 var(--space-1);
+      pointer-events: none;
+    }
+
+    html.keyboard-active .composer-hero {
+      position: sticky;
+      bottom: var(--space-1);
+      margin: 0 var(--space-1);
+      z-index: 70;
+    }
+  }
+
+  /* Hero composer (welcome page): centered, non-sticky */
+  .composer-hero {
+    position: relative;
+    margin: 0 auto;
+    padding: var(--space-3);
+    background: var(--surface-paper-warm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-editorial);
+    box-shadow: var(--shadow-1);
+    width: min(1120px, calc(100% - var(--space-8)));
+    z-index: 60;
+  }
+  .composer-hero:focus-within {
+    border-color: var(--rule-accent);
+  }
+
+  /* ===== Composer "Quill & Inkwell" Redesign ===== */
+
+  /* Borderless textarea — let the card be the container */
+  .composer-field {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    resize: none;
+    font-size: 1rem;
+    line-height: 1.5;
+    padding: var(--space-2) 0;
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+  .composer-field::placeholder {
+    color: var(--color-fg-muted);
+  }
+  .composer-field:focus,
+  .composer-field:focus-visible,
+  .composer-field:active {
+    outline: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+
+  /* Overflow menu button — muted, small */
+  .composer-btn-overflow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-editorial);
+    background: transparent;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-standard);
+    position: relative;
+  }
+  .composer-btn-overflow:hover {
+    background: var(--color-muted);
+    color: var(--color-fg);
+  }
+  .composer-btn-overflow.is-open {
+    background: var(--color-muted);
+    color: var(--color-fg);
+  }
+  .composer-btn-overflow:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  /* Indicator dot for active states */
+  .composer-btn-overflow__indicator {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-accent);
+  }
+
+  /* Overflow menu popover */
+  .composer-overflow-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    z-index: 50;
+    min-width: 180px;
+    padding: var(--space-1);
+    background: var(--surface-paper);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-editorial);
+    box-shadow: var(--shadow-2);
+    animation: composer-menu-enter 160ms var(--ease-emphasized);
+  }
+  @keyframes composer-menu-enter {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* Menu items */
+  .composer-overflow-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    border-radius: calc(var(--radius-editorial) - 2px);
+    background: transparent;
+    color: var(--color-fg);
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-standard);
+  }
+  .composer-overflow-item:hover {
+    background: var(--color-muted);
+  }
+  .composer-overflow-item.is-active {
+    color: var(--color-accent);
+  }
+  .composer-overflow-item.is-active svg:last-child {
+    color: var(--color-accent);
+  }
+
+  .composer-overflow-divider {
+    height: 1px;
+    margin: var(--space-1) var(--space-2);
+    background: var(--rule-light);
+  }
+
+  .composer-overflow-label {
+    padding: var(--space-2) var(--space-3) var(--space-1);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-fg-muted);
+  }
+
+  /* Primary send button */
+  .composer-btn-send {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-editorial);
+    background: var(--color-muted);
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-standard);
+  }
+  .composer-btn-send:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--color-muted) 80%, var(--color-accent));
+  }
+  .composer-btn-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .composer-btn-send.has-content {
+    background: var(--color-accent);
+    color: #0b0b0b;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.5) inset,
+      var(--shadow-1);
+  }
+  .composer-btn-send.has-content:hover {
+    filter: brightness(1.06);
+  }
+  .composer-btn-send:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  /* Stop button */
+  .composer-btn-stop {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-editorial);
+    background: var(--color-muted);
+    color: var(--color-fg);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-standard);
+  }
+  .composer-btn-stop:hover {
+    background: color-mix(in oklab, var(--color-danger) 15%, var(--color-muted));
+    border-color: color-mix(in oklab, var(--color-danger) 40%, var(--color-border));
+    color: var(--color-danger);
+  }
+
+  /* Main composer row layout */
+  .composer-row {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-2);
+  }
+
+  /* Voice status pill — always visible when voice mode is active */
+  .composer-voice-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    height: 36px;
+    padding: 0 var(--space-3) 0 var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-muted);
+    color: var(--color-fg);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-standard);
+    position: relative;
+    overflow: hidden;
+  }
+  .composer-voice-pill:hover {
+    background: color-mix(in oklab, var(--color-danger) 12%, var(--color-muted));
+    border-color: color-mix(in oklab, var(--color-danger) 30%, var(--color-border));
+  }
+  .composer-voice-pill:hover .composer-voice-pill__close {
+    opacity: 1;
+  }
+  .composer-voice-pill:hover .composer-voice-pill__text {
+    opacity: 0;
+  }
+
+  /* Pulsing indicator dot */
+  .composer-voice-pill__indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-fg-muted);
+    animation: voice-pulse 1.5s ease-in-out infinite;
+  }
+  .composer-voice-pill.is-listening .composer-voice-pill__indicator {
+    background: var(--color-success);
+  }
+  .composer-voice-pill.is-speaking .composer-voice-pill__indicator {
+    background: var(--color-accent-2);
+  }
+  .composer-voice-pill.is-error .composer-voice-pill__indicator {
+    background: var(--color-danger);
+    animation: none;
+  }
+
+  @keyframes voice-pulse {
+    0%,
+    100% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+  }
+
+  .composer-voice-pill__text {
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+
+  .composer-voice-pill__close {
+    position: absolute;
+    right: 10px;
+    opacity: 0;
+    color: var(--color-danger);
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+
+  /* Mobile adjustments */
+  @media (max-width: 640px) {
+    .composer-btn-overflow,
+    .composer-btn-send,
+    .composer-btn-stop {
+      width: 44px;
+      height: 44px;
+    }
+
+    .composer-overflow-menu {
+      min-width: 200px;
+      right: -8px;
+    }
+
+    .composer-overflow-item {
+      padding: var(--space-3);
+    }
+
+    .composer-voice-pill {
+      height: 40px;
+      padding: 0 var(--space-4) 0 var(--space-3);
+    }
+  }
+}

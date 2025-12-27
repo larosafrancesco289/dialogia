@@ -44,7 +44,7 @@ export function ComposerInput({
     <>
       <textarea
         ref={textareaRef}
-        className="composer-field"
+        className="composer-field focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none"
         rows={1}
         placeholder="Type a message..."
         value={value}

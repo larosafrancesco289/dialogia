@@ -3,7 +3,9 @@ import { AUTH_COOKIE_NAME, TIER_COOKIE_NAME } from '@/lib/auth/shared';
 import { verifyAuthTokenEdgeWithClaims } from '@/lib/auth/edge';
 import { computeSecretFingerprintEdge } from '@/lib/auth/fingerprint.edge';
 import type { AuthClaims } from '@/lib/auth/types';
-import { isAuthDebugRouteEnabled, isProd } from '@/lib/config';
+import { isAuthDebugRouteEnabled } from '@/lib/env/auth';
+import { getServerEnv } from '@/lib/env/server';
+import { getNodeEnv, isProd } from '@/lib/env/runtime';
 import { jsonError, withTiming } from '@/lib/server/route';
 
 // Force Edge runtime to match middleware
@@ -19,10 +21,10 @@ export async function GET(req: NextRequest) {
     const authCookie = req.cookies.get(AUTH_COOKIE_NAME);
     const tierCookie = req.cookies.get(TIER_COOKIE_NAME);
 
-    const secret = process.env.AUTH_COOKIE_SECRET;
+    const secret = getServerEnv('AUTH_COOKIE_SECRET');
     const hasAuthSecret = !!secret;
     const secretFingerprint = await computeSecretFingerprintEdge(secret);
-    const nodeEnv = process.env.NODE_ENV;
+    const nodeEnv = getNodeEnv();
     const inProd = isProd();
 
     // Try to verify the token using Edge runtime (same as middleware)

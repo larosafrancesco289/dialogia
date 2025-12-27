@@ -1,6 +1,6 @@
 import { apiDefaults } from '@/lib/api/config';
 import { sendApiRequest } from '@/lib/api/http';
-import { isOpenRouterProxyEnabled } from '@/lib/config';
+import { isOpenRouterProxyEnabled } from '@/lib/env/public';
 import type { ModelContentBlock, ToolCall } from '@/lib/agent/types';
 import type { OpenRouterChatRequest } from '@/lib/types/transport';
 

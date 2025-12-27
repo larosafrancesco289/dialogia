@@ -4,62 +4,28 @@ import { shallow } from 'zustand/shallow';
 import {
   useCallback,
   useEffect,
-  useState,
   useRef,
+  useState,
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { DisplayPanel } from '@/components/settings/DisplayPanel';
-import { PrivacyPanel } from '@/components/settings/PrivacyPanel';
-import { DataPanel } from '@/components/settings/DataPanel';
-import { ModelsPanel } from '@/components/settings/ModelsPanel';
-import { ChatPanel } from '@/components/settings/ChatPanel';
-import { TutorPanel } from '@/components/settings/TutorPanel';
-import { LabsPanel } from '@/components/settings/LabsPanel';
-import type { TabId, RenderSection } from '@/components/settings/types';
 import { IconButton } from '@/components/IconButton';
 import type { ModelSearchHandle } from '@/components/ModelSearch';
 import { XCircleIcon } from '@heroicons/react/24/outline';
-import { getSystemPresets, type SystemPreset } from '@/lib/presets';
-import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { useSettingsTabs } from '@/components/settings/useSettingsTabs';
+import type { RenderSection } from '@/components/settings/types';
+import { useSettingsTabs } from '@/components/settings/hooks/useSettingsTabs';
+import { useSettingsScrollSync } from '@/components/settings/hooks/useSettingsScrollSync';
+import { useSettingsFormState } from '@/components/settings/hooks/useSettingsFormState';
 import { applySettingsSavePatch, buildSettingsSavePatch } from '@/components/settings/saveSettings';
-
-const TAB_LIST: ReadonlyArray<{ id: TabId; label: string }> = [
-  { id: 'models', label: 'Models' },
-  { id: 'chat', label: 'Chat' },
-  { id: 'tutor', label: 'Tutor' },
-  { id: 'display', label: 'Display' },
-  { id: 'privacy', label: 'Privacy' },
-  { id: 'data', label: 'Data' },
-  { id: 'labs', label: 'Labs' },
-];
-
-const TAB_SECTIONS: Record<TabId, string[]> = {
-  models: ['models', 'web-search', 'routing'],
-  chat: ['general', 'generation', 'reasoning'],
-  tutor: ['tutor'],
-  display: ['display', 'debug'],
-  privacy: ['privacy'],
-  data: ['data'],
-  labs: ['experimental'],
-};
-
-const SECTION_TITLES: Record<string, string> = {
-  models: 'Models',
-  'web-search': 'Web Search',
-  routing: 'Routing',
-  general: 'General',
-  generation: 'Generation',
-  reasoning: 'Reasoning',
-  tutor: 'Tutor',
-  display: 'Display',
-  debug: 'Debug',
-  privacy: 'Privacy',
-  data: 'Data',
-  experimental: 'Experimental',
-};
+import { TAB_LIST, TAB_SECTIONS, SECTION_TITLES } from '@/components/settings/sections/config';
+import { ModelsPanel } from '@/components/settings/sections/ModelsPanel';
+import { ChatPanel } from '@/components/settings/sections/ChatPanel';
+import { TutorPanel } from '@/components/settings/sections/TutorPanel';
+import { DisplayPanel } from '@/components/settings/sections/DisplayPanel';
+import { PrivacyPanel } from '@/components/settings/sections/PrivacyPanel';
+import { DataPanel } from '@/components/settings/sections/DataPanel';
+import { LabsPanel } from '@/components/settings/sections/LabsPanel';
 
 export function SettingsDrawer() {
   const {
@@ -91,42 +57,44 @@ export function SettingsDrawer() {
     shallow,
   );
   const chat = chats.find((c) => c.id === selectedChatId);
-  const [system, setSystem] = useState(chat?.settings.system ?? '');
-  const [temperature, setTemperature] = useState<number | undefined>(chat?.settings.temperature);
-  const [top_p, setTopP] = useState<number | undefined>(chat?.settings.top_p);
-  const [max_tokens, setMaxTokens] = useState<number | undefined>(chat?.settings.max_tokens);
-  // Local string mirrors to avoid type=number focus/validation quirks
-  const [temperatureStr, setTemperatureStr] = useState<string>(
-    chat?.settings.temperature != null ? String(chat.settings.temperature) : '',
-  );
-  const [topPStr, setTopPStr] = useState<string>(
-    chat?.settings.top_p != null ? String(chat.settings.top_p) : '',
-  );
-  const [maxTokensStr, setMaxTokensStr] = useState<string>(
-    chat?.settings.max_tokens != null ? String(chat.settings.max_tokens) : '',
-  );
-  const [reasoningEffort, setReasoningEffort] = useState<
-    'none' | 'low' | 'medium' | 'high' | undefined
-  >(chat?.settings.reasoning_effort);
-  const [reasoningTokens, setReasoningTokens] = useState<number | undefined>(
-    chat?.settings.reasoning_tokens,
-  );
-  const [reasoningTokensStr, setReasoningTokensStr] = useState<string>(
-    chat?.settings.reasoning_tokens != null ? String(chat.settings.reasoning_tokens) : '',
-  );
-  const [tutorDefaultModel, setTutorDefaultModel] = useState<string>(
-    ui?.tutor.defaultModelId || DEFAULT_TUTOR_MODEL_ID,
-  );
-  const [showThinking, setShowThinking] = useState<boolean>(
-    chat?.settings.show_thinking_by_default ?? false,
-  );
-  const [showStats, setShowStats] = useState<boolean>(chat?.settings.show_stats ?? false);
-  const [showToolCallLog, setShowToolCallLog] = useState<boolean>(
-    chat?.settings.showToolCallLog ?? false,
-  );
-  const [showDebugRawJson, setShowDebugRawJson] = useState<boolean>(
-    chat?.settings.showDebugRawJson ?? true,
-  );
+
+  const {
+    system,
+    setSystem,
+    temperature,
+    setTemperature,
+    topP,
+    setTopP,
+    maxTokens,
+    setMaxTokens,
+    temperatureStr,
+    setTemperatureStr,
+    topPStr,
+    setTopPStr,
+    maxTokensStr,
+    setMaxTokensStr,
+    reasoningEffort,
+    setReasoningEffort,
+    reasoningTokens,
+    setReasoningTokens,
+    reasoningTokensStr,
+    setReasoningTokensStr,
+    tutorDefaultModel,
+    setTutorDefaultModel,
+    showThinking,
+    setShowThinking,
+    showStats,
+    setShowStats,
+    showToolCallLog,
+    setShowToolCallLog,
+    showDebugRawJson,
+    setShowDebugRawJson,
+    presets,
+    setPresets,
+    selectedPresetId,
+    setSelectedPresetId,
+  } = useSettingsFormState({ chat, ui });
+
   const [closing, setClosing] = useState(false);
   const {
     activeTab,
@@ -137,57 +105,22 @@ export function SettingsDrawer() {
     sectionRefs,
     registerSection,
   } = useSettingsTabs();
-  const drawerRef = useRef<HTMLDivElement | null>(null);
+  const { drawerRef, scrollToSection } = useSettingsScrollSync({
+    activeSection,
+    setActiveSection,
+    sectionRefs,
+    tabBarRef,
+    activeSections: TAB_SECTIONS[activeTab] ?? [],
+  });
   const modelSearchRef = useRef<ModelSearchHandle | null>(null);
-  const [routePref, setRoutePref] = useState<'speed' | 'cost'>(
-    () => useChatStore.getState().ui.routePreference ?? 'speed',
-  );
   const experimentalBrave = useChatStore((s) => !!s.ui.flags.experimentalBrave);
   const experimentalTutor = useChatStore((s) => !!s.ui.flags.experimentalTutor);
   const enableMultiModelChat = useChatStore((s) => !!s.ui.flags.enableMultiModelChat);
-  // System prompt presets
-  const [presets, setPresets] = useState<SystemPreset[]>([]);
-  const [selectedPresetId, setSelectedPresetId] = useState<string>('');
 
   const closeWithAnim = () => {
     setClosing(true);
     window.setTimeout(() => setUI({ showSettings: false }), 190);
   };
-
-  // Keep local state in sync when switching chats or reopening the drawer
-  useEffect(() => {
-    // When switching chats, sync drawer fields from the selected chat
-    setSystem(chat?.settings.system ?? '');
-    setTemperature(chat?.settings.temperature);
-    setTopP(chat?.settings.top_p);
-    setMaxTokens(chat?.settings.max_tokens);
-    setTemperatureStr(chat?.settings.temperature != null ? String(chat.settings.temperature) : '');
-    setTopPStr(chat?.settings.top_p != null ? String(chat.settings.top_p) : '');
-    setMaxTokensStr(chat?.settings.max_tokens != null ? String(chat.settings.max_tokens) : '');
-    setReasoningEffort(chat?.settings.reasoning_effort);
-    setReasoningTokens(chat?.settings.reasoning_tokens);
-    setReasoningTokensStr(
-      chat?.settings.reasoning_tokens != null ? String(chat.settings.reasoning_tokens) : '',
-    );
-    setShowThinking(chat?.settings.show_thinking_by_default ?? false);
-    setShowStats(chat?.settings.show_stats ?? false);
-    setShowToolCallLog(chat?.settings.showToolCallLog ?? false);
-    setShowDebugRawJson(chat?.settings.showDebugRawJson ?? true);
-    setTutorDefaultModel(ui?.tutor.defaultModelId || DEFAULT_TUTOR_MODEL_ID);
-  }, [
-    chat?.id,
-    chat?.settings.system,
-    chat?.settings.temperature,
-    chat?.settings.top_p,
-    chat?.settings.max_tokens,
-    chat?.settings.reasoning_effort,
-    chat?.settings.reasoning_tokens,
-    chat?.settings.show_thinking_by_default,
-    chat?.settings.show_stats,
-    ui?.tutor.defaultModelId,
-    chat?.settings.showToolCallLog,
-    chat?.settings.showDebugRawJson,
-  ]);
 
   // Prevent background scroll while drawer is open
   useEffect(() => {
@@ -209,21 +142,6 @@ export function SettingsDrawer() {
       modelSearchRef.current?.focus();
     }, 80);
     return () => window.clearTimeout(tid);
-  }, []);
-
-  // Load saved system prompt presets on mount
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const list = await getSystemPresets();
-      if (!mounted) return;
-      // Sort alphabetically for stable UI
-      const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
-      setPresets(sorted);
-    })();
-    return () => {
-      mounted = false;
-    };
   }, []);
 
   const onExport = async () => {
@@ -285,31 +203,6 @@ export function SettingsDrawer() {
     [activeTab, registerSection],
   );
 
-  const scrollToSection = useCallback(
-    (sectionId: string) => {
-      const container = drawerRef.current;
-      const target = sectionRefs.current[sectionId];
-      if (!container || !target) return;
-
-      const header = container.querySelector('[data-settings-header]') as HTMLElement | null;
-      const headerHeight = header?.offsetHeight ?? 0;
-      const tabBarHeight = tabBarRef.current?.offsetHeight ?? 0;
-      const offset = headerHeight + tabBarHeight + 16;
-
-      const prefersReducedMotion =
-        typeof window !== 'undefined' && window.matchMedia
-          ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-          : false;
-
-      container.scrollTo({
-        top: Math.max(0, target.offsetTop - offset),
-        behavior: prefersReducedMotion ? 'auto' : 'smooth',
-      });
-      setActiveSection(sectionId);
-    },
-    [setActiveSection, sectionRefs, tabBarRef],
-  );
-
   const handleTabKey = useCallback(
     (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
       if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
@@ -324,45 +217,6 @@ export function SettingsDrawer() {
     },
     [setActiveTab],
   );
-
-  useEffect(() => {
-    const firstSection = TAB_SECTIONS[activeTab]?.[0] ?? null;
-    setActiveSection(firstSection);
-    if (drawerRef.current) {
-      drawerRef.current.scrollTo({ top: 0 });
-    }
-  }, [activeTab, setActiveSection]);
-
-  useEffect(() => {
-    const container = drawerRef.current;
-    if (!container) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible.length === 0) return;
-        const id = visible[0].target.getAttribute('data-settings-section');
-        if (id && id !== activeSection) {
-          setActiveSection(id);
-        }
-      },
-      {
-        root: container,
-        threshold: 0.3,
-        rootMargin: '-80px 0px -55% 0px',
-      },
-    );
-
-    const subscription = TAB_SECTIONS[activeTab] ?? [];
-    subscription.forEach((id) => {
-      const el = sectionRefs.current[id];
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, [activeTab, activeSection, setActiveSection, sectionRefs]);
 
   const navSections = TAB_SECTIONS[activeTab] ?? [];
   const showDesktopNav = navSections.length > 1;
@@ -475,8 +329,6 @@ export function SettingsDrawer() {
                           hiddenModelIds={hiddenModelIds}
                           resetHiddenModels={resetHiddenModels}
                           renderSection={renderSection}
-                          routePref={routePref}
-                          setRoutePref={setRoutePref}
                           modelSearchRef={modelSearchRef}
                           experimentalBrave={experimentalBrave}
                           ui={ui}
@@ -634,8 +486,8 @@ export function SettingsDrawer() {
                 ui,
                 system,
                 temperature,
-                topP: top_p,
-                maxTokens: max_tokens,
+                topP,
+                maxTokens,
                 reasoningEffort,
                 reasoningTokens,
                 showThinking,

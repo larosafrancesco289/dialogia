@@ -37,7 +37,7 @@ import {
 import { isTutorToolName } from '@/lib/agent/tools';
 import { getNextNode } from '@/lib/learningPlan/service';
 import type { Message } from '@/lib/types';
-import type { UiSnapshot } from '@/lib/agent/contracts';
+import type { UiSnapshot } from '@/lib/contracts/ui';
 import { updateLearnerModelFromTurn } from '@/lib/agent/learnerModel/updateFromTurn';
 
 function filterAllowedToolsForPhase(args: {
@@ -182,7 +182,9 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     });
 
     const choice = resp?.choices?.[0];
-    const message = (choice?.message || {}) as Partial<AssistantModelMessage>;
+    const message = (choice?.message || {}) as Partial<AssistantModelMessage> & {
+      reasoning_details?: unknown;
+    };
     const toolCalls: ToolCall[] = detectPlanningToolCalls({
       message,
       toolDefinition: planningToolDefinition,
@@ -213,7 +215,16 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     });
 
     if (scheduled.length > 0) {
-      convo.push({ role: 'assistant', content: null, tool_calls: scheduled });
+      // Preserve the assistant's content and reasoning_details (required for Gemini and other
+      // reasoning models that use thought signatures with tool calls)
+      // Fall back to empty string if content is null (some providers reject null)
+      const assistantMsg: ModelMessage = {
+        role: 'assistant',
+        content: message.content ?? '',
+        tool_calls: scheduled,
+        reasoning_details: message.reasoning_details,
+      };
+      convo.push(assistantMsg);
     }
 
     if (scheduled.length === 0) {

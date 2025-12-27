@@ -1,37 +1,22 @@
 'use client';
 import { useChatStore } from '@/lib/store';
-import { MessageList } from '@/components/MessageList';
+import { MessageList } from '@/components/chat/MessageList';
 import { WelcomeHero } from '@/components/WelcomeHero';
-import { Composer } from '@/components/Composer';
+import { Composer } from '@/components/chat/Composer';
 import { useKeyboardInsets } from '@/lib/hooks/useKeyboardInsets';
-import { useMemo, type CSSProperties } from 'react';
-import { selectCurrentChat } from '@/lib/store/selectors';
+import { type CSSProperties } from 'react';
+import { selectActiveModelIds, selectCurrentChat } from '@/lib/store/selectors';
 import { formatModelLabel, findModelById } from '@/lib/models';
 
 export function ChatPane() {
   const chat = useChatStore(selectCurrentChat);
+  const activeModelIds = useChatStore(selectActiveModelIds);
   const models = useChatStore((s) => s.models);
   const enableMultiModelChat = useChatStore((s) => !!s.ui.flags.enableMultiModelChat);
   const keyboardMetrics = useKeyboardInsets();
   const keyboardVars = {
     '--keyboard-offset': `${Math.max(0, Math.round(keyboardMetrics.offset))}px`,
   } as CSSProperties;
-  const chatSettings = chat?.settings;
-  const activeModelIds = useMemo(() => {
-    const baseId = chatSettings?.model;
-    const base = baseId ? [baseId] : [];
-    const extras = Array.isArray(chatSettings?.parallel_models)
-      ? (chatSettings?.parallel_models as string[])
-      : [];
-    const combined = base
-      .concat(extras)
-      .filter((id): id is string => typeof id === 'string' && id.length > 0);
-    const deduped: string[] = [];
-    for (const id of combined) {
-      if (!deduped.includes(id)) deduped.push(id);
-    }
-    return deduped.length ? deduped : base;
-  }, [chatSettings?.model, chatSettings?.parallel_models]);
   const multiColumn = activeModelIds.length > 1 && enableMultiModelChat;
 
   if (!chat) return <WelcomeHero keyboardMetrics={keyboardMetrics} />;

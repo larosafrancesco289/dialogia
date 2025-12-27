@@ -1,11 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import {
-  deleteChatAndMessages,
-  deleteFolder,
-  saveChat,
-  saveChatWithMessages,
-  saveFolder,
-} from '@/lib/db';
+import type { Repository } from '@/lib/db/repository';
 import type { Chat, Folder, Message } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
@@ -14,6 +8,7 @@ import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
 import { DEFAULT_FREE_MODEL_ID } from '@/data/freeModels';
 import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
 import { getCookie } from '@/lib/auth/cookies.client';
+import { ensureHiddenTutorContent } from '@/lib/services/messagePersistence';
 
 // Read tier from cookie on client side
 function getClientTier(): 'free' | 'individual' | 'developer' {
@@ -35,8 +30,9 @@ export class ChatService {
     ui: UIState;
     chats: Chat[];
     selectedChatId?: string;
+    repository: Repository;
   }): Promise<Chat> {
-    const { ui, chats, selectedChatId } = params;
+    const { ui, chats, selectedChatId, repository } = params;
     const id = uuidv4();
     const now = Date.now();
 
@@ -80,7 +76,7 @@ export class ChatService {
       settings: baseSettings,
     };
 
-    await saveChat(chat);
+    await repository.saveChat(chat);
     return chat;
   }
 
@@ -88,8 +84,9 @@ export class ChatService {
     sourceChat: Chat;
     messages: Message[];
     messageId: string;
+    repository: Repository;
   }): Promise<{ chat: Chat; messages: Message[] } | null> {
-    const { sourceChat, messages, messageId } = params;
+    const { sourceChat, messages, messageId, repository } = params;
     const msgIndex = messages.findIndex((m) => m.id === messageId);
     if (msgIndex < 0) return null;
 
@@ -106,34 +103,48 @@ export class ChatService {
       folderId: sourceChat.folderId,
     };
 
-    const cloned = slice.map((m) => ({
-      ...m,
-      id: uuidv4(),
-      chatId: newChatId,
-    }));
+    const cloned = slice.map((m) =>
+      ensureHiddenTutorContent({
+        ...m,
+        id: uuidv4(),
+        chatId: newChatId,
+      }),
+    );
 
-    await saveChatWithMessages(newChat, cloned);
+    await repository.saveChatWithMessages(newChat, cloned);
 
     return { chat: newChat, messages: cloned };
   }
 
-  static async deleteChat(chatId: string): Promise<void> {
-    await deleteChatAndMessages(chatId);
+  static async deleteChat(chatId: string, repository: Repository): Promise<void> {
+    await repository.deleteChatAndMessages(chatId);
   }
 
-  static async updateChat(chat: Chat, changes: Partial<Chat>): Promise<Chat> {
+  static async updateChat(
+    chat: Chat,
+    changes: Partial<Chat>,
+    repository: Repository,
+  ): Promise<Chat> {
     const updated = { ...chat, ...changes, updatedAt: Date.now() };
-    await saveChat(updated);
+    await repository.saveChat(updated);
     return updated;
   }
 
-  static async moveChatToFolder(chat: Chat, folderId?: string): Promise<Chat> {
+  static async moveChatToFolder(
+    chat: Chat,
+    folderId: string | undefined,
+    repository: Repository,
+  ): Promise<Chat> {
     const updated = { ...chat, folderId, updatedAt: Date.now() };
-    await saveChat(updated);
+    await repository.saveChat(updated);
     return updated;
   }
 
-  static async createFolder(name: string, parentId?: string): Promise<Folder> {
+  static async createFolder(
+    name: string,
+    parentId: string | undefined,
+    repository: Repository,
+  ): Promise<Folder> {
     const id = uuidv4();
     const now = Date.now();
     const folder: Folder = {
@@ -144,13 +155,17 @@ export class ChatService {
       isExpanded: true,
       parentId,
     };
-    await saveFolder(folder);
+    await repository.saveFolder(folder);
     return folder;
   }
 
-  static async updateFolder(folder: Folder, changes: Partial<Folder>): Promise<Folder> {
+  static async updateFolder(
+    folder: Folder,
+    changes: Partial<Folder>,
+    repository: Repository,
+  ): Promise<Folder> {
     const updated = { ...folder, ...changes, updatedAt: Date.now() };
-    await saveFolder(updated);
+    await repository.saveFolder(updated);
     return updated;
   }
 
@@ -158,12 +173,13 @@ export class ChatService {
     folderId: string,
     allChats: Chat[],
     allFolders: Folder[],
+    repository: Repository,
   ): Promise<{ updatedChats: Chat[]; updatedFolders: Folder[] }> {
     const chatsInFolder = allChats.filter((c) => c.folderId === folderId);
     const updatedChats: Chat[] = [];
     for (const chat of chatsInFolder) {
       const u = { ...chat, folderId: undefined, updatedAt: Date.now() };
-      await saveChat(u);
+      await repository.saveChat(u);
       updatedChats.push(u);
     }
 
@@ -171,11 +187,11 @@ export class ChatService {
     const updatedFolders: Folder[] = [];
     for (const childFolder of childFolders) {
       const u = { ...childFolder, parentId: undefined, updatedAt: Date.now() };
-      await saveFolder(u);
+      await repository.saveFolder(u);
       updatedFolders.push(u);
     }
 
-    await deleteFolder(folderId);
+    await repository.deleteFolder(folderId);
     return { updatedChats, updatedFolders };
   }
 }

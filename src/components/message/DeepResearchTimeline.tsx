@@ -11,7 +11,7 @@ import {
   BeakerIcon,
 } from '@heroicons/react/24/outline';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
-import { Markdown } from '@/lib/markdown';
+import { Markdown } from '@/components/Markdown';
 import type { DeepResearchEvent } from '@/lib/types/deepResearch';
 
 type Props = {

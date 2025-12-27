@@ -1,6 +1,6 @@
 import { chatCompletion, fetchModels } from '@/lib/openrouter';
 import { apiDefaults } from '@/lib/api/config';
-import { getDeepResearchReasoningOnly } from '@/lib/config';
+import { getDeepResearchReasoningOnly } from '@/lib/env/server';
 import type { ModelMessage, ToolDefinition } from '@/lib/agent/types';
 import type { ProviderSort } from '@/lib/models/providerSort';
 import type { DeepResearchEvent } from '@/lib/types/deepResearch';

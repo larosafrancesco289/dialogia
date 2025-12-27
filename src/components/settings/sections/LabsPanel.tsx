@@ -1,6 +1,6 @@
 'use client';
 import { SettingsSection } from '@/components/settings/SettingsSection';
-import { VoicePanel } from '@/components/settings/VoicePanel';
+import { VoicePanel } from '@/components/settings/sections/VoicePanel';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
 

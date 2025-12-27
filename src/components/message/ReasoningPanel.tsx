@@ -7,7 +7,7 @@ import {
   SparklesIcon,
   CpuChipIcon,
 } from '@heroicons/react/24/outline';
-import { Markdown } from '@/lib/markdown';
+import { Markdown } from '@/components/Markdown';
 import { logger } from '@/lib/logger';
 import { DeepResearchTimeline } from './DeepResearchTimeline';
 import type { MessageDeepResearch } from '@/lib/types';

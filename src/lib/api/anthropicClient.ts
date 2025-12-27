@@ -1,4 +1,4 @@
-import { isAnthropicProxyEnabled } from '@/lib/config';
+import { isAnthropicProxyEnabled } from '@/lib/env/public';
 import { sendApiRequest } from '@/lib/api/http';
 import type { AnthropicMessagesRequest } from '@/lib/types/transport';
 

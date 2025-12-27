@@ -2,6 +2,7 @@
 
 import type { XAIVoice } from '@/lib/voice/types';
 import { logger } from '@/lib/logger';
+import { isProd } from '@/lib/env/runtime';
 
 const DEFAULT_SAMPLE_RATE = 24000;
 const DEFAULT_WS_URL = 'wss://api.x.ai/v1/realtime';
@@ -398,7 +399,7 @@ let sharedManager: VoiceSessionManager | null = null;
 
 export function getVoiceSessionManager() {
   if (!sharedManager) {
-    const debug = process.env.NODE_ENV !== 'production';
+    const debug = !isProd();
     sharedManager = new VoiceSessionManager({ debug });
     if (debug && typeof window !== 'undefined') {
       const debugWindow = window as Window & {

@@ -5,7 +5,7 @@ import { shallow } from 'zustand/shallow';
 import { LightBulbIcon } from '@heroicons/react/24/outline';
 import { findModelById, isReasoningSupported } from '@/lib/models';
 import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
-import type { UiNextOverrides } from '@/lib/agent/contracts';
+import type { UiNextOverrides } from '@/lib/contracts/ui';
 
 type Effort = 'none' | 'low' | 'medium' | 'high';
 

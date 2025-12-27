@@ -4,6 +4,7 @@ import type { Message } from '@/lib/types';
 import type { TurnStoreState } from '@/lib/agent/contracts';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { computeMetrics } from '@/lib/services/metrics';
+import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
 
 type MessageUpdater = (message: Message) => Message;
 
@@ -92,16 +93,6 @@ export function buildTutorFallbackContent(
   return `${snippets.join(' ')} ${nextStep}`.trim();
 }
 
-export type StreamExtras = {
-  usage?: {
-    prompt_tokens?: number;
-    input_tokens?: number;
-    completion_tokens?: number;
-    output_tokens?: number;
-  };
-  annotations?: unknown;
-};
-
 export type MessageStreamOptions = {
   chatId: string;
   assistantMessage: Message;
@@ -117,7 +108,7 @@ export type MessageStreamOptions = {
 export function createMessageStreamCallbacks(
   options: MessageStreamOptions,
   timing: { startedAt: number },
-) {
+): StreamCallbacks {
   const {
     chatId,
     assistantMessage,
@@ -225,7 +216,7 @@ export function createMessageStreamCallbacks(
       if (firstTokenAt == null) firstTokenAt = performance.now();
       updateReasoning(delta);
     },
-    onDone: async (full: string, extras?: StreamExtras) => {
+    onDone: async (full: string, extras?: StreamDoneExtras) => {
       set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
       const state = get();
       const currentMessages = state.messages[chatId] ?? [];

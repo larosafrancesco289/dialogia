@@ -1,0 +1,73 @@
+@layer components {
+  .scroll-area {
+    overflow: auto;
+    /* Contain scroll so Safari doesn’t pan the page when the list hits edges */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    /* Prevent browser scroll anchoring from fighting manual autoscroll */
+    overflow-anchor: none;
+    /* Promote to its own layer to avoid flicker on iOS when glass elements overlap */
+    transform: translateZ(0);
+    will-change: transform;
+    contain: paint;
+    touch-action: pan-y; /* allow vertical panning and quick taps */
+  }
+
+  .message-list {
+    padding: var(--space-4);
+    /* Proper bottom padding since composer is now outside this scroll area */
+    padding-bottom: calc(var(--space-6) + var(--keyboard-offset, 0px));
+    scroll-padding-bottom: calc(
+      var(--space-3) + max(0px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px)
+    );
+  }
+  @media (max-width: 640px) {
+    .message-list {
+      padding: var(--space-2);
+      padding-bottom: calc(var(--space-4) + var(--composer-height, 0px));
+      scroll-padding-bottom: calc(
+        var(--space-2) + max(0px, env(safe-area-inset-bottom)) + var(--composer-height, 0px)
+      );
+    }
+
+    /* When keyboard is active, minimal padding - just enough for the composer */
+    html.keyboard-active .message-list {
+      padding-bottom: calc(var(--space-2) + var(--composer-height, 60px));
+      scroll-padding-bottom: var(--composer-height, 60px);
+    }
+  }
+
+  .jump-to-latest {
+    position: sticky;
+    bottom: calc(
+      var(--space-8) + max(10px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px)
+    );
+    display: flex;
+    justify-content: center;
+    padding: 0;
+    width: 100%;
+    pointer-events: none;
+    z-index: 60;
+    height: 0;
+    overflow: visible;
+  }
+  .jump-to-latest__button {
+    pointer-events: auto;
+    width: 40px;
+    height: 40px;
+  }
+  @media (max-width: 640px) {
+    .jump-to-latest {
+      bottom: calc(
+        var(--space-8) + max(14px, env(safe-area-inset-bottom)) + var(--composer-height, 0px)
+      );
+    }
+
+    html.keyboard-active .jump-to-latest {
+      bottom: calc(
+        var(--space-8) + max(14px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) +
+          var(--keyboard-offset, 0px)
+      );
+    }
+  }
+}

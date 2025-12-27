@@ -19,13 +19,6 @@ export function useSettingsTabs(defaultTab: TabId = 'models') {
     };
   }, []);
 
-  const scrollToSection = useCallback((sectionId: string) => {
-    const target = sectionRefs.current[sectionId];
-    if (!target) return;
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setActiveSection(sectionId);
-  }, []);
-
   return {
     activeTab,
     setActiveTab,
@@ -34,6 +27,5 @@ export function useSettingsTabs(defaultTab: TabId = 'models') {
     tabBarRef,
     sectionRefs,
     registerSection,
-    scrollToSection,
   };
 }

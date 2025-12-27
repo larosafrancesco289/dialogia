@@ -1,0 +1,105 @@
+@layer components {
+  /* Slim shimmer bar shown only while waiting for first token */
+  .header-activity {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 6px;
+    height: 2px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--color-border) 70%, transparent);
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+  .header-activity.is-active {
+    opacity: 1;
+  }
+  .header-activity.is-active::before {
+    content: '';
+    position: absolute;
+    left: -30%;
+    top: 0;
+    bottom: 0;
+    width: 30%;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0),
+      color-mix(in oklab, var(--color-accent) 65%, transparent),
+      rgba(255, 255, 255, 0)
+    );
+    animation: header-shimmer 1.2s linear infinite;
+  }
+
+  /* Tutor model pill — marginalia-style display when tutor is active */
+  .tutor-model-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-editorial);
+    background: color-mix(in oklab, var(--color-accent) 12%, var(--surface-paper));
+    border: 1px solid color-mix(in oklab, var(--color-accent) 28%, var(--color-border));
+    border-left: 3px solid var(--color-accent);
+    box-shadow: var(--shadow-1);
+  }
+  .tutor-model-pill__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-editorial);
+    background: color-mix(in oklab, var(--color-accent) 18%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-accent) 25%, var(--color-border));
+    color: var(--color-accent);
+  }
+  .tutor-model-pill__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  .tutor-model-pill__text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    min-width: 0;
+  }
+  .tutor-model-pill__label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+  }
+  .tutor-model-pill__model {
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    color: var(--color-fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 640px) {
+    .tutor-model-pill {
+      padding: var(--space-2) var(--space-3);
+      gap: var(--space-2);
+    }
+    .tutor-model-pill__icon {
+      width: 28px;
+      height: 28px;
+    }
+    .tutor-model-pill__model {
+      font-size: 0.9rem;
+    }
+  }
+  @keyframes header-shimmer {
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(330%);
+    }
+  }
+}

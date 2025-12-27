@@ -2,7 +2,7 @@
 import { defaultTutorScenarios, type TutorScenario } from '@/lib/eval/tutorScenarios';
 import { runTutorScenario } from '@/lib/eval/tutorDriver';
 import { parseArgs } from '@/lib/cli/args';
-import { loadEnvDefaults } from '@/lib/cli/env';
+import { loadEnvDefaults } from '@/lib/cli/env.node';
 
 function usage() {
   console.log(

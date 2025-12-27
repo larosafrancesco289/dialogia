@@ -10,13 +10,12 @@ import type {
 } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import { ProviderSort } from '@/lib/models/providerSort';
+import type { TurnStoreState } from '@/lib/agent/contracts';
 import type {
   StoreGetter as ContractStoreGetter,
   StoreSetter as ContractStoreSetter,
-  TurnStoreState,
-  UiNextOverrides,
-  UiSnapshot,
-} from '@/lib/agent/contracts';
+} from '@/lib/contracts/store';
+import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
 
 export type StoreSetter = ContractStoreSetter<TurnStoreState>;
@@ -46,6 +45,9 @@ export type AssistantModelMessage = {
   name?: string;
   annotations?: unknown;
   tool_calls?: ToolCall[];
+  // reasoning_details is required by Gemini, Claude, and other reasoning models
+  // when preserving thought signatures across tool call roundtrips
+  reasoning_details?: unknown;
 };
 
 export type ToolModelMessage = {
@@ -106,6 +108,8 @@ export type ToolCall = {
     name: string;
     arguments: string;
   };
+  // Allow provider-specific extra fields (e.g., Gemini's thought_signature)
+  [key: string]: unknown;
 };
 
 export const TUTOR_TOOL_NAMES = [

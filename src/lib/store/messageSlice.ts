@@ -1,6 +1,6 @@
 import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
-import { saveMessage } from '@/lib/db';
+import { repository } from '@/lib/db';
 import {
   appendAssistantTurn,
   persistTutorForMessage,
@@ -8,17 +8,25 @@ import {
   regenerateTurn,
 } from '@/lib/services/turns';
 import { abortAllTurns } from '@/lib/services/controllers';
+import { createMessagePersister } from '@/lib/services/messagePersistence';
 
 // telemetry removed for commit cleanliness
 
 export function createMessageSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
+  const persistMessage = createMessagePersister(repository);
   return {
     async appendAssistantMessage(content: string, opts?: { modelId?: string }) {
-      await appendAssistantTurn({ content, modelId: opts?.modelId, set, get });
+      await appendAssistantTurn({
+        content,
+        modelId: opts?.modelId,
+        set,
+        get,
+        repository,
+      });
     },
 
     async persistTutorStateForMessage(messageId) {
-      await persistTutorForMessage({ messageId, store: { set, get } });
+      await persistTutorForMessage({ messageId, store: { set, get }, repository });
     },
 
     async sendUserMessage(
@@ -34,6 +42,7 @@ export function createMessageSlice(set: StoreSetter, get: () => StoreState, _sto
         metadata: opts?.metadata,
         set,
         get,
+        repository,
       });
     },
 
@@ -56,7 +65,7 @@ export function createMessageSlice(set: StoreSetter, get: () => StoreState, _sto
           [chatId]: (s.messages[chatId] ?? []).map((m) => (m.id === messageId ? updated : m)),
         },
       }));
-      await saveMessage(updated);
+      await persistMessage(updated);
       if (opts?.rerun) {
         if (get().ui.isStreaming) get().stopStreaming();
         const nextAssistant = (get().messages[chatId] ?? [])
@@ -83,11 +92,11 @@ export function createMessageSlice(set: StoreSetter, get: () => StoreState, _sto
           [chatId]: (s.messages[chatId] ?? []).map((m) => (m.id === messageId ? updated : m)),
         },
       }));
-      await saveMessage(updated);
+      await persistMessage(updated);
     },
 
     async regenerateAssistantMessage(messageId, opts) {
-      await regenerateTurn({ messageId, overrideModelId: opts?.modelId, set, get });
+      await regenerateTurn({ messageId, overrideModelId: opts?.modelId, set, get, repository });
     },
   } satisfies Partial<StoreState>;
 }

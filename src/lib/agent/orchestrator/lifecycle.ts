@@ -4,7 +4,7 @@ import { snapshotGenSettings } from '@/lib/agent/generation';
 import type { RunTurnHooks } from './turn';
 import type { StoreGetter, StoreSetter, TurnComposition, PlanTurnResult } from '@/lib/agent/types';
 import type { Chat, LearnerModel, Message } from '@/lib/types';
-import type { LearnerModelDebugEntry } from '@/lib/agent/contracts';
+import type { LearnerModelDebugEntry } from '@/lib/contracts/ui';
 import { diffPlanUpdates, persistLearningPlan } from '@/lib/learningPlan/service';
 
 export type TurnLifecycleOptions = {

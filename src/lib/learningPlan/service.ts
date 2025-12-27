@@ -5,9 +5,16 @@ import type { StoreSetter } from '@/lib/agent/types';
 import type { Chat, LearningPlan, LearningPlanNode, Message } from '@/lib/types';
 import {
   calculatePlanProgress,
+  generateProgressReport,
   getAllPrerequisites,
+  getEstimatedRemainingTime,
+  getPlanCompletionPercentage,
+  getReadyTopics,
   getNextNode as getNextNodeImpl,
+  isPlanComplete,
   isNodeReady,
+  processPlanProgress,
+  shouldCompleteNode,
   summarizeLearningPlan,
   updateNodeStatus as updateNodeStatusImpl,
 } from '@/lib/learningPlan/progress';
@@ -29,7 +36,17 @@ export const updatePlanStatus = (
 export const updateNodeStatus = updatePlanStatus;
 export { getAllPrerequisites, isNodeReady };
 
-export { calculatePlanProgress, summarizeLearningPlan };
+export {
+  calculatePlanProgress,
+  summarizeLearningPlan,
+  shouldCompleteNode,
+  processPlanProgress,
+  isPlanComplete,
+  getPlanCompletionPercentage,
+  getEstimatedRemainingTime,
+  getReadyTopics,
+  generateProgressReport,
+};
 
 export { detectLearningGoal, generateLearningPlan, PLAN_GENERATOR_SYSTEM, validateLearningPlan };
 

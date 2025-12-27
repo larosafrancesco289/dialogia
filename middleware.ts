@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AUTH_COOKIE_NAME, TIER_COOKIE_NAME, PUBLIC_AUTH_PATHS } from '@/lib/auth/shared';
-import { verifyAuthTokenEdgeDetailed } from '@/lib/auth/edge';
-import { isAuthDebugHeadersEnabled, isAuthTimingDebugEnabled, isProd } from '@/lib/config';
+import { AUTH_COOKIE_NAME, TIER_COOKIE_NAME } from '@/lib/auth/shared';
+import { isProd } from '@/lib/env/runtime';
 import { redirectToAccess } from '@/lib/auth/errors';
 import { computeSecretFingerprintEdge } from '@/lib/auth/fingerprint.edge';
 import type { AccessTier } from '@/lib/auth/types';
-
-// Dynamic paths that remain public; static assets are excluded via the matcher.
-function isPublicPath(pathname: string): boolean {
-  return PUBLIC_AUTH_PATHS.includes(pathname);
-}
+import {
+  applyAuthDebugHeaders,
+  applyAuthTimingHeaders,
+  getAuthDebugConfig,
+  isPublicAuthPath,
+  verifyAuthToken,
+} from '@/lib/auth/middleware';
 
 export default async function middleware(req: NextRequest) {
-  const shouldLogTiming = !isProd() && isAuthTimingDebugEnabled();
-  const startedAt = shouldLogTiming && typeof performance !== 'undefined' ? performance.now() : 0;
-  const shouldDebugAuth = isAuthDebugHeadersEnabled();
+  const { shouldLogTiming, shouldDebugHeaders, startedAt } = getAuthDebugConfig();
   // Debug notes (Vercel redirect loop, Dec 2025):
   // - /api/auth/set-free-tier returns 200 and sets dlg_access/dlg_tier.
   // - GET / sends dlg_access but receives 307 with x-auth-reason=invalid_token.
@@ -22,23 +21,11 @@ export default async function middleware(req: NextRequest) {
   // - ACCESS_COOKIE_DOMAIN unset; cookie is host-only and included on requests.
   // => Indicates middleware is running with a different secret (stale Edge build/env).
 
-  const withTiming = (res: NextResponse) => {
-    // Prevent edge caching of auth decisions so cookie changes take effect immediately.
-    res.headers.set('x-middleware-cache', 'no-cache');
-    if (shouldLogTiming && typeof performance !== 'undefined') {
-      const duration = Math.max(0, performance.now() - startedAt);
-      res.headers.set('Server-Timing', `auth;dur=${duration.toFixed(2)}`);
-    }
-    return res;
-  };
+  const withTiming = (res: NextResponse) =>
+    applyAuthTimingHeaders(res, { startedAt, shouldLogTiming });
 
-  const withDebug = (res: NextResponse, info: Record<string, string>) => {
-    if (!shouldDebugAuth) return res;
-    for (const [key, value] of Object.entries(info)) {
-      res.headers.set(`x-auth-${key}`, value);
-    }
-    return res;
-  };
+  const withDebug = (res: NextResponse, info: Record<string, string>) =>
+    applyAuthDebugHeaders(res, info, shouldDebugHeaders);
 
   const { pathname } = req.nextUrl;
 
@@ -62,7 +49,7 @@ export default async function middleware(req: NextRequest) {
   }
 
   // In production, check auth
-  if (isPublicPath(pathname)) return NextResponse.next();
+  if (isPublicAuthPath(pathname)) return NextResponse.next();
 
   const token = req.cookies.get(AUTH_COOKIE_NAME)?.value;
   if (!token) {
@@ -76,7 +63,7 @@ export default async function middleware(req: NextRequest) {
     return withTiming(withDebug(res, { reason: 'missing_secret' }));
   }
 
-  const result = await verifyAuthTokenEdgeDetailed(token, secret);
+  const result = await verifyAuthToken(token, secret);
   if (!result.ok) {
     const fingerprint = await computeSecretFingerprintEdge(secret);
     const res = redirectToAccess(req);
@@ -111,5 +98,6 @@ export default async function middleware(req: NextRequest) {
 }
 
 export const config = {
+  // Next.js requires a static literal matcher here (imported constants are rejected).
   matcher: ['/((?!_next/|favicon.ico|assets|api).*)'],
 };

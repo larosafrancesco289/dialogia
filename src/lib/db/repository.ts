@@ -1,6 +1,5 @@
-import type { Chat, Folder, Message, MessageTutor } from '@/lib/types';
+import type { Chat, Folder, Message } from '@/lib/types';
 import { sanitizeMessageRecord } from '@/lib/db/sanitize';
-import { buildHiddenTutorContent } from '@/lib/tutor/hiddenContent';
 
 type DbCollection<T> = {
   toArray?: () => Promise<T[]>;
@@ -46,7 +45,6 @@ export type RepositorySnapshot = {
   folders: Folder[];
   messages: Record<string, Message[]>;
   selectedChatId?: string;
-  tutorByMessageId: Record<string, MessageTutor>;
 };
 
 function pickMessageCollection(
@@ -156,31 +154,16 @@ export function createRepository(db: DialogiaDbLike) {
     ]);
 
     const messages: Record<string, Message[]> = {};
-    const tutorByMessageId: Record<string, MessageTutor> = {};
     for (const m of messagesArray) {
       if (!messages[m.chatId]) messages[m.chatId] = [];
-      const nextMessage = { ...m } as Message;
-      if (nextMessage.role === 'assistant' && nextMessage.tutor) {
-        tutorByMessageId[nextMessage.id] = nextMessage.tutor;
-        if (!nextMessage.hiddenContent) {
-          try {
-            const hidden = buildHiddenTutorContent(nextMessage.tutor);
-            if (hidden) {
-              nextMessage.hiddenContent = hidden;
-            }
-          } catch {
-            /* ignore tutor content backfill failures */
-          }
-        }
-      }
-      messages[m.chatId].push(nextMessage);
+      messages[m.chatId].push(m as Message);
     }
     for (const key of Object.keys(messages)) {
       messages[key] = messages[key].slice().sort(compareMessages);
     }
 
     const resolvedSelected = selectedChatId || chats[0]?.id;
-    return { chats, folders, messages, selectedChatId: resolvedSelected, tutorByMessageId };
+    return { chats, folders, messages, selectedChatId: resolvedSelected };
   };
 
   const saveChatWithMessages = async (chat: Chat, list: Message[]) => {
@@ -214,3 +197,5 @@ export function createRepository(db: DialogiaDbLike) {
     deleteFolder,
   };
 }
+
+export type Repository = ReturnType<typeof createRepository>;

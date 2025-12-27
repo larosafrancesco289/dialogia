@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { anthropicMessages } from '@/lib/api/anthropicClient';
-import { jsonError, requireEnv, withTiming } from '@/lib/server/route';
+import { jsonError, requireServerEnv, withTiming } from '@/lib/server/route';
+import { getRequestOrigin, proxyStream, withProxyErrors } from '@/lib/server/proxy';
 
 export async function POST(req: NextRequest) {
   return withTiming('anthropic-messages', async () => {
@@ -8,7 +9,7 @@ export async function POST(req: NextRequest) {
     let apiKey = headerKey;
     if (!apiKey) {
       try {
-        apiKey = requireEnv('ANTHROPIC_API_KEY');
+        apiKey = requireServerEnv('ANTHROPIC_API_KEY');
       } catch {
         apiKey = undefined;
       }
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
     if (!apiKey) {
       return jsonError(500, 'missing_env', 'ANTHROPIC_API_KEY');
     }
-    try {
+    return withProxyErrors(async () => {
       const body = await req.text();
       let stream = false;
       try {
@@ -29,19 +30,9 @@ export async function POST(req: NextRequest) {
         apiKey,
         body,
         stream,
-        origin: req.headers.get('origin') || undefined,
+        origin: getRequestOrigin(req),
       });
-      const contentType = res.headers.get('content-type') || 'application/json';
-      return new Response(res.body, {
-        status: res.status,
-        headers: {
-          'Content-Type': contentType,
-          'Cache-Control': 'no-store',
-        },
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'anthropic_proxy_error';
-      return jsonError(500, 'anthropic_proxy_error', message);
-    }
+      return proxyStream(res);
+    }, 'anthropic_proxy_error');
   });
 }
