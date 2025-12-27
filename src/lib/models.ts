@@ -1,5 +1,11 @@
 import type { ORModel } from '@/lib/types';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+const toLowerStrings = (value: unknown): string[] =>
+  Array.isArray(value) ? value.map((entry) => String(entry).toLowerCase()) : [];
+
 export type ModelCapabilityFlags = {
   canReason: boolean;
   canSee: boolean;
@@ -34,15 +40,11 @@ export function formatModelLabel(params: {
   fallbackName?: string;
 }): string {
   const { model, fallbackId, fallbackName } = params;
-  const rawName =
-    model && model.raw && typeof (model.raw as any).name === 'string'
-      ? ((model.raw as any).name as string)
-      : undefined;
-  const rawInfo = model && model.raw ? (model.raw as any).info : undefined;
-  const infoDisplay =
-    rawInfo && typeof rawInfo.display === 'string' ? (rawInfo.display as string) : undefined;
-  const infoName =
-    rawInfo && typeof rawInfo.name === 'string' ? (rawInfo.name as string) : undefined;
+  const raw = isRecord(model?.raw) ? model?.raw : undefined;
+  const rawName = typeof raw?.name === 'string' ? raw.name : undefined;
+  const rawInfo = isRecord(raw?.info) ? raw.info : undefined;
+  const infoDisplay = typeof rawInfo?.display === 'string' ? rawInfo.display : undefined;
+  const infoName = typeof rawInfo?.name === 'string' ? rawInfo.name : undefined;
   const candidates = [model?.name, rawName, infoDisplay, infoName, fallbackName];
   for (const candidate of candidates) {
     if (typeof candidate !== 'string') continue;
@@ -57,7 +59,7 @@ export function formatModelLabel(params: {
 }
 
 export function getSupportedParameters(model?: ORModel | null): string[] {
-  const raw = (model as any)?.raw || {};
+  const raw = isRecord(model?.raw) ? model?.raw : undefined;
   const params: unknown = raw?.supported_parameters;
   if (Array.isArray(params)) return params.map((p) => String(p).toLowerCase());
   return [];
@@ -92,23 +94,18 @@ export function isVisionSupported(model?: ORModel | null): boolean {
   if (supported.includes('vision') || supported.includes('image') || supported.includes('images'))
     return true;
   // Fallback heuristics for providers that omit supported_parameters details
-  const raw: any = (model as any)?.raw || {};
-  const id = String((model as any)?.id || '').toLowerCase();
-  const name = String((model as any)?.name || '').toLowerCase();
+  const raw: Record<string, unknown> = isRecord(model?.raw)
+    ? (model.raw as Record<string, unknown>)
+    : {};
+  const architecture = isRecord(raw.architecture) ? raw.architecture : undefined;
+  const id = String(model?.id || '').toLowerCase();
+  const name = String(model?.name || '').toLowerCase();
   const hay = `${id} ${name}`;
-  const caps = Array.isArray(raw?.capabilities)
-    ? raw.capabilities.map((c: any) => String(c).toLowerCase())
-    : [];
+  const caps = toLowerStrings(raw.capabilities);
   // OpenRouter typically nests modality info under `architecture` for many models
-  const modalityStr = String((raw?.modality ?? raw?.architecture?.modality) || '').toLowerCase();
-  const modalities = Array.isArray(raw?.modalities)
-    ? raw.modalities.map((m: any) => String(m).toLowerCase())
-    : [];
-  const inputModalities = Array.isArray(raw?.input_modalities)
-    ? raw.input_modalities.map((m: any) => String(m).toLowerCase())
-    : Array.isArray(raw?.architecture?.input_modalities)
-      ? raw.architecture.input_modalities.map((m: any) => String(m).toLowerCase())
-      : [];
+  const modalityStr = String((raw.modality ?? architecture?.modality) || '').toLowerCase();
+  const modalities = toLowerStrings(raw.modalities ?? architecture?.modalities);
+  const inputModalities = toLowerStrings(raw.input_modalities ?? architecture?.input_modalities);
   if (caps.some((c: string) => c.includes('vision') || c.includes('image'))) return true;
   if (
     modalityStr.includes('vision') ||
@@ -128,26 +125,21 @@ export function isAudioInputSupported(model?: ORModel | null): boolean {
   const supported = getSupportedParameters(model);
   if (supported.includes('audio')) return true;
   // Heuristics from raw metadata when supported_parameters is sparse
-  const raw: any = (model as any)?.raw || {};
-  const id = String((model as any)?.id || '').toLowerCase();
-  const name = String((model as any)?.name || '').toLowerCase();
+  const raw: Record<string, unknown> = isRecord(model?.raw)
+    ? (model.raw as Record<string, unknown>)
+    : {};
+  const architecture = isRecord(raw.architecture) ? raw.architecture : undefined;
+  const id = String(model?.id || '').toLowerCase();
+  const name = String(model?.name || '').toLowerCase();
   const hay = `${id} ${name}`;
-  const modalities = Array.isArray(raw?.modalities)
-    ? raw.modalities.map((m: any) => String(m).toLowerCase())
-    : Array.isArray(raw?.architecture?.modalities)
-      ? raw.architecture.modalities.map((m: any) => String(m).toLowerCase())
-      : [];
-  const inputModalities = Array.isArray(raw?.input_modalities)
-    ? raw.input_modalities.map((m: any) => String(m).toLowerCase())
-    : Array.isArray(raw?.architecture?.input_modalities)
-      ? raw.architecture.input_modalities.map((m: any) => String(m).toLowerCase())
-      : [];
+  const modalities = toLowerStrings(raw.modalities ?? architecture?.modalities);
+  const inputModalities = toLowerStrings(raw.input_modalities ?? architecture?.input_modalities);
   if (inputModalities.some((m: string) => m.includes('audio'))) return true;
   if (modalities.some((m: string) => m.includes('audio'))) return true;
   // Last-resort hints for popular audio-capable families
   if (/\b(gemini|gpt|omni|4o|flash)\b/.test(hay)) {
     // Do not over-claim; only return true if raw flags suggest multimodality
-    const modalityStr = String((raw?.modality ?? raw?.architecture?.modality) || '').toLowerCase();
+    const modalityStr = String((raw.modality ?? architecture?.modality) || '').toLowerCase();
     if (modalityStr.includes('audio') || modalityStr.includes('multi')) return true;
   }
   return false;
@@ -156,20 +148,23 @@ export function isAudioInputSupported(model?: ORModel | null): boolean {
 // Whether a model can output images (for image generation)
 export function isImageOutputSupported(model?: ORModel | null): boolean {
   if (!model) return false;
-  const raw: any = (model as any)?.raw || {};
-  const outMods: string[] = Array.isArray(raw?.output_modalities)
+  const raw: Record<string, unknown> = isRecord(model.raw)
+    ? (model.raw as Record<string, unknown>)
+    : {};
+  const architecture = isRecord(raw.architecture) ? raw.architecture : undefined;
+  const outMods: unknown[] = Array.isArray(raw.output_modalities)
     ? raw.output_modalities
-    : Array.isArray(raw?.architecture?.output_modalities)
-      ? raw.architecture.output_modalities
+    : Array.isArray(architecture?.output_modalities)
+      ? architecture?.output_modalities
       : [];
-  const norm = (arr: any[]) => arr.map((x) => String(x || '').toLowerCase());
+  const norm = (arr: unknown[]) => arr.map((x) => String(x || '').toLowerCase());
   const out = norm(outMods);
   if (out.some((m) => m.includes('image'))) return true;
   // Fallbacks for providers that only expose a single modalities field
-  const modalities: string[] = Array.isArray(raw?.modalities)
+  const modalities: unknown[] = Array.isArray(raw.modalities)
     ? raw.modalities
-    : Array.isArray(raw?.architecture?.modalities)
-      ? raw.architecture.modalities
+    : Array.isArray(architecture?.modalities)
+      ? architecture?.modalities
       : [];
   const mod = norm(modalities);
   if (mod.some((m) => m.includes('image'))) return true;

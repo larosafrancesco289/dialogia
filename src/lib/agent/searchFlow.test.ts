@@ -48,14 +48,12 @@ test('formatSourcesBlock renders provider-specific heading', () => {
 });
 
 test('runBraveSearch returns results and propagates errors', async () => {
-  const restoreOk = mockFetch(
-    (async () => ({
-      ok: true,
-      json: async () => ({
-        results: [{ title: 'Alpha', url: 'https://alpha.test', description: 'alpha desc' }],
-      }),
-    })) as any,
-  );
+  const restoreOk = mockFetch((async () => ({
+    ok: true,
+    json: async () => ({
+      results: [{ title: 'Alpha', url: 'https://alpha.test', description: 'alpha desc' }],
+    }),
+  })) as any);
   const okResult = await runBraveSearch('alpha', 3);
   restoreOk();
   assert.equal(okResult.ok, true);
@@ -68,11 +66,9 @@ test('runBraveSearch returns results and propagates errors', async () => {
   assert.equal(missingKey.ok, false);
   assert.equal(missingKey.error, NOTICE_MISSING_BRAVE_KEY);
 
-  const restoreNetwork = mockFetch(
-    (async () => {
-      throw new Error('network down');
-    }) as any,
-  );
+  const restoreNetwork = mockFetch((async () => {
+    throw new Error('network down');
+  }) as any);
   const network = await runBraveSearch('gamma', 2);
   restoreNetwork();
   assert.equal(network.ok, false);

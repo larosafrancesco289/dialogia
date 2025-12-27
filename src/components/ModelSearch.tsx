@@ -226,7 +226,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
     useEffect(() => {
       if (!autoFocus) return;
       const tid = window.setTimeout(() => {
-        inputRef.current?.focus({ preventScroll: true } as any);
+        inputRef.current?.focus({ preventScroll: true });
       }, 60);
       return () => window.clearTimeout(tid);
     }, [autoFocus]);

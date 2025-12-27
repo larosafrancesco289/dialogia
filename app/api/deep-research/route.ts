@@ -18,9 +18,10 @@ export async function POST(req: NextRequest) {
       return jsonError(500, 'missing_env', 'BRAVE_SEARCH_API_KEY');
     }
 
-    let body: any;
+    let body: Record<string, unknown>;
     try {
-      body = await req.json();
+      const parsed = await req.json();
+      body = isRecord(parsed) ? parsed : {};
     } catch {
       return jsonError(400, 'invalid_json');
     }
@@ -29,11 +30,16 @@ export async function POST(req: NextRequest) {
     if (!task) return jsonError(400, 'missing_task');
     if (!model) return jsonError(400, 'missing_model');
 
-    const rawProviderSort = body?.providerSort;
+    const rawProviderSort = body.providerSort;
     const providerSort =
       rawProviderSort === ProviderSort.Price || rawProviderSort === ProviderSort.Throughput
         ? (rawProviderSort as ProviderSort)
         : undefined;
+    const style =
+      body.style === 'concise' || body.style === 'detailed' || body.style === 'executive'
+        ? body.style
+        : undefined;
+    const cite = body.cite === 'inline' || body.cite === 'footnotes' ? body.cite : undefined;
 
     const stream = createNdjsonStream(
       async ({ send }) => {
@@ -41,10 +47,10 @@ export async function POST(req: NextRequest) {
           apiKey,
           task,
           model,
-          audience: typeof body?.audience === 'string' ? body.audience : undefined,
-          style: body?.style,
-          cite: body?.cite,
-          maxIterations: typeof body?.maxIterations === 'number' ? body.maxIterations : undefined,
+          audience: typeof body.audience === 'string' ? body.audience : undefined,
+          style,
+          cite,
+          maxIterations: typeof body.maxIterations === 'number' ? body.maxIterations : undefined,
           providerSort,
           onProgress: (event) => {
             send({ type: 'trace', data: event });
@@ -70,3 +76,6 @@ export async function POST(req: NextRequest) {
     });
   });
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);

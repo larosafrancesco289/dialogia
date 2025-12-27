@@ -80,7 +80,8 @@ export const updateLearnerModelHandler: TutorToolHandler<UpdateLearnerModelArgs>
       typeof args.confidenceBefore === 'number' ? args.confidenceBefore : undefined;
     const confidenceAfter =
       typeof args.confidenceAfter === 'number' ? args.confidenceAfter : undefined;
-    const masteryLevel = typeof args.masteryLevel === 'string' ? args.masteryLevel.trim() : undefined;
+    const masteryLevel =
+      typeof args.masteryLevel === 'string' ? args.masteryLevel.trim() : undefined;
 
     return {
       nodeId,

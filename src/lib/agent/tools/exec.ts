@@ -216,13 +216,15 @@ export async function executePlanningToolCall(opts: {
       if (tutorOutcome.learnerModel) output.learnerModel = tutorOutcome.learnerModel;
 
       if (tutorOutcome.handled) {
-        recordTutorToolUsage({
-          set,
-          chatId,
-          assistantMessageId: assistantMessage.id,
-          plan: tutorOutcome.updatedPlan ?? chat.settings.learningPlan,
-          name: callName as any,
-        });
+        if (isTutorToolName(callName)) {
+          recordTutorToolUsage({
+            set,
+            chatId,
+            assistantMessageId: assistantMessage.id,
+            plan: tutorOutcome.updatedPlan ?? chat.settings.learningPlan,
+            name: callName,
+          });
+        }
         finalizeLog('success', output, undefined, {
           ...(roundMeta || {}),
           ...(tutorOutcome.usedContent ? { usedContent: true } : {}),

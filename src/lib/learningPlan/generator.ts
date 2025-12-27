@@ -104,9 +104,10 @@ export async function generateLearningPlan(
   }
 
   // Parse JSON
-  let planData: any;
+  let planData: Record<string, unknown>;
   try {
-    planData = JSON.parse(jsonText);
+    const parsed = JSON.parse(jsonText);
+    planData = isRecord(parsed) ? parsed : {};
   } catch (error) {
     throw new Error(
       `Failed to parse plan JSON: ${error instanceof Error ? error.message : String(error)}`,
@@ -114,38 +115,91 @@ export async function generateLearningPlan(
   }
 
   // Create LearningPlan with proper timestamps and version
-  const rawNodes: any[] = Array.isArray(planData.nodes) ? planData.nodes : [];
+  const rawNodes = Array.isArray(planData.nodes) ? planData.nodes : [];
   const normalizedNodes = rawNodes.map((node, index) => {
-    const status = (() => {
-      if (node?.status === 'completed' || node?.status === 'in_progress') return node.status;
-      return 'not_started';
-    })();
-    const prerequisites = Array.isArray(node?.prerequisites)
-      ? node.prerequisites.filter((id: unknown): id is string => typeof id === 'string')
+    const record = isRecord(node) ? node : {};
+    const status: LearningPlan['nodes'][number]['status'] =
+      record.status === 'completed' || record.status === 'in_progress'
+        ? record.status
+        : 'not_started';
+    const prerequisites = Array.isArray(record.prerequisites)
+      ? record.prerequisites.filter((id: unknown): id is string => typeof id === 'string')
       : [];
-    const objectives = Array.isArray(node?.objectives)
-      ? node.objectives.filter((obj: unknown): obj is string => typeof obj === 'string')
+    const objectives = Array.isArray(record.objectives)
+      ? record.objectives.filter((obj: unknown): obj is string => typeof obj === 'string')
       : [];
+    const resources = Array.isArray(record.resources)
+      ? record.resources.reduce<NonNullable<LearningPlan['nodes'][number]['resources']>>(
+          (acc, entry) => {
+            if (!isRecord(entry)) return acc;
+            const type = entry.type;
+            if (type !== 'reading' && type !== 'video' && type !== 'practice') return acc;
+            const title = typeof entry.title === 'string' ? entry.title.trim() : '';
+            if (!title) return acc;
+            const url = typeof entry.url === 'string' ? entry.url.trim() : undefined;
+            acc.push(url ? { type, title, url } : { type, title });
+            return acc;
+          },
+          [],
+        )
+      : undefined;
+    const children = Array.isArray(record.children)
+      ? record.children.filter((child): child is string => typeof child === 'string')
+      : undefined;
     return {
-      ...node,
-      id: typeof node?.id === 'string' && node.id.trim() ? node.id.trim() : `node_${index + 1}`,
+      id:
+        typeof record.id === 'string' && record.id.trim() ? record.id.trim() : `node_${index + 1}`,
       name:
-        typeof node?.name === 'string' && node.name.trim()
-          ? node.name.trim()
+        typeof record.name === 'string' && record.name.trim()
+          ? record.name.trim()
           : `Topic ${index + 1}`,
+      description: typeof record.description === 'string' ? record.description.trim() : undefined,
+      estimatedMinutes:
+        typeof record.estimatedMinutes === 'number'
+          ? Math.max(5, Math.min(360, Math.round(record.estimatedMinutes)))
+          : undefined,
+      startedAt: typeof record.startedAt === 'number' ? record.startedAt : undefined,
+      completedAt: typeof record.completedAt === 'number' ? record.completedAt : undefined,
       status,
       prerequisites,
       objectives,
+      resources,
+      children,
     };
   });
 
+  const goalValue =
+    typeof planData.goal === 'string' && planData.goal.trim() ? planData.goal.trim() : goal;
+  const metadata = (() => {
+    const raw = planData.metadata;
+    if (!isRecord(raw)) return undefined;
+    const estimatedHours = typeof raw.estimatedHours === 'number' ? raw.estimatedHours : undefined;
+    const difficulty: NonNullable<LearningPlan['metadata']>['difficulty'] =
+      raw.difficulty === 'beginner' ||
+      raw.difficulty === 'intermediate' ||
+      raw.difficulty === 'advanced'
+        ? raw.difficulty
+        : undefined;
+    const prerequisites = Array.isArray(raw.prerequisites)
+      ? raw.prerequisites.filter((entry): entry is string => typeof entry === 'string')
+      : undefined;
+    if (!estimatedHours && !difficulty && (!prerequisites || prerequisites.length === 0)) {
+      return undefined;
+    }
+    return {
+      ...(estimatedHours ? { estimatedHours } : {}),
+      ...(difficulty ? { difficulty } : {}),
+      ...(prerequisites && prerequisites.length > 0 ? { prerequisites } : {}),
+    };
+  })();
+
   const plan: LearningPlan = {
-    goal: planData.goal || goal,
+    goal: goalValue,
     generatedAt: Date.now(),
     updatedAt: Date.now(),
     version: 1,
     nodes: normalizedNodes,
-    metadata: planData.metadata,
+    metadata,
   };
 
   // Validate plan structure
@@ -155,6 +209,10 @@ export async function generateLearningPlan(
   }
 
   return plan;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 /**

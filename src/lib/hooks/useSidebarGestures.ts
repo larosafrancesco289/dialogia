@@ -24,7 +24,7 @@ export function createSidebarGestureController(opts: {
   let active = false;
 
   const onDown = (e: PointerEvent) => {
-    if ((e.pointerType as any) === 'mouse') return;
+    if (e.pointerType === 'mouse') return;
     const t = e.target as Element | null;
     if (
       t &&
@@ -80,15 +80,15 @@ export function useSidebarGestures(opts: {
       setCollapsed,
     });
     const { onPointerDown, onPointerMove, onPointerEnd } = controller;
-    window.addEventListener('pointerdown', onPointerDown, { passive: true } as any);
-    window.addEventListener('pointermove', onPointerMove, { passive: true } as any);
-    window.addEventListener('pointerup', onPointerEnd as any);
-    window.addEventListener('pointercancel', onPointerEnd as any);
+    window.addEventListener('pointerdown', onPointerDown, { passive: true });
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerup', onPointerEnd);
+    window.addEventListener('pointercancel', onPointerEnd);
     return () => {
-      window.removeEventListener('pointerdown', onPointerDown as any);
-      window.removeEventListener('pointermove', onPointerMove as any);
-      window.removeEventListener('pointerup', onPointerEnd as any);
-      window.removeEventListener('pointercancel', onPointerEnd as any);
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerEnd);
+      window.removeEventListener('pointercancel', onPointerEnd);
     };
   }, [isMobile, setCollapsed]);
 }

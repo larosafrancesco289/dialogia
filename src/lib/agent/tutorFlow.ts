@@ -13,7 +13,7 @@ export function mergeTutorPayload(
   prev: MessageTutor | undefined,
   patch: Partial<MessageTutor> | undefined,
 ): { merged: MessageTutor; hiddenContent: string } {
-  const merged = { ...(prev || {}), ...(patch || {}) } as MessageTutor;
+  const merged: MessageTutor = { ...(prev || {}), ...(patch || {}) };
   const hiddenContent = buildHiddenTutorContent(merged);
   return { merged, hiddenContent };
 }
@@ -34,9 +34,9 @@ export function attachTutorUiState(opts: {
   let updatedMessage: Message | undefined;
   const nextMessages = sourceMessages.map((msg) => {
     if (msg.id !== messageId) return msg;
-    const prevTutor = (msg as any).tutor || {};
+    const prevTutor = msg.tutor || {};
     const { merged, hiddenContent } = mergeTutorPayload(prevTutor, patch);
-    const next = { ...(msg as any), tutor: merged, hiddenContent } as Message;
+    const next: Message = { ...msg, tutor: merged, hiddenContent };
     updatedMessage = next;
     return next;
   });

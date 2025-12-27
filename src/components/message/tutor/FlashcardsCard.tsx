@@ -1,8 +1,8 @@
-"use client";
-import { useState } from "react";
-import { motion } from "framer-motion";
-import type { TutorFlashcardItem } from "@/lib/types";
-import { useChatStore } from "@/lib/store";
+'use client';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import type { TutorFlashcardItem } from '@/lib/types';
+import { useChatStore } from '@/lib/store';
 
 export function FlashcardsCard({ items }: { items: TutorFlashcardItem[] }) {
   const [index, setIndex] = useState(0);
@@ -32,8 +32,8 @@ export function FlashcardsCard({ items }: { items: TutorFlashcardItem[] }) {
         <motion.div
           className="relative h-full w-full preserve-3d transition-all duration-500"
           animate={{ rotateY: flipped ? 180 : 0 }}
-          transition={{ duration: 0.6, type: "spring", stiffness: 260, damping: 20 }}
-          style={{ transformStyle: "preserve-3d" }}
+          transition={{ duration: 0.6, type: 'spring', stiffness: 260, damping: 20 }}
+          style={{ transformStyle: 'preserve-3d' }}
         >
           <div className="absolute inset-0 backface-hidden rounded-xl border border-border bg-surface shadow-sm flex flex-col items-center justify-center p-6 text-center hover:border-primary/50 transition-colors">
             <div className="text-lg font-medium leading-relaxed">{cur.front}</div>
@@ -46,7 +46,7 @@ export function FlashcardsCard({ items }: { items: TutorFlashcardItem[] }) {
 
           <div
             className="absolute inset-0 backface-hidden rounded-xl border border-primary/20 bg-primary/5 shadow-sm flex flex-col items-center justify-center p-6 text-center"
-            style={{ transform: "rotateY(180deg)" }}
+            style={{ transform: 'rotateY(180deg)' }}
           >
             <div className="text-lg font-medium leading-relaxed">{cur.back}</div>
           </div>
@@ -58,7 +58,7 @@ export function FlashcardsCard({ items }: { items: TutorFlashcardItem[] }) {
           className="btn btn-outline btn-sm min-w-[100px]"
           onClick={() => {
             log({
-              kind: "flashcard",
+              kind: 'flashcard',
               itemId: cur.id,
               correct: false,
               topic: cur.topic,
@@ -75,7 +75,7 @@ export function FlashcardsCard({ items }: { items: TutorFlashcardItem[] }) {
           className="btn btn-primary btn-sm min-w-[100px]"
           onClick={() => {
             log({
-              kind: "flashcard",
+              kind: 'flashcard',
               itemId: cur.id,
               correct: true,
               topic: cur.topic,

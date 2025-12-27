@@ -140,7 +140,7 @@ export function SettingsDrawer() {
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const modelSearchRef = useRef<ModelSearchHandle | null>(null);
   const [routePref, setRoutePref] = useState<'speed' | 'cost'>(
-    (useChatStore.getState().ui.routePreference as any) || 'speed',
+    () => useChatStore.getState().ui.routePreference ?? 'speed',
   );
   const experimentalBrave = useChatStore((s) => !!s.ui.flags.experimentalBrave);
   const experimentalTutor = useChatStore((s) => !!s.ui.flags.experimentalTutor);
@@ -246,8 +246,9 @@ export function SettingsDrawer() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setUI({ notice: 'Exported chats to JSON' });
-    } catch (e: any) {
-      setUI({ notice: e?.message || 'Export failed' });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Export failed';
+      setUI({ notice: message });
     }
   };
 
@@ -260,8 +261,9 @@ export function SettingsDrawer() {
       await importAll(json);
       await initializeApp();
       setUI({ notice: 'Imported data' });
-    } catch (e: any) {
-      setUI({ notice: e?.message || 'Import failed' });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Import failed';
+      setUI({ notice: message });
     }
   };
 

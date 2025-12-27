@@ -14,14 +14,7 @@ export type CreateUserMessageArgs = BaseMessageArgs & {
 };
 
 export function createUserMessage(args: CreateUserMessageArgs): Message {
-  const {
-    id = uuidv4(),
-    chatId,
-    createdAt = Date.now(),
-    content,
-    attachments,
-    metadata,
-  } = args;
+  const { id = uuidv4(), chatId, createdAt = Date.now(), content, attachments, metadata } = args;
 
   return {
     id,

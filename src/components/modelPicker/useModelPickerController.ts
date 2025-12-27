@@ -74,7 +74,7 @@ export function useModelPickerController(): ModelPickerController {
   const { isFreeTier, isLoading: tierLoading } = useTier();
   const nextOverrides = readNextOverrides(ui);
 
-  const allowedIds = useMemo(() => new Set((models || []).map((m: any) => m.id)), [models]);
+  const allowedIds = useMemo(() => new Set((models || []).map((m) => m.id)), [models]);
 
   const customOptions = useMemo(() => {
     return (favoriteModelIds || [])
@@ -85,7 +85,8 @@ export function useModelPickerController(): ModelPickerController {
   const allOptions = useMemo(() => {
     // Use tier-aware default model, get the display name from curated models
     const defaultCurated = curated.find((m) => m.id === tierDefaultModelId);
-    const defaultName = defaultCurated?.name || tierDefaultModelId.split('/').pop() || tierDefaultModelId;
+    const defaultName =
+      defaultCurated?.name || tierDefaultModelId.split('/').pop() || tierDefaultModelId;
     const injectedDefault = [{ id: tierDefaultModelId, name: defaultName }];
     return [...injectedDefault, ...curated, ...customOptions].reduce(
       (acc: ModelPickerOption[], m: ModelPickerOption) => {
@@ -143,7 +144,14 @@ export function useModelPickerController(): ModelPickerController {
     }
     if (deduped.length === 0) deduped.push(tierDefaultModelId);
     return deduped;
-  }, [chat, nextOverrides.model, nextOverrides.parallelModels, tierDefaultModelId, isFreeTier, tierLoading]);
+  }, [
+    chat,
+    nextOverrides.model,
+    nextOverrides.parallelModels,
+    tierDefaultModelId,
+    isFreeTier,
+    tierLoading,
+  ]);
 
   const selectedId = selectedIds[0];
   const effectiveSelectedId =

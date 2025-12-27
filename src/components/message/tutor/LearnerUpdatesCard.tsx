@@ -1,8 +1,8 @@
-"use client";
-import { SparklesIcon } from "@heroicons/react/24/outline";
-import type { TutorLearnerModelUpdate } from "@/lib/types";
-import { useChatStore } from "@/lib/store";
-import { safeKey } from "@/components/message/tutor/shared";
+'use client';
+import { SparklesIcon } from '@heroicons/react/24/outline';
+import type { TutorLearnerModelUpdate } from '@/lib/types';
+import { useChatStore } from '@/lib/store';
+import { safeKey } from '@/components/message/tutor/shared';
 
 export function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpdate[] }) {
   const plan = useChatStore((s) => {
@@ -35,16 +35,21 @@ export function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpda
           const delta = before != null && after != null ? Math.round((after - before) * 100) : null;
 
           return (
-            <div key={safeKey(update.nodeId, idx, "lm")} className="text-sm flex items-center justify-between">
+            <div
+              key={safeKey(update.nodeId, idx, 'lm')}
+              className="text-sm flex items-center justify-between"
+            >
               <span className="font-medium">{resolveNodeName(update.nodeId)}</span>
               <span className="text-muted-foreground text-xs">
                 {delta != null && delta !== 0 ? (
-                  <span style={{ color: delta > 0 ? 'var(--color-success)' : 'var(--color-accent)' }}>
-                    {delta > 0 ? "+" : ""}
+                  <span
+                    style={{ color: delta > 0 ? 'var(--color-success)' : 'var(--color-accent)' }}
+                  >
+                    {delta > 0 ? '+' : ''}
                     {delta}% confidence
                   </span>
                 ) : (
-                  "Updated"
+                  'Updated'
                 )}
               </span>
             </div>

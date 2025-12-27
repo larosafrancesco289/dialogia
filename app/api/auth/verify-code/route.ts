@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       // small randomized delay to reduce trivial timing
       await new Promise((r) => setTimeout(r, 50 + Math.floor(Math.random() * 120)));
       return jsonAuthError('invalid_code', 401);
-    } catch (e: any) {
+    } catch (e: unknown) {
       logger.error('[verify-code] Error:', e);
       return jsonAuthError('bad_request', 400);
     }

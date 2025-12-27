@@ -80,7 +80,7 @@ export function withContentReset(
   const reset: Partial<MessageTutor> = {};
   CONTENT_KEYS.forEach((key) => {
     if (key === activeKey) return;
-    (reset as any)[key] = undefined;
+    reset[key] = undefined;
   });
   reset.attempts = undefined;
   reset.grading = undefined;

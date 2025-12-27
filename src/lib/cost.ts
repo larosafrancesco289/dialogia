@@ -41,8 +41,8 @@ function perMillion(perToken?: number): number | undefined {
 // Build a compact pricing descriptor for a model, e.g. "in $5/M, out $15/M"
 export function describeModelPricing(model?: ORModel | null): string | undefined {
   if (!model || !model.pricing) return undefined;
-  const pIn = perMillion(toNumber((model as any).pricing.prompt));
-  const pOut = perMillion(toNumber((model as any).pricing.completion));
+  const pIn = perMillion(toNumber(model.pricing?.prompt));
+  const pOut = perMillion(toNumber(model.pricing?.completion));
 
   const parts: string[] = [];
   const inStr = typeof pIn === 'number' ? formatUsd(pIn) : undefined;

@@ -1,6 +1,6 @@
-"use client";
-import { motion } from "framer-motion";
-import { AcademicCapIcon } from "@heroicons/react/24/outline";
+'use client';
+import { motion } from 'framer-motion';
+import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import type {
   TutorDiagnostic,
   TutorFillBlankItem,
@@ -11,18 +11,18 @@ import type {
   TutorPlanProposal,
   TutorPlanSuggestion,
   TutorQuestionnaire,
-} from "@/lib/types";
-import { cardVariants } from "@/components/message/tutor/shared";
-import { QuestionnaireCard } from "@/components/message/tutor/QuestionnaireCard";
-import { PlanProposalCard } from "@/components/message/tutor/PlanProposalCard";
-import { PlanSuggestionsCard } from "@/components/message/tutor/PlanSuggestionsCard";
-import { DiagnosticCard } from "@/components/message/tutor/DiagnosticCard";
-import { McqCard } from "@/components/message/tutor/McqCard";
-import { FillBlankCard } from "@/components/message/tutor/FillBlankCard";
-import { OpenEndedCard } from "@/components/message/tutor/OpenEndedCard";
-import { FlashcardsCard } from "@/components/message/tutor/FlashcardsCard";
-import { LearnerUpdatesCard } from "@/components/message/tutor/LearnerUpdatesCard";
-import { GradingFeedbackCard } from "@/components/message/tutor/GradingFeedbackCard";
+} from '@/lib/types';
+import { cardVariants } from '@/components/message/tutor/shared';
+import { QuestionnaireCard } from '@/components/message/tutor/QuestionnaireCard';
+import { PlanProposalCard } from '@/components/message/tutor/PlanProposalCard';
+import { PlanSuggestionsCard } from '@/components/message/tutor/PlanSuggestionsCard';
+import { DiagnosticCard } from '@/components/message/tutor/DiagnosticCard';
+import { McqCard } from '@/components/message/tutor/McqCard';
+import { FillBlankCard } from '@/components/message/tutor/FillBlankCard';
+import { OpenEndedCard } from '@/components/message/tutor/OpenEndedCard';
+import { FlashcardsCard } from '@/components/message/tutor/FlashcardsCard';
+import { LearnerUpdatesCard } from '@/components/message/tutor/LearnerUpdatesCard';
+import { GradingFeedbackCard } from '@/components/message/tutor/GradingFeedbackCard';
 
 export function TutorPanel(props: {
   messageId: string;
@@ -79,7 +79,7 @@ export function TutorPanel(props: {
           <div className="flex items-center gap-2 min-w-0 text-[var(--color-accent)]">
             <AcademicCapIcon className="h-4 w-4" />
             <div className="text-xs font-bold uppercase tracking-wider truncate">
-              {title || "Tutor Tools"}
+              {title || 'Tutor Tools'}
             </div>
           </div>
         </div>

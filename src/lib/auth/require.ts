@@ -26,7 +26,9 @@ export function requireModelAuth(
       useProxy: status.useProxy,
     };
   } catch (error) {
-    (error as any).transport = transport;
+    if (error && typeof error === 'object') {
+      (error as Record<string, unknown>).transport = transport;
+    }
     throw error;
   }
 }

@@ -8,7 +8,11 @@ export function useMessageListController(args: {
   messages: Message[];
   isStreaming: boolean;
   isMobile: boolean;
-  editUserMessage: (messageId: string, content: string, opts?: { rerun?: boolean }) => Promise<void>;
+  editUserMessage: (
+    messageId: string,
+    content: string,
+    opts?: { rerun?: boolean },
+  ) => Promise<void>;
   editAssistantMessage: (messageId: string, content: string) => Promise<void>;
   branchFrom: (messageId: string) => void;
   regenerate: (messageId: string) => void;

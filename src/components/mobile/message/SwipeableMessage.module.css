@@ -1,0 +1,47 @@
+.wrapper {
+  position: relative;
+  overflow: visible;
+}
+
+.wrapper[data-swiping='true'] {
+  z-index: 10;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  touch-action: pan-y;
+  cursor: grab;
+
+  /* Prevent text selection during swipe */
+  user-select: none;
+  -webkit-user-select: none;
+
+  /* Hardware acceleration */
+  will-change: transform;
+  transform: translateZ(0);
+
+  /* Background to cover action panels */
+  background: var(--color-bg);
+}
+
+.content:active {
+  cursor: grabbing;
+}
+
+/* When not swiping, restore normal interactions */
+.wrapper:not([data-swiping='true']) .content {
+  user-select: auto;
+  -webkit-user-select: auto;
+  cursor: default;
+}
+
+/* Subtle shadow when swiping to show elevation */
+.wrapper[data-swiping='true'] .content {
+  box-shadow: 0 2px 12px rgba(80, 60, 40, 0.08);
+}
+
+/* Dark mode shadow */
+:global(.dark) .wrapper[data-swiping='true'] .content {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}

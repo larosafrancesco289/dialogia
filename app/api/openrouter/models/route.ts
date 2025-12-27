@@ -21,8 +21,9 @@ export async function GET(req: NextRequest) {
           'Cache-Control': 'no-store',
         },
       });
-    } catch (e: any) {
-      return jsonError(500, 'proxy_error', e?.message || 'proxy_error');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'proxy_error';
+      return jsonError(500, 'proxy_error', message);
     }
   });
 }

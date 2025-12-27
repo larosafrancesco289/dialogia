@@ -40,8 +40,9 @@ export async function GET(req: NextRequest) {
 
       const results = await runWebSearch(args);
       return NextResponse.json({ results });
-    } catch (err: any) {
-      const message = err?.message || 'unknown_error';
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'unknown_error';
       if (message === 'brave_missing_key') {
         return jsonError(400, 'missing_env', 'BRAVE_SEARCH_API_KEY');
       }

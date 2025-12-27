@@ -117,6 +117,25 @@ export type UIPlanState = {
   >;
 };
 
+export type MobileTab = 'chats' | 'new' | 'settings';
+
+export type UIMobileState = {
+  /** Currently active tab in bottom navigation */
+  activeTab: MobileTab;
+  /** Whether the chats sheet is open */
+  chatsSheetOpen: boolean;
+  /** Whether the settings sheet is open */
+  settingsSheetOpen: boolean;
+  /** Whether the header is currently visible */
+  headerVisible: boolean;
+  /** ID of the message currently swiped open (only one at a time) */
+  swipeRevealedMessageId: string | null;
+  /** Last scroll position for header collapse calculation */
+  lastScrollY: number;
+  /** Whether the composer input is focused (keyboard open) */
+  composerFocused: boolean;
+};
+
 export type UIState = {
   showSettings: boolean;
   isStreaming: boolean;
@@ -134,6 +153,8 @@ export type UIState = {
   search: UISearchState;
   tutor: UITutorState;
   plan: UIPlanState;
+  // Mobile-specific UI state
+  mobile: UIMobileState;
 };
 
 export type StoreDataState = {
@@ -159,6 +180,22 @@ export type StoreDataState = {
   voice: VoiceState;
 };
 
+/**
+ * Type for setUI partial updates.
+ * Allows partial updates for nested state objects like mobile, flags, etc.
+ */
+export type UIStatePartial = Omit<
+  Partial<UIState>,
+  'mobile' | 'flags' | 'debug' | 'search' | 'tutor' | 'plan'
+> & {
+  mobile?: Partial<UIMobileState>;
+  flags?: Partial<UIFlags>;
+  debug?: Partial<UIDebugState>;
+  search?: Partial<UISearchState>;
+  tutor?: Partial<UITutorState>;
+  plan?: Partial<UIPlanState>;
+};
+
 export type StoreActions = VoiceActions & {
   // lifecycle
   initializeApp: () => Promise<void>;
@@ -178,7 +215,7 @@ export type StoreActions = VoiceActions & {
   toggleFolderExpanded: (id: string) => Promise<void>;
 
   // ui
-  setUI: (partial: Partial<UIState>) => void;
+  setUI: (partial: UIStatePartial) => void;
   setSearchStatus: (
     messageId: string,
     entry: NonNullable<UISearchState['braveByMessageId']>[string],

@@ -6,6 +6,7 @@ import { shallow } from 'zustand/shallow';
 import { formatModelLabel } from '@/lib/models';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
+import type { ORModel } from '@/lib/types';
 
 export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => void }) {
   const { chat, favoriteModelIds, models } = useChatStore(
@@ -22,7 +23,7 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
   const curatedModels = useTierCuratedModels();
   const tierDefaultModelId = useTierDefaultModelId();
   const modelMap = useMemo(() => {
-    const map = new Map<string, any>();
+    const map = new Map<string, ORModel>();
     for (const model of models || []) {
       map.set(model.id, model);
     }
@@ -33,7 +34,8 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
     ...curatedModels,
   ];
   const customOptions = (favoriteModelIds || []).map((id) => ({ id, name: id }));
-  const options = [...curated, ...customOptions].reduce((acc: any[], m: any) => {
+  type ModelOption = { id: string; name: string };
+  const options = [...curated, ...customOptions].reduce<ModelOption[]>((acc, m) => {
     if (!acc.find((x) => x.id === m.id)) acc.push(m);
     return acc;
   }, []);
@@ -127,12 +129,12 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
     const raf = requestAnimationFrame(() => updateCoords());
     const onScroll = () => updateCoords();
     const onResize = () => updateCoords();
-    window.addEventListener('scroll', onScroll, { passive: true } as any);
-    window.addEventListener('resize', onResize, { passive: true } as any);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', onScroll as any);
-      window.removeEventListener('resize', onResize as any);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
     };
   }, [open, updateCoords]);
 

@@ -1,10 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-export function useStepper<T>(
-  items: T[],
-  isPending: (item: T, index: number) => boolean,
-) {
+export function useStepper<T>(items: T[], isPending: (item: T, index: number) => boolean) {
   const total = items.length;
   const firstPendingIndex = useMemo(() => {
     for (let i = 0; i < total; i += 1) {

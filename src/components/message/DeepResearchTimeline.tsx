@@ -265,7 +265,9 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
           </div>
         </div>
         <div className="text-xs text-[var(--color-fg-muted)] flex items-center gap-2 py-1">
-          <span className="font-semibold text-[var(--color-accent)]/80 tracking-wider uppercase">Time Check</span>
+          <span className="font-semibold text-[var(--color-accent)]/80 tracking-wider uppercase">
+            Time Check
+          </span>
           <span className="font-mono opacity-70">
             {isoValue ? new Date(isoValue).toLocaleTimeString() : ''}
           </span>

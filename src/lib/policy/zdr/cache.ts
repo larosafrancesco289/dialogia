@@ -2,7 +2,10 @@
 // Responsibility: Manage cached ZDR model/provider lists in the store and
 // expose helpers that reuse computeZdrFilter without duplicating logic in slices.
 
-import type { StoreSetter as ContractStoreSetter, StoreGetter as ContractStoreGetter } from '@/lib/agent/contracts';
+import type {
+  StoreSetter as ContractStoreSetter,
+  StoreGetter as ContractStoreGetter,
+} from '@/lib/agent/contracts';
 import {
   ensureZdrLists,
   filterZdrModels,
@@ -10,7 +13,7 @@ import {
   type ZdrLists,
   type ZdrFetchers,
 } from './index';
-import { computeZdrFilter, guardModelOrNotice } from './enforce';
+import { guardModelOrNotice } from './enforce';
 import { ZDR_CACHE_TTL_MS } from './constants';
 import type { EnsureListsResult, ZdrFilterMode, ZdrSnapshot } from './types';
 
@@ -51,7 +54,11 @@ export function getZdrCacheSnapshot<S extends ZdrCacheState>(get: StoreGetter<S>
   };
 }
 
-export function hydrateZdrCache<S extends ZdrCacheState>(set: StoreSetter<S>, lists: ZdrLists, fetchedAt?: number) {
+export function hydrateZdrCache<S extends ZdrCacheState>(
+  set: StoreSetter<S>,
+  lists: ZdrLists,
+  fetchedAt?: number,
+) {
   set(() => toZdrState(lists, fetchedAt ?? Date.now()) as Partial<S>);
 }
 

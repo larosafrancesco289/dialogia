@@ -172,10 +172,7 @@ export function PlanSheet({
         </div>
 
         {/* Subtle rule */}
-        <div
-          className="pointer-events-none h-px"
-          style={{ background: 'var(--rule-accent)' }}
-        />
+        <div className="pointer-events-none h-px" style={{ background: 'var(--rule-accent)' }} />
 
         {/* Content */}
         <div className="plan-sheet__body px-4 pt-5 pb-10 sm:px-6 w-full h-full">

@@ -1,7 +1,7 @@
-"use client";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
-import type { TutorPlanSuggestion } from "@/lib/types";
-import { safeKey } from "@/components/message/tutor/shared";
+'use client';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import type { TutorPlanSuggestion } from '@/lib/types';
+import { safeKey } from '@/components/message/tutor/shared';
 
 export function PlanSuggestionsCard({
   suggestions,
@@ -14,7 +14,7 @@ export function PlanSuggestionsCard({
   return (
     <div
       className={`rounded-lg border border-dashed border-border/80 bg-muted/10 ${
-        compact ? "p-3" : "p-4"
+        compact ? 'p-3' : 'p-4'
       }`}
     >
       <div className="flex items-center gap-2 mb-3">
@@ -24,7 +24,7 @@ export function PlanSuggestionsCard({
       <div className="space-y-3 text-xs text-muted-foreground">
         {suggestions.map((s, idx) => (
           <div
-            key={safeKey(`${s.action}-${idx}`, idx, "suggestion")}
+            key={safeKey(`${s.action}-${idx}`, idx, 'suggestion')}
             className="leading-snug p-2 rounded bg-surface/50 border border-border/30"
           >
             <div className="font-medium text-foreground flex items-center gap-2">
@@ -33,8 +33,11 @@ export function PlanSuggestionsCard({
                 <span
                   className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded"
                   style={
-                    s.priority === "high"
-                      ? { background: 'var(--feedback-incorrect-bg)', color: 'var(--feedback-incorrect-text)' }
+                    s.priority === 'high'
+                      ? {
+                          background: 'var(--feedback-incorrect-bg)',
+                          color: 'var(--feedback-incorrect-text)',
+                        }
                       : { background: 'var(--color-muted)', color: 'var(--color-fg-muted)' }
                   }
                 >
@@ -44,9 +47,7 @@ export function PlanSuggestionsCard({
             </div>
             {s.description && <div className="mt-1">{s.description}</div>}
             {s.rationale && (
-              <div className="italic text-muted-foreground/80 mt-1">
-                Rationale: {s.rationale}
-              </div>
+              <div className="italic text-muted-foreground/80 mt-1">Rationale: {s.rationale}</div>
             )}
             {s.estimatedImpact && (
               <div className="mt-1 text-accent">Impact: {s.estimatedImpact}</div>

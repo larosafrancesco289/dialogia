@@ -171,21 +171,25 @@ Dialogia includes an experimental **Tutor Mode** that provides personalized, str
 Tutor mode works best with structured, skill-based learning goals:
 
 **Programming Languages:**
+
 - "I want to learn Python basics"
 - "Teach me JavaScript ES6+ features"
 - "Help me understand TypeScript type system"
 
 **Frameworks & Tools:**
+
 - "I need to learn React for web development"
 - "Teach me Docker containerization"
 - "Help me understand Git workflows"
 
 **Concepts & Theory:**
+
 - "I want to learn linear algebra"
 - "Teach me database normalization"
 - "Help me understand machine learning fundamentals"
 
 **Professional Skills:**
+
 - "I need to learn SQL for data analysis"
 - "Teach me REST API design principles"
 - "Help me understand system design concepts"
@@ -193,12 +197,14 @@ Tutor mode works best with structured, skill-based learning goals:
 #### Understanding the Learner Model
 
 The tutor tracks your mastery using a Bayesian confidence model:
+
 - **Starting confidence**: 30% (beginner level)
 - **Evidence weights**: -0.5 (misconception) to +0.5 (clear understanding)
 - **Completion threshold**: 70% confidence, 5+ interactions, no unresolved misconceptions
 - **Update frequency**: Learner model updates every 3 interactions by default
 
 Progress indicators use color coding:
+
 - 🟢 **Green (70-100%)**: Strong mastery, ready to advance
 - 🟡 **Yellow (40-69%)**: Developing understanding, keep practicing
 - 🔴 **Red (0-39%)**: Needs more work, concepts not yet clear

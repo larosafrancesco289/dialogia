@@ -31,9 +31,9 @@ export function ReasoningEffortMenu() {
   const selectedModel = useMemo(() => findModelById(models, modelId), [models, modelId]);
   const supportsReasoning = useMemo(() => isReasoningSupported(selectedModel), [selectedModel]);
 
-  const current: Effort | undefined = (
-    chat ? (chat.settings.reasoning_effort as any) : (nextOverrides.reasoning?.effort as any)
-  ) as Effort | undefined;
+  const current: Effort | undefined = chat
+    ? chat.settings.reasoning_effort
+    : nextOverrides.reasoning?.effort;
   const active = current && current !== 'none';
 
   const choose = async (effort: Effort) => {

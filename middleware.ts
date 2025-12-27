@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  AUTH_COOKIE_NAME,
-  TIER_COOKIE_NAME,
-  PUBLIC_AUTH_PATHS,
-  AUTH_MIDDLEWARE_MATCHER,
-} from '@/lib/auth/shared';
+import { AUTH_COOKIE_NAME, TIER_COOKIE_NAME, PUBLIC_AUTH_PATHS } from '@/lib/auth/shared';
 import { verifyAuthTokenEdgeDetailed } from '@/lib/auth/edge';
 import { isAuthDebugHeadersEnabled, isAuthTimingDebugEnabled, isProd } from '@/lib/config';
 import { redirectToAccess } from '@/lib/auth/errors';
@@ -85,11 +80,13 @@ export default async function middleware(req: NextRequest) {
   if (!result.ok) {
     const fingerprint = await computeSecretFingerprintEdge(secret);
     const res = redirectToAccess(req);
-    return withTiming(withDebug(res, {
-      reason: result.reason,
-      token_len: String(token.length),
-      secret_fp: fingerprint,
-    }));
+    return withTiming(
+      withDebug(res, {
+        reason: result.reason,
+        token_len: String(token.length),
+        secret_fp: fingerprint,
+      }),
+    );
   }
   const claims = result.claims;
 
@@ -114,5 +111,5 @@ export default async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: AUTH_MIDDLEWARE_MATCHER,
+  matcher: ['/((?!_next/|favicon.ico|assets|api).*)'],
 };

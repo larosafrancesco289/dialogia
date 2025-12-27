@@ -73,11 +73,11 @@ const PROVIDER_LABEL: Record<string, string> = {
 function summaryForCall(call: ToolCallLogEntry): string {
   switch (call.name) {
     case 'assess_answer': {
-      const output = (call.output as Record<string, any>) || undefined;
+      const output = call.output;
       const evidence = output?.learnerModelDebug ?? output?.assessment;
       let result: string | undefined;
-      if (evidence && typeof evidence === 'object') {
-        const maybe = evidence as Record<string, any>;
+      if (evidence && typeof evidence === 'object' && !Array.isArray(evidence)) {
+        const maybe = evidence as Record<string, unknown>;
         if (typeof maybe.correct === 'boolean') {
           result = maybe.correct ? 'correct' : 'incorrect';
         } else if (typeof maybe.result === 'string') {
@@ -103,21 +103,22 @@ function summaryForCall(call: ToolCallLogEntry): string {
       return 'Learner model updated';
     }
     case 'generate_plan': {
-      const nodeCount = (call.output as Record<string, any> | undefined)?.nodes?.length;
+      const nodes = call.output?.nodes;
+      const nodeCount = Array.isArray(nodes) ? nodes.length : undefined;
       return typeof nodeCount === 'number'
         ? `Generated plan with ${nodeCount} steps`
         : 'Generated plan';
     }
     case 'create_diagnostic': {
-      const topic = (call.output as Record<string, any> | undefined)?.topic;
+      const topicValue = call.output?.topic;
+      const topic = typeof topicValue === 'string' ? topicValue : undefined;
       return typeof topic === 'string' && topic ? `Diagnostic for ${topic}` : 'Diagnostic created';
     }
     case 'web_search': {
-      const output = (call.output as Record<string, any> | undefined) || undefined;
-      const ok = typeof output?.ok === 'boolean' ? (output.ok as boolean) : undefined;
-      const resultsCount = Array.isArray(output?.resultsPreview)
-        ? output?.resultsPreview.length
-        : undefined;
+      const output = call.output;
+      const ok = typeof output?.ok === 'boolean' ? output.ok : undefined;
+      const resultsPreview = output?.resultsPreview;
+      const resultsCount = Array.isArray(resultsPreview) ? resultsPreview.length : undefined;
       if (ok === true) return `Web search (${resultsCount ?? 0} results)`;
       if (ok === false) return 'Web search error';
       return 'Web search';
@@ -381,7 +382,9 @@ export function ToolCallLog({
                           {metadataPairs.map(([key, value]) => (
                             <div key={key} className="flex justify-between gap-2">
                               <dt className="font-medium text-[var(--color-fg-muted)]">{key}</dt>
-                              <dd className="text-right text-[var(--color-fg)] break-words">{value}</dd>
+                              <dd className="text-right text-[var(--color-fg)] break-words">
+                                {value}
+                              </dd>
                             </div>
                           ))}
                         </dl>

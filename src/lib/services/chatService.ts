@@ -5,7 +5,6 @@ import {
   saveChat,
   saveChatWithMessages,
   saveFolder,
-  saveMessage,
 } from '@/lib/db';
 import type { Chat, Folder, Message } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';

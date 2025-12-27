@@ -45,11 +45,13 @@ export async function runWebSearch(args: WebSearchToolArgs): Promise<DeepSearchR
   });
 
   if (!res.ok) throw new Error(`brave_error_${res.status}`);
-  const data: any = await res.json();
-  const web = data?.web?.results || [];
-  return web.slice(0, count).map((entry: any) => ({
+  const data = (await res.json()) as {
+    web?: { results?: Array<{ title?: string; url?: string; description?: string }> };
+  };
+  const web = Array.isArray(data?.web?.results) ? data.web?.results : [];
+  return web.slice(0, count).map((entry) => ({
     title: entry?.title,
-    url: entry?.url,
+    url: entry?.url ?? '',
     description: entry?.description,
   }));
 }

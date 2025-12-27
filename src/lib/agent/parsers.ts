@@ -3,20 +3,26 @@
 
 import type { ToolCall } from '@/lib/agent/types';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
 export function normalizeToolCalls(message: unknown): ToolCall[] {
   const calls: ToolCall[] = [];
-  const rawCalls = Array.isArray((message as any)?.tool_calls) ? (message as any).tool_calls : [];
-  rawCalls.forEach((call: any, index: number) => {
-    const name = typeof call?.function?.name === 'string' ? call.function.name : '';
-    const args = typeof call?.function?.arguments === 'string' ? call.function.arguments : '';
+  const record = isRecord(message) ? message : undefined;
+  const rawCalls = Array.isArray(record?.tool_calls) ? record?.tool_calls : [];
+  rawCalls.forEach((call, index) => {
+    const callRecord = isRecord(call) ? call : undefined;
+    const fnRecord = isRecord(callRecord?.function) ? callRecord?.function : undefined;
+    const name = typeof fnRecord?.name === 'string' ? fnRecord.name : '';
+    const args = typeof fnRecord?.arguments === 'string' ? fnRecord.arguments : '';
     if (!name || !args) return;
-    const id = typeof call?.id === 'string' ? call.id : `call_${index}`;
+    const id = typeof callRecord?.id === 'string' ? callRecord.id : `call_${index}`;
     calls.push({ id, type: 'function', function: { name, arguments: args } });
   });
   if (calls.length > 0) return calls;
 
-  const legacy = (message as any)?.function_call;
-  if (legacy && typeof legacy === 'object') {
+  const legacy = isRecord(record?.function_call) ? record?.function_call : undefined;
+  if (legacy) {
     const name = typeof legacy.name === 'string' ? legacy.name : '';
     const args = typeof legacy.arguments === 'string' ? legacy.arguments : '';
     if (name && args) {

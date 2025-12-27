@@ -21,7 +21,12 @@ test('auth token verifies across node and edge helpers', async () => {
 test('auth token edge verifier rejects invalid signature', async () => {
   const previous = process.env.AUTH_COOKIE_SECRET;
   process.env.AUTH_COOKIE_SECRET = 'test-secret';
-  const claims = { iat: Date.now(), exp: Date.now() + 60_000, sub: 'user-abc', tier: 'individual' as const };
+  const claims = {
+    iat: Date.now(),
+    exp: Date.now() + 60_000,
+    sub: 'user-abc',
+    tier: 'individual' as const,
+  };
   const token = createAuthToken(claims);
   assert.equal(await verifyAuthTokenEdge(token, 'other-secret'), false);
   if (previous === undefined) delete process.env.AUTH_COOKIE_SECRET;

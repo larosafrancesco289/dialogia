@@ -51,13 +51,13 @@ Typography is the soul of Dialogia's design. Different voices get different font
 
 ### Typography Roles
 
-| Context | Font | Size | Line Height | Letter Spacing |
-|---------|------|------|-------------|----------------|
-| Assistant messages | `--font-serif-assistant` | 1.25rem | 1.72 | -0.006em |
-| User messages | `--font-sans` | 1.05rem | 1.55 | 0.002em |
-| Headlines (h1) | `--font-serif-assistant` | 1.65rem | 1.3 | -0.015em |
-| Marginalia/annotations | `--font-sans` | 0.9375rem (15px) | 1.65 | — |
-| Labels (uppercase) | `--font-sans` | 0.75rem | — | 0.05em |
+| Context                | Font                     | Size             | Line Height | Letter Spacing |
+| ---------------------- | ------------------------ | ---------------- | ----------- | -------------- |
+| Assistant messages     | `--font-serif-assistant` | 1.25rem          | 1.72        | -0.006em       |
+| User messages          | `--font-sans`            | 1.05rem          | 1.55        | 0.002em        |
+| Headlines (h1)         | `--font-serif-assistant` | 1.65rem          | 1.3         | -0.015em       |
+| Marginalia/annotations | `--font-sans`            | 0.9375rem (15px) | 1.65        | —              |
+| Labels (uppercase)     | `--font-sans`            | 0.75rem          | —           | 0.05em         |
 
 ### Typography Guidelines
 
@@ -73,33 +73,33 @@ Typography is the soul of Dialogia's design. Different voices get different font
 
 ### Light Mode ("Imperial Archive")
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `--color-canvas` | `#f4f1ec` | Page background (warm beige) |
-| `--color-surface` | `#fdfbf8` | Cards, panels (cream paper) |
-| `--color-muted` | `#f1ede7` | Subtle backgrounds |
-| `--color-fg` | `#1e1c18` | Primary text (dark brown) |
-| `--color-fg-muted` | `#5b534b` | Secondary text |
-| `--color-accent` | `#b9975b` | Primary accent (warm gold) |
-| `--color-accent-2` | `#6d2a8a` | Secondary accent (purple) |
-| `--color-border` | `#d5cfc4` | Borders (warm gray) |
-| `--color-success` | `#4a8c5a` | Positive feedback (muted green) |
-| `--color-danger` | `#b35a4a` | Negative feedback (muted red) |
+| Token              | Hex       | Usage                           |
+| ------------------ | --------- | ------------------------------- |
+| `--color-canvas`   | `#f4f1ec` | Page background (warm beige)    |
+| `--color-surface`  | `#fdfbf8` | Cards, panels (cream paper)     |
+| `--color-muted`    | `#f1ede7` | Subtle backgrounds              |
+| `--color-fg`       | `#1e1c18` | Primary text (dark brown)       |
+| `--color-fg-muted` | `#5b534b` | Secondary text                  |
+| `--color-accent`   | `#b9975b` | Primary accent (warm gold)      |
+| `--color-accent-2` | `#6d2a8a` | Secondary accent (purple)       |
+| `--color-border`   | `#d5cfc4` | Borders (warm gray)             |
+| `--color-success`  | `#4a8c5a` | Positive feedback (muted green) |
+| `--color-danger`   | `#b35a4a` | Negative feedback (muted red)   |
 
 ### Dark Mode ("Candlelit Study")
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `--color-canvas` | `#0a0908` | Page background (near black) |
-| `--color-surface` | `#14120f` | Cards (aged leather) |
-| `--color-muted` | `#1c1814` | Subtle backgrounds |
-| `--color-fg` | `#f4f1ec` | Primary text (light cream) |
-| `--color-fg-muted` | `#b8b0a4` | Secondary text |
-| `--color-accent` | `#c9a227` | Primary accent (glowing gold) |
-| `--color-accent-2` | `#8b5a9e` | Secondary accent |
-| `--color-border` | `#2a2420` | Borders |
-| `--color-success` | `#7cb87a` | Positive feedback |
-| `--color-danger` | `#d4645a` | Negative feedback |
+| Token              | Hex       | Usage                         |
+| ------------------ | --------- | ----------------------------- |
+| `--color-canvas`   | `#0a0908` | Page background (near black)  |
+| `--color-surface`  | `#14120f` | Cards (aged leather)          |
+| `--color-muted`    | `#1c1814` | Subtle backgrounds            |
+| `--color-fg`       | `#f4f1ec` | Primary text (light cream)    |
+| `--color-fg-muted` | `#b8b0a4` | Secondary text                |
+| `--color-accent`   | `#c9a227` | Primary accent (glowing gold) |
+| `--color-accent-2` | `#8b5a9e` | Secondary accent              |
+| `--color-border`   | `#2a2420` | Borders                       |
+| `--color-success`  | `#7cb87a` | Positive feedback             |
+| `--color-danger`   | `#d4645a` | Negative feedback             |
 
 ### Derived Colors
 
@@ -140,13 +140,13 @@ Typography is the soul of Dialogia's design. Different voices get different font
 ```css
 --control-sm: 32px;
 --control-md: 40px;
---control-lg: 44px;  /* Minimum tap target */
+--control-lg: 44px; /* Minimum tap target */
 ```
 
 ### Border Radius
 
 ```css
---radius-editorial: 6px;       /* Print-like, refined */
+--radius-editorial: 6px; /* Print-like, refined */
 --radius-editorial-mobile: 10px; /* Larger on mobile */
 --radius-xs: 8px;
 --radius-sm: 10px;
@@ -164,14 +164,12 @@ Shadows in Dialogia have warm undertones, like cards resting on a wooden desk.
 ```css
 /* Light mode */
 --shadow-message:
-  0 1px 2px rgba(120, 90, 50, 0.04),
-  0 4px 8px rgba(100, 80, 40, 0.03),
+  0 1px 2px rgba(120, 90, 50, 0.04), 0 4px 8px rgba(100, 80, 40, 0.03),
   0 8px 24px rgba(80, 60, 30, 0.04);
 
 /* Dark mode — includes subtle gold tint */
 --shadow-message:
-  0 1px 3px rgba(20, 15, 10, 0.3),
-  0 4px 12px rgba(20, 15, 10, 0.25),
+  0 1px 3px rgba(20, 15, 10, 0.3), 0 4px 12px rgba(20, 15, 10, 0.25),
   0 8px 24px rgba(201, 162, 39, 0.05);
 
 /* Standard elevation */
@@ -187,10 +185,10 @@ Shadows in Dialogia have warm undertones, like cards resting on a wooden desk.
 ### Easing Functions
 
 ```css
---ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);    /* Smooth default */
---ease-emphasized: cubic-bezier(0.2, 0.7, 0, 1);    /* Snappier */
+--ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1); /* Smooth default */
+--ease-emphasized: cubic-bezier(0.2, 0.7, 0, 1); /* Snappier */
 --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.1); /* Weighted spring */
---spring-snappy: cubic-bezier(0.34, 1.56, 0.64, 1);   /* Ultra springy */
+--spring-snappy: cubic-bezier(0.34, 1.56, 0.64, 1); /* Ultra springy */
 ```
 
 ### Durations
@@ -203,13 +201,13 @@ Shadows in Dialogia have warm undertones, like cards resting on a wooden desk.
 
 ### Key Animations
 
-| Animation | Usage | Duration | Easing |
-|-----------|-------|----------|--------|
-| `fadeSlideUp` | Page entrances, staggered reveals | 0.5-0.6s | `--ease-emphasized` |
-| `drawRule` | Decorative lines drawing in | 0.8s | `--ease-emphasized` |
-| `answer-pop` | MCQ selection feedback | 140ms | `--spring-snappy` |
-| `voice-pulse` | Audio indicator | 1.5s | ease-in-out |
-| `thinking-scan` | Shimmer on loading states | 2.4s | ease-in-out |
+| Animation       | Usage                             | Duration | Easing              |
+| --------------- | --------------------------------- | -------- | ------------------- |
+| `fadeSlideUp`   | Page entrances, staggered reveals | 0.5-0.6s | `--ease-emphasized` |
+| `drawRule`      | Decorative lines drawing in       | 0.8s     | `--ease-emphasized` |
+| `answer-pop`    | MCQ selection feedback            | 140ms    | `--spring-snappy`   |
+| `voice-pulse`   | Audio indicator                   | 1.5s     | ease-in-out         |
+| `thinking-scan` | Shimmer on loading states         | 2.4s     | ease-in-out         |
 
 ### Animation Principles
 
@@ -230,7 +228,7 @@ The signature Dialogia pattern — editorial annotations that feel like handwrit
 .marginalia {
   background: var(--marginalia-bg);
   border: 1px solid var(--rule-light);
-  border-left: 3px solid var(--rule-accent);  /* Accent stripe */
+  border-left: 3px solid var(--rule-accent); /* Accent stripe */
   border-radius: var(--radius-editorial);
   padding: var(--space-4);
   font-size: 0.9375rem;
@@ -246,7 +244,7 @@ Dialogia uses solid paper-like surfaces, not glassmorphism.
 
 ```css
 .glass {
-  background: var(--surface-paper);  /* Solid, not translucent */
+  background: var(--surface-paper); /* Solid, not translucent */
 }
 
 .glass-panel {
@@ -282,7 +280,9 @@ Dialogia uses solid paper-like surfaces, not glassmorphism.
 .btn-primary {
   background: var(--color-accent);
   color: #0b0b0b;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, var(--shadow-1);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    var(--shadow-1);
 }
 
 /* Outline — subtle border */
@@ -334,7 +334,7 @@ body::before {
   inset: 0;
   pointer-events: none;
   opacity: 0.35;
-  background-image: url("data:image/svg+xml,...feTurbulence...");
+  background-image: url('data:image/svg+xml,...feTurbulence...');
   mix-blend-mode: overlay;
 }
 ```
@@ -358,11 +358,11 @@ body::after {
 
 ## Responsive Breakpoints
 
-| Breakpoint | Behavior |
-|------------|----------|
-| `< 640px` | Mobile: single column, sticky composer, larger touch targets |
-| `>= 640px` | Desktop: sidebar + content grid, asymmetric layouts |
-| `>= 1024px` | Large desktop: increased padding, wider max-widths |
+| Breakpoint  | Behavior                                                     |
+| ----------- | ------------------------------------------------------------ |
+| `< 640px`   | Mobile: single column, sticky composer, larger touch targets |
+| `>= 640px`  | Desktop: sidebar + content grid, asymmetric layouts          |
+| `>= 1024px` | Large desktop: increased padding, wider max-widths           |
 
 ### Mobile Adaptations
 
@@ -420,9 +420,7 @@ export function TutorCard({ title, children }) {
       <div className={styles.header}>
         <span className={styles.label}>{title}</span>
       </div>
-      <div className={styles.content}>
-        {children}
-      </div>
+      <div className={styles.content}>{children}</div>
     </motion.div>
   );
 }
@@ -453,4 +451,4 @@ export function TutorCard({ title, children }) {
 
 ---
 
-*This document should be read alongside the `frontend-design` skill to maintain design consistency across all Dialogia UI work.*
+_This document should be read alongside the `frontend-design` skill to maintain design consistency across all Dialogia UI work._

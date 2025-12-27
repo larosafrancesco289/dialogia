@@ -49,7 +49,10 @@ export type RepositorySnapshot = {
   tutorByMessageId: Record<string, MessageTutor>;
 };
 
-function pickMessageCollection(table: DbTable<Message>, chatId: string): DbCollection<Message> | null {
+function pickMessageCollection(
+  table: DbTable<Message>,
+  chatId: string,
+): DbCollection<Message> | null {
   if (!table.where) return null;
   try {
     const byField = table.where('chatId') as DbWhereClause<Message> | undefined;
@@ -87,7 +90,9 @@ async function deleteMessagesForChat(db: DialogiaDbLike, chatId: string): Promis
     return;
   }
   const all = await db.messages.toArray();
-  await Promise.all(all.filter((msg) => msg.chatId === chatId).map((msg) => db.messages.delete(msg.id)));
+  await Promise.all(
+    all.filter((msg) => msg.chatId === chatId).map((msg) => db.messages.delete(msg.id)),
+  );
 }
 
 type TransactionTable = DbTable<Chat> | DbTable<Message> | DbTable<Folder>;
@@ -135,11 +140,7 @@ export function createRepository(db: DialogiaDbLike) {
     return { chats, messages, folders };
   };
 
-  const importAll = async (data: {
-    chats: Chat[];
-    messages: Message[];
-    folders?: Folder[];
-  }) => {
+  const importAll = async (data: { chats: Chat[]; messages: Message[]; folders?: Folder[] }) => {
     await runTransaction(db, [db.chats, db.messages, db.folders], async () => {
       for (const c of data.chats) await db.chats.put(c);
       for (const m of data.messages) await db.messages.put(m);
@@ -147,9 +148,7 @@ export function createRepository(db: DialogiaDbLike) {
     });
   };
 
-  const loadRepositorySnapshot = async (
-    selectedChatId?: string,
-  ): Promise<RepositorySnapshot> => {
+  const loadRepositorySnapshot = async (selectedChatId?: string): Promise<RepositorySnapshot> => {
     const [chats, folders, messagesArray] = await Promise.all([
       db.chats.toArray(),
       db.folders.toArray(),

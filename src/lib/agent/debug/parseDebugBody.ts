@@ -151,8 +151,7 @@ export function parseDebugBody(
   if (parsed && Array.isArray(parsed.messages)) {
     parsed.messages.forEach((entry, index) => {
       if (!isRecord(entry)) return;
-      const role =
-        typeof entry.role === 'string' ? entry.role : `message ${index + 1}`;
+      const role = typeof entry.role === 'string' ? entry.role : `message ${index + 1}`;
       const snippet = extractContentSnippet(entry.content);
       const toolCallsNames =
         Array.isArray(entry.tool_calls) && entry.tool_calls.length

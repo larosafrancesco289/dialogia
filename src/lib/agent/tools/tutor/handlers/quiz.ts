@@ -17,8 +17,7 @@ export function createQuizHandler(
       const record = input as Record<string, unknown>;
       const normalized = normalizeTutorQuizPayload(record);
       if (!normalized) return null;
-      const title =
-        typeof record.title === 'string' ? (record.title as string).trim() : undefined;
+      const title = typeof record.title === 'string' ? (record.title as string).trim() : undefined;
       return { items: normalized.items, title };
     },
     async apply(ctx, args) {
@@ -28,7 +27,9 @@ export function createQuizHandler(
           [mapKey]: items,
           title:
             title ||
-            (typeof prev.title === 'string' && prev.title.trim().length > 0 ? prev.title : undefined),
+            (typeof prev.title === 'string' && prev.title.trim().length > 0
+              ? prev.title
+              : undefined),
         }),
       );
       try {

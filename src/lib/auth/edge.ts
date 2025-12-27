@@ -6,7 +6,6 @@ export type { AccessTier, AuthClaims };
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-
 /**
  * Verify auth token in edge runtime.
  * @returns boolean for backwards compatibility
@@ -16,9 +15,7 @@ export async function verifyAuthTokenEdge(token: string, secret: string): Promis
   return result !== null;
 }
 
-export type VerifyResult =
-  | { ok: true; claims: AuthClaims }
-  | { ok: false; reason: string };
+export type VerifyResult = { ok: true; claims: AuthClaims } | { ok: false; reason: string };
 
 /**
  * Verify auth token in edge runtime and return claims if valid.
@@ -68,7 +65,8 @@ export async function verifyAuthTokenEdgeDetailed(
       return { ok: false, reason: 'expired' };
     }
     return { ok: true, claims };
-  } catch (e: any) {
-    return { ok: false, reason: `error:${e?.message || 'unknown'}` };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'unknown';
+    return { ok: false, reason: `error:${message}` };
   }
 }

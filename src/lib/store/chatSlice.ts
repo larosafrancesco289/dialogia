@@ -17,15 +17,13 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
   return {
     async initializeApp() {
       const snapshot = await loadRepositorySnapshot(get().selectedChatId);
-      set(
-        (s) => ({
-          chats: snapshot.chats,
-          folders: snapshot.folders,
-          messages: snapshot.messages,
-          selectedChatId: snapshot.selectedChatId,
-          ui: mergeTutorMap(s.ui, snapshot.tutorByMessageId),
-        }),
-      );
+      set((s) => ({
+        chats: snapshot.chats,
+        folders: snapshot.folders,
+        messages: snapshot.messages,
+        selectedChatId: snapshot.selectedChatId,
+        ui: mergeTutorMap(s.ui, snapshot.tutorByMessageId),
+      }));
       try {
         if (snapshot.selectedChatId) {
           await get().loadTutorProfileIntoUI(snapshot.selectedChatId);

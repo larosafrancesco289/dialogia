@@ -125,7 +125,7 @@ export const executeModelTurn = async ({
     if (finalAssistant) {
       // Lifecycle already pushed gen settings/system snapshot; no-op here.
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleTurnApiError(error, set);
     controller.abort();
   } finally {

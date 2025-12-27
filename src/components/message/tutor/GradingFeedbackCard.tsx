@@ -1,6 +1,6 @@
-"use client";
-import { ClipboardDocumentCheckIcon } from "@heroicons/react/24/outline";
-import { safeKey } from "@/components/message/tutor/shared";
+'use client';
+import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
+import { safeKey } from '@/components/message/tutor/shared';
 
 export function GradingFeedbackCard({
   grading,
@@ -16,10 +16,10 @@ export function GradingFeedbackCard({
       </div>
       <div className="space-y-4 text-sm">
         {Object.entries(grading).map(([id, g], idx) => (
-          <div key={safeKey(id, idx, "grade")} className="space-y-1">
+          <div key={safeKey(id, idx, 'grade')} className="space-y-1">
             <div className="font-medium text-foreground">
               Item {id}
-              {g.score != null ? ` · Score: ${Math.round(g.score * 100)}%` : ""}
+              {g.score != null ? ` · Score: ${Math.round(g.score * 100)}%` : ''}
             </div>
             <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
               {g.feedback}

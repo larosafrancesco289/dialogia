@@ -81,13 +81,14 @@ export const applyLearnerModelFeedbackHandler: TutorToolHandler<ApplyLearnerMode
       nodeMeta && result.from != null && result.to != null
         ? `${nodeMeta.name}: ${Math.round((result.from || 0) * 100)}% → ${Math.round((result.to || 0) * 100)}% (learner feedback)`
         : `Adjusted mastery for ${args.nodeId}`;
-    const planUpdatesWithSummary: Message['planUpdates'] | undefined =
-      (planResult?.planUpdates as Message['planUpdates'] | undefined) ?? {
-        masteryChanges:
-          result.from != null && result.to != null
-            ? [{ nodeId: args.nodeId, from: result.from, to: result.to }]
-            : undefined,
-      };
+    const planUpdatesWithSummary: Message['planUpdates'] | undefined = (planResult?.planUpdates as
+      | Message['planUpdates']
+      | undefined) ?? {
+      masteryChanges:
+        result.from != null && result.to != null
+          ? [{ nodeId: args.nodeId, from: result.from, to: result.to }]
+          : undefined,
+    };
     if (planUpdatesWithSummary) {
       planUpdatesWithSummary.summary = planUpdatesWithSummary.summary ?? summary;
     }

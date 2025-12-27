@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
@@ -22,12 +22,13 @@ import { useMessageListController } from '@/components/message/useMessageListCon
 
 const EMPTY_MESSAGES: Message[] = [];
 export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
-  const { allMessages, chat, isStreaming, planGeneration } = useChatStore(
+  const { allMessages, chat, isStreaming, planGeneration, composerFocused } = useChatStore(
     (state) => ({
       allMessages: state.messages[chatId] ?? EMPTY_MESSAGES,
       chat: state.chats.find((c) => c.id === chatId),
       isStreaming: state.ui.isStreaming,
       planGeneration: state.ui.plan.generationByChatId?.[chatId],
+      composerFocused: state.ui.mobile.composerFocused,
     }),
     shallow,
   );
@@ -113,6 +114,34 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     isAssistantPlaceholder,
     onScrollAway: () => setActiveMessageId(null),
   });
+
+  // Track previous composerFocused state to detect when keyboard opens
+  const prevComposerFocusedRef = useRef(composerFocused);
+
+  // When keyboard opens on mobile, scroll to show the last message
+  useEffect(() => {
+    const wasNotFocused = !prevComposerFocusedRef.current;
+    const isNowFocused = composerFocused;
+    prevComposerFocusedRef.current = composerFocused;
+
+    if (!isMobile || !wasNotFocused || !isNowFocused) return;
+
+    // Keyboard just opened - scroll to show last message
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Small delay to let the keyboard animation settle
+    setTimeout(() => {
+      // Find the last message element
+      const messageElements = container.querySelectorAll('[data-mid]');
+      const lastMessage = messageElements[messageElements.length - 1];
+
+      if (lastMessage) {
+        // Scroll minimally - just ensure the last message is visible without over-scrolling
+        lastMessage.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+      }
+    }, 100);
+  }, [composerFocused, isMobile, containerRef]);
 
   const [lightbox, setLightbox] = useState<{
     images: { src: string; name?: string }[];

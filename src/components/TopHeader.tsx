@@ -21,6 +21,7 @@ import { PlanSheet } from '@/components/plan/PlanSheet';
 import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
 import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
 import type { UiNextOverrides } from '@/lib/agent/contracts';
+import type { LearningPlan } from '@/lib/types';
 
 const EMPTY_OVERRIDES: UiNextOverrides = {};
 
@@ -43,36 +44,31 @@ export function TopHeader() {
     models,
     planGeneration,
     planSheetOverride,
-  } = useChatStore(
-    (s) => {
-      const chatEntry = s.selectedChatId
-        ? s.chats.find((c) => c.id === s.selectedChatId)
-        : undefined;
-      const messageList = s.selectedChatId ? s.messages[s.selectedChatId] : undefined;
-      return {
-        chat: chatEntry,
-        messages: messageList,
-        renameChat: s.renameChat,
-        setUI: s.setUI,
-        newChat: s.newChat,
-        updateChatSettings: s.updateChatSettings,
-        sendUserMessage: s.sendUserMessage,
-        collapsed: s.ui.sidebarCollapsed ?? false,
-        isSettingsOpen: s.ui.showSettings,
-        planSheetOpen: s.ui.plan.sheetOpen ?? false,
-        overrides: s.ui.overrides,
-        tutorDefaultModelId: s.ui.tutor.defaultModelId,
-        experimentalTutor: !!s.ui.flags.experimentalTutor,
-        forceTutorMode: !!s.ui.tutor.forceMode,
-        models: s.models,
-        planGeneration: s.selectedChatId
-          ? s.ui.plan.generationByChatId?.[s.selectedChatId]
-          : undefined,
-        planSheetOverride: s.ui.plan.sheetPlanOverride ?? null,
-      };
-    },
-    shallow,
-  );
+  } = useChatStore((s) => {
+    const chatEntry = s.selectedChatId ? s.chats.find((c) => c.id === s.selectedChatId) : undefined;
+    const messageList = s.selectedChatId ? s.messages[s.selectedChatId] : undefined;
+    return {
+      chat: chatEntry,
+      messages: messageList,
+      renameChat: s.renameChat,
+      setUI: s.setUI,
+      newChat: s.newChat,
+      updateChatSettings: s.updateChatSettings,
+      sendUserMessage: s.sendUserMessage,
+      collapsed: s.ui.sidebarCollapsed ?? false,
+      isSettingsOpen: s.ui.showSettings,
+      planSheetOpen: s.ui.plan.sheetOpen ?? false,
+      overrides: s.ui.overrides,
+      tutorDefaultModelId: s.ui.tutor.defaultModelId,
+      experimentalTutor: !!s.ui.flags.experimentalTutor,
+      forceTutorMode: !!s.ui.tutor.forceMode,
+      models: s.models,
+      planGeneration: s.selectedChatId
+        ? s.ui.plan.generationByChatId?.[s.selectedChatId]
+        : undefined,
+      planSheetOverride: s.ui.plan.sheetPlanOverride ?? null,
+    };
+  }, shallow);
   const nextOverrides = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const nextTutorMode = !!nextOverrides.tutorMode;
   const tutorActive =
@@ -119,7 +115,7 @@ export function TopHeader() {
     renameChat(chat.id, trimmed);
   };
 
-  const handlePlanUpdate = async (updatedPlan: any) => {
+  const handlePlanUpdate = async (updatedPlan: LearningPlan) => {
     await updateChatSettings({ learningPlan: updatedPlan });
   };
 

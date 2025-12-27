@@ -2,7 +2,7 @@
  * Attempts to parse a JSON string that may be incomplete (e.g. from a stream).
  * It tries to repair the string by closing open structures before parsing.
  */
-export function parsePartialJson(json: string): any {
+export function parsePartialJson(json: string): unknown {
   if (!json) return null;
 
   // First try normal parse

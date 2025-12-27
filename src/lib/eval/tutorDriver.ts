@@ -72,19 +72,22 @@ function normalizeContent(input: unknown): string {
     return input
       .map((entry) => {
         if (typeof entry === 'string') return entry;
-        if (entry && typeof entry === 'object' && 'text' in entry) {
-          const block = entry as { text?: string };
-          return typeof block.text === 'string' ? block.text : '';
+        if (isTextRecord(entry)) {
+          return typeof entry.text === 'string' ? entry.text : '';
         }
         return '';
       })
       .filter(Boolean)
       .join('\n');
   }
-  if (input && typeof input === 'object' && 'text' in input) {
-    return typeof (input as any).text === 'string' ? ((input as any).text as string) : '';
+  if (isTextRecord(input)) {
+    return typeof input.text === 'string' ? input.text : '';
   }
   return '';
+}
+
+function isTextRecord(value: unknown): value is { text?: unknown } {
+  return !!value && typeof value === 'object' && 'text' in value;
 }
 
 function resolveApiKeyFactory(

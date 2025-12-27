@@ -109,5 +109,5 @@ business logic that is easy to test.
 3. Define tool schemas under `src/lib/agent/searchFlow.ts` (or a new module) and surface helpers
    from the agent layer—never from UI components.
 4. Register tool parsing or execution in `src/lib/agent/planning.ts` / `streaming.ts` and keep
-  side-effects (store writes, notices) funneled through services.
+   side-effects (store writes, notices) funneled through services.
 5. Update `CONFIGURATION.md` with any new environment variables and document proxy requirements.

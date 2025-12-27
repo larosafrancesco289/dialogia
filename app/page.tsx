@@ -4,6 +4,7 @@ import { ChatSidebar } from '@/components/ChatSidebar';
 import { ChatPane } from '@/components/ChatPane';
 import { TopHeader } from '@/components/TopHeader';
 import { MobileHeader } from '@/components/MobileHeader';
+import { MobileShell } from '@/components/mobile/MobileShell';
 const SettingsDrawer = dynamic(
   () =>
     import(/* webpackPrefetch: true */ '@/components/SettingsDrawer').then(
@@ -71,6 +72,11 @@ export default function HomePage() {
   const sidebarStyle = {
     '--sidebar-width': collapsed ? '0px' : '320px',
   } as CSSProperties;
+
+  // Render mobile shell for small screens
+  if (mounted && isMobile) {
+    return <MobileShell />;
+  }
 
   return (
     <div className="app-shell" style={sidebarStyle}>

@@ -2,10 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import {
-  getVoiceSessionManager,
-  type VoiceSessionStatus,
-} from '@/lib/voice/xaiSession';
+import { getVoiceSessionManager, type VoiceSessionStatus } from '@/lib/voice/xaiSession';
 
 export interface VoiceMessage {
   id: string;
@@ -87,7 +84,14 @@ export function useXAIVoice(options: UseXAIVoiceOptions = {}) {
         onError: handleError,
       },
     });
-  }, [manager, voiceConfig, handleUserMessage, handleAssistantMessage, handleStatusChange, handleError]);
+  }, [
+    manager,
+    voiceConfig,
+    handleUserMessage,
+    handleAssistantMessage,
+    handleStatusChange,
+    handleError,
+  ]);
 
   const stop = useCallback(() => {
     manager.stop();

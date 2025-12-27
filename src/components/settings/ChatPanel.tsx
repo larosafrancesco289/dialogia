@@ -312,7 +312,21 @@ export function ChatPanel(props: ChatPanelProps) {
               <select
                 className="input w-full"
                 value={reasoningEffort ?? ''}
-                onChange={(e) => setReasoningEffort((e.target.value || undefined) as any)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setReasoningEffort(undefined);
+                    return;
+                  }
+                  if (
+                    value === 'none' ||
+                    value === 'low' ||
+                    value === 'medium' ||
+                    value === 'high'
+                  ) {
+                    setReasoningEffort(value);
+                  }
+                }}
               >
                 <option value="">model default</option>
                 <option value="none">none</option>

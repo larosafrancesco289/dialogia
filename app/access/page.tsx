@@ -26,7 +26,7 @@ export default function AccessPage() {
         // Force full navigation so the new HttpOnly cookie is sent to the server
         window.location.replace('/');
       }
-    } catch (e: any) {
+    } catch {
       setError('Network error');
     } finally {
       setLoading(false);
@@ -43,7 +43,7 @@ export default function AccessPage() {
       } else {
         window.location.replace('/');
       }
-    } catch (e: any) {
+    } catch {
       setError('Network error');
     } finally {
       setFreeTierLoading(false);
@@ -101,10 +101,7 @@ export default function AccessPage() {
 
         {/* Error display */}
         {error && (
-          <div
-            className="text-sm mt-4 text-center"
-            style={{ color: 'var(--color-danger)' }}
-          >
+          <div className="text-sm mt-4 text-center" style={{ color: 'var(--color-danger)' }}>
             {String(error)}
           </div>
         )}

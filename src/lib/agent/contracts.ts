@@ -98,6 +98,18 @@ export type UiPlanSnapshot = {
   >;
 };
 
+export type MobileTab = 'chats' | 'new' | 'settings';
+
+export type UiMobileSnapshot = {
+  activeTab: MobileTab;
+  chatsSheetOpen: boolean;
+  settingsSheetOpen: boolean;
+  headerVisible: boolean;
+  swipeRevealedMessageId: string | null;
+  lastScrollY: number;
+  composerFocused: boolean;
+};
+
 export type UiSnapshot = {
   showSettings: boolean;
   isStreaming: boolean;
@@ -110,6 +122,7 @@ export type UiSnapshot = {
   search: UiSearchSnapshot;
   tutor: UiTutorSnapshot;
   plan: UiPlanSnapshot;
+  mobile: UiMobileSnapshot;
 };
 
 export type TurnStoreState = {

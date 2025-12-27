@@ -88,7 +88,7 @@ export const createModelSlice = createStoreSlice((set, get) => {
             } else {
               openrouterModels = filtered;
             }
-          } catch (error: any) {
+          } catch (error: unknown) {
             openrouterModels = [];
             if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
               set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
@@ -99,7 +99,7 @@ export const createModelSlice = createStoreSlice((set, get) => {
         if (anthropicStatus && !zdrOnly) {
           try {
             anthropicModels = await fetchAnthropicModels(anthropicStatus.key || '');
-          } catch (error: any) {
+          } catch (error: unknown) {
             anthropicModels = [];
             if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
               set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));

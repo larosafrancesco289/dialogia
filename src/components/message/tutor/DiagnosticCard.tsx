@@ -1,10 +1,10 @@
-"use client";
-import { useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
-import { ChartBarIcon } from "@heroicons/react/24/outline";
-import type { TutorDiagnostic, TutorMCQItem } from "@/lib/types";
-import { useChatStore } from "@/lib/store";
-import { McqCard } from "@/components/message/tutor/McqCard";
+'use client';
+import { useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { ChartBarIcon } from '@heroicons/react/24/outline';
+import type { TutorDiagnostic, TutorMCQItem } from '@/lib/types';
+import { useChatStore } from '@/lib/store';
+import { McqCard } from '@/components/message/tutor/McqCard';
 
 export function DiagnosticCard({
   messageId,
@@ -17,14 +17,14 @@ export function DiagnosticCard({
   const sendUserMessage = useChatStore((s) => s.sendUserMessage);
   const tutorEntry = useChatStore((s) => s.ui.tutor.byMessageId?.[messageId]);
   const attempts = tutorEntry?.attempts;
-  const mcqAttempts = (attempts?.mcq as Record<string, { done?: boolean; correct?: boolean }>) || {};
+  const mcqAttempts: Record<string, { done?: boolean; correct?: boolean }> = attempts?.mcq ?? {};
 
   const total = diagnostic.items.length;
   const answered = diagnostic.items.filter((item) => mcqAttempts[item.id]?.done).length;
   const correct = diagnostic.items.filter((item) => mcqAttempts[item.id]?.correct).length;
   const percentComplete = total > 0 ? Math.round((answered / total) * 100) : 0;
   const scoreRatio =
-    diagnostic.status === "completed" && typeof diagnostic.score === "number"
+    diagnostic.status === 'completed' && typeof diagnostic.score === 'number'
       ? diagnostic.score
       : total > 0
         ? correct / total
@@ -33,63 +33,75 @@ export function DiagnosticCard({
 
   useEffect(() => {
     if (total === 0 || answered !== total) return;
-    const prevDiagnosticMeta = (tutorEntry as any)?.diagnosticMeta || {};
-    const prevCompletion = (prevDiagnosticMeta.completedAt as Record<string, number>) || {};
+    const prevDiagnosticMeta = tutorEntry?.diagnosticMeta || {};
+    const prevCompletion = prevDiagnosticMeta.completedAt || {};
     const alreadyRecorded = !!prevCompletion[diagnostic.diagnosticId];
     const now = Date.now();
 
     const needsStatusUpdate =
-      diagnostic.status !== "completed" || typeof diagnostic.score !== "number";
+      diagnostic.status !== 'completed' || typeof diagnostic.score !== 'number';
     if (needsStatusUpdate || !alreadyRecorded) {
       const updatedDiagnostic: TutorDiagnostic = needsStatusUpdate
-        ? { ...diagnostic, status: "completed", score: scoreRatio }
+        ? { ...diagnostic, status: 'completed', score: scoreRatio }
         : diagnostic;
-      void patchTutorEntry(
-        messageId,
-        {
-          diagnostic: updatedDiagnostic,
-          diagnosticMeta: {
-            ...prevDiagnosticMeta,
-            completedAt: {
-              ...prevCompletion,
-              [diagnostic.diagnosticId]: now,
-            },
+      void patchTutorEntry(messageId, {
+        diagnostic: updatedDiagnostic,
+        diagnosticMeta: {
+          ...prevDiagnosticMeta,
+          completedAt: {
+            ...prevCompletion,
+            [diagnostic.diagnosticId]: now,
           },
-        } as any,
-      );
+        },
+      });
     }
 
     if (!alreadyRecorded) {
-      const topicText = diagnostic.topic ? ` on ${diagnostic.topic}` : "";
+      const topicText = diagnostic.topic ? ` on ${diagnostic.topic}` : '';
       const message = `Completed diagnostic${topicText} (${scorePercent}%).`;
       sendUserMessage(message, {
         metadata: {
           hiddenFromUser: true,
-          kind: "tutor_diagnostic_completion",
+          kind: 'tutor_diagnostic_completion',
         },
       }).catch(() => void 0);
     }
-  }, [answered, total, diagnostic, messageId, scoreRatio, scorePercent, patchTutorEntry, sendUserMessage, tutorEntry]);
+  }, [
+    answered,
+    total,
+    diagnostic,
+    messageId,
+    scoreRatio,
+    scorePercent,
+    patchTutorEntry,
+    sendUserMessage,
+    tutorEntry,
+  ]);
 
   const mcqItems: TutorMCQItem[] = useMemo(
     () =>
-      diagnostic.items.map((item) => ({
-        id: item.id,
-        question: item.question,
-        choices: item.choices,
-        correct: typeof item.correct === "number" ? item.correct : -1,
-        explanation: item.explanation,
-        topic: item.skill,
-        skill: item.skill,
-        difficulty:
-          item.difficulty === "beginner"
-            ? "easy"
-            : item.difficulty === "advanced"
-              ? "hard"
-              : item.difficulty === "intermediate"
-                ? "medium"
-                : (item.difficulty as any),
-      })),
+      diagnostic.items.map((item) => {
+        let normalizedDifficulty: TutorMCQItem['difficulty'] | undefined;
+        if (item.difficulty === 'beginner') normalizedDifficulty = 'easy';
+        else if (item.difficulty === 'intermediate') normalizedDifficulty = 'medium';
+        else if (item.difficulty === 'advanced') normalizedDifficulty = 'hard';
+        else if (
+          item.difficulty === 'easy' ||
+          item.difficulty === 'medium' ||
+          item.difficulty === 'hard'
+        )
+          normalizedDifficulty = item.difficulty;
+        return {
+          id: item.id,
+          question: item.question,
+          choices: item.choices,
+          correct: typeof item.correct === 'number' ? item.correct : -1,
+          explanation: item.explanation,
+          topic: item.skill,
+          skill: item.skill,
+          difficulty: normalizedDifficulty,
+        };
+      }),
     [diagnostic.items],
   );
 
@@ -118,12 +130,12 @@ export function DiagnosticCard({
             Diagnostic · {diagnostic.topic}
           </span>
           <span className="text-xs text-[var(--color-fg-muted)]">
-            {diagnostic.depth === "comprehensive"
-              ? "Comprehensive check"
-              : diagnostic.depth === "moderate"
-                ? "Moderate check"
-                : "Quick check"}
-            {" · "}
+            {diagnostic.depth === 'comprehensive'
+              ? 'Comprehensive check'
+              : diagnostic.depth === 'moderate'
+                ? 'Moderate check'
+                : 'Quick check'}
+            {' · '}
             {answered}/{total} answered
           </span>
         </div>
@@ -152,7 +164,9 @@ export function DiagnosticCard({
           animate={{ opacity: 1, y: 0 }}
           className="mt-4 rounded-[var(--radius-editorial)] border border-[var(--color-border)]/60 bg-[var(--color-muted)]/20 p-4 text-xs text-[var(--color-fg-muted)]"
         >
-          <div className="font-bold text-[var(--color-fg)] text-sm mb-1">Score: {scorePercent}%</div>
+          <div className="font-bold text-[var(--color-fg)] text-sm mb-1">
+            Score: {scorePercent}%
+          </div>
           {interpretation && <div className="leading-relaxed">{interpretation}</div>}
         </motion.div>
       )}

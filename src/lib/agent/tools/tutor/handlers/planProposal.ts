@@ -4,6 +4,9 @@ import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { normalizePlanSuggestions, withContentReset } from '@/lib/agent/tools/tutor/shared';
 import { validateLearningPlan } from '@/lib/learningPlan/validate';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
 export function createPlanProposalHandler(
   defaultRequiresConfirmation: boolean,
 ): TutorToolHandler<Record<string, unknown>> {
@@ -17,18 +20,14 @@ export function createPlanProposalHandler(
         args.plan && typeof args.plan === 'object' ? (args.plan as Record<string, unknown>) : args;
       const nodesRaw = Array.isArray(source.nodes) ? source.nodes : [];
       const normalizedNodes = nodesRaw
-        .map((node: any, index: number) => {
-          if (!node || typeof node !== 'object') return null;
+        .map((node, index: number) => {
+          if (!isRecord(node)) return null;
           const nameRaw = typeof node.name === 'string' ? node.name.trim() : undefined;
-          const objectivesRaw = Array.isArray(node.objectives)
-            ? (node.objectives as unknown[])
-            : [];
+          const objectivesRaw = Array.isArray(node.objectives) ? node.objectives : [];
           const objectives = objectivesRaw
             .map((obj: unknown) => (typeof obj === 'string' ? obj.trim() : undefined))
             .filter((obj): obj is string => !!obj);
-          const prerequisitesRaw = Array.isArray(node.prerequisites)
-            ? (node.prerequisites as unknown[])
-            : [];
+          const prerequisitesRaw = Array.isArray(node.prerequisites) ? node.prerequisites : [];
           const prerequisites = prerequisitesRaw
             .map((pr: unknown) => (typeof pr === 'string' ? pr.trim() : undefined))
             .filter((pr): pr is string => !!pr);
@@ -37,6 +36,22 @@ export function createPlanProposalHandler(
             typeof node.id === 'string' && node.id.trim()
               ? node.id.trim()
               : `node_${index + 1}_${uuidv4()}`;
+          const resources = Array.isArray(node.resources)
+            ? node.resources
+                .map((entry) => {
+                  if (!isRecord(entry)) return null;
+                  const type = entry.type;
+                  if (type !== 'reading' && type !== 'video' && type !== 'practice') return null;
+                  const title = typeof entry.title === 'string' ? entry.title.trim() : '';
+                  if (!title) return null;
+                  const url = typeof entry.url === 'string' ? entry.url.trim() : undefined;
+                  return { type, title, url };
+                })
+                .filter(Boolean)
+            : undefined;
+          const children = Array.isArray(node.children)
+            ? node.children.filter((child): child is string => typeof child === 'string')
+            : undefined;
           return {
             id,
             name: nameRaw,
@@ -51,8 +66,8 @@ export function createPlanProposalHandler(
               typeof node.estimatedMinutes === 'number'
                 ? Math.max(5, Math.min(360, Math.round(node.estimatedMinutes)))
                 : undefined,
-            resources: Array.isArray(node.resources) ? node.resources : undefined,
-            children: Array.isArray(node.children) ? node.children : undefined,
+            resources,
+            children,
           };
         })
         .filter(Boolean) as LearningPlan['nodes'];

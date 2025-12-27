@@ -11,7 +11,11 @@ import {
   summarizeLearningPlan,
   updateNodeStatus as updateNodeStatusImpl,
 } from '@/lib/learningPlan/progress';
-import { detectLearningGoal, generateLearningPlan, PLAN_GENERATOR_SYSTEM } from '@/lib/learningPlan/generator';
+import {
+  detectLearningGoal,
+  generateLearningPlan,
+  PLAN_GENERATOR_SYSTEM,
+} from '@/lib/learningPlan/generator';
 import { validateLearningPlan } from '@/lib/learningPlan/validate';
 
 export const getNextNode = (plan: LearningPlan): LearningPlanNode | null => getNextNodeImpl(plan);

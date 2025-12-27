@@ -11,10 +11,6 @@ export type SearchUiPayload = {
   error?: string;
 };
 
-export function setSearchUiStatus(
-  store: StoreAccess,
-  messageId: string,
-  payload: SearchUiPayload,
-) {
+export function setSearchUiStatus(store: StoreAccess, messageId: string, payload: SearchUiPayload) {
   store.get().setSearchStatus(messageId, payload);
 }

@@ -97,8 +97,7 @@ export const generatePlanTool: ToolDefinition = {
         },
         requiresConfirmation: {
           type: 'boolean',
-          description:
-            'Whether the learner must explicitly approve the plan before it is adopted.',
+          description: 'Whether the learner must explicitly approve the plan before it is adopted.',
         },
         confirmationMessage: {
           type: 'string',

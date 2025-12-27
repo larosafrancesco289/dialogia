@@ -33,7 +33,10 @@ test('parseDebugBody extracts summary, tools, plugins, and messages', () => {
 
   const snapshot = parseDebugBody(body, { includeRawJson: true });
   assert.ok(snapshot);
-  assert.equal(snapshot.summaryItems.some((item) => item.label === 'Model'), true);
+  assert.equal(
+    snapshot.summaryItems.some((item) => item.label === 'Model'),
+    true,
+  );
   assert.deepEqual(snapshot.toolNames.sort(), ['flashcards', 'web_search']);
   assert.deepEqual(snapshot.pluginNames.sort(), ['file-parser', 'web']);
   assert.equal(snapshot.messageItems.length, 2);

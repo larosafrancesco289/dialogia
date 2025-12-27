@@ -188,18 +188,23 @@ export function PlanView({
         <aside className="lg:col-span-5 xl:col-span-4 space-y-6 sticky top-4">
           {/* Next Up Card - editorial marginalia style */}
           {nextNode && !allCompleted && (
-            <div
-              className="marginalia p-4"
-              style={{ borderLeftColor: 'var(--color-accent)' }}
-            >
+            <div className="marginalia p-4" style={{ borderLeftColor: 'var(--color-accent)' }}>
               <div className="mb-2 flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>
+                <span
+                  className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: 'var(--color-accent)' }}
+                >
                   <SparklesIcon className="h-3 w-3" />
                   Up Next
                 </span>
               </div>
 
-              <h3 className="text-sm font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-serif-assistant)' }}>{nextNode.name}</h3>
+              <h3
+                className="text-sm font-semibold text-foreground mb-1"
+                style={{ fontFamily: 'var(--font-serif-assistant)' }}
+              >
+                {nextNode.name}
+              </h3>
               {nextNode.description && (
                 <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
                   {nextNode.description}
@@ -226,8 +231,16 @@ export function PlanView({
               className="marginalia p-5 text-center"
               style={{ borderLeftColor: 'var(--color-success)' }}
             >
-              <CheckCircleIcon className="h-8 w-8 mx-auto mb-2" style={{ color: 'var(--color-success)' }} />
-              <h3 className="font-semibold text-foreground" style={{ fontFamily: 'var(--font-serif-assistant)' }}>Journey Complete!</h3>
+              <CheckCircleIcon
+                className="h-8 w-8 mx-auto mb-2"
+                style={{ color: 'var(--color-success)' }}
+              />
+              <h3
+                className="font-semibold text-foreground"
+                style={{ fontFamily: 'var(--font-serif-assistant)' }}
+              >
+                Journey Complete!
+              </h3>
             </div>
           )}
 
