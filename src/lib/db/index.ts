@@ -7,7 +7,8 @@ export { sanitizeMessageRecord } from '@/lib/db/sanitize';
 export { DialogiaDB } from '@/lib/db/dexie';
 export { InMemoryDialogiaDB } from '@/lib/db/memory';
 
-const hasIndexedDb = typeof globalThis !== 'undefined' && (globalThis as any)?.indexedDB != null;
+const hasIndexedDb =
+  typeof globalThis !== 'undefined' && 'indexedDB' in globalThis && globalThis.indexedDB != null;
 
 export const db = hasIndexedDb ? createDexieDb() : createMemoryDb();
 

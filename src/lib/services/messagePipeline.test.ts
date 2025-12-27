@@ -124,21 +124,19 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   };
   const get = () => state;
 
-  const restoreFetch = mockFetch(
-    (async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        results: [
-          {
-            title: 'Result',
-            url: 'https://example.com',
-            description: 'Example',
-          },
-        ],
-      }),
-    })) as any,
-  );
+  const restoreFetch = mockFetch((async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      results: [
+        {
+          title: 'Result',
+          url: 'https://example.com',
+          description: 'Example',
+        },
+      ],
+    }),
+  })) as any);
 
   __setOpenRouterMocksForTests({
     chatCompletion: async () => ({

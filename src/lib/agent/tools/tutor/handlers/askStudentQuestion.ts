@@ -58,9 +58,7 @@ export const askStudentQuestionHandler: TutorToolHandler<AskStudentQuestionArgs>
               ? record.multiSelect
               : false;
         const followUpBehavior =
-          typeof record.followUpBehavior === 'string'
-            ? record.followUpBehavior
-            : undefined;
+          typeof record.followUpBehavior === 'string' ? record.followUpBehavior : undefined;
         const category =
           typeof record.category === 'string'
             ? record.category.trim()

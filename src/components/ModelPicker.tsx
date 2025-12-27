@@ -1,10 +1,6 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import {
-  XMarkIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-} from '@heroicons/react/24/outline';
+import { XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { formatModelLabel } from '@/lib/models';
 import { useTierCuratedModels } from '@/lib/hooks/useTierModels';
 import { useTier } from '@/lib/auth/tierContext';

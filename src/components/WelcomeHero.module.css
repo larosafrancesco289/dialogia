@@ -203,12 +203,7 @@
   left: var(--space-5);
   right: var(--space-5);
   height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--color-accent),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
   opacity: 0.5;
   border-radius: 1px;
 }

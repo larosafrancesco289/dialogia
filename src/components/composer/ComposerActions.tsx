@@ -35,9 +35,9 @@ export function ComposerActions({
   onStop,
   onSend,
   openFilePicker,
-  attachmentsHint,
+  attachmentsHint: _attachmentsHint,
   searchEnabled,
-  searchProvider,
+  searchProvider: _searchProvider,
   toggleSearch,
   showReasoningMenu,
   currentEffort,
@@ -99,98 +99,108 @@ export function ComposerActions({
       {canUseVoice && isVoiceActive && <VoiceStatusPill onStop={stopVoice} />}
 
       {/* Overflow menu button — hide when voice is active */}
-      {!isVoiceActive && <div className="relative">
-        <button
-          ref={menuButtonRef}
-          className={`composer-btn-overflow ${menuOpen ? 'is-open' : ''}`}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          aria-label="More actions"
-          title="More actions"
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          <EllipsisHorizontalIcon className="h-4 w-4" />
-          {/* Indicator dot when search is enabled */}
-          {searchEnabled && (
-            <span className="composer-btn-overflow__indicator" aria-hidden="true" />
-          )}
-        </button>
-
-        {/* Overflow menu popover */}
-        {menuOpen && (
-          <div
-            ref={menuRef}
-            role="menu"
-            className="composer-overflow-menu"
-            aria-label="Composer actions"
+      {!isVoiceActive && (
+        <div className="relative">
+          <button
+            ref={menuButtonRef}
+            className={`composer-btn-overflow ${menuOpen ? 'is-open' : ''}`}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label="More actions"
+            title="More actions"
+            onClick={() => setMenuOpen((v) => !v)}
           >
-            {/* Attach files */}
-            <button
-              className="composer-overflow-item"
-              role="menuitem"
-              onClick={() => {
-                openFilePicker();
-                setMenuOpen(false);
-              }}
-            >
-              <PaperClipIcon className="h-4 w-4" />
-              <span>Attach files</span>
-            </button>
+            <EllipsisHorizontalIcon className="h-4 w-4" />
+            {/* Indicator dot when search is enabled */}
+            {searchEnabled && (
+              <span className="composer-btn-overflow__indicator" aria-hidden="true" />
+            )}
+          </button>
 
-            {/* Web search toggle */}
-            <button
-              className={`composer-overflow-item ${searchEnabled ? 'is-active' : ''}`}
-              role="menuitemcheckbox"
-              aria-checked={searchEnabled}
-              onClick={() => {
-                toggleSearch();
-              }}
+          {/* Overflow menu popover */}
+          {menuOpen && (
+            <div
+              ref={menuRef}
+              role="menu"
+              className="composer-overflow-menu"
+              aria-label="Composer actions"
             >
-              <MagnifyingGlassIcon className="h-4 w-4" />
-              <span>Web search</span>
-              {searchEnabled && <CheckIcon className="h-3.5 w-3.5 ml-auto" />}
-            </button>
-
-            {/* Voice mode — only shown for developer tier */}
-            {canUseVoice && (
-              <VoiceMenuItem
-                onStart={async () => {
-                  await ensureChatForVoice();
-                  await startVoice();
+              {/* Attach files */}
+              <button
+                className="composer-overflow-item"
+                role="menuitem"
+                onClick={() => {
+                  openFilePicker();
+                  setMenuOpen(false);
                 }}
-                onClose={() => setMenuOpen(false)}
-              />
-            )}
+              >
+                <PaperClipIcon className="h-4 w-4" />
+                <span>Attach files</span>
+              </button>
 
-            {/* Reasoning effort */}
-            {showReasoningMenu && (
-              <>
-                <div className="composer-overflow-divider" />
-                <div className="composer-overflow-label">Reasoning effort</div>
-                {(['none', 'low', 'medium', 'high'] as Effort[]).map((effort) => (
-                  <button
-                    key={effort}
-                    className={`composer-overflow-item ${currentEffort === effort ? 'is-active' : ''}`}
-                    role="menuitemradio"
-                    aria-checked={currentEffort === effort}
-                    onClick={() => {
-                      void onSelectEffort(effort);
-                      setMenuOpen(false);
-                    }}
-                  >
-                    <span>{effort === 'none' ? 'Off' : effort.charAt(0).toUpperCase() + effort.slice(1)}</span>
-                    {currentEffort === effort && <CheckIcon className="h-3.5 w-3.5 ml-auto" />}
-                  </button>
-                ))}
-              </>
-            )}
-          </div>
-        )}
-      </div>}
+              {/* Web search toggle */}
+              <button
+                className={`composer-overflow-item ${searchEnabled ? 'is-active' : ''}`}
+                role="menuitemcheckbox"
+                aria-checked={searchEnabled}
+                onClick={() => {
+                  toggleSearch();
+                }}
+              >
+                <MagnifyingGlassIcon className="h-4 w-4" />
+                <span>Web search</span>
+                {searchEnabled && <CheckIcon className="h-3.5 w-3.5 ml-auto" />}
+              </button>
+
+              {/* Voice mode — only shown for developer tier */}
+              {canUseVoice && (
+                <VoiceMenuItem
+                  onStart={async () => {
+                    await ensureChatForVoice();
+                    await startVoice();
+                  }}
+                  onClose={() => setMenuOpen(false)}
+                />
+              )}
+
+              {/* Reasoning effort */}
+              {showReasoningMenu && (
+                <>
+                  <div className="composer-overflow-divider" />
+                  <div className="composer-overflow-label">Reasoning effort</div>
+                  {(['none', 'low', 'medium', 'high'] as Effort[]).map((effort) => (
+                    <button
+                      key={effort}
+                      className={`composer-overflow-item ${currentEffort === effort ? 'is-active' : ''}`}
+                      role="menuitemradio"
+                      aria-checked={currentEffort === effort}
+                      onClick={() => {
+                        void onSelectEffort(effort);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      <span>
+                        {effort === 'none'
+                          ? 'Off'
+                          : effort.charAt(0).toUpperCase() + effort.slice(1)}
+                      </span>
+                      {currentEffort === effort && <CheckIcon className="h-3.5 w-3.5 ml-auto" />}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Primary send button */}
       <button
         className={`composer-btn-send ${hasContent ? 'has-content' : ''}`}
+        onMouseDown={(e) => {
+          // Prevent blur of textarea before click registers
+          e.preventDefault();
+        }}
         onClick={onSend}
         aria-label="Send message"
         title="Send"
@@ -240,18 +250,20 @@ function VoiceStatusPill({ onStop }: { onStop: () => void }) {
 }
 
 /** Voice menu item */
-function VoiceMenuItem({ onStart, onClose }: { onStart: () => Promise<void>; onClose: () => void }) {
+function VoiceMenuItem({
+  onStart,
+  onClose,
+}: {
+  onStart: () => Promise<void>;
+  onClose: () => void;
+}) {
   const handleClick = async () => {
     await onStart();
     onClose();
   };
 
   return (
-    <button
-      className="composer-overflow-item"
-      role="menuitem"
-      onClick={handleClick}
-    >
+    <button className="composer-overflow-item" role="menuitem" onClick={handleClick}>
       <MicrophoneIcon className="h-4 w-4" />
       <span>Voice mode</span>
     </button>

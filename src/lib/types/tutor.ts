@@ -141,6 +141,9 @@ export type MessageTutor = {
   flashcards?: TutorFlashcardItem[];
   questionnaire?: TutorQuestionnaire;
   diagnostic?: TutorDiagnostic;
+  diagnosticMeta?: {
+    completedAt?: Record<string, number>;
+  };
   planProposal?: TutorPlanProposal;
   planSuggestions?: TutorPlanSuggestion[];
   assessmentUpdates?: TutorLearnerModelUpdate[];

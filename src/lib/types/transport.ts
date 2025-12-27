@@ -38,9 +38,7 @@ export type AnthropicContentBlock =
   | { type: 'text'; text: string }
   | {
       type: 'image';
-      source:
-        | { type: 'base64'; media_type: string; data: string }
-        | { type: 'url'; url: string };
+      source: { type: 'base64'; media_type: string; data: string } | { type: 'url'; url: string };
     }
   | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
   | {

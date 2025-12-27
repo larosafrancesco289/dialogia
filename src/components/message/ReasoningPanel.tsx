@@ -291,7 +291,9 @@ export function ReasoningPanel({
                       title={copied ? 'Copied' : 'Copy reasoning'}
                     >
                       {copied ? (
-                        <span className="text-xs font-bold text-[var(--color-success)]">Copied!</span>
+                        <span className="text-xs font-bold text-[var(--color-success)]">
+                          Copied!
+                        </span>
                       ) : (
                         <DocumentDuplicateIcon className="h-4 w-4" />
                       )}

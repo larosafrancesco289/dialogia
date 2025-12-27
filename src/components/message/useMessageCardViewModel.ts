@@ -36,38 +36,34 @@ export function useMessageCardViewModel({
   chatId: string;
   messageId: string;
 }): MessageCardViewModel {
-  const selection = useChatStore(
-    (state) => {
-      const message = (state.messages[chatId] ?? EMPTY_MESSAGES).find(
-        (entry) => entry.id === messageId,
-      );
-      const chat = state.chats.find((entry) => entry.id === chatId);
-      const tutorEntry = state.ui.tutor.byMessageId?.[messageId] ?? message?.tutor;
-      const tutorGloballyEnabled = !!state.ui.flags.experimentalTutor;
-      const forceTutorMode = !!state.ui.tutor.forceMode;
-      const tutorEnabled =
-        tutorGloballyEnabled && (forceTutorMode || !!chat?.settings?.tutor_mode);
+  const selection = useChatStore((state) => {
+    const message = (state.messages[chatId] ?? EMPTY_MESSAGES).find(
+      (entry) => entry.id === messageId,
+    );
+    const chat = state.chats.find((entry) => entry.id === chatId);
+    const tutorEntry = state.ui.tutor.byMessageId?.[messageId] ?? message?.tutor;
+    const tutorGloballyEnabled = !!state.ui.flags.experimentalTutor;
+    const forceTutorMode = !!state.ui.tutor.forceMode;
+    const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!chat?.settings?.tutor_mode);
 
-      return {
-        message,
-        chat,
-        models: state.models,
-        isStreaming: state.ui.isStreaming,
-        braveGloballyEnabled: !!state.ui.flags.experimentalBrave,
-        braveEntry: state.ui.search.braveByMessageId?.[messageId],
-        debugMode: !!state.ui.debug.mode,
-        debugEntry: state.ui.debug.byMessageId?.[messageId],
-        tutorGloballyEnabled,
-        tutorEntry,
-        autoReasoningModelIds: state.ui.debug.autoReasoningModelIds ?? EMPTY_AUTO_REASONING,
-        showToolCallLog: !!chat?.settings?.showToolCallLog,
-        showDebugRawJson: chat?.settings?.showDebugRawJson ?? true,
-        showStats: chat?.settings?.show_stats ?? false,
-        tutorEnabled,
-      };
-    },
-    shallow,
-  );
+    return {
+      message,
+      chat,
+      models: state.models,
+      isStreaming: state.ui.isStreaming,
+      braveGloballyEnabled: !!state.ui.flags.experimentalBrave,
+      braveEntry: state.ui.search.braveByMessageId?.[messageId],
+      debugMode: !!state.ui.debug.mode,
+      debugEntry: state.ui.debug.byMessageId?.[messageId],
+      tutorGloballyEnabled,
+      tutorEntry,
+      autoReasoningModelIds: state.ui.debug.autoReasoningModelIds ?? EMPTY_AUTO_REASONING,
+      showToolCallLog: !!chat?.settings?.showToolCallLog,
+      showDebugRawJson: chat?.settings?.showDebugRawJson ?? true,
+      showStats: chat?.settings?.show_stats ?? false,
+      tutorEnabled,
+    };
+  }, shallow);
 
   const { branchChatFromMessage, regenerateAssistantMessage } = useChatStore(
     (state) => ({

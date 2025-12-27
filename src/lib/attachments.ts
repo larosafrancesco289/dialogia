@@ -66,7 +66,8 @@ export async function toAudioAttachment(file: File): Promise<DraftAttachment | n
     size: file.size,
     dataURL,
     file,
-  } as any;
+    audioFormat: fmt,
+  };
 }
 
 export function clampImages(currentCount: number, files: FileList | File[]): File[] {

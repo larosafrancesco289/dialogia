@@ -1,5 +1,9 @@
 import type { ComponentType } from 'react';
-import { ChatBubbleLeftRightIcon, CodeBracketIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import {
+  ChatBubbleLeftRightIcon,
+  CodeBracketIcon,
+  SparklesIcon,
+} from '@heroicons/react/24/outline';
 
 type FreeCuratedModel = {
   id: string;

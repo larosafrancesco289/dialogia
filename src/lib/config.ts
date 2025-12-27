@@ -124,7 +124,7 @@ export function requireClientKeyOrProxy(): { key?: string; useProxy: boolean } {
   const useProxy = isOpenRouterProxyEnabled();
   if (!key && !useProxy) {
     const error = new Error('missing_client_key_or_proxy');
-    (error as any).code = 'missing_client_key_or_proxy';
+    (error as { code?: string }).code = 'missing_client_key_or_proxy';
     throw error;
   }
   return { key, useProxy };
@@ -135,7 +135,7 @@ export function requireAnthropicClientKeyOrProxy(): { key?: string; useProxy: bo
   const useProxy = isAnthropicProxyEnabled();
   if (!key && !useProxy) {
     const error = new Error('missing_anthropic_key_or_proxy');
-    (error as any).code = 'missing_anthropic_key_or_proxy';
+    (error as { code?: string }).code = 'missing_anthropic_key_or_proxy';
     throw error;
   }
   return { key, useProxy };

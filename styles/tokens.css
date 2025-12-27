@@ -19,8 +19,8 @@
 
   /* Typography — Distinctive fonts for Imperial Archive aesthetic */
   --font-sans:
-    var(--font-sans-display), 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont,
-    'SF Pro Text', 'Helvetica Neue', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+    var(--font-sans-display), 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    'Helvetica Neue', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
   --font-mono:
     'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
     'Courier New', monospace;
@@ -43,12 +43,10 @@
   --shadow-card: var(--shadow-2);
   /* Warm layered shadows for depth — like cards resting on a surface */
   --shadow-message:
-    0 1px 2px rgba(120, 90, 50, 0.04),
-    0 4px 8px rgba(100, 80, 40, 0.03),
+    0 1px 2px rgba(120, 90, 50, 0.04), 0 4px 8px rgba(100, 80, 40, 0.03),
     0 8px 24px rgba(80, 60, 30, 0.04);
   --shadow-message-hover:
-    0 2px 4px rgba(120, 90, 50, 0.05),
-    0 8px 16px rgba(100, 80, 40, 0.04),
+    0 2px 4px rgba(120, 90, 50, 0.05), 0 8px 16px rgba(100, 80, 40, 0.04),
     0 16px 32px rgba(80, 60, 30, 0.05);
 
   /* Motion */
@@ -144,12 +142,10 @@
   --shadow-card: var(--shadow-2);
   /* Warm shadows with subtle gold tint for dark mode */
   --shadow-message:
-    0 1px 3px rgba(20, 15, 10, 0.3),
-    0 4px 12px rgba(20, 15, 10, 0.25),
+    0 1px 3px rgba(20, 15, 10, 0.3), 0 4px 12px rgba(20, 15, 10, 0.25),
     0 8px 24px rgba(201, 162, 39, 0.05);
   --shadow-message-hover:
-    0 2px 6px rgba(20, 15, 10, 0.35),
-    0 8px 20px rgba(20, 15, 10, 0.3),
+    0 2px 6px rgba(20, 15, 10, 0.35), 0 8px 20px rgba(20, 15, 10, 0.3),
     0 16px 40px rgba(201, 162, 39, 0.08);
 
   --message-assistant-bg: color-mix(in oklab, var(--color-surface) 94%, var(--color-accent-2));

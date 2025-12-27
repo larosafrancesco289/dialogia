@@ -101,8 +101,14 @@ export function PlanNode({
           className="group relative overflow-hidden transition-all duration-300"
           style={{
             background: 'var(--surface-paper)',
-            border: node.status === 'in_progress' ? '1px solid var(--rule-accent)' : '1px solid var(--rule-light)',
-            borderLeft: node.status === 'in_progress' ? '2px solid var(--color-accent-2)' : '2px solid var(--rule-light)',
+            border:
+              node.status === 'in_progress'
+                ? '1px solid var(--rule-accent)'
+                : '1px solid var(--rule-light)',
+            borderLeft:
+              node.status === 'in_progress'
+                ? '2px solid var(--color-accent-2)'
+                : '2px solid var(--rule-light)',
             borderRadius: 'var(--radius-editorial)',
             boxShadow: focused ? '0 0 0 2px var(--focus-ring)' : undefined,
           }}
@@ -153,7 +159,8 @@ export function PlanNode({
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer"
                 style={{
-                  background: node.status === 'in_progress' ? 'var(--marginalia-bg)' : 'var(--color-accent)',
+                  background:
+                    node.status === 'in_progress' ? 'var(--marginalia-bg)' : 'var(--color-accent)',
                   color: node.status === 'in_progress' ? 'var(--color-accent-2)' : '#0b0b0b',
                   border: node.status === 'in_progress' ? '1px solid var(--rule-light)' : 'none',
                   borderRadius: 'var(--radius-editorial)',
@@ -171,11 +178,20 @@ export function PlanNode({
 
           {/* Expanded Details - editorial style */}
           {expanded && (
-            <div className="px-4 pb-4 pt-3" style={{ borderTop: '1px solid var(--rule-light)', background: 'var(--marginalia-bg)' }}>
+            <div
+              className="px-4 pb-4 pt-3"
+              style={{
+                borderTop: '1px solid var(--rule-light)',
+                background: 'var(--marginalia-bg)',
+              }}
+            >
               {isLocked && (
                 <div
                   className="mb-3 flex items-start gap-2 p-2 text-xs text-muted-foreground"
-                  style={{ border: '1px dashed var(--rule-light)', borderRadius: 'var(--radius-editorial)' }}
+                  style={{
+                    border: '1px dashed var(--rule-light)',
+                    borderRadius: 'var(--radius-editorial)',
+                  }}
                 >
                   <LockClosedIcon className="h-4 w-4 flex-shrink-0" />
                   <span>Complete the prerequisites first to unlock this topic.</span>
@@ -210,10 +226,17 @@ export function PlanNode({
                       {mastery.interactions} interaction{mastery.interactions === 1 ? '' : 's'}
                     </div>
                   </div>
-                  <div className="mt-2 h-1 w-full" style={{ background: 'var(--rule-light)', borderRadius: '2px' }}>
+                  <div
+                    className="mt-2 h-1 w-full"
+                    style={{ background: 'var(--rule-light)', borderRadius: '2px' }}
+                  >
                     <div
                       className="h-full transition-all"
-                      style={{ width: `${confidence ?? 0}%`, background: barColor, borderRadius: '2px' }}
+                      style={{
+                        width: `${confidence ?? 0}%`,
+                        background: barColor,
+                        borderRadius: '2px',
+                      }}
                     />
                   </div>
                   {unresolved.length > 0 && (
@@ -247,7 +270,10 @@ export function PlanNode({
                           });
                         }}
                         className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
-                        style={{ border: '1px solid var(--rule-light)', borderRadius: 'var(--radius-editorial)' }}
+                        style={{
+                          border: '1px solid var(--rule-light)',
+                          borderRadius: 'var(--radius-editorial)',
+                        }}
                       >
                         Feels easier
                       </button>
@@ -261,7 +287,10 @@ export function PlanNode({
                           });
                         }}
                         className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
-                        style={{ border: '1px solid var(--rule-light)', borderRadius: 'var(--radius-editorial)' }}
+                        style={{
+                          border: '1px solid var(--rule-light)',
+                          borderRadius: 'var(--radius-editorial)',
+                        }}
                       >
                         Feels harder
                       </button>
@@ -275,7 +304,10 @@ export function PlanNode({
                           });
                         }}
                         className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
-                        style={{ border: '1px solid var(--rule-light)', borderRadius: 'var(--radius-editorial)' }}
+                        style={{
+                          border: '1px solid var(--rule-light)',
+                          borderRadius: 'var(--radius-editorial)',
+                        }}
                       >
                         Set 70% floor
                       </button>
@@ -292,7 +324,10 @@ export function PlanNode({
                             });
                           }}
                           className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
-                          style={{ border: '1px solid var(--rule-light)', borderRadius: 'var(--radius-editorial)' }}
+                          style={{
+                            border: '1px solid var(--rule-light)',
+                            borderRadius: 'var(--radius-editorial)',
+                          }}
                         >
                           Resolve misconception
                         </button>
@@ -327,9 +362,18 @@ export function PlanNode({
                         key={p.id}
                         className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium"
                         style={{
-                          border: p.status === 'completed' ? '1px solid var(--color-success)' : '1px solid var(--rule-light)',
-                          background: p.status === 'completed' ? 'color-mix(in oklab, var(--color-success) 10%, var(--surface-paper))' : 'var(--surface-paper)',
-                          color: p.status === 'completed' ? 'var(--color-success)' : 'var(--color-fg-muted)',
+                          border:
+                            p.status === 'completed'
+                              ? '1px solid var(--color-success)'
+                              : '1px solid var(--rule-light)',
+                          background:
+                            p.status === 'completed'
+                              ? 'color-mix(in oklab, var(--color-success) 10%, var(--surface-paper))'
+                              : 'var(--surface-paper)',
+                          color:
+                            p.status === 'completed'
+                              ? 'var(--color-success)'
+                              : 'var(--color-fg-muted)',
                           borderRadius: 'var(--radius-editorial)',
                         }}
                       >

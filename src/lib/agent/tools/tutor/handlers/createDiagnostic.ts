@@ -3,6 +3,9 @@ import type { TutorDiagnostic, TutorDiagnosticItem } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { DIAGNOSTIC_DIFFICULTIES, withContentReset } from '@/lib/agent/tools/tutor/shared';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
 type CreateDiagnosticArgs = {
   diagnostic: TutorDiagnostic;
 };
@@ -19,11 +22,11 @@ export const createDiagnosticHandler: TutorToolHandler<CreateDiagnosticArgs> = {
     const depthRaw = typeof args.depth === 'string' ? args.depth.trim() : undefined;
     const depth: 'quick' | 'moderate' | 'comprehensive' =
       depthRaw === 'moderate' || depthRaw === 'comprehensive' ? depthRaw : 'quick';
-    const quiz = args.quiz && typeof args.quiz === 'object' ? (args.quiz as any) : {};
+    const quiz = isRecord(args.quiz) ? args.quiz : undefined;
     const itemsRaw = Array.isArray(quiz?.items) ? quiz.items : [];
     const normalizedItems = itemsRaw
-      .map((item: any, index: number) => {
-        if (!item || typeof item !== 'object') return null;
+      .map((item, index: number) => {
+        if (!isRecord(item)) return null;
         const question = typeof item.question === 'string' ? item.question.trim() : undefined;
         const choicesRaw = Array.isArray(item.choices) ? item.choices : [];
         const choices = choicesRaw
@@ -41,12 +44,14 @@ export const createDiagnosticHandler: TutorToolHandler<CreateDiagnosticArgs> = {
           typeof item.correct === 'number' && Number.isFinite(item.correct)
             ? item.correct
             : undefined;
-        const explanation = typeof item.explanation === 'string' ? item.explanation.trim() : undefined;
+        const explanation =
+          typeof item.explanation === 'string' ? item.explanation.trim() : undefined;
         const skill = typeof item.skill === 'string' ? item.skill.trim() : undefined;
         const rawDifficulty =
           typeof item.difficulty === 'string' ? item.difficulty.trim() : undefined;
         const difficulty =
-          rawDifficulty && DIAGNOSTIC_DIFFICULTIES.has(rawDifficulty as TutorDiagnosticItem['difficulty'])
+          rawDifficulty &&
+          DIAGNOSTIC_DIFFICULTIES.has(rawDifficulty as TutorDiagnosticItem['difficulty'])
             ? (rawDifficulty as TutorDiagnosticItem['difficulty'])
             : undefined;
         return {
@@ -71,10 +76,14 @@ export const createDiagnosticHandler: TutorToolHandler<CreateDiagnosticArgs> = {
         : typeof quiz?.adaptive === 'boolean'
           ? !!quiz.adaptive
           : false;
-    const interpretation =
-      quiz?.interpretation && typeof quiz.interpretation === 'object'
-        ? (quiz.interpretation as Record<string, string>)
-        : undefined;
+    const interpretationRaw = quiz?.interpretation;
+    const interpretation = isRecord(interpretationRaw)
+      ? (Object.fromEntries(
+          Object.entries(interpretationRaw).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        ) as Record<string, string>)
+      : undefined;
 
     const diagnostic: TutorDiagnostic = {
       diagnosticId,

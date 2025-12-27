@@ -1,6 +1,6 @@
 'use client';
 import React, { Children, useEffect, useId, useMemo, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -11,6 +11,13 @@ import { logger } from '@/lib/logger';
 
 const WRAP_STORAGE_KEY = 'dialogia:code-wrap';
 const WRAP_EVENT = 'dialogia:code-wrap-change';
+
+type WindowWithIdleCallback = Window & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+};
+
+type MediumZoomFactory = typeof import('medium-zoom').default;
+type MediumZoomInstance = ReturnType<MediumZoomFactory>;
 
 function readWrapPreference(): boolean {
   if (typeof window === 'undefined') return true;
@@ -61,16 +68,19 @@ function CopyButton({ text }: { text: string }) {
 }
 
 function detectLanguageFromPreChildren(children: React.ReactNode): string | undefined {
-  const first = Children.toArray(children)[0] as any;
-  const className: string | undefined = first?.props?.className;
+  const first = Children.toArray(children)[0];
+  if (!React.isValidElement(first)) return undefined;
+  const className =
+    typeof first.props?.className === 'string' ? (first.props.className as string) : undefined;
   if (!className) return undefined;
   const m = className.match(/language-([\w-]+)/);
   return m?.[1];
 }
 
 function extractCodeText(children: React.ReactNode): string {
-  const first = Children.toArray(children)[0] as any;
-  const raw = first?.props?.children ?? first?.props?.value ?? first?.props?.code ?? null;
+  const first = Children.toArray(children)[0];
+  if (!React.isValidElement(first)) return '';
+  const raw = first.props?.children ?? first.props?.value ?? first.props?.code ?? null;
   if (raw == null) return '';
   if (Array.isArray(raw)) return raw.join('');
   return typeof raw === 'string' ? raw : String(raw);
@@ -227,7 +237,9 @@ function normalizeLanguage(lang?: string): string | undefined {
 
 async function ensurePrismLanguage(lang?: string) {
   const PrismLib = (await import('prismjs')).default;
-  (window as any).Prism = PrismLib;
+  if (typeof window !== 'undefined') {
+    (window as Window & { Prism?: typeof PrismLib }).Prism = PrismLib;
+  }
   const l = normalizeLanguage(lang);
   // Always have a baseline markup grammar for safety
   await import('prismjs/components/prism-markup');
@@ -321,12 +333,12 @@ export function Markdown({ content }: { content: string }) {
 
   // Attach medium-zoom to images inside markdown for a better reading experience
   useEffect(() => {
-    let zoom: any;
+    let zoom: MediumZoomInstance | undefined;
     let cancelled = false;
     const run = async () => {
       if (typeof window === 'undefined' || cancelled) return;
       try {
-        const mediumZoom = (await import('medium-zoom')).default as any;
+        const mediumZoom = (await import('medium-zoom')).default as MediumZoomFactory;
         if (!cancelled) {
           zoom = mediumZoom('.markdown img', { background: 'rgba(0,0,0,0.7)', margin: 24 });
         }
@@ -334,8 +346,9 @@ export function Markdown({ content }: { content: string }) {
         logger.error('Failed to initialize image zoom', error);
       }
     };
-    if (typeof (window as any).requestIdleCallback === 'function') {
-      (window as any).requestIdleCallback(run, { timeout: 2000 });
+    const idle = (window as WindowWithIdleCallback).requestIdleCallback;
+    if (typeof idle === 'function') {
+      idle(run, { timeout: 2000 });
     } else {
       setTimeout(run, 0);
     }
@@ -349,6 +362,54 @@ export function Markdown({ content }: { content: string }) {
     };
   }, [content]);
 
+  const components: Components = {
+    pre: ({ children, ...preProps }) => {
+      // Detect Mermaid blocks and render as diagrams instead of <pre>
+      const lang = detectLanguageFromPreChildren(children);
+      if (lang === 'mermaid') {
+        const code = extractCodeText(children);
+        return <MermaidBlock code={code} />;
+      }
+      const code = extractCodeText(children);
+      return (
+        <PreWithTools {...preProps} language={lang} rawText={code}>
+          <CodeBlock code={code} language={lang} />
+        </PreWithTools>
+      );
+    },
+    code: (props) => {
+      const { inline, className, children, ...codeProps } = props as typeof props & {
+        inline?: boolean;
+      };
+      // Only style inline code; block code is handled by the <pre> wrapper above
+      if (!inline) {
+        return (
+          <code className={className || ''} {...codeProps}>
+            {children}
+          </code>
+        );
+      }
+      return (
+        <code className={`bg-muted rounded px-1 py-0.5 ${className || ''}`} {...codeProps}>
+          {children}
+        </code>
+      );
+    },
+    a: ({ href, children, ...props }) => {
+      const isExternal = href && /^https?:\/\//.test(href);
+      return (
+        <a
+          href={href}
+          target={isExternal ? '_blank' : undefined}
+          rel={isExternal ? 'noopener noreferrer' : undefined}
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    },
+  };
+
   return (
     <div className="markdown">
       <ReactMarkdown
@@ -357,54 +418,11 @@ export function Markdown({ content }: { content: string }) {
           rehypeKatex,
           rehypeSlug,
           [
-            rehypeAutolinkHeadings as any,
-            { behavior: 'wrap', properties: { className: 'heading-anchor' } },
+            rehypeAutolinkHeadings,
+            { behavior: 'wrap', properties: { className: ['heading-anchor'] } },
           ],
         ]}
-        components={{
-          pre: ({ children, ...preProps }: any) => {
-            // Detect Mermaid blocks and render as diagrams instead of <pre>
-            const lang = detectLanguageFromPreChildren(children);
-            if (lang === 'mermaid') {
-              const code = extractCodeText(children);
-              return <MermaidBlock code={code} />;
-            }
-            const code = extractCodeText(children);
-            return (
-              <PreWithTools {...preProps} language={lang} rawText={code}>
-                <CodeBlock code={code} language={lang} />
-              </PreWithTools>
-            );
-          },
-          code({ inline, className, children, ...props }: any) {
-            // Only style inline code; block code is handled by the <pre> wrapper above
-            if (!inline) {
-              return (
-                <code className={className || ''} {...props}>
-                  {children}
-                </code>
-              );
-            }
-            return (
-              <code className={`bg-muted rounded px-1 py-0.5 ${className || ''}`} {...props}>
-                {children}
-              </code>
-            );
-          },
-          a({ href, children, ...props }: any) {
-            const isExternal = href && /^https?:\/\//.test(href);
-            return (
-              <a
-                href={href}
-                target={isExternal ? '_blank' : undefined}
-                rel={isExternal ? 'noopener noreferrer' : undefined}
-                {...props}
-              >
-                {children}
-              </a>
-            );
-          },
-        }}
+        components={components}
       >
         {content}
       </ReactMarkdown>

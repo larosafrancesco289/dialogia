@@ -26,8 +26,10 @@ export const gradeOpenResponseHandler: TutorToolHandler<GradeOpenResponseArgs> =
   async apply(ctx, args) {
     await ctx.applyTutorPatch((prev) => {
       const existingGrading =
-        (prev.grading as Record<string, { score?: number; feedback: string; criteria?: string[] }>) ||
-        {};
+        (prev.grading as Record<
+          string,
+          { score?: number; feedback: string; criteria?: string[] }
+        >) || {};
       return {
         grading: {
           ...existingGrading,

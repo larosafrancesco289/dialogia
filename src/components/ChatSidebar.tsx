@@ -24,7 +24,12 @@ import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 import type { Chat, Folder } from '@/lib/types';
 // Settings gear moved to the top header
 
-export function ChatSidebar() {
+interface ChatSidebarProps {
+  /** Override collapsed state (defaults to store value) */
+  collapsed?: boolean;
+}
+
+export function ChatSidebar({ collapsed: collapsedProp }: ChatSidebarProps = {}) {
   const {
     chats,
     folders,
@@ -36,7 +41,7 @@ export function ChatSidebar() {
     loadModels,
     createFolder,
     moveChatToFolder,
-    collapsed,
+    collapsedFromStore,
   } = useChatStore(
     (s) => ({
       chats: s.chats,
@@ -49,10 +54,13 @@ export function ChatSidebar() {
       loadModels: s.loadModels,
       createFolder: s.createFolder,
       moveChatToFolder: s.moveChatToFolder,
-      collapsed: s.ui.sidebarCollapsed ?? false,
+      collapsedFromStore: s.ui.sidebarCollapsed ?? false,
     }),
     shallow,
   );
+
+  // Use prop if provided, otherwise use store value
+  const collapsed = collapsedProp ?? collapsedFromStore;
 
   const { handleDragOver, handleDrop, handleDragStart, handleDragEnd, getDragData } =
     useDragAndDrop();

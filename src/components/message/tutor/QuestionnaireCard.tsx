@@ -1,16 +1,14 @@
-"use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  CheckIcon,
-  HandThumbUpIcon,
-  QuestionMarkCircleIcon,
-} from "@heroicons/react/24/outline";
-import type { TutorQuestionnaire } from "@/lib/types";
-import { useChatStore } from "@/lib/store";
-import { contentVariants, safeKey } from "@/components/message/tutor/shared";
-import { StepperDots } from "@/components/message/tutor/StepperDots";
-import { useStepper } from "@/components/message/tutor/hooks/useStepper";
+'use client';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CheckIcon, HandThumbUpIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
+import type { TutorQuestionnaire } from '@/lib/types';
+import { useChatStore } from '@/lib/store';
+import { contentVariants, safeKey } from '@/components/message/tutor/shared';
+import { StepperDots } from '@/components/message/tutor/StepperDots';
+import { useStepper } from '@/components/message/tutor/hooks/useStepper';
+
+type QuestionnaireItem = TutorQuestionnaire['questions'][number];
 
 export function QuestionnaireCard({
   messageId,
@@ -31,12 +29,11 @@ export function QuestionnaireCard({
   const [submitting, setSubmitting] = useState(false);
   const patchTutorEntry = useChatStore((s) => s.patchTutorEntry);
   const sendUserMessage = useChatStore((s) => s.sendUserMessage);
-  const isSubmitted = questionnaire.status === "submitted";
+  const isSubmitted = questionnaire.status === 'submitted';
   const questionCount = questionnaire.questions.length;
 
   const isPending = useCallback(
-    (question: (typeof questionnaire.questions)[number]) =>
-      !(selections[question.id] ?? []).length,
+    (question: QuestionnaireItem) => !(selections[question.id] ?? []).length,
     [selections],
   );
   const { activeIndex, setActiveIndex, goToIndex, goPrevious, goNext, activeItem } = useStepper(
@@ -101,7 +98,7 @@ export function QuestionnaireCard({
     try {
       const updatedQuestionnaire: TutorQuestionnaire = {
         ...questionnaire,
-        status: "submitted",
+        status: 'submitted',
         submittedAt: now,
         responses: selections,
       };
@@ -109,12 +106,12 @@ export function QuestionnaireCard({
 
       const content =
         questionCount === 1
-          ? "Submitted questionnaire response."
+          ? 'Submitted questionnaire response.'
           : `Submitted questionnaire responses (${questionCount}).`;
       await sendUserMessage(content, {
         metadata: {
           hiddenFromUser: true,
-          kind: "tutor_questionnaire_submission",
+          kind: 'tutor_questionnaire_submission',
         },
       });
     } catch {
@@ -141,8 +138,8 @@ export function QuestionnaireCard({
           </span>
           <span className="text-xs text-[var(--color-fg-muted)]">
             {isSubmitted
-              ? "Thanks! I will tailor the plan with this in mind."
-              : "Choose the options that best fit you."}
+              ? 'Thanks! I will tailor the plan with this in mind.'
+              : 'Choose the options that best fit you.'}
           </span>
         </div>
       </div>
@@ -156,9 +153,9 @@ export function QuestionnaireCard({
             items={questionnaire.questions}
             activeIndex={activeIndex}
             resolveStatus={(question) => {
-              if (isSubmitted) return "correct";
+              if (isSubmitted) return 'correct';
               const selected = selections[question.id] ?? [];
-              return selected.length > 0 ? "answered" : "pending";
+              return selected.length > 0 ? 'answered' : 'pending';
             }}
             onSelect={goToIndex}
           />
@@ -201,11 +198,11 @@ export function QuestionnaireCard({
                       className={`btn justify-start h-auto py-2.5 px-3 transition-all duration-200 ${
                         isSubmitted
                           ? isSelected
-                            ? "btn-primary opacity-90"
-                            : "btn-outline opacity-50"
+                            ? 'btn-primary opacity-90'
+                            : 'btn-outline opacity-50'
                           : isSelected
-                            ? "btn-primary ring-2 ring-[var(--color-accent)]/20 ring-offset-1"
-                            : "btn-outline hover:bg-[var(--color-muted)]/50"
+                            ? 'btn-primary ring-2 ring-[var(--color-accent)]/20 ring-offset-1'
+                            : 'btn-outline hover:bg-[var(--color-muted)]/50'
                       }`}
                       onClick={() => handleToggle(activeItem.id, option.label, allowMultiple)}
                       disabled={isSubmitted}
@@ -236,7 +233,7 @@ export function QuestionnaireCard({
         >
           <HandThumbUpIcon className="h-4 w-4" />
           <span>
-            Responses submitted{submittedTimestamp ? ` · ${submittedTimestamp}` : ""}. Let me
+            Responses submitted{submittedTimestamp ? ` · ${submittedTimestamp}` : ''}. Let me
             incorporate this into your learning journey!
           </span>
         </motion.div>
@@ -246,7 +243,12 @@ export function QuestionnaireCard({
             {answeredCount}/{questionCount} answered
           </span>
           <div className="flex items-center gap-2">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={goPrevious} disabled={activeIndex === 0}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={goPrevious}
+              disabled={activeIndex === 0}
+            >
               Previous
             </button>
             {activeIndex === questionCount - 1 ? (
@@ -256,7 +258,7 @@ export function QuestionnaireCard({
                 onClick={handleSubmit}
                 disabled={!allAnswered || submitting}
               >
-                {submitting ? "Submitting…" : "Submit answers"}
+                {submitting ? 'Submitting…' : 'Submit answers'}
               </button>
             ) : (
               <button

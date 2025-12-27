@@ -17,8 +17,7 @@ export const createDiagnosticTool: ToolDefinition = {
         depth: {
           type: 'string',
           enum: ['quick', 'moderate', 'comprehensive'],
-          description:
-            'Scope of diagnostic (quick=3-5 Qs, moderate=8-12, comprehensive=15-20)',
+          description: 'Scope of diagnostic (quick=3-5 Qs, moderate=8-12, comprehensive=15-20)',
         },
         adaptToAnswers: {
           type: 'boolean',

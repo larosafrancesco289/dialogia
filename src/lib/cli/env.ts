@@ -12,9 +12,7 @@ export function normalizeEnvValue(value: string): string {
   return trimmed;
 }
 
-export async function loadEnvDefaults(
-  filenames: string[] = ['.env.local', '.env'],
-): Promise<void> {
+export async function loadEnvDefaults(filenames: string[] = ['.env.local', '.env']): Promise<void> {
   for (const filename of filenames) {
     try {
       const fullPath = path.resolve(process.cwd(), filename);

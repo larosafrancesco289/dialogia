@@ -34,7 +34,7 @@ export function useLongPressSheet(opts: {
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLElement>) => {
       if (!isEnabled) return;
-      if ((event as any).pointerType === 'mouse') return;
+      if (event.pointerType === 'mouse') return;
       const target = event.target as HTMLElement | null;
       if (target && ignoreSelector && target.closest(ignoreSelector)) return;
 
@@ -55,13 +55,13 @@ export function useLongPressSheet(opts: {
       };
       const onEnd = () => {
         clearTimer();
-        window.removeEventListener('pointermove', onMove as any);
-        window.removeEventListener('pointerup', onEnd as any);
-        window.removeEventListener('pointercancel', onEnd as any);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onEnd);
+        window.removeEventListener('pointercancel', onEnd);
       };
-      window.addEventListener('pointermove', onMove as any, { passive: true } as any);
-      window.addEventListener('pointerup', onEnd as any);
-      window.addEventListener('pointercancel', onEnd as any);
+      window.addEventListener('pointermove', onMove, { passive: true });
+      window.addEventListener('pointerup', onEnd);
+      window.addEventListener('pointercancel', onEnd);
     },
     [isEnabled, ignoreSelector, delayMs, slopPx, onTrigger, clearTimer],
   );

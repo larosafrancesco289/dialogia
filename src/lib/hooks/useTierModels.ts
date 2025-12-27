@@ -5,7 +5,6 @@ import { useChatStore } from '@/lib/store';
 import { useTier } from '@/lib/auth/tierContext';
 import { FREE_MODEL_IDS, FREE_CURATED_MODELS, DEFAULT_FREE_MODEL_ID } from '@/data/freeModels';
 import { CURATED_MODELS, DEFAULT_MODEL_ID } from '@/data/curatedModels';
-import type { ORModel } from '@/lib/types/models';
 
 /**
  * Hook that returns models filtered by the current access tier.

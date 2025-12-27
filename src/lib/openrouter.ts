@@ -293,11 +293,7 @@ export async function streamChatCompletion(params: {
       if (!isRecord(img)) continue;
       const imageUrl = isRecord(img.image_url) ? img.image_url.url : undefined;
       const url =
-        typeof imageUrl === 'string'
-          ? imageUrl
-          : typeof img.url === 'string'
-            ? img.url
-            : undefined;
+        typeof imageUrl === 'string' ? imageUrl : typeof img.url === 'string' ? img.url : undefined;
       if (typeof url === 'string' && url.startsWith('data:image/')) {
         callbacks?.onImage?.(url);
       }

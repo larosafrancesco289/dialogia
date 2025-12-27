@@ -3,9 +3,9 @@
 
 import { buildChatCompletionMessages } from '@/lib/agent/prompt-builder';
 import { composePlugins } from '@/lib/agent/request';
-import type { Chat, Message, GenSettingsSnapshot } from '@/lib/types';
+import type { Chat, GenSettingsSnapshot } from '@/lib/types';
 import { ProviderSort } from '@/lib/models/providerSort';
-import type { RegenerateOptions, SearchProvider } from '@/lib/agent/types';
+import type { ModelMessage, RegenerateOptions, SearchProvider } from '@/lib/agent/types';
 import { streamFinal } from '@/lib/agent/streaming';
 import { setTurnController } from '@/lib/services/controllers';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
@@ -20,16 +20,16 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   const original = messages[index];
   const priorMessages = messages.slice(0, index);
   const payload = buildChatCompletionMessages({ chat, priorMessages, models });
-  const systemSnapshot: string | undefined = (original as any)?.systemSnapshot;
-  const convo = systemSnapshot
-    ? ([{ role: 'system', content: systemSnapshot } as const] as any[]).concat(
-        payload.filter((entry: any) => entry.role !== 'system'),
-      )
+  const systemSnapshot = original.systemSnapshot;
+  const convo: ModelMessage[] = systemSnapshot
+    ? [
+        { role: 'system', content: systemSnapshot },
+        ...payload.filter((entry) => entry.role !== 'system'),
+      ]
     : payload;
 
   const hadPdfEarlier = priorMessages.some(
-    (msg) =>
-      Array.isArray(msg.attachments) && msg.attachments.some((att: any) => att?.kind === 'pdf'),
+    (msg) => Array.isArray(msg.attachments) && msg.attachments.some((att) => att.kind === 'pdf'),
   );
 
   const modelIdForTurn = overrideModelId || chat.settings.model;
@@ -39,8 +39,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   const snapshotSettings: GenSettingsSnapshot = original.genSettings
     ? { ...original.genSettings }
     : {};
-  const previousModelId =
-    typeof (original as any)?.model === 'string' ? (original as any).model : undefined;
+  const previousModelId = typeof original.model === 'string' ? original.model : undefined;
   const modelChanged = typeof modelIdForTurn === 'string' && modelIdForTurn !== previousModelId;
 
   const pickNumber = (snapshotVal: unknown, chatVal: unknown): number | undefined => {
@@ -55,8 +54,8 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     chatVal: unknown,
   ): 'none' | 'low' | 'medium' | 'high' | undefined => {
     if (!supportsReasoning) return undefined;
-    const fromSnapshot = typeof snapshotVal === 'string' ? (snapshotVal as any) : undefined;
-    const fromChat = typeof chatVal === 'string' ? (chatVal as any) : undefined;
+    const fromSnapshot = isReasoningEffort(snapshotVal) ? snapshotVal : undefined;
+    const fromChat = isReasoningEffort(chatVal) ? chatVal : undefined;
     if (modelChanged) return fromChat ?? fromSnapshot;
     return fromSnapshot ?? fromChat;
   };
@@ -77,8 +76,8 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   };
 
   const pickProvider = (snapshotVal: unknown, chatVal: unknown): SearchProvider | undefined => {
-    const fromSnapshot = typeof snapshotVal === 'string' ? (snapshotVal as any) : undefined;
-    const fromChat = typeof chatVal === 'string' ? (chatVal as any) : undefined;
+    const fromSnapshot = isSearchProvider(snapshotVal) ? snapshotVal : undefined;
+    const fromChat = isSearchProvider(chatVal) ? chatVal : undefined;
     if (modelChanged) return fromChat ?? fromSnapshot;
     return fromSnapshot ?? fromChat;
   };
@@ -96,12 +95,12 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   );
   const searchEnabled = pickBoolean(
     snapshotSettings.search_enabled,
-    (chat.settings as any)?.search_enabled,
+    chat.settings.search_enabled,
     false,
   );
   const searchProvider = pickProvider(
     snapshotSettings.search_provider,
-    (chat.settings as any)?.search_provider,
+    chat.settings.search_provider,
   );
   const tutorModeForTurn = pickBoolean(
     snapshotSettings.tutor_mode,
@@ -182,3 +181,11 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     startBuffered: false,
   });
 }
+
+const isReasoningEffort = (
+  value: unknown,
+): value is NonNullable<Chat['settings']['reasoning_effort']> =>
+  value === 'none' || value === 'low' || value === 'medium' || value === 'high';
+
+const isSearchProvider = (value: unknown): value is SearchProvider =>
+  value === 'brave' || value === 'openrouter';

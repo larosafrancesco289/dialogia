@@ -48,10 +48,13 @@ export function guardModelOrNotice<S extends ZdrEnforceState>(
 ): boolean {
   const trimmed = typeof modelId === 'string' ? modelId.trim() : '';
   if (!trimmed) {
-    set((state) => ({
-      ...toZdrState(lists),
-      ui: { ...state.ui, notice: ZDR_UNAVAILABLE_NOTICE },
-    } as Partial<S>));
+    set(
+      (state) =>
+        ({
+          ...toZdrState(lists),
+          ui: { ...state.ui, notice: ZDR_UNAVAILABLE_NOTICE },
+        }) as Partial<S>,
+    );
     return false;
   }
   const verdict = evaluateZdrModel(trimmed, lists);
@@ -60,9 +63,12 @@ export function guardModelOrNotice<S extends ZdrEnforceState>(
     return true;
   }
   const notice = buildZdrNotice(trimmed, verdict);
-  set((state) => ({
-    ...toZdrState(lists),
-    ui: { ...state.ui, notice },
-  } as Partial<S>));
+  set(
+    (state) =>
+      ({
+        ...toZdrState(lists),
+        ui: { ...state.ui, notice },
+      }) as Partial<S>,
+  );
   return false;
 }

@@ -28,8 +28,9 @@ export async function GET(req: NextRequest) {
           'Cache-Control': 'no-store',
         },
       });
-    } catch (error: any) {
-      return jsonError(500, 'anthropic_proxy_error', error?.message || 'anthropic_proxy_error');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'anthropic_proxy_error';
+      return jsonError(500, 'anthropic_proxy_error', message);
     }
   });
 }

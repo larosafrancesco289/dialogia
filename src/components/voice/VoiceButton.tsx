@@ -66,7 +66,9 @@ export function VoiceButton({ className }: VoiceButtonProps) {
       {isActive ? (
         <span className="flex items-center gap-1.5">
           <XMarkIcon className="h-4 w-4" />
-          <span className="text-xs hidden sm:inline" style={getStatusStyle()}>{getStatusText()}</span>
+          <span className="text-xs hidden sm:inline" style={getStatusStyle()}>
+            {getStatusText()}
+          </span>
         </span>
       ) : (
         <MicrophoneIcon className="h-4 w-4" />

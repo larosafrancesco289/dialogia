@@ -140,15 +140,19 @@ export async function extractEvidence(
       'explanation_requested',
     ];
 
-    const type = validTypes.includes(result.type) ? result.type : 'partial_answer';
+    const typeValue = typeof result.type === 'string' ? result.type : undefined;
+    const type =
+      typeValue && validTypes.includes(typeValue as Evidence['type'])
+        ? (typeValue as Evidence['type'])
+        : 'partial_answer';
 
     const weight = clamp(typeof result.weight === 'number' ? result.weight : 0, -0.5, 0.5);
 
     return {
       type,
-      details: result.details || 'No details provided',
+      details: typeof result.details === 'string' ? result.details : 'No details provided',
       weight,
-      misconception: result.misconception || undefined,
+      misconception: typeof result.misconception === 'string' ? result.misconception : undefined,
     };
   } catch (error) {
     // Fallback on error: neutral evidence
@@ -455,42 +459,39 @@ function computeGlobalMetrics(
  * Extract text content from message
  */
 function extractTextFromMessage(message: Message): string {
-  if (typeof message.content === 'string') {
-    return message.content;
+  const content = message.content as unknown;
+  if (typeof content === 'string') {
+    return content;
   }
-
-  if (Array.isArray(message.content)) {
-    return (message.content as any[])
-      .filter((block: any) => block.type === 'text')
-      .map((block: any) => block.text)
-      .join(' ');
-  }
-
-  return '';
+  return extractTextFromBlocks(content);
 }
 
 /**
  * Extract text from LLM response
  */
-function extractTextFromResponse(response: any): string {
+function extractTextFromResponse(response: unknown): string {
   if (typeof response === 'string') {
     return response;
   }
 
-  if (response.content) {
-    if (typeof response.content === 'string') {
-      return response.content;
+  if (isRecord(response)) {
+    const content = response.content;
+    if (typeof content === 'string') {
+      return content;
     }
-    if (Array.isArray(response.content)) {
-      return response.content
-        .filter((block: any) => block.type === 'text')
-        .map((block: any) => block.text)
-        .join(' ');
-    }
-  }
+    const blockText = extractTextFromBlocks(content);
+    if (blockText) return blockText;
 
-  if (response.choices?.[0]?.message?.content) {
-    return response.choices[0].message.content;
+    const choices = response.choices;
+    if (Array.isArray(choices) && choices.length > 0) {
+      const first = choices[0];
+      if (isRecord(first) && isRecord(first.message)) {
+        const messageContent = first.message.content;
+        if (typeof messageContent === 'string') return messageContent;
+        const nested = extractTextFromBlocks(messageContent);
+        if (nested) return nested;
+      }
+    }
   }
 
   return JSON.stringify(response);
@@ -499,12 +500,14 @@ function extractTextFromResponse(response: any): string {
 /**
  * Parse JSON from LLM response (handles markdown code blocks)
  */
-function parseJSONResponse(text: string): any {
+function parseJSONResponse(text: string): Record<string, unknown> {
+  const parseValue = (value: unknown): Record<string, unknown> => (isRecord(value) ? value : {});
+
   // Try to extract JSON from markdown code blocks
   const jsonMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
   if (jsonMatch) {
     try {
-      return JSON.parse(jsonMatch[1]);
+      return parseValue(JSON.parse(jsonMatch[1]));
     } catch {
       // Fall through to direct parse
     }
@@ -512,13 +515,13 @@ function parseJSONResponse(text: string): any {
 
   // Try direct JSON parse
   try {
-    return JSON.parse(text);
+    return parseValue(JSON.parse(text));
   } catch {
     // Try to find JSON object in text
     const match = text.match(/\{[\s\S]*\}/);
     if (match) {
       try {
-        return JSON.parse(match[0]);
+        return parseValue(JSON.parse(match[0]));
       } catch {
         // Fall through
       }
@@ -527,6 +530,21 @@ function parseJSONResponse(text: string): any {
 
   // Return empty object as fallback
   return {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function extractTextFromBlocks(content: unknown): string {
+  if (!Array.isArray(content)) return '';
+  return content
+    .map((block) => {
+      if (!isRecord(block) || block.type !== 'text') return '';
+      return typeof block.text === 'string' ? block.text : '';
+    })
+    .filter(Boolean)
+    .join(' ');
 }
 
 /**

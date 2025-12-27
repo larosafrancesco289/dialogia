@@ -64,7 +64,13 @@ export function FillBlankCard({
   const correct = !!activeAttempt.correct;
 
   const persistAnswer = (nextValue: string) => {
-    setTutorAttemptFillBlank(messageId, activeItem.id, nextValue, activeAttempt.revealed, undefined);
+    setTutorAttemptFillBlank(
+      messageId,
+      activeItem.id,
+      nextValue,
+      activeAttempt.revealed,
+      undefined,
+    );
   };
 
   const revealAnswer = () => {
@@ -129,7 +135,11 @@ export function FillBlankCard({
                 <div className="relative flex-1">
                   <input
                     className={`input w-full pr-10 ${
-                      revealed ? (correct ? 'feedback-correct border' : 'feedback-incorrect border') : ''
+                      revealed
+                        ? correct
+                          ? 'feedback-correct border'
+                          : 'feedback-incorrect border'
+                        : ''
                     }`}
                     placeholder="Type your answer..."
                     value={value}
@@ -175,7 +185,9 @@ export function FillBlankCard({
                         {activeItem.answer}
                       </div>
                       {activeItem.explanation && (
-                        <div className="opacity-90 leading-relaxed text-sm">{activeItem.explanation}</div>
+                        <div className="opacity-90 leading-relaxed text-sm">
+                          {activeItem.explanation}
+                        </div>
                       )}
                     </div>
                   </motion.div>
@@ -189,7 +201,9 @@ export function FillBlankCard({
                   >
                     <div className="rounded-lg border p-3 feedback-correct">
                       <div className="font-bold mb-1">Explanation:</div>
-                      <div className="opacity-90 leading-relaxed text-sm">{activeItem.explanation}</div>
+                      <div className="opacity-90 leading-relaxed text-sm">
+                        {activeItem.explanation}
+                      </div>
                     </div>
                   </motion.div>
                 )}

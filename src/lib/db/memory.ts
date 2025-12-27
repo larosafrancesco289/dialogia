@@ -87,7 +87,7 @@ class InMemoryTable<T> {
     equals(value: T[K]): InMemoryCollection<T>;
   };
   where(query: Partial<T>): InMemoryCollection<T>;
-  where(fieldOrQuery: keyof T | Partial<T>): any {
+  where(fieldOrQuery: keyof T | Partial<T>) {
     if (typeof fieldOrQuery === 'string') {
       const field = fieldOrQuery as keyof T;
       return {
@@ -109,21 +109,28 @@ export class InMemoryDialogiaDB {
   folders = new InMemoryTable<Folder>((folder) => folder.id);
   kv = new InMemoryTable<KVRecord>((record) => record.key);
 
-  async transaction(_mode: 'r' | 'rw', ...args: any[]) {
-    const callback = args.pop();
-    if (typeof callback === 'function') {
-      await callback({
-        table: <U>(name: string) => {
-          const mapping: Record<string, InMemoryTable<any>> = {
-            chats: this.chats,
-            messages: this.messages,
-            folders: this.folders,
-            kv: this.kv,
-          };
-          return mapping[name] as InMemoryTable<U>;
-        },
-      });
-    }
+  async transaction(_mode: 'r' | 'rw', ...args: unknown[]) {
+    const callback = args[args.length - 1];
+    if (typeof callback !== 'function') return;
+    const run = callback as (ctx: {
+      table: <U>(name: string) => InMemoryTable<U>;
+    }) => Promise<void> | void;
+    await run({
+      table: <U>(name: string) => {
+        switch (name) {
+          case 'chats':
+            return this.chats as unknown as InMemoryTable<U>;
+          case 'messages':
+            return this.messages as unknown as InMemoryTable<U>;
+          case 'folders':
+            return this.folders as unknown as InMemoryTable<U>;
+          case 'kv':
+            return this.kv as unknown as InMemoryTable<U>;
+          default:
+            throw new Error(`Unknown table: ${name}`);
+        }
+      },
+    });
   }
 }
 

@@ -48,10 +48,9 @@ import {
   calculateLearningGain,
   calculateCohenD,
   calculateStats,
-  formatTestResult,
   type TestResult,
 } from '@/lib/eval/prePostTest';
-import type { Chat, Message, ORModel, ModelTransport, LearnerModel } from '@/lib/types';
+import type { Chat, ORModel, ModelTransport, LearnerModel } from '@/lib/types';
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 import { parseArgs } from '@/lib/cli/args';
 import { loadEnvDefaults } from '@/lib/cli/env';
@@ -579,7 +578,7 @@ function calculateStatistics(
   results: AblationRunResult[],
   conditions: AblationCondition[],
 ): AblationSummary['statistics'] {
-  const byCondition: AblationSummary['statistics']['byCondition'] = {} as any;
+  const byCondition = {} as AblationSummary['statistics']['byCondition'];
 
   for (const condition of conditions) {
     const conditionResults = results.filter((r) => r.condition === condition);

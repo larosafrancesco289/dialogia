@@ -1,10 +1,7 @@
 import { findModelById, isAudioInputSupported, isVisionSupported } from '@/lib/models';
 import type { DraftAttachment, ORModel, PersistedAttachment } from '@/lib/types';
 import { fileToDataUrl } from '@/lib/attachments/readers';
-import {
-  detectAudioFormatFromAttachment,
-  extractBase64FromDataUrl,
-} from '@/lib/attachments/audio';
+import { detectAudioFormatFromAttachment, extractBase64FromDataUrl } from '@/lib/attachments/audio';
 
 function stripFile(attachment: DraftAttachment): PersistedAttachment {
   const { file: _file, ...rest } = attachment;

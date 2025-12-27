@@ -134,12 +134,14 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     { startedAt: tStart },
   );
 
+  const modalities = canImageOut ? (['image', 'text'] as Array<'image' | 'text'>) : undefined;
+  const toolChoice = includeTools ? 'none' : undefined;
   await getStreamChatCompletion()({
     apiKey,
     transport,
     model: chat.settings.model,
     messages,
-    modalities: canImageOut ? (['image', 'text'] as any) : undefined,
+    modalities,
     temperature: chat.settings.temperature,
     top_p: chat.settings.top_p,
     max_tokens: chat.settings.max_tokens,
@@ -147,7 +149,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
     signal: controller.signal,
     tools: toolsForStreaming,
-    tool_choice: includeTools ? ('none' as any) : undefined,
+    tool_choice: toolChoice,
     providerSort,
     plugins: combinedPlugins,
     callbacks,

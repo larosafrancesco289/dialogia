@@ -117,7 +117,7 @@ export type DeepResearchOutput = {
   answer: string;
   sources: DeepSearchResult[];
   trace?: Array<DeepResearchEvent>;
-  usage?: any;
+  usage?: unknown;
   model: string;
 };
 
@@ -125,8 +125,9 @@ async function requiresReasoningModel(apiKey: string, modelId: string, origin: s
   try {
     const models = await fetchModels(apiKey, { origin });
     const entry = models.find((m) => m.id.toLowerCase() === modelId.toLowerCase());
-    const supported = Array.isArray((entry?.raw as any)?.supported_parameters)
-      ? (entry?.raw as any).supported_parameters.map((p: any) => String(p).toLowerCase())
+    const raw = isRecord(entry?.raw) ? entry?.raw : undefined;
+    const supported = Array.isArray(raw?.supported_parameters)
+      ? raw.supported_parameters.map((p) => String(p).toLowerCase())
       : [];
     return supported.includes('reasoning');
   } catch {
@@ -165,7 +166,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
   const trace: DeepResearchOutput['trace'] = [];
   const collectedSources: DeepSearchResult[] = [];
   const seenUrls = new Set<string>();
-  let usage: any | undefined;
+  let usage: unknown | undefined;
   let lastSourceCount = 0;
 
   const budget = Math.max(1, Math.min(maxIterations, 20));
@@ -228,10 +229,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
 
       if (name === 'web_search') {
         try {
-          const provider =
-            typeof (args as { provider?: unknown }).provider === 'string'
-              ? ((args as { provider?: string }).provider as string)
-              : 'brave';
+          const provider = typeof args.provider === 'string' ? args.provider : 'brave';
           if (provider !== 'brave') {
             const unsupported = { error: `unsupported_provider_${provider}` };
             const event: DeepResearchEvent = { type: 'search', input: args, output: unsupported };
@@ -245,28 +243,24 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
             });
             continue;
           }
-          const includeDomains = Array.isArray((args as any).include_domains)
-            ? (args as any).include_domains.filter(
-                (entry: unknown): entry is string => typeof entry === 'string',
-              )
+          const includeDomains = Array.isArray(args.include_domains)
+            ? args.include_domains.filter((entry): entry is string => typeof entry === 'string')
             : undefined;
-          const excludeDomains = Array.isArray((args as any).exclude_domains)
-            ? (args as any).exclude_domains.filter(
-                (entry: unknown): entry is string => typeof entry === 'string',
-              )
+          const excludeDomains = Array.isArray(args.exclude_domains)
+            ? args.exclude_domains.filter((entry): entry is string => typeof entry === 'string')
             : undefined;
           const searchArgs: WebSearchToolArgs = {
-            query: typeof (args as any).query === 'string' ? (args as any).query : '',
-            count: typeof (args as any).count === 'number' ? (args as any).count : undefined,
+            query: typeof args.query === 'string' ? args.query : '',
+            count: typeof args.count === 'number' ? args.count : undefined,
             freshness:
-              (args as any).freshness === 'd' ||
-              (args as any).freshness === 'w' ||
-              (args as any).freshness === 'm' ||
-              (args as any).freshness === 'y' ||
-              (args as any).freshness === 'all'
-                ? ((args as any).freshness as 'd' | 'w' | 'm' | 'y' | 'all')
+              args.freshness === 'd' ||
+              args.freshness === 'w' ||
+              args.freshness === 'm' ||
+              args.freshness === 'y' ||
+              args.freshness === 'all'
+                ? args.freshness
                 : undefined,
-            country: typeof (args as any).country === 'string' ? (args as any).country : undefined,
+            country: typeof args.country === 'string' ? args.country : undefined,
             include_domains: includeDomains,
             exclude_domains: excludeDomains,
           };
@@ -287,8 +281,8 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
             name,
             content: JSON.stringify(results),
           });
-        } catch (e: any) {
-          const err = { error: String(e?.message || 'search_failed') };
+        } catch (e: unknown) {
+          const err = { error: e instanceof Error ? e.message : 'search_failed' };
           const event: DeepResearchEvent = { type: 'search', input: args, output: err };
           trace?.push(event);
           onProgress?.(event);
@@ -300,11 +294,9 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
       if (name === 'fetch_url') {
         try {
           const fetchArgs: FetchUrlToolArgs = {
-            url: typeof (args as any).url === 'string' ? (args as any).url : '',
-            max_bytes:
-              typeof (args as any).max_bytes === 'number' ? (args as any).max_bytes : undefined,
-            timeout_ms:
-              typeof (args as any).timeout_ms === 'number' ? (args as any).timeout_ms : undefined,
+            url: typeof args.url === 'string' ? args.url : '',
+            max_bytes: typeof args.max_bytes === 'number' ? args.max_bytes : undefined,
+            timeout_ms: typeof args.timeout_ms === 'number' ? args.timeout_ms : undefined,
           };
           if (!fetchArgs.url) throw new Error('fetch_missing_url');
           const page = await fetchUrl(fetchArgs);
@@ -316,8 +308,8 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
           trace?.push(event);
           onProgress?.(event);
           messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify(page) });
-        } catch (e: any) {
-          const err = { error: String(e?.message || 'fetch_failed') };
+        } catch (e: unknown) {
+          const err = { error: e instanceof Error ? e.message : 'fetch_failed' };
           const event: DeepResearchEvent = { type: 'fetch', input: args, output: err };
           trace?.push(event);
           onProgress?.(event);
@@ -374,3 +366,6 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
     };
   }
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);

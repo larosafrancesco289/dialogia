@@ -374,7 +374,8 @@ a:hover {
   font-size: 13px;
   color: var(--color-fg-muted);
   min-height: 32px;
-  transition: background-color var(--duration-fast) var(--ease-standard),
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
     transform var(--duration-fast) var(--ease-spring);
 }
 .badge:hover {

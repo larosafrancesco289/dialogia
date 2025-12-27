@@ -40,8 +40,9 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
   }
 
   if (next.tutor && typeof next.tutor === 'object') {
-    const keys = Object.keys(next.tutor).filter((key) => {
-      const value = (next.tutor as any)[key];
+    const tutor = next.tutor as Record<string, unknown>;
+    const keys = Object.keys(tutor).filter((key) => {
+      const value = tutor[key];
       if (Array.isArray(value)) return value.length > 0;
       if (value && typeof value === 'object') return Object.keys(value).length > 0;
       return value != null;
@@ -65,7 +66,11 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
       if (!next.deepResearch) {
         next.deepResearch = { trace, answer };
       } else if (!next.deepResearch.trace || next.deepResearch.trace.length === 0) {
-        next.deepResearch = { ...next.deepResearch, trace, answer: next.deepResearch.answer ?? answer };
+        next.deepResearch = {
+          ...next.deepResearch,
+          trace,
+          answer: next.deepResearch.answer ?? answer,
+        };
       }
       delete next.reasoning;
       changed = true;

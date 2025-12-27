@@ -56,7 +56,10 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
               <div key={idx} className="flex items-center gap-2 text-sm">
                 {change.to === 'completed' && (
                   <>
-                    <CheckCircleIcon className="h-4 w-4 shrink-0" style={{ color: 'var(--color-success)' }} />
+                    <CheckCircleIcon
+                      className="h-4 w-4 shrink-0"
+                      style={{ color: 'var(--color-success)' }}
+                    />
                     <span className="font-medium" style={{ color: 'var(--color-success)' }}>
                       Completed: {change.nodeId}
                     </span>

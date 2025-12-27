@@ -131,10 +131,7 @@ export function LearnerInsights({
   }
 
   return (
-    <div
-      className="marginalia p-4"
-      style={{ borderLeftColor: 'var(--color-accent-2)' }}
-    >
+    <div className="marginalia p-4" style={{ borderLeftColor: 'var(--color-accent-2)' }}>
       <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-2 mb-3">
         <ExclamationTriangleIcon className="w-3.5 h-3.5" />
         Focus Areas & Insights
@@ -175,8 +172,10 @@ export function LearnerInsights({
                 <div
                   className="mt-2 text-[11px] p-2"
                   style={{
-                    background: 'color-mix(in oklab, var(--color-danger) 10%, var(--surface-paper))',
-                    border: '1px solid color-mix(in oklab, var(--color-danger) 30%, var(--rule-light))',
+                    background:
+                      'color-mix(in oklab, var(--color-danger) 10%, var(--surface-paper))',
+                    border:
+                      '1px solid color-mix(in oklab, var(--color-danger) 30%, var(--rule-light))',
                     borderRadius: 'var(--radius-editorial)',
                     color: 'var(--color-danger)',
                   }}

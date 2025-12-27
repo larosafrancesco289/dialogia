@@ -1,0 +1,129 @@
+.tabBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+
+  /* Size with safe area */
+  height: calc(56px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+
+  /* Imperial Archive styling */
+  background: var(--surface-paper);
+  border-top: 1px solid var(--color-border);
+
+  /* Warm shadow upward - scholarly feel */
+  box-shadow:
+    0 -1px 3px rgba(120, 90, 50, 0.04),
+    0 -4px 12px rgba(100, 80, 40, 0.03);
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-1);
+  min-height: 56px;
+
+  /* Reset button styles */
+  background: transparent;
+  border: none;
+  cursor: pointer;
+
+  /* Default state */
+  color: var(--color-fg-muted);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.tab:hover {
+  color: var(--color-fg);
+}
+
+.tab.active {
+  color: var(--color-accent);
+}
+
+.tabIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.tabLabel {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Primary (New Chat) tab */
+.tab.primary {
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+.primaryButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+
+  /* Imperial Archive accent styling */
+  background: linear-gradient(
+    135deg,
+    var(--color-accent) 0%,
+    color-mix(in oklab, var(--color-accent) 85%, #000) 100%
+  );
+  border-radius: var(--radius-lg);
+
+  /* Inset highlight for dimension */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 2px 8px rgba(185, 151, 91, 0.25),
+    0 4px 12px rgba(120, 90, 50, 0.15);
+
+  color: #0b0b0b;
+}
+
+.primaryButton:active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 1px 4px rgba(185, 151, 91, 0.2);
+}
+
+/* Hide when keyboard is active */
+:global(html.keyboard-active) .tabBar {
+  display: none;
+}
+
+/* Dark mode adjustments */
+:global(.dark) .tabBar {
+  box-shadow:
+    0 -1px 3px rgba(0, 0, 0, 0.2),
+    0 -4px 12px rgba(0, 0, 0, 0.15);
+}
+
+:global(.dark) .primaryButton {
+  background: linear-gradient(
+    135deg,
+    var(--color-accent) 0%,
+    color-mix(in oklab, var(--color-accent) 75%, #000) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 2px 8px rgba(201, 162, 39, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.25);
+}

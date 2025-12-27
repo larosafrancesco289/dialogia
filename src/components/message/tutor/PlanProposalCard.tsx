@@ -1,10 +1,10 @@
-"use client";
-import { useState } from "react";
-import { ClipboardDocumentCheckIcon } from "@heroicons/react/24/outline";
-import type { TutorPlanProposal, TutorPlanSuggestion } from "@/lib/types";
-import { useChatStore } from "@/lib/store";
-import { getNextNode, updateNodeStatus } from "@/lib/learningPlan/service";
-import { PlanSuggestionsCard } from "@/components/message/tutor/PlanSuggestionsCard";
+'use client';
+import { useState } from 'react';
+import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
+import type { TutorPlanProposal, TutorPlanSuggestion } from '@/lib/types';
+import { useChatStore } from '@/lib/store';
+import { getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
+import { PlanSuggestionsCard } from '@/components/message/tutor/PlanSuggestionsCard';
 
 export function PlanProposalCard({
   messageId,
@@ -26,13 +26,13 @@ export function PlanProposalCard({
   const selectedChatId = useChatStore((s) => s.selectedChatId);
   const chat = chats.find((c) => c.id === selectedChatId);
 
-  const resolved = proposal.status === "approved" || proposal.status === "declined";
+  const resolved = proposal.status === 'approved' || proposal.status === 'declined';
   const disableActions = resolved || approving || declining;
   const nodesCount = proposal.plan.nodes.length;
   const estimatedHours = proposal.plan.metadata?.estimatedHours;
 
   const applyProposalStatus = async (
-    status: "approved" | "declined",
+    status: 'approved' | 'declined',
     extra?: Partial<TutorPlanProposal>,
   ) => {
     if (extra && Object.keys(extra).length > 0) {
@@ -51,29 +51,29 @@ export function PlanProposalCard({
     try {
       const now = Date.now();
       let adoptedPlan = { ...proposal.plan, updatedAt: now };
-      const hasInProgress = adoptedPlan.nodes.some((n) => n.status === "in_progress");
+      const hasInProgress = adoptedPlan.nodes.some((n) => n.status === 'in_progress');
       if (!hasInProgress && adoptedPlan.nodes.length > 0) {
         const firstReady = getNextNode(adoptedPlan) || adoptedPlan.nodes[0];
-        adoptedPlan = updateNodeStatus(adoptedPlan, firstReady.id, "in_progress");
+        adoptedPlan = updateNodeStatus(adoptedPlan, firstReady.id, 'in_progress');
       }
       await updateChatSettings({
         learningPlan: adoptedPlan,
         planGenerated: true,
         enableLearnerModel: true,
       });
-      await applyProposalStatus("approved", { plan: adoptedPlan });
+      await applyProposalStatus('approved', { plan: adoptedPlan });
 
       const currentNode = getNextNode(adoptedPlan);
-      const nextTopic = currentNode ? currentNode.name : "our next topic";
+      const nextTopic = currentNode ? currentNode.name : 'our next topic';
       const content = `Plan approved. Let's get started with ${nextTopic}!`;
       await sendUserMessage(content, {
         metadata: {
           hiddenFromUser: true,
-          kind: "tutor_plan_adoption",
+          kind: 'tutor_plan_adoption',
         },
       });
     } catch {
-      setUI({ notice: "Failed to apply learning plan. Please try again." });
+      setUI({ notice: 'Failed to apply learning plan. Please try again.' });
     } finally {
       setApproving(false);
     }
@@ -82,13 +82,13 @@ export function PlanProposalCard({
   const handleRequestChanges = async () => {
     if (declining || approving) return;
     const feedback = window.prompt(
-      "What would you like to adjust? Share specifics so the tutor can update the plan.",
-      "Could we add more practice for the fundamentals?",
+      'What would you like to adjust? Share specifics so the tutor can update the plan.',
+      'Could we add more practice for the fundamentals?',
     );
     if (feedback == null || !feedback.trim()) return;
     setDeclining(true);
     try {
-      await applyProposalStatus("declined");
+      await applyProposalStatus('declined');
       await sendUserMessage(
         `Plan feedback:\n${feedback.trim()}\nPlease update the plan and confirm the changes.`,
       );
@@ -99,10 +99,10 @@ export function PlanProposalCard({
 
   const confirmationNeeded = proposal.requiresConfirmation !== false;
   const resolvedLabel =
-    proposal.status === "approved"
-      ? "Plan adopted"
-      : proposal.status === "declined"
-        ? "Awaiting revisions"
+    proposal.status === 'approved'
+      ? 'Plan adopted'
+      : proposal.status === 'declined'
+        ? 'Awaiting revisions'
         : null;
 
   return (
@@ -117,7 +117,7 @@ export function PlanProposalCard({
               Personalized learning plan ready
             </span>
             <span className="text-xs text-muted-foreground">
-              {nodesCount} topics{estimatedHours ? ` · ~${estimatedHours}h commitment` : ""}
+              {nodesCount} topics{estimatedHours ? ` · ~${estimatedHours}h commitment` : ''}
             </span>
           </div>
           <div className="mt-3 space-y-3 text-sm text-muted-foreground">
@@ -136,9 +136,7 @@ export function PlanProposalCard({
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <button
               className="btn btn-outline btn-sm"
-              onClick={() =>
-                setUI({ plan: { sheetOpen: true, sheetPlanOverride: proposal.plan } })
-              }
+              onClick={() => setUI({ plan: { sheetOpen: true, sheetPlanOverride: proposal.plan } })}
             >
               View full plan
             </button>
@@ -147,14 +145,14 @@ export function PlanProposalCard({
               onClick={handleApprove}
               disabled={disableActions}
             >
-              {approving ? "Applying…" : "Approve plan"}
+              {approving ? 'Applying…' : 'Approve plan'}
             </button>
             <button
               className="btn btn-outline btn-sm"
               onClick={handleRequestChanges}
               disabled={disableActions}
             >
-              {declining ? "Recording…" : "Suggest changes"}
+              {declining ? 'Recording…' : 'Suggest changes'}
             </button>
             {resolvedLabel && (
               <span className="badge badge-outline uppercase tracking-wide text-[11px] ml-auto">

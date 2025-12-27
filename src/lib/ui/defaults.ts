@@ -1,9 +1,19 @@
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { getDefaultZdrOnly, getRoutePreferenceDefault } from '@/lib/config';
-import type { UIState } from '@/lib/store/types';
+import type { UIState, UIMobileState } from '@/lib/store/types';
 
 const EPHEMERAL_DEFAULTS: Partial<UIState> = {
   overrides: undefined,
+};
+
+export const DEFAULT_MOBILE_STATE: UIMobileState = {
+  activeTab: 'new',
+  chatsSheetOpen: false,
+  settingsSheetOpen: false,
+  headerVisible: true,
+  swipeRevealedMessageId: null,
+  lastScrollY: 0,
+  composerFocused: false,
 };
 
 export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
@@ -47,6 +57,7 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
       sheetPlanOverride: null,
       generationByChatId: {},
     },
+    mobile: DEFAULT_MOBILE_STATE,
   };
 
   return overrides ? { ...base, ...overrides } : base;

@@ -56,7 +56,7 @@ export function MoveChatSheet({
     >
       <div className="mobile-sheet card mobile-sheet-compact" role="menu">
         <div className="mobile-sheet-handle" aria-hidden="true" />
-        <div className="text-sm font-semibold px-1 pb-1">Move "{chatTitle}"</div>
+        <div className="text-sm font-semibold px-1 pb-1">Move &quot;{chatTitle}&quot;</div>
         <button
           type="button"
           className={`mobile-menu-item ${currentFolderId ? '' : 'is-active'}`.trim()}

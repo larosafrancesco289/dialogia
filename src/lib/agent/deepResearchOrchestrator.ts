@@ -46,13 +46,14 @@ export async function runDeepResearchTurn({
     if (!res.ok) {
       // Try to read error from body if possible, otherwise default
       const errText = await res.text().catch(() => '');
-      let errJson: any = {};
+      let errJson: Record<string, unknown> = {};
       try {
         errJson = JSON.parse(errText);
       } catch {
         // ignore
       }
-      throw new Error(errJson?.error || `deep_failed_${res.status}`);
+      const errMessage = typeof errJson.error === 'string' ? errJson.error : undefined;
+      throw new Error(errMessage || `deep_failed_${res.status}`);
     }
 
     if (!res.body) throw new Error('no_body');
@@ -86,7 +87,7 @@ export async function runDeepResearchTurn({
               const updated = list.map((m) =>
                 m.id === assistantMessage.id ? { ...m, deepResearch } : m,
               );
-              return { messages: { ...state.messages, [chatId]: updated } } as any;
+              return { messages: { ...state.messages, [chatId]: updated } };
             });
           } else if (msg.type === 'result') {
             finalResult = msg.data;
@@ -111,14 +112,14 @@ export async function runDeepResearchTurn({
     set((state) => {
       const list = state.messages[chatId] ?? [];
       const updated = list.map((msg) => (msg.id === assistantMessage.id ? finalMessage : msg));
-      return { messages: { ...state.messages, [chatId]: updated } } as any;
+      return { messages: { ...state.messages, [chatId]: updated } };
     });
     await persistMessage(finalMessage);
     if (manageController) set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
     if (manageController) clearTurnController(chatId, controller);
     return true;
-  } catch (err: any) {
-    const errorMessage = String(err?.message || 'DeepResearch failed');
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'DeepResearch failed';
     set((state) => ({
       ui: {
         ...state.ui,

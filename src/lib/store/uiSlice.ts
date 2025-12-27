@@ -1,4 +1,4 @@
-import type { StoreState, UIState } from '@/lib/store/types';
+import type { StoreState, UIState, UIStatePartial } from '@/lib/store/types';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
 import { applyNextOverrides } from '@/lib/ui/next';
@@ -8,9 +8,9 @@ export const createUiSlice = createStoreSlice((set, get) => {
 
   return {
     ui: initial,
-    setUI(partial: Partial<UIState>) {
+    setUI(partial: UIStatePartial) {
       set((s) => {
-        const { overrides, flags, debug, search, tutor, plan, ...rest } = partial;
+        const { overrides, flags, debug, search, tutor, plan, mobile, ...rest } = partial;
         const hasOverrides = Object.prototype.hasOwnProperty.call(partial, 'overrides');
         let nextUi: UIState = {
           ...s.ui,
@@ -20,6 +20,7 @@ export const createUiSlice = createStoreSlice((set, get) => {
           search: search ? { ...s.ui.search, ...search } : s.ui.search,
           tutor: tutor ? { ...s.ui.tutor, ...tutor } : s.ui.tutor,
           plan: plan ? { ...s.ui.plan, ...plan } : s.ui.plan,
+          mobile: mobile ? { ...s.ui.mobile, ...mobile } : s.ui.mobile,
         };
         if (hasOverrides) {
           nextUi =

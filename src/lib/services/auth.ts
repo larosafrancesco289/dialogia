@@ -15,6 +15,9 @@ export type ModelAuthResolver = {
 const noticeForTransport = (transport?: ModelTransport) =>
   transport === 'anthropic' ? NOTICE_MISSING_ANTHROPIC_KEY : NOTICE_MISSING_CLIENT_KEY;
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
 const notifyMissingAuth = (set: StoreSetter, transport?: ModelTransport) => {
   const notice = noticeForTransport(transport);
   set((state) => ({ ui: { ...state.ui, notice } }));
@@ -38,7 +41,10 @@ export const createModelAuthResolver = ({
       cache.set(modelId, auth);
       return auth;
     } catch (error) {
-      const transport = (error as any)?.transport as ModelTransport | undefined;
+      const transport =
+        isRecord(error) && typeof error.transport === 'string'
+          ? (error.transport as ModelTransport)
+          : undefined;
       notifyMissingAuth(set, transport);
       throw error;
     }
@@ -81,9 +87,10 @@ export const resolveSingleModelAuth = ({
     return requireModelAuth(modelId, modelIndex);
   } catch (error) {
     const meta = modelIndex.get(modelId);
-    const transport = ((error as any)?.transport ?? resolveModelTransport(modelId, meta)) as
-      | ModelTransport
-      | undefined;
+    const transport =
+      isRecord(error) && typeof error.transport === 'string'
+        ? (error.transport as ModelTransport)
+        : resolveModelTransport(modelId, meta);
     notifyMissingAuth(set, transport);
     return null;
   }

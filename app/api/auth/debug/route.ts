@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AUTH_COOKIE_NAME, TIER_COOKIE_NAME } from '@/lib/auth/shared';
 import { verifyAuthTokenEdgeWithClaims } from '@/lib/auth/edge';
 import { computeSecretFingerprintEdge } from '@/lib/auth/fingerprint.edge';
+import type { AuthClaims } from '@/lib/auth/types';
 import { isAuthDebugRouteEnabled, isProd } from '@/lib/config';
 import { jsonError, withTiming } from '@/lib/server/route';
 
@@ -25,15 +26,20 @@ export async function GET(req: NextRequest) {
     const inProd = isProd();
 
     // Try to verify the token using Edge runtime (same as middleware)
-    let edgeVerification: any = null;
+    type EdgeVerification =
+      | { valid: true; claims: AuthClaims }
+      | { valid: false; reason: string }
+      | null;
+    let edgeVerification: EdgeVerification = null;
     if (authCookie?.value && secret) {
       try {
         const claims = await verifyAuthTokenEdgeWithClaims(authCookie.value, secret);
         edgeVerification = claims
           ? { valid: true, claims }
           : { valid: false, reason: 'verification_failed' };
-      } catch (e: any) {
-        edgeVerification = { valid: false, reason: e?.message || 'error' };
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'error';
+        edgeVerification = { valid: false, reason: message };
       }
     } else if (!secret) {
       edgeVerification = { valid: false, reason: 'no_secret_in_edge' };

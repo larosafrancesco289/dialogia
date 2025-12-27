@@ -23,7 +23,7 @@ export async function runBraveSearch(
       headers: { Accept: 'application/json' },
       cache: 'no-store',
       signal: opts?.signal,
-    } as any);
+    });
     if (!res.ok) {
       return {
         ok: false,
@@ -31,11 +31,12 @@ export async function runBraveSearch(
         error: res.status === 400 ? NOTICE_MISSING_BRAVE_KEY : `HTTP ${res.status}`,
       };
     }
-    const data: any = await res.json();
-    const results = Array.isArray(data?.results) ? (data.results as SearchResult[]) : [];
+    const data = (await res.json()) as { results?: SearchResult[] };
+    const results = Array.isArray(data?.results) ? data.results : [];
     return { ok: true, results };
-  } catch (e: any) {
-    return { ok: false, results: [], error: e?.message || 'Network error' };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Network error';
+    return { ok: false, results: [], error: message };
   }
 }
 

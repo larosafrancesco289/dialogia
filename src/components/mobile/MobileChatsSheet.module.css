@@ -1,0 +1,121 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 9, 8, 0.5);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+
+  /* Take most of the screen */
+  max-height: calc(100dvh - 40px);
+  height: calc(100dvh - 40px);
+
+  /* Imperial Archive styling */
+  background: var(--surface-paper);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  box-shadow: 0 -4px 24px rgba(80, 60, 40, 0.12);
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  /* Safe area */
+  padding-bottom: env(safe-area-inset-bottom);
+
+  /* Touch for drag */
+  touch-action: none;
+}
+
+.handleArea {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 8px;
+  cursor: grab;
+}
+
+.handleArea:active {
+  cursor: grabbing;
+}
+
+.handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--color-border) 80%, transparent);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-serif-assistant);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-fg);
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-editorial);
+
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+  cursor: pointer;
+
+  color: var(--color-fg-muted);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.closeButton:hover {
+  background: var(--color-muted);
+  color: var(--color-fg);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-2);
+}
+
+/* Dark mode */
+:global(.dark) .backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+:global(.dark) .sheet {
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+}

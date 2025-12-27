@@ -77,22 +77,24 @@ export function isTutorToolName(name: string): name is TutorToolName {
   return TUTOR_TOOL_NAME_SET.has(name as TutorToolName);
 }
 
-const tutorToolHandlers: Record<TutorToolName, TutorToolHandler<any>> = {
-  ask_student_question: askStudentQuestionHandler,
-  create_diagnostic: createDiagnosticHandler,
-  generate_plan: generatePlanHandler,
-  update_plan: updatePlanHandler,
-  assess_answer: assessAnswerHandler,
-  update_learner_model: updateLearnerModelHandler,
-  apply_learner_model_feedback: applyLearnerModelFeedbackHandler,
-  get_plan_suggestions: getPlanSuggestionsHandler,
-  quiz_mcq: quizMcqHandler,
-  quiz_fill_blank: quizFillBlankHandler,
-  quiz_open_ended: quizOpenEndedHandler,
-  flashcards: flashcardsHandler,
-  grade_open_response: gradeOpenResponseHandler,
-  add_to_deck: addToDeckHandler,
-  srs_review: srsReviewHandler,
+type AnyTutorToolHandler = TutorToolHandler<unknown>;
+
+const tutorToolHandlers: Record<TutorToolName, AnyTutorToolHandler> = {
+  ask_student_question: askStudentQuestionHandler as AnyTutorToolHandler,
+  create_diagnostic: createDiagnosticHandler as AnyTutorToolHandler,
+  generate_plan: generatePlanHandler as AnyTutorToolHandler,
+  update_plan: updatePlanHandler as AnyTutorToolHandler,
+  assess_answer: assessAnswerHandler as AnyTutorToolHandler,
+  update_learner_model: updateLearnerModelHandler as AnyTutorToolHandler,
+  apply_learner_model_feedback: applyLearnerModelFeedbackHandler as AnyTutorToolHandler,
+  get_plan_suggestions: getPlanSuggestionsHandler as AnyTutorToolHandler,
+  quiz_mcq: quizMcqHandler as AnyTutorToolHandler,
+  quiz_fill_blank: quizFillBlankHandler as AnyTutorToolHandler,
+  quiz_open_ended: quizOpenEndedHandler as AnyTutorToolHandler,
+  flashcards: flashcardsHandler as AnyTutorToolHandler,
+  grade_open_response: gradeOpenResponseHandler as AnyTutorToolHandler,
+  add_to_deck: addToDeckHandler as AnyTutorToolHandler,
+  srs_review: srsReviewHandler as AnyTutorToolHandler,
 };
 
 export async function applyTutorToolCall(opts: {

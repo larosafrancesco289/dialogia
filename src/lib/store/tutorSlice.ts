@@ -13,6 +13,10 @@ import {
 import { processPlanProgress } from '@/lib/agent/planAwareTutor';
 import { readNextOverrides } from '@/lib/ui/next';
 
+type McqAttempts = NonNullable<MessageTutor['attempts']>['mcq'];
+type FillBlankAttempts = NonNullable<MessageTutor['attempts']>['fillBlank'];
+type OpenAttempts = NonNullable<MessageTutor['attempts']>['open'];
+
 const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
   if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {
     return "Welcome! Share what you want to learn and I'll build a personalized plan with adaptive mastery tracking. Feel free to upload any materials you have to help me understand your learning context.";
@@ -28,10 +32,7 @@ const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
 };
 
 export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
-  const updateTutorEntry = (
-    messageId: string,
-    updater: (prev: MessageTutor) => MessageTutor,
-  ) => {
+  const updateTutorEntry = (messageId: string, updater: (prev: MessageTutor) => MessageTutor) => {
     if (!messageId) return;
     set((state) => {
       const current = state.ui.tutor.byMessageId || {};
@@ -83,8 +84,7 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
       const state = get();
       const nextOverrides = readNextOverrides(state.ui);
       const tutorActive =
-        !!state.ui.flags.experimentalTutor &&
-        (state.ui.tutor.forceMode || nextOverrides.tutorMode);
+        !!state.ui.flags.experimentalTutor && (state.ui.tutor.forceMode || nextOverrides.tutorMode);
       if (!tutorActive) {
         set((s) => ({
           ui: {
@@ -302,7 +302,9 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
     ) {
       updateTutorEntry(messageId, (prev) => ({ ...prev, ...patch }));
       if (opts?.persist === false) return;
-      await get().persistTutorStateForMessage(messageId).catch(() => undefined);
+      await get()
+        .persistTutorStateForMessage(messageId)
+        .catch(() => undefined);
     },
 
     setTutorPlanProposalStatus(messageId, status) {
@@ -323,7 +325,7 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
     setTutorAttemptMcq(messageId, itemId, choiceIdx, correct) {
       updateTutorEntry(messageId, (prev) => {
         const prevAttempts = prev.attempts || {};
-        const prevMcq = (prevAttempts.mcq || {}) as Record<string, any>;
+        const prevMcq: McqAttempts = prevAttempts.mcq ?? {};
         return {
           ...prev,
           attempts: {
@@ -341,7 +343,7 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
     setTutorAttemptFillBlank(messageId, itemId, answer, revealed, correct) {
       updateTutorEntry(messageId, (prev) => {
         const prevAttempts = prev.attempts || {};
-        const prevFill = (prevAttempts.fillBlank || {}) as Record<string, any>;
+        const prevFill: FillBlankAttempts = prevAttempts.fillBlank ?? {};
         const prevEntry = prevFill[itemId] || {};
         const nextEntry = {
           ...prevEntry,
@@ -366,7 +368,7 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
     setTutorAttemptOpen(messageId, itemId, answer) {
       updateTutorEntry(messageId, (prev) => {
         const prevAttempts = prev.attempts || {};
-        const prevOpen = (prevAttempts.open || {}) as Record<string, any>;
+        const prevOpen: OpenAttempts = prevAttempts.open ?? {};
         return {
           ...prev,
           attempts: {

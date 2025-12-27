@@ -11,8 +11,7 @@ export const selectTutorDefaultModelId = (
   ui: UiSnapshot,
   chat: Chat,
   fallback?: string,
-): string | undefined =>
-  ui.tutor.defaultModelId || chat.settings.tutor_default_model || fallback;
+): string | undefined => ui.tutor.defaultModelId || chat.settings.tutor_default_model || fallback;
 
 export const enforceZdrGate = async (
   ui: UiSnapshot,

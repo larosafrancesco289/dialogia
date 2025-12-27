@@ -401,8 +401,12 @@ export function getVoiceSessionManager() {
     const debug = process.env.NODE_ENV !== 'production';
     sharedManager = new VoiceSessionManager({ debug });
     if (debug && typeof window !== 'undefined') {
-      (window as any).__xaiVoiceCleanup = () => sharedManager?.stop();
-      (window as any).__xaiVoiceState = () => sharedManager?.getDebugState();
+      const debugWindow = window as Window & {
+        __xaiVoiceCleanup?: () => void;
+        __xaiVoiceState?: () => unknown;
+      };
+      debugWindow.__xaiVoiceCleanup = () => sharedManager?.stop();
+      debugWindow.__xaiVoiceState = () => sharedManager?.getDebugState();
     }
   }
   return sharedManager;

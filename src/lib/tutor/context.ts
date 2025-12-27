@@ -13,7 +13,7 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
   // Aggregate a quick topic hint if available
   try {
     const topics = new Set<string>();
-    const addTopics = (arr: any[] | undefined) => {
+    const addTopics = (arr?: Array<{ topic?: string }>) => {
       if (!Array.isArray(arr)) return;
       for (const it of arr) {
         const topic = typeof it?.topic === 'string' ? it.topic.trim() : '';
@@ -29,13 +29,13 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
   }
 
   // Helper: trim a string to a max length
-  const clip = (s: any, n = 80) => {
+  const clip = (s: unknown, n = 80) => {
     const x = (typeof s === 'string' ? s : '').trim();
     return x.length > n ? x.slice(0, n - 1) + '…' : x;
   };
 
   try {
-    const attempts = (t.attempts || {}) as any;
+    const attempts: NonNullable<MessageTutor['attempts']> = t.attempts ?? {};
     const questionnaire = t.questionnaire;
     if (questionnaire && Array.isArray(questionnaire.questions)) {
       const status = questionnaire.status === 'submitted' ? 'submitted' : 'awaiting-response';
@@ -43,7 +43,7 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
       if (status === 'submitted' && questionnaire.responses) {
         const entries = Object.entries(questionnaire.responses).slice(0, 3);
         entries.forEach(([qid, answers]) => {
-          const question = questionnaire.questions.find((q: any) => q.id === qid);
+          const question = questionnaire.questions.find((q) => q.id === qid);
           const label = question?.question ? clip(question.question, 70) : qid;
           const formatted = Array.isArray(answers) ? answers.join(', ') : String(answers);
           lines.push(`  · ${label}: ${clip(formatted, 60)}`);
@@ -60,7 +60,7 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
       lines.push(
         `Plan suggestions: ${t.planSuggestions
           .slice(0, 3)
-          .map((s: any) => s?.action)
+          .map((s) => s.action)
           .filter(Boolean)
           .join(', ')}`,
       );
@@ -76,7 +76,7 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
       );
     }
     if (Array.isArray(t.assessmentUpdates) && t.assessmentUpdates.length > 0) {
-      const items = t.assessmentUpdates.slice(0, 3).map((u: any) => {
+      const items = t.assessmentUpdates.slice(0, 3).map((u) => {
         const nodeLabel = typeof u.nodeId === 'string' ? u.nodeId : 'unknown';
         const before =
           typeof u.confidenceBefore === 'number' ? Math.round(u.confidenceBefore * 100) : null;
@@ -91,13 +91,10 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
 
     // MCQ summary
     if (Array.isArray(t.mcq) && t.mcq.length > 0) {
-      const a = (attempts.mcq || {}) as Record<
-        string,
-        { choice?: number; done?: boolean; correct?: boolean }
-      >;
+      const a: NonNullable<NonNullable<MessageTutor['attempts']>['mcq']> = attempts.mcq ?? {};
       const items = t.mcq.slice(0, 8);
       lines.push('MCQ:');
-      items.forEach((q: any, i: number) => {
+      items.forEach((q, i: number) => {
         const ans = a[q.id] || {};
         const pickedIdx = typeof ans.choice === 'number' ? ans.choice : undefined;
         const correctIdx = typeof q?.correct === 'number' ? q.correct : undefined;
@@ -124,13 +121,11 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
     }
     // Fill‑blank summary
     if (Array.isArray(t.fillBlank) && t.fillBlank.length > 0) {
-      const a = (attempts.fillBlank || {}) as Record<
-        string,
-        { answer?: string; revealed?: boolean; correct?: boolean }
-      >;
+      const a: NonNullable<NonNullable<MessageTutor['attempts']>['fillBlank']> =
+        attempts.fillBlank ?? {};
       const items = t.fillBlank.slice(0, 8);
       lines.push('Fill‑in‑the‑blank:');
-      items.forEach((it: any, i: number) => {
+      items.forEach((it, i: number) => {
         const ans = a[it.id] || {};
         const qText = clip(it.prompt);
         const submitted = ans.revealed || typeof ans.answer === 'string';
@@ -147,14 +142,11 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
     }
     // Open‑ended summary (only signal submission; grading appears separately)
     if (Array.isArray(t.openEnded) && t.openEnded.length > 0) {
-      const a = (attempts.open || {}) as Record<string, { answer?: string }>;
-      const g = (t.grading || {}) as Record<
-        string,
-        { score?: number; feedback: string; criteria?: string[] }
-      >;
+      const a: NonNullable<NonNullable<MessageTutor['attempts']>['open']> = attempts.open ?? {};
+      const g: NonNullable<MessageTutor['grading']> = t.grading ?? {};
       const items = t.openEnded.slice(0, 6);
       lines.push('Open‑ended:');
-      items.forEach((it: any, i: number) => {
+      items.forEach((it, i: number) => {
         const ans = a[it.id] || {};
         const submitted = typeof ans.answer === 'string' && ans.answer.trim().length > 0;
         const graded = !!g[it.id];
@@ -177,10 +169,10 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
 export function buildTutorContextFull(t: MessageTutor | undefined): string | undefined {
   if (!t) return undefined;
   try {
-    const out: any = {};
+    const out: Record<string, unknown> = {};
     if (t.title) out.title = String(t.title);
     if (Array.isArray(t.mcq))
-      out.mcq = t.mcq.map((q: any) => ({
+      out.mcq = t.mcq.map((q) => ({
         id: q.id,
         question: q.question,
         choices: q.choices,
@@ -191,7 +183,7 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
         difficulty: q.difficulty,
       }));
     if (Array.isArray(t.fillBlank))
-      out.fill_blank = t.fillBlank.map((it: any) => ({
+      out.fill_blank = t.fillBlank.map((it) => ({
         id: it.id,
         prompt: it.prompt,
         answer: it.answer,
@@ -202,7 +194,7 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
         difficulty: it.difficulty,
       }));
     if (Array.isArray(t.openEnded))
-      out.open_ended = t.openEnded.map((it: any) => ({
+      out.open_ended = t.openEnded.map((it) => ({
         id: it.id,
         prompt: it.prompt,
         sample_answer: it.sample_answer,
@@ -212,7 +204,7 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
         difficulty: it.difficulty,
       }));
     if (Array.isArray(t.flashcards))
-      out.flashcards = t.flashcards.map((it: any) => ({
+      out.flashcards = t.flashcards.map((it) => ({
         id: it.id,
         front: it.front,
         back: it.back,
@@ -226,7 +218,7 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
         status: t.questionnaire.status,
         submittedAt: t.questionnaire.submittedAt,
         questions: Array.isArray(t.questionnaire.questions)
-          ? t.questionnaire.questions.map((q: any) => ({
+          ? t.questionnaire.questions.map((q) => ({
               id: q.id,
               question: q.question,
               category: q.category,
@@ -247,7 +239,7 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
         plan: t.planProposal.plan,
       };
     if (Array.isArray(t.planSuggestions))
-      out.plan_suggestions = t.planSuggestions.map((s: any) => ({
+      out.plan_suggestions = t.planSuggestions.map((s) => ({
         action: s.action,
         priority: s.priority,
         description: s.description,
@@ -263,7 +255,7 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
         status: t.diagnostic.status,
         score: t.diagnostic.score,
         items: Array.isArray(t.diagnostic.items)
-          ? t.diagnostic.items.map((di: any) => ({
+          ? t.diagnostic.items.map((di) => ({
               id: di.id,
               question: di.question,
               choices: di.choices,
@@ -276,14 +268,14 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
         interpretation: t.diagnostic.interpretation,
       };
     if (Array.isArray(t.assessmentUpdates))
-      out.assessment_updates = t.assessmentUpdates.map((u: any) => ({
+      out.assessment_updates = t.assessmentUpdates.map((u) => ({
         nodeId: u.nodeId,
         confidenceBefore: u.confidenceBefore,
         confidenceAfter: u.confidenceAfter,
         masteryLevel: u.masteryLevel,
         tutorComment: u.tutorComment,
         evidence: Array.isArray(u.evidence)
-          ? u.evidence.map((ev: any) => ({
+          ? u.evidence.map((ev) => ({
               question: ev.question,
               studentAnswer: ev.studentAnswer,
               correctAnswer: ev.correctAnswer,
@@ -297,8 +289,8 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
           : [],
       }));
 
-    const attempts = (t.attempts || {}) as any;
-    const grading = (t.grading || {}) as any;
+    const attempts = t.attempts;
+    const grading = t.grading;
     if (attempts && Object.keys(attempts).length > 0) out.attempts = attempts;
     if (grading && Object.keys(grading).length > 0) out.grading = grading;
 

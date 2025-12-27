@@ -63,7 +63,7 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
 
 - Development: `bun run dev` (loads `.env.local`).
 - Production build: `bun run build` → `bun start`. Copy the same env vars to the hosting provider.
-- Vercel: store server-only secrets under *Environment Variables* (Production). Do **not** define
+- Vercel: store server-only secrets under _Environment Variables_ (Production). Do **not** define
   `NEXT_PUBLIC_OPENROUTER_API_KEY`; the proxy uses `OPENROUTER_API_KEY`.
 
 ## Security Notes

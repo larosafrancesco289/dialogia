@@ -1,9 +1,9 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, type DependencyList } from 'react';
 
 export function useAutogrowTextarea(
   ref: React.RefObject<HTMLTextAreaElement>,
-  deps: any[] = [],
+  deps: DependencyList = [],
   maxHeight = 200,
 ) {
   useEffect(() => {

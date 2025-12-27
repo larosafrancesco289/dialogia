@@ -10,11 +10,17 @@ type ThemeToggleProps = {
   onToggle?: (next: ThemeMode) => void;
 };
 
-function applyTheme(mode: ThemeMode, mql?: MediaQueryList | null) {
+export function applyTheme(mode: ThemeMode, mql?: MediaQueryList | null) {
   const root = document.documentElement;
   const prefersDark = mql ? mql.matches : window.matchMedia('(prefers-color-scheme: dark)').matches;
   const isDark = mode === 'dark' || (mode === 'auto' && prefersDark);
   root.classList.toggle('dark', isDark);
+}
+
+/** Initialize theme from localStorage - call once on app mount */
+export function initializeTheme() {
+  const saved = (localStorage.getItem('theme') as ThemeMode | null) ?? 'auto';
+  applyTheme(saved);
 }
 
 export function ThemeToggle({ variant = 'ghost', className = '', onToggle }: ThemeToggleProps) {
@@ -33,8 +39,8 @@ export function ThemeToggle({ variant = 'ghost', className = '', onToggle }: The
         applyTheme('auto', mqlRef.current);
       }
     };
-    mqlRef.current.addEventListener?.('change', listener as any);
-    return () => mqlRef.current?.removeEventListener?.('change', listener as any);
+    mqlRef.current.addEventListener?.('change', listener);
+    return () => mqlRef.current?.removeEventListener?.('change', listener);
   }, []);
 
   const cycle = () => {

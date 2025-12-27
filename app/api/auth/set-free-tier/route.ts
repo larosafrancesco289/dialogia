@@ -10,7 +10,7 @@ import { logger } from '@/lib/logger';
  * Sets the free tier for users who want to access without a code.
  * Creates an auth token with tier='free' which limits access to free models only.
  */
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   return withTiming('auth-set-free-tier', async () => {
     try {
       const now = Date.now();
@@ -60,9 +60,9 @@ export async function POST(req: NextRequest) {
       });
 
       return res;
-    } catch (e: any) {
+    } catch (e: unknown) {
       logger.error('[set-free-tier] Error:', e);
-      const message = e?.message || 'internal_error';
+      const message = e instanceof Error ? e.message : 'internal_error';
       if (message.includes('Missing env')) {
         return jsonError(500, 'missing_env', message.replace('Missing env: ', ''));
       }

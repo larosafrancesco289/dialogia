@@ -176,7 +176,9 @@ export function createMessageStreamCallbacks(
     onImage: (dataUrl: string) => {
       applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => {
         const prev = Array.isArray(msg.attachments) ? msg.attachments : [];
-        if (prev.some((attachment) => attachment.kind === 'image' && attachment.dataURL === dataUrl))
+        if (
+          prev.some((attachment) => attachment.kind === 'image' && attachment.dataURL === dataUrl)
+        )
           return msg;
         const mime = (() => {
           const slice = dataUrl.slice(5, dataUrl.indexOf(';'));
@@ -246,16 +248,16 @@ export function createMessageStreamCallbacks(
         content,
         reasoning: current?.reasoning,
         attachments: current?.attachments,
-        systemSnapshot: (current as any)?.systemSnapshot,
-        genSettings: (current as any)?.genSettings,
-        tutor: (current as any)?.tutor,
-        hiddenContent: (current as any)?.hiddenContent,
-        toolCalls: (current as any)?.toolCalls ?? assistantMessage.toolCalls,
+        systemSnapshot: current?.systemSnapshot,
+        genSettings: current?.genSettings,
+        tutor: current?.tutor,
+        hiddenContent: current?.hiddenContent,
+        toolCalls: current?.toolCalls ?? assistantMessage.toolCalls,
         metrics,
         tokensIn: metrics.promptTokens,
         tokensOut: metrics.completionTokens,
         annotations: current?.annotations ?? extras?.annotations,
-      } as any;
+      };
       applyMessageUpdate(set, chatId, assistantMessage.id, () => finalMessage);
       await persistMessage(finalMessage);
       clearController?.();

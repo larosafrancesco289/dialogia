@@ -5,34 +5,40 @@ import type { ModelTransport, Message } from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
 function normalizeContent(input: unknown): string {
   if (typeof input === 'string') return input;
   if (Array.isArray(input)) {
     return input
       .map((entry) => {
         if (typeof entry === 'string') return entry;
-        if (entry && typeof entry === 'object' && 'text' in entry) {
-          const block = entry as { text?: string };
-          return typeof block.text === 'string' ? block.text : '';
+        if (isTextRecord(entry)) {
+          return typeof entry.text === 'string' ? entry.text : '';
         }
         return '';
       })
       .filter(Boolean)
       .join('\n');
   }
-  if (input && typeof input === 'object' && 'text' in input) {
-    return typeof (input as any).text === 'string' ? ((input as any).text as string) : '';
+  if (isTextRecord(input)) {
+    return typeof input.text === 'string' ? input.text : '';
   }
   return '';
 }
 
-function extractAssistantText(payload: any): string {
-  const choice = payload?.choices?.[0];
-  if (!choice) return '';
+function extractAssistantText(payload: unknown): string {
+  if (!isRecord(payload)) return '';
+  const choices = payload.choices;
+  if (!Array.isArray(choices) || choices.length === 0) return '';
+  const choice = choices[0];
+  if (!isRecord(choice)) return '';
   const message = choice.message;
-  if (!message) return '';
-  if (typeof message.content === 'string') return message.content;
-  if (Array.isArray(message.content)) return normalizeContent(message.content);
+  if (!isRecord(message)) return '';
+  const content = message.content;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) return normalizeContent(content);
   return '';
 }
 
@@ -159,14 +165,19 @@ function normalizeJudgeInput(input: LLMJudgeInput, contextGoal?: string): Normal
   if (Array.isArray(input)) {
     return { messages: input, goal: contextGoal };
   }
-  const payload = input ?? {};
+  const payload = isRecord(input) ? input : {};
   return {
-    messages: 'messages' in payload ? ((payload as any).messages as Message[]) : undefined,
-    snapshots:
-      'snapshots' in payload ? ((payload as any).snapshots as HeadlessTurnSnapshot[]) : undefined,
-    transcript: (payload as any).transcript,
-    goal: (payload as any).goal ?? contextGoal,
+    messages: Array.isArray(payload.messages) ? (payload.messages as Message[]) : undefined,
+    snapshots: Array.isArray(payload.snapshots)
+      ? (payload.snapshots as HeadlessTurnSnapshot[])
+      : undefined,
+    transcript: typeof payload.transcript === 'string' ? payload.transcript : undefined,
+    goal: typeof payload.goal === 'string' ? payload.goal : contextGoal,
   };
+}
+
+function isTextRecord(value: unknown): value is { text?: unknown } {
+  return !!value && typeof value === 'object' && 'text' in value;
 }
 
 function buildSnapshotSignals(snapshots?: HeadlessTurnSnapshot[]): string[] {

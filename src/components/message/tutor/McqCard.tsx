@@ -103,7 +103,9 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
               exit="exit"
               className="space-y-4"
             >
-              <div className="text-base font-medium leading-relaxed mb-2">{activeItem.question}</div>
+              <div className="text-base font-medium leading-relaxed mb-2">
+                {activeItem.question}
+              </div>
               <div className="grid gap-3">
                 {activeItem.choices.map((choice, idx) => {
                   const isPicked = picked === idx;
@@ -145,9 +147,15 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
                           className="absolute right-3 top-1/2 -translate-y-1/2"
                         >
                           {isCorrect ? (
-                            <CheckIcon className="h-4 w-4" style={{ color: 'var(--color-success)' }} />
+                            <CheckIcon
+                              className="h-4 w-4"
+                              style={{ color: 'var(--color-success)' }}
+                            />
                           ) : (
-                            <XMarkIcon className="h-4 w-4" style={{ color: 'var(--color-danger)' }} />
+                            <XMarkIcon
+                              className="h-4 w-4"
+                              style={{ color: 'var(--color-danger)' }}
+                            />
                           )}
                         </motion.div>
                       )}

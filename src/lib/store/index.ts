@@ -1,5 +1,5 @@
 'use client';
-import { create } from 'zustand';
+import { createWithEqualityFn } from 'zustand/traditional';
 import { persist } from 'zustand/middleware';
 import type { StoreDataState, StoreGetter, StoreSetter, StoreState } from '@/lib/store/types';
 import { createModelSlice } from '@/lib/store/modelSlice';
@@ -27,7 +27,7 @@ const mergeUiState = (
   };
 };
 
-export const useChatStore = create<StoreState>()(
+export const useChatStore = createWithEqualityFn<StoreState>()(
   persist<StoreState, [], [], Partial<StoreState>>(
     (set, get, store) => {
       const sliceSet: StoreSetter = set;

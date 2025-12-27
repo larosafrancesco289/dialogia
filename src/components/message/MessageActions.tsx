@@ -24,7 +24,12 @@ export function MessageActions({
     >
       {isEditing ? (
         <div className="message-actions__group">
-          <button className="message-action-btn" aria-label="Save edit" title="Save edit" onClick={onSave}>
+          <button
+            className="message-action-btn"
+            aria-label="Save edit"
+            title="Save edit"
+            onClick={onSave}
+          >
             <CheckIcon className="h-4 w-4" />
           </button>
           <button

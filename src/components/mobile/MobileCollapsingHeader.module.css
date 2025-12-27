@@ -1,0 +1,156 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+
+  /* Safe area for notch */
+  padding-top: calc(env(safe-area-inset-top) + var(--space-2));
+  padding-bottom: var(--space-2);
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+  margin: var(--space-1);
+  margin-bottom: var(--space-2);
+
+  /* Imperial Archive styling */
+  background: var(--surface-paper);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-message);
+
+  /* Transform origin for collapse animation */
+  transform-origin: top center;
+  will-change: transform, opacity;
+}
+
+.content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.title {
+  max-width: 100%;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-serif-assistant);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-fg);
+}
+
+.tutorBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+
+  background: color-mix(in oklab, var(--color-accent) 15%, var(--surface-paper));
+  border: 1px solid color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+  color: var(--color-accent);
+}
+
+.tutorModel {
+  font-weight: 400;
+  color: var(--color-fg-muted);
+  text-transform: none;
+}
+
+.modelPicker {
+  width: 100%;
+}
+
+.modelPicker > button {
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-editorial);
+
+  background: color-mix(in oklab, var(--color-muted) 45%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+  box-shadow: none;
+
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.modelPicker > button:hover {
+  background: var(--surface-paper-warm);
+  border-color: var(--color-border);
+}
+
+.accentRule {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: 0;
+  height: 3px;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--rule-accent) 15%,
+    var(--rule-accent) 85%,
+    transparent
+  );
+  border-radius: 3px;
+  opacity: 0.7;
+}
+
+/* Activity bar (streaming indicator) */
+.activityBar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: calc(env(safe-area-inset-top) + 6px);
+  height: 2px;
+  border-radius: 2px;
+  overflow: hidden;
+
+  background: color-mix(in oklab, var(--color-border) 70%, transparent);
+}
+
+.activityBar::before {
+  content: '';
+  position: absolute;
+  left: -30%;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--color-accent) 65%, transparent),
+    transparent
+  );
+  animation: headerShimmer 1.2s linear infinite;
+}
+
+@keyframes headerShimmer {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(430%);
+  }
+}

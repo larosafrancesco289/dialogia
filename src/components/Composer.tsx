@@ -68,6 +68,14 @@ export function Composer({
   const uiNext = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const [focused, setFocused] = useState(false);
   const isTablet = useIsMobile(768);
+  const isMobile = useIsMobile(640);
+
+  // Sync focus state to store for mobile tab bar visibility
+  useEffect(() => {
+    if (isMobile) {
+      setUI({ mobile: { composerFocused: focused } });
+    }
+  }, [focused, isMobile, setUI]);
 
   // Consume pending composer draft from store (e.g., from quick start buttons)
   useEffect(() => {
@@ -137,7 +145,7 @@ export function Composer({
     const target = taRef.current;
     if (!target) return;
     if (canAutoFocus && !isStreaming) {
-      target.focus({ preventScroll: true } as any);
+      target.focus({ preventScroll: true });
     } else {
       target.blur();
     }
@@ -156,8 +164,7 @@ export function Composer({
 
   const experimentalBrave = useChatStore((s) => !!s.ui.flags.experimentalBrave);
   const searchEnabled = chat ? !!chat.settings.search_enabled : !!uiNext.search?.enabled;
-  const rawProvider =
-    (chat?.settings as any)?.search_provider || uiNext.search?.provider || 'openrouter';
+  const rawProvider = chat?.settings.search_provider || uiNext.search?.provider || 'openrouter';
   const searchProvider: 'brave' | 'openrouter' =
     experimentalBrave && rawProvider === 'brave' ? 'brave' : 'openrouter';
   const currentEffort = (
@@ -184,7 +191,7 @@ export function Composer({
 
   const handleStop = () => {
     stop();
-    if (!isTablet) setTimeout(() => taRef.current?.focus({ preventScroll: true } as any), 0);
+    if (!isTablet) setTimeout(() => taRef.current?.focus({ preventScroll: true }), 0);
   };
 
   return (

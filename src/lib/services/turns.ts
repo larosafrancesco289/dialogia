@@ -35,7 +35,7 @@ export type SendTurnOptions = {
 export function primeTutorWelcome(chatId: string | undefined, store: StoreAccess) {
   if (!chatId) return;
   try {
-    const maybe = (store.get().prepareTutorWelcomeMessage as any)?.(chatId);
+    const maybe = store.get().prepareTutorWelcomeMessage?.(chatId);
     if (maybe && typeof maybe.then === 'function') {
       maybe.catch(() => undefined);
     }
@@ -298,7 +298,7 @@ export async function regenerateTurn({ messageId, overrideModelId, set, get }: R
       controller,
       overrideModelId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleTurnApiError(error, set);
     clearTurnController(chatId, controller);
   }

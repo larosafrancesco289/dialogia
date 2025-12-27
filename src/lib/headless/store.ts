@@ -1,6 +1,6 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { createModelIndex } from '@/lib/models';
-import type { StoreState, UIState } from '@/lib/store/types';
+import type { StoreState, UIState, UIStatePartial } from '@/lib/store/types';
 import type { Chat, Message, ORModel } from '@/lib/types';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
 import { buildDefaultVoiceState } from '@/lib/voice/types';
@@ -71,10 +71,22 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
     deleteFolder: async () => {},
     toggleFolderExpanded: async () => {},
 
-    setUI: (partial) =>
-      set((state) => ({
-        ui: { ...state.ui, ...partial },
-      })),
+    setUI: (partial: UIStatePartial) =>
+      set((state) => {
+        const { flags, debug, search, tutor, plan, mobile, ...rest } = partial;
+        return {
+          ui: {
+            ...state.ui,
+            ...rest,
+            flags: flags ? { ...state.ui.flags, ...flags } : state.ui.flags,
+            debug: debug ? { ...state.ui.debug, ...debug } : state.ui.debug,
+            search: search ? { ...state.ui.search, ...search } : state.ui.search,
+            tutor: tutor ? { ...state.ui.tutor, ...tutor } : state.ui.tutor,
+            plan: plan ? { ...state.ui.plan, ...plan } : state.ui.plan,
+            mobile: mobile ? { ...state.ui.mobile, ...mobile } : state.ui.mobile,
+          },
+        };
+      }),
 
     logTutorResult: async () => {},
     loadTutorProfileIntoUI: async () => {},

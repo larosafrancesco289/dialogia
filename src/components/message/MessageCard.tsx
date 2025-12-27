@@ -94,6 +94,33 @@ function MessageCardComponent({
     actions,
   } = useMessageCardController({ chatId, messageId });
 
+  // All hooks must be called before any conditional returns
+  const { onPointerDown, onContextMenu } = useLongPressSheet({
+    isEnabled: isMobile && !!message,
+    onTrigger: () => {
+      if (message) {
+        onOpenMobileSheet({ id: message.id, role: message.role as 'assistant' | 'user' });
+      }
+    },
+  });
+
+  const handleToggleSources = useCallback(
+    () => message && panels.toggleSources(message.id),
+    [message, panels],
+  );
+  const handleToggleDebug = useCallback(
+    () => message && panels.toggleDebug(message.id),
+    [message, panels],
+  );
+  const handleToggleReasoning = useCallback(
+    () => message && panels.toggleReasoning(message.id),
+    [message, panels],
+  );
+  const handleToggleStats = useCallback(
+    () => message && panels.toggleStats(message.id),
+    [message, panels],
+  );
+
   if (!message) return null;
 
   const isAssistant = message.role === 'assistant';
@@ -117,31 +144,10 @@ function MessageCardComponent({
   const handleRegenerate = actions.regenerateMessage;
   const attachments = Array.isArray(message.attachments) ? message.attachments : [];
 
-  const { onPointerDown, onContextMenu } = useLongPressSheet({
-    isEnabled: isMobile,
-    onTrigger: () => {
-      onOpenMobileSheet({ id: message.id, role: message.role as 'assistant' | 'user' });
-    },
-  });
-
   const isSourcesExpanded = panels.isSourcesExpanded(message.id);
   const isDebugExpanded = panels.isDebugExpanded(message.id);
   const isReasoningExpanded = panels.isReasoningExpanded(message.id);
   const statsExpanded = panels.isStatsExpanded(message.id);
-
-  const handleToggleSources = useCallback(
-    () => panels.toggleSources(message.id),
-    [message.id, panels],
-  );
-  const handleToggleDebug = useCallback(
-    () => panels.toggleDebug(message.id),
-    [message.id, panels],
-  );
-  const handleToggleReasoning = useCallback(
-    () => panels.toggleReasoning(message.id),
-    [message.id, panels],
-  );
-  const handleToggleStats = useCallback(() => panels.toggleStats(message.id), [message.id, panels]);
 
   const messagePanelsNode = isAssistant ? (
     <MessagePanels
@@ -444,7 +450,10 @@ function UserMessageContent({
             className={`ml-1 ${copiedId === message.id ? 'feedback-correct' : ''}`}
             icon={
               copiedId === message.id ? (
-                <div className="flex items-center gap-1.5 transition-all" style={{ color: 'var(--color-success)' }}>
+                <div
+                  className="flex items-center gap-1.5 transition-all"
+                  style={{ color: 'var(--color-success)' }}
+                >
                   <CheckIcon className="h-4 w-4" />
                   <span className="text-xs font-medium">Copied</span>
                 </div>

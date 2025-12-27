@@ -1,17 +1,17 @@
-"use client";
-import { useCallback, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+'use client';
+import { useCallback, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   EyeIcon,
   SparklesIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-} from "@heroicons/react/24/outline";
-import type { TutorOpenItem } from "@/lib/types";
-import { useChatStore } from "@/lib/store";
-import { contentVariants } from "@/components/message/tutor/shared";
-import { StepperDots } from "@/components/message/tutor/StepperDots";
-import { useStepper } from "@/components/message/tutor/hooks/useStepper";
+} from '@heroicons/react/24/outline';
+import type { TutorOpenItem } from '@/lib/types';
+import { useChatStore } from '@/lib/store';
+import { contentVariants } from '@/components/message/tutor/shared';
+import { StepperDots } from '@/components/message/tutor/StepperDots';
+import { useStepper } from '@/components/message/tutor/hooks/useStepper';
 
 export function OpenEndedCard({
   items,
@@ -45,15 +45,15 @@ export function OpenEndedCard({
 
   if (!total || !activeItem) return null;
 
-  const answer = (open[activeItem.id]?.answer ?? "") as string;
+  const answer = (open[activeItem.id]?.answer ?? '') as string;
   const persistAnswer = (value: string) => {
     setTutorAttemptOpen(messageId, activeItem.id, value);
   };
 
   const requestFeedback = () => {
-    const trimmed = String(answer || "").trim();
+    const trimmed = String(answer || '').trim();
     if (!trimmed) return;
-    const prompt = activeItem.prompt.replace(/\n/g, " ").slice(0, 200);
+    const prompt = activeItem.prompt.replace(/\n/g, ' ').slice(0, 200);
     const msg = `Please grade my answer for open-ended item ${activeItem.id} ("${prompt}").\nAnswer: ${trimmed}\nUse the tool grade_open_response with item_id and feedback (and optional score).`;
     send(msg).catch(() => void 0);
   };
@@ -75,12 +75,12 @@ export function OpenEndedCard({
               const attempt = open[item.id];
               if (grading && grading[item.id]) {
                 const entry = grading[item.id]!;
-                if (typeof entry.score === "number") {
-                  return entry.score >= 0.95 ? "correct" : "answered";
+                if (typeof entry.score === 'number') {
+                  return entry.score >= 0.95 ? 'correct' : 'answered';
                 }
-                return "answered";
+                return 'answered';
               }
-              return attempt?.answer && attempt.answer.trim() ? "answered" : "pending";
+              return attempt?.answer && attempt.answer.trim() ? 'answered' : 'pending';
             }}
             onSelect={goToIndex}
           />
@@ -106,7 +106,7 @@ export function OpenEndedCard({
                   }
                 >
                   <EyeIcon className="h-3.5 w-3.5 mr-1" />
-                  {isSampleVisible ? "Hide" : "Show"} sample
+                  {isSampleVisible ? 'Hide' : 'Show'} sample
                 </button>
               </div>
 
@@ -114,7 +114,7 @@ export function OpenEndedCard({
                 {isSampleVisible && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
+                    animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
@@ -157,10 +157,10 @@ export function OpenEndedCard({
                   </button>
                   {gradingEntry && (
                     <span className="text-xs font-medium text-muted-foreground">
-                      Last graded{" "}
+                      Last graded{' '}
                       {gradingEntry.score != null
                         ? `· ${Math.round((gradingEntry.score || 0) * 100)}%`
-                        : ""}
+                        : ''}
                     </span>
                   )}
                 </div>
@@ -170,7 +170,7 @@ export function OpenEndedCard({
                 {gradingEntry && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
+                    animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >

@@ -137,9 +137,7 @@ export function getTutorToolsByTag(tag: TutorToolTag): TutorToolName[] {
   return tutorToolNames.filter((name) => TOOL_METADATA[name].tags?.[tag]);
 }
 
-export function getTutorToolsByPriorityGroup(
-  group: TutorToolPriorityGroup,
-): TutorToolName[] {
+export function getTutorToolsByPriorityGroup(group: TutorToolPriorityGroup): TutorToolName[] {
   return tutorToolNames.filter((name) => TOOL_METADATA[name].priorityGroup === group);
 }
 
