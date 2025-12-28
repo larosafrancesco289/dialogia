@@ -1,12 +1,11 @@
+import 'server-only';
 import { renderSnapshotTranscript, renderTutorTranscript } from '@/lib/headless/transcript';
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 import type { HeadlessRunResult } from '@/lib/headless/runner';
 import type { ModelTransport, Message } from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
+import { isRecord } from '@/lib/utils/guards';
 
 function normalizeContent(input: unknown): string {
   if (typeof input === 'string') return input;

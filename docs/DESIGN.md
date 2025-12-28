@@ -29,6 +29,23 @@ Dialogia's aesthetic evokes a **scholarly workspace** — the feeling of sitting
 
 ---
 
+## Styling Policy
+
+### Tailwind utilities vs tokenized CSS classes
+
+- Use Tailwind utilities for layout, spacing, responsiveness, and one-off adjustments.
+- Use tokenized global classes for recurring UI patterns (buttons, cards, badges, inputs).
+- Promote styles into `styles/foundations.css` when a pattern appears in 3+ places or needs
+  theme-token alignment.
+
+### CSS modules vs global component CSS
+
+- CSS modules are for component-scoped styling (`ComponentName.module.css`, camelCase classes).
+- Global component classes live in `styles/components.css` (kebab-case names).
+- Primitives belong in `styles/foundations.css`; tokens belong in `styles/tokens.css`.
+
+---
+
 ## Typography
 
 Typography is the soul of Dialogia's design. Different voices get different fonts.

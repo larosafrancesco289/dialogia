@@ -121,7 +121,12 @@ export async function performWebSearchTool(opts: {
         });
       }
       if (result.error === NOTICE_MISSING_BRAVE_KEY) {
-        set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_BRAVE_KEY } }));
+        const setNotice = get().setNotice;
+        if (typeof setNotice === 'function') {
+          setNotice(NOTICE_MISSING_BRAVE_KEY);
+        } else {
+          set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_BRAVE_KEY } }));
+        }
       }
       return { ok: false, results: [], error: result.error, query: rawQuery };
     } catch (err: unknown) {

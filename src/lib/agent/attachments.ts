@@ -1,5 +1,5 @@
 import { findModelById, isAudioInputSupported, isVisionSupported } from '@/lib/models';
-import type { DraftAttachment, ORModel, PersistedAttachment } from '@/lib/types';
+import type { DraftAttachment, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import { fileToDataUrl } from '@/lib/attachments/readers';
 import { detectAudioFormatFromAttachment, extractBase64FromDataUrl } from '@/lib/attachments/audio';
 
@@ -11,7 +11,7 @@ function stripFile(attachment: DraftAttachment): PersistedAttachment {
 export async function prepareAttachmentsForModel(opts: {
   attachments?: DraftAttachment[];
   modelId: string;
-  models: ORModel[];
+  models: ModelDescriptor[];
 }): Promise<PersistedAttachment[]> {
   const { attachments = [], modelId, models } = opts;
   if (attachments.length === 0) return [];

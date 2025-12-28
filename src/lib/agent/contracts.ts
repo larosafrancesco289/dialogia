@@ -1,4 +1,4 @@
-import type { Chat, Message, ORModel } from '@/lib/types';
+import type { Chat, Message, ModelDescriptor } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import type { StoreGetter, StoreSetter } from '@/lib/contracts/store';
 import type { UiSearchEntry, UiSnapshot } from '@/lib/contracts/ui';
@@ -6,7 +6,7 @@ import type { UiSearchEntry, UiSnapshot } from '@/lib/contracts/ui';
 export type TurnStoreState = {
   chats: Chat[];
   messages: Record<string, Message[]>;
-  models: ORModel[];
+  models: ModelDescriptor[];
   modelIndex: ModelIndex;
   selectedChatId?: string;
   ui: UiSnapshot;
@@ -19,6 +19,7 @@ export type TurnStoreState = {
   renameChat: (id: string, title: string) => Promise<void>;
   prepareTutorWelcomeMessage?: (chatId?: string) => Promise<string | undefined>;
   setSearchStatus: (messageId: string, entry: UiSearchEntry) => void;
+  setNotice?: (notice?: string) => void;
 };
 
 export type TurnStore = {

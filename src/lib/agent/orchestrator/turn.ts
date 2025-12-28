@@ -8,6 +8,7 @@ import type {
   TurnComposition,
   TurnContext,
   StreamFinalOptions,
+  ResolvedTurnSettings,
 } from '@/lib/agent/types';
 
 type ComposeFn = (args: ComposeTurnArgs) => Promise<TurnComposition>;
@@ -36,6 +37,7 @@ export type RunTurnArgs = {
   assistantMessage: Message;
   priorMessages: Message[];
   ui: UiSnapshot;
+  settings: ResolvedTurnSettings;
   controller: AbortController;
   baseTurnContext: BaseTurnContext;
   compose: ComposeFn;
@@ -74,6 +76,7 @@ export const runTurn = async ({
   assistantMessage,
   priorMessages,
   ui,
+  settings,
   controller,
   baseTurnContext,
   compose,
@@ -93,6 +96,7 @@ export const runTurn = async ({
   const composition = await compose({
     chat,
     ui,
+    settings,
     modelIndex: baseTurnContext.modelIndex,
     prior: priorMessages,
     newUser: { content: userContent, attachments },
@@ -120,11 +124,9 @@ export const runTurn = async ({
       combinedSystem: composition.system,
       baseMessages: composition.messages,
       toolDefinition: composition.tools,
-      searchEnabled: composition.search.enabled,
-      searchProvider: composition.search.provider,
-      providerSort: composition.providerSort,
       controller,
       turn: turnContext,
+      settings: composition.settings,
     });
     hooks?.onPlanResult?.(planResult);
 
@@ -142,8 +144,8 @@ export const runTurn = async ({
     assistantMessage,
     messages,
     controller,
-    providerSort: composition.providerSort,
     turn: turnContext,
+    settings: composition.settings,
     plugins: composition.plugins,
     toolDefinition: composition.tools,
     startBuffered,

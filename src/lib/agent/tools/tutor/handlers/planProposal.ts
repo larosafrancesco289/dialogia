@@ -3,9 +3,7 @@ import type { LearningPlan } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { normalizePlanSuggestions, withContentReset } from '@/lib/agent/tools/tutor/shared';
 import { validateLearningPlan } from '@/lib/learningPlan/validate';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
+import { isRecord } from '@/lib/utils/guards';
 
 export function createPlanProposalHandler(
   defaultRequiresConfirmation: boolean,

@@ -1,41 +1,27 @@
-import type { LearningPlan, MessageTutor, TutorProfile, TutorResearchMode } from '@/lib/types';
+import type { TutorProfile } from '@/lib/types';
 import type {
   LearnerModelDebugEntry as ContractLearnerModelDebugEntry,
   TutorToolUsageSnapshot,
-  UiNextOverrides,
+  UiDebugSnapshot,
+  UiFlagsSnapshot,
+  UiMobileSnapshot,
+  UiPlanSnapshot,
+  UiSearchSnapshot,
+  UiSnapshot,
+  UiTutorSnapshot,
 } from '@/lib/contracts/ui';
 
 export type TutorToolUsage = TutorToolUsageSnapshot;
-
-export type UIFlags = {
-  experimentalBrave?: boolean;
-  experimentalTutor?: boolean;
-  enableMultiModelChat?: boolean;
-};
-
-export type UIDebugState = {
-  mode?: boolean;
-  byMessageId?: Record<string, { body: string; createdAt: number }>;
-  autoReasoningModelIds?: Record<string, true>;
-  learnerModelDebugByMessageId?: Record<string, LearnerModelDebugEntry>;
-};
-
 export type LearnerModelDebugEntry = ContractLearnerModelDebugEntry;
 
-export type UISearchState = {
-  braveByMessageId?: Record<
-    string,
-    {
-      query: string;
-      status: 'loading' | 'done' | 'error';
-      results?: { title?: string; url?: string; description?: string }[];
-      error?: string;
-    }
-  >;
-};
+export type UIFlags = UiFlagsSnapshot;
+export type UIDebugState = UiDebugSnapshot;
+export type UISearchState = UiSearchSnapshot;
+export type UIPlanState = UiPlanSnapshot;
+export type UIMobileState = UiMobileSnapshot;
+export type { MobileTab } from '@/lib/contracts/ui';
 
-export type UITutorState = {
-  byMessageId?: Record<string, MessageTutor>;
+export type UITutorState = UiTutorSnapshot & {
   profileByChatId?: Record<string, TutorProfile>;
   welcomeByChatId?: Record<
     string,
@@ -53,68 +39,13 @@ export type UITutorState = {
     generatedAt?: number;
   };
   greetedByChatId?: Record<string, boolean>;
-  toolUsageByChatId?: Record<string, TutorToolUsage>;
   contextMode?: 'summary' | 'full';
-  defaultModelId?: string;
-  forceMode?: boolean;
-  thesisMode?: boolean;
-  researchMode?: TutorResearchMode;
 };
 
-export type UIPlanState = {
-  sheetOpen?: boolean;
-  sheetPlanOverride?: LearningPlan | null;
-  generationByChatId?: Record<
-    string,
-    {
-      status: 'idle' | 'loading' | 'ready' | 'error';
-      goal?: string;
-      startedAt?: number;
-      completedAt?: number;
-      error?: string;
-      modelId?: string;
-    }
-  >;
-};
-
-export type MobileTab = 'chats' | 'new' | 'settings';
-
-export type UIMobileState = {
-  /** Currently active tab in bottom navigation */
-  activeTab: MobileTab;
-  /** Whether the chats sheet is open */
-  chatsSheetOpen: boolean;
-  /** Whether the settings sheet is open */
-  settingsSheetOpen: boolean;
-  /** Whether the header is currently visible */
-  headerVisible: boolean;
-  /** ID of the message currently swiped open (only one at a time) */
-  swipeRevealedMessageId: string | null;
-  /** Last scroll position for header collapse calculation */
-  lastScrollY: number;
-  /** Whether the composer input is focused (keyboard open) */
-  composerFocused: boolean;
-};
-
-export type UIState = {
-  showSettings: boolean;
-  isStreaming: boolean;
-  notice?: string;
+export type UIState = UiSnapshot & {
   sidebarCollapsed?: boolean;
-  overrides?: UiNextOverrides;
-  // Privacy preference: only allow/show Zero Data Retention endpoints
-  zdrOnly?: boolean;
-  // Routing preference: prioritize speed or cost
-  routePreference?: 'speed' | 'cost';
-  // Pending text to fill into the composer (consumed once read)
   composerDraft?: string;
-  flags: UIFlags;
-  debug: UIDebugState;
-  search: UISearchState;
   tutor: UITutorState;
-  plan: UIPlanState;
-  // Mobile-specific UI state
-  mobile: UIMobileState;
 };
 
 /**

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import type { PersistedAttachment } from '@/lib/types';
 
 export type MessageAttachmentsProps = {
@@ -21,6 +22,16 @@ const imageSizeByVariant: Record<'default' | 'compact', string> = {
   compact: 'h-24 w-24 sm:h-32 sm:w-32',
 };
 
+const imageDimsByVariant: Record<'default' | 'compact', { width: number; height: number }> = {
+  default: { width: 144, height: 144 },
+  compact: { width: 128, height: 128 },
+};
+
+const imageSizesByVariant: Record<'default' | 'compact', string> = {
+  default: '(min-width: 640px) 144px, 112px',
+  compact: '(min-width: 640px) 128px, 96px',
+};
+
 const audioSizeByVariant: Record<'default' | 'compact', string> = {
   default: 'h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2',
   compact: 'h-14 min-w-36 sm:min-w-40 max-w-64 px-2.5 py-1.5',
@@ -33,15 +44,19 @@ export function MessageAttachments({
 }: MessageAttachmentsProps) {
   if (!Array.isArray(attachments) || attachments.length === 0) return null;
 
-  const imageAttachments = attachments.filter((item) => item.kind === 'image');
+  const imageAttachments = attachments.filter(
+    (item): item is PersistedAttachment & { dataURL: string } =>
+      item.kind === 'image' && typeof item.dataURL === 'string',
+  );
   const audioAttachments = attachments.filter((item) => item.kind === 'audio');
   const pdfAttachments = attachments.filter((item) => item.kind === 'pdf');
 
-  const handleOpenLightbox = (index: number, array: PersistedAttachment[]) => {
+  const handleOpenLightbox = (
+    index: number,
+    array: Array<PersistedAttachment & { dataURL: string }>,
+  ) => {
     if (!onOpenLightbox) return;
-    const images = array
-      .filter((item) => item.kind === 'image' && typeof item.dataURL === 'string')
-      .map((item) => ({ src: item.dataURL as string, name: item.name }));
+    const images = array.map((item) => ({ src: item.dataURL, name: item.name }));
     if (images.length === 0) return;
     onOpenLightbox({ images, index });
   };
@@ -56,9 +71,13 @@ export function MessageAttachments({
           title="Click to enlarge"
           type="button"
         >
-          <img
+          <Image
             src={attachment.dataURL}
             alt={attachment.name || 'image'}
+            width={imageDimsByVariant[variant].width}
+            height={imageDimsByVariant[variant].height}
+            sizes={imageSizesByVariant[variant]}
+            unoptimized
             className={`${imageSizeByVariant[variant]} object-cover rounded border border-border`}
           />
         </button>

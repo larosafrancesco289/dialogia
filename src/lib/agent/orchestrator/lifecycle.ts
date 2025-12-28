@@ -35,7 +35,6 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
     priorMessages,
     getChatForTurn,
     set,
-    get,
     updateMessage,
     updateChat,
     persistChat,
@@ -62,7 +61,7 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
         set((state) => ({ ui: resetEphemeralUi(state.ui) }));
       }
       const chat = getChatForTurn();
-      if (composition.tutor.enabled && chat.settings.learningPlan) {
+      if (composition.settings.tutorEnabled && chat.settings.learningPlan) {
         priorLearnerModel =
           getLatestLearnerModel(priorMessages) ??
           initializeLearnerModel(chatId, chat.settings.learningPlan);
@@ -108,14 +107,7 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
       }
       if (latestComposition) {
         try {
-          const chatForTurn = getChatForTurn();
-          const modelMeta = get().modelIndex.get(chatForTurn.settings.model);
-          const gen = snapshotGenSettings({
-            settings: chatForTurn.settings,
-            modelMeta,
-            searchProvider: latestComposition.search.provider,
-            providerSort: latestComposition.providerSort,
-          });
+          const gen = snapshotGenSettings(latestComposition.settings);
           updateMessage({
             systemSnapshot: plan.finalSystem,
             genSettings: gen,

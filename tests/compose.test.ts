@@ -5,6 +5,7 @@ import { ProviderSort } from '@/lib/models/providerSort';
 import type { Chat, Message, Attachment, TutorProfile } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import tutorProfileService from '@/lib/tutor/profile';
+import { resolveTurnSettings } from '@/lib/settings/resolve';
 
 const baseChat = (): Chat => ({
   id: 'chat-1',
@@ -122,21 +123,28 @@ test('composeTurn merges tutor and search context with plugins and tools', async
   ];
 
   try {
+    const settings = resolveTurnSettings({
+      chat,
+      ui,
+      modelIndex: modelIndexStub,
+      modelId: chat.settings.model,
+    });
     const result = await composeTurn({
       chat,
       ui,
+      settings,
       modelIndex: modelIndexStub,
       prior,
       newUser: { content: 'Here are my notes.', attachments },
       attachments,
     });
 
-    assert.equal(result.tutor.enabled, true);
-    assert.equal(result.search.provider, 'brave');
-    assert.equal(result.search.enabled, true);
+    assert.equal(result.settings.tutorEnabled, true);
+    assert.equal(result.settings.generation.searchProvider, 'brave');
+    assert.equal(result.settings.generation.searchEnabled, true);
     assert.equal(result.hasPdf, true);
     assert.equal(result.shouldPlan, true);
-    assert.equal(result.providerSort, ProviderSort.Throughput);
+    assert.equal(result.settings.generation.providerSort, ProviderSort.Throughput);
     assert.equal(result.consumedTutorNudge, 'more_practice');
     assert.ok(result.system && result.system.includes('Learner Profile:'));
     assert.ok(result.system && result.system.includes('Always respond enthusiastically.'));
@@ -156,18 +164,26 @@ test('composeTurn merges tutor and search context with plugins and tools', async
 test('composeTurn falls back to OpenRouter search when Brave experiment disabled', async () => {
   const chat = baseChat();
   chat.settings.search_provider = 'brave';
+  const ui = {
+    flags: { experimentalBrave: false, experimentalTutor: false },
+    tutor: { forceMode: false },
+    routePreference: 'speed',
+  } as any;
+  const settings = resolveTurnSettings({
+    chat,
+    ui,
+    modelIndex: modelIndexStub,
+    modelId: chat.settings.model,
+  });
   const result = await composeTurn({
     chat,
-    ui: {
-      flags: { experimentalBrave: false, experimentalTutor: false },
-      tutor: { forceMode: false },
-      routePreference: 'speed',
-    } as any,
+    ui,
+    settings,
     modelIndex: modelIndexStub,
     prior: [],
     newUser: { content: 'Hello' },
     attachments: [],
   });
 
-  assert.equal(result.search.provider, 'openrouter');
+  assert.equal(result.settings.generation.searchProvider, 'openrouter');
 });

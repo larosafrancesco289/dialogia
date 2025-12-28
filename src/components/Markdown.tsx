@@ -50,7 +50,7 @@ function CopyButton({ text }: { text: string }) {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch (e) {
+    } catch {
       // ignore
     }
   };
@@ -199,7 +199,7 @@ function MermaidBlock({ code }: { code: string }) {
         mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict' });
         const { svg } = await mermaid.render(`m_${id}`, code);
         if (!cancelled && ref.current) ref.current.innerHTML = svg;
-      } catch (e) {
+      } catch {
         // ignore
         if (ref.current) {
           ref.current.innerText = 'Mermaid diagram failed to render.';

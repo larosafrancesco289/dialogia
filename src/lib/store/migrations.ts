@@ -1,12 +1,10 @@
 import type { PersistedStoreState } from '@/lib/store/types';
 import { STORE_MIGRATION_VERSION } from '@/lib/db/versions';
+import { isRecord } from '@/lib/utils/guards';
 
 type PersistedState = Record<string, unknown>;
 
 const CURRENT_VERSION = STORE_MIGRATION_VERSION;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object';
 
 const readBoolean = (value: unknown): boolean | undefined =>
   typeof value === 'boolean' ? value : undefined;

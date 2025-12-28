@@ -14,9 +14,6 @@ import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
 import { type ComposeTurnArgs, type TurnComposition, type ToolDefinition } from '@/lib/agent/types';
 import tutorProfileService from '@/lib/tutor/profile';
 import { combineSystem } from '@/lib/agent/system';
-import { readNextOverrides } from '@/lib/ui/next';
-import { buildProviderPolicy } from '@/lib/policy/provider';
-import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { getNextNode } from '@/lib/learningPlan/service';
 import { isTutorToolName } from '@/lib/agent/tools';
 import type { Message } from '@/lib/types';
@@ -27,17 +24,16 @@ const TOOL_PREAMBLE =
 export async function composeTurn({
   chat,
   ui,
+  settings,
   modelIndex,
   prior,
   newUser,
   attachments,
 }: ComposeTurnArgs): Promise<TurnComposition> {
-  const nextOverrides = readNextOverrides(ui);
-  const tutorGloballyEnabled = !!ui.flags.experimentalTutor;
-  const tutorEnabled = isTutorRuntimeEnabled(ui, chat);
-
-  const providerPolicy = buildProviderPolicy({ settings: chat.settings, ui });
-  const { searchEnabled, searchProvider, providerSort } = providerPolicy;
+  const tutorEnabled = settings.tutorEnabled;
+  const generation = settings.generation;
+  const searchEnabled = !!generation.searchEnabled;
+  const searchProvider = generation.searchProvider || 'openrouter';
 
   const priorMessages = prior ?? [];
   const preparedAttachments = attachments ?? newUser?.attachments ?? [];
@@ -47,11 +43,7 @@ export async function composeTurn({
   const hasPdf =
     preparedAttachments.some((att) => att.kind === 'pdf') || (hadPdfEarlier ? true : false);
 
-  const plugins = composePlugins({
-    hasPdf,
-    searchEnabled,
-    searchProvider,
-  });
+  const plugins = composePlugins({ hasPdf, searchEnabled, searchProvider });
 
   const tutorPhase = tutorEnabled ? getTutorPhase(chat, priorMessages as Message[], ui) : undefined;
   const activeNodeId =
@@ -87,7 +79,7 @@ export async function composeTurn({
     preambles.push(TOOL_PREAMBLE);
   }
   if (tutorEnabled) {
-    const tutorPreamble = tutorGloballyEnabled ? getTutorPreamble() : '';
+    const tutorPreamble = tutorEnabled ? getTutorPreamble() : '';
     if (tutorPreamble) preambles.push(tutorPreamble);
     if (tutorToolPolicy) {
       if (tutorToolPolicy.thesisMode) {
@@ -128,19 +120,28 @@ export async function composeTurn({
       if (planContext) preambles.push(planContext);
     }
 
-    if (nextOverrides.tutorNudge) {
-      preambles.push(`Learner Preference: ${nextOverrides.tutorNudge.replace(/_/g, ' ')}`);
+    if (settings.tutorNudge) {
+      preambles.push(`Learner Preference: ${settings.tutorNudge.replace(/_/g, ' ')}`);
     }
   }
 
-  const baseSystem = typeof chat.settings.system === 'string' ? chat.settings.system : undefined;
+  const baseSystem = typeof settings.system === 'string' ? settings.system : undefined;
   const system = combineSystem(baseSystem, preambles);
 
+  const chatForMessages = {
+    ...chat,
+    settings: {
+      ...chat.settings,
+      model: settings.modelId,
+      system: settings.system ?? chat.settings.system,
+      max_tokens: settings.generation.maxTokens ?? chat.settings.max_tokens,
+    },
+  };
   const newUserContent = newUser?.content;
   const userAttachments = preparedAttachments.length > 0 ? preparedAttachments : undefined;
   const modelList = Array.isArray(modelIndex?.all) ? modelIndex.all : [];
   const messages = buildChatCompletionMessages({
-    chat,
+    chat: chatForMessages,
     priorMessages,
     models: modelList,
     newUserContent,
@@ -154,16 +155,9 @@ export async function composeTurn({
     messages,
     tools: tools.length > 0 ? tools : undefined,
     plugins: Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined,
-    providerSort,
     hasPdf,
     shouldPlan,
-    search: {
-      enabled: searchEnabled,
-      provider: searchProvider,
-    },
-    tutor: {
-      enabled: tutorEnabled,
-    },
-    consumedTutorNudge: tutorEnabled ? nextOverrides.tutorNudge : undefined,
+    settings,
+    consumedTutorNudge: tutorEnabled ? settings.tutorNudge : undefined,
   };
 }

@@ -1,3 +1,4 @@
+import 'server-only';
 import type { TestQuestion, KnowledgeGap } from '@/lib/eval/ablationScenarios';
 import type { ModelTransport } from '@/lib/types';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';

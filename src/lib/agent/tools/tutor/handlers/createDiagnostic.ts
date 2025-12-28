@@ -2,9 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { TutorDiagnostic, TutorDiagnosticItem } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { DIAGNOSTIC_DIFFICULTIES, withContentReset } from '@/lib/agent/tools/tutor/shared';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
+import { isRecord } from '@/lib/utils/guards';
 
 type CreateDiagnosticArgs = {
   diagnostic: TutorDiagnostic;

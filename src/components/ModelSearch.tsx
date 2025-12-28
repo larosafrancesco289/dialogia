@@ -25,7 +25,7 @@ import {
 } from '@/lib/models';
 import { describeModelPricing } from '@/lib/cost';
 import { useChatStore } from '@/lib/store';
-import type { ORModel, ModelTransport } from '@/lib/types';
+import type { ModelDescriptor, ModelTransport } from '@/lib/types';
 import { useTierModels } from '@/lib/hooks/useTierModels';
 import { getModelTransport, getModelTransportLabel } from '@/lib/providers';
 import {
@@ -64,7 +64,7 @@ export type ModelSearchResult = {
     zdr: boolean;
   };
   contextLength?: number;
-  model?: ORModel;
+  model?: ModelDescriptor;
 };
 
 export type ModelSearchProps = {
@@ -84,7 +84,7 @@ export type ModelSearchProps = {
 };
 
 function buildResult(
-  model: ORModel,
+  model: ModelDescriptor,
   opts: {
     zdrModelIds?: string[];
     zdrProviderIds?: string[];
@@ -427,9 +427,11 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
               setQuery(event.target.value);
             }}
             onKeyDown={onInputKeyDown}
+            role="combobox"
             aria-haspopup="listbox"
             aria-expanded={open}
-            aria-controls={open ? listboxId : undefined}
+            aria-controls={listboxId}
+            aria-autocomplete="list"
             autoComplete="off"
           />
         </div>

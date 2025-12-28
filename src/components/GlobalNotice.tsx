@@ -6,7 +6,7 @@ import { selectNotice } from '@/lib/store/selectors';
 
 export function GlobalNotice() {
   const notice = useChatStore(selectNotice);
-  const setUI = useChatStore((s) => s.setUI);
+  const setNotice = useChatStore((s) => s.setNotice);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export function GlobalNotice() {
         message={notice}
         onDismiss={() => {
           setVisible(false);
-          setUI({ notice: undefined });
+          setNotice(undefined);
         }}
       />
     </div>

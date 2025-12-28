@@ -6,7 +6,7 @@ import { shallow } from 'zustand/shallow';
 import { formatModelLabel } from '@/lib/models';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
-import type { ORModel } from '@/lib/types';
+import type { ModelDescriptor } from '@/lib/types';
 
 export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => void }) {
   const { chat, favoriteModelIds, models } = useChatStore(
@@ -23,7 +23,7 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
   const curatedModels = useTierCuratedModels();
   const tierDefaultModelId = useTierDefaultModelId();
   const modelMap = useMemo(() => {
-    const map = new Map<string, ORModel>();
+    const map = new Map<string, ModelDescriptor>();
     for (const model of models || []) {
       map.set(model.id, model);
     }

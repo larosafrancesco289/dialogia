@@ -9,7 +9,11 @@ import { CURATED_MODELS } from '@/data/curatedModels';
 import { createModelIndex, EMPTY_MODEL_INDEX, formatModelLabel } from '@/lib/models';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
-import { NOTICE_INVALID_KEY, NOTICE_NO_PROVIDER_KEY } from '@/lib/store/notices';
+import {
+  NOTICE_INVALID_KEY,
+  NOTICE_MODELS_UNAVAILABLE,
+  NOTICE_NO_PROVIDER_KEY,
+} from '@/lib/store/notices';
 import { applyNextOverrides, readNextOverrides } from '@/lib/ui/next';
 
 export const createModelSlice = createStoreSlice((set, get) => {
@@ -36,9 +40,14 @@ export const createModelSlice = createStoreSlice((set, get) => {
         anthropicStatus = null;
       }
       if (!openrouterStatus && !anthropicStatus) {
-        set((s) => ({
-          ui: { ...s.ui, notice: NOTICE_NO_PROVIDER_KEY },
-        }));
+        const setNotice = get().setNotice;
+        if (typeof setNotice === 'function') {
+          setNotice(NOTICE_NO_PROVIDER_KEY);
+        } else {
+          set((s) => ({
+            ui: { ...s.ui, notice: NOTICE_NO_PROVIDER_KEY },
+          }));
+        }
         return;
       }
       isLoadingModels = true;
@@ -81,7 +90,12 @@ export const createModelSlice = createStoreSlice((set, get) => {
             if (zdrOnly) {
               if (filter.status === 'unknown') {
                 openrouterModels = [];
-                set((s) => ({ ui: { ...s.ui, notice: ZDR_UNAVAILABLE_NOTICE } }));
+                const setNotice = get().setNotice;
+                if (typeof setNotice === 'function') {
+                  setNotice(ZDR_UNAVAILABLE_NOTICE);
+                } else {
+                  set((s) => ({ ui: { ...s.ui, notice: ZDR_UNAVAILABLE_NOTICE } }));
+                }
               } else {
                 openrouterModels = filtered;
               }
@@ -91,7 +105,12 @@ export const createModelSlice = createStoreSlice((set, get) => {
           } catch (error: unknown) {
             openrouterModels = [];
             if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
-              set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
+              const setNotice = get().setNotice;
+              if (typeof setNotice === 'function') {
+                setNotice(NOTICE_INVALID_KEY);
+              } else {
+                set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
+              }
             }
           }
         }
@@ -102,7 +121,12 @@ export const createModelSlice = createStoreSlice((set, get) => {
           } catch (error: unknown) {
             anthropicModels = [];
             if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
-              set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
+              const setNotice = get().setNotice;
+              if (typeof setNotice === 'function') {
+                setNotice(NOTICE_INVALID_KEY);
+              } else {
+                set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
+              }
             }
           }
         }
@@ -118,12 +142,19 @@ export const createModelSlice = createStoreSlice((set, get) => {
 
         const combinedModels = [...openrouterModels, ...anthropicModels];
         if (combinedModels.length === 0) {
-          set((s) => ({
-            ui: {
-              ...s.ui,
-              notice: s.ui.notice ?? 'Unable to load models for any provider.',
-            },
-          }));
+          if (!get().ui.notice) {
+            const setNotice = get().setNotice;
+            if (typeof setNotice === 'function') {
+              setNotice(NOTICE_MODELS_UNAVAILABLE);
+            } else {
+              set((s) => ({
+                ui: {
+                  ...s.ui,
+                  notice: NOTICE_MODELS_UNAVAILABLE,
+                },
+              }));
+            }
+          }
           return;
         }
         if (noticeSegments.length > 0 || fallbackModelId) {
@@ -134,13 +165,23 @@ export const createModelSlice = createStoreSlice((set, get) => {
               const updatedUi = modelOverride
                 ? applyNextOverrides(s.ui, { model: modelOverride })
                 : s.ui;
-              return {
-                ...updatedUi,
-                notice:
-                  s.ui.notice ?? (noticeSegments.length ? noticeSegments.join(' ') : s.ui.notice),
-              };
+              return updatedUi;
             })(),
           }));
+          if (noticeSegments.length > 0 && !get().ui.notice) {
+            const setNotice = get().setNotice;
+            const message = noticeSegments.join(' ');
+            if (typeof setNotice === 'function') {
+              setNotice(message);
+            } else {
+              set((s) => ({
+                ui: {
+                  ...s.ui,
+                  notice: message,
+                },
+              }));
+            }
+          }
         }
         set({ models: combinedModels, modelIndex: createModelIndex(combinedModels) });
       } finally {

@@ -145,6 +145,7 @@ export const prepareSendRuntime = async ({
   const modelAuthResolver = createModelAuthResolver({
     modelIndex: get().modelIndex,
     set,
+    get,
   });
   const modelsNeedingAuth = new Set<string>(activeModelIds);
   if (tutorEnabled && tutorDefaultModelId) {

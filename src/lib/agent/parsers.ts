@@ -2,9 +2,7 @@
 // Responsibility: Provide shared helpers for normalizing and handling tool call payloads.
 
 import type { ToolCall } from '@/lib/agent/types';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
+import { isRecord } from '@/lib/utils/guards';
 
 export function normalizeToolCalls(message: unknown): ToolCall[] {
   const calls: ToolCall[] = [];

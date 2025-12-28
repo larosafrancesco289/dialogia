@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { orFetchZdrEndpoints } from '@/lib/api/openrouterClient';
+import { orFetchZdrEndpoints } from '@/lib/api/openrouterHttp';
 import { withTiming } from '@/lib/server/route';
 import { getRequestOrigin, proxyJson, withProxyErrors } from '@/lib/server/proxy';
 

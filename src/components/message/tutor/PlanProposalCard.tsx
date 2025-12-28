@@ -5,6 +5,7 @@ import type { TutorPlanProposal, TutorPlanSuggestion } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
 import { getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
 import { PlanSuggestionsCard } from '@/components/message/tutor/PlanSuggestionsCard';
+import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
 
 export function PlanProposalCard({
   messageId,
@@ -20,6 +21,7 @@ export function PlanProposalCard({
   const patchTutorEntry = useChatStore((s) => s.patchTutorEntry);
   const setTutorPlanProposalStatus = useChatStore((s) => s.setTutorPlanProposalStatus);
   const setUI = useChatStore((s) => s.setUI);
+  const setNotice = useChatStore((s) => s.setNotice);
   const updateChatSettings = useChatStore((s) => s.updateChatSettings);
   const sendUserMessage = useChatStore((s) => s.sendUserMessage);
   const chats = useChatStore((s) => s.chats);
@@ -73,7 +75,7 @@ export function PlanProposalCard({
         },
       });
     } catch {
-      setUI({ notice: 'Failed to apply learning plan. Please try again.' });
+      setNotice(NOTICE_PLAN_APPLY_FAILED);
     } finally {
       setApproving(false);
     }

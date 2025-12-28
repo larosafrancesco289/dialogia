@@ -2,6 +2,7 @@ import type { LearningPlan, ModelTransport } from '@/lib/types';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import type { ModelMessage } from '@/lib/agent/types';
 import { validateLearningPlan } from '@/lib/learningPlan/validate';
+import { isRecord } from '@/lib/utils/guards';
 
 /**
  * System prompt for learning plan generation
@@ -209,10 +210,6 @@ export async function generateLearningPlan(
   }
 
   return plan;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 /**

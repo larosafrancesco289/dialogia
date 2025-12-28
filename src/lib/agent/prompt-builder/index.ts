@@ -1,4 +1,4 @@
-import type { Chat, Message, ORModel, PersistedAttachment } from '@/lib/types';
+import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
 import { TokenBudgeter } from './TokenBudgeter';
 import { AttachmentProcessor } from './AttachmentProcessor';
@@ -6,7 +6,7 @@ import { AttachmentProcessor } from './AttachmentProcessor';
 export function buildChatCompletionMessages(params: {
   chat: Chat;
   priorMessages: Message[];
-  models: ORModel[];
+  models: ModelDescriptor[];
   newUserContent?: string;
   newUserAttachments?: PersistedAttachment[];
 }): ModelMessage[] {

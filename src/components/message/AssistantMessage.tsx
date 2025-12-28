@@ -12,7 +12,7 @@ import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { LearnerModelUpdates } from '@/components/message/LearnerModelUpdates';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
-import type { Chat, Message, ORModel, PersistedAttachment } from '@/lib/types';
+import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import styles from './MessageCard.module.css';
 
 export type AssistantMessageProps = {
@@ -31,7 +31,7 @@ export type AssistantMessageProps = {
   waitingForFirstToken: boolean;
   isLatestAssistant: boolean;
   lastMessageId?: string;
-  models: ORModel[];
+  models: ModelDescriptor[];
   chat?: Chat | null;
   showStats: boolean;
   statsExpanded: boolean;

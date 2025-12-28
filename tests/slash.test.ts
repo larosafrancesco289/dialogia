@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getSlashSuggestions } from '@/lib/slash';
-import type { ORModel } from '@/lib/types';
+import type { ModelDescriptor } from '@/lib/types';
 
-const MODELS: ORModel[] = [
+const MODELS: ModelDescriptor[] = [
   { id: 'openrouter/mixtral', name: 'Mixtral 8x7B', context_length: 0, raw: {} },
   { id: 'perplexity/pplx-7b', name: 'Perplexity 7B', context_length: 0, raw: {} },
 ];

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { Chat, DraftAttachment, Message, ORModel } from '@/lib/types';
+import type { Chat, DraftAttachment, Message, ModelDescriptor } from '@/lib/types';
 import type { ChatSettings } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { findModelById, isReasoningSupported } from '@/lib/models';
@@ -12,10 +12,11 @@ type NextOverrides = UiNextOverrides;
 
 type SlashCommandContext = {
   chat: Chat | undefined;
-  models: ORModel[];
+  models: ModelDescriptor[];
   nextOverrides: NextOverrides;
   updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
   setUI: (partial: Partial<UIState>) => void;
+  setNotice: (notice?: string) => void;
   defaultModelId: string;
 };
 
@@ -29,8 +30,6 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
   const currentModelId = ctx.chat?.settings.model || ctx.nextOverrides.model || ctx.defaultModelId;
   const currentModel = findModelById(ctx.models, currentModelId);
 
-  const setNotice = (msg: string) => ctx.setUI({ notice: msg });
-
   if (command === 'search' || command === 'web') {
     let enabled: boolean | undefined;
     if (arg === 'on') enabled = true;
@@ -40,12 +39,12 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (applyToChat && ctx.chat) {
       const next = enabled == null ? !ctx.chat.settings.search_enabled : enabled;
       await ctx.updateChatSettings({ search_enabled: next });
-      setNotice(`Web search: ${next ? 'On' : 'Off'}`);
+      ctx.setNotice(`Web search: ${next ? 'On' : 'Off'}`);
     } else {
       const prev = !!ctx.nextOverrides.search?.enabled;
       const next = enabled == null ? !prev : enabled;
       ctx.setUI({ overrides: { search: { enabled: next } } });
-      setNotice(`Web search (next): ${next ? 'On' : 'Off'}`);
+      ctx.setNotice(`Web search (next): ${next ? 'On' : 'Off'}`);
     }
     return true;
   }
@@ -55,7 +54,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     const effort = arg.toLowerCase() as Effort;
     if (!allowed.includes(effort)) return false;
     if (!isReasoningSupported(currentModel)) {
-      setNotice('Reasoning not supported by current model');
+      ctx.setNotice('Reasoning not supported by current model');
       return true;
     }
     if (applyToChat) {
@@ -63,7 +62,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     } else {
       ctx.setUI({ overrides: { reasoning: { effort } } });
     }
-    setNotice(`Reasoning effort: ${effort}`);
+    ctx.setNotice(`Reasoning effort: ${effort}`);
     return true;
   }
 
@@ -74,7 +73,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     const byName = ctx.models.find((model) => model.name?.toLowerCase() === id.toLowerCase());
     const chosen = byId || byName;
     if (!chosen) {
-      setNotice(`Unknown model: ${id}`);
+      ctx.setNotice(`Unknown model: ${id}`);
       return true;
     }
     if (applyToChat) {
@@ -82,12 +81,12 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     } else {
       ctx.setUI({ overrides: { model: chosen.id } });
     }
-    setNotice(`Model set to ${chosen.name || chosen.id}`);
+    ctx.setNotice(`Model set to ${chosen.name || chosen.id}`);
     return true;
   }
 
   if (command === 'help') {
-    setNotice('Slash: /model <id>, /search on|off|toggle, /reasoning none|low|medium|high');
+    ctx.setNotice('Slash: /model <id>, /search on|off|toggle, /reasoning none|low|medium|high');
     return true;
   }
 
@@ -107,10 +106,11 @@ export type ComposerSubmitResult = 'sent' | 'command' | 'noop';
 
 export function useComposerShortcuts(options: {
   chat: Chat | undefined;
-  models: ORModel[];
+  models: ModelDescriptor[];
   nextOverrides: NextOverrides;
   updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
   setUI: (partial: Partial<UIState>) => void;
+  setNotice: (notice?: string) => void;
   newChat: () => Promise<void>;
   sendMessage: (
     text: string,
@@ -135,6 +135,7 @@ export function useComposerShortcuts(options: {
         nextOverrides: options.nextOverrides,
         updateChatSettings: options.updateChatSettings,
         setUI: options.setUI,
+        setNotice: options.setNotice,
         defaultModelId: options.defaultModelId || DEFAULT_MODEL_ID,
       });
       if (commandHandled) {

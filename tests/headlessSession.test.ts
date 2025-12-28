@@ -4,9 +4,9 @@ import { setOpenRouterMocksForTests } from '@/lib/agent/pipelineClient';
 import { HeadlessTutorSession } from '@/lib/headless/session';
 import { createModelIndex } from '@/lib/models';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
-import type { Chat, Message, ORModel } from '@/lib/types';
+import type { Chat, Message, ModelDescriptor } from '@/lib/types';
 
-const mockModel = (id: string): ORModel => ({
+const mockModel = (id: string): ModelDescriptor => ({
   id,
   name: id,
   context_length: 8000,

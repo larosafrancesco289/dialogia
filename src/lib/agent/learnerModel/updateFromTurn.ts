@@ -16,6 +16,7 @@ export async function updateLearnerModelFromTurn(args: {
   messagesForChat: Message[];
   currentPlan?: PlanTurnOptions['chat']['settings']['learningPlan'];
   turn: PlanTurnOptions['turn'];
+  modelId?: string;
 }): Promise<{
   learnerModel?: PlanTurnResult['learnerModel'];
   planUpdates?: PlanTurnResult['planUpdates'];
@@ -38,12 +39,13 @@ export async function updateLearnerModelFromTurn(args: {
       { role: 'user', content: userContent, id: 'temp-user', createdAt: Date.now() } as Message,
     ];
 
+    const modelId = args.modelId ?? chat.settings.model;
     const evidence = await extractEvidence(
       activeNode.id,
       activeNode.name,
       activeNode.objectives,
       window,
-      { apiKey: turn.apiKey, transport: turn.transport, model: chat.settings.model },
+      { apiKey: turn.apiKey, transport: turn.transport, model: modelId },
     );
 
     const misconceptionDescription = evidence.misconception?.trim();

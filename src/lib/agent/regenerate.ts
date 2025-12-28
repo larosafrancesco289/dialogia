@@ -9,6 +9,7 @@ import type { ModelMessage, RegenerateOptions, SearchProvider } from '@/lib/agen
 import { streamFinal } from '@/lib/agent/streaming';
 import { setTurnController } from '@/lib/services/controllers';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
+import { resolveTurnSettings } from '@/lib/settings/resolve';
 
 export async function regenerate(opts: RegenerateOptions): Promise<void> {
   const { chat, chatId, targetMessageId, messages, turn, controller, overrideModelId } = opts;
@@ -168,14 +169,23 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
 
   const chatForStream: Chat = { ...chat, settings: nextSettings };
 
+  const uiSnapshot = turn.get().ui;
+  const settings = resolveTurnSettings({
+    chat: chatForStream,
+    ui: { ...uiSnapshot, overrides: undefined },
+    modelIndex,
+    modelId: modelIdForTurn,
+  });
+  settings.generation.providerSort = providerSort;
+
   await streamFinal({
     chat: chatForStream,
     chatId,
     assistantMessage: replacement,
     messages: convo,
     controller,
-    providerSort: providerSort ?? undefined,
     turn,
+    settings,
     plugins,
     toolDefinition: undefined,
     startBuffered: false,

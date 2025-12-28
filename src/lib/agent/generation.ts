@@ -1,28 +1,21 @@
 // Module: agent/generation
 // Responsibility: Provide helpers for capturing per-turn generation settings snapshots.
 
-import { isReasoningSupported } from '@/lib/models';
-import type { ChatSettings, GenSettingsSnapshot, ORModel } from '@/lib/types';
-import type { ProviderSort } from '@/lib/agent/types';
+import type { GenSettingsSnapshot } from '@/lib/types';
+import type { ResolvedTurnSettings } from '@/lib/agent/types';
 
-export function snapshotGenSettings(opts: {
-  settings: ChatSettings;
-  modelMeta: ORModel | undefined;
-  searchProvider: 'brave' | 'openrouter';
-  providerSort?: ProviderSort;
-}): GenSettingsSnapshot {
-  const { settings, modelMeta, searchProvider, providerSort } = opts;
-  const supportsReasoning = isReasoningSupported(modelMeta);
+export function snapshotGenSettings(settings: ResolvedTurnSettings): GenSettingsSnapshot {
+  const generation = settings.generation;
   const snapshot: GenSettingsSnapshot = {
-    temperature: settings.temperature,
-    top_p: settings.top_p,
-    max_tokens: settings.max_tokens,
-    reasoning_effort: supportsReasoning ? settings.reasoning_effort : undefined,
-    reasoning_tokens: supportsReasoning ? settings.reasoning_tokens : undefined,
-    search_enabled: !!settings.search_enabled,
-    search_provider: searchProvider,
-    tutor_mode: !!settings.tutor_mode,
+    temperature: generation.temperature,
+    top_p: generation.topP,
+    max_tokens: generation.maxTokens,
+    reasoning_effort: generation.reasoningEffort,
+    reasoning_tokens: generation.reasoningTokens,
+    search_enabled: !!generation.searchEnabled,
+    search_provider: generation.searchProvider,
+    tutor_mode: !!generation.tutorMode,
   };
-  if (providerSort) snapshot.providerSort = providerSort;
+  if (generation.providerSort) snapshot.providerSort = generation.providerSort;
   return snapshot;
 }

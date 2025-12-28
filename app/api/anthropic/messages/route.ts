@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { anthropicMessages } from '@/lib/api/anthropicClient';
 import { jsonError, requireServerEnv, withTiming } from '@/lib/server/route';
-import { getRequestOrigin, proxyStream, withProxyErrors } from '@/lib/server/proxy';
+import { getRequestOrigin, parseProxyBody, proxyStream, withProxyErrors } from '@/lib/server/proxy';
 
 export async function POST(req: NextRequest) {
   return withTiming('anthropic-messages', async () => {
@@ -19,13 +19,7 @@ export async function POST(req: NextRequest) {
     }
     return withProxyErrors(async () => {
       const body = await req.text();
-      let stream = false;
-      try {
-        const parsed = JSON.parse(body);
-        stream = parsed?.stream === true;
-      } catch {
-        stream = false;
-      }
+      const { stream } = parseProxyBody(body);
       const res = await anthropicMessages({
         apiKey,
         body,

@@ -4,14 +4,15 @@ import { planTurn } from '@/lib/agent/planning';
 import { regenerate } from '@/lib/agent/regenerate';
 import { setOpenRouterMocksForTests as __setOpenRouterMocksForTests } from '@/lib/agent/pipelineClient';
 import { createModelIndex } from '@/lib/models';
-import type { Message, Chat, ORModel, ModelTransport } from '@/lib/types';
+import type { Message, Chat, ModelDescriptor, ModelTransport } from '@/lib/types';
 import { getTutorToolDefinitions } from '@/lib/agent/tutor';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
 import type { StoreSetter, TurnContext } from '@/lib/agent/types';
-import { ProviderSort } from '@/lib/models/providerSort';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
+import { resolveTurnSettings } from '@/lib/settings/resolve';
+import { ProviderSort } from '@/lib/models/providerSort';
 
-const baseModels: ORModel[] = [
+const baseModels: ModelDescriptor[] = [
   {
     id: 'provider/model',
     name: 'Provider Model',
@@ -233,6 +234,13 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     persistMessage,
   } satisfies TurnContext;
 
+  const settings = resolveTurnSettings({
+    chat,
+    ui: state.ui,
+    modelIndex,
+    modelId: chat.settings.model,
+  });
+
   await planTurn({
     chat,
     chatId: chat.id,
@@ -244,11 +252,9 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
       { role: 'user', content: 'Hello' },
     ],
     toolDefinition: [...searchTools, ...tutorTools],
-    searchEnabled: true,
-    searchProvider: 'brave',
-    providerSort: ProviderSort.Throughput,
     controller: new AbortController(),
     turn: turnContext,
+    settings,
   });
 
   const braveEntry = state.ui.search.braveByMessageId[assistantMessage.id];

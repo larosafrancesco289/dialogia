@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import type { ORModel } from '@/lib/types';
+import type { ModelDescriptor } from '@/lib/types';
 import { getSlashSuggestions, type SlashSuggestion } from '@/lib/slash';
 
 export type ComposerInputProps = {
@@ -10,7 +10,7 @@ export type ComposerInputProps = {
   isStreaming: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   maxHeight: number;
-  models: ORModel[];
+  models: ModelDescriptor[];
   onPaste: (event: React.ClipboardEvent<HTMLTextAreaElement>) => void;
   onFocusChange: (focused: boolean) => void;
 };
@@ -61,7 +61,6 @@ export function ComposerInput({
         onPaste={onPaste}
         aria-controls={hasSuggestions ? 'slash-suggestions' : undefined}
         aria-activedescendant={hasSuggestions ? `slash-opt-${activeIndex}` : undefined}
-        aria-expanded={hasSuggestions ? true : undefined}
         aria-autocomplete="list"
         onKeyDown={(event) => {
           if (isStreaming) return;

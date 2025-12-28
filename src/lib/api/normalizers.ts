@@ -1,4 +1,4 @@
-import type { Usage } from '@/lib/api/openrouterClient';
+import type { Usage } from '@/lib/transport/completions';
 
 const toNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined;
@@ -48,4 +48,4 @@ export function shouldIncludeUsage(stream: boolean | undefined): boolean {
   return stream === true;
 }
 
-export type { Usage };
+export type { Usage } from '@/lib/transport/completions';

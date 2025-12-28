@@ -1,3 +1,4 @@
+import 'server-only';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -6,7 +7,7 @@ import { LLMJudge, LLMUserSimulator } from '@/lib/headless/simulators';
 import { renderSnapshotTranscript } from '@/lib/headless/transcript';
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 import { createModelIndex } from '@/lib/models';
-import type { Chat, Message, ORModel, ModelTransport, ToolCallLogEntry } from '@/lib/types';
+import type { Chat, Message, ModelDescriptor, ModelTransport, ToolCallLogEntry } from '@/lib/types';
 import type { PlanTurnResult } from '@/lib/agent/types';
 import { fetchModels } from '@/lib/openrouter';
 import { resolveModelTransport } from '@/lib/providers';
@@ -75,7 +76,7 @@ function coerceInt(value: string | boolean | undefined, fallback: number): numbe
   return fallback;
 }
 
-async function safeFetchModels(key: string | undefined): Promise<ORModel[]> {
+async function safeFetchModels(key: string | undefined): Promise<ModelDescriptor[]> {
   if (!key) return [];
   try {
     return await fetchModels(key);
@@ -84,7 +85,11 @@ async function safeFetchModels(key: string | undefined): Promise<ORModel[]> {
   }
 }
 
-function createStubModel(id: string, transport: ModelTransport, supportsTools: boolean): ORModel {
+function createStubModel(
+  id: string,
+  transport: ModelTransport,
+  supportsTools: boolean,
+): ModelDescriptor {
   const supported: string[] = supportsTools ? ['tools', 'reasoning'] : ['reasoning'];
   const curated = CURATED_MODELS.find((model) => model.id === id);
   return {
@@ -349,8 +354,9 @@ function printSummary(report: SimulationReport, jsonPath: string) {
     console.log(`  Should plan: ${turn.composition.shouldPlan ? 'yes' : 'no'}`);
     console.log(`  Tools configured: ${summarizeToolDefinitions(turn.composition.tools)}`);
     console.log(`  Plugins: ${summarizePlugins(turn.composition.plugins)}`);
-    if (turn.composition.providerSort) {
-      console.log(`  Provider sort: ${JSON.stringify(turn.composition.providerSort)}`);
+    const providerSort = turn.composition.settings?.generation?.providerSort;
+    if (providerSort) {
+      console.log(`  Provider sort: ${JSON.stringify(providerSort)}`);
     }
     if (turn.composition.system) {
       console.log('  System prompt preview:');
@@ -486,7 +492,7 @@ export async function runTutorSimulationCli(argv: string[]) {
 
   const remoteModels = await safeFetchModels(openrouterKey);
   const allModelIds = Array.from(new Set([tutorModel, studentModel, judgeModel]));
-  const models: ORModel[] = allModelIds.map((id) => {
+  const models: ModelDescriptor[] = allModelIds.map((id) => {
     const fromRemote = remoteModels.find((m) => m.id === id);
     if (fromRemote) return fromRemote;
     const transport = resolveModelTransport(id, fromRemote);

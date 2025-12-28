@@ -37,6 +37,7 @@ const baseState = (messages: Record<string, Message[]>): StoreState =>
     deleteFolder: noopAsync,
     toggleFolderExpanded: noopAsync,
     setUI: noop,
+    setNotice: noop,
     setSearchStatus: noop,
     logTutorResult: noopAsync,
     loadTutorProfileIntoUI: noopAsync,

@@ -1,8 +1,8 @@
-/* francesco-bootstrap.css — Tailwind v4, single-file design starter
+/* foundations.css — Tailwind v4, single-file design starter
    Import order:
      @import "tailwindcss";
      @import "./styles/tokens.css";
-     @import "./styles/francesco-bootstrap.css";
+     @import "./styles/foundations.css";
    Dark mode: toggle the `dark` class on <html>.
 */
 

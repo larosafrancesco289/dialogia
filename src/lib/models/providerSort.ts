@@ -4,5 +4,4 @@
 export enum ProviderSort {
   Price = 'price',
   Throughput = 'throughput',
-  Latency = 'latency',
 }

@@ -3,6 +3,7 @@ import { deepResearch } from '@/lib/deepResearch';
 import { ProviderSort } from '@/lib/models/providerSort';
 import { createNdjsonStream } from '@/lib/server/ndjson';
 import { jsonError, requireServerEnv, withTiming } from '@/lib/server/route';
+import { isRecord } from '@/lib/utils/guards';
 
 export async function POST(req: NextRequest) {
   return withTiming('deep-research', async () => {
@@ -76,6 +77,3 @@ export async function POST(req: NextRequest) {
     });
   });
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);

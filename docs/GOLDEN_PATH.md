@@ -2,6 +2,13 @@
 
 Short, practical guide for extending Dialogia without violating module boundaries.
 
+## UI imports allowed
+
+- Allowed: `src/lib/store/*` (selectors/actions), `src/lib/ui/*`, `src/lib/hooks/*`, and UI-safe
+  helpers under `src/lib/messages/*`.
+- Avoid: `src/lib/api/*`, `src/lib/openrouter/*`, `src/lib/anthropic/*`, `src/lib/transport/*`,
+  `src/lib/eval/*`, and `src/lib/headless/*` in UI components.
+
 ## Add a tool
 
 1. Define the tool schema under `src/lib/agent/tools/definitions/` (export a `ToolDefinition`).
@@ -19,14 +26,15 @@ Short, practical guide for extending Dialogia without violating module boundarie
 
 ## Add a provider
 
-1. Implement a new `TransportClient` in `src/lib/` or `src/lib/transport/`.
+1. Implement a new `TransportClient` under `src/lib/transport/*` or a provider module.
 2. Extend `ModelTransport` in `src/lib/types/models.ts`.
 3. Register the client in `src/lib/transport/registry.ts`.
 4. Add provider/model metadata in `src/data/curatedModels.ts` and helpers in
    `src/lib/models.ts` as needed.
-5. Update request building in `src/lib/agent/request.ts` if payloads differ.
-6. Add a proxy route under `app/api/` if keys must stay server-side.
-7. Document env keys in `CONFIGURATION.md` and add contract tests in `tests/`.
+5. Keep shared contracts in `src/lib/transport/models.ts` and `src/lib/transport/completions.ts`.
+6. Update request building in `src/lib/agent/request.ts` if payloads differ.
+7. Add a proxy route under `app/api/` if keys must stay server-side.
+8. Document env keys in `CONFIGURATION.md` and add contract tests in `tests/`.
 
 ## Add a settings panel
 

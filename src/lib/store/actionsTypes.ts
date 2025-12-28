@@ -2,6 +2,7 @@ import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
 import type { ChatSettings, DraftAttachment, Message, MessageTutor, TutorEvent } from '@/lib/types';
 import type { VoiceActions } from '@/lib/voice/types';
 import type { UISearchState, UIStatePartial } from '@/lib/store/uiTypes';
+import type { NoticeId } from '@/lib/store/notices';
 
 export type StoreActions = VoiceActions & {
   // lifecycle
@@ -23,6 +24,7 @@ export type StoreActions = VoiceActions & {
 
   // ui
   setUI: (partial: UIStatePartial) => void;
+  setNotice: (notice?: NoticeId | string) => void;
   setSearchStatus: (
     messageId: string,
     entry: NonNullable<UISearchState['braveByMessageId']>[string],
