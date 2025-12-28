@@ -8,8 +8,8 @@ import { getServerEnv } from '@/lib/env/server';
 import { getNodeEnv, isProd } from '@/lib/env/runtime';
 import { jsonError, withTiming } from '@/lib/server/route';
 
-// Force Edge runtime to match middleware
-export const runtime = 'edge';
+// Keep Node runtime to avoid Edge static generation warnings in build output.
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   return withTiming('auth-debug', async () => {

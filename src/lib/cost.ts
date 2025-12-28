@@ -1,7 +1,7 @@
-import type { ORModel } from '@/lib/types';
+import type { ModelDescriptor } from '@/lib/types';
 
 export function computeCost(opts: {
-  model?: ORModel;
+  model?: ModelDescriptor;
   promptTokens?: number;
   completionTokens?: number;
 }): { currency?: string; total?: number } {
@@ -39,7 +39,7 @@ function perMillion(perToken?: number): number | undefined {
 }
 
 // Build a compact pricing descriptor for a model, e.g. "in $5/M, out $15/M"
-export function describeModelPricing(model?: ORModel | null): string | undefined {
+export function describeModelPricing(model?: ModelDescriptor | null): string | undefined {
   if (!model || !model.pricing) return undefined;
   const pIn = perMillion(toNumber(model.pricing?.prompt));
   const pOut = perMillion(toNumber(model.pricing?.completion));

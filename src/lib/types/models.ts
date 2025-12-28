@@ -1,13 +1,1 @@
-export type ModelTransport = 'openrouter' | 'anthropic';
-
-export type ORModel = {
-  id: string;
-  name?: string;
-  context_length?: number;
-  pricing?: { prompt?: number; completion?: number; currency?: string };
-  raw?: unknown;
-  // Transport/provider metadata for multi-provider routing.
-  transport?: ModelTransport;
-  transportModelId?: string;
-  providerDisplay?: string;
-};
+export type { ModelDescriptor, ModelTransport } from '@/lib/transport/models';

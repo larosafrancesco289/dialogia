@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { ORModel } from '@/lib/types';
+import type { ModelDescriptor } from '@/lib/types';
 import {
   isReasoningSupported,
   isToolCallingSupported,
@@ -10,7 +10,7 @@ import {
   getModelCapabilities,
 } from '@/lib/models';
 
-const baseModel = (overrides: Partial<ORModel> & { raw?: any } = {}): ORModel => ({
+const baseModel = (overrides: Partial<ModelDescriptor> & { raw?: any } = {}): ModelDescriptor => ({
   id: 'provider/model',
   name: 'Provider Model',
   context_length: 8000,

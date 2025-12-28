@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
@@ -100,10 +101,12 @@ export function ChatSidebar({ collapsed: collapsedProp }: ChatSidebarProps = {})
       <div className="app-header justify-between">
         <div className="flex items-center gap-2 font-semibold text-fg">
           <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-border/50 shadow-sm">
-            <img
+            <Image
               src="/logo.jpg"
               alt="App Logo"
-              className="w-full h-full object-cover logo-enhanced"
+              fill
+              sizes="32px"
+              className="object-cover logo-enhanced"
             />
           </div>
           {!collapsed && <span className="tracking-tight">Dialogia</span>}

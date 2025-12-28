@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { orFetchModels } from '@/lib/api/openrouterClient';
+import { orFetchModels } from '@/lib/api/openrouterHttp';
 import { jsonError, withTiming } from '@/lib/server/route';
 import { getRequestOrigin, proxyJson, withProxyErrors } from '@/lib/server/proxy';
 import { getOpenRouterApiKeyForTier } from '@/lib/auth/tierApiKey';

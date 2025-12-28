@@ -12,6 +12,7 @@ import type { SendRuntime } from '@/lib/services/turns/runtime';
 import type { Chat, Message, PersistedAttachment } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
+import { resolveTurnSettings } from '@/lib/settings/resolve';
 
 export type ExecuteModelTurnArgs = {
   modelId: string;
@@ -91,14 +92,23 @@ export const executeModelTurn = async ({
       return;
     }
 
+    const chatForModel = chatForTurn();
+    const settings = resolveTurnSettings({
+      chat: chatForModel,
+      ui: runtime.ui,
+      modelIndex: baseTurnContext.modelIndex,
+      modelId,
+    });
+
     const runResult = await runTurn({
-      chat: chatForTurn(),
+      chat: chatForModel,
       chatId: runtime.chatId,
       modelId,
       userContent: content,
       assistantMessage,
       priorMessages,
-      ui: get().ui,
+      ui: runtime.ui,
+      settings,
       controller,
       baseTurnContext,
       compose: composeTurn,
@@ -130,7 +140,7 @@ export const executeModelTurn = async ({
       // Lifecycle already pushed gen settings/system snapshot; no-op here.
     }
   } catch (error: unknown) {
-    handleTurnApiError(error, set);
+    handleTurnApiError(error, set, get);
     controller.abort();
   } finally {
     masterController.signal.removeEventListener('abort', abortListener);

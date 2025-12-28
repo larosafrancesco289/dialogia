@@ -1,5 +1,5 @@
 import type { ModelIndex } from '@/lib/models';
-import type { Chat, Folder, Message, ORModel } from '@/lib/types';
+import type { Chat, Folder, Message, ModelDescriptor } from '@/lib/types';
 import type {
   StoreGetter as ContractStoreGetter,
   StoreSetter as ContractStoreSetter,
@@ -14,7 +14,7 @@ export type StoreDataState = {
   messages: Record<string, Message[]>;
   selectedChatId?: string;
 
-  models: ORModel[];
+  models: ModelDescriptor[];
   modelIndex: ModelIndex;
   favoriteModelIds: string[];
   hiddenModelIds: string[];

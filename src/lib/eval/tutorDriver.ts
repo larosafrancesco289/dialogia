@@ -1,3 +1,4 @@
+import 'server-only';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHeadlessRunner } from '@/lib/headless/runner';
@@ -11,7 +12,7 @@ import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { resolveModelTransport } from '@/lib/providers';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
-import type { Chat, Message, ORModel, ModelTransport } from '@/lib/types';
+import type { Chat, Message, ModelDescriptor, ModelTransport } from '@/lib/types';
 import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learnerModel';
 import { generatePlanContextPreamble } from '@/lib/agent/tutor/planContext';
 import { isTutorContentTool, isTutorMetaTool, isSearchTool } from '@/lib/agent/tools/categories';
@@ -56,7 +57,11 @@ export type TutorEvalResult = {
   outputPath?: string;
 };
 
-function createStubModel(id: string, transport: ModelTransport, supportsTools: boolean): ORModel {
+function createStubModel(
+  id: string,
+  transport: ModelTransport,
+  supportsTools: boolean,
+): ModelDescriptor {
   const supported: string[] = supportsTools ? ['tools', 'reasoning'] : ['reasoning'];
   return {
     id,
@@ -186,7 +191,7 @@ export async function runTutorScenario(
   const studentTransport = resolveModelTransport(studentModelId) || 'openrouter';
   const judgeTransport = resolveModelTransport(judgeModelId) || 'openrouter';
 
-  const models: ORModel[] = [
+  const models: ModelDescriptor[] = [
     createStubModel(teacherModelId, teacherTransport, true),
     createStubModel(studentModelId, studentTransport, false),
     createStubModel(judgeModelId, judgeTransport, false),

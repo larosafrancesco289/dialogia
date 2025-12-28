@@ -17,6 +17,7 @@ import type {
 import { getNextNode } from '@/lib/learningPlan/service';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { logger } from '@/lib/logger';
+import { isRecord } from '@/lib/utils/guards';
 
 /**
  * Initialize an empty learner model for a learning plan
@@ -530,10 +531,6 @@ function parseJSONResponse(text: string): Record<string, unknown> {
 
   // Return empty object as fallback
   return {};
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function extractTextFromBlocks(content: unknown): string {

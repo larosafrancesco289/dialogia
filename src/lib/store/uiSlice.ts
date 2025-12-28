@@ -2,6 +2,7 @@ import type { StoreState, UIState, UIStatePartial } from '@/lib/store/types';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
 import { applyNextOverrides } from '@/lib/ui/next';
+import { resolveNotice } from '@/lib/store/notices';
 
 export const createUiSlice = createStoreSlice((set, get) => {
   const initial: UIState = buildDefaultUIState();
@@ -53,6 +54,15 @@ export const createUiSlice = createStoreSlice((set, get) => {
         }
         void updateChatSettings({ parallel_models: [] });
       }
+    },
+    setNotice(notice) {
+      const resolved = resolveNotice(notice);
+      set((state) => ({
+        ui: {
+          ...state.ui,
+          notice: resolved,
+        },
+      }));
     },
     setSearchStatus(messageId, entry) {
       if (!messageId) return;

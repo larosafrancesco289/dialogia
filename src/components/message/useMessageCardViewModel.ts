@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import type { Chat, Message, MessageTutor, ORModel } from '@/lib/types';
+import type { Chat, Message, MessageTutor, ModelDescriptor } from '@/lib/types';
 import type { UIDebugState, UISearchState } from '@/lib/store/types';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 
@@ -11,7 +11,7 @@ const EMPTY_AUTO_REASONING: Record<string, boolean> = {};
 export type MessageCardViewModel = {
   message?: Message;
   chat?: Chat;
-  models: ORModel[];
+  models: ModelDescriptor[];
   isStreaming: boolean;
   braveGloballyEnabled: boolean;
   braveEntry?: NonNullable<UISearchState['braveByMessageId']>[string];

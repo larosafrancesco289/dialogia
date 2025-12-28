@@ -14,6 +14,7 @@ import {
   type FetchUrlToolArgs,
 } from '@/lib/deepResearch/tools';
 import { WEB_SEARCH_TOOL } from '@/lib/tools/webSearch';
+import { isRecord } from '@/lib/utils/guards';
 
 // System prompt for DeepResearch with interleaved tool reasoning
 export function buildDeepResearchPrompt(opts?: {
@@ -366,6 +367,3 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
     };
   }
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);

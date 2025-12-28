@@ -1,5 +1,5 @@
 import { prepareAttachmentsForModel } from '@/lib/agent/attachments';
-import type { DraftAttachment, ORModel, PersistedAttachment } from '@/lib/types';
+import type { DraftAttachment, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 
 export const prepareAttachmentsByModel = async ({
   attachments,
@@ -8,7 +8,7 @@ export const prepareAttachmentsByModel = async ({
 }: {
   attachments?: DraftAttachment[];
   modelIds: string[];
-  models: ORModel[];
+  models: ModelDescriptor[];
 }): Promise<Map<string, PersistedAttachment[]>> => {
   const map = new Map<string, PersistedAttachment[]>();
   await Promise.all(

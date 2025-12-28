@@ -1,8 +1,14 @@
 import { NextRequest } from 'next/server';
-import { orChatCompletions } from '@/lib/api/openrouterClient';
+import { orChatCompletions } from '@/lib/api/openrouterHttp';
 import { getOpenRouterApiKeyForTier, canUseTierModel, getServerTier } from '@/lib/auth/tierApiKey';
 import { jsonError, withTiming } from '@/lib/server/route';
-import { getRequestOrigin, proxyJson, proxyStream, withProxyErrors } from '@/lib/server/proxy';
+import {
+  getRequestOrigin,
+  parseProxyBody,
+  proxyJson,
+  proxyStream,
+  withProxyErrors,
+} from '@/lib/server/proxy';
 
 export async function POST(req: NextRequest) {
   return withTiming('openrouter-chat', async () => {
@@ -15,15 +21,7 @@ export async function POST(req: NextRequest) {
 
     return withProxyErrors(async () => {
       const bodyText = await req.text();
-      let body: Record<string, unknown> | null = null;
-      let stream = false;
-      try {
-        body = JSON.parse(bodyText) as Record<string, unknown>;
-        stream = body?.stream === true;
-      } catch {
-        body = null;
-        stream = false;
-      }
+      const { body, stream } = parseProxyBody(bodyText);
 
       // Validate model access for free tier
       const tier = await getServerTier();

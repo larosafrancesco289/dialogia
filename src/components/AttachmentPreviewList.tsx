@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import type { DraftAttachment } from '@/lib/types';
 
@@ -38,9 +39,13 @@ export function AttachmentPreviewList({
 function renderPreview(attachment: DraftAttachment) {
   if (attachment.kind === 'image' && attachment.dataURL) {
     return (
-      <img
+      <Image
         src={attachment.dataURL}
         alt={attachment.name || 'attachment'}
+        width={64}
+        height={64}
+        sizes="64px"
+        unoptimized
         className="h-16 w-16 object-cover rounded border border-border"
       />
     );

@@ -1,5 +1,6 @@
 import 'server-only';
 import { jsonError } from '@/lib/server/route';
+import { isRecord } from '@/lib/utils/guards';
 
 export type ProxyResponseOptions = {
   contentType?: string;
@@ -9,6 +10,20 @@ export type ProxyResponseOptions = {
 
 export function getRequestOrigin(req: Request): string | undefined {
   return req.headers.get('origin') || undefined;
+}
+
+export function parseProxyBody(bodyText: string): {
+  body: Record<string, unknown> | null;
+  stream: boolean;
+} {
+  if (!bodyText) return { body: null, stream: false };
+  try {
+    const parsed = JSON.parse(bodyText);
+    if (!isRecord(parsed)) return { body: null, stream: false };
+    return { body: parsed, stream: parsed.stream === true };
+  } catch {
+    return { body: null, stream: false };
+  }
 }
 
 function buildProxyHeaders(res: Response, opts?: ProxyResponseOptions): Headers {

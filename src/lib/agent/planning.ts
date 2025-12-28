@@ -25,6 +25,7 @@ import type {
 import { executePlanningToolCall } from '@/lib/agent/tools/exec';
 import { captureRequestDebug } from '@/lib/agent/debug';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
+import { generationSettingsToOpenRouterParams } from '@/lib/settings/generation';
 import { detectPlanningToolCalls } from '@/lib/agent/tools/router';
 import { isQuizToolName, schedulePlanningTools } from '@/lib/agent/tools/schedulingPolicy';
 import {
@@ -38,7 +39,7 @@ import { isTutorToolName } from '@/lib/agent/tools';
 import { getNextNode } from '@/lib/learningPlan/service';
 import type { Message } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
-import { updateLearnerModelFromTurn } from '@/lib/agent/learnerModel/updateFromTurn';
+import { autoUpdateLearnerModelFromTurn } from '@/lib/agent/learnerModel/autoUpdate';
 
 function filterAllowedToolsForPhase(args: {
   toolDefinition?: ToolDefinition[];
@@ -71,6 +72,171 @@ function filterAllowedToolsForPhase(args: {
   return { planningToolDefinition, allowedTutorTools, toolPolicy };
 }
 
+type PlanningContext = {
+  phase: TutorPhase;
+  planningToolDefinition?: ToolDefinition[];
+  allowedTutorTools: Set<TutorToolName>;
+  toolPolicy: TutorToolPolicy;
+};
+
+type PlanningExecutionState = {
+  aggregatedResults: SearchResult[];
+  usedTutorContentTool: boolean;
+  learnerModel?: PlanTurnResult['learnerModel'];
+  planUpdates?: PlanTurnResult['planUpdates'];
+  updatedPlan?: PlanTurnResult['updatedPlan'];
+  learnerModelDebug?: PlanTurnResult['learnerModelDebug'];
+  currentPlan?: PlanTurnOptions['chat']['settings']['learningPlan'];
+  toolsUsedThisTurn: number;
+  quizCallsThisTurn: number;
+};
+
+function derivePlanningContext(args: {
+  chat: PlanTurnOptions['chat'];
+  messagesForChat: Message[];
+  ui?: UiSnapshot;
+  toolDefinition?: ToolDefinition[];
+  currentPlan?: PlanTurnOptions['chat']['settings']['learningPlan'];
+}): PlanningContext {
+  const { chat, messagesForChat, ui, toolDefinition, currentPlan } = args;
+  const phase = getTutorPhase(chat, messagesForChat, ui);
+  const activeNodeId = currentPlan ? getNextNode(currentPlan)?.id : undefined;
+  const { planningToolDefinition, allowedTutorTools, toolPolicy } = filterAllowedToolsForPhase({
+    toolDefinition,
+    chat,
+    ui,
+    phase,
+    activeNodeId,
+  });
+  return { phase, planningToolDefinition, allowedTutorTools, toolPolicy };
+}
+
+function buildPlanningMessages(
+  baseMessages: ModelMessage[],
+  combinedSystem?: string,
+): ModelMessage[] {
+  const planningSystem =
+    combinedSystem != null ? ({ role: 'system', content: combinedSystem } as const) : undefined;
+  return planningSystem
+    ? [planningSystem, ...baseMessages.filter((entry) => entry.role !== 'system')]
+    : baseMessages.slice();
+}
+
+async function runPlanningRound(args: {
+  convo: ModelMessage[];
+  assistantMessage: Message;
+  toolDefinition?: ToolDefinition[];
+  controller: AbortController;
+  turn: PlanTurnOptions['turn'];
+  settings: PlanTurnOptions['settings'];
+}): Promise<{
+  message: Partial<AssistantModelMessage> & { reasoning_details?: unknown };
+  toolCalls: ToolCall[];
+  toolsForPlanning?: ToolDefinition[];
+}> {
+  const { convo, assistantMessage, toolDefinition, controller, turn, settings } = args;
+  const { apiKey, transport } = turn;
+  const generation = settings.generation;
+  const supportsTools = isToolCallingSupported(settings.modelMeta);
+  const toolsForPlanning =
+    supportsTools && Array.isArray(toolDefinition) && toolDefinition.length > 0
+      ? toolDefinition
+      : undefined;
+
+  captureRequestDebug({
+    turn,
+    messageId: assistantMessage.id,
+    modelId: settings.modelId,
+    messages: convo,
+    stream: false,
+    includeUsage: shouldIncludeUsage(false),
+    temperature: generation.temperature,
+    topP: generation.topP,
+    maxTokens: generation.maxTokens,
+    reasoningEffort: generation.reasoningEffort,
+    reasoningTokens: generation.reasoningTokens,
+    tools: toolsForPlanning,
+    toolChoice: toolsForPlanning ? 'auto' : undefined,
+    providerSort: generation.providerSort,
+  });
+
+  const openRouterSettings = generationSettingsToOpenRouterParams(generation);
+  const resp = await getChatCompletion()({
+    apiKey,
+    transport,
+    model: settings.modelId,
+    messages: convo,
+    ...openRouterSettings,
+    tools: toolsForPlanning,
+    tool_choice: toolsForPlanning ? ('auto' as const) : undefined,
+    signal: controller.signal,
+    plugins: undefined,
+  });
+
+  const choice = resp?.choices?.[0];
+  const message = (choice?.message || {}) as Partial<AssistantModelMessage> & {
+    reasoning_details?: unknown;
+  };
+  const toolCalls: ToolCall[] = detectPlanningToolCalls({
+    message,
+    toolDefinition,
+  });
+
+  return { message, toolCalls, toolsForPlanning };
+}
+
+async function applyToolExecutions(args: {
+  scheduled: ToolCall[];
+  round: number;
+  convo: ModelMessage[];
+  context: {
+    chat: PlanTurnOptions['chat'];
+    chatId: string;
+    assistantMessage: Message;
+    userContent: string;
+    searchProvider: 'brave' | 'openrouter';
+    controller: AbortController;
+    set: PlanTurnOptions['turn']['set'];
+    get: PlanTurnOptions['turn']['get'];
+    persistMessage: PlanTurnOptions['turn']['persistMessage'];
+  };
+  state: PlanningExecutionState;
+}): Promise<PlanningExecutionState> {
+  const { scheduled, round, convo, context, state } = args;
+  const next: PlanningExecutionState = { ...state };
+  for (const tc of scheduled) {
+    const toolName = tc.function?.name ?? '';
+    const parsedArgs = parseToolArguments(tc);
+    const roundMeta = Number.isFinite(round) ? { round } : undefined;
+    const execution = await executePlanningToolCall({
+      toolCall: tc,
+      parsedArgs,
+      roundMeta,
+      context,
+      aggregatedResults: next.aggregatedResults,
+    });
+    if (execution.convoMessages.length > 0) {
+      convo.push(...execution.convoMessages);
+    }
+    next.aggregatedResults = execution.aggregatedResults;
+    if (execution.learnerModel) next.learnerModel = execution.learnerModel;
+    if (execution.planUpdates) next.planUpdates = execution.planUpdates;
+    if (execution.updatedPlan) {
+      next.updatedPlan = execution.updatedPlan;
+      next.currentPlan = execution.updatedPlan;
+    }
+    if (execution.learnerModelDebug) next.learnerModelDebug = execution.learnerModelDebug;
+    if (execution.usedTutorContentTool) {
+      next.usedTutorContentTool = true;
+    }
+    if (isQuizToolName(toolName)) {
+      next.quizCallsThisTurn += 1;
+    }
+    next.toolsUsedThisTurn += 1;
+  }
+  return next;
+}
+
 export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const {
     chat,
@@ -80,114 +246,65 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
     combinedSystem,
     baseMessages,
     toolDefinition,
-    searchEnabled,
-    searchProvider,
-    providerSort,
     controller,
     turn,
+    settings,
   } = opts;
-  const { apiKey, transport, set, get, modelIndex, persistMessage } = turn;
+  const { set, get, persistMessage } = turn;
   const storeState = get?.();
   const messagesForChat = (storeState?.messages?.[chatId] ?? []) as Message[];
-  const phase = getTutorPhase(chat, messagesForChat, storeState?.ui);
   let currentPlan = chat.settings.learningPlan;
-  const activeNodeId = currentPlan ? getNextNode(currentPlan)?.id : undefined;
-  const { planningToolDefinition, allowedTutorTools, toolPolicy } = filterAllowedToolsForPhase({
-    toolDefinition,
+  const { planningToolDefinition, allowedTutorTools, toolPolicy, phase } = derivePlanningContext({
     chat,
+    messagesForChat,
     ui: storeState?.ui,
-    phase,
-    activeNodeId,
+    toolDefinition,
+    currentPlan,
   });
 
-  const planningSystem =
-    combinedSystem != null ? ({ role: 'system', content: combinedSystem } as const) : undefined;
-
-  const planningMessages: ModelMessage[] = planningSystem
-    ? [planningSystem, ...baseMessages.filter((entry) => entry.role !== 'system')]
-    : baseMessages.slice();
+  const planningMessages = buildPlanningMessages(baseMessages, combinedSystem);
 
   const convo = planningMessages.slice();
   let rounds = 0;
-  let usedTutorContentTool = false;
-  let aggregatedResults: SearchResult[] = [];
-  let learnerModelResult: PlanTurnResult['learnerModel'] | undefined;
-  let planUpdatesResult: PlanTurnResult['planUpdates'] | undefined;
-  let updatedPlanResult: PlanTurnResult['updatedPlan'] | undefined;
-  let learnerModelDebugResult: PlanTurnResult['learnerModelDebug'] | undefined;
+  const searchEnabled = !!settings.generation.searchEnabled;
+  const searchProvider = settings.generation.searchProvider || 'openrouter';
 
   // Automatic Learner Model Update
   // Analyze student response to update mastery before planning the next move
-  const learnerModelUpdate = await updateLearnerModelFromTurn({
+  const learnerModelUpdate = await autoUpdateLearnerModelFromTurn({
     chat,
     chatId,
     userContent,
     messagesForChat,
     currentPlan,
     turn,
+    modelId: settings.modelId,
   });
-  if (learnerModelUpdate.learnerModel) learnerModelResult = learnerModelUpdate.learnerModel;
-  if (learnerModelUpdate.planUpdates) planUpdatesResult = learnerModelUpdate.planUpdates;
-  if (learnerModelUpdate.updatedPlan) updatedPlanResult = learnerModelUpdate.updatedPlan;
   if (learnerModelUpdate.nextPlan) currentPlan = learnerModelUpdate.nextPlan;
-  let toolsUsedThisTurn = 0;
-  let quizCallsThisTurn = 0;
+  let state: PlanningExecutionState = {
+    aggregatedResults: [],
+    usedTutorContentTool: false,
+    learnerModel: learnerModelUpdate.learnerModel,
+    planUpdates: learnerModelUpdate.planUpdates,
+    updatedPlan: learnerModelUpdate.updatedPlan,
+    learnerModelDebug: undefined,
+    currentPlan: learnerModelUpdate.nextPlan ?? currentPlan,
+    toolsUsedThisTurn: 0,
+    quizCallsThisTurn: 0,
+  };
   const maxToolsPerTurn =
     toolPolicy.maxToolsPerTurn && Number.isFinite(toolPolicy.maxToolsPerTurn)
       ? Math.max(1, toolPolicy.maxToolsPerTurn)
       : Infinity;
 
   while (rounds < MAX_PLANNING_ROUNDS) {
-    const modelMeta = modelIndex.get(chat.settings.model);
-    const caps = modelIndex.caps(chat.settings.model);
-    const supportsReasoning = caps.canReason;
-    const supportsTools = isToolCallingSupported(modelMeta);
-    const toolsForPlanning =
-      supportsTools && Array.isArray(planningToolDefinition) && planningToolDefinition.length > 0
-        ? planningToolDefinition
-        : undefined;
-
-    captureRequestDebug({
-      turn,
-      messageId: assistantMessage.id,
-      modelId: chat.settings.model,
-      messages: convo,
-      stream: false,
-      includeUsage: shouldIncludeUsage(false),
-      temperature: chat.settings.temperature,
-      topP: chat.settings.top_p,
-      maxTokens: chat.settings.max_tokens,
-      reasoningEffort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-      reasoningTokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-      tools: toolsForPlanning,
-      toolChoice: toolsForPlanning ? 'auto' : undefined,
-      providerSort,
-    });
-
-    const resp = await getChatCompletion()({
-      apiKey,
-      transport,
-      model: chat.settings.model,
-      messages: convo,
-      temperature: chat.settings.temperature,
-      top_p: chat.settings.top_p,
-      max_tokens: chat.settings.max_tokens,
-      reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-      reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
-      tools: toolsForPlanning,
-      tool_choice: toolsForPlanning ? ('auto' as const) : undefined,
-      signal: controller.signal,
-      providerSort,
-      plugins: undefined,
-    });
-
-    const choice = resp?.choices?.[0];
-    const message = (choice?.message || {}) as Partial<AssistantModelMessage> & {
-      reasoning_details?: unknown;
-    };
-    const toolCalls: ToolCall[] = detectPlanningToolCalls({
-      message,
+    const { message, toolCalls } = await runPlanningRound({
+      convo,
+      assistantMessage,
       toolDefinition: planningToolDefinition,
+      controller,
+      turn,
+      settings,
     });
 
     const filteredToolCalls =
@@ -204,14 +321,16 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
       toolCalls: filteredToolCalls,
       toolPolicy,
       phase,
-      hasPlan: Boolean(currentPlan),
-      hasActiveNode: Boolean(currentPlan?.nodes.some((node) => node.status === 'in_progress')),
-      usedTutorContentTool,
+      hasPlan: Boolean(state.currentPlan ?? currentPlan),
+      hasActiveNode: Boolean(
+        (state.currentPlan ?? currentPlan)?.nodes.some((node) => node.status === 'in_progress'),
+      ),
+      usedTutorContentTool: state.usedTutorContentTool,
       searchEnabled,
       searchProvider,
-      quizCallsThisTurn,
+      quizCallsThisTurn: state.quizCallsThisTurn,
       maxToolsPerTurn,
-      toolsUsedThisTurn,
+      toolsUsedThisTurn: state.toolsUsedThisTurn,
     });
 
     if (scheduled.length > 0) {
@@ -231,47 +350,24 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
       break;
     }
 
-    for (const tc of scheduled) {
-      const toolName = tc.function?.name ?? '';
-      const parsedArgs = parseToolArguments(tc);
-      const roundMeta =
-        Number.isFinite(rounds) && Number.isFinite(rounds + 1) ? { round: rounds + 1 } : undefined;
-      const execution = await executePlanningToolCall({
-        toolCall: tc,
-        parsedArgs,
-        roundMeta,
-        context: {
-          chat,
-          chatId,
-          assistantMessage,
-          userContent,
-          searchProvider,
-          controller,
-          set,
-          get,
-          persistMessage,
-        },
-        aggregatedResults,
-      });
-      if (execution.convoMessages.length > 0) {
-        convo.push(...execution.convoMessages);
-      }
-      aggregatedResults = execution.aggregatedResults;
-      if (execution.learnerModel) learnerModelResult = execution.learnerModel;
-      if (execution.planUpdates) planUpdatesResult = execution.planUpdates;
-      if (execution.updatedPlan) {
-        updatedPlanResult = execution.updatedPlan;
-        currentPlan = execution.updatedPlan;
-      }
-      if (execution.learnerModelDebug) learnerModelDebugResult = execution.learnerModelDebug;
-      if (execution.usedTutorContentTool) {
-        usedTutorContentTool = true;
-      }
-      if (isQuizToolName(toolName)) {
-        quizCallsThisTurn += 1;
-      }
-      toolsUsedThisTurn += 1;
-    }
+    state = await applyToolExecutions({
+      scheduled,
+      round: rounds + 1,
+      convo,
+      context: {
+        chat,
+        chatId,
+        assistantMessage,
+        userContent,
+        searchProvider,
+        controller,
+        set,
+        get,
+        persistMessage,
+      },
+      state,
+    });
+    currentPlan = state.currentPlan ?? currentPlan;
 
     const followup = followUpPrompt({ searchEnabled, searchProvider });
     convo.push({ role: 'user', content: followup });
@@ -281,22 +377,22 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const baseSystem =
     combinedSystem && combinedSystem.trim()
       ? combinedSystem
-      : chat.settings.system && chat.settings.system.trim()
-        ? chat.settings.system
+      : settings.system && settings.system.trim()
+        ? settings.system
         : DEFAULT_BASE_SYSTEM;
-  const hasResults = shouldAppendSources(aggregatedResults);
+  const hasResults = shouldAppendSources(state.aggregatedResults);
   const sourcesAppendix = hasResults
-    ? formatSourcesBlock(aggregatedResults, searchProvider)
+    ? formatSourcesBlock(state.aggregatedResults, searchProvider)
     : undefined;
   const finalSystem = combineSystem(baseSystem, [], sourcesAppendix) ?? baseSystem;
 
   return {
     finalSystem,
-    usedTutorContentTool,
+    usedTutorContentTool: state.usedTutorContentTool,
     hasSearchResults: hasResults,
-    learnerModel: learnerModelResult,
-    planUpdates: planUpdatesResult,
-    updatedPlan: updatedPlanResult,
-    learnerModelDebug: learnerModelDebugResult,
+    learnerModel: state.learnerModel,
+    planUpdates: state.planUpdates,
+    updatedPlan: state.updatedPlan,
+    learnerModelDebug: state.learnerModelDebug,
   };
 }

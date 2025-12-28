@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ToolCallLogEntry } from '@/lib/types';
 import type { StoreSetter } from '@/lib/agent/types';
 import type { StoreState } from '@/lib/store/types';
+import { updateMessageById } from '@/lib/messages/updateMessageById';
 
 type MessageUpdater = (message: import('@/lib/types').Message) => import('@/lib/types').Message;
 
@@ -11,22 +12,7 @@ function mutateMessage(
   messageId: string,
   updater: MessageUpdater,
 ): Partial<StoreState> | undefined {
-  const list = state.messages[chatId];
-  if (!Array.isArray(list) || list.length === 0) return undefined;
-  let changed = false;
-  const nextList = list.map((msg) => {
-    if (msg.id !== messageId) return msg;
-    const nextMessage = updater(msg);
-    if (nextMessage !== msg) changed = true;
-    return nextMessage;
-  });
-  if (!changed) return undefined;
-  return {
-    messages: {
-      ...state.messages,
-      [chatId]: nextList,
-    },
-  };
+  return updateMessageById(state, chatId, messageId, updater);
 }
 
 export type StartToolCallArgs = {

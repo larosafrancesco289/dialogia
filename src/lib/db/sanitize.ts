@@ -1,4 +1,5 @@
 import type { DeepResearchEvent, Message } from '@/lib/types';
+import { isDeepResearchEvent } from '@/lib/deepResearch/events';
 
 export function sanitizeMessageRecord(message: Message): { next: Message; changed: boolean } {
   const next: Message = { ...message };
@@ -80,8 +81,6 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
   return { next, changed };
 }
 
-const DEEP_RESEARCH_EVENT_TYPES = new Set(['search', 'fetch', 'time', 'note', 'thought']);
-
 function parseDeepResearchTrace(reasoning: string): DeepResearchEvent[] | null {
   const trimmed = reasoning.trim();
   if (!trimmed.startsWith('[') || !trimmed.endsWith(']')) return null;
@@ -97,10 +96,4 @@ function parseDeepResearchTrace(reasoning: string): DeepResearchEvent[] | null {
   } catch {
     return null;
   }
-}
-
-function isDeepResearchEvent(value: unknown): value is DeepResearchEvent {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  return typeof record.type === 'string' && DEEP_RESEARCH_EVENT_TYPES.has(record.type);
 }

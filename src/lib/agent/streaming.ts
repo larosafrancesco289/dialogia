@@ -8,6 +8,7 @@ import { isToolCallingSupported } from '@/lib/models';
 import { clearTurnController } from '@/lib/services/controllers';
 import type { StreamFinalOptions, ToolDefinition } from '@/lib/agent/types';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
+import { generationSettingsToOpenRouterParams } from '@/lib/settings/generation';
 
 const TOOL_FENCE_REGEX = /^\s*```([a-z0-9_-]+)?\s*\n([\s\S]*?)\n```\s*/i;
 const TOOL_LANGS = new Set(['json', 'jsonc', 'tool', 'function', 'callback']);
@@ -71,53 +72,52 @@ export function stripLeadingToolJson(input: string): string {
 
 export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
   const {
-    chat,
     chatId,
     assistantMessage,
     messages,
     controller,
-    providerSort,
     turn,
+    settings,
     plugins,
     toolDefinition,
     startBuffered,
   } = opts;
   const { apiKey, transport, set, get, modelIndex, persistMessage } = turn;
 
-  const modelMeta = modelIndex.get(chat.settings.model);
-  const caps = modelIndex.caps(chat.settings.model);
-  const supportsReasoning = caps.canReason;
+  const modelMeta = settings.modelMeta ?? modelIndex.get(settings.modelId);
+  const caps = settings.caps ?? modelIndex.caps(settings.modelId);
   const canImageOut = caps.canImageOut;
   const supportsTools = isToolCallingSupported(modelMeta);
   const includeTools = supportsTools && Array.isArray(toolDefinition) && toolDefinition.length > 0;
   const combinedPlugins = Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined;
   const toolsForStreaming = includeTools ? (toolDefinition as ToolDefinition[]) : undefined;
+  const generation = settings.generation;
 
   captureRequestDebug({
     turn,
     messageId: assistantMessage.id,
-    modelId: chat.settings.model,
+    modelId: settings.modelId,
     messages,
     stream: true,
     includeUsage: shouldIncludeUsage(true),
     canImageOut,
-    temperature: chat.settings.temperature,
-    topP: chat.settings.top_p,
-    maxTokens: chat.settings.max_tokens,
-    reasoningEffort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-    reasoningTokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+    temperature: generation.temperature,
+    topP: generation.topP,
+    maxTokens: generation.maxTokens,
+    reasoningEffort: generation.reasoningEffort,
+    reasoningTokens: generation.reasoningTokens,
     tools: toolsForStreaming,
     toolChoice: includeTools ? 'none' : undefined,
-    providerSort,
+    providerSort: generation.providerSort,
     plugins: combinedPlugins,
   });
 
-  const requestedEffort = supportsReasoning ? chat.settings.reasoning_effort : undefined;
-  const requestedTokensRaw = supportsReasoning ? chat.settings.reasoning_tokens : undefined;
+  const requestedEffort = generation.reasoningEffort;
+  const requestedTokensRaw = generation.reasoningTokens;
   const effortRequested = typeof requestedEffort === 'string' && requestedEffort !== 'none';
   const tokensRequested = typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
   const autoReasoningEligible = !effortRequested && !tokensRequested;
-  const modelIdUsed = chat.settings.model;
+  const modelIdUsed = settings.modelId;
   const tStart = performance.now();
   const callbacks = createMessageStreamCallbacks(
     {
@@ -136,21 +136,17 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
 
   const modalities = canImageOut ? (['image', 'text'] as Array<'image' | 'text'>) : undefined;
   const toolChoice = includeTools ? 'none' : undefined;
+  const openRouterSettings = generationSettingsToOpenRouterParams(generation);
   await getStreamChatCompletion()({
     apiKey,
     transport,
-    model: chat.settings.model,
+    model: settings.modelId,
     messages,
     modalities,
-    temperature: chat.settings.temperature,
-    top_p: chat.settings.top_p,
-    max_tokens: chat.settings.max_tokens,
-    reasoning_effort: supportsReasoning ? chat.settings.reasoning_effort : undefined,
-    reasoning_tokens: supportsReasoning ? chat.settings.reasoning_tokens : undefined,
+    ...openRouterSettings,
     signal: controller.signal,
     tools: toolsForStreaming,
     tool_choice: toolChoice,
-    providerSort,
     plugins: combinedPlugins,
     callbacks,
   });

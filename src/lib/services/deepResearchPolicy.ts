@@ -1,11 +1,12 @@
-import type { ModelTransport, ORModel } from '@/lib/types';
+import type { ModelTransport, ModelDescriptor } from '@/lib/types';
 import { isReasoningSupported } from '@/lib/models';
+import { NOTICE_DEEP_RESEARCH_REQUIRES_OPENROUTER } from '@/lib/store/notices';
 
 export type DeepResearchPolicyInput = {
   searchEnabled: boolean;
   tutorEnabled: boolean;
   transport: ModelTransport;
-  modelMeta?: ORModel;
+  modelMeta?: ModelDescriptor;
 };
 
 export type DeepResearchPolicyDecision = {
@@ -22,7 +23,7 @@ export function evaluateDeepResearchPolicy(
   if (input.transport !== 'openrouter') {
     return {
       shouldRun: false,
-      notice: 'DeepResearch currently requires an OpenRouter model selection.',
+      notice: NOTICE_DEEP_RESEARCH_REQUIRES_OPENROUTER,
     };
   }
   return { shouldRun: true };

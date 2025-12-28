@@ -2,13 +2,13 @@
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { IconButton } from '@/components/IconButton';
 import { CheckIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import type { SystemPreset } from '@/lib/presets';
 import {
-  addSystemPreset,
-  deleteSystemPreset,
-  getSystemPresets,
-  updateSystemPreset,
-  type SystemPreset,
-} from '@/lib/presets';
+  loadSystemPresets,
+  removeSystemPreset,
+  renameSystemPreset,
+  saveSystemPreset,
+} from '@/lib/settings/systemPresets';
 import type { Chat } from '@/lib/types';
 import type { RenderSection } from '@/components/settings/types';
 
@@ -73,15 +73,13 @@ export function ChatPanel(props: ChatPanelProps) {
   };
 
   const refreshPresets = async () => {
-    const list = await getSystemPresets();
-    const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
-    setPresets(sorted);
+    setPresets(await loadSystemPresets());
   };
 
   const savePreset = async () => {
     const name = window.prompt('Preset name?');
     if (name == null) return;
-    const preset = await addSystemPreset(name, system);
+    const preset = await saveSystemPreset(name, system);
     setSelectedPresetId(preset.id);
     await refreshPresets();
   };
@@ -91,7 +89,7 @@ export function ChatPanel(props: ChatPanelProps) {
     if (!preset) return;
     const next = window.prompt('Rename preset', preset.name);
     if (next == null) return;
-    await updateSystemPreset(preset.id, { name: next.trim() || preset.name });
+    await renameSystemPreset(preset.id, next.trim() || preset.name);
     await refreshPresets();
   };
 
@@ -100,7 +98,7 @@ export function ChatPanel(props: ChatPanelProps) {
     if (!preset) return;
     const ok = window.confirm(`Delete preset "${preset.name}"?`);
     if (!ok) return;
-    await deleteSystemPreset(preset.id);
+    await removeSystemPreset(preset.id);
     await refreshPresets();
     setSelectedPresetId('');
   };

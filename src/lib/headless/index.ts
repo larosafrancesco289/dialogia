@@ -1,3 +1,4 @@
+import 'server-only';
 export { createHeadlessStore } from '@/lib/headless/store';
 export {
   HeadlessTutorSession,

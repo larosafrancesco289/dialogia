@@ -8,7 +8,7 @@ export function parsePartialJson(json: string): unknown {
   // First try normal parse
   try {
     return JSON.parse(json);
-  } catch (e) {
+  } catch {
     // If normal parse fails, try to repair
   }
 
@@ -106,7 +106,7 @@ export function parsePartialJson(json: string): unknown {
 
   try {
     return JSON.parse(repaired);
-  } catch (e) {
+  } catch {
     return null;
   }
 }

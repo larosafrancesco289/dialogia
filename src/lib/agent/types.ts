@@ -1,7 +1,7 @@
 import type {
   Chat,
   Message,
-  ORModel,
+  ModelDescriptor,
   ModelTransport,
   LearnerModel,
   LearningPlan,
@@ -16,6 +16,7 @@ import type {
   StoreSetter as ContractStoreSetter,
 } from '@/lib/contracts/store';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
+import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
 import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
 
 export type StoreSetter = ContractStoreSetter<TurnStoreState>;
@@ -64,6 +65,7 @@ export type ModelMessage =
   | ToolModelMessage;
 
 export { ProviderSort };
+export type { ResolvedTurnSettings };
 
 export type PdfPluginConfig = {
   id: 'file-parser';
@@ -96,7 +98,7 @@ export type TurnContext = {
   transport: ModelTransport;
   set: StoreSetter;
   get: StoreGetter;
-  models: ORModel[];
+  models: ModelDescriptor[];
   modelIndex: ModelIndex;
   persistMessage: PersistMessage;
 };
@@ -157,11 +159,9 @@ export type PlanTurnOptions = {
   combinedSystem?: string;
   baseMessages: ModelMessage[];
   toolDefinition?: ToolDefinition[];
-  searchEnabled: boolean;
-  searchProvider: SearchProvider;
-  providerSort?: ProviderSort;
   controller: AbortController;
   turn: TurnContext;
+  settings: ResolvedTurnSettings;
 };
 
 export type PlanTurnResult = {
@@ -177,6 +177,7 @@ export type PlanTurnResult = {
 export type ComposeTurnArgs = {
   chat: Chat;
   ui: UiSnapshot;
+  settings: ResolvedTurnSettings;
   modelIndex: ModelIndex;
   prior: Message[];
   newUser?: {
@@ -191,16 +192,9 @@ export type TurnComposition = {
   messages: ModelMessage[];
   tools?: ToolDefinition[];
   plugins?: PluginConfig[];
-  providerSort?: ProviderSort;
   hasPdf: boolean;
   shouldPlan: boolean;
-  search: {
-    enabled: boolean;
-    provider: SearchProvider;
-  };
-  tutor: {
-    enabled: boolean;
-  };
+  settings: ResolvedTurnSettings;
   consumedTutorNudge?: UiNextOverrides['tutorNudge'];
 };
 
@@ -210,8 +204,8 @@ export type StreamFinalOptions = {
   assistantMessage: Message;
   messages: ModelMessage[];
   controller: AbortController;
-  providerSort?: ProviderSort;
   turn: TurnContext;
+  settings: ResolvedTurnSettings;
   plugins?: PluginConfig[];
   toolDefinition?: ToolDefinition[];
   startBuffered: boolean;

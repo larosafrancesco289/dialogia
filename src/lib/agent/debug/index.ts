@@ -96,7 +96,7 @@ export function recordDebugIfEnabled(store: StoreAccess, messageId: string, body
   } else {
     try {
       payload = JSON.stringify(body, null, 2);
-    } catch (error) {
+    } catch {
       payload = String(body);
     }
   }

@@ -7,14 +7,14 @@ import {
   MagnifyingGlassIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import type { ORModel } from '@/lib/types';
+import type { ModelDescriptor } from '@/lib/types';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
 import { findModelById } from '@/lib/models';
 
 type ComposerChipsProps = {
   tutorEnabled: boolean;
   modelId: string;
-  models: ORModel[];
+  models: ModelDescriptor[];
   openSettings: () => void;
   currentNode?: { name: string } | null;
   canVision: boolean;

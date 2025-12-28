@@ -1,7 +1,5 @@
-import type { ORModel } from '@/lib/types';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
+import type { ModelDescriptor } from '@/lib/types';
+import { isRecord } from '@/lib/utils/guards';
 
 const toLowerStrings = (value: unknown): string[] =>
   Array.isArray(value) ? value.map((entry) => String(entry).toLowerCase()) : [];
@@ -14,9 +12,9 @@ export type ModelCapabilityFlags = {
 };
 
 export type ModelIndex = {
-  all: ORModel[];
-  byId: Map<string, ORModel>;
-  get: (id?: string) => ORModel | undefined;
+  all: ModelDescriptor[];
+  byId: Map<string, ModelDescriptor>;
+  get: (id?: string) => ModelDescriptor | undefined;
   caps: (id?: string) => ModelCapabilityFlags;
   label: (id?: string, fallbackName?: string) => string;
 };
@@ -35,7 +33,7 @@ function deriveNameFromId(id?: string): string {
 }
 
 export function formatModelLabel(params: {
-  model?: ORModel | null;
+  model?: ModelDescriptor | null;
   fallbackId?: string;
   fallbackName?: string;
 }): string {
@@ -58,21 +56,21 @@ export function formatModelLabel(params: {
   return derived || 'Pick model';
 }
 
-export function getSupportedParameters(model?: ORModel | null): string[] {
+export function getSupportedParameters(model?: ModelDescriptor | null): string[] {
   const raw = isRecord(model?.raw) ? model?.raw : undefined;
   const params: unknown = raw?.supported_parameters;
   if (Array.isArray(params)) return params.map((p) => String(p).toLowerCase());
   return [];
 }
 
-function isAnthropicModel(model?: ORModel | null): boolean {
+function isAnthropicModel(model?: ModelDescriptor | null): boolean {
   if (!model) return false;
   if (model.transport === 'anthropic') return true;
   const id = String(model.id || '').toLowerCase();
   return /^anthropic[:/#]/.test(id);
 }
 
-export function isReasoningSupported(model?: ORModel | null): boolean {
+export function isReasoningSupported(model?: ModelDescriptor | null): boolean {
   const supported = getSupportedParameters(model);
   if (supported.includes('reasoning')) return true;
   // Some providers expose only include_reasoning; that does not imply effort support
@@ -80,7 +78,7 @@ export function isReasoningSupported(model?: ORModel | null): boolean {
   return false;
 }
 
-export function isToolCallingSupported(model?: ORModel | null): boolean {
+export function isToolCallingSupported(model?: ModelDescriptor | null): boolean {
   const supported = getSupportedParameters(model);
   if (supported.includes('tools')) return true;
   // Anthropics models all support Messages API tool use even if metadata omits the flag.
@@ -88,7 +86,7 @@ export function isToolCallingSupported(model?: ORModel | null): boolean {
   return false;
 }
 
-export function isVisionSupported(model?: ORModel | null): boolean {
+export function isVisionSupported(model?: ModelDescriptor | null): boolean {
   const supported = getSupportedParameters(model);
   // Primary signal from OpenRouter metadata
   if (supported.includes('vision') || supported.includes('image') || supported.includes('images'))
@@ -121,7 +119,7 @@ export function isVisionSupported(model?: ORModel | null): boolean {
 }
 
 // Whether a model supports audio inputs (input_audio content blocks)
-export function isAudioInputSupported(model?: ORModel | null): boolean {
+export function isAudioInputSupported(model?: ModelDescriptor | null): boolean {
   const supported = getSupportedParameters(model);
   if (supported.includes('audio')) return true;
   // Heuristics from raw metadata when supported_parameters is sparse
@@ -146,7 +144,7 @@ export function isAudioInputSupported(model?: ORModel | null): boolean {
 }
 
 // Whether a model can output images (for image generation)
-export function isImageOutputSupported(model?: ORModel | null): boolean {
+export function isImageOutputSupported(model?: ModelDescriptor | null): boolean {
   if (!model) return false;
   const raw: Record<string, unknown> = isRecord(model.raw)
     ? (model.raw as Record<string, unknown>)
@@ -181,7 +179,7 @@ const EMPTY_CAPS: ModelCapabilityFlags = {
   canImageOut: false,
 };
 
-export function getModelCapabilities(model?: ORModel | null): ModelCapabilityFlags {
+export function getModelCapabilities(model?: ModelDescriptor | null): ModelCapabilityFlags {
   if (!model) return EMPTY_CAPS;
   return {
     canReason: isReasoningSupported(model),
@@ -191,14 +189,17 @@ export function getModelCapabilities(model?: ORModel | null): ModelCapabilityFla
   } satisfies ModelCapabilityFlags;
 }
 
-export function findModelById(models: ORModel[] | undefined, id?: string): ORModel | undefined {
+export function findModelById(
+  models: ModelDescriptor[] | undefined,
+  id?: string,
+): ModelDescriptor | undefined {
   if (!models || !id) return undefined;
   return models.find((m) => m.id === id);
 }
 
-export function createModelIndex(models: ORModel[] | undefined): ModelIndex {
+export function createModelIndex(models: ModelDescriptor[] | undefined): ModelIndex {
   const list = Array.isArray(models) ? models.slice() : [];
-  const byId = new Map<string, ORModel>();
+  const byId = new Map<string, ModelDescriptor>();
   const capsCache = new Map<string, ModelCapabilityFlags>();
   for (const model of list) {
     if (!model?.id) continue;
@@ -234,7 +235,7 @@ export function createModelIndex(models: ORModel[] | undefined): ModelIndex {
 }
 
 export const EMPTY_MODEL_INDEX: ModelIndex = (() => {
-  const byId = new Map<string, ORModel>();
+  const byId = new Map<string, ModelDescriptor>();
   return {
     all: [],
     byId,

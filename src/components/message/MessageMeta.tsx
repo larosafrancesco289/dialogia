@@ -1,5 +1,5 @@
 'use client';
-import type { Message, Chat, ORModel } from '@/lib/types';
+import type { Message, Chat, ModelDescriptor } from '@/lib/types';
 import { computeCost } from '@/lib/cost';
 import { formatMetricsForDisplay } from '@/lib/services/metrics';
 
@@ -13,7 +13,7 @@ export function MessageMeta({
   message: Message;
   modelId: string;
   chatSettings: Chat['settings'];
-  models: ORModel[];
+  models: ModelDescriptor[];
   showStats: boolean;
 }) {
   const modelInfo = models.find((x) => x.id === modelId);

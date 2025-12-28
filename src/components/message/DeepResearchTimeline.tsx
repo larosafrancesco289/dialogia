@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { motion, type Variants } from 'framer-motion';
 import {
   DocumentTextIcon,
@@ -163,9 +164,13 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
                   className="flex items-start gap-3 p-3 rounded-[var(--radius-editorial)] bg-[var(--color-muted)]/30 hover:bg-[var(--color-muted)]/60 border border-[var(--color-border)]/40 hover:border-[var(--color-accent-2)]/30 transition-all group hover:-translate-y-0.5 duration-300"
                 >
                   <div className="w-5 h-5 rounded bg-[var(--color-muted)] border border-[var(--color-border)] flex items-center justify-center shrink-0 mt-0.5">
-                    <img
+                    <Image
                       src={`https://www.google.com/s2/favicons?domain=${new URL(res.url).hostname}&sz=32`}
                       alt=""
+                      width={14}
+                      height={14}
+                      sizes="14px"
+                      unoptimized
                       className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100 transition-opacity"
                       onError={(e) => (e.currentTarget.style.display = 'none')}
                     />

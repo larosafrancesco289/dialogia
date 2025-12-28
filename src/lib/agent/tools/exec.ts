@@ -105,13 +105,6 @@ export async function executePlanningToolCall(opts: {
     });
   };
 
-  const emptyResult: PlanningToolExecutionResult = {
-    convoMessages: [],
-    aggregatedResults,
-    usedTool: false,
-    usedTutorContentTool: false,
-  };
-
   try {
     if (callName === 'web_search') {
       const searchArgs = {
@@ -167,7 +160,12 @@ export async function executePlanningToolCall(opts: {
       }
 
       if (searchResult.error === NOTICE_MISSING_BRAVE_KEY) {
-        set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_BRAVE_KEY } }));
+        const setNotice = get().setNotice;
+        if (typeof setNotice === 'function') {
+          setNotice(NOTICE_MISSING_BRAVE_KEY);
+        } else {
+          set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_BRAVE_KEY } }));
+        }
       }
       finalizeLog(
         'error',

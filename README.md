@@ -27,42 +27,21 @@ Local-first, privacy-focused multi-model chat UI for OpenRouter, Anthropic, and 
 
 ### Setup
 
-Create `/.env.local`. Recommended proxy mode (keeps keys on the server):
+Copy `.env.example` to `.env.local` and fill in the values you need. `.env.example` is the
+authoritative list of supported environment variables.
+
+Recommended proxy mode (keeps keys on the server):
 
 ```
-# Route OpenRouter via Next.js API with server key
 NEXT_PUBLIC_USE_OR_PROXY=true
 OPENROUTER_API_KEY=sk-or-v1_your_server_key_here
-
-# Optional: Brave Search (server-side only)
-BRAVE_SEARCH_API_KEY=brave_your_key_here
-
-# Optional: default ZDR behavior (false if unset)
-# Uncomment to start in ZDR-only mode
-# NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=true
-
-# Optional: default OpenRouter route preference (speed|cost; defaults to speed)
-# NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT=cost
-
-# Optional: direct Anthropic access (pick one)
-# Direct client key (not recommended for production)
-# NEXT_PUBLIC_ANTHROPIC_API_KEY=sk-ant-live_your_client_key_here
-
-# Or proxy via Next.js API with a server key
-# NEXT_PUBLIC_USE_ANTHROPIC_PROXY=true
-# ANTHROPIC_API_KEY=sk-ant-live_your_server_key_here
 ```
 
 Private access gate (optional but recommended when sharing preview):
 
 ```
-# Signed cookie for access sessions
 AUTH_COOKIE_SECRET=replace-with-strong-random-hex
-
-# HMAC pepper for access codes
 ACCESS_CODE_PEPPER=replace-with-strong-random-hex
-
-# Comma-separated HMAC-SHA256(code, ACCESS_CODE_PEPPER) hex digests
 ACCESS_CODES_INDIVIDUAL_HASHED=
 ACCESS_CODES_DEVELOPER_HASHED=
 ```
@@ -71,7 +50,6 @@ Client-side mode (not recommended):
 
 ```
 NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-v1_your_client_key_here
-# NEXT_PUBLIC_ANTHROPIC_API_KEY=sk-ant_your_client_key_here
 ```
 
 Install dependencies:
@@ -236,7 +214,7 @@ Progress indicators use color coding:
 - State: Zustand with local persistence; Dexie for IndexedDB tables
 - API proxy: `/api/openrouter/*` for models/completions; `/api/brave` for web search
 - Markdown: `react-markdown` + GFM, Prism, KaTeX, Mermaid
-- Styles: Tailwind v4 base + `styles/francesco-bootstrap.css` tokens; `app/globals.css` layout
+- Styles: Tailwind v4 base + `styles/foundations.css` tokens; `app/globals.css` layout
 - Agent services: `src/lib/agent/request.ts`, `searchFlow.ts`, and `tutorFlow.ts` centralize request building, web search orchestration, and tutor memory composition for slices.
 - DeepResearch: `src/lib/deepResearch.ts` orchestrates the research loop while tool adapters and HTML parsing live in `src/lib/deepResearch/tools.ts` and `html.ts`.
 - Capabilities: Derived from OpenRouter model metadata (vision, audio input, image output, reasoning)
@@ -268,7 +246,7 @@ src/data/               # Curated model metadata
 src/types/              # Type augmentations
 public/                 # Static assets served by Next
 assets/                 # Screenshots
-styles/                 # Global CSS tokens (francesco-bootstrap.css)
+styles/                 # Global CSS tokens (foundations.css)
 scripts/                # Helper scripts (dev/build/start)
 tests/                  # Legacy Node-based unit tests (`bun run test` also runs colocated *.test.ts)
 ```

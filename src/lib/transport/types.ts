@@ -1,8 +1,8 @@
-import type { ChatCompletionPayload } from '@/lib/api/openrouterClient';
 import type { Usage } from '@/lib/api/normalizers';
 import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/agent/types';
 import type { ProviderSort } from '@/lib/models/providerSort';
-import type { ORModel } from '@/lib/types';
+import type { ChatCompletion } from '@/lib/transport/completions';
+import type { ModelDescriptor } from '@/lib/transport/models';
 
 export type StreamDoneExtras = {
   usage?: Usage;
@@ -46,7 +46,7 @@ export type TransportFetchModelsOptions = {
 };
 
 export type TransportClient = {
-  fetchModels: (apiKey: string, opts?: TransportFetchModelsOptions) => Promise<ORModel[]>;
-  chatCompletion: (params: TransportChatParams) => Promise<ChatCompletionPayload>;
+  fetchModels: (apiKey: string, opts?: TransportFetchModelsOptions) => Promise<ModelDescriptor[]>;
+  chatCompletion: (params: TransportChatParams) => Promise<ChatCompletion>;
   streamChatCompletion: (params: TransportStreamParams) => Promise<void>;
 };

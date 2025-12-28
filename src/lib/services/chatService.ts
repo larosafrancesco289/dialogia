@@ -4,7 +4,7 @@ import type { Chat, Folder, Message } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
-import { deriveChatSettingsFromUi } from '@/lib/store/chatSettings';
+import { resolveNewChatSettings } from '@/lib/settings/resolve';
 import { DEFAULT_FREE_MODEL_ID } from '@/data/freeModels';
 import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
 import { getCookie } from '@/lib/auth/cookies.client';
@@ -58,7 +58,7 @@ export class ChatService {
     const braveEnabled = !!ui.flags.experimentalBrave;
     const forceTutorMode = !!(ui.tutor.forceMode ?? false);
 
-    const baseSettings = deriveChatSettingsFromUi({
+    const baseSettings = resolveNewChatSettings({
       ui,
       fallbackModelId: getTierDefaultModelId(),
       fallbackSystem: DEFAULT_BASE_SYSTEM,

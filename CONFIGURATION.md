@@ -8,28 +8,14 @@ For architectural context and refactor phases, see `REFACTOR_PLAN.md`.
 
 Dialogia reads configuration from `.env.local` at runtime. Server-only secrets **must not** be
 checked into Git. Client-visible variables must begin with `NEXT_PUBLIC_` to be exposed to the
-browser.
+browser. `.env.example` is the authoritative list of supported variables—copy it to `.env.local`
+and edit as needed.
 
-For local development create `.env.local` with the proxy defaults:
+For local development, ensure you at least set:
 
 ```
 NEXT_PUBLIC_USE_OR_PROXY=true
 OPENROUTER_API_KEY=sk-or-v1_server_key
-NEXT_PUBLIC_USE_ANTHROPIC_PROXY=false
-ANTHROPIC_API_KEY=
-NEXT_PUBLIC_ANTHROPIC_API_KEY=
-
-# Optional integrations
-BRAVE_SEARCH_API_KEY=
-DEEP_RESEARCH_REASONING_ONLY=true
-NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT=speed
-NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=false
-
-# Optional access gate
-AUTH_COOKIE_SECRET=
-ACCESS_CODE_PEPPER=
-ACCESS_CODES_INDIVIDUAL_HASHED=
-ACCESS_CODES_DEVELOPER_HASHED=
 ```
 
 When `NEXT_PUBLIC_USE_OR_PROXY` is `true`, the client never reads `OPENROUTER_API_KEY`. Instead, the

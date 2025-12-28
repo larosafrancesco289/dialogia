@@ -5,34 +5,9 @@ import type { TurnStoreState } from '@/lib/agent/contracts';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { computeMetrics } from '@/lib/services/metrics';
 import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
+import { updateMessageById } from '@/lib/messages/updateMessageById';
 
 type MessageUpdater = (message: Message) => Message;
-
-const buildMessageUpdate = (
-  state: TurnStoreState,
-  chatId: string,
-  messageId: string,
-  updater: MessageUpdater,
-): { messages?: Record<string, Message[]>; updated?: Message } => {
-  const list = state.messages[chatId];
-  if (!Array.isArray(list) || list.length === 0) return {};
-  let updated: Message | undefined;
-  let changed = false;
-  const nextList = list.map((message) => {
-    if (message.id !== messageId) return message;
-    updated = updater(message);
-    changed = true;
-    return updated;
-  });
-  if (!changed) return { updated };
-  return {
-    messages: {
-      ...state.messages,
-      [chatId]: nextList,
-    },
-    updated,
-  };
-};
 
 const applyMessageUpdate = (
   set: StoreSetter,
@@ -42,9 +17,12 @@ const applyMessageUpdate = (
 ): Message | undefined => {
   let updated: Message | undefined;
   set((state) => {
-    const result = buildMessageUpdate(state, chatId, messageId, updater);
-    updated = result.updated;
-    return result.messages ? ({ messages: result.messages } as Partial<TurnStoreState>) : {};
+    const result = updateMessageById(state, chatId, messageId, (message) => {
+      const next = updater(message);
+      updated = next;
+      return next;
+    });
+    return result ? ({ messages: result.messages } as Partial<TurnStoreState>) : {};
   });
   return updated;
 };
@@ -136,11 +114,11 @@ export function createMessageStreamCallbacks(
   const updateReasoning = (delta: string) => {
     if (!delta) return;
     set((state) => {
-      const result = buildMessageUpdate(state, chatId, assistantMessage.id, (msg) => ({
+      const result = updateMessageById(state, chatId, assistantMessage.id, (msg) => ({
         ...msg,
         reasoning: (msg.reasoning || '') + delta,
       }));
-      const partial: Partial<TurnStoreState> = result.messages ? { messages: result.messages } : {};
+      const partial: Partial<TurnStoreState> = result ? { messages: result.messages } : {};
       if (autoReasoningEligible && modelIdUsed) {
         const prev = state.ui.debug.autoReasoningModelIds || {};
         if (!prev[modelIdUsed]) {
@@ -254,7 +232,13 @@ export function createMessageStreamCallbacks(
       clearController?.();
     },
     onError: (error: Error) => {
-      set((state) => ({ ui: { ...state.ui, isStreaming: false, notice: error.message } }));
+      set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
+      const setNotice = get().setNotice;
+      if (typeof setNotice === 'function') {
+        setNotice(error.message);
+      } else {
+        set((state) => ({ ui: { ...state.ui, notice: error.message } }));
+      }
       clearController?.();
     },
   };

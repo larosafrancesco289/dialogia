@@ -1,4 +1,4 @@
-import type { ORModel } from '@/lib/types';
+import type { ModelDescriptor } from '@/lib/types';
 
 export type SlashSuggestion = {
   title: string;
@@ -6,7 +6,7 @@ export type SlashSuggestion = {
   subtitle?: string;
 };
 
-export function getSlashSuggestions(input: string, models: ORModel[]): SlashSuggestion[] {
+export function getSlashSuggestions(input: string, models: ModelDescriptor[]): SlashSuggestion[] {
   const suggestions: SlashSuggestion[] = [];
   const value = (input || '').trimStart();
   if (!value.startsWith('/')) return suggestions;

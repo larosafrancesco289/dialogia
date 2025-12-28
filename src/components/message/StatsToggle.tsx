@@ -1,5 +1,5 @@
 import { MessageMeta } from '@/components/message/MessageMeta';
-import type { Chat, Message, ORModel } from '@/lib/types';
+import type { Chat, Message, ModelDescriptor } from '@/lib/types';
 
 type StatsToggleProps = {
   showStats: boolean;
@@ -9,7 +9,7 @@ type StatsToggleProps = {
   onToggle: () => void;
   message: Message;
   chat?: Chat | null;
-  models: ORModel[];
+  models: ModelDescriptor[];
 };
 
 export function StatsToggle({

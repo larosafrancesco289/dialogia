@@ -1,6 +1,6 @@
 'use client';
 import { findModelById, isReasoningSupported } from '@/lib/models';
-import type { Chat, Message, MessageTutor, ORModel, ToolCallLogEntry } from '@/lib/types';
+import type { Chat, Message, MessageTutor, ModelDescriptor, ToolCallLogEntry } from '@/lib/types';
 import type { UISearchState } from '@/lib/store/types';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
 import { ReasoningPanel } from '@/components/message/ReasoningPanel';
@@ -10,7 +10,7 @@ import { TutorPanel } from '@/components/message/tutor/TutorPanel';
 export type MessagePanelsProps = {
   message: Message;
   chat?: Chat | null;
-  models: ORModel[];
+  models: ModelDescriptor[];
   braveGloballyEnabled: boolean;
   braveEntry?: NonNullable<UISearchState['braveByMessageId']>[string];
   isSourcesExpanded: boolean;
@@ -134,7 +134,7 @@ function buildReasoningPanel({
 }: {
   message: Message;
   chat?: Chat | null;
-  models: ORModel[];
+  models: ModelDescriptor[];
   autoReasoningModelIds: Record<string, boolean>;
   isStreaming: boolean;
   lastMessageId?: string;

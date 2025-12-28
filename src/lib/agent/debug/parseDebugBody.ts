@@ -1,3 +1,5 @@
+import { isRecord } from '@/lib/utils/guards';
+
 export type DebugSummaryItem = { label: string; value: string };
 export type DebugMessageDescriptor = {
   key: string;
@@ -15,9 +17,6 @@ export type DebugBodySnapshot = {
 };
 
 type RecordLike = Record<string, unknown>;
-
-const isRecord = (value: unknown): value is RecordLike =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
 
 const formatNumber = (value: unknown): string | undefined => {
   if (typeof value !== 'number' || Number.isNaN(value)) return undefined;

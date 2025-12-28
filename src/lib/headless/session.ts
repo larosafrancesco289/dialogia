@@ -1,7 +1,8 @@
+import 'server-only';
 import type { StoreApi } from 'zustand/vanilla';
 import { createHeadlessStore, type HeadlessStoreOptions } from '@/lib/headless/store';
 import type { StoreState, UIState } from '@/lib/store/types';
-import type { Chat, Message, ModelTransport, ORModel } from '@/lib/types';
+import type { Chat, Message, ModelTransport, ModelDescriptor } from '@/lib/types';
 import { type PlanTurnResult, type PersistMessage, type TurnContext } from '@/lib/agent/types';
 import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
@@ -15,12 +16,13 @@ import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
 import type { HeadlessTurnArtifacts, HeadlessTurnResult } from '@/lib/headless/types';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
+import { resolveTurnSettings } from '@/lib/settings/resolve';
 
 export type ApiKeyResolver = (params: { modelId: string; transport: ModelTransport }) => string;
 
 export type HeadlessTutorSessionOptions = {
   chat: Chat;
-  models?: ORModel[];
+  models?: ModelDescriptor[];
   modelIndex?: ModelIndex;
   uiOverrides?: Partial<UIState>;
   initialMessages?: Message[];
@@ -163,6 +165,13 @@ export class HeadlessTutorSession {
     });
 
     try {
+      const settings = resolveTurnSettings({
+        chat,
+        ui: this.store.getState().ui,
+        modelIndex: baseTurnContext.modelIndex,
+        modelId: chat.settings.model,
+      });
+
       runArtifacts = await runTurn({
         chat,
         chatId: this.chatId,
@@ -171,6 +180,7 @@ export class HeadlessTutorSession {
         assistantMessage,
         priorMessages,
         ui: this.store.getState().ui,
+        settings,
         controller,
         baseTurnContext,
         compose: composeTurn,
@@ -205,7 +215,7 @@ export class HeadlessTutorSession {
             system: runArtifacts.composition.system,
             tools: runArtifacts.composition.tools,
             plugins: runArtifacts.composition.plugins,
-            providerSort: runArtifacts.composition.providerSort,
+            settings: runArtifacts.composition.settings,
             shouldPlan: runArtifacts.composition.shouldPlan,
           },
           plan: planArtifacts,
@@ -252,7 +262,7 @@ export class HeadlessTutorSession {
         system: runArtifacts?.composition.system,
         tools: runArtifacts?.composition.tools,
         plugins: runArtifacts?.composition.plugins,
-        providerSort: runArtifacts?.composition.providerSort,
+        settings: runArtifacts?.composition.settings,
         shouldPlan: runArtifacts?.composition.shouldPlan ?? false,
       },
       plan: planArtifacts,

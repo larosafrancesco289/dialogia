@@ -1,3 +1,4 @@
+import 'server-only';
 /**
  * Ablation Study Runner for Dialogia Thesis Evaluation
  *
@@ -51,7 +52,7 @@ import {
   calculateStats,
   type TestResult,
 } from '@/lib/eval/prePostTest';
-import type { Chat, ORModel, ModelTransport, LearnerModel } from '@/lib/types';
+import type { Chat, ModelDescriptor, ModelTransport, LearnerModel } from '@/lib/types';
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 import { parseArgs } from '@/lib/cli/args';
 import { loadEnvDefaults } from '@/lib/cli/env.node';
@@ -188,7 +189,11 @@ function listAvailable() {
 // Model Setup
 // ============================================================================
 
-function createStubModel(id: string, transport: ModelTransport, supportsTools: boolean): ORModel {
+function createStubModel(
+  id: string,
+  transport: ModelTransport,
+  supportsTools: boolean,
+): ModelDescriptor {
   return {
     id,
     name: id,
@@ -279,7 +284,7 @@ async function runSingleAblation(
     },
   };
 
-  const models: ORModel[] = [
+  const models: ModelDescriptor[] = [
     createStubModel(config.tutorModel, tutorTransport, true),
     createStubModel(config.studentModel, studentTransport, false),
     createStubModel(config.judgeModel, judgeTransport, false),

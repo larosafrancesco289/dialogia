@@ -1,38 +1,8 @@
 import { apiDefaults } from '@/lib/api/config';
 import { sendApiRequest } from '@/lib/api/http';
 import { isOpenRouterProxyEnabled } from '@/lib/env/public';
-import type { ModelContentBlock, ToolCall } from '@/lib/agent/types';
+import type { ChatCompletionMessage, Usage } from '@/lib/transport/completions';
 import type { OpenRouterChatRequest } from '@/lib/types/transport';
-
-export type Usage = {
-  prompt_tokens?: number;
-  completion_tokens?: number;
-  total_tokens?: number;
-  input_tokens?: number;
-  output_tokens?: number;
-};
-
-export type ChatCompletionMessage = {
-  role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | ModelContentBlock[] | null;
-  tool_calls?: ToolCall[];
-  annotations?: unknown;
-};
-
-export type ChatCompletionChoice = {
-  index: number;
-  finish_reason?: string | null;
-  message: ChatCompletionMessage;
-};
-
-export type ChatCompletionPayload = {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
-  choices: ChatCompletionChoice[];
-  usage?: Usage;
-};
 
 export type SseDelta = {
   id?: string;

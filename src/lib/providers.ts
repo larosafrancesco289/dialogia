@@ -1,4 +1,4 @@
-import type { ORModel, ModelTransport } from '@/lib/types';
+import type { ModelDescriptor, ModelTransport } from '@/lib/types';
 
 export const DEFAULT_TRANSPORT: ModelTransport = 'openrouter';
 
@@ -12,27 +12,30 @@ export function getTransportLabel(transport?: ModelTransport): string {
   return TRANSPORT_LABELS[transport] ?? TRANSPORT_LABELS[DEFAULT_TRANSPORT];
 }
 
-export function getModelTransport(model?: ORModel | null): ModelTransport {
+export function getModelTransport(model?: ModelDescriptor | null): ModelTransport {
   if (!model) return DEFAULT_TRANSPORT;
   return model.transport ?? DEFAULT_TRANSPORT;
 }
 
 const ANTHROPIC_ID_PATTERN = /^anthropic[:/#]/i;
 
-export function resolveModelTransport(modelId?: string, model?: ORModel | null): ModelTransport {
+export function resolveModelTransport(
+  modelId?: string,
+  model?: ModelDescriptor | null,
+): ModelTransport {
   if (model?.transport) return model.transport;
   const haystack = modelId || model?.id || '';
   if (ANTHROPIC_ID_PATTERN.test(haystack)) return 'anthropic';
   return DEFAULT_TRANSPORT;
 }
 
-export function getModelTransportLabel(model?: ORModel | null): string {
+export function getModelTransportLabel(model?: ModelDescriptor | null): string {
   if (!model) return getTransportLabel();
   if (model.providerDisplay) return model.providerDisplay;
   return getTransportLabel(getModelTransport(model));
 }
 
-export function getTransportModelId(model?: ORModel | null): string | undefined {
+export function getTransportModelId(model?: ModelDescriptor | null): string | undefined {
   if (!model) return undefined;
   return model.transportModelId || model.id;
 }

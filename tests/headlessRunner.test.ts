@@ -5,9 +5,9 @@ import { createHeadlessRunner } from '@/lib/headless/runner';
 import { renderSnapshotTranscript } from '@/lib/headless/transcript';
 import { createModelIndex } from '@/lib/models';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
-import type { Chat, ORModel } from '@/lib/types';
+import type { Chat, ModelDescriptor } from '@/lib/types';
 
-const mockModel = (id: string): ORModel => ({
+const mockModel = (id: string): ModelDescriptor => ({
   id,
   name: id,
   context_length: 8000,

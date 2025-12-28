@@ -3,48 +3,16 @@ import { normalizeParallelModels } from '@/lib/models/normalization';
 import { applyTutorDefaults } from '@/lib/store/normalize';
 import { primeTutorWelcome } from '@/lib/services/turns';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
-import { loadRepositorySnapshot, repository } from '@/lib/db';
-import { mergeTutorMap } from '@/lib/ui/tutorSelectors';
+import { repository } from '@/lib/db';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { refreshZdrListsIfNeeded } from '@/lib/policy/zdr/cache';
-import { ZDR_CACHE_TTL_MS } from '@/lib/policy/zdr/constants';
+import { bootstrapApp } from '@/lib/services/bootstrap';
 import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { Chat } from '@/lib/types';
-import { hydrateRepositorySnapshot } from '@/lib/services/hydrate';
-
-let zdrRefreshInterval: ReturnType<typeof setInterval> | null = null;
 
 export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
   return {
     async initializeApp() {
-      const snapshot = await loadRepositorySnapshot(get().selectedChatId);
-      const hydrated = hydrateRepositorySnapshot(snapshot);
-      set((s) => ({
-        chats: hydrated.chats,
-        folders: hydrated.folders,
-        messages: hydrated.messages,
-        selectedChatId: hydrated.selectedChatId,
-        ui: mergeTutorMap(s.ui, hydrated.tutorByMessageId),
-      }));
-      try {
-        if (hydrated.selectedChatId) {
-          await get().loadTutorProfileIntoUI(hydrated.selectedChatId);
-        }
-      } catch {
-        /* ignore tutor profile preload errors */
-      }
-
-      try {
-        await refreshZdrListsIfNeeded(set, get);
-      } catch {
-        /* ignore ZDR refresh failures */
-      }
-
-      if (typeof window !== 'undefined' && !zdrRefreshInterval) {
-        zdrRefreshInterval = setInterval(() => {
-          refreshZdrListsIfNeeded(set, get).catch(() => undefined);
-        }, ZDR_CACHE_TTL_MS);
-      }
+      await bootstrapApp(set, get);
     },
 
     async newChat() {

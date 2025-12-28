@@ -1,15 +1,17 @@
+import 'server-only';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { createModelIndex } from '@/lib/models';
 import type { StoreState, UIState, UIStatePartial } from '@/lib/store/types';
-import type { Chat, Message, ORModel } from '@/lib/types';
+import type { Chat, Message, ModelDescriptor } from '@/lib/types';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
 import { buildDefaultVoiceState } from '@/lib/voice/types';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
+import { resolveNotice } from '@/lib/store/notices';
 
 export type HeadlessStoreOptions = {
   chat: Chat;
   messages?: Message[];
-  models?: ORModel[];
+  models?: ModelDescriptor[];
   modelIndex?: ReturnType<typeof createModelIndex>;
   uiOverrides?: Partial<UIState>;
 };
@@ -87,6 +89,10 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
           },
         };
       }),
+    setNotice: (notice) =>
+      set((state) => ({
+        ui: { ...state.ui, notice: resolveNotice(notice) },
+      })),
 
     logTutorResult: async () => {},
     loadTutorProfileIntoUI: async () => {},

@@ -7,7 +7,6 @@ import type { StoreAccess, StoreGetter, StoreSetter, TurnContext } from '@/lib/a
 import type { Repository } from '@/lib/db/repository';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { attachTutorUiState, ensureTutorDefaults } from '@/lib/agent/tutorFlow';
-import { buildHiddenTutorContent } from '@/lib/tutor/hiddenContent';
 import { runDeepResearchTurn } from '@/lib/agent/deepResearchOrchestrator';
 import { regenerate } from '@/lib/agent/regenerate';
 import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
@@ -23,7 +22,12 @@ import { enforceZdrGate, isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { selectTutorEntry } from '@/lib/ui/tutorSelectors';
 import { findModelById } from '@/lib/models';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
-import { createMessagePersister } from '@/lib/services/messagePersistence';
+import {
+  createMessagePersister,
+  ensureHiddenTutorContent,
+} from '@/lib/services/messagePersistence';
+import { scheduleTutorPersistence } from '@/lib/services/tutorPersistence';
+import { resetEphemeralUi } from '@/lib/ui/defaults';
 
 export type SendTurnOptions = {
   content: string;
@@ -100,8 +104,10 @@ export async function persistTutorForMessage({ messageId, store, repository }: P
     const target = list[idx];
     const prevTutor = target.tutor;
     const merged: MessageTutor = { ...(prevTutor || {}), ...(uiTutor || {}) };
-    const hiddenContent = buildHiddenTutorContent(merged);
-    const nextMessage = { ...target, tutor: merged, hiddenContent } as Message;
+    const nextMessage = ensureHiddenTutorContent({
+      ...target,
+      tutor: merged,
+    }) as Message;
     set((draft) => ({
       messages: {
         ...draft.messages,
@@ -112,12 +118,7 @@ export async function persistTutorForMessage({ messageId, store, repository }: P
     break;
   }
   if (updatedMsg) {
-    try {
-      const persistMessage = createMessagePersister(repository);
-      await persistMessage(updatedMsg);
-    } catch {
-      /* noop */
-    }
+    scheduleTutorPersistence({ message: updatedMsg, repository });
   }
 }
 
@@ -140,6 +141,10 @@ export async function sendUserTurn({
     guardZdrOrNotifyCached(modelId, set, get),
   );
   if (!zdrAllowed) return;
+
+  if (ui.overrides) {
+    set((state) => ({ ui: resetEphemeralUi(state.ui) }));
+  }
 
   if (tutorEnabled) primeTutorWelcome(chatId, { set, get });
 
@@ -182,15 +187,22 @@ export async function sendUserTurn({
   });
 
   if (deepResearchDecision.notice) {
-    set((state) => {
-      const updated = applyNextOverrides(state.ui, { deepResearch: false });
-      return {
-        ui: {
-          ...updated,
-          notice: state.ui.notice ?? deepResearchDecision.notice,
-        },
-      };
-    });
+    set((state) => ({
+      ui: applyNextOverrides(state.ui, { deepResearch: false }),
+    }));
+    if (!get().ui.notice) {
+      const setNotice = get().setNotice;
+      if (typeof setNotice === 'function') {
+        setNotice(deepResearchDecision.notice);
+      } else {
+        set((state) => ({
+          ui: {
+            ...state.ui,
+            notice: deepResearchDecision.notice,
+          },
+        }));
+      }
+    }
   } else if (deepResearchDecision.shouldRun) {
     const handled = await runDeepResearchTurn({
       task: content,
@@ -293,6 +305,7 @@ export async function regenerateTurn({
     modelId: targetModel,
     modelIndex: modelIndexSnapshot,
     set,
+    get,
   });
   if (!targetAuth) return;
   const canUseModel = await enforceZdrGate(get().ui, [targetModel], (modelId) =>
@@ -325,7 +338,7 @@ export async function regenerateTurn({
       overrideModelId,
     });
   } catch (error: unknown) {
-    handleTurnApiError(error, set);
+    handleTurnApiError(error, set, get);
     clearTurnController(chatId, controller);
   }
 }

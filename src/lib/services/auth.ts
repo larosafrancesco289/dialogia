@@ -2,8 +2,9 @@ import { requireModelAuth } from '@/lib/auth/require';
 import type { ModelIndex } from '@/lib/models';
 import { resolveModelTransport } from '@/lib/providers';
 import type { ModelTransport } from '@/lib/types';
-import type { StoreSetter } from '@/lib/agent/types';
+import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { NOTICE_MISSING_ANTHROPIC_KEY, NOTICE_MISSING_CLIENT_KEY } from '@/lib/store/notices';
+import { isRecord } from '@/lib/utils/guards';
 
 export type ModelAuth = ReturnType<typeof requireModelAuth>;
 
@@ -15,20 +16,28 @@ export type ModelAuthResolver = {
 const noticeForTransport = (transport?: ModelTransport) =>
   transport === 'anthropic' ? NOTICE_MISSING_ANTHROPIC_KEY : NOTICE_MISSING_CLIENT_KEY;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
-
-const notifyMissingAuth = (set: StoreSetter, transport?: ModelTransport) => {
+const notifyMissingAuth = (
+  set: StoreSetter,
+  getState: StoreGetter | undefined,
+  transport?: ModelTransport,
+) => {
   const notice = noticeForTransport(transport);
+  const setNotice = getState?.().setNotice;
+  if (typeof setNotice === 'function') {
+    setNotice(notice);
+    return;
+  }
   set((state) => ({ ui: { ...state.ui, notice } }));
 };
 
 export const createModelAuthResolver = ({
   modelIndex,
   set,
+  get: getState,
 }: {
   modelIndex: ModelIndex;
   set: StoreSetter;
+  get: StoreGetter;
 }): ModelAuthResolver => {
   const cache = new Map<string, ModelAuth>();
 
@@ -45,12 +54,12 @@ export const createModelAuthResolver = ({
         isRecord(error) && typeof error.transport === 'string'
           ? (error.transport as ModelTransport)
           : undefined;
-      notifyMissingAuth(set, transport);
+      notifyMissingAuth(set, getState, transport);
       throw error;
     }
   };
 
-  const get = (modelId?: string): ModelAuth | null => {
+  const getAuth = (modelId?: string): ModelAuth | null => {
     try {
       return fetch(modelId);
     } catch {
@@ -70,17 +79,19 @@ export const createModelAuthResolver = ({
     }
   };
 
-  return { get, ensureAll };
+  return { get: getAuth, ensureAll };
 };
 
 export const resolveSingleModelAuth = ({
   modelId,
   modelIndex,
   set,
+  get: getState,
 }: {
   modelId?: string;
   modelIndex: ModelIndex;
   set: StoreSetter;
+  get: StoreGetter;
 }): ModelAuth | null => {
   if (!modelId) return null;
   try {
@@ -91,7 +102,7 @@ export const resolveSingleModelAuth = ({
       isRecord(error) && typeof error.transport === 'string'
         ? (error.transport as ModelTransport)
         : resolveModelTransport(modelId, meta);
-    notifyMissingAuth(set, transport);
+    notifyMissingAuth(set, getState, transport);
     return null;
   }
 };

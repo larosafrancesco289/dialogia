@@ -1,6 +1,8 @@
 import type { DeepResearchEvent, Message, MessageDeepResearch } from '@/lib/types';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
+import { parseNdjsonStream } from '@/lib/utils/ndjson';
+import { isDeepResearchEvent } from '@/lib/deepResearch/events';
 
 export type DeepResearchContext = {
   task: string;
@@ -19,7 +21,7 @@ export async function runDeepResearchTurn({
   chatId,
   assistantMessage,
   set,
-  get: _get,
+  get,
   persistMessage,
   controller: providedController,
 }: DeepResearchContext): Promise<boolean> {
@@ -58,46 +60,29 @@ export async function runDeepResearchTurn({
 
     if (!res.body) throw new Error('no_body');
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
     const trace: DeepResearchEvent[] = [];
     let finalResult: unknown = null;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Keep incomplete line
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const msg = JSON.parse(line) as { type?: string; data?: unknown; error?: string };
-          if (msg.type === 'trace') {
-            if (isDeepResearchEvent(msg.data)) {
-              trace.push(msg.data);
-            }
-            // Update store with incremental trace
-            const deepResearch: MessageDeepResearch = { trace: trace.slice() };
-
-            set((state) => {
-              const list = state.messages[chatId] ?? [];
-              const updated = list.map((m) =>
-                m.id === assistantMessage.id ? { ...m, deepResearch } : m,
-              );
-              return { messages: { ...state.messages, [chatId]: updated } };
-            });
-          } else if (msg.type === 'result') {
-            finalResult = msg.data;
-          } else if (msg.type === 'error') {
-            throw new Error(msg.error || 'deep_stream_error');
-          }
-        } catch (e) {
-          // Only swallow JSON parse errors from partial chunks; let real stream errors bubble up
-          if (!(e instanceof SyntaxError)) throw e;
+    for await (const payload of parseNdjsonStream(res.body)) {
+      const msg = payload as { type?: string; data?: unknown; error?: string };
+      if (msg.type === 'trace') {
+        if (isDeepResearchEvent(msg.data)) {
+          trace.push(msg.data);
         }
+        // Update store with incremental trace
+        const deepResearch: MessageDeepResearch = { trace: trace.slice() };
+
+        set((state) => {
+          const list = state.messages[chatId] ?? [];
+          const updated = list.map((m) =>
+            m.id === assistantMessage.id ? { ...m, deepResearch } : m,
+          );
+          return { messages: { ...state.messages, [chatId]: updated } };
+        });
+      } else if (msg.type === 'result') {
+        finalResult = msg.data;
+      } else if (msg.type === 'error') {
+        throw new Error(msg.error || 'deep_stream_error');
       }
     }
 
@@ -120,24 +105,27 @@ export async function runDeepResearchTurn({
     return true;
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'DeepResearch failed';
+    const noticeMessage = `DeepResearch: ${errorMessage}`;
     set((state) => ({
       ui: {
         ...state.ui,
         isStreaming: manageController ? false : state.ui.isStreaming,
-        notice: `DeepResearch: ${errorMessage}`,
       },
     }));
+    const setNotice = get().setNotice;
+    if (typeof setNotice === 'function') {
+      setNotice(noticeMessage);
+    } else {
+      set((state) => ({
+        ui: {
+          ...state.ui,
+          notice: noticeMessage,
+        },
+      }));
+    }
     if (manageController) clearTurnController(chatId, controller);
     return false;
   }
-}
-
-const DEEP_RESEARCH_EVENT_TYPES = new Set(['search', 'fetch', 'time', 'note', 'thought']);
-
-function isDeepResearchEvent(value: unknown): value is DeepResearchEvent {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  return typeof record.type === 'string' && DEEP_RESEARCH_EVENT_TYPES.has(record.type);
 }
 
 function getDeepResearchAnswer(value: unknown): string | undefined {

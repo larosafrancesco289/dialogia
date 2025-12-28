@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { getSystemPresets, type SystemPreset } from '@/lib/presets';
+import type { SystemPreset } from '@/lib/presets';
 import type { Chat, ChatSettings } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
+import { loadSystemPresets } from '@/lib/settings/systemPresets';
 
 type SettingsFormStateArgs = {
   chat?: Chat;
@@ -89,10 +90,9 @@ export function useSettingsFormState({ chat, ui }: SettingsFormStateArgs) {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const list = await getSystemPresets();
+      const list = await loadSystemPresets();
       if (!mounted) return;
-      const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
-      setPresets(sorted);
+      setPresets(list);
     })();
     return () => {
       mounted = false;

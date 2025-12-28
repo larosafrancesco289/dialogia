@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { logger } from '@/lib/logger';
@@ -30,6 +31,7 @@ export function ImageLightbox({
   }, [images.length, onClose]);
 
   const download = () => {
+    if (!current) return;
     try {
       const a = document.createElement('a');
       a.href = current.src;
@@ -43,6 +45,9 @@ export function ImageLightbox({
       logger.error('Failed to download image', error);
     }
   };
+
+  if (!current) return null;
+  const isUnoptimized = current.src.startsWith('data:') || current.src.startsWith('blob:');
 
   return createPortal(
     <div
@@ -79,11 +84,16 @@ export function ImageLightbox({
         >
           ‹
         </button>
-        <img
-          src={current?.src}
-          alt={current?.name || 'image'}
-          className="max-h-[85vh] max-w-[85vw] object-contain rounded border border-border bg-black"
-        />
+        <div className="relative h-[85vh] w-[85vw]">
+          <Image
+            src={current.src}
+            alt={current.name || 'image'}
+            fill
+            sizes="85vw"
+            unoptimized={isUnoptimized}
+            className="object-contain rounded border border-border bg-black"
+          />
+        </div>
         <button
           className="btn btn-outline ml-3"
           onClick={() => setIndex((i) => Math.min(images.length - 1, i + 1))}

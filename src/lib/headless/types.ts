@@ -9,7 +9,7 @@ export type HeadlessTurnArtifacts = {
     system?: string;
     tools?: TurnComposition['tools'];
     plugins?: TurnComposition['plugins'];
-    providerSort?: TurnComposition['providerSort'];
+    settings?: TurnComposition['settings'];
     shouldPlan: boolean;
   };
   plan: PlanTurnResult;
