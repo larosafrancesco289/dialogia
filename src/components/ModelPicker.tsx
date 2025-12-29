@@ -61,11 +61,22 @@ function AddModelSearch({
   );
 }
 
+export type ModelPickerTriggerProps = {
+  label: string;
+  tooltip: string;
+  isOpen: boolean;
+  onClick: () => void;
+  limitPulse: boolean;
+};
+
 export function ModelPicker({
   className = '',
+  renderTrigger,
 }: {
   variant?: ModelPickerVariant;
   className?: string;
+  /** Custom trigger renderer. If not provided, uses default button. */
+  renderTrigger?: (props: ModelPickerTriggerProps) => React.ReactNode;
 }) {
   const {
     current,
@@ -225,18 +236,30 @@ export function ModelPicker({
     return { button, tooltip };
   }, [selectedIds, deriveLabel, modelMap, current]);
 
+  const triggerProps: ModelPickerTriggerProps = {
+    label: selectionSummary.button,
+    tooltip: selectionSummary.tooltip,
+    isOpen: open,
+    onClick: () => setOpen((v) => !v),
+    limitPulse,
+  };
+
   return (
     <div className={`relative min-w-0 ${className}`.trim()}>
-      <button
-        className={`btn btn-outline min-w-0 w-full whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-between gap-2${limitPulse ? ' ring-2 ring-primary/50 border-primary/40' : ''}`}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        title={selectionSummary.tooltip}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="truncate">{selectionSummary.button}</span>
-        <ChevronDownIcon className="h-4 w-4" />
-      </button>
+      {renderTrigger ? (
+        renderTrigger(triggerProps)
+      ) : (
+        <button
+          className={`btn btn-outline min-w-0 w-full whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-between gap-2${limitPulse ? ' ring-2 ring-primary/50 border-primary/40' : ''}`}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          title={selectionSummary.tooltip}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <span className="truncate">{selectionSummary.button}</span>
+          <ChevronDownIcon className="h-4 w-4" />
+        </button>
+      )}
 
       <PortalDropdown
         open={open}
