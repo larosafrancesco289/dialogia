@@ -1,0 +1,107 @@
+/* MobileWarningBanner.module.css
+ * Styling for the mobile warning banner using the Imperial Archive design system.
+ * Follows the marginalia pattern with a warning accent.
+ */
+
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  overflow: hidden;
+}
+
+.content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+
+  /* Marginalia-style background with warning tint */
+  background: color-mix(in oklab, var(--color-muted) 85%, var(--color-accent));
+  border-bottom: 1px solid var(--rule-accent);
+
+  /* Subtle shadow for depth */
+  box-shadow: 0 1px 3px rgba(120, 90, 50, 0.08);
+}
+
+:global(.dark) .content {
+  background: color-mix(in oklab, var(--color-muted) 90%, var(--color-accent));
+  box-shadow: 0 1px 3px rgba(20, 15, 10, 0.3);
+}
+
+.iconWrapper {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-editorial);
+  background: color-mix(in oklab, var(--color-accent) 20%, transparent);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  color: var(--color-accent);
+}
+
+.text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.message {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-fg-muted);
+}
+
+.dismissButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  border: none;
+  border-radius: var(--radius-editorial);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.dismissButton:hover {
+  background: color-mix(in oklab, var(--color-accent) 15%, transparent);
+}
+
+.dismissButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.dismissIcon {
+  width: 18px;
+  height: 18px;
+  color: var(--color-fg-muted);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .banner {
+    transition: none;
+  }
+}
