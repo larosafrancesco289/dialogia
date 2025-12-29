@@ -41,7 +41,7 @@ export function TutorStatusBar({
     >
       {/* Milestone dots */}
       <div className="tutor-status-bar__milestones">
-        {milestones.map((m, i) => {
+        {milestones.map((m, _i) => {
           let stateClass = '';
           if (m.status === 'completed') stateClass = 'tutor-status-bar__milestone--completed';
           else if (m.status === 'in_progress' || m.id === currentNodeId)
@@ -62,9 +62,7 @@ export function TutorStatusBar({
         {breadcrumbPath.map((segment, i) => (
           <span key={i} className="tutor-status-bar__breadcrumb-item">
             {i > 0 && <ChevronRightIcon className="h-3 w-3 mx-1 opacity-50" />}
-            <span className={i === breadcrumbPath.length - 1 ? 'font-medium' : ''}>
-              {segment}
-            </span>
+            <span className={i === breadcrumbPath.length - 1 ? 'font-medium' : ''}>{segment}</span>
           </span>
         ))}
       </nav>

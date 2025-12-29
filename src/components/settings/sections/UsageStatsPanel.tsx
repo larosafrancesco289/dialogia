@@ -41,19 +41,27 @@ export function UsageStatsPanel() {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="p-4 rounded-lg bg-muted/50 border border-border">
-          <div className="text-2xl font-semibold text-foreground">{formatNumber(stats.totalChats)}</div>
+          <div className="text-2xl font-semibold text-foreground">
+            {formatNumber(stats.totalChats)}
+          </div>
           <div className="text-sm text-muted-foreground">Total Chats</div>
         </div>
         <div className="p-4 rounded-lg bg-muted/50 border border-border">
-          <div className="text-2xl font-semibold text-foreground">{formatNumber(stats.totalMessages)}</div>
+          <div className="text-2xl font-semibold text-foreground">
+            {formatNumber(stats.totalMessages)}
+          </div>
           <div className="text-sm text-muted-foreground">Messages</div>
         </div>
         <div className="p-4 rounded-lg bg-muted/50 border border-border">
-          <div className="text-2xl font-semibold text-foreground">{formatNumber(stats.totalTokensIn)}</div>
+          <div className="text-2xl font-semibold text-foreground">
+            {formatNumber(stats.totalTokensIn)}
+          </div>
           <div className="text-sm text-muted-foreground">Tokens In</div>
         </div>
         <div className="p-4 rounded-lg bg-muted/50 border border-border">
-          <div className="text-2xl font-semibold text-foreground">{formatNumber(stats.totalTokensOut)}</div>
+          <div className="text-2xl font-semibold text-foreground">
+            {formatNumber(stats.totalTokensOut)}
+          </div>
           <div className="text-sm text-muted-foreground">Tokens Out</div>
         </div>
       </div>

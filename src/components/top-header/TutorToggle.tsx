@@ -28,7 +28,9 @@ export function TutorToggle({
       disabled={forceTutorMode}
       title={title}
     >
-      <AcademicCapIcon className={active ? 'tutor-toggle__icon h-5 w-5' : 'tutor-invite__icon h-5 w-5'} />
+      <AcademicCapIcon
+        className={active ? 'tutor-toggle__icon h-5 w-5' : 'tutor-invite__icon h-5 w-5'}
+      />
       <span className={active ? 'tutor-toggle__text' : 'tutor-invite__text'}>
         {active ? 'Tutor On' : 'Start learning session'}
       </span>
