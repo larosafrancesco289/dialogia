@@ -2,7 +2,6 @@ import {
   ArrowPathIcon,
   ClipboardDocumentListIcon,
   ExclamationTriangleIcon,
-  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import type { LearningPlan } from '@/lib/types';
 import type { UiPlanSnapshot } from '@/lib/contracts/ui';
@@ -14,20 +13,16 @@ type PlanProgress = {
   percentComplete: number;
 };
 
-type PlanNode = Pick<LearningPlan['nodes'][number], 'name'> | null;
-
 export function PlanStatusBadge({
   planGeneration,
   hasPlan,
   planProgress,
-  currentNode,
   learningPlan,
   onOpenPlanSheet,
 }: {
   planGeneration?: PlanGeneration;
   hasPlan: boolean;
   planProgress: PlanProgress | null;
-  currentNode: PlanNode;
   learningPlan?: LearningPlan;
   onOpenPlanSheet: () => void;
 }) {
@@ -72,47 +67,16 @@ export function PlanStatusBadge({
   if (!hasPlan || !planProgress || !learningPlan) return null;
 
   return (
-    <>
-      {currentNode && (
-        <div
-          className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs"
-          style={{
-            background: 'color-mix(in oklab, var(--color-accent-2) 15%, transparent)',
-            border: '1px solid color-mix(in oklab, var(--color-accent-2) 35%, var(--color-border))',
-          }}
-        >
-          <SparklesIcon
-            className="h-3.5 w-3.5"
-            style={{
-              color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
-            }}
-          />
-          <span
-            className="font-medium"
-            style={{
-              color: 'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
-            }}
-          >
-            {currentNode.name}
-          </span>
-        </div>
-      )}
-      <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span className="font-medium">
-          {planProgress.completed}/{learningPlan.nodes.length}
-        </span>
-        <span>•</span>
-        <span>{planProgress.percentComplete}%</span>
-      </div>
-      <button
-        className="btn btn-ghost shrink-0"
-        onClick={onOpenPlanSheet}
-        title="View Learning Plan"
-        aria-label="View Learning Plan"
-      >
-        <ClipboardDocumentListIcon className="h-5 w-5" />
-        <span className="hidden sm:inline ml-1">Plan</span>
-      </button>
-    </>
+    <button
+      type="button"
+      className="plan-button"
+      onClick={onOpenPlanSheet}
+      title="View Learning Plan"
+      aria-label="View Learning Plan"
+    >
+      <ClipboardDocumentListIcon className="plan-button__icon h-5 w-5" />
+      <span className="plan-button__text">Plan</span>
+      <span className="plan-button__progress">{planProgress.percentComplete}%</span>
+    </button>
   );
 }

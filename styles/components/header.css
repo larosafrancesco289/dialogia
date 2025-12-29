@@ -1,4 +1,482 @@
 @layer components {
+  /* ============================================
+   * TOP HEADER LAYOUT
+   * ============================================ */
+
+  /* Main row container */
+  .top-header__main {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    flex: 1;
+  }
+
+  /* Override app-header flex-wrap for top-header */
+  .top-header.app-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Center section (model picker or tutor card) */
+  .top-header__center {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Gold accent when tutor mode is active */
+  .top-header--tutor-active {
+    border-left: 4px solid var(--color-accent);
+  }
+
+  /* ============================================
+   * HEADER DIVIDER
+   * ============================================ */
+
+  .header-divider {
+    width: 1px;
+    height: 24px;
+    border-left: 1px dashed var(--color-border);
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 640px) {
+    .header-divider {
+      height: 20px;
+    }
+  }
+
+  /* ============================================
+   * MODEL PICKER TRIGGER (Rich card style)
+   * ============================================ */
+
+  .model-picker-trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: color-mix(in oklab, var(--color-muted) 40%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-border) 65%, transparent);
+    border-radius: var(--radius-editorial);
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard);
+  }
+
+  .model-picker-trigger:hover {
+    background: var(--surface-paper-warm);
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-1);
+  }
+
+  .model-picker-trigger:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  .model-picker-trigger__icon {
+    color: var(--color-fg-muted);
+    opacity: 0.8;
+  }
+
+  .model-picker-trigger__name {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    letter-spacing: -0.005em;
+    color: var(--color-fg);
+    text-align: left;
+  }
+
+  .model-picker-trigger__badges {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: var(--space-2);
+  }
+
+  .model-picker-trigger__badge {
+    width: 16px;
+    height: 16px;
+    color: var(--color-fg-muted);
+    opacity: 0.6;
+  }
+
+  .model-picker-trigger__chevron {
+    color: var(--color-fg-muted);
+    opacity: 0.5;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+
+  .model-picker-trigger:hover .model-picker-trigger__chevron {
+    opacity: 0.8;
+  }
+
+  /* Tutor mode: read-only display, no hover effects */
+  .model-picker-trigger--tutor {
+    cursor: default;
+    background: color-mix(in oklab, var(--color-accent) 8%, var(--color-muted) 30%);
+    border-color: color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+  }
+
+  .model-picker-trigger--tutor:hover {
+    background: color-mix(in oklab, var(--color-accent) 8%, var(--color-muted) 30%);
+    border-color: color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+    box-shadow: none;
+  }
+
+  .model-picker-trigger__icon--tutor {
+    color: var(--color-accent);
+    opacity: 1;
+  }
+
+  /* ============================================
+   * TUTOR INVITE BUTTON
+   * ============================================ */
+
+  .tutor-invite {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: 1px dashed color-mix(in oklab, var(--color-accent) 50%, var(--color-border));
+    border-radius: var(--radius-editorial);
+    color: var(--color-fg-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+
+  .tutor-invite:hover {
+    background: color-mix(in oklab, var(--color-accent) 8%, transparent);
+    border-color: var(--color-accent);
+    color: var(--color-fg);
+  }
+
+  .tutor-invite:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  .tutor-invite:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .tutor-invite__icon {
+    color: var(--color-accent);
+    opacity: 0.7;
+  }
+
+  .tutor-invite:hover .tutor-invite__icon {
+    opacity: 1;
+  }
+
+  .tutor-invite__text {
+    /* Hide text on very small screens */
+  }
+
+  @media (max-width: 480px) {
+    .tutor-invite__text {
+      display: none;
+    }
+  }
+
+  /* ============================================
+   * TUTOR TOGGLE (Active state, matches tutor-invite style)
+   * ============================================ */
+
+  .tutor-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: 1px solid color-mix(in oklab, var(--color-accent) 50%, var(--color-border));
+    border-radius: var(--radius-editorial);
+    color: var(--color-fg-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+
+  .tutor-toggle--active {
+    background: color-mix(in oklab, var(--color-accent) 15%, transparent);
+    border-color: var(--color-accent);
+    color: var(--color-fg);
+  }
+
+  .tutor-toggle:hover {
+    background: color-mix(in oklab, var(--color-accent) 20%, transparent);
+    border-color: var(--color-accent);
+  }
+
+  .tutor-toggle:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  .tutor-toggle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .tutor-toggle__icon {
+    color: var(--color-accent);
+  }
+
+  .tutor-toggle__text {
+    /* Hide text on very small screens */
+  }
+
+  @media (max-width: 480px) {
+    .tutor-toggle__text {
+      display: none;
+    }
+  }
+
+  /* ============================================
+   * PLAN BUTTON (matches tutor-toggle style)
+   * ============================================ */
+
+  .plan-button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-accent) 40%, var(--color-border));
+    border-radius: var(--radius-editorial);
+    color: var(--color-fg);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .plan-button:hover {
+    background: color-mix(in oklab, var(--color-accent) 18%, transparent);
+    border-color: var(--color-accent);
+  }
+
+  .plan-button:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  .plan-button__icon {
+    color: var(--color-accent);
+  }
+
+  .plan-button__text {
+    /* Hide text on small screens */
+  }
+
+  .plan-button__progress {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-accent);
+    padding: 2px 6px;
+    background: color-mix(in oklab, var(--color-accent) 15%, transparent);
+    border-radius: var(--radius-sm);
+  }
+
+  @media (max-width: 480px) {
+    .plan-button__text {
+      display: none;
+    }
+  }
+
+  /* ============================================
+   * TUTOR MODE CARD
+   * ============================================ */
+
+  .tutor-mode-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: var(--space-2) var(--space-4);
+    background: color-mix(in oklab, var(--color-accent) 12%, var(--surface-paper));
+    border: 1px solid color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+    border-radius: var(--radius-editorial);
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard);
+  }
+
+  .tutor-mode-card:hover {
+    background: color-mix(in oklab, var(--color-accent) 18%, var(--surface-paper));
+    box-shadow: var(--shadow-1);
+  }
+
+  .tutor-mode-card:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  .tutor-mode-card__icon {
+    color: var(--color-accent);
+    flex-shrink: 0;
+  }
+
+  .tutor-mode-card__content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .tutor-mode-card__topic {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    letter-spacing: -0.005em;
+    color: var(--color-fg);
+    text-align: left;
+  }
+
+  .tutor-mode-card__progress {
+    height: 4px;
+    background: color-mix(in oklab, var(--color-muted) 60%, transparent);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .tutor-mode-card__progress-fill {
+    height: 100%;
+    background: var(--color-accent);
+    border-radius: 2px;
+    transition: width var(--duration-med) var(--ease-standard);
+  }
+
+  /* ============================================
+   * TUTOR STATUS BAR
+   * ============================================ */
+
+  .tutor-status-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    width: 100%;
+    padding: var(--space-2) var(--space-4);
+    margin-top: var(--space-2);
+    border-top: 1px dashed color-mix(in oklab, var(--color-border) 70%, transparent);
+    font-size: 0.8125rem;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+  }
+
+  .tutor-status-bar__milestones {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .tutor-status-bar__milestone {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-border);
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard);
+  }
+
+  .tutor-status-bar__milestone--completed {
+    background: var(--color-accent);
+  }
+
+  .tutor-status-bar__milestone--active {
+    background: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 25%, transparent);
+  }
+
+  .tutor-status-bar__breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .tutor-status-bar__breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tutor-status-bar__breadcrumb-item:last-child {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  /* Mobile: collapse breadcrumb, show only milestones by default */
+  @media (max-width: 640px) {
+    .tutor-status-bar {
+      padding: var(--space-2) var(--space-3);
+      gap: var(--space-3);
+    }
+
+    .tutor-status-bar__breadcrumb {
+      display: none;
+    }
+
+    .tutor-status-bar--expanded .tutor-status-bar__breadcrumb {
+      display: flex;
+    }
+  }
+
+  /* ============================================
+   * SUBTLE HEADER CONTROLS
+   * ============================================ */
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .header-controls .btn-ghost {
+    height: 32px;
+    min-width: 32px;
+    padding: 0 var(--space-2);
+  }
+
+  .header-controls .btn-ghost svg {
+    width: 20px;
+    height: 20px;
+    opacity: 0.7;
+  }
+
+  .header-controls .btn-ghost:hover svg {
+    opacity: 1;
+  }
+
+  /* ============================================
+   * EXISTING STYLES
+   * ============================================ */
+
   /* Slim shimmer bar shown only while waiting for first token */
   .header-activity {
     position: absolute;

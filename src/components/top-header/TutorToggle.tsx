@@ -15,9 +15,12 @@ export function TutorToggle({
       ? 'Disable Tutor Mode'
       : 'Enable Tutor Mode';
 
+  const baseClass = active ? 'tutor-toggle tutor-toggle--active' : 'tutor-invite';
+
   return (
     <button
-      className={`btn shrink-0 ${active ? 'btn-primary' : 'btn-outline'}`}
+      type="button"
+      className={baseClass}
       aria-pressed={active}
       onClick={() => {
         void onToggle();
@@ -25,8 +28,10 @@ export function TutorToggle({
       disabled={forceTutorMode}
       title={title}
     >
-      <AcademicCapIcon className="h-5 w-5" />
-      <span className="hidden sm:inline ml-1">{active ? 'Tutor On' : 'Tutor Off'}</span>
+      <AcademicCapIcon className={active ? 'tutor-toggle__icon h-5 w-5' : 'tutor-invite__icon h-5 w-5'} />
+      <span className={active ? 'tutor-toggle__text' : 'tutor-invite__text'}>
+        {active ? 'Tutor On' : 'Start learning session'}
+      </span>
     </button>
   );
 }

@@ -3,17 +3,24 @@ import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
+import { getBreadcrumbPath, getMilestones } from '@/lib/learningPlan/breadcrumb';
 import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { selectCurrentChat, selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import type { UiNextOverrides, UiPlanSnapshot } from '@/lib/contracts/ui';
-import type { Chat, LearnerModel, LearningPlan } from '@/lib/types';
+import type { Chat, LearnerModel, LearningPlan, LearningPlanNode } from '@/lib/types';
 
 const EMPTY_OVERRIDES: UiNextOverrides = {};
 
 type PlanProgress = ReturnType<typeof calculatePlanProgress>;
 type PlanNode = ReturnType<typeof getNextNode>;
 type PlanGeneration = NonNullable<UiPlanSnapshot['generationByChatId']>[string];
+
+export type Milestone = {
+  id: string;
+  status: LearningPlanNode['status'];
+  name: string;
+};
 
 export type TopHeaderState = {
   chat?: Chat;
@@ -23,6 +30,7 @@ export type TopHeaderState = {
   planSheetOverride: LearningPlan | null;
   planGeneration?: PlanGeneration;
   tutorActive: boolean;
+  tutorModelId?: string;
   tutorModelLabel: string;
   experimentalTutor: boolean;
   forceTutorMode: boolean;
@@ -32,6 +40,11 @@ export type TopHeaderState = {
   planProgress: PlanProgress | null;
   currentNode: PlanNode;
   learnerModel?: LearnerModel;
+  // New computed values for tutor status bar
+  currentTopicName?: string;
+  topicProgress: number;
+  milestones: Milestone[];
+  breadcrumbPath: string[];
   onToggleSidebar: () => void;
   onToggleSettings: () => void;
   onOpenSettings: () => void;
@@ -114,6 +127,23 @@ export function useTopHeaderState(): TopHeaderState {
     [learningPlan],
   );
   const hasPlanRef = useRef<boolean>(!!learningPlan);
+
+  // Computed values for tutor status bar
+  const currentTopicName = currentNode?.name;
+  const topicProgress = planProgress?.percentComplete ?? 0;
+  const milestones = useMemo<Milestone[]>(
+    () => (learningPlan ? getMilestones(learningPlan) : []),
+    [learningPlan],
+  );
+  const breadcrumbPath = useMemo<string[]>(
+    () =>
+      learningPlan && currentNode
+        ? getBreadcrumbPath(learningPlan, currentNode.id)
+        : learningPlan
+          ? [learningPlan.goal]
+          : [],
+    [learningPlan, currentNode],
+  );
 
   useEffect(() => {
     if (!learningPlan) {
@@ -216,6 +246,7 @@ export function useTopHeaderState(): TopHeaderState {
     planSheetOverride,
     planGeneration,
     tutorActive,
+    tutorModelId,
     tutorModelLabel,
     experimentalTutor,
     forceTutorMode,
@@ -225,6 +256,11 @@ export function useTopHeaderState(): TopHeaderState {
     planProgress,
     currentNode,
     learnerModel,
+    // New computed values for tutor status bar
+    currentTopicName,
+    topicProgress,
+    milestones,
+    breadcrumbPath,
     onToggleSidebar,
     onToggleSettings,
     onOpenSettings,
