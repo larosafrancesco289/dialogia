@@ -1,56 +1,99 @@
 'use client';
 import type { ReactNode, RefObject } from 'react';
-import { XCircleIcon } from '@heroicons/react/24/outline';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { motion, AnimatePresence } from 'framer-motion';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { IconButton } from '@/components/IconButton';
+import { SettingsSearch } from '@/components/settings/SettingsSearch';
+import { springs, variants } from '@/lib/mobile/springConfig';
+
+type SettingsDrawerShellProps = {
+  closing: boolean;
+  onClose: () => void;
+  drawerRef: RefObject<HTMLDivElement | null>;
+  children: ReactNode;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+};
+
 
 export function SettingsDrawerShell({
   closing,
   onClose,
   drawerRef,
   children,
-}: {
-  closing: boolean;
-  onClose: () => void;
-  drawerRef: RefObject<HTMLDivElement>;
-  children: ReactNode;
-}) {
+  searchQuery = '',
+  onSearchChange,
+}: SettingsDrawerShellProps) {
   return (
-    <>
-      <div
-        className={`fixed inset-0 bg-black/30 z-[70] settings-overlay${closing ? ' is-closing' : ''}`}
-        onClick={onClose}
-        aria-hidden
-      />
-      <div
-        ref={drawerRef}
-        className={`fixed inset-y-0 right-0 w-full sm:w-[640px] glass-panel border-l border-border shadow-[var(--shadow-card)] z-[80] overflow-y-auto will-change-transform settings-drawer${closing ? ' is-closing' : ''}`}
-        style={{ overscrollBehavior: 'contain' }}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-title"
-        tabIndex={-1}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') onClose();
-        }}
-      >
-        <div
-          data-settings-header
-          className="flex items-center gap-3 border-b border-border sticky top-0 glass z-10 px-4"
-          style={{ height: 'var(--header-height)' }}
-        >
-          <h3 id="settings-title" className="font-semibold">
-            Settings
-          </h3>
-          <div className="ml-auto flex items-center gap-2">
-            <ThemeToggle />
-            <IconButton title="Close" onClick={onClose} className="w-11 h-11 sm:w-9 sm:h-9">
-              <XCircleIcon className="h-6 w-6" />
-            </IconButton>
-          </div>
-        </div>
-        {children}
-      </div>
-    </>
+    <AnimatePresence>
+      {!closing && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            className="fixed inset-0 bg-black/30 z-[70]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            aria-hidden
+          />
+
+          {/* Drawer */}
+          <motion.div
+            ref={(el) => {
+              if (drawerRef && 'current' in drawerRef) {
+                (drawerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+              }
+            }}
+            className="fixed inset-y-0 right-0 w-full sm:w-[720px] bg-surface border-l border-border shadow-[var(--shadow-card)] z-[80] overflow-y-auto will-change-transform"
+            style={{ overscrollBehavior: 'contain' }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-title"
+            tabIndex={-1}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={variants.slideFromRight}
+            transition={springs.smooth}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') onClose();
+            }}
+          >
+            {/* Minimal Header */}
+            <header
+              data-settings-header
+              className="flex items-center gap-3 border-b border-border sticky top-0 bg-surface z-10 px-4"
+              style={{ height: 'var(--header-height)' }}
+            >
+              <h2 id="settings-title" className="text-lg font-semibold shrink-0">
+                Settings
+              </h2>
+
+              {onSearchChange && (
+                <SettingsSearch
+                  value={searchQuery}
+                  onChange={onSearchChange}
+                  placeholder="Search settings..."
+                />
+              )}
+
+              <div className="ml-auto">
+                <IconButton
+                  title="Close settings"
+                  onClick={onClose}
+                  className="w-9 h-9"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </IconButton>
+              </div>
+            </header>
+
+            {children}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

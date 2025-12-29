@@ -76,10 +76,10 @@ export function applySettingsSavePatch(args: {
   patch: SettingsSavePatch;
   setUI: StoreState['setUI'];
   updateChatSettings: StoreState['updateChatSettings'];
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   const { patch, setUI, updateChatSettings, onClose } = args;
   if (patch.uiPatch) setUI(patch.uiPatch);
   if (patch.chatSettingsPatch) void updateChatSettings(patch.chatSettingsPatch);
-  onClose();
+  onClose?.();
 }

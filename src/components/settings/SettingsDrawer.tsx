@@ -1,6 +1,7 @@
 'use client';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
+import { motion } from 'framer-motion';
 import {
   useCallback,
   useEffect,
@@ -10,22 +11,43 @@ import {
   type ReactNode,
 } from 'react';
 import type { ModelSearchHandle } from '@/components/ModelSearch';
-import type { RenderSection } from '@/components/settings/types';
+import type { RenderSection, TabId, SectionId } from '@/components/settings/types';
 import { useSettingsTabs } from '@/components/settings/hooks/useSettingsTabs';
 import { useSettingsScrollSync } from '@/components/settings/hooks/useSettingsScrollSync';
 import { useSettingsFormState } from '@/components/settings/hooks/useSettingsFormState';
+import { useAutoSave } from '@/components/settings/hooks/useAutoSave';
 import { applySettingsSavePatch, buildSettingsSavePatch } from '@/components/settings/saveSettings';
 import { TAB_LIST, TAB_SECTIONS, SECTION_TITLES } from '@/components/settings/sections/config';
 import { ModelsPanel } from '@/components/settings/sections/ModelsPanel';
 import { ChatPanel } from '@/components/settings/sections/ChatPanel';
 import { TutorPanel } from '@/components/settings/sections/TutorPanel';
-import { DisplayPanel } from '@/components/settings/sections/DisplayPanel';
-import { PrivacyPanel } from '@/components/settings/sections/PrivacyPanel';
-import { DataPanel } from '@/components/settings/sections/DataPanel';
-import { LabsPanel } from '@/components/settings/sections/LabsPanel';
+import { AppearancePanel } from '@/components/settings/sections/AppearancePanel';
+import { AdvancedPanel } from '@/components/settings/sections/AdvancedPanel';
 import { NOTICE_EXPORTED_CHATS, NOTICE_IMPORTED_DATA } from '@/lib/store/notices';
 import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
+import { AutoSaveToast } from '@/components/settings/AutoSaveToast';
 import { buildChatExport, importChatExport } from '@/lib/settings/transfer';
+import { springs } from '@/lib/mobile/springConfig';
+
+// Animation variants for staggered content
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.04,
+    },
+  },
+};
+
+const staggerItem = {
+  hidden: { opacity: 0, y: 8 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: springs.gentle,
+  },
+};
 
 export function SettingsDrawer() {
   const {
@@ -98,6 +120,8 @@ export function SettingsDrawer() {
   } = useSettingsFormState({ chat, ui });
 
   const [closing, setClosing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const {
     activeTab,
     setActiveTab,
@@ -107,6 +131,7 @@ export function SettingsDrawer() {
     sectionRefs,
     registerSection,
   } = useSettingsTabs();
+
   const { drawerRef, scrollToSection } = useSettingsScrollSync({
     activeSection,
     setActiveSection,
@@ -114,15 +139,71 @@ export function SettingsDrawer() {
     tabBarRef,
     activeSections: TAB_SECTIONS[activeTab] ?? [],
   });
+
   const modelSearchRef = useRef<ModelSearchHandle | null>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+
   const experimentalBrave = useChatStore((s) => !!s.ui.flags.experimentalBrave);
   const experimentalTutor = useChatStore((s) => !!s.ui.flags.experimentalTutor);
   const enableMultiModelChat = useChatStore((s) => !!s.ui.flags.enableMultiModelChat);
 
-  const closeWithAnim = () => {
+  // Auto-save hook
+  const performSave = useCallback(() => {
+    const patch = buildSettingsSavePatch({
+      chat,
+      ui,
+      system,
+      temperature,
+      topP,
+      maxTokens,
+      reasoningEffort,
+      reasoningTokens,
+      showThinking,
+      showStats,
+      showToolCallLog,
+      showDebugRawJson,
+      tutorDefaultModel,
+    });
+    applySettingsSavePatch({
+      patch,
+      setUI,
+      updateChatSettings,
+    });
+  }, [
+    chat,
+    ui,
+    system,
+    temperature,
+    topP,
+    maxTokens,
+    reasoningEffort,
+    reasoningTokens,
+    showThinking,
+    showStats,
+    showToolCallLog,
+    showDebugRawJson,
+    tutorDefaultModel,
+    setUI,
+    updateChatSettings,
+  ]);
+
+  const { status: saveStatus, markDirty } = useAutoSave({
+    delay: 600,
+    onSave: performSave,
+  });
+
+  // Wrap setters to trigger auto-save
+  const createAutoSaveSetter = <T,>(setter: (v: T) => void) => {
+    return (value: T) => {
+      setter(value);
+      markDirty();
+    };
+  };
+
+  const closeWithAnim = useCallback(() => {
     setClosing(true);
     window.setTimeout(() => setUI({ showSettings: false }), 190);
-  };
+  }, [setUI]);
 
   // Prevent background scroll while drawer is open
   useEffect(() => {
@@ -133,18 +214,10 @@ export function SettingsDrawer() {
     };
   }, []);
 
-  // Load models for autocomplete on mount (if key configured)
+  // Load models for autocomplete on mount
   useEffect(() => {
     loadModels();
   }, [loadModels]);
-
-  // Focus model search shortly after opening for quick access
-  useEffect(() => {
-    const tid = window.setTimeout(() => {
-      modelSearchRef.current?.focus();
-    }, 80);
-    return () => window.clearTimeout(tid);
-  }, []);
 
   const onExport = async () => {
     try {
@@ -179,292 +252,291 @@ export function SettingsDrawer() {
   };
 
   const renderSection: RenderSection = useCallback(
-    (tabId, sectionId, content) => {
+    (tabId: TabId, sectionId: SectionId, content: ReactNode) => {
       if (activeTab !== tabId) return null;
+
+      // Filter by search query
+      if (searchQuery) {
+        const title = SECTION_TITLES[sectionId] ?? sectionId;
+        if (!title.toLowerCase().includes(searchQuery.toLowerCase())) {
+          return null;
+        }
+      }
+
       return (
-        <div
+        <motion.div
           key={sectionId}
           id={`settings-${sectionId}`}
           data-settings-section={sectionId}
           ref={registerSection(sectionId)}
-          className="space-y-4"
+          variants={staggerItem}
         >
           {content}
-        </div>
+        </motion.div>
       );
     },
-    [activeTab, registerSection],
+    [activeTab, registerSection, searchQuery],
   );
 
-  const handleTabKey = useCallback(
+  // Keyboard navigation for sidebar
+  const handleSidebarKeyNav = useCallback(
     (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-        event.preventDefault();
-        const next = (index + 1) % TAB_LIST.length;
-        setActiveTab(TAB_LIST[next].id);
-      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-        event.preventDefault();
-        const prev = (index - 1 + TAB_LIST.length) % TAB_LIST.length;
-        setActiveTab(TAB_LIST[prev].id);
+      const buttons = sidebarRef.current?.querySelectorAll('button');
+      if (!buttons) return;
+
+      let nextIndex = index;
+
+      switch (event.key) {
+        case 'ArrowDown':
+        case 'ArrowRight':
+          event.preventDefault();
+          nextIndex = (index + 1) % TAB_LIST.length;
+          break;
+        case 'ArrowUp':
+        case 'ArrowLeft':
+          event.preventDefault();
+          nextIndex = (index - 1 + TAB_LIST.length) % TAB_LIST.length;
+          break;
+        case 'Home':
+          event.preventDefault();
+          nextIndex = 0;
+          break;
+        case 'End':
+          event.preventDefault();
+          nextIndex = TAB_LIST.length - 1;
+          break;
+        default:
+          return;
       }
+
+      setActiveTab(TAB_LIST[nextIndex].id);
+      (buttons[nextIndex] as HTMLButtonElement)?.focus();
     },
     [setActiveTab],
   );
 
   const navSections = TAB_SECTIONS[activeTab] ?? [];
-  const showDesktopNav = navSections.length > 1;
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'models-routing':
+        return (
+          <ModelsPanel
+            chat={chat}
+            favoriteModelIds={favoriteModelIds}
+            toggleFavoriteModel={toggleFavoriteModel}
+            updateChatSettings={updateChatSettings}
+            setUI={setUI}
+            loadModels={loadModels}
+            hiddenModelIds={hiddenModelIds}
+            resetHiddenModels={resetHiddenModels}
+            renderSection={renderSection}
+            modelSearchRef={modelSearchRef}
+            experimentalBrave={experimentalBrave}
+            ui={ui}
+          />
+        );
+      case 'chat':
+        return (
+          <ChatPanel
+            chat={chat}
+            system={system}
+            setSystem={createAutoSaveSetter(setSystem)}
+            presets={presets}
+            setPresets={setPresets}
+            selectedPresetId={selectedPresetId}
+            setSelectedPresetId={setSelectedPresetId}
+            updateChatSettings={updateChatSettings}
+            renderSection={renderSection}
+            temperatureStr={temperatureStr}
+            setTemperatureStr={setTemperatureStr}
+            setTemperature={createAutoSaveSetter(setTemperature)}
+            topPStr={topPStr}
+            setTopPStr={setTopPStr}
+            setTopP={createAutoSaveSetter(setTopP)}
+            maxTokensStr={maxTokensStr}
+            setMaxTokensStr={setMaxTokensStr}
+            setMaxTokens={createAutoSaveSetter(setMaxTokens)}
+            reasoningEffort={reasoningEffort}
+            setReasoningEffort={createAutoSaveSetter(setReasoningEffort)}
+            reasoningTokensStr={reasoningTokensStr}
+            setReasoningTokensStr={setReasoningTokensStr}
+            setReasoningTokens={createAutoSaveSetter(setReasoningTokens)}
+          />
+        );
+      case 'tutor':
+        return (
+          <TutorPanel
+            chat={chat}
+            renderSection={renderSection}
+            experimentalTutor={experimentalTutor}
+            setUI={setUI}
+            ui={ui}
+            updateChatSettings={updateChatSettings}
+            tutorDefaultModel={tutorDefaultModel}
+            setTutorDefaultModel={createAutoSaveSetter(setTutorDefaultModel)}
+          />
+        );
+      case 'appearance':
+        return (
+          <AppearancePanel
+            renderSection={renderSection}
+            showThinking={showThinking}
+            showStats={showStats}
+            showToolCallLog={showToolCallLog}
+            showDebugRawJson={showDebugRawJson}
+            enableMultiModelChat={enableMultiModelChat}
+            uiDebugMode={!!ui?.debug.mode}
+            setShowThinking={createAutoSaveSetter(setShowThinking)}
+            setShowStats={createAutoSaveSetter(setShowStats)}
+            setShowToolCallLog={createAutoSaveSetter(setShowToolCallLog)}
+            setShowDebugRawJson={createAutoSaveSetter(setShowDebugRawJson)}
+            setEnableMultiModelChat={(value: boolean) => {
+              setUI({ flags: { enableMultiModelChat: value } });
+              markDirty();
+            }}
+            setDebugMode={(value: boolean) => {
+              setUI({ debug: { mode: value } });
+              markDirty();
+            }}
+            zdrOnly={ui?.zdrOnly}
+            setZdrOnly={(value: boolean) => {
+              setUI({ zdrOnly: value });
+              markDirty();
+            }}
+            reloadModels={loadModels}
+          />
+        );
+      case 'advanced':
+        return (
+          <AdvancedPanel
+            renderSection={renderSection}
+            onExport={onExport}
+            onImportPicked={onImportPicked}
+            experimentalBrave={experimentalBrave}
+            setUI={setUI}
+            uiDebugMode={!!ui?.debug.mode}
+            showToolCallLog={showToolCallLog}
+            showDebugRawJson={showDebugRawJson}
+            setDebugMode={(value: boolean) => {
+              setUI({ debug: { mode: value } });
+              markDirty();
+            }}
+            setShowToolCallLog={createAutoSaveSetter(setShowToolCallLog)}
+            setShowDebugRawJson={createAutoSaveSetter(setShowDebugRawJson)}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <SettingsDrawerShell closing={closing} onClose={closeWithAnim} drawerRef={drawerRef}>
-      <div
-        ref={tabBarRef}
-        className="flex items-center gap-2 overflow-x-auto border-b border-border glass sticky z-10 px-4"
-        style={{ top: 'var(--header-height)', minHeight: 50 }}
-        role="tablist"
-        aria-label="Settings categories"
+    <>
+      <SettingsDrawerShell
+        closing={closing}
+        onClose={closeWithAnim}
+        drawerRef={drawerRef}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       >
-        {TAB_LIST.map((tab, index) => (
-          <button
-            key={tab.id}
-            id={`settings-tab-${tab.id}`}
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            aria-controls={`settings-tabpanel-${tab.id}`}
-            tabIndex={activeTab === tab.id ? 0 : -1}
-            className={`shrink-0 px-3 py-2 text-sm rounded-full border transition-colors ${
-              activeTab === tab.id
-                ? 'bg-muted text-foreground border-border'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'
-            }`}
-            onClick={() => setActiveTab(tab.id)}
-            onKeyDown={(event) => handleTabKey(event, index)}
+        <div className="flex h-[calc(100%-var(--header-height))]">
+          {/* Persistent Sidebar Navigation (Desktop) */}
+          <nav
+            ref={sidebarRef}
+            className="hidden md:flex flex-col w-48 shrink-0 border-r border-border p-3 sticky top-[var(--header-height)] h-fit"
+            aria-label="Settings navigation"
+            role="tablist"
+            aria-orientation="vertical"
           >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="px-4 pt-4 pb-24">
-        <div className="md:flex md:items-start md:gap-6">
-          {showDesktopNav && (
-            <nav
-              className="hidden md:block md:w-48 md:shrink-0 sticky"
-              style={{ top: 'calc(var(--header-height) + 62px)' }}
-              aria-label="In-page settings navigation"
-            >
-              <div className="flex flex-col gap-1">
-                {navSections.map((sectionId) => (
-                  <button
-                    key={sectionId}
-                    type="button"
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                      activeSection === sectionId
-                        ? 'bg-muted text-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                    }`}
-                    onClick={() => scrollToSection(sectionId)}
-                  >
-                    {SECTION_TITLES[sectionId] ?? sectionId}
-                  </button>
-                ))}
-              </div>
-            </nav>
-          )}
-          <div className="flex-1">
-            {TAB_LIST.map((tab) => {
-              const isActive = tab.id === activeTab;
-              let tabContent: ReactNode = null;
-              if (isActive) {
-                switch (tab.id) {
-                  case 'models':
-                    tabContent = (
-                      <ModelsPanel
-                        chat={chat}
-                        favoriteModelIds={favoriteModelIds}
-                        toggleFavoriteModel={toggleFavoriteModel}
-                        updateChatSettings={updateChatSettings}
-                        setUI={setUI}
-                        loadModels={loadModels}
-                        hiddenModelIds={hiddenModelIds}
-                        resetHiddenModels={resetHiddenModels}
-                        renderSection={renderSection}
-                        modelSearchRef={modelSearchRef}
-                        experimentalBrave={experimentalBrave}
-                        ui={ui}
-                      />
-                    );
-                    break;
-                  case 'chat':
-                    tabContent = (
-                      <ChatPanel
-                        chat={chat}
-                        system={system}
-                        setSystem={setSystem}
-                        presets={presets}
-                        setPresets={setPresets}
-                        selectedPresetId={selectedPresetId}
-                        setSelectedPresetId={setSelectedPresetId}
-                        updateChatSettings={updateChatSettings}
-                        renderSection={renderSection}
-                        temperatureStr={temperatureStr}
-                        setTemperatureStr={setTemperatureStr}
-                        setTemperature={setTemperature}
-                        topPStr={topPStr}
-                        setTopPStr={setTopPStr}
-                        setTopP={setTopP}
-                        maxTokensStr={maxTokensStr}
-                        setMaxTokensStr={setMaxTokensStr}
-                        setMaxTokens={setMaxTokens}
-                        reasoningEffort={reasoningEffort}
-                        setReasoningEffort={setReasoningEffort}
-                        reasoningTokensStr={reasoningTokensStr}
-                        setReasoningTokensStr={setReasoningTokensStr}
-                        setReasoningTokens={setReasoningTokens}
-                      />
-                    );
-                    break;
-                  case 'tutor':
-                    tabContent = (
-                      <TutorPanel
-                        chat={chat}
-                        renderSection={renderSection}
-                        experimentalTutor={experimentalTutor}
-                        setUI={setUI}
-                        ui={ui}
-                        updateChatSettings={updateChatSettings}
-                        tutorDefaultModel={tutorDefaultModel}
-                        setTutorDefaultModel={setTutorDefaultModel}
-                      />
-                    );
-                    break;
-                  case 'display':
-                    tabContent = renderSection(
-                      'display',
-                      'display',
-                      <DisplayPanel
-                        showThinking={showThinking}
-                        showStats={showStats}
-                        showToolCallLog={showToolCallLog}
-                        showDebugRawJson={showDebugRawJson}
-                        enableMultiModelChat={enableMultiModelChat}
-                        uiDebugMode={!!ui?.debug.mode}
-                        setShowThinking={setShowThinking}
-                        setShowStats={setShowStats}
-                        setShowToolCallLog={setShowToolCallLog}
-                        setShowDebugRawJson={setShowDebugRawJson}
-                        setEnableMultiModelChat={(value: boolean) =>
-                          setUI({ flags: { enableMultiModelChat: value } })
-                        }
-                        setDebugMode={(value: boolean) => setUI({ debug: { mode: value } })}
-                      />,
-                    );
-                    break;
-                  case 'privacy':
-                    tabContent = renderSection(
-                      'privacy',
-                      'privacy',
-                      <PrivacyPanel
-                        zdrOnly={ui?.zdrOnly}
-                        setZdrOnly={(value: boolean) => setUI({ zdrOnly: value })}
-                        reloadModels={loadModels}
-                      />,
-                    );
-                    break;
-                  case 'data':
-                    tabContent = renderSection(
-                      'data',
-                      'data',
-                      <DataPanel onExport={onExport} onImportPicked={onImportPicked} />,
-                    );
-                    break;
-                  case 'labs':
-                    tabContent = (
-                      <LabsPanel
-                        renderSection={renderSection}
-                        experimentalBrave={experimentalBrave}
-                        setUI={setUI}
-                      />
-                    );
-                    break;
-                  default:
-                    tabContent = null;
-                }
-              }
-              return (
-                <div
+            <div className="settings-sidebar">
+              {TAB_LIST.map((tab, index) => (
+                <button
                   key={tab.id}
-                  role="tabpanel"
-                  id={`settings-tabpanel-${tab.id}`}
-                  aria-labelledby={`settings-tab-${tab.id}`}
-                  hidden={!isActive}
-                  className={`space-y-6 ${isActive ? '' : 'hidden'}`}
+                  id={`settings-tab-${tab.id}`}
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  aria-controls={`settings-panel-${tab.id}`}
+                  tabIndex={activeTab === tab.id ? 0 : -1}
+                  className={`settings-sidebar-item ${activeTab === tab.id ? 'is-active' : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                  onKeyDown={(e) => handleSidebarKeyNav(e, index)}
                 >
-                  {isActive && (
-                    <>
-                      {navSections.length > 1 && (
-                        <div className="md:hidden flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
-                          {navSections.map((sectionId) => (
-                            <button
-                              key={sectionId}
-                              type="button"
-                              className={`shrink-0 px-3 py-2 text-sm rounded-full border transition-colors ${
-                                activeSection === sectionId
-                                  ? 'bg-muted text-foreground border-border'
-                                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                              }`}
-                              onClick={() => scrollToSection(sectionId)}
-                            >
-                              {SECTION_TITLES[sectionId] ?? sectionId}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {tabContent}
-                    </>
-                  )}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-y-auto" ref={tabBarRef}>
+            {/* Mobile Tab Pills */}
+            <div
+              className="md:hidden flex gap-2 overflow-x-auto p-4 border-b border-border sticky top-0 bg-surface z-10"
+              role="tablist"
+              aria-label="Settings categories"
+            >
+              {TAB_LIST.map((tab) => (
+                <button
+                  key={tab.id}
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  className={`shrink-0 px-3 py-2 text-sm rounded-full border transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-muted text-foreground border-border'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                  }`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Panel Content */}
+            <div
+              role="tabpanel"
+              id={`settings-panel-${activeTab}`}
+              aria-labelledby={`settings-tab-${activeTab}`}
+              className="p-4 md:p-6"
+            >
+              {/* Sub-section navigation for tabs with multiple sections */}
+              {navSections.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-4 mb-2 -mx-1 px-1 md:hidden">
+                  {navSections.map((sectionId) => (
+                    <button
+                      key={sectionId}
+                      type="button"
+                      className={`shrink-0 px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                        activeSection === sectionId
+                          ? 'bg-muted text-foreground border-border'
+                          : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                      }`}
+                      onClick={() => scrollToSection(sectionId)}
+                    >
+                      {SECTION_TITLES[sectionId] ?? sectionId}
+                    </button>
+                  ))}
                 </div>
-              );
-            })}
+              )}
+
+              {/* Staggered Content */}
+              <motion.div
+                key={activeTab}
+                variants={staggerContainer}
+                initial="hidden"
+                animate="show"
+                className="space-y-2"
+              >
+                {renderTabContent()}
+              </motion.div>
+            </div>
           </div>
         </div>
-      </div>
+      </SettingsDrawerShell>
 
-      <div
-        className="px-6 flex items-center justify-center border-t border-border sticky bottom-0 glass"
-        style={{
-          minHeight: 72,
-          paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
-        }}
-      >
-        <button
-          className="btn w-full max-w-sm"
-          onClick={() => {
-            const patch = buildSettingsSavePatch({
-              chat,
-              ui,
-              system,
-              temperature,
-              topP,
-              maxTokens,
-              reasoningEffort,
-              reasoningTokens,
-              showThinking,
-              showStats,
-              showToolCallLog,
-              showDebugRawJson,
-              tutorDefaultModel,
-            });
-            applySettingsSavePatch({
-              patch,
-              setUI,
-              updateChatSettings,
-              onClose: closeWithAnim,
-            });
-          }}
-        >
-          Save
-        </button>
-      </div>
-    </SettingsDrawerShell>
+      {/* Auto-Save Toast */}
+      <AutoSaveToast status={saveStatus} />
+    </>
   );
 }
