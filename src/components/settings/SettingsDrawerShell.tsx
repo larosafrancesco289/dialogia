@@ -15,7 +15,6 @@ type SettingsDrawerShellProps = {
   onSearchChange?: (query: string) => void;
 };
 
-
 export function SettingsDrawerShell({
   closing,
   onClose,
@@ -80,11 +79,7 @@ export function SettingsDrawerShell({
               )}
 
               <div className="ml-auto">
-                <IconButton
-                  title="Close settings"
-                  onClick={onClose}
-                  className="w-9 h-9"
-                >
+                <IconButton title="Close settings" onClick={onClose} className="w-9 h-9">
                   <XMarkIcon className="h-5 w-5" />
                 </IconButton>
               </div>

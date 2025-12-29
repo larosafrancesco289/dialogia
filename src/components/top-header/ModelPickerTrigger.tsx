@@ -103,9 +103,7 @@ export function ModelPickerTrigger({
         onClick={props.onClick}
         title={props.tooltip}
       >
-        {CuratedIcon && (
-          <CuratedIcon className="model-picker-trigger__icon h-5 w-5 shrink-0" />
-        )}
+        {CuratedIcon && <CuratedIcon className="model-picker-trigger__icon h-5 w-5 shrink-0" />}
         <span className="model-picker-trigger__name truncate">{props.label}</span>
         {badges.length > 0 && (
           <span className="model-picker-trigger__badges hide-on-mobile">

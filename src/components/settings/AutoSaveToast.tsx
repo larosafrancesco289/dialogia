@@ -12,11 +12,7 @@ export type AutoSaveToastProps = {
   autoDismissDelay?: number;
 };
 
-export function AutoSaveToast({
-  status,
-  message,
-  autoDismissDelay = 2000,
-}: AutoSaveToastProps) {
+export function AutoSaveToast({ status, message, autoDismissDelay = 2000 }: AutoSaveToastProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
