@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { TabId } from '@/components/settings/types';
 
-export function useSettingsTabs(defaultTab: TabId = 'models') {
+export function useSettingsTabs(defaultTab: TabId = 'models-routing') {
   const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const tabBarRef = useRef<HTMLDivElement | null>(null);

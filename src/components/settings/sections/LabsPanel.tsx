@@ -1,4 +1,8 @@
 'use client';
+/**
+ * @deprecated This panel has been consolidated into AdvancedPanel.
+ * Keeping for backwards compatibility during transition.
+ */
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { VoicePanel } from '@/components/settings/sections/VoicePanel';
 import type { StoreState } from '@/lib/store/types';
@@ -16,7 +20,7 @@ export function LabsPanel(props: LabsPanelProps) {
   return (
     <>
       {renderSection(
-        'labs',
+        'advanced',
         'experimental',
         <>
           <SettingsSection title="Experimental">

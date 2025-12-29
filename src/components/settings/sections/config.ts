@@ -1,26 +1,22 @@
-import type { TabId } from '@/components/settings/types';
+import type { TabId, SectionId } from '@/components/settings/types';
 
 export const TAB_LIST: ReadonlyArray<{ id: TabId; label: string }> = [
-  { id: 'models', label: 'Models' },
+  { id: 'models-routing', label: 'Models & Routing' },
   { id: 'chat', label: 'Chat' },
   { id: 'tutor', label: 'Tutor' },
-  { id: 'display', label: 'Display' },
-  { id: 'privacy', label: 'Privacy' },
-  { id: 'data', label: 'Data' },
-  { id: 'labs', label: 'Labs' },
+  { id: 'appearance', label: 'Appearance' },
+  { id: 'advanced', label: 'Advanced' },
 ];
 
-export const TAB_SECTIONS: Record<TabId, string[]> = {
-  models: ['models', 'web-search', 'routing'],
+export const TAB_SECTIONS: Record<TabId, SectionId[]> = {
+  'models-routing': ['models', 'web-search', 'routing'],
   chat: ['general', 'generation', 'reasoning'],
   tutor: ['tutor'],
-  display: ['display', 'debug'],
-  privacy: ['privacy'],
-  data: ['data'],
-  labs: ['experimental'],
+  appearance: ['display', 'theme', 'privacy'],
+  advanced: ['data', 'experimental', 'usage-stats'],
 };
 
-export const SECTION_TITLES: Record<string, string> = {
+export const SECTION_TITLES: Record<SectionId, string> = {
   models: 'Models',
   'web-search': 'Web Search',
   routing: 'Routing',
@@ -29,8 +25,9 @@ export const SECTION_TITLES: Record<string, string> = {
   reasoning: 'Reasoning',
   tutor: 'Tutor',
   display: 'Display',
-  debug: 'Debug',
+  theme: 'Theme',
   privacy: 'Privacy',
   data: 'Data',
   experimental: 'Experimental',
+  'usage-stats': 'Usage Statistics',
 };

@@ -44,4 +44,294 @@
     font-size: 1.08rem;
     padding: 0 var(--space-6);
   }
+
+  /* Collapsible Section */
+  .collapsible-section {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .collapsible-section:last-child {
+    border-bottom: none;
+  }
+
+  .collapsible-section-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: var(--space-3) 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: var(--color-fg);
+  }
+
+  .collapsible-section-trigger:hover {
+    color: var(--color-accent);
+  }
+
+  .collapsible-section-trigger:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+    border-radius: var(--radius-sm);
+  }
+
+  .collapsible-section-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .collapsible-section-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-fg-muted);
+  }
+
+  .collapsible-section-content {
+    overflow: hidden;
+  }
+
+  .collapsible-section-inner {
+    padding-bottom: var(--space-4);
+  }
+
+  /* Settings Sidebar Navigation */
+  .settings-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .settings-sidebar-item {
+    display: block;
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    text-align: left;
+    font-size: 0.9375rem;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+
+  .settings-sidebar-item:hover {
+    background: var(--color-muted);
+    color: var(--color-fg);
+  }
+
+  .settings-sidebar-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  .settings-sidebar-item.is-active {
+    background: color-mix(in oklab, var(--color-accent) 12%, var(--color-muted));
+    color: var(--color-fg);
+    font-weight: 500;
+  }
+
+  .settings-sidebar-item.is-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    background: var(--color-accent);
+    border-radius: 0 2px 2px 0;
+  }
+
+  /* Settings Section (divider-based, not card-based) */
+  .settings-section {
+    padding: var(--space-4) 0;
+  }
+
+  .settings-section + .settings-section {
+    border-top: 1px solid var(--color-border);
+  }
+
+  .settings-section-header {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-fg-muted);
+    margin-bottom: var(--space-3);
+  }
+
+  .settings-section-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  /* Settings Row (label + control) */
+  .settings-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .settings-row-label {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .settings-row-label-text {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--color-fg);
+    line-height: 1.4;
+  }
+
+  .settings-row-label-description {
+    margin-top: var(--space-1);
+    font-size: 0.8125rem;
+    color: var(--color-fg-muted);
+    line-height: 1.5;
+  }
+
+  .settings-row-control {
+    flex-shrink: 0;
+  }
+
+  /* Minimal Input variant */
+  .input-minimal {
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    border-radius: 0;
+    background: transparent;
+    padding-left: 0;
+    padding-right: 0;
+    transition: border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .input-minimal:focus {
+    border-bottom-color: var(--color-accent);
+    box-shadow: none;
+    outline: none;
+  }
+
+  .input-minimal::placeholder {
+    color: var(--color-fg-muted);
+  }
+
+  /* Settings Search */
+  .settings-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    max-width: 280px;
+  }
+
+  .settings-search-icon {
+    position: absolute;
+    left: var(--space-3);
+    color: var(--color-fg-muted);
+    pointer-events: none;
+  }
+
+  .settings-search-input {
+    width: 100%;
+    height: var(--control-md);
+    padding-left: calc(var(--space-3) + 20px + var(--space-2));
+    padding-right: var(--space-3);
+    background: var(--color-muted);
+    border: 1px solid transparent;
+    border-radius: var(--radius-editorial);
+    font-size: 0.875rem;
+    color: var(--color-fg);
+    transition:
+      border-color var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .settings-search-input:focus {
+    outline: none;
+    background: var(--color-surface);
+    border-color: var(--color-border);
+  }
+
+  .settings-search-input::placeholder {
+    color: var(--color-fg-muted);
+  }
+
+  .settings-search-clear {
+    position: absolute;
+    right: var(--space-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+  }
+
+  .settings-search-clear:hover {
+    background: var(--color-muted);
+    color: var(--color-fg);
+  }
+
+  /* Auto-Save Toast */
+  .auto-save-toast {
+    position: fixed;
+    bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 9999px;
+    box-shadow: var(--shadow-2);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-fg);
+  }
+
+  .auto-save-toast--saving {
+    color: var(--color-fg-muted);
+  }
+
+  .auto-save-toast--saved {
+    color: var(--color-success);
+  }
+
+  .auto-save-toast--error {
+    color: var(--color-danger);
+  }
+
+  .auto-save-toast-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 }

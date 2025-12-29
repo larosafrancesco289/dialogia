@@ -43,7 +43,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
   return (
     <>
       {renderSection(
-        'models',
+        'models-routing',
         'models',
         <SettingsSection title="Models">
           <div className="space-y-3">
@@ -81,7 +81,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
       )}
 
       {renderSection(
-        'models',
+        'models-routing',
         'web-search',
         <SettingsSection title="Web Search">
           <div className="space-y-2">
@@ -124,7 +124,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
       )}
 
       {renderSection(
-        'models',
+        'models-routing',
         'routing',
         <SettingsSection title="Routing">
           <div className="space-y-2">
