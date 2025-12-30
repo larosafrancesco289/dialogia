@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
 import { jsonError, requireServerEnv, withTiming } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
+import { getServerTier } from '@/lib/auth/tierApiKey';
+import { canUseVoiceForTier } from '@/lib/auth/tierPolicy';
 
 export async function POST(request: Request) {
   return withTiming('xai-session', async () => {
+    // Tier check - only developer tier can use voice
+    const tier = await getServerTier();
+    if (!canUseVoiceForTier(tier)) {
+      return jsonError(403, 'feature_not_available', 'Voice mode is only available for developer tier');
+    }
+
     let apiKey: string;
     try {
       apiKey = requireServerEnv('XAI_API_KEY');

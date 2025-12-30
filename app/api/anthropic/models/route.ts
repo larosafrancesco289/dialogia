@@ -1,27 +1,10 @@
-import { NextRequest } from 'next/server';
-import { anthropicFetchModels } from '@/lib/api/anthropicClient';
-import { jsonError, requireServerEnv, withTiming } from '@/lib/server/route';
-import { getRequestOrigin, proxyJson, withProxyErrors } from '@/lib/server/proxy';
+import { jsonError } from '@/lib/server/route';
 
-export async function GET(req: NextRequest) {
-  return withTiming('anthropic-models', async () => {
-    const headerKey = req.headers.get('x-api-key') || undefined;
-    let apiKey = headerKey;
-    if (!apiKey) {
-      try {
-        apiKey = requireServerEnv('ANTHROPIC_API_KEY');
-      } catch {
-        apiKey = undefined;
-      }
-    }
-    if (!apiKey) {
-      return jsonError(500, 'missing_env', 'ANTHROPIC_API_KEY');
-    }
-    return withProxyErrors(async () => {
-      const res = await anthropicFetchModels(apiKey, {
-        origin: getRequestOrigin(req),
-      });
-      return proxyJson(res);
-    }, 'anthropic_proxy_error');
-  });
+// Anthropic API is currently disabled - code preserved for future re-enablement
+// To re-enable:
+// 1. Set NEXT_PUBLIC_USE_ANTHROPIC_PROXY=true and ANTHROPIC_API_KEY in Vercel
+// 2. Restore the original handler from git history
+
+export async function GET() {
+  return jsonError(503, 'provider_disabled', 'Anthropic API is currently unavailable');
 }
