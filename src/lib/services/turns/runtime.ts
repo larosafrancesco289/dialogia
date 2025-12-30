@@ -12,7 +12,7 @@ import type { ModelCapabilityFlags } from '@/lib/models';
 import type { Repository } from '@/lib/db/repository';
 import { getCookie } from '@/lib/auth/cookies.client';
 import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
-import { DEFAULT_FREE_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
+import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { ensureTutorDefaults } from '@/lib/agent/tutorFlow';
 import { createModelAuthResolver, type ModelAuth } from '@/lib/services/auth';
@@ -92,7 +92,7 @@ export const prepareSendRuntime = async ({
     )?.id;
     let resolvedTutorModelId = preferredTutorModelId;
     if (isFreeTier && resolvedTutorModelId && !FREE_MODEL_IDS.includes(resolvedTutorModelId)) {
-      resolvedTutorModelId = freeFallbackFromIndex ?? DEFAULT_FREE_MODEL_ID;
+      resolvedTutorModelId = freeFallbackFromIndex ?? DEFAULT_FREE_TUTOR_MODEL_ID;
     }
     if (
       modelIndex.all.length > 0 &&

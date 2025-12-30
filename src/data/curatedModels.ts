@@ -36,9 +36,9 @@ export const CURATED_MODELS: CuratedModel[] = [
   DEFAULT_CHAT_MODEL,
   DEFAULT_TUTOR_MODEL,
   {
-    id: 'anthropic/claude-opus-4.5',
-    name: 'Claude Opus 4.5',
-    description: 'Excellent for coding, creativity, and complex reasoning',
+    id: 'minimax/minimax-m2.1',
+    name: 'Minimax M2.1',
+    description: 'Strong coding and reasoning capabilities',
     Icon: CodeBracketIcon,
   },
   {
