@@ -6,13 +6,17 @@ import { computeSecretFingerprintNode } from '@/lib/auth/fingerprint.node';
 import { jsonError, withTiming } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
 import { isProd } from '@/lib/env/runtime';
+import { rateLimit, RATE_LIMITS } from '@/lib/server/rateLimit';
 
 /**
  * Sets the free tier for users who want to access without a code.
  * Creates an auth token with tier='free' which limits access to free models only.
  */
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   return withTiming('auth-set-free-tier', async () => {
+    // Rate limiting - strict limit for auth routes
+    const rateLimitResponse = rateLimit(req, 'auth-free', RATE_LIMITS.AUTH_STRICT);
+    if (rateLimitResponse) return rateLimitResponse;
     try {
       const now = Date.now();
       const claims: AuthClaims = {

@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runWebSearch } from '@/lib/deepResearch/tools';
 import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
 import { jsonError, withTiming } from '@/lib/server/route';
+import { getServerTier } from '@/lib/auth/tierApiKey';
+import { rateLimit, RATE_LIMITS } from '@/lib/server/rateLimit';
 
 export async function GET(req: NextRequest) {
   return withTiming('brave-search', async () => {
+    // Rate limiting
+    const rateLimitResponse = rateLimit(req, 'brave', RATE_LIMITS.STANDARD);
+    if (rateLimitResponse) return rateLimitResponse;
+
+    // Tier check - block free tier
+    const tier = await getServerTier();
+    if (tier === 'free') {
+      return jsonError(403, 'feature_not_available', 'Web search is not available on the free tier');
+    }
+
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get('q') || '').trim();
     const rawCount = searchParams.get('count');

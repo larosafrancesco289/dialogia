@@ -4,9 +4,21 @@ import { ProviderSort } from '@/lib/models/providerSort';
 import { createNdjsonStream } from '@/lib/server/ndjson';
 import { jsonError, requireServerEnv, withTiming } from '@/lib/server/route';
 import { isRecord } from '@/lib/utils/guards';
+import { getServerTier } from '@/lib/auth/tierApiKey';
+import { rateLimit, RATE_LIMITS } from '@/lib/server/rateLimit';
 
 export async function POST(req: NextRequest) {
   return withTiming('deep-research', async () => {
+    // Rate limiting
+    const rateLimitResponse = rateLimit(req, 'deep-research', RATE_LIMITS.EXPENSIVE);
+    if (rateLimitResponse) return rateLimitResponse;
+
+    // Tier check - block free tier
+    const tier = await getServerTier();
+    if (tier === 'free') {
+      return jsonError(403, 'feature_not_available', 'Deep research is not available on the free tier');
+    }
+
     let apiKey: string;
     try {
       apiKey = requireServerEnv('OPENROUTER_API_KEY');

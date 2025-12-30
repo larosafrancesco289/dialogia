@@ -17,9 +17,14 @@ import { jsonAuthError } from '@/lib/auth/errors';
 import { withTiming } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
 import { isProd } from '@/lib/env/runtime';
+import { rateLimit, RATE_LIMITS } from '@/lib/server/rateLimit';
 
 export async function POST(req: NextRequest) {
   return withTiming('auth-verify-code', async () => {
+    // Rate limiting for code verification attempts
+    const rateLimitResponse = rateLimit(req, 'auth-verify', RATE_LIMITS.AUTH);
+    if (rateLimitResponse) return rateLimitResponse;
+
     try {
       const { code } = (await req.json()) as { code?: string };
       const plain = String(code || '').trim();
