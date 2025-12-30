@@ -1,0 +1,289 @@
+/* MobileFreeTierBanner.module.css
+ * Mobile-optimized styling for the free tier access code banner.
+ * Features a compact pill when collapsed and a touch-friendly expanded form.
+ */
+
+/* Collapsed state - Floating pill */
+.collapsedPill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--rule-accent);
+  border-radius: 100px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--color-muted) 80%, var(--color-accent)),
+    color-mix(in oklab, var(--color-muted) 90%, transparent)
+  );
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+:global(.dark) .collapsedPill {
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--color-muted) 90%, var(--color-accent)),
+    var(--color-muted)
+  );
+}
+
+.collapsedPill:active {
+  transform: scale(0.98);
+}
+
+.pillIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-accent);
+}
+
+.pillText {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-fg-muted);
+}
+
+/* Expanded state - Full width banner */
+.expandedBanner {
+  overflow: hidden;
+  border-bottom: 1px solid var(--rule-accent);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--color-muted) 70%, var(--color-accent) 5%),
+    var(--color-muted)
+  );
+}
+
+:global(.dark) .expandedBanner {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--color-muted) 85%, var(--color-accent) 8%),
+    var(--color-muted)
+  );
+}
+
+.bannerContent {
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.headerIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-editorial-mobile);
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--color-accent) 25%, transparent),
+    color-mix(in oklab, var(--color-accent) 12%, transparent)
+  );
+  color: var(--color-accent);
+}
+
+.headerIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.title {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.subtitle {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  color: var(--color-fg-muted);
+}
+
+.closeButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  border: none;
+  border-radius: var(--radius-editorial-mobile);
+  background: transparent;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.closeButton:active {
+  background: color-mix(in oklab, var(--color-fg) 8%, transparent);
+}
+
+.closeButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.input {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-editorial-mobile);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+  color: var(--color-fg);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.input::placeholder {
+  font-family: var(--font-sans);
+  letter-spacing: normal;
+  color: var(--color-fg-muted);
+  opacity: 0.5;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.input:disabled {
+  opacity: 0.6;
+}
+
+.submitButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: none;
+  border-radius: var(--radius-editorial-mobile);
+  background: linear-gradient(
+    135deg,
+    var(--color-accent),
+    color-mix(in oklab, var(--color-accent) 85%, #000)
+  );
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+:global(.dark) .submitButton {
+  color: var(--color-canvas);
+}
+
+.submitButton:active:not(:disabled) {
+  opacity: 0.9;
+}
+
+.submitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.arrowIcon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Loading dots */
+.loadingDots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.loadingDots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: mobilePulse 1.2s ease-in-out infinite;
+}
+
+.loadingDots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loadingDots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes mobilePulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Error */
+.error {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  color: var(--color-danger);
+  text-align: center;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .collapsedPill,
+  .submitButton {
+    transition: none;
+  }
+
+  .loadingDots span {
+    animation: none;
+    opacity: 0.6;
+  }
+}

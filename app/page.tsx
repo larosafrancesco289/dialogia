@@ -5,6 +5,7 @@ import { ChatPane } from '@/components/chat/ChatPane';
 import { TopHeader } from '@/components/TopHeader';
 import { MobileHeader } from '@/components/MobileHeader';
 import { MobileShell } from '@/components/mobile/MobileShell';
+import { FreeTierBanner } from '@/components/FreeTierBanner';
 const SettingsDrawer = dynamic(
   () =>
     import(/* webpackPrefetch: true */ '@/components/settings/SettingsDrawer').then(
@@ -88,6 +89,7 @@ export default function HomePage() {
       </aside>
       <main className="content">
         {isMobile ? <MobileHeader /> : <TopHeader />}
+        <FreeTierBanner />
         <div className="flex-1 min-h-0">
           <ChatPane />
         </div>

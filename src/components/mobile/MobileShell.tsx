@@ -9,6 +9,7 @@ import { MobileBottomTabBar } from '@/components/mobile/MobileBottomTabBar';
 import { MobileCollapsingHeader } from '@/components/mobile/MobileCollapsingHeader';
 import { MobileChatsSheet } from '@/components/mobile/MobileChatsSheet';
 import { MobileWarningBanner } from '@/components/mobile/MobileWarningBanner';
+import { MobileFreeTierBanner } from '@/components/mobile/MobileFreeTierBanner';
 import { initializeTheme } from '@/components/ThemeToggle';
 import dynamic from 'next/dynamic';
 import styles from './MobileShell.module.css';
@@ -58,6 +59,9 @@ export function MobileShell() {
     <div className={styles.shell}>
       {/* Mobile Warning Banner */}
       <MobileWarningBanner />
+
+      {/* Free Tier Access Code Banner */}
+      <MobileFreeTierBanner />
 
       {/* Collapsing Header */}
       <MobileCollapsingHeader />
