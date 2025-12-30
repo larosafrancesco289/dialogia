@@ -9,6 +9,8 @@ import { findModelById, formatModelLabel } from '@/lib/models';
 import { ModelPicker } from '@/components/ModelPicker';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
+import { useTier } from '@/lib/auth/tierContext';
+import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
 import styles from './MobileCollapsingHeader.module.css';
 
 /**
@@ -19,6 +21,8 @@ import styles from './MobileCollapsingHeader.module.css';
  * - Model picker or Tutor badge
  */
 export function MobileCollapsingHeader() {
+  const { isFreeTier } = useTier();
+
   const { chats, selectedChatId, models, headerVisible, isStreaming } = useChatStore(
     (s) => ({
       chats: s.chats,
@@ -40,8 +44,15 @@ export function MobileCollapsingHeader() {
     ? isTutorRuntimeEnabled(uiState, chat)
     : experimentalTutor && forceTutorMode;
 
-  const tutorModelId =
+  // Resolve tutor model with tier awareness
+  const rawTutorModelId =
     chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
+  const tutorModelId = useMemo(() => {
+    if (isFreeTier && rawTutorModelId && !FREE_MODEL_IDS.includes(rawTutorModelId)) {
+      return DEFAULT_FREE_TUTOR_MODEL_ID;
+    }
+    return rawTutorModelId;
+  }, [isFreeTier, rawTutorModelId]);
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(
     () =>

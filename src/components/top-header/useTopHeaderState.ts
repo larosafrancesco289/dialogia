@@ -7,6 +7,8 @@ import { getBreadcrumbPath, getMilestones } from '@/lib/learningPlan/breadcrumb'
 import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { selectCurrentChat, selectMessagesForCurrentChat } from '@/lib/store/selectors';
+import { useTier } from '@/lib/auth/tierContext';
+import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
 import type { UiNextOverrides, UiPlanSnapshot } from '@/lib/contracts/ui';
 import type { Chat, LearnerModel, LearningPlan, LearningPlanNode } from '@/lib/types';
 
@@ -58,6 +60,8 @@ export type TopHeaderState = {
 };
 
 export function useTopHeaderState(): TopHeaderState {
+  const { isFreeTier } = useTier();
+
   const {
     chat,
     messages,
@@ -107,8 +111,16 @@ export function useTopHeaderState(): TopHeaderState {
   const tutorActive = chat
     ? isTutorRuntimeEnabled(uiSnapshot, chat)
     : experimentalTutor && (forceTutorMode || nextTutorMode);
-  const tutorModelId =
+  // Resolve tutor model with tier awareness
+  const rawTutorModelId =
     chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
+  const tutorModelId = useMemo(() => {
+    // If on free tier and the model isn't free, use the free tutor model
+    if (isFreeTier && rawTutorModelId && !FREE_MODEL_IDS.includes(rawTutorModelId)) {
+      return DEFAULT_FREE_TUTOR_MODEL_ID;
+    }
+    return rawTutorModelId;
+  }, [isFreeTier, rawTutorModelId]);
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(
     () =>
