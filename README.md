@@ -212,7 +212,7 @@ Progress indicators use color coding:
 
 - Framework: Next.js App Router (React 18)
 - State: Zustand with local persistence; Dexie for IndexedDB tables
-- API proxy: `/api/openrouter/*` for models/completions; `/api/brave` for web search
+- API proxy: `/api/openrouter/*` for models/completions; `/api/anthropic/*` for direct Anthropic; `/api/brave` for web search; `/api/xai/session` for X.AI voice
 - Markdown: `react-markdown` + GFM, Prism, KaTeX, Mermaid
 - Styles: Tailwind v4 base + `styles/foundations.css` tokens; `app/globals.css` layout
 - Agent services: `src/lib/agent/request.ts`, `searchFlow.ts`, and `tutorFlow.ts` centralize request building, web search orchestration, and tutor memory composition for slices.

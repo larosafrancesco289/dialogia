@@ -2,7 +2,7 @@
 
 This guide lists required and optional environment variables, how proxy mode works, and the
 recommended defaults for development versus production.
-For architectural context and refactor phases, see `REFACTOR_PLAN.md`.
+For architectural context, see `ARCHITECTURE.md`.
 
 ## Environment Files
 
@@ -33,6 +33,7 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
 - `NEXT_PUBLIC_ANTHROPIC_API_KEY` — client-side Anthropic key (local-only). Avoid in shared builds.
 - `ANTHROPIC_API_KEY` — server-side key for Anthropic when proxying requests through Next.js.
 - `BRAVE_SEARCH_API_KEY` — enables the Brave Search tool. Used only on the server.
+- `XAI_API_KEY` — server-side key for X.AI (Grok) voice sessions via `/api/xai/session`.
 - `DEEP_RESEARCH_REASONING_ONLY` — defaults to `true`. Forces the DeepResearch agent to pick models
   that advertise reasoning support; set to `false` to allow experimental providers during testing.
   DeepResearch always executes with the server-side `OPENROUTER_API_KEY`.

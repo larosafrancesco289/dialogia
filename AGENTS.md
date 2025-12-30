@@ -8,7 +8,7 @@
 - Styles in `styles/`.
 - Tests in `tests/` and colocated `src/**/*.test.ts(x)`.
 - Path aliases: `@/components/*`, `@/lib/*`, `@/data/*` (see `tsconfig.json`).
-- API proxy routes under `app/api/*` (OpenRouter, Brave). See ARCHITECTURE.md.
+- API proxy routes under `app/api/*` (OpenRouter, Anthropic, Brave, X.AI, auth, deep-research). See ARCHITECTURE.md.
 
 ## Build, Test, and Development Commands
 
@@ -19,6 +19,9 @@
 - Tests: `bun run test` (tsx test runner over `tests/**/*.test.ts` and `src/**/*.test.ts`).
 - Type check: `bun run lint:types`.
 - Format: `bun run format` (Prettier).
+- CI: `scripts/ci.sh` (runs lint:types, test, format).
+- Tutor simulation: `bun run tutor:simulate` (headless tutor pipeline).
+- Ablation: `bun run ablation` (evaluation script).
 
 ## Coding Style & Naming Conventions
 

@@ -6,7 +6,6 @@ business logic that is easy to test.
 
 ## Architecture Quickstart
 
-- Start with the refactor roadmap in `REFACTOR_PLAN.md` for module boundaries and planned changes.
 - Golden path guide: `docs/GOLDEN_PATH.md` for common extension workflows.
 - Key entrypoints: `src/lib/store/index.ts` (state composition), `src/lib/services/turns.ts`
   (send/regenerate flow), `src/lib/agent/compose.ts` (message assembly), and
@@ -16,7 +15,6 @@ business logic that is easy to test.
 
 ## Refactor Invariants
 
-- `REFACTOR_PLAN.md` is the roadmap; keep new changes aligned with its boundaries and sequencing.
 - ESLint enforces layer boundaries via `no-restricted-imports` in `eslint.config.js`:
   - DB (`src/lib/db/**`) cannot import agent/store/components.
   - Agent (`src/lib/agent/**`) cannot import UI components.
@@ -50,8 +48,9 @@ business logic that is easy to test.
     `src/lib/policy/zdr/index.ts` re-exporting helpers (`computeZdrFilter`,
     `computeZdrFilterCached`, `guardZdrOrNotifyCached`) so services can rely on a single façade.
 - **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Anthropic routes in
-  `app/api/anthropic/*`, Brave search proxy in `app/api/brave/route.ts`, and any additional
-  integrations. These never import UI modules.
+  `app/api/anthropic/*`, Brave search proxy in `app/api/brave/route.ts`, X.AI voice session in
+  `app/api/xai/session/route.ts`, DeepResearch in `app/api/deep-research/route.ts`, and auth routes
+  in `app/api/auth/*`. These never import UI modules.
 
 ## Module Boundaries
 
