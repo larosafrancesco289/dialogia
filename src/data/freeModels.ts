@@ -68,6 +68,19 @@ export const FREE_CURATED_MODELS: FreeCuratedModel[] = [
 export const DEFAULT_FREE_MODEL_ID = DEFAULT_FREE_MODEL.id;
 
 /**
+ * Default tutor model for free tier users.
+ * OLMo 3.1 32B Think has strong reasoning capabilities suitable for tutoring.
+ */
+export const DEFAULT_FREE_TUTOR_MODEL: FreeCuratedModel = {
+  id: 'allenai/olmo-3.1-32b-think:free',
+  name: 'OLMo 3.1 32B Think',
+  description: 'Strong reasoning with extended thinking capabilities',
+  Icon: SparklesIcon,
+};
+
+export const DEFAULT_FREE_TUTOR_MODEL_ID = DEFAULT_FREE_TUTOR_MODEL.id;
+
+/**
  * Check if a model ID is a free model.
  */
 export function isFreeModel(modelId: string): boolean {
