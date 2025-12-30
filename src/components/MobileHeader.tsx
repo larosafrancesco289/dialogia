@@ -17,8 +17,12 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { readNextOverrides } from '@/lib/ui/next';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
+import { useTier } from '@/lib/auth/tierContext';
+import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
 
 export function MobileHeader() {
+  const { isFreeTier } = useTier();
+
   const { chats, selectedChatId, renameChat, newChat, setUI, updateChatSettings } = useChatStore(
     (state) => ({
       chats: state.chats,
@@ -41,8 +45,15 @@ export function MobileHeader() {
   const tutorActive = chat
     ? isTutorRuntimeEnabled(uiState, chat)
     : experimentalTutor && (forceTutorMode || nextTutorMode);
-  const tutorModelId =
+  // Resolve tutor model with tier awareness
+  const rawTutorModelId =
     chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
+  const tutorModelId = useMemo(() => {
+    if (isFreeTier && rawTutorModelId && !FREE_MODEL_IDS.includes(rawTutorModelId)) {
+      return DEFAULT_FREE_TUTOR_MODEL_ID;
+    }
+    return rawTutorModelId;
+  }, [isFreeTier, rawTutorModelId]);
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(
     () =>
