@@ -4,15 +4,18 @@ import { useChatStore } from '@/lib/store';
 import { Composer } from '@/components/chat/Composer';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 import { readNextOverrides } from '@/lib/ui/next';
+import { useIsStudyTier } from '@/lib/auth/tierContext';
 import styles from './WelcomeHero.module.css';
 
 export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetrics }) {
   const setUI = useChatStore((s) => s.setUI);
   const ui = useChatStore((s) => s.ui);
+  const isStudyTier = useIsStudyTier();
   const experimentalTutor = !!ui.flags.experimentalTutor;
   const forceTutorMode = !!ui.tutor.forceMode;
   const nextTutorMode = !!readNextOverrides(ui).tutorMode;
-  const tutorActive = experimentalTutor && (forceTutorMode || nextTutorMode);
+  // Study tier always has tutor mode active
+  const tutorActive = isStudyTier || (experimentalTutor && (forceTutorMode || nextTutorMode));
 
   const quickStartPhrases = tutorActive
     ? ['Quiz me on...', 'Help me understand...', 'Walk me through...']

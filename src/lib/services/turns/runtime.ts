@@ -34,6 +34,7 @@ export type SendRuntime = {
   ui: UiSnapshot;
   next: UiNextOverrides;
   tutorEnabled: boolean;
+  tier: 'free' | 'individual' | 'developer' | 'study';
   activeModelIds: string[];
   primaryModelId?: string;
   priorMessages: Message[];
@@ -61,7 +62,12 @@ export const prepareSendRuntime = async ({
   const ui = get().ui;
   const modelIndex = get().modelIndex;
   const next = readNextOverrides(ui);
-  const tutorEnabled = isTutorRuntimeEnabled(ui, chat);
+  const tierCookie = getCookie(TIER_COOKIE_NAME);
+  const tier =
+    tierCookie === 'developer' || tierCookie === 'individual' || tierCookie === 'study'
+      ? tierCookie
+      : 'free';
+  const tutorEnabled = isTutorRuntimeEnabled(ui, chat, tier);
   let tutorDefaultModelId = selectTutorDefaultModelId(ui, chat, DEFAULT_TUTOR_MODEL_ID);
 
   if (tutorEnabled) {
@@ -85,8 +91,8 @@ export const prepareSendRuntime = async ({
       chat.settings.tutor_default_model ||
       tutorDefaultModelId ||
       DEFAULT_TUTOR_MODEL_ID;
-    const tierCookie = getCookie(TIER_COOKIE_NAME);
-    const isFreeTier = tierCookie !== 'developer' && tierCookie !== 'individual';
+    // Study tier should use the standard tutor model, not the free model
+    const isFreeTier = tier === 'free';
     const freeFallbackFromIndex = modelIndex.all.find((model) =>
       FREE_MODEL_IDS.includes(model.id),
     )?.id;
@@ -188,6 +194,7 @@ export const prepareSendRuntime = async ({
     ui,
     next,
     tutorEnabled,
+    tier,
     activeModelIds,
     primaryModelId: activeModelIds[0],
     priorMessages: get().messages[chatId] ?? [],

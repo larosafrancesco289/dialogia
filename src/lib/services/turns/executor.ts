@@ -98,6 +98,7 @@ export const executeModelTurn = async ({
       ui: runtime.ui,
       modelIndex: baseTurnContext.modelIndex,
       modelId,
+      tier: runtime.tier,
     });
 
     const runResult = await runTurn({

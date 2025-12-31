@@ -11,9 +11,9 @@ import { getCookie } from '@/lib/auth/cookies.client';
 import { ensureHiddenTutorContent } from '@/lib/services/messagePersistence';
 
 // Read tier from cookie on client side
-function getClientTier(): 'free' | 'individual' | 'developer' {
+function getClientTier(): 'free' | 'individual' | 'developer' | 'study' {
   const tier = getCookie(TIER_COOKIE_NAME);
-  if (tier === 'developer' || tier === 'individual' || tier === 'free') {
+  if (tier === 'developer' || tier === 'individual' || tier === 'free' || tier === 'study') {
     return tier;
   }
   return 'free';
@@ -22,6 +22,7 @@ function getClientTier(): 'free' | 'individual' | 'developer' {
 // Get the appropriate default model based on tier
 function getTierDefaultModelId(): string {
   const tier = getClientTier();
+  // Study tier should use the standard model, not the free model
   return tier === 'free' ? DEFAULT_FREE_MODEL_ID : DEFAULT_MODEL_ID;
 }
 
@@ -56,7 +57,9 @@ export class ChatService {
 
     const tutorEnabledGlobally = !!ui.flags.experimentalTutor;
     const braveEnabled = !!ui.flags.experimentalBrave;
-    const forceTutorMode = !!(ui.tutor.forceMode ?? false);
+    // Study tier always has tutor mode forced
+    const isStudyTier = getClientTier() === 'study';
+    const forceTutorMode = isStudyTier || !!(ui.tutor.forceMode ?? false);
 
     const baseSettings = resolveNewChatSettings({
       ui,

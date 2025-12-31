@@ -14,6 +14,9 @@ import { processPlanProgress } from '@/lib/learningPlan/service';
 import { readNextOverrides } from '@/lib/ui/next';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
+import { getCookie } from '@/lib/auth/cookies.client';
+import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
+import type { AccessTier } from '@/lib/auth/types';
 
 type McqAttempts = NonNullable<MessageTutor['attempts']>['mcq'];
 type FillBlankAttempts = NonNullable<MessageTutor['attempts']>['fillBlank'];
@@ -125,7 +128,12 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
       if (!id) return undefined;
       const state = get();
       const chat = state.chats.find((c) => c.id === id);
-      const tutorEnabled = chat ? isTutorRuntimeEnabled(state.ui, chat) : false;
+      const tierCookie = getCookie(TIER_COOKIE_NAME);
+      const tier: AccessTier =
+        tierCookie === 'developer' || tierCookie === 'individual' || tierCookie === 'study'
+          ? tierCookie
+          : 'free';
+      const tutorEnabled = chat ? isTutorRuntimeEnabled(state.ui, chat, tier) : false;
       if (!chat || !tutorEnabled) {
         set((s) => ({
           ui: {

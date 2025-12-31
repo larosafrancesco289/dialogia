@@ -10,6 +10,9 @@ import { streamFinal } from '@/lib/agent/streaming';
 import { setTurnController } from '@/lib/services/controllers';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
+import { getCookie } from '@/lib/auth/cookies.client';
+import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
+import type { AccessTier } from '@/lib/auth/types';
 
 export async function regenerate(opts: RegenerateOptions): Promise<void> {
   const { chat, chatId, targetMessageId, messages, turn, controller, overrideModelId } = opts;
@@ -170,11 +173,17 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   const chatForStream: Chat = { ...chat, settings: nextSettings };
 
   const uiSnapshot = turn.get().ui;
+  const tierCookie = getCookie(TIER_COOKIE_NAME);
+  const tier: AccessTier =
+    tierCookie === 'developer' || tierCookie === 'individual' || tierCookie === 'study'
+      ? tierCookie
+      : 'free';
   const settings = resolveTurnSettings({
     chat: chatForStream,
     ui: { ...uiSnapshot, overrides: undefined },
     modelIndex,
     modelId: modelIdForTurn,
+    tier,
   });
   settings.generation.providerSort = providerSort;
 

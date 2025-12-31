@@ -8,6 +8,8 @@ import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { bootstrapApp } from '@/lib/services/bootstrap';
 import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { Chat } from '@/lib/types';
+import { getCookie } from '@/lib/auth/cookies.client';
+import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
 
 export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
   return {
@@ -94,7 +96,10 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       if (!before) return;
 
       const uiState = get().ui;
-      const forceTutorMode = !!(uiState.tutor.forceMode ?? false);
+      // Study tier always has tutor mode forced
+      const tierCookie = getCookie(TIER_COOKIE_NAME);
+      const isStudyTier = tierCookie === 'study';
+      const forceTutorMode = isStudyTier || !!(uiState.tutor.forceMode ?? false);
       let appliedPartial = { ...partial } as Partial<Chat['settings']>;
 
       if (Array.isArray(appliedPartial.parallel_models)) {
