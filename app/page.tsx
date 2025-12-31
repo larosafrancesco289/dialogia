@@ -17,11 +17,13 @@ const GlobalNotice = dynamic(
   () => import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
   { ssr: false },
 );
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useSidebarGestures } from '@/lib/hooks/useSidebarGestures';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { motion } from 'framer-motion';
+import { springs } from '@/lib/mobile/springConfig';
 
 export default function HomePage() {
   const initialize = useChatStore((s) => s.initializeApp);
@@ -70,23 +72,30 @@ export default function HomePage() {
     return () => clearTimeout(tid);
   }, []);
 
-  const sidebarStyle = {
-    '--sidebar-width': collapsed ? '0px' : '320px',
-  } as CSSProperties;
-
   // Render mobile shell for small screens
   if (mounted && isMobile) {
     return <MobileShell />;
   }
 
   return (
-    <div className="app-shell" style={sidebarStyle}>
-      {/* Sidebar column (hidden via CSS on small screens) */}
-      <aside
-        className={`sidebar ${collapsed ? '' : 'glass-panel border border-border rounded-2xl p-2'}`}
+    <div className="app-shell">
+      {/* Sidebar column - uses translateX for GPU-accelerated smoothness */}
+      <motion.div
+        className="sidebar-slot"
+        initial={false}
+        animate={{ width: collapsed ? 0 : 320 }}
+        transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
-        {!collapsed && <ChatSidebar />}
-      </aside>
+        <motion.aside
+          className="sidebar glass-panel border border-border rounded-2xl p-2"
+          initial={false}
+          animate={{ x: collapsed ? -320 : 0 }}
+          transition={springs.smooth}
+          style={{ width: 320 }}
+        >
+          <ChatSidebar />
+        </motion.aside>
+      </motion.div>
       <main className="content">
         {isMobile ? <MobileHeader /> : <TopHeader />}
         <FreeTierBanner />
