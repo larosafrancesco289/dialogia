@@ -21,7 +21,7 @@ import { useTier } from '@/lib/auth/tierContext';
 import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
 
 export function MobileHeader() {
-  const { isFreeTier } = useTier();
+  const { isFreeTier, isStudyTier, tier } = useTier();
 
   const { chats, selectedChatId, renameChat, newChat, setUI, updateChatSettings } = useChatStore(
     (state) => ({
@@ -43,8 +43,8 @@ export function MobileHeader() {
   const tutorDefaultModelId = uiState.tutor.defaultModelId;
   const models = useChatStore((s) => s.models);
   const tutorActive = chat
-    ? isTutorRuntimeEnabled(uiState, chat)
-    : experimentalTutor && (forceTutorMode || nextTutorMode);
+    ? isTutorRuntimeEnabled(uiState, chat, tier)
+    : isStudyTier || (experimentalTutor && (forceTutorMode || nextTutorMode));
   // Resolve tutor model with tier awareness
   const rawTutorModelId =
     chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
@@ -144,7 +144,8 @@ export function MobileHeader() {
             <ModelPicker variant="sheet" className="mobile-model-trigger" />
           )}
         </div>
-        {experimentalTutor && (
+        {/* Tutor toggle (hidden for study tier - tutor is always forced) */}
+        {experimentalTutor && !isStudyTier && (
           <button
             className={`icon-button ${tutorActive ? 'text-primary' : ''}`}
             aria-pressed={tutorActive}

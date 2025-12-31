@@ -10,6 +10,7 @@ import {
 import type { ModelDescriptor } from '@/lib/types';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
 import { findModelById } from '@/lib/models';
+import { useIsStudyTier } from '@/lib/auth/tierContext';
 
 type ComposerChipsProps = {
   tutorEnabled: boolean;
@@ -42,6 +43,7 @@ export function ComposerChips({
   supportsReasoning,
   currentEffort,
 }: ComposerChipsProps) {
+  const isStudyTier = useIsStudyTier();
   const modelName = tutorEnabled ? 'Tutor' : findModelById(models, modelId)?.name || modelId;
   const effortLabel =
     currentEffort && currentEffort !== 'none'
@@ -87,15 +89,18 @@ export function ComposerChips({
           <MicrophoneIcon className="h-3.5 w-3.5" />
         </span>
       )}
-      <button
-        className="badge flex items-center gap-1"
-        title={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} web search for next message`}
-        onClick={toggleSearch}
-        aria-pressed={searchEnabled}
-      >
-        <MagnifyingGlassIcon className="h-3.5 w-3.5" />
-        {(searchProvider === 'openrouter' ? 'OR' : 'Brave') + ' ' + (searchEnabled ? 'On' : 'Off')}
-      </button>
+      {/* Search toggle — hidden for study tier */}
+      {!isStudyTier && (
+        <button
+          className="badge flex items-center gap-1"
+          title={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} web search for next message`}
+          onClick={toggleSearch}
+          aria-pressed={searchEnabled}
+        >
+          <MagnifyingGlassIcon className="h-3.5 w-3.5" />
+          {(searchProvider === 'openrouter' ? 'OR' : 'Brave') + ' ' + (searchEnabled ? 'On' : 'Off')}
+        </button>
+      )}
       {!tutorEnabled && supportsReasoning && effortLabel && (
         <span
           className="badge flex items-center gap-1"

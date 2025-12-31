@@ -47,8 +47,21 @@ export function getDeveloperCodeHashes(): string[] {
     .map((segment) => segment.toLowerCase());
 }
 
+export function getStudyCodeHashes(): string[] {
+  const raw = readEnvValue(process.env.ACCESS_CODES_STUDY_HASHED) || '';
+  return raw
+    .split(',')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .map((segment) => segment.toLowerCase());
+}
+
 export function hasTieredCodesConfigured(): boolean {
-  return getIndividualCodeHashes().length > 0 || getDeveloperCodeHashes().length > 0;
+  return (
+    getIndividualCodeHashes().length > 0 ||
+    getDeveloperCodeHashes().length > 0 ||
+    getStudyCodeHashes().length > 0
+  );
 }
 
 export function getAccessCookieDomain(): string | undefined {

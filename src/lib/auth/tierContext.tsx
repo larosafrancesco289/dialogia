@@ -12,6 +12,7 @@ interface TierContextValue {
   isFreeTier: boolean;
   isIndividualTier: boolean;
   isDeveloperTier: boolean;
+  isStudyTier: boolean;
   canUseVoice: boolean;
   canUseAllModels: boolean;
 }
@@ -22,11 +23,12 @@ const TierContext = createContext<TierContextValue>({
   isFreeTier: true,
   isIndividualTier: false,
   isDeveloperTier: false,
+  isStudyTier: false,
   ...getTierPolicy('free'),
 });
 
 function isValidTier(value: string | null): value is AccessTier {
-  return value === 'free' || value === 'individual' || value === 'developer';
+  return value === 'free' || value === 'individual' || value === 'developer' || value === 'study';
 }
 
 export function TierProvider({ children }: { children: ReactNode }) {
@@ -62,6 +64,7 @@ export function TierProvider({ children }: { children: ReactNode }) {
     isFreeTier: tier === 'free',
     isIndividualTier: tier === 'individual',
     isDeveloperTier: tier === 'developer',
+    isStudyTier: tier === 'study',
     ...getTierPolicy(tier),
   };
 
@@ -88,4 +91,13 @@ export function useCanUseAllModels(): boolean {
   const { canUseAllModels, isLoading } = useTier();
   // Default to false while loading
   return isLoading ? false : canUseAllModels;
+}
+
+/**
+ * Hook that returns true if user is in the study tier (user study participant).
+ */
+export function useIsStudyTier(): boolean {
+  const { isStudyTier, isLoading } = useTier();
+  // Default to false while loading
+  return isLoading ? false : isStudyTier;
 }
