@@ -4,6 +4,7 @@ import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import type { TutorPlanProposal, TutorPlanSuggestion } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
 import { getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
+import { initializeLearnerModel, syncLearnerModelWithPlan } from '@/lib/agent/learnerModel';
 import { PlanSuggestionsCard } from '@/components/message/tutor/PlanSuggestionsCard';
 import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
 
@@ -58,10 +59,18 @@ export function PlanProposalCard({
         const firstReady = getNextNode(adoptedPlan) || adoptedPlan.nodes[0];
         adoptedPlan = updateNodeStatus(adoptedPlan, firstReady.id, 'in_progress');
       }
+      // Initialize or sync learner model with the plan
+      // If there's an existing model (plan update), sync it to preserve progress
+      // Otherwise (new plan), initialize fresh
+      const existingModel = chat.settings.learnerModel;
+      const learnerModel = existingModel
+        ? syncLearnerModelWithPlan(existingModel, adoptedPlan)
+        : initializeLearnerModel(chat.id, adoptedPlan);
       await updateChatSettings({
         learningPlan: adoptedPlan,
         planGenerated: true,
         enableLearnerModel: true,
+        learnerModel,
       });
       await applyProposalStatus('approved', { plan: adoptedPlan });
 

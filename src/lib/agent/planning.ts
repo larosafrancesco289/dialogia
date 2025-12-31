@@ -39,7 +39,6 @@ import { isTutorToolName } from '@/lib/agent/tools';
 import { getNextNode } from '@/lib/learningPlan/service';
 import type { Message } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
-import { autoUpdateLearnerModelFromTurn } from '@/lib/agent/learnerModel/autoUpdate';
 
 function filterAllowedToolsForPhase(args: {
   toolDefinition?: ToolDefinition[];
@@ -269,26 +268,16 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const searchEnabled = !!settings.generation.searchEnabled;
   const searchProvider = settings.generation.searchProvider || 'openrouter';
 
-  // Automatic Learner Model Update
-  // Analyze student response to update mastery before planning the next move
-  const learnerModelUpdate = await autoUpdateLearnerModelFromTurn({
-    chat,
-    chatId,
-    userContent,
-    messagesForChat,
-    currentPlan,
-    turn,
-    modelId: settings.modelId,
-  });
-  if (learnerModelUpdate.nextPlan) currentPlan = learnerModelUpdate.nextPlan;
+  // Learner model updates are now handled by the tutor via tool calls at meaningful moments,
+  // rather than automatically every turn. This reduces latency and API costs.
   let state: PlanningExecutionState = {
     aggregatedResults: [],
     usedTutorContentTool: false,
-    learnerModel: learnerModelUpdate.learnerModel,
-    planUpdates: learnerModelUpdate.planUpdates,
-    updatedPlan: learnerModelUpdate.updatedPlan,
+    learnerModel: undefined,
+    planUpdates: undefined,
+    updatedPlan: undefined,
     learnerModelDebug: undefined,
-    currentPlan: learnerModelUpdate.nextPlan ?? currentPlan,
+    currentPlan,
     toolsUsedThisTurn: 0,
     quizCallsThisTurn: 0,
   };
