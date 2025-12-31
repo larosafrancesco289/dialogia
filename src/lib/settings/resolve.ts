@@ -2,6 +2,7 @@ import type { Chat, ChatSettings, ModelDescriptor } from '@/lib/types';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelIndex, ModelCapabilityFlags } from '@/lib/models';
 import type { GenerationSettings } from '@/lib/settings/generation';
+import type { AccessTier } from '@/lib/auth/types';
 import { providerSortFromRoutePref, selectSearchProvider } from '@/lib/policy/provider';
 import { readNextOverrides } from '@/lib/ui/next';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
@@ -109,8 +110,9 @@ export function resolveTurnSettings(args: {
   ui: UiSnapshot;
   modelIndex: ModelIndex;
   modelId?: string;
+  tier?: AccessTier;
 }): ResolvedTurnSettings {
-  const { chat, ui, modelIndex, modelId } = args;
+  const { chat, ui, modelIndex, modelId, tier } = args;
   const overrides = readNextOverrides(ui);
   const resolvedModelId = modelId || overrides.model || chat.settings.model;
   const caps = modelIndex.caps(resolvedModelId);
@@ -138,7 +140,9 @@ export function resolveTurnSettings(args: {
   const tutorModeSetting = overrides.tutorMode ?? chat.settings.tutor_mode;
   const tutorGloballyEnabled = !!ui.flags.experimentalTutor;
   const forceTutorMode = !!ui.tutor.forceMode;
-  const tutorEnabled = tutorGloballyEnabled && (forceTutorMode || !!tutorModeSetting);
+  // Study tier always has tutor mode forced
+  const isStudyTier = tier === 'study';
+  const tutorEnabled = isStudyTier || (tutorGloballyEnabled && (forceTutorMode || !!tutorModeSetting));
 
   const generation: GenerationSettings = {
     temperature,
