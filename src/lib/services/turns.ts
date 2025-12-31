@@ -28,6 +28,7 @@ import {
 } from '@/lib/services/messagePersistence';
 import { scheduleTutorPersistence } from '@/lib/services/tutorPersistence';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
+import { triggerAsyncTitleGeneration } from '@/lib/services/titleGenerator';
 
 export type SendTurnOptions = {
   content: string;
@@ -221,8 +222,11 @@ export async function sendUserTurn({
   }
 
   if (currentChat.title === 'New Chat') {
-    const draft = content.trim().slice(0, 40);
-    await get().renameChat(currentChat.id, draft || 'New Chat');
+    triggerAsyncTitleGeneration(
+      currentChat.id,
+      content,
+      get().renameChat.bind(get()),
+    );
   }
 
   const runPerModel = (modelId: string) =>

@@ -130,19 +130,23 @@
   .app-shell {
     --header-height: 56px;
     display: grid;
-    grid-template-columns: var(--sidebar-width, 320px) 1fr;
+    grid-template-columns: auto 1fr;
     height: var(--viewport-height);
     min-height: var(--viewport-height);
     position: relative;
-    transition: grid-template-columns var(--duration-slow) var(--ease-standard);
     column-gap: var(--space-3);
     padding: var(--space-2);
   }
 
-  .sidebar {
+  .sidebar-slot {
     overflow: hidden;
     position: relative;
     z-index: 10;
+  }
+
+  .sidebar {
+    position: relative;
+    height: 100%;
   }
 
   /* Subtle shadow cast from sidebar onto content — depth illusion */
