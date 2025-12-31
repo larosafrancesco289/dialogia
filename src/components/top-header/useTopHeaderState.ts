@@ -158,16 +158,15 @@ export function useTopHeaderState(): TopHeaderState {
     [learningPlan, currentNode],
   );
 
+  // Track whether we've seen a plan (for potential future use)
+  // Note: Auto-open behavior removed - user controls when to view the plan
   useEffect(() => {
     if (!learningPlan) {
       hasPlanRef.current = false;
       return;
     }
-    if (!hasPlanRef.current && !planSheetOpen) {
-      setUI({ plan: { sheetOpen: true, sheetPlanOverride: null } });
-    }
     hasPlanRef.current = true;
-  }, [learningPlan, planSheetOpen, setUI]);
+  }, [learningPlan]);
 
   const onToggleSidebar = useCallback(() => {
     setUI({ sidebarCollapsed: !collapsed });
