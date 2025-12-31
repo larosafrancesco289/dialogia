@@ -15,7 +15,7 @@ export async function getServerTier(): Promise<AccessTier> {
     const cookieStore = await cookies();
     const tierCookie = cookieStore.get(TIER_COOKIE_NAME);
     const tier = tierCookie?.value;
-    if (tier === 'developer' || tier === 'individual' || tier === 'free') {
+    if (tier === 'developer' || tier === 'individual' || tier === 'free' || tier === 'study') {
       return tier;
     }
     return 'free';
