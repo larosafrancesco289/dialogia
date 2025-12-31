@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   CheckCircleIcon,
   ClockIcon,
@@ -7,10 +7,12 @@ import {
   LockClosedIcon,
   PlayIcon,
   SparklesIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
 import type { LearningPlanNode, TopicMastery } from '@/lib/types';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
+import { EditConfirmDialog, EditConfirmAction } from './EditConfirmDialog';
 
 export function PlanNode({
   node,
@@ -22,6 +24,7 @@ export function PlanNode({
   isLast,
   focused,
   onAdjust,
+  onMarkKnown,
 }: {
   node: LearningPlanNode;
   isReady: boolean;
@@ -32,13 +35,41 @@ export function PlanNode({
   isLast?: boolean;
   focused?: boolean;
   onAdjust?: (feedback: LearnerModelFeedback) => void;
+  onMarkKnown?: (nodeId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [pendingAction, setPendingAction] = useState<EditConfirmAction | null>(null);
+  const [pendingCallback, setPendingCallback] = useState<(() => void) | null>(null);
+
   useEffect(() => {
     if (focused) setExpanded(true);
   }, [focused]);
+
   const isLocked = !isReady && node.status === 'not_started';
   const canModifyStatus = !!onStatusChange && node.status !== 'completed' && !isLocked;
+
+  const handleMarkKnown = useCallback(() => {
+    setPendingAction({
+      type: 'mark_known',
+      nodeId: node.id,
+      nodeName: node.name,
+    });
+    setPendingCallback(() => () => {
+      onMarkKnown?.(node.id);
+      onStatusChange?.('completed');
+    });
+  }, [node.id, node.name, onMarkKnown, onStatusChange]);
+
+  const handleConfirm = useCallback(() => {
+    pendingCallback?.();
+    setPendingAction(null);
+    setPendingCallback(null);
+  }, [pendingCallback]);
+
+  const handleCancel = useCallback(() => {
+    setPendingAction(null);
+    setPendingCallback(null);
+  }, []);
 
   const statusColor =
     node.status === 'completed'
@@ -151,23 +182,47 @@ export function PlanNode({
 
             {/* Primary Action (Start/Continue) - editorial style */}
             {isReady && node.status !== 'completed' && (
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onStartLesson) onStartLesson(node.id);
-                  else onStatusChange?.('in_progress');
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer"
-                style={{
-                  background:
-                    node.status === 'in_progress' ? 'var(--marginalia-bg)' : 'var(--color-accent)',
-                  color: node.status === 'in_progress' ? 'var(--color-accent-2)' : '#0b0b0b',
-                  border: node.status === 'in_progress' ? '1px solid var(--rule-light)' : 'none',
-                  borderRadius: 'var(--radius-editorial)',
-                }}
-              >
-                <PlayIcon className="h-3 w-3" />
-                {node.status === 'in_progress' ? 'Continue' : 'Start'}
+              <div className="flex items-center gap-2">
+                {/* I know this button */}
+                {onMarkKnown && node.status === 'not_started' && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMarkKnown();
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer"
+                    style={{
+                      background: 'var(--marginalia-bg)',
+                      color: 'var(--color-success)',
+                      border: '1px solid color-mix(in oklab, var(--color-success) 30%, var(--rule-light))',
+                      borderRadius: 'var(--radius-editorial)',
+                    }}
+                    title="Skip this topic - I already know it"
+                  >
+                    <AcademicCapIcon className="h-3 w-3" />
+                    I know this
+                  </div>
+                )}
+
+                {/* Start/Continue button */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onStartLesson) onStartLesson(node.id);
+                    else onStatusChange?.('in_progress');
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer"
+                  style={{
+                    background:
+                      node.status === 'in_progress' ? 'var(--marginalia-bg)' : 'var(--color-accent)',
+                    color: node.status === 'in_progress' ? 'var(--color-accent-2)' : '#0b0b0b',
+                    border: node.status === 'in_progress' ? '1px solid var(--rule-light)' : 'none',
+                    borderRadius: 'var(--radius-editorial)',
+                  }}
+                >
+                  <PlayIcon className="h-3 w-3" />
+                  {node.status === 'in_progress' ? 'Continue' : 'Start'}
+                </div>
               </div>
             )}
 
@@ -411,6 +466,14 @@ export function PlanNode({
           )}
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <EditConfirmDialog
+        isOpen={pendingAction !== null}
+        action={pendingAction}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }

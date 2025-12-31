@@ -1,5 +1,5 @@
 import { resetEphemeralUi } from '@/lib/ui/defaults';
-import { getLatestLearnerModel, initializeLearnerModel } from '@/lib/agent/learnerModel';
+import { getLatestLearnerModel, initializeLearnerModel, persistLearnerModel } from '@/lib/agent/learnerModel';
 import { snapshotGenSettings } from '@/lib/agent/generation';
 import type { RunTurnHooks } from './turn';
 import type { StoreGetter, StoreSetter, TurnComposition, PlanTurnResult } from '@/lib/agent/types';
@@ -72,6 +72,19 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
       if (plan.learnerModel) pendingLearnerModel = plan.learnerModel;
       if (plan.planUpdates) pendingPlanUpdates = plan.planUpdates;
       const chat = getChatForTurn();
+
+      // Persist learner model to chat settings for reliable retrieval
+      if (plan.learnerModel) {
+        void persistLearnerModel({
+          chat,
+          chatId,
+          learnerModel: plan.learnerModel,
+          set,
+          updateChat,
+          persistChat,
+        });
+      }
+
       if (plan.updatedPlan && plan.updatedPlan !== chat.settings.learningPlan) {
         const diff =
           plan.planUpdates ?? diffPlanUpdates(chat.settings.learningPlan, plan.updatedPlan);

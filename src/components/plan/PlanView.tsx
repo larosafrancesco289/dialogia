@@ -15,6 +15,7 @@ export function PlanView({
   focusNodeId,
   onLearnerModelFeedback,
   latestUpdateSummary,
+  onMarkKnown,
 }: {
   plan: LearningPlan;
   onNodeStatusChange?: (
@@ -26,6 +27,7 @@ export function PlanView({
   focusNodeId?: string;
   onLearnerModelFeedback?: (feedback: LearnerModelFeedback) => void;
   latestUpdateSummary?: string;
+  onMarkKnown?: (nodeId: string) => void;
 }) {
   const nextNode = getNextNode(plan);
   const allCompleted = plan.nodes.every((n) => n.status === 'completed');
@@ -175,6 +177,7 @@ export function PlanView({
                         isLast={isLast}
                         focused={focusNodeId === node.id}
                         onAdjust={onLearnerModelFeedback}
+                        onMarkKnown={onMarkKnown}
                       />
                     );
                   })}
