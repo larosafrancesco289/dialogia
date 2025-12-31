@@ -2,10 +2,21 @@
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { LearningPlan, LearnerModel } from '@/lib/types';
 import { PlanView } from './PlanView';
+import { MyProgressView } from './MyProgressView';
+import { HubTabs, HubTabId } from './HubTabs';
 import { updateNodeStatus } from '@/lib/learningPlan/service';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
+import { AnimatePresence, motion } from 'framer-motion';
+
+export type LearnerModelEditCallbacks = {
+  onConfidenceAdjust: (nodeId: string, newConfidence: number, reason?: string) => void;
+  onMisconceptionResolve: (nodeId: string, misconceptionId: string) => void;
+  onSetConfidenceFloor: (nodeId: string, floor: number) => void;
+  onFlagForReview: (nodeId: string) => void;
+  onMarkKnown: (nodeId: string) => void;
+};
 
 export function PlanSheet({
   plan,
@@ -17,6 +28,12 @@ export function PlanSheet({
   focusNodeId,
   onLearnerModelFeedback,
   latestUpdateSummary,
+  onConfidenceAdjust,
+  onMisconceptionResolve,
+  onSetConfidenceFloor,
+  onFlagForReview,
+  onMarkKnown,
+  defaultTab = 'plan',
 }: {
   plan: LearningPlan | null;
   isOpen: boolean;
@@ -27,17 +44,24 @@ export function PlanSheet({
   focusNodeId?: string;
   onLearnerModelFeedback?: (feedback: LearnerModelFeedback) => void;
   latestUpdateSummary?: string;
-}) {
+  defaultTab?: HubTabId;
+} & Partial<LearnerModelEditCallbacks>) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [closing, setClosing] = useState(false);
+  const [activeTab, setActiveTab] = useState<HubTabId>(defaultTab);
+
+  // Reset tab when sheet opens
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(defaultTab);
+    }
+  }, [isOpen, defaultTab]);
 
   const handleRequestClose = useCallback(() => {
-    setClosing((wasClosing) => {
-      if (wasClosing) return wasClosing;
-      onClose();
-      return true;
-    });
-  }, [onClose]);
+    if (closing) return;
+    setClosing(true);
+    onClose();
+  }, [closing, onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -171,20 +195,57 @@ export function PlanSheet({
           </div>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="px-4 py-3 sm:px-6" style={{ background: 'var(--surface-paper)' }}>
+          <HubTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
+
         {/* Subtle rule */}
         <div className="pointer-events-none h-px" style={{ background: 'var(--rule-accent)' }} />
 
         {/* Content */}
         <div className="plan-sheet__body px-4 pt-5 pb-10 sm:px-6 w-full h-full">
-          <PlanView
-            plan={plan}
-            onNodeStatusChange={handleNodeStatusChange}
-            onStartLesson={onStartLesson}
-            learnerModel={learnerModel}
-            focusNodeId={focusNodeId}
-            onLearnerModelFeedback={onLearnerModelFeedback}
-            latestUpdateSummary={latestUpdateSummary}
-          />
+          <AnimatePresence mode="wait">
+            {activeTab === 'plan' ? (
+              <motion.div
+                key="plan"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.15 }}
+              >
+                <PlanView
+                  plan={plan}
+                  onNodeStatusChange={handleNodeStatusChange}
+                  onStartLesson={onStartLesson}
+                  learnerModel={learnerModel}
+                  focusNodeId={focusNodeId}
+                  onLearnerModelFeedback={onLearnerModelFeedback}
+                  latestUpdateSummary={latestUpdateSummary}
+                  onMarkKnown={onMarkKnown}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="progress"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.15 }}
+              >
+                <MyProgressView
+                  plan={plan}
+                  learnerModel={learnerModel}
+                  focusNodeId={focusNodeId}
+                  onConfidenceAdjust={onConfidenceAdjust ?? (() => {})}
+                  onMisconceptionResolve={onMisconceptionResolve ?? (() => {})}
+                  onSetConfidenceFloor={onSetConfidenceFloor ?? (() => {})}
+                  onFlagForReview={onFlagForReview ?? (() => {})}
+                  onMarkKnown={onMarkKnown ?? (() => {})}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </>

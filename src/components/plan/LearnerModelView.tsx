@@ -186,7 +186,8 @@ export function LearnerInsights({
 
               {/* Recent Evidence (if no misconception) */}
               {(!mastery?.misconceptions || mastery.misconceptions.length === 0) &&
-                mastery?.evidence && (
+                mastery?.evidence &&
+                mastery.evidence.length > 0 && (
                   <div className="mt-2 text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
                     {mastery.evidence[mastery.evidence.length - 1].details}
                   </div>

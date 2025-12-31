@@ -245,10 +245,19 @@ export function useTopHeaderState(): TopHeaderState {
     setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
   }, [setUI]);
 
-  const learnerModel = useMemo(
-    () => (messages ? getLatestLearnerModel(messages) : undefined),
-    [messages],
-  );
+  // Get learner model from either chat settings (persisted) or message history
+  // Prefer the more recently updated one
+  const learnerModel = useMemo(() => {
+    const fromSettings = chat?.settings?.learnerModel;
+    const fromMessages = messages ? getLatestLearnerModel(messages) : undefined;
+
+    if (!fromSettings && !fromMessages) return undefined;
+    if (!fromSettings) return fromMessages;
+    if (!fromMessages) return fromSettings;
+
+    // Return the more recently updated one
+    return fromSettings.updatedAt > fromMessages.updatedAt ? fromSettings : fromMessages;
+  }, [chat?.settings?.learnerModel, messages]);
 
   return {
     chat,

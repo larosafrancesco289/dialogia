@@ -1,5 +1,5 @@
 import type { LearningPlan } from '@/lib/types/learningPlan';
-import type { TutorResearchMode, TutorToolBudget } from '@/lib/types/tutor';
+import type { LearnerModel, TutorResearchMode, TutorToolBudget } from '@/lib/types/tutor';
 
 export type ChatSettings = {
   model: string;
@@ -31,6 +31,7 @@ export type ChatSettings = {
   showDebugRawJson?: boolean; // Toggle raw request payload in debug panel
   // Learner Model Tracking
   enableLearnerModel?: boolean; // Whether to track mastery
+  learnerModel?: LearnerModel; // Persisted learner model (mastery data)
 };
 
 export type Chat = {
