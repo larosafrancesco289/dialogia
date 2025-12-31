@@ -12,12 +12,9 @@ import type {
   Evidence,
   Misconception,
   Message,
-  ModelTransport,
 } from '@/lib/types';
 import { getNextNode } from '@/lib/learningPlan/service';
-import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { logger } from '@/lib/logger';
-import { isRecord } from '@/lib/utils/guards';
 
 /**
  * Initialize an empty learner model for a learning plan
@@ -52,118 +49,64 @@ export function initializeLearnerModel(chatId: string, plan: LearningPlan): Lear
 }
 
 /**
- * Extract evidence from student response using LLM analysis.
- * Mirrors the legacy tutor memory extraction flow to keep prompts consistent.
+ * Sync learner model with an updated plan.
+ * - Preserves existing mastery entries for nodes that still exist
+ * - Adds new entries for new nodes (with initial confidence)
+ * - Removes entries for nodes that were removed from the plan
  */
-export async function extractEvidence(
-  nodeId: string,
-  nodeName: string,
-  objectives: string[],
-  conversationWindow: Message[],
-  options: {
-    apiKey: string;
-    transport: ModelTransport;
-    model: string;
-  },
-): Promise<{
-  type: Evidence['type'];
-  details: string;
-  weight: number;
-  misconception?: string;
-}> {
-  // Format last few messages as context
-  const formatted = conversationWindow
-    .slice(-5)
-    .map((m) => {
-      const role = m.role === 'assistant' ? 'Tutor' : 'Student';
-      const content = extractTextFromMessage(m);
-      return `${role}: ${content}`;
-    })
-    .join('\n\n');
+export function syncLearnerModelWithPlan(
+  existingModel: LearnerModel,
+  updatedPlan: LearningPlan,
+): LearnerModel {
+  const planNodeIds = new Set(updatedPlan.nodes.map((n) => n.id));
+  const mastery: Record<string, TopicMastery> = {};
 
-  const systemPrompt = [
-    'You are a learning analyst evaluating student understanding.',
-    "Analyze the student's response to determine learning evidence.",
-    'Be objective and focus on demonstrated understanding vs gaps.',
-  ].join('\n');
-
-  const userPrompt = [
-    `Topic: ${nodeName} (${nodeId})`,
-    `Learning Objectives: ${objectives.join('; ')}`,
-    '',
-    'Recent dialogue:',
-    formatted,
-    '',
-    "Extract learning evidence from the student's most recent response:",
-    '',
-    '1. Evidence type (choose one):',
-    '   - correct_answer: Student answered correctly with good understanding',
-    '   - incorrect_answer: Student gave wrong answer or showed misunderstanding',
-    '   - partial_answer: Student has partial understanding, some gaps',
-    '   - hint_needed: Student needed hints or struggled to respond',
-    '   - explanation_requested: Student asked for clarification/more explanation',
-    '',
-    '2. Details: One clear sentence describing what happened',
-    '',
-    '3. Weight: Numeric value from -0.5 to +0.5 indicating impact on mastery',
-    '   - Positive (+0.1 to +0.5) for correct/strong responses',
-    '   - Negative (-0.1 to -0.5) for incorrect/weak responses',
-    '   - Near zero for neutral interactions',
-    '',
-    '4. Misconception (optional): If student showed a specific error pattern, describe it briefly',
-    '',
-    'Respond with ONLY valid JSON in this format:',
-    '{"type": "correct_answer", "details": "...", "weight": 0.3, "misconception": "..."}',
-  ].join('\n');
-
-  try {
-    const response = await getChatCompletion()({
-      apiKey: options.apiKey,
-      transport: options.transport,
-      model: options.model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: 256,
-      temperature: 0.2, // Low temperature for consistent extraction
-    });
-
-    const text = extractTextFromResponse(response);
-    const result = parseJSONResponse(text);
-
-    // Validate and normalize
-    const validTypes: Evidence['type'][] = [
-      'correct_answer',
-      'incorrect_answer',
-      'partial_answer',
-      'hint_needed',
-      'explanation_requested',
-    ];
-
-    const typeValue = typeof result.type === 'string' ? result.type : undefined;
-    const type =
-      typeValue && validTypes.includes(typeValue as Evidence['type'])
-        ? (typeValue as Evidence['type'])
-        : 'partial_answer';
-
-    const weight = clamp(typeof result.weight === 'number' ? result.weight : 0, -0.5, 0.5);
-
-    return {
-      type,
-      details: typeof result.details === 'string' ? result.details : 'No details provided',
-      weight,
-      misconception: typeof result.misconception === 'string' ? result.misconception : undefined,
-    };
-  } catch (error) {
-    // Fallback on error: neutral evidence
-    logger.error('Evidence extraction failed:', error);
-    return {
-      type: 'partial_answer',
-      details: 'Evidence extraction failed',
-      weight: 0,
-    };
+  // Keep existing mastery for nodes that still exist in the plan
+  for (const nodeId of Object.keys(existingModel.mastery)) {
+    if (planNodeIds.has(nodeId)) {
+      mastery[nodeId] = existingModel.mastery[nodeId];
+    }
   }
+
+  // Add new entries for nodes that don't have mastery records yet
+  for (const node of updatedPlan.nodes) {
+    if (!mastery[node.id]) {
+      mastery[node.id] = {
+        nodeId: node.id,
+        confidence: 0.3, // Starting prior
+        interactions: 0,
+        lastInteraction: Date.now(),
+        evidence: [],
+        misconceptions: [],
+        needsReview: false,
+      };
+    }
+  }
+
+  // Recompute global metrics based on current mastery
+  const allConfidences = Object.values(mastery).map((t) => t.confidence);
+  const avgConfidence = allConfidences.reduce((a, b) => a + b, 0) / (allConfidences.length || 1);
+  const totalInteractions = Object.values(mastery).reduce((sum, t) => sum + t.interactions, 0);
+
+  const correctCount = Object.values(mastery)
+    .flatMap((t) => t.evidence)
+    .filter((e) => e.type === 'correct_answer').length;
+  const totalEvidence = Object.values(mastery)
+    .flatMap((t) => t.evidence)
+    .filter((e) => ['correct_answer', 'incorrect_answer', 'partial_answer'].includes(e.type)).length;
+  const accuracyRate = totalEvidence > 0 ? correctCount / totalEvidence : 0;
+
+  return {
+    ...existingModel,
+    mastery,
+    updatedAt: Date.now(),
+    version: existingModel.version + 1,
+    globalMetrics: {
+      totalInteractions,
+      accuracyRate,
+      averageConfidence: avgConfidence,
+    },
+  };
 }
 
 /**
@@ -454,94 +397,6 @@ function computeGlobalMetrics(
     accuracyRate,
     averageConfidence: avgConfidence,
   };
-}
-
-/**
- * Extract text content from message
- */
-function extractTextFromMessage(message: Message): string {
-  const content = message.content as unknown;
-  if (typeof content === 'string') {
-    return content;
-  }
-  return extractTextFromBlocks(content);
-}
-
-/**
- * Extract text from LLM response
- */
-function extractTextFromResponse(response: unknown): string {
-  if (typeof response === 'string') {
-    return response;
-  }
-
-  if (isRecord(response)) {
-    const content = response.content;
-    if (typeof content === 'string') {
-      return content;
-    }
-    const blockText = extractTextFromBlocks(content);
-    if (blockText) return blockText;
-
-    const choices = response.choices;
-    if (Array.isArray(choices) && choices.length > 0) {
-      const first = choices[0];
-      if (isRecord(first) && isRecord(first.message)) {
-        const messageContent = first.message.content;
-        if (typeof messageContent === 'string') return messageContent;
-        const nested = extractTextFromBlocks(messageContent);
-        if (nested) return nested;
-      }
-    }
-  }
-
-  return JSON.stringify(response);
-}
-
-/**
- * Parse JSON from LLM response (handles markdown code blocks)
- */
-function parseJSONResponse(text: string): Record<string, unknown> {
-  const parseValue = (value: unknown): Record<string, unknown> => (isRecord(value) ? value : {});
-
-  // Try to extract JSON from markdown code blocks
-  const jsonMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-  if (jsonMatch) {
-    try {
-      return parseValue(JSON.parse(jsonMatch[1]));
-    } catch {
-      // Fall through to direct parse
-    }
-  }
-
-  // Try direct JSON parse
-  try {
-    return parseValue(JSON.parse(text));
-  } catch {
-    // Try to find JSON object in text
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) {
-      try {
-        return parseValue(JSON.parse(match[0]));
-      } catch {
-        // Fall through
-      }
-    }
-  }
-
-  // Return empty object as fallback
-  return {};
-}
-
-function extractTextFromBlocks(content: unknown): string {
-  if (!Array.isArray(content)) return '';
-  return content
-    .map((block) => {
-      if (!isRecord(block) || block.type !== 'text') return '';
-      return typeof block.text === 'string' ? block.text : '';
-    })
-    .filter(Boolean)
-    .join(' ');
 }
 
 /**
