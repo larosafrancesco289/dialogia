@@ -26,6 +26,7 @@ export function TopHeaderView({
   tutorModelLabel,
   experimentalTutor,
   forceTutorMode,
+  isStudyTier,
   hasPlan,
   learningPlan,
   planProgress,
@@ -80,8 +81,8 @@ export function TopHeaderView({
 
         <HeaderDivider />
 
-        {/* Tutor toggle (consistent style for both states) */}
-        {experimentalTutor && (
+        {/* Tutor toggle (hidden for study tier - tutor is always forced) */}
+        {experimentalTutor && !isStudyTier && (
           <>
             <TutorToggle
               active={tutorActive}

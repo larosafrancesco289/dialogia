@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
 import { useXAIVoice } from '@/lib/hooks/useXAIVoice';
-import { useCanUseVoice } from '@/lib/auth/tierContext';
+import { useCanUseVoice, useIsStudyTier } from '@/lib/auth/tierContext';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
 
 export type ComposerActionsProps = {
@@ -50,6 +50,8 @@ export function ComposerActions({
 
   // Check if voice mode is available for the current tier
   const canUseVoice = useCanUseVoice();
+  // Check if user is in study tier (hide certain features)
+  const isStudyTier = useIsStudyTier();
 
   // Voice hook lifted here so it doesn't unmount when menu closes
   const addVoiceUserMessage = useChatStore((s) => s.addVoiceUserMessage);
@@ -111,8 +113,8 @@ export function ComposerActions({
             onClick={() => setMenuOpen((v) => !v)}
           >
             <EllipsisHorizontalIcon className="h-4 w-4" />
-            {/* Indicator dot when search is enabled */}
-            {searchEnabled && (
+            {/* Indicator dot when search is enabled (not shown for study tier) */}
+            {searchEnabled && !isStudyTier && (
               <span className="composer-btn-overflow__indicator" aria-hidden="true" />
             )}
           </button>
@@ -138,19 +140,21 @@ export function ComposerActions({
                 <span>Attach files</span>
               </button>
 
-              {/* Web search toggle */}
-              <button
-                className={`composer-overflow-item ${searchEnabled ? 'is-active' : ''}`}
-                role="menuitemcheckbox"
-                aria-checked={searchEnabled}
-                onClick={() => {
-                  toggleSearch();
-                }}
-              >
-                <MagnifyingGlassIcon className="h-4 w-4" />
-                <span>Web search</span>
-                {searchEnabled && <CheckIcon className="h-3.5 w-3.5 ml-auto" />}
-              </button>
+              {/* Web search toggle — hidden for study tier */}
+              {!isStudyTier && (
+                <button
+                  className={`composer-overflow-item ${searchEnabled ? 'is-active' : ''}`}
+                  role="menuitemcheckbox"
+                  aria-checked={searchEnabled}
+                  onClick={() => {
+                    toggleSearch();
+                  }}
+                >
+                  <MagnifyingGlassIcon className="h-4 w-4" />
+                  <span>Web search</span>
+                  {searchEnabled && <CheckIcon className="h-3.5 w-3.5 ml-auto" />}
+                </button>
+              )}
 
               {/* Voice mode — only shown for developer tier */}
               {canUseVoice && (

@@ -21,7 +21,7 @@ import styles from './MobileCollapsingHeader.module.css';
  * - Model picker or Tutor badge
  */
 export function MobileCollapsingHeader() {
-  const { isFreeTier } = useTier();
+  const { isFreeTier, isStudyTier, tier } = useTier();
 
   const { chats, selectedChatId, models, headerVisible, isStreaming } = useChatStore(
     (s) => ({
@@ -41,8 +41,8 @@ export function MobileCollapsingHeader() {
 
   const chat = chats.find((c) => c.id === selectedChatId);
   const tutorActive = chat
-    ? isTutorRuntimeEnabled(uiState, chat)
-    : experimentalTutor && forceTutorMode;
+    ? isTutorRuntimeEnabled(uiState, chat, tier)
+    : isStudyTier || (experimentalTutor && forceTutorMode);
 
   // Resolve tutor model with tier awareness
   const rawTutorModelId =

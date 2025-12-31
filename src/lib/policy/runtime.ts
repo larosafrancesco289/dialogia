@@ -1,7 +1,15 @@
 import type { Chat } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
+import type { AccessTier } from '@/lib/auth/types';
 
-export const isTutorRuntimeEnabled = (ui: UiSnapshot, chat: Chat): boolean => {
+export const isTutorRuntimeEnabled = (
+  ui: UiSnapshot,
+  chat: Chat,
+  tier?: AccessTier,
+): boolean => {
+  // Study tier always has tutor mode forced
+  if (tier === 'study') return true;
+
   const tutorGloballyEnabled = !!ui.flags.experimentalTutor;
   const forceTutorMode = !!(ui.tutor.forceMode ?? false);
   return tutorGloballyEnabled && (forceTutorMode || !!chat.settings.tutor_mode);

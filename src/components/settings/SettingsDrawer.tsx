@@ -2,6 +2,7 @@
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { motion } from 'framer-motion';
+import { useIsStudyTier } from '@/lib/auth/tierContext';
 import {
   useCallback,
   useEffect,
@@ -50,6 +51,8 @@ const staggerItem = {
 };
 
 export function SettingsDrawer() {
+  const isStudyTier = useIsStudyTier();
+
   const {
     chats,
     selectedChatId,
@@ -430,6 +433,29 @@ export function SettingsDrawer() {
         return null;
     }
   };
+
+  // Study tier: show restricted settings view
+  if (isStudyTier) {
+    return (
+      <SettingsDrawerShell
+        closing={closing}
+        onClose={closeWithAnim}
+        drawerRef={drawerRef}
+        searchQuery=""
+        onSearchChange={() => {}}
+      >
+        <div className="flex items-center justify-center h-[calc(100%-var(--header-height))] p-8">
+          <div className="text-center max-w-md">
+            <h2 className="text-xl font-semibold mb-2">User Study Mode</h2>
+            <p className="text-muted-foreground">
+              Settings are not available during the user study. The tutor has been configured with
+              optimal settings for your learning experience.
+            </p>
+          </div>
+        </div>
+      </SettingsDrawerShell>
+    );
+  }
 
   return (
     <>

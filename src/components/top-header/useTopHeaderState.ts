@@ -37,6 +37,7 @@ export type TopHeaderState = {
   experimentalTutor: boolean;
   forceTutorMode: boolean;
   nextTutorMode: boolean;
+  isStudyTier: boolean;
   hasPlan: boolean;
   learningPlan?: LearningPlan;
   planProgress: PlanProgress | null;
@@ -60,7 +61,7 @@ export type TopHeaderState = {
 };
 
 export function useTopHeaderState(): TopHeaderState {
-  const { isFreeTier } = useTier();
+  const { isFreeTier, isStudyTier, tier } = useTier();
 
   const {
     chat,
@@ -109,8 +110,8 @@ export function useTopHeaderState(): TopHeaderState {
   const nextOverrides = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const nextTutorMode = !!nextOverrides.tutorMode;
   const tutorActive = chat
-    ? isTutorRuntimeEnabled(uiSnapshot, chat)
-    : experimentalTutor && (forceTutorMode || nextTutorMode);
+    ? isTutorRuntimeEnabled(uiSnapshot, chat, tier)
+    : isStudyTier || (experimentalTutor && (forceTutorMode || nextTutorMode));
   // Resolve tutor model with tier awareness
   const rawTutorModelId =
     chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
@@ -263,6 +264,7 @@ export function useTopHeaderState(): TopHeaderState {
     experimentalTutor,
     forceTutorMode,
     nextTutorMode,
+    isStudyTier,
     hasPlan,
     learningPlan,
     planProgress,

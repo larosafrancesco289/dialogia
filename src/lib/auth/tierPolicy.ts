@@ -18,6 +18,10 @@ const TIER_POLICIES: Record<AccessTier, TierPolicy> = {
     canUseVoice: true,
     canUseAllModels: true,
   },
+  study: {
+    canUseVoice: false,
+    canUseAllModels: true,
+  },
 };
 
 export function getTierPolicy(tier: AccessTier): TierPolicy {
