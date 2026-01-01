@@ -3,7 +3,7 @@ import type { Message } from '@/lib/types';
 import { buildHiddenTutorContent } from '@/lib/tutor/hiddenContent';
 
 export const ensureHiddenTutorContent = (message: Message): Message => {
-  if (!message?.tutor || message.hiddenContent) return message;
+  if (!message?.tutor) return message;
   try {
     const hidden = buildHiddenTutorContent(message.tutor);
     if (!hidden) return message;
