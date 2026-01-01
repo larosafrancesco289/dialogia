@@ -16,6 +16,8 @@ import { runPlanningRound } from '@/lib/agent/planning/round';
 import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 import { getMessagesForChat } from '@/lib/messages/indexing';
+import { updateMessageById } from '@/lib/messages/updateMessageById';
+import type { TurnStoreState } from '@/lib/agent/contracts';
 
 function buildPlanningMessages(
   baseMessages: ModelMessage[],
@@ -26,6 +28,23 @@ function buildPlanningMessages(
   return planningSystem
     ? [planningSystem, ...baseMessages.filter((entry) => entry.role !== 'system')]
     : baseMessages.slice();
+}
+
+function appendPlanningContent(
+  set: PlanTurnOptions['turn']['set'],
+  chatId: string,
+  messageId: string,
+  newContent: string,
+): void {
+  if (!newContent?.trim()) return;
+  set((state: TurnStoreState) => {
+    const result = updateMessageById(state, chatId, messageId, (msg) => {
+      const existing = msg.content || '';
+      const separator = existing.trim() ? '\n\n' : '';
+      return { ...msg, content: existing + separator + newContent };
+    });
+    return result ?? {};
+  });
 }
 
 export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
@@ -115,6 +134,11 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
         reasoning_details: message.reasoning_details,
       };
       convo.push(assistantMsg);
+
+      // Write the text content to the UI message so it's visible alongside tool results
+      if (typeof message.content === 'string' && message.content.trim()) {
+        appendPlanningContent(set, chatId, assistantMessage.id, message.content);
+      }
     }
 
     if (scheduled.length === 0) {

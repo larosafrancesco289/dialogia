@@ -79,26 +79,8 @@ export async function composeTurn({
     preambles.push(TOOL_PREAMBLE);
   }
   if (tutorEnabled) {
-    const tutorPreamble = tutorEnabled ? getTutorPreamble() : '';
+    const tutorPreamble = getTutorPreamble();
     if (tutorPreamble) preambles.push(tutorPreamble);
-    if (tutorToolPolicy) {
-      if (tutorToolPolicy.thesisMode) {
-        preambles.push(
-          [
-            'TUTOR THESIS MODE',
-            '- Default to natural language coaching; keep tool calls minimal.',
-            '- Use planning + learner model tools; reserve MCQ/diagnostics for readiness or end-of-topic checks.',
-            '- Limit MCQ blocks to one small set per topic.',
-            '- Prefer a single targeted tool call per turn.',
-          ].join('\n'),
-        );
-      }
-      if (tutorToolPolicy.researchMode && tutorToolPolicy.researchMode !== 'plan_plus_model') {
-        preambles.push(
-          `Research mode: ${tutorToolPolicy.researchMode}. Align responses with this visibility (plan/learner model) and tool exposure.`,
-        );
-      }
-    }
     try {
       const profile = await tutorProfileService.loadTutorProfile(chat.id);
       const summary = tutorProfileService.summarizeTutorProfile(profile);
@@ -125,7 +107,9 @@ export async function composeTurn({
     }
   }
 
-  const baseSystem = typeof settings.system === 'string' ? settings.system : undefined;
+  // When tutor is enabled, the tutor preamble is complete - don't add the normal system prompt
+  const baseSystem =
+    !tutorEnabled && typeof settings.system === 'string' ? settings.system : undefined;
   const system = combineSystem(baseSystem, preambles);
 
   const chatForMessages = {
