@@ -32,6 +32,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   const autoScrollEnabledRef = useRef(true);
   const programmaticScrollRef = useRef(false);
   const atBottomRef = useRef(true);
+  const scrollToBottomRef = useRef<(behavior: ScrollBehavior) => void>(() => {});
   const lastMessageMetaRef = useRef<{
     id?: string;
     role?: Message['role'];
@@ -120,6 +121,11 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     },
     [syncScrollState],
   );
+
+  // Keep ref in sync to avoid dependency in effects
+  useEffect(() => {
+    scrollToBottomRef.current = scrollToBottom;
+  }, [scrollToBottom]);
 
   // Force unlock autoscroll immediately on user interaction
   const onUserScroll = useCallback(() => {
@@ -224,8 +230,11 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       autoScrollEnabledRef.current = true;
       programmaticScrollRef.current = false;
       atBottomRef.current = true;
-      setShowJump((prev) => (prev === false ? prev : false));
-      setAtBottom((prev) => (prev === true ? prev : true));
+      // Reset state only when it changes to avoid render loops on new-array renders.
+      if (showJump || !atBottom) {
+        setShowJump(false);
+        setAtBottom(true);
+      }
       return;
     }
 
@@ -264,24 +273,24 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
     if (shouldFollow) {
       if (!programmaticScrollRef.current) {
-        scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
+        scrollToBottomRef.current(prefersReducedMotion ? 'auto' : 'smooth');
       }
-    } else if (!atBottom) {
+    } else if (!atBottomRef.current) {
       setShowJump((prev) => (prev === true ? prev : true));
     }
-  }, [messages, prefersReducedMotion, scrollToBottom, isAssistantPlaceholder, atBottom]);
+  }, [messages, prefersReducedMotion, isAssistantPlaceholder, showJump, atBottom]);
 
   useEffect(() => {
     if (!autoScrollEnabledRef.current) return;
     if (isStreaming && atBottomRef.current) {
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
       if (now - lastScrollTsRef.current > 160) {
-        scrollToBottom('auto');
+        scrollToBottomRef.current('auto');
         lastScrollTsRef.current = now;
       }
     }
     if (!isStreaming) lastScrollTsRef.current = 0;
-  }, [isStreaming, lastLen, scrollToBottom]);
+  }, [isStreaming, lastLen]);
 
   const jumpToLatest = useCallback(() => {
     autoScrollEnabledRef.current = true;
