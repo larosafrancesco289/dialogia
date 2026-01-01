@@ -28,50 +28,6 @@ const applyMessageUpdate = (
   return updated;
 };
 
-export function buildTutorFallbackContent(
-  state: TurnStoreState,
-  assistantId: string,
-): string | undefined {
-  const tutorEntry = state.ui.tutor.byMessageId?.[assistantId];
-  if (!tutorEntry) return undefined;
-
-  const snippets: string[] = [];
-  const questionnaire = tutorEntry.questionnaire;
-  if (questionnaire?.questions?.length) {
-    snippets.push(
-      `I posted a quick questionnaire (${questionnaire.questions.length} question${
-        questionnaire.questions.length === 1 ? '' : 's'
-      }) to tailor the plan—please fill it in first.`,
-    );
-  }
-
-  const plan = tutorEntry.planProposal?.plan;
-  if (plan?.goal) {
-    const nodes = Array.isArray(plan.nodes) ? plan.nodes.length : undefined;
-    const summaryParts = [
-      `I drafted a plan "${plan.goal}"`,
-      nodes ? `(${nodes} step${nodes === 1 ? '' : 's'})` : undefined,
-    ].filter(Boolean);
-    const summary = summaryParts.join(' ');
-    const needsConfirmation = tutorEntry.planProposal?.requiresConfirmation;
-    const ask = needsConfirmation
-      ? 'Approve or suggest tweaks and I will guide you through the first step.'
-      : 'Tell me if you want to start or adjust it.';
-    snippets.push(`${summary}. ${ask}`);
-  }
-
-  const quizCount = Array.isArray(tutorEntry.mcq) ? tutorEntry.mcq.length : 0;
-  if (quizCount > 0) {
-    const title = tutorEntry.title || 'a quick check';
-    snippets.push(`I added ${title} (${quizCount} MCQ). Try it now for a fast readiness check.`);
-  }
-
-  if (snippets.length === 0) return undefined;
-  const nextStep =
-    'If you prefer, ask for a brief summary or a quick checklist and I will share it.';
-  return `${snippets.join(' ')} ${nextStep}`.trim();
-}
-
 export type MessageStreamOptions = {
   chatId: string;
   assistantMessage: Message;
@@ -206,11 +162,7 @@ export function createMessageStreamCallbacks(
         usage: extras?.usage,
       });
       const rawContent = stripLeadingToolJson(full || '');
-      const content =
-        rawContent && rawContent.trim()
-          ? rawContent
-          : (buildTutorFallbackContent(state, assistantMessage.id) ??
-            'I added new tutor content above. Let me know when you are ready.');
+      const content = rawContent?.trim() || '';
       const finalMessage: Message = {
         ...assistantMessage,
         content,

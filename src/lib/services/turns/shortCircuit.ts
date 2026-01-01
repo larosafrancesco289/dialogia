@@ -1,4 +1,3 @@
-import { buildTutorFallbackContent } from '@/lib/agent/streamHandlers';
 import type { TurnStoreState } from '@/lib/agent/contracts';
 import type { Message } from '@/lib/types';
 
@@ -8,15 +7,12 @@ type ShortCircuitFinalizeArgs = {
   getState: () => TurnStoreState;
   updateMessage: (messageId: string, patch: Partial<Message>) => void;
   persistMessage: (message: Message) => Promise<void>;
-  fallbackText?: string;
 };
 
 export async function finalizeShortCircuitMessage(
   args: ShortCircuitFinalizeArgs,
 ): Promise<Message> {
   const { assistantMessage, lifecycle, getState, updateMessage, persistMessage } = args;
-  const fallbackText =
-    args.fallbackText ?? 'I added new tutor content above. Let me know when you are ready.';
 
   const state = getState();
   const current = state.messagesById[assistantMessage.id];
@@ -30,11 +26,8 @@ export async function finalizeShortCircuitMessage(
     hiddenContent: current?.hiddenContent ?? baseMessage.hiddenContent ?? undefined,
   });
 
-  const fallbackContent =
-    (finalMsgBase.content || '').trim() ||
-    buildTutorFallbackContent(state, assistantMessage.id) ||
-    fallbackText;
-  const finalMsg: Message = { ...finalMsgBase, content: fallbackContent };
+  const finalContent = (finalMsgBase.content || '').trim();
+  const finalMsg: Message = { ...finalMsgBase, content: finalContent };
 
   updateMessage(assistantMessage.id, finalMsg);
   await persistMessage(finalMsg);
