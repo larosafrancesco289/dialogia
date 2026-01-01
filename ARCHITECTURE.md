@@ -10,8 +10,8 @@ business logic that is easy to test.
 - Key entrypoints: `src/lib/store/index.ts` (state composition), `src/lib/services/turns.ts`
   (send/regenerate flow), `src/lib/agent/compose.ts` (message assembly), and
   `src/lib/agent/orchestrator/turn.ts` (turn runner).
-- Transport lives in `src/lib/api/*`, `src/lib/openrouter/*`, and `src/lib/transport/*`, while API
-  routes live under `app/api/*`.
+- Transport lives in `src/lib/openrouter/*` and `src/lib/transport/*` with shared HTTP helpers in
+  `src/lib/api/*`; API routes live under `app/api/*`.
 
 ## Refactor Invariants
 
@@ -29,21 +29,24 @@ business logic that is easy to test.
 - **State** — Zustand slices in `src/lib/store/*`. Composition happens in `src/lib/store/index.ts`,
   which wires persistence, migrations, and selectors. Each slice owns a bounded feature area
   (models, chat history, UI flags, multi-model state, tutor context, etc.). Versioned persistence
-  migrations live in `src/lib/store/migrations.ts`.
+  migrations live in `src/lib/store/migrations.ts`. Message ordering + lookup is backed by
+  `messageIdsByChatId`/`messagesById` with helpers in `src/lib/messages/indexing.ts`.
 - **Agent** — Request builders, planning, tools, and policies in `src/lib/agent/*`. `compose.ts` is
-  the single entry for per-turn system/message assembly. `planning.ts`, `streaming.ts`, and
-  `regenerate.ts` separate multi-round planning, streaming, and regen logic so services stay thin.
+  the single entry for per-turn system/message assembly. Planning is split across
+  `src/lib/agent/planning/*`, streaming logic lives in `src/lib/agent/streaming.ts`, and heuristics
+  live in `src/lib/agent/streaming/*`. `regenerate.ts` isolates regen logic so services stay thin.
   `src/lib/agent/orchestrator/*` hosts the turn runner and lifecycle management. DeepResearch
   orchestration lives in `src/lib/agent/deepResearchOrchestrator.ts`, backed by
-  `src/lib/deepResearch/*` for tool adapters and HTML parsing glue.
+  `src/lib/deepResearch/index.ts` + submodules for prompt, tools, and HTML parsing.
 - **Services** — Cross-cutting orchestrators in `src/lib/services/*` that connect the store to the
   agent layer. `services/turns.ts` owns send/regenerate flows, with shared helpers in
   `src/lib/services/turns/*` and controller lifecycles isolated in `src/lib/services/controllers.ts`.
   Services prepare context and hand off to the agent orchestrator.
-- **Transport** — HTTP clients in `src/lib/api/*`, provider adapters in `src/lib/openrouter/*`, and
-  shared contracts in `src/lib/transport/*`. Shared helpers in
-  `src/lib/api/config.ts`, `src/lib/api/stream.ts`, and `src/lib/api/errors.ts` encapsulate defaults,
-  SSE parsing, and typed error construction.
+- **Transport** — Provider adapters in `src/lib/openrouter/*`, shared contracts in
+  `src/lib/transport/*`, and HTTP utilities in `src/lib/api/*`. OpenRouter-specific request building
+  lives in `src/lib/openrouter/request.ts`, while `src/lib/openrouter/http.ts` handles the raw HTTP
+  calls. Shared helpers in `src/lib/api/config.ts`, `src/lib/api/stream.ts`, and
+  `src/lib/api/errors.ts` encapsulate defaults, SSE parsing, and typed error construction.
   - ZDR cache helpers and enforcement live under `src/lib/policy/zdr/*`, with
     `src/lib/policy/zdr/index.ts` re-exporting helpers (`computeZdrFilter`,
     `computeZdrFilterCached`, `guardZdrOrNotifyCached`) so services can rely on a single façade.
@@ -51,6 +54,17 @@ business logic that is easy to test.
   `app/api/brave/route.ts`, X.AI voice session in
   `app/api/xai/session/route.ts`, DeepResearch in `app/api/deep-research/route.ts`, and auth routes
   in `app/api/auth/*`. These never import UI modules.
+
+## Public Module Surfaces
+
+| Area                 | Import from                     | Notes                                                                 |
+| -------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| Store entrypoints    | `src/lib/store/index.ts`        | Zustand store composition + `useChatStore`.                           |
+| Message helpers      | `src/lib/messages/indexing.ts`  | O(1) message lookup/update helpers.                                   |
+| Tutor domain         | `src/lib/tutor/index.ts`        | Profile, context, defaults, deck.                                     |
+| DeepResearch         | `src/lib/deepResearch/index.ts` | Facade for prompt/engine/tools.                                       |
+| OpenRouter transport | `src/lib/openrouter/index.ts`   | Transport client; request builder in `src/lib/openrouter/request.ts`. |
+| Schemas              | `src/lib/schemas/*`             | Zod schemas + JSON schema builder.                                    |
 
 ## Module Boundaries
 
@@ -95,8 +109,8 @@ business logic that is easy to test.
 2. The action invokes `src/lib/services/turns.ts`, which prepares chat/tutor state, manages
    controllers, and hands off to `src/lib/agent/orchestrator/turn.ts` (planning and streaming).
 3. Agent helpers in `src/lib/agent/compose.ts`, `src/lib/agent/request.ts`, and
-   `src/lib/agent/policy.ts` determine planning rounds, tool eligibility (search, tutor), and build
-   provider-specific payloads.
+   `src/lib/agent/policy.ts` determine planning rounds and tool eligibility (search, tutor), while
+   provider adapters (e.g., `src/lib/openrouter/request.ts`) build provider-specific payloads.
 4. The pipeline client (`src/lib/agent/pipelineClient.ts`) selects the transport implementation
    (`src/lib/openrouter/index.ts`, etc.) and underlying HTTP client. Proxying through
    `/api/openrouter/*` keeps provider keys off the client whenever proxy mode is enabled.
@@ -122,8 +136,8 @@ business logic that is easy to test.
 1. Add provider metadata to `src/data/curatedModels.ts` and update `src/lib/models.ts` if new
    capability flags are required (e.g., vision, audio).
 2. Implement transport changes in `src/lib/openrouter/*` or a new transport module so all callers
-   inherit the contract. Request payload tweaks should flow through
-   `src/lib/agent/request.ts`, while shared contracts live in `src/lib/transport/*`.
+   inherit the contract. Request payload tweaks should flow through provider adapters (e.g.,
+   `src/lib/openrouter/request.ts`), while shared contracts live in `src/lib/transport/*`.
 3. Define tool schemas under `src/lib/agent/searchFlow.ts` (or a new module) and surface helpers
    from the agent layer—never from UI components.
 4. Register tool parsing or execution in `src/lib/agent/planning.ts` / `streaming.ts` and keep

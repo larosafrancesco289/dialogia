@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { stripLeadingToolJson } from '@/lib/agent/streaming';
+import { stripLeadingToolJson } from '@/lib/agent/streaming/stripToolJson';
 
 test('stripLeadingToolJson removes fenced JSON blocks', () => {
   const input = '```json\n{"name":"web_search","arguments":{"query":"hello"}}\n```\nAnswer';

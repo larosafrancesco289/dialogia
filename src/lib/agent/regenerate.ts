@@ -10,9 +10,20 @@ import { streamFinal } from '@/lib/agent/streaming';
 import { setTurnController } from '@/lib/services/controllers';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
+import { adjustActiveTurnCount } from '@/lib/ui/streaming';
 
 export async function regenerate(opts: RegenerateOptions): Promise<void> {
-  const { chat, chatId, targetMessageId, messages, turn, controller, overrideModelId, tier } = opts;
+  const {
+    chat,
+    chatId,
+    targetMessageId,
+    messages,
+    turn,
+    controller,
+    overrideModelId,
+    tier,
+    pipeline,
+  } = opts;
   const { models, modelIndex, set } = turn;
 
   const index = messages.findIndex((msg) => msg.id === targetMessageId);
@@ -139,13 +150,11 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   });
 
   set((state) => ({
-    messages: {
-      ...state.messages,
-      [chatId]: (state.messages[chatId] ?? []).map((entry) =>
-        entry.id === original.id ? replacement : entry,
-      ),
+    messagesById: {
+      ...state.messagesById,
+      [original.id]: replacement,
     },
-    ui: { ...state.ui, isStreaming: true },
+    ui: adjustActiveTurnCount(state.ui, chatId, 1),
   }));
   setTurnController(chatId, controller);
 
@@ -179,18 +188,25 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   });
   settings.generation.providerSort = providerSort;
 
-  await streamFinal({
-    chat: chatForStream,
-    chatId,
-    assistantMessage: replacement,
-    messages: convo,
-    controller,
-    turn,
-    settings,
-    plugins,
-    toolDefinition: undefined,
-    startBuffered: false,
-  });
+  try {
+    await streamFinal({
+      chat: chatForStream,
+      chatId,
+      assistantMessage: replacement,
+      messages: convo,
+      controller,
+      turn,
+      settings,
+      plugins,
+      toolDefinition: undefined,
+      startBuffered: false,
+      pipeline,
+    });
+  } finally {
+    set((state) => ({
+      ui: adjustActiveTurnCount(state.ui, chatId, -1),
+    }));
+  }
 }
 
 const isReasoningEffort = (

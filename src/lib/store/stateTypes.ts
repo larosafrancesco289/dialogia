@@ -11,7 +11,8 @@ import type { StoreActions } from '@/lib/store/actionsTypes';
 export type StoreDataState = {
   chats: Chat[];
   folders: Folder[];
-  messages: Record<string, Message[]>;
+  messagesById: Record<string, Message>;
+  messageIdsByChatId: Record<string, string[]>;
   selectedChatId?: string;
 
   models: ModelDescriptor[];

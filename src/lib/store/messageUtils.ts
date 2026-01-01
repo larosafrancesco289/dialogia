@@ -1,9 +1,8 @@
 import type { Message } from '@/lib/types';
+import type { MessageIndexState } from '@/lib/messages/indexing';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 
-type MessageState = {
-  messages: Record<string, Message[]>;
-};
+type MessageState = MessageIndexState;
 
 export function updateMessageInChat<S extends MessageState>(
   state: S,

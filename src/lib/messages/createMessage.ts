@@ -77,3 +77,15 @@ export function createAssistantMessage(args: CreateAssistantMessageArgs): Messag
     ...(tutorWelcome ? { tutorWelcome } : {}),
   };
 }
+
+export type CreateTutorWelcomeMessageArgs = BaseMessageArgs & {
+  content: string;
+  model?: string;
+};
+
+export function createTutorWelcomeMessage(args: CreateTutorWelcomeMessageArgs): Message {
+  return createAssistantMessage({
+    ...args,
+    tutorWelcome: true,
+  });
+}

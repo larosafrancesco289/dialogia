@@ -17,11 +17,12 @@ import type {
   ToolCall,
 } from '@/lib/agent/types';
 import type { Chat, LearningPlan, LearnerModel, Message, ToolCallLogEntry } from '@/lib/types';
-import { startToolCallLogEntry, updateToolCallLogEntry } from '@/lib/services/toolCallLog';
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
 import { isTutorContentTool } from '@/lib/agent/tools/categories';
+import type { ToolExecutionLogger } from '@/lib/agent/tools/executionLogger';
+import { notify } from '@/lib/store/notify';
 
-export type PlanningToolExecutionContext = {
+export type ToolExecutionContext = {
   chat: Chat;
   chatId: string;
   assistantMessage: Message;
@@ -31,6 +32,7 @@ export type PlanningToolExecutionContext = {
   set: StoreSetter;
   get: StoreGetter;
   persistMessage: PersistMessage;
+  logger: ToolExecutionLogger;
 };
 
 export type PlanningToolExecutionResult = {
@@ -48,7 +50,7 @@ export async function executePlanningToolCall(opts: {
   toolCall: ToolCall;
   parsedArgs: Record<string, unknown>;
   roundMeta?: ToolCallLogEntry['metadata'];
-  context: PlanningToolExecutionContext;
+  context: ToolExecutionContext;
   aggregatedResults: SearchResult[];
 }): Promise<PlanningToolExecutionResult> {
   const { toolCall, parsedArgs, roundMeta, context, aggregatedResults } = opts;
@@ -62,15 +64,13 @@ export async function executePlanningToolCall(opts: {
     set,
     get,
     persistMessage,
+    logger,
   } = context;
 
   const callName = toolCall.function.name;
   const shouldLog = callName === 'web_search' || isTutorToolName(callName);
-  const logEntry = shouldLog
-    ? startToolCallLogEntry({
-        set,
-        chatId,
-        messageId: assistantMessage.id,
+  const log = shouldLog
+    ? logger.start({
         name: callName,
         input: parsedArgs,
         category:
@@ -81,29 +81,6 @@ export async function executePlanningToolCall(opts: {
             : roundMeta,
       })
     : undefined;
-  const startedAt = logEntry ? performance.now() : undefined;
-  const finalizeLog = (
-    status: 'success' | 'error',
-    output?: Record<string, unknown>,
-    errorMessage?: string,
-    metadataPatch?: ToolCallLogEntry['metadata'],
-  ) => {
-    if (!logEntry) return;
-    updateToolCallLogEntry({
-      set,
-      chatId,
-      messageId: assistantMessage.id,
-      toolCallId: logEntry.id,
-      updates: {
-        status,
-        output,
-        error: errorMessage,
-        duration:
-          startedAt != null ? Math.max(0, Math.round(performance.now() - startedAt)) : undefined,
-        metadata: metadataPatch,
-      },
-    });
-  };
 
   try {
     if (callName === 'web_search') {
@@ -139,7 +116,7 @@ export async function executePlanningToolCall(opts: {
           description: r?.description,
         }));
         output.resultsPreview = payload.slice(0, 3);
-        finalizeLog('success', output, undefined, {
+        log?.success(output, {
           ...(metadataBase || {}),
           ...(requestedMeta || {}),
           results: searchResult.results.length,
@@ -160,15 +137,9 @@ export async function executePlanningToolCall(opts: {
       }
 
       if (searchResult.error === NOTICE_MISSING_BRAVE_KEY) {
-        const setNotice = get().setNotice;
-        if (typeof setNotice === 'function') {
-          setNotice(NOTICE_MISSING_BRAVE_KEY);
-        } else {
-          set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_BRAVE_KEY } }));
-        }
+        notify(get, NOTICE_MISSING_BRAVE_KEY);
       }
-      finalizeLog(
-        'error',
+      log?.error(
         output,
         searchResult.error || 'Search returned no results',
         metadataBase
@@ -223,7 +194,7 @@ export async function executePlanningToolCall(opts: {
             name: callName,
           });
         }
-        finalizeLog('success', output, undefined, {
+        log?.success(output, {
           ...(roundMeta || {}),
           ...(tutorOutcome.usedContent ? { usedContent: true } : {}),
           ...(tutorOutcome.learnerModel ? { modelUpdated: true } : {}),
@@ -251,8 +222,7 @@ export async function executePlanningToolCall(opts: {
         };
       }
 
-      finalizeLog(
-        'error',
+      log?.error(
         output,
         'Tutor tool call was not handled',
         roundMeta ? { ...roundMeta } : undefined,
@@ -273,8 +243,7 @@ export async function executePlanningToolCall(opts: {
       };
     }
 
-    finalizeLog(
-      'error',
+    log?.error(
       undefined,
       `Unsupported tool: ${callName}`,
       roundMeta ? { ...roundMeta } : undefined,
@@ -295,7 +264,7 @@ export async function executePlanningToolCall(opts: {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    finalizeLog('error', undefined, message, roundMeta ? { ...roundMeta } : undefined);
+    log?.error(undefined, message, roundMeta ? { ...roundMeta } : undefined);
     throw error;
   }
 }

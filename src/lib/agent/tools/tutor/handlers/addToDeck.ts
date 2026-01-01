@@ -1,5 +1,5 @@
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
-import { addCardsToDeck } from '@/lib/tutorDeck';
+import { addCardsToDeck } from '@/lib/tutor/deck';
 import { logger } from '@/lib/logger';
 
 type AddToDeckCard = Parameters<typeof addCardsToDeck>[1][number];

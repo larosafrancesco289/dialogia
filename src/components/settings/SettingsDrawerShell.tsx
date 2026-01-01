@@ -2,7 +2,7 @@
 import type { ReactNode, RefObject } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { IconButton } from '@/components/IconButton';
+import { IconButton } from '@/components/ui/IconButton';
 import { SettingsSearch } from '@/components/settings/SettingsSearch';
 import { springs, variants } from '@/lib/mobile/springConfig';
 

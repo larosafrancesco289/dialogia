@@ -1,4 +1,5 @@
 import type { LearningPlan } from '@/lib/types';
+import { LearningPlanSchema } from '@/lib/schemas/learningPlan';
 
 /**
  * Validate learning plan structure
@@ -9,28 +10,38 @@ export function validateLearningPlan(plan: LearningPlan): {
 } {
   const errors: string[] = [];
 
+  const parsed = LearningPlanSchema.safeParse(plan);
+  if (!parsed.success) {
+    parsed.error.errors.forEach((err) => {
+      const path = err.path.length ? err.path.join('.') : 'root';
+      errors.push(`schema:${path}:${err.message}`);
+    });
+    return { valid: false, errors };
+  }
+  const normalized = parsed.data;
+
   // Check required fields
-  if (!plan.goal || plan.goal.trim().length === 0) {
+  if (!normalized.goal || normalized.goal.trim().length === 0) {
     errors.push('Plan must have a goal');
   }
-  if (!plan.nodes || !Array.isArray(plan.nodes)) {
+  if (!normalized.nodes || !Array.isArray(normalized.nodes)) {
     errors.push('Plan must have nodes array');
   }
-  if (!plan.version || typeof plan.version !== 'number') {
+  if (!normalized.version || typeof normalized.version !== 'number') {
     errors.push('Plan must have version number');
   }
 
   // Validate nodes
-  if (plan.nodes) {
-    if (plan.nodes.length === 0) {
+  if (normalized.nodes) {
+    if (normalized.nodes.length === 0) {
       errors.push('Plan must have at least one node');
     }
-    if (plan.nodes.length > 20) {
+    if (normalized.nodes.length > 20) {
       errors.push('Plan has too many nodes (max 20)');
     }
 
     const nodeIds = new Set<string>();
-    for (const node of plan.nodes) {
+    for (const node of normalized.nodes) {
       // Check required node fields
       if (!node.id || node.id.trim().length === 0) {
         errors.push('All nodes must have an id');
@@ -57,7 +68,7 @@ export function validateLearningPlan(plan: LearningPlan): {
     }
 
     // Validate prerequisites reference existing nodes
-    for (const node of plan.nodes) {
+    for (const node of normalized.nodes) {
       if (node.prerequisites) {
         for (const prereqId of node.prerequisites) {
           if (!nodeIds.has(prereqId)) {
@@ -72,7 +83,7 @@ export function validateLearningPlan(plan: LearningPlan): {
 
     // Check for circular dependencies via DFS with recursion stack tracking
     const adjacency = new Map<string, string[]>();
-    for (const node of plan.nodes) {
+    for (const node of normalized.nodes) {
       adjacency.set(node.id, node.prerequisites ?? []);
     }
 
@@ -116,7 +127,7 @@ export function validateLearningPlan(plan: LearningPlan): {
       permanentlyVisited.add(nodeId);
     };
 
-    for (const node of plan.nodes) {
+    for (const node of normalized.nodes) {
       dfs(node.id);
     }
   }

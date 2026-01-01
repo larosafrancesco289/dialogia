@@ -1,7 +1,9 @@
+import type { ZodType } from 'zod';
 import type { MessageTutor } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { normalizeTutorQuizPayload, withContentReset } from '@/lib/agent/tools/tutor/shared';
 import { logger } from '@/lib/logger';
+import { parseSchema } from '@/lib/schemas/parse';
 
 type QuizArgs = {
   items: Array<{ id: string; [key: string]: unknown }>;
@@ -10,14 +12,16 @@ type QuizArgs = {
 
 export function createQuizHandler(
   mapKey: keyof Pick<MessageTutor, 'mcq' | 'fillBlank' | 'openEnded' | 'flashcards'>,
+  schema: ZodType<{ items: Array<{ id?: string; [key: string]: unknown }>; title?: string }>,
 ): TutorToolHandler<QuizArgs> {
   return {
     parseArgs(input: unknown) {
-      if (!input || typeof input !== 'object') return null;
-      const record = input as Record<string, unknown>;
-      const normalized = normalizeTutorQuizPayload(record);
+      const parsed = parseSchema(schema, input);
+      if (!parsed.ok) return null;
+      const normalized = normalizeTutorQuizPayload(parsed.data);
       if (!normalized) return null;
-      const title = typeof record.title === 'string' ? (record.title as string).trim() : undefined;
+      const title =
+        typeof parsed.data.title === 'string' ? (parsed.data.title as string).trim() : undefined;
       return { items: normalized.items, title };
     },
     async apply(ctx, args) {

@@ -4,15 +4,18 @@ import type { StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
 import { updateMessageInChat } from '@/lib/store/messageUtils';
 import { buildDefaultVoiceState } from '@/lib/voice/types';
+import { buildMessageIndex } from '@/lib/messages/indexing';
 
 const noop = () => undefined;
 const noopAsync = async () => undefined;
 
-const baseState = (messages: Record<string, Message[]>): StoreState =>
-  ({
+const baseState = (messages: Record<string, Message[]>): StoreState => {
+  const { messagesById, messageIdsByChatId } = buildMessageIndex(messages);
+  return {
     chats: [],
     folders: [],
-    messages,
+    messagesById,
+    messageIdsByChatId,
     models: [],
     modelIndex: {
       all: [],
@@ -74,7 +77,8 @@ const baseState = (messages: Record<string, Message[]>): StoreState =>
     ensureChatForVoice: async () => 'chat-1',
     addVoiceUserMessage: noopAsync,
     addVoiceAssistantMessage: noopAsync,
-  }) as StoreState;
+  } as StoreState;
+};
 
 const createMessage = (overrides: Partial<Message> = {}): Message => ({
   id: 'm1',
@@ -110,12 +114,12 @@ test('updateMessageInChat merges patches immutably', () => {
   };
   const result = updateMessageInChat(state, 'chat-1', original.id, patch);
 
-  const updated = result.messages?.['chat-1']?.[0] as Message;
+  const updated = result.messagesById?.[original.id] as Message;
   assert.ok(updated);
   assert.equal(updated.attachments?.length, 1);
   assert.equal(updated.metrics?.completionMs, 1200);
   assert.equal(updated.metrics?.promptTokens, 32);
-  assert.equal(state.messages['chat-1'][0].attachments?.length, 0);
+  assert.equal(state.messagesById[original.id].attachments?.length, 0);
 });
 
 test('updateMessageInChat returns empty patch when chat or message missing', () => {

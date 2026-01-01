@@ -11,14 +11,15 @@ import { useMessageListWindow } from '@/components/message/hooks/useMessageListW
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useMessagePanelsToggles } from '@/components/message/hooks/useMessagePanelsToggles';
 import { useMessageListController } from '@/components/message/useMessageListController';
+import { selectIsStreamingForChat, selectMessagesForChat } from '@/lib/store/selectors';
 
 const EMPTY_MESSAGES: Message[] = [];
 export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
   const { allMessages, chat, isStreaming, planGeneration, composerFocused } = useChatStore(
     (state) => ({
-      allMessages: state.messages[chatId] ?? EMPTY_MESSAGES,
+      allMessages: selectMessagesForChat(chatId)(state) ?? EMPTY_MESSAGES,
       chat: state.chats.find((c) => c.id === chatId),
-      isStreaming: state.ui.isStreaming,
+      isStreaming: selectIsStreamingForChat(chatId)(state),
       planGeneration: state.ui.plan.generationByChatId?.[chatId],
       composerFocused: state.ui.mobile.composerFocused,
     }),

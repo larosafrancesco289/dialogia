@@ -14,6 +14,7 @@ import {
   NOTICE_MODELS_UNAVAILABLE,
 } from '@/lib/store/notices';
 import { applyNextOverrides, readNextOverrides } from '@/lib/ui/next';
+import { notify } from '@/lib/store/notify';
 
 export const createModelSlice = createStoreSlice((set, get) => {
   let isLoadingModels = false;
@@ -33,14 +34,7 @@ export const createModelSlice = createStoreSlice((set, get) => {
         openrouterStatus = null;
       }
       if (!openrouterStatus) {
-        const setNotice = get().setNotice;
-        if (typeof setNotice === 'function') {
-          setNotice(NOTICE_MISSING_CLIENT_KEY);
-        } else {
-          set((s) => ({
-            ui: { ...s.ui, notice: NOTICE_MISSING_CLIENT_KEY },
-          }));
-        }
+        notify(get, NOTICE_MISSING_CLIENT_KEY);
         return;
       }
       isLoadingModels = true;
@@ -81,12 +75,7 @@ export const createModelSlice = createStoreSlice((set, get) => {
           if (zdrOnly) {
             if (filter.status === 'unknown') {
               openrouterModels = [];
-              const setNotice = get().setNotice;
-              if (typeof setNotice === 'function') {
-                setNotice(ZDR_UNAVAILABLE_NOTICE);
-              } else {
-                set((s) => ({ ui: { ...s.ui, notice: ZDR_UNAVAILABLE_NOTICE } }));
-              }
+              notify(get, ZDR_UNAVAILABLE_NOTICE);
             } else {
               openrouterModels = filtered;
             }
@@ -96,28 +85,13 @@ export const createModelSlice = createStoreSlice((set, get) => {
         } catch (error: unknown) {
           openrouterModels = [];
           if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
-            const setNotice = get().setNotice;
-            if (typeof setNotice === 'function') {
-              setNotice(NOTICE_INVALID_KEY);
-            } else {
-              set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
-            }
+            notify(get, NOTICE_INVALID_KEY);
           }
         }
 
         if (openrouterModels.length === 0) {
           if (!get().ui.notice) {
-            const setNotice = get().setNotice;
-            if (typeof setNotice === 'function') {
-              setNotice(NOTICE_MODELS_UNAVAILABLE);
-            } else {
-              set((s) => ({
-                ui: {
-                  ...s.ui,
-                  notice: NOTICE_MODELS_UNAVAILABLE,
-                },
-              }));
-            }
+            notify(get, NOTICE_MODELS_UNAVAILABLE);
           }
           return;
         }
@@ -133,18 +107,8 @@ export const createModelSlice = createStoreSlice((set, get) => {
             })(),
           }));
           if (noticeSegments.length > 0 && !get().ui.notice) {
-            const setNotice = get().setNotice;
             const message = noticeSegments.join(' ');
-            if (typeof setNotice === 'function') {
-              setNotice(message);
-            } else {
-              set((s) => ({
-                ui: {
-                  ...s.ui,
-                  notice: message,
-                },
-              }));
-            }
+            notify(get, message);
           }
         }
         set({ models: openrouterModels, modelIndex: createModelIndex(openrouterModels) });

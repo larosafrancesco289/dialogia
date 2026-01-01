@@ -44,6 +44,13 @@ Dialogia's aesthetic evokes a **scholarly workspace** — the feeling of sitting
 - Global component classes live in `styles/components.css` (kebab-case names).
 - Primitives belong in `styles/foundations.css`; tokens belong in `styles/tokens.css`.
 
+### Style decision checklist
+
+- [ ] Layout/spacing or one-off tweaks: Tailwind utilities.
+- [ ] Component-specific or stateful visuals: CSS module.
+- [ ] Repeated pattern (3+ uses) or tokenized rule: promote to `styles/components/*.css` or
+      `styles/foundations.css`.
+
 ### Style file map
 
 - `styles/tokens.css`: design tokens (colors, radii, spacing, shadows).

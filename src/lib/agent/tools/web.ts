@@ -12,6 +12,7 @@ import type {
 import { parseJsonAfter } from './json';
 import { setSearchUiStatus } from '@/lib/agent/searchService';
 import { logger } from '@/lib/logger';
+import { notify } from '@/lib/store/notify';
 
 function readSearchPayload(value: unknown): WebSearchArgs | null {
   if (!value || typeof value !== 'object') return null;
@@ -121,12 +122,7 @@ export async function performWebSearchTool(opts: {
         });
       }
       if (result.error === NOTICE_MISSING_BRAVE_KEY) {
-        const setNotice = get().setNotice;
-        if (typeof setNotice === 'function') {
-          setNotice(NOTICE_MISSING_BRAVE_KEY);
-        } else {
-          set((state) => ({ ui: { ...state.ui, notice: NOTICE_MISSING_BRAVE_KEY } }));
-        }
+        notify(get, NOTICE_MISSING_BRAVE_KEY);
       }
       return { ok: false, results: [], error: result.error, query: rawQuery };
     } catch (err: unknown) {

@@ -5,6 +5,7 @@ import type { PersistMessage, StoreGetter, StoreSetter, TutorToolName } from '@/
 import { attachTutorUiState } from '@/lib/agent/tutorFlow';
 import { getNextNode } from '@/lib/learningPlan/service';
 import { getTutorToolsByTag } from '@/lib/agent/tools/metadata';
+import { getMessagesForChat, setMessagesForChat } from '@/lib/messages/indexing';
 import type {
   TutorToolApplyResult,
   TutorToolContext,
@@ -112,7 +113,7 @@ export async function applyTutorToolCall(opts: {
   const applyTutorPatch: TutorToolContext['applyTutorPatch'] = async (buildPatch) => {
     let updatedMsg: Message | undefined;
     set((state) => {
-      const list = state.messages[chatId] ?? [];
+      const list = getMessagesForChat(state, chatId);
       const prev =
         ((state.ui.tutor.byMessageId || {})[assistantMessage.id] as Record<string, unknown>) || {};
       const patch = buildPatch(prev);
@@ -131,7 +132,7 @@ export async function applyTutorToolCall(opts: {
             byMessageId: result.nextUi,
           },
         },
-        messages: { ...state.messages, [chatId]: result.nextMessages },
+        ...setMessagesForChat(state, chatId, result.nextMessages),
       } as Partial<TurnStoreState>;
     });
     if (updatedMsg) {

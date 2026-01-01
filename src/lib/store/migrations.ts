@@ -14,6 +14,7 @@ const readString = (value: unknown): string | undefined =>
 
 const stripDeprecatedUiFields = (ui: Record<string, unknown>): Record<string, unknown> => {
   const next = { ...ui };
+  delete next['isStreaming'];
   delete next['tutorMemoryModelId'];
   delete next['tutorMemoryFrequency'];
   delete next['tutorMemoryAutoUpdate'];

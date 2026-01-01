@@ -20,7 +20,8 @@ export async function bootstrapApp(set: StoreSetter, get: StoreGetter): Promise<
   set((s) => ({
     chats: hydrated.chats,
     folders: hydrated.folders,
-    messages: hydrated.messages,
+    messagesById: hydrated.messagesById,
+    messageIdsByChatId: hydrated.messageIdsByChatId,
     selectedChatId: hydrated.selectedChatId,
     ui: mergeTutorMap(s.ui, hydrated.tutorByMessageId),
   }));

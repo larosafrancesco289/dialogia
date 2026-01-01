@@ -1,19 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { MessageTutor, TutorDiagnosticItem, TutorPlanSuggestion } from '@/lib/types';
+import type { MessageTutor, TutorPlanSuggestion } from '@/lib/types';
 
 export type TutorQuizPayload = {
   items: Array<{ id: string; [key: string]: unknown }>;
 };
-
-export const DIAGNOSTIC_DIFFICULTIES = new Set<TutorDiagnosticItem['difficulty']>([
-  'beginner',
-  'intermediate',
-  'advanced',
-  'mixed',
-  'easy',
-  'medium',
-  'hard',
-]);
 
 const CONTENT_KEYS: Array<keyof MessageTutor> = [
   'questionnaire',

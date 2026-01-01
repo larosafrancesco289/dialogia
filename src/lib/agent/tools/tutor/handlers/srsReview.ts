@@ -1,5 +1,5 @@
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
-import { getDueCards } from '@/lib/tutorDeck';
+import { getDueCards } from '@/lib/tutor/deck';
 import { logger } from '@/lib/logger';
 
 type SrsReviewArgs = {

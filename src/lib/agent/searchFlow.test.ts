@@ -60,7 +60,11 @@ test('runBraveSearch returns results and propagates errors', async () => {
   assert.equal(okResult.results.length, 1);
   assert.equal(okResult.results[0]?.url, 'https://alpha.test');
 
-  const restoreMissing = mockFetch((async () => ({ ok: false, status: 400 })) as any);
+  const restoreMissing = mockFetch((async () => ({
+    ok: false,
+    status: 500,
+    json: async () => ({ error: 'missing_env', detail: 'BRAVE_SEARCH_API_KEY' }),
+  })) as any);
   const missingKey = await runBraveSearch('beta', 2);
   restoreMissing();
   assert.equal(missingKey.ok, false);

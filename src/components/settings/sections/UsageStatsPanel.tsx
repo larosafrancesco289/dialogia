@@ -4,7 +4,10 @@ import { useMemo } from 'react';
 
 export function UsageStatsPanel() {
   const chats = useChatStore((s) => s.chats);
-  const messages = useChatStore((s) => s.messages);
+  const { messagesById, messageIdsByChatId } = useChatStore((s) => ({
+    messagesById: s.messagesById,
+    messageIdsByChatId: s.messageIdsByChatId,
+  }));
 
   const stats = useMemo(() => {
     let totalMessages = 0;
@@ -12,9 +15,11 @@ export function UsageStatsPanel() {
     let totalTokensOut = 0;
 
     for (const chat of chats) {
-      const chatMessages = messages[chat.id] ?? [];
-      totalMessages += chatMessages.length;
-      for (const msg of chatMessages) {
+      const chatIds = messageIdsByChatId[chat.id] ?? [];
+      totalMessages += chatIds.length;
+      for (const id of chatIds) {
+        const msg = messagesById[id];
+        if (!msg) continue;
         if (msg.role === 'assistant') {
           totalTokensIn += msg.tokensIn ?? 0;
           totalTokensOut += msg.tokensOut ?? 0;
@@ -29,7 +34,7 @@ export function UsageStatsPanel() {
       totalTokensIn,
       totalTokensOut,
     };
-  }, [chats, messages]);
+  }, [chats, messageIdsByChatId, messagesById]);
 
   const formatNumber = (n: number) => {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;

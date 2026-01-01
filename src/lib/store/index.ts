@@ -42,7 +42,8 @@ export const useChatStore = createWithEqualityFn<StoreState>()(
         // Base state containers
         chats: [],
         folders: [],
-        messages: {},
+        messagesById: {},
+        messageIdsByChatId: {},
         selectedChatId: undefined,
 
         // Feature slices (state + actions)

@@ -56,7 +56,7 @@ test('validateLearningPlan rejects plan without nodes', () => {
   const plan = { ...createBasicPlan(), nodes: [] };
   const { valid, errors } = validateLearningPlan(plan);
   assert.equal(valid, false);
-  assert.ok(errors.some((e) => e.includes('at least one node')));
+  assert.ok(errors.some((e) => e.includes('schema:nodes') || e.includes('nodes')));
 });
 
 test('validateLearningPlan rejects node with missing id', () => {

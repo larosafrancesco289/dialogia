@@ -3,6 +3,9 @@ import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
 import { parseNdjsonStream } from '@/lib/utils/ndjson';
 import { isDeepResearchEvent } from '@/lib/deepResearch/events';
+import { notify } from '@/lib/store/notify';
+import { adjustActiveTurnCount, clearActiveTurnCount } from '@/lib/ui/streaming';
+import { readApiErrorResponse } from '@/lib/api/errors';
 
 export type DeepResearchContext = {
   task: string;
@@ -33,7 +36,7 @@ export async function runDeepResearchTurn({
 
   if (manageController) {
     setTurnController(chatId, controller);
-    set((state) => ({ ui: { ...state.ui, isStreaming: true } }));
+    set((state) => ({ ui: adjustActiveTurnCount(state.ui, chatId, 1) }));
   }
 
   try {
@@ -46,16 +49,12 @@ export async function runDeepResearchTurn({
     } as RequestInit);
 
     if (!res.ok) {
-      // Try to read error from body if possible, otherwise default
-      const errText = await res.text().catch(() => '');
-      let errJson: Record<string, unknown> = {};
-      try {
-        errJson = JSON.parse(errText);
-      } catch {
-        // ignore
+      const apiError = await readApiErrorResponse(res);
+      if (apiError?.error) {
+        const detail = typeof apiError.detail === 'string' ? `: ${apiError.detail}` : '';
+        throw new Error(`${apiError.error}${detail}`);
       }
-      const errMessage = typeof errJson.error === 'string' ? errJson.error : undefined;
-      throw new Error(errMessage || `deep_failed_${res.status}`);
+      throw new Error(`deep_failed_${res.status}`);
     }
 
     if (!res.body) throw new Error('no_body');
@@ -72,13 +71,15 @@ export async function runDeepResearchTurn({
         // Update store with incremental trace
         const deepResearch: MessageDeepResearch = { trace: trace.slice() };
 
-        set((state) => {
-          const list = state.messages[chatId] ?? [];
-          const updated = list.map((m) =>
-            m.id === assistantMessage.id ? { ...m, deepResearch } : m,
-          );
-          return { messages: { ...state.messages, [chatId]: updated } };
-        });
+        set((state) => ({
+          messagesById: {
+            ...state.messagesById,
+            [assistantMessage.id]: {
+              ...(state.messagesById[assistantMessage.id] ?? assistantMessage),
+              deepResearch,
+            },
+          },
+        }));
       } else if (msg.type === 'result') {
         finalResult = msg.data;
       } else if (msg.type === 'error') {
@@ -94,35 +95,28 @@ export async function runDeepResearchTurn({
       content: answer,
       deepResearch: { trace: trace.slice(), answer },
     };
-    set((state) => {
-      const list = state.messages[chatId] ?? [];
-      const updated = list.map((msg) => (msg.id === assistantMessage.id ? finalMessage : msg));
-      return { messages: { ...state.messages, [chatId]: updated } };
-    });
+    set((state) => ({
+      messagesById: {
+        ...state.messagesById,
+        [assistantMessage.id]: finalMessage,
+      },
+    }));
     await persistMessage(finalMessage);
-    if (manageController) set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
+    if (manageController)
+      set((state) => ({
+        ui: clearActiveTurnCount(state.ui, chatId),
+      }));
     if (manageController) clearTurnController(chatId, controller);
     return true;
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'DeepResearch failed';
     const noticeMessage = `DeepResearch: ${errorMessage}`;
-    set((state) => ({
-      ui: {
-        ...state.ui,
-        isStreaming: manageController ? false : state.ui.isStreaming,
-      },
-    }));
-    const setNotice = get().setNotice;
-    if (typeof setNotice === 'function') {
-      setNotice(noticeMessage);
-    } else {
+    if (manageController) {
       set((state) => ({
-        ui: {
-          ...state.ui,
-          notice: noticeMessage,
-        },
+        ui: clearActiveTurnCount(state.ui, chatId),
       }));
     }
+    notify(get, noticeMessage);
     if (manageController) clearTurnController(chatId, controller);
     return false;
   }

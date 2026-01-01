@@ -23,7 +23,7 @@ type ZdrCacheState = {
   zdrProviderIds?: string[];
   zdrFetchedAt?: number;
   ui: { notice?: string };
-  setNotice?: (notice?: string) => void;
+  setNotice: (notice?: string) => void;
 };
 
 type StoreSetter<S extends ZdrCacheState = ZdrCacheState> = ContractStoreSetter<S>;
@@ -108,10 +108,5 @@ export async function guardZdrOrNotifyCached<S extends ZdrCacheState>(
 ): Promise<boolean> {
   const result = await computeZdrFilterCached([{ id: modelId }], 'enforce', set, get, fetchers);
   const setNotice = get().setNotice;
-  return guardModelOrNotice(
-    modelId,
-    set,
-    result.lists,
-    typeof setNotice === 'function' ? setNotice : undefined,
-  );
+  return guardModelOrNotice(modelId, set, result.lists, setNotice);
 }

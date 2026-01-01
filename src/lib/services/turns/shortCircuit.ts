@@ -3,7 +3,6 @@ import type { TurnStoreState } from '@/lib/agent/contracts';
 import type { Message } from '@/lib/types';
 
 type ShortCircuitFinalizeArgs = {
-  chatId: string;
   assistantMessage: Message;
   lifecycle: { buildShortCircuitMessage: (message: Message) => Message };
   getState: () => TurnStoreState;
@@ -15,13 +14,12 @@ type ShortCircuitFinalizeArgs = {
 export async function finalizeShortCircuitMessage(
   args: ShortCircuitFinalizeArgs,
 ): Promise<Message> {
-  const { chatId, assistantMessage, lifecycle, getState, updateMessage, persistMessage } = args;
+  const { assistantMessage, lifecycle, getState, updateMessage, persistMessage } = args;
   const fallbackText =
     args.fallbackText ?? 'I added new tutor content above. Let me know when you are ready.';
 
   const state = getState();
-  const currentList = state.messages[chatId] ?? [];
-  const current = currentList.find((m) => m.id === assistantMessage.id);
+  const current = state.messagesById[assistantMessage.id];
   const baseMessage: Message = (current as Message | undefined) ?? assistantMessage;
   const finalMsgBase: Message = lifecycle.buildShortCircuitMessage({
     ...baseMessage,

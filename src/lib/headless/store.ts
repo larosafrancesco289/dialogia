@@ -6,6 +6,7 @@ import type { Chat, Message, ModelDescriptor } from '@/lib/types';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
 import { buildDefaultVoiceState } from '@/lib/voice/types';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
+import { appendMessagesToChat, buildMessageIndex } from '@/lib/messages/indexing';
 import { resolveNotice } from '@/lib/store/notices';
 
 export type HeadlessStoreOptions = {
@@ -29,11 +30,13 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
   const { chat, messages = [], models = [], uiOverrides, modelIndex } = options;
   const resolvedIndex = modelIndex ?? createModelIndex(models);
   const initialMessages: Record<string, Message[]> = { [chat.id]: messages.slice() };
+  const { messagesById, messageIdsByChatId } = buildMessageIndex(initialMessages);
 
   return createStore<StoreState>((set, _get) => ({
     chats: [chat],
     folders: [],
-    messages: initialMessages,
+    messagesById,
+    messageIdsByChatId,
     selectedChatId: chat.id,
     models,
     modelIndex: resolvedIndex,
@@ -128,7 +131,10 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
 
     sendUserMessage: async () => {},
     branchChatFromMessage: async () => {},
-    stopStreaming: () => set((state) => ({ ui: { ...state.ui, isStreaming: false } })),
+    stopStreaming: () =>
+      set((state) => ({
+        ui: { ...state.ui, activeTurnByChatId: {} },
+      })),
     regenerateAssistantMessage: async () => {},
     editUserMessage: async () => {},
     editAssistantMessage: async () => {},
@@ -138,15 +144,7 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
         content,
         model: opts?.modelId ?? chat.settings.model,
       });
-      set((state) => {
-        const list = state.messages[chat.id] ?? [];
-        return {
-          messages: {
-            ...state.messages,
-            [chat.id]: [...list, message],
-          },
-        };
-      });
+      set((state) => appendMessagesToChat(state, chat.id, [message]));
     },
     persistTutorStateForMessage: async () => {},
 

@@ -24,6 +24,7 @@ import {
   getDefaultTutorModelIdForTier,
   isModelAllowedForTier,
 } from '@/lib/auth/tierFeatures';
+import { getMessagesForChat } from '@/lib/messages/indexing';
 
 export type TurnModelContext = {
   modelId: string;
@@ -201,7 +202,7 @@ export const prepareSendRuntime = async ({
     tier,
     activeModelIds,
     primaryModelId: activeModelIds[0],
-    priorMessages: get().messages[chatId] ?? [],
+    priorMessages: getMessagesForChat(get(), chatId),
     baseTurnContext,
     modelContexts,
   };

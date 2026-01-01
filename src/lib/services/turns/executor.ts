@@ -124,7 +124,6 @@ export const executeModelTurn = async ({
 
     if (runResult.shortCircuited) {
       await finalizeShortCircuitMessage({
-        chatId: runtime.chatId,
         assistantMessage,
         lifecycle,
         getState: get,
@@ -135,13 +134,12 @@ export const executeModelTurn = async ({
       return;
     }
 
-    const messageList = get().messages[runtime.chatId] ?? [];
-    const finalAssistant = messageList.find((msg) => msg.id === assistantMessage.id);
+    const finalAssistant = get().messagesById[assistantMessage.id];
     if (finalAssistant) {
       // Lifecycle already pushed gen settings/system snapshot; no-op here.
     }
   } catch (error: unknown) {
-    handleTurnApiError(error, set, get);
+    handleTurnApiError(error, set, get, runtime.chatId);
     controller.abort();
   } finally {
     masterController.signal.removeEventListener('abort', abortListener);

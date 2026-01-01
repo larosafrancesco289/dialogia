@@ -18,8 +18,8 @@ test('rateLimit returns 429 with retry headers', async () => {
   const config = { limit: 1, windowMs: 1000 };
   const prefix = `test-${Date.now()}`;
 
-  assert.equal(rateLimit(req, prefix, config), null);
-  const res = rateLimit(req, prefix, config);
+  assert.equal(await rateLimit(req, prefix, config), null);
+  const res = await rateLimit(req, prefix, config);
   assert.ok(res);
   if (!res) return;
 

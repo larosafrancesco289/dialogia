@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { TutorDiagnostic, TutorDiagnosticItem } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
-import { DIAGNOSTIC_DIFFICULTIES, withContentReset } from '@/lib/agent/tools/tutor/shared';
-import { isRecord } from '@/lib/utils/guards';
+import { withContentReset } from '@/lib/agent/tools/tutor/shared';
+import { parseSchema } from '@/lib/schemas/parse';
+import { TutorDiagnosticToolSchema } from '@/lib/schemas/tutor';
 
 type CreateDiagnosticArgs = {
   diagnostic: TutorDiagnostic;
@@ -10,48 +11,24 @@ type CreateDiagnosticArgs = {
 
 export const createDiagnosticHandler: TutorToolHandler<CreateDiagnosticArgs> = {
   parseArgs(input) {
-    if (!input || typeof input !== 'object') return null;
-    const args = input as Record<string, unknown>;
-    const diagnosticId =
-      typeof args.diagnosticId === 'string' && args.diagnosticId.trim()
-        ? args.diagnosticId.trim()
-        : `diag_${uuidv4()}`;
-    const topic = typeof args.topic === 'string' ? args.topic.trim() : undefined;
-    const depthRaw = typeof args.depth === 'string' ? args.depth.trim() : undefined;
-    const depth: 'quick' | 'moderate' | 'comprehensive' =
-      depthRaw === 'moderate' || depthRaw === 'comprehensive' ? depthRaw : 'quick';
-    const quiz = isRecord(args.quiz) ? args.quiz : undefined;
-    const itemsRaw = Array.isArray(quiz?.items) ? quiz.items : [];
-    const normalizedItems = itemsRaw
+    const parsed = parseSchema(TutorDiagnosticToolSchema, input);
+    if (!parsed.ok) return null;
+    const args = parsed.data;
+    const diagnosticId = args.diagnosticId?.trim() || `diag_${uuidv4()}`;
+    const topic = args.topic?.trim();
+    const depth =
+      args.depth === 'moderate' || args.depth === 'comprehensive' ? args.depth : 'quick';
+    const quiz = args.quiz;
+    const normalizedItems = quiz.items
       .map((item, index: number) => {
-        if (!isRecord(item)) return null;
-        const question = typeof item.question === 'string' ? item.question.trim() : undefined;
-        const choicesRaw = Array.isArray(item.choices) ? item.choices : [];
-        const choices = choicesRaw
-          .map((choice: unknown) => (typeof choice === 'string' ? choice.trim() : undefined))
-          .filter(
-            (choice: unknown): choice is string =>
-              typeof choice === 'string' && choice.trim().length > 0,
-          );
+        const question = item.question.trim();
+        const choices = item.choices.map((choice) => choice.trim()).filter((choice) => choice);
         if (!question || choices.length < 2) return null;
-        const id =
-          typeof item.id === 'string' && item.id.trim()
-            ? item.id.trim()
-            : `diagnostic_item_${index + 1}_${uuidv4()}`;
-        const correct =
-          typeof item.correct === 'number' && Number.isFinite(item.correct)
-            ? item.correct
-            : undefined;
-        const explanation =
-          typeof item.explanation === 'string' ? item.explanation.trim() : undefined;
-        const skill = typeof item.skill === 'string' ? item.skill.trim() : undefined;
-        const rawDifficulty =
-          typeof item.difficulty === 'string' ? item.difficulty.trim() : undefined;
-        const difficulty =
-          rawDifficulty &&
-          DIAGNOSTIC_DIFFICULTIES.has(rawDifficulty as TutorDiagnosticItem['difficulty'])
-            ? (rawDifficulty as TutorDiagnosticItem['difficulty'])
-            : undefined;
+        const id = item.id?.trim() || `diagnostic_item_${index + 1}_${uuidv4()}`;
+        const correct = typeof item.correct === 'number' ? item.correct : undefined;
+        const explanation = item.explanation?.trim();
+        const skill = item.skill?.trim();
+        const difficulty = item.difficulty as TutorDiagnosticItem['difficulty'] | undefined;
         return {
           id,
           question,
@@ -71,17 +48,10 @@ export const createDiagnosticHandler: TutorToolHandler<CreateDiagnosticArgs> = {
     const adaptToAnswers =
       typeof args.adaptToAnswers === 'boolean'
         ? args.adaptToAnswers
-        : typeof quiz?.adaptive === 'boolean'
+        : typeof quiz.adaptive === 'boolean'
           ? !!quiz.adaptive
           : false;
-    const interpretationRaw = quiz?.interpretation;
-    const interpretation = isRecord(interpretationRaw)
-      ? (Object.fromEntries(
-          Object.entries(interpretationRaw).filter(
-            (entry): entry is [string, string] => typeof entry[1] === 'string',
-          ),
-        ) as Record<string, string>)
-      : undefined;
+    const interpretation = quiz.interpretation;
 
     const diagnostic: TutorDiagnostic = {
       diagnosticId,

@@ -1,4 +1,4 @@
-import { orFetchZdrEndpoints } from '@/lib/api/openrouterHttp';
+import { orFetchZdrEndpoints } from '@/lib/openrouter/http';
 import { getRequestOrigin, proxyJson, withProxyErrors } from '@/lib/server/proxy';
 import { route } from '@/lib/server/routeBuilder';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';

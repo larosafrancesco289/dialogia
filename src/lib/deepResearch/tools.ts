@@ -2,6 +2,9 @@ import 'server-only';
 import { getBraveSearchKey } from '@/lib/env/server';
 import { summarizeHtmlDocument } from '@/lib/deepResearch/html';
 import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
+import { runBraveSearchDirect } from '@/lib/search/brave';
+import type { ToolDefinition } from '@/lib/agent/types';
+import { WEB_SEARCH_TOOL } from '@/lib/tools/webSearch';
 
 export type { WebSearchToolArgs } from '@/lib/tools/webSearch';
 
@@ -21,40 +24,87 @@ export type DeepFetchedPage = {
   bytes?: number;
 };
 
+export const DEEP_RESEARCH_TOOLS: ToolDefinition[] = [
+  WEB_SEARCH_TOOL,
+  {
+    type: 'function',
+    function: {
+      name: 'fetch_url',
+      description:
+        'Fetch a web page and extract main text, title, description, headings, and publication date if present. Use after search to read promising sources.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'The absolute URL to fetch.' },
+          max_bytes: {
+            type: 'integer',
+            description: 'Maximum response bytes to read (safety cap).',
+            minimum: 1024,
+            maximum: 4000000,
+            default: 800000,
+          },
+          timeout_ms: {
+            type: 'integer',
+            description: 'Per-request timeout in milliseconds.',
+            minimum: 2000,
+            maximum: 30000,
+            default: 15000,
+          },
+        },
+        required: ['url'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_time',
+      description: 'Return the current date/time (ISO) for temporal context and recency checks.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+  },
+];
+
 export async function runWebSearch(args: WebSearchToolArgs): Promise<DeepSearchResult[]> {
   const apiKey = getBraveSearchKey();
   if (!apiKey) throw new Error('brave_missing_key');
-  const url = new URL('https://api.search.brave.com/res/v1/web/search');
   const count = Math.min(Math.max(args.count ?? 5, 1), 10);
-  url.searchParams.set('q', args.query);
-  url.searchParams.set('count', String(count));
-  url.searchParams.set('country', (args.country || 'us').toLowerCase());
-  url.searchParams.set('safesearch', 'moderate');
-  if (args.freshness && args.freshness !== 'all') url.searchParams.set('freshness', args.freshness);
-  if (args.include_domains?.length)
-    url.searchParams.set('include_domains', args.include_domains.join(','));
-  if (args.exclude_domains?.length)
-    url.searchParams.set('exclude_domains', args.exclude_domains.join(','));
-
-  const res = await fetch(url.toString(), {
-    headers: {
-      Accept: 'application/json',
-      'Accept-Encoding': 'gzip',
-      'X-Subscription-Token': apiKey,
-    },
-    cache: 'no-store',
-  });
-
-  if (!res.ok) throw new Error(`brave_error_${res.status}`);
-  const data = (await res.json()) as {
-    web?: { results?: Array<{ title?: string; url?: string; description?: string }> };
-  };
-  const web = Array.isArray(data?.web?.results) ? data.web?.results : [];
-  return web.slice(0, count).map((entry) => ({
+  const results = await runBraveSearchDirect({ ...args, count }, { apiKey });
+  return results.slice(0, count).map((entry) => ({
     title: entry?.title,
     url: entry?.url ?? '',
     description: entry?.description,
   }));
+}
+
+export function normalizeWebSearchArgs(input: Record<string, unknown>): WebSearchToolArgs {
+  const includeDomains = Array.isArray(input.include_domains)
+    ? input.include_domains.filter((entry): entry is string => typeof entry === 'string')
+    : undefined;
+  const excludeDomains = Array.isArray(input.exclude_domains)
+    ? input.exclude_domains.filter((entry): entry is string => typeof entry === 'string')
+    : undefined;
+  const freshness =
+    input.freshness === 'd' ||
+    input.freshness === 'w' ||
+    input.freshness === 'm' ||
+    input.freshness === 'y' ||
+    input.freshness === 'all'
+      ? (input.freshness as WebSearchToolArgs['freshness'])
+      : undefined;
+  return {
+    query: typeof input.query === 'string' ? input.query : '',
+    count: typeof input.count === 'number' ? input.count : undefined,
+    freshness,
+    country: typeof input.country === 'string' ? input.country : undefined,
+    include_domains: includeDomains,
+    exclude_domains: excludeDomains,
+    provider: input.provider === 'brave' ? 'brave' : undefined,
+  };
 }
 
 export type FetchUrlToolArgs = {
@@ -62,6 +112,14 @@ export type FetchUrlToolArgs = {
   max_bytes?: number;
   timeout_ms?: number;
 };
+
+export function normalizeFetchUrlArgs(input: Record<string, unknown>): FetchUrlToolArgs | null {
+  const url = typeof input.url === 'string' ? input.url.trim() : '';
+  if (!url) return null;
+  const max_bytes = typeof input.max_bytes === 'number' ? input.max_bytes : undefined;
+  const timeout_ms = typeof input.timeout_ms === 'number' ? input.timeout_ms : undefined;
+  return { url, max_bytes, timeout_ms };
+}
 
 export async function fetchUrl(args: FetchUrlToolArgs): Promise<DeepFetchedPage> {
   const maxBytes = Math.min(Math.max(args.max_bytes ?? 800000, 1024), 4_000_000);

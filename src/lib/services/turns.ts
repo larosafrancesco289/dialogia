@@ -30,6 +30,12 @@ import { scheduleTutorPersistence } from '@/lib/services/tutorPersistence';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { triggerAsyncTitleGeneration } from '@/lib/services/titleGenerator';
 import { getClientTier } from '@/lib/auth/tier.client';
+import {
+  appendMessagesToChat,
+  getMessagesForChat,
+  setMessagesForChat,
+} from '@/lib/messages/indexing';
+import { notify } from '@/lib/store/notify';
 
 export type SendTurnOptions = {
   content: string;
@@ -78,12 +84,7 @@ export async function appendAssistantTurn({
     createdAt: now,
     model: modelId || chat.settings.model,
   });
-  set((state) => ({
-    messages: {
-      ...state.messages,
-      [chatId]: [...(state.messages[chatId] ?? []), assistantMsg],
-    },
-  }));
+  set((state) => appendMessagesToChat(state, chatId, [assistantMsg]));
   const persistMessage = createMessagePersister(repository);
   await persistMessage(assistantMsg);
 }
@@ -99,26 +100,20 @@ export async function persistTutorForMessage({ messageId, store, repository }: P
   const state = get();
   const uiTutor = selectTutorEntry(state.ui, messageId);
   if (!uiTutor) return;
-  let updatedMsg: Message | undefined;
-  for (const [cid, list] of Object.entries(state.messages)) {
-    const idx = list.findIndex((m) => m.id === messageId);
-    if (idx === -1) continue;
-    const target = list[idx];
-    const prevTutor = target.tutor;
-    const merged: MessageTutor = { ...(prevTutor || {}), ...(uiTutor || {}) };
-    const nextMessage = ensureHiddenTutorContent({
-      ...target,
-      tutor: merged,
-    }) as Message;
-    set((draft) => ({
-      messages: {
-        ...draft.messages,
-        [cid]: list.map((m) => (m.id === messageId ? nextMessage : m)),
-      },
-    }));
-    updatedMsg = nextMessage;
-    break;
-  }
+  const target = state.messagesById[messageId];
+  if (!target) return;
+  const merged: MessageTutor = { ...(target.tutor || {}), ...(uiTutor || {}) };
+  const nextMessage = ensureHiddenTutorContent({
+    ...target,
+    tutor: merged,
+  }) as Message;
+  set((draft) => ({
+    messagesById: {
+      ...draft.messagesById,
+      [messageId]: nextMessage,
+    },
+  }));
+  const updatedMsg = nextMessage;
   if (updatedMsg) {
     scheduleTutorPersistence({ message: updatedMsg, repository });
   }
@@ -200,17 +195,7 @@ export async function sendUserTurn({
       ui: applyNextOverrides(state.ui, { deepResearch: false }),
     }));
     if (!get().ui.notice) {
-      const setNotice = get().setNotice;
-      if (typeof setNotice === 'function') {
-        setNotice(deepResearchDecision.notice);
-      } else {
-        set((state) => ({
-          ui: {
-            ...state.ui,
-            notice: deepResearchDecision.notice,
-          },
-        }));
-      }
+      notify(get, deepResearchDecision.notice);
     }
   } else if (deepResearchDecision.shouldRun) {
     const handled = await runDeepResearchTurn({
@@ -322,7 +307,7 @@ export async function regenerateTurn({
   );
   if (!canUseModel) return;
 
-  const messages = get().messages[chatId] ?? [];
+  const messages = getMessagesForChat(get(), chatId);
   if (!messages.some((m) => m.id === messageId)) return;
 
   const controller = new AbortController();
@@ -348,7 +333,7 @@ export async function regenerateTurn({
       tier,
     });
   } catch (error: unknown) {
-    handleTurnApiError(error, set, get);
+    handleTurnApiError(error, set, get, chatId);
     clearTurnController(chatId, controller);
   }
 }
@@ -362,19 +347,16 @@ export type AttachTutorUiArgs = {
 export function attachTutorState({ messageId, patch, store }: AttachTutorUiArgs) {
   const { set, get } = store;
   const snapshot = get();
-  const { ui, messages, selectedChatId } = snapshot;
+  const { ui, selectedChatId } = snapshot;
   if (!selectedChatId) return undefined;
   const { nextUi, nextMessages, updatedMessage } = attachTutorUiState({
     currentUi: ui.tutor.byMessageId,
-    currentMessages: messages[selectedChatId] ?? [],
+    currentMessages: getMessagesForChat(snapshot, selectedChatId),
     messageId,
     patch,
   });
   set((state) => ({
-    messages: {
-      ...state.messages,
-      [selectedChatId]: nextMessages,
-    },
+    ...setMessagesForChat(state, selectedChatId, nextMessages),
     ui: {
       ...state.ui,
       tutor: {

@@ -1,12 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { migrate } from '@/lib/store/migrations';
-import type { StoreState } from '@/lib/store/types';
 
 import { STORE_MIGRATION_VERSION } from '@/lib/db/versions';
 
 test('migrateToV2 normalizes search settings and strips deprecated ui fields', () => {
-  const persisted: Partial<StoreState> = {
+  const persisted: Record<string, unknown> = {
     chats: [
       {
         id: 'chat-1',
@@ -31,7 +30,6 @@ test('migrateToV2 normalizes search settings and strips deprecated ui fields', (
     },
     ui: {
       showSettings: false,
-      isStreaming: false,
       nextSearchWithBrave: true,
       tutorMemoryModelId: 'model',
       tutorMemoryFrequency: 'weekly',
@@ -41,7 +39,7 @@ test('migrateToV2 normalizes search settings and strips deprecated ui fields', (
     } as any,
   };
 
-  const migrated = migrate(persisted, 1) as Partial<StoreState> & Record<string, any>;
+  const migrated = migrate(persisted, 1) as Record<string, any>;
 
   const chatSettings = migrated.chats?.[0]?.settings as Record<string, any>;
   assert.equal(chatSettings.search_enabled, true);

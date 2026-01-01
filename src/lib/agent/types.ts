@@ -19,78 +19,32 @@ import type {
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
 import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
+import type { PipelineClient } from '@/lib/agent/pipelineClient';
+import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
+
+export type {
+  AssistantModelMessage,
+  ModelContentBlock,
+  ModelMessage,
+  PdfPluginConfig,
+  PluginConfig,
+  SystemModelMessage,
+  ToolCall,
+  ToolDefinition,
+  ToolFunctionDefinition,
+  ToolModelMessage,
+  UserModelMessage,
+  WebPluginConfig,
+} from '@/lib/transport/contracts';
 
 export type StoreSetter = ContractStoreSetter<TurnStoreState>;
 export type StoreGetter = ContractStoreGetter<TurnStoreState>;
 export type PersistMessage = (message: Message) => Promise<void>;
 
-export type ModelContentBlock =
-  | { type: 'text'; text: string }
-  | { type: 'image_url'; image_url: { url: string } }
-  | { type: 'file'; file: { filename: string; file_data: string } }
-  | { type: 'input_audio'; input_audio: { data: string; format: string } };
-
-export type SystemModelMessage = {
-  role: 'system';
-  content: string;
-};
-
-export type UserModelMessage = {
-  role: 'user';
-  content: string | ModelContentBlock[];
-  name?: string;
-};
-
-export type AssistantModelMessage = {
-  role: 'assistant';
-  content: string | ModelContentBlock[] | null;
-  name?: string;
-  annotations?: unknown;
-  tool_calls?: ToolCall[];
-  // reasoning_details is required by Gemini, Claude, and other reasoning models
-  // when preserving thought signatures across tool call roundtrips
-  reasoning_details?: unknown;
-};
-
-export type ToolModelMessage = {
-  role: 'tool';
-  content: string;
-  tool_call_id: string;
-  name?: string;
-};
-
-export type ModelMessage =
-  | SystemModelMessage
-  | UserModelMessage
-  | AssistantModelMessage
-  | ToolModelMessage;
-
 export { ProviderSort };
 export type { ResolvedTurnSettings };
 
-export type PdfPluginConfig = {
-  id: 'file-parser';
-  pdf: { engine: 'pdf-text' };
-};
-
-export type WebPluginConfig = {
-  id: 'web';
-};
-
-export type PluginConfig = PdfPluginConfig | WebPluginConfig;
-
 export type SearchProvider = 'brave' | 'openrouter';
-
-export type ToolFunctionDefinition = {
-  name: string;
-  description?: string;
-  parameters?: Record<string, unknown>;
-};
-
-export type ToolDefinition = {
-  type: 'function';
-  function: ToolFunctionDefinition;
-};
 
 export type StoreAccess = { set: StoreSetter; get: StoreGetter };
 
@@ -102,17 +56,6 @@ export type TurnContext = {
   models: ModelDescriptor[];
   modelIndex: ModelIndex;
   persistMessage: PersistMessage;
-};
-
-export type ToolCall = {
-  id: string;
-  type: 'function';
-  function: {
-    name: string;
-    arguments: string;
-  };
-  // Allow provider-specific extra fields (e.g., Gemini's thought_signature)
-  [key: string]: unknown;
 };
 
 export const TUTOR_TOOL_NAMES = [
@@ -163,6 +106,7 @@ export type PlanTurnOptions = {
   controller: AbortController;
   turn: TurnContext;
   settings: ResolvedTurnSettings;
+  pipeline?: PipelineClient;
 };
 
 export type PlanTurnResult = {
@@ -210,6 +154,7 @@ export type StreamFinalOptions = {
   plugins?: PluginConfig[];
   toolDefinition?: ToolDefinition[];
   startBuffered: boolean;
+  pipeline?: PipelineClient;
 };
 
 export type RegenerateOptions = {
@@ -221,6 +166,7 @@ export type RegenerateOptions = {
   controller: AbortController;
   overrideModelId?: string;
   tier: AccessTier;
+  pipeline?: PipelineClient;
 };
 
 export type ToolExecutionResult = {

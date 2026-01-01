@@ -1,4 +1,4 @@
-import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/agent/types';
+import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
 import type { ProviderSort } from '@/lib/models/providerSort';
 
 export type OpenRouterReasoning = {

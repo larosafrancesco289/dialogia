@@ -33,7 +33,7 @@ test('sanitizeMessageRecord trims hidden content and drops empty fields', () => 
   assert.equal(original.hiddenContent, '  Tutor recap  ');
 });
 
-test('sanitizeMessageRecord migrates deep research trace from reasoning', () => {
+test('sanitizeMessageRecord leaves deep research traces untouched', () => {
   const trace = [{ type: 'thought', output: 'Thinking...' }];
   const original: Message = {
     id: 'm2',
@@ -45,8 +45,7 @@ test('sanitizeMessageRecord migrates deep research trace from reasoning', () => 
   };
 
   const { next, changed } = sanitizeMessageRecord(original);
-  assert.equal(changed, true);
-  assert.equal(next.reasoning, undefined);
-  assert.deepEqual(next.deepResearch?.trace, trace);
-  assert.equal(next.deepResearch?.answer, 'Final answer');
+  assert.equal(changed, false);
+  assert.equal(next.reasoning, original.reasoning);
+  assert.equal(next.deepResearch, undefined);
 });

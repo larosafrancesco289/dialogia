@@ -6,7 +6,7 @@ import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 
 const baseUi = (overrides?: Partial<UiSnapshot>): UiSnapshot => ({
   showSettings: false,
-  isStreaming: false,
+  activeTurnByChatId: {},
   flags: {},
   debug: {},
   search: {},

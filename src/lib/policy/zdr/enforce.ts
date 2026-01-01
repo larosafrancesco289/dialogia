@@ -45,22 +45,12 @@ export function guardModelOrNotice<S extends ZdrEnforceState>(
   modelId: string | undefined,
   set: StoreSetter<S>,
   lists: ZdrLists,
-  setNotice?: (notice?: string) => void,
+  setNotice: (notice?: string) => void,
 ): boolean {
   const trimmed = typeof modelId === 'string' ? modelId.trim() : '';
   if (!trimmed) {
-    if (typeof setNotice === 'function') {
-      set((state) => ({ ...toZdrState(lists), ui: { ...state.ui } }) as Partial<S>);
-      setNotice(ZDR_UNAVAILABLE_NOTICE);
-    } else {
-      set(
-        (state) =>
-          ({
-            ...toZdrState(lists),
-            ui: { ...state.ui, notice: ZDR_UNAVAILABLE_NOTICE },
-          }) as Partial<S>,
-      );
-    }
+    set((state) => ({ ...toZdrState(lists), ui: { ...state.ui } }) as Partial<S>);
+    setNotice(ZDR_UNAVAILABLE_NOTICE);
     return false;
   }
   const verdict = evaluateZdrModel(trimmed, lists);
@@ -69,17 +59,7 @@ export function guardModelOrNotice<S extends ZdrEnforceState>(
     return true;
   }
   const notice = buildZdrNotice(trimmed, verdict);
-  if (typeof setNotice === 'function') {
-    set((state) => ({ ...toZdrState(lists), ui: { ...state.ui } }) as Partial<S>);
-    setNotice(notice);
-  } else {
-    set(
-      (state) =>
-        ({
-          ...toZdrState(lists),
-          ui: { ...state.ui, notice },
-        }) as Partial<S>,
-    );
-  }
+  set((state) => ({ ...toZdrState(lists), ui: { ...state.ui } }) as Partial<S>);
+  setNotice(notice);
   return false;
 }

@@ -5,6 +5,7 @@ import { buildHeadlessTurnSnapshot, type HeadlessTurnSnapshot } from '@/lib/head
 import type { Chat, Message, ModelDescriptor } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import type { StoreState, UIState } from '@/lib/store/types';
+import type { PipelineClient } from '@/lib/agent/pipelineClient';
 
 export type HeadlessRunOptions = {
   chat: Chat;
@@ -15,6 +16,7 @@ export type HeadlessRunOptions = {
   resolveApiKey: ApiKeyResolver;
   store?: StoreApi<StoreState>;
   session?: HeadlessTutorSession;
+  pipeline?: PipelineClient;
 };
 
 export type HeadlessRunTurnOptions = {
@@ -46,6 +48,7 @@ export function createHeadlessRunner(options: HeadlessRunOptions): HeadlessRunne
       initialMessages: options.initialMessages,
       resolveApiKey: options.resolveApiKey,
       store: options.store,
+      pipeline: options.pipeline,
     });
 
   const snapshots: HeadlessTurnSnapshot[] = [];

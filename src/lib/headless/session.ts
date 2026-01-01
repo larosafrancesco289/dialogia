@@ -7,6 +7,7 @@ import { type PlanTurnResult, type PersistMessage, type TurnContext } from '@/li
 import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
 import { streamFinal } from '@/lib/agent/streaming';
+import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import { DEFAULT_BASE_SYSTEM, shouldShortCircuitTutor } from '@/lib/agent/policy';
 import { resolveModelTransport } from '@/lib/providers';
 import { setTurnController, clearTurnController } from '@/lib/services/controllers';
@@ -16,7 +17,9 @@ import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
 import type { HeadlessTurnArtifacts, HeadlessTurnResult } from '@/lib/headless/types';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
+import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
+import { adjustActiveTurnCount } from '@/lib/ui/streaming';
 
 export type ApiKeyResolver = (params: { modelId: string; transport: ModelTransport }) => string;
 
@@ -28,15 +31,18 @@ export type HeadlessTutorSessionOptions = {
   initialMessages?: Message[];
   resolveApiKey: ApiKeyResolver;
   store?: StoreApi<StoreState>;
+  pipeline?: PipelineClient;
 };
 
 export class HeadlessTutorSession {
   private readonly store: StoreApi<StoreState>;
   private readonly resolveApiKey: ApiKeyResolver;
   private readonly chatId: string;
+  private readonly pipeline?: PipelineClient;
 
   constructor(private readonly options: HeadlessTutorSessionOptions) {
     this.resolveApiKey = options.resolveApiKey;
+    this.pipeline = options.pipeline;
     if (options.store) {
       this.store = options.store;
     } else {
@@ -57,17 +63,17 @@ export class HeadlessTutorSession {
   }
 
   getMessages(): Message[] {
-    return this.store.getState().messages[this.chatId] ?? [];
+    return getMessagesForChat(this.store.getState(), this.chatId);
   }
 
   private persistMessage: PersistMessage = async (message) => {
     this.store.setState((state) => {
-      const list = state.messages[message.chatId] ?? [];
-      const nextList = list.map((entry) => (entry.id === message.id ? { ...message } : entry));
+      const existing = state.messagesById[message.id];
+      if (!existing) return state;
       return {
-        messages: {
-          ...state.messages,
-          [message.chatId]: nextList,
+        messagesById: {
+          ...state.messagesById,
+          [message.id]: { ...message },
         },
       };
     });
@@ -76,16 +82,13 @@ export class HeadlessTutorSession {
   private updateMessage(messageId: string, patch: Partial<Message>): Message | undefined {
     let updated: Message | undefined;
     this.store.setState((state) => {
-      const list = state.messages[this.chatId] ?? [];
-      const nextList = list.map((msg) => {
-        if (msg.id !== messageId) return msg;
-        updated = { ...msg, ...patch } as Message;
-        return updated;
-      });
+      const message = state.messagesById[messageId];
+      if (!message) return state;
+      updated = { ...message, ...patch } as Message;
       return {
-        messages: {
-          ...state.messages,
-          [this.chatId]: nextList,
+        messagesById: {
+          ...state.messagesById,
+          [messageId]: updated,
         },
       };
     });
@@ -110,15 +113,11 @@ export class HeadlessTutorSession {
       model: chat.settings.model,
     });
 
-    const priorMessages = this.store.getState().messages[this.chatId] ?? [];
+    const priorMessages = getMessagesForChat(this.store.getState(), this.chatId);
     this.store.setState((draft) => {
-      const list = draft.messages[this.chatId] ?? [];
       return {
-        messages: {
-          ...draft.messages,
-          [this.chatId]: [...list, userMessage, assistantMessage],
-        },
-        ui: { ...draft.ui, isStreaming: true },
+        ...appendMessagesToChat(draft, this.chatId, [userMessage, assistantMessage]),
+        ui: adjustActiveTurnCount(draft.ui, this.chatId, 1),
       };
     });
 
@@ -172,6 +171,11 @@ export class HeadlessTutorSession {
         modelId: chat.settings.model,
       });
 
+      const plan = (options: Parameters<typeof planTurn>[0]) =>
+        planTurn({ ...options, pipeline: this.pipeline });
+      const stream = (options: Parameters<typeof streamFinal>[0]) =>
+        streamFinal({ ...options, pipeline: this.pipeline });
+
       runArtifacts = await runTurn({
         chat,
         chatId: this.chatId,
@@ -184,8 +188,8 @@ export class HeadlessTutorSession {
         controller,
         baseTurnContext,
         compose: composeTurn,
-        plan: planTurn,
-        streamFinal,
+        plan,
+        streamFinal: stream,
         authResolver,
         attachmentPreparer: async () => [],
         shouldShortCircuit: shouldShortCircuitTutor,
@@ -194,7 +198,6 @@ export class HeadlessTutorSession {
 
       if (runArtifacts.shortCircuited) {
         const finalMsg = await finalizeShortCircuitMessage({
-          chatId: this.chatId,
           assistantMessage,
           lifecycle,
           getState: () => this.store.getState(),
@@ -225,8 +228,7 @@ export class HeadlessTutorSession {
         });
       }
 
-      const messageList = this.store.getState().messages[this.chatId] ?? [];
-      finalAssistant = messageList.find((msg) => msg.id === assistantMessage.id);
+      finalAssistant = this.store.getState().messagesById[assistantMessage.id];
     } catch (error) {
       const text =
         error instanceof Error
@@ -241,13 +243,12 @@ export class HeadlessTutorSession {
     } finally {
       clearTurnController(this.chatId, controller);
       this.store.setState((draft) => ({
-        ui: { ...draft.ui, isStreaming: false },
+        ui: adjustActiveTurnCount(draft.ui, this.chatId, -1),
       }));
     }
 
-    const finalMessages = this.store.getState().messages[this.chatId] ?? [];
     const assistantFinal =
-      finalAssistant ?? finalMessages.find((msg) => msg.id === assistantMessage.id);
+      finalAssistant ?? this.store.getState().messagesById[assistantMessage.id];
     if (!assistantFinal) throw new Error('Assistant message missing after streaming');
     const planArtifacts: PlanTurnResult = lifecycle.latestPlan() ??
       runArtifacts?.plan ?? {

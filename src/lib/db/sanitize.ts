@@ -1,5 +1,4 @@
-import type { DeepResearchEvent, Message } from '@/lib/types';
-import { isDeepResearchEvent } from '@/lib/deepResearch/events';
+import type { Message } from '@/lib/types';
 
 export function sanitizeMessageRecord(message: Message): { next: Message; changed: boolean } {
   const next: Message = { ...message };
@@ -59,41 +58,5 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
     changed = true;
   }
 
-  if (typeof next.reasoning === 'string') {
-    const trace = parseDeepResearchTrace(next.reasoning);
-    if (trace) {
-      const answer =
-        typeof next.content === 'string' && next.content.length > 0 ? next.content : undefined;
-      if (!next.deepResearch) {
-        next.deepResearch = { trace, answer };
-      } else if (!next.deepResearch.trace || next.deepResearch.trace.length === 0) {
-        next.deepResearch = {
-          ...next.deepResearch,
-          trace,
-          answer: next.deepResearch.answer ?? answer,
-        };
-      }
-      delete next.reasoning;
-      changed = true;
-    }
-  }
-
   return { next, changed };
-}
-
-function parseDeepResearchTrace(reasoning: string): DeepResearchEvent[] | null {
-  const trimmed = reasoning.trim();
-  if (!trimmed.startsWith('[') || !trimmed.endsWith(']')) return null;
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (!Array.isArray(parsed) || parsed.length === 0) return null;
-    const trace: DeepResearchEvent[] = [];
-    for (const item of parsed) {
-      if (!isDeepResearchEvent(item)) return null;
-      trace.push(item);
-    }
-    return trace;
-  } catch {
-    return null;
-  }
 }

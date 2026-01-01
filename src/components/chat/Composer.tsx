@@ -21,6 +21,7 @@ import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
 import { ComposerLayout } from '@/components/composer/ComposerLayout';
 import {
+  selectIsStreaming,
   selectIsTutorEnabled,
   selectSearchEnabled,
   selectSearchProvider,
@@ -57,7 +58,7 @@ export function Composer({
       chats: s.chats,
       selectedChatId: s.selectedChatId,
       models: s.models,
-      isStreaming: s.ui.isStreaming,
+      isStreaming: selectIsStreaming(s),
       stop: s.stopStreaming,
       updateSettings: s.updateChatSettings,
       setUI: s.setUI,

@@ -1,69 +1,21 @@
 import { chatCompletion, fetchModels } from '@/lib/openrouter';
 import { apiDefaults } from '@/lib/api/config';
 import { getDeepResearchReasoningOnly } from '@/lib/env/server';
-import type { ModelMessage, ToolDefinition } from '@/lib/agent/types';
+import type { ModelMessage } from '@/lib/agent/types';
 import type { ProviderSort } from '@/lib/models/providerSort';
 import type { DeepResearchEvent } from '@/lib/types/deepResearch';
 import { normalizeToolCalls, parseToolArguments } from '@/lib/agent/parsers';
-import { buildDeepResearchPrompt } from '@/lib/agent/prompts/deepResearch';
+import { buildDeepResearchPrompt } from '@/lib/deepResearch/prompt';
 import {
-  runWebSearch,
+  DEEP_RESEARCH_TOOLS,
   fetchUrl,
   getCurrentTime,
+  normalizeFetchUrlArgs,
+  normalizeWebSearchArgs,
+  runWebSearch,
   type DeepSearchResult,
-  type WebSearchToolArgs,
-  type FetchUrlToolArgs,
 } from '@/lib/deepResearch/tools';
-import { WEB_SEARCH_TOOL } from '@/lib/tools/webSearch';
 import { isRecord } from '@/lib/utils/guards';
-
-export { buildDeepResearchPrompt } from '@/lib/agent/prompts/deepResearch';
-
-// Tool definitions following OpenRouter tool-calling spec
-export const DEEP_TOOLS: ToolDefinition[] = [
-  WEB_SEARCH_TOOL,
-  {
-    type: 'function',
-    function: {
-      name: 'fetch_url',
-      description:
-        'Fetch a web page and extract main text, title, description, headings, and publication date if present. Use after search to read promising sources.',
-      parameters: {
-        type: 'object',
-        properties: {
-          url: { type: 'string', description: 'The absolute URL to fetch.' },
-          max_bytes: {
-            type: 'integer',
-            description: 'Maximum response bytes to read (safety cap).',
-            minimum: 1024,
-            maximum: 4000000,
-            default: 800000,
-          },
-          timeout_ms: {
-            type: 'integer',
-            description: 'Per-request timeout in milliseconds.',
-            minimum: 2000,
-            maximum: 30000,
-            default: 15000,
-          },
-        },
-        required: ['url'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'get_time',
-      description: 'Return the current date/time (ISO) for temporal context and recency checks.',
-      parameters: {
-        type: 'object',
-        properties: {},
-        required: [],
-      },
-    },
-  },
-];
 
 export type DeepResearchParams = {
   apiKey: string; // OPENROUTER_API_KEY (server)
@@ -127,7 +79,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
     { role: 'user', content: task },
   ];
 
-  const tools = DEEP_TOOLS;
+  const tools = DEEP_RESEARCH_TOOLS;
   const trace: DeepResearchOutput['trace'] = [];
   const collectedSources: DeepSearchResult[] = [];
   const seenUrls = new Set<string>();
@@ -194,7 +146,8 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
 
       if (name === 'web_search') {
         try {
-          const provider = typeof args.provider === 'string' ? args.provider : 'brave';
+          const searchArgs = normalizeWebSearchArgs(args);
+          const provider = searchArgs.provider || 'brave';
           if (provider !== 'brave') {
             const unsupported = { error: `unsupported_provider_${provider}` };
             const event: DeepResearchEvent = { type: 'search', input: args, output: unsupported };
@@ -208,27 +161,6 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
             });
             continue;
           }
-          const includeDomains = Array.isArray(args.include_domains)
-            ? args.include_domains.filter((entry): entry is string => typeof entry === 'string')
-            : undefined;
-          const excludeDomains = Array.isArray(args.exclude_domains)
-            ? args.exclude_domains.filter((entry): entry is string => typeof entry === 'string')
-            : undefined;
-          const searchArgs: WebSearchToolArgs = {
-            query: typeof args.query === 'string' ? args.query : '',
-            count: typeof args.count === 'number' ? args.count : undefined,
-            freshness:
-              args.freshness === 'd' ||
-              args.freshness === 'w' ||
-              args.freshness === 'm' ||
-              args.freshness === 'y' ||
-              args.freshness === 'all'
-                ? args.freshness
-                : undefined,
-            country: typeof args.country === 'string' ? args.country : undefined,
-            include_domains: includeDomains,
-            exclude_domains: excludeDomains,
-          };
           const results = await runWebSearch(searchArgs);
           const event: DeepResearchEvent = { type: 'search', input: args, output: results };
           trace?.push(event);
@@ -257,22 +189,26 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
       }
 
       if (name === 'fetch_url') {
-        try {
-          const fetchArgs: FetchUrlToolArgs = {
-            url: typeof args.url === 'string' ? args.url : '',
-            max_bytes: typeof args.max_bytes === 'number' ? args.max_bytes : undefined,
-            timeout_ms: typeof args.timeout_ms === 'number' ? args.timeout_ms : undefined,
-          };
-          if (!fetchArgs.url) throw new Error('fetch_missing_url');
-          const page = await fetchUrl(fetchArgs);
-          const event: DeepResearchEvent = {
-            type: 'fetch',
-            input: fetchArgs,
-            output: { ...page, text: page.text?.slice(0, 4000) },
-          };
+        const fetchArgs = normalizeFetchUrlArgs(args);
+        if (!fetchArgs) {
+          const err = { error: 'missing_url' };
+          const event: DeepResearchEvent = { type: 'fetch', input: args, output: err };
           trace?.push(event);
           onProgress?.(event);
-          messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify(page) });
+          messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify(err) });
+          continue;
+        }
+        try {
+          const page = await fetchUrl(fetchArgs);
+          const event: DeepResearchEvent = { type: 'fetch', input: args, output: page };
+          trace?.push(event);
+          onProgress?.(event);
+          messages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            name,
+            content: JSON.stringify(page),
+          });
         } catch (e: unknown) {
           const err = { error: e instanceof Error ? e.message : 'fetch_failed' };
           const event: DeepResearchEvent = { type: 'fetch', input: args, output: err };
@@ -284,50 +220,25 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
       }
 
       if (name === 'get_time') {
-        const timePayload = getCurrentTime();
-        const event: DeepResearchEvent = { type: 'time', input: {}, output: timePayload };
+        const output = getCurrentTime();
+        const event: DeepResearchEvent = { type: 'time', input: args, output };
         trace?.push(event);
         onProgress?.(event);
         messages.push({
           role: 'tool',
           tool_call_id: tc.id,
           name,
-          content: JSON.stringify(timePayload),
+          content: JSON.stringify(output),
         });
-        continue;
       }
-
-      // Unknown tool: return a sentinel error so the model can adjust
-      const unknown = { error: 'unknown_tool' };
-      messages.push({ role: 'tool', tool_call_id: tc.id, name, content: JSON.stringify(unknown) });
     }
-    // Encourage the model to synthesize or continue searching as needed
-    messages.push({
-      role: 'user',
-      content: 'Synthesize findings so far or continue targeted research as needed.',
-    });
   }
 
-  // Fallback when iterations exhausted: force a final synthesis without tools
-  try {
-    messages.push({
-      role: 'user',
-      content:
-        'You have reached the research iteration limit. Write the final answer now using the gathered sources below. Cite inline as [n].\n\nSources:\n' +
-        collectedSources.map((s, i) => `[${i + 1}] ${s.title || s.url} — ${s.url}`).join('\n'),
-    });
-    const resp = await chatCompletion({ apiKey, model, messages, providerSort });
-    const choice = resp?.choices?.[0];
-    const msg = choice?.message || {};
-    const final = typeof msg?.content === 'string' ? msg.content : '';
-    return { answer: final, sources: collectedSources, trace, usage: resp?.usage || usage, model };
-  } catch {
-    return {
-      answer: 'Here is a synthesis based on gathered sources.',
-      sources: collectedSources,
-      trace,
-      usage,
-      model,
-    };
-  }
+  return {
+    answer: '',
+    sources: collectedSources,
+    trace,
+    usage,
+    model,
+  };
 }

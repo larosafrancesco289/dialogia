@@ -1,6 +1,6 @@
 import type { ModelDescriptor } from '@/lib/types';
 import { API_ERROR_CODES } from '@/lib/api/errors';
-import { orFetchModels } from '@/lib/api/openrouterHttp';
+import { orFetchModels } from '@/lib/openrouter/http';
 import type { TransportFetchModelsOptions } from '@/lib/transport/types';
 import { isRecord } from '@/lib/utils/guards';
 import { buildOpenRouterError, wrapOpenRouterClientError } from '@/lib/openrouter/errors';

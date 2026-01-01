@@ -7,8 +7,8 @@ import { useChatStore } from '@/lib/store';
 import { useDragAndDrop } from '@/lib/dragDrop';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { getFolderChildren } from '@/lib/ui/sidebar/folderTree';
-import { IconButton } from '@/components/IconButton';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { IconButton } from '@/components/ui/IconButton';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ChatRow } from '@/components/sidebar/ChatRow';
 import {
   FolderIcon,

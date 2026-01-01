@@ -1,6 +1,6 @@
-import { buildChatBody } from '@/lib/agent/request';
+import { buildChatBody } from '@/lib/openrouter/request';
 import { API_ERROR_CODES } from '@/lib/api/errors';
-import { orChatCompletions } from '@/lib/api/openrouterHttp';
+import { orChatCompletions } from '@/lib/openrouter/http';
 import { logger } from '@/lib/logger';
 import type { ChatCompletion } from '@/lib/transport/completions';
 import type { TransportChatParams } from '@/lib/transport/types';
