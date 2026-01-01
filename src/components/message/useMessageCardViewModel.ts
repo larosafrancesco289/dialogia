@@ -4,8 +4,7 @@ import { useChatStore } from '@/lib/store';
 import type { Chat, Message, MessageTutor, ModelDescriptor } from '@/lib/types';
 import type { UIDebugState, UISearchState } from '@/lib/store/types';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
-
-const EMPTY_MESSAGES: Message[] = [];
+import { selectIsStreamingForChat } from '@/lib/store/selectors';
 const EMPTY_AUTO_REASONING: Record<string, boolean> = {};
 
 export type MessageCardViewModel = {
@@ -38,9 +37,8 @@ export function useMessageCardViewModel({
   messageId: string;
 }): MessageCardViewModel {
   const selection = useChatStore((state) => {
-    const message = (state.messages[chatId] ?? EMPTY_MESSAGES).find(
-      (entry) => entry.id === messageId,
-    );
+    const message =
+      state.messagesById[messageId]?.chatId === chatId ? state.messagesById[messageId] : undefined;
     const chat = state.chats.find((entry) => entry.id === chatId);
     const tutorEntry = state.ui.tutor.byMessageId?.[messageId] ?? message?.tutor;
     const tutorGloballyEnabled = !!state.ui.flags.experimentalTutor;
@@ -50,7 +48,7 @@ export function useMessageCardViewModel({
       message,
       chat,
       models: state.models,
-      isStreaming: state.ui.isStreaming,
+      isStreaming: selectIsStreamingForChat(chatId)(state),
       braveGloballyEnabled: !!state.ui.flags.experimentalBrave,
       braveEntry: state.ui.search.braveByMessageId?.[messageId],
       debugMode: !!state.ui.debug.mode,

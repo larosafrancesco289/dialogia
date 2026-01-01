@@ -13,7 +13,10 @@ const message = (overrides: Partial<Message> = {}): Message => ({
 });
 
 test('updateMessageById returns undefined when chat is missing', () => {
-  const state = { messages: { c1: [message()] } };
+  const state = {
+    messagesById: { m1: message() },
+    messageIdsByChatId: { c1: ['m1'] },
+  };
   const result = updateMessageById(state, 'c2', 'm1', (msg) => ({
     ...msg,
     content: 'next',
@@ -22,23 +25,27 @@ test('updateMessageById returns undefined when chat is missing', () => {
 });
 
 test('updateMessageById returns undefined when updater makes no changes', () => {
-  const state = { messages: { c1: [message()] } };
+  const state = {
+    messagesById: { m1: message() },
+    messageIdsByChatId: { c1: ['m1'] },
+  };
   const result = updateMessageById(state, 'c1', 'm1', (msg) => msg);
   assert.equal(result, undefined);
 });
 
 test('updateMessageById replaces the matching message', () => {
   const state = {
-    messages: {
-      c1: [message()],
-      c2: [message({ id: 'm2', chatId: 'c2', content: 'other' })],
+    messagesById: {
+      m1: message(),
+      m2: message({ id: 'm2', chatId: 'c2', content: 'other' }),
     },
+    messageIdsByChatId: { c1: ['m1'], c2: ['m2'] },
   };
   const result = updateMessageById(state, 'c1', 'm1', (msg) => ({
     ...msg,
     content: 'updated',
   }));
   assert.ok(result);
-  assert.equal(result?.messages?.c1?.[0]?.content, 'updated');
-  assert.equal(result?.messages?.c2, state.messages.c2);
+  assert.equal(result?.messagesById?.m1?.content, 'updated');
+  assert.equal(result?.messageIdsByChatId, undefined);
 });

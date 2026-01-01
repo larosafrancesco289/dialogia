@@ -1,6 +1,6 @@
 'use client';
 import { SettingsSection } from '@/components/settings/SettingsSection';
-import { IconButton } from '@/components/IconButton';
+import { IconButton } from '@/components/ui/IconButton';
 import { CheckIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { SystemPreset } from '@/lib/presets';
 import {

@@ -1,6 +1,5 @@
 import { db } from '@/lib/db';
 import { clearOpenRouterCachesForTest } from '@/lib/openrouter';
-import { setTransportMocksForTests } from '@/lib/agent/pipelineClient';
 import { resetTransportRegistry } from '@/lib/transport/registry';
 
 type ClearableTable = {
@@ -21,7 +20,6 @@ async function clearTable(table?: ClearableTable) {
 
 export async function resetGlobals() {
   resetTransportRegistry();
-  setTransportMocksForTests();
   clearOpenRouterCachesForTest();
 
   await Promise.all([

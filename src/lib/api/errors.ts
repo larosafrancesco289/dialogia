@@ -1,6 +1,8 @@
 // Module: api/errors
 // Responsibility: Provide typed error helpers for transport failures and response status handling.
 
+import { isRecord } from '@/lib/utils/guards';
+
 export const API_ERROR_CODES = Object.freeze({
   UNAUTHORIZED: 'unauthorized',
   RATE_LIMITED: 'rate_limited',
@@ -13,6 +15,11 @@ export const API_ERROR_CODES = Object.freeze({
 } as const);
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[keyof typeof API_ERROR_CODES] | string;
+
+export type ApiErrorResponse = {
+  error: string;
+  detail?: unknown;
+};
 
 export type ApiErrorInit = {
   code: ApiErrorCode;
@@ -38,6 +45,10 @@ export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
 
+export function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
+  return isRecord(value) && typeof value.error === 'string';
+}
+
 export function responseError(res: Response, init: ApiErrorInit): ApiError {
   const baseMessage = init.message ?? `${init.code}${res.status ? ` (${res.status})` : ''}`;
   return new ApiError({
@@ -46,4 +57,27 @@ export function responseError(res: Response, init: ApiErrorInit): ApiError {
     message: baseMessage,
     detail: init.detail,
   });
+}
+
+export async function readApiErrorResponse(res: Response): Promise<ApiErrorResponse | undefined> {
+  const canClone = typeof res.clone === 'function';
+  const jsonTarget = canClone ? res.clone() : res;
+  if (typeof (jsonTarget as Response).json === 'function') {
+    try {
+      const data = await (jsonTarget as Response).json();
+      if (isApiErrorResponse(data)) return data;
+    } catch {
+      // fall through to text parsing
+    }
+    if (!canClone) return undefined;
+  }
+  if (typeof res.text === 'function') {
+    try {
+      const text = await res.text();
+      if (text) return { error: text };
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
 }

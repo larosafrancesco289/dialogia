@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { AUTH_COOKIE_NAME, AuthClaims, createAuthToken, getAuthCookieSecret } from '@/lib/auth';
-import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
-import { getAccessCookieDomain } from '@/lib/env/server';
+import { AuthClaims, createAuthToken, getAuthCookieSecret } from '@/lib/auth';
+import { setAuthCookies } from '@/lib/auth/cookies.server';
 import { computeSecretFingerprintNode } from '@/lib/auth/fingerprint.node';
 import { jsonError } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
@@ -35,33 +34,7 @@ export const POST = route('auth-set-free-tier')
         : { ok: true, tier: 'free', secretFp };
 
       const res = NextResponse.json(responseBody);
-      const secure = inProd;
-      const domain = getAccessCookieDomain();
-      const maxAge = 60 * 60 * 24 * 14; // 14 days
-
-      // Set the auth token (httpOnly)
-      res.cookies.set({
-        name: AUTH_COOKIE_NAME,
-        value: token,
-        httpOnly: true,
-        sameSite: 'lax',
-        secure,
-        domain,
-        path: '/',
-        maxAge,
-      });
-
-      // Set the tier cookie (readable by client)
-      res.cookies.set({
-        name: TIER_COOKIE_NAME,
-        value: 'free',
-        httpOnly: false,
-        sameSite: 'lax',
-        secure,
-        domain,
-        path: '/',
-        maxAge,
-      });
+      setAuthCookies(res, { token, tier: 'free', secure: inProd });
 
       return res;
     } catch (e: unknown) {

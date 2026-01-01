@@ -7,8 +7,10 @@ import {
   sendUserTurn,
   regenerateTurn,
 } from '@/lib/services/turns';
-import { abortAllTurns } from '@/lib/services/controllers';
+import { abortAllTurns, abortTurn } from '@/lib/services/controllers';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
+import { getMessagesForChat } from '@/lib/messages/indexing';
+import { clearActiveTurnCount, isChatStreaming } from '@/lib/ui/streaming';
 
 // telemetry removed for commit cleanliness
 
@@ -47,30 +49,35 @@ export function createMessageSlice(set: StoreSetter, get: () => StoreState, _sto
     },
 
     stopStreaming() {
-      abortAllTurns();
-      set((s) => ({ ui: { ...s.ui, isStreaming: false } }));
+      const chatId = get().selectedChatId;
+      if (chatId) {
+        abortTurn(chatId);
+      } else {
+        abortAllTurns();
+      }
+      set((s) => ({
+        ui: clearActiveTurnCount(s.ui, chatId),
+      }));
     },
 
     async editUserMessage(messageId, newContent, opts) {
       const chatId = get().selectedChatId!;
-      const list = get().messages[chatId] ?? [];
+      const list = getMessagesForChat(get(), chatId);
       const idx = list.findIndex((m) => m.id === messageId);
       if (idx === -1) return;
       const target = list[idx];
       if (target.role !== 'user') return;
       const updated = { ...target, content: newContent };
       set((s) => ({
-        messages: {
-          ...s.messages,
-          [chatId]: (s.messages[chatId] ?? []).map((m) => (m.id === messageId ? updated : m)),
+        messagesById: {
+          ...s.messagesById,
+          [messageId]: updated,
         },
       }));
       await persistMessage(updated);
       if (opts?.rerun) {
-        if (get().ui.isStreaming) get().stopStreaming();
-        const nextAssistant = (get().messages[chatId] ?? [])
-          .slice(idx + 1)
-          .find((m) => m.role === 'assistant');
+        if (isChatStreaming(get().ui, chatId)) get().stopStreaming();
+        const nextAssistant = list.slice(idx + 1).find((m) => m.role === 'assistant');
         if (nextAssistant)
           get()
             .regenerateAssistantMessage(nextAssistant.id)
@@ -80,16 +87,16 @@ export function createMessageSlice(set: StoreSetter, get: () => StoreState, _sto
 
     async editAssistantMessage(messageId, newContent) {
       const chatId = get().selectedChatId!;
-      const list = get().messages[chatId] ?? [];
+      const list = getMessagesForChat(get(), chatId);
       const idx = list.findIndex((m) => m.id === messageId);
       if (idx === -1) return;
       const target = list[idx];
       if (target.role !== 'assistant') return;
       const updated = { ...target, content: newContent } as Message;
       set((s) => ({
-        messages: {
-          ...s.messages,
-          [chatId]: (s.messages[chatId] ?? []).map((m) => (m.id === messageId ? updated : m)),
+        messagesById: {
+          ...s.messagesById,
+          [messageId]: updated,
         },
       }));
       await persistMessage(updated);

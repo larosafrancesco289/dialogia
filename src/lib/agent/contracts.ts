@@ -5,7 +5,8 @@ import type { UiSearchEntry, UiSnapshot } from '@/lib/contracts/ui';
 
 export type TurnStoreState = {
   chats: Chat[];
-  messages: Record<string, Message[]>;
+  messagesById: Record<string, Message>;
+  messageIdsByChatId: Record<string, string[]>;
   models: ModelDescriptor[];
   modelIndex: ModelIndex;
   selectedChatId?: string;
@@ -19,7 +20,7 @@ export type TurnStoreState = {
   renameChat: (id: string, title: string) => Promise<void>;
   prepareTutorWelcomeMessage?: (chatId?: string) => Promise<string | undefined>;
   setSearchStatus: (messageId: string, entry: UiSearchEntry) => void;
-  setNotice?: (notice?: string) => void;
+  setNotice: (notice?: string) => void;
 };
 
 export type TurnStore = {

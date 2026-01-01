@@ -3,7 +3,9 @@ import type { Repository } from '@/lib/db/repository';
 import type { PersistedAttachment, Message } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
-import { createMessagePersister } from '@/lib/services/messagePersistence';
+import { persistMessages } from '@/lib/services/messagePersistence';
+import { appendMessagesToChat } from '@/lib/messages/indexing';
+import { adjustActiveTurnCount, clearActiveTurnCount } from '@/lib/ui/streaming';
 
 export type SpawnMessagesResult = {
   userMessage: Message;
@@ -68,30 +70,24 @@ export const spawnTurnMessages = async ({
   const markComplete = () => {
     if (pendingStreams <= 0) return;
     pendingStreams -= 1;
-    const stillRunning = pendingStreams > 0;
-    set((state) => ({ ui: { ...state.ui, isStreaming: stillRunning } }));
-    if (!stillRunning) clearTurnController(chatId, masterController);
+    set((state) => ({
+      ui: adjustActiveTurnCount(state.ui, chatId, -1),
+    }));
+    if (pendingStreams <= 0) clearTurnController(chatId, masterController);
   };
 
   const completeAll = () => {
     pendingStreams = 0;
-    set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
+    set((state) => ({ ui: clearActiveTurnCount(state.ui, chatId) }));
     clearTurnController(chatId, masterController);
   };
 
   set((state) => ({
-    messages: {
-      ...state.messages,
-      [chatId]: [...(state.messages[chatId] ?? []), userMessage, ...assistantPlaceholders],
-    },
-    ui: { ...state.ui, isStreaming: true },
+    ...appendMessagesToChat(state, chatId, [userMessage, ...assistantPlaceholders]),
+    ui: adjustActiveTurnCount(state.ui, chatId, assistantPlaceholders.length),
   }));
 
-  const persistMessage = createMessagePersister(repository);
-  await persistMessage(userMessage);
-  for (const placeholder of assistantPlaceholders) {
-    await persistMessage(placeholder);
-  }
+  await persistMessages(repository, [userMessage, ...assistantPlaceholders]);
 
   return { userMessage, assistantByModel, masterController, markComplete, completeAll };
 };

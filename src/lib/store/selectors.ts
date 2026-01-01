@@ -7,6 +7,7 @@ import { readNextOverrides } from '@/lib/ui/next';
 import { normalizeParallelModels } from '@/lib/store/normalize';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { getClientTier } from '@/lib/auth/tier.client';
+import { getMessagesForChat } from '@/lib/messages/indexing';
 
 export const selectCurrentChat = (state: StoreState) => {
   const chatId = state.selectedChatId;
@@ -17,21 +18,30 @@ export const selectCurrentChat = (state: StoreState) => {
 export const selectSelectedChatId = (state: StoreState) => state.selectedChatId;
 
 export const selectMessagesForChat = (chatId?: string) => (state: StoreState) =>
-  chatId ? (state.messages[chatId] ?? []) : [];
+  chatId ? getMessagesForChat(state, chatId) : [];
 
 export const selectMessagesForCurrentChat = (state: StoreState) => {
   const chatId = state.selectedChatId;
-  return chatId ? (state.messages[chatId] ?? []) : [];
+  return chatId ? getMessagesForChat(state, chatId) : [];
 };
 
 export const selectLastMessageId = (state: StoreState) => {
   const chatId = state.selectedChatId;
   if (!chatId) return undefined;
-  const list = state.messages[chatId] ?? [];
-  return list.length ? list[list.length - 1]?.id : undefined;
+  const ids = state.messageIdsByChatId[chatId] ?? [];
+  return ids.length ? ids[ids.length - 1] : undefined;
 };
 
-export const selectIsStreaming = (state: StoreState) => state.ui.isStreaming;
+export const selectIsStreaming = (state: StoreState) => {
+  const chatId = state.selectedChatId;
+  if (!chatId) return false;
+  return (state.ui.activeTurnByChatId[chatId] ?? 0) > 0;
+};
+
+export const selectIsStreamingForChat = (chatId?: string) => (state: StoreState) => {
+  if (!chatId) return false;
+  return (state.ui.activeTurnByChatId[chatId] ?? 0) > 0;
+};
 
 export const selectIsTutorEnabled = (state: StoreState) => {
   const chat = selectCurrentChat(state);

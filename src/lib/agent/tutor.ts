@@ -5,11 +5,7 @@
 import { TUTOR_PREAMBLE } from '@/lib/agent/prompts/tutorPreamble';
 
 export { getTutorToolDefinitions } from '@/lib/agent/tools/definitions/tutorTools';
-export {
-  buildTutorContextSummary,
-  buildTutorContextFull,
-  getTutorContext,
-} from '@/lib/agent/tutor/context';
+export { buildTutorContextSummary, buildTutorContextFull, getTutorContext } from '@/lib/tutor';
 
 export function getTutorPreamble() {
   return TUTOR_PREAMBLE;

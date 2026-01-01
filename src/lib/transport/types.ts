@@ -1,5 +1,5 @@
 import type { Usage } from '@/lib/api/normalizers';
-import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/agent/types';
+import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
 import type { ProviderSort } from '@/lib/models/providerSort';
 import type { ChatCompletion } from '@/lib/transport/completions';
 import type { ModelDescriptor } from '@/lib/transport/models';

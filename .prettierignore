@@ -1,0 +1,40 @@
+# Dependencies
+node_modules
+package-lock.json
+
+# Next.js
+.next
+out
+tsconfig.tsbuildinfo
+
+# Env files
+.env
+.env.*
+.env.local
+vercel.env
+ACCESS_CODES_SECRET.txt
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS
+.DS_Store
+
+# Tooling
+.vscode/
+.idea/
+.vercel/
+.turbo/
+.eslintcache
+
+# Temporary files
+tmp/
+
+# Thesis files
+thesis/
+
+# Speech files
+speech/

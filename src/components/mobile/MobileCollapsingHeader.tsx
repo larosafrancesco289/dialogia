@@ -11,6 +11,7 @@ import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { useTier } from '@/lib/auth/tierContext';
 import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
+import { selectIsStreaming } from '@/lib/store/selectors';
 import styles from './MobileCollapsingHeader.module.css';
 
 /**
@@ -29,7 +30,7 @@ export function MobileCollapsingHeader() {
       selectedChatId: s.selectedChatId,
       models: s.models,
       headerVisible: s.ui.mobile.headerVisible,
-      isStreaming: s.ui.isStreaming,
+      isStreaming: selectIsStreaming(s),
     }),
     shallow,
   );

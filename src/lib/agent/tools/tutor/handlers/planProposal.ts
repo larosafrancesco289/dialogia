@@ -1,93 +1,26 @@
-import { v4 as uuidv4 } from 'uuid';
-import type { LearningPlan } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { normalizePlanSuggestions, withContentReset } from '@/lib/agent/tools/tutor/shared';
 import { validateLearningPlan } from '@/lib/learningPlan/validate';
-import { isRecord } from '@/lib/utils/guards';
+import { normalizeLearningPlanInput } from '@/lib/schemas/learningPlan';
+import { parseSchema } from '@/lib/schemas/parse';
+import { TutorPlanProposalToolSchema, type TutorPlanProposalInput } from '@/lib/schemas/tutor';
 
 export function createPlanProposalHandler(
   defaultRequiresConfirmation: boolean,
-): TutorToolHandler<Record<string, unknown>> {
+): TutorToolHandler<TutorPlanProposalInput> {
   return {
     parseArgs(input) {
-      if (!input || typeof input !== 'object') return null;
-      return input as Record<string, unknown>;
+      const parsed = parseSchema(TutorPlanProposalToolSchema, input);
+      return parsed.ok ? parsed.data : null;
     },
     async apply(ctx, args) {
-      const source =
-        args.plan && typeof args.plan === 'object' ? (args.plan as Record<string, unknown>) : args;
-      const nodesRaw = Array.isArray(source.nodes) ? source.nodes : [];
-      const normalizedNodes = nodesRaw
-        .map((node, index: number) => {
-          if (!isRecord(node)) return null;
-          const nameRaw = typeof node.name === 'string' ? node.name.trim() : undefined;
-          const objectivesRaw = Array.isArray(node.objectives) ? node.objectives : [];
-          const objectives = objectivesRaw
-            .map((obj: unknown) => (typeof obj === 'string' ? obj.trim() : undefined))
-            .filter((obj): obj is string => !!obj);
-          const prerequisitesRaw = Array.isArray(node.prerequisites) ? node.prerequisites : [];
-          const prerequisites = prerequisitesRaw
-            .map((pr: unknown) => (typeof pr === 'string' ? pr.trim() : undefined))
-            .filter((pr): pr is string => !!pr);
-          if (!nameRaw || objectives.length === 0) return null;
-          const id =
-            typeof node.id === 'string' && node.id.trim()
-              ? node.id.trim()
-              : `node_${index + 1}_${uuidv4()}`;
-          const resources = Array.isArray(node.resources)
-            ? node.resources
-                .map((entry) => {
-                  if (!isRecord(entry)) return null;
-                  const type = entry.type;
-                  if (type !== 'reading' && type !== 'video' && type !== 'practice') return null;
-                  const title = typeof entry.title === 'string' ? entry.title.trim() : '';
-                  if (!title) return null;
-                  const url = typeof entry.url === 'string' ? entry.url.trim() : undefined;
-                  return { type, title, url };
-                })
-                .filter(Boolean)
-            : undefined;
-          const children = Array.isArray(node.children)
-            ? node.children.filter((child): child is string => typeof child === 'string')
-            : undefined;
-          return {
-            id,
-            name: nameRaw,
-            description: typeof node.description === 'string' ? node.description.trim() : undefined,
-            objectives,
-            prerequisites,
-            status:
-              node.status === 'in_progress' || node.status === 'completed'
-                ? node.status
-                : 'not_started',
-            estimatedMinutes:
-              typeof node.estimatedMinutes === 'number'
-                ? Math.max(5, Math.min(360, Math.round(node.estimatedMinutes)))
-                : undefined,
-            resources,
-            children,
-          };
-        })
-        .filter(Boolean) as LearningPlan['nodes'];
+      const plan = normalizeLearningPlanInput(args.plan, {
+        fallbackGoal: ctx.chat.settings.learningPlan?.goal || 'Personalized Learning Plan',
+      });
 
-      if (normalizedNodes.length === 0) {
+      if (plan.nodes.length === 0) {
         return { handled: false, usedContent: false };
       }
-
-      const plan: LearningPlan = {
-        goal:
-          typeof source.goal === 'string' && source.goal.trim()
-            ? (source.goal as string).trim()
-            : ctx.chat.settings.learningPlan?.goal || 'Personalized Learning Plan',
-        generatedAt: Date.now(),
-        updatedAt: Date.now(),
-        version: 1,
-        nodes: normalizedNodes,
-        metadata:
-          source.metadata && typeof source.metadata === 'object'
-            ? (source.metadata as Record<string, unknown>)
-            : undefined,
-      };
 
       const validation = validateLearningPlan(plan);
       if (!validation.valid) {
@@ -95,16 +28,14 @@ export function createPlanProposalHandler(
       }
 
       const requiresConfirmation =
-        typeof source.requiresConfirmation === 'boolean'
-          ? (source.requiresConfirmation as boolean)
+        typeof args.requiresConfirmation === 'boolean'
+          ? args.requiresConfirmation
           : defaultRequiresConfirmation;
       const confirmationMessage =
-        typeof source.confirmationMessage === 'string'
-          ? source.confirmationMessage.trim()
-          : undefined;
+        typeof args.confirmationMessage === 'string' ? args.confirmationMessage.trim() : undefined;
 
-      const normalizedSuggestions = Array.isArray(source.suggestions)
-        ? normalizePlanSuggestions(source.suggestions as unknown[])
+      const normalizedSuggestions = Array.isArray(args.suggestions)
+        ? normalizePlanSuggestions(args.suggestions as unknown[])
         : undefined;
 
       await ctx.applyTutorPatch((prev) =>

@@ -1,4 +1,4 @@
-import { orChatCompletions } from '@/lib/api/openrouterHttp';
+import { orChatCompletions } from '@/lib/openrouter/http';
 import { getOpenRouterApiKeyForTier, canUseTierModel, getServerTier } from '@/lib/auth/tierApiKey';
 import { jsonError } from '@/lib/server/route';
 import {

@@ -1,17 +1,17 @@
 import type { TutorPlanSuggestion } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { normalizePlanSuggestions } from '@/lib/agent/tools/tutor/shared';
+import { parseSchema } from '@/lib/schemas/parse';
+import {
+  TutorPlanSuggestionsToolSchema,
+  type TutorPlanSuggestionsInput,
+} from '@/lib/schemas/tutor';
 
-type PlanSuggestionsArgs = {
-  suggestions: TutorPlanSuggestion[];
-};
-
-export const getPlanSuggestionsHandler: TutorToolHandler<PlanSuggestionsArgs> = {
+export const getPlanSuggestionsHandler: TutorToolHandler<TutorPlanSuggestionsInput> = {
   parseArgs(input) {
-    if (!input || typeof input !== 'object') return null;
-    const args = input as Record<string, unknown>;
-    const suggestionsRaw = Array.isArray(args.suggestions) ? (args.suggestions as unknown[]) : [];
-    const normalized = normalizePlanSuggestions(suggestionsRaw);
+    const parsed = parseSchema(TutorPlanSuggestionsToolSchema, input);
+    if (!parsed.ok) return null;
+    const normalized = normalizePlanSuggestions(parsed.data.suggestions as unknown[]);
     if (normalized.length === 0) return null;
     return { suggestions: normalized };
   },

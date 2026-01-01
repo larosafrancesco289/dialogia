@@ -1,4 +1,4 @@
-import type { ModelContentBlock, ToolCall } from '@/lib/agent/types';
+import type { ModelContentBlock, ToolCall } from '@/lib/transport/contracts';
 
 export type Usage = {
   prompt_tokens?: number;

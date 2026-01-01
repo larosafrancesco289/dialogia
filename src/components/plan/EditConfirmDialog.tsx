@@ -203,7 +203,7 @@ export function EditConfirmDialog({
               {/* Content */}
               <div className="px-5 py-4 space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  You're making the following changes:
+                  You&apos;re making the following changes:
                 </p>
                 <ul className="space-y-1.5">
                   {changes.map((change, i) => (

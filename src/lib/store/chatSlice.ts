@@ -10,6 +10,11 @@ import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { Chat } from '@/lib/types';
 import { getClientTier } from '@/lib/auth/tier.client';
 import { isTutorForcedForTier } from '@/lib/auth/tierFeatures';
+import {
+  getMessagesForChat,
+  removeChatMessages,
+  setMessagesForChat,
+} from '@/lib/messages/indexing';
 
 export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
   return {
@@ -54,25 +59,21 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       set((s) => {
         const chats = s.chats.filter((c) => c.id !== id);
         const selectedChatId = s.selectedChatId === id ? chats[0]?.id : s.selectedChatId;
-        const { [id]: _, ...rest } = s.messages;
-        return { chats, messages: rest, selectedChatId };
+        return {
+          chats,
+          selectedChatId,
+          ...removeChatMessages(s, id),
+        };
       });
     },
 
     async branchChatFromMessage(messageId: string) {
       const st = get();
-      let sourceChatId: string | undefined;
-      for (const [cid, list] of Object.entries(st.messages)) {
-        const idx = list.findIndex((m) => m.id === messageId);
-        if (idx >= 0) {
-          sourceChatId = cid;
-          break;
-        }
-      }
+      const sourceChatId = st.messagesById[messageId]?.chatId;
       if (!sourceChatId) return;
       const sourceChat = st.chats.find((c) => c.id === sourceChatId);
       if (!sourceChat) return;
-      const sourceMessages = st.messages[sourceChatId] || [];
+      const sourceMessages = getMessagesForChat(st, sourceChatId);
 
       const result = await ChatService.branchChat({
         sourceChat,
@@ -85,8 +86,8 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
 
       set((s) => ({
         chats: [result.chat, ...s.chats],
-        messages: { ...s.messages, [result.chat.id]: result.messages },
         selectedChatId: result.chat.id,
+        ...setMessagesForChat(s, result.chat.id, result.messages),
       }));
     },
 

@@ -1,5 +1,5 @@
 import { API_ERROR_CODES } from '@/lib/api/errors';
-import { orFetchZdrEndpoints } from '@/lib/api/openrouterHttp';
+import { orFetchZdrEndpoints } from '@/lib/openrouter/http';
 import { parseZdrEndpoints, type ZdrEndpoint } from '@/lib/policy/zdr/parsing';
 import { buildOpenRouterError, wrapOpenRouterClientError } from '@/lib/openrouter/errors';
 

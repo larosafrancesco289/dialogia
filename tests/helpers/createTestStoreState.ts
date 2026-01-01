@@ -1,11 +1,21 @@
-import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
-import type { StoreActions, StoreDataState, StoreState } from '@/lib/store/types';
+import type {
+  StoreGetter,
+  StoreSetter,
+  StoreActions,
+  StoreDataState,
+  StoreState,
+} from '@/lib/store/types';
 import { createModelIndex } from '@/lib/models';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
 import { buildDefaultVoiceState } from '@/lib/voice/types';
 import { resolveNotice } from '@/lib/store/notices';
 
-export function createTestStoreState(overrides: Partial<StoreState> = {}) {
+type StoreStateOverrides = Omit<Partial<StoreState>, 'ui' | 'voice'> & {
+  ui?: Partial<StoreState['ui']>;
+  voice?: Partial<StoreState['voice']>;
+};
+
+export function createTestStoreState(overrides: StoreStateOverrides = {}) {
   const noop = (..._args: unknown[]) => {};
   const noopAsync = async (..._args: unknown[]) => {};
   const noopAsyncString = async (..._args: unknown[]) => 'test-chat';
@@ -14,7 +24,8 @@ export function createTestStoreState(overrides: Partial<StoreState> = {}) {
   const baseData: StoreDataState = {
     chats: [],
     folders: [],
-    messages: {},
+    messagesById: {},
+    messageIdsByChatId: {},
     selectedChatId: undefined,
     models: [],
     modelIndex: createModelIndex([]),

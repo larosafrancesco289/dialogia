@@ -2,7 +2,7 @@ import { apiDefaults } from '@/lib/api/config';
 import { sendApiRequest } from '@/lib/api/http';
 import { isOpenRouterProxyEnabled } from '@/lib/env/public';
 import type { ChatCompletionMessage, Usage } from '@/lib/transport/completions';
-import type { OpenRouterChatRequest } from '@/lib/types/transport';
+import type { OpenRouterChatRequest } from '@/lib/openrouter/types';
 
 export type SseDelta = {
   id?: string;

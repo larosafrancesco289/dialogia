@@ -1,4 +1,4 @@
-import { buildChatBody } from '@/lib/agent/request';
+import { buildChatBody } from '@/lib/openrouter/request';
 import type { ProviderSort } from '@/lib/models/providerSort';
 import type {
   ModelMessage,

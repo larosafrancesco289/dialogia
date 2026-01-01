@@ -1,6 +1,4 @@
-import 'server-only';
 import { NextResponse } from 'next/server';
-import { requireServerEnv } from '@/lib/env/server';
 
 const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -22,8 +20,6 @@ export async function withTiming(
   }
   return response;
 }
-
-export { requireServerEnv };
 
 export function jsonError(
   status: number,

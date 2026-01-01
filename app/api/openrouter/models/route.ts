@@ -1,4 +1,4 @@
-import { orFetchModels } from '@/lib/api/openrouterHttp';
+import { orFetchModels } from '@/lib/openrouter/http';
 import { jsonError } from '@/lib/server/route';
 import { getRequestOrigin, proxyJson, withProxyErrors } from '@/lib/server/proxy';
 import { getOpenRouterApiKeyForTier } from '@/lib/auth/tierApiKey';

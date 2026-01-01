@@ -18,3 +18,9 @@ export const createMessagePersister = (repository: Repository) => {
     await repository.saveMessage(ensureHiddenTutorContent(message));
   };
 };
+
+export const persistMessages = async (repository: Repository, messages: Message[]) => {
+  if (!messages.length) return;
+  const sanitized = messages.map((message) => ensureHiddenTutorContent(message));
+  await repository.saveMessages(sanitized);
+};

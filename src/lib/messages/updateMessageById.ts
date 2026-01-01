@@ -1,7 +1,8 @@
 import type { Message } from '@/lib/types';
 
 type MessageState = {
-  messages: Record<string, Message[]>;
+  messagesById: Record<string, Message>;
+  messageIdsByChatId: Record<string, string[]>;
 };
 
 export function updateMessageById<S extends MessageState>(
@@ -10,20 +11,14 @@ export function updateMessageById<S extends MessageState>(
   messageId: string,
   updater: (message: Message) => Message,
 ): Partial<S> | undefined {
-  const list = state.messages[chatId];
-  if (!Array.isArray(list) || list.length === 0) return undefined;
-  let changed = false;
-  const nextList = list.map((message) => {
-    if (message.id !== messageId) return message;
-    const nextMessage = updater(message);
-    if (nextMessage !== message) changed = true;
-    return nextMessage;
-  });
-  if (!changed) return undefined;
+  const message = state.messagesById[messageId];
+  if (!message || message.chatId !== chatId) return undefined;
+  const nextMessage = updater(message);
+  if (nextMessage === message) return undefined;
   return {
-    messages: {
-      ...state.messages,
-      [chatId]: nextList,
+    messagesById: {
+      ...state.messagesById,
+      [messageId]: nextMessage,
     },
   } as Partial<S>;
 }

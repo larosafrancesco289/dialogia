@@ -1,8 +1,8 @@
 import { deepResearch } from '@/lib/deepResearch';
-import { ProviderSort } from '@/lib/models/providerSort';
 import { createNdjsonStream } from '@/lib/server/ndjson';
 import { jsonError } from '@/lib/server/route';
-import { isRecord } from '@/lib/utils/guards';
+import { DeepResearchRequestSchema } from '@/lib/schemas/api';
+import { parseSchema } from '@/lib/schemas/parse';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';
 
@@ -14,28 +14,26 @@ export const POST = route('deep-research')
   })
   .requireEnv('OPENROUTER_API_KEY', 'BRAVE_SEARCH_API_KEY')
   .handler(async (req, ctx) => {
-    let body: Record<string, unknown>;
+    let body: unknown;
     try {
-      const parsed = await req.json();
-      body = isRecord(parsed) ? parsed : {};
+      body = await req.json();
     } catch {
       return jsonError(400, 'invalid_json');
     }
-    const task = String(body?.task || '').trim();
-    const model = String(body?.model || '').trim();
+    const parsed = parseSchema(DeepResearchRequestSchema, body);
+    if (!parsed.ok) {
+      const fields = new Set(parsed.error.errors.map((issue) => issue.path[0]));
+      if (fields.has('task')) return jsonError(400, 'missing_task');
+      if (fields.has('model')) return jsonError(400, 'missing_model');
+      return jsonError(400, 'invalid_body');
+    }
+    const task = parsed.data.task.trim();
+    const model = parsed.data.model.trim();
     if (!task) return jsonError(400, 'missing_task');
     if (!model) return jsonError(400, 'missing_model');
-
-    const rawProviderSort = body.providerSort;
-    const providerSort =
-      rawProviderSort === ProviderSort.Price || rawProviderSort === ProviderSort.Throughput
-        ? (rawProviderSort as ProviderSort)
-        : undefined;
-    const style =
-      body.style === 'concise' || body.style === 'detailed' || body.style === 'executive'
-        ? body.style
-        : undefined;
-    const cite = body.cite === 'inline' || body.cite === 'footnotes' ? body.cite : undefined;
+    const providerSort = parsed.data.providerSort;
+    const style = parsed.data.style;
+    const cite = parsed.data.cite;
 
     const stream = createNdjsonStream(
       async ({ send }) => {
@@ -43,10 +41,10 @@ export const POST = route('deep-research')
           apiKey: ctx.env.OPENROUTER_API_KEY,
           task,
           model,
-          audience: typeof body.audience === 'string' ? body.audience : undefined,
+          audience: parsed.data.audience,
           style,
           cite,
-          maxIterations: typeof body.maxIterations === 'number' ? body.maxIterations : undefined,
+          maxIterations: parsed.data.maxIterations,
           providerSort,
           onProgress: (event) => {
             send({ type: 'trace', data: event });

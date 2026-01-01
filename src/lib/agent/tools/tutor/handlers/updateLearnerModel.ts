@@ -6,6 +6,7 @@ import {
   updateLearnerModel,
 } from '@/lib/agent/learnerModel';
 import { processPlanProgress } from '@/lib/learningPlan/service';
+import { getMessagesForChat } from '@/lib/messages/indexing';
 
 type UpdateLearnerModelArgs = {
   nodeId: string;
@@ -122,7 +123,7 @@ export const updateLearnerModelHandler: TutorToolHandler<UpdateLearnerModelArgs>
     }
 
     const state = ctx.get();
-    const messagesForChat = (state.messages?.[ctx.chatId] ?? []) as Message[];
+    const messagesForChat = getMessagesForChat(state, ctx.chatId);
     let currentModel = getLatestLearnerModel(messagesForChat);
     if (!currentModel) {
       currentModel = initializeLearnerModel(ctx.chatId, plan);

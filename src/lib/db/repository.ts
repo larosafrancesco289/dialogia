@@ -119,6 +119,15 @@ export function createRepository(db: DialogiaDbLike) {
     await db.messages.put(next);
   };
 
+  const saveMessages = async (messages: Message[]) => {
+    if (!messages.length) return;
+    await runTransaction(db, [db.messages], async () => {
+      for (const message of messages) {
+        await saveMessage(message);
+      }
+    });
+  };
+
   const saveFolder = async (folder: Folder) => {
     await db.folders.put(folder);
   };
@@ -187,6 +196,7 @@ export function createRepository(db: DialogiaDbLike) {
   return {
     saveChat,
     saveMessage,
+    saveMessages,
     saveFolder,
     getChatWithMessages,
     exportAll,

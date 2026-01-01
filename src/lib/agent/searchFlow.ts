@@ -5,6 +5,8 @@ import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 import type { SearchProvider, SearchResult, ToolDefinition, StoreSetter } from '@/lib/agent/types';
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
 import { getWebSearchToolDefinition } from '@/lib/tools/webSearch';
+import { runBraveSearchProxy } from '@/lib/search/brave';
+import { isApiError } from '@/lib/api/errors';
 
 export function getSearchToolDefinition(): ToolDefinition[] {
   return getWebSearchToolDefinition();
@@ -18,23 +20,16 @@ export async function runBraveSearch(
   },
 ): Promise<{ ok: boolean; results: SearchResult[]; error?: string }> {
   try {
-    const res = await fetch(`/api/brave?q=${encodeURIComponent(query)}&count=${count}`, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-      signal: opts?.signal,
-    });
-    if (!res.ok) {
-      return {
-        ok: false,
-        results: [],
-        error: res.status === 400 ? NOTICE_MISSING_BRAVE_KEY : `HTTP ${res.status}`,
-      };
-    }
-    const data = (await res.json()) as { results?: SearchResult[] };
-    const results = Array.isArray(data?.results) ? data.results : [];
+    const results = await runBraveSearchProxy({ query, count }, { signal: opts?.signal });
     return { ok: true, results };
   } catch (e: unknown) {
+    if (isApiError(e)) {
+      const detail = typeof e.detail === 'string' && e.detail.trim() ? e.detail : undefined;
+      if (e.code === 'missing_env' && e.detail === 'BRAVE_SEARCH_API_KEY') {
+        return { ok: false, results: [], error: NOTICE_MISSING_BRAVE_KEY };
+      }
+      return { ok: false, results: [], error: detail ?? e.code };
+    }
     const message = e instanceof Error ? e.message : 'Network error';
     return { ok: false, results: [], error: message };
   }

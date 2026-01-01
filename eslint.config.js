@@ -94,8 +94,42 @@ module.exports = [
         {
           patterns: [
             {
-              group: ['@/lib/api/**', '@/lib/openrouter'],
+              group: ['@/lib/api/**', '@/lib/openrouter/**'],
               message: 'UI components must not import transport clients.',
+            },
+            {
+              group: [
+                '@/lib/headless/**',
+                '@/lib/eval/**',
+                '../lib/headless/**',
+                '../../lib/headless/**',
+                '../../../lib/headless/**',
+                '../lib/eval/**',
+                '../../lib/eval/**',
+                '../../../lib/eval/**',
+              ],
+              message: 'UI components must not import headless or eval modules.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      'src/lib/transport/**/*.ts',
+      'src/lib/transport/**/*.tsx',
+      'src/lib/openrouter/**/*.ts',
+      'src/lib/openrouter/**/*.tsx',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/lib/agent/**', '../agent/**', '../../agent/**', '../../../agent/**'],
+              message: 'Transport and provider adapters must not import agent modules.',
             },
           ],
         },

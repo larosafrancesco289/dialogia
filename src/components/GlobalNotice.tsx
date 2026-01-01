@@ -1,7 +1,7 @@
 'use client';
 import { useChatStore } from '@/lib/store';
 import { useEffect, useState } from 'react';
-import { InlineNotice } from '@/components/InlineNotice';
+import { InlineNotice } from '@/components/ui/InlineNotice';
 import { selectNotice } from '@/lib/store/selectors';
 
 export function GlobalNotice() {

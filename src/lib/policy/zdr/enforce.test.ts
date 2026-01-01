@@ -28,6 +28,9 @@ test('guardModelOrNotice updates notice for disallowed providers', () => {
     zdrModelIds: [],
     zdrProviderIds: [],
   };
+  const setNotice = (notice?: string) => {
+    state.ui.notice = notice;
+  };
   const set = (updater: any) => {
     const patch = updater(state);
     mergeState(state, patch);
@@ -36,7 +39,7 @@ test('guardModelOrNotice updates notice for disallowed providers', () => {
     modelIds: new Set<string>(),
     providerIds: new Set<string>(['provider']),
   };
-  const allowed = guardModelOrNotice('other/model', set, lists);
+  const allowed = guardModelOrNotice('other/model', set, lists, setNotice);
   assert.equal(allowed, false);
   assert.ok(state.ui.notice?.includes('not from a ZDR provider'));
   assert.deepEqual(state.zdrProviderIds, Array.from(lists.providerIds));
@@ -48,6 +51,9 @@ test('guardModelOrNotice passes allowed models through', () => {
     zdrModelIds: [],
     zdrProviderIds: [],
   };
+  const setNotice = (notice?: string) => {
+    state.ui.notice = notice;
+  };
   const set = (updater: any) => {
     const patch = updater(state);
     mergeState(state, patch);
@@ -56,7 +62,7 @@ test('guardModelOrNotice passes allowed models through', () => {
     modelIds: new Set<string>(['provider/model']),
     providerIds: new Set<string>(),
   };
-  const allowed = guardModelOrNotice('provider/model', set, lists);
+  const allowed = guardModelOrNotice('provider/model', set, lists, setNotice);
   assert.equal(allowed, true);
   assert.deepEqual(state.zdrModelIds, Array.from(lists.modelIds));
   assert.equal(state.ui.notice, undefined);

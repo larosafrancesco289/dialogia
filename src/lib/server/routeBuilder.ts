@@ -1,9 +1,7 @@
-import 'server-only';
 import type { NextRequest } from 'next/server';
 import type { AccessTier } from '@/lib/auth/types';
-import { getServerTier } from '@/lib/auth/tierApiKey';
-import { requireServerEnv } from '@/lib/env/server';
-import { rateLimit, type RateLimitConfig } from '@/lib/server/rateLimit';
+import { readEnvValue } from '@/lib/env/values';
+import type { RateLimitConfig } from '@/lib/server/rateLimit';
 import { jsonError, withTiming } from '@/lib/server/route';
 
 type TierGate = {
@@ -49,12 +47,14 @@ export function route(name: string): RouteBuilder {
       return async (req: NextRequest) =>
         withTiming(name, async () => {
           if (limit) {
-            const limited = rateLimit(req, limit.prefix, limit.config);
+            const { rateLimit } = await import('@/lib/server/rateLimit');
+            const limited = await rateLimit(req, limit.prefix, limit.config);
             if (limited) return limited;
           }
 
           let tier: AccessTier | undefined;
           if (tierGate) {
+            const { getServerTier } = await import('@/lib/auth/tierApiKey');
             tier = await getServerTier();
             const deny = tierGate.deny?.includes(tier) ?? false;
             const allow =
@@ -70,11 +70,9 @@ export function route(name: string): RouteBuilder {
 
           const env: Record<string, string> = {};
           for (const name of requiredEnv) {
-            try {
-              env[name] = requireServerEnv(name);
-            } catch {
-              return jsonError(500, 'missing_env', name);
-            }
+            const value = readEnvValue(process.env[name]);
+            if (!value) return jsonError(500, 'missing_env', name);
+            env[name] = value;
           }
 
           return fn(req, { tier, env });

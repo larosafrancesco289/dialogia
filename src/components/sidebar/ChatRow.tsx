@@ -4,8 +4,8 @@ import { createPortal } from 'react-dom';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
-import { IconButton } from '@/components/IconButton';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { IconButton } from '@/components/ui/IconButton';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { MoveChatSheet } from '@/components/MoveChatSheet';
 import {
   ChatBubbleLeftRightIcon,

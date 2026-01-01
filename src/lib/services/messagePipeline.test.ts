@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planTurn } from '@/lib/agent/planning';
 import { regenerate } from '@/lib/agent/regenerate';
-import { setTransportMocksForTests as __setTransportMocksForTests } from '@/lib/agent/pipelineClient';
+import { createPipelineClient } from '@/lib/agent/pipelineClient';
 import { createModelIndex } from '@/lib/models';
 import type { Message, Chat, ModelDescriptor, ModelTransport } from '@/lib/types';
 import { getTutorToolDefinitions } from '@/lib/agent/tutor';
@@ -11,6 +11,7 @@ import type { StoreSetter, TurnContext } from '@/lib/agent/types';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { ProviderSort } from '@/lib/models/providerSort';
+import { buildMessageIndex } from '@/lib/messages/indexing';
 
 const baseModels: ModelDescriptor[] = [
   {
@@ -81,16 +82,20 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     attachments: [],
   };
 
+  const { messagesById, messageIdsByChatId } = buildMessageIndex({
+    [chat.id]: [assistantMessage],
+  });
+
   const state: any = {
     chats: [chat],
-    messages: {
-      [chat.id]: [assistantMessage],
-    },
+    messagesById,
+    messageIdsByChatId,
     models: baseModels,
     modelIndex: createModelIndex(baseModels),
     ui: {
       notice: undefined,
       routePreference: 'speed',
+      activeTurnByChatId: {},
       flags: {
         experimentalTutor: true,
         experimentalBrave: true,
@@ -106,6 +111,9 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     },
     setSearchStatus: (messageId: string, entry: any) => {
       state.ui.search.braveByMessageId[messageId] = entry;
+    },
+    setNotice: (notice?: string) => {
+      state.ui.notice = notice;
     },
   };
 
@@ -139,7 +147,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     }),
   })) as any);
 
-  __setTransportMocksForTests({
+  const pipeline = createPipelineClient({
     chatCompletion: async () => ({
       id: 'plan-turn-1',
       object: 'chat.completion',
@@ -173,8 +181,8 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
                       {
                         id: 'item1',
                         question: 'Q?',
-                        choices: ['A'],
-                        correct: 0,
+                        choices: ['A', 'B'],
+                        correct: 1,
                       },
                     ],
                   }),
@@ -255,6 +263,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     controller: new AbortController(),
     turn: turnContext,
     settings,
+    pipeline,
   });
 
   const braveEntry = state.ui.search.braveByMessageId[assistantMessage.id];
@@ -266,7 +275,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     ?.tutor as any;
   assert.ok(Array.isArray(savedTutor?.mcq) && savedTutor.mcq.length === 1);
   assert.equal(Array.isArray(savedTutor?.fillBlank), false);
-  const toolLog = state.messages[chat.id][0]?.toolCalls;
+  const toolLog = state.messagesById[assistantMessage.id]?.toolCalls;
   assert.ok(Array.isArray(toolLog) && toolLog.length >= 2);
   const searchEntries = toolLog.filter((entry: any) => entry?.name === 'web_search');
   const tutorEntries = toolLog.filter((entry: any) => entry?.name === 'quiz_mcq');
@@ -284,7 +293,6 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   assert.equal(tutorEntries[0]?.metadata?.round, 1);
   assert.equal(tutorEntries[0]?.metadata?.usedContent, true);
 
-  __setTransportMocksForTests();
   restoreFetch();
 });
 
@@ -338,16 +346,21 @@ test('regenerate reuses snapshots and records debug payload', async () => {
     createdAt: Date.now() - 10,
   } as Message;
 
+  const { messagesById: regenMessagesById, messageIdsByChatId: regenMessageIdsByChatId } =
+    buildMessageIndex({
+      [chat.id]: [userMessage, assistantMessage],
+    });
+
   const state: any = {
     chats: [chat],
-    messages: {
-      [chat.id]: [userMessage, assistantMessage],
-    },
+    messagesById: regenMessagesById,
+    messageIdsByChatId: regenMessageIdsByChatId,
     models: baseModels,
     modelIndex: createModelIndex(baseModels),
     ui: {
       notice: undefined,
       routePreference: 'speed',
+      activeTurnByChatId: {},
       flags: {
         experimentalTutor: false,
         experimentalBrave: false,
@@ -360,7 +373,9 @@ test('regenerate reuses snapshots and records debug payload', async () => {
       },
       search: { braveByMessageId: {} },
       tutor: { byMessageId: {}, forceMode: false },
-      isStreaming: false,
+    },
+    setNotice: (notice?: string) => {
+      state.ui.notice = notice;
     },
   };
 
@@ -380,7 +395,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
   };
   const get = () => state;
 
-  __setTransportMocksForTests({
+  const pipeline = createPipelineClient({
     streamChatCompletion: async ({ callbacks }) => {
       callbacks?.onStart?.();
       callbacks?.onToken?.('Hello');
@@ -406,13 +421,14 @@ test('regenerate reuses snapshots and records debug payload', async () => {
     chat,
     chatId: chat.id,
     targetMessageId: assistantMessage.id,
-    messages: state.messages[chat.id],
+    messages: [userMessage, assistantMessage],
     turn: regenerateTurn,
     controller: new AbortController(),
     tier: 'free',
+    pipeline,
   });
 
-  const updatedMessage = state.messages[chat.id][1];
+  const updatedMessage = state.messagesById[assistantMessage.id];
   assert.equal(updatedMessage.content, 'Hello');
   assert.equal(updatedMessage.genSettings.providerSort, ProviderSort.Price);
   assert.equal(updatedMessage.genSettings.search_enabled, true);
@@ -420,8 +436,6 @@ test('regenerate reuses snapshots and records debug payload', async () => {
   assert.ok(debugEntry);
   const parsed = JSON.parse(debugEntry.body);
   assert.equal(parsed.model, 'provider/model');
-  assert.equal(state.ui.isStreaming, false);
+  assert.equal(state.ui.activeTurnByChatId[chat.id] ?? 0, 0);
   assert.equal(saved.length > 0, true);
-
-  __setTransportMocksForTests();
 });

@@ -3,6 +3,7 @@ import type { StoreState } from '@/lib/store/types';
 import { selectTutorEntry } from '@/lib/ui/tutorSelectors';
 import type { Message, MessageTutor, ToolCallLogEntry, PersistedAttachment } from '@/lib/types';
 import type { LearnerModelDebugEntry } from '@/lib/store/types';
+import { getMessagesForChat } from '@/lib/messages/indexing';
 
 export type HeadlessTurnArtifacts = {
   composition: {
@@ -66,7 +67,7 @@ export function buildHeadlessTurnSnapshot(
   artifacts: HeadlessTurnArtifacts,
   turnIndex: number,
 ): HeadlessTurnSnapshot {
-  const messages = state.messages[chatId] ?? [];
+  const messages = getMessagesForChat(state, chatId);
   const assistantIndex = messages.findIndex((msg) => msg.id === assistantMessageId);
   if (assistantIndex === -1) {
     throw new Error(`Assistant message ${assistantMessageId} not found for chat ${chatId}`);

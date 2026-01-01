@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import {
-  AUTH_COOKIE_NAME,
   AuthClaims,
   AccessTier,
   createAuthToken,
@@ -12,20 +11,25 @@ import {
   hmacCode,
   hasTieredCodesConfigured,
 } from '@/lib/auth';
-import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
-import { getAccessCookieDomain } from '@/lib/env/server';
+import { setAuthCookies } from '@/lib/auth/cookies.server';
 import { jsonAuthError } from '@/lib/auth/errors';
 import { logger } from '@/lib/logger';
-import { isProd } from '@/lib/env/runtime';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';
+import { VerifyCodeRequestSchema } from '@/lib/schemas/api';
+import { parseSchema } from '@/lib/schemas/parse';
 
 export const POST = route('auth-verify-code')
   .rateLimit('auth-verify', RATE_LIMITS.AUTH)
   .handler(async (req) => {
     try {
-      const { code } = (await req.json()) as { code?: string };
-      const plain = String(code || '').trim();
+      const body = await req.json();
+      const parsed = parseSchema(VerifyCodeRequestSchema, body);
+      if (!parsed.ok) {
+        const hasCode = parsed.error.errors.some((issue) => issue.path[0] === 'code');
+        return jsonAuthError(hasCode ? 'missing_code' : 'bad_request', 400);
+      }
+      const plain = parsed.data.code.trim();
       if (!plain) return jsonAuthError('missing_code', 400);
 
       const pepper = getAccessCodePepper();
@@ -83,33 +87,7 @@ function createTokenResponse(tier: AccessTier, sub: string): NextResponse {
   const token = createAuthToken(claims);
 
   const res = NextResponse.json({ ok: true, tier });
-  const secure = isProd();
-  const domain = getAccessCookieDomain();
-  const maxAge = 60 * 60 * 24 * 14; // 14 days
-
-  // Set the auth token (httpOnly)
-  res.cookies.set({
-    name: AUTH_COOKIE_NAME,
-    value: token,
-    httpOnly: true,
-    sameSite: 'lax',
-    secure,
-    domain,
-    path: '/',
-    maxAge,
-  });
-
-  // Set the tier cookie (readable by client)
-  res.cookies.set({
-    name: TIER_COOKIE_NAME,
-    value: tier,
-    httpOnly: false,
-    sameSite: 'lax',
-    secure,
-    domain,
-    path: '/',
-    maxAge,
-  });
+  setAuthCookies(res, { token, tier });
 
   return res;
 }

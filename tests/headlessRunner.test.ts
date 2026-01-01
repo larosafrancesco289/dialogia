@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { setTransportMocksForTests } from '@/lib/agent/pipelineClient';
+import { createPipelineClient } from '@/lib/agent/pipelineClient';
 import { createHeadlessRunner } from '@/lib/headless/runner';
 import { renderSnapshotTranscript } from '@/lib/headless/transcript';
 import { createModelIndex } from '@/lib/models';
@@ -33,10 +33,8 @@ const mockChat = (modelId: string): Chat => ({
   },
 });
 
-test('headless runner builds snapshots with debug payloads and metrics', async (t) => {
-  t.after(() => setTransportMocksForTests());
-
-  setTransportMocksForTests({
+test('headless runner builds snapshots with debug payloads and metrics', async () => {
+  const pipeline = createPipelineClient({
     chatCompletion: async () => ({
       id: 'planning-mock',
       object: 'chat.completion',
@@ -69,6 +67,7 @@ test('headless runner builds snapshots with debug payloads and metrics', async (
     models: [model],
     modelIndex: createModelIndex([model]),
     resolveApiKey: () => 'test-key',
+    pipeline,
     uiOverrides: {
       debug: { mode: true },
       flags: { experimentalTutor: true },

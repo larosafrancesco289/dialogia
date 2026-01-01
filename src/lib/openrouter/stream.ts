@@ -1,8 +1,8 @@
-import { buildChatBody } from '@/lib/agent/request';
+import { buildChatBody } from '@/lib/openrouter/request';
 import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
 import { normalizeUsage, shouldIncludeUsage, type Usage } from '@/lib/api/normalizers';
 import { consumeSse, type SseEvent } from '@/lib/api/stream';
-import { orChatCompletions } from '@/lib/api/openrouterHttp';
+import { orChatCompletions } from '@/lib/openrouter/http';
 import { logger } from '@/lib/logger';
 import type { TransportStreamParams } from '@/lib/transport/types';
 import { isRecord } from '@/lib/utils/guards';

@@ -6,6 +6,7 @@ import {
   initializeLearnerModel,
 } from '@/lib/agent/learnerModel';
 import { processPlanProgress } from '@/lib/learningPlan/service';
+import { getMessagesForChat } from '@/lib/messages/indexing';
 
 type ApplyLearnerModelFeedbackArgs = {
   nodeId: string;
@@ -55,7 +56,7 @@ export const applyLearnerModelFeedbackHandler: TutorToolHandler<ApplyLearnerMode
   async apply(ctx, args) {
     const plan = ctx.chat.settings.learningPlan;
     const state = ctx.get();
-    const messagesForChat = (state.messages?.[ctx.chatId] ?? []) as Message[];
+    const messagesForChat = getMessagesForChat(state, ctx.chatId);
     let currentModel = getLatestLearnerModel(messagesForChat);
     if (!currentModel && plan) {
       currentModel = initializeLearnerModel(ctx.chatId, plan);

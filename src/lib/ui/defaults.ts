@@ -19,7 +19,7 @@ export const DEFAULT_MOBILE_STATE: UIMobileState = {
 export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
   const base: UIState = {
     showSettings: false,
-    isStreaming: false,
+    activeTurnByChatId: {},
     notice: undefined,
     sidebarCollapsed: false,
     ...EPHEMERAL_DEFAULTS,

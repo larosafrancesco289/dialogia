@@ -8,6 +8,7 @@ import type { StoreState } from '@/lib/store/types';
 import { repository } from '@/lib/db';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
+import { appendMessagesToChat } from '@/lib/messages/indexing';
 
 export const createVoiceSlice = createStoreSlice((set, get) => {
   const initialVoice = buildDefaultVoiceState();
@@ -105,10 +106,7 @@ export const createVoiceSlice = createStoreSlice((set, get) => {
       });
 
       set((s) => ({
-        messages: {
-          ...s.messages,
-          [chatId]: [...(s.messages[chatId] ?? []), message],
-        },
+        ...appendMessagesToChat(s, chatId, [message]),
       }));
 
       await persistMessage(message);
@@ -126,10 +124,7 @@ export const createVoiceSlice = createStoreSlice((set, get) => {
       });
 
       set((s) => ({
-        messages: {
-          ...s.messages,
-          [chatId]: [...(s.messages[chatId] ?? []), message],
-        },
+        ...appendMessagesToChat(s, chatId, [message]),
       }));
 
       await persistMessage(message);

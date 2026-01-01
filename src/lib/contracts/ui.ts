@@ -109,7 +109,7 @@ export type UiMobileSnapshot = {
 
 export type UiSnapshot = {
   showSettings: boolean;
-  isStreaming: boolean;
+  activeTurnByChatId: Record<string, number>;
   notice?: string;
   overrides?: UiNextOverrides;
   routePreference?: 'speed' | 'cost';

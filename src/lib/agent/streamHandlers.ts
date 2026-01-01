@@ -1,11 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
-import { stripLeadingToolJson } from '@/lib/agent/streaming';
+import { stripLeadingToolJson } from '@/lib/agent/streaming/stripToolJson';
 import type { Message } from '@/lib/types';
 import type { TurnStoreState } from '@/lib/agent/contracts';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
 import { computeMetrics } from '@/lib/services/metrics';
 import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
+import { notify } from '@/lib/store/notify';
 
 type MessageUpdater = (message: Message) => Message;
 
@@ -22,7 +23,7 @@ const applyMessageUpdate = (
       updated = next;
       return next;
     });
-    return result ? ({ messages: result.messages } as Partial<TurnStoreState>) : {};
+    return result ? (result as Partial<TurnStoreState>) : {};
   });
   return updated;
 };
@@ -118,7 +119,7 @@ export function createMessageStreamCallbacks(
         ...msg,
         reasoning: (msg.reasoning || '') + delta,
       }));
-      const partial: Partial<TurnStoreState> = result ? { messages: result.messages } : {};
+      const partial: Partial<TurnStoreState> = result ? (result as Partial<TurnStoreState>) : {};
       if (autoReasoningEligible && modelIdUsed) {
         const prev = state.ui.debug.autoReasoningModelIds || {};
         if (!prev[modelIdUsed]) {
@@ -195,10 +196,8 @@ export function createMessageStreamCallbacks(
       updateReasoning(delta);
     },
     onDone: async (full: string, extras?: StreamDoneExtras) => {
-      set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
       const state = get();
-      const currentMessages = state.messages[chatId] ?? [];
-      const current = currentMessages.find((msg) => msg.id === assistantMessage.id);
+      const current = state.messagesById[assistantMessage.id];
       const finishedAt = performance.now();
       const metrics = computeMetrics({
         startedAt: timing.startedAt,
@@ -232,13 +231,7 @@ export function createMessageStreamCallbacks(
       clearController?.();
     },
     onError: (error: Error) => {
-      set((state) => ({ ui: { ...state.ui, isStreaming: false } }));
-      const setNotice = get().setNotice;
-      if (typeof setNotice === 'function') {
-        setNotice(error.message);
-      } else {
-        set((state) => ({ ui: { ...state.ui, notice: error.message } }));
-      }
+      notify(get, error.message);
       clearController?.();
     },
   };
