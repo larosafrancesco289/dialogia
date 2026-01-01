@@ -1,24 +1,15 @@
 import { NextResponse } from 'next/server';
-import { jsonError, requireServerEnv, withTiming } from '@/lib/server/route';
+import { jsonError } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
-import { getServerTier } from '@/lib/auth/tierApiKey';
-import { canUseVoiceForTier } from '@/lib/auth/tierPolicy';
+import { route } from '@/lib/server/routeBuilder';
 
-export async function POST(request: Request) {
-  return withTiming('xai-session', async () => {
-    // Tier check - only developer tier can use voice
-    const tier = await getServerTier();
-    if (!canUseVoiceForTier(tier)) {
-      return jsonError(403, 'feature_not_available', 'Voice mode is only available for developer tier');
-    }
-
-    let apiKey: string;
-    try {
-      apiKey = requireServerEnv('XAI_API_KEY');
-    } catch {
-      return jsonError(500, 'missing_env', 'XAI_API_KEY');
-    }
-
+export const POST = route('xai-session')
+  .requireTier({
+    allow: ['developer'],
+    message: 'Voice mode is only available for developer tier',
+  })
+  .requireEnv('XAI_API_KEY')
+  .handler(async (request, ctx) => {
     try {
       const body = await request.json().catch(() => ({}));
       const voice = body.voice || 'eve';
@@ -29,7 +20,7 @@ export async function POST(request: Request) {
       const response = await fetch('https://api.x.ai/v1/realtime/client_secrets', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${ctx.env.XAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -62,4 +53,3 @@ export async function POST(request: Request) {
       );
     }
   });
-}

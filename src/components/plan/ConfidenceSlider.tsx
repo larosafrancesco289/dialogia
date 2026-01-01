@@ -101,10 +101,7 @@ export function ConfidenceSlider({
       {showLabels && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span
-              className="text-xs font-medium"
-              style={{ color: 'var(--color-fg-muted)' }}
-            >
+            <span className="text-xs font-medium" style={{ color: 'var(--color-fg-muted)' }}>
               Confidence
             </span>
             <span
@@ -126,10 +123,7 @@ export function ConfidenceSlider({
             >
               {displayValue}
             </span>
-            <span
-              className="text-xs"
-              style={{ color: 'var(--color-fg-muted)' }}
-            >
+            <span className="text-xs" style={{ color: 'var(--color-fg-muted)' }}>
               %
             </span>
           </div>
@@ -202,10 +196,7 @@ export function ConfidenceSlider({
             }}
             transition={{ type: 'spring', stiffness: 500, damping: 25 }}
           >
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{ background: color }}
-            />
+            <div className="h-2 w-2 rounded-full" style={{ background: color }} />
           </motion.div>
 
           {/* Value Tooltip (on drag) */}

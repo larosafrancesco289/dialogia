@@ -1,7 +1,6 @@
-import { NextRequest } from 'next/server';
 import { orChatCompletions } from '@/lib/api/openrouterHttp';
 import { getOpenRouterApiKeyForTier, canUseTierModel, getServerTier } from '@/lib/auth/tierApiKey';
-import { jsonError, withTiming } from '@/lib/server/route';
+import { jsonError } from '@/lib/server/route';
 import {
   getRequestOrigin,
   parseProxyBody,
@@ -9,9 +8,12 @@ import {
   proxyStream,
   withProxyErrors,
 } from '@/lib/server/proxy';
+import { route } from '@/lib/server/routeBuilder';
+import { RATE_LIMITS } from '@/lib/server/rateLimit';
 
-export async function POST(req: NextRequest) {
-  return withTiming('openrouter-chat', async () => {
+export const POST = route('openrouter-chat')
+  .rateLimit('openrouter-chat', RATE_LIMITS.EXPENSIVE)
+  .handler(async (req) => {
     let apiKey: string;
     try {
       apiKey = await getOpenRouterApiKeyForTier();
@@ -46,4 +48,3 @@ export async function POST(req: NextRequest) {
       return stream ? proxyStream(res) : proxyJson(res);
     }, 'proxy_error');
   });
-}

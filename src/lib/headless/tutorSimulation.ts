@@ -16,7 +16,7 @@ import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { parseArgs } from '@/lib/cli/args';
 import { loadEnvDefaults } from '@/lib/cli/env.node';
-import { getAnthropicKeyFallback, getOpenRouterKeyFallback } from '@/lib/env/server';
+import { getOpenRouterKeyFallback } from '@/lib/env/server';
 
 type PresetDefinition = {
   goal: string;
@@ -61,7 +61,6 @@ function usage() {
       '  --student-model <id>       Model ID for simulated student',
       '  --judge-model <id>         Model ID for judge evaluation',
       '  --openrouter-key <key>     OpenRouter API key (default from env)',
-      '  --anthropic-key <key>      Anthropic API key (optional, required for native anthropic models)',
       '  --initial-user "<text>"    Seed student message instead of generating',
       '  --json-out <path>          Write full JSON report to this path (defaults to tmp/)',
     ].join('\n'),
@@ -103,17 +102,8 @@ function createStubModel(
 
 function resolveApiKeyFactory(keys: {
   openrouter?: string;
-  anthropic?: string;
 }): (params: { modelId: string; transport: ModelTransport }) => string {
-  return ({ transport, modelId }) => {
-    if (transport === 'anthropic') {
-      if (!keys.anthropic) {
-        throw new Error(
-          `Anthropic transport requested for ${modelId}, but no ANTHROPIC_API_KEY (or --anthropic-key) provided.`,
-        );
-      }
-      return keys.anthropic;
-    }
+  return ({ modelId }) => {
     if (!keys.openrouter) {
       throw new Error(
         `OpenRouter transport requested for ${modelId}, but no OPENROUTER_API_KEY (or --openrouter-key) provided.`,
@@ -486,9 +476,6 @@ export async function runTutorSimulationCli(argv: string[]) {
   const openrouterKey =
     (typeof args['openrouter-key'] === 'string' && args['openrouter-key']) ||
     getOpenRouterKeyFallback();
-  const anthropicKey =
-    (typeof args['anthropic-key'] === 'string' && args['anthropic-key']) ||
-    getAnthropicKeyFallback();
 
   const remoteModels = await safeFetchModels(openrouterKey);
   const allModelIds = Array.from(new Set([tutorModel, studentModel, judgeModel]));
@@ -520,7 +507,6 @@ export async function runTutorSimulationCli(argv: string[]) {
 
   const resolveApiKey = resolveApiKeyFactory({
     openrouter: openrouterKey,
-    anthropic: anthropicKey,
   });
 
   const modelIndex = createModelIndex(models);

@@ -36,14 +36,6 @@ export function normalizeUsage(fields?: UsageLike): Usage | undefined {
   };
 }
 
-export function fromAnthropicUsage(usage?: { input_tokens?: number; output_tokens?: number }) {
-  if (!usage) return undefined;
-  return normalizeUsage({
-    input_tokens: usage.input_tokens,
-    output_tokens: usage.output_tokens,
-  });
-}
-
 export function shouldIncludeUsage(stream: boolean | undefined): boolean {
   return stream === true;
 }

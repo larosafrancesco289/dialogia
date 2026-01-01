@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
+import type { SectionId } from '@/components/settings/types';
 
 type ScrollSyncArgs = {
-  activeSection: string | null;
-  setActiveSection: (sectionId: string | null) => void;
-  sectionRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+  activeSection: SectionId | null;
+  setActiveSection: (sectionId: SectionId | null) => void;
+  sectionRefs: React.MutableRefObject<Record<SectionId, HTMLDivElement | null>>;
   tabBarRef: React.RefObject<HTMLDivElement | null>;
-  activeSections: string[];
+  activeSections: SectionId[];
 };
 
 export function useSettingsScrollSync({
@@ -20,7 +21,7 @@ export function useSettingsScrollSync({
   const drawerRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToSection = useCallback(
-    (sectionId: string) => {
+    (sectionId: SectionId) => {
       const container = drawerRef.current;
       const target = sectionRefs.current[sectionId];
       if (!container || !target) return;
@@ -63,8 +64,10 @@ export function useSettingsScrollSync({
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
         if (visible.length === 0) return;
         const id = visible[0].target.getAttribute('data-settings-section');
-        if (id && id !== activeSection) {
-          setActiveSection(id);
+        if (!id || id === activeSection) return;
+        const next = activeSections.includes(id as SectionId) ? (id as SectionId) : null;
+        if (next) {
+          setActiveSection(next);
         }
       },
       {

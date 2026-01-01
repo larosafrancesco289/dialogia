@@ -1,6 +1,7 @@
 import 'server-only';
 import type { TutorScenario } from '@/lib/eval/tutorScenarios';
 import type { LearningPlan, LearningPlanNode } from '@/lib/types';
+import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 
 /**
  * MCQ question for pre/post testing.
@@ -64,7 +65,7 @@ const linearEquationsScenario: AblationScenario = {
   goal: 'Master solving linear equations of the form ax + b = c',
   constraints: ['High school student', 'Exam in 3 days', 'Nervous about word problems'],
   maxTurns: 6,
-  teacherModelId: 'anthropic/claude-haiku-4.5',
+  teacherModelId: DEFAULT_TUTOR_MODEL_ID,
   studentModelId: 'x-ai/grok-4.1-fast',
   judgeModelId: 'x-ai/grok-4.1-fast',
   studentPersona:
@@ -230,7 +231,7 @@ const derivativesScenario: AblationScenario = {
   goal: 'Master basic differentiation rules and apply to polynomial functions',
   constraints: ['College freshman', 'Preparing for midterm', 'Weak algebra foundation'],
   maxTurns: 8,
-  teacherModelId: 'anthropic/claude-haiku-4.5',
+  teacherModelId: DEFAULT_TUTOR_MODEL_ID,
   studentModelId: 'x-ai/grok-4.1-fast',
   judgeModelId: 'x-ai/grok-4.1-fast',
   studentPersona:
@@ -422,7 +423,7 @@ const pythonDebuggingScenario: AblationScenario = {
   goal: 'Learn to identify and fix common Python bugs',
   constraints: ['New to programming', 'Limited time (15 min)', 'Prefers hands-on practice'],
   maxTurns: 5,
-  teacherModelId: 'anthropic/claude-haiku-4.5',
+  teacherModelId: DEFAULT_TUTOR_MODEL_ID,
   studentModelId: 'x-ai/grok-4.1-fast',
   judgeModelId: 'x-ai/grok-4.1-fast',
   studentPersona:
@@ -609,7 +610,7 @@ const bayesRuleScenario: AblationScenario = {
     'Strong intuitions that may be wrong',
   ],
   maxTurns: 7,
-  teacherModelId: 'anthropic/claude-haiku-4.5',
+  teacherModelId: DEFAULT_TUTOR_MODEL_ID,
   studentModelId: 'x-ai/grok-4.1-fast',
   judgeModelId: 'x-ai/grok-4.1-fast',
   studentPersona:

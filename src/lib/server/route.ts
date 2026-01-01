@@ -25,12 +25,19 @@ export async function withTiming(
 
 export { requireServerEnv };
 
-export function jsonError(status: number, code: string, detail?: string): Response {
+export function jsonError(
+  status: number,
+  code: string,
+  detail?: string,
+  headers?: HeadersInit,
+): Response {
   const payload = detail ? { error: code, detail } : { error: code };
+  const responseHeaders = new Headers(headers);
+  if (!responseHeaders.has('Cache-Control')) {
+    responseHeaders.set('Cache-Control', 'no-store');
+  }
   return NextResponse.json(payload, {
     status,
-    headers: {
-      'Cache-Control': 'no-store',
-    },
+    headers: responseHeaders,
   });
 }

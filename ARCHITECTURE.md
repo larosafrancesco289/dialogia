@@ -10,8 +10,8 @@ business logic that is easy to test.
 - Key entrypoints: `src/lib/store/index.ts` (state composition), `src/lib/services/turns.ts`
   (send/regenerate flow), `src/lib/agent/compose.ts` (message assembly), and
   `src/lib/agent/orchestrator/turn.ts` (turn runner).
-- Transport lives in `src/lib/api/*`, `src/lib/openrouter/*`, `src/lib/anthropic/*`, and
-  `src/lib/transport/*`, while API routes live under `app/api/*`.
+- Transport lives in `src/lib/api/*`, `src/lib/openrouter/*`, and `src/lib/transport/*`, while API
+  routes live under `app/api/*`.
 
 ## Refactor Invariants
 
@@ -19,7 +19,7 @@ business logic that is easy to test.
   - DB (`src/lib/db/**`) cannot import agent/store/components.
   - Agent (`src/lib/agent/**`) cannot import UI components.
   - UI components (`src/components/**`) cannot import transport clients (`src/lib/api/*`,
-    `src/lib/openrouter`, `src/lib/anthropic`).
+    `src/lib/openrouter`).
 
 ## Layered Modules
 
@@ -40,22 +40,22 @@ business logic that is easy to test.
   agent layer. `services/turns.ts` owns send/regenerate flows, with shared helpers in
   `src/lib/services/turns/*` and controller lifecycles isolated in `src/lib/services/controllers.ts`.
   Services prepare context and hand off to the agent orchestrator.
-- **Transport** — HTTP clients in `src/lib/api/*`, provider adapters in `src/lib/openrouter/*` and
-  `src/lib/anthropic/*`, and shared contracts in `src/lib/transport/*`. Shared helpers in
+- **Transport** — HTTP clients in `src/lib/api/*`, provider adapters in `src/lib/openrouter/*`, and
+  shared contracts in `src/lib/transport/*`. Shared helpers in
   `src/lib/api/config.ts`, `src/lib/api/stream.ts`, and `src/lib/api/errors.ts` encapsulate defaults,
   SSE parsing, and typed error construction.
   - ZDR cache helpers and enforcement live under `src/lib/policy/zdr/*`, with
     `src/lib/policy/zdr/index.ts` re-exporting helpers (`computeZdrFilter`,
     `computeZdrFilterCached`, `guardZdrOrNotifyCached`) so services can rely on a single façade.
-- **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Anthropic routes in
-  `app/api/anthropic/*`, Brave search proxy in `app/api/brave/route.ts`, X.AI voice session in
+- **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Brave search proxy in
+  `app/api/brave/route.ts`, X.AI voice session in
   `app/api/xai/session/route.ts`, DeepResearch in `app/api/deep-research/route.ts`, and auth routes
   in `app/api/auth/*`. These never import UI modules.
 
 ## Module Boundaries
 
 - UI may import store selectors/actions and `src/lib/ui/*` helpers, but never transport clients
-  (`src/lib/api/*`, `src/lib/openrouter/*`, `src/lib/anthropic/*`).
+  (`src/lib/api/*`, `src/lib/openrouter/*`).
 - Agent modules never import UI components, and persistence (`src/lib/db/*`) never imports agent or
   store types.
 - API routes under `app/api/*` must remain server-only and never import UI modules or components.
@@ -97,10 +97,9 @@ business logic that is easy to test.
 3. Agent helpers in `src/lib/agent/compose.ts`, `src/lib/agent/request.ts`, and
    `src/lib/agent/policy.ts` determine planning rounds, tool eligibility (search, tutor), and build
    provider-specific payloads.
-4. The pipeline client (`src/lib/agent/pipelineClient.ts`) selects the correct transport
-   implementation (`src/lib/openrouter/index.ts`, `src/lib/anthropic/index.ts`, etc.) and underlying HTTP
-   client. Proxying through `/api/openrouter/*` or `/api/anthropic/*` keeps provider keys off the
-   client whenever proxy mode is enabled.
+4. The pipeline client (`src/lib/agent/pipelineClient.ts`) selects the transport implementation
+   (`src/lib/openrouter/index.ts`, etc.) and underlying HTTP client. Proxying through
+   `/api/openrouter/*` keeps provider keys off the client whenever proxy mode is enabled.
 5. Streaming responses feed `src/lib/agent/streamHandlers.ts`, which mutate store slices via
    dedicated update helpers (append tokens, metrics, annotations). Non-streaming responses update
    message state in one shot.
@@ -122,8 +121,8 @@ business logic that is easy to test.
 
 1. Add provider metadata to `src/data/curatedModels.ts` and update `src/lib/models.ts` if new
    capability flags are required (e.g., vision, audio).
-2. Implement transport changes in `src/lib/openrouter/*`, `src/lib/anthropic/*`, or a new transport
-   module so all callers inherit the contract. Request payload tweaks should flow through
+2. Implement transport changes in `src/lib/openrouter/*` or a new transport module so all callers
+   inherit the contract. Request payload tweaks should flow through
    `src/lib/agent/request.ts`, while shared contracts live in `src/lib/transport/*`.
 3. Define tool schemas under `src/lib/agent/searchFlow.ts` (or a new module) and surface helpers
    from the agent layer—never from UI components.

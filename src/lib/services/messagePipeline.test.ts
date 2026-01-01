@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planTurn } from '@/lib/agent/planning';
 import { regenerate } from '@/lib/agent/regenerate';
-import { setOpenRouterMocksForTests as __setOpenRouterMocksForTests } from '@/lib/agent/pipelineClient';
+import { setTransportMocksForTests as __setTransportMocksForTests } from '@/lib/agent/pipelineClient';
 import { createModelIndex } from '@/lib/models';
 import type { Message, Chat, ModelDescriptor, ModelTransport } from '@/lib/types';
 import { getTutorToolDefinitions } from '@/lib/agent/tutor';
@@ -139,7 +139,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     }),
   })) as any);
 
-  __setOpenRouterMocksForTests({
+  __setTransportMocksForTests({
     chatCompletion: async () => ({
       id: 'plan-turn-1',
       object: 'chat.completion',
@@ -284,7 +284,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   assert.equal(tutorEntries[0]?.metadata?.round, 1);
   assert.equal(tutorEntries[0]?.metadata?.usedContent, true);
 
-  __setOpenRouterMocksForTests();
+  __setTransportMocksForTests();
   restoreFetch();
 });
 
@@ -380,7 +380,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
   };
   const get = () => state;
 
-  __setOpenRouterMocksForTests({
+  __setTransportMocksForTests({
     streamChatCompletion: async ({ callbacks }) => {
       callbacks?.onStart?.();
       callbacks?.onToken?.('Hello');
@@ -409,6 +409,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
     messages: state.messages[chat.id],
     turn: regenerateTurn,
     controller: new AbortController(),
+    tier: 'free',
   });
 
   const updatedMessage = state.messages[chat.id][1];
@@ -422,5 +423,5 @@ test('regenerate reuses snapshots and records debug payload', async () => {
   assert.equal(state.ui.isStreaming, false);
   assert.equal(saved.length > 0, true);
 
-  __setOpenRouterMocksForTests();
+  __setTransportMocksForTests();
 });

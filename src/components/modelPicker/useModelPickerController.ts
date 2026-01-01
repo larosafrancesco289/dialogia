@@ -9,6 +9,7 @@ import { readNextOverrides } from '@/lib/ui/next';
 import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import { useTier } from '@/lib/auth/tierContext';
 import { FREE_MODEL_IDS } from '@/data/freeModels';
+import { isModelTransportAvailable } from '@/lib/policy/providerAvailability';
 
 export type ModelPickerOption = {
   id: string;
@@ -74,7 +75,12 @@ export function useModelPickerController(): ModelPickerController {
   const { isFreeTier, isLoading: tierLoading } = useTier();
   const nextOverrides = readNextOverrides(ui);
 
-  const allowedIds = useMemo(() => new Set((models || []).map((m) => m.id)), [models]);
+  const allowedIds = useMemo(() => {
+    const ids = (models || [])
+      .filter((model) => isModelTransportAvailable(model))
+      .map((model) => model.id);
+    return new Set(ids);
+  }, [models]);
 
   const customOptions = useMemo(() => {
     return (favoriteModelIds || [])
@@ -179,6 +185,7 @@ export function useModelPickerController(): ModelPickerController {
   const modelMap = useMemo(() => {
     const map = new Map();
     for (const model of models || []) {
+      if (!isModelTransportAvailable(model)) continue;
       map.set(model.id, model);
     }
     return map;

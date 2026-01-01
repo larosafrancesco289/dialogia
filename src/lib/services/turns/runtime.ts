@@ -10,9 +10,7 @@ import type { StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelCapabilityFlags } from '@/lib/models';
 import type { Repository } from '@/lib/db/repository';
-import { getCookie } from '@/lib/auth/cookies.client';
-import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
-import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
+import { FREE_MODEL_IDS } from '@/data/freeModels';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { ensureTutorDefaults } from '@/lib/agent/tutorFlow';
 import { createModelAuthResolver, type ModelAuth } from '@/lib/services/auth';
@@ -20,6 +18,12 @@ import { prepareAttachmentsByModel } from '@/lib/services/attachments';
 import { normalizeParallelModels } from '@/lib/store/normalize';
 import { readNextOverrides } from '@/lib/ui/next';
 import { isTutorRuntimeEnabled, selectTutorDefaultModelId } from '@/lib/policy/runtime';
+import type { AccessTier } from '@/lib/auth/types';
+import {
+  canUseAllModelsForTier,
+  getDefaultTutorModelIdForTier,
+  isModelAllowedForTier,
+} from '@/lib/auth/tierFeatures';
 
 export type TurnModelContext = {
   modelId: string;
@@ -34,7 +38,7 @@ export type SendRuntime = {
   ui: UiSnapshot;
   next: UiNextOverrides;
   tutorEnabled: boolean;
-  tier: 'free' | 'individual' | 'developer' | 'study';
+  tier: AccessTier;
   activeModelIds: string[];
   primaryModelId?: string;
   priorMessages: Message[];
@@ -47,11 +51,13 @@ export const prepareSendRuntime = async ({
   set,
   get,
   repository,
+  tier,
 }: {
   attachments?: DraftAttachment[];
   set: StoreSetter;
   get: StoreGetter;
   repository: Repository;
+  tier: AccessTier;
 }): Promise<SendRuntime | null> => {
   const chatId = get().selectedChatId;
   if (!chatId) return null;
@@ -62,11 +68,6 @@ export const prepareSendRuntime = async ({
   const ui = get().ui;
   const modelIndex = get().modelIndex;
   const next = readNextOverrides(ui);
-  const tierCookie = getCookie(TIER_COOKIE_NAME);
-  const tier =
-    tierCookie === 'developer' || tierCookie === 'individual' || tierCookie === 'study'
-      ? tierCookie
-      : 'free';
   const tutorEnabled = isTutorRuntimeEnabled(ui, chat, tier);
   let tutorDefaultModelId = selectTutorDefaultModelId(ui, chat, DEFAULT_TUTOR_MODEL_ID);
 
@@ -91,14 +92,17 @@ export const prepareSendRuntime = async ({
       chat.settings.tutor_default_model ||
       tutorDefaultModelId ||
       DEFAULT_TUTOR_MODEL_ID;
-    // Study tier should use the standard tutor model, not the free model
-    const isFreeTier = tier === 'free';
+    const allowAllModels = canUseAllModelsForTier(tier);
     const freeFallbackFromIndex = modelIndex.all.find((model) =>
       FREE_MODEL_IDS.includes(model.id),
     )?.id;
     let resolvedTutorModelId = preferredTutorModelId;
-    if (isFreeTier && resolvedTutorModelId && !FREE_MODEL_IDS.includes(resolvedTutorModelId)) {
-      resolvedTutorModelId = freeFallbackFromIndex ?? DEFAULT_FREE_TUTOR_MODEL_ID;
+    if (
+      !allowAllModels &&
+      resolvedTutorModelId &&
+      !isModelAllowedForTier(tier, resolvedTutorModelId)
+    ) {
+      resolvedTutorModelId = freeFallbackFromIndex ?? getDefaultTutorModelIdForTier(tier);
     }
     if (
       modelIndex.all.length > 0 &&
@@ -106,7 +110,7 @@ export const prepareSendRuntime = async ({
       !modelIndex.get(resolvedTutorModelId)
     ) {
       resolvedTutorModelId =
-        (isFreeTier ? freeFallbackFromIndex : undefined) ??
+        (!allowAllModels ? freeFallbackFromIndex : undefined) ??
         modelIndex.all[0]?.id ??
         resolvedTutorModelId;
     }

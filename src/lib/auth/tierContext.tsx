@@ -2,9 +2,8 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import type { AccessTier } from './types';
-import { TIER_COOKIE_NAME } from './shared';
-import { getCookie } from '@/lib/auth/cookies.client';
-import { getTierPolicy } from '@/lib/auth/tierPolicy';
+import { getClientTier } from '@/lib/auth/tier.client';
+import { getTierFeatures } from '@/lib/auth/tierFeatures';
 
 interface TierContextValue {
   tier: AccessTier;
@@ -24,22 +23,15 @@ const TierContext = createContext<TierContextValue>({
   isIndividualTier: false,
   isDeveloperTier: false,
   isStudyTier: false,
-  ...getTierPolicy('free'),
+  ...getTierFeatures('free'),
 });
-
-function isValidTier(value: string | null): value is AccessTier {
-  return value === 'free' || value === 'individual' || value === 'developer' || value === 'study';
-}
 
 export function TierProvider({ children }: { children: ReactNode }) {
   const [tier, setTier] = useState<AccessTier>('free');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const cookieTier = getCookie(TIER_COOKIE_NAME);
-    if (isValidTier(cookieTier)) {
-      setTier(cookieTier);
-    }
+    setTier(getClientTier());
     setIsLoading(false);
   }, []);
 
@@ -47,9 +39,9 @@ export function TierProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        const cookieTier = getCookie(TIER_COOKIE_NAME);
-        if (isValidTier(cookieTier) && cookieTier !== tier) {
-          setTier(cookieTier);
+        const nextTier = getClientTier();
+        if (nextTier !== tier) {
+          setTier(nextTier);
         }
       }
     };
@@ -65,7 +57,7 @@ export function TierProvider({ children }: { children: ReactNode }) {
     isIndividualTier: tier === 'individual',
     isDeveloperTier: tier === 'developer',
     isStudyTier: tier === 'study',
-    ...getTierPolicy(tier),
+    ...getTierFeatures(tier),
   };
 
   return <TierContext.Provider value={value}>{children}</TierContext.Provider>;

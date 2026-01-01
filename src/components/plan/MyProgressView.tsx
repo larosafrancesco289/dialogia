@@ -70,7 +70,8 @@ export function MyProgressView({
     return plan.nodes.filter((node) => {
       const mastery = learnerModel?.mastery?.[node.id];
       const confidence = mastery?.confidence ?? 0;
-      const hasMisconceptions = (mastery?.misconceptions?.filter((m) => !m.resolved).length ?? 0) > 0;
+      const hasMisconceptions =
+        (mastery?.misconceptions?.filter((m) => !m.resolved).length ?? 0) > 0;
 
       switch (filter) {
         case 'needs_work':
@@ -88,13 +89,10 @@ export function MyProgressView({
   }, [plan.nodes, learnerModel, filter]);
 
   // Wrap actions with confirmation dialogs
-  const createConfirmableAction = useCallback(
-    (action: EditConfirmAction, callback: () => void) => {
-      setPendingAction(action);
-      setPendingCallback(() => callback);
-    },
-    [],
-  );
+  const createConfirmableAction = useCallback((action: EditConfirmAction, callback: () => void) => {
+    setPendingAction(action);
+    setPendingCallback(() => callback);
+  }, []);
 
   const handleConfirm = useCallback(() => {
     pendingCallback?.();
@@ -187,10 +185,30 @@ export function MyProgressView({
 
   const filterButtons: { id: FilterMode; label: string; count: number; color?: string }[] = [
     { id: 'all', label: 'All', count: plan.nodes.length },
-    { id: 'needs_work', label: 'Needs work', count: stats.needsWorkTopics, color: 'var(--color-danger)' },
-    { id: 'developing', label: 'Developing', count: stats.developingTopics, color: 'var(--color-accent-2)' },
-    { id: 'mastered', label: 'Mastered', count: stats.masteredTopics, color: 'var(--color-success)' },
-    { id: 'misconceptions', label: 'Misconceptions', count: stats.totalMisconceptions, color: 'var(--color-danger)' },
+    {
+      id: 'needs_work',
+      label: 'Needs work',
+      count: stats.needsWorkTopics,
+      color: 'var(--color-danger)',
+    },
+    {
+      id: 'developing',
+      label: 'Developing',
+      count: stats.developingTopics,
+      color: 'var(--color-accent-2)',
+    },
+    {
+      id: 'mastered',
+      label: 'Mastered',
+      count: stats.masteredTopics,
+      color: 'var(--color-success)',
+    },
+    {
+      id: 'misconceptions',
+      label: 'Misconceptions',
+      count: stats.totalMisconceptions,
+      color: 'var(--color-danger)',
+    },
   ];
 
   return (
@@ -303,7 +321,8 @@ export function MyProgressView({
             className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium transition-all"
             style={{
               background: filter === btn.id ? 'var(--surface-paper)' : 'transparent',
-              border: filter === btn.id ? '1px solid var(--rule-accent)' : '1px solid var(--rule-light)',
+              border:
+                filter === btn.id ? '1px solid var(--rule-accent)' : '1px solid var(--rule-light)',
               borderRadius: 'var(--radius-editorial)',
               color: filter === btn.id ? (btn.color ?? 'var(--color-fg)') : 'var(--color-fg-muted)',
               boxShadow: filter === btn.id ? 'var(--shadow-1)' : 'none',
@@ -371,10 +390,7 @@ export function MyProgressView({
             borderRadius: 'var(--radius-editorial)',
           }}
         >
-          <SparklesIcon
-            className="h-8 w-8 mx-auto mb-3"
-            style={{ color: 'var(--color-accent)' }}
-          />
+          <SparklesIcon className="h-8 w-8 mx-auto mb-3" style={{ color: 'var(--color-accent)' }} />
           <h3
             className="text-base font-semibold mb-1"
             style={{ fontFamily: 'var(--font-serif-assistant)' }}

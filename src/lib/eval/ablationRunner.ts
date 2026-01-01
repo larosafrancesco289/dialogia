@@ -9,7 +9,7 @@ import 'server-only';
  *   --conditions <list>   Comma-separated conditions (default: all)
  *   --scenarios <list>    Comma-separated scenario IDs (default: all)
  *   --runs <n>            Runs per condition×scenario (default: 3)
- *   --tutor-model <id>    Tutor model (default: anthropic/claude-haiku-4.5)
+ *   --tutor-model <id>    Tutor model (default: DEFAULT_TUTOR_MODEL_ID)
  *   --out <dir>           Output directory (default: tmp/ablation/)
  *   --dry-run             Show what would be run without executing
  *   --resume              Resume from last checkpoint
@@ -30,7 +30,7 @@ import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { buildJudgeMessages, type JudgeVerdict } from '@/lib/eval/judgePrompts';
 import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learnerModel';
 import { generatePlanContextPreamble } from '@/lib/agent/tutor/planContext';
-import { getAnthropicKeyFallback, getOpenRouterKeyFallback } from '@/lib/env/server';
+import { getOpenRouterKeyFallback } from '@/lib/env/server';
 import {
   ABLATION_CONDITIONS,
   CONDITION_CONFIGS,
@@ -149,8 +149,6 @@ Options:
   --judge-model <id>    Judge model (default: x-ai/grok-4.1-fast)
   --out <dir>           Output directory (default: tmp/ablation/)
   --dry-run             Show what would be run without executing
-  --use-anthropic-direct  Use direct Anthropic API for anthropic/* models
-                          (default: false, routes all models through OpenRouter)
   --list                List available scenarios and conditions
   -h, --help            Show this help message
 
@@ -203,13 +201,11 @@ function createStubModel(
   };
 }
 
-function resolveApiKeyFactory(keys: { openrouter?: string; anthropic?: string }) {
-  return ({ transport }: { modelId: string; transport: ModelTransport }) => {
-    if (transport === 'anthropic') {
-      if (!keys.anthropic) throw new Error('Missing ANTHROPIC_API_KEY');
-      return keys.anthropic;
+function resolveApiKeyFactory(keys: { openrouter?: string }) {
+  return ({ modelId }: { modelId: string; transport: ModelTransport }) => {
+    if (!keys.openrouter) {
+      throw new Error(`Missing OPENROUTER_API_KEY for ${modelId}`);
     }
-    if (!keys.openrouter) throw new Error('Missing OPENROUTER_API_KEY');
     return keys.openrouter;
   };
 }
@@ -226,8 +222,7 @@ async function runSingleAblation(
     tutorModel: string;
     studentModel: string;
     judgeModel: string;
-    apiKeys: { openrouter?: string; anthropic?: string };
-    forceOpenRouter: boolean;
+    apiKeys: { openrouter?: string };
   },
 ): Promise<AblationRunResult> {
   const startTime = Date.now();
@@ -235,16 +230,9 @@ async function runSingleAblation(
 
   console.log(`\n  [${runId}] Starting...`);
 
-  // When forceOpenRouter is true, always use OpenRouter regardless of model ID pattern
-  const tutorTransport = config.forceOpenRouter
-    ? 'openrouter'
-    : resolveModelTransport(config.tutorModel) || 'openrouter';
-  const studentTransport = config.forceOpenRouter
-    ? 'openrouter'
-    : resolveModelTransport(config.studentModel) || 'openrouter';
-  const judgeTransport = config.forceOpenRouter
-    ? 'openrouter'
-    : resolveModelTransport(config.judgeModel) || 'openrouter';
+  const tutorTransport = resolveModelTransport(config.tutorModel) || 'openrouter';
+  const studentTransport = resolveModelTransport(config.studentModel) || 'openrouter';
+  const judgeTransport = resolveModelTransport(config.judgeModel) || 'openrouter';
 
   const resolveApiKey = resolveApiKeyFactory(config.apiKeys);
 
@@ -822,12 +810,9 @@ export async function runAblationCli(argv: string[]) {
   const judgeModel =
     typeof args['judge-model'] === 'string' ? args['judge-model'] : 'x-ai/grok-4.1-fast';
   const outputDir = typeof args.out === 'string' ? args.out : 'tmp/ablation';
-  // Default: route all models through OpenRouter; opt-in to direct Anthropic API
-  const forceOpenRouter = args['use-anthropic-direct'] !== true;
 
   const apiKeys = {
     openrouter: getOpenRouterKeyFallback(),
-    anthropic: getAnthropicKeyFallback(),
   };
 
   if (!apiKeys.openrouter) {
@@ -848,9 +833,7 @@ export async function runAblationCli(argv: string[]) {
   console.log(`Student:    ${studentModel}`);
   console.log(`Judge:      ${judgeModel}`);
   console.log(`Output:     ${outputDir}`);
-  console.log(
-    `Routing:    ${forceOpenRouter ? 'OpenRouter (all models)' : 'Native (Anthropic direct for anthropic/* models)'}`,
-  );
+  console.log('Routing:    OpenRouter');
 
   if (args['dry-run']) {
     console.log('\n[DRY RUN] Would execute the above configuration.');
@@ -875,7 +858,6 @@ export async function runAblationCli(argv: string[]) {
             studentModel,
             judgeModel,
             apiKeys,
-            forceOpenRouter,
           });
           results.push(result);
           completedRuns++;

@@ -1,4 +1,4 @@
-import { requireAnthropicClientKeyOrProxy, requireClientKeyOrProxy } from '@/lib/env/public';
+import { requireClientKeyOrProxy } from '@/lib/env/public';
 import { resolveModelTransport } from '@/lib/providers';
 import type { ModelIndex } from '@/lib/models';
 import type { ModelTransport } from '@/lib/types';
@@ -8,8 +8,8 @@ export type TransportAuthStatus = {
   useProxy: boolean;
 };
 
-export function requireTransportAuth(transport: ModelTransport): TransportAuthStatus {
-  return transport === 'anthropic' ? requireAnthropicClientKeyOrProxy() : requireClientKeyOrProxy();
+export function requireTransportAuth(_transport: ModelTransport): TransportAuthStatus {
+  return requireClientKeyOrProxy();
 }
 
 export function requireModelAuth(

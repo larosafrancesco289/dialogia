@@ -1,7 +1,6 @@
 import type { StoreState } from '@/lib/store/types';
 import { fetchModels as fetchOpenRouterModels } from '@/lib/openrouter';
-import { fetchModels as fetchAnthropicModels } from '@/lib/anthropic';
-import { requireAnthropicClientKeyOrProxy, requireClientKeyOrProxy } from '@/lib/env/public';
+import { requireClientKeyOrProxy } from '@/lib/env/public';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
 import { computeZdrFilterCached } from '@/lib/policy/zdr/cache';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
@@ -11,8 +10,8 @@ import { createStoreSlice } from '@/lib/store/createSlice';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import {
   NOTICE_INVALID_KEY,
+  NOTICE_MISSING_CLIENT_KEY,
   NOTICE_MODELS_UNAVAILABLE,
-  NOTICE_NO_PROVIDER_KEY,
 } from '@/lib/store/notices';
 import { applyNextOverrides, readNextOverrides } from '@/lib/ui/next';
 
@@ -28,24 +27,18 @@ export const createModelSlice = createStoreSlice((set, get) => {
     async loadModels(_opts?: { showErrors?: boolean }) {
       if (isLoadingModels) return;
       let openrouterStatus: { key?: string; useProxy: boolean } | null = null;
-      let anthropicStatus: { key?: string; useProxy: boolean } | null = null;
       try {
         openrouterStatus = requireClientKeyOrProxy();
       } catch {
         openrouterStatus = null;
       }
-      try {
-        anthropicStatus = requireAnthropicClientKeyOrProxy();
-      } catch {
-        anthropicStatus = null;
-      }
-      if (!openrouterStatus && !anthropicStatus) {
+      if (!openrouterStatus) {
         const setNotice = get().setNotice;
         if (typeof setNotice === 'function') {
-          setNotice(NOTICE_NO_PROVIDER_KEY);
+          setNotice(NOTICE_MISSING_CLIENT_KEY);
         } else {
           set((s) => ({
-            ui: { ...s.ui, notice: NOTICE_NO_PROVIDER_KEY },
+            ui: { ...s.ui, notice: NOTICE_MISSING_CLIENT_KEY },
           }));
         }
         return;
@@ -54,94 +47,65 @@ export const createModelSlice = createStoreSlice((set, get) => {
       try {
         const zdrOnly = get().ui.zdrOnly === true;
         let openrouterModels: StoreState['models'] = [];
-        let anthropicModels: StoreState['models'] = [];
         const noticeSegments: string[] = [];
         let fallbackModelId: string | undefined;
         let defaultModelAvailable = false;
-        if (openrouterStatus) {
-          try {
-            openrouterModels = await fetchOpenRouterModels(openrouterStatus.key || '');
-            const availableIds = new Set(openrouterModels.map((model) => model.id));
-            const missingCurated = CURATED_MODELS.filter((entry) => !availableIds.has(entry.id));
-            if (missingCurated.length > 0) {
-              noticeSegments.push(
-                `Unavailable curated models: ${missingCurated
-                  .map((entry) => entry.name || entry.id)
-                  .join(', ')}`,
-              );
-            }
-
-            defaultModelAvailable = availableIds.has(DEFAULT_MODEL_ID);
-            if (!defaultModelAvailable && openrouterModels.length > 0 && !fallbackModelId) {
-              const fallback = openrouterModels[0];
-              fallbackModelId = fallback.id;
-              const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
-              noticeSegments.push(
-                `Default model ${DEFAULT_MODEL_NAME} unavailable. Using ${fallbackLabel}.`,
-              );
-            }
-
-            const { filter, filtered } = await computeZdrFilterCached(
-              openrouterModels,
-              zdrOnly ? 'enforce' : 'informational',
-              set,
-              get,
+        try {
+          openrouterModels = await fetchOpenRouterModels(openrouterStatus.key || '');
+          const availableIds = new Set(openrouterModels.map((model) => model.id));
+          const missingCurated = CURATED_MODELS.filter((entry) => !availableIds.has(entry.id));
+          if (missingCurated.length > 0) {
+            noticeSegments.push(
+              `Unavailable curated models: ${missingCurated
+                .map((entry) => entry.name || entry.id)
+                .join(', ')}`,
             );
-            if (zdrOnly) {
-              if (filter.status === 'unknown') {
-                openrouterModels = [];
-                const setNotice = get().setNotice;
-                if (typeof setNotice === 'function') {
-                  setNotice(ZDR_UNAVAILABLE_NOTICE);
-                } else {
-                  set((s) => ({ ui: { ...s.ui, notice: ZDR_UNAVAILABLE_NOTICE } }));
-                }
+          }
+
+          defaultModelAvailable = availableIds.has(DEFAULT_MODEL_ID);
+          if (!defaultModelAvailable && openrouterModels.length > 0 && !fallbackModelId) {
+            const fallback = openrouterModels[0];
+            fallbackModelId = fallback.id;
+            const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
+            noticeSegments.push(
+              `Default model ${DEFAULT_MODEL_NAME} unavailable. Using ${fallbackLabel}.`,
+            );
+          }
+
+          const { filter, filtered } = await computeZdrFilterCached(
+            openrouterModels,
+            zdrOnly ? 'enforce' : 'informational',
+            set,
+            get,
+          );
+          if (zdrOnly) {
+            if (filter.status === 'unknown') {
+              openrouterModels = [];
+              const setNotice = get().setNotice;
+              if (typeof setNotice === 'function') {
+                setNotice(ZDR_UNAVAILABLE_NOTICE);
               } else {
-                openrouterModels = filtered;
+                set((s) => ({ ui: { ...s.ui, notice: ZDR_UNAVAILABLE_NOTICE } }));
               }
             } else {
               openrouterModels = filtered;
             }
-          } catch (error: unknown) {
-            openrouterModels = [];
-            if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
-              const setNotice = get().setNotice;
-              if (typeof setNotice === 'function') {
-                setNotice(NOTICE_INVALID_KEY);
-              } else {
-                set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
-              }
+          } else {
+            openrouterModels = filtered;
+          }
+        } catch (error: unknown) {
+          openrouterModels = [];
+          if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
+            const setNotice = get().setNotice;
+            if (typeof setNotice === 'function') {
+              setNotice(NOTICE_INVALID_KEY);
+            } else {
+              set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
             }
           }
         }
 
-        if (anthropicStatus && !zdrOnly) {
-          try {
-            anthropicModels = await fetchAnthropicModels(anthropicStatus.key || '');
-          } catch (error: unknown) {
-            anthropicModels = [];
-            if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
-              const setNotice = get().setNotice;
-              if (typeof setNotice === 'function') {
-                setNotice(NOTICE_INVALID_KEY);
-              } else {
-                set((s) => ({ ui: { ...s.ui, notice: NOTICE_INVALID_KEY } }));
-              }
-            }
-          }
-        }
-
-        if (!defaultModelAvailable && !fallbackModelId && anthropicModels.length > 0) {
-          const fallback = anthropicModels[0];
-          fallbackModelId = fallback.id;
-          const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
-          noticeSegments.push(
-            `Default model ${DEFAULT_MODEL_NAME} unavailable. Using ${fallbackLabel}.`,
-          );
-        }
-
-        const combinedModels = [...openrouterModels, ...anthropicModels];
-        if (combinedModels.length === 0) {
+        if (openrouterModels.length === 0) {
           if (!get().ui.notice) {
             const setNotice = get().setNotice;
             if (typeof setNotice === 'function') {
@@ -183,7 +147,7 @@ export const createModelSlice = createStoreSlice((set, get) => {
             }
           }
         }
-        set({ models: combinedModels, modelIndex: createModelIndex(combinedModels) });
+        set({ models: openrouterModels, modelIndex: createModelIndex(openrouterModels) });
       } finally {
         isLoadingModels = false;
       }

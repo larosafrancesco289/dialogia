@@ -80,14 +80,6 @@ export function requireServerOpenRouterKey(): string {
   return requireServerEnv('OPENROUTER_API_KEY');
 }
 
-export function getServerAnthropicKey(): string | undefined {
-  return readEnvValue(process.env.ANTHROPIC_API_KEY);
-}
-
-export function requireServerAnthropicKey(): string {
-  return requireServerEnv('ANTHROPIC_API_KEY');
-}
-
 export function getBraveSearchKey(): string | undefined {
   return readEnvValue(process.env.BRAVE_SEARCH_API_KEY);
 }
@@ -125,14 +117,6 @@ export function getOpenRouterKeyFallback(): string | undefined {
     getServerOpenRouterKey() ||
     readEnvValue(process.env.NEXT_PUBLIC_OPENROUTER_API_KEY) ||
     readEnvValue(process.env.OPENROUTER_KEY)
-  );
-}
-
-export function getAnthropicKeyFallback(): string | undefined {
-  return (
-    getServerAnthropicKey() ||
-    readEnvValue(process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY) ||
-    readEnvValue(process.env.ANTHROPIC_KEY)
   );
 }
 

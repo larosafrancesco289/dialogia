@@ -16,12 +16,11 @@ import type { Chat, Message, ModelDescriptor, ModelTransport } from '@/lib/types
 import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learnerModel';
 import { generatePlanContextPreamble } from '@/lib/agent/tutor/planContext';
 import { isTutorContentTool, isTutorMetaTool, isSearchTool } from '@/lib/agent/tools/categories';
-import { getAnthropicKeyFallback, getOpenRouterKeyFallback } from '@/lib/env/server';
+import { getOpenRouterKeyFallback } from '@/lib/env/server';
 
 export type TutorEvalOptions = {
   apiKeys?: {
     openrouter?: string;
-    anthropic?: string;
   };
   outputDir?: string;
   maxTurnsOverride?: number;
@@ -99,13 +98,7 @@ function isTextRecord(value: unknown): value is { text?: unknown } {
 function resolveApiKeyFactory(
   keys: TutorEvalOptions['apiKeys'],
 ): (params: { modelId: string; transport: ModelTransport }) => string {
-  return ({ transport }) => {
-    if (transport === 'anthropic') {
-      if (!keys?.anthropic) {
-        throw new Error('Missing ANTHROPIC_API_KEY for anthropic transport');
-      }
-      return keys.anthropic;
-    }
+  return () => {
     if (!keys?.openrouter) {
       throw new Error('Missing OPENROUTER_API_KEY for OpenRouter transport');
     }
@@ -181,7 +174,6 @@ export async function runTutorScenario(
   const maxTurns = options.maxTurnsOverride ?? scenario.maxTurns;
   const apiKeys = {
     openrouter: options.apiKeys?.openrouter || getOpenRouterKeyFallback(),
-    anthropic: options.apiKeys?.anthropic || getAnthropicKeyFallback(),
   };
   const teacherModelId = scenario.teacherModelId || DEFAULT_TUTOR_MODEL_ID;
   const studentModelId = scenario.studentModelId || DEFAULT_MODEL_ID;

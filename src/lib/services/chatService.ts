@@ -2,29 +2,11 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Repository } from '@/lib/db/repository';
 import type { Chat, Folder, Message } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
-import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
 import { resolveNewChatSettings } from '@/lib/settings/resolve';
-import { DEFAULT_FREE_MODEL_ID } from '@/data/freeModels';
-import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
-import { getCookie } from '@/lib/auth/cookies.client';
+import type { AccessTier } from '@/lib/auth/types';
+import { getDefaultModelIdForTier, isTutorForcedForTier } from '@/lib/auth/tierFeatures';
 import { ensureHiddenTutorContent } from '@/lib/services/messagePersistence';
-
-// Read tier from cookie on client side
-function getClientTier(): 'free' | 'individual' | 'developer' | 'study' {
-  const tier = getCookie(TIER_COOKIE_NAME);
-  if (tier === 'developer' || tier === 'individual' || tier === 'free' || tier === 'study') {
-    return tier;
-  }
-  return 'free';
-}
-
-// Get the appropriate default model based on tier
-function getTierDefaultModelId(): string {
-  const tier = getClientTier();
-  // Study tier should use the standard model, not the free model
-  return tier === 'free' ? DEFAULT_FREE_MODEL_ID : DEFAULT_MODEL_ID;
-}
 
 export class ChatService {
   static async createChat(params: {
@@ -32,8 +14,9 @@ export class ChatService {
     chats: Chat[];
     selectedChatId?: string;
     repository: Repository;
+    tier: AccessTier;
   }): Promise<Chat> {
-    const { ui, chats, selectedChatId, repository } = params;
+    const { ui, chats, selectedChatId, repository, tier } = params;
     const id = uuidv4();
     const now = Date.now();
 
@@ -57,13 +40,11 @@ export class ChatService {
 
     const tutorEnabledGlobally = !!ui.flags.experimentalTutor;
     const braveEnabled = !!ui.flags.experimentalBrave;
-    // Study tier always has tutor mode forced
-    const isStudyTier = getClientTier() === 'study';
-    const forceTutorMode = isStudyTier || !!(ui.tutor.forceMode ?? false);
+    const forceTutorMode = isTutorForcedForTier(tier) || !!(ui.tutor.forceMode ?? false);
 
     const baseSettings = resolveNewChatSettings({
       ui,
-      fallbackModelId: getTierDefaultModelId(),
+      fallbackModelId: getDefaultModelIdForTier(tier),
       fallbackSystem: DEFAULT_BASE_SYSTEM,
       lastUsedModelId: lastUsedModel,
       braveEnabled,

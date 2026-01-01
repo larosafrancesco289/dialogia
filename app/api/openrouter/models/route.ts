@@ -1,11 +1,13 @@
-import { NextRequest } from 'next/server';
 import { orFetchModels } from '@/lib/api/openrouterHttp';
-import { jsonError, withTiming } from '@/lib/server/route';
+import { jsonError } from '@/lib/server/route';
 import { getRequestOrigin, proxyJson, withProxyErrors } from '@/lib/server/proxy';
 import { getOpenRouterApiKeyForTier } from '@/lib/auth/tierApiKey';
+import { route } from '@/lib/server/routeBuilder';
+import { RATE_LIMITS } from '@/lib/server/rateLimit';
 
-export async function GET(req: NextRequest) {
-  return withTiming('openrouter-models', async () => {
+export const GET = route('openrouter-models')
+  .rateLimit('openrouter-models', RATE_LIMITS.STANDARD)
+  .handler(async (req) => {
     let apiKey: string;
     try {
       apiKey = await getOpenRouterApiKeyForTier();
@@ -17,4 +19,3 @@ export async function GET(req: NextRequest) {
       return proxyJson(res);
     }, 'proxy_error');
   });
-}

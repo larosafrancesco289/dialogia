@@ -9,14 +9,6 @@ export function isOpenRouterProxyEnabled(): boolean {
   return readBooleanValue(process.env.NEXT_PUBLIC_USE_OR_PROXY, false);
 }
 
-export function getPublicAnthropicKey(): string | undefined {
-  return readEnvValue(process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY);
-}
-
-export function isAnthropicProxyEnabled(): boolean {
-  return readBooleanValue(process.env.NEXT_PUBLIC_USE_ANTHROPIC_PROXY, false);
-}
-
 export function getPublicAppBaseUrl(): string | undefined {
   return readEnvValue(process.env.NEXT_PUBLIC_APP_BASE_URL);
 }
@@ -56,17 +48,6 @@ export function requireClientKeyOrProxy(): { key?: string; useProxy: boolean } {
   if (!key && !useProxy) {
     const error = new Error('missing_client_key_or_proxy');
     (error as { code?: string }).code = 'missing_client_key_or_proxy';
-    throw error;
-  }
-  return { key, useProxy };
-}
-
-export function requireAnthropicClientKeyOrProxy(): { key?: string; useProxy: boolean } {
-  const key = getPublicAnthropicKey();
-  const useProxy = isAnthropicProxyEnabled();
-  if (!key && !useProxy) {
-    const error = new Error('missing_anthropic_key_or_proxy');
-    (error as { code?: string }).code = 'missing_anthropic_key_or_proxy';
     throw error;
   }
   return { key, useProxy };

@@ -16,18 +16,15 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { shallow } from 'zustand/shallow';
-import {
-  formatModelLabel,
-  isAudioInputSupported,
-  isImageOutputSupported,
-  isReasoningSupported,
-  isVisionSupported,
-} from '@/lib/models';
-import { describeModelPricing } from '@/lib/cost';
 import { useChatStore } from '@/lib/store';
-import type { ModelDescriptor, ModelTransport } from '@/lib/types';
 import { useTierModels } from '@/lib/hooks/useTierModels';
-import { getModelTransport, getModelTransportLabel } from '@/lib/providers';
+import {
+  buildModelSearchResults,
+  getHighlightSegments,
+  normalizeModelQuery,
+  splitModelQuery,
+  type ModelSearchResult,
+} from '@/lib/models/search';
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -47,26 +44,6 @@ export type ModelSearchHandle = {
   clear: () => void;
 };
 
-export type ModelSearchResult = {
-  id: string;
-  displayName: string;
-  provider: string; // slug used for filtering/ZDR
-  providerLabel: string;
-  transport: ModelTransport;
-  shortId: string;
-  fullId: string;
-  price?: string;
-  capabilities: {
-    reasoning: boolean;
-    vision: boolean;
-    audio: boolean;
-    image: boolean;
-    zdr: boolean;
-  };
-  contextLength?: number;
-  model?: ModelDescriptor;
-};
-
 export type ModelSearchProps = {
   onSelect: (result: ModelSearchResult) => void;
   selectedIds?: string[] | readonly string[];
@@ -82,69 +59,6 @@ export type ModelSearchProps = {
   selectedLabel?: string;
   dropdownRef?: RefObject<HTMLDivElement>;
 };
-
-function buildResult(
-  model: ModelDescriptor,
-  opts: {
-    zdrModelIds?: string[];
-    zdrProviderIds?: string[];
-  },
-): ModelSearchResult {
-  const transport = getModelTransport(model);
-  const provider = String(model.id).split('/')[0] || 'openrouter';
-  const providerLabel = getModelTransportLabel(model);
-  const shortId = model.id.includes('/') ? model.id.split('/').slice(1).join('/') : model.id;
-  const displayName = formatModelLabel({ model, fallbackId: model.id, fallbackName: model.name });
-  const price = describeModelPricing(model);
-  const capabilities = {
-    reasoning: isReasoningSupported(model),
-    vision: isVisionSupported(model),
-    audio: isAudioInputSupported(model),
-    image: isImageOutputSupported(model),
-    zdr:
-      Boolean(opts.zdrModelIds && opts.zdrModelIds.includes(model.id)) ||
-      Boolean(opts.zdrProviderIds && opts.zdrProviderIds.includes(provider)),
-  };
-  return {
-    id: model.id,
-    displayName,
-    provider,
-    providerLabel,
-    transport,
-    shortId,
-    fullId: model.id,
-    price,
-    capabilities,
-    contextLength: model.context_length,
-    model,
-  };
-}
-
-function renderHighlightedText(text: string, queryWords: string[], keyPrefix: string) {
-  if (!queryWords.length) return text;
-  const pattern = queryWords.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-  if (!pattern) return text;
-  try {
-    const regex = new RegExp(`(${pattern})`, 'gi');
-    const matcher = new RegExp(`^(${pattern})$`, 'i');
-    const segments = text.split(regex).filter((segment) => segment.length > 0);
-    if (!segments.length) return text;
-    let counter = 0;
-    return segments.map((segment) => {
-      const key = `${keyPrefix}-${counter++}`;
-      if (matcher.test(segment)) {
-        return (
-          <mark key={key} className="rounded bg-primary/15 px-1 py-0 text-primary">
-            {segment}
-          </mark>
-        );
-      }
-      return <span key={key}>{segment}</span>;
-    });
-  } catch {
-    return text;
-  }
-}
 
 export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps>(
   function ModelSearch(
@@ -177,11 +91,8 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
     const { models } = useTierModels();
 
     const [query, setQuery] = useState('');
-    const normalizedQuery = query.trim().toLowerCase().replace(/\s+/g, ' ');
-    const queryWords = useMemo(
-      () => (normalizedQuery ? normalizedQuery.split(' ') : []),
-      [normalizedQuery],
-    );
+    const normalizedQuery = useMemo(() => normalizeModelQuery(query), [query]);
+    const queryWords = useMemo(() => splitModelQuery(normalizedQuery), [normalizedQuery]);
     const selectedSet = useMemo(() => new Set(selectedIds || []), [selectedIds]);
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement | null>(null);
@@ -196,17 +107,13 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
     const listboxId = useId();
 
     const results = useMemo(() => {
-      if (!normalizedQuery) return [] as ModelSearchResult[];
       const modelsList = models || [];
-      const filtered = modelsList.filter((model) => {
-        const providerLabel = getModelTransportLabel(model);
-        const hay = `${model.id} ${model.name ?? ''} ${providerLabel}`.toLowerCase();
-        return queryWords.every((word) => hay.includes(word));
+      return buildModelSearchResults(modelsList, queryWords, {
+        maxResults,
+        zdrModelIds,
+        zdrProviderIds,
       });
-      return filtered
-        .slice(0, maxResults)
-        .map((model) => buildResult(model, { zdrModelIds, zdrProviderIds }));
-    }, [models, normalizedQuery, queryWords, maxResults, zdrModelIds, zdrProviderIds]);
+    }, [models, queryWords, maxResults, zdrModelIds, zdrProviderIds]);
 
     const closeDropdown = useCallback(() => {
       setQuery('');
@@ -404,11 +311,26 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
       );
     };
 
+    const renderHighlightedText = (text: string, keyPrefix: string) => {
+      const segments = getHighlightSegments(text, queryWords);
+      let counter = 0;
+      return segments.map((segment) => {
+        const key = `${keyPrefix}-${counter++}`;
+        return segment.highlight ? (
+          <mark key={key} className="rounded bg-primary/15 px-1 py-0 text-primary">
+            {segment.text}
+          </mark>
+        ) : (
+          <span key={key}>{segment.text}</span>
+        );
+      });
+    };
+
     const formatDisplay = (result: ModelSearchResult) =>
-      renderHighlightedText(result.displayName, queryWords, `${result.id}-name`);
+      renderHighlightedText(result.displayName, `${result.id}-name`);
 
     const formatId = (result: ModelSearchResult) =>
-      renderHighlightedText(result.fullId, queryWords, `${result.id}-id`);
+      renderHighlightedText(result.fullId, `${result.id}-id`);
 
     const inputWrapperClasses =
       `relative rounded-xl border border-border bg-background focus-within:ring-2 focus-within:ring-primary/70 transition-shadow ${inputClassName}`.trim();

@@ -10,6 +10,7 @@ import type {
 } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import { ProviderSort } from '@/lib/models/providerSort';
+import type { AccessTier } from '@/lib/auth/types';
 import type { TurnStoreState } from '@/lib/agent/contracts';
 import type {
   StoreGetter as ContractStoreGetter,
@@ -219,6 +220,7 @@ export type RegenerateOptions = {
   turn: TurnContext;
   controller: AbortController;
   overrideModelId?: string;
+  tier: AccessTier;
 };
 
 export type ToolExecutionResult = {

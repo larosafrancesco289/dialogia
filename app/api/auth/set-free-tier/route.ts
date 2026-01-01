@@ -1,22 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { AUTH_COOKIE_NAME, AuthClaims, createAuthToken, getAuthCookieSecret } from '@/lib/auth';
 import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
 import { getAccessCookieDomain } from '@/lib/env/server';
 import { computeSecretFingerprintNode } from '@/lib/auth/fingerprint.node';
-import { jsonError, withTiming } from '@/lib/server/route';
+import { jsonError } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
 import { isProd } from '@/lib/env/runtime';
-import { rateLimit, RATE_LIMITS } from '@/lib/server/rateLimit';
+import { RATE_LIMITS } from '@/lib/server/rateLimit';
+import { route } from '@/lib/server/routeBuilder';
 
 /**
  * Sets the free tier for users who want to access without a code.
  * Creates an auth token with tier='free' which limits access to free models only.
  */
-export async function POST(req: NextRequest) {
-  return withTiming('auth-set-free-tier', async () => {
-    // Rate limiting - strict limit for auth routes
-    const rateLimitResponse = rateLimit(req, 'auth-free', RATE_LIMITS.AUTH_STRICT);
-    if (rateLimitResponse) return rateLimitResponse;
+export const POST = route('auth-set-free-tier')
+  .rateLimit('auth-free', RATE_LIMITS.AUTH_STRICT)
+  .handler(async () => {
     try {
       const now = Date.now();
       const claims: AuthClaims = {
@@ -74,4 +73,3 @@ export async function POST(req: NextRequest) {
       return jsonError(500, 'internal_error');
     }
   });
-}

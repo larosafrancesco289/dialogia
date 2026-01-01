@@ -233,10 +233,7 @@ export function EvidenceTimeline({
                             {getEvidenceIcon(item.type)}
                           </div>
                           <div>
-                            <span
-                              className="text-xs font-semibold"
-                              style={{ color: colors.text }}
-                            >
+                            <span className="text-xs font-semibold" style={{ color: colors.text }}>
                               {label}
                             </span>
                             <span className="ml-2 text-[10px] text-muted-foreground">

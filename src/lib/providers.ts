@@ -4,7 +4,6 @@ export const DEFAULT_TRANSPORT: ModelTransport = 'openrouter';
 
 const TRANSPORT_LABELS: Record<ModelTransport, string> = {
   openrouter: 'OpenRouter',
-  anthropic: 'Anthropic',
 };
 
 export function getTransportLabel(transport?: ModelTransport): string {
@@ -17,15 +16,11 @@ export function getModelTransport(model?: ModelDescriptor | null): ModelTranspor
   return model.transport ?? DEFAULT_TRANSPORT;
 }
 
-const ANTHROPIC_ID_PATTERN = /^anthropic[:/#]/i;
-
 export function resolveModelTransport(
-  modelId?: string,
+  _modelId?: string,
   model?: ModelDescriptor | null,
 ): ModelTransport {
   if (model?.transport) return model.transport;
-  const haystack = modelId || model?.id || '';
-  if (ANTHROPIC_ID_PATTERN.test(haystack)) return 'anthropic';
   return DEFAULT_TRANSPORT;
 }
 

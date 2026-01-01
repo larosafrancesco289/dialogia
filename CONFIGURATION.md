@@ -28,10 +28,6 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
 - `NEXT_PUBLIC_OPENROUTER_API_KEY` — client-side key (avoid in production). Only read when proxy is
   disabled.
 - `OPENROUTER_API_KEY` — server-side key for OpenRouter. Required when proxy is enabled.
-- `NEXT_PUBLIC_USE_ANTHROPIC_PROXY` — optional proxy toggle for direct Anthropic calls. When `true`,
-  browser traffic hits `/api/anthropic/*` and the server-side `ANTHROPIC_API_KEY` is used.
-- `NEXT_PUBLIC_ANTHROPIC_API_KEY` — client-side Anthropic key (local-only). Avoid in shared builds.
-- `ANTHROPIC_API_KEY` — server-side key for Anthropic when proxying requests through Next.js.
 - `BRAVE_SEARCH_API_KEY` — enables the Brave Search tool. Used only on the server.
 - `XAI_API_KEY` — server-side key for X.AI (Grok) voice sessions via `/api/xai/session`.
 - `DEEP_RESEARCH_REASONING_ONLY` — defaults to `true`. Forces the DeepResearch agent to pick models
@@ -53,21 +49,18 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
 UI requires:
 
 - `NEXT_PUBLIC_USE_OR_PROXY=true` or `NEXT_PUBLIC_OPENROUTER_API_KEY`
-- If using Anthropic models: `NEXT_PUBLIC_USE_ANTHROPIC_PROXY=true` or `NEXT_PUBLIC_ANTHROPIC_API_KEY`
 - Optional defaults: `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT`, `NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT`
 
 Server API routes require:
 
 - `/api/openrouter/*` and DeepResearch: `OPENROUTER_API_KEY`
 - DeepResearch search: `BRAVE_SEARCH_API_KEY`
-- `/api/anthropic/*` proxy: `ANTHROPIC_API_KEY`
 - `/api/xai/session`: `XAI_API_KEY`
 - Access gate: `AUTH_COOKIE_SECRET`, `ACCESS_CODE_PEPPER`, access code hashes
 
 Headless scripts require:
 
 - `OPENROUTER_API_KEY` (or `NEXT_PUBLIC_OPENROUTER_API_KEY`) for simulated student/judge models
-- `ANTHROPIC_API_KEY` (or `NEXT_PUBLIC_ANTHROPIC_API_KEY`) for the default tutor model
 
 ## Build and Deployment
 
@@ -80,11 +73,10 @@ Headless scripts require:
 
 - Keep provider keys (`OPENROUTER_API_KEY`, `BRAVE_SEARCH_API_KEY`) server-side only. Do not commit
   them or expose via `NEXT_PUBLIC_*`.
-- When `NEXT_PUBLIC_USE_ANTHROPIC_PROXY=true`, the `/api/anthropic/*` routes forward requests with
-  the server-side `ANTHROPIC_API_KEY`. Never expose the raw Anthropic key to the client in this mode.
 - Proxy mode adds CORS-friendly headers (`X-Title`, `HTTP-Referer`) inside
   `src/lib/api/openrouterClient.ts`. Update the client if new headers are required.
 - Access gate secrets should be long random hex strings. Regenerate when rotating codes.
-- Zero Data Retention (ZDR) lists fetch from OpenRouter. Cache them via the store (see
-  `REFACTOR_PLAN.md` Phase 4); Dialogia automatically refreshes these lists every 6 hours to prevent
-  stale provider/model data. Update documentation if new flags or endpoints appear.
+- Zero Data Retention (ZDR) lists fetch from OpenRouter and are cached in
+  `src/lib/policy/zdr/cache.ts`. The refresh schedule is wired in `src/lib/services/bootstrap.ts`
+  (every 6 hours) to prevent stale provider/model data. Update documentation if new flags or
+  endpoints appear.

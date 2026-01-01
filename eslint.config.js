@@ -94,7 +94,7 @@ module.exports = [
         {
           patterns: [
             {
-              group: ['@/lib/api/**', '@/lib/openrouter', '@/lib/anthropic'],
+              group: ['@/lib/api/**', '@/lib/openrouter'],
               message: 'UI components must not import transport clients.',
             },
           ],

@@ -1,3 +1,4 @@
+import 'server-only';
 import { getBraveSearchKey } from '@/lib/env/server';
 import { summarizeHtmlDocument } from '@/lib/deepResearch/html';
 import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
@@ -70,7 +71,7 @@ export async function fetchUrl(args: FetchUrlToolArgs): Promise<DeepFetchedPage>
   try {
     const res = await fetch(args.url, {
       headers: {
-        'User-Agent': 'Dialogia-DeepResearch/1.0 (+https://github.com/openai/codex-cli)',
+        'User-Agent': 'Dialogia-DeepResearch/1.0',
       },
       signal: controller.signal,
       cache: 'no-store',
