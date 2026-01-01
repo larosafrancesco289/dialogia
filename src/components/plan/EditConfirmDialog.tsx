@@ -10,7 +10,13 @@ export type EditConfirmAction =
   | { type: 'flag_review'; nodeId: string; nodeName: string }
   | { type: 'set_confidence_floor'; nodeId: string; nodeName: string; floor: number }
   | { type: 'topic_reorder'; nodeId: string; nodeName: string; newPosition: number }
-  | { type: 'prerequisites_change'; nodeId: string; nodeName: string; added: string[]; removed: string[] }
+  | {
+      type: 'prerequisites_change';
+      nodeId: string;
+      nodeName: string;
+      added: string[];
+      removed: string[];
+    }
   | { type: 'topic_remove'; nodeId: string; nodeName: string }
   | { type: 'suggest_change'; suggestion: string };
 
@@ -88,10 +94,7 @@ export function EditConfirmDialog({
       case 'topic_reorder':
         return {
           title: 'Reorder Topic',
-          changes: [
-            `Moving: ${action.nodeName}`,
-            `To position: ${action.newPosition + 1}`,
-          ],
+          changes: [`Moving: ${action.nodeName}`, `To position: ${action.newPosition + 1}`],
           warning: true,
         };
       case 'prerequisites_change':
@@ -107,10 +110,7 @@ export function EditConfirmDialog({
       case 'topic_remove':
         return {
           title: 'Remove Topic',
-          changes: [
-            `Topic: ${action.nodeName}`,
-            'This topic will be removed from your plan',
-          ],
+          changes: [`Topic: ${action.nodeName}`, 'This topic will be removed from your plan'],
           warning: true,
         };
       case 'suggest_change':
@@ -202,7 +202,9 @@ export function EditConfirmDialog({
 
               {/* Content */}
               <div className="px-5 py-4 space-y-3">
-                <p className="text-sm text-muted-foreground">You're making the following changes:</p>
+                <p className="text-sm text-muted-foreground">
+                  You're making the following changes:
+                </p>
                 <ul className="space-y-1.5">
                   {changes.map((change, i) => (
                     <li

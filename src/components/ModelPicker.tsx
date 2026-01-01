@@ -8,7 +8,8 @@ import { FREE_MODEL_IDS } from '@/data/freeModels';
 import type { ZdrLists } from '@/lib/policy/zdr';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { getModelTransportLabel } from '@/lib/providers';
-import { ModelSearch, type ModelSearchResult } from '@/components/ModelSearch';
+import { ModelSearch } from '@/components/ModelSearch';
+import type { ModelSearchResult } from '@/lib/models/search';
 import { PortalDropdown } from '@/components/PortalDropdown';
 import { FavoriteModelCard, ModelCard } from '@/components/modelPicker/ModelCards';
 import {

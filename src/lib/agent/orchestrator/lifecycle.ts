@@ -1,5 +1,9 @@
 import { resetEphemeralUi } from '@/lib/ui/defaults';
-import { getLatestLearnerModel, initializeLearnerModel, persistLearnerModel } from '@/lib/agent/learnerModel';
+import {
+  getLatestLearnerModel,
+  initializeLearnerModel,
+  persistLearnerModel,
+} from '@/lib/agent/learnerModel';
 import { snapshotGenSettings } from '@/lib/agent/generation';
 import type { RunTurnHooks } from './turn';
 import type { StoreGetter, StoreSetter, TurnComposition, PlanTurnResult } from '@/lib/agent/types';

@@ -3,8 +3,14 @@
 import { useMemo } from 'react';
 import { useChatStore } from '@/lib/store';
 import { useTier } from '@/lib/auth/tierContext';
-import { FREE_MODEL_IDS, FREE_CURATED_MODELS, DEFAULT_FREE_MODEL_ID } from '@/data/freeModels';
-import { CURATED_MODELS, DEFAULT_MODEL_ID } from '@/data/curatedModels';
+import { FREE_CURATED_MODELS } from '@/data/freeModels';
+import { CURATED_MODELS } from '@/data/curatedModels';
+import {
+  canUseAllModelsForTier,
+  getDefaultModelIdForTier,
+  isModelAllowedForTier,
+} from '@/lib/auth/tierFeatures';
+import { isModelTransportAvailable, isTransportAvailable } from '@/lib/policy/providerAvailability';
 
 /**
  * Hook that returns models filtered by the current access tier.
@@ -16,12 +22,11 @@ export function useTierModels() {
   const { tier, isLoading, isFreeTier } = useTier();
 
   const filteredModels = useMemo(() => {
-    // Default to free models while loading to be safe
-    if (isLoading || isFreeTier) {
-      return allModels.filter((model) => FREE_MODEL_IDS.includes(model.id));
-    }
-    return allModels;
-  }, [allModels, isLoading, isFreeTier]);
+    const effectiveTier = isLoading ? 'free' : tier;
+    const availableModels = allModels.filter((model) => isModelTransportAvailable(model));
+    if (canUseAllModelsForTier(effectiveTier)) return availableModels;
+    return availableModels.filter((model) => isModelAllowedForTier(effectiveTier, model.id));
+  }, [allModels, isLoading, tier]);
 
   return {
     models: filteredModels,
@@ -35,13 +40,14 @@ export function useTierModels() {
  * Defaults to free models while loading to prevent paid model requests with free API key.
  */
 export function useTierCuratedModels() {
-  const { isFreeTier, isLoading } = useTier();
+  const { tier, isLoading } = useTier();
 
   return useMemo(() => {
     // Default to free models while loading to be safe
-    if (isLoading || isFreeTier) return FREE_CURATED_MODELS;
-    return CURATED_MODELS;
-  }, [isFreeTier, isLoading]);
+    const effectiveTier = isLoading ? 'free' : tier;
+    if (!isTransportAvailable('openrouter')) return [];
+    return canUseAllModelsForTier(effectiveTier) ? CURATED_MODELS : FREE_CURATED_MODELS;
+  }, [isLoading, tier]);
 }
 
 /**
@@ -49,24 +55,23 @@ export function useTierCuratedModels() {
  * Defaults to free model while loading to prevent paid model requests with free API key.
  */
 export function useTierDefaultModelId() {
-  const { isFreeTier, isLoading } = useTier();
+  const { tier, isLoading } = useTier();
 
   return useMemo(() => {
     // Default to free model while loading to be safe
-    if (isLoading || isFreeTier) return DEFAULT_FREE_MODEL_ID;
-    return DEFAULT_MODEL_ID;
-  }, [isFreeTier, isLoading]);
+    const effectiveTier = isLoading ? 'free' : tier;
+    return getDefaultModelIdForTier(effectiveTier);
+  }, [isLoading, tier]);
 }
 
 /**
  * Check if a model is allowed for the current tier.
  */
 export function useIsModelAllowed(modelId: string): boolean {
-  const { isFreeTier, isLoading } = useTier();
+  const { tier, isLoading } = useTier();
 
   return useMemo(() => {
     if (isLoading) return true;
-    if (!isFreeTier) return true;
-    return FREE_MODEL_IDS.includes(modelId);
-  }, [modelId, isFreeTier, isLoading]);
+    return isModelAllowedForTier(tier, modelId);
+  }, [modelId, isLoading, tier]);
 }

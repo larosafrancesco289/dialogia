@@ -36,7 +36,7 @@ export function getStreamChatCompletion(): StreamHandler {
   return streamChatCompletionImpl;
 }
 
-export function setOpenRouterMocksForTests(overrides?: {
+export function setTransportMocksForTests(overrides?: {
   chatCompletion?: ChatHandler;
   streamChatCompletion?: StreamHandler;
 }) {

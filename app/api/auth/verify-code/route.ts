@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   AUTH_COOKIE_NAME,
   AuthClaims,
@@ -15,17 +15,14 @@ import {
 import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
 import { getAccessCookieDomain } from '@/lib/env/server';
 import { jsonAuthError } from '@/lib/auth/errors';
-import { withTiming } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
 import { isProd } from '@/lib/env/runtime';
-import { rateLimit, RATE_LIMITS } from '@/lib/server/rateLimit';
+import { RATE_LIMITS } from '@/lib/server/rateLimit';
+import { route } from '@/lib/server/routeBuilder';
 
-export async function POST(req: NextRequest) {
-  return withTiming('auth-verify-code', async () => {
-    // Rate limiting for code verification attempts
-    const rateLimitResponse = rateLimit(req, 'auth-verify', RATE_LIMITS.AUTH);
-    if (rateLimitResponse) return rateLimitResponse;
-
+export const POST = route('auth-verify-code')
+  .rateLimit('auth-verify', RATE_LIMITS.AUTH)
+  .handler(async (req) => {
     try {
       const { code } = (await req.json()) as { code?: string };
       const plain = String(code || '').trim();
@@ -71,7 +68,6 @@ export async function POST(req: NextRequest) {
       return jsonAuthError('bad_request', 400);
     }
   });
-}
 
 function createTokenResponse(tier: AccessTier, sub: string): NextResponse {
   const now = Date.now();

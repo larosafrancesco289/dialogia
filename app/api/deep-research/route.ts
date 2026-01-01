@@ -1,36 +1,19 @@
-import { NextRequest } from 'next/server';
 import { deepResearch } from '@/lib/deepResearch';
 import { ProviderSort } from '@/lib/models/providerSort';
 import { createNdjsonStream } from '@/lib/server/ndjson';
-import { jsonError, requireServerEnv, withTiming } from '@/lib/server/route';
+import { jsonError } from '@/lib/server/route';
 import { isRecord } from '@/lib/utils/guards';
-import { getServerTier } from '@/lib/auth/tierApiKey';
-import { rateLimit, RATE_LIMITS } from '@/lib/server/rateLimit';
+import { RATE_LIMITS } from '@/lib/server/rateLimit';
+import { route } from '@/lib/server/routeBuilder';
 
-export async function POST(req: NextRequest) {
-  return withTiming('deep-research', async () => {
-    // Rate limiting
-    const rateLimitResponse = rateLimit(req, 'deep-research', RATE_LIMITS.EXPENSIVE);
-    if (rateLimitResponse) return rateLimitResponse;
-
-    // Tier check - block free tier
-    const tier = await getServerTier();
-    if (tier === 'free') {
-      return jsonError(403, 'feature_not_available', 'Deep research is not available on the free tier');
-    }
-
-    let apiKey: string;
-    try {
-      apiKey = requireServerEnv('OPENROUTER_API_KEY');
-    } catch {
-      return jsonError(500, 'missing_env', 'OPENROUTER_API_KEY');
-    }
-    try {
-      requireServerEnv('BRAVE_SEARCH_API_KEY');
-    } catch {
-      return jsonError(500, 'missing_env', 'BRAVE_SEARCH_API_KEY');
-    }
-
+export const POST = route('deep-research')
+  .rateLimit('deep-research', RATE_LIMITS.EXPENSIVE)
+  .requireTier({
+    deny: ['free'],
+    message: 'Deep research is not available on the free tier',
+  })
+  .requireEnv('OPENROUTER_API_KEY', 'BRAVE_SEARCH_API_KEY')
+  .handler(async (req, ctx) => {
     let body: Record<string, unknown>;
     try {
       const parsed = await req.json();
@@ -57,7 +40,7 @@ export async function POST(req: NextRequest) {
     const stream = createNdjsonStream(
       async ({ send }) => {
         const result = await deepResearch({
-          apiKey,
+          apiKey: ctx.env.OPENROUTER_API_KEY,
           task,
           model,
           audience: typeof body.audience === 'string' ? body.audience : undefined,
@@ -88,4 +71,3 @@ export async function POST(req: NextRequest) {
       },
     });
   });
-}

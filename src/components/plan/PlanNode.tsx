@@ -194,13 +194,13 @@ export function PlanNode({
                     style={{
                       background: 'var(--marginalia-bg)',
                       color: 'var(--color-success)',
-                      border: '1px solid color-mix(in oklab, var(--color-success) 30%, var(--rule-light))',
+                      border:
+                        '1px solid color-mix(in oklab, var(--color-success) 30%, var(--rule-light))',
                       borderRadius: 'var(--radius-editorial)',
                     }}
                     title="Skip this topic - I already know it"
                   >
-                    <AcademicCapIcon className="h-3 w-3" />
-                    I know this
+                    <AcademicCapIcon className="h-3 w-3" />I know this
                   </div>
                 )}
 
@@ -214,7 +214,9 @@ export function PlanNode({
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer"
                   style={{
                     background:
-                      node.status === 'in_progress' ? 'var(--marginalia-bg)' : 'var(--color-accent)',
+                      node.status === 'in_progress'
+                        ? 'var(--marginalia-bg)'
+                        : 'var(--color-accent)',
                     color: node.status === 'in_progress' ? 'var(--color-accent-2)' : '#0b0b0b',
                     border: node.status === 'in_progress' ? '1px solid var(--rule-light)' : 'none',
                     borderRadius: 'var(--radius-editorial)',

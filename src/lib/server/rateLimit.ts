@@ -2,7 +2,7 @@ import 'server-only';
 import { NextRequest } from 'next/server';
 import { jsonError } from './route';
 
-type RateLimitConfig = {
+export type RateLimitConfig = {
   /** Maximum number of requests allowed in the window */
   limit: number;
   /** Time window in milliseconds */
@@ -59,7 +59,10 @@ function getClientIp(req: NextRequest): string {
  * Check if a request should be rate limited.
  * Returns true if the request should be allowed, false if rate limited.
  */
-function checkRateLimit(key: string, config: RateLimitConfig): { allowed: boolean; remaining: number; resetAt: number } {
+function checkRateLimit(
+  key: string,
+  config: RateLimitConfig,
+): { allowed: boolean; remaining: number; resetAt: number } {
   cleanupExpiredEntries();
 
   const now = Date.now();
@@ -100,7 +103,17 @@ export function rateLimit(
 
   if (!result.allowed) {
     const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
-    return jsonError(429, 'rate_limited', `Too many requests. Please try again in ${retryAfter} seconds.`);
+    return jsonError(
+      429,
+      'rate_limited',
+      `Too many requests. Please try again in ${retryAfter} seconds.`,
+      {
+        'Retry-After': String(Math.max(0, retryAfter)),
+        'X-RateLimit-Limit': String(config.limit),
+        'X-RateLimit-Remaining': String(result.remaining),
+        'X-RateLimit-Reset': String(Math.ceil(result.resetAt / 1000)),
+      },
+    );
   }
 
   return null;

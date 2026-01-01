@@ -1,6 +1,6 @@
 ### Dialogia
 
-Local-first, privacy-focused multi-model chat UI for OpenRouter, Anthropic, and beyond.
+Local-first, privacy-focused multi-model chat UI for OpenRouter and beyond.
 
 ### Highlights
 
@@ -70,6 +70,17 @@ bun install
 
 Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/start.sh`.
 
+### Key concepts and entrypoints
+
+- Golden path: `docs/GOLDEN_PATH.md`
+- Architecture boundaries: `ARCHITECTURE.md`
+- State and persistence: `STATE_PERSISTENCE.md`
+- Tutor tool contract: `TUTOR_TOOL_CONTRACT.md`
+
+### How to style
+
+See `docs/DESIGN.md` for the design system and guidance on where styles live.
+
 ### Local Artifacts
 
 The following are local-only (already in `.gitignore`) and should not be committed: `.next/`,
@@ -85,7 +96,7 @@ The following are local-only (already in `.gitignore`) and should not be committ
   - PDFs: sent as OpenRouter file blocks (parsed downstream; no local OCR).
 - Reasoning: toggle effort in the composer for thinking models; view “Thinking” panel per message.
 - Web search: toggle the search icon to ground the next reply with sources. Brave runs locally when enabled; otherwise the OpenRouter web plugin is attached.
-- DeepResearch UI: click the beaker icon in the composer to run multi-step web research on the current input. Results appear as an assistant message with a sources panel.
+- DeepResearch: when search is enabled on a reasoning-capable OpenRouter model (and tutor mode is off), the next turn runs the multi-step research flow. Results appear as an assistant message with a sources panel.
 - Compare: click the grid icon in the header to run a prompt across multiple models and review metrics.
 - Slash commands:
   - `/model <id|name>` — set the model.
@@ -103,7 +114,7 @@ bun run tutor:simulate -- --goal "Limits revision"
 
 Key details:
 
-- **API keys**: The runner talks directly to model APIs. Set `OPENROUTER_API_KEY` for the simulated student/judge models and `ANTHROPIC_API_KEY` for the default tutor model (`anthropic/claude-haiku-4.5`). Override with `--openrouter-key` / `--anthropic-key` if needed. Proxy-only setups are not supported for the headless flow.
+- **API keys**: The runner talks directly to model APIs. Set `OPENROUTER_API_KEY` for the simulated student/judge/tutor models. Override with `--openrouter-key` if needed. Proxy-only setups are not supported for the headless flow.
 - **Env loading**: The script now reads `.env.local` (and `.env`) on startup, so keys placed there are picked up automatically without passing CLI flags.
 - **Defaults**: Uses the curated defaults from `src/data/curatedModels.ts` (tutor = `DEFAULT_TUTOR_MODEL_ID`, student/judge = `DEFAULT_MODEL_ID`). Override via `--tutor-model`, `--student-model`, and `--judge-model`.
 - **Presets**: Run `bun run tutor:simulate -- --list-presets` to view canned scenarios (e.g. `--preset python_basics` runs a five-turn Python onboarding flow). You can still provide `--goal` manually to craft new scenarios.
@@ -212,7 +223,7 @@ Progress indicators use color coding:
 
 - Framework: Next.js App Router (React 18)
 - State: Zustand with local persistence; Dexie for IndexedDB tables
-- API proxy: `/api/openrouter/*` for models/completions; `/api/anthropic/*` for direct Anthropic; `/api/brave` for web search; `/api/xai/session` for X.AI voice
+- API proxy: `/api/openrouter/*` for models/completions; `/api/brave` for web search; `/api/xai/session` for X.AI voice
 - Markdown: `react-markdown` + GFM, Prism, KaTeX, Mermaid
 - Styles: Tailwind v4 base + `styles/foundations.css` tokens; `app/globals.css` layout
 - Agent services: `src/lib/agent/request.ts`, `searchFlow.ts`, and `tutorFlow.ts` centralize request building, web search orchestration, and tutor memory composition for slices.

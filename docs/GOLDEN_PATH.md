@@ -6,8 +6,8 @@ Short, practical guide for extending Dialogia without violating module boundarie
 
 - Allowed: `src/lib/store/*` (selectors/actions), `src/lib/ui/*`, `src/lib/hooks/*`, and UI-safe
   helpers under `src/lib/messages/*`.
-- Avoid: `src/lib/api/*`, `src/lib/openrouter/*`, `src/lib/anthropic/*`, `src/lib/transport/*`,
-  `src/lib/eval/*`, and `src/lib/headless/*` in UI components.
+- Avoid: `src/lib/api/*`, `src/lib/openrouter/*`, `src/lib/transport/*`, `src/lib/eval/*`, and
+  `src/lib/headless/*` in UI components.
 
 ## Add a tool
 

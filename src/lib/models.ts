@@ -63,13 +63,6 @@ export function getSupportedParameters(model?: ModelDescriptor | null): string[]
   return [];
 }
 
-function isAnthropicModel(model?: ModelDescriptor | null): boolean {
-  if (!model) return false;
-  if (model.transport === 'anthropic') return true;
-  const id = String(model.id || '').toLowerCase();
-  return /^anthropic[:/#]/.test(id);
-}
-
 export function isReasoningSupported(model?: ModelDescriptor | null): boolean {
   const supported = getSupportedParameters(model);
   if (supported.includes('reasoning')) return true;
@@ -81,8 +74,6 @@ export function isReasoningSupported(model?: ModelDescriptor | null): boolean {
 export function isToolCallingSupported(model?: ModelDescriptor | null): boolean {
   const supported = getSupportedParameters(model);
   if (supported.includes('tools')) return true;
-  // Anthropics models all support Messages API tool use even if metadata omits the flag.
-  if (isAnthropicModel(model)) return true;
   return false;
 }
 

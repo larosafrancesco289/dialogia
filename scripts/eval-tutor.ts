@@ -52,10 +52,6 @@ async function main() {
       process.env.OPENROUTER_API_KEY ||
       process.env.NEXT_PUBLIC_OPENROUTER_API_KEY ||
       process.env.OPENROUTER_KEY,
-    anthropic:
-      process.env.ANTHROPIC_API_KEY ||
-      process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY ||
-      process.env.ANTHROPIC_KEY,
   };
 
   for (const scenario of scenarios) {

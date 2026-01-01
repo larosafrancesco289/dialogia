@@ -98,7 +98,9 @@ export function ComposerChips({
           aria-pressed={searchEnabled}
         >
           <MagnifyingGlassIcon className="h-3.5 w-3.5" />
-          {(searchProvider === 'openrouter' ? 'OR' : 'Brave') + ' ' + (searchEnabled ? 'On' : 'Off')}
+          {(searchProvider === 'openrouter' ? 'OR' : 'Brave') +
+            ' ' +
+            (searchEnabled ? 'On' : 'Off')}
         </button>
       )}
       {!tutorEnabled && supportsReasoning && effortLabel && (

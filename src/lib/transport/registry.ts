@@ -1,11 +1,9 @@
-import { anthropicTransport } from '@/lib/anthropic';
 import { openrouterTransport } from '@/lib/openrouter';
 import type { ModelTransport } from '@/lib/types';
 import type { TransportClient } from '@/lib/transport/types';
 
 const registry: Record<ModelTransport, TransportClient> = {
   openrouter: openrouterTransport,
-  anthropic: anthropicTransport,
 };
 
 export function getTransportClient(transport?: ModelTransport): TransportClient {
@@ -19,5 +17,4 @@ export function setTransportClient(transport: ModelTransport, client: TransportC
 
 export function resetTransportRegistry() {
   registry.openrouter = openrouterTransport;
-  registry.anthropic = anthropicTransport;
 }

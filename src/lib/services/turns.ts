@@ -29,6 +29,7 @@ import {
 import { scheduleTutorPersistence } from '@/lib/services/tutorPersistence';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { triggerAsyncTitleGeneration } from '@/lib/services/titleGenerator';
+import { getClientTier } from '@/lib/auth/tier.client';
 
 export type SendTurnOptions = {
   content: string;
@@ -131,7 +132,14 @@ export async function sendUserTurn({
   get,
   repository,
 }: SendTurnOptions) {
-  const runtime = await prepareSendRuntime({ attachments, set, get, repository });
+  const tier = getClientTier();
+  const runtime = await prepareSendRuntime({
+    attachments,
+    set,
+    get,
+    repository,
+    tier,
+  });
   if (!runtime) return;
   let currentChat = runtime.chat;
   const { chatId, ui, tutorEnabled, activeModelIds, primaryModelId, priorMessages, modelContexts } =
@@ -222,11 +230,7 @@ export async function sendUserTurn({
   }
 
   if (currentChat.title === 'New Chat') {
-    triggerAsyncTitleGeneration(
-      currentChat.id,
-      content,
-      get().renameChat.bind(get()),
-    );
+    triggerAsyncTitleGeneration(currentChat.id, content, get().renameChat.bind(get()), tier);
   }
 
   const runPerModel = (modelId: string) =>
@@ -274,7 +278,8 @@ export async function regenerateTurn({
   let chat: Chat = initialChat;
 
   const uiState = get().ui;
-  const tutorEnabled = isTutorRuntimeEnabled(uiState, chat);
+  const tier = getClientTier();
+  const tutorEnabled = isTutorRuntimeEnabled(uiState, chat, tier);
 
   if (tutorEnabled) {
     const ensured = ensureTutorDefaults({
@@ -340,6 +345,7 @@ export async function regenerateTurn({
       turn: turnContext,
       controller,
       overrideModelId,
+      tier,
     });
   } catch (error: unknown) {
     handleTurnApiError(error, set, get);

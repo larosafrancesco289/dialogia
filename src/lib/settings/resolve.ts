@@ -9,6 +9,7 @@ import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
 import { applyTutorDefaults } from '@/lib/tutor/defaults';
 import { normalizeParallelModels } from '@/lib/models/normalization';
+import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 
 type SearchProvider = 'brave' | 'openrouter';
 
@@ -138,11 +139,11 @@ export function resolveTurnSettings(args: {
   );
 
   const tutorModeSetting = overrides.tutorMode ?? chat.settings.tutor_mode;
-  const tutorGloballyEnabled = !!ui.flags.experimentalTutor;
-  const forceTutorMode = !!ui.tutor.forceMode;
-  // Study tier always has tutor mode forced
-  const isStudyTier = tier === 'study';
-  const tutorEnabled = isStudyTier || (tutorGloballyEnabled && (forceTutorMode || !!tutorModeSetting));
+  const policyChat =
+    tutorModeSetting === chat.settings.tutor_mode
+      ? chat
+      : { ...chat, settings: { ...chat.settings, tutor_mode: tutorModeSetting } };
+  const tutorEnabled = isTutorRuntimeEnabled(ui, policyChat, tier);
 
   const generation: GenerationSettings = {
     temperature,

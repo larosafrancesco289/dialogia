@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { setOpenRouterMocksForTests } from '@/lib/agent/pipelineClient';
+import { setTransportMocksForTests } from '@/lib/agent/pipelineClient';
 import { HeadlessTutorSession } from '@/lib/headless/session';
 import { createModelIndex } from '@/lib/models';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
@@ -33,9 +33,9 @@ const mockChat = (modelId: string): Chat => ({
 });
 
 test('headless tutor session streams a response and captures artifacts', async (t) => {
-  t.after(() => setOpenRouterMocksForTests());
+  t.after(() => setTransportMocksForTests());
 
-  setOpenRouterMocksForTests({
+  setTransportMocksForTests({
     chatCompletion: async () => ({
       id: 'planning-mock',
       object: 'chat.completion',

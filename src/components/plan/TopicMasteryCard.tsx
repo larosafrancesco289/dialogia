@@ -118,7 +118,10 @@ export function TopicMasteryCard({
                 <span>{mastery?.interactions ?? 0} interactions</span>
                 {node.status === 'completed' && (
                   <span className="flex items-center gap-1">
-                    <CheckCircleIcon className="h-3 w-3" style={{ color: 'var(--color-success)' }} />
+                    <CheckCircleIcon
+                      className="h-3 w-3"
+                      style={{ color: 'var(--color-success)' }}
+                    />
                     Completed
                   </span>
                 )}
@@ -131,8 +134,10 @@ export function TopicMasteryCard({
                 <div
                   className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium"
                   style={{
-                    background: 'color-mix(in oklab, var(--color-danger) 12%, var(--surface-paper))',
-                    border: '1px solid color-mix(in oklab, var(--color-danger) 30%, var(--rule-light))',
+                    background:
+                      'color-mix(in oklab, var(--color-danger) 12%, var(--surface-paper))',
+                    border:
+                      '1px solid color-mix(in oklab, var(--color-danger) 30%, var(--rule-light))',
                     borderRadius: 'var(--radius-editorial)',
                     color: 'var(--color-danger)',
                   }}
@@ -143,10 +148,7 @@ export function TopicMasteryCard({
               )}
 
               {/* Expand Arrow */}
-              <motion.div
-                animate={{ rotate: expanded ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
+              <motion.div animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
                 <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
               </motion.div>
             </div>
@@ -304,8 +306,10 @@ export function TopicMasteryCard({
                         key={m.id}
                         className="flex items-start justify-between gap-2 p-3"
                         style={{
-                          background: 'color-mix(in oklab, var(--color-danger) 8%, var(--surface-paper))',
-                          border: '1px solid color-mix(in oklab, var(--color-danger) 25%, var(--rule-light))',
+                          background:
+                            'color-mix(in oklab, var(--color-danger) 8%, var(--surface-paper))',
+                          border:
+                            '1px solid color-mix(in oklab, var(--color-danger) 25%, var(--rule-light))',
                           borderRadius: 'var(--radius-editorial)',
                         }}
                       >
@@ -362,8 +366,7 @@ export function TopicMasteryCard({
                     borderRadius: 'var(--radius-editorial)',
                   }}
                 >
-                  <CheckCircleIcon className="h-3.5 w-3.5" />
-                  I know this
+                  <CheckCircleIcon className="h-3.5 w-3.5" />I know this
                 </button>
 
                 <button

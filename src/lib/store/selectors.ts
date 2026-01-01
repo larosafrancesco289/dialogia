@@ -6,9 +6,7 @@ import type { ModelCapabilityFlags } from '@/lib/models';
 import { readNextOverrides } from '@/lib/ui/next';
 import { normalizeParallelModels } from '@/lib/store/normalize';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
-import { getCookie } from '@/lib/auth/cookies.client';
-import { TIER_COOKIE_NAME } from '@/lib/auth/shared';
-import type { AccessTier } from '@/lib/auth/types';
+import { getClientTier } from '@/lib/auth/tier.client';
 
 export const selectCurrentChat = (state: StoreState) => {
   const chatId = state.selectedChatId;
@@ -38,12 +36,7 @@ export const selectIsStreaming = (state: StoreState) => state.ui.isStreaming;
 export const selectIsTutorEnabled = (state: StoreState) => {
   const chat = selectCurrentChat(state);
   if (!chat) return false;
-  const tierCookie = getCookie(TIER_COOKIE_NAME);
-  const tier: AccessTier =
-    tierCookie === 'developer' || tierCookie === 'individual' || tierCookie === 'study'
-      ? tierCookie
-      : 'free';
-  return isTutorRuntimeEnabled(state.ui, chat, tier);
+  return isTutorRuntimeEnabled(state.ui, chat, getClientTier());
 };
 
 export const selectModelCaps =
