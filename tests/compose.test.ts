@@ -147,7 +147,8 @@ test('composeTurn merges tutor and search context with plugins and tools', async
     assert.equal(result.settings.generation.providerSort, ProviderSort.Throughput);
     assert.equal(result.consumedTutorNudge, 'more_practice');
     assert.ok(result.system && result.system.includes('Learner Profile:'));
-    assert.ok(result.system && result.system.includes('Always respond enthusiastically.'));
+    // When tutor is enabled, the base system prompt should NOT be included
+    assert.ok(!result.system?.includes('Always respond enthusiastically.'));
     assert.ok(result.system && result.system.includes('LEARNING PLAN CONTEXT'));
     assert.ok(result.system && result.system.includes('CURRENT FOCUS: Linear Equations'));
 
