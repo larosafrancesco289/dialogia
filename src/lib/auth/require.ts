@@ -2,29 +2,35 @@ import { requireClientKeyOrProxy } from '@/lib/env/public';
 import { resolveModelTransport } from '@/lib/providers';
 import type { ModelIndex } from '@/lib/models';
 import type { ModelTransport } from '@/lib/types';
+import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
 
-export type TransportAuthStatus = {
-  key?: string;
-  useProxy: boolean;
-};
-
-export function requireTransportAuth(_transport: ModelTransport): TransportAuthStatus {
-  return requireClientKeyOrProxy();
+export function requireTransportAuth(transport: ModelTransport): TransportAuth {
+  switch (transport) {
+    case 'openrouter': {
+      const status = requireClientKeyOrProxy();
+      return buildTransportAuth({
+        transport,
+        apiKey: status.key,
+        useProxy: status.useProxy,
+      });
+    }
+    default: {
+      const status = requireClientKeyOrProxy();
+      return buildTransportAuth({
+        transport,
+        apiKey: status.key,
+        useProxy: status.useProxy,
+      });
+    }
+  }
 }
 
-export function requireModelAuth(
-  modelId: string,
-  modelIndex: ModelIndex,
-): { transport: ModelTransport; apiKey: string; useProxy: boolean } {
+export function requireModelAuth(modelId: string, modelIndex: ModelIndex): TransportAuth {
   const meta = modelIndex.get(modelId);
   const transport = resolveModelTransport(modelId, meta);
   try {
-    const status = requireTransportAuth(transport);
-    return {
-      transport,
-      apiKey: status.key ?? '',
-      useProxy: status.useProxy,
-    };
+    const auth = requireTransportAuth(transport);
+    return { ...auth, transport };
   } catch (error) {
     if (error && typeof error === 'object') {
       (error as Record<string, unknown>).transport = transport;

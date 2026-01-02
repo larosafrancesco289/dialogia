@@ -5,6 +5,7 @@ import { ProviderSort } from '@/lib/models/providerSort';
 import type { TurnContext } from '@/lib/agent/types';
 import { createTestStoreState } from '../../../tests/helpers/createTestStoreState';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
+import { buildTransportAuth } from '@/lib/auth/transport';
 
 const createStubTurn = () => {
   const baseUi = buildDefaultUIState();
@@ -19,8 +20,7 @@ const createStubTurn = () => {
     },
   });
   const turn: TurnContext = {
-    apiKey: 'key',
-    transport: 'openrouter',
+    auth: buildTransportAuth({ transport: 'openrouter', apiKey: 'key', useProxy: false }),
     set,
     get,
     models: [],

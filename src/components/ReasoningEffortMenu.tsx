@@ -5,39 +5,42 @@ import { shallow } from 'zustand/shallow';
 import { LightBulbIcon } from '@heroicons/react/24/outline';
 import { findModelById, isReasoningSupported } from '@/lib/models';
 import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
-import type { UiNextOverrides } from '@/lib/contracts/ui';
+import {
+  selectNextOverrides,
+  selectResolvedModelId,
+  selectResolvedTurnSettings,
+} from '@/lib/store/selectors';
 
 type Effort = 'none' | 'low' | 'medium' | 'high';
 
-const EMPTY_OVERRIDES: UiNextOverrides = {};
-
 export function ReasoningEffortMenu() {
-  const { chat, models, updateSettings, setUI, overrides } = useChatStore(
+  const { chat, models, updateSettings, setUI, nextOverrides } = useChatStore(
     (s) => ({
       chat: s.selectedChatId ? s.chats.find((c) => c.id === s.selectedChatId) : undefined,
       models: s.models,
       updateSettings: s.updateChatSettings,
       setUI: s.setUI,
-      overrides: s.ui.overrides,
+      nextOverrides: selectNextOverrides(s),
     }),
     shallow,
   );
-  const nextOverrides = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const tierDefaultModelId = useTierDefaultModelId();
-  const modelId = chat?.settings.model || nextOverrides.model || tierDefaultModelId;
+  const modelId = useChatStore(
+    useMemo(() => selectResolvedModelId(tierDefaultModelId), [tierDefaultModelId]),
+  );
   const selectedModel = useMemo(() => findModelById(models, modelId), [models, modelId]);
   const supportsReasoning = useMemo(() => isReasoningSupported(selectedModel), [selectedModel]);
 
-  const current: Effort | undefined = chat
-    ? chat.settings.reasoning_effort
-    : nextOverrides.reasoning?.effort;
+  const resolvedTurnSettings = useChatStore(selectResolvedTurnSettings);
+  const current: Effort | undefined =
+    resolvedTurnSettings?.generation.reasoningEffort ?? nextOverrides.reasoning?.effort;
   const active = current && current !== 'none';
 
   const choose = async (effort: Effort) => {
-    if (chat) await updateSettings({ reasoning_effort: effort });
+    if (chat) await updateSettings({ generation: { reasoningEffort: effort } });
     else setUI({ overrides: { reasoning: { effort } } });
     setOpen(false);
   };

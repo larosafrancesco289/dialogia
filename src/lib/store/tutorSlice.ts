@@ -83,7 +83,7 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
       const selectedChat = state.selectedChatId
         ? state.chats.find((c) => c.id === state.selectedChatId)
         : undefined;
-      const plan = selectedChat?.settings?.learningPlan;
+      const plan = selectedChat?.settings?.features.tutor.learningPlan;
       const message = buildPlanWelcomeMessage(plan);
       set((s) => ({
         ui: {

@@ -3,6 +3,7 @@ import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport
 import type { ProviderSort } from '@/lib/models/providerSort';
 import type { ChatCompletion } from '@/lib/transport/completions';
 import type { ModelDescriptor } from '@/lib/transport/models';
+import type { TransportAuth } from '@/lib/auth/transport';
 
 export type StreamDoneExtras = {
   usage?: Usage;
@@ -20,18 +21,18 @@ export type StreamCallbacks = {
 };
 
 export type TransportChatParams = {
-  apiKey: string;
+  auth: TransportAuth;
   model: string;
   messages: ModelMessage[];
   modalities?: Array<'image' | 'text'>;
   temperature?: number;
-  top_p?: number;
-  max_tokens?: number;
-  reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
-  reasoning_tokens?: number;
+  topP?: number;
+  maxTokens?: number;
+  reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  reasoningTokens?: number;
   tools?: ToolDefinition[];
-  tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
-  parallel_tool_calls?: boolean;
+  toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+  parallelToolCalls?: boolean;
   signal?: AbortSignal;
   providerSort?: ProviderSort;
   plugins?: PluginConfig[];
@@ -46,7 +47,10 @@ export type TransportFetchModelsOptions = {
 };
 
 export type TransportClient = {
-  fetchModels: (apiKey: string, opts?: TransportFetchModelsOptions) => Promise<ModelDescriptor[]>;
+  fetchModels: (
+    auth: TransportAuth,
+    opts?: TransportFetchModelsOptions,
+  ) => Promise<ModelDescriptor[]>;
   chatCompletion: (params: TransportChatParams) => Promise<ChatCompletion>;
   streamChatCompletion: (params: TransportStreamParams) => Promise<void>;
 };

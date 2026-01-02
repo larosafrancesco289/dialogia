@@ -2,10 +2,11 @@ import 'server-only';
 import { renderSnapshotTranscript, renderTutorTranscript } from '@/lib/headless/transcript';
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 import type { HeadlessRunResult } from '@/lib/headless/runner';
-import type { ModelTransport, Message } from '@/lib/types';
+import type { Message } from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { isRecord } from '@/lib/utils/guards';
+import type { TransportAuth } from '@/lib/auth/transport';
 
 function normalizeContent(input: unknown): string {
   if (typeof input === 'string') return input;
@@ -56,8 +57,7 @@ function pushWithLimit(history: ModelMessage[], entry: ModelMessage, maxSize: nu
 export type LLMUserSimulatorOptions = {
   personaPrompt?: string;
   modelId: string;
-  transport: ModelTransport;
-  apiKey: string;
+  auth: TransportAuth;
   temperature?: number;
   topP?: number;
   maxTokens?: number;
@@ -121,13 +121,12 @@ export class LLMUserSimulator {
   private async generate(userContent: string): Promise<string> {
     pushWithLimit(this.history, { role: 'user', content: userContent }, this.maxTurns);
     const response = await getChatCompletion()({
-      apiKey: this.options.apiKey,
-      transport: this.options.transport,
+      auth: this.options.auth,
       model: this.options.modelId,
       messages: this.history,
       temperature: this.options.temperature,
-      top_p: this.options.topP,
-      max_tokens: this.options.maxTokens,
+      topP: this.options.topP,
+      maxTokens: this.options.maxTokens,
     });
     const text = extractAssistantText(response) || 'I need a moment to think about that.';
     pushWithLimit(this.history, { role: 'assistant', content: text }, this.maxTurns);
@@ -137,8 +136,7 @@ export class LLMUserSimulator {
 
 export type LLMJudgeOptions = {
   modelId: string;
-  transport: ModelTransport;
-  apiKey: string;
+  auth: TransportAuth;
   rubricPrompt?: string;
   maxTokens?: number;
   temperature?: number;
@@ -214,15 +212,14 @@ function buildSnapshotSignals(snapshots?: HeadlessTurnSnapshot[]): string[] {
 }
 
 export class LLMJudge {
-  private readonly options: Required<Pick<LLMJudgeOptions, 'modelId' | 'transport' | 'apiKey'>> &
+  private readonly options: Required<Pick<LLMJudgeOptions, 'modelId' | 'auth'>> &
     Pick<LLMJudgeOptions, 'rubricPrompt' | 'maxTokens' | 'temperature'>;
   private readonly rubric: string;
 
   constructor(options: LLMJudgeOptions) {
     this.options = {
       modelId: options.modelId,
-      transport: options.transport,
-      apiKey: options.apiKey,
+      auth: options.auth,
       rubricPrompt: options.rubricPrompt,
       maxTokens: options.maxTokens ?? 384,
       temperature: options.temperature ?? 0.2,
@@ -273,15 +270,14 @@ export class LLMJudge {
       .join('\n');
 
     const response = await getChatCompletion()({
-      apiKey: this.options.apiKey,
-      transport: this.options.transport,
+      auth: this.options.auth,
       model: this.options.modelId,
       messages: [
         { role: 'system', content: this.rubric },
         { role: 'user', content: userPrompt },
       ],
       temperature: this.options.temperature,
-      max_tokens: this.options.maxTokens,
+      maxTokens: this.options.maxTokens,
     });
 
     const text = extractAssistantText(response);

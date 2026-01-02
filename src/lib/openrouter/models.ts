@@ -1,3 +1,4 @@
+import type { TransportAuth } from '@/lib/auth/transport';
 import type { ModelDescriptor } from '@/lib/types';
 import { API_ERROR_CODES } from '@/lib/api/errors';
 import { orFetchModels } from '@/lib/openrouter/http';
@@ -74,11 +75,14 @@ type OpenRouterFetchModelsOptions = TransportFetchModelsOptions & {
 };
 
 export async function fetchModels(
-  apiKey: string,
+  auth: TransportAuth,
   opts: OpenRouterFetchModelsOptions = {},
 ): Promise<ModelDescriptor[]> {
   const fetchFn = opts.fetchFn ?? orFetchModels;
-  const cacheKey = `${opts.origin || 'default'}::${fingerprintKey(apiKey)}`;
+  const fingerprint = auth.useProxy
+    ? 'proxy'
+    : fingerprintKey(typeof auth.apiKey === 'string' ? auth.apiKey : '');
+  const cacheKey = `${opts.origin || 'default'}::${fingerprint}`;
   const cached = modelCache.get(cacheKey);
   const now = Date.now();
   if (cached && now - cached.fetchedAt < MODEL_CACHE_TTL_MS) {
@@ -87,7 +91,7 @@ export async function fetchModels(
 
   let res: Response;
   try {
-    res = await fetchFn(apiKey, { signal: opts.signal, origin: opts.origin });
+    res = await fetchFn(auth, { signal: opts.signal, origin: opts.origin });
   } catch (error) {
     throw wrapOpenRouterClientError(error, API_ERROR_CODES.OPENROUTER_MODELS_FAILED);
   }

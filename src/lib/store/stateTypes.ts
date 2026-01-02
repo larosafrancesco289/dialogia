@@ -5,7 +5,7 @@ import type {
   StoreSetter as ContractStoreSetter,
 } from '@/lib/contracts/store';
 import type { VoiceState } from '@/lib/voice/types';
-import type { UIDebugState, UIFlags, UIState, UITutorState } from '@/lib/store/uiTypes';
+import type { PersistedUiState, UIState } from '@/lib/store/uiTypes';
 import type { StoreActions } from '@/lib/store/actionsTypes';
 
 export type StoreDataState = {
@@ -34,23 +34,11 @@ export type StoreDataState = {
 
 export type StoreState = StoreDataState & StoreActions;
 
-export type PersistedUIState = Pick<
-  UIState,
-  'showSettings' | 'sidebarCollapsed' | 'zdrOnly' | 'routePreference'
-> & {
-  flags?: Pick<UIFlags, 'experimentalBrave' | 'experimentalTutor' | 'enableMultiModelChat'>;
-  debug?: Pick<UIDebugState, 'mode'>;
-  tutor?: Pick<
-    UITutorState,
-    'contextMode' | 'thesisMode' | 'researchMode' | 'defaultModelId' | 'forceMode'
-  >;
-};
-
 export type PersistedStoreState = Pick<
   StoreDataState,
   'selectedChatId' | 'favoriteModelIds' | 'hiddenModelIds'
 > & {
-  ui: PersistedUIState;
+  ui: PersistedUiState;
 };
 
 export type StoreSetter = ContractStoreSetter<StoreState>;

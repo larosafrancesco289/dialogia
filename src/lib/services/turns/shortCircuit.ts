@@ -1,3 +1,6 @@
+// Module: services/turns/shortCircuit
+// Responsibility: Finalize assistant messages when turns short-circuit.
+
 import type { TurnStoreState } from '@/lib/agent/contracts';
 import type { Message } from '@/lib/types';
 

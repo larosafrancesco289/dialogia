@@ -8,10 +8,9 @@ import { springs } from '@/lib/mobile/springConfig';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { ModelPicker } from '@/components/ModelPicker';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
-import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { useTier } from '@/lib/auth/tierContext';
 import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
-import { selectIsStreaming } from '@/lib/store/selectors';
+import { selectIsStreaming, selectIsTutorEnabled } from '@/lib/store/selectors';
 import styles from './MobileCollapsingHeader.module.css';
 
 /**
@@ -22,32 +21,28 @@ import styles from './MobileCollapsingHeader.module.css';
  * - Model picker or Tutor badge
  */
 export function MobileCollapsingHeader() {
-  const { isFreeTier, isStudyTier, tier } = useTier();
+  const { isFreeTier } = useTier();
 
-  const { chats, selectedChatId, models, headerVisible, isStreaming } = useChatStore(
+  const { chats, selectedChatId, models, headerVisible, isStreaming, tutorActive } = useChatStore(
     (s) => ({
       chats: s.chats,
       selectedChatId: s.selectedChatId,
       models: s.models,
       headerVisible: s.ui.mobile.headerVisible,
       isStreaming: selectIsStreaming(s),
+      tutorActive: selectIsTutorEnabled(s),
     }),
     shallow,
   );
 
   const uiState = useChatStore((s) => s.ui, shallow);
-  const experimentalTutor = !!uiState.flags.experimentalTutor;
-  const forceTutorMode = !!uiState.tutor.forceMode;
   const tutorDefaultModelId = uiState.tutor.defaultModelId;
 
   const chat = chats.find((c) => c.id === selectedChatId);
-  const tutorActive = chat
-    ? isTutorRuntimeEnabled(uiState, chat, tier)
-    : isStudyTier || (experimentalTutor && forceTutorMode);
 
   // Resolve tutor model with tier awareness
   const rawTutorModelId =
-    chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
+    chat?.settings?.features.tutor.defaultModelId || chat?.settings?.modelId || tutorDefaultModelId;
   const tutorModelId = useMemo(() => {
     if (isFreeTier && rawTutorModelId && !FREE_MODEL_IDS.includes(rawTutorModelId)) {
       return DEFAULT_FREE_TUTOR_MODEL_ID;

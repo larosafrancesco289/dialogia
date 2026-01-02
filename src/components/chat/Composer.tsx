@@ -23,6 +23,8 @@ import { ComposerLayout } from '@/components/composer/ComposerLayout';
 import {
   selectIsStreaming,
   selectIsTutorEnabled,
+  selectResolvedModelId,
+  selectResolvedTurnSettings,
   selectSearchEnabled,
   selectSearchProvider,
 } from '@/lib/store/selectors';
@@ -49,8 +51,6 @@ export function Composer({
     setNotice,
     overrides,
     composerDraft,
-    tutorGloballyEnabled,
-    forceTutorMode,
   } = useChatStore(
     (s) => ({
       send: s.sendUserMessage,
@@ -65,8 +65,6 @@ export function Composer({
       setNotice: s.setNotice,
       overrides: s.ui.overrides,
       composerDraft: s.ui.composerDraft,
-      tutorGloballyEnabled: !!s.ui.flags.experimentalTutor,
-      forceTutorMode: !!s.ui.tutor.forceMode,
     }),
     shallow,
   );
@@ -77,9 +75,10 @@ export function Composer({
   const [focused, setFocused] = useState(false);
   const isTablet = useIsMobile(768);
   const isMobile = useIsMobile(640);
-  const tutorRuntimeEnabled = useChatStore(selectIsTutorEnabled);
+  const tutorEnabled = useChatStore(selectIsTutorEnabled);
   const searchEnabled = useChatStore(selectSearchEnabled);
   const searchProvider = useChatStore(selectSearchProvider);
+  const resolvedTurnSettings = useChatStore(selectResolvedTurnSettings);
 
   // Sync focus state to store for mobile tab bar visibility
   useEffect(() => {
@@ -98,12 +97,10 @@ export function Composer({
     }
   }, [composerDraft, setUI]);
 
-  const tutorEnabled = chat
-    ? tutorRuntimeEnabled
-    : tutorGloballyEnabled && (forceTutorMode || !!uiNext.tutorMode);
-
   const tierDefaultModelId = useTierDefaultModelId();
-  const modelId = chat?.settings.model || uiNext.model || tierDefaultModelId;
+  const modelId = useChatStore(
+    useMemo(() => selectResolvedModelId(tierDefaultModelId), [tierDefaultModelId]),
+  );
   const modelMeta = findModelById(models, modelId);
   const canVision = isVisionSupported(modelMeta);
   const canAudio = isAudioInputSupported(modelMeta);
@@ -170,20 +167,19 @@ export function Composer({
         : 720;
     const capped = Math.min(320, Math.max(180, viewport * 0.35));
     return Math.round(capped);
-  }, [keyboardMetrics?.viewportHeight]);
+  }, [keyboardMetrics]);
 
   useAutogrowTextarea(taRef, [text], maxTextareaHeight);
 
-  const currentEffort = (
-    chat
-      ? (chat.settings.reasoning_effort as Effort | undefined)
-      : (uiNext.reasoning?.effort as Effort | undefined)
-  ) as Effort | undefined;
+  const currentEffort = (resolvedTurnSettings?.generation.reasoningEffort ??
+    (uiNext.reasoning?.effort as Effort | undefined)) as Effort | undefined;
 
   const showReasoningMenu = supportsReasoning && !tutorEnabled;
   const toggleSearch = () => {
     if (chat) {
-      void updateSettings({ search_enabled: !chat.settings.search_enabled });
+      void updateSettings({
+        features: { search: { enabled: !chat.settings.features.search.enabled } },
+      });
     } else {
       setUI({
         overrides: { search: { enabled: !uiNext.search?.enabled } },
@@ -192,7 +188,7 @@ export function Composer({
   };
 
   const handleSelectEffort = async (effort: Effort) => {
-    if (chat) await updateSettings({ reasoning_effort: effort });
+    if (chat) await updateSettings({ generation: { reasoningEffort: effort } });
     else setUI({ overrides: { reasoning: { effort } } });
   };
 

@@ -81,6 +81,16 @@ module.exports = [
               ],
               message: 'Agent layer must not import UI components.',
             },
+            {
+              group: [
+                '@/lib/services',
+                '@/lib/services/**',
+                '../services/**',
+                '../../services/**',
+                '../../../services/**',
+              ],
+              message: 'Agent layer must not import services modules.',
+            },
           ],
         },
       ],
@@ -94,7 +104,7 @@ module.exports = [
         {
           patterns: [
             {
-              group: ['@/lib/api/**', '@/lib/openrouter/**'],
+              group: ['@/lib/api', '@/lib/api/**', '@/lib/openrouter', '@/lib/openrouter/**'],
               message: 'UI components must not import transport clients.',
             },
             {
@@ -109,6 +119,10 @@ module.exports = [
                 '../../../lib/eval/**',
               ],
               message: 'UI components must not import headless or eval modules.',
+            },
+            {
+              group: ['@/lib/server/**', '@/lib/env/server', '**/*.server'],
+              message: 'UI components must not import server-only modules.',
             },
           ],
         },

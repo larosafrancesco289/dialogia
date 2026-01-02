@@ -14,7 +14,7 @@ export type UiFlagsSnapshot = {
 };
 
 export type UiNextOverrides = {
-  model?: string;
+  modelId?: string;
   search?: { enabled?: boolean; provider?: 'brave' | 'openrouter' };
   deepResearch?: boolean;
   tutorMode?: boolean;

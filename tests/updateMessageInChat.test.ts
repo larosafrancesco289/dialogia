@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
-import { updateMessageInChat } from '@/lib/store/messageUtils';
+import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { buildDefaultVoiceState } from '@/lib/voice/types';
 import { buildMessageIndex } from '@/lib/messages/indexing';
 
@@ -90,7 +90,7 @@ const createMessage = (overrides: Partial<Message> = {}): Message => ({
   ...overrides,
 });
 
-test('updateMessageInChat merges patches immutably', () => {
+test('updateMessageById merges patches immutably', () => {
   const original = createMessage({ attachments: [] });
   const state = baseState({ 'chat-1': [original] });
   const patch: Partial<Message> = {
@@ -112,7 +112,11 @@ test('updateMessageInChat merges patches immutably', () => {
       ttftMs: 180,
     },
   };
-  const result = updateMessageInChat(state, 'chat-1', original.id, patch);
+  const result =
+    updateMessageById(state, 'chat-1', original.id, (message) => ({
+      ...message,
+      ...patch,
+    })) ?? {};
 
   const updated = result.messagesById?.[original.id] as Message;
   assert.ok(updated);
@@ -122,10 +126,16 @@ test('updateMessageInChat merges patches immutably', () => {
   assert.equal(state.messagesById[original.id].attachments?.length, 0);
 });
 
-test('updateMessageInChat returns empty patch when chat or message missing', () => {
+test('updateMessageById returns undefined when chat or message missing', () => {
   const state = baseState({ 'chat-1': [createMessage()] });
-  const missingChat = updateMessageInChat(state, 'chat-x', 'm1', { content: 'noop' });
-  assert.deepEqual(missingChat, {});
-  const missingMessage = updateMessageInChat(state, 'chat-1', 'missing', { content: 'noop' });
-  assert.deepEqual(missingMessage, {});
+  const missingChat = updateMessageById(state, 'chat-x', 'm1', (message) => ({
+    ...message,
+    content: 'noop',
+  }));
+  assert.equal(missingChat, undefined);
+  const missingMessage = updateMessageById(state, 'chat-1', 'missing', (message) => ({
+    ...message,
+    content: 'noop',
+  }));
+  assert.equal(missingMessage, undefined);
 });

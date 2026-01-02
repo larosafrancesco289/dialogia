@@ -2,15 +2,16 @@ import type {
   Chat,
   Message,
   ModelDescriptor,
-  ModelTransport,
   LearnerModel,
   LearningPlan,
   LearnerModelDebugSnapshot,
   PersistedAttachment,
+  SearchProvider,
 } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { AccessTier } from '@/lib/auth/types';
+import type { TransportAuth } from '@/lib/auth/transport';
 import type { TurnStoreState } from '@/lib/agent/contracts';
 import type {
   StoreGetter as ContractStoreGetter,
@@ -18,7 +19,7 @@ import type {
 } from '@/lib/contracts/store';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
-import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
+import type { WebSearchToolArgs } from '@/lib/tools/definitions';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
 
@@ -44,13 +45,12 @@ export type PersistMessage = (message: Message) => Promise<void>;
 export { ProviderSort };
 export type { ResolvedTurnSettings };
 
-export type SearchProvider = 'brave' | 'openrouter';
-
 export type StoreAccess = { set: StoreSetter; get: StoreGetter };
 
+export type { SearchProvider };
+
 export type TurnContext = {
-  apiKey: string;
-  transport: ModelTransport;
+  auth: TransportAuth;
   set: StoreSetter;
   get: StoreGetter;
   models: ModelDescriptor[];

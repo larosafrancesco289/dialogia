@@ -1,5 +1,5 @@
 import { ApiError, readApiErrorResponse } from '@/lib/api/errors';
-import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
+import type { WebSearchToolArgs } from '@/lib/tools/definitions';
 
 export type BraveSearchResult = {
   title?: string;

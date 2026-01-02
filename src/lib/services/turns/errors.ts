@@ -1,3 +1,6 @@
+// Module: services/turns/errors
+// Responsibility: Normalize turn errors into user-facing notices and state updates.
+
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { NOTICE_INVALID_KEY, NOTICE_RATE_LIMITED } from '@/lib/store/notices';

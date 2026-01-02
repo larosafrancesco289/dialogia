@@ -1,6 +1,11 @@
 import { useCallback } from 'react';
-import type { Chat, DraftAttachment, Message, ModelDescriptor } from '@/lib/types';
-import type { ChatSettings } from '@/lib/types';
+import type {
+  Chat,
+  ChatSettingsPatch,
+  DraftAttachment,
+  Message,
+  ModelDescriptor,
+} from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { findModelById, isReasoningSupported } from '@/lib/models';
 import type { UiNextOverrides } from '@/lib/contracts/ui';
@@ -14,7 +19,7 @@ type SlashCommandContext = {
   chat: Chat | undefined;
   models: ModelDescriptor[];
   nextOverrides: NextOverrides;
-  updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
+  updateChatSettings: (partial: ChatSettingsPatch) => Promise<void>;
   setUI: (partial: Partial<UIState>) => void;
   setNotice: (notice?: string) => void;
   defaultModelId: string;
@@ -27,7 +32,8 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
   const command = (parts.shift() || '').toLowerCase();
   const arg = parts.join(' ').trim();
   const applyToChat = !!ctx.chat;
-  const currentModelId = ctx.chat?.settings.model || ctx.nextOverrides.model || ctx.defaultModelId;
+  const currentModelId =
+    ctx.chat?.settings.modelId || ctx.nextOverrides.modelId || ctx.defaultModelId;
   const currentModel = findModelById(ctx.models, currentModelId);
 
   if (command === 'search' || command === 'web') {
@@ -37,8 +43,8 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     else if (arg === 'toggle' || arg === '') enabled = undefined;
     else return false;
     if (applyToChat && ctx.chat) {
-      const next = enabled == null ? !ctx.chat.settings.search_enabled : enabled;
-      await ctx.updateChatSettings({ search_enabled: next });
+      const next = enabled == null ? !ctx.chat.settings.features.search.enabled : enabled;
+      await ctx.updateChatSettings({ features: { search: { enabled: next } } });
       ctx.setNotice(`Web search: ${next ? 'On' : 'Off'}`);
     } else {
       const prev = !!ctx.nextOverrides.search?.enabled;
@@ -58,7 +64,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
       return true;
     }
     if (applyToChat) {
-      await ctx.updateChatSettings({ reasoning_effort: effort });
+      await ctx.updateChatSettings({ generation: { reasoningEffort: effort } });
     } else {
       ctx.setUI({ overrides: { reasoning: { effort } } });
     }
@@ -77,9 +83,9 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
       return true;
     }
     if (applyToChat) {
-      await ctx.updateChatSettings({ model: chosen.id });
+      await ctx.updateChatSettings({ modelId: chosen.id });
     } else {
-      ctx.setUI({ overrides: { model: chosen.id } });
+      ctx.setUI({ overrides: { modelId: chosen.id } });
     }
     ctx.setNotice(`Model set to ${chosen.name || chosen.id}`);
     return true;
@@ -108,7 +114,7 @@ export function useComposerShortcuts(options: {
   chat: Chat | undefined;
   models: ModelDescriptor[];
   nextOverrides: NextOverrides;
-  updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
+  updateChatSettings: (partial: ChatSettingsPatch) => Promise<void>;
   setUI: (partial: Partial<UIState>) => void;
   setNotice: (notice?: string) => void;
   newChat: () => Promise<void>;

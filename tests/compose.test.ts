@@ -13,40 +13,56 @@ const baseChat = (): Chat => ({
   createdAt: Date.now() - 1000,
   updatedAt: Date.now() - 500,
   settings: {
-    model: 'provider/model-alpha',
+    modelId: 'provider/model-alpha',
     system: 'Always respond enthusiastically.',
-    search_enabled: true,
-    search_provider: 'brave',
-    tutor_mode: true,
-    tutor_default_model: 'provider/model-alpha',
-    learningPlan: {
-      goal: 'Master algebra fundamentals',
-      generatedAt: Date.now() - 10,
-      updatedAt: Date.now() - 10,
-      version: 1,
-      nodes: [
-        {
-          id: 'linear-equations',
-          name: 'Linear Equations',
-          description: 'Solve and graph linear equations and inequalities.',
-          objectives: ['Solve linear equations', 'Interpret slope and intercept'],
-          prerequisites: [],
-          status: 'in_progress',
-          estimatedMinutes: 45,
-        },
-        {
-          id: 'systems',
-          name: 'Systems of Equations',
-          description: 'Solve systems using substitution and elimination.',
-          objectives: ['Solve systems by substitution', 'Solve systems by elimination'],
-          prerequisites: ['linear-equations'],
-          status: 'not_started',
-          estimatedMinutes: 60,
-        },
-      ],
+    generation: {
+      temperature: 0.2,
+      topP: 0.9,
+      maxTokens: 256,
+      reasoningEffort: 'none',
+      reasoningTokens: 0,
     },
-    planGenerated: true,
-    enableLearnerModel: true,
+    ui: {
+      showThinkingByDefault: false,
+      showStats: false,
+      showToolCallLog: false,
+      showDebugRawJson: true,
+    },
+    features: {
+      search: { enabled: true, provider: 'brave' },
+      tutor: {
+        enabled: true,
+        defaultModelId: 'provider/model-alpha',
+        learningPlan: {
+          goal: 'Master algebra fundamentals',
+          generatedAt: Date.now() - 10,
+          updatedAt: Date.now() - 10,
+          version: 1,
+          nodes: [
+            {
+              id: 'linear-equations',
+              name: 'Linear Equations',
+              description: 'Solve and graph linear equations and inequalities.',
+              objectives: ['Solve linear equations', 'Interpret slope and intercept'],
+              prerequisites: [],
+              status: 'in_progress',
+              estimatedMinutes: 45,
+            },
+            {
+              id: 'systems',
+              name: 'Systems of Equations',
+              description: 'Solve systems using substitution and elimination.',
+              objectives: ['Solve systems by substitution', 'Solve systems by elimination'],
+              prerequisites: ['linear-equations'],
+              status: 'not_started',
+              estimatedMinutes: 60,
+            },
+          ],
+        },
+        planGenerated: true,
+        enableLearnerModel: true,
+      },
+    },
   },
 });
 
@@ -127,7 +143,7 @@ test('composeTurn merges tutor and search context with plugins and tools', async
       chat,
       ui,
       modelIndex: modelIndexStub,
-      modelId: chat.settings.model,
+      modelId: chat.settings.modelId,
     });
     const result = await composeTurn({
       chat,
@@ -140,8 +156,8 @@ test('composeTurn merges tutor and search context with plugins and tools', async
     });
 
     assert.equal(result.settings.tutorEnabled, true);
-    assert.equal(result.settings.generation.searchProvider, 'brave');
-    assert.equal(result.settings.generation.searchEnabled, true);
+    assert.equal(result.settings.searchProvider, 'brave');
+    assert.equal(result.settings.searchEnabled, true);
     assert.equal(result.hasPdf, true);
     assert.equal(result.shouldPlan, true);
     assert.equal(result.settings.generation.providerSort, ProviderSort.Throughput);
@@ -164,7 +180,7 @@ test('composeTurn merges tutor and search context with plugins and tools', async
 
 test('composeTurn falls back to OpenRouter search when Brave experiment disabled', async () => {
   const chat = baseChat();
-  chat.settings.search_provider = 'brave';
+  chat.settings.features.search.provider = 'brave';
   const ui = {
     flags: { experimentalBrave: false, experimentalTutor: false },
     tutor: { forceMode: false },
@@ -174,7 +190,7 @@ test('composeTurn falls back to OpenRouter search when Brave experiment disabled
     chat,
     ui,
     modelIndex: modelIndexStub,
-    modelId: chat.settings.model,
+    modelId: chat.settings.modelId,
   });
   const result = await composeTurn({
     chat,
@@ -186,5 +202,5 @@ test('composeTurn falls back to OpenRouter search when Brave experiment disabled
     attachments: [],
   });
 
-  assert.equal(result.settings.generation.searchProvider, 'openrouter');
+  assert.equal(result.settings.searchProvider, 'openrouter');
 });

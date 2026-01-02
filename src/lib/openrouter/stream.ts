@@ -16,13 +16,13 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
     stream: true,
     modalities: params.modalities,
     temperature: params.temperature,
-    top_p: params.top_p,
-    max_tokens: params.max_tokens,
-    reasoning_effort: params.reasoning_effort,
-    reasoning_tokens: params.reasoning_tokens,
+    topP: params.topP,
+    maxTokens: params.maxTokens,
+    reasoningEffort: params.reasoningEffort,
+    reasoningTokens: params.reasoningTokens,
     tools: params.tools,
-    tool_choice: params.tool_choice,
-    parallel_tool_calls: params.parallel_tool_calls,
+    toolChoice: params.toolChoice,
+    parallelToolCalls: params.parallelToolCalls,
     providerSort: params.providerSort,
     plugins: params.plugins,
     includeUsage: shouldIncludeUsage(true),
@@ -31,7 +31,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   let res: Response;
   try {
     res = await orChatCompletions({
-      apiKey: params.apiKey,
+      auth: params.auth,
       body,
       signal: params.signal,
       stream: true,

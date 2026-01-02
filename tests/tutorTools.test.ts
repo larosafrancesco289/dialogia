@@ -5,12 +5,29 @@ import { getTutorToolDefinitions } from '@/lib/agent/tutor';
 import type { StoreSetter } from '@/lib/agent/types';
 import { validateLearningPlan } from '@/lib/learningPlan/validate';
 import { buildMessageIndex } from '@/lib/messages/indexing';
+import type { Chat } from '@/lib/types';
 
 const createTutorHarness = () => {
-  const chat = {
+  const chat: Chat = {
     id: 'chat-test',
-    settings: {},
-  } as any;
+    title: 'Tutor test',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    settings: {
+      modelId: 'model-x',
+      generation: {},
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: false,
+        showDebugRawJson: true,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: { enabled: true },
+      },
+    },
+  };
   const assistantMessage = {
     id: 'assistant-1',
     chatId: 'chat-test',

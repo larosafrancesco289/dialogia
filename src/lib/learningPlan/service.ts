@@ -80,7 +80,16 @@ export async function persistLearningPlan(opts: {
   const { chat, chatId, plan, set, updateChat, persistChat } = opts;
   const updatedChat: Chat = {
     ...chat,
-    settings: { ...chat.settings, learningPlan: plan },
+    settings: {
+      ...chat.settings,
+      features: {
+        ...chat.settings.features,
+        tutor: {
+          ...chat.settings.features.tutor,
+          learningPlan: plan,
+        },
+      },
+    },
     updatedAt: Date.now(),
   };
   set((state) => ({

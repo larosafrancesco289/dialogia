@@ -30,8 +30,18 @@ const baseChat = (tutorMode: boolean): Chat => ({
   createdAt: 0,
   updatedAt: 0,
   settings: {
-    model: 'provider/model',
-    tutor_mode: tutorMode,
+    modelId: 'provider/model',
+    generation: {},
+    ui: {
+      showThinkingByDefault: false,
+      showStats: false,
+      showToolCallLog: false,
+      showDebugRawJson: true,
+    },
+    features: {
+      search: { enabled: false, provider: 'openrouter' },
+      tutor: { enabled: tutorMode },
+    },
   },
 });
 

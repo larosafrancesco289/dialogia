@@ -1,3 +1,6 @@
+// Module: services/auth
+// Responsibility: Resolve per-model auth for UI-driven turns and surface missing-key notices.
+
 import { requireModelAuth } from '@/lib/auth/require';
 import type { ModelIndex } from '@/lib/models';
 import { resolveModelTransport } from '@/lib/providers';
@@ -6,8 +9,9 @@ import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { NOTICE_MISSING_CLIENT_KEY } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import { isRecord } from '@/lib/utils/guards';
+import type { TransportAuth } from '@/lib/auth/transport';
 
-export type ModelAuth = ReturnType<typeof requireModelAuth>;
+export type ModelAuth = TransportAuth;
 
 export type ModelAuthResolver = {
   get: (modelId?: string) => ModelAuth | null;

@@ -3,8 +3,7 @@ import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import type { Chat, Message, MessageTutor, ModelDescriptor } from '@/lib/types';
 import type { UIDebugState, UISearchState } from '@/lib/store/types';
-import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
-import { selectIsStreamingForChat } from '@/lib/store/selectors';
+import { selectIsStreamingForChat, selectIsTutorEnabledForChat } from '@/lib/store/selectors';
 const EMPTY_AUTO_REASONING: Record<string, boolean> = {};
 
 export type MessageCardViewModel = {
@@ -42,7 +41,7 @@ export function useMessageCardViewModel({
     const chat = state.chats.find((entry) => entry.id === chatId);
     const tutorEntry = state.ui.tutor.byMessageId?.[messageId] ?? message?.tutor;
     const tutorGloballyEnabled = !!state.ui.flags.experimentalTutor;
-    const tutorEnabled = chat ? isTutorRuntimeEnabled(state.ui, chat) : false;
+    const tutorEnabled = selectIsTutorEnabledForChat(chatId)(state);
 
     return {
       message,
@@ -56,9 +55,9 @@ export function useMessageCardViewModel({
       tutorGloballyEnabled,
       tutorEntry,
       autoReasoningModelIds: state.ui.debug.autoReasoningModelIds ?? EMPTY_AUTO_REASONING,
-      showToolCallLog: !!chat?.settings?.showToolCallLog,
-      showDebugRawJson: chat?.settings?.showDebugRawJson ?? true,
-      showStats: chat?.settings?.show_stats ?? false,
+      showToolCallLog: !!chat?.settings?.ui.showToolCallLog,
+      showDebugRawJson: chat?.settings?.ui.showDebugRawJson ?? true,
+      showStats: chat?.settings?.ui.showStats ?? false,
       tutorEnabled,
     };
   }, shallow);

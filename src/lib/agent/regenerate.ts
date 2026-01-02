@@ -7,7 +7,7 @@ import type { Chat, GenSettingsSnapshot } from '@/lib/types';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { ModelMessage, RegenerateOptions, SearchProvider } from '@/lib/agent/types';
 import { streamFinal } from '@/lib/agent/streaming';
-import { setTurnController } from '@/lib/services/controllers';
+import { setTurnController } from '@/lib/turnRuntime/abortControllers';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { adjustActiveTurnCount } from '@/lib/ui/streaming';
@@ -44,7 +44,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     (msg) => Array.isArray(msg.attachments) && msg.attachments.some((att) => att.kind === 'pdf'),
   );
 
-  const modelIdForTurn = overrideModelId || chat.settings.model;
+  const modelIdForTurn = overrideModelId || chat.settings.modelId;
   const caps = modelIndex.caps(modelIdForTurn);
   const supportsReasoning = caps.canReason;
 
@@ -94,29 +94,32 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     return fromSnapshot ?? fromChat;
   };
 
-  const temperature = pickNumber(snapshotSettings.temperature, chat.settings.temperature);
-  const topP = pickNumber(snapshotSettings.top_p, chat.settings.top_p);
-  const maxTokens = pickNumber(snapshotSettings.max_tokens, chat.settings.max_tokens);
+  const temperature = pickNumber(
+    snapshotSettings.temperature,
+    chat.settings.generation.temperature,
+  );
+  const topP = pickNumber(snapshotSettings.topP, chat.settings.generation.topP);
+  const maxTokens = pickNumber(snapshotSettings.maxTokens, chat.settings.generation.maxTokens);
   const reasoningEffort = pickReasoningEffort(
-    snapshotSettings.reasoning_effort,
-    chat.settings.reasoning_effort,
+    snapshotSettings.reasoningEffort,
+    chat.settings.generation.reasoningEffort,
   );
   const reasoningTokens = pickReasoningTokens(
-    snapshotSettings.reasoning_tokens,
-    chat.settings.reasoning_tokens,
+    snapshotSettings.reasoningTokens,
+    chat.settings.generation.reasoningTokens,
   );
   const searchEnabled = pickBoolean(
-    snapshotSettings.search_enabled,
-    chat.settings.search_enabled,
+    snapshotSettings.searchEnabled,
+    chat.settings.features.search.enabled,
     false,
   );
   const searchProvider = pickProvider(
-    snapshotSettings.search_provider,
-    chat.settings.search_provider,
+    snapshotSettings.searchProvider,
+    chat.settings.features.search.provider,
   );
   const tutorModeForTurn = pickBoolean(
-    snapshotSettings.tutor_mode,
-    chat.settings.tutor_mode,
+    snapshotSettings.tutorEnabled,
+    chat.settings.features.tutor.enabled,
     false,
   );
   const providerSortSnapshot = (snapshotSettings as Record<string, unknown>).providerSort;
@@ -127,15 +130,15 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
 
   const appliedGenSettings: GenSettingsSnapshot = {};
   if (typeof temperature === 'number') appliedGenSettings.temperature = temperature;
-  if (typeof topP === 'number') appliedGenSettings.top_p = topP;
-  if (typeof maxTokens === 'number') appliedGenSettings.max_tokens = maxTokens;
+  if (typeof topP === 'number') appliedGenSettings.topP = topP;
+  if (typeof maxTokens === 'number') appliedGenSettings.maxTokens = maxTokens;
   if (supportsReasoning && typeof reasoningEffort === 'string')
-    appliedGenSettings.reasoning_effort = reasoningEffort;
+    appliedGenSettings.reasoningEffort = reasoningEffort;
   if (supportsReasoning && typeof reasoningTokens === 'number')
-    appliedGenSettings.reasoning_tokens = reasoningTokens;
-  appliedGenSettings.search_enabled = !!searchEnabled;
-  if (searchProvider) appliedGenSettings.search_provider = searchProvider;
-  appliedGenSettings.tutor_mode = !!tutorModeForTurn;
+    appliedGenSettings.reasoningTokens = reasoningTokens;
+  appliedGenSettings.searchEnabled = !!searchEnabled;
+  if (searchProvider) appliedGenSettings.searchProvider = searchProvider;
+  appliedGenSettings.tutorEnabled = !!tutorModeForTurn;
   if (providerSort) appliedGenSettings.providerSort = providerSort;
 
   const replacement = createAssistantMessage({
@@ -164,17 +167,26 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     searchProvider: searchProvider || 'openrouter',
   });
 
-  const nextSettings: Chat['settings'] = { ...chat.settings, model: modelIdForTurn };
-  if (typeof temperature === 'number') nextSettings.temperature = temperature;
-  if (typeof topP === 'number') nextSettings.top_p = topP;
-  if (typeof maxTokens === 'number') nextSettings.max_tokens = maxTokens;
+  const nextSettings: Chat['settings'] = {
+    ...chat.settings,
+    modelId: modelIdForTurn,
+    generation: { ...chat.settings.generation },
+    features: {
+      ...chat.settings.features,
+      search: { ...chat.settings.features.search },
+      tutor: { ...chat.settings.features.tutor },
+    },
+  };
+  if (typeof temperature === 'number') nextSettings.generation.temperature = temperature;
+  if (typeof topP === 'number') nextSettings.generation.topP = topP;
+  if (typeof maxTokens === 'number') nextSettings.generation.maxTokens = maxTokens;
   if (supportsReasoning && typeof reasoningEffort === 'string')
-    nextSettings.reasoning_effort = reasoningEffort;
+    nextSettings.generation.reasoningEffort = reasoningEffort;
   if (supportsReasoning && typeof reasoningTokens === 'number')
-    nextSettings.reasoning_tokens = reasoningTokens;
-  nextSettings.search_enabled = !!searchEnabled;
-  if (searchProvider) nextSettings.search_provider = searchProvider;
-  nextSettings.tutor_mode = !!tutorModeForTurn;
+    nextSettings.generation.reasoningTokens = reasoningTokens;
+  nextSettings.features.search.enabled = !!searchEnabled;
+  if (searchProvider) nextSettings.features.search.provider = searchProvider;
+  nextSettings.features.tutor.enabled = !!tutorModeForTurn;
 
   const chatForStream: Chat = { ...chat, settings: nextSettings };
 
@@ -211,7 +223,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
 
 const isReasoningEffort = (
   value: unknown,
-): value is NonNullable<Chat['settings']['reasoning_effort']> =>
+): value is NonNullable<Chat['settings']['generation']['reasoningEffort']> =>
   value === 'none' || value === 'low' || value === 'medium' || value === 'high';
 
 const isSearchProvider = (value: unknown): value is SearchProvider =>

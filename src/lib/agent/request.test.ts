@@ -50,8 +50,8 @@ test('buildDebugBody includes optional knobs when provided', () => {
     stream: true,
     includeUsage: true,
     temperature: 0.5,
-    top_p: 0.9,
-    max_tokens: 256,
+    topP: 0.9,
+    maxTokens: 256,
     reasoningEffort: 'medium',
     reasoningTokens: 1024,
     tools: [

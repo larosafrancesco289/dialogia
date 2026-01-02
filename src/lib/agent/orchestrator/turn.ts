@@ -1,4 +1,4 @@
-import type { Chat, Message, ModelTransport, PersistedAttachment } from '@/lib/types';
+import type { Chat, Message, PersistedAttachment } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import type {
   ComposeTurnArgs,
@@ -10,11 +10,12 @@ import type {
   StreamFinalOptions,
   ResolvedTurnSettings,
 } from '@/lib/agent/types';
+import type { TransportAuth } from '@/lib/auth/transport';
 
 type ComposeFn = (args: ComposeTurnArgs) => Promise<TurnComposition>;
 type PlanFn = (args: PlanTurnOptions) => Promise<PlanTurnResult>;
 type StreamFn = (args: StreamFinalOptions) => Promise<void>;
-type BaseTurnContext = Omit<TurnContext, 'apiKey' | 'transport'>;
+type BaseTurnContext = Omit<TurnContext, 'auth'>;
 
 export type RunTurnHooks = {
   onComposition?: (composition: TurnComposition) => void;
@@ -22,10 +23,7 @@ export type RunTurnHooks = {
   beforeStream?: (args: { composition: TurnComposition; plan?: PlanTurnResult }) => void;
 };
 
-export type AuthResolver = (modelId: string) => {
-  transport: ModelTransport;
-  apiKey: string;
-} | null;
+export type AuthResolver = (modelId: string) => TransportAuth | null;
 
 export type AttachmentPreparer = (modelId: string) => Promise<PersistedAttachment[]>;
 
@@ -110,8 +108,7 @@ export const runTurn = async ({
   }
   const turnContext: TurnContext = {
     ...baseTurnContext,
-    apiKey: auth.apiKey,
-    transport: auth.transport,
+    auth,
   };
 
   let planResult: PlanTurnResult | undefined;

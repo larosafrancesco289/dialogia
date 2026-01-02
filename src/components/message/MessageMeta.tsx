@@ -1,7 +1,7 @@
 'use client';
 import type { Message, Chat, ModelDescriptor } from '@/lib/types';
 import { computeCost } from '@/lib/cost';
-import { formatMetricsForDisplay } from '@/lib/services/metrics';
+import { formatMetricsForDisplay } from '@/lib/turnRuntime/metrics';
 
 export function MessageMeta({
   message,
@@ -30,7 +30,9 @@ export function MessageMeta({
     cost = total && total > 0 ? `${currency} ${total.toFixed(5)}` : undefined;
     const contextLimit = modelInfo?.context_length ?? 8000;
     const reservedForCompletion =
-      typeof chatSettings.max_tokens === 'number' ? chatSettings.max_tokens! : 1024;
+      typeof chatSettings.generation.maxTokens === 'number'
+        ? chatSettings.generation.maxTokens
+        : 1024;
     const maxPromptTokens = Math.max(512, contextLimit - reservedForCompletion);
     if (pt != null && maxPromptTokens > 0) {
       ctxPct = Math.max(0, Math.min(100, Math.round((pt / maxPromptTokens) * 100)));

@@ -1,0 +1,63 @@
+// Module: store/persistence
+// Responsibility: Define persisted store slices and merge behavior for Zustand hydration.
+
+import type {
+  PersistedStoreState,
+  PersistedUiState,
+  StoreDataState,
+  StoreState,
+  UIState,
+} from '@/lib/store/types';
+
+const mergePersistedUiState = (
+  current: UIState,
+  persisted?: Partial<PersistedUiState>,
+): UIState => {
+  if (!persisted) return current;
+  return {
+    ...current,
+    ...persisted,
+    flags: { ...current.flags, ...(persisted.flags ?? {}) },
+    debug: { ...current.debug, ...(persisted.debug ?? {}) },
+    tutor: { ...current.tutor, ...(persisted.tutor ?? {}) },
+  };
+};
+
+export function mergePersistedState<T extends StoreDataState>(
+  currentState: T,
+  persisted?: PersistedStoreState,
+): T {
+  if (!persisted) return currentState;
+  return {
+    ...currentState,
+    ...persisted,
+    ui: mergePersistedUiState(currentState.ui, persisted.ui),
+  };
+}
+
+export function buildPersistedState(state: StoreState): PersistedStoreState {
+  return {
+    selectedChatId: state.selectedChatId,
+    favoriteModelIds: state.favoriteModelIds,
+    hiddenModelIds: state.hiddenModelIds,
+    ui: {
+      showSettings: state.ui.showSettings,
+      sidebarCollapsed: state.ui.sidebarCollapsed,
+      zdrOnly: state.ui.zdrOnly,
+      routePreference: state.ui.routePreference,
+      flags: {
+        experimentalBrave: state.ui.flags.experimentalBrave,
+        experimentalTutor: state.ui.flags.experimentalTutor,
+        enableMultiModelChat: state.ui.flags.enableMultiModelChat,
+      },
+      debug: { mode: state.ui.debug.mode },
+      tutor: {
+        contextMode: state.ui.tutor.contextMode,
+        thesisMode: state.ui.tutor.thesisMode,
+        researchMode: state.ui.tutor.researchMode,
+        defaultModelId: state.ui.tutor.defaultModelId,
+        forceMode: state.ui.tutor.forceMode,
+      },
+    },
+  };
+}

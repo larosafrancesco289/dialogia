@@ -11,9 +11,12 @@ export function buildChatCompletionMessages(params: {
   newUserAttachments?: PersistedAttachment[];
 }): ModelMessage[] {
   const { chat, priorMessages, models, newUserContent, newUserAttachments } = params;
-  const modelInfo = models.find((m) => m.id === chat.settings.model);
+  const modelInfo = models.find((m) => m.id === chat.settings.modelId);
   const contextLimit = modelInfo?.context_length ?? 8000;
-  const reserved = typeof chat.settings.max_tokens === 'number' ? chat.settings.max_tokens : 1024;
+  const reserved =
+    typeof chat.settings.generation.maxTokens === 'number'
+      ? chat.settings.generation.maxTokens
+      : 1024;
 
   // 1. Normalize History
   const history: {

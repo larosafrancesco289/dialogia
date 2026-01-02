@@ -47,12 +47,12 @@ export const createUiSlice = createStoreSlice((set, get) => {
         const activeChat = chats.find((chat) => chat.id === selectedChatId);
         if (
           !activeChat ||
-          !Array.isArray(activeChat.settings.parallel_models) ||
-          activeChat.settings.parallel_models.length === 0
+          !Array.isArray(activeChat.settings.parallelModels) ||
+          activeChat.settings.parallelModels.length === 0
         ) {
           return;
         }
-        void updateChatSettings({ parallel_models: [] });
+        void updateChatSettings({ parallelModels: [] });
       }
     },
     setNotice(notice) {

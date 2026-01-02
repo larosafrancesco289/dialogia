@@ -3,9 +3,18 @@ import assert from 'node:assert/strict';
 import { buildProviderPolicy, providerSortFromRoutePref, selectSearchProvider } from './provider';
 
 const baseSettings = {
-  model: 'foo',
-  search_enabled: true,
-  search_provider: 'brave' as const,
+  modelId: 'foo',
+  generation: {},
+  ui: {
+    showThinkingByDefault: false,
+    showStats: false,
+    showToolCallLog: false,
+    showDebugRawJson: true,
+  },
+  features: {
+    search: { enabled: true, provider: 'brave' as const },
+    tutor: { enabled: false },
+  },
 };
 
 const baseUi = {
@@ -29,7 +38,16 @@ test('selectSearchProvider respects UI brave toggle', () => {
     'openrouter',
   );
   assert.equal(
-    selectSearchProvider({ ...baseSettings, search_provider: 'openrouter' } as any, baseUi),
+    selectSearchProvider(
+      {
+        ...baseSettings,
+        features: {
+          ...baseSettings.features,
+          search: { enabled: true, provider: 'openrouter' },
+        },
+      } as any,
+      baseUi,
+    ),
     'openrouter',
   );
 });

@@ -13,9 +13,18 @@ const makeChat = (): Chat =>
     createdAt: Date.now(),
     updatedAt: Date.now(),
     settings: {
-      model: 'provider/model',
-      tutor_mode: true,
-      tutor_default_model: 'provider/model',
+      modelId: 'provider/model',
+      generation: {},
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: false,
+        showDebugRawJson: true,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: { enabled: true, defaultModelId: 'provider/model' },
+      },
     },
   }) as Chat;
 

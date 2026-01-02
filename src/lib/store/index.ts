@@ -1,13 +1,7 @@
 'use client';
 import { createWithEqualityFn } from 'zustand/traditional';
 import { persist } from 'zustand/middleware';
-import type {
-  PersistedStoreState,
-  StoreDataState,
-  StoreGetter,
-  StoreSetter,
-  StoreState,
-} from '@/lib/store/types';
+import type { PersistedStoreState, StoreGetter, StoreSetter, StoreState } from '@/lib/store/types';
 import { createModelSlice } from '@/lib/store/modelSlice';
 import { createChatSlice } from '@/lib/store/chatSlice';
 import { createMessageSlice } from '@/lib/store/messageSlice';
@@ -16,20 +10,7 @@ import { createTutorSlice } from '@/lib/store/tutorSlice';
 import { createVoiceSlice } from '@/lib/store/voiceSlice';
 import { migrate } from '@/lib/store/migrations';
 import { STORE_MIGRATION_VERSION } from '@/lib/db/versions';
-
-const mergeUiState = (
-  current: StoreDataState['ui'],
-  persisted?: Partial<PersistedStoreState['ui']>,
-): StoreDataState['ui'] => {
-  if (!persisted) return current;
-  return {
-    ...current,
-    ...persisted,
-    flags: { ...current.flags, ...(persisted.flags ?? {}) },
-    debug: { ...current.debug, ...(persisted.debug ?? {}) },
-    tutor: { ...current.tutor, ...(persisted.tutor ?? {}) },
-  };
-};
+import { buildPersistedState, mergePersistedState } from '@/lib/store/persistence';
 
 export const useChatStore = createWithEqualityFn<StoreState>()(
   persist<StoreState, [], [], PersistedStoreState>(
@@ -59,39 +40,10 @@ export const useChatStore = createWithEqualityFn<StoreState>()(
       name: 'dialogia-ui',
       version: STORE_MIGRATION_VERSION,
       migrate,
-      merge: (persistedState, currentState) => {
-        const persisted = (persistedState ?? {}) as PersistedStoreState;
-        return {
-          ...currentState,
-          ...persisted,
-          ui: mergeUiState(currentState.ui, persisted.ui),
-        };
-      },
+      merge: (persistedState, currentState) =>
+        mergePersistedState(currentState, (persistedState ?? {}) as PersistedStoreState),
       // Persist only durable preferences; session-scoped flags (next*) are intentionally omitted.
-      partialize: (s: StoreState): PersistedStoreState => ({
-        selectedChatId: s.selectedChatId,
-        favoriteModelIds: s.favoriteModelIds,
-        hiddenModelIds: s.hiddenModelIds,
-        ui: {
-          showSettings: s.ui.showSettings,
-          sidebarCollapsed: s.ui.sidebarCollapsed,
-          zdrOnly: s.ui.zdrOnly,
-          routePreference: s.ui.routePreference,
-          flags: {
-            experimentalBrave: s.ui.flags.experimentalBrave,
-            experimentalTutor: s.ui.flags.experimentalTutor,
-            enableMultiModelChat: s.ui.flags.enableMultiModelChat,
-          },
-          debug: { mode: s.ui.debug.mode },
-          tutor: {
-            contextMode: s.ui.tutor.contextMode,
-            thesisMode: s.ui.tutor.thesisMode,
-            researchMode: s.ui.tutor.researchMode,
-            defaultModelId: s.ui.tutor.defaultModelId,
-            forceMode: s.ui.tutor.forceMode,
-          },
-        },
-      }),
+      partialize: buildPersistedState,
     },
   ),
 );

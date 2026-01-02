@@ -2,7 +2,7 @@
 import type { Ref } from 'react';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ModelSearch, type ModelSearchHandle } from '@/components/ModelSearch';
-import type { Chat } from '@/lib/types';
+import type { Chat, ChatSettingsPatch } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
 import { readNextOverrides } from '@/lib/ui/next';
@@ -11,7 +11,7 @@ type ModelsPanelProps = {
   chat: Chat | undefined;
   favoriteModelIds?: string[];
   toggleFavoriteModel: (id: string) => void;
-  updateChatSettings: (changes: Partial<Chat['settings']>) => Promise<void>;
+  updateChatSettings: (changes: ChatSettingsPatch) => Promise<void>;
   setUI: (ui: Partial<StoreState['ui']>) => void;
   loadModels: () => Promise<void>;
   hiddenModelIds?: string[];
@@ -55,9 +55,9 @@ export function ModelsPanel(props: ModelsPanelProps) {
               onSelect={(result) => {
                 if (!favoriteModelIds?.includes(result.id)) toggleFavoriteModel(result.id);
                 if (chat) {
-                  updateChatSettings({ model: result.id }).catch(() => void 0);
+                  updateChatSettings({ modelId: result.id }).catch(() => void 0);
                 } else {
-                  setUI({ overrides: { model: result.id } });
+                  setUI({ overrides: { modelId: result.id } });
                 }
               }}
             />
@@ -90,10 +90,12 @@ export function ModelsPanel(props: ModelsPanelProps) {
               <div className="segmented">
                 {experimentalBrave && (
                   <button
-                    className={`segment ${(chat?.settings?.search_provider ?? nextOverrides.search?.provider ?? 'openrouter') === 'brave' ? 'is-active' : ''}`}
+                    className={`segment ${(chat?.settings?.features.search.provider ?? nextOverrides.search?.provider ?? 'openrouter') === 'brave' ? 'is-active' : ''}`}
                     onClick={() => {
                       if (chat)
-                        updateChatSettings({ search_provider: 'brave' }).catch(() => void 0);
+                        updateChatSettings({
+                          features: { search: { provider: 'brave' } },
+                        }).catch(() => void 0);
                       else setUI({ overrides: { search: { provider: 'brave' } } });
                     }}
                   >
@@ -101,11 +103,11 @@ export function ModelsPanel(props: ModelsPanelProps) {
                   </button>
                 )}
                 <button
-                  className={`segment ${(chat?.settings?.search_provider ?? nextOverrides.search?.provider ?? 'openrouter') === 'openrouter' ? 'is-active' : ''}`}
+                  className={`segment ${(chat?.settings?.features.search.provider ?? nextOverrides.search?.provider ?? 'openrouter') === 'openrouter' ? 'is-active' : ''}`}
                   onClick={() => {
                     if (chat)
                       updateChatSettings({
-                        search_provider: 'openrouter',
+                        features: { search: { provider: 'openrouter' } },
                       }).catch(() => void 0);
                     else setUI({ overrides: { search: { provider: 'openrouter' } } });
                   }}

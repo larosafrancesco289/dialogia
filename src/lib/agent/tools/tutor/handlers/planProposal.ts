@@ -15,7 +15,8 @@ export function createPlanProposalHandler(
     },
     async apply(ctx, args) {
       const plan = normalizeLearningPlanInput(args.plan, {
-        fallbackGoal: ctx.chat.settings.learningPlan?.goal || 'Personalized Learning Plan',
+        fallbackGoal:
+          ctx.chat.settings.features.tutor.learningPlan?.goal || 'Personalized Learning Plan',
       });
 
       if (plan.nodes.length === 0) {

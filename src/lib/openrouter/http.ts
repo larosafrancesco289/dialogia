@@ -1,6 +1,7 @@
 import { apiDefaults } from '@/lib/api/config';
 import { sendApiRequest } from '@/lib/api/http';
 import { isOpenRouterProxyEnabled } from '@/lib/env/public';
+import type { TransportAuth } from '@/lib/auth/transport';
 import type { ChatCompletionMessage, Usage } from '@/lib/transport/completions';
 import type { OpenRouterChatRequest } from '@/lib/openrouter/types';
 
@@ -21,7 +22,7 @@ export type SseDelta = {
 
 type OrFetchOptions = {
   method?: string;
-  apiKey?: string;
+  auth?: TransportAuth;
   body?: unknown;
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -32,17 +33,20 @@ type OrFetchOptions = {
 };
 
 async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Response> {
-  const useProxy = apiDefaults.isBrowser && isOpenRouterProxyEnabled();
+  const useProxy =
+    typeof options.auth?.useProxy === 'boolean'
+      ? options.auth.useProxy
+      : apiDefaults.isBrowser && isOpenRouterProxyEnabled();
   const authRequired = options.authRequired ?? !useProxy;
   const headers: Record<string, string> = { ...(options.headers || {}) };
   let includeDefaults = !useProxy;
 
   if (!useProxy) {
     if (authRequired) {
-      if (!options.apiKey) throw new Error('missing_openrouter_api_key');
-      headers.Authorization = `Bearer ${options.apiKey}`;
-    } else if (options.apiKey) {
-      headers.Authorization = `Bearer ${options.apiKey}`;
+      if (!options.auth?.apiKey) throw new Error('missing_openrouter_api_key');
+      headers.Authorization = `Bearer ${options.auth.apiKey}`;
+    } else if (options.auth?.apiKey) {
+      headers.Authorization = `Bearer ${options.auth.apiKey}`;
     }
     includeDefaults = true;
   }
@@ -64,12 +68,12 @@ async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Resp
 }
 
 export async function orFetchModels(
-  apiKey: string,
+  auth: TransportAuth,
   options: { signal?: AbortSignal; origin?: string } = {},
 ): Promise<Response> {
   return orFetch('/models', {
     method: 'GET',
-    apiKey,
+    auth,
     signal: options.signal,
     origin: options.origin,
     timeoutMs: apiDefaults.timeouts.models,
@@ -89,7 +93,7 @@ export async function orFetchZdrEndpoints(
 }
 
 type ChatOptions = {
-  apiKey: string;
+  auth: TransportAuth;
   body: OpenRouterChatRequest | string;
   signal?: AbortSignal;
   stream?: boolean;
@@ -99,7 +103,7 @@ type ChatOptions = {
 export async function orChatCompletions(options: ChatOptions): Promise<Response> {
   return orFetch('/chat/completions', {
     method: 'POST',
-    apiKey: options.apiKey,
+    auth: options.auth,
     body: options.body,
     signal: options.signal,
     stream: options.stream,

@@ -1,7 +1,7 @@
 'use client';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ModelSearch } from '@/components/ModelSearch';
-import type { Chat } from '@/lib/types';
+import type { Chat, ChatSettingsPatch } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
 
@@ -11,7 +11,7 @@ type TutorPanelProps = {
   experimentalTutor: boolean;
   setUI: (ui: Partial<StoreState['ui']>) => void;
   ui: StoreState['ui'];
-  updateChatSettings: (changes: Partial<Chat['settings']>) => Promise<void>;
+  updateChatSettings: (changes: ChatSettingsPatch) => Promise<void>;
   tutorDefaultModel: string;
   setTutorDefaultModel: (value: string) => void;
 };
@@ -64,7 +64,8 @@ export function TutorPanel(props: TutorPanelProps) {
                       className={`segment ${ui?.tutor.forceMode ? 'is-active' : ''}`}
                       onClick={async () => {
                         setUI({ tutor: { forceMode: true } });
-                        if (chat) await updateChatSettings({ tutor_mode: true });
+                        if (chat)
+                          await updateChatSettings({ features: { tutor: { enabled: true } } });
                       }}
                     >
                       On

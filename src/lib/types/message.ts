@@ -1,22 +1,13 @@
-import type { ProviderSort } from '@/lib/models/providerSort';
 import type { PersistedAttachment } from '@/lib/types/attachments';
-import type { ChatSettings } from '@/lib/types/chat';
+import type { GenerationSettings, SearchProvider } from '@/lib/types/chat';
 import type { DeepResearchEvent } from '@/lib/types/deepResearch';
 import type { MessageMetrics } from '@/lib/types/metrics';
 import type { LearnerModel, MessageTutor } from '@/lib/types/tutor';
 
-export type GenSettingsSnapshot = Pick<
-  ChatSettings,
-  | 'temperature'
-  | 'top_p'
-  | 'max_tokens'
-  | 'reasoning_effort'
-  | 'reasoning_tokens'
-  | 'search_enabled'
-  | 'search_provider'
-  | 'tutor_mode'
-> & {
-  providerSort?: ProviderSort;
+export type GenSettingsSnapshot = GenerationSettings & {
+  searchEnabled?: boolean;
+  searchProvider?: SearchProvider;
+  tutorEnabled?: boolean;
 };
 
 export type ToolCallLogEntry = {

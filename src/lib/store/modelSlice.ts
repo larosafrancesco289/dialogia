@@ -1,6 +1,6 @@
 import type { StoreState } from '@/lib/store/types';
 import { fetchModels as fetchOpenRouterModels } from '@/lib/openrouter';
-import { requireClientKeyOrProxy } from '@/lib/env/public';
+import { requireTransportAuth } from '@/lib/auth/require';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
 import { computeZdrFilterCached } from '@/lib/policy/zdr/cache';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
@@ -27,13 +27,13 @@ export const createModelSlice = createStoreSlice((set, get) => {
 
     async loadModels(_opts?: { showErrors?: boolean }) {
       if (isLoadingModels) return;
-      let openrouterStatus: { key?: string; useProxy: boolean } | null = null;
+      let openrouterAuth = null;
       try {
-        openrouterStatus = requireClientKeyOrProxy();
+        openrouterAuth = requireTransportAuth('openrouter');
       } catch {
-        openrouterStatus = null;
+        openrouterAuth = null;
       }
-      if (!openrouterStatus) {
+      if (!openrouterAuth) {
         notify(get, NOTICE_MISSING_CLIENT_KEY);
         return;
       }
@@ -45,7 +45,7 @@ export const createModelSlice = createStoreSlice((set, get) => {
         let fallbackModelId: string | undefined;
         let defaultModelAvailable = false;
         try {
-          openrouterModels = await fetchOpenRouterModels(openrouterStatus.key || '');
+          openrouterModels = await fetchOpenRouterModels(openrouterAuth);
           const availableIds = new Set(openrouterModels.map((model) => model.id));
           const missingCurated = CURATED_MODELS.filter((entry) => !availableIds.has(entry.id));
           if (missingCurated.length > 0) {
@@ -99,9 +99,9 @@ export const createModelSlice = createStoreSlice((set, get) => {
           set((s) => ({
             ui: (() => {
               const nextOverrides = readNextOverrides(s.ui);
-              const modelOverride = nextOverrides.model ?? fallbackModelId;
+              const modelOverride = nextOverrides.modelId ?? fallbackModelId;
               const updatedUi = modelOverride
-                ? applyNextOverrides(s.ui, { model: modelOverride })
+                ? applyNextOverrides(s.ui, { modelId: modelOverride })
                 : s.ui;
               return updatedUi;
             })(),

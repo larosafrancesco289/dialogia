@@ -3,7 +3,7 @@ import { stripLeadingToolJson } from '@/lib/agent/streaming/stripToolJson';
 import type { Message } from '@/lib/types';
 import type { TurnStoreState } from '@/lib/agent/contracts';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
-import { computeMetrics } from '@/lib/services/metrics';
+import { computeMetrics } from '@/lib/turnRuntime/metrics';
 import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { notify } from '@/lib/store/notify';

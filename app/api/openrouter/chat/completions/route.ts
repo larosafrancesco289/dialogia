@@ -1,5 +1,6 @@
 import { orChatCompletions } from '@/lib/openrouter/http';
 import { getOpenRouterApiKeyForTier, canUseTierModel, getServerTier } from '@/lib/auth/tierApiKey';
+import { buildTransportAuth } from '@/lib/auth/transport';
 import { jsonError } from '@/lib/server/route';
 import {
   getRequestOrigin,
@@ -39,7 +40,7 @@ export const POST = route('openrouter-chat')
       }
 
       const res = await orChatCompletions({
-        apiKey,
+        auth: buildTransportAuth({ transport: 'openrouter', apiKey, useProxy: false }),
         body: bodyText,
         stream,
         origin: getRequestOrigin(req),

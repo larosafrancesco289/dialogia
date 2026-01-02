@@ -9,14 +9,15 @@ export const isTutorRuntimeEnabled = (ui: UiSnapshot, chat: Chat, tier?: AccessT
 
   const tutorGloballyEnabled = !!ui.flags.experimentalTutor;
   const forceTutorMode = !!(ui.tutor.forceMode ?? false);
-  return tutorGloballyEnabled && (forceTutorMode || !!chat.settings.tutor_mode);
+  return tutorGloballyEnabled && (forceTutorMode || !!chat.settings.features.tutor.enabled);
 };
 
 export const selectTutorDefaultModelId = (
   ui: UiSnapshot,
   chat: Chat,
   fallback?: string,
-): string | undefined => ui.tutor.defaultModelId || chat.settings.tutor_default_model || fallback;
+): string | undefined =>
+  ui.tutor.defaultModelId || chat.settings.features.tutor.defaultModelId || fallback;
 
 export const enforceZdrGate = async (
   ui: UiSnapshot,

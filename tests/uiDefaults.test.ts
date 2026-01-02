@@ -20,7 +20,7 @@ test('resetEphemeralUi clears staged next values', () => {
   const state: UIState = {
     ...buildDefaultUIState(),
     overrides: {
-      model: 'test-model',
+      modelId: 'test-model',
       search: { enabled: true },
       tutorMode: true,
     },

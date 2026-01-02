@@ -16,7 +16,16 @@ export async function persistLearnerModel(opts: {
   const { chat, chatId, learnerModel, set, updateChat, persistChat } = opts;
   const updatedChat: Chat = {
     ...chat,
-    settings: { ...chat.settings, learnerModel },
+    settings: {
+      ...chat.settings,
+      features: {
+        ...chat.settings.features,
+        tutor: {
+          ...chat.settings.features.tutor,
+          learnerModel,
+        },
+      },
+    },
     updatedAt: Date.now(),
   };
   set((state) => ({

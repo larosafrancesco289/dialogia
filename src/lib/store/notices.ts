@@ -10,6 +10,7 @@ export const NOTICE_CATALOG = {
   exportedChats: 'Exported chats to JSON',
   importedData: 'Imported data',
   planApplyFailed: 'Failed to apply learning plan. Please try again.',
+  deepResearchNotAvailable: 'Deep research is not available on the free tier.',
   deepResearchRequiresOpenRouter: 'DeepResearch currently requires an OpenRouter model selection.',
 } as const;
 
@@ -28,5 +29,6 @@ export const NOTICE_MODELS_UNAVAILABLE = NOTICE_CATALOG.modelsUnavailable;
 export const NOTICE_EXPORTED_CHATS = NOTICE_CATALOG.exportedChats;
 export const NOTICE_IMPORTED_DATA = NOTICE_CATALOG.importedData;
 export const NOTICE_PLAN_APPLY_FAILED = NOTICE_CATALOG.planApplyFailed;
+export const NOTICE_DEEP_RESEARCH_NOT_AVAILABLE = NOTICE_CATALOG.deepResearchNotAvailable;
 export const NOTICE_DEEP_RESEARCH_REQUIRES_OPENROUTER =
   NOTICE_CATALOG.deepResearchRequiresOpenRouter;

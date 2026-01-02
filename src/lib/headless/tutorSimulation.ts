@@ -17,6 +17,7 @@ import { CURATED_MODELS } from '@/data/curatedModels';
 import { parseArgs } from '@/lib/cli/args';
 import { loadEnvDefaults } from '@/lib/cli/env.node';
 import { getOpenRouterKeyFallback } from '@/lib/env/server';
+import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
 
 type PresetDefinition = {
   goal: string;
@@ -75,10 +76,10 @@ function coerceInt(value: string | boolean | undefined, fallback: number): numbe
   return fallback;
 }
 
-async function safeFetchModels(key: string | undefined): Promise<ModelDescriptor[]> {
-  if (!key) return [];
+async function safeFetchModels(auth: TransportAuth | null): Promise<ModelDescriptor[]> {
+  if (!auth) return [];
   try {
-    return await fetchModels(key);
+    return await fetchModels(auth);
   } catch {
     return [];
   }
@@ -100,16 +101,16 @@ function createStubModel(
   };
 }
 
-function resolveApiKeyFactory(keys: {
+function resolveAuthFactory(keys: {
   openrouter?: string;
-}): (params: { modelId: string; transport: ModelTransport }) => string {
-  return ({ modelId }) => {
+}): (params: { modelId: string; transport: ModelTransport }) => TransportAuth {
+  return ({ modelId, transport }) => {
     if (!keys.openrouter) {
       throw new Error(
         `OpenRouter transport requested for ${modelId}, but no OPENROUTER_API_KEY (or --openrouter-key) provided.`,
       );
     }
-    return keys.openrouter;
+    return buildTransportAuth({ transport, apiKey: keys.openrouter, useProxy: false });
   };
 }
 
@@ -477,7 +478,10 @@ export async function runTutorSimulationCli(argv: string[]) {
     (typeof args['openrouter-key'] === 'string' && args['openrouter-key']) ||
     getOpenRouterKeyFallback();
 
-  const remoteModels = await safeFetchModels(openrouterKey);
+  const openrouterAuth = openrouterKey
+    ? buildTransportAuth({ transport: 'openrouter', apiKey: openrouterKey, useProxy: false })
+    : null;
+  const remoteModels = await safeFetchModels(openrouterAuth);
   const allModelIds = Array.from(new Set([tutorModel, studentModel, judgeModel]));
   const models: ModelDescriptor[] = allModelIds.map((id) => {
     const fromRemote = remoteModels.find((m) => m.id === id);
@@ -493,19 +497,27 @@ export async function runTutorSimulationCli(argv: string[]) {
     createdAt: Date.now(),
     updatedAt: Date.now(),
     settings: {
-      model: tutorModel,
-      tutor_mode: true,
-      tutor_default_model: tutorModel,
-      enableLearnerModel: true,
       system: DEFAULT_BASE_SYSTEM,
-      search_enabled: false,
-      search_provider: 'openrouter',
-      showToolCallLog: true,
-      showDebugRawJson: true,
+      modelId: tutorModel,
+      generation: {},
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: true,
+        showDebugRawJson: true,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: {
+          enabled: true,
+          defaultModelId: tutorModel,
+          enableLearnerModel: true,
+        },
+      },
     },
   };
 
-  const resolveApiKey = resolveApiKeyFactory({
+  const resolveAuth = resolveAuthFactory({
     openrouter: openrouterKey,
   });
 
@@ -515,7 +527,7 @@ export async function runTutorSimulationCli(argv: string[]) {
     chat,
     models,
     modelIndex,
-    resolveApiKey,
+    resolveAuth,
     uiOverrides: {
       debug: { mode: true },
       flags: { experimentalTutor: true },
@@ -530,8 +542,7 @@ export async function runTutorSimulationCli(argv: string[]) {
   );
   const studentSim = new LLMUserSimulator({
     modelId: studentModel,
-    transport: studentTransport,
-    apiKey: resolveApiKey({ modelId: studentModel, transport: studentTransport }),
+    auth: resolveAuth({ modelId: studentModel, transport: studentTransport }),
   });
 
   const judgeTransport = resolveModelTransport(
@@ -540,8 +551,7 @@ export async function runTutorSimulationCli(argv: string[]) {
   );
   const judge = new LLMJudge({
     modelId: judgeModel,
-    transport: judgeTransport,
-    apiKey: resolveApiKey({ modelId: judgeModel, transport: judgeTransport }),
+    auth: resolveAuth({ modelId: judgeModel, transport: judgeTransport }),
   });
 
   let studentMessage =

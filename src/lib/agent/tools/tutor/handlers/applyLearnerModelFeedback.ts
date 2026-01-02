@@ -54,7 +54,7 @@ export const applyLearnerModelFeedbackHandler: TutorToolHandler<ApplyLearnerMode
   },
 
   async apply(ctx, args) {
-    const plan = ctx.chat.settings.learningPlan;
+    const plan = ctx.chat.settings.features.tutor.learningPlan;
     const state = ctx.get();
     const messagesForChat = getMessagesForChat(state, ctx.chatId);
     let currentModel = getLatestLearnerModel(messagesForChat);

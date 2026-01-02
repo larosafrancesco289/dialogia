@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { runWebSearch } from '@/lib/deepResearch/tools';
-import type { WebSearchToolArgs } from '@/lib/tools/webSearch';
+import { runWebSearch } from '@/lib/deepResearch/server/tools.server';
+import type { WebSearchToolArgs } from '@/lib/tools/definitions/webSearch';
 import { jsonError } from '@/lib/server/route';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';

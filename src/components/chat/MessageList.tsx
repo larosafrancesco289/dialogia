@@ -153,7 +153,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
 
   // Composer is now rendered outside this scroll container in ChatPane.
 
-  const showByDefault = chat?.settings.show_thinking_by_default ?? false;
+  const showByDefault = chat?.settings.ui.showThinkingByDefault ?? false;
   const {
     isReasoningExpanded,
     toggleReasoning,

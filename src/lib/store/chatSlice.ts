@@ -7,7 +7,7 @@ import { repository } from '@/lib/db';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { bootstrapApp } from '@/lib/services/bootstrap';
 import type { StoreSetter, StoreState } from '@/lib/store/types';
-import type { Chat } from '@/lib/types';
+import type { Chat, ChatSettingsPatch } from '@/lib/types';
 import { getClientTier } from '@/lib/auth/tier.client';
 import { isTutorForcedForTier } from '@/lib/auth/tierFeatures';
 import {
@@ -33,7 +33,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
 
       set((s) => ({ chats: [chat, ...s.chats], selectedChatId: chat.id }));
 
-      if (chat.settings.tutor_mode) primeTutorWelcome(chat.id, { set, get });
+      if (chat.settings.features.tutor.enabled) primeTutorWelcome(chat.id, { set, get });
 
       // Reset ephemeral "next" flags so they only apply to this new chat
       set((s) => ({
@@ -91,7 +91,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       }));
     },
 
-    async updateChatSettings(partial) {
+    async updateChatSettings(partial: ChatSettingsPatch) {
       const id = get().selectedChatId;
       if (!id) return;
       const before = get().chats.find((c) => c.id === id);
@@ -100,51 +100,75 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       const uiState = get().ui;
       const forceTutorMode =
         isTutorForcedForTier(getClientTier()) || !!(uiState.tutor.forceMode ?? false);
-      let appliedPartial = { ...partial } as Partial<Chat['settings']>;
+      const fallbackUi = {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: false,
+        showDebugRawJson: true,
+      };
+      const fallbackFeatures = {
+        search: { enabled: false, provider: 'openrouter' as const },
+        tutor: { enabled: false },
+      };
 
-      if (Array.isArray(appliedPartial.parallel_models)) {
-        const base = appliedPartial.model ?? before.settings.model;
-        appliedPartial.parallel_models = normalizeParallelModels(
-          base,
-          appliedPartial.parallel_models,
-        );
-      }
+      const mergeSettings = (
+        base: Chat['settings'],
+        patch: ChatSettingsPatch,
+      ): Chat['settings'] => {
+        const baseGeneration = base.generation ?? {};
+        const baseUi = base.ui ?? fallbackUi;
+        const baseFeatures = base.features ?? fallbackFeatures;
+        const patchFeatures = patch.features;
+        const baseSearch = baseFeatures.search ?? fallbackFeatures.search;
+        const baseTutor = baseFeatures.tutor ?? fallbackFeatures.tutor;
 
-      const ensureTutor = () => {
-        const baseSettings = {
-          ...(before.settings || {}),
-          ...appliedPartial,
-        } as Chat['settings'];
-        const ensured = applyTutorDefaults({
-          ui: uiState,
-          chat: { settings: baseSettings },
-          fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-        });
-        const nextSettings = ensured.nextSettings;
-        appliedPartial = {
-          ...appliedPartial,
-          tutor_mode: true,
-          model: nextSettings.model,
-          tutor_default_model: nextSettings.tutor_default_model,
-          enableLearnerModel: nextSettings.enableLearnerModel,
+        return {
+          ...base,
+          ...patch,
+          generation: { ...baseGeneration, ...(patch.generation ?? {}) },
+          ui: { ...baseUi, ...(patch.ui ?? {}) },
+          features: {
+            ...baseFeatures,
+            search: { ...baseSearch, ...(patchFeatures?.search ?? {}) },
+            tutor: { ...baseTutor, ...(patchFeatures?.tutor ?? {}) },
+          },
         };
       };
 
-      if (appliedPartial.tutor_mode === true) ensureTutor();
-      if (forceTutorMode) ensureTutor();
+      let nextSettings = mergeSettings(before.settings, partial);
 
-      const finalSettings = { ...before.settings, ...appliedPartial };
-      if (forceTutorMode) finalSettings.tutor_mode = true;
-      if (Array.isArray(finalSettings.parallel_models)) {
-        finalSettings.parallel_models = normalizeParallelModels(
-          finalSettings.model,
-          finalSettings.parallel_models,
-        );
+      if (Array.isArray(nextSettings.parallelModels)) {
+        nextSettings = {
+          ...nextSettings,
+          parallelModels: normalizeParallelModels(
+            nextSettings.modelId,
+            nextSettings.parallelModels,
+          ),
+        };
+      }
+
+      if (forceTutorMode || nextSettings.features.tutor.enabled) {
+        const ensured = applyTutorDefaults({
+          ui: uiState,
+          chat: { settings: nextSettings },
+          fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
+        });
+        nextSettings = {
+          ...ensured.nextSettings,
+          features: {
+            ...ensured.nextSettings.features,
+            tutor: {
+              ...ensured.nextSettings.features.tutor,
+              enabled: true,
+            },
+          },
+          parallelModels: [],
+        };
       }
 
       const updatedChat = await ChatService.updateChat(
         before,
-        { settings: finalSettings },
+        { settings: nextSettings },
         repository,
       );
 
@@ -154,9 +178,8 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       }));
 
       const turnedOn =
-        typeof appliedPartial?.tutor_mode === 'boolean' &&
-        before.settings.tutor_mode !== appliedPartial.tutor_mode &&
-        appliedPartial.tutor_mode === true;
+        before.settings.features.tutor.enabled !== nextSettings.features.tutor.enabled &&
+        nextSettings.features.tutor.enabled === true;
 
       if (turnedOn && !!get().ui.flags.experimentalTutor) {
         Promise.resolve(primeTutorWelcome(id, { set, get })).catch(() => undefined);

@@ -1,5 +1,5 @@
 import 'server-only';
-import type { ChatSettings, TutorResearchMode } from '@/lib/types';
+import type { ChatSettingsPatch, TutorResearchMode } from '@/lib/types';
 
 /**
  * Ablation study conditions for thesis evaluation.
@@ -71,14 +71,18 @@ export const CONDITION_CONFIGS: Record<AblationCondition, AblationConditionConfi
 /**
  * Get chat settings overrides for a given ablation condition.
  */
-export function getConditionSettings(condition: AblationCondition): Partial<ChatSettings> {
+export function getConditionSettings(condition: AblationCondition): ChatSettingsPatch {
   const config = CONDITION_CONFIGS[condition];
 
   return {
-    tutor_research_mode: config.researchMode,
-    enableLearnerModel: config.learnerModelVisible,
-    // Additional flags for fine-grained control (used by tutor/state.ts)
-    tutor_thesis_mode: true,
+    features: {
+      tutor: {
+        researchMode: config.researchMode,
+        enableLearnerModel: config.learnerModelVisible,
+        // Additional flags for fine-grained control (used by tutor/state.ts)
+        thesisMode: true,
+      },
+    },
   };
 }
 
