@@ -46,7 +46,10 @@ export type AssistantMessageProps = {
   ) => void;
   attachments: PersistedAttachment[];
   tutorEnabled: boolean;
-  messagePanelsNode: ReactNode;
+  /** Debug, reasoning, and brave source panels - rendered above message content */
+  upperPanelsNode: ReactNode;
+  /** Tutor panel - rendered below message content so tutor's text appears first */
+  tutorPanelNode: ReactNode;
 };
 
 export function AssistantMessage({
@@ -75,7 +78,8 @@ export function AssistantMessage({
   setLightbox,
   attachments,
   tutorEnabled,
-  messagePanelsNode,
+  upperPanelsNode,
+  tutorPanelNode,
 }: AssistantMessageProps) {
   const displayContent = useMemo(() => {
     if (message.content) return message.content;
@@ -127,7 +131,7 @@ export function AssistantMessage({
         </MessageActions>
       )}
 
-      {messagePanelsNode}
+      {upperPanelsNode}
 
       <MessageAttachments attachments={attachments} onOpenLightbox={setLightbox} />
 
@@ -157,6 +161,8 @@ export function AssistantMessage({
           <Markdown content={displayContent} />
         )}
       </div>
+
+      {tutorPanelNode}
 
       {/* Learner Model Updates */}
       {!isEditing && <LearnerModelUpdates message={message} />}

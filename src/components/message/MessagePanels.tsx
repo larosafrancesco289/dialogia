@@ -32,7 +32,13 @@ export type MessagePanelsProps = {
   highlightToolCalls?: boolean;
 };
 
-export function MessagePanels({
+/**
+ * Renders panels that appear ABOVE the message content:
+ * - Brave sources
+ * - Debug panel
+ * - Reasoning panel
+ */
+export function MessagePanelsUpper({
   message,
   chat,
   models,
@@ -44,8 +50,6 @@ export function MessagePanels({
   debugEntry,
   isDebugExpanded,
   onToggleDebug,
-  tutorGloballyEnabled,
-  tutorEntry,
   autoReasoningModelIds,
   isStreaming,
   lastMessageId,
@@ -55,7 +59,7 @@ export function MessagePanels({
   showDebugRawJson,
   toolCalls,
   highlightToolCalls,
-}: MessagePanelsProps) {
+}: Omit<MessagePanelsProps, 'tutorGloballyEnabled' | 'tutorEntry'>) {
   const panels: React.ReactNode[] = [];
 
   if (braveGloballyEnabled && braveEntry) {
@@ -98,28 +102,69 @@ export function MessagePanels({
   });
   if (reasoningPanel) panels.push(reasoningPanel);
 
-  if (tutorGloballyEnabled && tutorEntry) {
-    panels.push(
-      <TutorPanel
-        key="tutor"
-        messageId={message.id}
-        title={tutorEntry.title}
-        mcq={tutorEntry.mcq}
-        fillBlank={tutorEntry.fillBlank}
-        openEnded={tutorEntry.openEnded}
-        flashcards={tutorEntry.flashcards}
-        questionnaire={tutorEntry.questionnaire}
-        diagnostic={tutorEntry.diagnostic}
-        planProposal={tutorEntry.planProposal}
-        planSuggestions={tutorEntry.planSuggestions}
-        assessmentUpdates={tutorEntry.assessmentUpdates}
-        grading={tutorEntry.grading}
-      />,
-    );
-  }
-
   if (panels.length === 0) return null;
   return <>{panels}</>;
+}
+
+/**
+ * Renders the tutor panel that appears BELOW the message content.
+ * This ensures the tutor's explanatory text is visible before the interactive tools.
+ */
+export function TutorPanelSection({
+  messageId,
+  tutorGloballyEnabled,
+  tutorEntry,
+}: {
+  messageId: string;
+  tutorGloballyEnabled: boolean;
+  tutorEntry?: MessageTutor;
+}) {
+  if (!tutorGloballyEnabled || !tutorEntry) return null;
+
+  return (
+    <TutorPanel
+      messageId={messageId}
+      title={tutorEntry.title}
+      mcq={tutorEntry.mcq}
+      fillBlank={tutorEntry.fillBlank}
+      openEnded={tutorEntry.openEnded}
+      flashcards={tutorEntry.flashcards}
+      questionnaire={tutorEntry.questionnaire}
+      diagnostic={tutorEntry.diagnostic}
+      planProposal={tutorEntry.planProposal}
+      planSuggestions={tutorEntry.planSuggestions}
+      assessmentUpdates={tutorEntry.assessmentUpdates}
+      grading={tutorEntry.grading}
+    />
+  );
+}
+
+/**
+ * @deprecated Use MessagePanelsUpper and TutorPanelSection separately for proper ordering.
+ * This is kept for backward compatibility but renders all panels together.
+ */
+export function MessagePanels(props: MessagePanelsProps) {
+  const { tutorGloballyEnabled, tutorEntry, message, ...upperProps } = props;
+
+  const upperPanels = <MessagePanelsUpper message={message} {...upperProps} />;
+  const tutorPanel = (
+    <TutorPanelSection
+      messageId={message.id}
+      tutorGloballyEnabled={tutorGloballyEnabled}
+      tutorEntry={tutorEntry}
+    />
+  );
+
+  const hasUpper = upperPanels !== null;
+  const hasTutor = tutorGloballyEnabled && tutorEntry;
+
+  if (!hasUpper && !hasTutor) return null;
+  return (
+    <>
+      {upperPanels}
+      {tutorPanel}
+    </>
+  );
 }
 
 function buildReasoningPanel({
