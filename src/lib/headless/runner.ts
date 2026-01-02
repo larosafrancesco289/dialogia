@@ -1,6 +1,6 @@
 import 'server-only';
 import type { StoreApi } from 'zustand/vanilla';
-import { HeadlessTutorSession, type ApiKeyResolver } from '@/lib/headless/session';
+import { HeadlessTutorSession, type AuthResolver } from '@/lib/headless/session';
 import { buildHeadlessTurnSnapshot, type HeadlessTurnSnapshot } from '@/lib/headless/types';
 import type { Chat, Message, ModelDescriptor } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
@@ -13,7 +13,7 @@ export type HeadlessRunOptions = {
   modelIndex?: ModelIndex;
   uiOverrides?: Partial<UIState>;
   initialMessages?: Message[];
-  resolveApiKey: ApiKeyResolver;
+  resolveAuth: AuthResolver;
   store?: StoreApi<StoreState>;
   session?: HeadlessTutorSession;
   pipeline?: PipelineClient;
@@ -46,7 +46,7 @@ export function createHeadlessRunner(options: HeadlessRunOptions): HeadlessRunne
       modelIndex: options.modelIndex,
       uiOverrides: options.uiOverrides,
       initialMessages: options.initialMessages,
-      resolveApiKey: options.resolveApiKey,
+      resolveAuth: options.resolveAuth,
       store: options.store,
       pipeline: options.pipeline,
     });

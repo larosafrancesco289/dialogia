@@ -17,6 +17,7 @@ import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learner
 import { generatePlanContextPreamble } from '@/lib/agent/tutor/planContext';
 import { isTutorContentTool, isTutorMetaTool, isSearchTool } from '@/lib/agent/tools/categories';
 import { getOpenRouterKeyFallback } from '@/lib/env/server';
+import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
 
 export type TutorEvalOptions = {
   apiKeys?: {
@@ -95,14 +96,14 @@ function isTextRecord(value: unknown): value is { text?: unknown } {
   return !!value && typeof value === 'object' && 'text' in value;
 }
 
-function resolveApiKeyFactory(
+function resolveAuthFactory(
   keys: TutorEvalOptions['apiKeys'],
-): (params: { modelId: string; transport: ModelTransport }) => string {
-  return () => {
+): (params: { modelId: string; transport: ModelTransport }) => TransportAuth {
+  return ({ transport }) => {
     if (!keys?.openrouter) {
       throw new Error('Missing OPENROUTER_API_KEY for OpenRouter transport');
     }
-    return keys.openrouter;
+    return buildTransportAuth({ transport, apiKey: keys.openrouter, useProxy: false });
   };
 }
 
@@ -189,7 +190,7 @@ export async function runTutorScenario(
     createStubModel(judgeModelId, judgeTransport, false),
   ];
   const modelIndex = createModelIndex(models);
-  const resolveApiKey = resolveApiKeyFactory(apiKeys);
+  const resolveAuth = resolveAuthFactory(apiKeys);
 
   const chat: Chat = {
     id: `chat_${scenario.id}`,
@@ -197,15 +198,23 @@ export async function runTutorScenario(
     createdAt: Date.now(),
     updatedAt: Date.now(),
     settings: {
-      model: teacherModelId,
-      tutor_mode: true,
-      tutor_default_model: teacherModelId,
-      enableLearnerModel: true,
       system: DEFAULT_BASE_SYSTEM,
-      search_enabled: false,
-      search_provider: 'openrouter',
-      showToolCallLog: true,
-      showDebugRawJson: true,
+      modelId: teacherModelId,
+      generation: {},
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: true,
+        showDebugRawJson: true,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: {
+          enabled: true,
+          defaultModelId: teacherModelId,
+          enableLearnerModel: true,
+        },
+      },
     },
   };
 
@@ -213,7 +222,7 @@ export async function runTutorScenario(
     chat,
     models,
     modelIndex,
-    resolveApiKey,
+    resolveAuth,
     uiOverrides: {
       debug: { mode: true },
       flags: { experimentalTutor: true },
@@ -224,8 +233,7 @@ export async function runTutorScenario(
 
   const studentSim = new LLMUserSimulator({
     modelId: studentModelId,
-    transport: studentTransport,
-    apiKey: resolveApiKey({ modelId: studentModelId, transport: studentTransport }),
+    auth: resolveAuth({ modelId: studentModelId, transport: studentTransport }),
     personaPrompt: [
       'You are a student in a simulated tutoring session.',
       `Topic: ${scenario.topic} (${scenario.level})`,
@@ -265,7 +273,7 @@ export async function runTutorScenario(
   const finalPlan = runner
     .getSession()
     .getState()
-    .chats.find((c) => c.id === chat.id)?.settings.learningPlan;
+    .chats.find((c) => c.id === chat.id)?.settings.features.tutor.learningPlan;
   const learnerModel = getLatestLearnerModel(result.messages);
   const planSummary =
     finalPlan && planUsageNeeded(toolUsage)
@@ -294,12 +302,11 @@ export async function runTutorScenario(
     toolUsageSummary: formatToolUsage(toolUsage),
   });
   const judgeResponse = await getChatCompletion()({
-    apiKey: resolveApiKey({ modelId: judgeModelId, transport: judgeTransport }),
-    transport: judgeTransport,
+    auth: resolveAuth({ modelId: judgeModelId, transport: judgeTransport }),
     model: judgeModelId,
     messages: judgeMessages,
     temperature: 0,
-    max_tokens: 256,
+    maxTokens: 256,
   });
   const judgeRaw =
     judgeResponse?.choices?.[0]?.message?.content != null

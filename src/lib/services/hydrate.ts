@@ -1,3 +1,6 @@
+// Module: services/hydrate
+// Responsibility: Convert repository snapshots into store-ready message indices.
+
 import type { RepositorySnapshot } from '@/lib/db/repository';
 import type { Message, MessageTutor } from '@/lib/types';
 import { ensureHiddenTutorContent } from '@/lib/services/messagePersistence';

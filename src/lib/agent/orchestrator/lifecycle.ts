@@ -65,10 +65,10 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
         set((state) => ({ ui: resetEphemeralUi(state.ui) }));
       }
       const chat = getChatForTurn();
-      if (composition.settings.tutorEnabled && chat.settings.learningPlan) {
+      if (composition.settings.tutorEnabled && chat.settings.features.tutor.learningPlan) {
         priorLearnerModel =
           getLatestLearnerModel(priorMessages) ??
-          initializeLearnerModel(chatId, chat.settings.learningPlan);
+          initializeLearnerModel(chatId, chat.settings.features.tutor.learningPlan);
       }
     },
     onPlanResult: (plan) => {
@@ -89,9 +89,10 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
         });
       }
 
-      if (plan.updatedPlan && plan.updatedPlan !== chat.settings.learningPlan) {
+      if (plan.updatedPlan && plan.updatedPlan !== chat.settings.features.tutor.learningPlan) {
         const diff =
-          plan.planUpdates ?? diffPlanUpdates(chat.settings.learningPlan, plan.updatedPlan);
+          plan.planUpdates ??
+          diffPlanUpdates(chat.settings.features.tutor.learningPlan, plan.updatedPlan);
         if (diff) pendingPlanUpdates = diff;
         void persistLearningPlan({
           chat,

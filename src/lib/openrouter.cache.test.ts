@@ -6,6 +6,7 @@ import {
   fetchZdrModelIds,
   fetchZdrProviderIds,
 } from '@/lib/openrouter';
+import { buildTransportAuth } from '@/lib/auth/transport';
 
 const okResponse = (payload: unknown) =>
   ({
@@ -24,8 +25,9 @@ test('fetchModels caches repeated lookups for the same API key', async () => {
     });
   };
 
-  const first = await fetchModels('key-123', { fetchFn: fakeFetcher });
-  const second = await fetchModels('key-123', { fetchFn: fakeFetcher });
+  const auth = buildTransportAuth({ transport: 'openrouter', apiKey: 'key-123', useProxy: false });
+  const first = await fetchModels(auth, { fetchFn: fakeFetcher });
+  const second = await fetchModels(auth, { fetchFn: fakeFetcher });
 
   assert.equal(calls, 1);
   assert.equal(first[0]?.id, 'test/model');

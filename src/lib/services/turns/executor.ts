@@ -1,3 +1,6 @@
+// Module: services/turns/executor
+// Responsibility: Execute one model turn (compose, plan, stream) and manage lifecycle hooks.
+
 import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
@@ -6,7 +9,7 @@ import { planTurn } from '@/lib/agent/planning';
 import { streamFinal } from '@/lib/agent/streaming';
 import { shouldShortCircuitTutor } from '@/lib/agent/policy';
 import type { Repository } from '@/lib/db/repository';
-import { updateMessageInChat } from '@/lib/store/messageUtils';
+import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
 import type { SendRuntime } from '@/lib/services/turns/runtime';
 import type { Chat, Message, PersistedAttachment } from '@/lib/types';
@@ -60,7 +63,7 @@ export const executeModelTurn = async ({
       const chat = getCurrentChat();
       return {
         ...chat,
-        settings: { ...chat.settings, model: modelId },
+        settings: { ...chat.settings, modelId },
       };
     };
 
@@ -71,6 +74,16 @@ export const executeModelTurn = async ({
     };
 
     const persistMessage = createMessagePersister(repository);
+    const updateMessage = (messageId: string, patch: Partial<Message>) => {
+      set((state) => {
+        const next = updateMessageById(state, runtime.chatId, messageId, (message) => ({
+          ...message,
+          ...patch,
+        }));
+        return next ?? state;
+      });
+    };
+
     const lifecycle = createTurnLifecycle({
       chatId: runtime.chatId,
       assistantMessageId: assistantMessage.id,
@@ -81,8 +94,7 @@ export const executeModelTurn = async ({
       get,
       updateChat,
       persistChat: repository.saveChat,
-      updateMessage: (patch) =>
-        set((state) => updateMessageInChat(state, runtime.chatId, assistantMessage.id, patch)),
+      updateMessage: (patch) => updateMessage(assistantMessage.id, patch),
     });
 
     const modelContext = runtime.modelContexts.get(modelId);
@@ -127,8 +139,7 @@ export const executeModelTurn = async ({
         assistantMessage,
         lifecycle,
         getState: get,
-        updateMessage: (messageId, patch) =>
-          set((state) => updateMessageInChat(state, runtime.chatId, messageId, patch)),
+        updateMessage,
         persistMessage,
       });
       return;

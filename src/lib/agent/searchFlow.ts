@@ -4,7 +4,7 @@
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 import type { SearchProvider, SearchResult, ToolDefinition, StoreSetter } from '@/lib/agent/types';
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
-import { getWebSearchToolDefinition } from '@/lib/tools/webSearch';
+import { getWebSearchToolDefinition } from '@/lib/tools/definitions';
 import { runBraveSearchProxy } from '@/lib/search/brave';
 import { isApiError } from '@/lib/api/errors';
 

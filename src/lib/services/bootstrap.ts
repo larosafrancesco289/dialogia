@@ -1,3 +1,6 @@
+// Module: services/bootstrap
+// Responsibility: Hydrate store from persisted repository data and schedule background refreshes.
+
 import { loadRepositorySnapshot } from '@/lib/db';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import { hydrateRepositorySnapshot } from '@/lib/services/hydrate';

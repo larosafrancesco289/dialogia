@@ -96,7 +96,7 @@ export const updateLearnerModelHandler: TutorToolHandler<UpdateLearnerModelArgs>
   },
 
   async apply(ctx, args) {
-    const plan = ctx.chat.settings.learningPlan;
+    const plan = ctx.chat.settings.features.tutor.learningPlan;
 
     await ctx.applyTutorPatch((prev) => {
       const prior = Array.isArray(prev.assessmentUpdates)

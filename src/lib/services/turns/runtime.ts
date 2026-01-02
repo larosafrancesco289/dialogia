@@ -1,11 +1,8 @@
+// Module: services/turns/runtime
+// Responsibility: Assemble per-turn runtime context (models, auth, attachments) for chat sends.
+
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import type {
-  DraftAttachment,
-  PersistedAttachment,
-  Chat,
-  Message,
-  ModelTransport,
-} from '@/lib/types';
+import type { DraftAttachment, PersistedAttachment, Chat, Message } from '@/lib/types';
 import type { StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelCapabilityFlags } from '@/lib/models';
@@ -14,7 +11,7 @@ import { FREE_MODEL_IDS } from '@/data/freeModels';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { ensureTutorDefaults } from '@/lib/agent/tutorFlow';
 import { createModelAuthResolver, type ModelAuth } from '@/lib/services/auth';
-import { prepareAttachmentsByModel } from '@/lib/services/attachments';
+import { prepareAttachmentsByModel } from '@/lib/attachments/prepareByModel';
 import { normalizeParallelModels } from '@/lib/store/normalize';
 import { readNextOverrides } from '@/lib/ui/next';
 import { isTutorRuntimeEnabled, selectTutorDefaultModelId } from '@/lib/policy/runtime';
@@ -28,7 +25,7 @@ import { getMessagesForChat } from '@/lib/messages/indexing';
 
 export type TurnModelContext = {
   modelId: string;
-  auth: ModelAuth & { transport: ModelTransport };
+  auth: ModelAuth;
   caps: ModelCapabilityFlags;
   attachments: PersistedAttachment[];
 };
@@ -43,7 +40,7 @@ export type SendRuntime = {
   activeModelIds: string[];
   primaryModelId?: string;
   priorMessages: Message[];
-  baseTurnContext: Omit<TurnContext, 'apiKey' | 'transport'>;
+  baseTurnContext: Omit<TurnContext, 'auth'>;
   modelContexts: Map<string, TurnModelContext>;
 };
 
@@ -90,7 +87,7 @@ export const prepareSendRuntime = async ({
     }
     const preferredTutorModelId =
       ensured.defaultModelId ||
-      chat.settings.tutor_default_model ||
+      chat.settings.features.tutor.defaultModelId ||
       tutorDefaultModelId ||
       DEFAULT_TUTOR_MODEL_ID;
     const allowAllModels = canUseAllModelsForTier(tier);
@@ -118,15 +115,21 @@ export const prepareSendRuntime = async ({
     tutorDefaultModelId = resolvedTutorModelId;
     if (
       resolvedTutorModelId &&
-      (chat.settings.model !== resolvedTutorModelId ||
-        chat.settings.tutor_default_model !== resolvedTutorModelId)
+      (chat.settings.modelId !== resolvedTutorModelId ||
+        chat.settings.features.tutor.defaultModelId !== resolvedTutorModelId)
     ) {
       const updatedChat: Chat = {
         ...chat,
         settings: {
           ...chat.settings,
-          model: resolvedTutorModelId,
-          tutor_default_model: resolvedTutorModelId,
+          modelId: resolvedTutorModelId,
+          features: {
+            ...chat.settings.features,
+            tutor: {
+              ...chat.settings.features.tutor,
+              defaultModelId: resolvedTutorModelId,
+            },
+          },
         },
         updatedAt: Date.now(),
       };
@@ -141,17 +144,17 @@ export const prepareSendRuntime = async ({
   }
 
   const parallelModels = normalizeParallelModels(
-    chat.settings.model,
-    chat.settings.parallel_models,
+    chat.settings.modelId,
+    chat.settings.parallelModels,
   );
   const activeModelIds = Array.from(
     new Set(
-      [chat.settings.model, ...parallelModels].filter(
+      [chat.settings.modelId, ...parallelModels].filter(
         (id): id is string => typeof id === 'string' && id.length > 0,
       ),
     ),
   );
-  if (!activeModelIds.length && chat.settings.model) activeModelIds.push(chat.settings.model);
+  if (!activeModelIds.length && chat.settings.modelId) activeModelIds.push(chat.settings.modelId);
 
   const modelAuthResolver = createModelAuthResolver({
     modelIndex: get().modelIndex,
@@ -173,7 +176,7 @@ export const prepareSendRuntime = async ({
   });
 
   const persistMessage = createMessagePersister(repository);
-  const baseTurnContext: Omit<TurnContext, 'apiKey' | 'transport'> = {
+  const baseTurnContext: Omit<TurnContext, 'auth'> = {
     set,
     get,
     models: get().models,

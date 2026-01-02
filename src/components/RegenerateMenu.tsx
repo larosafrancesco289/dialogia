@@ -30,7 +30,10 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
     return map;
   }, [models]);
   const curated = [
-    { id: chat?.settings.model || curatedModels[0]?.id || tierDefaultModelId, name: 'Current' },
+    {
+      id: chat?.settings.modelId || curatedModels[0]?.id || tierDefaultModelId,
+      name: 'Current',
+    },
     ...curatedModels,
   ];
   const customOptions = (favoriteModelIds || []).map((id) => ({ id, name: id }));

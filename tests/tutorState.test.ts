@@ -1,16 +1,31 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getTutorPhase, allowedTutorToolsForPhase } from '@/lib/agent/tutor/state';
-import type { Chat, Message } from '@/lib/types';
+import type { Chat, LearningPlan, Message } from '@/lib/types';
+
+const baseSettings = (): Chat['settings'] => ({
+  modelId: 'test-model',
+  generation: {},
+  ui: {
+    showThinkingByDefault: false,
+    showStats: false,
+    showToolCallLog: false,
+    showDebugRawJson: true,
+  },
+  features: {
+    search: { enabled: false, provider: 'openrouter' },
+    tutor: { enabled: true },
+  },
+});
 
 test('getTutorPhase returns intake when no plan and questionnaire pending', () => {
-  const chat = {
+  const chat: Chat = {
     id: 'chat-1',
     title: 'Test chat',
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    settings: { model: 'test-model' },
-  } as Chat;
+    settings: baseSettings(),
+  };
   const messages = [
     {
       id: 'a-1',
@@ -36,30 +51,37 @@ test('getTutorPhase returns intake when no plan and questionnaire pending', () =
 });
 
 test('getTutorPhase returns practice when plan active and practice widget present', () => {
-  const chat = {
+  const plan: LearningPlan = {
+    goal: 'Practice algebra',
+    generatedAt: Date.now(),
+    updatedAt: Date.now(),
+    version: 1,
+    nodes: [
+      {
+        id: 'n1',
+        name: 'Linear equations',
+        objectives: ['Solve for x'],
+        prerequisites: [],
+        status: 'in_progress',
+      },
+    ],
+  };
+  const chat: Chat = {
     id: 'chat-2',
     title: 'Practice chat',
     createdAt: Date.now(),
     updatedAt: Date.now(),
     settings: {
-      model: 'test-model',
-      learningPlan: {
-        goal: 'Practice algebra',
-        generatedAt: Date.now(),
-        updatedAt: Date.now(),
-        version: 1,
-        nodes: [
-          {
-            id: 'n1',
-            name: 'Linear equations',
-            objectives: ['Solve for x'],
-            prerequisites: [],
-            status: 'in_progress',
-          },
-        ],
+      ...baseSettings(),
+      features: {
+        ...baseSettings().features,
+        tutor: {
+          ...baseSettings().features.tutor,
+          learningPlan: plan,
+        },
       },
     },
-  } as Chat;
+  };
 
   const messages = [
     {

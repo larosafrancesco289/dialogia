@@ -1,5 +1,11 @@
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
-import type { ChatSettings, DraftAttachment, Message, MessageTutor, TutorEvent } from '@/lib/types';
+import type {
+  ChatSettingsPatch,
+  DraftAttachment,
+  Message,
+  MessageTutor,
+  TutorEvent,
+} from '@/lib/types';
 import type { VoiceActions } from '@/lib/voice/types';
 import type { UISearchState, UIStatePartial } from '@/lib/store/uiTypes';
 import type { NoticeId } from '@/lib/store/notices';
@@ -13,7 +19,7 @@ export type StoreActions = VoiceActions & {
   selectChat: (id: string) => void;
   renameChat: (id: string, title: string) => Promise<void>;
   deleteChat: (id: string) => Promise<void>;
-  updateChatSettings: (partial: Partial<ChatSettings>) => Promise<void>;
+  updateChatSettings: (partial: ChatSettingsPatch) => Promise<void>;
   moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
 
   // folders

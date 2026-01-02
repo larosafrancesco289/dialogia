@@ -17,7 +17,7 @@ function latestTutorPayload(messages: Message[], ui?: UiSnapshot): MessageTutor 
 }
 
 export function getTutorPhase(chat: Chat, messages: Message[], ui?: UiSnapshot): TutorPhase {
-  const plan = chat.settings.learningPlan;
+  const plan = chat.settings.features.tutor.learningPlan;
   const tutor = latestTutorPayload(messages, ui);
 
   if (!plan) {
@@ -138,21 +138,22 @@ export function deriveTutorToolPolicy(args: {
   const { chat, ui, activeNodeId } = args;
   const budget = {
     ...DEFAULT_TOOL_BUDGET,
-    ...(chat.settings.tutor_tool_budget || {}),
+    ...(chat.settings.features.tutor.toolBudget || {}),
   };
   const usage: TutorToolUsageSnapshot | undefined = ui?.tutor.toolUsageByChatId?.[chat.id];
   const activeKey = activeNodeId || '__global__';
   const quizzesUsed = usage?.mcqByNode?.[activeKey] ?? 0;
   const diagnosticsUsed = usage?.diagnosticsUsed ?? 0;
   const researchMode =
-    chat.settings.tutor_research_mode || ui?.tutor.researchMode || 'plan_plus_model';
-  const thesisMode = chat.settings.tutor_thesis_mode ?? ui?.tutor.thesisMode ?? false;
+    chat.settings.features.tutor.researchMode || ui?.tutor.researchMode || 'plan_plus_model';
+  const thesisMode = chat.settings.features.tutor.thesisMode ?? ui?.tutor.thesisMode ?? false;
 
   return {
     thesisMode,
     researchMode,
     allowPlanTools: researchMode !== 'model_only',
-    allowLearnerModel: chat.settings.enableLearnerModel !== false && researchMode !== 'plan_only',
+    allowLearnerModel:
+      chat.settings.features.tutor.enableLearnerModel !== false && researchMode !== 'plan_only',
     quizzesRemaining:
       budget.maxQuizzesPerNode == null
         ? undefined

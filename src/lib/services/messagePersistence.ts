@@ -1,3 +1,6 @@
+// Module: services/messagePersistence
+// Responsibility: Persist message updates with minimal side effects.
+
 import type { Repository } from '@/lib/db/repository';
 import type { Message } from '@/lib/types';
 import { buildHiddenTutorContent } from '@/lib/tutor/hiddenContent';

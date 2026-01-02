@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { openrouterTransport } from '@/lib/openrouter';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import type { TransportChatParams } from '@/lib/transport/types';
+import { buildTransportAuth } from '@/lib/auth/transport';
 
 const encoder = new TextEncoder();
 const originalFetch = globalThis.fetch;
@@ -27,7 +28,7 @@ function createSseResponse(chunks: string[]) {
 }
 
 const baseChatParams: TransportChatParams = {
-  apiKey: 'test-key',
+  auth: buildTransportAuth({ transport: 'openrouter', apiKey: 'test-key', useProxy: false }),
   model: 'test-model',
   messages: [{ role: 'user', content: 'Hello' }],
 };

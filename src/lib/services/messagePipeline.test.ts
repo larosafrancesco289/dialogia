@@ -4,7 +4,7 @@ import { planTurn } from '@/lib/agent/planning';
 import { regenerate } from '@/lib/agent/regenerate';
 import { createPipelineClient } from '@/lib/agent/pipelineClient';
 import { createModelIndex } from '@/lib/models';
-import type { Message, Chat, ModelDescriptor, ModelTransport } from '@/lib/types';
+import type { Message, Chat, ModelDescriptor } from '@/lib/types';
 import { getTutorToolDefinitions } from '@/lib/agent/tutor';
 import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
 import type { StoreSetter, TurnContext } from '@/lib/agent/types';
@@ -12,6 +12,7 @@ import { mockFetch } from '../../../tests/helpers/mockFetch';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { ProviderSort } from '@/lib/models/providerSort';
 import { buildMessageIndex } from '@/lib/messages/indexing';
+import { buildTransportAuth } from '@/lib/auth/transport';
 
 const baseModels: ModelDescriptor[] = [
   {
@@ -41,33 +42,42 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     updatedAt: Date.now(),
     folderId: undefined,
     settings: {
-      model: 'provider/model',
+      modelId: 'provider/model',
       system: 'You are helpful.',
-      show_thinking_by_default: false,
-      show_stats: false,
-      search_enabled: true,
-      search_provider: 'brave',
-      reasoning_effort: 'none',
-      reasoning_tokens: 0,
-      temperature: 0.2,
-      top_p: 0.9,
-      max_tokens: 256,
-      tutor_mode: true,
-      tutor_default_model: 'provider/model',
-      learningPlan: {
-        goal: 'Test mastery',
-        generatedAt: Date.now(),
-        updatedAt: Date.now(),
-        version: 1,
-        nodes: [
-          {
-            id: 'node-1',
-            name: 'Algebra basics',
-            objectives: ['Solve linear equations'],
-            prerequisites: [],
-            status: 'in_progress',
+      generation: {
+        temperature: 0.2,
+        topP: 0.9,
+        maxTokens: 256,
+        reasoningEffort: 'none',
+        reasoningTokens: 0,
+      },
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: false,
+        showDebugRawJson: true,
+      },
+      features: {
+        search: { enabled: true, provider: 'brave' },
+        tutor: {
+          enabled: true,
+          defaultModelId: 'provider/model',
+          learningPlan: {
+            goal: 'Test mastery',
+            generatedAt: Date.now(),
+            updatedAt: Date.now(),
+            version: 1,
+            nodes: [
+              {
+                id: 'node-1',
+                name: 'Algebra basics',
+                objectives: ['Solve linear equations'],
+                prerequisites: [],
+                status: 'in_progress',
+              },
+            ],
           },
-        ],
+        },
       },
     },
   };
@@ -77,7 +87,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     role: 'assistant',
     content: '',
     createdAt: Date.now(),
-    model: chat.settings.model,
+    model: chat.settings.modelId,
     reasoning: '',
     attachments: [],
   };
@@ -233,8 +243,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     savedMessages.push(message);
   };
   const turnContext = {
-    apiKey: 'test',
-    transport: 'openrouter' as ModelTransport,
+    auth: buildTransportAuth({ transport: 'openrouter', apiKey: 'test', useProxy: false }),
     set,
     get,
     models: baseModels,
@@ -246,7 +255,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     chat,
     ui: state.ui,
     modelIndex,
-    modelId: chat.settings.model,
+    modelId: chat.settings.modelId,
   });
 
   await planTurn({
@@ -304,19 +313,25 @@ test('regenerate reuses snapshots and records debug payload', async () => {
     updatedAt: Date.now(),
     folderId: undefined,
     settings: {
-      model: 'provider/model',
+      modelId: 'provider/model',
       system: 'Be formal.',
-      show_thinking_by_default: false,
-      show_stats: false,
-      search_enabled: false,
-      search_provider: 'openrouter',
-      reasoning_effort: 'low',
-      reasoning_tokens: 256,
-      temperature: 0.1,
-      top_p: 0.8,
-      max_tokens: 200,
-      tutor_mode: false,
-      tutor_default_model: 'provider/model',
+      generation: {
+        temperature: 0.1,
+        topP: 0.8,
+        maxTokens: 200,
+        reasoningEffort: 'low',
+        reasoningTokens: 256,
+      },
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: false,
+        showDebugRawJson: true,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: { enabled: false, defaultModelId: 'provider/model' },
+      },
     },
   };
   const assistantMessage: Message = {
@@ -325,17 +340,17 @@ test('regenerate reuses snapshots and records debug payload', async () => {
     role: 'assistant',
     content: 'Old content',
     createdAt: Date.now(),
-    model: chat.settings.model,
+    model: chat.settings.modelId,
     reasoning: '',
     attachments: [],
     systemSnapshot: 'Snapshot system',
     genSettings: {
       temperature: 0.3,
-      top_p: 0.7,
-      max_tokens: 150,
+      topP: 0.7,
+      maxTokens: 150,
       providerSort: ProviderSort.Price,
-      search_enabled: true,
-      search_provider: 'openrouter',
+      searchEnabled: true,
+      searchProvider: 'openrouter',
     },
   };
   const userMessage: Message = {
@@ -408,8 +423,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
     saved.push(message);
   };
   const regenerateTurn = {
-    apiKey: 'test',
-    transport: 'openrouter' as ModelTransport,
+    auth: buildTransportAuth({ transport: 'openrouter', apiKey: 'test', useProxy: false }),
     set,
     get,
     models: baseModels,
@@ -431,7 +445,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
   const updatedMessage = state.messagesById[assistantMessage.id];
   assert.equal(updatedMessage.content, 'Hello');
   assert.equal(updatedMessage.genSettings.providerSort, ProviderSort.Price);
-  assert.equal(updatedMessage.genSettings.search_enabled, true);
+  assert.equal(updatedMessage.genSettings.searchEnabled, true);
   const debugEntry = state.ui.debug.byMessageId[assistantMessage.id];
   assert.ok(debugEntry);
   const parsed = JSON.parse(debugEntry.body);

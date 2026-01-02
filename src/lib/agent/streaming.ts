@@ -5,10 +5,9 @@ import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
 import { captureRequestDebug } from '@/lib/agent/debug';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
-import { clearTurnController } from '@/lib/services/controllers';
+import { clearTurnController } from '@/lib/turnRuntime/abortControllers';
 import type { StreamFinalOptions, ToolDefinition } from '@/lib/agent/types';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
-import { generationSettingsToOpenRouterParams } from '@/lib/settings/generation';
 
 export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
   const {
@@ -22,7 +21,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     toolDefinition,
     startBuffered,
   } = opts;
-  const { apiKey, transport, set, get, modelIndex, persistMessage } = turn;
+  const { auth, set, get, modelIndex, persistMessage } = turn;
 
   const modelMeta = settings.modelMeta ?? modelIndex.get(settings.modelId);
   const caps = settings.caps ?? modelIndex.caps(settings.modelId);
@@ -76,17 +75,20 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
 
   const modalities = canImageOut ? (['image', 'text'] as Array<'image' | 'text'>) : undefined;
   const toolChoice = includeTools ? 'none' : undefined;
-  const openRouterSettings = generationSettingsToOpenRouterParams(generation);
   await getStreamChatCompletion(opts.pipeline)({
-    apiKey,
-    transport,
+    auth,
     model: settings.modelId,
     messages,
     modalities,
-    ...openRouterSettings,
+    temperature: generation.temperature,
+    topP: generation.topP,
+    maxTokens: generation.maxTokens,
+    reasoningEffort: generation.reasoningEffort,
+    reasoningTokens: generation.reasoningTokens,
+    providerSort: generation.providerSort,
     signal: controller.signal,
     tools: toolsForStreaming,
-    tool_choice: toolChoice,
+    toolChoice,
     plugins: combinedPlugins,
     callbacks,
   });

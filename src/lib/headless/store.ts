@@ -2,7 +2,7 @@ import 'server-only';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { createModelIndex } from '@/lib/models';
 import type { StoreState, UIState, UIStatePartial } from '@/lib/store/types';
-import type { Chat, Message, ModelDescriptor } from '@/lib/types';
+import type { Chat, ChatSettingsPatch, Message, ModelDescriptor } from '@/lib/types';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
 import { buildDefaultVoiceState } from '@/lib/voice/types';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
@@ -60,11 +60,31 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
       }));
     },
     deleteChat: async () => {},
-    updateChatSettings: async (partial) => {
+    updateChatSettings: async (partial: ChatSettingsPatch) => {
       set((state) => ({
         chats: state.chats.map((c) =>
           c.id === chat.id
-            ? { ...c, settings: { ...c.settings, ...partial }, updatedAt: Date.now() }
+            ? {
+                ...c,
+                settings: {
+                  ...c.settings,
+                  ...partial,
+                  generation: { ...c.settings.generation, ...(partial.generation ?? {}) },
+                  ui: { ...c.settings.ui, ...(partial.ui ?? {}) },
+                  features: {
+                    ...c.settings.features,
+                    search: {
+                      ...c.settings.features.search,
+                      ...(partial.features?.search ?? {}),
+                    },
+                    tutor: {
+                      ...c.settings.features.tutor,
+                      ...(partial.features?.tutor ?? {}),
+                    },
+                  },
+                },
+                updatedAt: Date.now(),
+              }
             : c,
         ),
       }));
@@ -142,7 +162,7 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
       const message = createAssistantMessage({
         chatId: chat.id,
         content,
-        model: opts?.modelId ?? chat.settings.model,
+        model: opts?.modelId ?? chat.settings.modelId,
       });
       set((state) => appendMessagesToChat(state, chat.id, [message]));
     },

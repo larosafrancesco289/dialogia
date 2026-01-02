@@ -17,8 +17,8 @@ export type BuildDebugBodyArgs = {
   stream: boolean;
   includeUsage?: boolean;
   temperature?: number;
-  top_p?: number;
-  max_tokens?: number;
+  topP?: number;
+  maxTokens?: number;
   reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
   reasoningTokens?: number;
   tools?: ToolDefinition[];
@@ -36,13 +36,13 @@ export function buildDebugBody(args: BuildDebugBodyArgs) {
     stream: args.stream,
     includeUsage: args.includeUsage,
     temperature: args.temperature,
-    top_p: args.top_p,
-    max_tokens: args.max_tokens,
-    reasoning_effort: args.reasoningEffort,
-    reasoning_tokens: args.reasoningTokens,
+    topP: args.topP,
+    maxTokens: args.maxTokens,
+    reasoningEffort: args.reasoningEffort,
+    reasoningTokens: args.reasoningTokens,
     tools: args.tools,
-    tool_choice: args.toolChoice,
-    parallel_tool_calls: args.parallelToolCalls,
+    toolChoice: args.toolChoice,
+    parallelToolCalls: args.parallelToolCalls,
     providerSort: args.providerSort,
     plugins: args.plugins,
     modalities: args.canImageOut ? (['image', 'text'] as Array<'image' | 'text'>) : undefined,
@@ -74,8 +74,8 @@ export function buildRequestDebugBody(options: RequestDebugOptions) {
     stream: options.stream,
     includeUsage: options.includeUsage,
     temperature: options.temperature,
-    top_p: options.topP,
-    max_tokens: options.maxTokens,
+    topP: options.topP,
+    maxTokens: options.maxTokens,
     reasoningEffort: options.reasoningEffort,
     reasoningTokens: options.reasoningTokens,
     tools: options.tools,

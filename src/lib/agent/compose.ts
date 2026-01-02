@@ -17,9 +17,7 @@ import { combineSystem } from '@/lib/agent/system';
 import { getNextNode } from '@/lib/learningPlan/service';
 import { isTutorToolName } from '@/lib/agent/tools';
 import type { Message } from '@/lib/types';
-
-const TOOL_PREAMBLE =
-  'You have access to a function tool named "web_search" that retrieves up-to-date web results.\n\nWhen you need current, factual, or source-backed information, call the tool first. If you call a tool, respond with ONLY tool_calls (no user-facing text). After the tool returns, write the final answer that cites sources inline as [n] using the numbering provided.\n\nweb_search(args): { query: string, count?: integer 1-10 }. Choose a focused query and a small count, and avoid unnecessary calls.';
+import { TOOL_PREAMBLE } from '@/lib/agent/prompts/toolPreamble';
 
 export async function composeTurn({
   chat,
@@ -31,9 +29,8 @@ export async function composeTurn({
   attachments,
 }: ComposeTurnArgs): Promise<TurnComposition> {
   const tutorEnabled = settings.tutorEnabled;
-  const generation = settings.generation;
-  const searchEnabled = !!generation.searchEnabled;
-  const searchProvider = generation.searchProvider || 'openrouter';
+  const searchEnabled = settings.searchEnabled;
+  const searchProvider = settings.searchProvider || 'openrouter';
 
   const priorMessages = prior ?? [];
   const preparedAttachments = attachments ?? newUser?.attachments ?? [];
@@ -47,8 +44,8 @@ export async function composeTurn({
 
   const tutorPhase = tutorEnabled ? getTutorPhase(chat, priorMessages as Message[], ui) : undefined;
   const activeNodeId =
-    tutorEnabled && chat.settings.learningPlan
-      ? getNextNode(chat.settings.learningPlan)?.id
+    tutorEnabled && chat.settings.features.tutor.learningPlan
+      ? getNextNode(chat.settings.features.tutor.learningPlan)?.id
       : undefined;
   const tutorToolPolicy = tutorEnabled
     ? deriveTutorToolPolicy({
@@ -92,13 +89,16 @@ export async function composeTurn({
     // Add learning plan context if plan exists
     const allowPlanContext = tutorToolPolicy?.researchMode !== 'model_only';
     const allowLearnerModelContext = tutorToolPolicy?.researchMode !== 'plan_only';
-    if (allowPlanContext && chat.settings.learningPlan) {
+    if (allowPlanContext && chat.settings.features.tutor.learningPlan) {
       const { generatePlanContextPreamble } = await import('@/lib/agent/tutor/planContext');
       const { getLatestLearnerModel } = await import('@/lib/agent/learnerModel');
       const learnerModel = allowLearnerModelContext
         ? getLatestLearnerModel(priorMessages)
         : undefined;
-      const planContext = generatePlanContextPreamble(chat.settings.learningPlan, learnerModel);
+      const planContext = generatePlanContextPreamble(
+        chat.settings.features.tutor.learningPlan,
+        learnerModel,
+      );
       if (planContext) preambles.push(planContext);
     }
 
@@ -116,9 +116,12 @@ export async function composeTurn({
     ...chat,
     settings: {
       ...chat.settings,
-      model: settings.modelId,
+      modelId: settings.modelId,
       system: settings.system ?? chat.settings.system,
-      max_tokens: settings.generation.maxTokens ?? chat.settings.max_tokens,
+      generation: {
+        ...chat.settings.generation,
+        maxTokens: settings.generation.maxTokens ?? chat.settings.generation.maxTokens,
+      },
     },
   };
   const newUserContent = newUser?.content;

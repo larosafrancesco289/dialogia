@@ -1,10 +1,13 @@
-import { deepResearch } from '@/lib/deepResearch';
+import { apiDefaults } from '@/lib/api/config';
+import { deepResearch, getReasoningSupport } from '@/lib/deepResearch/server';
 import { createNdjsonStream } from '@/lib/server/ndjson';
 import { jsonError } from '@/lib/server/route';
 import { DeepResearchRequestSchema } from '@/lib/schemas/api';
 import { parseSchema } from '@/lib/schemas/parse';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';
+import { evaluateDeepResearchPolicy } from '@/lib/policy/deepResearch';
+import { buildTransportAuth } from '@/lib/auth/transport';
 
 export const POST = route('deep-research')
   .rateLimit('deep-research', RATE_LIMITS.EXPENSIVE)
@@ -34,11 +37,32 @@ export const POST = route('deep-research')
     const providerSort = parsed.data.providerSort;
     const style = parsed.data.style;
     const cite = parsed.data.cite;
+    const origin = apiDefaults.resolveOrigin();
+    const auth = buildTransportAuth({
+      transport: 'openrouter',
+      apiKey: ctx.env.OPENROUTER_API_KEY,
+      useProxy: false,
+    });
+    const supportsReasoning = await getReasoningSupport(auth, model, origin);
+    const policy = evaluateDeepResearchPolicy({
+      searchEnabled: true,
+      tutorEnabled: false,
+      transport: 'openrouter',
+      supportsReasoning,
+      tier: ctx.tier,
+    });
+
+    if (policy.notice) {
+      return jsonError(403, 'feature_not_available', policy.notice);
+    }
+    if (!policy.shouldRun) {
+      return jsonError(400, 'reasoning_model_required');
+    }
 
     const stream = createNdjsonStream(
       async ({ send }) => {
         const result = await deepResearch({
-          apiKey: ctx.env.OPENROUTER_API_KEY,
+          auth,
           task,
           model,
           audience: parsed.data.audience,

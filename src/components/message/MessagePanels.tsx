@@ -145,15 +145,15 @@ function buildReasoningPanel({
   const deepResearch = message.deepResearch;
   const hasDeepResearch = !!(deepResearch?.trace && deepResearch.trace.length > 0);
   const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
-  const messageModelId = (message.model || chat?.settings?.model) ?? undefined;
+  const messageModelId = (message.model || chat?.settings?.modelId) ?? undefined;
   const modelMeta = messageModelId ? findModelById(models, messageModelId) : undefined;
   const modelAllowsReasoning = !!modelMeta && isReasoningSupported(modelMeta);
   const hasReasoning = reasoningText.trim().length > 0;
 
-  const messageEffort = message.genSettings?.reasoning_effort;
-  const messageTokens = message.genSettings?.reasoning_tokens;
-  const chatEffort = chat?.settings.reasoning_effort;
-  const chatTokens = chat?.settings.reasoning_tokens;
+  const messageEffort = message.genSettings?.reasoningEffort;
+  const messageTokens = message.genSettings?.reasoningTokens;
+  const chatEffort = chat?.settings.generation.reasoningEffort;
+  const chatTokens = chat?.settings.generation.reasoningTokens;
   const effortRequested =
     typeof messageEffort === 'string'
       ? messageEffort !== 'none'

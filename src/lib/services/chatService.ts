@@ -1,3 +1,6 @@
+// Module: services/chatService
+// Responsibility: Persist chat and folder mutations through the repository.
+
 import { v4 as uuidv4 } from 'uuid';
 import type { Repository } from '@/lib/db/repository';
 import type { Chat, Folder, Message } from '@/lib/types';
@@ -23,19 +26,19 @@ export class ChatService {
     const selected = selectedChatId ? chats.find((c) => c.id === selectedChatId) : undefined;
 
     const lastNonTutorModel = (() => {
-      let candidate: { model: string; updatedAt: number } | undefined;
+      let candidate: { modelId: string; updatedAt: number } | undefined;
       for (const c of chats) {
-        const model = c.settings?.model;
-        if (!model || c.settings?.tutor_mode) continue;
+        const modelId = c.settings?.modelId;
+        if (!modelId || c.settings?.features.tutor.enabled) continue;
         if (!candidate || (c.updatedAt ?? 0) > candidate.updatedAt) {
-          candidate = { model, updatedAt: c.updatedAt ?? 0 };
+          candidate = { modelId, updatedAt: c.updatedAt ?? 0 };
         }
       }
-      return candidate?.model;
+      return candidate?.modelId;
     })();
 
-    const lastUsedModel = !selected?.settings?.tutor_mode
-      ? selected?.settings?.model
+    const lastUsedModel = !selected?.settings?.features.tutor.enabled
+      ? selected?.settings?.modelId
       : lastNonTutorModel;
 
     const tutorEnabledGlobally = !!ui.flags.experimentalTutor;

@@ -48,7 +48,7 @@ export function derivePlanningContext(args: {
   messagesForChat: Message[];
   ui?: UiSnapshot;
   toolDefinition?: ToolDefinition[];
-  currentPlan?: PlanTurnOptions['chat']['settings']['learningPlan'];
+  currentPlan?: PlanTurnOptions['chat']['settings']['features']['tutor']['learningPlan'];
 }): PlanningContext {
   const { chat, messagesForChat, ui, toolDefinition, currentPlan } = args;
   const phase = getTutorPhase(chat, messagesForChat, ui);

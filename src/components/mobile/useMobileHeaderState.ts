@@ -2,10 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } fro
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { findModelById, formatModelLabel } from '@/lib/models';
-import { readNextOverrides } from '@/lib/ui/next';
-import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { useTier } from '@/lib/auth/tierContext';
 import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
+import { selectIsTutorEnabled, selectNextOverrides } from '@/lib/store/selectors';
 
 export type MobileHeaderState = {
   chatTitle: string;
@@ -28,22 +27,34 @@ export type MobileHeaderState = {
 };
 
 export function useMobileHeaderState(): MobileHeaderState {
-  const { isFreeTier, isStudyTier, tier } = useTier();
+  const { isFreeTier, isStudyTier } = useTier();
 
-  const { chats, selectedChatId, renameChat, newChat, setUI, updateChatSettings, uiState, models } =
-    useChatStore(
-      (state) => ({
-        chats: state.chats,
-        selectedChatId: state.selectedChatId,
-        renameChat: state.renameChat,
-        newChat: state.newChat,
-        setUI: state.setUI,
-        updateChatSettings: state.updateChatSettings,
-        uiState: state.ui,
-        models: state.models,
-      }),
-      shallow,
-    );
+  const {
+    chats,
+    selectedChatId,
+    renameChat,
+    newChat,
+    setUI,
+    updateChatSettings,
+    uiState,
+    models,
+    nextOverrides,
+    tutorActive,
+  } = useChatStore(
+    (state) => ({
+      chats: state.chats,
+      selectedChatId: state.selectedChatId,
+      renameChat: state.renameChat,
+      newChat: state.newChat,
+      setUI: state.setUI,
+      updateChatSettings: state.updateChatSettings,
+      uiState: state.ui,
+      models: state.models,
+      nextOverrides: selectNextOverrides(state),
+      tutorActive: selectIsTutorEnabled(state),
+    }),
+    shallow,
+  );
 
   const chat = useMemo(
     () => (selectedChatId ? chats.find((c) => c.id === selectedChatId) : undefined),
@@ -54,14 +65,10 @@ export function useMobileHeaderState(): MobileHeaderState {
 
   const experimentalTutor = !!uiState.flags.experimentalTutor;
   const forceTutorMode = !!uiState.tutor.forceMode;
-  const nextOverrides = readNextOverrides(uiState);
   const nextTutorMode = !!nextOverrides.tutorMode;
   const tutorDefaultModelId = uiState.tutor.defaultModelId;
-  const tutorActive = chat
-    ? isTutorRuntimeEnabled(uiState, chat, tier)
-    : isStudyTier || (experimentalTutor && (forceTutorMode || nextTutorMode));
   const rawTutorModelId =
-    chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
+    chat?.settings?.features.tutor.defaultModelId || chat?.settings?.modelId || tutorDefaultModelId;
   const tutorModelId = useMemo(() => {
     if (isFreeTier && rawTutorModelId && !FREE_MODEL_IDS.includes(rawTutorModelId)) {
       return DEFAULT_FREE_TUTOR_MODEL_ID;
@@ -161,11 +168,11 @@ export function useMobileHeaderState(): MobileHeaderState {
   const onToggleTutorMode = useCallback(async () => {
     if (forceTutorMode) return;
     if (chat) {
-      if (!chat.settings.tutor_mode) {
+      if (!chat.settings.features.tutor.enabled) {
         setUI({ overrides: { tutorMode: true } });
         await newChat();
       } else {
-        await updateChatSettings({ tutor_mode: false });
+        await updateChatSettings({ features: { tutor: { enabled: false } } });
       }
     } else {
       setUI({ overrides: { tutorMode: !nextTutorMode } });

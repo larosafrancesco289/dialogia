@@ -1,3 +1,6 @@
+// Module: services/tutorPersistence
+// Responsibility: Persist tutor payloads on a controlled delay.
+
 import type { Repository } from '@/lib/db/repository';
 import type { Message } from '@/lib/types';
 import { createMessagePersister } from '@/lib/services/messagePersistence';

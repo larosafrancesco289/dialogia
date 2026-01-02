@@ -8,13 +8,13 @@ export function snapshotGenSettings(settings: ResolvedTurnSettings): GenSettings
   const generation = settings.generation;
   const snapshot: GenSettingsSnapshot = {
     temperature: generation.temperature,
-    top_p: generation.topP,
-    max_tokens: generation.maxTokens,
-    reasoning_effort: generation.reasoningEffort,
-    reasoning_tokens: generation.reasoningTokens,
-    search_enabled: !!generation.searchEnabled,
-    search_provider: generation.searchProvider,
-    tutor_mode: !!generation.tutorMode,
+    topP: generation.topP,
+    maxTokens: generation.maxTokens,
+    reasoningEffort: generation.reasoningEffort,
+    reasoningTokens: generation.reasoningTokens,
+    searchEnabled: settings.searchEnabled,
+    searchProvider: settings.searchProvider,
+    tutorEnabled: settings.tutorEnabled,
   };
   if (generation.providerSort) snapshot.providerSort = generation.providerSort;
   return snapshot;

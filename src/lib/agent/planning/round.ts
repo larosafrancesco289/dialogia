@@ -3,7 +3,6 @@ import { captureRequestDebug } from '@/lib/agent/debug';
 import { detectPlanningToolCalls } from '@/lib/agent/tools/router';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
 import { isToolCallingSupported } from '@/lib/models';
-import { generationSettingsToOpenRouterParams } from '@/lib/settings/generation';
 import type {
   AssistantModelMessage,
   ModelMessage,
@@ -29,7 +28,7 @@ export async function runPlanningRound(args: {
   pipeline?: PipelineClient;
 }): Promise<PlanningRoundResult> {
   const { convo, assistantMessage, toolDefinition, controller, turn, settings } = args;
-  const { apiKey, transport } = turn;
+  const { auth } = turn;
   const generation = settings.generation;
   const supportsTools = isToolCallingSupported(settings.modelMeta);
   const toolsForPlanning =
@@ -54,15 +53,18 @@ export async function runPlanningRound(args: {
     providerSort: generation.providerSort,
   });
 
-  const openRouterSettings = generationSettingsToOpenRouterParams(generation);
   const resp = await getChatCompletion(args.pipeline)({
-    apiKey,
-    transport,
+    auth,
     model: settings.modelId,
     messages: convo,
-    ...openRouterSettings,
+    temperature: generation.temperature,
+    topP: generation.topP,
+    maxTokens: generation.maxTokens,
+    reasoningEffort: generation.reasoningEffort,
+    reasoningTokens: generation.reasoningTokens,
+    providerSort: generation.providerSort,
     tools: toolsForPlanning,
-    tool_choice: toolsForPlanning ? ('auto' as const) : undefined,
+    toolChoice: toolsForPlanning ? ('auto' as const) : undefined,
     signal: controller.signal,
     plugins: undefined,
   });

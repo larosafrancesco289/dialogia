@@ -9,7 +9,7 @@ import {
   renameSystemPreset,
   saveSystemPreset,
 } from '@/lib/settings/systemPresets';
-import type { Chat } from '@/lib/types';
+import type { Chat, ChatSettingsPatch } from '@/lib/types';
 import type { RenderSection } from '@/components/settings/types';
 
 type ChatPanelProps = {
@@ -20,7 +20,7 @@ type ChatPanelProps = {
   setPresets: (list: SystemPreset[]) => void;
   selectedPresetId: string;
   setSelectedPresetId: (id: string) => void;
-  updateChatSettings: (changes: Partial<Chat['settings']>) => Promise<void>;
+  updateChatSettings: (changes: ChatSettingsPatch) => Promise<void>;
   renderSection: RenderSection;
   temperatureStr: string;
   setTemperatureStr: (value: string) => void;

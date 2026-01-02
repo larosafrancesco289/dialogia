@@ -56,6 +56,7 @@ import type { Chat, ModelDescriptor, ModelTransport, LearnerModel } from '@/lib/
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 import { parseArgs } from '@/lib/cli/args';
 import { loadEnvDefaults } from '@/lib/cli/env.node';
+import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
 
 // ============================================================================
 // Types
@@ -201,12 +202,18 @@ function createStubModel(
   };
 }
 
-function resolveApiKeyFactory(keys: { openrouter?: string }) {
-  return ({ modelId }: { modelId: string; transport: ModelTransport }) => {
+function resolveAuthFactory(keys: { openrouter?: string }) {
+  return ({
+    transport,
+    modelId,
+  }: {
+    modelId: string;
+    transport: ModelTransport;
+  }): TransportAuth => {
     if (!keys.openrouter) {
       throw new Error(`Missing OPENROUTER_API_KEY for ${modelId}`);
     }
-    return keys.openrouter;
+    return buildTransportAuth({ transport, apiKey: keys.openrouter, useProxy: false });
   };
 }
 
@@ -234,13 +241,12 @@ async function runSingleAblation(
   const studentTransport = resolveModelTransport(config.studentModel) || 'openrouter';
   const judgeTransport = resolveModelTransport(config.judgeModel) || 'openrouter';
 
-  const resolveApiKey = resolveApiKeyFactory(config.apiKeys);
+  const resolveAuth = resolveAuthFactory(config.apiKeys);
 
   // Run pre-test (with knowledge gaps to simulate realistic student knowledge)
   console.log(`  [${runId}] Running pre-test...`);
   const preTest = await administerTest(scenario.preTestQuestions, 'pre', {
-    apiKey: resolveApiKey({ modelId: config.studentModel, transport: studentTransport }),
-    transport: studentTransport,
+    auth: resolveAuth({ modelId: config.studentModel, transport: studentTransport }),
     model: config.studentModel,
     studentPersona: scenario.studentPersona,
     priorKnowledge: `Level: ${scenario.level}. Topic: ${scenario.topic}`,
@@ -259,16 +265,24 @@ async function runSingleAblation(
     createdAt: Date.now(),
     updatedAt: Date.now(),
     settings: {
-      model: config.tutorModel,
-      tutor_mode: true,
-      tutor_default_model: config.tutorModel,
+      modelId: config.tutorModel,
       system: DEFAULT_BASE_SYSTEM,
-      search_enabled: false,
-      search_provider: 'openrouter',
-      showToolCallLog: true,
-      showDebugRawJson: true,
-      learningPlan: initialPlan,
-      ...conditionSettings,
+      generation: {},
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: true,
+        showDebugRawJson: true,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: {
+          enabled: true,
+          defaultModelId: config.tutorModel,
+          learningPlan: initialPlan,
+          ...(conditionSettings.features?.tutor ?? {}),
+        },
+      },
     },
   };
 
@@ -283,13 +297,13 @@ async function runSingleAblation(
     chat,
     models,
     modelIndex,
-    resolveApiKey,
+    resolveAuth,
     uiOverrides: {
       debug: { mode: true },
       flags: { experimentalTutor: true },
       tutor: {
         forceMode: true,
-        researchMode: conditionSettings.tutor_research_mode,
+        researchMode: conditionSettings.features?.tutor?.researchMode,
       },
       overrides: { tutorMode: true },
     },
@@ -314,8 +328,7 @@ async function runSingleAblation(
 
   const studentSim = new LLMUserSimulator({
     modelId: config.studentModel,
-    transport: studentTransport,
-    apiKey: resolveApiKey({ modelId: config.studentModel, transport: studentTransport }),
+    auth: resolveAuth({ modelId: config.studentModel, transport: studentTransport }),
     personaPrompt: [
       'You are a student in a tutoring session.',
       `Topic: ${scenario.topic} (${scenario.level})`,
@@ -369,8 +382,7 @@ async function runSingleAblation(
   const transcript = renderSnapshotTranscript(result.snapshots);
 
   const postTest = await administerTest(scenario.postTestQuestions, 'post', {
-    apiKey: resolveApiKey({ modelId: config.studentModel, transport: studentTransport }),
-    transport: studentTransport,
+    auth: resolveAuth({ modelId: config.studentModel, transport: studentTransport }),
     model: config.studentModel,
     studentPersona: scenario.studentPersona,
     priorKnowledge: `Just completed tutoring on ${scenario.topic}.`,
@@ -410,7 +422,7 @@ async function runSingleAblation(
   const finalPlan = runner
     .getSession()
     .getState()
-    .chats.find((c) => c.id === chat.id)?.settings.learningPlan;
+    .chats.find((c) => c.id === chat.id)?.settings.features.tutor.learningPlan;
   const planSummary = finalPlan
     ? generatePlanContextPreamble(finalPlan, finalLearnerModel)
     : undefined;
@@ -428,12 +440,11 @@ async function runSingleAblation(
   });
 
   const judgeResponse = await getChatCompletion()({
-    apiKey: resolveApiKey({ modelId: config.judgeModel, transport: judgeTransport }),
-    transport: judgeTransport,
+    auth: resolveAuth({ modelId: config.judgeModel, transport: judgeTransport }),
     model: config.judgeModel,
     messages: judgeMessages,
     temperature: 0,
-    max_tokens: 512,
+    maxTokens: 512,
   });
 
   const judgeRaw = extractJudgeText(judgeResponse);

@@ -17,9 +17,10 @@ business logic that is easy to test.
 
 - ESLint enforces layer boundaries via `no-restricted-imports` in `eslint.config.js`:
   - DB (`src/lib/db/**`) cannot import agent/store/components.
-  - Agent (`src/lib/agent/**`) cannot import UI components.
+  - Agent (`src/lib/agent/**`) cannot import UI components or service orchestrators
+    (`src/lib/services/**`).
   - UI components (`src/components/**`) cannot import transport clients (`src/lib/api/*`,
-    `src/lib/openrouter`).
+    `src/lib/openrouter`) or server-only modules (`src/lib/server/*`, `*.server`).
 
 ## Layered Modules
 
@@ -35,13 +36,12 @@ business logic that is easy to test.
   the single entry for per-turn system/message assembly. Planning is split across
   `src/lib/agent/planning/*`, streaming logic lives in `src/lib/agent/streaming.ts`, and heuristics
   live in `src/lib/agent/streaming/*`. `regenerate.ts` isolates regen logic so services stay thin.
-  `src/lib/agent/orchestrator/*` hosts the turn runner and lifecycle management. DeepResearch
-  orchestration lives in `src/lib/agent/deepResearchOrchestrator.ts`, backed by
-  `src/lib/deepResearch/index.ts` + submodules for prompt, tools, and HTML parsing.
+  `src/lib/agent/orchestrator/*` hosts the turn runner and lifecycle management.
+- **Turn Runtime** — Neutral per-turn helpers (`src/lib/turnRuntime/*`) that are used by both agent
+  and service layers, including abort controllers, metrics, and tool-call logging.
 - **Services** — Cross-cutting orchestrators in `src/lib/services/*` that connect the store to the
   agent layer. `services/turns.ts` owns send/regenerate flows, with shared helpers in
-  `src/lib/services/turns/*` and controller lifecycles isolated in `src/lib/services/controllers.ts`.
-  Services prepare context and hand off to the agent orchestrator.
+  `src/lib/services/turns/*`. Services prepare context and hand off to the agent orchestrator.
 - **Transport** — Provider adapters in `src/lib/openrouter/*`, shared contracts in
   `src/lib/transport/*`, and HTTP utilities in `src/lib/api/*`. OpenRouter-specific request building
   lives in `src/lib/openrouter/request.ts`, while `src/lib/openrouter/http.ts` handles the raw HTTP
@@ -57,21 +57,29 @@ business logic that is easy to test.
 
 ## Public Module Surfaces
 
-| Area                 | Import from                     | Notes                                                                 |
-| -------------------- | ------------------------------- | --------------------------------------------------------------------- |
-| Store entrypoints    | `src/lib/store/index.ts`        | Zustand store composition + `useChatStore`.                           |
-| Message helpers      | `src/lib/messages/indexing.ts`  | O(1) message lookup/update helpers.                                   |
-| Tutor domain         | `src/lib/tutor/index.ts`        | Profile, context, defaults, deck.                                     |
-| DeepResearch         | `src/lib/deepResearch/index.ts` | Facade for prompt/engine/tools.                                       |
-| OpenRouter transport | `src/lib/openrouter/index.ts`   | Transport client; request builder in `src/lib/openrouter/request.ts`. |
-| Schemas              | `src/lib/schemas/*`             | Zod schemas + JSON schema builder.                                    |
+| Area                 | Import from                      | Notes                                                                 |
+| -------------------- | -------------------------------- | --------------------------------------------------------------------- |
+| Store entrypoints    | `src/lib/store/index.ts`         | Zustand store composition + `useChatStore`.                           |
+| Message helpers      | `src/lib/messages/indexing.ts`   | O(1) message lookup/update helpers.                                   |
+| Turn runtime helpers | `src/lib/turnRuntime/*`          | Abort controllers, metrics, tool-call logging.                        |
+| Tutor domain         | `src/lib/tutor/index.ts`         | Profile, context, defaults, deck.                                     |
+| DeepResearch client  | `src/lib/deepResearch/index.ts`  | Client-safe entrypoint for the DeepResearch flow.                     |
+| DeepResearch server  | `src/lib/deepResearch/server.ts` | Server-only engine/tools for API routes.                              |
+| OpenRouter transport | `src/lib/openrouter/index.ts`    | Transport client; request builder in `src/lib/openrouter/request.ts`. |
+| Schemas              | `src/lib/schemas/*`              | Zod schemas + JSON schema builder.                                    |
+
+## Server-only Import Policy
+
+- Server-only modules live under `src/lib/server/*`, `src/lib/env/server`, and `*.server.ts`.
+- UI components and client hooks must never import server-only modules.
+- API routes can import server-only and shared modules, but never UI components.
 
 ## Module Boundaries
 
 - UI may import store selectors/actions and `src/lib/ui/*` helpers, but never transport clients
-  (`src/lib/api/*`, `src/lib/openrouter/*`).
-- Agent modules never import UI components, and persistence (`src/lib/db/*`) never imports agent or
-  store types.
+  (`src/lib/api/*`, `src/lib/openrouter/*`) or server-only modules.
+- Agent modules never import UI components or service orchestrators (`src/lib/services/*`), and
+  persistence (`src/lib/db/*`) never imports agent or store types.
 - API routes under `app/api/*` must remain server-only and never import UI modules or components.
 - These boundaries are enforced via ESLint `no-restricted-imports` in `eslint.config.js`.
 
@@ -152,5 +160,6 @@ business logic that is easy to test.
 - **UI overrides** — one-turn intent stored in `ui.overrides` and cleared after the next turn runs.
 - **Tutor tools** — pedagogy-focused tools in `src/lib/agent/tools/tutor/*` (diagnostics, plans).
 - **Search tools** — web retrieval tools (`src/lib/agent/tools/web.ts`) that augment context.
-- **DeepResearch** — extended research flow with trace data and specialized orchestration
-  (`src/lib/agent/deepResearchOrchestrator.ts`).
+- **DeepResearch** — extended research flow with trace data; client runner lives in
+  `src/lib/deepResearch/client/runDeepResearchTurn.client.ts`, server engine in
+  `src/lib/deepResearch/server/engine.server.ts`.

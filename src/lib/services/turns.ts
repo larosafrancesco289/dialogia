@@ -7,17 +7,17 @@ import type { StoreAccess, StoreGetter, StoreSetter, TurnContext } from '@/lib/a
 import type { Repository } from '@/lib/db/repository';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { attachTutorUiState, ensureTutorDefaults } from '@/lib/agent/tutorFlow';
-import { runDeepResearchTurn } from '@/lib/agent/deepResearchOrchestrator';
+import { runDeepResearchTurn } from '@/lib/deepResearch';
 import { regenerate } from '@/lib/agent/regenerate';
 import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
-import { clearTurnController, setTurnController } from '@/lib/services/controllers';
+import { clearTurnController, setTurnController } from '@/lib/turnRuntime/abortControllers';
 import { applyNextOverrides } from '@/lib/ui/next';
 import { prepareSendRuntime } from '@/lib/services/turns/runtime';
 import { spawnTurnMessages } from '@/lib/services/turns/spawn';
 import { executeModelTurn } from '@/lib/services/turns/executor';
 import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { resolveSingleModelAuth } from '@/lib/services/auth';
-import { evaluateDeepResearchPolicy } from '@/lib/services/deepResearchPolicy';
+import { evaluateDeepResearchPolicy } from '@/lib/policy/deepResearch';
 import { enforceZdrGate, isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { selectTutorEntry } from '@/lib/ui/tutorSelectors';
 import { findModelById } from '@/lib/models';
@@ -82,7 +82,7 @@ export async function appendAssistantTurn({
     chatId,
     content,
     createdAt: now,
-    model: modelId || chat.settings.model,
+    model: modelId || chat.settings.modelId,
   });
   set((state) => appendMessagesToChat(state, chatId, [assistantMsg]));
   const persistMessage = createMessagePersister(repository);
@@ -184,10 +184,11 @@ export async function sendUserTurn({
   // 4. Transport is OpenRouter (DeepResearch requirement)
   const modelMeta = findModelById(get().models, primaryModelId);
   const deepResearchDecision = evaluateDeepResearchPolicy({
-    searchEnabled: !!currentChat.settings.search_enabled,
+    searchEnabled: !!currentChat.settings.features.search.enabled,
     tutorEnabled,
     transport: primaryContext.auth.transport,
     modelMeta,
+    tier,
   });
 
   if (deepResearchDecision.notice) {
@@ -275,7 +276,7 @@ export async function regenerateTurn({
     overrideModelId =
       ensured.defaultModelId ||
       uiState.tutor.defaultModelId ||
-      chat.settings.tutor_default_model ||
+      chat.settings.features.tutor.defaultModelId ||
       overrideModelId;
     if (ensured.changed) {
       const updatedChat: Chat = {
@@ -293,7 +294,7 @@ export async function regenerateTurn({
     }
   }
 
-  const targetModel = overrideModelId || chat.settings.model;
+  const targetModel = overrideModelId || chat.settings.modelId;
   const modelIndexSnapshot = get().modelIndex;
   const targetAuth = resolveSingleModelAuth({
     modelId: targetModel,
@@ -314,8 +315,7 @@ export async function regenerateTurn({
   try {
     setTurnController(chatId, controller);
     const turnContext = {
-      apiKey: targetAuth.apiKey,
-      transport: targetAuth.transport,
+      auth: targetAuth,
       set,
       get,
       models: get().models,

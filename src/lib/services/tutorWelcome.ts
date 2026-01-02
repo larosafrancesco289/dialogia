@@ -1,3 +1,6 @@
+// Module: services/tutorWelcome
+// Responsibility: Generate and persist tutor welcome messages for chats.
+
 import type { LearningPlan, Message } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import type { Repository } from '@/lib/db/repository';
@@ -55,7 +58,7 @@ export async function prepareTutorWelcomeMessage({
   }
 
   const currentMessages = getMessagesForChat(state, chatId);
-  const planMessage = buildPlanWelcomeMessage(chat.settings.learningPlan);
+  const planMessage = buildPlanWelcomeMessage(chat.settings.features.tutor.learningPlan);
 
   const findWelcomeIndex = (list: Message[]) => {
     const flaggedIdx = list.findIndex((m) => m.role === 'assistant' && m.tutorWelcome);
@@ -87,7 +90,9 @@ export async function prepareTutorWelcomeMessage({
       const existing = welcomeIndex >= 0 ? list[welcomeIndex] : undefined;
       const createdAt = existing?.createdAt ?? resolveInsertionTimestamp(list);
       const modelId =
-        chat.settings.tutor_default_model || chat.settings.model || DEFAULT_TUTOR_MODEL_ID;
+        chat.settings.features.tutor.defaultModelId ||
+        chat.settings.modelId ||
+        DEFAULT_TUTOR_MODEL_ID;
       welcomeMessage = existing
         ? { ...existing, content: trimmed, model: modelId, tutorWelcome: true }
         : createTutorWelcomeMessage({

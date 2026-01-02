@@ -1,6 +1,6 @@
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { readNextOverrides } from '@/lib/ui/next';
-import type { Chat, ChatSettings } from '@/lib/types';
+import type { Chat, ChatSettings, ChatSettingsPatch } from '@/lib/types';
 import type { StoreState, UIState } from '@/lib/store/types';
 
 export type SettingsSaveInput = {
@@ -10,7 +10,7 @@ export type SettingsSaveInput = {
   temperature?: number;
   topP?: number;
   maxTokens?: number;
-  reasoningEffort?: ChatSettings['reasoning_effort'];
+  reasoningEffort?: ChatSettings['generation']['reasoningEffort'];
   reasoningTokens?: number;
   showThinking: boolean;
   showStats: boolean;
@@ -21,7 +21,7 @@ export type SettingsSaveInput = {
 
 export type SettingsSavePatch = {
   uiPatch: Partial<UIState>;
-  chatSettingsPatch?: Partial<ChatSettings>;
+  chatSettingsPatch?: ChatSettingsPatch;
 };
 
 export function buildSettingsSavePatch(input: SettingsSaveInput): SettingsSavePatch {
@@ -29,19 +29,23 @@ export function buildSettingsSavePatch(input: SettingsSaveInput): SettingsSavePa
   const uiPatch: Partial<UIState> = { tutor: { defaultModelId: trimmedTutorModel } };
 
   if (input.chat) {
-    const chatSettingsPatch: Partial<ChatSettings> = {
+    const chatSettingsPatch: ChatSettingsPatch = {
       system: input.system,
-      temperature: input.temperature,
-      top_p: input.topP,
-      max_tokens: input.maxTokens,
-      reasoning_effort: input.reasoningEffort,
-      reasoning_tokens: input.reasoningTokens,
-      show_thinking_by_default: input.showThinking,
-      show_stats: input.showStats,
-      showToolCallLog: input.showToolCallLog,
-      showDebugRawJson: input.showDebugRawJson,
-      ...(input.chat.settings.tutor_mode || input.ui?.tutor.forceMode
-        ? { tutor_default_model: trimmedTutorModel }
+      generation: {
+        temperature: input.temperature,
+        topP: input.topP,
+        maxTokens: input.maxTokens,
+        reasoningEffort: input.reasoningEffort,
+        reasoningTokens: input.reasoningTokens,
+      },
+      ui: {
+        showThinkingByDefault: input.showThinking,
+        showStats: input.showStats,
+        showToolCallLog: input.showToolCallLog,
+        showDebugRawJson: input.showDebugRawJson,
+      },
+      ...(input.chat.settings.features.tutor.enabled || input.ui?.tutor.forceMode
+        ? { features: { tutor: { defaultModelId: trimmedTutorModel } } }
         : {}),
     };
     return { uiPatch, chatSettingsPatch };

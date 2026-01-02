@@ -1,6 +1,6 @@
 import 'server-only';
 import type { TestQuestion, KnowledgeGap } from '@/lib/eval/ablationScenarios';
-import type { ModelTransport } from '@/lib/types';
+import type { TransportAuth } from '@/lib/auth/transport';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 
 export type TestResult = {
@@ -15,8 +15,7 @@ export type TestResult = {
 };
 
 export type TestAdminOptions = {
-  apiKey: string;
-  transport: ModelTransport;
+  auth: TransportAuth;
   model: string;
   studentPersona?: string;
   priorKnowledge?: string; // Description of what the student knows
@@ -78,12 +77,11 @@ async function askQuestion(question: TestQuestion, options: TestAdminOptions): P
   const prompt = buildStudentPrompt(question, optionsText, options);
 
   const response = await getChatCompletion()({
-    apiKey: options.apiKey,
-    transport: options.transport,
+    auth: options.auth,
     model: options.model,
     messages: [{ role: 'user', content: prompt }],
     temperature: options.testType === 'post' ? 0.1 : 0.3, // Lower temp for post-test reasoning
-    max_tokens: 10,
+    maxTokens: 10,
   });
 
   const text = extractText(response);

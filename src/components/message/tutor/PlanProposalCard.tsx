@@ -62,15 +62,19 @@ export function PlanProposalCard({
       // Initialize or sync learner model with the plan
       // If there's an existing model (plan update), sync it to preserve progress
       // Otherwise (new plan), initialize fresh
-      const existingModel = chat.settings.learnerModel;
+      const existingModel = chat.settings.features.tutor.learnerModel;
       const learnerModel = existingModel
         ? syncLearnerModelWithPlan(existingModel, adoptedPlan)
         : initializeLearnerModel(chat.id, adoptedPlan);
       await updateChatSettings({
-        learningPlan: adoptedPlan,
-        planGenerated: true,
-        enableLearnerModel: true,
-        learnerModel,
+        features: {
+          tutor: {
+            learningPlan: adoptedPlan,
+            planGenerated: true,
+            enableLearnerModel: true,
+            learnerModel,
+          },
+        },
       });
       await applyProposalStatus('approved', { plan: adoptedPlan });
 

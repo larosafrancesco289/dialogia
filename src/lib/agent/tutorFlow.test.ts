@@ -2,10 +2,22 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildHiddenTutorContent, ensureTutorDefaults, mergeTutorPayload } from './tutorFlow';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import type { Chat } from '@/lib/types';
 
-const baseChat = () => ({
+const baseChat = (): Pick<Chat, 'settings'> => ({
   settings: {
-    model: 'provider/original',
+    modelId: 'provider/original',
+    generation: {},
+    ui: {
+      showThinkingByDefault: false,
+      showStats: false,
+      showToolCallLog: false,
+      showDebugRawJson: true,
+    },
+    features: {
+      search: { enabled: false, provider: 'openrouter' },
+      tutor: { enabled: false },
+    },
   },
 });
 
@@ -36,9 +48,9 @@ test('ensureTutorDefaults fills missing tutor defaults and enables learner model
     fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
   });
   assert.equal(result.changed, true);
-  assert.equal(result.nextSettings.model, DEFAULT_TUTOR_MODEL_ID);
-  assert.equal(result.nextSettings.tutor_default_model, DEFAULT_TUTOR_MODEL_ID);
-  assert.equal(result.nextSettings.enableLearnerModel, true);
+  assert.equal(result.nextSettings.modelId, DEFAULT_TUTOR_MODEL_ID);
+  assert.equal(result.nextSettings.features.tutor.defaultModelId, DEFAULT_TUTOR_MODEL_ID);
+  assert.equal(result.nextSettings.features.tutor.enableLearnerModel, true);
 });
 
 test('mergeTutorPayload merges patches and rebuilds hidden content', () => {

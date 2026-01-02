@@ -8,13 +8,13 @@ export type BuildChatBodyParams = {
   stream: boolean;
   modalities?: Array<'image' | 'text'>;
   temperature?: number;
-  top_p?: number;
-  max_tokens?: number;
-  reasoning_effort?: 'none' | 'low' | 'medium' | 'high';
-  reasoning_tokens?: number;
+  topP?: number;
+  maxTokens?: number;
+  reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  reasoningTokens?: number;
   tools?: ToolDefinition[];
-  tool_choice?: OpenRouterChatRequest['tool_choice'];
-  parallel_tool_calls?: boolean;
+  toolChoice?: OpenRouterChatRequest['tool_choice'];
+  parallelToolCalls?: boolean;
   providerSort?: ProviderSort;
   plugins?: PluginConfig[];
   includeUsage?: boolean;
@@ -29,18 +29,18 @@ export function buildChatBody(params: BuildChatBodyParams): OpenRouterChatReques
   if (Array.isArray(params.modalities) && params.modalities.length)
     body.modalities = params.modalities;
   if (typeof params.temperature === 'number') body.temperature = params.temperature;
-  if (typeof params.top_p === 'number') body.top_p = params.top_p;
-  if (typeof params.max_tokens === 'number') body.max_tokens = params.max_tokens;
+  if (typeof params.topP === 'number') body.top_p = params.topP;
+  if (typeof params.maxTokens === 'number') body.max_tokens = params.maxTokens;
 
   const reasoning: OpenRouterReasoning = {};
-  if (typeof params.reasoning_effort === 'string') reasoning.effort = params.reasoning_effort;
-  if (typeof params.reasoning_tokens === 'number') reasoning.max_tokens = params.reasoning_tokens;
+  if (typeof params.reasoningEffort === 'string') reasoning.effort = params.reasoningEffort;
+  if (typeof params.reasoningTokens === 'number') reasoning.max_tokens = params.reasoningTokens;
   if (Object.keys(reasoning).length) body.reasoning = reasoning;
 
   if (Array.isArray(params.tools) && params.tools.length) body.tools = params.tools;
-  if (params.tool_choice) body.tool_choice = params.tool_choice;
-  if (typeof params.parallel_tool_calls === 'boolean')
-    body.parallel_tool_calls = params.parallel_tool_calls;
+  if (params.toolChoice) body.tool_choice = params.toolChoice;
+  if (typeof params.parallelToolCalls === 'boolean')
+    body.parallel_tool_calls = params.parallelToolCalls;
   if (
     params.providerSort === ProviderSort.Price ||
     params.providerSort === ProviderSort.Throughput

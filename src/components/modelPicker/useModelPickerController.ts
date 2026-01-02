@@ -5,11 +5,11 @@ import { PINNED_MODEL_ID } from '@/lib/constants';
 import { findModelById } from '@/lib/models';
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
-import { readNextOverrides } from '@/lib/ui/next';
 import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import { useTier } from '@/lib/auth/tierContext';
 import { FREE_MODEL_IDS } from '@/data/freeModels';
 import { isModelTransportAvailable } from '@/lib/policy/providerAvailability';
+import { selectNextOverrides } from '@/lib/store/selectors';
 
 export type ModelPickerOption = {
   id: string;
@@ -51,6 +51,7 @@ export function useModelPickerController(): ModelPickerController {
     models,
     zdrModelIds,
     zdrProviderIds,
+    nextOverrides,
   } = useChatStore(
     (state) => ({
       updateChatSettings: state.updateChatSettings,
@@ -65,6 +66,7 @@ export function useModelPickerController(): ModelPickerController {
       models: state.models,
       zdrModelIds: state.zdrModelIds,
       zdrProviderIds: state.zdrProviderIds,
+      nextOverrides: selectNextOverrides(state),
     }),
     shallow,
   );
@@ -73,8 +75,6 @@ export function useModelPickerController(): ModelPickerController {
   const curated = useTierCuratedModels();
   const tierDefaultModelId = useTierDefaultModelId();
   const { isFreeTier, isLoading: tierLoading } = useTier();
-  const nextOverrides = readNextOverrides(ui);
-
   const allowedIds = useMemo(() => {
     const ids = (models || [])
       .filter((model) => isModelTransportAvailable(model))
@@ -128,11 +128,11 @@ export function useModelPickerController(): ModelPickerController {
   const selectedIds = useMemo(() => {
     const fromChat = chat
       ? [
-          chat.settings.model || tierDefaultModelId,
-          ...((chat.settings.parallel_models as string[] | undefined) ?? []),
+          chat.settings.modelId || tierDefaultModelId,
+          ...((chat.settings.parallelModels as string[] | undefined) ?? []),
         ]
       : [
-          nextOverrides.model || tierDefaultModelId,
+          nextOverrides.modelId || tierDefaultModelId,
           ...((nextOverrides.parallelModels as string[] | undefined) ?? []),
         ];
     const cleaned = fromChat.filter((id): id is string => typeof id === 'string' && id.length > 0);
@@ -152,7 +152,7 @@ export function useModelPickerController(): ModelPickerController {
     return deduped;
   }, [
     chat,
-    nextOverrides.model,
+    nextOverrides.modelId,
     nextOverrides.parallelModels,
     tierDefaultModelId,
     isFreeTier,
@@ -176,9 +176,9 @@ export function useModelPickerController(): ModelPickerController {
     const final = deduped.length ? deduped : [tierDefaultModelId];
     const [primary, ...rest] = final;
     if (chat) {
-      updateChatSettings({ model: primary, parallel_models: rest });
+      updateChatSettings({ modelId: primary, parallelModels: rest });
     } else {
-      setUI({ overrides: { model: primary, parallelModels: rest } });
+      setUI({ overrides: { modelId: primary, parallelModels: rest } });
     }
   };
 

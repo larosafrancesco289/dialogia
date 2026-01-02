@@ -1,6 +1,6 @@
 import type { StoreSetter } from '@/lib/agent/types';
 import type { ToolCallLogEntry } from '@/lib/types';
-import { startToolCallLogEntry, updateToolCallLogEntry } from '@/lib/services/toolCallLog';
+import { startToolCallLogEntry, updateToolCallLogEntry } from '@/lib/turnRuntime/toolCallLog';
 
 export type ToolExecutionLog = {
   success: (output?: Record<string, unknown>, metadataPatch?: ToolCallLogEntry['metadata']) => void;

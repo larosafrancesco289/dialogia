@@ -7,7 +7,7 @@ import {
   sendUserTurn,
   regenerateTurn,
 } from '@/lib/services/turns';
-import { abortAllTurns, abortTurn } from '@/lib/services/controllers';
+import { abortAllTurns, abortTurn } from '@/lib/turnRuntime/abortControllers';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { clearActiveTurnCount, isChatStreaming } from '@/lib/ui/streaming';

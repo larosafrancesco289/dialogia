@@ -30,7 +30,7 @@ export function StatsToggle({
         <div className="text-xs text-muted-foreground">
           <MessageMeta
             message={message}
-            modelId={message.model || chat?.settings.model || 'unknown'}
+            modelId={message.model || chat?.settings.modelId || 'unknown'}
             chatSettings={chat.settings}
             models={models}
             showStats={true}

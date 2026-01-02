@@ -1,8 +1,9 @@
-import type { LearningPlan, ModelTransport } from '@/lib/types';
+import type { LearningPlan } from '@/lib/types';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import type { ModelMessage } from '@/lib/agent/types';
 import { validateLearningPlan } from '@/lib/learningPlan/validate';
 import { isRecord } from '@/lib/utils/guards';
+import type { TransportAuth } from '@/lib/auth/transport';
 
 /**
  * System prompt for learning plan generation
@@ -36,8 +37,7 @@ Respond with ONLY the JSON object, no additional text.`.trim();
 export async function generateLearningPlan(
   goal: string,
   options: {
-    apiKey: string;
-    transport: ModelTransport;
+    auth: TransportAuth;
     model: string;
     priorKnowledge?: string[];
     timeConstraint?: number; // Hours available
@@ -45,7 +45,7 @@ export async function generateLearningPlan(
     signal?: AbortSignal;
   },
 ): Promise<LearningPlan> {
-  const { apiKey, transport, model, priorKnowledge, timeConstraint, difficulty, signal } = options;
+  const { auth, model, priorKnowledge, timeConstraint, difficulty, signal } = options;
 
   // Build user prompt with context
   const contextParts: string[] = [];
@@ -75,11 +75,10 @@ export async function generateLearningPlan(
 
   // Call LLM
   const response = await getChatCompletion()({
-    apiKey,
-    transport,
+    auth,
     model,
     messages,
-    max_tokens: 3000,
+    maxTokens: 3000,
     temperature: 0.7,
     signal,
   });

@@ -3,6 +3,8 @@
 
 import type { ModelMessage } from '@/lib/agent/types';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
+import { requireTransportAuth } from '@/lib/auth/require';
+import type { TransportAuth } from '@/lib/auth/transport';
 import { getClientTier } from '@/lib/auth/tier.client';
 import type { AccessTier } from '@/lib/auth/types';
 import { logger } from '@/lib/logger';
@@ -32,12 +34,18 @@ export async function generateChatTitle(userMessage: string): Promise<string | n
   const timeoutId = setTimeout(() => controller.abort(), TITLE_TIMEOUT_MS);
 
   try {
+    let auth: TransportAuth;
+    try {
+      auth = requireTransportAuth('openrouter');
+    } catch {
+      clearTimeout(timeoutId);
+      return null;
+    }
     const response = await getChatCompletion()({
-      apiKey: '',
-      transport: 'openrouter',
+      auth,
       model: TITLE_MODEL,
       messages,
-      max_tokens: TITLE_MAX_TOKENS,
+      maxTokens: TITLE_MAX_TOKENS,
       temperature: 0.7,
       signal: controller.signal,
     });

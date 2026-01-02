@@ -1,3 +1,6 @@
+// Module: services/learnerModelFeedback
+// Responsibility: Apply learner feedback, update plans, and persist resulting messages.
+
 import { v4 as uuidv4 } from 'uuid';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import type { Repository } from '@/lib/db/repository';
@@ -28,9 +31,9 @@ export async function applyLearnerModelFeedbackFromUser({
   const chatId = state.selectedChatId;
   if (!chatId) return;
   const chat = state.chats.find((c) => c.id === chatId);
-  if (!chat || !chat.settings.learningPlan) return;
+  if (!chat || !chat.settings.features.tutor.learningPlan) return;
 
-  const plan = chat.settings.learningPlan;
+  const plan = chat.settings.features.tutor.learningPlan;
   const messages = getMessagesForChat(state, chatId);
   const baseModel = getLatestLearnerModel(messages) ?? initializeLearnerModel(chatId, plan);
   const feedback = applyLearnerModelFeedback(baseModel, input);
@@ -38,7 +41,7 @@ export async function applyLearnerModelFeedbackFromUser({
   const updatedPlan = planResult.updatedPlan ?? plan;
 
   if (typeof state.updateChatSettings === 'function') {
-    await state.updateChatSettings({ learningPlan: updatedPlan });
+    await state.updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
   }
 
   const nodeMeta = plan.nodes.find((n) => n.id === input.nodeId);
@@ -75,7 +78,7 @@ export async function applyLearnerModelFeedbackFromUser({
     role: 'assistant',
     content: summaryParts.join(' '),
     createdAt: Date.now(),
-    model: chat.settings.model || DEFAULT_TUTOR_MODEL_ID,
+    model: chat.settings.modelId || DEFAULT_TUTOR_MODEL_ID,
     learnerModel: feedback.model,
     planUpdates,
     metadata: { kind: 'learner_model_feedback' },

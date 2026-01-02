@@ -5,6 +5,7 @@ import { HeadlessTutorSession } from '@/lib/headless/session';
 import { createModelIndex } from '@/lib/models';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
 import type { Chat, Message, ModelDescriptor } from '@/lib/types';
+import { buildTransportAuth } from '@/lib/auth/transport';
 
 const mockModel = (id: string): ModelDescriptor => ({
   id,
@@ -20,15 +21,19 @@ const mockChat = (modelId: string): Chat => ({
   createdAt: Date.now(),
   updatedAt: Date.now(),
   settings: {
-    model: modelId,
-    tutor_mode: true,
-    tutor_default_model: modelId,
-    enableLearnerModel: true,
     system: DEFAULT_BASE_SYSTEM,
-    search_enabled: false,
-    search_provider: 'openrouter',
-    showToolCallLog: true,
-    showDebugRawJson: true,
+    modelId,
+    generation: {},
+    ui: {
+      showThinkingByDefault: false,
+      showStats: false,
+      showToolCallLog: true,
+      showDebugRawJson: true,
+    },
+    features: {
+      search: { enabled: false, provider: 'openrouter' },
+      tutor: { enabled: true, defaultModelId: modelId, enableLearnerModel: true },
+    },
   },
 });
 
@@ -63,7 +68,8 @@ test('headless tutor session streams a response and captures artifacts', async (
     chat,
     models: [model],
     modelIndex: createModelIndex([model]),
-    resolveApiKey: () => 'test-key',
+    resolveAuth: () =>
+      buildTransportAuth({ transport: 'openrouter', apiKey: 'test-key', useProxy: false }),
     pipeline,
     uiOverrides: {
       debug: { mode: true },

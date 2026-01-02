@@ -5,14 +5,16 @@ import { findModelById, formatModelLabel } from '@/lib/models';
 import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
 import { getBreadcrumbPath, getMilestones } from '@/lib/learningPlan/breadcrumb';
 import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
-import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
-import { selectCurrentChat, selectMessagesForCurrentChat } from '@/lib/store/selectors';
+import {
+  selectCurrentChat,
+  selectIsTutorEnabled,
+  selectMessagesForCurrentChat,
+  selectNextOverrides,
+} from '@/lib/store/selectors';
 import { useTier } from '@/lib/auth/tierContext';
 import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
-import type { UiNextOverrides, UiPlanSnapshot } from '@/lib/contracts/ui';
+import type { UiPlanSnapshot } from '@/lib/contracts/ui';
 import type { Chat, LearnerModel, LearningPlan, LearningPlanNode } from '@/lib/types';
-
-const EMPTY_OVERRIDES: UiNextOverrides = {};
 
 type PlanProgress = ReturnType<typeof calculatePlanProgress>;
 type PlanNode = ReturnType<typeof getNextNode>;
@@ -61,7 +63,7 @@ export type TopHeaderState = {
 };
 
 export function useTopHeaderState(): TopHeaderState {
-  const { isFreeTier, isStudyTier, tier } = useTier();
+  const { isFreeTier, isStudyTier } = useTier();
 
   const {
     chat,
@@ -74,14 +76,14 @@ export function useTopHeaderState(): TopHeaderState {
     collapsed,
     isSettingsOpen,
     planSheetOpen,
-    overrides,
+    nextOverrides,
     tutorDefaultModelId,
-    uiSnapshot,
     experimentalTutor,
     forceTutorMode,
     models,
     planGeneration,
     planSheetOverride,
+    tutorActive,
   } = useChatStore((s) => {
     return {
       chat: selectCurrentChat(s),
@@ -94,9 +96,8 @@ export function useTopHeaderState(): TopHeaderState {
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
       planSheetOpen: s.ui.plan.sheetOpen ?? false,
-      overrides: s.ui.overrides,
+      nextOverrides: selectNextOverrides(s),
       tutorDefaultModelId: s.ui.tutor.defaultModelId,
-      uiSnapshot: s.ui,
       experimentalTutor: !!s.ui.flags.experimentalTutor,
       forceTutorMode: !!s.ui.tutor.forceMode,
       models: s.models,
@@ -104,17 +105,14 @@ export function useTopHeaderState(): TopHeaderState {
         ? s.ui.plan.generationByChatId?.[s.selectedChatId]
         : undefined,
       planSheetOverride: s.ui.plan.sheetPlanOverride ?? null,
+      tutorActive: selectIsTutorEnabled(s),
     };
   }, shallow);
 
-  const nextOverrides = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const nextTutorMode = !!nextOverrides.tutorMode;
-  const tutorActive = chat
-    ? isTutorRuntimeEnabled(uiSnapshot, chat, tier)
-    : isStudyTier || (experimentalTutor && (forceTutorMode || nextTutorMode));
   // Resolve tutor model with tier awareness
   const rawTutorModelId =
-    chat?.settings?.tutor_default_model || chat?.settings?.model || tutorDefaultModelId;
+    chat?.settings?.features.tutor.defaultModelId || chat?.settings?.modelId || tutorDefaultModelId;
   const tutorModelId = useMemo(() => {
     // If on free tier and the model isn't free, use the free tutor model
     if (isFreeTier && rawTutorModelId && !FREE_MODEL_IDS.includes(rawTutorModelId)) {
@@ -129,7 +127,7 @@ export function useTopHeaderState(): TopHeaderState {
     [tutorModelMeta, tutorModelId],
   );
 
-  const learningPlan = chat?.settings?.learningPlan;
+  const learningPlan = chat?.settings?.features.tutor.learningPlan;
   const hasPlan = !!learningPlan;
   const planProgress = useMemo(
     () => (learningPlan ? calculatePlanProgress(learningPlan) : null),
@@ -194,7 +192,7 @@ export function useTopHeaderState(): TopHeaderState {
 
   const onPlanUpdate = useCallback(
     async (updatedPlan: LearningPlan) => {
-      await updateChatSettings({ learningPlan: updatedPlan });
+      await updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
     },
     [updateChatSettings],
   );
@@ -208,7 +206,7 @@ export function useTopHeaderState(): TopHeaderState {
 
       if (isStartingLesson) {
         const updatedPlan = updateNodeStatus(learningPlan, nodeId, 'in_progress');
-        await updateChatSettings({ learningPlan: updatedPlan });
+        await updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
         const prompt = `I am ready to start the topic '${node.name}'. Please introduce this concept and guide me through it.`;
         await sendUserMessage(prompt, {
           metadata: {
@@ -226,11 +224,11 @@ export function useTopHeaderState(): TopHeaderState {
   const onToggleTutor = useCallback(async () => {
     if (forceTutorMode) return;
     if (chat) {
-      if (!chat.settings.tutor_mode) {
+      if (!chat.settings.features.tutor.enabled) {
         setUI({ overrides: { tutorMode: true } });
         await newChat();
       } else {
-        await updateChatSettings({ tutor_mode: false });
+        await updateChatSettings({ features: { tutor: { enabled: false } } });
       }
     } else {
       setUI({ overrides: { tutorMode: !nextTutorMode } });
@@ -248,7 +246,7 @@ export function useTopHeaderState(): TopHeaderState {
   // Get learner model from either chat settings (persisted) or message history
   // Prefer the more recently updated one
   const learnerModel = useMemo(() => {
-    const fromSettings = chat?.settings?.learnerModel;
+    const fromSettings = chat?.settings?.features.tutor.learnerModel;
     const fromMessages = messages ? getLatestLearnerModel(messages) : undefined;
 
     if (!fromSettings && !fromMessages) return undefined;
@@ -257,7 +255,7 @@ export function useTopHeaderState(): TopHeaderState {
 
     // Return the more recently updated one
     return fromSettings.updatedAt > fromMessages.updatedAt ? fromSettings : fromMessages;
-  }, [chat?.settings?.learnerModel, messages]);
+  }, [chat?.settings?.features.tutor.learnerModel, messages]);
 
   return {
     chat,

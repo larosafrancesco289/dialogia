@@ -42,11 +42,30 @@ export type UITutorState = UiTutorSnapshot & {
   contextMode?: 'summary' | 'full';
 };
 
-export type UIState = UiSnapshot & {
+export type PersistedUiState = {
+  showSettings: UiSnapshot['showSettings'];
   sidebarCollapsed?: boolean;
-  composerDraft?: string;
-  tutor: UITutorState;
+  zdrOnly?: UiSnapshot['zdrOnly'];
+  routePreference?: UiSnapshot['routePreference'];
+  flags?: Pick<UIFlags, 'experimentalBrave' | 'experimentalTutor' | 'enableMultiModelChat'>;
+  debug?: Pick<UIDebugState, 'mode'>;
+  tutor?: Pick<
+    UITutorState,
+    'contextMode' | 'thesisMode' | 'researchMode' | 'defaultModelId' | 'forceMode'
+  >;
 };
+
+export type SessionUiState = Omit<
+  UiSnapshot,
+  'flags' | 'debug' | 'tutor' | 'showSettings' | 'routePreference' | 'zdrOnly'
+> & {
+  flags: UIFlags;
+  debug: UIDebugState;
+  tutor: UITutorState;
+  composerDraft?: string;
+};
+
+export type UIState = SessionUiState & PersistedUiState;
 
 /**
  * Type for setUI partial updates.

@@ -9,7 +9,7 @@ export { streamChatCompletion } from '@/lib/openrouter/stream';
 export { fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter/zdr';
 
 export const openrouterTransport: TransportClient = {
-  fetchModels: (apiKey, opts) => fetchModels(apiKey, opts),
+  fetchModels: (auth, opts) => fetchModels(auth, opts),
   chatCompletion,
   streamChatCompletion,
 };

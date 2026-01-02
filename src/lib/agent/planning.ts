@@ -64,7 +64,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const { set, get, persistMessage } = turn;
   const storeState = get?.();
   const messagesForChat = storeState ? getMessagesForChat(storeState, chatId) : [];
-  let currentPlan = chat.settings.learningPlan;
+  let currentPlan = chat.settings.features.tutor.learningPlan;
   const { planningToolDefinition, allowedTutorTools, toolPolicy, phase } = derivePlanningContext({
     chat,
     messagesForChat,
@@ -77,8 +77,8 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
 
   const convo = planningMessages.slice();
   let rounds = 0;
-  const searchEnabled = !!settings.generation.searchEnabled;
-  const searchProvider = settings.generation.searchProvider || 'openrouter';
+  const searchEnabled = settings.searchEnabled;
+  const searchProvider = settings.searchProvider || 'openrouter';
 
   // Learner model updates are now handled by the tutor via tool calls at meaningful moments,
   // rather than automatically every turn. This reduces latency and API costs.

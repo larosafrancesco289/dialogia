@@ -10,7 +10,7 @@ import { streamFinal } from '@/lib/agent/streaming';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import { DEFAULT_BASE_SYSTEM, shouldShortCircuitTutor } from '@/lib/agent/policy';
 import { resolveModelTransport } from '@/lib/providers';
-import { setTurnController, clearTurnController } from '@/lib/services/controllers';
+import { setTurnController, clearTurnController } from '@/lib/turnRuntime/abortControllers';
 import type { ModelIndex } from '@/lib/models';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
@@ -20,8 +20,14 @@ import { createAssistantMessage, createUserMessage } from '@/lib/messages/create
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { adjustActiveTurnCount } from '@/lib/ui/streaming';
+import type { TransportAuth } from '@/lib/auth/transport';
 
-export type ApiKeyResolver = (params: { modelId: string; transport: ModelTransport }) => string;
+export type AuthResolver = (params: {
+  modelId: string;
+  transport: ModelTransport;
+}) => TransportAuth | null;
+
+export type ApiKeyResolver = AuthResolver;
 
 export type HeadlessTutorSessionOptions = {
   chat: Chat;
@@ -29,19 +35,19 @@ export type HeadlessTutorSessionOptions = {
   modelIndex?: ModelIndex;
   uiOverrides?: Partial<UIState>;
   initialMessages?: Message[];
-  resolveApiKey: ApiKeyResolver;
+  resolveAuth: AuthResolver;
   store?: StoreApi<StoreState>;
   pipeline?: PipelineClient;
 };
 
 export class HeadlessTutorSession {
   private readonly store: StoreApi<StoreState>;
-  private readonly resolveApiKey: ApiKeyResolver;
+  private readonly resolveAuth: AuthResolver;
   private readonly chatId: string;
   private readonly pipeline?: PipelineClient;
 
   constructor(private readonly options: HeadlessTutorSessionOptions) {
-    this.resolveApiKey = options.resolveApiKey;
+    this.resolveAuth = options.resolveAuth;
     this.pipeline = options.pipeline;
     if (options.store) {
       this.store = options.store;
@@ -110,7 +116,7 @@ export class HeadlessTutorSession {
       chatId: this.chatId,
       content: '',
       createdAt: now + 1,
-      model: chat.settings.model,
+      model: chat.settings.modelId,
     });
 
     const priorMessages = getMessagesForChat(this.store.getState(), this.chatId);
@@ -124,7 +130,7 @@ export class HeadlessTutorSession {
     const controller = new AbortController();
     setTurnController(this.chatId, controller);
 
-    const baseTurnContext: Omit<TurnContext, 'apiKey' | 'transport'> = {
+    const baseTurnContext: Omit<TurnContext, 'auth'> = {
       set: this.store.setState.bind(this.store),
       get: this.store.getState.bind(this.store),
       models: this.store.getState().models,
@@ -138,9 +144,9 @@ export class HeadlessTutorSession {
     const authResolver = (modelId: string) => {
       const modelMeta = baseTurnContext.modelIndex.get(modelId);
       const transport = resolveModelTransport(modelId, modelMeta);
-      const apiKey = this.resolveApiKey({ modelId, transport });
-      if (!apiKey) throw new Error(`Missing API key for ${transport} transport`);
-      return { transport, apiKey };
+      const auth = this.resolveAuth({ modelId, transport });
+      if (!auth) throw new Error(`Missing auth for ${transport} transport`);
+      return auth;
     };
 
     const lifecycle = createTurnLifecycle({
@@ -168,7 +174,7 @@ export class HeadlessTutorSession {
         chat,
         ui: this.store.getState().ui,
         modelIndex: baseTurnContext.modelIndex,
-        modelId: chat.settings.model,
+        modelId: chat.settings.modelId,
       });
 
       const plan = (options: Parameters<typeof planTurn>[0]) =>
@@ -179,7 +185,7 @@ export class HeadlessTutorSession {
       runArtifacts = await runTurn({
         chat,
         chatId: this.chatId,
-        modelId: chat.settings.model,
+        modelId: chat.settings.modelId,
         userContent: content,
         assistantMessage,
         priorMessages,

@@ -190,7 +190,7 @@ export async function executePlanningToolCall(opts: {
             set,
             chatId,
             assistantMessageId: assistantMessage.id,
-            plan: tutorOutcome.updatedPlan ?? chat.settings.learningPlan,
+            plan: tutorOutcome.updatedPlan ?? chat.settings.features.tutor.learningPlan,
             name: callName,
           });
         }

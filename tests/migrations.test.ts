@@ -7,7 +7,7 @@ test('store and Dexie versions stay aligned', () => {
   assert.equal(STORE_MIGRATION_VERSION, DB_SCHEMA_VERSION);
 });
 
-test('migrate drops legacy overrides and normalizes search flags', () => {
+test('migrate drops legacy overrides and normalizes chat settings', () => {
   const legacyState: any = {
     chats: [
       {
@@ -18,11 +18,14 @@ test('migrate drops legacy overrides and normalizes search flags', () => {
         settings: {
           model: 'model-x',
           search_with_brave: true,
+          max_tokens: 120,
+          show_stats: true,
         },
       },
     ],
     messages: {},
     ui: {
+      showSettings: false,
       nextModel: 'model-x',
       nextSearchEnabled: true,
       nextSearchWithBrave: true,
@@ -36,6 +39,13 @@ test('migrate drops legacy overrides and normalizes search flags', () => {
   assert.equal(migrated.ui.overrides, undefined);
   assert.ok(!('nextModel' in migrated.ui));
   assert.ok(!('nextSearchEnabled' in migrated.ui));
-  assert.equal(migrated.chats?.[0]?.settings?.search_enabled, true);
-  assert.equal(migrated.chats?.[0]?.settings?.search_with_brave, undefined);
+
+  const settings = migrated.chats?.[0]?.settings as Record<string, any>;
+  assert.equal(settings.modelId, 'model-x');
+  assert.equal(settings.generation?.maxTokens, 120);
+  assert.equal(settings.ui?.showStats, true);
+  assert.equal(settings.features?.search?.enabled, true);
+  assert.equal(settings.features?.search?.provider, 'brave');
+  assert.ok(!('search_enabled' in settings));
+  assert.ok(!('search_with_brave' in settings));
 });
