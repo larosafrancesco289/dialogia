@@ -1,6 +1,6 @@
 'use client';
 import { memo, useCallback } from 'react';
-import { MessagePanels } from '@/components/message/MessagePanels';
+import { MessagePanelsUpper, TutorPanelSection } from '@/components/message/MessagePanels';
 import styles from './MessageCard.module.css';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
 import { useMessageCardController } from '@/components/message/useMessageCardController';
@@ -138,8 +138,9 @@ function MessageCardComponent({
   const isReasoningExpanded = panels.isReasoningExpanded(message.id);
   const statsExpanded = panels.isStatsExpanded(message.id);
 
-  const messagePanelsNode = isAssistant ? (
-    <MessagePanels
+  // Upper panels (debug, reasoning, brave sources) - appear ABOVE message content
+  const upperPanelsNode = isAssistant ? (
+    <MessagePanelsUpper
       message={message}
       chat={chat}
       models={models}
@@ -151,8 +152,6 @@ function MessageCardComponent({
       debugEntry={debugEntry}
       isDebugExpanded={isDebugExpanded}
       onToggleDebug={handleToggleDebug}
-      tutorGloballyEnabled={tutorGloballyEnabled}
-      tutorEntry={tutorEntry}
       autoReasoningModelIds={autoReasoningModelIds}
       isStreaming={isStreaming}
       lastMessageId={lastMessageId}
@@ -162,6 +161,15 @@ function MessageCardComponent({
       showDebugRawJson={showDebugRawJson}
       toolCalls={Array.isArray(message.toolCalls) ? message.toolCalls : undefined}
       highlightToolCalls={message.id === lastMessageId}
+    />
+  ) : null;
+
+  // Tutor panel - appears BELOW message content (so tutor's text shows first, then interactive tools)
+  const tutorPanelNode = isAssistant ? (
+    <TutorPanelSection
+      messageId={message.id}
+      tutorGloballyEnabled={tutorGloballyEnabled}
+      tutorEntry={tutorEntry}
     />
   ) : null;
 
@@ -200,7 +208,8 @@ function MessageCardComponent({
           setLightbox={setLightbox}
           attachments={attachments}
           tutorEnabled={tutorEnabled}
-          messagePanelsNode={messagePanelsNode}
+          upperPanelsNode={upperPanelsNode}
+          tutorPanelNode={tutorPanelNode}
         />
       ) : (
         <UserMessage
