@@ -67,6 +67,12 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       });
     },
 
+    clearChatMessages(chatId?: string) {
+      const id = chatId || get().selectedChatId;
+      if (!id) return;
+      set((s) => removeChatMessages(s, id));
+    },
+
     async branchChatFromMessage(messageId: string) {
       const st = get();
       const sourceChatId = st.messagesById[messageId]?.chatId;

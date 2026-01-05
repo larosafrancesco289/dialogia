@@ -19,6 +19,7 @@ export type StoreActions = VoiceActions & {
   selectChat: (id: string) => void;
   renameChat: (id: string, title: string) => Promise<void>;
   deleteChat: (id: string) => Promise<void>;
+  clearChatMessages: (chatId?: string) => void;
   updateChatSettings: (partial: ChatSettingsPatch) => Promise<void>;
   moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
 

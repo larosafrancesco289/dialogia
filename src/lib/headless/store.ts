@@ -60,6 +60,7 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
       }));
     },
     deleteChat: async () => {},
+    clearChatMessages: () => {},
     updateChatSettings: async (partial: ChatSettingsPatch) => {
       set((state) => ({
         chats: state.chats.map((c) =>

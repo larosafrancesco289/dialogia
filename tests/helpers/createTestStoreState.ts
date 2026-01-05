@@ -41,6 +41,7 @@ export function createTestStoreState(overrides: StoreStateOverrides = {}) {
     selectChat: noop,
     renameChat: noopAsync,
     deleteChat: noopAsync,
+    clearChatMessages: noop,
     updateChatSettings: noopAsync,
     moveChatToFolder: noopAsync,
     createFolder: noopAsync,
