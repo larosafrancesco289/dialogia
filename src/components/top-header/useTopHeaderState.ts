@@ -72,6 +72,7 @@ export function useTopHeaderState(): TopHeaderState {
     setUI,
     newChat,
     updateChatSettings,
+    clearChatMessages,
     sendUserMessage,
     collapsed,
     isSettingsOpen,
@@ -92,6 +93,7 @@ export function useTopHeaderState(): TopHeaderState {
       setUI: s.setUI,
       newChat: s.newChat,
       updateChatSettings: s.updateChatSettings,
+      clearChatMessages: s.clearChatMessages,
       sendUserMessage: s.sendUserMessage,
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
@@ -223,17 +225,40 @@ export function useTopHeaderState(): TopHeaderState {
 
   const onToggleTutor = useCallback(async () => {
     if (forceTutorMode) return;
-    if (chat) {
-      if (!chat.settings.features.tutor.enabled) {
-        setUI({ overrides: { tutorMode: true } });
+
+    if (!chat) {
+      // No chat exists: toggle the override flag for the next chat
+      setUI({ overrides: { tutorMode: !nextTutorMode } });
+      return;
+    }
+
+    const isTutorChat = chat.settings.features.tutor.enabled;
+    const hasUserMessages = messages && messages.some((m) => m.role === 'user');
+
+    if (isTutorChat) {
+      if (hasUserMessages) {
+        // In tutor chat with user messages: start a new non-tutor chat
+        setUI({ overrides: { tutorMode: false } });
         await newChat();
       } else {
+        // In tutor chat with only welcome message: disable tutor and clear the welcome message
+        clearChatMessages();
         await updateChatSettings({ features: { tutor: { enabled: false } } });
       }
+    } else if (hasUserMessages) {
+      // In non-tutor chat with messages: ask for confirmation before starting new tutor chat
+      const confirmed = window.confirm(
+        'Starting a learning session will create a new chat. Continue?',
+      );
+      if (confirmed) {
+        setUI({ overrides: { tutorMode: true } });
+        await newChat();
+      }
     } else {
-      setUI({ overrides: { tutorMode: !nextTutorMode } });
+      // In empty non-tutor chat: enable tutor in current chat (will trigger welcome message)
+      await updateChatSettings({ features: { tutor: { enabled: true } } });
     }
-  }, [chat, forceTutorMode, newChat, nextTutorMode, setUI, updateChatSettings]);
+  }, [chat, clearChatMessages, forceTutorMode, messages, newChat, nextTutorMode, setUI, updateChatSettings]);
 
   const onOpenPlanSheet = useCallback(() => {
     setUI({ plan: { sheetOpen: true, sheetPlanOverride: null } });

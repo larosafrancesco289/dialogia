@@ -4,7 +4,11 @@ import { useChatStore } from '@/lib/store';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { useTier } from '@/lib/auth/tierContext';
 import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
-import { selectIsTutorEnabled, selectNextOverrides } from '@/lib/store/selectors';
+import {
+  selectIsTutorEnabled,
+  selectMessagesForCurrentChat,
+  selectNextOverrides,
+} from '@/lib/store/selectors';
 
 export type MobileHeaderState = {
   chatTitle: string;
@@ -36,8 +40,10 @@ export function useMobileHeaderState(): MobileHeaderState {
     newChat,
     setUI,
     updateChatSettings,
+    clearChatMessages,
     uiState,
     models,
+    messages,
     nextOverrides,
     tutorActive,
   } = useChatStore(
@@ -48,8 +54,10 @@ export function useMobileHeaderState(): MobileHeaderState {
       newChat: state.newChat,
       setUI: state.setUI,
       updateChatSettings: state.updateChatSettings,
+      clearChatMessages: state.clearChatMessages,
       uiState: state.ui,
       models: state.models,
+      messages: selectMessagesForCurrentChat(state),
       nextOverrides: selectNextOverrides(state),
       tutorActive: selectIsTutorEnabled(state),
     }),
@@ -167,17 +175,40 @@ export function useMobileHeaderState(): MobileHeaderState {
 
   const onToggleTutorMode = useCallback(async () => {
     if (forceTutorMode) return;
-    if (chat) {
-      if (!chat.settings.features.tutor.enabled) {
-        setUI({ overrides: { tutorMode: true } });
+
+    if (!chat) {
+      // No chat exists: toggle the override flag for the next chat
+      setUI({ overrides: { tutorMode: !nextTutorMode } });
+      return;
+    }
+
+    const isTutorChat = chat.settings.features.tutor.enabled;
+    const hasUserMessages = messages && messages.some((m) => m.role === 'user');
+
+    if (isTutorChat) {
+      if (hasUserMessages) {
+        // In tutor chat with user messages: start a new non-tutor chat
+        setUI({ overrides: { tutorMode: false } });
         await newChat();
       } else {
+        // In tutor chat with only welcome message: disable tutor and clear the welcome message
+        clearChatMessages();
         await updateChatSettings({ features: { tutor: { enabled: false } } });
       }
+    } else if (hasUserMessages) {
+      // In non-tutor chat with messages: ask for confirmation before starting new tutor chat
+      const confirmed = window.confirm(
+        'Starting a learning session will create a new chat. Continue?',
+      );
+      if (confirmed) {
+        setUI({ overrides: { tutorMode: true } });
+        await newChat();
+      }
     } else {
-      setUI({ overrides: { tutorMode: !nextTutorMode } });
+      // In empty non-tutor chat: enable tutor in current chat (will trigger welcome message)
+      await updateChatSettings({ features: { tutor: { enabled: true } } });
     }
-  }, [forceTutorMode, chat, setUI, newChat, updateChatSettings, nextTutorMode]);
+  }, [forceTutorMode, chat, clearChatMessages, messages, setUI, newChat, updateChatSettings, nextTutorMode]);
 
   return {
     chatTitle,

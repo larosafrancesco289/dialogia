@@ -12,8 +12,8 @@ export function TutorToggle({
   const title = forceTutorMode
     ? 'Tutor Mode is enforced in settings'
     : active
-      ? 'Disable Tutor Mode'
-      : 'Enable Tutor Mode';
+      ? 'Start a new chat'
+      : 'Start learning session';
 
   const baseClass = active ? 'tutor-toggle tutor-toggle--active' : 'tutor-invite';
 

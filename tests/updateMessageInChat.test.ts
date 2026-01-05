@@ -33,6 +33,7 @@ const baseState = (messages: Record<string, Message[]>): StoreState => {
     selectChat: noop,
     renameChat: noopAsync,
     deleteChat: noopAsync,
+    clearChatMessages: noop,
     updateChatSettings: noopAsync,
     moveChatToFolder: noopAsync,
     createFolder: noopAsync,
