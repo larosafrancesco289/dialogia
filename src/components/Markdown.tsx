@@ -328,7 +328,19 @@ function CodeBlock({ code, language }: { code: string; language?: string }) {
   return <code className={cls} dangerouslySetInnerHTML={{ __html: html ?? escapeHtml(code) }} />;
 }
 
+/**
+ * Escape dollar signs that look like currency (e.g. $5, $100, $1.5M)
+ * so they don't get interpreted as LaTeX math delimiters.
+ * Preserves actual math like $x^2$ or $\frac{a}{b}$.
+ */
+function escapeCurrency(text: string): string {
+  // Match $ followed by digit, optional decimals/commas, optional K/M/B suffix
+  // This catches: $5, $100, $1,000, $99.99, $5M, $1.5B, etc.
+  return text.replace(/\$(\d[\d,]*(?:\.\d+)?[KMBkmb]?)\b/g, '\\$$1');
+}
+
 export function Markdown({ content }: { content: string }) {
+  const processedContent = useMemo(() => escapeCurrency(content), [content]);
   // Prism highlighting is handled per-block to avoid React clobbering DOM
 
   // Attach medium-zoom to images inside markdown for a better reading experience
@@ -360,7 +372,7 @@ export function Markdown({ content }: { content: string }) {
         logger.error('Failed to detach zoom', error);
       }
     };
-  }, [content]);
+  }, [processedContent]);
 
   const components: Components = {
     pre: ({ children, ...preProps }) => {
@@ -424,7 +436,7 @@ export function Markdown({ content }: { content: string }) {
         ]}
         components={components}
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
     </div>
   );
