@@ -173,22 +173,23 @@ test('shouldCompleteNode returns false when not enough interactions', () => {
   const plan = createMockPlan();
   let model = initializeLearnerModel('chat_1', plan);
 
-  // Add multiple correct answers to get high confidence (above 0.7)
-  // but keep interactions below 5
-  for (let i = 0; i < 4; i++) {
+  // Add correct answers to get moderate confidence (above 0.7 but below 0.9)
+  // with only 2 interactions (below the 3-interaction minimum for non-high-confidence)
+  for (let i = 0; i < 2; i++) {
     model = updateLearnerModel(model, {
       nodeId: 'derivatives',
       evidence: {
         timestamp: Date.now(),
         type: 'correct_answer',
         details: 'Correct',
-        weight: 0.2,
+        weight: 0.35, // Higher weight to reach >70% with fewer interactions
       },
     });
   }
 
   const result = shouldCompleteNode('derivatives', model, plan);
 
+  // 2 interactions is below the minimum of 3 (for confidence < 90%)
   assert.equal(result.shouldComplete, false);
   assert.ok(result.reasoning.includes('Not enough practice'));
 });

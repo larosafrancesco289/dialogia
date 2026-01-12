@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { stripLeadingToolJson } from '@/lib/agent/streaming/stripToolJson';
+import { createTypewriter } from '@/lib/agent/streaming/typewriter';
 import type { Message } from '@/lib/types';
 import type { TurnStoreState } from '@/lib/agent/contracts';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
@@ -68,6 +69,9 @@ export function createMessageStreamCallbacks(
     }));
   };
 
+  // Typewriter for smooth character-by-character emission
+  const typewriter = createTypewriter(flushDelta);
+
   const updateReasoning = (delta: string) => {
     if (!delta) return;
     set((state) => {
@@ -91,6 +95,9 @@ export function createMessageStreamCallbacks(
       return partial;
     });
   };
+
+  // Typewriter for reasoning tokens (separate buffer)
+  const reasoningTypewriter = createTypewriter(updateReasoning);
 
   const callbacks = {
     onAnnotations: (annotations: unknown) => {
@@ -135,23 +142,27 @@ export function createMessageStreamCallbacks(
           if (rest && !(rest.startsWith('{') || rest.startsWith('```'))) {
             startedStreaming = true;
             leadingBuffer = '';
-            flushDelta(stripped);
+            typewriter.push(stripped);
           }
         } else if (leadingBuffer.length > 512) {
           startedStreaming = true;
           const toEmit = leadingBuffer;
           leadingBuffer = '';
-          flushDelta(toEmit);
+          typewriter.push(toEmit);
         }
       } else {
-        flushDelta(delta);
+        typewriter.push(delta);
       }
     },
     onReasoningToken: (delta: string) => {
       if (firstTokenAt == null) firstTokenAt = performance.now();
-      updateReasoning(delta);
+      reasoningTypewriter.push(delta);
     },
     onDone: async (full: string, extras?: StreamDoneExtras) => {
+      // Flush any remaining buffered content from typewriters
+      typewriter.complete();
+      reasoningTypewriter.complete();
+
       const state = get();
       const current = state.messagesById[assistantMessage.id];
       const finishedAt = performance.now();
@@ -183,6 +194,9 @@ export function createMessageStreamCallbacks(
       clearController?.();
     },
     onError: (error: Error) => {
+      // Flush typewriters on error too
+      typewriter.complete();
+      reasoningTypewriter.complete();
       notify(get, error.message);
       clearController?.();
     },

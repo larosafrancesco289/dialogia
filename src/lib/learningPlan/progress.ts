@@ -217,11 +217,15 @@ export function shouldCompleteNode(
     };
   }
 
-  // Check minimum interactions (at least 5 interactions needed)
-  if (mastery.interactions < 5) {
+  // High confidence (>=90%) bypasses interaction requirement - tutor has determined mastery
+  const highConfidence = mastery.confidence >= 0.9;
+
+  // Check minimum interactions (at least 3 interactions needed, unless high confidence)
+  const minInteractions = highConfidence ? 1 : 3;
+  if (mastery.interactions < minInteractions) {
     return {
       shouldComplete: false,
-      reasoning: `Not enough practice: ${mastery.interactions} interactions (need 5+)`,
+      reasoning: `Not enough practice: ${mastery.interactions} interactions (need ${minInteractions}+)`,
     };
   }
 
