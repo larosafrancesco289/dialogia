@@ -15,6 +15,8 @@ import { useTier } from '@/lib/auth/tierContext';
 import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
 import type { UiPlanSnapshot } from '@/lib/contracts/ui';
 import type { Chat, LearnerModel, LearningPlan, LearningPlanNode } from '@/lib/types';
+import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
+import type { LearnerModelEditCallbacks } from '@/components/plan/PlanSheet';
 
 type PlanProgress = ReturnType<typeof calculatePlanProgress>;
 type PlanNode = ReturnType<typeof getNextNode>;
@@ -60,7 +62,9 @@ export type TopHeaderState = {
   onClosePlanSheet: () => void;
   onPlanUpdate: (plan: LearningPlan) => Promise<void>;
   onStartLesson: (nodeId: string) => Promise<void>;
-};
+  onMarkKnown: (nodeId: string) => Promise<void>;
+  onLearnerModelFeedback: (feedback: LearnerModelFeedback) => Promise<void>;
+} & LearnerModelEditCallbacks;
 
 export function useTopHeaderState(): TopHeaderState {
   const { isFreeTier, isStudyTier } = useTier();
@@ -212,7 +216,7 @@ export function useTopHeaderState(): TopHeaderState {
         const prompt = `I am ready to start the topic '${node.name}'. Please introduce this concept and guide me through it.`;
         await sendUserMessage(prompt, {
           metadata: {
-            hiddenFromUser: false,
+            hiddenFromUser: true,
             kind: 'tutor_start_lesson',
           },
         });
@@ -268,6 +272,110 @@ export function useTopHeaderState(): TopHeaderState {
     setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
   }, [setUI]);
 
+  const onMarkKnown = useCallback(
+    async (nodeId: string) => {
+      if (!learningPlan) return;
+      const node = learningPlan.nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+
+      // Update plan status to completed
+      const updatedPlan = updateNodeStatus(learningPlan, nodeId, 'completed');
+      await updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
+
+      // Send hidden message to tutor
+      await sendUserMessage(
+        `I already know the topic "${node.name}". Please skip teaching this and move to the next topic.`,
+        { metadata: { hiddenFromUser: true, kind: 'tutor_skip_topic' } },
+      );
+
+      setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
+    },
+    [learningPlan, sendUserMessage, setUI, updateChatSettings],
+  );
+
+  const onLearnerModelFeedback = useCallback(
+    async (feedback: LearnerModelFeedback) => {
+      if (!learningPlan) return;
+      const node = learningPlan.nodes.find((n) => n.id === feedback.nodeId);
+      const nodeName = node?.name ?? feedback.nodeId;
+      const payload = Object.fromEntries(
+        Object.entries({
+          nodeId: feedback.nodeId,
+          direction: feedback.direction,
+          magnitude: feedback.magnitude,
+          reason: feedback.reason,
+          estimatedConfidence: feedback.estimatedConfidence,
+          confidenceFloor: feedback.confidenceFloor,
+          misconceptionId: feedback.misconceptionId,
+          misconceptionDescription: feedback.misconceptionDescription,
+        }).filter(([, value]) => value !== undefined),
+      ) as LearnerModelFeedback;
+
+      // Build a message describing the feedback
+      let message = `I'm providing feedback on my understanding of "${nodeName}".`;
+      if (feedback.reason) {
+        message += ` ${feedback.reason}`;
+      }
+      if (feedback.direction === 'up') {
+        message += ' I feel more confident about this topic.';
+      } else if (feedback.direction === 'down') {
+        message += ' I feel less confident about this topic.';
+      }
+      message += `\n\nApply learner model feedback via apply_learner_model_feedback with ${JSON.stringify(
+        payload,
+      )}.`;
+
+      await sendUserMessage(message, {
+        metadata: { hiddenFromUser: true, kind: 'tutor_learner_feedback' },
+      });
+    },
+    [learningPlan, sendUserMessage],
+  );
+
+  const onConfidenceAdjust = useCallback(
+    (nodeId: string, newConfidence: number, reason?: string) => {
+      void onLearnerModelFeedback({
+        nodeId,
+        estimatedConfidence: newConfidence,
+        reason: reason ?? `Adjusted confidence to ${Math.round(newConfidence * 100)}%`,
+      });
+    },
+    [onLearnerModelFeedback],
+  );
+
+  const onMisconceptionResolve = useCallback(
+    (nodeId: string, misconceptionId: string) => {
+      void onLearnerModelFeedback({
+        nodeId,
+        misconceptionId,
+        reason: 'I believe I have resolved this misconception.',
+      });
+    },
+    [onLearnerModelFeedback],
+  );
+
+  const onSetConfidenceFloor = useCallback(
+    (nodeId: string, floor: number) => {
+      void onLearnerModelFeedback({
+        nodeId,
+        confidenceFloor: floor,
+        reason: `Set confidence floor to ${Math.round(floor * 100)}%`,
+      });
+    },
+    [onLearnerModelFeedback],
+  );
+
+  const onFlagForReview = useCallback(
+    (nodeId: string) => {
+      void onLearnerModelFeedback({
+        nodeId,
+        direction: 'down',
+        reason: 'I flagged this topic for review.',
+      });
+    },
+    [onLearnerModelFeedback],
+  );
+
   // Get learner model from either chat settings (persisted) or message history
   // Prefer the more recently updated one
   const learnerModel = useMemo(() => {
@@ -316,5 +424,11 @@ export function useTopHeaderState(): TopHeaderState {
     onClosePlanSheet,
     onPlanUpdate,
     onStartLesson,
+    onMarkKnown,
+    onLearnerModelFeedback,
+    onConfidenceAdjust,
+    onMisconceptionResolve,
+    onSetConfidenceFloor,
+    onFlagForReview,
   };
 }

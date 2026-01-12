@@ -217,15 +217,13 @@ export function shouldCompleteNode(
     };
   }
 
-  // High confidence (>=90%) bypasses interaction requirement - tutor has determined mastery
-  const highConfidence = mastery.confidence >= 0.9;
-
-  // Check minimum interactions (at least 3 interactions needed, unless high confidence)
-  const minInteractions = highConfidence ? 1 : 3;
-  if (mastery.interactions < minInteractions) {
+  // Require at least one interaction to ensure some evidence exists
+  // (Previously required 3 interactions, but this was arbitrary and blocked
+  // conversational teaching where the tutor observes understanding without formal quizzes)
+  if (mastery.interactions < 1) {
     return {
       shouldComplete: false,
-      reasoning: `Not enough practice: ${mastery.interactions} interactions (need ${minInteractions}+)`,
+      reasoning: 'No interactions recorded yet',
     };
   }
 
