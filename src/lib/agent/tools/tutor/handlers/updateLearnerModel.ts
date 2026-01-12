@@ -96,7 +96,8 @@ export const updateLearnerModelHandler: TutorToolHandler<UpdateLearnerModelArgs>
   },
 
   async apply(ctx, args) {
-    const plan = ctx.chat.settings.features.tutor.learningPlan;
+    // Use getCurrentPlan to get the most up-to-date plan (handles multiple tool calls per turn)
+    const plan = ctx.getCurrentPlan?.() ?? ctx.chat.settings.features.tutor.learningPlan;
 
     await ctx.applyTutorPatch((prev) => {
       const prior = Array.isArray(prev.assessmentUpdates)
