@@ -159,9 +159,8 @@ export function createMessageStreamCallbacks(
       reasoningTypewriter.push(delta);
     },
     onDone: async (full: string, extras?: StreamDoneExtras) => {
-      // Flush any remaining buffered content from typewriters
-      typewriter.complete();
-      reasoningTypewriter.complete();
+      // Drain any remaining buffered content from typewriters smoothly
+      await Promise.all([typewriter.complete(), reasoningTypewriter.complete()]);
 
       const state = get();
       const current = state.messagesById[assistantMessage.id];
@@ -194,9 +193,9 @@ export function createMessageStreamCallbacks(
       clearController?.();
     },
     onError: (error: Error) => {
-      // Flush typewriters on error too
-      typewriter.complete();
-      reasoningTypewriter.complete();
+      // Flush typewriters immediately on error (user cancellation, etc.)
+      typewriter.flush();
+      reasoningTypewriter.flush();
       notify(get, error.message);
       clearController?.();
     },

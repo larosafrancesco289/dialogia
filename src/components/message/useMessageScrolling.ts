@@ -44,6 +44,8 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   }>();
   const followThresholdPx = isMobile ? 120 : 180;
   const overflowThresholdPx = Math.max(48, followThresholdPx / 2);
+  // Ref for debouncing resize observer updates
+  const resizeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     onScrollAwayRef.current = onScrollAway;
@@ -89,36 +91,43 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       programmaticScrollRef.current = true;
       autoScrollEnabledRef.current = true;
 
-      requestAnimationFrame(() => {
+      // For instant/auto scrolls (chat switching), scroll immediately without RAF delay
+      if (behavior === 'auto' || behavior === 'instant') {
+        const target = Math.max(el.scrollHeight - el.clientHeight, 0);
+        try {
+          el.scrollTo({ top: target, behavior: 'auto' });
+        } catch {
+          el.scrollTop = target;
+        }
+        // Sync state on next frame
         requestAnimationFrame(() => {
-          const element = containerRef.current;
-          if (!element) {
-            programmaticScrollRef.current = false;
-            return;
-          }
-
-          // Be more aggressive: assume we hit bottom if programmatic
-          const target = Math.max(element.scrollHeight - element.clientHeight, 0);
-
-          try {
-            element.scrollTo({ top: target, behavior });
-          } catch {
-            element.scrollTop = target;
-          }
-
-          // Give the smooth scroll time to start before syncing
-          if (behavior === 'smooth') {
-            setTimeout(() => {
-              programmaticScrollRef.current = false;
-              syncScrollState();
-            }, 300);
-          } else {
-            requestAnimationFrame(() => {
-              programmaticScrollRef.current = false;
-              syncScrollState();
-            });
-          }
+          programmaticScrollRef.current = false;
+          syncScrollState();
         });
+        return;
+      }
+
+      // For smooth scrolls, use single RAF to ensure DOM is ready
+      requestAnimationFrame(() => {
+        const element = containerRef.current;
+        if (!element) {
+          programmaticScrollRef.current = false;
+          return;
+        }
+
+        const target = Math.max(element.scrollHeight - element.clientHeight, 0);
+
+        try {
+          element.scrollTo({ top: target, behavior });
+        } catch {
+          element.scrollTop = target;
+        }
+
+        // Give the smooth scroll time to start before syncing
+        setTimeout(() => {
+          programmaticScrollRef.current = false;
+          syncScrollState();
+        }, 300);
       });
     },
     [syncScrollState],
@@ -156,31 +165,50 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     if (!contentEl || !containerEl || typeof ResizeObserver === 'undefined') return;
 
     let prevScrollHeight = containerEl.scrollHeight;
+    let pendingDelta = 0;
+    let wasAtBottom = false;
+
+    const applyResize = () => {
+      resizeDebounceRef.current = null;
+      if (pendingDelta > 0 && wasAtBottom) {
+        containerEl.scrollTop += pendingDelta;
+      }
+      wasAtBottom = false;
+      prevScrollHeight = containerEl.scrollHeight;
+      pendingDelta = 0;
+      syncScrollState();
+    };
 
     const observer = new ResizeObserver(() => {
       const currentScrollHeight = containerEl.scrollHeight;
       const delta = currentScrollHeight - prevScrollHeight;
 
-      // Calculate where we were relative to the bottom BEFORE the resize
-      const oldDistanceFromBottom =
-        prevScrollHeight - containerEl.scrollTop - containerEl.clientHeight;
+      if (delta !== 0) {
+        if (pendingDelta === 0) {
+          const oldDistanceFromBottom =
+            prevScrollHeight - containerEl.scrollTop - containerEl.clientHeight;
+          // Only adjust if we were effectively at the bottom (strict threshold)
+          wasAtBottom = oldDistanceFromBottom < 20;
+        }
+        pendingDelta += delta;
+        prevScrollHeight = currentScrollHeight;
 
-      prevScrollHeight = currentScrollHeight;
-
-      // Only adjust if we were effectively at the bottom (strict threshold)
-      // This prevents snapping if the user is reading slightly up
-      if (delta > 0 && oldDistanceFromBottom < 20) {
-        containerEl.scrollTop += delta;
-        syncScrollState();
-      } else {
-        // If we didn't auto-scroll, we should still update our state
-        // because we might no longer be at the bottom
-        syncScrollState();
+        // Debounce to batch rapid size changes (e.g. syntax highlighting, images)
+        if (resizeDebounceRef.current) {
+          clearTimeout(resizeDebounceRef.current);
+        }
+        resizeDebounceRef.current = setTimeout(applyResize, 16); // ~1 frame
       }
     });
 
     observer.observe(contentEl);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (resizeDebounceRef.current) {
+        clearTimeout(resizeDebounceRef.current);
+        resizeDebounceRef.current = null;
+      }
+    };
   }, [syncScrollState]);
 
   useEffect(() => {
