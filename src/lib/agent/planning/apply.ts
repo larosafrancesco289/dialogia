@@ -3,7 +3,7 @@ import { executePlanningToolCall } from '@/lib/agent/tools/exec';
 import { createToolExecutionLogger } from '@/lib/agent/tools/executionLogger';
 import { isQuizToolName } from '@/lib/agent/tools/schedulingPolicy';
 import type { ModelMessage, PlanTurnOptions, ToolCall } from '@/lib/agent/types';
-import type { Message } from '@/lib/types';
+import type { LearningPlan, Message } from '@/lib/types';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 
 export async function applyToolExecutions(args: {
@@ -34,11 +34,15 @@ export async function applyToolExecutions(args: {
     const toolName = tc.function?.name ?? '';
     const parsedArgs = parseToolArguments(tc);
     const roundMeta = Number.isFinite(round) ? { round } : undefined;
+    // Create getCurrentPlan that returns the most up-to-date plan from the execution state.
+    // This ensures subsequent tool calls in the same turn see plan updates from earlier calls.
+    const getCurrentPlan = (): LearningPlan | undefined =>
+      next.currentPlan ?? context.chat.settings.features.tutor.learningPlan;
     const execution = await executePlanningToolCall({
       toolCall: tc,
       parsedArgs,
       roundMeta,
-      context: { ...context, logger },
+      context: { ...context, logger, getCurrentPlan },
       aggregatedResults: next.aggregatedResults,
     });
     if (execution.convoMessages.length > 0) {

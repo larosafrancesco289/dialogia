@@ -33,6 +33,10 @@ export type ToolExecutionContext = {
   get: StoreGetter;
   persistMessage: PersistMessage;
   logger: ToolExecutionLogger;
+  /**
+   * Get the current learning plan, accounting for updates from previous tool calls in the same turn.
+   */
+  getCurrentPlan?: () => LearningPlan | undefined;
 };
 
 export type PlanningToolExecutionResult = {
@@ -65,6 +69,7 @@ export async function executePlanningToolCall(opts: {
     get,
     persistMessage,
     logger,
+    getCurrentPlan,
   } = context;
 
   const callName = toolCall.function.name;
@@ -174,6 +179,7 @@ export async function executePlanningToolCall(opts: {
         set,
         get,
         persistMessage,
+        getCurrentPlan,
       });
       const output: Record<string, unknown> = {
         handled: tutorOutcome.handled,

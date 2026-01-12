@@ -27,6 +27,11 @@ export type TutorToolContext = {
   applyTutorPatch: (
     buildPatch: (prev: Record<string, unknown>) => Record<string, unknown>,
   ) => Promise<Message | undefined>;
+  /**
+   * Get the current learning plan, accounting for updates from previous tool calls in the same turn.
+   * Falls back to chat.settings.features.tutor.learningPlan if not provided.
+   */
+  getCurrentPlan?: () => LearningPlan | undefined;
 };
 
 export type TutorToolHandler<Args> = {

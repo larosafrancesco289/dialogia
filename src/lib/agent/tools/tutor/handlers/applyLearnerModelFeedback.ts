@@ -54,7 +54,8 @@ export const applyLearnerModelFeedbackHandler: TutorToolHandler<ApplyLearnerMode
   },
 
   async apply(ctx, args) {
-    const plan = ctx.chat.settings.features.tutor.learningPlan;
+    // Use getCurrentPlan to get the most up-to-date plan (handles multiple tool calls per turn)
+    const plan = ctx.getCurrentPlan?.() ?? ctx.chat.settings.features.tutor.learningPlan;
     const state = ctx.get();
     const messagesForChat = getMessagesForChat(state, ctx.chatId);
     let currentModel = getLatestLearnerModel(messagesForChat);

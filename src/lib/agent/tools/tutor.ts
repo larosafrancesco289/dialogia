@@ -107,8 +107,10 @@ export async function applyTutorToolCall(opts: {
   set: StoreSetter;
   get: StoreGetter;
   persistMessage: PersistMessage;
+  getCurrentPlan?: () => LearningPlan | undefined;
 }): Promise<TutorToolApplyResult> {
-  const { name, args, chat, chatId, assistantMessage, set, get, persistMessage } = opts;
+  const { name, args, chat, chatId, assistantMessage, set, get, persistMessage, getCurrentPlan } =
+    opts;
 
   const applyTutorPatch: TutorToolContext['applyTutorPatch'] = async (buildPatch) => {
     let updatedMsg: Message | undefined;
@@ -154,6 +156,7 @@ export async function applyTutorToolCall(opts: {
     get,
     persistMessage,
     applyTutorPatch,
+    getCurrentPlan,
   };
 
   const result: TutorToolApplyResult = await handler.apply(context, parsed);
