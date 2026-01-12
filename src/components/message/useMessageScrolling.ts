@@ -5,6 +5,7 @@ import type { Message } from '@/lib/types';
 
 export type MessageScrollingOptions = {
   messages: Message[];
+  chatId?: string;
   isStreaming: boolean;
   isMobile: boolean;
   prefersReducedMotion: boolean;
@@ -15,6 +16,7 @@ export type MessageScrollingOptions = {
 export function useMessageScrolling(options: MessageScrollingOptions) {
   const {
     messages,
+    chatId,
     isStreaming,
     isMobile,
     prefersReducedMotion,
@@ -126,6 +128,17 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   useEffect(() => {
     scrollToBottomRef.current = scrollToBottom;
   }, [scrollToBottom]);
+
+  // Scroll to bottom when switching chats
+  useEffect(() => {
+    if (!chatId) return;
+    // Reset scroll state and scroll to bottom when chat changes
+    autoScrollEnabledRef.current = true;
+    programmaticScrollRef.current = false;
+    lastMessageMetaRef.current = undefined;
+    // Use 'auto' (instant) scroll when switching chats for immediate positioning
+    scrollToBottomRef.current('auto');
+  }, [chatId]);
 
   // Force unlock autoscroll immediately on user interaction
   const onUserScroll = useCallback(() => {
