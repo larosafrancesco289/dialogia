@@ -28,6 +28,7 @@ export function useMessageListWindow(args: {
   });
   const { containerRef, contentRef, endRef, showJump, jumpToLatest } = useMessageScrolling({
     messages,
+    chatId,
     isStreaming,
     isMobile,
     prefersReducedMotion,
