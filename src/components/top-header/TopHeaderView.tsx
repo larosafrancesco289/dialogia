@@ -46,6 +46,12 @@ export function TopHeaderView({
   onClosePlanSheet,
   onPlanUpdate,
   onStartLesson,
+  onMarkKnown,
+  onLearnerModelFeedback,
+  onConfidenceAdjust,
+  onMisconceptionResolve,
+  onSetConfidenceFloor,
+  onFlagForReview,
 }: TopHeaderState) {
   const plan = planSheetOverride ?? learningPlan ?? null;
   const headerClass = `app-header top-header ${tutorActive ? 'top-header--tutor-active' : ''}`;
@@ -162,6 +168,12 @@ export function TopHeaderView({
         onUpdate={onPlanUpdate}
         onStartLesson={onStartLesson}
         learnerModel={learnerModel}
+        onMarkKnown={onMarkKnown}
+        onLearnerModelFeedback={onLearnerModelFeedback}
+        onConfidenceAdjust={onConfidenceAdjust}
+        onMisconceptionResolve={onMisconceptionResolve}
+        onSetConfidenceFloor={onSetConfidenceFloor}
+        onFlagForReview={onFlagForReview}
       />
     </div>
   );
