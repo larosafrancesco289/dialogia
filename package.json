@@ -24,6 +24,7 @@
     "medium-zoom": "^1.1.0",
     "mermaid": "^10.9.2",
     "next": "15.5.9",
+    "pdfjs-dist": "^5.4.530",
     "prismjs": "^1.29.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -35,9 +36,9 @@
     "remark-math": "^6.0.0",
     "server-only": "0.0.1",
     "uuid": "^9.0.1",
-    "zustand": "^4.5.2",
     "zod": "^3.23.0",
-    "zod-to-json-schema": "^3.23.0"
+    "zod-to-json-schema": "^3.23.0",
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.1.1",

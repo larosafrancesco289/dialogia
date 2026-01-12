@@ -5,6 +5,7 @@ import type { DraftAttachment } from '@/lib/types';
 import { MAX_AUDIO_SIZE_MB, MAX_IMAGES_PER_MESSAGE, MAX_PDF_SIZE_MB } from '@/lib/constants';
 import { fileToDataUrl } from '@/lib/attachments/readers';
 import { detectAudioFormatFromFile } from '@/lib/attachments/audio';
+import { extractTextFromPdf } from '@/lib/attachments/pdf';
 
 export async function toImageAttachment(file: File): Promise<DraftAttachment | null> {
   const accepted = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
@@ -43,6 +44,19 @@ export async function toImageAttachment(file: File): Promise<DraftAttachment | n
 export async function toPdfAttachment(file: File): Promise<DraftAttachment | null> {
   if (file.type !== 'application/pdf') return null;
   if (file.size > MAX_PDF_SIZE_MB * 1024 * 1024) return null;
+
+  // Extract text from PDF client-side to avoid payload size limits
+  let text: string | undefined;
+  let pageCount: number | undefined;
+  try {
+    const result = await extractTextFromPdf(file);
+    text = result.text;
+    pageCount = result.pageCount;
+  } catch {
+    // If extraction fails, we'll still create the attachment without text
+    // The file will be sent as base64 if small enough, otherwise it will fail
+  }
+
   return {
     id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     kind: 'pdf',
@@ -50,6 +64,8 @@ export async function toPdfAttachment(file: File): Promise<DraftAttachment | nul
     mime: file.type,
     size: file.size,
     file,
+    text,
+    pageCount,
   };
 }
 
