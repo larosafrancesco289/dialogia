@@ -297,9 +297,6 @@ export async function runTutorScenario(
   const judgeMessages = buildJudgeMessages({
     scenario,
     transcript,
-    planSummary,
-    learnerModelSummary,
-    toolUsageSummary: formatToolUsage(toolUsage),
   });
   const judgeResponse = await getChatCompletion()({
     auth: resolveAuth({ modelId: judgeModelId, transport: judgeTransport }),

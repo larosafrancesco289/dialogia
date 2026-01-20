@@ -28,8 +28,7 @@ import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { buildJudgeMessages, type JudgeVerdict } from '@/lib/eval/judgePrompts';
-import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learnerModel';
-import { generatePlanContextPreamble } from '@/lib/agent/tutor/planContext';
+import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
 import { getOpenRouterKeyFallback } from '@/lib/env/server';
 import {
   ABLATION_CONDITIONS,
@@ -419,24 +418,10 @@ async function runSingleAblation(
 
   // Run judge evaluation
   console.log(`  [${runId}] Running judge evaluation...`);
-  const finalPlan = runner
-    .getSession()
-    .getState()
-    .chats.find((c) => c.id === chat.id)?.settings.features.tutor.learningPlan;
-  const planSummary = finalPlan
-    ? generatePlanContextPreamble(finalPlan, finalLearnerModel)
-    : undefined;
-  const modelSummary =
-    finalLearnerModel && finalPlan ? generateModelSummary(finalLearnerModel, finalPlan) : undefined;
 
   const judgeMessages = buildJudgeMessages({
     scenario,
     transcript,
-    planSummary,
-    learnerModelSummary: modelSummary,
-    toolUsageSummary: Object.entries(toolUsage)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join(', '),
   });
 
   const judgeResponse = await getChatCompletion()({
