@@ -66,8 +66,8 @@ const linearEquationsScenario: AblationScenario = {
   constraints: ['High school student', 'Exam in 3 days', 'Nervous about word problems'],
   maxTurns: 6,
   teacherModelId: DEFAULT_TUTOR_MODEL_ID,
-  studentModelId: 'x-ai/grok-4.1-fast',
-  judgeModelId: 'x-ai/grok-4.1-fast',
+  studentModelId: 'google/gemini-2.5-flash-lite',
+  judgeModelId: 'anthropic/claude-haiku-4.5',
   studentPersona:
     'Anxious high-schooler who second-guesses answers and prefers step-by-step guidance before trying alone.',
   successCriteria:
@@ -232,8 +232,8 @@ const derivativesScenario: AblationScenario = {
   constraints: ['College freshman', 'Preparing for midterm', 'Weak algebra foundation'],
   maxTurns: 8,
   teacherModelId: DEFAULT_TUTOR_MODEL_ID,
-  studentModelId: 'x-ai/grok-4.1-fast',
-  judgeModelId: 'x-ai/grok-4.1-fast',
+  studentModelId: 'google/gemini-2.5-flash-lite',
+  judgeModelId: 'anthropic/claude-haiku-4.5',
   studentPersona:
     'College freshman who struggles with abstraction but excels with worked examples and visual intuition.',
   successCriteria:
@@ -424,8 +424,8 @@ const pythonDebuggingScenario: AblationScenario = {
   constraints: ['New to programming', 'Limited time (15 min)', 'Prefers hands-on practice'],
   maxTurns: 5,
   teacherModelId: DEFAULT_TUTOR_MODEL_ID,
-  studentModelId: 'x-ai/grok-4.1-fast',
-  judgeModelId: 'x-ai/grok-4.1-fast',
+  studentModelId: 'google/gemini-2.5-flash-lite',
+  judgeModelId: 'anthropic/claude-haiku-4.5',
   studentPersona:
     'Curious new coder who makes common syntax mistakes but is eager to understand why errors occur.',
   successCriteria:
@@ -611,8 +611,8 @@ const bayesRuleScenario: AblationScenario = {
   ],
   maxTurns: 7,
   teacherModelId: DEFAULT_TUTOR_MODEL_ID,
-  studentModelId: 'x-ai/grok-4.1-fast',
-  judgeModelId: 'x-ai/grok-4.1-fast',
+  studentModelId: 'google/gemini-2.5-flash-lite',
+  judgeModelId: 'anthropic/claude-haiku-4.5',
   studentPersona:
     'Overconfident learner who answers quickly and sometimes skips justification, but is receptive to gentle correction.',
   successCriteria:
