@@ -1,4 +1,4 @@
-import 'server-only';
+
 import type { TutorScenario } from '@/lib/eval/tutorScenarios';
 import type { LearningPlan, LearningPlanNode } from '@/lib/types';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';

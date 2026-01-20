@@ -1,4 +1,3 @@
-import 'server-only';
 /**
  * Ablation Study Runner for Dialogia Thesis Evaluation
  *
@@ -429,7 +428,7 @@ async function runSingleAblation(
     model: config.judgeModel,
     messages: judgeMessages,
     temperature: 0,
-    maxTokens: 512,
+    maxTokens: 2048,
   });
 
   const judgeRaw = extractJudgeText(judgeResponse);

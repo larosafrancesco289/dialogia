@@ -1,4 +1,4 @@
-import 'server-only';
+
 import type { StoreApi } from 'zustand/vanilla';
 import { HeadlessTutorSession, type AuthResolver } from '@/lib/headless/session';
 import { buildHeadlessTurnSnapshot, type HeadlessTurnSnapshot } from '@/lib/headless/types';

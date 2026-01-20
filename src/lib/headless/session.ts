@@ -1,4 +1,4 @@
-import 'server-only';
+
 import type { StoreApi } from 'zustand/vanilla';
 import { createHeadlessStore, type HeadlessStoreOptions } from '@/lib/headless/store';
 import type { StoreState, UIState } from '@/lib/store/types';
