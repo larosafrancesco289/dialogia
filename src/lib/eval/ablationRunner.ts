@@ -144,8 +144,8 @@ Options:
                         Available: ${ABLATION_SCENARIOS.map((s) => s.id).join(', ')}
   --runs <n>            Runs per condition×scenario (default: 3)
   --tutor-model <id>    Tutor model (default: ${DEFAULT_TUTOR_MODEL_ID})
-  --student-model <id>  Student simulator model (default: x-ai/grok-4.1-fast)
-  --judge-model <id>    Judge model (default: x-ai/grok-4.1-fast)
+  --student-model <id>  Student simulator model (default: google/gemini-2.5-flash-lite)
+  --judge-model <id>    Judge model (default: anthropic/claude-haiku-4.5)
   --out <dir>           Output directory (default: tmp/ablation/)
   --dry-run             Show what would be run without executing
   --list                List available scenarios and conditions
@@ -801,9 +801,9 @@ export async function runAblationCli(argv: string[]) {
   const tutorModel =
     typeof args['tutor-model'] === 'string' ? args['tutor-model'] : DEFAULT_TUTOR_MODEL_ID;
   const studentModel =
-    typeof args['student-model'] === 'string' ? args['student-model'] : 'x-ai/grok-4.1-fast';
+    typeof args['student-model'] === 'string' ? args['student-model'] : 'google/gemini-2.5-flash-lite';
   const judgeModel =
-    typeof args['judge-model'] === 'string' ? args['judge-model'] : 'x-ai/grok-4.1-fast';
+    typeof args['judge-model'] === 'string' ? args['judge-model'] : 'anthropic/claude-haiku-4.5';
   const outputDir = typeof args.out === 'string' ? args.out : 'tmp/ablation';
 
   const apiKeys = {
