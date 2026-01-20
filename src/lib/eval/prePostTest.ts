@@ -1,4 +1,4 @@
-import 'server-only';
+
 import type { TestQuestion, KnowledgeGap } from '@/lib/eval/ablationScenarios';
 import type { TransportAuth } from '@/lib/auth/transport';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';

@@ -1,4 +1,4 @@
-import 'server-only';
+
 export type TutorScenario = {
   id: string;
   title: string;

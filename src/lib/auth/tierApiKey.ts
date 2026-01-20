@@ -1,4 +1,4 @@
-import 'server-only';
+
 import { cookies } from 'next/headers';
 import { TIER_COOKIE_NAME } from './shared';
 import type { AccessTier } from './types';

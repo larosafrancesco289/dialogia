@@ -1,4 +1,4 @@
-import 'server-only';
+
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { createModelIndex } from '@/lib/models';
 import type { StoreState, UIState, UIStatePartial } from '@/lib/store/types';

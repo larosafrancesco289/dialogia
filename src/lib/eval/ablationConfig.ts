@@ -1,4 +1,4 @@
-import 'server-only';
+
 import type { ChatSettingsPatch, TutorResearchMode } from '@/lib/types';
 
 /**

@@ -1,4 +1,4 @@
-import 'server-only';
+
 import { readBooleanValue, readEnvValue } from '@/lib/env/values';
 import { isProd } from '@/lib/env/runtime';
 
