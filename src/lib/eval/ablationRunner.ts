@@ -11,8 +11,12 @@
  *   --tutor-model <id>    Tutor model (default: DEFAULT_TUTOR_MODEL_ID)
  *   --out <dir>           Output directory (default: tmp/ablation/)
  *   --dry-run             Show what would be run without executing
- *   --resume              Resume from last checkpoint
+ *   --resume              Resume from last checkpoint (requires --out with checkpoint)
  *   --list                List available scenarios and conditions
+ *
+ * Resume:
+ *   The runner saves checkpoints after each successful run. If interrupted (Ctrl+C),
+ *   use --resume with the same --out directory to continue from where you left off.
  */
 
 import fs from 'node:fs/promises';
@@ -133,6 +137,145 @@ type AblationSummary = {
   };
 };
 
+type AblationConfig = {
+  conditions: AblationCondition[];
+  scenarios: string[];
+  runsPerCell: number;
+  tutorModel: string;
+  studentModel: string;
+  judgeModel: string;
+};
+
+type AblationCheckpoint = {
+  version: 1;
+  sessionId: string;
+  startedAt: number;
+  config: AblationConfig;
+  completedRunIds: string[];
+  results: AblationRunResult[];
+  lastSavedAt: number;
+};
+
+// Configuration constants
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 5000;
+const CHECKPOINT_FILENAME = 'ablation-checkpoint.json';
+
+// ============================================================================
+// Checkpoint Management
+// ============================================================================
+
+function getCheckpointPath(outputDir: string): string {
+  return path.join(outputDir, CHECKPOINT_FILENAME);
+}
+
+async function saveCheckpoint(checkpoint: AblationCheckpoint, outputDir: string): Promise<void> {
+  await fs.mkdir(outputDir, { recursive: true });
+  const checkpointPath = getCheckpointPath(outputDir);
+  const tempPath = `${checkpointPath}.tmp`;
+
+  // Write to temp file first, then rename for atomicity
+  await fs.writeFile(tempPath, JSON.stringify(checkpoint, null, 2));
+  await fs.rename(tempPath, checkpointPath);
+}
+
+async function loadCheckpoint(outputDir: string): Promise<AblationCheckpoint | null> {
+  const checkpointPath = getCheckpointPath(outputDir);
+  try {
+    const content = await fs.readFile(checkpointPath, 'utf-8');
+    const checkpoint = JSON.parse(content) as AblationCheckpoint;
+    if (checkpoint.version !== 1) {
+      console.warn(`Checkpoint version mismatch: expected 1, got ${checkpoint.version}`);
+      return null;
+    }
+    return checkpoint;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null; // No checkpoint exists
+    }
+    throw error;
+  }
+}
+
+async function deleteCheckpoint(outputDir: string): Promise<void> {
+  const checkpointPath = getCheckpointPath(outputDir);
+  try {
+    await fs.unlink(checkpointPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+  }
+}
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.length === sortedB.length && sortedA.every((v, i) => v === sortedB[i]);
+}
+
+function validateCheckpointConfig(
+  checkpoint: AblationCheckpoint,
+  currentConfig: AblationConfig,
+): { valid: boolean; reason?: string } {
+  const checks: Array<{ field: string; valid: boolean; expected: string; actual: string }> = [
+    {
+      field: 'Conditions',
+      valid: arraysEqual(checkpoint.config.conditions, currentConfig.conditions),
+      expected: currentConfig.conditions.join(', '),
+      actual: checkpoint.config.conditions.join(', '),
+    },
+    {
+      field: 'Scenarios',
+      valid: arraysEqual(checkpoint.config.scenarios, currentConfig.scenarios),
+      expected: currentConfig.scenarios.join(', '),
+      actual: checkpoint.config.scenarios.join(', '),
+    },
+    {
+      field: 'Runs per cell',
+      valid: checkpoint.config.runsPerCell === currentConfig.runsPerCell,
+      expected: String(currentConfig.runsPerCell),
+      actual: String(checkpoint.config.runsPerCell),
+    },
+    {
+      field: 'Tutor model',
+      valid: checkpoint.config.tutorModel === currentConfig.tutorModel,
+      expected: currentConfig.tutorModel,
+      actual: checkpoint.config.tutorModel,
+    },
+    {
+      field: 'Student model',
+      valid: checkpoint.config.studentModel === currentConfig.studentModel,
+      expected: currentConfig.studentModel,
+      actual: checkpoint.config.studentModel,
+    },
+    {
+      field: 'Judge model',
+      valid: checkpoint.config.judgeModel === currentConfig.judgeModel,
+      expected: currentConfig.judgeModel,
+      actual: checkpoint.config.judgeModel,
+    },
+  ];
+
+  const failed = checks.find((c) => !c.valid);
+  if (failed) {
+    return {
+      valid: false,
+      reason: `${failed.field} mismatch: checkpoint has [${failed.actual}], current has [${failed.expected}]`,
+    };
+  }
+
+  return { valid: true };
+}
+
+function generateRunId(condition: AblationCondition, scenarioId: string, runIndex: number): string {
+  return `${condition}_${scenarioId}_run${runIndex}`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // ============================================================================
 // Argument Parsing
 // ============================================================================
@@ -154,12 +297,16 @@ Options:
   --judge-model <id>    Judge model (default: anthropic/claude-haiku-4.5)
   --out <dir>           Output directory (default: tmp/ablation/)
   --dry-run             Show what would be run without executing
+  --resume              Resume from last checkpoint in output directory
   --list                List available scenarios and conditions
   -h, --help            Show this help message
 
-Example:
+Examples:
   bun run ablation -- --runs 3 --out results/ablation
   bun run ablation -- --conditions full_system,baseline --scenarios linear_equations
+
+Resume after interruption:
+  bun run ablation -- --resume --out results/ablation
 `);
 }
 
@@ -229,6 +376,7 @@ async function runSingleAblation(
   scenario: AblationScenario,
   condition: AblationCondition,
   runIndex: number,
+  runId: string,
   config: {
     tutorModel: string;
     studentModel: string;
@@ -237,7 +385,6 @@ async function runSingleAblation(
   },
 ): Promise<AblationRunResult> {
   const startTime = Date.now();
-  const runId = `${condition}_${scenario.id}_run${runIndex}_${uuidv4().slice(0, 8)}`;
 
   console.log(`\n  [${runId}] Starting...`);
 
@@ -898,10 +1045,13 @@ export async function runAblationCli(argv: string[]) {
   const tutorModel =
     typeof args['tutor-model'] === 'string' ? args['tutor-model'] : DEFAULT_TUTOR_MODEL_ID;
   const studentModel =
-    typeof args['student-model'] === 'string' ? args['student-model'] : 'google/gemini-2.5-flash-lite';
+    typeof args['student-model'] === 'string'
+      ? args['student-model']
+      : 'google/gemini-2.5-flash-lite';
   const judgeModel =
     typeof args['judge-model'] === 'string' ? args['judge-model'] : 'anthropic/claude-haiku-4.5';
   const outputDir = typeof args.out === 'string' ? args.out : 'tmp/ablation';
+  const resumeMode = args.resume === true;
 
   const apiKeys = {
     openrouter: getOpenRouterKeyFallback(),
@@ -912,11 +1062,59 @@ export async function runAblationCli(argv: string[]) {
     process.exit(1);
   }
 
+  const currentConfig: AblationConfig = {
+    conditions,
+    scenarios: scenarios.map((s) => s.id),
+    runsPerCell,
+    tutorModel,
+    studentModel,
+    judgeModel,
+  };
+
   const totalRuns = conditions.length * scenarios.length * runsPerCell;
 
-  console.log('\n╔════════════════════════════════════════════════════════════════╗');
-  console.log('║           DIALOGIA ABLATION STUDY RUNNER                       ║');
-  console.log('╚════════════════════════════════════════════════════════════════╝');
+  // Resume handling
+  let checkpoint: AblationCheckpoint | null = null;
+  let completedRunIds = new Set<string>();
+  let results: AblationRunResult[] = [];
+  let sessionId: string;
+  let startTime: number;
+
+  if (resumeMode) {
+    checkpoint = await loadCheckpoint(outputDir);
+    if (!checkpoint) {
+      console.error(`Error: No checkpoint found in ${outputDir}`);
+      console.error('Run without --resume to start a new study.');
+      process.exit(1);
+    }
+
+    const validation = validateCheckpointConfig(checkpoint, currentConfig);
+    if (!validation.valid) {
+      console.error(`Error: Cannot resume - ${validation.reason}`);
+      console.error('Run without --resume to start a new study with the current configuration.');
+      process.exit(1);
+    }
+
+    sessionId = checkpoint.sessionId;
+    startTime = checkpoint.startedAt;
+    completedRunIds = new Set(checkpoint.completedRunIds);
+    results = [...checkpoint.results];
+
+    console.log('\n╔════════════════════════════════════════════════════════════════╗');
+    console.log('║       DIALOGIA ABLATION STUDY RUNNER (RESUMING)                ║');
+    console.log('╚════════════════════════════════════════════════════════════════╝');
+    console.log(`\nResuming session: ${sessionId}`);
+    console.log(`Progress: ${completedRunIds.size}/${totalRuns} runs completed`);
+    console.log(`Checkpoint from: ${new Date(checkpoint.lastSavedAt).toISOString()}`);
+  } else {
+    sessionId = uuidv4();
+    startTime = Date.now();
+
+    console.log('\n╔════════════════════════════════════════════════════════════════╗');
+    console.log('║           DIALOGIA ABLATION STUDY RUNNER                       ║');
+    console.log('╚════════════════════════════════════════════════════════════════╝');
+  }
+
   console.log(`\nConditions: ${conditions.join(', ')}`);
   console.log(`Scenarios:  ${scenarios.map((s) => s.id).join(', ')}`);
   console.log(`Runs/cell:  ${runsPerCell}`);
@@ -932,42 +1130,105 @@ export async function runAblationCli(argv: string[]) {
     return;
   }
 
-  const startTime = Date.now();
-  const results: AblationRunResult[] = [];
-  let completedRuns = 0;
+  // Helper to create/update checkpoint with current state
+  function buildCheckpoint(): AblationCheckpoint {
+    return {
+      version: 1,
+      sessionId,
+      startedAt: startTime,
+      config: currentConfig,
+      completedRunIds: Array.from(completedRunIds),
+      results,
+      lastSavedAt: Date.now(),
+    };
+  }
 
-  // Run all combinations
+  checkpoint = buildCheckpoint();
+
+  // Setup graceful shutdown handler
+  let shuttingDown = false;
+  async function handleShutdown(): Promise<void> {
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    console.log('\n\nInterrupted! Saving checkpoint...');
+    checkpoint = buildCheckpoint();
+    await saveCheckpoint(checkpoint, outputDir);
+    console.log(`Checkpoint saved with ${checkpoint.completedRunIds.length}/${totalRuns} runs.`);
+    console.log(`\nResume with: bun run ablation -- --resume --out ${outputDir}`);
+    process.exit(130);
+  }
+
+  process.on('SIGINT', handleShutdown);
+  process.on('SIGTERM', handleShutdown);
+
+  let completedRuns = completedRunIds.size;
+
   for (const condition of conditions) {
-    console.log(`\n━━━ Condition: ${condition} (${CONDITION_CONFIGS[condition].name}) ━━━`);
+    console.log(`\n--- Condition: ${condition} (${CONDITION_CONFIGS[condition].name}) ---`);
 
     for (const scenario of scenarios) {
-      console.log(`\n▸ Scenario: ${scenario.id} (${scenario.title})`);
+      console.log(`\n> Scenario: ${scenario.id} (${scenario.title})`);
 
       for (let run = 0; run < runsPerCell; run++) {
-        try {
-          const result = await runSingleAblation(scenario, condition, run, {
-            tutorModel,
-            studentModel,
-            judgeModel,
-            apiKeys,
-          });
-          results.push(result);
-          completedRuns++;
+        const runId = generateRunId(condition, scenario.id, run);
 
-          // Progress update
-          const elapsed = (Date.now() - startTime) / 1000;
-          const avgPerRun = elapsed / completedRuns;
-          const remaining = (totalRuns - completedRuns) * avgPerRun;
-          console.log(
-            `  Progress: ${completedRuns}/${totalRuns} (${((completedRuns / totalRuns) * 100).toFixed(1)}%) ` +
-              `| Est. remaining: ${(remaining / 60).toFixed(1)} min`,
-          );
-        } catch (error) {
-          console.error(`  [ERROR] Run failed:`, error);
+        if (completedRunIds.has(runId)) {
+          console.log(`  [${runId}] Skipped (already completed)`);
+          continue;
+        }
+
+        let success = false;
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            const result = await runSingleAblation(scenario, condition, run, runId, {
+              tutorModel,
+              studentModel,
+              judgeModel,
+              apiKeys,
+            });
+
+            results.push(result);
+            completedRunIds.add(runId);
+            completedRuns++;
+
+            checkpoint = buildCheckpoint();
+            await saveCheckpoint(checkpoint, outputDir);
+
+            const elapsed = (Date.now() - startTime) / 1000;
+            const avgPerRun = elapsed / completedRuns;
+            const remaining = (totalRuns - completedRuns) * avgPerRun;
+            console.log(
+              `  Progress: ${completedRuns}/${totalRuns} (${((completedRuns / totalRuns) * 100).toFixed(1)}%) ` +
+                `| Est. remaining: ${(remaining / 60).toFixed(1)} min`,
+            );
+
+            success = true;
+            break;
+          } catch (error) {
+            const errMsg = error instanceof Error ? error.message : String(error);
+            if (attempt < MAX_RETRIES) {
+              const delayMs = RETRY_DELAY_MS * attempt;
+              console.warn(
+                `  [RETRY ${attempt}/${MAX_RETRIES}] ${runId}: ${errMsg}. Waiting ${delayMs / 1000}s...`,
+              );
+              await sleep(delayMs);
+            } else {
+              console.error(`  [FAILED] ${runId} after ${MAX_RETRIES} attempts: ${errMsg}`);
+              await saveCheckpoint(buildCheckpoint(), outputDir);
+            }
+          }
+        }
+
+        if (!success) {
+          console.error(`  Skipping ${runId} due to repeated failures.`);
         }
       }
     }
   }
+
+  process.removeListener('SIGINT', handleShutdown);
+  process.removeListener('SIGTERM', handleShutdown);
 
   // Calculate statistics
   console.log('\n━━━ Calculating Statistics ━━━');
@@ -989,8 +1250,14 @@ export async function runAblationCli(argv: string[]) {
     statistics,
   };
 
-  // Save results
+  // Save results and delete checkpoint
   await saveResults(summary, outputDir);
+  if (completedRuns === totalRuns) {
+    await deleteCheckpoint(outputDir);
+  } else {
+    console.warn('\nWarning: Not all runs completed. Keeping checkpoint for resume.');
+    console.warn(`Resume with: bun run ablation -- --resume --out ${outputDir}`);
+  }
 
   // Print summary
   console.log('\n╔════════════════════════════════════════════════════════════════╗');
