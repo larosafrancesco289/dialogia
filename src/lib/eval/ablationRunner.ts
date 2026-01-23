@@ -48,7 +48,11 @@ import {
   calculateLearningGain,
   calculateCohenD,
   calculateStats,
+  welchTTest,
+  twoWayAnova,
   type TestResult,
+  type TTestResult,
+  type AnovaResult,
 } from '@/lib/eval/prePostTest';
 import type { Chat, ModelDescriptor, ModelTransport, LearnerModel } from '@/lib/types';
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
@@ -122,8 +126,10 @@ type AblationSummary = {
       interpretation: string;
       condition1Mean: number;
       condition2Mean: number;
+      tTest: { t: number; df: number; p: number; significant: boolean };
     }>;
     interactionEffect: number;
+    anova?: AnovaResult;
   };
 };
 
@@ -586,7 +592,7 @@ function calculateStatistics(
     };
   }
 
-  // Calculate comparisons
+  // Calculate comparisons with t-tests
   const comparisons = COMPARISON_PAIRS.filter(
     (p) => conditions.includes(p.conditions[0]) && conditions.includes(p.conditions[1]),
   ).map((pair) => {
@@ -597,6 +603,7 @@ function calculateStatistics(
       .filter((r) => r.condition === pair.conditions[1])
       .map((r) => r.normalizedGain);
     const { d, interpretation } = calculateCohenD(gains1, gains2);
+    const tTest = welchTTest(gains1, gains2);
     return {
       name: pair.name,
       hypothesis: pair.hypothesis,
@@ -604,26 +611,43 @@ function calculateStatistics(
       interpretation,
       condition1Mean: gains1.length > 0 ? gains1.reduce((a, b) => a + b, 0) / gains1.length : 0,
       condition2Mean: gains2.length > 0 ? gains2.reduce((a, b) => a + b, 0) / gains2.length : 0,
+      tTest: {
+        t: tTest.t,
+        df: tTest.df,
+        p: tTest.p,
+        significant: tTest.significant,
+      },
     };
   });
 
-  // Calculate interaction effect
+  // Calculate interaction effect and ANOVA when all 4 conditions are present
   let interactionEffect = 0;
-  if (
+  let anova: AnovaResult | undefined;
+
+  const hasAllConditions =
     conditions.includes('full_system') &&
     conditions.includes('plan_only') &&
     conditions.includes('model_only') &&
-    conditions.includes('baseline')
-  ) {
+    conditions.includes('baseline');
+
+  if (hasAllConditions) {
     interactionEffect = calculateInteractionEffect({
       full_system: byCondition.full_system?.normalizedGain.mean ?? 0,
       plan_only: byCondition.plan_only?.normalizedGain.mean ?? 0,
       model_only: byCondition.model_only?.normalizedGain.mean ?? 0,
       baseline: byCondition.baseline?.normalizedGain.mean ?? 0,
     });
+
+    // Run 2-way ANOVA
+    anova = twoWayAnova({
+      fullSystem: results.filter((r) => r.condition === 'full_system').map((r) => r.normalizedGain),
+      planOnly: results.filter((r) => r.condition === 'plan_only').map((r) => r.normalizedGain),
+      modelOnly: results.filter((r) => r.condition === 'model_only').map((r) => r.normalizedGain),
+      baseline: results.filter((r) => r.condition === 'baseline').map((r) => r.normalizedGain),
+    });
   }
 
-  return { byCondition, comparisons, interactionEffect };
+  return { byCondition, comparisons, interactionEffect, anova };
 }
 
 // ============================================================================
@@ -677,23 +701,43 @@ function generateMarkdownTables(summary: AblationSummary): string {
 
   lines.push(
     '',
-    '## Pairwise Comparisons',
+    '## Pairwise Comparisons (Welch\'s t-test)',
     '',
-    "| Comparison | Cohen's d | Interpretation | C1 Mean | C2 Mean |",
-    '|------------|-----------|----------------|---------|---------|',
+    "| Comparison | Cohen's d | Interp. | t | df | p-value | Sig. | C1 Mean | C2 Mean |",
+    '|------------|-----------|---------|---|----|---------|----- |---------|---------|',
   );
 
   for (const comp of summary.statistics.comparisons) {
+    const sig = comp.tTest.significant ? '*' : '';
     lines.push(
       `| ${comp.name} | ${comp.cohenD.toFixed(3)} | ${comp.interpretation} | ` +
+        `${comp.tTest.t.toFixed(3)} | ${comp.tTest.df.toFixed(1)} | ${comp.tTest.p.toFixed(4)} | ${sig} | ` +
         `${(comp.condition1Mean * 100).toFixed(1)}% | ${(comp.condition2Mean * 100).toFixed(1)}% |`,
+    );
+  }
+
+  if (summary.statistics.anova) {
+    const anova = summary.statistics.anova;
+    lines.push(
+      '',
+      '## 2-Way ANOVA (Plan × Model)',
+      '',
+      '| Source | F | p-value | Sig. |',
+      '|--------|---|---------|------|',
+      `| Plan (main effect) | ${anova.planEffect.f.toFixed(3)} | ${anova.planEffect.p.toFixed(4)} | ${anova.planEffect.significant ? '*' : ''} |`,
+      `| Model (main effect) | ${anova.modelEffect.f.toFixed(3)} | ${anova.modelEffect.p.toFixed(4)} | ${anova.modelEffect.significant ? '*' : ''} |`,
+      `| Plan × Model (interaction) | ${anova.interaction.f.toFixed(3)} | ${anova.interaction.p.toFixed(4)} | ${anova.interaction.significant ? '*' : ''} |`,
+      '',
+      `Residual MS: ${anova.residualMS.toFixed(6)}`,
+      '',
+      '> \\* p < 0.05',
     );
   }
 
   if (summary.statistics.interactionEffect !== 0) {
     lines.push(
       '',
-      '## Interaction Effect',
+      '## Interaction Effect (Descriptive)',
       '',
       `Plan × Model Interaction: ${(summary.statistics.interactionEffect * 100).toFixed(2)}%`,
       '',
@@ -744,17 +788,70 @@ function generateStatsReport(summary: AblationSummary): string {
     lines.push('No comparisons showed medium or large effect sizes.', '');
   }
 
-  // Interaction effect interpretation
+  // ANOVA interpretation
+  if (summary.statistics.anova) {
+    const anova = summary.statistics.anova;
+    lines.push('### 2-Way ANOVA Results', '');
+
+    const effects: string[] = [];
+    if (anova.planEffect.significant) {
+      effects.push(
+        `Plan visibility shows a significant main effect (F = ${anova.planEffect.f.toFixed(2)}, p = ${anova.planEffect.p.toFixed(4)}), ` +
+          'indicating that curriculum transparency affects learning outcomes independent of learner model visibility.',
+      );
+    }
+    if (anova.modelEffect.significant) {
+      effects.push(
+        `Learner model visibility shows a significant main effect (F = ${anova.modelEffect.f.toFixed(2)}, p = ${anova.modelEffect.p.toFixed(4)}), ` +
+          'indicating that mastery tracking affects learning outcomes independent of plan visibility.',
+      );
+    }
+    if (anova.interaction.significant) {
+      effects.push(
+        `The interaction is significant (F = ${anova.interaction.f.toFixed(2)}, p = ${anova.interaction.p.toFixed(4)}), ` +
+          'indicating that the effect of one factor depends on the presence of the other.',
+      );
+    }
+
+    if (effects.length > 0) {
+      lines.push(...effects.map((e) => `- ${e}`), '');
+    } else {
+      lines.push('No significant main effects or interaction were detected at α = 0.05.', '');
+    }
+  }
+
+  // Interaction effect interpretation (descriptive)
   if (summary.statistics.interactionEffect !== 0) {
     const interaction = summary.statistics.interactionEffect;
     const sign = interaction > 0 ? 'positive' : 'negative';
     lines.push(
-      '### Interaction Effect',
+      '### Descriptive Interaction Effect',
       '',
-      `The interaction effect is ${sign} (${(interaction * 100).toFixed(2)}%), suggesting that ` +
+      `The descriptive interaction effect is ${sign} (${(interaction * 100).toFixed(2)}%), suggesting that ` +
         (interaction > 0
           ? 'plan and learner model visibility have synergistic effects when combined.'
           : 'the combination of plan and learner model may have diminishing returns.'),
+      '',
+    );
+  }
+
+  // Primary hypothesis result (Full vs Baseline t-test)
+  const primaryComparison = summary.statistics.comparisons.find(
+    (c) => c.name === 'Full vs Baseline',
+  );
+  if (primaryComparison) {
+    lines.push(
+      '### Primary Hypothesis (H1): Full System vs Baseline',
+      '',
+      `Welch's t-test: t(${primaryComparison.tTest.df.toFixed(1)}) = ${primaryComparison.tTest.t.toFixed(3)}, ` +
+        `p = ${primaryComparison.tTest.p.toFixed(4)}, d = ${primaryComparison.cohenD.toFixed(3)}`,
+      '',
+      primaryComparison.tTest.significant
+        ? `The full system (M = ${(primaryComparison.condition1Mean * 100).toFixed(1)}%) significantly ` +
+            `outperformed the baseline (M = ${(primaryComparison.condition2Mean * 100).toFixed(1)}%) ` +
+            `with a ${primaryComparison.interpretation} effect size.`
+        : `No significant difference was detected between the full system (M = ${(primaryComparison.condition1Mean * 100).toFixed(1)}%) ` +
+            `and baseline (M = ${(primaryComparison.condition2Mean * 100).toFixed(1)}%).`,
       '',
     );
   }
