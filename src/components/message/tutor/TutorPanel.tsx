@@ -1,6 +1,8 @@
 'use client';
 import { motion } from 'framer-motion';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
+import { useChatStore } from '@/lib/store';
+import { selectStudyCondition } from '@/lib/store/selectors';
 import type {
   TutorDiagnostic,
   TutorFillBlankItem,
@@ -38,6 +40,8 @@ export function TutorPanel(props: {
   assessmentUpdates?: TutorLearnerModelUpdate[];
   grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
 }) {
+  const studyCondition = useChatStore(selectStudyCondition);
+
   const {
     messageId,
     title,
@@ -53,12 +57,14 @@ export function TutorPanel(props: {
     grading,
   } = props;
 
+  const canShowUpdates = studyCondition !== 'A';
+
   const hasAny =
     (questionnaire && questionnaire.questions && questionnaire.questions.length > 0) ||
     planProposal ||
     (planSuggestions && planSuggestions.length > 0) ||
     (diagnostic && diagnostic.items && diagnostic.items.length > 0) ||
-    (assessmentUpdates && assessmentUpdates.length > 0) ||
+    (canShowUpdates && assessmentUpdates && assessmentUpdates.length > 0) ||
     (mcq && mcq.length > 0) ||
     (fillBlank && fillBlank.length > 0) ||
     (openEnded && openEnded.length > 0) ||
@@ -108,7 +114,7 @@ export function TutorPanel(props: {
             <OpenEndedCard messageId={messageId} items={openEnded} grading={grading} />
           )}
           {flashcards && flashcards.length > 0 && <FlashcardsCard items={flashcards} />}
-          {assessmentUpdates && assessmentUpdates.length > 0 && (
+          {canShowUpdates && assessmentUpdates && assessmentUpdates.length > 0 && (
             <LearnerUpdatesCard updates={assessmentUpdates} />
           )}
           {grading && Object.keys(grading).length > 0 && <GradingFeedbackCard grading={grading} />}

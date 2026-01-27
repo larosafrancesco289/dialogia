@@ -4,6 +4,7 @@ import type {
   LearningPlan,
   Message,
   MessageTutor,
+  StudyCondition,
   TutorResearchMode,
 } from '@/lib/types';
 
@@ -77,6 +78,7 @@ export type UiTutorSnapshot = {
   forceMode?: boolean;
   thesisMode?: boolean;
   researchMode?: TutorResearchMode;
+  studyCondition?: StudyCondition;
 };
 
 export type UiPlanSnapshot = {

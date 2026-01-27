@@ -25,6 +25,7 @@ export function PlanNode({
   focused,
   onAdjust,
   onMarkKnown,
+  readOnly,
 }: {
   node: LearningPlanNode;
   isReady: boolean;
@@ -36,6 +37,7 @@ export function PlanNode({
   focused?: boolean;
   onAdjust?: (feedback: LearnerModelFeedback) => void;
   onMarkKnown?: (nodeId: string) => void;
+  readOnly?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [pendingAction, setPendingAction] = useState<EditConfirmAction | null>(null);
@@ -46,7 +48,8 @@ export function PlanNode({
   }, [focused]);
 
   const isLocked = !isReady && node.status === 'not_started';
-  const canModifyStatus = !!onStatusChange && node.status !== 'completed' && !isLocked;
+  const canStartLesson = !readOnly && (!!onStartLesson || !!onStatusChange);
+  const canModifyStatus = !!onStatusChange && node.status !== 'completed' && !isLocked && !readOnly;
 
   const handleMarkKnown = useCallback(() => {
     setPendingAction({
@@ -181,10 +184,10 @@ export function PlanNode({
             </div>
 
             {/* Primary Action (Start/Continue) - editorial style */}
-            {isReady && node.status !== 'completed' && (
+            {isReady && node.status !== 'completed' && canStartLesson && (
               <div className="flex items-center gap-2">
                 {/* I know this button */}
-                {onMarkKnown && node.status === 'not_started' && (
+                {!readOnly && onMarkKnown && node.status === 'not_started' && (
                   <div
                     onClick={(e) => {
                       e.stopPropagation();
@@ -315,7 +318,7 @@ export function PlanNode({
                       {lastEvidence.details}
                     </div>
                   )}
-                  {onAdjust && (
+                  {!readOnly && onAdjust && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         onClick={(e) => {

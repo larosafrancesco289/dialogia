@@ -51,6 +51,7 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
       forceMode: false,
       thesisMode: true,
       researchMode: 'plan_plus_model',
+      studyCondition: 'B',
     },
     plan: {
       sheetOpen: false,

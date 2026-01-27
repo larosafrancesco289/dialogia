@@ -1,6 +1,6 @@
 'use client';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import type { LearningPlan, LearnerModel } from '@/lib/types';
+import type { LearningPlan, LearnerModel, StudyCondition } from '@/lib/types';
 import { PlanView } from './PlanView';
 import { MyProgressView } from './MyProgressView';
 import { HubTabs, HubTabId } from './HubTabs';
@@ -34,6 +34,7 @@ export function PlanSheet({
   onFlagForReview,
   onMarkKnown,
   defaultTab = 'plan',
+  studyCondition,
 }: {
   plan: LearningPlan | null;
   isOpen: boolean;
@@ -45,6 +46,7 @@ export function PlanSheet({
   onLearnerModelFeedback?: (feedback: LearnerModelFeedback) => void;
   latestUpdateSummary?: string;
   defaultTab?: HubTabId;
+  studyCondition?: StudyCondition;
 } & Partial<LearnerModelEditCallbacks>) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [closing, setClosing] = useState(false);
@@ -110,6 +112,8 @@ export function PlanSheet({
     if (estimatedHours) parts.push(`${estimatedHours}h`);
     return parts.join(' · ');
   }, [plan]);
+
+  const isConditionA = studyCondition === 'A';
 
   if (!plan || !shouldRender) return null;
   if (typeof document === 'undefined') return null;
@@ -196,9 +200,11 @@ export function PlanSheet({
         </div>
 
         {/* Tab Navigation */}
-        <div className="px-4 py-3 sm:px-6" style={{ background: 'var(--surface-paper)' }}>
-          <HubTabs activeTab={activeTab} onTabChange={setActiveTab} />
-        </div>
+        {!isConditionA && (
+          <div className="px-4 py-3 sm:px-6" style={{ background: 'var(--surface-paper)' }}>
+            <HubTabs activeTab={activeTab} onTabChange={setActiveTab} />
+          </div>
+        )}
 
         {/* Subtle rule */}
         <div className="pointer-events-none h-px" style={{ background: 'var(--rule-accent)' }} />
@@ -206,7 +212,7 @@ export function PlanSheet({
         {/* Content */}
         <div className="plan-sheet__body px-4 pt-5 pb-10 sm:px-6 w-full h-full">
           <AnimatePresence mode="wait">
-            {activeTab === 'plan' ? (
+            {isConditionA || activeTab === 'plan' ? (
               <motion.div
                 key="plan"
                 initial={{ opacity: 0, x: -10 }}
@@ -216,13 +222,16 @@ export function PlanSheet({
               >
                 <PlanView
                   plan={plan}
-                  onNodeStatusChange={handleNodeStatusChange}
-                  onStartLesson={onStartLesson}
-                  learnerModel={learnerModel}
                   focusNodeId={focusNodeId}
-                  onLearnerModelFeedback={onLearnerModelFeedback}
-                  latestUpdateSummary={latestUpdateSummary}
-                  onMarkKnown={onMarkKnown}
+                  readOnly={isConditionA}
+                  {...(!isConditionA && {
+                    onNodeStatusChange: handleNodeStatusChange,
+                    onStartLesson,
+                    learnerModel,
+                    onLearnerModelFeedback,
+                    latestUpdateSummary,
+                    onMarkKnown,
+                  })}
                 />
               </motion.div>
             ) : (

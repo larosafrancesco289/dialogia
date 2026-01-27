@@ -16,6 +16,7 @@ export function PlanView({
   onLearnerModelFeedback,
   latestUpdateSummary,
   onMarkKnown,
+  readOnly,
 }: {
   plan: LearningPlan;
   onNodeStatusChange?: (
@@ -28,9 +29,11 @@ export function PlanView({
   onLearnerModelFeedback?: (feedback: LearnerModelFeedback) => void;
   latestUpdateSummary?: string;
   onMarkKnown?: (nodeId: string) => void;
+  readOnly?: boolean;
 }) {
   const nextNode = getNextNode(plan);
   const allCompleted = plan.nodes.every((n) => n.status === 'completed');
+  const canStartLesson = !readOnly && (!!onStartLesson || !!onNodeStatusChange);
   const phases = useMemo(() => {
     const groups: { name: string; nodes: LearningPlanNode[] }[] = [];
     let currentGroup: { name: string; nodes: LearningPlanNode[] } | null = null;
@@ -107,9 +110,11 @@ export function PlanView({
   return (
     <div className="space-y-6 max-w-full">
       {/* Top: Learner Stats */}
-      <section className="w-full">
-        <LearnerStats learnerModel={learnerModel} plan={plan} />
-      </section>
+      {!readOnly && (
+        <section className="w-full">
+          <LearnerStats learnerModel={learnerModel} plan={plan} />
+        </section>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN: Timeline (Main) */}
@@ -178,6 +183,7 @@ export function PlanView({
                         focused={focusNodeId === node.id}
                         onAdjust={onLearnerModelFeedback}
                         onMarkKnown={onMarkKnown}
+                        readOnly={readOnly}
                       />
                     );
                   })}
@@ -190,7 +196,7 @@ export function PlanView({
         {/* RIGHT COLUMN: Sidebar (Next Up, Insights) */}
         <aside className="lg:col-span-5 xl:col-span-4 space-y-6 sticky top-4">
           {/* Next Up Card - editorial marginalia style */}
-          {nextNode && !allCompleted && (
+          {nextNode && !allCompleted && !readOnly && (
             <div className="marginalia p-4" style={{ borderLeftColor: 'var(--color-accent)' }}>
               <div className="mb-2 flex items-center justify-between">
                 <span
@@ -214,17 +220,19 @@ export function PlanView({
                 </p>
               )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (onStartLesson) onStartLesson(nextNode.id);
-                  else onNodeStatusChange?.(nextNode.id, 'in_progress');
-                }}
-                className="btn w-full inline-flex justify-center items-center gap-2 px-3 py-1.5 text-xs font-semibold"
-              >
-                <PlayIcon className="h-3 w-3" />
-                {nextNode.status === 'in_progress' ? 'Continue Lesson' : 'Start Lesson'}
-              </button>
+              {canStartLesson && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onStartLesson) onStartLesson(nextNode.id);
+                    else onNodeStatusChange?.(nextNode.id, 'in_progress');
+                  }}
+                  className="btn w-full inline-flex justify-center items-center gap-2 px-3 py-1.5 text-xs font-semibold"
+                >
+                  <PlayIcon className="h-3 w-3" />
+                  {nextNode.status === 'in_progress' ? 'Continue Lesson' : 'Start Lesson'}
+                </button>
+              )}
             </div>
           )}
 
@@ -248,7 +256,7 @@ export function PlanView({
           )}
 
           {/* Latest Update Summary - editorial style */}
-          {latestUpdateSummary && (
+          {!readOnly && latestUpdateSummary && (
             <div className="marginalia p-3">
               <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                 Latest Agent Update
@@ -258,7 +266,7 @@ export function PlanView({
           )}
 
           {/* Insights Panel */}
-          <LearnerInsights learnerModel={learnerModel} plan={plan} />
+          {!readOnly && <LearnerInsights learnerModel={learnerModel} plan={plan} />}
         </aside>
       </div>
     </div>
