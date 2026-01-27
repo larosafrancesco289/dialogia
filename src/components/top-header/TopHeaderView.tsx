@@ -27,6 +27,7 @@ export function TopHeaderView({
   experimentalTutor,
   forceTutorMode,
   isStudyTier,
+  studyCondition,
   hasPlan,
   learningPlan,
   planProgress,
@@ -174,6 +175,7 @@ export function TopHeaderView({
         onMisconceptionResolve={onMisconceptionResolve}
         onSetConfidenceFloor={onSetConfidenceFloor}
         onFlagForReview={onFlagForReview}
+        studyCondition={studyCondition}
       />
     </div>
   );

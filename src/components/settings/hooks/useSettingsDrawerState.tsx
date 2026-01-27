@@ -12,6 +12,8 @@ import { motion } from 'framer-motion';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useIsStudyTier } from '@/lib/auth/tierContext';
+import { selectStudyCondition } from '@/lib/store/selectors';
+import type { StudyCondition } from '@/lib/types';
 import type { ModelSearchHandle } from '@/components/ModelSearch';
 import type { RenderSection, TabId, SectionId } from '@/components/settings/types';
 import { useSettingsTabs } from '@/components/settings/hooks/useSettingsTabs';
@@ -55,6 +57,8 @@ export type SettingsDrawerState = {
   tabContent: ReactNode;
   closeWithAnim: () => void;
   saveStatus: ReturnType<typeof useAutoSave>['status'];
+  studyCondition: StudyCondition;
+  onStudyConditionChange: (c: StudyCondition) => void;
 };
 
 export function useSettingsDrawerState(): SettingsDrawerState {
@@ -155,6 +159,14 @@ export function useSettingsDrawerState(): SettingsDrawerState {
   const experimentalBrave = useChatStore((s) => !!s.ui.flags.experimentalBrave);
   const experimentalTutor = useChatStore((s) => !!s.ui.flags.experimentalTutor);
   const enableMultiModelChat = useChatStore((s) => !!s.ui.flags.enableMultiModelChat);
+
+  const studyCondition = useChatStore(selectStudyCondition);
+  const onStudyConditionChange = useCallback(
+    (c: StudyCondition) => {
+      setUI({ tutor: { studyCondition: c } });
+    },
+    [setUI],
+  );
 
   // Auto-save hook
   const performSave = useCallback(() => {
@@ -457,5 +469,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     tabContent,
     closeWithAnim,
     saveStatus,
+    studyCondition,
+    onStudyConditionChange,
   };
 }

@@ -57,6 +57,7 @@ export function buildPersistedState(state: StoreState): PersistedStoreState {
         researchMode: state.ui.tutor.researchMode,
         defaultModelId: state.ui.tutor.defaultModelId,
         forceMode: state.ui.tutor.forceMode,
+        studyCondition: state.ui.tutor.studyCondition,
       },
     },
   };

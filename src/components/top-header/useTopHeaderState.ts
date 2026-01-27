@@ -10,11 +10,12 @@ import {
   selectIsTutorEnabled,
   selectMessagesForCurrentChat,
   selectNextOverrides,
+  selectStudyCondition,
 } from '@/lib/store/selectors';
 import { useTier } from '@/lib/auth/tierContext';
 import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
 import type { UiPlanSnapshot } from '@/lib/contracts/ui';
-import type { Chat, LearnerModel, LearningPlan, LearningPlanNode } from '@/lib/types';
+import type { Chat, LearnerModel, LearningPlan, LearningPlanNode, StudyCondition } from '@/lib/types';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
 import type { LearnerModelEditCallbacks } from '@/components/plan/PlanSheet';
 
@@ -42,6 +43,7 @@ export type TopHeaderState = {
   forceTutorMode: boolean;
   nextTutorMode: boolean;
   isStudyTier: boolean;
+  studyCondition: StudyCondition;
   hasPlan: boolean;
   learningPlan?: LearningPlan;
   planProgress: PlanProgress | null;
@@ -89,6 +91,7 @@ export function useTopHeaderState(): TopHeaderState {
     planGeneration,
     planSheetOverride,
     tutorActive,
+    studyCondition,
   } = useChatStore((s) => {
     return {
       chat: selectCurrentChat(s),
@@ -112,6 +115,7 @@ export function useTopHeaderState(): TopHeaderState {
         : undefined,
       planSheetOverride: s.ui.plan.sheetPlanOverride ?? null,
       tutorActive: selectIsTutorEnabled(s),
+      studyCondition: selectStudyCondition(s),
     };
   }, shallow);
 
@@ -404,6 +408,7 @@ export function useTopHeaderState(): TopHeaderState {
     forceTutorMode,
     nextTutorMode,
     isStudyTier,
+    studyCondition,
     hasPlan,
     learningPlan,
     planProgress,

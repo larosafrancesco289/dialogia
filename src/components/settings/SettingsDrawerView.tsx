@@ -2,7 +2,35 @@ import { motion } from 'framer-motion';
 import { TAB_LIST, SECTION_TITLES } from '@/components/settings/sections/config';
 import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
 import { AutoSaveToast } from '@/components/settings/AutoSaveToast';
+import type { StudyCondition } from '@/lib/types';
 import type { SettingsDrawerState } from '@/components/settings/hooks/useSettingsDrawerState';
+
+function conditionButtonClass(isActive: boolean): string {
+  return `px-4 py-2 rounded-lg border transition-colors ${
+    isActive
+      ? 'bg-accent/10 border-accent font-semibold text-accent'
+      : 'border-border text-muted-foreground hover:border-accent/50'
+  }`;
+}
+
+function ConditionButton({
+  condition,
+  active,
+  onChange,
+}: {
+  condition: StudyCondition;
+  active: StudyCondition;
+  onChange: (c: StudyCondition) => void;
+}) {
+  return (
+    <button
+      className={conditionButtonClass(active === condition)}
+      onClick={() => onChange(condition)}
+    >
+      System {condition}
+    </button>
+  );
+}
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -31,6 +59,8 @@ export function SettingsDrawerView({
   tabContent,
   closeWithAnim,
   saveStatus,
+  studyCondition,
+  onStudyConditionChange,
 }: SettingsDrawerState) {
   if (isStudyTier) {
     return (
@@ -43,11 +73,14 @@ export function SettingsDrawerView({
       >
         <div className="flex items-center justify-center h-[calc(100%-var(--header-height))] p-8">
           <div className="text-center max-w-md">
-            <h2 className="text-xl font-semibold mb-2">User Study Mode</h2>
-            <p className="text-muted-foreground">
-              Settings are not available during the user study. The tutor has been configured with
-              optimal settings for your learning experience.
+            <h2 className="text-xl font-semibold mb-4">Study Configuration</h2>
+            <p className="text-muted-foreground text-sm mb-6">
+              Select the study condition before beginning the session.
             </p>
+            <div className="flex gap-3 justify-center">
+              <ConditionButton condition="A" active={studyCondition} onChange={onStudyConditionChange} />
+              <ConditionButton condition="B" active={studyCondition} onChange={onStudyConditionChange} />
+            </div>
           </div>
         </div>
       </SettingsDrawerShell>

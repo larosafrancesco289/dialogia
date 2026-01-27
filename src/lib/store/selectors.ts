@@ -1,7 +1,7 @@
 // Module: store/selectors
 // Responsibility: Shared read-only selectors for Zustand store consumers.
 
-import type { Chat } from '@/lib/types';
+import type { Chat, StudyCondition } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import type { ModelCapabilityFlags } from '@/lib/models';
 import { readNextOverrides } from '@/lib/ui/next';
@@ -120,3 +120,6 @@ export const selectSearchProvider = (state: StoreState) => {
   const configured = next.search?.provider ?? 'openrouter';
   return state.ui.flags.experimentalBrave && configured === 'brave' ? 'brave' : 'openrouter';
 };
+
+export const selectStudyCondition = (state: StoreState): StudyCondition =>
+  state.ui.tutor.studyCondition ?? 'B';

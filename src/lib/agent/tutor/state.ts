@@ -147,11 +147,15 @@ export function deriveTutorToolPolicy(args: {
   const researchMode =
     chat.settings.features.tutor.researchMode || ui?.tutor.researchMode || 'plan_plus_model';
   const thesisMode = chat.settings.features.tutor.thesisMode ?? ui?.tutor.thesisMode ?? false;
+  const studyCondition = ui?.tutor.studyCondition ?? 'B';
+  const planExists = !!chat.settings.features.tutor.learningPlan;
+  // Condition A freezes plan tools once a plan exists; otherwise defer to research mode
+  const conditionAFrozen = studyCondition === 'A' && planExists;
 
   return {
     thesisMode,
     researchMode,
-    allowPlanTools: researchMode !== 'model_only',
+    allowPlanTools: !conditionAFrozen && researchMode !== 'model_only',
     allowLearnerModel:
       chat.settings.features.tutor.enableLearnerModel !== false && researchMode !== 'plan_only',
     quizzesRemaining:

@@ -12,6 +12,8 @@ import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { LearnerModelUpdates } from '@/components/message/LearnerModelUpdates';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
+import { useChatStore } from '@/lib/store';
+import { selectStudyCondition } from '@/lib/store/selectors';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import styles from './MessageCard.module.css';
 
@@ -81,6 +83,8 @@ export function AssistantMessage({
   upperPanelsNode,
   tutorPanelNode,
 }: AssistantMessageProps) {
+  const studyCondition = useChatStore(selectStudyCondition);
+
   const displayContent = useMemo(() => {
     if (message.content) return message.content;
     if (message.deepResearch?.answer) return message.deepResearch.answer;
@@ -165,7 +169,7 @@ export function AssistantMessage({
       {tutorPanelNode}
 
       {/* Learner Model Updates */}
-      {!isEditing && <LearnerModelUpdates message={message} />}
+      {!isEditing && studyCondition !== 'A' && <LearnerModelUpdates message={message} />}
 
       <StatsToggle
         showStats={showStats}
