@@ -59,8 +59,8 @@ export function generatePlanContextPreamble(
     '• Confidence > 70%: Ready for independent practice',
     '• Confidence > 80%: Consider advancing to next topic',
     '',
-    'Note: You cannot explicitly advance topics. Focus on teaching the current',
-    'topic deeply. The system will automatically advance when mastery is demonstrated.',
+    'You control topic progression. Call advance_topic when you judge the student',
+    'has mastered the current topic. Use confidence levels and interaction quality as signals.',
   ].join('\n');
 
   // Combine all sections

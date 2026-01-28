@@ -59,6 +59,11 @@ export const TOOL_METADATA: Record<ToolName, ToolMetadata> = {
     phases: ['diagnostic', 'practice', 'review', 'teaching'],
     tags: { learnerModel: true, thesisCore: true },
   },
+  advance_topic: {
+    category: 'tutor_meta',
+    phases: ['teaching', 'practice', 'review'],
+    tags: { plan: true, thesisCore: true },
+  },
   apply_learner_model_feedback: {
     category: 'tutor_meta',
     phases: ['diagnostic', 'practice', 'review', 'teaching'],

@@ -65,6 +65,7 @@ export const TUTOR_TOOL_NAMES = [
   'update_plan',
   'assess_answer',
   'update_learner_model',
+  'advance_topic',
   'apply_learner_model_feedback',
   'get_plan_suggestions',
   'quiz_mcq',
