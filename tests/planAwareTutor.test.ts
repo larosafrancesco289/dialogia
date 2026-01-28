@@ -11,7 +11,9 @@ import {
   generateProgressReport,
 } from '@/lib/learningPlan/service';
 import { initializeLearnerModel, updateLearnerModel } from '@/lib/agent/learnerModel';
-import type { LearningPlan, LearnerModel } from '@/lib/types';
+import { advanceTopicHandler } from '@/lib/agent/tools/tutor/handlers/advanceTopic';
+import type { TutorToolContext } from '@/lib/agent/tools/tutor/types';
+import type { LearningPlan, LearnerModel, Chat, Message } from '@/lib/types';
 
 // ============================================================================
 // Helper Functions
@@ -169,29 +171,17 @@ test('shouldCompleteNode returns false when confidence too low', () => {
   assert.ok(result.reasoning.includes('Confidence too low'));
 });
 
-test('shouldCompleteNode returns false when not enough interactions', () => {
+test('shouldCompleteNode returns false when no interactions recorded', () => {
   const plan = createMockPlan();
-  let model = initializeLearnerModel('chat_1', plan);
+  const model = initializeLearnerModel('chat_1', plan);
 
-  // Add correct answers to get moderate confidence (above 0.7 but below 0.9)
-  // with only 2 interactions (below the 3-interaction minimum for non-high-confidence)
-  for (let i = 0; i < 2; i++) {
-    model = updateLearnerModel(model, {
-      nodeId: 'derivatives',
-      evidence: {
-        timestamp: Date.now(),
-        type: 'correct_answer',
-        details: 'Correct',
-        weight: 0.35, // Higher weight to reach >70% with fewer interactions
-      },
-    });
-  }
+  // Manually set high confidence without any interactions to test the minimum-interaction guard
+  model.mastery['derivatives'].confidence = 0.85;
 
   const result = shouldCompleteNode('derivatives', model, plan);
 
-  // 2 interactions is below the minimum of 3 (for confidence < 90%)
   assert.equal(result.shouldComplete, false);
-  assert.ok(result.reasoning.includes('Not enough practice'));
+  assert.ok(result.reasoning.includes('No interactions recorded'));
 });
 
 test('shouldCompleteNode returns false when has unresolved misconceptions', () => {
@@ -519,4 +509,116 @@ test('generateProgressReport shows confidence per topic', () => {
   // Should show confidence percentages
   assert.ok(report.includes('% confidence'));
   assert.ok(report.includes('Basic Derivatives'));
+});
+
+// ============================================================================
+// Tests: advanceTopicHandler
+// ============================================================================
+
+function createMockToolContext(plan: LearningPlan): TutorToolContext {
+  return {
+    chat: {
+      settings: { features: { tutor: { learningPlan: plan } } },
+    } as unknown as Chat,
+    chatId: 'test_chat',
+    assistantMessage: { id: 'msg_1' } as Message,
+    set: (() => {}) as unknown as TutorToolContext['set'],
+    get: (() => ({})) as unknown as TutorToolContext['get'],
+    persistMessage: async () => {},
+    applyTutorPatch: async () => undefined,
+    getCurrentPlan: () => plan,
+  };
+}
+
+test('advance_topic marks current node as completed and starts next', async () => {
+  const plan = createMockPlan();
+  const ctx = createMockToolContext(plan);
+  const args = advanceTopicHandler.parseArgs({ reason: 'Student demonstrated mastery' });
+
+  const result = await advanceTopicHandler.apply(ctx, args!);
+
+  assert.equal(result.handled, true);
+  assert.ok(result.updatedPlan);
+  const derivativesNode = result.updatedPlan!.nodes.find((n) => n.id === 'derivatives');
+  assert.equal(derivativesNode!.status, 'completed');
+  const chainRuleNode = result.updatedPlan!.nodes.find((n) => n.id === 'chain_rule');
+  assert.equal(chainRuleNode!.status, 'in_progress');
+  assert.ok(result.planUpdates);
+  assert.equal(result.planUpdates!.statusChanges!.length, 2);
+});
+
+test('advance_topic handles explicit nodeId', async () => {
+  const plan = createMockPlan();
+  const ctx = createMockToolContext(plan);
+  const args = advanceTopicHandler.parseArgs({ nodeId: 'derivatives' });
+
+  const result = await advanceTopicHandler.apply(ctx, args!);
+
+  assert.equal(result.handled, true);
+  const derivativesNode = result.updatedPlan!.nodes.find((n) => n.id === 'derivatives');
+  assert.equal(derivativesNode!.status, 'completed');
+});
+
+test('advance_topic handles no active topic', async () => {
+  const plan = createMockPlan();
+  plan.nodes.forEach((n) => {
+    n.status = 'completed';
+  });
+  const ctx = createMockToolContext(plan);
+  const args = advanceTopicHandler.parseArgs({});
+
+  const result = await advanceTopicHandler.apply(ctx, args!);
+
+  assert.equal(result.handled, true);
+  assert.equal(result.updatedPlan, plan);
+  assert.equal(result.planUpdates, undefined);
+});
+
+test('advance_topic handles already-completed node', async () => {
+  const plan = createMockPlan();
+  const ctx = createMockToolContext(plan);
+  const args = advanceTopicHandler.parseArgs({ nodeId: 'limits' });
+
+  const result = await advanceTopicHandler.apply(ctx, args!);
+
+  assert.equal(result.handled, true);
+  // No plan updates since the node was already completed
+  assert.equal(result.planUpdates, undefined);
+});
+
+test('advance_topic detects plan completion on last node', async () => {
+  const plan = createMockPlan();
+  plan.nodes[0].status = 'completed';
+  plan.nodes[1].status = 'completed';
+  plan.nodes[2].status = 'in_progress';
+  const ctx = createMockToolContext(plan);
+  const args = advanceTopicHandler.parseArgs({ nodeId: 'chain_rule' });
+
+  const result = await advanceTopicHandler.apply(ctx, args!);
+
+  assert.equal(result.handled, true);
+  assert.ok(result.planUpdates);
+  assert.ok(result.planUpdates!.summary!.includes('Learning plan completed'));
+  const chainRuleNode = result.updatedPlan!.nodes.find((n) => n.id === 'chain_rule');
+  assert.equal(chainRuleNode!.status, 'completed');
+});
+
+test('advance_topic includes reason in summary', async () => {
+  const plan = createMockPlan();
+  const ctx = createMockToolContext(plan);
+  const args = advanceTopicHandler.parseArgs({ reason: 'Solid understanding shown' });
+
+  const result = await advanceTopicHandler.apply(ctx, args!);
+
+  assert.ok(result.planUpdates!.summary!.includes('Solid understanding shown'));
+});
+
+test('generatePlanContextPreamble mentions advance_topic', () => {
+  const plan = createMockPlan();
+  const model = initializeLearnerModel('chat_1', plan);
+
+  const preamble = generatePlanContextPreamble(plan, model);
+
+  assert.ok(preamble.includes('advance_topic'));
+  assert.ok(preamble.includes('You control topic progression'));
 });

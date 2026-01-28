@@ -13,6 +13,7 @@ Tutor tools are invoked via function calls using these names:
 - `update_plan`
 - `assess_answer`
 - `update_learner_model`
+- `advance_topic`
 - `apply_learner_model_feedback`
 - `get_plan_suggestions`
 - `quiz_mcq`
@@ -40,8 +41,8 @@ Tool handlers normalize inputs and patch `Message.tutor` with these fields:
 - `grade_open_response` → `grading: Record<string, TutorGradingResult>`
 - `add_to_deck` / `srs_review` → `flashcards` and SRS metadata as needed
 
-Tool argument schemas live under `src/lib/agent/tools/definitions/tutorTools.ts` and the per-tool
-handlers under `src/lib/agent/tools/tutor/handlers/*` are responsible for validation and patching.
+Tool argument schemas live under `src/lib/tools/definitions/tutor/` and the per-tool handlers under
+`src/lib/agent/tools/tutor/handlers/` are responsible for validation and patching.
 
 ## Persistence Rules
 

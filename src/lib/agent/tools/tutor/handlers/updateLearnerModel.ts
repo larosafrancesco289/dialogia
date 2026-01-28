@@ -5,7 +5,6 @@ import {
   initializeLearnerModel,
   updateLearnerModel,
 } from '@/lib/agent/learnerModel';
-import { processPlanProgress } from '@/lib/learningPlan/service';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 
 type UpdateLearnerModelArgs = {
@@ -185,32 +184,29 @@ export const updateLearnerModelHandler: TutorToolHandler<UpdateLearnerModelArgs>
     const oldConfidence = currentModel.mastery[args.nodeId]?.confidence ?? 0;
     const newConfidence = updatedModel.mastery[args.nodeId]?.confidence ?? oldConfidence;
 
-    const planResult = await processPlanProgress(plan, updatedModel);
     const hasMasteryDelta = oldConfidence !== newConfidence;
-    const summary = nodeMeta
-      ? hasMasteryDelta
-        ? `${nodeMeta.name}: ${Math.round(oldConfidence * 100)}% → ${Math.round(newConfidence * 100)}%`
-        : `${nodeMeta.name}: mastery reviewed`
-      : hasMasteryDelta
-        ? `Updated mastery for ${args.nodeId}`
-        : `Reviewed mastery for ${args.nodeId}`;
-    const planUpdatesWithSummary: Message['planUpdates'] | undefined =
-      planResult.planUpdates ??
-      (hasMasteryDelta
-        ? {
-            masteryChanges: [{ nodeId: args.nodeId, from: oldConfidence, to: newConfidence }],
-          }
-        : undefined);
-    if (planUpdatesWithSummary) {
-      planUpdatesWithSummary.summary = planUpdatesWithSummary.summary ?? summary;
+    const label = nodeMeta ? nodeMeta.name : args.nodeId;
+    let summary: string;
+    if (hasMasteryDelta) {
+      summary = nodeMeta
+        ? `${label}: ${Math.round(oldConfidence * 100)}% → ${Math.round(newConfidence * 100)}%`
+        : `Updated mastery for ${label}`;
+    } else {
+      summary = nodeMeta ? `${label}: mastery reviewed` : `Reviewed mastery for ${label}`;
     }
+    const planUpdatesWithSummary: Message['planUpdates'] | undefined = hasMasteryDelta
+      ? {
+          masteryChanges: [{ nodeId: args.nodeId, from: oldConfidence, to: newConfidence }],
+          summary,
+        }
+      : undefined;
 
     return {
       handled: true,
       usedContent: false,
       learnerModel: updatedModel,
       planUpdates: planUpdatesWithSummary,
-      updatedPlan: planResult.updatedPlan,
+      updatedPlan: plan,
       learnerModelDebug: {
         nodeId: args.nodeId,
         nodeName: nodeMeta?.name,

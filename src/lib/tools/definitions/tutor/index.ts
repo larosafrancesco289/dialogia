@@ -1,5 +1,6 @@
 import type { ToolDefinition } from '@/lib/transport/contracts';
 import { addToDeckTool } from './addToDeck';
+import { advanceTopicTool } from './advanceTopic';
 import { applyLearnerModelFeedbackTool } from './applyLearnerModelFeedback';
 import { assessAnswerTool } from './assessAnswer';
 import { askStudentQuestionTool } from './askStudentQuestion';
@@ -25,6 +26,7 @@ export function getTutorToolDefinitions(): ToolDefinition[] {
     assessAnswerTool,
     applyLearnerModelFeedbackTool,
     updateLearnerModelTool,
+    advanceTopicTool,
     quizMcqTool,
     quizFillBlankTool,
     quizOpenEndedTool,

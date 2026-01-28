@@ -13,6 +13,7 @@ import type {
 } from '@/lib/agent/tools/tutor/types';
 import {
   addToDeckHandler,
+  advanceTopicHandler,
   applyLearnerModelFeedbackHandler,
   assessAnswerHandler,
   askStudentQuestionHandler,
@@ -87,6 +88,7 @@ const tutorToolHandlers: Record<TutorToolName, AnyTutorToolHandler> = {
   update_plan: updatePlanHandler as AnyTutorToolHandler,
   assess_answer: assessAnswerHandler as AnyTutorToolHandler,
   update_learner_model: updateLearnerModelHandler as AnyTutorToolHandler,
+  advance_topic: advanceTopicHandler as AnyTutorToolHandler,
   apply_learner_model_feedback: applyLearnerModelFeedbackHandler as AnyTutorToolHandler,
   get_plan_suggestions: getPlanSuggestionsHandler as AnyTutorToolHandler,
   quiz_mcq: quizMcqHandler as AnyTutorToolHandler,
