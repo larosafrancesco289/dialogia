@@ -40,17 +40,34 @@ export type AblationScenario = TutorScenario & {
 
 /**
  * Generate a learning plan from scenario's plan structure.
+ * Marks the first node without prerequisites as 'in_progress' so the tutor
+ * can enter teaching phase immediately (headless mode doesn't have UI approval flow).
  */
 export function generatePlanFromScenario(scenario: AblationScenario): LearningPlan {
+  const nodes: LearningPlanNode[] = scenario.planStructure.nodes.map((node) => ({
+    ...node,
+    status: 'not_started' as const,
+  }));
+
+  // Find the first node with no prerequisites and mark it as in_progress
+  // This ensures the tutor starts in teaching phase rather than planning phase
+  const firstReadyIndex = nodes.findIndex(
+    (node) => !node.prerequisites || node.prerequisites.length === 0,
+  );
+  if (firstReadyIndex >= 0) {
+    nodes[firstReadyIndex] = {
+      ...nodes[firstReadyIndex],
+      status: 'in_progress' as const,
+      startedAt: Date.now(),
+    };
+  }
+
   return {
     goal: scenario.planStructure.goal,
     generatedAt: Date.now(),
     updatedAt: Date.now(),
     version: 1,
-    nodes: scenario.planStructure.nodes.map((node) => ({
-      ...node,
-      status: 'not_started' as const,
-    })),
+    nodes,
   };
 }
 
