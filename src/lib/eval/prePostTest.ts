@@ -340,7 +340,7 @@ export type AnovaGroups = {
 
 /**
  * Perform 2-way ANOVA for 2x2 factorial design.
- * Factors: Plan (visible vs not) and Model (visible vs not).
+ * Factors: Plan (editable vs read-only) and Model (editable vs hidden).
  */
 export function twoWayAnova(groups: AnovaGroups): AnovaResult {
   const { fullSystem, planOnly, modelOnly, baseline } = groups;
@@ -366,13 +366,13 @@ export function twoWayAnova(groups: AnovaGroups): AnovaResult {
   const meanBL = baseline.reduce((a, b) => a + b, 0) / baseline.length;
 
   // Marginal means
-  // Plan visible: fullSystem + planOnly; Plan hidden: modelOnly + baseline
+  // Plan editable: fullSystem + planOnly; Plan read-only: modelOnly + baseline
   const nPlanVis = fullSystem.length + planOnly.length;
   const nPlanHid = modelOnly.length + baseline.length;
   const meanPlanVis = (fullSystem.reduce((a, b) => a + b, 0) + planOnly.reduce((a, b) => a + b, 0)) / nPlanVis;
   const meanPlanHid = (modelOnly.reduce((a, b) => a + b, 0) + baseline.reduce((a, b) => a + b, 0)) / nPlanHid;
 
-  // Model visible: fullSystem + modelOnly; Model hidden: planOnly + baseline
+  // Model editable: fullSystem + modelOnly; Model hidden: planOnly + baseline
   const nModelVis = fullSystem.length + modelOnly.length;
   const nModelHid = planOnly.length + baseline.length;
   const meanModelVis = (fullSystem.reduce((a, b) => a + b, 0) + modelOnly.reduce((a, b) => a + b, 0)) / nModelVis;

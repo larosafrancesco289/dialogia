@@ -3,7 +3,7 @@ import type { ChatSettingsPatch, TutorResearchMode } from '@/lib/types';
 
 /**
  * Ablation study conditions for thesis evaluation.
- * 2x2 factorial design: Plan visibility × Learner model visibility
+ * 2x2 factorial design: Plan editability × Learner model editability
  */
 export type AblationCondition = 'full_system' | 'plan_only' | 'model_only' | 'baseline';
 
@@ -49,9 +49,9 @@ export const CONDITION_CONFIGS: Record<AblationCondition, AblationConditionConfi
   model_only: {
     id: 'model_only',
     name: 'Model Only',
-    description: 'Hidden curriculum, editable visible learner model',
+    description: 'Read-only curriculum, editable visible learner model',
     researchMode: 'plan_plus_model',
-    planVisible: false,
+    planVisible: true,
     planEditable: false,
     learnerModelVisible: true,
     learnerModelEditable: true,
@@ -104,12 +104,12 @@ export const COMPARISON_PAIRS: Array<{
   },
   {
     name: 'Full vs Plan-Only',
-    hypothesis: 'Learner model visibility contributes to learning gains',
+    hypothesis: 'Learner model editability contributes to learning gains',
     conditions: ['full_system', 'plan_only'],
   },
   {
     name: 'Full vs Model-Only',
-    hypothesis: 'Plan/curriculum visibility contributes to learning gains',
+    hypothesis: 'Plan/curriculum editability contributes to learning gains',
     conditions: ['full_system', 'model_only'],
   },
   {

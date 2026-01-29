@@ -949,7 +949,7 @@ function generateMarkdownTables(summary: AblationSummary): string {
       '',
       `Plan × Model Interaction: ${(summary.statistics.interactionEffect * 100).toFixed(2)}%`,
       '',
-      '> Positive value indicates synergy between plan and learner model visibility.',
+      '> Positive value indicates synergy between plan and learner model editability.',
     );
   }
 
@@ -1004,14 +1004,14 @@ function generateStatsReport(summary: AblationSummary): string {
     const effects: string[] = [];
     if (anova.planEffect.significant) {
       effects.push(
-        `Plan visibility shows a significant main effect (F = ${anova.planEffect.f.toFixed(2)}, p = ${anova.planEffect.p.toFixed(4)}), ` +
-          'indicating that curriculum transparency affects learning outcomes independent of learner model visibility.',
+        `Plan editability shows a significant main effect (F = ${anova.planEffect.f.toFixed(2)}, p = ${anova.planEffect.p.toFixed(4)}), ` +
+          'indicating that curriculum editability affects learning outcomes independent of learner model editability.',
       );
     }
     if (anova.modelEffect.significant) {
       effects.push(
-        `Learner model visibility shows a significant main effect (F = ${anova.modelEffect.f.toFixed(2)}, p = ${anova.modelEffect.p.toFixed(4)}), ` +
-          'indicating that mastery tracking affects learning outcomes independent of plan visibility.',
+        `Learner model editability shows a significant main effect (F = ${anova.modelEffect.f.toFixed(2)}, p = ${anova.modelEffect.p.toFixed(4)}), ` +
+          'indicating that mastery editability affects learning outcomes independent of plan editability.',
       );
     }
     if (anova.interaction.significant) {
@@ -1037,7 +1037,7 @@ function generateStatsReport(summary: AblationSummary): string {
       '',
       `The descriptive interaction effect is ${sign} (${(interaction * 100).toFixed(2)}%), suggesting that ` +
         (interaction > 0
-          ? 'plan and learner model visibility have synergistic effects when combined.'
+          ? 'plan and learner model editability have synergistic effects when combined.'
           : 'the combination of plan and learner model may have diminishing returns.'),
       '',
     );

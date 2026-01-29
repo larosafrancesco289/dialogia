@@ -76,7 +76,7 @@ test('twoWayAnova returns zeros for insufficient data', () => {
 });
 
 test('twoWayAnova detects main effect of plan', () => {
-  // Plan visible (fullSystem, planOnly) has higher values than plan hidden (modelOnly, baseline)
+  // Plan editable (fullSystem, planOnly) has higher values than plan read-only (modelOnly, baseline)
   const result = twoWayAnova({
     fullSystem: [8, 9, 8, 9, 8],
     planOnly: [8, 9, 8, 9, 8],
@@ -92,7 +92,7 @@ test('twoWayAnova detects main effect of plan', () => {
 });
 
 test('twoWayAnova detects main effect of model', () => {
-  // Model visible (fullSystem, modelOnly) has higher values than model hidden (planOnly, baseline)
+  // Model editable (fullSystem, modelOnly) has higher values than model hidden (planOnly, baseline)
   const result = twoWayAnova({
     fullSystem: [8, 9, 8, 9, 8],
     planOnly: [2, 3, 2, 3, 2],
