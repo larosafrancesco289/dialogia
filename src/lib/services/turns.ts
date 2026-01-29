@@ -36,6 +36,7 @@ import {
   setMessagesForChat,
 } from '@/lib/messages/indexing';
 import { notify } from '@/lib/store/notify';
+import { logAction } from '@/lib/study';
 
 export type SendTurnOptions = {
   content: string;
@@ -87,6 +88,12 @@ export async function appendAssistantTurn({
   set((state) => appendMessagesToChat(state, chatId, [assistantMsg]));
   const persistMessage = createMessagePersister(repository);
   await persistMessage(assistantMsg);
+
+  // Log message received for study tracking
+  logAction('message_received', {
+    messageId: assistantMsg.id,
+    contentLength: content.length,
+  });
 }
 
 export type PersistTutorArgs = {

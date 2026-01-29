@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import type { AccessTier } from './types';
 import { getClientTier } from '@/lib/auth/tier.client';
 import { getTierFeatures } from '@/lib/auth/tierFeatures';
+import { setStudyModeEnabled, endSession, resumeSession, getParticipantId } from '@/lib/study';
 
 interface TierContextValue {
   tier: AccessTier;
@@ -31,9 +32,36 @@ export function TierProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setTier(getClientTier());
+    const currentTier = getClientTier();
+    setTier(currentTier);
     setIsLoading(false);
+
+    // Initialize study mode if in study tier
+    if (currentTier === 'study') {
+      setStudyModeEnabled(true);
+      // Resume existing session if participant ID exists
+      if (getParticipantId()) {
+        resumeSession();
+      }
+    }
   }, []);
+
+  // Handle study mode when tier changes
+  useEffect(() => {
+    setStudyModeEnabled(tier === 'study');
+  }, [tier]);
+
+  // End session on page unload (only for study tier)
+  useEffect(() => {
+    if (tier !== 'study') return;
+
+    const handleBeforeUnload = () => {
+      endSession();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [tier]);
 
   // Re-check on visibility change (in case cookie was updated in another tab)
   useEffect(() => {
