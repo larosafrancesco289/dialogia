@@ -24,6 +24,7 @@ import type {
 } from '@/lib/types';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
 import type { LearnerModelEditCallbacks } from '@/components/plan/PlanSheet';
+import { logAction } from '@/lib/study';
 
 type PlanProgress = ReturnType<typeof calculatePlanProgress>;
 type PlanNode = ReturnType<typeof getNextNode>;
@@ -210,6 +211,7 @@ export function useTopHeaderState(): TopHeaderState {
   const onPlanUpdate = useCallback(
     async (updatedPlan: LearningPlan) => {
       await updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
+      logAction('plan_edited');
     },
     [updateChatSettings],
   );
@@ -286,10 +288,12 @@ export function useTopHeaderState(): TopHeaderState {
 
   const onOpenPlanSheet = useCallback(() => {
     setUI({ plan: { sheetOpen: true, sheetPlanOverride: null } });
+    logAction('plan_viewed');
   }, [setUI]);
 
   const onClosePlanSheet = useCallback(() => {
     setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
+    logAction('plan_closed');
   }, [setUI]);
 
   const onMarkKnown = useCallback(
@@ -359,6 +363,7 @@ export function useTopHeaderState(): TopHeaderState {
         estimatedConfidence: newConfidence,
         reason: reason ?? `Adjusted confidence to ${Math.round(newConfidence * 100)}%`,
       });
+      logAction('learner_model_edited', { editAction: 'confidence_adjust' });
     },
     [onLearnerModelFeedback],
   );
@@ -370,6 +375,7 @@ export function useTopHeaderState(): TopHeaderState {
         misconceptionId,
         reason: 'I believe I have resolved this misconception.',
       });
+      logAction('learner_model_edited', { editAction: 'misconception_resolve' });
     },
     [onLearnerModelFeedback],
   );
@@ -381,6 +387,7 @@ export function useTopHeaderState(): TopHeaderState {
         confidenceFloor: floor,
         reason: `Set confidence floor to ${Math.round(floor * 100)}%`,
       });
+      logAction('learner_model_edited', { editAction: 'confidence_floor_set' });
     },
     [onLearnerModelFeedback],
   );
@@ -392,6 +399,7 @@ export function useTopHeaderState(): TopHeaderState {
         direction: 'down',
         reason: 'I flagged this topic for review.',
       });
+      logAction('learner_model_edited', { editAction: 'flag_for_review' });
     },
     [onLearnerModelFeedback],
   );
@@ -401,6 +409,7 @@ export function useTopHeaderState(): TopHeaderState {
       void sendUserMessage(message);
       // Close the plan sheet after sending feedback
       setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
+      logAction('plan_feedback_sent');
     },
     [sendUserMessage, setUI],
   );

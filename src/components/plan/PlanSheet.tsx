@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PlanFeedbackModal, type PlanFeedbackContext } from './PlanFeedbackModal';
+import { logAction } from '@/lib/study';
 
 export type LearnerModelEditCallbacks = {
   onConfidenceAdjust: (nodeId: string, newConfidence: number, reason?: string) => void;
@@ -56,6 +57,14 @@ export function PlanSheet({
   const [activeTab, setActiveTab] = useState<HubTabId>(defaultTab);
   const [feedbackContext, setFeedbackContext] = useState<PlanFeedbackContext | null>(null);
   const feedbackModalOpen = feedbackContext !== null;
+
+  // Track tab changes to log learner model viewing
+  const handleTabChange = useCallback((tab: HubTabId) => {
+    setActiveTab(tab);
+    if (tab === 'progress') {
+      logAction('learner_model_viewed');
+    }
+  }, []);
 
   // Reset tab when sheet opens
   useEffect(() => {
@@ -119,25 +128,6 @@ export function PlanSheet({
     return parts.join(' · ');
   }, [plan]);
 
-  const isConditionA = studyCondition === 'A';
-
-  if (!plan || !shouldRender) return null;
-  if (typeof document === 'undefined') return null;
-
-  const topSafePadding = 'calc(env(safe-area-inset-top) + var(--space-3))';
-  const bottomSafePadding = 'calc(env(safe-area-inset-bottom) + 1.25rem)';
-
-  const handleNodeStatusChange = (
-    nodeId: string,
-    status: 'not_started' | 'in_progress' | 'completed',
-  ) => {
-    const updatedPlan = updateNodeStatus(plan, nodeId, status);
-    onUpdate?.(updatedPlan);
-  };
-
-  const headingSubtitle =
-    planMetadataSummary || new Date(plan.generatedAt || Date.now()).toLocaleDateString();
-
   const handleSuggestPhaseChange = useCallback((phaseName: string, phaseIndex: number) => {
     setFeedbackContext({ type: 'phase', phaseName, phaseIndex });
   }, []);
@@ -159,6 +149,25 @@ export function PlanSheet({
       setFeedbackContext(null);
     }
   }, [isOpen]);
+
+  const isConditionA = studyCondition === 'A';
+
+  if (!plan || !shouldRender) return null;
+  if (typeof document === 'undefined') return null;
+
+  const topSafePadding = 'calc(env(safe-area-inset-top) + var(--space-3))';
+  const bottomSafePadding = 'calc(env(safe-area-inset-bottom) + 1.25rem)';
+
+  const handleNodeStatusChange = (
+    nodeId: string,
+    status: 'not_started' | 'in_progress' | 'completed',
+  ) => {
+    const updatedPlan = updateNodeStatus(plan, nodeId, status);
+    onUpdate?.(updatedPlan);
+  };
+
+  const headingSubtitle =
+    planMetadataSummary || new Date(plan.generatedAt || Date.now()).toLocaleDateString();
 
   const sheet = (
     <>
@@ -230,7 +239,7 @@ export function PlanSheet({
         {/* Tab Navigation */}
         {!isConditionA && (
           <div className="px-4 py-3 sm:px-6" style={{ background: 'var(--surface-paper)' }}>
-            <HubTabs activeTab={activeTab} onTabChange={setActiveTab} />
+            <HubTabs activeTab={activeTab} onTabChange={handleTabChange} />
           </div>
         )}
 

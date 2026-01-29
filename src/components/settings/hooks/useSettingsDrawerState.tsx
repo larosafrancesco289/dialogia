@@ -30,6 +30,14 @@ import { AdvancedPanel } from '@/components/settings/sections/AdvancedPanel';
 import { NOTICE_EXPORTED_CHATS, NOTICE_IMPORTED_DATA } from '@/lib/store/notices';
 import { buildChatExport, importChatExport } from '@/lib/settings/transfer';
 import { springs } from '@/lib/mobile/springConfig';
+import type { SessionSummary } from '@/lib/study';
+import {
+  getParticipantId,
+  initializeSession,
+  downloadStudyLog,
+  getSessionSummary,
+  resetForNextParticipant,
+} from '@/lib/study';
 
 const staggerItem = {
   hidden: { opacity: 0, y: 8 },
@@ -39,6 +47,8 @@ const staggerItem = {
     transition: springs.gentle,
   },
 };
+
+export type StudySessionInfo = SessionSummary | null;
 
 export type SettingsDrawerState = {
   isStudyTier: boolean;
@@ -59,6 +69,13 @@ export type SettingsDrawerState = {
   saveStatus: ReturnType<typeof useAutoSave>['status'];
   studyCondition: StudyCondition;
   onStudyConditionChange: (c: StudyCondition) => void;
+  participantId: string;
+  setParticipantId: (id: string) => void;
+  studySessionInfo: StudySessionInfo;
+  onStartStudySession: () => void;
+  onExportStudyLog: () => void;
+  onResetForNextParticipant: () => void;
+  isResetting: boolean;
 };
 
 export function useSettingsDrawerState(): SettingsDrawerState {
@@ -167,6 +184,37 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     },
     [setUI],
   );
+
+  // Study session state
+  const [participantId, setParticipantIdState] = useState(() => getParticipantId() || '');
+  const [studySessionInfo, setStudySessionInfo] = useState<StudySessionInfo>(() =>
+    getSessionSummary(),
+  );
+  const [isResetting, setIsResetting] = useState(false);
+
+  // Refresh session info periodically while drawer is open
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStudySessionInfo(getSessionSummary());
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const onStartStudySession = useCallback(() => {
+    const trimmedId = participantId.trim();
+    if (!trimmedId) return;
+    initializeSession(trimmedId, studyCondition);
+    setStudySessionInfo(getSessionSummary());
+  }, [participantId, studyCondition]);
+
+  const onResetForNextParticipant = useCallback(async () => {
+    const confirmed = window.confirm(
+      'This will export the current log, clear all data, and reload the app. Continue?',
+    );
+    if (!confirmed) return;
+    setIsResetting(true);
+    await resetForNextParticipant({ exportBeforeReset: true });
+  }, []);
 
   // Auto-save hook
   const performSave = useCallback(() => {
@@ -471,5 +519,12 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     saveStatus,
     studyCondition,
     onStudyConditionChange,
+    participantId,
+    setParticipantId: setParticipantIdState,
+    studySessionInfo,
+    onStartStudySession,
+    onExportStudyLog: downloadStudyLog,
+    onResetForNextParticipant,
+    isResetting,
   };
 }
