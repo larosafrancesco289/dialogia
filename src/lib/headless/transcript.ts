@@ -1,4 +1,3 @@
-
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 import type { Message } from '@/lib/types';
 

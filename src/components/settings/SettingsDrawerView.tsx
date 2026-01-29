@@ -78,8 +78,16 @@ export function SettingsDrawerView({
               Select the study condition before beginning the session.
             </p>
             <div className="flex gap-3 justify-center">
-              <ConditionButton condition="A" active={studyCondition} onChange={onStudyConditionChange} />
-              <ConditionButton condition="B" active={studyCondition} onChange={onStudyConditionChange} />
+              <ConditionButton
+                condition="A"
+                active={studyCondition}
+                onChange={onStudyConditionChange}
+              />
+              <ConditionButton
+                condition="B"
+                active={studyCondition}
+                onChange={onStudyConditionChange}
+              />
             </div>
           </div>
         </div>

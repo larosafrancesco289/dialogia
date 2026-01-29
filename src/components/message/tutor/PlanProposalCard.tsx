@@ -7,6 +7,7 @@ import { getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
 import { initializeLearnerModel, syncLearnerModelWithPlan } from '@/lib/agent/learnerModel';
 import { PlanSuggestionsCard } from '@/components/message/tutor/PlanSuggestionsCard';
 import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
+import { PlanFeedbackModal } from '@/components/plan/PlanFeedbackModal';
 
 export function PlanProposalCard({
   messageId,
@@ -19,6 +20,7 @@ export function PlanProposalCard({
 }) {
   const [approving, setApproving] = useState(false);
   const [declining, setDeclining] = useState(false);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const patchTutorEntry = useChatStore((s) => s.patchTutorEntry);
   const setTutorPlanProposalStatus = useChatStore((s) => s.setTutorPlanProposalStatus);
   const setUI = useChatStore((s) => s.setUI);
@@ -94,18 +96,17 @@ export function PlanProposalCard({
     }
   };
 
-  const handleRequestChanges = async () => {
+  const handleRequestChanges = () => {
     if (declining || approving) return;
-    const feedback = window.prompt(
-      'What would you like to adjust? Share specifics so the tutor can update the plan.',
-      'Could we add more practice for the fundamentals?',
-    );
-    if (feedback == null || !feedback.trim()) return;
+    setFeedbackModalOpen(true);
+  };
+
+  const handleFeedbackSubmit = async (feedback: string) => {
     setDeclining(true);
     try {
       await applyProposalStatus('declined');
       await sendUserMessage(
-        `Plan feedback:\n${feedback.trim()}\nPlease update the plan and confirm the changes.`,
+        `Plan feedback:\n${feedback}\nPlease update the plan and confirm the changes.`,
       );
     } finally {
       setDeclining(false);
@@ -121,62 +122,73 @@ export function PlanProposalCard({
         : null;
 
   return (
-    <div className="marginalia">
-      <div className="flex items-start gap-3">
-        <div className="rounded-full bg-accent/10 p-2">
-          <ClipboardDocumentCheckIcon className="h-5 w-5 text-accent" />
-        </div>
-        <div className="flex-1">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-semibold leading-tight">
-              Personalized learning plan ready
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {nodesCount} topics{estimatedHours ? ` · ~${estimatedHours}h commitment` : ''}
-            </span>
+    <>
+      <div className="marginalia">
+        <div className="flex items-start gap-3">
+          <div className="rounded-full bg-accent/10 p-2">
+            <ClipboardDocumentCheckIcon className="h-5 w-5 text-accent" />
           </div>
-          <div className="mt-3 space-y-3 text-sm text-muted-foreground">
-            <div className="font-medium text-foreground">{proposal.plan.goal}</div>
-            {confirmationNeeded && !resolved && proposal.confirmationMessage && (
-              <div className="rounded-md border border-border/80 bg-muted/20 p-3 text-xs leading-relaxed">
-                {proposal.confirmationMessage}
+          <div className="flex-1">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold leading-tight">
+                Personalized learning plan ready
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {nodesCount} topics{estimatedHours ? ` · ~${estimatedHours}h commitment` : ''}
+              </span>
+            </div>
+            <div className="mt-3 space-y-3 text-sm text-muted-foreground">
+              <div className="font-medium text-foreground">{proposal.plan.goal}</div>
+              {confirmationNeeded && !resolved && proposal.confirmationMessage && (
+                <div className="rounded-md border border-border/80 bg-muted/20 p-3 text-xs leading-relaxed">
+                  {proposal.confirmationMessage}
+                </div>
+              )}
+            </div>
+            {suggestions && suggestions.length > 0 && (
+              <div className="mt-4">
+                <PlanSuggestionsCard suggestions={suggestions} compact />
               </div>
             )}
-          </div>
-          {suggestions && suggestions.length > 0 && (
-            <div className="mt-4">
-              <PlanSuggestionsCard suggestions={suggestions} compact />
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() =>
+                  setUI({ plan: { sheetOpen: true, sheetPlanOverride: proposal.plan } })
+                }
+              >
+                View full plan
+              </button>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleApprove}
+                disabled={disableActions}
+              >
+                {approving ? 'Applying…' : 'Approve plan'}
+              </button>
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={handleRequestChanges}
+                disabled={disableActions}
+              >
+                {declining ? 'Recording…' : 'Suggest changes'}
+              </button>
+              {resolvedLabel && (
+                <span className="badge badge-outline uppercase tracking-wide text-[11px] ml-auto">
+                  {resolvedLabel}
+                </span>
+              )}
             </div>
-          )}
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => setUI({ plan: { sheetOpen: true, sheetPlanOverride: proposal.plan } })}
-            >
-              View full plan
-            </button>
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={handleApprove}
-              disabled={disableActions}
-            >
-              {approving ? 'Applying…' : 'Approve plan'}
-            </button>
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={handleRequestChanges}
-              disabled={disableActions}
-            >
-              {declining ? 'Recording…' : 'Suggest changes'}
-            </button>
-            {resolvedLabel && (
-              <span className="badge badge-outline uppercase tracking-wide text-[11px] ml-auto">
-                {resolvedLabel}
-              </span>
-            )}
           </div>
         </div>
       </div>
-    </div>
+
+      <PlanFeedbackModal
+        isOpen={feedbackModalOpen}
+        context={{ type: 'plan_proposal' }}
+        onSubmit={handleFeedbackSubmit}
+        onClose={() => setFeedbackModalOpen(false)}
+      />
+    </>
   );
 }

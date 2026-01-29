@@ -51,7 +51,12 @@ export type PersistedUiState = {
   debug?: Pick<UIDebugState, 'mode'>;
   tutor?: Pick<
     UITutorState,
-    'contextMode' | 'thesisMode' | 'researchMode' | 'defaultModelId' | 'forceMode' | 'studyCondition'
+    | 'contextMode'
+    | 'thesisMode'
+    | 'researchMode'
+    | 'defaultModelId'
+    | 'forceMode'
+    | 'studyCondition'
   >;
 };
 

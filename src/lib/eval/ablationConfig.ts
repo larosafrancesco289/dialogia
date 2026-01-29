@@ -1,4 +1,3 @@
-
 import type { ChatSettingsPatch, TutorResearchMode } from '@/lib/types';
 
 /**
