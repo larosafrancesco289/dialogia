@@ -40,7 +40,7 @@ export const CONDITION_CONFIGS: Record<AblationCondition, AblationConditionConfi
     id: 'plan_only',
     name: 'Plan Only',
     description: 'Editable DAG curriculum, hidden learner model',
-    researchMode: 'plan_only',
+    researchMode: 'plan_plus_model',
     planVisible: true,
     planEditable: true,
     learnerModelVisible: false,
@@ -50,7 +50,7 @@ export const CONDITION_CONFIGS: Record<AblationCondition, AblationConditionConfi
     id: 'model_only',
     name: 'Model Only',
     description: 'Hidden curriculum, editable visible learner model',
-    researchMode: 'model_only',
+    researchMode: 'plan_plus_model',
     planVisible: false,
     planEditable: false,
     learnerModelVisible: true,
@@ -60,7 +60,7 @@ export const CONDITION_CONFIGS: Record<AblationCondition, AblationConditionConfi
     id: 'baseline',
     name: 'Baseline (ChatTutor-style)',
     description: 'Visible read-only tree curriculum, narrative learner profile only',
-    researchMode: 'baseline_chat',
+    researchMode: 'plan_plus_model',
     planVisible: true,
     planEditable: false,
     learnerModelVisible: false,
@@ -78,7 +78,9 @@ export function getConditionSettings(condition: AblationCondition): ChatSettings
     features: {
       tutor: {
         researchMode: config.researchMode,
-        enableLearnerModel: config.learnerModelVisible,
+        enableLearnerModel: true,
+        learnerModelVisible: config.learnerModelVisible,
+        disablePlanGeneration: true,
         // Additional flags for fine-grained control (used by tutor/state.ts)
         thesisMode: true,
       },

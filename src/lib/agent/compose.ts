@@ -89,15 +89,18 @@ export async function composeTurn({
     // Add learning plan context if plan exists
     const allowPlanContext = tutorToolPolicy?.researchMode !== 'model_only';
     const allowLearnerModelContext = tutorToolPolicy?.researchMode !== 'plan_only';
+    const learnerModelVisible = chat.settings.features.tutor.learnerModelVisible ?? true;
+    const includeLearnerModelContext = allowLearnerModelContext && learnerModelVisible;
     if (allowPlanContext && chat.settings.features.tutor.learningPlan) {
       const { generatePlanContextPreamble } = await import('@/lib/agent/tutor/planContext');
       const { getLatestLearnerModel } = await import('@/lib/agent/learnerModel');
-      const learnerModel = allowLearnerModelContext
+      const learnerModel = includeLearnerModelContext
         ? getLatestLearnerModel(priorMessages)
         : undefined;
       const planContext = generatePlanContextPreamble(
         chat.settings.features.tutor.learningPlan,
         learnerModel,
+        { includeLearnerModel: includeLearnerModelContext },
       );
       if (planContext) preambles.push(planContext);
     }

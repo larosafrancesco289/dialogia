@@ -269,7 +269,7 @@ export async function runTutorScenario(
 
   const result = runner.toResult();
   const toolUsage = summarizeToolUsage(result.snapshots);
-  const transcript = renderSnapshotTranscript(result.snapshots);
+  const transcript = renderSnapshotTranscript(result.snapshots, { includeHiddenContent: false });
   const finalPlan = runner
     .getSession()
     .getState()
