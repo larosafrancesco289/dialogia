@@ -15,7 +15,13 @@ import {
 import { useTier } from '@/lib/auth/tierContext';
 import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
 import type { UiPlanSnapshot } from '@/lib/contracts/ui';
-import type { Chat, LearnerModel, LearningPlan, LearningPlanNode, StudyCondition } from '@/lib/types';
+import type {
+  Chat,
+  LearnerModel,
+  LearningPlan,
+  LearningPlanNode,
+  StudyCondition,
+} from '@/lib/types';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
 import type { LearnerModelEditCallbacks } from '@/components/plan/PlanSheet';
 
@@ -66,6 +72,7 @@ export type TopHeaderState = {
   onStartLesson: (nodeId: string) => Promise<void>;
   onMarkKnown: (nodeId: string) => Promise<void>;
   onLearnerModelFeedback: (feedback: LearnerModelFeedback) => Promise<void>;
+  onSendPlanFeedback: (message: string) => void;
 } & LearnerModelEditCallbacks;
 
 export function useTopHeaderState(): TopHeaderState {
@@ -266,7 +273,16 @@ export function useTopHeaderState(): TopHeaderState {
       // In empty non-tutor chat: enable tutor in current chat (will trigger welcome message)
       await updateChatSettings({ features: { tutor: { enabled: true } } });
     }
-  }, [chat, clearChatMessages, forceTutorMode, messages, newChat, nextTutorMode, setUI, updateChatSettings]);
+  }, [
+    chat,
+    clearChatMessages,
+    forceTutorMode,
+    messages,
+    newChat,
+    nextTutorMode,
+    setUI,
+    updateChatSettings,
+  ]);
 
   const onOpenPlanSheet = useCallback(() => {
     setUI({ plan: { sheetOpen: true, sheetPlanOverride: null } });
@@ -380,6 +396,15 @@ export function useTopHeaderState(): TopHeaderState {
     [onLearnerModelFeedback],
   );
 
+  const onSendPlanFeedback = useCallback(
+    (message: string) => {
+      void sendUserMessage(message);
+      // Close the plan sheet after sending feedback
+      setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
+    },
+    [sendUserMessage, setUI],
+  );
+
   // Get learner model from either chat settings (persisted) or message history
   // Prefer the more recently updated one
   const learnerModel = useMemo(() => {
@@ -435,5 +460,6 @@ export function useTopHeaderState(): TopHeaderState {
     onMisconceptionResolve,
     onSetConfidenceFloor,
     onFlagForReview,
+    onSendPlanFeedback,
   };
 }

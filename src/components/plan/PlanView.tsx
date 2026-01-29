@@ -1,11 +1,17 @@
 'use client';
-import { SparklesIcon, PlayIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import {
+  SparklesIcon,
+  PlayIcon,
+  CheckCircleIcon,
+  ChatBubbleLeftEllipsisIcon,
+} from '@heroicons/react/24/outline';
 import type { LearningPlan, LearnerModel, LearningPlanNode } from '@/lib/types';
 import { isNodeReady, getAllPrerequisites, getNextNode } from '@/lib/learningPlan/service';
 import { PlanNode } from './PlanNode';
 import { useMemo } from 'react';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
 import { LearnerStats, LearnerInsights } from './LearnerModelView';
+import { PlanEditingHint } from './PlanEditingHint';
 
 export function PlanView({
   plan,
@@ -17,6 +23,7 @@ export function PlanView({
   latestUpdateSummary,
   onMarkKnown,
   readOnly,
+  onSuggestPhaseChange,
 }: {
   plan: LearningPlan;
   onNodeStatusChange?: (
@@ -30,6 +37,7 @@ export function PlanView({
   latestUpdateSummary?: string;
   onMarkKnown?: (nodeId: string) => void;
   readOnly?: boolean;
+  onSuggestPhaseChange?: (phaseName: string, phaseIndex: number) => void;
 }) {
   const nextNode = getNextNode(plan);
   const allCompleted = plan.nodes.every((n) => n.status === 'completed');
@@ -133,6 +141,7 @@ export function PlanView({
               ))}
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">{plan.goal}</p>
+            {!readOnly && <PlanEditingHint />}
           </div>
 
           {/* Phases List */}
@@ -154,6 +163,17 @@ export function PlanView({
                     <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
                       {phase.name}
                     </h4>
+                    {!readOnly && onSuggestPhaseChange && (
+                      <button
+                        onClick={() => onSuggestPhaseChange(phase.name, groupIdx)}
+                        className="inline-flex items-center gap-1 text-[10px] font-medium transition-colors hover:text-accent"
+                        style={{ color: 'var(--color-fg-muted)' }}
+                        title={`Suggest changes to ${phase.name}`}
+                      >
+                        <ChatBubbleLeftEllipsisIcon className="h-3 w-3" />
+                        <span>Suggest changes</span>
+                      </button>
+                    )}
                     <div className="h-px flex-1" style={{ background: 'var(--rule-light)' }} />
                   </div>
                 )}

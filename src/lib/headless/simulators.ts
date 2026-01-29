@@ -1,4 +1,3 @@
-
 import { renderSnapshotTranscript, renderTutorTranscript } from '@/lib/headless/transcript';
 import type { HeadlessTurnSnapshot } from '@/lib/headless/types';
 import type { HeadlessRunResult } from '@/lib/headless/runner';

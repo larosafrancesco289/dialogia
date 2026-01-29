@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
 import { AnimatePresence, motion } from 'framer-motion';
+import { PlanFeedbackModal, type PlanFeedbackContext } from './PlanFeedbackModal';
 
 export type LearnerModelEditCallbacks = {
   onConfidenceAdjust: (nodeId: string, newConfidence: number, reason?: string) => void;
@@ -35,6 +36,7 @@ export function PlanSheet({
   onMarkKnown,
   defaultTab = 'plan',
   studyCondition,
+  onSendFeedback,
 }: {
   plan: LearningPlan | null;
   isOpen: boolean;
@@ -47,10 +49,13 @@ export function PlanSheet({
   latestUpdateSummary?: string;
   defaultTab?: HubTabId;
   studyCondition?: StudyCondition;
+  onSendFeedback?: (message: string) => void;
 } & Partial<LearnerModelEditCallbacks>) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [closing, setClosing] = useState(false);
   const [activeTab, setActiveTab] = useState<HubTabId>(defaultTab);
+  const [feedbackContext, setFeedbackContext] = useState<PlanFeedbackContext | null>(null);
+  const feedbackModalOpen = feedbackContext !== null;
 
   // Reset tab when sheet opens
   useEffect(() => {
@@ -87,12 +92,13 @@ export function PlanSheet({
     if (!shouldRender) return;
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (feedbackModalOpen) return;
         handleRequestClose();
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [shouldRender, handleRequestClose]);
+  }, [shouldRender, handleRequestClose, feedbackModalOpen]);
 
   // Prevent body scroll when open and restore previous overflow when closed
   useEffect(() => {
@@ -131,6 +137,28 @@ export function PlanSheet({
 
   const headingSubtitle =
     planMetadataSummary || new Date(plan.generatedAt || Date.now()).toLocaleDateString();
+
+  const handleSuggestPhaseChange = useCallback((phaseName: string, phaseIndex: number) => {
+    setFeedbackContext({ type: 'phase', phaseName, phaseIndex });
+  }, []);
+
+  const handleFeedbackSubmit = useCallback(
+    async (feedback: string, context: PlanFeedbackContext) => {
+      if (!onSendFeedback) return;
+      const prefix =
+        context.type === 'phase' ? `Plan feedback for ${context.phaseName}:\n` : 'Plan feedback:\n';
+      const message = `${prefix}${feedback}\nPlease update the plan and confirm the changes.`;
+      onSendFeedback(message);
+    },
+    [onSendFeedback],
+  );
+
+  // Close modal when sheet closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFeedbackContext(null);
+    }
+  }, [isOpen]);
 
   const sheet = (
     <>
@@ -231,6 +259,7 @@ export function PlanSheet({
                     onLearnerModelFeedback,
                     latestUpdateSummary,
                     onMarkKnown,
+                    onSuggestPhaseChange: onSendFeedback ? handleSuggestPhaseChange : undefined,
                   })}
                 />
               </motion.div>
@@ -257,6 +286,16 @@ export function PlanSheet({
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Phase Feedback Modal */}
+      {feedbackContext && (
+        <PlanFeedbackModal
+          isOpen={feedbackModalOpen}
+          context={feedbackContext}
+          onSubmit={handleFeedbackSubmit}
+          onClose={() => setFeedbackContext(null)}
+        />
+      )}
     </>
   );
 

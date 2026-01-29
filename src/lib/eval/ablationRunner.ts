@@ -909,7 +909,7 @@ function generateMarkdownTables(summary: AblationSummary): string {
 
   lines.push(
     '',
-    '## Pairwise Comparisons (Welch\'s t-test)',
+    "## Pairwise Comparisons (Welch's t-test)",
     '',
     "| Comparison | Cohen's d | Interp. | t | df | p-value | Sig. | C1 Mean | C2 Mean |",
     '|------------|-----------|---------|---|----|---------|----- |---------|---------|',

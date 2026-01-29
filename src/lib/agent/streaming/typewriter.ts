@@ -65,7 +65,10 @@ export function createTypewriter(onEmit: (text: string) => void, config?: Typewr
       const charsPerFrame = Math.ceil((estimatedCharsPerSecond * cfg.frameInterval) / 1000);
       // Emit at least minCharsPerFrame, at most the whole buffer
       // Add 20% extra to gradually drain buffer
-      charsToEmit = Math.min(buffer.length, Math.max(cfg.minCharsPerFrame, Math.ceil(charsPerFrame * 1.2)));
+      charsToEmit = Math.min(
+        buffer.length,
+        Math.max(cfg.minCharsPerFrame, Math.ceil(charsPerFrame * 1.2)),
+      );
     }
 
     timer = setTimeout(() => {

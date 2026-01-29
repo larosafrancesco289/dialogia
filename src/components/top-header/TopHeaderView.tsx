@@ -33,8 +33,6 @@ export function TopHeaderView({
   planProgress,
   currentNode,
   learnerModel,
-  currentTopicName: _currentTopicName,
-  topicProgress: _topicProgress,
   milestones,
   breadcrumbPath,
   onToggleSidebar,
@@ -53,6 +51,7 @@ export function TopHeaderView({
   onMisconceptionResolve,
   onSetConfidenceFloor,
   onFlagForReview,
+  onSendPlanFeedback,
 }: TopHeaderState) {
   const plan = planSheetOverride ?? learningPlan ?? null;
   const headerClass = `app-header top-header ${tutorActive ? 'top-header--tutor-active' : ''}`;
@@ -176,6 +175,7 @@ export function TopHeaderView({
         onSetConfidenceFloor={onSetConfidenceFloor}
         onFlagForReview={onFlagForReview}
         studyCondition={studyCondition}
+        onSendFeedback={onSendPlanFeedback}
       />
     </div>
   );

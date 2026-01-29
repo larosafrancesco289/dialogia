@@ -1,4 +1,3 @@
-
 import type { NextResponse } from 'next/server';
 import { AUTH_COOKIE_NAME, TIER_COOKIE_NAME } from '@/lib/auth/shared';
 import type { AccessTier } from '@/lib/auth/types';

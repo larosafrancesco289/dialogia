@@ -1,4 +1,3 @@
-
 import type { TestQuestion, KnowledgeGap } from '@/lib/eval/ablationScenarios';
 import type { TransportAuth } from '@/lib/auth/transport';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
@@ -347,7 +346,13 @@ export function twoWayAnova(groups: AnovaGroups): AnovaResult {
   const allData = [...fullSystem, ...planOnly, ...modelOnly, ...baseline];
   const N = allData.length;
 
-  if (N < 8 || fullSystem.length < 2 || planOnly.length < 2 || modelOnly.length < 2 || baseline.length < 2) {
+  if (
+    N < 8 ||
+    fullSystem.length < 2 ||
+    planOnly.length < 2 ||
+    modelOnly.length < 2 ||
+    baseline.length < 2
+  ) {
     return {
       planEffect: { f: 0, p: 1, significant: false },
       modelEffect: { f: 0, p: 1, significant: false },
@@ -369,24 +374,30 @@ export function twoWayAnova(groups: AnovaGroups): AnovaResult {
   // Plan editable: fullSystem + planOnly; Plan read-only: modelOnly + baseline
   const nPlanVis = fullSystem.length + planOnly.length;
   const nPlanHid = modelOnly.length + baseline.length;
-  const meanPlanVis = (fullSystem.reduce((a, b) => a + b, 0) + planOnly.reduce((a, b) => a + b, 0)) / nPlanVis;
-  const meanPlanHid = (modelOnly.reduce((a, b) => a + b, 0) + baseline.reduce((a, b) => a + b, 0)) / nPlanHid;
+  const meanPlanVis =
+    (fullSystem.reduce((a, b) => a + b, 0) + planOnly.reduce((a, b) => a + b, 0)) / nPlanVis;
+  const meanPlanHid =
+    (modelOnly.reduce((a, b) => a + b, 0) + baseline.reduce((a, b) => a + b, 0)) / nPlanHid;
 
   // Model editable: fullSystem + modelOnly; Model hidden: planOnly + baseline
   const nModelVis = fullSystem.length + modelOnly.length;
   const nModelHid = planOnly.length + baseline.length;
-  const meanModelVis = (fullSystem.reduce((a, b) => a + b, 0) + modelOnly.reduce((a, b) => a + b, 0)) / nModelVis;
-  const meanModelHid = (planOnly.reduce((a, b) => a + b, 0) + baseline.reduce((a, b) => a + b, 0)) / nModelHid;
+  const meanModelVis =
+    (fullSystem.reduce((a, b) => a + b, 0) + modelOnly.reduce((a, b) => a + b, 0)) / nModelVis;
+  const meanModelHid =
+    (planOnly.reduce((a, b) => a + b, 0) + baseline.reduce((a, b) => a + b, 0)) / nModelHid;
 
   // Sum of squares
   // SS Total
   const ssTotal = allData.reduce((sum, x) => sum + (x - grandMean) ** 2, 0);
 
   // SS for Plan factor (main effect)
-  const ssPlan = nPlanVis * (meanPlanVis - grandMean) ** 2 + nPlanHid * (meanPlanHid - grandMean) ** 2;
+  const ssPlan =
+    nPlanVis * (meanPlanVis - grandMean) ** 2 + nPlanHid * (meanPlanHid - grandMean) ** 2;
 
   // SS for Model factor (main effect)
-  const ssModel = nModelVis * (meanModelVis - grandMean) ** 2 + nModelHid * (meanModelHid - grandMean) ** 2;
+  const ssModel =
+    nModelVis * (meanModelVis - grandMean) ** 2 + nModelHid * (meanModelHid - grandMean) ** 2;
 
   // SS for interaction
   // Expected cell mean under additivity = grandMean + (planEffect) + (modelEffect)
@@ -556,14 +567,8 @@ function lnGamma(z: number): number {
 
   const g = 7;
   const c = [
-    0.99999999999980993,
-    676.5203681218851,
-    -1259.1392167224028,
-    771.32342877765313,
-    -176.61502916214059,
-    12.507343278686905,
-    -0.13857109526572012,
-    9.9843695780195716e-6,
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+    -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6,
     1.5056327351493116e-7,
   ];
 

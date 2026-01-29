@@ -208,7 +208,16 @@ export function useMobileHeaderState(): MobileHeaderState {
       // In empty non-tutor chat: enable tutor in current chat (will trigger welcome message)
       await updateChatSettings({ features: { tutor: { enabled: true } } });
     }
-  }, [forceTutorMode, chat, clearChatMessages, messages, setUI, newChat, updateChatSettings, nextTutorMode]);
+  }, [
+    forceTutorMode,
+    chat,
+    clearChatMessages,
+    messages,
+    setUI,
+    newChat,
+    updateChatSettings,
+    nextTutorMode,
+  ]);
 
   return {
     chatTitle,

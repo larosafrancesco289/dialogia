@@ -85,7 +85,10 @@ test('twoWayAnova detects main effect of plan', () => {
   });
 
   assert.ok(result.planEffect.f > 100, `F for plan should be large, got ${result.planEffect.f}`);
-  assert.ok(result.planEffect.p < 0.001, `p for plan should be very small, got ${result.planEffect.p}`);
+  assert.ok(
+    result.planEffect.p < 0.001,
+    `p for plan should be very small, got ${result.planEffect.p}`,
+  );
   assert.equal(result.planEffect.significant, true);
   // Model effect should be near zero since plan-visible and plan-hidden have same model patterns
   assert.ok(result.modelEffect.f < 1, `F for model should be small, got ${result.modelEffect.f}`);
@@ -101,7 +104,10 @@ test('twoWayAnova detects main effect of model', () => {
   });
 
   assert.ok(result.modelEffect.f > 100, `F for model should be large, got ${result.modelEffect.f}`);
-  assert.ok(result.modelEffect.p < 0.001, `p for model should be very small, got ${result.modelEffect.p}`);
+  assert.ok(
+    result.modelEffect.p < 0.001,
+    `p for model should be very small, got ${result.modelEffect.p}`,
+  );
   assert.equal(result.modelEffect.significant, true);
   // Plan effect should be near zero
   assert.ok(result.planEffect.f < 1, `F for plan should be small, got ${result.planEffect.f}`);
@@ -118,7 +124,10 @@ test('twoWayAnova detects interaction effect', () => {
     baseline: [1, 2, 3, 2, 2],
   });
 
-  assert.ok(result.interaction.f > 10, `F for interaction should be substantial, got ${result.interaction.f}`);
+  assert.ok(
+    result.interaction.f > 10,
+    `F for interaction should be substantial, got ${result.interaction.f}`,
+  );
   assert.equal(result.interaction.significant, true);
 });
 
