@@ -9,7 +9,9 @@ import { generateModelSummary } from '@/lib/agent/learnerModel';
 export function generatePlanContextPreamble(
   plan: LearningPlan,
   learnerModel?: LearnerModel,
+  options?: { includeLearnerModel?: boolean },
 ): string {
+  const includeLearnerModel = options?.includeLearnerModel ?? true;
   const currentNode = getNextNode(plan);
 
   // If plan is complete, return completion message
@@ -28,9 +30,11 @@ export function generatePlanContextPreamble(
   const planSummary = summarizeLearningPlan(plan);
 
   // Build learner model summary
-  const modelSummary = learnerModel
-    ? generateModelSummary(learnerModel, plan)
-    : 'Learner model not yet initialized - starting fresh assessment';
+  const modelSummary = includeLearnerModel
+    ? learnerModel
+      ? generateModelSummary(learnerModel, plan)
+      : 'Learner model not yet initialized - starting fresh assessment'
+    : undefined;
 
   // Build current focus section
   const focusSection = [
@@ -68,8 +72,7 @@ export function generatePlanContextPreamble(
     'LEARNING PLAN CONTEXT',
     '━━━━━━━━━━━━━━━━━━━━',
     planSummary,
-    '',
-    modelSummary,
+    ...(modelSummary ? ['', modelSummary] : []),
     '',
     focusSection,
     '',

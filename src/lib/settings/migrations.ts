@@ -188,10 +188,18 @@ export function migrateChatSettingsRecord(input: unknown): MigrationResult<unkno
       readString(tutor?.planGenerationModel) ??
       readString(settings.planGenerationModel) ??
       readString(settings.plan_generation_model),
+    disablePlanGeneration:
+      readBoolean(tutor?.disablePlanGeneration) ??
+      readBoolean(settings.disablePlanGeneration) ??
+      readBoolean(settings.disable_plan_generation),
     enableLearnerModel:
       readBoolean(tutor?.enableLearnerModel) ??
       readBoolean(settings.enableLearnerModel) ??
       readBoolean(settings.enable_learner_model),
+    learnerModelVisible:
+      readBoolean(tutor?.learnerModelVisible) ??
+      readBoolean(settings.learnerModelVisible) ??
+      readBoolean(settings.learner_model_visible),
     learnerModel:
       readRecord(tutor?.learnerModel) ??
       readRecord(settings.learnerModel) ??

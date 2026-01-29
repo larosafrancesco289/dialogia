@@ -580,9 +580,11 @@ export async function runTutorSimulationCli(argv: string[]) {
   }
 
   const runResult = runner.toResult();
+  const transcriptText = renderSnapshotTranscript(runResult.snapshots, {
+    includeHiddenContent: false,
+  });
   const judgeAssessment = await judge.evaluate({
-    snapshots: runResult.snapshots,
-    messages: runResult.messages,
+    transcript: transcriptText,
     goal,
   });
 
@@ -603,7 +605,6 @@ export async function runTutorSimulationCli(argv: string[]) {
     learnerModelDebug: snapshot.assistant.learnerModelDebug,
   }));
 
-  const transcriptText = renderSnapshotTranscript(runResult.snapshots);
   const transcript = runResult.messages.map((msg) => ({
     id: msg.id,
     role: msg.role,

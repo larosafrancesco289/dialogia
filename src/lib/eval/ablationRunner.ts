@@ -31,7 +31,8 @@ import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { buildJudgeMessages, type JudgeVerdict } from '@/lib/eval/judgePrompts';
-import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
+import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learnerModel';
+import { summarizeLearningPlan } from '@/lib/learningPlan/service';
 import { getOpenRouterKeyFallback } from '@/lib/env/server';
 import {
   ABLATION_CONDITIONS,
@@ -462,7 +463,19 @@ async function runSingleAblation(
 
   // Setup student simulator with condition-aware editability instructions
   const conditionConfig = CONDITION_CONFIGS[condition];
+  const visibilityInstructions: string[] = [];
   const editabilityInstructions: string[] = [];
+
+  if (conditionConfig.planVisible && !conditionConfig.planEditable) {
+    visibilityInstructions.push(
+      'You can view the learning plan, but you cannot edit its structure or ordering.',
+    );
+  }
+  if (conditionConfig.learnerModelVisible && !conditionConfig.learnerModelEditable) {
+    visibilityInstructions.push(
+      'You can view your mastery estimates, but you cannot directly edit them.',
+    );
+  }
 
   if (conditionConfig.planEditable) {
     editabilityInstructions.push(
@@ -488,6 +501,8 @@ async function runSingleAblation(
       `Your pre-test score was ${preTest.score.toFixed(0)}%.`,
       'Respond naturally, ask questions when confused, and occasionally make mistakes fitting your persona.',
       scenario.constraints?.length ? `Constraints: ${scenario.constraints.join('; ')}` : '',
+      visibilityInstructions.length > 0 ? '' : null,
+      ...visibilityInstructions,
       editabilityInstructions.length > 0 ? '' : null,
       editabilityInstructions.length > 0
         ? 'IMPORTANT - You have control over the tutoring process:'
@@ -500,6 +515,10 @@ async function runSingleAblation(
       .filter(Boolean)
       .join('\n'),
     temperature: 0.7,
+    knowledgeGaps: scenario.knowledgeGaps.map((gap) => ({
+      topicId: gap.topicId,
+      misconception: gap.misconception,
+    })),
   });
 
   // Run tutoring session
@@ -522,7 +541,27 @@ async function runSingleAblation(
     if (turn === scenario.maxTurns - 1) break;
 
     const tutorMessage = snapshot.assistant.content;
-    studentMessage = await studentSim.respond(tutorMessage, { turn });
+    const currentPlan =
+      runner
+        .getSession()
+        .getState()
+        .chats.find((c) => c.id === chat.id)?.settings.features.tutor.learningPlan ?? initialPlan;
+    const latestLearnerModel = getLatestLearnerModel(runner.toResult().messages);
+    const planSummary = conditionConfig.planVisible
+      ? currentPlan
+        ? summarizeLearningPlan(currentPlan)
+        : undefined
+      : undefined;
+    const learnerModelSummary =
+      conditionConfig.learnerModelVisible && currentPlan && latestLearnerModel
+        ? generateModelSummary(latestLearnerModel, currentPlan)
+        : undefined;
+
+    studentMessage = await studentSim.respond(tutorMessage, {
+      planSummary,
+      learnerModelSummary,
+      turn,
+    });
   }
 
   const result = runner.toResult();
@@ -530,7 +569,7 @@ async function runSingleAblation(
 
   // Run post-test (student checks transcript to see if gaps were closed)
   console.log(`  [${runId}] Running post-test...`);
-  const transcript = renderSnapshotTranscript(result.snapshots);
+  const transcript = renderSnapshotTranscript(result.snapshots, { includeHiddenContent: false });
 
   const postTest = await administerTest(scenario.postTestQuestions, 'post', {
     auth: resolveAuth({ modelId: config.studentModel, transport: studentTransport }),
@@ -652,8 +691,25 @@ function extractEditEvents(
   const planEventsAllowed = options?.planEditable !== false;
   let initialPlanGenerated = false;
 
+  const looksLikePlanEditRequest = (text: string | undefined): boolean => {
+    if (!text) return false;
+    return /\b(skip|remove|add|insert|reorder|change order|move|drop|swap|edit plan|update plan)\b/i.test(
+      text,
+    );
+  };
+
+  const looksLikeModelOverrideRequest = (text: string | undefined): boolean => {
+    if (!text) return false;
+    return /\b(too high|too low|overestimating|underestimating|I already know|I know this|I don't know|my mastery|my confidence|adjust|update)\b/i.test(
+      text,
+    );
+  };
+
   for (let i = 0; i < snapshots.length; i++) {
     const snap = snapshots[i];
+    const userContent = snap.user?.content;
+    const userRequestedPlanChange = looksLikePlanEditRequest(userContent);
+    const userRequestedModelOverride = looksLikeModelOverrideRequest(userContent);
     const toolCalls = snap.assistant.toolCalls || [];
 
     for (const tc of toolCalls) {
@@ -670,6 +726,7 @@ function extractEditEvents(
       if (planEventsAllowed && (tc.name === 'update_plan' || isGeneratePlan)) {
         // Tutor auto-generates the initial plan; ignore that so we only count learner-driven edits.
         if (isFirstPlanGeneration) continue;
+        if (!userRequestedPlanChange) continue;
 
         const plan = input.plan as Record<string, unknown> | undefined;
         events.push({
@@ -682,6 +739,7 @@ function extractEditEvents(
 
       // Mastery override tool
       if (tc.name === 'apply_learner_model_feedback') {
+        if (!userRequestedModelOverride) continue;
         const direction = input.direction as string | undefined;
         events.push({
           turn: i + 1,
@@ -696,7 +754,10 @@ function extractEditEvents(
       if (tc.name === 'update_learner_model') {
         const notes = input.notes as string | undefined;
         // Only count if there's explicit feedback/notes suggesting student input
-        if (notes && /student (said|reported|indicated|claimed|believes)/i.test(notes)) {
+        if (
+          (notes && /student (said|reported|indicated|claimed|believes)/i.test(notes)) ||
+          userRequestedModelOverride
+        ) {
           events.push({
             turn: i + 1,
             type: 'mastery_override',

@@ -62,6 +62,7 @@ export type LLMUserSimulatorOptions = {
   topP?: number;
   maxTokens?: number;
   memoryDepth?: number;
+  knowledgeGaps?: Array<{ topicId: string; misconception?: string }>;
 };
 
 export class LLMUserSimulator {
@@ -69,6 +70,7 @@ export class LLMUserSimulator {
   private readonly persona: string;
   private readonly options: LLMUserSimulatorOptions;
   private readonly maxTurns: number;
+  private readonly knowledgeGaps: Array<{ topicId: string; misconception?: string }>;
 
   constructor(options: LLMUserSimulatorOptions) {
     this.options = {
@@ -78,7 +80,8 @@ export class LLMUserSimulator {
       memoryDepth: 12,
       ...options,
     };
-    this.persona =
+    this.knowledgeGaps = Array.isArray(options.knowledgeGaps) ? options.knowledgeGaps : [];
+    const basePersona =
       options.personaPrompt ??
       [
         'You are simulating a diligent student interacting with a tutor.',
@@ -86,6 +89,16 @@ export class LLMUserSimulator {
         'Accept helpful guidance, ask clarifying questions when needed, and occasionally reflect on what you learned.',
         'Avoid meta commentary about being an AI and do not invent capabilities beyond a human student.',
       ].join(' ');
+    const gapBlock = this.knowledgeGaps.length
+      ? [
+          'Known misconceptions to maintain unless explicitly corrected by the tutor:',
+          ...this.knowledgeGaps.map(
+            (gap) => `- ${gap.topicId}: ${gap.misconception ?? 'You are unsure about this topic.'}`,
+          ),
+          'Only update your understanding when the tutor clearly addresses the misconception.',
+        ].join('\n')
+      : '';
+    this.persona = [basePersona, gapBlock].filter(Boolean).join('\n');
     this.maxTurns = this.options.memoryDepth ?? 12;
     this.history = [{ role: 'system', content: this.persona }];
   }
@@ -101,7 +114,7 @@ export class LLMUserSimulator {
 
   async respond(
     tutorMessage: string,
-    context?: { planSummary?: string; turn?: number },
+    context?: { planSummary?: string; learnerModelSummary?: string; turn?: number },
   ): Promise<string> {
     const cues: string[] = [
       tutorMessage,
@@ -110,6 +123,14 @@ export class LLMUserSimulator {
     ];
     if (context?.planSummary) {
       cues.push(`Learning plan context: ${context.planSummary}`);
+    }
+    if (context?.learnerModelSummary) {
+      cues.push(`Learner model context: ${context.learnerModelSummary}`);
+    }
+    if (this.knowledgeGaps.length > 0) {
+      cues.push(
+        'Reminder: maintain your known misconceptions unless the tutor clearly corrected them in this turn.',
+      );
     }
     if ((context?.turn ?? 0) > 4) {
       cues.push('If you feel confident, you may summarize your learning or request to wrap up.');
