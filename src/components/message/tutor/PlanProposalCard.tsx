@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import type { TutorPlanProposal, TutorPlanSuggestion } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
+import { selectStudyCondition } from '@/lib/store/selectors';
 import { getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
 import { initializeLearnerModel, syncLearnerModelWithPlan } from '@/lib/agent/learnerModel';
 import { PlanSuggestionsCard } from '@/components/message/tutor/PlanSuggestionsCard';
@@ -29,6 +30,7 @@ export function PlanProposalCard({
   const sendUserMessage = useChatStore((s) => s.sendUserMessage);
   const chats = useChatStore((s) => s.chats);
   const selectedChatId = useChatStore((s) => s.selectedChatId);
+  const studyCondition = useChatStore(selectStudyCondition);
   const chat = chats.find((c) => c.id === selectedChatId);
 
   const resolved = proposal.status === 'approved' || proposal.status === 'declined';
@@ -166,13 +168,15 @@ export function PlanProposalCard({
               >
                 {approving ? 'Applying…' : 'Approve plan'}
               </button>
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={handleRequestChanges}
-                disabled={disableActions}
-              >
-                {declining ? 'Recording…' : 'Suggest changes'}
-              </button>
+              {studyCondition !== 'A' && (
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={handleRequestChanges}
+                  disabled={disableActions}
+                >
+                  {declining ? 'Recording…' : 'Suggest changes'}
+                </button>
+              )}
               {resolvedLabel && (
                 <span className="badge badge-outline uppercase tracking-wide text-[11px] ml-auto">
                   {resolvedLabel}
