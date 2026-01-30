@@ -8,7 +8,7 @@
  *   --conditions <list>   Comma-separated conditions (default: all)
  *   --scenarios <list>    Comma-separated scenario IDs (default: all)
  *   --runs <n>            Runs per condition×scenario (default: 3)
- *   --tutor-model <id>    Tutor model (default: DEFAULT_TUTOR_MODEL_ID)
+ *   --tutor-model <id>    Tutor model (default: moonshotai/kimi-k2.5)
  *   --out <dir>           Output directory (default: tmp/ablation/)
  *   --dry-run             Show what would be run without executing
  *   --resume              Resume from last checkpoint (requires --out with checkpoint)
@@ -25,15 +25,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { createHeadlessRunner } from '@/lib/headless/runner';
 import { LLMUserSimulator } from '@/lib/headless/simulators';
 import { renderSnapshotTranscript } from '@/lib/headless/transcript';
-import { createModelIndex } from '@/lib/models';
+import { createModelIndex, isReasoningSupported } from '@/lib/models';
 import { resolveModelTransport } from '@/lib/providers';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
-import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { buildJudgeMessages, type JudgeVerdict } from '@/lib/eval/judgePrompts';
 import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learnerModel';
 import { summarizeLearningPlan } from '@/lib/learningPlan/service';
 import { getOpenRouterKeyFallback } from '@/lib/env/server';
+import { fetchModels } from '@/lib/openrouter';
 import {
   ABLATION_CONDITIONS,
   CONDITION_CONFIGS,
@@ -44,6 +44,7 @@ import {
 } from '@/lib/eval/ablationConfig';
 import {
   ABLATION_SCENARIOS,
+  DEFAULT_ABLATION_TUTOR_MODEL_ID,
   getScenarioById,
   generatePlanFromScenario,
   type AblationScenario,
@@ -293,7 +294,7 @@ Options:
   --scenarios <list>    Comma-separated scenario IDs (default: all)
                         Available: ${ABLATION_SCENARIOS.map((s) => s.id).join(', ')}
   --runs <n>            Runs per condition×scenario (default: 3)
-  --tutor-model <id>    Tutor model (default: ${DEFAULT_TUTOR_MODEL_ID})
+  --tutor-model <id>    Tutor model (default: ${DEFAULT_ABLATION_TUTOR_MODEL_ID})
   --student-model <id>  Student simulator model (default: google/gemini-2.5-flash-lite)
   --judge-model <id>    Judge model (default: anthropic/claude-haiku-4.5)
   --out <dir>           Output directory (default: tmp/ablation/)
@@ -340,17 +341,62 @@ function listAvailable() {
 // Model Setup
 // ============================================================================
 
+const normalizeModelId = (id: string): string => id.trim().toLowerCase();
+
+async function resolveReasoningSupportMap(
+  modelIds: string[],
+  apiKeys: { openrouter?: string },
+): Promise<Record<string, boolean>> {
+  const support: Record<string, boolean> = {};
+  if (!apiKeys.openrouter) return support;
+
+  const uniqueIds = Array.from(
+    new Set(modelIds.map((id) => normalizeModelId(id)).filter(Boolean)),
+  );
+  if (!uniqueIds.length) return support;
+
+  try {
+    const auth = buildTransportAuth({
+      transport: 'openrouter',
+      apiKey: apiKeys.openrouter,
+      useProxy: false,
+    });
+    const models = await fetchModels(auth);
+    const byId = new Map(models.map((model) => [normalizeModelId(model.id), model]));
+    for (const id of uniqueIds) {
+      const model = byId.get(id);
+      support[id] = model ? isReasoningSupported(model) : false;
+    }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `Warning: Failed to fetch model capabilities for reasoning support (${reason}). ` +
+        'Reasoning flags will be disabled for safety.',
+    );
+  }
+
+  return support;
+}
+
+function supportsReasoning(modelId: string, support: Record<string, boolean>): boolean {
+  return support[normalizeModelId(modelId)] ?? false;
+}
+
 function createStubModel(
   id: string,
   transport: ModelTransport,
   supportsTools: boolean,
+  supportsReasoningFlag: boolean,
 ): ModelDescriptor {
+  const supported: string[] = [];
+  if (supportsTools) supported.push('tools');
+  if (supportsReasoningFlag) supported.push('reasoning');
   return {
     id,
     name: id,
     transport,
     context_length: 16000,
-    raw: { supported_parameters: supportsTools ? ['tools', 'reasoning'] : ['reasoning'] },
+    raw: { supported_parameters: supported },
   };
 }
 
@@ -383,6 +429,7 @@ async function runSingleAblation(
     studentModel: string;
     judgeModel: string;
     apiKeys: { openrouter?: string };
+    reasoningSupport: Record<string, boolean>;
   },
 ): Promise<AblationRunResult> {
   const startTime = Date.now();
@@ -439,9 +486,24 @@ async function runSingleAblation(
   };
 
   const models: ModelDescriptor[] = [
-    createStubModel(config.tutorModel, tutorTransport, true),
-    createStubModel(config.studentModel, studentTransport, false),
-    createStubModel(config.judgeModel, judgeTransport, false),
+    createStubModel(
+      config.tutorModel,
+      tutorTransport,
+      true,
+      supportsReasoning(config.tutorModel, config.reasoningSupport),
+    ),
+    createStubModel(
+      config.studentModel,
+      studentTransport,
+      false,
+      supportsReasoning(config.studentModel, config.reasoningSupport),
+    ),
+    createStubModel(
+      config.judgeModel,
+      judgeTransport,
+      false,
+      supportsReasoning(config.judgeModel, config.reasoningSupport),
+    ),
   ];
   const modelIndex = createModelIndex(models);
 
@@ -1104,7 +1166,9 @@ export async function runAblationCli(argv: string[]) {
 
   const runsPerCell = typeof args.runs === 'string' ? parseInt(args.runs, 10) : 3;
   const tutorModel =
-    typeof args['tutor-model'] === 'string' ? args['tutor-model'] : DEFAULT_TUTOR_MODEL_ID;
+    typeof args['tutor-model'] === 'string'
+      ? args['tutor-model']
+      : DEFAULT_ABLATION_TUTOR_MODEL_ID;
   const studentModel =
     typeof args['student-model'] === 'string'
       ? args['student-model']
@@ -1122,6 +1186,11 @@ export async function runAblationCli(argv: string[]) {
     console.error('Error: OPENROUTER_API_KEY not found in environment');
     process.exit(1);
   }
+
+  const reasoningSupport = await resolveReasoningSupportMap(
+    [tutorModel, studentModel, judgeModel],
+    apiKeys,
+  );
 
   const currentConfig: AblationConfig = {
     conditions,
@@ -1247,6 +1316,7 @@ export async function runAblationCli(argv: string[]) {
               studentModel,
               judgeModel,
               apiKeys,
+              reasoningSupport,
             });
 
             results.push(result);
