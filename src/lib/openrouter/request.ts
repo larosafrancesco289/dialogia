@@ -12,6 +12,7 @@ export type BuildChatBodyParams = {
   maxTokens?: number;
   reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
   reasoningTokens?: number;
+  disableReasoning?: boolean;
   tools?: ToolDefinition[];
   toolChoice?: OpenRouterChatRequest['tool_choice'];
   parallelToolCalls?: boolean;
@@ -35,6 +36,7 @@ export function buildChatBody(params: BuildChatBodyParams): OpenRouterChatReques
   const reasoning: OpenRouterReasoning = {};
   if (typeof params.reasoningEffort === 'string') reasoning.effort = params.reasoningEffort;
   if (typeof params.reasoningTokens === 'number') reasoning.max_tokens = params.reasoningTokens;
+  if (params.disableReasoning) reasoning.exclude = true;
   if (Object.keys(reasoning).length) body.reasoning = reasoning;
 
   if (Array.isArray(params.tools) && params.tools.length) body.tools = params.tools;

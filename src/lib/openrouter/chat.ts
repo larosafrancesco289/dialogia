@@ -18,6 +18,7 @@ export async function chatCompletion(params: TransportChatParams): Promise<ChatC
     maxTokens: params.maxTokens,
     reasoningEffort: params.reasoningEffort,
     reasoningTokens: params.reasoningTokens,
+    disableReasoning: params.disableReasoning,
     tools: params.tools,
     toolChoice: params.toolChoice,
     parallelToolCalls: params.parallelToolCalls,
