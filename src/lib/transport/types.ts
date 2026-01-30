@@ -30,6 +30,7 @@ export type TransportChatParams = {
   maxTokens?: number;
   reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
   reasoningTokens?: number;
+  disableReasoning?: boolean;
   tools?: ToolDefinition[];
   toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
   parallelToolCalls?: boolean;

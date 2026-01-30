@@ -6,6 +6,7 @@ import { captureRequestDebug } from '@/lib/agent/debug';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
 import { clearTurnController } from '@/lib/turnRuntime/abortControllers';
+import { isReasoningRequested } from '@/lib/settings/generation';
 import type { StreamFinalOptions, ToolDefinition } from '@/lib/agent/types';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
 
@@ -51,11 +52,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     plugins: combinedPlugins,
   });
 
-  const requestedEffort = generation.reasoningEffort;
-  const requestedTokensRaw = generation.reasoningTokens;
-  const effortRequested = typeof requestedEffort === 'string' && requestedEffort !== 'none';
-  const tokensRequested = typeof requestedTokensRaw === 'number' && requestedTokensRaw > 0;
-  const autoReasoningEligible = !effortRequested && !tokensRequested;
+  const disableReasoning = caps.canReason && !isReasoningRequested(generation);
   const modelIdUsed = settings.modelId;
   const tStart = performance.now();
   const callbacks = createMessageStreamCallbacks(
@@ -65,7 +62,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
       set,
       get,
       startBuffered,
-      autoReasoningEligible,
+      autoReasoningEligible: disableReasoning,
       modelIdUsed,
       clearController: () => clearTurnController(chatId, controller),
       persistMessage,
@@ -85,6 +82,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     maxTokens: generation.maxTokens,
     reasoningEffort: generation.reasoningEffort,
     reasoningTokens: generation.reasoningTokens,
+    disableReasoning,
     providerSort: generation.providerSort,
     signal: controller.signal,
     tools: toolsForStreaming,

@@ -15,15 +15,15 @@ type CuratedModel = {
 };
 
 export const DEFAULT_CHAT_MODEL: CuratedModel = {
-  id: 'moonshotai/kimi-k2-0905',
-  name: 'Kimi K2 0905',
+  id: 'moonshotai/kimi-k2.5',
+  name: 'Kimi K2.5',
   description: 'Great for general chat and quick conversations',
   Icon: ChatBubbleLeftRightIcon,
 };
 
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
-  id: 'google/gemini-3-flash-preview',
-  name: 'Gemini 3 Flash Preview',
+  id: 'moonshotai/kimi-k2.5',
+  name: 'Kimi K2.5',
   description: 'Fast multimodal reasoning and knowledge tasks',
   Icon: BoltIcon,
 };

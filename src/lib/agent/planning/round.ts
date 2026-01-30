@@ -3,6 +3,7 @@ import { captureRequestDebug } from '@/lib/agent/debug';
 import { detectPlanningToolCalls } from '@/lib/agent/tools/router';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
 import { isToolCallingSupported } from '@/lib/models';
+import { isReasoningRequested } from '@/lib/settings/generation';
 import type {
   AssistantModelMessage,
   ModelMessage,
@@ -53,6 +54,8 @@ export async function runPlanningRound(args: {
     providerSort: generation.providerSort,
   });
 
+  const disableReasoning = settings.caps.canReason && !isReasoningRequested(generation);
+
   const resp = await getChatCompletion(args.pipeline)({
     auth,
     model: settings.modelId,
@@ -62,6 +65,7 @@ export async function runPlanningRound(args: {
     maxTokens: generation.maxTokens,
     reasoningEffort: generation.reasoningEffort,
     reasoningTokens: generation.reasoningTokens,
+    disableReasoning,
     providerSort: generation.providerSort,
     tools: toolsForPlanning,
     toolChoice: toolsForPlanning ? ('auto' as const) : undefined,

@@ -20,6 +20,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
     maxTokens: params.maxTokens,
     reasoningEffort: params.reasoningEffort,
     reasoningTokens: params.reasoningTokens,
+    disableReasoning: params.disableReasoning,
     tools: params.tools,
     toolChoice: params.toolChoice,
     parallelToolCalls: params.parallelToolCalls,

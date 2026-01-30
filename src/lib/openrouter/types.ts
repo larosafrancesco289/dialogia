@@ -4,6 +4,7 @@ import type { ProviderSort } from '@/lib/models/providerSort';
 export type OpenRouterReasoning = {
   effort?: 'none' | 'low' | 'medium' | 'high';
   max_tokens?: number;
+  exclude?: boolean;
 };
 
 export type OpenRouterChatRequest = {
