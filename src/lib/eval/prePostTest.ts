@@ -201,7 +201,9 @@ async function askQuestion(
 
   // Deterministic forced error for pre-test gap topics - bypass LLM entirely
   if (isPreTest && gap) {
-    const rng = seededRandom(hashSeed(options.errorSeed ?? options.runId ?? 'default', question.id));
+    const rng = seededRandom(
+      hashSeed(options.errorSeed ?? options.runId ?? 'default', question.id),
+    );
     if (rng() < (gap.errorRate ?? 0.8)) {
       // PROGRAMMATICALLY select wrong answer - bypass LLM entirely
       const wrongIndices = question.options
@@ -615,7 +617,7 @@ export function twoWayAnova(groups: AnovaGroups): AnovaResult {
 
   // Sum of squares
   // SS Total
-  const ssTotal = allData.reduce((sum, x) => sum + (x - grandMean) ** 2, 0);
+  const _ssTotal = allData.reduce((sum, x) => sum + (x - grandMean) ** 2, 0);
 
   // SS for Plan factor (main effect)
   const ssPlan =
