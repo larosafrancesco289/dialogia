@@ -57,7 +57,6 @@ import {
   welchTTest,
   twoWayAnova,
   type TestResult,
-  type TTestResult,
   type AnovaResult,
 } from '@/lib/eval/prePostTest';
 import type { Chat, ModelDescriptor, ModelTransport, LearnerModel } from '@/lib/types';
@@ -110,6 +109,7 @@ type MechanismMetrics = {
   masteryOverridesCount: number;
   gapEvidenceVerifiedCount: number;
   gapEvidenceTotal: number;
+  gapEvidenceJsonParseFailedCount: number;
   runsWithPlanEdits: number;
   runsWithMasteryOverrides: number;
 };
@@ -482,6 +482,86 @@ function listAvailable() {
     console.log(`    Topics: ${scenario.planStructure.nodes.length} nodes`);
     console.log('');
   }
+}
+
+// ============================================================================
+// Scenario Validation
+// ============================================================================
+
+function validateScenario(scenario: AblationScenario): string[] {
+  const errors: string[] = [];
+  const planNodeIds = new Set(scenario.planStructure.nodes.map((node) => node.id));
+
+  if (scenario.preTestQuestions.length === 0) {
+    errors.push('No pre-test questions defined.');
+  }
+  if (scenario.postTestQuestions.length === 0) {
+    errors.push('No post-test questions defined.');
+  }
+  if (scenario.preTestQuestions.length !== scenario.postTestQuestions.length) {
+    errors.push(
+      `Pre/post question count mismatch: pre=${scenario.preTestQuestions.length}, post=${scenario.postTestQuestions.length}.`,
+    );
+  }
+
+  const allQuestions = [...scenario.preTestQuestions, ...scenario.postTestQuestions];
+  for (const question of allQuestions) {
+    if (!planNodeIds.has(question.topicId)) {
+      errors.push(
+        `Question "${question.id}" references unknown topicId "${question.topicId}" not present in plan nodes.`,
+      );
+    }
+  }
+
+  for (const gap of scenario.knowledgeGaps) {
+    if (!planNodeIds.has(gap.topicId)) {
+      errors.push(
+        `Knowledge gap references unknown topicId "${gap.topicId}" not present in plan nodes.`,
+      );
+    }
+    if (!Number.isFinite(gap.errorRate) || gap.errorRate < 0 || gap.errorRate > 1) {
+      errors.push(
+        `Knowledge gap "${gap.topicId}" has invalid errorRate=${String(gap.errorRate)}; expected 0..1.`,
+      );
+    }
+  }
+
+  const gapTopicIds = new Set(scenario.knowledgeGaps.map((g) => g.topicId));
+  if (gapTopicIds.size > 0) {
+    const preGapCount = scenario.preTestQuestions.filter((q) => gapTopicIds.has(q.topicId)).length;
+    const postGapCount = scenario.postTestQuestions.filter((q) =>
+      gapTopicIds.has(q.topicId),
+    ).length;
+    if (preGapCount === 0) {
+      errors.push(
+        `Knowledge gaps are defined (${gapTopicIds.size}), but no pre-test questions target gap topics.`,
+      );
+    }
+    if (postGapCount === 0) {
+      errors.push(
+        `Knowledge gaps are defined (${gapTopicIds.size}), but no post-test questions target gap topics.`,
+      );
+    }
+  }
+
+  return errors;
+}
+
+function assertValidScenarios(scenarios: AblationScenario[]): void {
+  const errors: string[] = [];
+  for (const scenario of scenarios) {
+    for (const error of validateScenario(scenario)) {
+      errors.push(`[${scenario.id}] ${error}`);
+    }
+  }
+
+  if (errors.length === 0) return;
+
+  console.error('\nError: Scenario configuration validation failed:');
+  for (const error of errors) {
+    console.error(`  - ${error}`);
+  }
+  process.exit(1);
 }
 
 // ============================================================================
@@ -1001,11 +1081,16 @@ function calculateStatistics(
       (sum, r) => sum + r.editEvents.filter((e) => e.type === 'mastery_override').length,
       0,
     );
-    const gapEvidence = conditionResults.flatMap((r) =>
-      (r.postTest.answerMetadata ?? []).filter((m) => m?.evidenceQuote !== undefined),
+    const gapEvidenceAttempts = conditionResults.flatMap((r) =>
+      (r.postTest.answerMetadata ?? []).filter(
+        (m) => m?.evidenceQuote !== undefined || m?.jsonParseFailed === true,
+      ),
     );
-    const gapEvidenceVerifiedCount = gapEvidence.filter((m) => m.evidenceVerified).length;
-    const gapEvidenceTotal = gapEvidence.length;
+    const gapEvidenceVerifiedCount = gapEvidenceAttempts.filter((m) => m.evidenceVerified).length;
+    const gapEvidenceJsonParseFailedCount = gapEvidenceAttempts.filter(
+      (m) => m.jsonParseFailed,
+    ).length;
+    const gapEvidenceTotal = gapEvidenceAttempts.length;
     const runsWithPlanEdits = conditionResults.filter((r) =>
       r.editEvents.some((e) => e.type === 'plan_modification'),
     ).length;
@@ -1025,6 +1110,7 @@ function calculateStatistics(
         masteryOverridesCount,
         gapEvidenceVerifiedCount,
         gapEvidenceTotal,
+        gapEvidenceJsonParseFailedCount,
         runsWithPlanEdits,
         runsWithMasteryOverrides,
       },
@@ -1096,18 +1182,22 @@ function calculateStatistics(
 
   if (hasAllConditions) {
     interactionEffect = calculateInteractionEffect({
-      full_system: byCondition.full_system?.normalizedGain.mean ?? 0,
-      plan_only: byCondition.plan_only?.normalizedGain.mean ?? 0,
-      model_only: byCondition.model_only?.normalizedGain.mean ?? 0,
-      baseline: byCondition.baseline?.normalizedGain.mean ?? 0,
+      full_system: byCondition.full_system?.gapNormalizedGain.mean ?? 0,
+      plan_only: byCondition.plan_only?.gapNormalizedGain.mean ?? 0,
+      model_only: byCondition.model_only?.gapNormalizedGain.mean ?? 0,
+      baseline: byCondition.baseline?.gapNormalizedGain.mean ?? 0,
     });
 
     // Run 2-way ANOVA
     anova = twoWayAnova({
-      fullSystem: results.filter((r) => r.condition === 'full_system').map((r) => r.normalizedGain),
-      planOnly: results.filter((r) => r.condition === 'plan_only').map((r) => r.normalizedGain),
-      modelOnly: results.filter((r) => r.condition === 'model_only').map((r) => r.normalizedGain),
-      baseline: results.filter((r) => r.condition === 'baseline').map((r) => r.normalizedGain),
+      fullSystem: results
+        .filter((r) => r.condition === 'full_system')
+        .map((r) => r.gapNormalizedGain),
+      planOnly: results.filter((r) => r.condition === 'plan_only').map((r) => r.gapNormalizedGain),
+      modelOnly: results
+        .filter((r) => r.condition === 'model_only')
+        .map((r) => r.gapNormalizedGain),
+      baseline: results.filter((r) => r.condition === 'baseline').map((r) => r.gapNormalizedGain),
     });
   }
 
@@ -1184,7 +1274,7 @@ function generateMarkdownTables(summary: AblationSummary): string {
     const anova = summary.statistics.anova;
     lines.push(
       '',
-      '## 2-Way ANOVA (Plan × Model)',
+      '## 2-Way ANOVA (Plan × Model, Gap-Normalized Gain)',
       '',
       '| Source | F | p-value | Sig. |',
       '|--------|---|---------|------|',
@@ -1201,7 +1291,7 @@ function generateMarkdownTables(summary: AblationSummary): string {
   if (summary.statistics.interactionEffect !== 0) {
     lines.push(
       '',
-      '## Interaction Effect (Descriptive)',
+      '## Interaction Effect (Descriptive, Gap-Normalized Gain)',
       '',
       `Plan × Model Interaction: ${(summary.statistics.interactionEffect * 100).toFixed(2)}%`,
       '',
@@ -1214,8 +1304,8 @@ function generateMarkdownTables(summary: AblationSummary): string {
     '',
     '## Mechanism Metrics by Condition',
     '',
-    '| Condition | Plan Edits | Mastery Overrides | Evidence Verified | Runs w/ Edits | Runs w/ Overrides |',
-    '|-----------|------------|-------------------|-------------------|---------------|-------------------|',
+    '| Condition | Plan Edits | Mastery Overrides | Evidence Verified | JSON Failures | Runs w/ Edits | Runs w/ Overrides |',
+    '|-----------|------------|-------------------|-------------------|--------------|---------------|-------------------|',
   );
 
   for (const condition of summary.config.conditions) {
@@ -1226,8 +1316,12 @@ function generateMarkdownTables(summary: AblationSummary): string {
       m.gapEvidenceTotal > 0
         ? `${m.gapEvidenceVerifiedCount}/${m.gapEvidenceTotal} (${((m.gapEvidenceVerifiedCount / m.gapEvidenceTotal) * 100).toFixed(0)}%)`
         : 'N/A';
+    const jsonFailureRate =
+      m.gapEvidenceTotal > 0
+        ? `${m.gapEvidenceJsonParseFailedCount}/${m.gapEvidenceTotal} (${((m.gapEvidenceJsonParseFailedCount / m.gapEvidenceTotal) * 100).toFixed(0)}%)`
+        : 'N/A';
     lines.push(
-      `| ${condition} | ${m.planEditsCount} | ${m.masteryOverridesCount} | ${evidenceRate} | ${m.runsWithPlanEdits} | ${m.runsWithMasteryOverrides} |`,
+      `| ${condition} | ${m.planEditsCount} | ${m.masteryOverridesCount} | ${evidenceRate} | ${jsonFailureRate} | ${m.runsWithPlanEdits} | ${m.runsWithMasteryOverrides} |`,
     );
   }
 
@@ -1282,6 +1376,7 @@ function generateStatsReport(summary: AblationSummary): string {
     `- Scenarios: ${summary.config.scenarios.join(', ')}`,
     `- Runs per cell: ${summary.config.runsPerCell}`,
     `- Tutor model: ${summary.config.tutorModel}`,
+    '- Primary outcome: Gap-only normalized gain (gap-topic post-test answers require verified transcript evidence)',
     '',
     "## Effect Size Interpretation (Cohen's d)",
     '',
@@ -1295,15 +1390,15 @@ function generateStatsReport(summary: AblationSummary): string {
   ];
 
   // Find significant comparisons
-  const significantComparisons = summary.statistics.comparisons.filter(
-    (c) => c.interpretation === 'medium' || c.interpretation === 'large',
+  const notableComparisons = summary.statistics.comparisons.filter(
+    (c) => c.gapInterpretation === 'medium' || c.gapInterpretation === 'large',
   );
 
-  if (significantComparisons.length > 0) {
-    lines.push('### Notable Effect Sizes:', '');
-    for (const comp of significantComparisons) {
+  if (notableComparisons.length > 0) {
+    lines.push('### Notable Effect Sizes (Gap-Only):', '');
+    for (const comp of notableComparisons) {
       lines.push(
-        `- **${comp.name}**: d = ${comp.cohenD.toFixed(3)} (${comp.interpretation})`,
+        `- **${comp.name}**: d = ${comp.gapCohenD.toFixed(3)} (${comp.gapInterpretation})`,
         `  - ${comp.hypothesis}`,
         '',
       );
@@ -1365,17 +1460,17 @@ function generateStatsReport(summary: AblationSummary): string {
   );
   if (primaryComparison) {
     lines.push(
-      '### Primary Hypothesis (H1): Full System vs Baseline',
+      '### Primary Hypothesis (H1): Full System vs Baseline (Gap-Only)',
       '',
-      `Welch's t-test: t(${primaryComparison.tTest.df.toFixed(1)}) = ${primaryComparison.tTest.t.toFixed(3)}, ` +
-        `p = ${primaryComparison.tTest.p.toFixed(4)}, d = ${primaryComparison.cohenD.toFixed(3)}`,
+      `Welch's t-test: t(${primaryComparison.gapTTest.df.toFixed(1)}) = ${primaryComparison.gapTTest.t.toFixed(3)}, ` +
+        `p = ${primaryComparison.gapTTest.p.toFixed(4)}, d = ${primaryComparison.gapCohenD.toFixed(3)}`,
       '',
-      primaryComparison.tTest.significant
-        ? `The full system (M = ${(primaryComparison.condition1Mean * 100).toFixed(1)}%) significantly ` +
-            `outperformed the baseline (M = ${(primaryComparison.condition2Mean * 100).toFixed(1)}%) ` +
-            `with a ${primaryComparison.interpretation} effect size.`
-        : `No significant difference was detected between the full system (M = ${(primaryComparison.condition1Mean * 100).toFixed(1)}%) ` +
-            `and baseline (M = ${(primaryComparison.condition2Mean * 100).toFixed(1)}%).`,
+      primaryComparison.gapTTest.significant
+        ? `The full system (M = ${(primaryComparison.gapCondition1Mean * 100).toFixed(1)}%) significantly ` +
+            `outperformed the baseline (M = ${(primaryComparison.gapCondition2Mean * 100).toFixed(1)}%) ` +
+            `with a ${primaryComparison.gapInterpretation} effect size.`
+        : `No significant difference was detected between the full system (M = ${(primaryComparison.gapCondition1Mean * 100).toFixed(1)}%) ` +
+            `and baseline (M = ${(primaryComparison.gapCondition2Mean * 100).toFixed(1)}%).`,
       '',
     );
   }
@@ -1420,6 +1515,10 @@ function generateStatsReport(summary: AblationSummary): string {
   });
   const totalEvidence = allGapEvidence.reduce((sum, m) => sum + m.gapEvidenceTotal, 0);
   const verifiedEvidence = allGapEvidence.reduce((sum, m) => sum + m.gapEvidenceVerifiedCount, 0);
+  const jsonParseFailures = allGapEvidence.reduce(
+    (sum, m) => sum + m.gapEvidenceJsonParseFailedCount,
+    0,
+  );
 
   if (totalEvidence > 0) {
     const verifyRate = ((verifiedEvidence / totalEvidence) * 100).toFixed(1);
@@ -1427,6 +1526,14 @@ function generateStatsReport(summary: AblationSummary): string {
       `- Evidence verification rate: ${verifiedEvidence}/${totalEvidence} (${verifyRate}%) of gap-topic post-test answers included verified transcript evidence.`,
       '',
     );
+
+    if (jsonParseFailures > 0) {
+      const jsonFailRate = ((jsonParseFailures / totalEvidence) * 100).toFixed(1);
+      lines.push(
+        `- JSON parse failure rate: ${jsonParseFailures}/${totalEvidence} (${jsonFailRate}%) of gap-topic post-test answers did not follow the required JSON format.`,
+        '',
+      );
+    }
   }
 
   if (warnings.length > 0) {
@@ -1459,25 +1566,67 @@ export async function runAblationCli(argv: string[]) {
 
   // Parse configuration
   const conditionArg = typeof args.conditions === 'string' ? args.conditions : '';
-  const conditions: AblationCondition[] = conditionArg
-    ? (conditionArg
-        .split(',')
-        .filter((c) => ABLATION_CONDITIONS.includes(c as AblationCondition)) as AblationCondition[])
-    : [...ABLATION_CONDITIONS];
+  let conditions: AblationCondition[] = [...ABLATION_CONDITIONS];
+  if (conditionArg) {
+    const requested = conditionArg
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean);
+    const invalid = requested.filter((c) => !ABLATION_CONDITIONS.includes(c as AblationCondition));
+    if (invalid.length > 0) {
+      console.error(`Error: Unknown condition(s): ${invalid.join(', ')}`);
+      console.error(`Valid conditions: ${ABLATION_CONDITIONS.join(', ')}`);
+      process.exit(1);
+    }
+    conditions = requested as AblationCondition[];
+  }
 
   const scenarioArg = typeof args.scenarios === 'string' ? args.scenarios : '';
-  const scenarios = scenarioArg
-    ? (scenarioArg
-        .split(',')
-        .map((id) => getScenarioById(id))
-        .filter(Boolean) as AblationScenario[])
-    : [...ABLATION_SCENARIOS];
+  let scenarios: AblationScenario[] = [...ABLATION_SCENARIOS];
+  if (scenarioArg) {
+    const requested = scenarioArg
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    const resolved = requested.map((id) => ({ id, scenario: getScenarioById(id) }));
+    const invalid = resolved.filter((r) => !r.scenario).map((r) => r.id);
+    if (invalid.length > 0) {
+      console.error(`Error: Unknown scenario ID(s): ${invalid.join(', ')}`);
+      console.error(`Valid scenarios: ${ABLATION_SCENARIOS.map((s) => s.id).join(', ')}`);
+      process.exit(1);
+    }
+    scenarios = resolved.map((r) => r.scenario!).filter(Boolean);
+  }
+
+  if (conditions.length === 0) {
+    console.error('Error: No valid conditions selected.');
+    usage();
+    process.exit(1);
+  }
+
+  if (scenarios.length === 0) {
+    console.error('Error: No valid scenarios selected.');
+    usage();
+    process.exit(1);
+  }
+
+  assertValidScenarios(scenarios);
 
   const runsPerCell = typeof args.runs === 'string' ? parseInt(args.runs, 10) : 3;
-  const concurrency = Math.min(
-    MAX_CONCURRENCY,
-    Math.max(1, typeof args.concurrency === 'string' ? parseInt(args.concurrency, 10) : DEFAULT_CONCURRENCY),
-  );
+  if (!Number.isFinite(runsPerCell) || runsPerCell <= 0) {
+    console.error(`Error: Invalid --runs value: ${String(args.runs)} (expected positive integer).`);
+    process.exit(1);
+  }
+
+  const requestedConcurrency =
+    typeof args.concurrency === 'string' ? parseInt(args.concurrency, 10) : DEFAULT_CONCURRENCY;
+  if (!Number.isFinite(requestedConcurrency) || requestedConcurrency <= 0) {
+    console.error(
+      `Error: Invalid --concurrency value: ${String(args.concurrency)} (expected positive integer).`,
+    );
+    process.exit(1);
+  }
+  const concurrency = Math.min(MAX_CONCURRENCY, Math.max(1, requestedConcurrency));
   const shuffleRuns = args['no-shuffle'] !== true;
   const tutorModel =
     typeof args['tutor-model'] === 'string' ? args['tutor-model'] : DEFAULT_ABLATION_TUTOR_MODEL_ID;
@@ -1489,20 +1638,6 @@ export async function runAblationCli(argv: string[]) {
     typeof args['judge-model'] === 'string' ? args['judge-model'] : 'anthropic/claude-haiku-4.5';
   const outputDir = typeof args.out === 'string' ? args.out : 'tmp/ablation';
   const resumeMode = args.resume === true;
-
-  const apiKeys = {
-    openrouter: getOpenRouterKeyFallback(),
-  };
-
-  if (!apiKeys.openrouter) {
-    console.error('Error: OPENROUTER_API_KEY not found in environment');
-    process.exit(1);
-  }
-
-  const reasoningSupport = await resolveReasoningSupportMap(
-    [tutorModel, studentModel, judgeModel],
-    apiKeys,
-  );
 
   const currentConfig: AblationConfig = {
     conditions,
@@ -1574,6 +1709,20 @@ export async function runAblationCli(argv: string[]) {
     return;
   }
 
+  const apiKeys = {
+    openrouter: getOpenRouterKeyFallback(),
+  };
+
+  if (!apiKeys.openrouter) {
+    console.error('Error: OPENROUTER_API_KEY not found in environment');
+    process.exit(1);
+  }
+
+  const reasoningSupport = await resolveReasoningSupportMap(
+    [tutorModel, studentModel, judgeModel],
+    apiKeys,
+  );
+
   // Helper to create/update checkpoint with current state
   function buildCheckpoint(): AblationCheckpoint {
     return {
@@ -1605,10 +1754,11 @@ export async function runAblationCli(argv: string[]) {
 
     console.log('\n\nInterrupted! Saving checkpoint...');
     await withCheckpointLock(async () => {
-      checkpoint = buildCheckpoint();
-      await saveCheckpoint(checkpoint, outputDir);
+      const nextCheckpoint = buildCheckpoint();
+      checkpoint = nextCheckpoint;
+      await saveCheckpoint(nextCheckpoint, outputDir);
     });
-    console.log(`Checkpoint saved with ${checkpoint.completedRunIds.length}/${totalRuns} runs.`);
+    console.log(`Checkpoint saved with ${completedRunIds.size}/${totalRuns} runs.`);
     console.log(`\nResume with: bun run ablation -- --resume --out ${outputDir}`);
     process.exit(130);
   }
@@ -1653,13 +1803,19 @@ export async function runAblationCli(argv: string[]) {
       let success = false;
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-          const result = await runSingleAblation(task.scenario, task.condition, task.runIndex, task.runId, {
-            tutorModel,
-            studentModel,
-            judgeModel,
-            apiKeys,
-            reasoningSupport,
-          });
+          const result = await runSingleAblation(
+            task.scenario,
+            task.condition,
+            task.runIndex,
+            task.runId,
+            {
+              tutorModel,
+              studentModel,
+              judgeModel,
+              apiKeys,
+              reasoningSupport,
+            },
+          );
 
           // Atomic checkpoint update
           await withCheckpointLock(async () => {
@@ -1756,8 +1912,8 @@ export async function runAblationCli(argv: string[]) {
     if (!stats) continue;
     console.log(
       `${condition.padEnd(15)} | ` +
-        `Gain: ${stats.learningGain.mean.toFixed(1).padStart(6)}% | ` +
-        `Normalized: ${(stats.normalizedGain.mean * 100).toFixed(1).padStart(6)}%`,
+        `GapNorm: ${(stats.gapNormalizedGain.mean * 100).toFixed(1).padStart(6)}% | ` +
+        `Norm: ${(stats.normalizedGain.mean * 100).toFixed(1).padStart(6)}%`,
     );
   }
 }

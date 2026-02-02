@@ -1,10 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  administerTest,
-  normalizeForMatching,
-  extractTutorTurns,
-} from '@/lib/eval/prePostTest';
+import { administerTest, normalizeForMatching, extractTutorTurns } from '@/lib/eval/prePostTest';
 import { shuffleArray } from '@/lib/eval/ablationRunner';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import type { KnowledgeGap, TestQuestion } from '@/lib/eval/ablationScenarios';
@@ -178,5 +174,8 @@ test('shuffleArray actually shuffles the array', () => {
   assert.notDeepEqual(arr, original);
   // But should contain the same elements
   assert.equal(arr.length, original.length);
-  assert.deepEqual(arr.sort((a, b) => a - b), original.sort((a, b) => a - b));
+  assert.deepEqual(
+    arr.sort((a, b) => a - b),
+    original.sort((a, b) => a - b),
+  );
 });
