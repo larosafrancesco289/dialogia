@@ -35,6 +35,7 @@ export type TutorSettings = {
   planGenerated?: boolean;
   planGenerationModel?: string;
   disablePlanGeneration?: boolean;
+  planEditable?: boolean;
   enableLearnerModel?: boolean;
   learnerModelVisible?: boolean;
   learnerModel?: LearnerModel;
