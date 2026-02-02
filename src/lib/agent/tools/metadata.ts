@@ -45,7 +45,7 @@ export const TOOL_METADATA: Record<ToolName, ToolMetadata> = {
   },
   update_plan: {
     category: 'tutor_content',
-    phases: ['planning'],
+    phases: ['planning', 'teaching', 'practice'],
     priorityGroup: 'plan',
     tags: { plan: true, thesisCore: true },
   },

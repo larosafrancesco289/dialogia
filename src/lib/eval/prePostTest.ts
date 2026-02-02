@@ -1,6 +1,36 @@
 import type { TestQuestion, KnowledgeGap } from '@/lib/eval/ablationScenarios';
 import type { TransportAuth } from '@/lib/auth/transport';
-import { getChatCompletion } from '@/lib/agent/pipelineClient';
+import { getChatCompletion, type PipelineClient } from '@/lib/agent/pipelineClient';
+
+// ============================================================================
+// Seeded RNG Utilities
+// ============================================================================
+
+function seededRandom(seed: number): () => number {
+  return function () {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function hashSeed(runId: string, questionId: string): number {
+  let hash = 0;
+  const str = `${runId}:${questionId}`;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return hash;
+}
+
+export type AnswerMetadata = {
+  forcedIncorrect?: boolean;
+  forcedFromTopicGap?: boolean;
+  evidenceVerified?: boolean;
+  evidenceQuote?: string;
+};
 
 export type TestResult = {
   testType: 'pre' | 'post';
@@ -10,17 +40,20 @@ export type TestResult = {
   score: number; // 0-100
   rawScore: number; // Count of correct
   byTopic: Record<string, { correct: number; total: number }>;
+  answerMetadata?: AnswerMetadata[];
   administeredAt: number;
 };
 
 export type TestAdminOptions = {
   auth: TransportAuth;
   model: string;
+  pipelineClient?: PipelineClient;
   studentPersona?: string;
   priorKnowledge?: string; // Description of what the student knows
   testType: 'pre' | 'post'; // Whether this is pre or post test
   knowledgeGaps?: KnowledgeGap[]; // Topics the student doesn't know
-  sessionTranscript?: string; // NEW: The actual tutoring session content
+  sessionTranscript?: string; // The actual tutoring session content
+  runId?: string; // For deterministic seeding
 };
 
 /**
@@ -34,12 +67,19 @@ export async function administerTest(
 ): Promise<TestResult> {
   const answers: number[] = [];
   const correct: boolean[] = [];
+  const answerMetadata: AnswerMetadata[] = [];
   const byTopic: Record<string, { correct: number; total: number }> = {};
 
   for (const question of questions) {
-    const answer = await askQuestion(question, options);
-    answers.push(answer);
-    const isCorrect = answer === question.correctIndex;
+    const result = await askQuestion(question, options);
+    answers.push(result.answer);
+    answerMetadata.push({
+      forcedIncorrect: result.forcedIncorrect,
+      forcedFromTopicGap: result.forcedFromTopicGap,
+      evidenceVerified: result.evidenceVerified,
+      evidenceQuote: result.evidenceQuote,
+    });
+    const isCorrect = result.answer === question.correctIndex;
     correct.push(isCorrect);
 
     // Track by topic
@@ -63,28 +103,100 @@ export async function administerTest(
     score,
     rawScore,
     byTopic,
+    answerMetadata,
     administeredAt: Date.now(),
   };
 }
 
+type QuestionAnswer = {
+  answer: number;
+  forcedIncorrect?: boolean;
+  forcedFromTopicGap?: boolean;
+  evidenceVerified?: boolean;
+  evidenceQuote?: string;
+};
+
 /**
  * Ask a single MCQ question to the simulated student.
  */
-async function askQuestion(question: TestQuestion, options: TestAdminOptions): Promise<number> {
-  const optionsText = question.options.map((opt, i) => `${i}. ${opt}`).join('\n');
+async function askQuestion(
+  question: TestQuestion,
+  options: TestAdminOptions,
+): Promise<QuestionAnswer> {
+  const gap = options.knowledgeGaps?.find((g) => g.topicId === question.topicId);
+  const isPreTest = options.testType === 'pre';
+  const isPostTest = options.testType === 'post';
+  const evidenceRequired = Boolean(isPostTest && gap && options.sessionTranscript);
 
+  // Deterministic forced error for pre-test gap topics - bypass LLM entirely
+  if (isPreTest && gap) {
+    const rng = seededRandom(hashSeed(options.runId ?? 'default', question.id));
+    if (rng() < (gap.errorRate ?? 0.8)) {
+      // PROGRAMMATICALLY select wrong answer - bypass LLM entirely
+      const wrongIndices = question.options
+        .map((_, i) => i)
+        .filter((i) => i !== question.correctIndex);
+      const wrongIdx = Math.floor(rng() * wrongIndices.length);
+      return {
+        answer: wrongIndices[wrongIdx],
+        forcedIncorrect: true,
+        forcedFromTopicGap: true,
+      };
+    }
+  }
+
+  const optionsText = question.options.map((opt, i) => `${i}. ${opt}`).join('\n');
   const prompt = buildStudentPrompt(question, optionsText, options);
 
-  const response = await getChatCompletion()({
+  // Increase maxTokens for post-test gap questions that need JSON with evidence
+  const maxTokens = evidenceRequired ? 300 : 10;
+
+  const response = await getChatCompletion(options.pipelineClient)({
     auth: options.auth,
     model: options.model,
     messages: [{ role: 'user', content: prompt }],
-    temperature: options.testType === 'post' ? 0.1 : 0.3, // Lower temp for post-test reasoning
-    maxTokens: 10,
+    temperature: options.testType === 'post' ? 0.1 : 0.3,
+    maxTokens,
   });
 
   const text = extractText(response);
-  return parseAnswer(text, question.options.length);
+
+  // For post-test with gap and transcript, parse JSON and verify evidence
+  if (isPostTest && gap && options.sessionTranscript) {
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]) as { answer?: number; evidence?: string };
+        const evidence = parsed.evidence || '';
+        const evidenceVerified =
+          evidence.length > 10 && options.sessionTranscript.includes(evidence);
+
+        if (!evidenceVerified) {
+          // Force wrong answer if evidence not verified
+          const rng = seededRandom(hashSeed(options.runId ?? 'default', question.id + '_post'));
+          const wrongIndices = question.options
+            .map((_, i) => i)
+            .filter((i) => i !== question.correctIndex);
+          return {
+            answer: wrongIndices[Math.floor(rng() * wrongIndices.length)],
+            evidenceVerified: false,
+            evidenceQuote: evidence,
+          };
+        }
+
+        return {
+          answer: parsed.answer ?? parseAnswer(text, question.options.length),
+          evidenceVerified: true,
+          evidenceQuote: evidence,
+        };
+      }
+    } catch {
+      // fallback to numeric parsing
+    }
+  }
+
+  const answer = parseAnswer(text, question.options.length);
+  return evidenceRequired ? { answer, evidenceVerified: false, evidenceQuote: '' } : { answer };
 }
 
 function buildStudentPrompt(
@@ -95,9 +207,8 @@ function buildStudentPrompt(
   const gap = options.knowledgeGaps?.find((g) => g.topicId === question.topicId);
 
   // Pre-Test Logic:
-  // If there is a gap, force incorrect answer based on errorRate
+  // Forced errors are now handled programmatically in askQuestion before this is called
   const isPreTest = options.testType === 'pre';
-  const shouldForceIncorrect = isPreTest && !!gap && Math.random() < (gap.errorRate ?? 0.8);
 
   // Post-Test Logic:
   // If there is a transcript, the student must prove the transcript taught them.
@@ -106,23 +217,17 @@ function buildStudentPrompt(
   const hasTranscript = !!options.sessionTranscript;
 
   let contextInstruction = '';
+  let answerInstruction =
+    'Answer the following multiple choice question by responding with ONLY the number (0, 1, 2, or 3) of your chosen answer.\nDo not explain your reasoning, just output the number.';
 
   if (isPreTest) {
     if (gap) {
-      if (shouldForceIncorrect) {
-        contextInstruction = `
-CRITICAL INSTRUCTION: You do NOT understand the topic "${question.topicId}" well.
-Your specific misconception: "${gap.misconception}".
-You MUST answer this question INCORRECTLY based on this misconception. 
-Do NOT pick the correct answer. Pick a plausible wrong answer.
-`;
-      } else {
-        contextInstruction = `
+      // Non-forced case: student is uncertain but may get lucky
+      contextInstruction = `
 You are unsure about the topic "${question.topicId}".
 Misconception: "${gap.misconception}".
 Try to answer to the best of your knowledge, but you are prone to mistakes on this topic.
 `;
-      }
     } else {
       contextInstruction = `
 You are taking a pre-test to measure what you already know about "${question.topicId}".
@@ -130,21 +235,28 @@ Answer honestly based on your current knowledge. If you are unsure, make your be
 `;
     }
   } else if (isPostTest) {
-    if (hasTranscript) {
-      if (gap) {
-        contextInstruction = `
-INSTRUCTION: You have just finished a tutoring session.
-Read the transcript below carefully.
-- If the tutor effectively explained "${question.topicId}" or corrected your misconception ("${gap.misconception}"), answer CORRECTLY.
-- If the topic was NOT discussed or the explanation was unclear, you MUST stick to your original misconception: "${gap.misconception}" and answer INCORRECTLY.
-- Do not assume you learned it if it wasn't mentioned.
+    if (hasTranscript && gap) {
+      // Post-test with transcript AND gap: require JSON with evidence
+      contextInstruction = `
+INSTRUCTION: You have just finished a tutoring session on "${question.topicId}".
+You MUST respond with JSON in this exact format:
+{"answer": <0-3>, "evidence": "<exact quote from transcript>"}
+
+Rules:
+- If the transcript explains "${question.topicId}" or corrects your misconception ("${gap.misconception}"),
+  provide the EXACT quote and answer correctly.
+- If the topic was NOT covered, set evidence to "" and answer based on your misconception.
+- The evidence MUST be a verbatim substring from the transcript.
 
 --- SESSION TRANSCRIPT ---
 ${options.sessionTranscript}
 -------------------------
 `;
-      } else {
-        contextInstruction = `
+      answerInstruction =
+        'Respond with JSON only: {"answer": <number>, "evidence": "<exact quote or empty string>"}';
+    } else if (hasTranscript) {
+      // Post-test with transcript but no gap
+      contextInstruction = `
 INSTRUCTION: You have just finished a tutoring session.
 Read the transcript below carefully.
 - Answer based on what was actually covered about "${question.topicId}".
@@ -155,7 +267,6 @@ Read the transcript below carefully.
 ${options.sessionTranscript}
 -------------------------
 `;
-      }
     } else {
       // Fallback if no transcript provided (legacy behavior)
       contextInstruction =
@@ -170,14 +281,13 @@ ${options.sessionTranscript}
     '',
     contextInstruction,
     '',
-    'Answer the following multiple choice question by responding with ONLY the number (0, 1, 2, or 3) of your chosen answer.',
-    'Do not explain your reasoning, just output the number.',
+    answerInstruction,
     '',
     `Question: ${question.question}`,
     '',
     optionsText,
     '',
-    'Your answer (just the number):',
+    'Your answer:',
   ];
 
   return parts.filter((p) => p !== null).join('\n');

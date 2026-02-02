@@ -60,6 +60,7 @@ export type TutorToolFilters = {
   researchMode?: TutorResearchMode;
   allowPlanTools?: boolean;
   allowLearnerModel?: boolean;
+  allowUpdatePlan?: boolean;
   disablePlanGeneration?: boolean;
   quizzesRemaining?: number;
   diagnosticsRemaining?: number;
@@ -106,6 +107,11 @@ function applyTutorFilters(
 
   if (filters?.disablePlanGeneration) {
     tools = tools.filter((name) => name !== 'generate_plan');
+  }
+
+  // Filter update_plan specifically based on planEditable condition
+  if (filters?.allowUpdatePlan === false) {
+    tools = tools.filter((name) => name !== 'update_plan');
   }
 
   if (filters?.diagnosticsRemaining === 0) {
@@ -163,6 +169,7 @@ export function deriveTutorToolPolicy(args: {
     allowPlanTools: !conditionAFrozen && researchMode !== 'model_only',
     allowLearnerModel:
       chat.settings.features.tutor.enableLearnerModel !== false && researchMode !== 'plan_only',
+    allowUpdatePlan: chat.settings.features.tutor.planEditable !== false,
     disablePlanGeneration: chat.settings.features.tutor.disablePlanGeneration === true,
     quizzesRemaining:
       budget.maxQuizzesPerNode == null

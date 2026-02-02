@@ -103,6 +103,15 @@ type AblationRunResult = {
   completedAt: number;
 };
 
+type MechanismMetrics = {
+  planEditsCount: number;
+  masteryOverridesCount: number;
+  gapEvidenceVerifiedCount: number;
+  gapEvidenceTotal: number;
+  runsWithPlanEdits: number;
+  runsWithMasteryOverrides: number;
+};
+
 type AblationSummary = {
   startedAt: number;
   completedAt: number;
@@ -123,6 +132,7 @@ type AblationSummary = {
         normalizedGain: { mean: number; sd: number; n: number };
         turnsUsed: { mean: number; sd: number; n: number };
         judgeScore: { mean: number; sd: number; n: number };
+        mechanismMetrics: MechanismMetrics;
       }
     >;
     comparisons: Array<{
@@ -350,9 +360,7 @@ async function resolveReasoningSupportMap(
   const support: Record<string, boolean> = {};
   if (!apiKeys.openrouter) return support;
 
-  const uniqueIds = Array.from(
-    new Set(modelIds.map((id) => normalizeModelId(id)).filter(Boolean)),
-  );
+  const uniqueIds = Array.from(new Set(modelIds.map((id) => normalizeModelId(id)).filter(Boolean)));
   if (!uniqueIds.length) return support;
 
   try {
@@ -451,6 +459,7 @@ async function runSingleAblation(
     priorKnowledge: `Level: ${scenario.level}. Topic: ${scenario.topic}`,
     testType: 'pre',
     knowledgeGaps: scenario.knowledgeGaps, // Student has gaps before tutoring
+    runId, // For deterministic seeding
   });
   console.log(`  [${runId}] Pre-test score: ${preTest.score.toFixed(1)}%`);
 
@@ -641,6 +650,7 @@ async function runSingleAblation(
     testType: 'post',
     knowledgeGaps: scenario.knowledgeGaps, // Pass gaps so the simulator knows what to check against the transcript
     sessionTranscript: transcript,
+    runId, // For deterministic seeding
   });
   console.log(`  [${runId}] Post-test score: ${postTest.score.toFixed(1)}%`);
 
@@ -854,11 +864,40 @@ function calculateStatistics(
       .filter((r) => r.judgeVerdict?.overall_score != null)
       .map((r) => r.judgeVerdict!.overall_score);
 
+    // Compute mechanism metrics
+    const planEditsCount = conditionResults.reduce(
+      (sum, r) => sum + r.editEvents.filter((e) => e.type === 'plan_modification').length,
+      0,
+    );
+    const masteryOverridesCount = conditionResults.reduce(
+      (sum, r) => sum + r.editEvents.filter((e) => e.type === 'mastery_override').length,
+      0,
+    );
+    const gapEvidence = conditionResults.flatMap((r) =>
+      (r.postTest.answerMetadata ?? []).filter((m) => m?.evidenceQuote !== undefined),
+    );
+    const gapEvidenceVerifiedCount = gapEvidence.filter((m) => m.evidenceVerified).length;
+    const gapEvidenceTotal = gapEvidence.length;
+    const runsWithPlanEdits = conditionResults.filter((r) =>
+      r.editEvents.some((e) => e.type === 'plan_modification'),
+    ).length;
+    const runsWithMasteryOverrides = conditionResults.filter((r) =>
+      r.editEvents.some((e) => e.type === 'mastery_override'),
+    ).length;
+
     byCondition[condition] = {
       learningGain: calculateStats(gains),
       normalizedGain: calculateStats(normalizedGains),
       turnsUsed: calculateStats(turns),
       judgeScore: calculateStats(judgeScores),
+      mechanismMetrics: {
+        planEditsCount,
+        masteryOverridesCount,
+        gapEvidenceVerifiedCount,
+        gapEvidenceTotal,
+        runsWithPlanEdits,
+        runsWithMasteryOverrides,
+      },
     };
   }
 
@@ -1015,6 +1054,28 @@ function generateMarkdownTables(summary: AblationSummary): string {
     );
   }
 
+  // Mechanism metrics table
+  lines.push(
+    '',
+    '## Mechanism Metrics by Condition',
+    '',
+    '| Condition | Plan Edits | Mastery Overrides | Evidence Verified | Runs w/ Edits | Runs w/ Overrides |',
+    '|-----------|------------|-------------------|-------------------|---------------|-------------------|',
+  );
+
+  for (const condition of summary.config.conditions) {
+    const stats = summary.statistics.byCondition[condition];
+    if (!stats) continue;
+    const m = stats.mechanismMetrics;
+    const evidenceRate =
+      m.gapEvidenceTotal > 0
+        ? `${m.gapEvidenceVerifiedCount}/${m.gapEvidenceTotal} (${((m.gapEvidenceVerifiedCount / m.gapEvidenceTotal) * 100).toFixed(0)}%)`
+        : 'N/A';
+    lines.push(
+      `| ${condition} | ${m.planEditsCount} | ${m.masteryOverridesCount} | ${evidenceRate} | ${m.runsWithPlanEdits} | ${m.runsWithMasteryOverrides} |`,
+    );
+  }
+
   return lines.join('\n');
 }
 
@@ -1126,6 +1187,61 @@ function generateStatsReport(summary: AblationSummary): string {
     );
   }
 
+  // Mechanism verification warnings
+  lines.push('### Mechanism Verification', '');
+
+  const warnings: string[] = [];
+  const fullSystemStats = summary.statistics.byCondition['full_system'];
+  const planOnlyStats = summary.statistics.byCondition['plan_only'];
+  const modelOnlyStats = summary.statistics.byCondition['model_only'];
+  const baselineStats = summary.statistics.byCondition['baseline'];
+
+  // Warn if plan-editable conditions have zero plan edits
+  if (fullSystemStats && fullSystemStats.mechanismMetrics.planEditsCount === 0) {
+    warnings.push(
+      '⚠️ **full_system** condition had zero plan edits. The plan editability manipulation may not have been exercised by the simulator.',
+    );
+  }
+  if (planOnlyStats && planOnlyStats.mechanismMetrics.planEditsCount === 0) {
+    warnings.push(
+      '⚠️ **plan_only** condition had zero plan edits. The plan editability manipulation may not have been exercised by the simulator.',
+    );
+  }
+
+  // Warn if non-editable conditions unexpectedly show edits
+  if (modelOnlyStats && modelOnlyStats.mechanismMetrics.planEditsCount > 0) {
+    warnings.push(
+      `⚠️ **model_only** condition had ${modelOnlyStats.mechanismMetrics.planEditsCount} plan edits, but plan editability should be disabled!`,
+    );
+  }
+  if (baselineStats && baselineStats.mechanismMetrics.planEditsCount > 0) {
+    warnings.push(
+      `⚠️ **baseline** condition had ${baselineStats.mechanismMetrics.planEditsCount} plan edits, but plan editability should be disabled!`,
+    );
+  }
+
+  // Report evidence verification rate
+  const allGapEvidence = summary.config.conditions.flatMap((c) => {
+    const stats = summary.statistics.byCondition[c];
+    return stats ? [stats.mechanismMetrics] : [];
+  });
+  const totalEvidence = allGapEvidence.reduce((sum, m) => sum + m.gapEvidenceTotal, 0);
+  const verifiedEvidence = allGapEvidence.reduce((sum, m) => sum + m.gapEvidenceVerifiedCount, 0);
+
+  if (totalEvidence > 0) {
+    const verifyRate = ((verifiedEvidence / totalEvidence) * 100).toFixed(1);
+    lines.push(
+      `- Evidence verification rate: ${verifiedEvidence}/${totalEvidence} (${verifyRate}%) of gap-topic post-test answers included verified transcript evidence.`,
+      '',
+    );
+  }
+
+  if (warnings.length > 0) {
+    lines.push('**Warnings:**', '', ...warnings.map((w) => `- ${w}`), '');
+  } else {
+    lines.push('No mechanism verification issues detected.', '');
+  }
+
   return lines.join('\n');
 }
 
@@ -1166,9 +1282,7 @@ export async function runAblationCli(argv: string[]) {
 
   const runsPerCell = typeof args.runs === 'string' ? parseInt(args.runs, 10) : 3;
   const tutorModel =
-    typeof args['tutor-model'] === 'string'
-      ? args['tutor-model']
-      : DEFAULT_ABLATION_TUTOR_MODEL_ID;
+    typeof args['tutor-model'] === 'string' ? args['tutor-model'] : DEFAULT_ABLATION_TUTOR_MODEL_ID;
   const studentModel =
     typeof args['student-model'] === 'string'
       ? args['student-model']
