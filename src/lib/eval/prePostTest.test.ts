@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { calculateCohenD, welchTTest, twoWayAnova } from './prePostTest';
+import { calculateCohenD, extractTutorTurns, welchTTest, twoWayAnova } from './prePostTest';
 
 test('calculateCohenD returns insufficient-data when either group is too small', () => {
   const emptyGroup = calculateCohenD([], [1, 2, 3]);
@@ -17,6 +17,18 @@ test('calculateCohenD computes effect size for valid groups', () => {
   const result = calculateCohenD([1, 2, 3], [1, 2, 4, 5]);
   assert.ok(Math.abs(result.d - -0.6455) < 0.0005);
   assert.equal(result.interpretation, 'medium');
+});
+
+test('extractTutorTurns preserves multi-paragraph tutor blocks', () => {
+  const transcript =
+    'Tutor: First paragraph.\n\nSecond paragraph with evidence.\n\nStudent: Question?\n' +
+    'Tutor: Reply line.\nMore detail.\n\nStudent: Thanks.';
+  const extracted = extractTutorTurns(transcript);
+
+  assert.ok(extracted.startsWith('Tutor: First paragraph.'));
+  assert.ok(extracted.includes('Second paragraph with evidence.'));
+  assert.ok(extracted.includes('Tutor: Reply line.'));
+  assert.ok(!extracted.includes('Student:'));
 });
 
 // ============================================================================

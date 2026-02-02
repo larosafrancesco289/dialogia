@@ -25,11 +25,60 @@ function hashSeed(runId: string, questionId: string): number {
   return hash;
 }
 
+// ============================================================================
+// Evidence Matching Utilities
+// ============================================================================
+
+/**
+ * Normalize text for fuzzy matching by lowercasing and collapsing whitespace.
+ */
+export function normalizeForMatching(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Extract only tutor turns from a transcript.
+ * Tutor turns are identified by lines starting with "Tutor:" or "Tutor (".
+ */
+export function extractTutorTurns(transcript: string): string {
+  const lines = transcript.split('\n');
+  const tutorBlocks: string[] = [];
+  let current: string[] = [];
+  let inTutor = false;
+
+  const isTutorHeader = (line: string): boolean =>
+    line.startsWith('Tutor:') || line.startsWith('Tutor (');
+  const isRoleHeader = (line: string): boolean =>
+    /^(Tutor|Student|System|Assistant|User|Tool)(:|\s*\()/.test(line);
+  const flush = (): void => {
+    if (current.length === 0) return;
+    const block = current.join('\n').replace(/\s+$/, '');
+    if (block.length > 0) tutorBlocks.push(block);
+    current = [];
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trimStart();
+    if (isRoleHeader(trimmed)) {
+      if (inTutor) flush();
+      inTutor = isTutorHeader(trimmed);
+      if (inTutor) current.push(line);
+      continue;
+    }
+    if (inTutor) current.push(line);
+  }
+
+  if (inTutor) flush();
+  return tutorBlocks.join('\n\n');
+}
+
 export type AnswerMetadata = {
   forcedIncorrect?: boolean;
   forcedFromTopicGap?: boolean;
   evidenceVerified?: boolean;
   evidenceQuote?: string;
+  jsonParseFailed?: boolean; // True when JSON parsing fails for evidence-required questions
+  rawResponse?: string; // First 500 chars of raw response for debugging
 };
 
 export type TestResult = {
@@ -42,6 +91,10 @@ export type TestResult = {
   byTopic: Record<string, { correct: number; total: number }>;
   answerMetadata?: AnswerMetadata[];
   administeredAt: number;
+  // Gap-only metrics (questions targeting knowledge gaps)
+  gapScore?: number; // 0-100 for gap items only
+  gapRawScore?: number; // Count correct on gap items
+  gapItemCount?: number; // Total gap items
 };
 
 export type TestAdminOptions = {
@@ -54,6 +107,8 @@ export type TestAdminOptions = {
   knowledgeGaps?: KnowledgeGap[]; // Topics the student doesn't know
   sessionTranscript?: string; // The actual tutoring session content
   runId?: string; // For deterministic seeding
+  errorSeed?: string; // Condition-independent seed for deterministic forced errors
+  restrictEvidenceToTutorTurns?: boolean; // Whether to restrict evidence matching to tutor turns (default: true)
 };
 
 /**
@@ -78,6 +133,8 @@ export async function administerTest(
       forcedFromTopicGap: result.forcedFromTopicGap,
       evidenceVerified: result.evidenceVerified,
       evidenceQuote: result.evidenceQuote,
+      jsonParseFailed: result.jsonParseFailed,
+      rawResponse: result.rawResponse,
     });
     const isCorrect = result.answer === question.correctIndex;
     correct.push(isCorrect);
@@ -95,6 +152,15 @@ export async function administerTest(
   const rawScore = correct.filter(Boolean).length;
   const score = (rawScore / questions.length) * 100;
 
+  // Calculate gap-only metrics
+  const gapTopicIds = new Set(options.knowledgeGaps?.map((g) => g.topicId) ?? []);
+  const gapResults = questions
+    .map((q, i) => ({ q, correct: correct[i] }))
+    .filter(({ q }) => gapTopicIds.has(q.topicId));
+  const gapRawScore = gapResults.filter((r) => r.correct).length;
+  const gapItemCount = gapResults.length;
+  const gapScore = gapItemCount > 0 ? (gapRawScore / gapItemCount) * 100 : undefined;
+
   return {
     testType,
     questions,
@@ -105,6 +171,9 @@ export async function administerTest(
     byTopic,
     answerMetadata,
     administeredAt: Date.now(),
+    gapScore,
+    gapRawScore,
+    gapItemCount,
   };
 }
 
@@ -114,6 +183,8 @@ type QuestionAnswer = {
   forcedFromTopicGap?: boolean;
   evidenceVerified?: boolean;
   evidenceQuote?: string;
+  jsonParseFailed?: boolean;
+  rawResponse?: string;
 };
 
 /**
@@ -130,7 +201,7 @@ async function askQuestion(
 
   // Deterministic forced error for pre-test gap topics - bypass LLM entirely
   if (isPreTest && gap) {
-    const rng = seededRandom(hashSeed(options.runId ?? 'default', question.id));
+    const rng = seededRandom(hashSeed(options.errorSeed ?? options.runId ?? 'default', question.id));
     if (rng() < (gap.errorRate ?? 0.8)) {
       // PROGRAMMATICALLY select wrong answer - bypass LLM entirely
       const wrongIndices = question.options
@@ -163,35 +234,80 @@ async function askQuestion(
 
   // For post-test with gap and transcript, parse JSON and verify evidence
   if (isPostTest && gap && options.sessionTranscript) {
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as { answer?: number; evidence?: string };
-        const evidence = parsed.evidence || '';
-        const evidenceVerified =
-          evidence.length > 10 && options.sessionTranscript.includes(evidence);
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
 
-        if (!evidenceVerified) {
-          // Force wrong answer if evidence not verified
-          const rng = seededRandom(hashSeed(options.runId ?? 'default', question.id + '_post'));
-          const wrongIndices = question.options
-            .map((_, i) => i)
-            .filter((i) => i !== question.correctIndex);
-          return {
-            answer: wrongIndices[Math.floor(rng() * wrongIndices.length)],
-            evidenceVerified: false,
-            evidenceQuote: evidence,
-          };
-        }
-
+    // No JSON found - force wrong answer for evidence-required questions
+    if (!jsonMatch) {
+      if (evidenceRequired) {
+        const rng = seededRandom(
+          hashSeed(options.errorSeed ?? options.runId ?? 'default', question.id + '_no_json'),
+        );
+        const wrongIndices = question.options
+          .map((_, i) => i)
+          .filter((i) => i !== question.correctIndex);
         return {
-          answer: parsed.answer ?? parseAnswer(text, question.options.length),
-          evidenceVerified: true,
+          answer: wrongIndices[Math.floor(rng() * wrongIndices.length)],
+          evidenceVerified: false,
+          jsonParseFailed: true,
+          rawResponse: text.slice(0, 500),
+        };
+      }
+      const answer = parseAnswer(text, question.options.length);
+      return { answer, evidenceVerified: false, evidenceQuote: '' };
+    }
+
+    try {
+      const parsed = JSON.parse(jsonMatch[0]) as { answer?: number; evidence?: string };
+      const evidence = parsed.evidence || '';
+
+      // Normalize and verify evidence against transcript
+      const searchIn =
+        options.restrictEvidenceToTutorTurns !== false
+          ? extractTutorTurns(options.sessionTranscript)
+          : options.sessionTranscript;
+
+      const normalizedEvidence = normalizeForMatching(evidence);
+      const normalizedTranscript = normalizeForMatching(searchIn);
+
+      const evidenceVerified =
+        normalizedEvidence.length > 10 && normalizedTranscript.includes(normalizedEvidence);
+
+      if (!evidenceVerified) {
+        // Force wrong answer if evidence not verified
+        const rng = seededRandom(
+          hashSeed(options.errorSeed ?? options.runId ?? 'default', question.id + '_post'),
+        );
+        const wrongIndices = question.options
+          .map((_, i) => i)
+          .filter((i) => i !== question.correctIndex);
+        return {
+          answer: wrongIndices[Math.floor(rng() * wrongIndices.length)],
+          evidenceVerified: false,
           evidenceQuote: evidence,
         };
       }
+
+      return {
+        answer: parsed.answer ?? parseAnswer(text, question.options.length),
+        evidenceVerified: true,
+        evidenceQuote: evidence,
+      };
     } catch {
-      // fallback to numeric parsing
+      // JSON parse error - force wrong answer for evidence-required questions
+      if (evidenceRequired) {
+        const rng = seededRandom(
+          hashSeed(options.errorSeed ?? options.runId ?? 'default', question.id + '_json_fail'),
+        );
+        const wrongIndices = question.options
+          .map((_, i) => i)
+          .filter((i) => i !== question.correctIndex);
+        return {
+          answer: wrongIndices[Math.floor(rng() * wrongIndices.length)],
+          evidenceVerified: false,
+          jsonParseFailed: true,
+          rawResponse: text.slice(0, 500),
+        };
+      }
     }
   }
 
