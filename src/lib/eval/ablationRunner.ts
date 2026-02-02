@@ -91,6 +91,8 @@ type AblationRunResult = {
   postTest: TestResult;
   learningGain: number;
   normalizedGain: number;
+  gapLearningGain: number; // Learning gain on gap items only
+  gapNormalizedGain: number; // Normalized gain on gap items only
   transcript: string;
   turnsUsed: number;
   toolUsage: Record<string, number>;
@@ -130,6 +132,8 @@ type AblationSummary = {
       {
         learningGain: { mean: number; sd: number; n: number };
         normalizedGain: { mean: number; sd: number; n: number };
+        gapLearningGain: { mean: number; sd: number; n: number };
+        gapNormalizedGain: { mean: number; sd: number; n: number };
         turnsUsed: { mean: number; sd: number; n: number };
         judgeScore: { mean: number; sd: number; n: number };
         mechanismMetrics: MechanismMetrics;
@@ -143,6 +147,12 @@ type AblationSummary = {
       condition1Mean: number;
       condition2Mean: number;
       tTest: { t: number; df: number; p: number; significant: boolean };
+      // Gap-only metrics for comparisons
+      gapCohenD: number;
+      gapInterpretation: string;
+      gapCondition1Mean: number;
+      gapCondition2Mean: number;
+      gapTTest: { t: number; df: number; p: number; significant: boolean };
     }>;
     interactionEffect: number;
     anova?: AnovaResult;
@@ -172,6 +182,88 @@ type AblationCheckpoint = {
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 5000;
 const CHECKPOINT_FILENAME = 'ablation-checkpoint.json';
+const DEFAULT_CONCURRENCY = 3;
+const MAX_CONCURRENCY = 10;
+
+// ============================================================================
+// Concurrency Utilities
+// ============================================================================
+
+/**
+ * Semaphore for controlling concurrent API calls.
+ */
+class Semaphore {
+  private permits: number;
+  private waiting: Array<() => void> = [];
+
+  constructor(permits: number) {
+    this.permits = permits;
+  }
+
+  async acquire(): Promise<void> {
+    if (this.permits > 0) {
+      this.permits--;
+      return;
+    }
+    return new Promise((resolve) => {
+      this.waiting.push(resolve);
+    });
+  }
+
+  release(): void {
+    if (this.waiting.length > 0) {
+      const next = this.waiting.shift();
+      next?.();
+    } else {
+      this.permits++;
+    }
+  }
+}
+
+/**
+ * Simple hash function for strings to create seeds.
+ */
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+/**
+ * Seeded random number generator for deterministic shuffling.
+ */
+function seededRng(seed: number): () => number {
+  return function () {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Fisher-Yates shuffle with seeded RNG for deterministic ordering.
+ */
+export function shuffleArray<T>(array: T[], seed: number): void {
+  const rng = seededRng(seed);
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+/**
+ * Represents a single run task for parallel execution.
+ */
+type RunTask = {
+  condition: AblationCondition;
+  scenario: AblationScenario;
+  runIndex: number;
+  runId: string;
+};
 
 // ============================================================================
 // Checkpoint Management
@@ -200,7 +292,7 @@ async function loadCheckpoint(outputDir: string): Promise<AblationCheckpoint | n
       console.warn(`Checkpoint version mismatch: expected 1, got ${checkpoint.version}`);
       return null;
     }
-    return checkpoint;
+    return backfillCheckpointGapMetrics(checkpoint);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return null; // No checkpoint exists
@@ -218,6 +310,40 @@ async function deleteCheckpoint(outputDir: string): Promise<void> {
       throw error;
     }
   }
+}
+
+function backfillGapMetrics(result: AblationRunResult): AblationRunResult {
+  const gapPreScore = result.preTest.gapScore ?? result.preTest.score;
+  const gapPostScore = result.postTest.gapScore ?? result.postTest.score;
+  const computedGapLearningGain = gapPostScore - gapPreScore;
+  const computedGapNormalizedGain = calculateLearningGain(gapPreScore, gapPostScore);
+
+  const gapLearningGain = Number.isFinite(result.gapLearningGain)
+    ? result.gapLearningGain
+    : computedGapLearningGain;
+  const gapNormalizedGain = Number.isFinite(result.gapNormalizedGain)
+    ? result.gapNormalizedGain
+    : computedGapNormalizedGain;
+
+  return { ...result, gapLearningGain, gapNormalizedGain };
+}
+
+function backfillCheckpointGapMetrics(checkpoint: AblationCheckpoint): AblationCheckpoint {
+  let updated = false;
+  const results = checkpoint.results.map((result) => {
+    const patched = backfillGapMetrics(result);
+    if (
+      patched.gapLearningGain !== result.gapLearningGain ||
+      patched.gapNormalizedGain !== result.gapNormalizedGain
+    ) {
+      updated = true;
+    }
+    return patched;
+  });
+
+  if (!updated) return checkpoint;
+  console.warn('Checkpoint missing gap metrics; backfilling from pre/post scores.');
+  return { ...checkpoint, results };
 }
 
 function arraysEqual(a: string[], b: string[]): boolean {
@@ -284,6 +410,14 @@ function generateRunId(condition: AblationCondition, scenarioId: string, runInde
   return `${condition}_${scenarioId}_run${runIndex}`;
 }
 
+/**
+ * Generate a condition-independent seed for deterministic forced errors.
+ * This ensures the same pre-test realizations across conditions for the same scenario/run.
+ */
+function generateErrorSeed(scenarioId: string, runIndex: number): string {
+  return `${scenarioId}_run${runIndex}`;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -304,6 +438,8 @@ Options:
   --scenarios <list>    Comma-separated scenario IDs (default: all)
                         Available: ${ABLATION_SCENARIOS.map((s) => s.id).join(', ')}
   --runs <n>            Runs per condition×scenario (default: 3)
+  --concurrency <n>     Max parallel API calls (default: ${DEFAULT_CONCURRENCY}, max: ${MAX_CONCURRENCY})
+  --no-shuffle          Disable run order randomization (for debugging)
   --tutor-model <id>    Tutor model (default: ${DEFAULT_ABLATION_TUTOR_MODEL_ID})
   --student-model <id>  Student simulator model (default: google/gemini-2.5-flash-lite)
   --judge-model <id>    Judge model (default: anthropic/claude-haiku-4.5)
@@ -316,6 +452,7 @@ Options:
 Examples:
   bun run ablation -- --runs 3 --out results/ablation
   bun run ablation -- --conditions full_system,baseline --scenarios linear_equations
+  bun run ablation -- --concurrency 5 --runs 2
 
 Resume after interruption:
   bun run ablation -- --resume --out results/ablation
@@ -452,6 +589,7 @@ async function runSingleAblation(
 
   // Run pre-test (with knowledge gaps to simulate realistic student knowledge)
   console.log(`  [${runId}] Running pre-test...`);
+  const errorSeed = generateErrorSeed(scenario.id, runIndex);
   const preTest = await administerTest(scenario.preTestQuestions, 'pre', {
     auth: resolveAuth({ modelId: config.studentModel, transport: studentTransport }),
     model: config.studentModel,
@@ -460,6 +598,7 @@ async function runSingleAblation(
     testType: 'pre',
     knowledgeGaps: scenario.knowledgeGaps, // Student has gaps before tutoring
     runId, // For deterministic seeding
+    errorSeed, // Condition-independent seed for consistent pre-test realizations
   });
   console.log(`  [${runId}] Pre-test score: ${preTest.score.toFixed(1)}%`);
 
@@ -532,34 +671,20 @@ async function runSingleAblation(
     },
   });
 
-  // Setup student simulator with condition-aware editability instructions
+  // Setup student simulator with condition-independent realistic behaviors
+  // NOTE: We intentionally do NOT tell the simulator about editability per condition.
+  // This avoids confounding student behavior with system capability.
+  // The simulator behaves identically; only the system's ability to respond differs.
   const conditionConfig = CONDITION_CONFIGS[condition];
-  const visibilityInstructions: string[] = [];
-  const editabilityInstructions: string[] = [];
-
-  if (conditionConfig.planVisible && !conditionConfig.planEditable) {
-    visibilityInstructions.push(
-      'You can view the learning plan, but you cannot edit its structure or ordering.',
-    );
-  }
-  if (conditionConfig.learnerModelVisible && !conditionConfig.learnerModelEditable) {
-    visibilityInstructions.push(
-      'You can view your mastery estimates, but you cannot directly edit them.',
-    );
-  }
-
-  if (conditionConfig.planEditable) {
-    editabilityInstructions.push(
-      'You can ask the tutor to modify the learning plan if you want to skip topics you already know, ' +
-        'add topics you want to learn, or change the order of topics.',
-    );
-  }
-  if (conditionConfig.learnerModelEditable) {
-    editabilityInstructions.push(
-      'If you feel the tutor has misjudged your understanding (too high or too low), ' +
-        'you can tell them directly and ask them to adjust their assessment of your mastery.',
-    );
-  }
+  const realisticStudentBehaviors = [
+    'As a realistic student, you may naturally:',
+    '- Mention if you already understand something well or find it too easy',
+    '- Express confusion about why a topic is being covered',
+    '- Ask to focus more on areas where you struggle',
+    '- Speak up if the tutor seems to misjudge your level (too advanced or too basic)',
+    '- Request to skip ahead or slow down based on your comfort',
+    'Express these preferences naturally when they arise - do not force them.',
+  ].join('\n');
 
   const studentSim = new LLMUserSimulator({
     modelId: config.studentModel,
@@ -572,16 +697,8 @@ async function runSingleAblation(
       `Your pre-test score was ${preTest.score.toFixed(0)}%.`,
       'Respond naturally, ask questions when confused, and occasionally make mistakes fitting your persona.',
       scenario.constraints?.length ? `Constraints: ${scenario.constraints.join('; ')}` : '',
-      visibilityInstructions.length > 0 ? '' : null,
-      ...visibilityInstructions,
-      editabilityInstructions.length > 0 ? '' : null,
-      editabilityInstructions.length > 0
-        ? 'IMPORTANT - You have control over the tutoring process:'
-        : null,
-      ...editabilityInstructions,
-      editabilityInstructions.length > 0
-        ? 'Use these abilities naturally when appropriate (e.g., if you already know a topic, or if the tutor seems to misunderstand your level).'
-        : null,
+      '',
+      realisticStudentBehaviors,
     ]
       .filter(Boolean)
       .join('\n'),
@@ -651,12 +768,19 @@ async function runSingleAblation(
     knowledgeGaps: scenario.knowledgeGaps, // Pass gaps so the simulator knows what to check against the transcript
     sessionTranscript: transcript,
     runId, // For deterministic seeding
+    errorSeed, // Condition-independent seed for consistent post-test realizations
   });
   console.log(`  [${runId}] Post-test score: ${postTest.score.toFixed(1)}%`);
 
   // Calculate learning gain
   const learningGain = postTest.score - preTest.score;
   const normalizedGain = calculateLearningGain(preTest.score, postTest.score);
+
+  // Calculate gap-only learning gain
+  const gapPreScore = preTest.gapScore ?? preTest.score;
+  const gapPostScore = postTest.gapScore ?? postTest.score;
+  const gapLearningGain = gapPostScore - gapPreScore;
+  const gapNormalizedGain = calculateLearningGain(gapPreScore, gapPostScore);
 
   // Collect tool usage
   const toolUsage: Record<string, number> = {};
@@ -714,6 +838,8 @@ async function runSingleAblation(
     postTest,
     learningGain,
     normalizedGain,
+    gapLearningGain,
+    gapNormalizedGain,
     transcript,
     turnsUsed: result.snapshots.length,
     toolUsage,
@@ -859,6 +985,8 @@ function calculateStatistics(
     const conditionResults = results.filter((r) => r.condition === condition);
     const gains = conditionResults.map((r) => r.learningGain);
     const normalizedGains = conditionResults.map((r) => r.normalizedGain);
+    const gapGains = conditionResults.map((r) => r.gapLearningGain);
+    const gapNormalizedGains = conditionResults.map((r) => r.gapNormalizedGain);
     const turns = conditionResults.map((r) => r.turnsUsed);
     const judgeScores = conditionResults
       .filter((r) => r.judgeVerdict?.overall_score != null)
@@ -888,6 +1016,8 @@ function calculateStatistics(
     byCondition[condition] = {
       learningGain: calculateStats(gains),
       normalizedGain: calculateStats(normalizedGains),
+      gapLearningGain: calculateStats(gapGains),
+      gapNormalizedGain: calculateStats(gapNormalizedGains),
       turnsUsed: calculateStats(turns),
       judgeScore: calculateStats(judgeScores),
       mechanismMetrics: {
@@ -901,10 +1031,11 @@ function calculateStatistics(
     };
   }
 
-  // Calculate comparisons with t-tests
+  // Calculate comparisons with t-tests (using gap-only metrics as primary)
   const comparisons = COMPARISON_PAIRS.filter(
     (p) => conditions.includes(p.conditions[0]) && conditions.includes(p.conditions[1]),
   ).map((pair) => {
+    // Overall metrics
     const gains1 = results
       .filter((r) => r.condition === pair.conditions[0])
       .map((r) => r.normalizedGain);
@@ -913,6 +1044,17 @@ function calculateStatistics(
       .map((r) => r.normalizedGain);
     const { d, interpretation } = calculateCohenD(gains1, gains2);
     const tTest = welchTTest(gains1, gains2);
+
+    // Gap-only metrics (primary for hypothesis testing)
+    const gapGains1 = results
+      .filter((r) => r.condition === pair.conditions[0])
+      .map((r) => r.gapNormalizedGain);
+    const gapGains2 = results
+      .filter((r) => r.condition === pair.conditions[1])
+      .map((r) => r.gapNormalizedGain);
+    const { d: gapD, interpretation: gapInterpretation } = calculateCohenD(gapGains1, gapGains2);
+    const gapTTest = welchTTest(gapGains1, gapGains2);
+
     return {
       name: pair.name,
       hypothesis: pair.hypothesis,
@@ -925,6 +1067,19 @@ function calculateStatistics(
         df: tTest.df,
         p: tTest.p,
         significant: tTest.significant,
+      },
+      // Gap-only metrics
+      gapCohenD: gapD,
+      gapInterpretation,
+      gapCondition1Mean:
+        gapGains1.length > 0 ? gapGains1.reduce((a, b) => a + b, 0) / gapGains1.length : 0,
+      gapCondition2Mean:
+        gapGains2.length > 0 ? gapGains2.reduce((a, b) => a + b, 0) / gapGains2.length : 0,
+      gapTTest: {
+        t: gapTTest.t,
+        df: gapTTest.df,
+        p: gapTTest.p,
+        significant: gapTTest.significant,
       },
     };
   });
@@ -1073,6 +1228,44 @@ function generateMarkdownTables(summary: AblationSummary): string {
         : 'N/A';
     lines.push(
       `| ${condition} | ${m.planEditsCount} | ${m.masteryOverridesCount} | ${evidenceRate} | ${m.runsWithPlanEdits} | ${m.runsWithMasteryOverrides} |`,
+    );
+  }
+
+  // Gap-Only Learning Gains table (primary outcome measure)
+  lines.push(
+    '',
+    '## Gap-Only Learning Gains by Condition (Primary Outcome)',
+    '',
+    '> Gap-only metrics focus on knowledge gap topics, providing a more sensitive measure of tutoring effectiveness.',
+    '',
+    '| Condition | Gap Learning Gain | Gap Normalized Gain |',
+    '|-----------|------------------|---------------------|',
+  );
+
+  for (const condition of summary.config.conditions) {
+    const stats = summary.statistics.byCondition[condition];
+    if (!stats) continue;
+    lines.push(
+      `| ${condition} | ${stats.gapLearningGain.mean.toFixed(1)} ± ${stats.gapLearningGain.sd.toFixed(1)} | ` +
+        `${(stats.gapNormalizedGain.mean * 100).toFixed(1)}% ± ${(stats.gapNormalizedGain.sd * 100).toFixed(1)}% |`,
+    );
+  }
+
+  // Gap-Only Pairwise Comparisons table
+  lines.push(
+    '',
+    "## Gap-Only Pairwise Comparisons (Welch's t-test)",
+    '',
+    "| Comparison | Gap Cohen's d | Interp. | t | df | p-value | Sig. | Gap C1 Mean | Gap C2 Mean |",
+    '|------------|--------------|---------|---|----|---------|----- |-------------|-------------|',
+  );
+
+  for (const comp of summary.statistics.comparisons) {
+    const sig = comp.gapTTest.significant ? '*' : '';
+    lines.push(
+      `| ${comp.name} | ${comp.gapCohenD.toFixed(3)} | ${comp.gapInterpretation} | ` +
+        `${comp.gapTTest.t.toFixed(3)} | ${comp.gapTTest.df.toFixed(1)} | ${comp.gapTTest.p.toFixed(4)} | ${sig} | ` +
+        `${(comp.gapCondition1Mean * 100).toFixed(1)}% | ${(comp.gapCondition2Mean * 100).toFixed(1)}% |`,
     );
   }
 
@@ -1281,6 +1474,11 @@ export async function runAblationCli(argv: string[]) {
     : [...ABLATION_SCENARIOS];
 
   const runsPerCell = typeof args.runs === 'string' ? parseInt(args.runs, 10) : 3;
+  const concurrency = Math.min(
+    MAX_CONCURRENCY,
+    Math.max(1, typeof args.concurrency === 'string' ? parseInt(args.concurrency, 10) : DEFAULT_CONCURRENCY),
+  );
+  const shuffleRuns = args['no-shuffle'] !== true;
   const tutorModel =
     typeof args['tutor-model'] === 'string' ? args['tutor-model'] : DEFAULT_ABLATION_TUTOR_MODEL_ID;
   const studentModel =
@@ -1363,6 +1561,8 @@ export async function runAblationCli(argv: string[]) {
   console.log(`Scenarios:  ${scenarios.map((s) => s.id).join(', ')}`);
   console.log(`Runs/cell:  ${runsPerCell}`);
   console.log(`Total runs: ${totalRuns}`);
+  console.log(`Concurrency: ${concurrency}`);
+  console.log(`Shuffle:    ${shuffleRuns ? 'enabled' : 'disabled'}`);
   console.log(`Tutor:      ${tutorModel}`);
   console.log(`Student:    ${studentModel}`);
   console.log(`Judge:      ${judgeModel}`);
@@ -1389,6 +1589,14 @@ export async function runAblationCli(argv: string[]) {
 
   checkpoint = buildCheckpoint();
 
+  // Mutex for atomic checkpoint updates
+  let checkpointLock = Promise.resolve();
+  const withCheckpointLock = async (fn: () => Promise<void>): Promise<void> => {
+    const prev = checkpointLock;
+    checkpointLock = prev.then(fn).catch(() => {});
+    await checkpointLock;
+  };
+
   // Setup graceful shutdown handler
   let shuttingDown = false;
   async function handleShutdown(): Promise<void> {
@@ -1396,8 +1604,10 @@ export async function runAblationCli(argv: string[]) {
     shuttingDown = true;
 
     console.log('\n\nInterrupted! Saving checkpoint...');
-    checkpoint = buildCheckpoint();
-    await saveCheckpoint(checkpoint, outputDir);
+    await withCheckpointLock(async () => {
+      checkpoint = buildCheckpoint();
+      await saveCheckpoint(checkpoint, outputDir);
+    });
     console.log(`Checkpoint saved with ${checkpoint.completedRunIds.length}/${totalRuns} runs.`);
     console.log(`\nResume with: bun run ablation -- --resume --out ${outputDir}`);
     process.exit(130);
@@ -1408,69 +1618,96 @@ export async function runAblationCli(argv: string[]) {
 
   let completedRuns = completedRunIds.size;
 
+  // Build flat array of all run tasks
+  const allTasks: RunTask[] = [];
   for (const condition of conditions) {
-    console.log(`\n--- Condition: ${condition} (${CONDITION_CONFIGS[condition].name}) ---`);
-
     for (const scenario of scenarios) {
-      console.log(`\n> Scenario: ${scenario.id} (${scenario.title})`);
-
-      for (let run = 0; run < runsPerCell; run++) {
-        const runId = generateRunId(condition, scenario.id, run);
-
-        if (completedRunIds.has(runId)) {
-          console.log(`  [${runId}] Skipped (already completed)`);
-          continue;
-        }
-
-        let success = false;
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-          try {
-            const result = await runSingleAblation(scenario, condition, run, runId, {
-              tutorModel,
-              studentModel,
-              judgeModel,
-              apiKeys,
-              reasoningSupport,
-            });
-
-            results.push(result);
-            completedRunIds.add(runId);
-            completedRuns++;
-
-            checkpoint = buildCheckpoint();
-            await saveCheckpoint(checkpoint, outputDir);
-
-            const elapsed = (Date.now() - startTime) / 1000;
-            const avgPerRun = elapsed / completedRuns;
-            const remaining = (totalRuns - completedRuns) * avgPerRun;
-            console.log(
-              `  Progress: ${completedRuns}/${totalRuns} (${((completedRuns / totalRuns) * 100).toFixed(1)}%) ` +
-                `| Est. remaining: ${(remaining / 60).toFixed(1)} min`,
-            );
-
-            success = true;
-            break;
-          } catch (error) {
-            const errMsg = error instanceof Error ? error.message : String(error);
-            if (attempt < MAX_RETRIES) {
-              const delayMs = RETRY_DELAY_MS * attempt;
-              console.warn(
-                `  [RETRY ${attempt}/${MAX_RETRIES}] ${runId}: ${errMsg}. Waiting ${delayMs / 1000}s...`,
-              );
-              await sleep(delayMs);
-            } else {
-              console.error(`  [FAILED] ${runId} after ${MAX_RETRIES} attempts: ${errMsg}`);
-              await saveCheckpoint(buildCheckpoint(), outputDir);
-            }
-          }
-        }
-
-        if (!success) {
-          console.error(`  Skipping ${runId} due to repeated failures.`);
-        }
+      for (let runIndex = 0; runIndex < runsPerCell; runIndex++) {
+        const runId = generateRunId(condition, scenario.id, runIndex);
+        allTasks.push({ condition, scenario, runIndex, runId });
       }
     }
   }
+
+  // Filter out completed runs
+  const pendingTasks = allTasks.filter((task) => !completedRunIds.has(task.runId));
+
+  // Shuffle to address run-order confound (using session seed for determinism when resuming)
+  if (shuffleRuns) {
+    const shuffleSeed = checkpoint?.sessionId ? hashString(checkpoint.sessionId) : Date.now();
+    shuffleArray(pendingTasks, shuffleSeed);
+    console.log(`\nRun order: shuffled (seed: ${shuffleSeed})`);
+  } else {
+    console.log('\nRun order: sequential (shuffle disabled)');
+  }
+
+  console.log(`Pending runs: ${pendingTasks.length}/${totalRuns}`);
+
+  // Semaphore for concurrency control
+  const semaphore = new Semaphore(concurrency);
+
+  // Execute run with semaphore and retry logic
+  const executeRun = async (task: RunTask): Promise<void> => {
+    await semaphore.acquire();
+    try {
+      let success = false;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const result = await runSingleAblation(task.scenario, task.condition, task.runIndex, task.runId, {
+            tutorModel,
+            studentModel,
+            judgeModel,
+            apiKeys,
+            reasoningSupport,
+          });
+
+          // Atomic checkpoint update
+          await withCheckpointLock(async () => {
+            results.push(result);
+            completedRunIds.add(task.runId);
+            completedRuns++;
+            checkpoint = buildCheckpoint();
+            await saveCheckpoint(checkpoint, outputDir);
+          });
+
+          const elapsed = (Date.now() - startTime) / 1000;
+          const avgPerRun = elapsed / completedRuns;
+          const remaining = (totalRuns - completedRuns) * avgPerRun;
+          console.log(
+            `  Progress: ${completedRuns}/${totalRuns} (${((completedRuns / totalRuns) * 100).toFixed(1)}%) ` +
+              `| Est. remaining: ${(remaining / 60).toFixed(1)} min`,
+          );
+
+          success = true;
+          break;
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          if (attempt < MAX_RETRIES) {
+            const delayMs = RETRY_DELAY_MS * attempt;
+            console.warn(
+              `  [RETRY ${attempt}/${MAX_RETRIES}] ${task.runId}: ${errMsg}. Waiting ${delayMs / 1000}s...`,
+            );
+            await sleep(delayMs);
+          } else {
+            console.error(`  [FAILED] ${task.runId} after ${MAX_RETRIES} attempts: ${errMsg}`);
+            await withCheckpointLock(async () => {
+              await saveCheckpoint(buildCheckpoint(), outputDir);
+            });
+          }
+        }
+      }
+
+      if (!success) {
+        console.error(`  Skipping ${task.runId} due to repeated failures.`);
+      }
+    } finally {
+      semaphore.release();
+    }
+  };
+
+  // Execute all pending tasks with concurrency control
+  console.log(`\n--- Starting parallel execution (concurrency: ${concurrency}) ---`);
+  await Promise.allSettled(pendingTasks.map(executeRun));
 
   process.removeListener('SIGINT', handleShutdown);
   process.removeListener('SIGTERM', handleShutdown);
