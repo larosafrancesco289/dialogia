@@ -3,7 +3,7 @@ import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { useTier } from '@/lib/auth/tierContext';
-import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
+import { useTierTutorModelId } from '@/lib/hooks/useTierModels';
 import {
   selectIsTutorEnabled,
   selectMessagesForCurrentChat,
@@ -31,7 +31,7 @@ export type MobileHeaderState = {
 };
 
 export function useMobileHeaderState(): MobileHeaderState {
-  const { isFreeTier, isStudyTier } = useTier();
+  const { isStudyTier } = useTier();
 
   const {
     chats,
@@ -77,12 +77,7 @@ export function useMobileHeaderState(): MobileHeaderState {
   const tutorDefaultModelId = uiState.tutor.defaultModelId;
   const rawTutorModelId =
     chat?.settings?.features.tutor.defaultModelId || chat?.settings?.modelId || tutorDefaultModelId;
-  const tutorModelId = useMemo(() => {
-    if (isFreeTier && rawTutorModelId && !FREE_MODEL_IDS.includes(rawTutorModelId)) {
-      return DEFAULT_FREE_TUTOR_MODEL_ID;
-    }
-    return rawTutorModelId;
-  }, [isFreeTier, rawTutorModelId]);
+  const tutorModelId = useTierTutorModelId(rawTutorModelId);
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(
     () =>

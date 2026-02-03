@@ -8,8 +8,7 @@ import { springs } from '@/lib/mobile/springConfig';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { ModelPicker } from '@/components/ModelPicker';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
-import { useTier } from '@/lib/auth/tierContext';
-import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
+import { useTierTutorModelId } from '@/lib/hooks/useTierModels';
 import { selectIsStreaming, selectIsTutorEnabled } from '@/lib/store/selectors';
 import styles from './MobileCollapsingHeader.module.css';
 
@@ -21,8 +20,6 @@ import styles from './MobileCollapsingHeader.module.css';
  * - Model picker or Tutor badge
  */
 export function MobileCollapsingHeader() {
-  const { isFreeTier } = useTier();
-
   const { chats, selectedChatId, models, headerVisible, isStreaming, tutorActive } = useChatStore(
     (s) => ({
       chats: s.chats,
@@ -43,12 +40,7 @@ export function MobileCollapsingHeader() {
   // Resolve tutor model with tier awareness
   const rawTutorModelId =
     chat?.settings?.features.tutor.defaultModelId || chat?.settings?.modelId || tutorDefaultModelId;
-  const tutorModelId = useMemo(() => {
-    if (isFreeTier && rawTutorModelId && !FREE_MODEL_IDS.includes(rawTutorModelId)) {
-      return DEFAULT_FREE_TUTOR_MODEL_ID;
-    }
-    return rawTutorModelId;
-  }, [isFreeTier, rawTutorModelId]);
+  const tutorModelId = useTierTutorModelId(rawTutorModelId);
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(
     () =>

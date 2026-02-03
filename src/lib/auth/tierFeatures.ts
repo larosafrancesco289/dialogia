@@ -1,10 +1,6 @@
 import type { AccessTier } from '@/lib/auth/types';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import {
-  DEFAULT_FREE_MODEL_ID,
-  DEFAULT_FREE_TUTOR_MODEL_ID,
-  FREE_MODEL_IDS,
-} from '@/data/freeModels';
+import { DEFAULT_FREE_MODEL_ID, DEFAULT_FREE_TUTOR_MODEL_ID, isFreeModel } from '@/data/freeModels';
 
 export type TierFeatures = {
   canUseVoice: boolean;
@@ -53,7 +49,7 @@ export function isTutorForcedForTier(tier: AccessTier): boolean {
 
 export function isModelAllowedForTier(tier: AccessTier, modelId: string): boolean {
   if (canUseAllModelsForTier(tier)) return true;
-  return FREE_MODEL_IDS.includes(modelId);
+  return isFreeModel(modelId);
 }
 
 export function getDefaultModelIdForTier(tier: AccessTier): string {

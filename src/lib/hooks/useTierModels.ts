@@ -8,6 +8,7 @@ import { CURATED_MODELS } from '@/data/curatedModels';
 import {
   canUseAllModelsForTier,
   getDefaultModelIdForTier,
+  getDefaultTutorModelIdForTier,
   isModelAllowedForTier,
 } from '@/lib/auth/tierFeatures';
 import { isModelTransportAvailable, isTransportAvailable } from '@/lib/policy/providerAvailability';
@@ -74,4 +75,20 @@ export function useIsModelAllowed(modelId: string): boolean {
     if (isLoading) return true;
     return isModelAllowedForTier(tier, modelId);
   }, [modelId, isLoading, tier]);
+}
+
+/**
+ * Resolve a tutor model ID with tier awareness.
+ * Returns the free tutor model for free tier users if the requested model is not free.
+ */
+export function useTierTutorModelId(rawModelId: string | undefined): string | undefined {
+  const { isFreeTier } = useTier();
+
+  return useMemo(() => {
+    if (!rawModelId) return rawModelId;
+    if (isFreeTier && !isModelAllowedForTier('free', rawModelId)) {
+      return getDefaultTutorModelIdForTier('free');
+    }
+    return rawModelId;
+  }, [isFreeTier, rawModelId]);
 }

@@ -4,7 +4,7 @@ import { XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/o
 import { formatModelLabel } from '@/lib/models';
 import { useTierCuratedModels } from '@/lib/hooks/useTierModels';
 import { useTier } from '@/lib/auth/tierContext';
-import { FREE_MODEL_IDS } from '@/data/freeModels';
+import { isFreeModel } from '@/data/freeModels';
 import type { ZdrLists } from '@/lib/policy/zdr';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { getModelTransportLabel } from '@/lib/providers';
@@ -111,7 +111,7 @@ export function ModelPicker({
     return favoriteModelIds.filter((id) => {
       if (curatedSet.has(id)) return false;
       // For free tier, only show favorites that are free models
-      if (!tierLoading && isFreeTier && !FREE_MODEL_IDS.includes(id)) return false;
+      if (!tierLoading && isFreeTier && !isFreeModel(id)) return false;
       return true;
     });
   }, [favoriteModelIds, curatedIds, isFreeTier, tierLoading]);

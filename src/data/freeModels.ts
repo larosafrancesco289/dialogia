@@ -1,9 +1,5 @@
 import type { ComponentType } from 'react';
-import {
-  ChatBubbleLeftRightIcon,
-  CodeBracketIcon,
-  SparklesIcon,
-} from '@heroicons/react/24/outline';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 
 type FreeCuratedModel = {
   id: string;
@@ -13,78 +9,43 @@ type FreeCuratedModel = {
 };
 
 /**
- * Free model IDs available on OpenRouter.
- * These models can be used without cost.
- *
- * To find free models on OpenRouter:
- * 1. Go to https://openrouter.ai/models
- * 2. Filter by "Free" pricing
- * 3. Add model IDs here (format: provider/model-name:free)
+ * The dynamic free model endpoint that automatically routes
+ * to the best available free model on OpenRouter.
  */
-export const FREE_MODEL_IDS: string[] = [
-  'xiaomi/mimo-v2-flash:free',
-  'allenai/olmo-3.1-32b-think:free',
-  'nvidia/nemotron-3-nano-30b-a3b:free',
-  'mistralai/devstral-2512:free',
-];
+export const OPENROUTER_FREE_MODEL_ID = 'openrouter/free';
 
 /**
  * Default model for free tier users.
- * Make sure this ID is in FREE_MODEL_IDS.
+ * Uses OpenRouter's dynamic free routing.
  */
 export const DEFAULT_FREE_MODEL: FreeCuratedModel = {
-  id: 'xiaomi/mimo-v2-flash:free',
-  name: 'Mimo V2 Flash',
-  description: 'Fast multimodal model with vision capabilities',
-  Icon: ChatBubbleLeftRightIcon,
-};
-
-/**
- * Curated free models to show in the model picker.
- * These appear in the "Recommended" section for free tier users.
- */
-export const FREE_CURATED_MODELS: FreeCuratedModel[] = [
-  DEFAULT_FREE_MODEL,
-  {
-    id: 'allenai/olmo-3.1-32b-think:free',
-    name: 'OLMo 3.1 32B Think',
-    description: 'Strong reasoning with extended thinking capabilities',
-    Icon: SparklesIcon,
-  },
-  {
-    id: 'nvidia/nemotron-3-nano-30b-a3b:free',
-    name: 'Nemotron 3 Nano',
-    description: 'Efficient 30B model optimized for fast responses',
-    Icon: ChatBubbleLeftRightIcon,
-  },
-  {
-    id: 'mistralai/devstral-2512:free',
-    name: 'Devstral',
-    description: 'Specialized for code generation and programming tasks',
-    Icon: CodeBracketIcon,
-  },
-];
-
-export const DEFAULT_FREE_MODEL_ID = DEFAULT_FREE_MODEL.id;
-
-/**
- * Default tutor model for free tier users.
- * OLMo 3.1 32B Think has strong reasoning capabilities suitable for tutoring.
- */
-export const DEFAULT_FREE_TUTOR_MODEL: FreeCuratedModel = {
-  id: 'allenai/olmo-3.1-32b-think:free',
-  name: 'OLMo 3.1 32B Think',
-  description: 'Strong reasoning with extended thinking capabilities',
+  id: OPENROUTER_FREE_MODEL_ID,
+  name: 'Auto (Free)',
+  description: 'Automatically routes to the best available free model',
   Icon: SparklesIcon,
 };
 
-export const DEFAULT_FREE_TUTOR_MODEL_ID = DEFAULT_FREE_TUTOR_MODEL.id;
+export const DEFAULT_FREE_MODEL_ID = OPENROUTER_FREE_MODEL_ID;
+
+/**
+ * Curated free models to show in the model picker.
+ * Shows only the auto-routing model for free tier users.
+ */
+export const FREE_CURATED_MODELS: FreeCuratedModel[] = [DEFAULT_FREE_MODEL];
+
+/**
+ * Default tutor model for free tier users.
+ * Also uses the dynamic free routing endpoint.
+ */
+export const DEFAULT_FREE_TUTOR_MODEL_ID = OPENROUTER_FREE_MODEL_ID;
 
 /**
  * Check if a model ID is a free model.
+ * Returns true for the openrouter/free endpoint or any model ending in :free.
  */
 export function isFreeModel(modelId: string): boolean {
-  return FREE_MODEL_IDS.includes(modelId);
+  if (modelId === OPENROUTER_FREE_MODEL_ID) return true;
+  return modelId.endsWith(':free');
 }
 
 export type { FreeCuratedModel };
