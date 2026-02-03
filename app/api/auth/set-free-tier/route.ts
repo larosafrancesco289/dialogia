@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { AuthClaims, createAuthToken, getAuthCookieSecret } from '@/lib/auth';
+import { type AuthClaims, createAuthToken, getAuthCookieSecret } from '@/lib/auth/token.server';
 import { setAuthCookies } from '@/lib/auth/cookies.server';
 import { computeSecretFingerprintNode } from '@/lib/auth/fingerprint.node';
 import { jsonError } from '@/lib/server/route';

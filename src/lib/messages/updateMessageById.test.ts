@@ -49,3 +49,16 @@ test('updateMessageById replaces the matching message', () => {
   assert.equal(result?.messagesById?.m1?.content, 'updated');
   assert.equal(result?.messageIdsByChatId, undefined);
 });
+
+test('updateMessageById guards against identity changes', () => {
+  const state = {
+    messagesById: { m1: message() },
+    messageIdsByChatId: { c1: ['m1'] },
+  };
+  assert.throws(() => {
+    updateMessageById(state, 'c1', 'm1', (msg) => ({
+      ...msg,
+      id: 'm2',
+    }));
+  }, /cannot change message id or chatId/i);
+});

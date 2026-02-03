@@ -1,6 +1,6 @@
 import type { Message } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
-import { getNextNode, updateNodeStatus, isPlanComplete } from '@/lib/learningPlan/service';
+import { getNextNode, updateNodeStatus, isPlanComplete } from '@/lib/learning-plan/service';
 
 type AdvanceTopicArgs = {
   nodeId?: string;

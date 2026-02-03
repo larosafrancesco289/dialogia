@@ -1,7 +1,7 @@
 # Dialogia Design System
 
 > A comprehensive guide to the visual language and component patterns of Dialogia.
-> Use alongside the `frontend-design` skill to build or refactor UI components.
+> Use alongside `docs/CONVENTIONS.md` and existing UI components to build or refactor UI.
 
 ---
 
@@ -37,6 +37,7 @@ Dialogia's aesthetic evokes a **scholarly workspace** — the feeling of sitting
 - Use tokenized global classes for recurring UI patterns (buttons, cards, badges, inputs).
 - Promote styles into `styles/foundations.css` when a pattern appears in 3+ places or needs
   theme-token alignment.
+- Use the `cn` helper (`src/lib/ui/cn.ts`) to compose conditional class names.
 
 ### CSS modules vs global component CSS
 

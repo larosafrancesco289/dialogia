@@ -1,79 +1,63 @@
-'use client';
-import { useCallback, useEffect, useRef } from 'react';
-import type React from 'react';
+import { useRef } from 'react';
 
-const DEFAULT_IGNORE_SELECTOR = 'button, .icon-button, a, input, textarea, [role="button"], .badge';
-
-export function useLongPressSheet(opts: {
-  isEnabled: boolean;
+type UseLongPressSheetOptions = {
+  enabled: boolean;
+  onLongPress: () => void;
+  onTap?: () => void;
   delayMs?: number;
-  slopPx?: number;
-  ignoreSelector?: string;
-  onTrigger: () => void;
-}) {
-  const {
-    isEnabled,
-    onTrigger,
-    delayMs = 320,
-    slopPx = 12,
-    ignoreSelector = DEFAULT_IGNORE_SELECTOR,
-  } = opts;
-  const timerRef = useRef<number | undefined>();
-  const startRef = useRef<{ x: number; y: number } | null>(null);
+  moveThreshold?: number;
+};
 
-  const clearTimer = useCallback(() => {
-    if (timerRef.current != null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = undefined;
-    }
-    startRef.current = null;
-  }, []);
+export function useLongPressSheet(opts: UseLongPressSheetOptions) {
+  const { enabled, onLongPress, onTap, delayMs = 480, moveThreshold = 10 } = opts;
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const timerId = useRef<number | null>(null);
+  const fired = useRef(false);
 
-  useEffect(() => clearTimer, [clearTimer]);
+  const clearTimer = () => {
+    if (timerId.current) window.clearTimeout(timerId.current);
+    timerId.current = null;
+  };
 
-  const onPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLElement>) => {
-      if (!isEnabled) return;
-      if (event.pointerType === 'mouse') return;
-      const target = event.target as HTMLElement | null;
-      if (target && ignoreSelector && target.closest(ignoreSelector)) return;
+  const onPointerDown = (event: React.PointerEvent) => {
+    if (!enabled) return;
+    if (event.pointerType === 'mouse') return;
+    startX.current = event.clientX;
+    startY.current = event.clientY;
+    fired.current = false;
+    clearTimer();
+    timerId.current = window.setTimeout(() => {
+      fired.current = true;
+      onLongPress();
+    }, delayMs);
+  };
 
-      startRef.current = { x: event.clientX, y: event.clientY };
-      timerRef.current = window.setTimeout(() => {
-        clearTimer();
-        onTrigger();
-      }, delayMs);
+  const onPointerMove = (event: React.PointerEvent) => {
+    if (!enabled || !timerId.current) return;
+    const dx = Math.abs(event.clientX - startX.current);
+    const dy = Math.abs(event.clientY - startY.current);
+    if (dx > moveThreshold || dy > moveThreshold) clearTimer();
+  };
 
-      const onMove = (ev: PointerEvent) => {
-        const start = startRef.current;
-        if (!start) return;
-        const dx = Math.abs(ev.clientX - start.x);
-        const dy = Math.abs(ev.clientY - start.y);
-        if (dx > slopPx || dy > slopPx) {
-          clearTimer();
-        }
-      };
-      const onEnd = () => {
-        clearTimer();
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onEnd);
-        window.removeEventListener('pointercancel', onEnd);
-      };
-      window.addEventListener('pointermove', onMove, { passive: true });
-      window.addEventListener('pointerup', onEnd);
-      window.addEventListener('pointercancel', onEnd);
-    },
-    [isEnabled, ignoreSelector, delayMs, slopPx, onTrigger, clearTimer],
-  );
+  const onPointerUp = (event: React.PointerEvent) => {
+    if (!enabled) return;
+    const moved =
+      Math.abs(event.clientX - startX.current) > moveThreshold ||
+      Math.abs(event.clientY - startY.current) > moveThreshold;
+    const shouldTap = !fired.current && !moved;
+    clearTimer();
+    if (shouldTap) onTap?.();
+  };
 
-  const onContextMenu = useCallback(
-    (event: React.MouseEvent<HTMLElement>) => {
-      if (!isEnabled) return;
-      event.preventDefault();
-      onTrigger();
-    },
-    [isEnabled, onTrigger],
-  );
+  const onPointerCancel = () => {
+    clearTimer();
+  };
 
-  return { onPointerDown, onContextMenu };
+  return {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+  };
 }

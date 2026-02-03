@@ -1,6 +1,6 @@
 'use client';
-import { createPortal } from 'react-dom';
 import { useEffect, useRef } from 'react';
+import { DialogOverlay, DialogPortal, DialogSurface } from '@/components/ui/Dialog';
 
 type Props = {
   open: boolean;
@@ -40,33 +40,30 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[90] settings-overlay bg-black/40"
-      role="dialog"
-      aria-modal="true"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
-    >
-      <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
-        <div className="card p-4 w-full max-w-sm glass-panel">
-          <div className="text-base font-medium mb-1">{title}</div>
-          {description && <div className="text-sm text-muted-foreground mb-4">{description}</div>}
-          <div className="flex items-center justify-end gap-2">
-            <button ref={cancelRef} className="btn-outline btn-sm" onClick={onCancel}>
-              {cancelLabel}
-            </button>
-            <button
-              className="btn btn-sm bg-accent text-surface hover:bg-accent/90"
-              onClick={onConfirm}
-            >
-              {confirmLabel}
-            </button>
-          </div>
+  return (
+    <DialogPortal>
+      <DialogOverlay
+        className="fixed inset-0 z-[90] settings-overlay bg-black/40"
+        onClose={onCancel}
+      >
+        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
+          <DialogSurface className="card p-4 w-full max-w-sm glass-panel" ariaLabel={title}>
+            <div className="text-base font-medium mb-1">{title}</div>
+            {description && <div className="text-sm text-muted-foreground mb-4">{description}</div>}
+            <div className="flex items-center justify-end gap-2">
+              <button ref={cancelRef} className="btn-outline btn-sm" onClick={onCancel}>
+                {cancelLabel}
+              </button>
+              <button
+                className="btn btn-sm bg-accent text-surface hover:bg-accent/90"
+                onClick={onConfirm}
+              >
+                {confirmLabel}
+              </button>
+            </div>
+          </DialogSurface>
         </div>
-      </div>
-    </div>,
-    document.body,
+      </DialogOverlay>
+    </DialogPortal>
   );
 }

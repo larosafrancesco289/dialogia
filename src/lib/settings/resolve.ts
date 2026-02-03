@@ -11,10 +11,10 @@ import type { AccessTier } from '@/lib/auth/types';
 import { providerSortFromRoutePref, selectSearchProvider } from '@/lib/policy/provider';
 import { readNextOverrides } from '@/lib/ui/next';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
-import { applyTutorDefaults } from '@/lib/tutor/defaults';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { normalizeParallelModels } from '@/lib/models/normalization';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
+import { normalizeChatSettings } from '@/lib/settings/normalize';
 
 export type ResolvedTurnSettings = {
   modelId: string;
@@ -122,25 +122,13 @@ export function resolveNewChatSettings(opts: {
     },
   };
 
-  if (settings.features.tutor.enabled) {
-    const ensured = applyTutorDefaults({
-      ui,
-      chat: { settings },
-      fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-    });
-    Object.assign(settings, ensured.nextSettings, {
-      features: {
-        ...settings.features,
-        tutor: {
-          ...settings.features.tutor,
-          enabled: true,
-        },
-      },
-      parallelModels: [],
-    });
-  }
-
-  return settings;
+  return normalizeChatSettings(settings, {
+    fallbackModelId,
+    fallbackSystem,
+    fallbackTutorModelId: DEFAULT_TUTOR_MODEL_ID,
+    ui,
+    applyTutorDefaults: true,
+  });
 }
 
 export function resolveTurnSettings(args: {

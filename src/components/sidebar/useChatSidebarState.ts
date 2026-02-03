@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop } from '@/lib/dragDrop';
-import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import type { Chat, Folder } from '@/lib/types';
 
 type ChatSidebarStateInput = {
@@ -84,8 +85,8 @@ export function useChatSidebarState({
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [query, setQuery] = useState('');
-  const isMobile = useIsMobile();
-  const isTablet = useIsMobile(768);
+  const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
+  const isTablet = useMediaQuery(MEDIA_QUERIES.tablet);
 
   useEffect(() => {
     loadModels();

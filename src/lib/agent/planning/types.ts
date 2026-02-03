@@ -1,10 +1,10 @@
 import type {
   PlanTurnOptions,
   PlanTurnResult,
-  SearchResult,
   ToolDefinition,
   TutorToolName,
 } from '@/lib/agent/types';
+import type { SearchResult } from '@/lib/search/types';
 import type { TutorPhase, TutorToolPolicy } from '@/lib/agent/tutor/state';
 
 export type PlanningContext = {

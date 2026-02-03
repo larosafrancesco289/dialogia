@@ -37,7 +37,7 @@ business logic that is easy to test.
   `src/lib/agent/planning/*`, streaming logic lives in `src/lib/agent/streaming.ts`, and heuristics
   live in `src/lib/agent/streaming/*`. `regenerate.ts` isolates regen logic so services stay thin.
   `src/lib/agent/orchestrator/*` hosts the turn runner and lifecycle management.
-- **Turn Runtime** — Neutral per-turn helpers (`src/lib/turnRuntime/*`) that are used by both agent
+- **Turn Runtime** — Neutral per-turn helpers (`src/lib/turns/runtime/*`) that are used by both agent
   and service layers, including abort controllers, metrics, and tool-call logging.
 - **Services** — Cross-cutting orchestrators in `src/lib/services/*` that connect the store to the
   agent layer. `services/turns.ts` owns send/regenerate flows, with shared helpers in
@@ -50,6 +50,9 @@ business logic that is easy to test.
   - ZDR cache helpers and enforcement live under `src/lib/policy/zdr/*`, with
     `src/lib/policy/zdr/index.ts` re-exporting helpers (`computeZdrFilter`,
     `computeZdrFilterCached`, `guardZdrOrNotifyCached`) so services can rely on a single façade.
+- **Attachments** — Pipeline lives in `src/lib/attachments/*` with UI → prepare → prompt stages.
+  PDFs are extracted client-side into text blocks for prompt use, with small files optionally sent
+  as file blocks.
 - **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Brave search proxy in
   `app/api/brave/route.ts`, X.AI voice session in
   `app/api/xai/session/route.ts`, DeepResearch in `app/api/deep-research/route.ts`, and auth routes
@@ -57,16 +60,22 @@ business logic that is easy to test.
 
 ## Public Module Surfaces
 
-| Area                 | Import from                      | Notes                                                                 |
-| -------------------- | -------------------------------- | --------------------------------------------------------------------- |
-| Store entrypoints    | `src/lib/store/index.ts`         | Zustand store composition + `useChatStore`.                           |
-| Message helpers      | `src/lib/messages/indexing.ts`   | O(1) message lookup/update helpers.                                   |
-| Turn runtime helpers | `src/lib/turnRuntime/*`          | Abort controllers, metrics, tool-call logging.                        |
-| Tutor domain         | `src/lib/tutor/index.ts`         | Profile, context, defaults, deck.                                     |
-| DeepResearch client  | `src/lib/deepResearch/index.ts`  | Client-safe entrypoint for the DeepResearch flow.                     |
-| DeepResearch server  | `src/lib/deepResearch/server.ts` | Server-only engine/tools for API routes.                              |
-| OpenRouter transport | `src/lib/openrouter/index.ts`    | Transport client; request builder in `src/lib/openrouter/request.ts`. |
-| Schemas              | `src/lib/schemas/*`              | Zod schemas + JSON schema builder.                                    |
+Prefer these public entrypoints over deep internal imports when extending the system. They provide
+the stable, supported surface for cross-domain use.
+
+| Area                 | Import from                       | Notes                                                                 |
+| -------------------- | --------------------------------- | --------------------------------------------------------------------- |
+| Store entrypoints    | `src/lib/store/index.ts`          | Zustand store composition + `useChatStore`.                           |
+| Message helpers      | `src/lib/messages/indexing.ts`    | O(1) message lookup/update helpers.                                   |
+| Agent entrypoints    | `src/lib/agent/index.ts`          | Compose/plan/stream + orchestrator exports.                           |
+| Tool registry        | `src/lib/tools/index.ts`          | Tool definitions, metadata, handlers, and name guards.                |
+| Search helpers       | `src/lib/search/index.ts`         | Search tool definitions + source formatting helpers.                  |
+| Turn runtime helpers | `src/lib/turns/runtime/*`         | Abort controllers, metrics, tool-call logging.                        |
+| Tutor domain         | `src/lib/tutor/index.ts`          | Profile, context, defaults, deck.                                     |
+| DeepResearch client  | `src/lib/deep-research/index.ts`  | Client-safe entrypoint for the DeepResearch flow.                     |
+| DeepResearch server  | `src/lib/deep-research/server.ts` | Server-only engine/tools for API routes.                              |
+| OpenRouter transport | `src/lib/openrouter/index.ts`     | Transport client; request builder in `src/lib/openrouter/request.ts`. |
+| Schemas              | `src/lib/schemas/*`               | Zod schemas + JSON schema builder.                                    |
 
 ## Server-only Import Policy
 
@@ -141,15 +150,15 @@ business logic that is easy to test.
 
 ## Extending Providers or Tools
 
-1. Add provider metadata to `src/data/curatedModels.ts` and update `src/lib/models.ts` if new
+1. Add provider metadata to `src/data/curatedModels.ts` and update `src/lib/models/index.ts` if new
    capability flags are required (e.g., vision, audio).
 2. Implement transport changes in `src/lib/openrouter/*` or a new transport module so all callers
    inherit the contract. Request payload tweaks should flow through provider adapters (e.g.,
    `src/lib/openrouter/request.ts`), while shared contracts live in `src/lib/transport/*`.
-3. Define tool schemas under `src/lib/agent/searchFlow.ts` (or a new module) and surface helpers
-   from the agent layer—never from UI components.
-4. Register tool parsing or execution in `src/lib/agent/planning.ts` / `streaming.ts` and keep
-   side-effects (store writes, notices) funneled through services.
+3. Define tool schemas under `src/lib/tools/definitions/*` and register them in
+   `src/lib/tools/registry.ts` (search helpers live in `src/lib/search/*`).
+4. Keep tool execution wiring in `src/lib/tools/registry.ts` and route side-effects through
+   services (store writes, notices), not UI components.
 5. Update `CONFIGURATION.md` with any new environment variables and document proxy requirements.
 
 ## Glossary
@@ -158,8 +167,9 @@ business logic that is easy to test.
 - **Generation settings** — per-turn resolved settings derived from chat settings, UI overrides, and
   model caps (`ResolvedTurnSettings.generation`).
 - **UI overrides** — one-turn intent stored in `ui.overrides` and cleared after the next turn runs.
-- **Tutor tools** — pedagogy-focused tools in `src/lib/agent/tools/tutor/*` (diagnostics, plans).
-- **Search tools** — web retrieval tools (`src/lib/agent/tools/web.ts`) that augment context.
+- **Tutor tools** — pedagogy-focused tools in `src/lib/tools/definitions/tutor/*` and the tool
+  registry (`src/lib/tools/registry.ts`).
+- **Search tools** — web retrieval tools in `src/lib/search/*` and the tool registry.
 - **DeepResearch** — extended research flow with trace data; client runner lives in
-  `src/lib/deepResearch/client/runDeepResearchTurn.client.ts`, server engine in
-  `src/lib/deepResearch/server/engine.server.ts`.
+  `src/lib/deep-research/client/runDeepResearchTurn.client.ts`, server engine in
+  `src/lib/deep-research/server/engine.server.ts`.

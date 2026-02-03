@@ -9,8 +9,8 @@ import {
   getEstimatedRemainingTime,
   getReadyTopics,
   generateProgressReport,
-} from '@/lib/learningPlan/service';
-import { initializeLearnerModel, updateLearnerModel } from '@/lib/agent/learnerModel';
+} from '@/lib/learning-plan/service';
+import { initializeLearnerModel, updateLearnerModel } from '@/lib/agent/learner-model';
 import { advanceTopicHandler } from '@/lib/agent/tools/tutor/handlers/advanceTopic';
 import type { TutorToolContext } from '@/lib/agent/tools/tutor/types';
 import type { LearningPlan, LearnerModel, Chat, Message } from '@/lib/types';

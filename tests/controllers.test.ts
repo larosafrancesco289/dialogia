@@ -5,7 +5,7 @@ import {
   getTurnController,
   clearTurnController,
   abortTurn,
-} from '@/lib/turnRuntime/abortControllers';
+} from '@/lib/turns/runtime/abortControllers';
 
 test('turn controller lifecycle replaces and aborts previous controllers', () => {
   const c1 = new AbortController();

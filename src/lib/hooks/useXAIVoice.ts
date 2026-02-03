@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import { getVoiceSessionManager, type VoiceSessionStatus } from '@/lib/voice/xaiSession';
+import { getVoiceSessionManager, type VoiceSessionEvent } from '@/lib/voice/xaiSession';
 
 export interface VoiceMessage {
   id: string;
@@ -28,70 +28,62 @@ export function useXAIVoice(options: UseXAIVoiceOptions = {}) {
   const [messages, setMessages] = useState<VoiceMessage[]>([]);
   const manager = useMemo(() => getVoiceSessionManager(), []);
 
-  const handleStatusChange = useCallback(
-    (status: VoiceSessionStatus) => {
-      if (typeof status.active === 'boolean') setVoiceActive(status.active);
-      if (typeof status.connected === 'boolean') setVoiceConnected(status.connected);
-      if (typeof status.listening === 'boolean') setVoiceListening(status.listening);
-      if (typeof status.speaking === 'boolean') setVoiceSpeaking(status.speaking);
+  const handleEvent = useCallback(
+    (event: VoiceSessionEvent) => {
+      switch (event.type) {
+        case 'status':
+          if (typeof event.status.active === 'boolean') setVoiceActive(event.status.active);
+          if (typeof event.status.connected === 'boolean')
+            setVoiceConnected(event.status.connected);
+          if (typeof event.status.listening === 'boolean')
+            setVoiceListening(event.status.listening);
+          if (typeof event.status.speaking === 'boolean') setVoiceSpeaking(event.status.speaking);
+          return;
+        case 'error':
+          setVoiceError(event.message);
+          return;
+        case 'user_message': {
+          const userMessage: VoiceMessage = {
+            id: crypto.randomUUID(),
+            role: 'user',
+            content: event.content,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, userMessage]);
+          onUserMessage?.(event.content);
+          return;
+        }
+        case 'assistant_message': {
+          const assistantMessage: VoiceMessage = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: event.content,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+          onAssistantMessage?.(event.content);
+          return;
+        }
+      }
     },
-    [setVoiceActive, setVoiceConnected, setVoiceListening, setVoiceSpeaking],
-  );
-
-  const handleError = useCallback(
-    (message: string | null) => {
-      setVoiceError(message);
-    },
-    [setVoiceError],
-  );
-
-  const handleUserMessage = useCallback(
-    (content: string) => {
-      const userMessage: VoiceMessage = {
-        id: crypto.randomUUID(),
-        role: 'user',
-        content,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, userMessage]);
-      onUserMessage?.(content);
-    },
-    [onUserMessage],
-  );
-
-  const handleAssistantMessage = useCallback(
-    (content: string) => {
-      const assistantMessage: VoiceMessage = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-      onAssistantMessage?.(content);
-    },
-    [onAssistantMessage],
+    [
+      onAssistantMessage,
+      onUserMessage,
+      setVoiceActive,
+      setVoiceConnected,
+      setVoiceError,
+      setVoiceListening,
+      setVoiceSpeaking,
+    ],
   );
 
   const start = useCallback(async () => {
     await manager.start({
       voice: voiceConfig.voice,
       instructions: voiceConfig.instructions,
-      handlers: {
-        onUserMessage: handleUserMessage,
-        onAssistantMessage: handleAssistantMessage,
-        onStatusChange: handleStatusChange,
-        onError: handleError,
-      },
+      onEvent: handleEvent,
     });
-  }, [
-    manager,
-    voiceConfig,
-    handleUserMessage,
-    handleAssistantMessage,
-    handleStatusChange,
-    handleError,
-  ]);
+  }, [manager, voiceConfig, handleEvent]);
 
   const stop = useCallback(() => {
     manager.stop();

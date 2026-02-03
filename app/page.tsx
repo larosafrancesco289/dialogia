@@ -1,32 +1,28 @@
 'use client';
-import dynamic from 'next/dynamic';
 import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { ChatPane } from '@/components/chat/ChatPane';
 import { TopHeader } from '@/components/TopHeader';
 import { MobileHeader } from '@/components/MobileHeader';
 import { MobileShell } from '@/components/mobile/MobileShell';
 import { FreeTierBanner } from '@/components/FreeTierBanner';
-const SettingsDrawer = dynamic(
-  () =>
-    import(/* webpackPrefetch: true */ '@/components/settings/SettingsDrawer').then(
-      (mod) => mod.SettingsDrawer,
-    ),
-  { ssr: false },
-);
-const GlobalNotice = dynamic(
-  () => import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
-  { ssr: false },
-);
-import { useEffect, useState } from 'react';
+import { lazyClient } from '@/lib/ui/lazy';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useSidebarGestures } from '@/lib/hooks/useSidebarGestures';
-import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
 import { motion } from 'framer-motion';
 import { springs } from '@/lib/mobile/springConfig';
 
+const SettingsDrawer = lazyClient(() =>
+  import(/* webpackPrefetch: true */ '@/components/settings/SettingsDrawer').then((mod) => ({
+    default: mod.SettingsDrawer,
+  })),
+);
+const GlobalNotice = lazyClient(() =>
+  import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
+);
+
 export default function HomePage() {
-  const initialize = useChatStore((s) => s.initializeApp);
   const { collapsed, isSettingsOpen } = useChatStore(
     (s) => ({
       collapsed: s.ui.sidebarCollapsed ?? false,
@@ -35,16 +31,7 @@ export default function HomePage() {
     shallow,
   );
   const setUI = useChatStore((s) => s.setUI);
-  const [mounted, setMounted] = useState(false);
-  const isMobile = useIsMobile(768);
-  useEffect(() => setMounted(true), []);
-  // Ensure sidebar is collapsed on small screens so it doesn't cover content by default
-  useEffect(() => {
-    if (isMobile && !collapsed) setUI({ sidebarCollapsed: true });
-  }, [isMobile, collapsed, setUI]);
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
+  const { mounted, isMobile } = useAppBootstrap({ mobileBreakpoint: 768 });
 
   // Mobile: attach swipe gestures for sidebar open/close
   useSidebarGestures({
@@ -52,25 +39,6 @@ export default function HomePage() {
     collapsed,
     setCollapsed: (v) => setUI({ sidebarCollapsed: v }),
   });
-
-  // Warm-up: prefetch drawer bundles on idle so first open feels instant
-  useEffect(() => {
-    const warm = () => {
-      import('@/components/settings/SettingsDrawer').catch(() => undefined);
-    };
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      const idle = (
-        window as Window & { requestIdleCallback?: (cb: IdleRequestCallback) => number }
-      ).requestIdleCallback;
-      if (idle) {
-        idle(warm, { timeout: 1500 });
-        return;
-      }
-    }
-    // Small delay so it never competes with first paint
-    const tid = setTimeout(warm, 300);
-    return () => clearTimeout(tid);
-  }, []);
 
   // Render mobile shell for small screens
   if (mounted && isMobile) {

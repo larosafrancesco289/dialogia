@@ -1,10 +1,9 @@
 import type { Chat, LearningPlan, Message } from '@/lib/types';
 import type { TurnStoreState } from '@/lib/agent/contracts';
-import { TUTOR_TOOL_NAMES } from '@/lib/agent/types';
 import type { PersistMessage, StoreGetter, StoreSetter, TutorToolName } from '@/lib/agent/types';
 import { attachTutorUiState } from '@/lib/agent/tutorFlow';
-import { getNextNode } from '@/lib/learningPlan/service';
-import { getTutorToolsByTag } from '@/lib/agent/tools/metadata';
+import { getNextNode } from '@/lib/learning-plan/service';
+import { getTutorToolsByTag } from '@/lib/tools/registry';
 import { getMessagesForChat, setMessagesForChat } from '@/lib/messages/indexing';
 import type {
   TutorToolApplyResult,
@@ -31,8 +30,7 @@ import {
 } from '@/lib/agent/tools/tutor/handlers';
 
 export { normalizeTutorQuizPayload, type TutorQuizPayload } from '@/lib/agent/tools/tutor/shared';
-
-const TUTOR_TOOL_NAME_SET = new Set<TutorToolName>(TUTOR_TOOL_NAMES);
+export { isTutorToolName } from '@/lib/tools/registry';
 
 const QUIZ_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('quiz'));
 
@@ -73,10 +71,6 @@ export function recordTutorToolUsage(opts: {
       },
     } as Partial<TurnStoreState>;
   });
-}
-
-export function isTutorToolName(name: string): name is TutorToolName {
-  return TUTOR_TOOL_NAME_SET.has(name as TutorToolName);
 }
 
 type AnyTutorToolHandler = TutorToolHandler<unknown>;

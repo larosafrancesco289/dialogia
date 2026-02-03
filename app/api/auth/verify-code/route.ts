@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
+import type { AccessTier, AuthClaims } from '@/lib/auth/types';
 import {
-  AuthClaims,
-  AccessTier,
   createAuthToken,
   getIndividualCodeHashes,
   getDeveloperCodeHashes,
@@ -10,7 +9,7 @@ import {
   getAccessCodePepper,
   hmacCode,
   hasTieredCodesConfigured,
-} from '@/lib/auth';
+} from '@/lib/auth/token.server';
 import { setAuthCookies } from '@/lib/auth/cookies.server';
 import { jsonAuthError } from '@/lib/auth/errors';
 import { logger } from '@/lib/logger';

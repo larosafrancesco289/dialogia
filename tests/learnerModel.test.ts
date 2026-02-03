@@ -6,7 +6,7 @@ import {
   calculateMastery,
   generateModelSummary,
   getLatestLearnerModel,
-} from '@/lib/agent/learnerModel';
+} from '@/lib/agent/learner-model';
 import type { LearningPlan, Evidence, Misconception, Message } from '@/lib/types';
 
 // ============================================================================

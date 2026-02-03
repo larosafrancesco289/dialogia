@@ -1,20 +1,18 @@
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import dynamic from 'next/dynamic';
+import { lazyClient } from '@/lib/ui/lazy';
 import { useChatStore } from '@/lib/store';
 import { springs } from '@/lib/mobile/springConfig';
 import styles from './MobileSettingsSheet.module.css';
+import { DialogPortal, DialogSurface } from '@/components/ui/Dialog';
 
 // Dynamically load settings drawer
-const SettingsDrawer = dynamic(
-  () =>
-    import('@/components/settings/SettingsDrawer').then((mod) => ({
-      default: mod.SettingsDrawer,
-    })),
-  { ssr: false },
+const SettingsDrawer = lazyClient(() =>
+  import('@/components/settings/SettingsDrawer').then((mod) => ({
+    default: mod.SettingsDrawer,
+  })),
 );
 
 /**
@@ -114,10 +112,11 @@ export function MobileSettingsSheet() {
     </>
   );
 
-  return createPortal(
-    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label="Settings">
-      {content}
-    </div>,
-    document.body,
+  return (
+    <DialogPortal>
+      <DialogSurface className={styles.overlay} role="dialog" ariaLabel="Settings">
+        {content}
+      </DialogSurface>
+    </DialogPortal>
   );
 }

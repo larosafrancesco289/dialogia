@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
-import { defaultTutorScenarios, type TutorScenario } from '@/lib/eval/tutorScenarios';
-import { runTutorScenario } from '@/lib/eval/tutorDriver';
+import { defaultTutorScenarios, type TutorScenario } from '@/tooling/eval/tutorScenarios';
+import { runTutorScenario } from '@/tooling/eval/tutorDriver';
 import { parseArgs } from '@/lib/cli/args';
 import { loadEnvDefaults } from '@/lib/cli/env.node';
 

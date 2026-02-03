@@ -3,8 +3,9 @@
 // consolidating inline detection so planner/handlers don't duplicate parsing logic.
 
 import { createToolCall, normalizeToolCalls } from '@/lib/agent/parsers';
-import { extractTutorToolCalls } from '@/lib/agent/tools/json';
-import { extractWebSearchArgs } from '@/lib/agent/tools/web';
+import { extractTutorToolCalls } from '@/lib/tools/json';
+import { extractWebSearchArgs } from '@/lib/search';
+import { TUTOR_TOOL_NAMES } from '@/lib/tools/registry';
 import type { AssistantModelMessage, ToolCall, ToolDefinition } from '@/lib/agent/types';
 
 export type DetectPlanningToolCallsParams = {
@@ -29,7 +30,7 @@ export function detectPlanningToolCalls({
     ];
   }
 
-  const tutorCalls = extractTutorToolCalls(content);
+  const tutorCalls = extractTutorToolCalls(content, TUTOR_TOOL_NAMES);
   if (!tutorCalls.length) return [];
 
   const availableTools = Array.isArray(toolDefinition) ? toolDefinition : [];

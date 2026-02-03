@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
@@ -11,21 +11,19 @@ import { MobileChatsSheet } from '@/components/mobile/MobileChatsSheet';
 import { MobileWarningBanner } from '@/components/mobile/MobileWarningBanner';
 import { MobileFreeTierBanner } from '@/components/mobile/MobileFreeTierBanner';
 import { initializeTheme } from '@/components/ThemeToggle';
-import dynamic from 'next/dynamic';
+import { lazyClient } from '@/lib/ui/lazy';
+import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
 import styles from './MobileShell.module.css';
 
 // Lazy load settings sheet (it's heavy)
-const MobileSettingsSheet = dynamic(
-  () =>
-    import(/* webpackPrefetch: true */ '@/components/mobile/MobileSettingsSheet').then(
-      (mod) => mod.MobileSettingsSheet,
-    ),
-  { ssr: false },
+const MobileSettingsSheet = lazyClient(() =>
+  import(/* webpackPrefetch: true */ '@/components/mobile/MobileSettingsSheet').then((mod) => ({
+    default: mod.MobileSettingsSheet,
+  })),
 );
 
-const GlobalNotice = dynamic(
-  () => import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
-  { ssr: false },
+const GlobalNotice = lazyClient(() =>
+  import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
 );
 
 /**
@@ -37,23 +35,19 @@ const GlobalNotice = dynamic(
  * - Keyboard-aware layout
  */
 export function MobileShell() {
-  const [mounted, setMounted] = useState(false);
-
-  const { chatsSheetOpen, settingsSheetOpen, composerFocused, initialize } = useChatStore(
+  const { mounted } = useAppBootstrap({ mobileBreakpoint: 768 });
+  const { chatsSheetOpen, settingsSheetOpen, composerFocused } = useChatStore(
     (s) => ({
       chatsSheetOpen: s.ui.mobile.chatsSheetOpen,
       settingsSheetOpen: s.ui.mobile.settingsSheetOpen,
       composerFocused: s.ui.mobile.composerFocused,
-      initialize: s.initializeApp,
     }),
     shallow,
   );
 
   useEffect(() => {
-    setMounted(true);
-    initialize();
     initializeTheme();
-  }, [initialize]);
+  }, []);
 
   return (
     <div className={styles.shell}>

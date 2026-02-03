@@ -1,4 +1,8 @@
+import 'server-only';
+
 import type { NextRequest } from 'next/server';
+import type { ZodType } from 'zod';
+import { parseSchema } from '@/lib/schemas/parse';
 import type { AccessTier } from '@/lib/auth/types';
 import { readEnvValue } from '@/lib/env/values';
 import type { RateLimitConfig } from '@/lib/server/rateLimit';
@@ -24,6 +28,25 @@ export type RouteBuilder = {
     fn: (req: NextRequest, ctx: RouteContext) => Promise<Response>,
   ) => (req: NextRequest) => Promise<Response>;
 };
+
+export function parseJson<T>(schema: ZodType<T>) {
+  return async (
+    req: NextRequest,
+  ): Promise<{ ok: true; data: T } | { ok: false; response: Response }> => {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return { ok: false, response: jsonError(400, 'bad_json') };
+    }
+
+    const parsed = parseSchema(schema, body);
+    if (!parsed.ok) {
+      return { ok: false, response: jsonError(400, 'bad_request') };
+    }
+    return { ok: true, data: parsed.data };
+  };
+}
 
 export function route(name: string): RouteBuilder {
   const requiredEnv: string[] = [];
@@ -54,7 +77,7 @@ export function route(name: string): RouteBuilder {
 
           let tier: AccessTier | undefined;
           if (tierGate) {
-            const { getServerTier } = await import('@/lib/auth/tierApiKey');
+            const { getServerTier } = await import('@/lib/auth/tierApiKey.server');
             tier = await getServerTier();
             const deny = tierGate.deny?.includes(tier) ?? false;
             const allow =

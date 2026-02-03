@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planTurn } from '@/lib/agent/planning';
+import { applyPlanSideEffects } from '@/lib/agent/planning/sideEffects';
 import { regenerate } from '@/lib/agent/regenerate';
 import { createPipelineClient } from '@/lib/agent/pipelineClient';
 import { createModelIndex } from '@/lib/models';
 import type { Message, Chat, ModelDescriptor } from '@/lib/types';
 import { getTutorToolDefinitions } from '@/lib/agent/tutor';
-import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
+import { getSearchToolDefinition } from '@/lib/search';
 import type { StoreSetter, TurnContext } from '@/lib/agent/types';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
@@ -258,7 +259,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     modelId: chat.settings.modelId,
   });
 
-  await planTurn({
+  const planOutput = await planTurn({
     chat,
     chatId: chat.id,
     assistantMessage,
@@ -274,6 +275,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
     settings,
     pipeline,
   });
+  applyPlanSideEffects({ sideEffects: planOutput.sideEffects, set });
 
   const braveEntry = state.ui.search.braveByMessageId[assistantMessage.id];
   assert.ok(braveEntry);

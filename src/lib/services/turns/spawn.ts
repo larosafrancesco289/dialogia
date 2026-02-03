@@ -1,7 +1,7 @@
 // Module: services/turns/spawn
 // Responsibility: Create placeholder messages and wire abort controllers for new turns.
 
-import { setTurnController, clearTurnController } from '@/lib/turnRuntime/abortControllers';
+import { setTurnController, clearTurnController } from '@/lib/turns/runtime';
 import type { Repository } from '@/lib/db/repository';
 import type { PersistedAttachment, Message } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';

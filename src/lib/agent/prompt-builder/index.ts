@@ -1,7 +1,7 @@
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
 import { TokenBudgeter } from './TokenBudgeter';
-import { AttachmentProcessor } from './AttachmentProcessor';
+import { AttachmentProcessor } from '@/lib/attachments/prompt';
 
 export function buildChatCompletionMessages(params: {
   chat: Chat;

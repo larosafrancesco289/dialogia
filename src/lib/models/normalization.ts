@@ -1,3 +1,66 @@
+import type { ModelDescriptor } from '@/lib/types';
+import type { ModelTransport } from '@/lib/transport/models';
+import { isRecord } from '@/lib/utils/guards';
+
+type NormalizeModelOptions = {
+  transport?: ModelTransport;
+  providerDisplay?: string;
+};
+
+const parsePricing = (
+  value: unknown,
+): { prompt?: number; completion?: number; currency?: string } | undefined => {
+  if (!isRecord(value)) return undefined;
+  const prompt = typeof value.prompt === 'number' ? value.prompt : undefined;
+  const completion = typeof value.completion === 'number' ? value.completion : undefined;
+  const currency = typeof value.currency === 'string' ? value.currency : undefined;
+  if (prompt == null && completion == null && currency == null) return undefined;
+  return { prompt, completion, currency };
+};
+
+export function normalizeModelDescriptor(
+  entry: unknown,
+  opts: NormalizeModelOptions = {},
+): ModelDescriptor | null {
+  if (!isRecord(entry)) return null;
+  const id = typeof entry.id === 'string' ? entry.id : '';
+  if (!id) return null;
+  const name = typeof entry.name === 'string' ? entry.name : undefined;
+  const context_length =
+    typeof entry.context_length === 'number' ? entry.context_length : undefined;
+  return {
+    id,
+    name,
+    context_length,
+    pricing: parsePricing(entry.pricing),
+    raw: entry,
+    transport: opts.transport,
+    transportModelId: id,
+    providerDisplay: opts.providerDisplay,
+  };
+}
+
+export function normalizeModelList(
+  payload: unknown,
+  opts: NormalizeModelOptions = {},
+): ModelDescriptor[] {
+  const items = isRecord(payload)
+    ? Array.isArray(payload.data)
+      ? payload.data
+      : Array.isArray(payload.models)
+        ? payload.models
+        : Array.isArray(payload)
+          ? payload
+          : []
+    : Array.isArray(payload)
+      ? payload
+      : [];
+
+  return items
+    .map((entry) => normalizeModelDescriptor(entry, opts))
+    .filter((model): model is ModelDescriptor => model !== null);
+}
+
 export function normalizeParallelModels(
   baseModelId: string | undefined,
   list?: string[],

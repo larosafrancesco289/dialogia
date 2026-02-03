@@ -5,7 +5,7 @@ import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
 import { captureRequestDebug } from '@/lib/agent/debug';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
-import { clearTurnController } from '@/lib/turnRuntime/abortControllers';
+import { clearTurnController } from '@/lib/turns/runtime';
 import { isReasoningRequested } from '@/lib/settings/generation';
 import type { StreamFinalOptions, ToolDefinition } from '@/lib/agent/types';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';

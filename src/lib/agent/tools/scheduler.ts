@@ -1,5 +1,5 @@
 import { isTutorContentTool, isTutorMetaTool, isSearchTool } from '@/lib/agent/tools/categories';
-import { getTutorToolsByPriorityGroup } from '@/lib/agent/tools/metadata';
+import { getTutorToolsByPriorityGroup } from '@/lib/tools/registry';
 import type { ToolCall } from '@/lib/agent/types';
 import type { TutorPhase } from '@/lib/agent/tutor/state';
 

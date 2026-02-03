@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { TUTOR_TOOL_NAMES } from '@/lib/agent/types';
+import { TUTOR_TOOL_NAMES } from '@/lib/tools';
 
 test('TUTOR_TOOL_CONTRACT tool list matches TUTOR_TOOL_NAMES', () => {
   const contractPath = path.join(process.cwd(), 'TUTOR_TOOL_CONTRACT.md');

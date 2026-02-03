@@ -4,8 +4,8 @@ import {
   applyLearnerModelFeedback,
   getLatestLearnerModel,
   initializeLearnerModel,
-} from '@/lib/agent/learnerModel';
-import { processPlanProgress } from '@/lib/learningPlan/service';
+} from '@/lib/agent/learner-model';
+import { processPlanProgress } from '@/lib/learning-plan/service';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 
 type ApplyLearnerModelFeedbackArgs = {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { applyTutorToolCall } from '@/lib/agent/tools';
 import { getTutorToolDefinitions } from '@/lib/agent/tutor';
 import type { StoreSetter } from '@/lib/agent/types';
-import { validateLearningPlan } from '@/lib/learningPlan/validate';
+import { validateLearningPlan } from '@/lib/learning-plan/validate';
 import { buildMessageIndex } from '@/lib/messages/indexing';
 import type { Chat } from '@/lib/types';
 

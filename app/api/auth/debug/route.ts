@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { AUTH_COOKIE_NAME, TIER_COOKIE_NAME } from '@/lib/auth/shared';
-import { verifyAuthTokenEdgeWithClaims } from '@/lib/auth/edge';
+import { verifyAuthTokenEdgeWithClaims } from '@/lib/auth/token.edge';
 import { computeSecretFingerprintEdge } from '@/lib/auth/fingerprint.edge';
 import type { AuthClaims } from '@/lib/auth/types';
 import { isAuthDebugRouteEnabled } from '@/lib/env/auth';

@@ -3,10 +3,12 @@
 // Responsibility: Encapsulate mobile sidebar open/close swipe gestures.
 
 import { useEffect, useRef } from 'react';
-
-const EDGE_PX = 24;
-const SWIPE_THRESHOLD_PX = 56;
-const HYSTERESIS_PX = 12;
+import {
+  SIDEBAR_EDGE_PX,
+  SIDEBAR_GESTURE_REGION_PX,
+  SIDEBAR_SWIPE_HYSTERESIS_PX,
+  SIDEBAR_SWIPE_THRESHOLD_PX,
+} from '@/lib/ui/layoutConstants';
 
 type SidebarGestureController = {
   onPointerDown: (event: PointerEvent) => void;
@@ -37,10 +39,10 @@ export function createSidebarGestureController(opts: {
     }
     startX = e.clientX;
     startY = e.clientY;
-    const fromEdge = startX <= EDGE_PX;
+    const fromEdge = startX <= SIDEBAR_EDGE_PX;
     const collapsed = getCollapsed();
     const sidebarOpen = !collapsed;
-    const inSidebarRegion = startX <= 360 + 40;
+    const inSidebarRegion = startX <= SIDEBAR_GESTURE_REGION_PX;
     active = (collapsed && fromEdge) || (sidebarOpen && inSidebarRegion);
   };
   const onMove = (e: PointerEvent) => {
@@ -48,13 +50,13 @@ export function createSidebarGestureController(opts: {
     const dx = e.clientX - startX;
     const adx = Math.abs(dx);
     const ady = Math.abs(e.clientY - startY);
-    if (adx < HYSTERESIS_PX || adx < ady) return;
+    if (adx < SIDEBAR_SWIPE_HYSTERESIS_PX || adx < ady) return;
     const collapsed = getCollapsed();
     const sidebarOpen = !collapsed;
-    if (collapsed && dx > SWIPE_THRESHOLD_PX) {
+    if (collapsed && dx > SIDEBAR_SWIPE_THRESHOLD_PX) {
       setCollapsed(false);
       active = false;
-    } else if (sidebarOpen && dx < -SWIPE_THRESHOLD_PX) {
+    } else if (sidebarOpen && dx < -SIDEBAR_SWIPE_THRESHOLD_PX) {
       setCollapsed(true);
       active = false;
     }

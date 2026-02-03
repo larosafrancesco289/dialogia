@@ -1,6 +1,6 @@
 import type { LearningPlan, LearnerModel } from '@/lib/types';
-import { getNextNode, summarizeLearningPlan } from '@/lib/learningPlan/service';
-import { generateModelSummary } from '@/lib/agent/learnerModel';
+import { getNextNode, summarizeLearningPlan } from '@/lib/learning-plan/service';
+import { generateModelSummary } from '@/lib/agent/learner-model';
 
 /**
  * Generate plan context preamble for tutor system prompt

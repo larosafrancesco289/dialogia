@@ -1,6 +1,6 @@
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { normalizePlanSuggestions, withContentReset } from '@/lib/agent/tools/tutor/shared';
-import { validateLearningPlan } from '@/lib/learningPlan/validate';
+import { validateLearningPlan } from '@/lib/learning-plan/validate';
 import { normalizeLearningPlanInput } from '@/lib/schemas/learningPlan';
 import { parseSchema } from '@/lib/schemas/parse';
 import { TutorPlanProposalToolSchema, type TutorPlanProposalInput } from '@/lib/schemas/tutor';

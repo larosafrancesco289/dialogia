@@ -1,6 +1,6 @@
 import type { ToolCall, TutorToolName } from '@/lib/agent/types';
 import type { TutorPhase, TutorToolPolicy } from '@/lib/agent/tutor/state';
-import { getTutorToolsByTag } from '@/lib/agent/tools/metadata';
+import { getTutorToolsByTag } from '@/lib/tools/registry';
 import { schedulePlanningToolCalls } from '@/lib/agent/tools/scheduler';
 
 const QUIZ_TOOL_NAMES = new Set<TutorToolName>(getTutorToolsByTag('quiz'));

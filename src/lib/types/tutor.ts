@@ -1,8 +1,6 @@
 import type { LearningPlan } from '@/lib/types/learningPlan';
-
-export type StudyCondition = 'A' | 'B';
-
-export type TutorResearchMode = 'baseline_chat' | 'plan_only' | 'model_only' | 'plan_plus_model';
+export type { StudyCondition, TutorResearchMode } from '@/lib/types/enums';
+export { StudyConditionEnum, TutorResearchModeEnum } from '@/lib/types/enums';
 
 export type TutorToolBudget = {
   maxToolsPerTurn?: number;

@@ -6,12 +6,13 @@ import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
+import { applyPlanSideEffects } from '@/lib/agent/planning/sideEffects';
 import { streamFinal } from '@/lib/agent/streaming';
 import { shouldShortCircuitTutor } from '@/lib/agent/policy';
 import type { Repository } from '@/lib/db/repository';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
-import type { SendRuntime } from '@/lib/services/turns/runtime';
+import type { TurnRuntimeContext } from '@/lib/turns/runtime';
 import type { Chat, Message, PersistedAttachment } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
@@ -22,7 +23,7 @@ export type ExecuteModelTurnArgs = {
   isPrimary: boolean;
   assistantMessage?: Message;
   attachments: PersistedAttachment[];
-  runtime: SendRuntime;
+  runtime: TurnRuntimeContext;
   content: string;
   priorMessages: Message[];
   masterController: AbortController;
@@ -131,7 +132,10 @@ export const executeModelTurn = async ({
       attachmentPreparer: async () => attachments,
       fallbackAttachments: attachments,
       shouldShortCircuit: shouldShortCircuitTutor,
-      hooks: lifecycle.hooks,
+      hooks: {
+        ...lifecycle.hooks,
+        onPlanSideEffects: (effects) => applyPlanSideEffects({ sideEffects: effects, set }),
+      },
     });
 
     if (runResult.shortCircuited) {

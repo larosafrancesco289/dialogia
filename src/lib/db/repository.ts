@@ -1,5 +1,11 @@
 import type { Chat, Folder, Message } from '@/lib/types';
 import { sanitizeMessageRecord } from '@/lib/db/sanitize';
+import { sortMessages } from '@/lib/messages/ordering';
+import { normalizeChatSettings } from '@/lib/settings/normalize';
+import { migrateGenSettingsRecord } from '@/lib/settings/migrations';
+import { ChatSchema, MessageSchema } from '@/lib/schemas/persisted';
+import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import { isRecord } from '@/lib/utils/guards';
 
 type DbCollection<T> = {
   toArray?: () => Promise<T[]>;
@@ -28,16 +34,6 @@ export type DialogiaDbLike = {
   chats: DbTable<Chat>;
   messages: DbTable<Message>;
   folders: DbTable<Folder>;
-};
-
-type OrderingFn = (a: Message, b: Message) => number;
-
-const compareMessages: OrderingFn = (a, b) => {
-  if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
-  const rolePriority: Record<Message['role'], number> = { system: 0, user: 1, assistant: 2 };
-  if (rolePriority[a.role] !== rolePriority[b.role])
-    return rolePriority[a.role] - rolePriority[b.role];
-  return a.id.localeCompare(b.id);
 };
 
 export type RepositorySnapshot = {
@@ -70,15 +66,14 @@ function pickMessageCollection(
 async function getMessagesForChat(db: DialogiaDbLike, chatId: string): Promise<Message[]> {
   const collection = pickMessageCollection(db.messages, chatId);
   if (collection) {
-    if (collection.sortBy) return collection.sortBy('createdAt');
+    if (collection.sortBy) return sortMessages(await collection.sortBy('createdAt'));
     if (collection.toArray) {
       const list = await collection.toArray();
-      return list.slice().sort(compareMessages);
+      return sortMessages(list);
     }
   }
-  return (await db.messages.toArray())
-    .filter((entry) => entry.chatId === chatId)
-    .sort(compareMessages);
+  const list = (await db.messages.toArray()).filter((entry) => entry.chatId === chatId);
+  return sortMessages(list);
 }
 
 async function deleteMessagesForChat(db: DialogiaDbLike, chatId: string): Promise<void> {
@@ -144,14 +139,54 @@ export function createRepository(db: DialogiaDbLike) {
       db.messages.toArray(),
       db.folders.toArray(),
     ]);
-    return { chats, messages, folders };
+    return { chats, messages: sortMessages(messages), folders };
   };
 
-  const importAll = async (data: { chats: Chat[]; messages: Message[]; folders?: Folder[] }) => {
+  const importAll = async (data: { chats?: unknown; messages?: unknown; folders?: unknown }) => {
+    const rawChats = Array.isArray(data?.chats) ? data.chats : [];
+    const rawMessages = Array.isArray(data?.messages) ? data.messages : [];
+    const rawFolders = Array.isArray(data?.folders) ? data.folders : [];
+
+    const chats: Chat[] = [];
+    const chatIds = new Set<string>();
+    for (const entry of rawChats) {
+      if (!isRecord(entry)) continue;
+      const settings = normalizeChatSettings(entry.settings, {
+        fallbackModelId: DEFAULT_MODEL_ID,
+        fallbackTutorModelId: DEFAULT_TUTOR_MODEL_ID,
+      });
+      const candidate = { ...entry, settings };
+      const parsed = ChatSchema.safeParse(candidate);
+      if (!parsed.success) continue;
+      chats.push(parsed.data);
+      chatIds.add(parsed.data.id);
+    }
+
+    const messages: Message[] = [];
+    for (const entry of rawMessages) {
+      if (!isRecord(entry)) continue;
+      const nextRecord: Record<string, unknown> = { ...entry };
+      if ('genSettings' in nextRecord) {
+        const { next } = migrateGenSettingsRecord(nextRecord.genSettings);
+        nextRecord.genSettings = next;
+      }
+      const parsed = MessageSchema.safeParse(nextRecord);
+      if (!parsed.success) continue;
+      if (!chatIds.has(parsed.data.chatId)) continue;
+      const sanitized = sanitizeMessageRecord(parsed.data).next;
+      messages.push(sanitized);
+    }
+
+    const folders: Folder[] = rawFolders.filter((entry): entry is Folder => {
+      if (!isRecord(entry)) return false;
+      if (typeof entry.id !== 'string' || typeof entry.name !== 'string') return false;
+      return typeof entry.createdAt === 'number' && typeof entry.updatedAt === 'number';
+    });
+
     await runTransaction(db, [db.chats, db.messages, db.folders], async () => {
-      for (const c of data.chats) await db.chats.put(c);
-      for (const m of data.messages) await db.messages.put(m);
-      for (const f of data.folders || []) await db.folders.put(f);
+      for (const c of chats) await db.chats.put(c);
+      for (const m of messages) await db.messages.put(m);
+      for (const f of folders) await db.folders.put(f);
     });
   };
 
@@ -168,7 +203,7 @@ export function createRepository(db: DialogiaDbLike) {
       messages[m.chatId].push(m as Message);
     }
     for (const key of Object.keys(messages)) {
-      messages[key] = messages[key].slice().sort(compareMessages);
+      messages[key] = sortMessages(messages[key]);
     }
 
     const resolvedSelected = selectedChatId || chats[0]?.id;

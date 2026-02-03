@@ -1,14 +1,7 @@
 import type { ToolDefinition } from '@/lib/transport/contracts';
+import type { WebSearchArgs } from '@/lib/search/args';
 
-export type WebSearchToolArgs = {
-  query: string;
-  count?: number;
-  freshness?: 'd' | 'w' | 'm' | 'y' | 'all';
-  country?: string;
-  include_domains?: string[];
-  exclude_domains?: string[];
-  provider?: 'brave';
-};
+export type WebSearchToolArgs = WebSearchArgs;
 
 export const WEB_SEARCH_TOOL: ToolDefinition = {
   type: 'function',

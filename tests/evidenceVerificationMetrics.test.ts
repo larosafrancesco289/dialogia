@@ -1,9 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { administerTest, normalizeForMatching, extractTutorTurns } from '@/lib/eval/prePostTest';
-import { shuffleArray } from '@/lib/eval/ablationRunner';
+import {
+  administerTest,
+  normalizeForMatching,
+  extractTutorTurns,
+} from '@/tooling/eval/prePostTest';
+import { shuffleArray } from '@/tooling/eval/ablationRunner';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
-import type { KnowledgeGap, TestQuestion } from '@/lib/eval/ablationScenarios';
+import type { KnowledgeGap, TestQuestion } from '@/tooling/eval/ablationScenarios';
 
 test('post-test gap questions force wrong answer on invalid JSON', async () => {
   const question: TestQuestion = {

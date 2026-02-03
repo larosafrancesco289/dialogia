@@ -5,7 +5,7 @@ import type { LearningPlan, Message } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import type { Repository } from '@/lib/db/repository';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { getNextNode } from '@/lib/learningPlan/service';
+import { getNextNode } from '@/lib/learning-plan/service';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { getMessagesForChat, setMessagesForChat } from '@/lib/messages/indexing';
 import { createTutorWelcomeMessage } from '@/lib/messages/createMessage';

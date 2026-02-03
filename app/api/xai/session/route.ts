@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { jsonError } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
-import { route } from '@/lib/server/routeBuilder';
+import { XaiSessionRequestSchema } from '@/lib/schemas/api';
+import { parseJson, route } from '@/lib/server/routeBuilder';
 
 export const POST = route('xai-session')
   .requireTier({
@@ -11,10 +12,11 @@ export const POST = route('xai-session')
   .requireEnv('XAI_API_KEY')
   .handler(async (request, ctx) => {
     try {
-      const body = await request.json().catch(() => ({}));
-      const voice = body.voice || 'eve';
+      const parsed = await parseJson(XaiSessionRequestSchema)(request);
+      if (!parsed.ok) return parsed.response;
+      const voice = parsed.data.voice || 'eve';
       const instructions =
-        body.instructions ||
+        parsed.data.instructions ||
         'You are a helpful voice assistant. Be concise and natural in your responses. Keep answers brief unless the user asks for detail.';
 
       const response = await fetch('https://api.x.ai/v1/realtime/client_secrets', {

@@ -4,17 +4,13 @@
 
 import { buildChatCompletionMessages } from '@/lib/agent/prompt-builder';
 import { getTutorPreamble, getTutorToolDefinitions } from '@/lib/agent/tutor';
-import {
-  getTutorPhase,
-  allowedTutorToolsForPhase,
-  deriveTutorToolPolicy,
-} from '@/lib/agent/tutor/state';
+import { getTutorPhase, getTutorToolEligibility } from '@/lib/agent/tutor/state';
 import { composePlugins } from '@/lib/agent/request';
-import { getSearchToolDefinition } from '@/lib/agent/searchFlow';
+import { getSearchToolDefinition } from '@/lib/search';
 import { type ComposeTurnArgs, type TurnComposition, type ToolDefinition } from '@/lib/agent/types';
 import tutorProfileService from '@/lib/tutor/profile';
 import { combineSystem } from '@/lib/agent/system';
-import { getNextNode } from '@/lib/learningPlan/service';
+import { getNextNode } from '@/lib/learning-plan/service';
 import { isTutorToolName } from '@/lib/agent/tools';
 import type { Message } from '@/lib/types';
 import { TOOL_PREAMBLE } from '@/lib/agent/prompts/toolPreamble';
@@ -47,17 +43,17 @@ export async function composeTurn({
     tutorEnabled && chat.settings.features.tutor.learningPlan
       ? getNextNode(chat.settings.features.tutor.learningPlan)?.id
       : undefined;
-  const tutorToolPolicy = tutorEnabled
-    ? deriveTutorToolPolicy({
-        chat,
-        ui,
-        activeNodeId,
-      })
-    : undefined;
-  const allowedTutorTools =
+  const tutorEligibility =
     tutorEnabled && tutorPhase
-      ? new Set(allowedTutorToolsForPhase(tutorPhase, tutorToolPolicy))
+      ? getTutorToolEligibility({
+          chat,
+          ui,
+          phase: tutorPhase,
+          activeNodeId,
+        })
       : undefined;
+  const tutorToolPolicy = tutorEligibility?.toolPolicy;
+  const allowedTutorTools = tutorEligibility?.allowedTutorTools;
 
   const searchTools: ToolDefinition[] =
     searchEnabled && searchProvider === 'brave' ? getSearchToolDefinition() : [];
@@ -93,7 +89,7 @@ export async function composeTurn({
     const includeLearnerModelContext = allowLearnerModelContext && learnerModelVisible;
     if (allowPlanContext && chat.settings.features.tutor.learningPlan) {
       const { generatePlanContextPreamble } = await import('@/lib/agent/tutor/planContext');
-      const { getLatestLearnerModel } = await import('@/lib/agent/learnerModel');
+      const { getLatestLearnerModel } = await import('@/lib/agent/learner-model');
       const learnerModel = includeLearnerModelContext
         ? getLatestLearnerModel(priorMessages)
         : undefined;

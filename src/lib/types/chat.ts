@@ -1,14 +1,15 @@
 import type { ProviderSort } from '@/lib/models/providerSort';
 import type { LearningPlan } from '@/lib/types/learningPlan';
 import type { LearnerModel, TutorResearchMode, TutorToolBudget } from '@/lib/types/tutor';
-
-export type SearchProvider = 'brave' | 'openrouter';
+import type { ReasoningEffort, SearchProvider } from '@/lib/types/enums';
+export type { ReasoningEffort, SearchProvider } from '@/lib/types/enums';
+export { ReasoningEffortEnum, SearchProviderEnum } from '@/lib/types/enums';
 
 export type GenerationSettings = {
   temperature?: number;
   topP?: number;
   maxTokens?: number;
-  reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  reasoningEffort?: ReasoningEffort;
   reasoningTokens?: number;
   providerSort?: ProviderSort;
 };

@@ -63,12 +63,17 @@ bun install
 - Dev server: `bun run dev` → http://localhost:3000
 - Build: `bun run build`
 - Start (prod): `bun start`
-- Format: `bun run format`
 - Lint: `bun run lint` (uses `eslint.config.js`)
 - Type check: `bun run lint:types`
 - Tests: `bun run test`
+- Format: `bun run format`
+- CI (type-check + tests + format check + lint): `bun run check`
 
-Wrappers are also available: `scripts/dev.sh`, `scripts/build.sh`, `scripts/start.sh`.
+Wrappers and helpers:
+
+- Shell wrappers: `scripts/dev.sh`, `scripts/build.sh`, `scripts/start.sh`
+- CI + hygiene: `scripts/install.sh`, `scripts/ci.sh`, `scripts/hygiene.sh`
+- Eval runners: `scripts/tutor-sim.ts`, `scripts/run-ablation.ts`, `scripts/eval-tutor.ts`
 
 ### Key concepts and entrypoints
 
@@ -84,7 +89,7 @@ See `docs/DESIGN.md` for the design system and guidance on where styles live.
 ### Local Artifacts
 
 The following are local-only (already in `.gitignore`) and should not be committed: `.next/`,
-`node_modules/`, `.eslintcache`, `.DS_Store`.
+`node_modules/`, `.eslintcache`, `.DS_Store`, `tmp/`, `tsconfig.tsbuildinfo`.
 
 ### Usage
 
@@ -93,7 +98,8 @@ The following are local-only (already in `.gitignore`) and should not be committ
 - Attachments:
   - Images: shown inline when the model supports vision.
   - Audio (mp3/wav): sent as input_audio content to audio-capable models.
-  - PDFs: sent as OpenRouter file blocks (parsed downstream; no local OCR).
+  - PDFs: text is extracted client-side and sent as text blocks; small files may fall back to file
+    blocks.
 - Reasoning: toggle effort in the composer for thinking models; view “Thinking” panel per message.
 - Web search: toggle the search icon to ground the next reply with sources. Brave runs locally when enabled; otherwise the OpenRouter web plugin is attached.
 - DeepResearch: when search is enabled on a reasoning-capable OpenRouter model (and tutor mode is off), the next turn runs the multi-step research flow. Results appear as an assistant message with a sources panel.
@@ -226,10 +232,10 @@ Progress indicators use color coding:
 - API proxy: `/api/openrouter/*` for models/completions; `/api/brave` for web search; `/api/xai/session` for X.AI voice
 - Markdown: `react-markdown` + GFM, Prism, KaTeX, Mermaid
 - Styles: Tailwind v4 base + `styles/foundations.css` tokens; `app/globals.css` layout
-- Agent services: `src/lib/agent/request.ts`, `searchFlow.ts`, and `tutorFlow.ts` centralize request building, web search orchestration, and tutor memory composition for slices.
-- DeepResearch: `src/lib/deepResearch.ts` orchestrates the research loop while tool adapters and HTML parsing live in `src/lib/deepResearch/tools.ts` and `html.ts`.
+- Agent services: `src/lib/agent/request.ts` (request building), `src/lib/search/*` (search orchestration), and `src/lib/agent/tutorFlow.ts` (tutor memory composition) centralize turn logic.
+- DeepResearch: `src/lib/deep-research/server/*` runs the server engine and tool adapters; `src/lib/deep-research/client/*` handles client orchestration.
 - Capabilities: Derived from OpenRouter model metadata (vision, audio input, image output, reasoning)
-- PDFs: Routed with OpenRouter’s file parser plugin — no local parsing required
+- PDFs: Text is extracted client-side and preferred in prompts; small files may be sent as file blocks.
 
 Security notes:
 
@@ -253,6 +259,7 @@ src/components/         # React components (PascalCase .tsx)
 src/components/message/ # Message subcomponents (meta, reasoning, sources)
 src/components/settings/# Settings drawer panels per tab (models/chat/tutor/etc.)
 src/lib/                # Utilities, API client, state slices
+src/tooling/            # Headless and eval tooling (not for UI imports)
 src/data/               # Curated model metadata
 src/types/              # Type augmentations
 public/                 # Static assets served by Next

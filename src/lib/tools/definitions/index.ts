@@ -7,4 +7,4 @@ export {
   DEEP_RESEARCH_TOOLS,
   getDeepResearchToolDefinitions,
 } from '@/lib/tools/definitions/deepResearch';
-export { getTutorToolDefinitions } from '@/lib/tools/definitions/tutor';
+export { getTutorToolDefinitions } from '@/lib/tools/registry';

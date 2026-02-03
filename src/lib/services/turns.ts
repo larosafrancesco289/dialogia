@@ -7,12 +7,12 @@ import type { StoreAccess, StoreGetter, StoreSetter, TurnContext } from '@/lib/a
 import type { Repository } from '@/lib/db/repository';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { attachTutorUiState, ensureTutorDefaults } from '@/lib/agent/tutorFlow';
-import { runDeepResearchTurn } from '@/lib/deepResearch';
+import { runDeepResearchTurn } from '@/lib/deep-research';
 import { regenerate } from '@/lib/agent/regenerate';
 import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
-import { clearTurnController, setTurnController } from '@/lib/turnRuntime/abortControllers';
+import { clearTurnController, setTurnController } from '@/lib/turns/runtime';
 import { applyNextOverrides } from '@/lib/ui/next';
-import { prepareSendRuntime } from '@/lib/services/turns/runtime';
+import { prepareSendRuntime } from '@/lib/turns/runtime';
 import { spawnTurnMessages } from '@/lib/services/turns/spawn';
 import { executeModelTurn } from '@/lib/services/turns/executor';
 import { handleTurnApiError } from '@/lib/services/turns/errors';

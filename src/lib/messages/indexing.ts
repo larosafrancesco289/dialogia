@@ -1,4 +1,5 @@
 import type { Message } from '@/lib/types';
+import { sortMessages } from '@/lib/messages/ordering';
 
 export type MessageIndexState = {
   messagesById: Record<string, Message>;
@@ -10,7 +11,8 @@ export function buildMessageIndex(messages: Record<string, Message[]>): MessageI
   const messageIdsByChatId: Record<string, string[]> = {};
   for (const [chatId, list] of Object.entries(messages)) {
     const ids: string[] = [];
-    for (const message of list ?? []) {
+    const sorted = sortMessages(list ?? []);
+    for (const message of sorted) {
       messagesById[message.id] = message;
       ids.push(message.id);
     }
@@ -36,13 +38,14 @@ export function setMessagesForChat<S extends MessageIndexState>(
   messages: Message[],
 ): Partial<S> {
   const nextById = { ...state.messagesById };
-  const nextIds = messages.map((message) => message.id);
+  const sorted = sortMessages(messages);
+  const nextIds = sorted.map((message) => message.id);
   const nextIdSet = new Set(nextIds);
   const previousIds = state.messageIdsByChatId[chatId] ?? [];
   for (const id of previousIds) {
     if (!nextIdSet.has(id)) delete nextById[id];
   }
-  for (const message of messages) {
+  for (const message of sorted) {
     nextById[message.id] = message;
   }
   return {
@@ -61,14 +64,16 @@ export function appendMessagesToChat<S extends MessageIndexState>(
 ): Partial<S> {
   if (!messages.length) return {};
   const nextById = { ...state.messagesById };
-  const nextIds = (state.messageIdsByChatId[chatId] ?? []).slice();
-  const idSet = new Set(nextIds);
-  for (const message of messages) {
+  const existing = getMessagesForChat(state, chatId);
+  const combined = [...existing, ...messages];
+  const deduped = new Map<string, Message>();
+  for (const message of combined) {
+    deduped.set(message.id, message);
+  }
+  const sorted = sortMessages(Array.from(deduped.values()));
+  const nextIds = sorted.map((message) => message.id);
+  for (const message of sorted) {
     nextById[message.id] = message;
-    if (!idSet.has(message.id)) {
-      nextIds.push(message.id);
-      idSet.add(message.id);
-    }
   }
   return {
     messagesById: nextById,

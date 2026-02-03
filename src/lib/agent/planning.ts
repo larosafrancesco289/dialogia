@@ -1,23 +1,23 @@
 // Module: agent/planning
 // Responsibility: Handle multi-round planning for assistant turns before final streaming.
 
-import { formatSourcesBlock } from '@/lib/agent/searchFlow';
-import {
-  DEFAULT_BASE_SYSTEM,
-  followUpPrompt,
-  MAX_PLANNING_ROUNDS,
-  shouldAppendSources,
-} from '@/lib/agent/policy';
+import { formatSourcesBlock } from '@/lib/search';
+import { MAX_PLANNING_ROUNDS, shouldAppendSources } from '@/lib/agent/policy';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
+import { followUpPrompt } from '@/lib/agent/prompts/followUp';
 import { combineSystem } from '@/lib/agent/system';
-import type { ModelMessage, PlanTurnOptions, PlanTurnResult } from '@/lib/agent/types';
+import type {
+  ModelMessage,
+  PlanTurnOptions,
+  PlanTurnOutput,
+  PlanTurnSideEffect,
+} from '@/lib/agent/types';
 import { derivePlanningContext } from '@/lib/agent/planning/context';
 import { applyToolExecutions } from '@/lib/agent/planning/apply';
 import { runPlanningRound } from '@/lib/agent/planning/round';
 import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 import { getMessagesForChat } from '@/lib/messages/indexing';
-import { updateMessageById } from '@/lib/messages/updateMessageById';
-import type { TurnStoreState } from '@/lib/agent/contracts';
 
 function buildPlanningMessages(
   baseMessages: ModelMessage[],
@@ -30,24 +30,7 @@ function buildPlanningMessages(
     : baseMessages.slice();
 }
 
-function appendPlanningContent(
-  set: PlanTurnOptions['turn']['set'],
-  chatId: string,
-  messageId: string,
-  newContent: string,
-): void {
-  if (!newContent?.trim()) return;
-  set((state: TurnStoreState) => {
-    const result = updateMessageById(state, chatId, messageId, (msg) => {
-      const existing = msg.content || '';
-      const separator = existing.trim() ? '\n\n' : '';
-      return { ...msg, content: existing + separator + newContent };
-    });
-    return result ?? {};
-  });
-}
-
-export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
+export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
   const {
     chat,
     chatId,
@@ -65,6 +48,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const storeState = get?.();
   const messagesForChat = storeState ? getMessagesForChat(storeState, chatId) : [];
   let currentPlan = chat.settings.features.tutor.learningPlan;
+  const sideEffects: PlanTurnSideEffect[] = [];
   const { planningToolDefinition, allowedTutorTools, toolPolicy, phase } = derivePlanningContext({
     chat,
     messagesForChat,
@@ -137,7 +121,12 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
 
       // Write the text content to the UI message so it's visible alongside tool results
       if (typeof message.content === 'string' && message.content.trim()) {
-        appendPlanningContent(set, chatId, assistantMessage.id, message.content);
+        sideEffects.push({
+          type: 'append_planning_content',
+          chatId,
+          messageId: assistantMessage.id,
+          content: message.content,
+        });
       }
     }
 
@@ -182,12 +171,15 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnResult> {
   const finalSystem = combineSystem(baseSystem, [], sourcesAppendix) ?? baseSystem;
 
   return {
-    finalSystem,
-    usedTutorContentTool: state.usedTutorContentTool,
-    hasSearchResults: hasResults,
-    learnerModel: state.learnerModel,
-    planUpdates: state.planUpdates,
-    updatedPlan: state.updatedPlan,
-    learnerModelDebug: state.learnerModelDebug,
+    result: {
+      finalSystem,
+      usedTutorContentTool: state.usedTutorContentTool,
+      hasSearchResults: hasResults,
+      learnerModel: state.learnerModel,
+      planUpdates: state.planUpdates,
+      updatedPlan: state.updatedPlan,
+      learnerModelDebug: state.learnerModelDebug,
+    },
+    sideEffects,
   };
 }

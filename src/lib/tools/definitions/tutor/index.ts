@@ -16,23 +16,25 @@ import { srsReviewTool } from './srsReview';
 import { updateLearnerModelTool } from './updateLearnerModel';
 import { updatePlanTool } from './updatePlan';
 
+export const TUTOR_TOOL_DEFINITIONS: ToolDefinition[] = [
+  askStudentQuestionTool,
+  createDiagnosticTool,
+  generatePlanTool,
+  updatePlanTool,
+  getPlanSuggestionsTool,
+  assessAnswerTool,
+  applyLearnerModelFeedbackTool,
+  updateLearnerModelTool,
+  advanceTopicTool,
+  quizMcqTool,
+  quizFillBlankTool,
+  quizOpenEndedTool,
+  flashcardsTool,
+  gradeOpenResponseTool,
+  addToDeckTool,
+  srsReviewTool,
+];
+
 export function getTutorToolDefinitions(): ToolDefinition[] {
-  return [
-    askStudentQuestionTool,
-    createDiagnosticTool,
-    generatePlanTool,
-    updatePlanTool,
-    getPlanSuggestionsTool,
-    assessAnswerTool,
-    applyLearnerModelFeedbackTool,
-    updateLearnerModelTool,
-    advanceTopicTool,
-    quizMcqTool,
-    quizFillBlankTool,
-    quizOpenEndedTool,
-    flashcardsTool,
-    gradeOpenResponseTool,
-    addToDeckTool,
-    srsReviewTool,
-  ];
+  return TUTOR_TOOL_DEFINITIONS;
 }

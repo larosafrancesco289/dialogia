@@ -9,7 +9,7 @@ import {
   getAllPrerequisites,
   calculatePlanProgress,
   summarizeLearningPlan,
-} from '@/lib/learningPlan/service';
+} from '@/lib/learning-plan/service';
 import type { LearningPlan } from '@/lib/types';
 
 // Helper function to create a minimal valid plan

@@ -8,6 +8,8 @@ import type {
   PersistedAttachment,
   SearchProvider,
 } from '@/lib/types';
+import type { SearchResult } from '@/lib/search/types';
+import type { Result } from '@/lib/utils/result';
 import type { ModelIndex } from '@/lib/models';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { AccessTier } from '@/lib/auth/types';
@@ -19,7 +21,8 @@ import type {
 } from '@/lib/contracts/store';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
-import type { WebSearchToolArgs } from '@/lib/tools/definitions';
+import type { WebSearchArgs as SearchArgs } from '@/lib/search/args';
+import type { ToolName, TutorToolName } from '@/lib/tools/registry';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
 
@@ -58,42 +61,13 @@ export type TurnContext = {
   persistMessage: PersistMessage;
 };
 
-export const TUTOR_TOOL_NAMES = [
-  'ask_student_question',
-  'create_diagnostic',
-  'generate_plan',
-  'update_plan',
-  'assess_answer',
-  'update_learner_model',
-  'advance_topic',
-  'apply_learner_model_feedback',
-  'get_plan_suggestions',
-  'quiz_mcq',
-  'quiz_fill_blank',
-  'quiz_open_ended',
-  'flashcards',
-  'grade_open_response',
-  'add_to_deck',
-  'srs_review',
-] as const;
+export type { ToolName, TutorToolName };
 
-export type TutorToolName = (typeof TUTOR_TOOL_NAMES)[number];
-
-export const TOOL_NAMES = ['web_search', ...TUTOR_TOOL_NAMES] as const;
-
-export type ToolName = (typeof TOOL_NAMES)[number];
-
-export type WebSearchArgs = WebSearchToolArgs;
+export type WebSearchArgs = SearchArgs;
 
 export type TutorToolCall = {
   name: TutorToolName;
   args: Record<string, unknown>;
-};
-
-export type SearchResult = {
-  title?: string;
-  url?: string;
-  description?: string;
 };
 
 export type PlanTurnOptions = {
@@ -118,6 +92,18 @@ export type PlanTurnResult = {
   planUpdates?: Message['planUpdates'];
   updatedPlan?: LearningPlan;
   learnerModelDebug?: LearnerModelDebugSnapshot;
+};
+
+export type PlanTurnSideEffect = {
+  type: 'append_planning_content';
+  chatId: string;
+  messageId: string;
+  content: string;
+};
+
+export type PlanTurnOutput = {
+  result: PlanTurnResult;
+  sideEffects: PlanTurnSideEffect[];
 };
 
 export type ComposeTurnArgs = {
@@ -170,9 +156,10 @@ export type RegenerateOptions = {
   pipeline?: PipelineClient;
 };
 
-export type ToolExecutionResult = {
-  ok: boolean;
-  results: SearchResult[];
-  error?: string;
-  query: string;
-};
+export type ToolExecutionResult = Result<
+  {
+    results: SearchResult[];
+    query: string;
+  },
+  string | undefined
+>;

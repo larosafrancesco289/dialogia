@@ -4,22 +4,15 @@ import { isProd } from '@/lib/env/runtime';
 import { redirectToAccess } from '@/lib/auth/errors';
 import { computeSecretFingerprintEdge } from '@/lib/auth/fingerprint.edge';
 import type { AccessTier } from '@/lib/auth/types';
+import { isPublicAuthPath, verifyAuthToken } from '@/lib/auth/middleware';
 import {
   applyAuthDebugHeaders,
   applyAuthTimingHeaders,
   getAuthDebugConfig,
-  isPublicAuthPath,
-  verifyAuthToken,
-} from '@/lib/auth/middleware';
+} from '@/lib/auth/middlewareDebug.edge';
 
 export default async function middleware(req: NextRequest) {
   const { shouldLogTiming, shouldDebugHeaders, startedAt } = getAuthDebugConfig();
-  // Debug notes (Vercel redirect loop, Dec 2025):
-  // - /api/auth/set-free-tier returns 200 and sets dlg_access/dlg_tier.
-  // - GET / sends dlg_access but receives 307 with x-auth-reason=invalid_token.
-  // - /api/auth/debug (edge) verifies the same token as valid.
-  // - ACCESS_COOKIE_DOMAIN unset; cookie is host-only and included on requests.
-  // => Indicates middleware is running with a different secret (stale Edge build/env).
 
   const withTiming = (res: NextResponse) =>
     applyAuthTimingHeaders(res, { startedAt, shouldLogTiming });

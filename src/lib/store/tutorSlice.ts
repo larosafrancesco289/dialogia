@@ -1,6 +1,6 @@
 import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { MessageTutor, TutorEvent } from '@/lib/types';
-import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
+import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
 import { updateTutorProfile, loadTutorProfile } from '@/lib/tutor/profile';
 import { repository } from '@/lib/db';
 import { readNextOverrides } from '@/lib/ui/next';

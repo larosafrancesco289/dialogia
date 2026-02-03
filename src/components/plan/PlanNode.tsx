@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
 import type { LearningPlanNode, TopicMastery } from '@/lib/types';
-import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
+import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
 import { EditConfirmDialog, EditConfirmAction } from './EditConfirmDialog';
 
 export function PlanNode({
