@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installWebCryptoPolyfill } from './helpers/installWebCryptoPolyfill';
-import { verifyAuthTokenEdge } from '@/lib/auth/edge';
+import { verifyAuthTokenEdge } from '@/lib/auth/token.edge';
 import { base64UrlEncode } from '@/lib/auth/shared';
 
 installWebCryptoPolyfill();

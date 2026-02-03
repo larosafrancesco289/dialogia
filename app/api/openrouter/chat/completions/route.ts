@@ -1,6 +1,5 @@
 import { orChatCompletions } from '@/lib/openrouter/http';
-import { getOpenRouterApiKeyForTier, canUseTierModel, getServerTier } from '@/lib/auth/tierApiKey';
-import { buildTransportAuth } from '@/lib/auth/transport';
+import { resolveOpenRouterAccess } from '@/lib/openrouter/pipeline.server';
 import { jsonError } from '@/lib/server/route';
 import {
   getRequestOrigin,
@@ -15,9 +14,9 @@ import { RATE_LIMITS } from '@/lib/server/rateLimit';
 export const POST = route('openrouter-chat')
   .rateLimit('openrouter-chat', RATE_LIMITS.EXPENSIVE)
   .handler(async (req) => {
-    let apiKey: string;
+    let access: Awaited<ReturnType<typeof resolveOpenRouterAccess>>;
     try {
-      apiKey = await getOpenRouterApiKeyForTier();
+      access = await resolveOpenRouterAccess();
     } catch {
       return jsonError(500, 'missing_env', 'OPENROUTER_API_KEY');
     }
@@ -27,9 +26,8 @@ export const POST = route('openrouter-chat')
       const { body, stream } = parseProxyBody(bodyText);
 
       // Validate model access for free tier
-      const tier = await getServerTier();
-      if (tier === 'free' && typeof body?.model === 'string') {
-        const allowed = await canUseTierModel(body.model);
+      if (typeof body?.model === 'string') {
+        const allowed = await access.canUseModel(body.model);
         if (!allowed) {
           return jsonError(
             403,
@@ -40,7 +38,7 @@ export const POST = route('openrouter-chat')
       }
 
       const res = await orChatCompletions({
-        auth: buildTransportAuth({ transport: 'openrouter', apiKey, useProxy: false }),
+        auth: access.auth,
         body: bodyText,
         stream,
         origin: getRequestOrigin(req),

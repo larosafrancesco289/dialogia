@@ -9,7 +9,7 @@ import {
   AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { getModelCapabilities } from '@/lib/models';
-import { useModelPickerController } from '@/components/modelPicker/useModelPickerController';
+import { useModelPickerController } from '@/components/model-picker/useModelPickerController';
 import { ModelPicker, type ModelPickerTriggerProps } from '@/components/ModelPicker';
 import { CURATED_MODELS } from '@/data/curatedModels';
 

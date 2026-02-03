@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createPipelineClient } from '@/lib/agent/pipelineClient';
-import { HeadlessTutorSession } from '@/lib/headless/session';
+import { HeadlessTutorSession } from '@/tooling/headless/session';
 import { createModelIndex } from '@/lib/models';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import type { Chat, Message, ModelDescriptor } from '@/lib/types';
 import { buildTransportAuth } from '@/lib/auth/transport';
 

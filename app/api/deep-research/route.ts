@@ -1,5 +1,5 @@
 import { apiDefaults } from '@/lib/api/config';
-import { deepResearch, getReasoningSupport } from '@/lib/deepResearch/server';
+import { deepResearch, getReasoningSupport } from '@/lib/deep-research/server';
 import { createNdjsonStream } from '@/lib/server/ndjson';
 import { jsonError } from '@/lib/server/route';
 import { DeepResearchRequestSchema } from '@/lib/schemas/api';
@@ -7,7 +7,7 @@ import { parseSchema } from '@/lib/schemas/parse';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';
 import { evaluateDeepResearchPolicy } from '@/lib/policy/deepResearch';
-import { buildTransportAuth } from '@/lib/auth/transport';
+import { resolveOpenRouterAccess } from '@/lib/openrouter/pipeline.server';
 
 export const POST = route('deep-research')
   .rateLimit('deep-research', RATE_LIMITS.EXPENSIVE)
@@ -38,8 +38,8 @@ export const POST = route('deep-research')
     const style = parsed.data.style;
     const cite = parsed.data.cite;
     const origin = apiDefaults.resolveOrigin();
-    const auth = buildTransportAuth({
-      transport: 'openrouter',
+    const { auth } = await resolveOpenRouterAccess({
+      tier: ctx.tier,
       apiKey: ctx.env.OPENROUTER_API_KEY,
       useProxy: false,
     });

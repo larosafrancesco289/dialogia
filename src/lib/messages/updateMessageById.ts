@@ -15,6 +15,12 @@ export function updateMessageById<S extends MessageState>(
   if (!message || message.chatId !== chatId) return undefined;
   const nextMessage = updater(message);
   if (nextMessage === message) return undefined;
+  if (nextMessage.id !== message.id || nextMessage.chatId !== message.chatId) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error('updateMessageById cannot change message id or chatId');
+    }
+    return undefined;
+  }
   return {
     messagesById: {
       ...state.messagesById,

@@ -1,0 +1,188 @@
+'use client';
+import type { PointerEventHandler } from 'react';
+import { MessagePanelsUpper, TutorPanelSection } from '@/components/message/MessagePanels';
+import { AssistantMessage } from '@/components/message/AssistantMessage';
+import { UserMessage } from '@/components/message/UserMessage';
+import type { MessageCardViewModel } from '@/components/message/useMessageCardViewModel';
+import type { MessagePanelState } from '@/components/message/hooks/useMessagePanels';
+import { cn } from '@/lib/ui/cn';
+import styles from './MessageCard.module.css';
+
+export type MessageCardViewData = MessageCardViewModel & {
+  chatId: string;
+  messageId: string;
+  isMobile: boolean;
+  isActive: boolean;
+  showInlineActions: boolean;
+  isEditing: boolean;
+  draft: string;
+  setDraft: (value: string) => void;
+  setEditingId: (id: string | null) => void;
+  onSaveEdit: () => void;
+  onStartEdit: () => void;
+  onCopy: () => void;
+  copiedId: string | null;
+  setLightbox: (
+    value: {
+      images: { src: string; name?: string }[];
+      index: number;
+    } | null,
+  ) => void;
+  waitingForFirstToken: boolean;
+  lastMessageId?: string;
+  panels: MessagePanelState;
+  onPointerDown?: PointerEventHandler<HTMLDivElement>;
+  onPointerMove?: PointerEventHandler<HTMLDivElement>;
+  onPointerUp?: PointerEventHandler<HTMLDivElement>;
+  onPointerCancel?: PointerEventHandler<HTMLDivElement>;
+};
+
+export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData }) {
+  const {
+    message,
+    chat,
+    models,
+    isStreaming,
+    braveGloballyEnabled,
+    braveEntry,
+    debugMode,
+    debugEntry,
+    tutorGloballyEnabled,
+    tutorEntry,
+    autoReasoningModelIds,
+    showToolCallLog,
+    showDebugRawJson,
+    showStats,
+    tutorEnabled,
+    actions,
+    isMobile,
+    isActive,
+    showInlineActions,
+    isEditing,
+    draft,
+    setDraft,
+    setEditingId,
+    onSaveEdit,
+    onStartEdit,
+    onCopy,
+    copiedId,
+    setLightbox,
+    waitingForFirstToken,
+    lastMessageId,
+    panels,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+  } = viewModel;
+
+  if (!message) return null;
+
+  const isAssistant = message.role === 'assistant';
+  const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
+
+  const messageClassName = cn(
+    'card',
+    'p-0',
+    'group',
+    styles.messageCard,
+    isAssistant ? styles.assistant : styles.user,
+    isMobile && isActive && styles.active,
+  );
+
+  const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+  const toolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : undefined;
+
+  const upperPanelsNode = isAssistant ? (
+    <MessagePanelsUpper
+      message={message}
+      chat={chat}
+      models={models}
+      braveGloballyEnabled={braveGloballyEnabled}
+      braveEntry={braveEntry}
+      isSourcesExpanded={panels.sources.expanded}
+      onToggleSources={panels.sources.onToggle}
+      debugMode={debugMode}
+      debugEntry={debugEntry}
+      isDebugExpanded={panels.debug.expanded}
+      onToggleDebug={panels.debug.onToggle}
+      autoReasoningModelIds={autoReasoningModelIds}
+      isStreaming={isStreaming}
+      lastMessageId={lastMessageId}
+      reasoningExpanded={panels.reasoning.expanded}
+      onToggleReasoning={panels.reasoning.onToggle}
+      showToolCallLog={showToolCallLog}
+      showDebugRawJson={showDebugRawJson}
+      toolCalls={toolCalls}
+      highlightToolCalls={message.id === lastMessageId}
+    />
+  ) : null;
+
+  const tutorPanelNode = isAssistant ? (
+    <TutorPanelSection
+      messageId={message.id}
+      tutorGloballyEnabled={tutorGloballyEnabled}
+      tutorEntry={tutorEntry}
+    />
+  ) : null;
+
+  return (
+    <div
+      className={messageClassName}
+      data-mid={message.id}
+      aria-label={message.role === 'assistant' ? 'Assistant message' : 'Your message'}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+    >
+      {isAssistant ? (
+        <AssistantMessage
+          message={message}
+          isMobile={isMobile}
+          showInlineActions={showInlineActions}
+          isStreaming={isStreaming}
+          isEditing={isEditing}
+          copyMessage={onCopy}
+          copiedId={copiedId}
+          startEditingMessage={onStartEdit}
+          saveEdit={onSaveEdit}
+          setEditingId={setEditingId}
+          setDraft={setDraft}
+          draft={draft}
+          waitingForFirstToken={waitingForFirstToken}
+          isLatestAssistant={isLatestAssistant}
+          lastMessageId={lastMessageId}
+          models={models}
+          chat={chat}
+          showStats={showStats}
+          statsExpanded={panels.stats.expanded}
+          onToggleStats={panels.stats.onToggle}
+          branchFromMessage={actions.branchFromMessage}
+          onChooseRegenerateModel={actions.regenerateMessage}
+          setLightbox={setLightbox}
+          attachments={attachments}
+          tutorEnabled={tutorEnabled}
+          upperPanelsNode={upperPanelsNode}
+          tutorPanelNode={tutorPanelNode}
+        />
+      ) : (
+        <UserMessage
+          message={message}
+          isMobile={isMobile}
+          showInlineActions={showInlineActions}
+          isEditing={isEditing}
+          copyMessage={onCopy}
+          copiedId={copiedId}
+          startEditingMessage={onStartEdit}
+          saveEdit={onSaveEdit}
+          setEditingId={setEditingId}
+          setDraft={setDraft}
+          draft={draft}
+          setLightbox={setLightbox}
+          attachments={attachments}
+        />
+      )}
+    </div>
+  );
+}

@@ -2,7 +2,9 @@ import Dexie, { Table } from 'dexie';
 import type { Chat, Folder, KVRecord, Message } from '@/lib/types';
 import { sanitizeMessageRecord } from '@/lib/db/sanitize';
 import { DB_SCHEMA_VERSION } from '@/lib/db/versions';
-import { migrateChatSettingsRecord, migrateGenSettingsRecord } from '@/lib/settings/migrations';
+import { migrateGenSettingsRecord } from '@/lib/settings/migrations';
+import { normalizeChatSettings } from '@/lib/settings/normalize';
+import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 
 export class DialogiaDB extends Dexie {
   chats!: Table<Chat, string>;
@@ -36,10 +38,12 @@ export class DialogiaDB extends Dexie {
 
         const allChats = await chatsTable.toArray();
         for (const record of allChats) {
-          const { next: settings, changed } = migrateChatSettingsRecord(record.settings);
-          if (changed) {
-            await chatsTable.put({ ...record, settings: settings as Chat['settings'] });
-          }
+          const settings = normalizeChatSettings(record.settings, {
+            fallbackModelId: DEFAULT_MODEL_ID,
+            fallbackTutorModelId: DEFAULT_TUTOR_MODEL_ID,
+          });
+          const changed = JSON.stringify(settings) !== JSON.stringify(record.settings);
+          if (changed) await chatsTable.put({ ...record, settings });
         }
 
         const allMessages = await messagesTable.toArray();
@@ -64,10 +68,11 @@ export class DialogiaDB extends Dexie {
           }
 
           if ('settings' in nextRecord) {
-            const { next: settings, changed: settingsChanged } = migrateChatSettingsRecord(
-              nextRecord.settings,
-            );
-            if (settingsChanged) {
+            const settings = normalizeChatSettings(nextRecord.settings, {
+              fallbackModelId: DEFAULT_MODEL_ID,
+              fallbackTutorModelId: DEFAULT_TUTOR_MODEL_ID,
+            });
+            if (JSON.stringify(settings) !== JSON.stringify(nextRecord.settings)) {
               changed = true;
               nextRecord = { ...nextRecord, settings };
             }

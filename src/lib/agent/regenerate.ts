@@ -7,7 +7,7 @@ import type { Chat, GenSettingsSnapshot } from '@/lib/types';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { ModelMessage, RegenerateOptions, SearchProvider } from '@/lib/agent/types';
 import { streamFinal } from '@/lib/agent/streaming';
-import { setTurnController } from '@/lib/turnRuntime/abortControllers';
+import { setTurnController } from '@/lib/turns/runtime';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { adjustActiveTurnCount } from '@/lib/ui/streaming';

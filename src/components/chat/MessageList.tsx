@@ -8,8 +8,9 @@ import { ImageLightbox } from '@/components/ImageLightbox';
 import { MessageActionSheet } from '@/components/message/MessageActionSheet';
 import { MessageCard } from '@/components/message/MessageCard';
 import { useMessageListWindow } from '@/components/message/hooks/useMessageListWindow';
-import { useIsMobile } from '@/lib/hooks/useIsMobile';
-import { useMessagePanelsToggles } from '@/components/message/hooks/useMessagePanelsToggles';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import { useMessagePanels } from '@/components/message/hooks/useMessagePanels';
 import { useMessageListController } from '@/components/message/useMessageListController';
 import { selectIsStreamingForChat, selectMessagesForChat } from '@/lib/store/selectors';
 
@@ -40,7 +41,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       return false;
     }
   }, []);
-  const isMobile = useIsMobile();
+  const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const messages = useMemo(() => {
     const base = !modelFilter
       ? allMessages
@@ -154,38 +155,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   // Composer is now rendered outside this scroll container in ChatPane.
 
   const showByDefault = chat?.settings.ui.showThinkingByDefault ?? false;
-  const {
-    isReasoningExpanded,
-    toggleReasoning,
-    isSourcesExpanded,
-    toggleSources,
-    isDebugExpanded,
-    toggleDebug,
-    isStatsExpanded,
-    toggleStats,
-  } = useMessagePanelsToggles({ showReasoningByDefault: showByDefault });
-  const panelControls = useMemo(
-    () => ({
-      isReasoningExpanded,
-      toggleReasoning,
-      isSourcesExpanded,
-      toggleSources,
-      isDebugExpanded,
-      toggleDebug,
-      isStatsExpanded,
-      toggleStats,
-    }),
-    [
-      isReasoningExpanded,
-      toggleReasoning,
-      isSourcesExpanded,
-      toggleSources,
-      isDebugExpanded,
-      toggleDebug,
-      isStatsExpanded,
-      toggleStats,
-    ],
-  );
+  const { getPanelState } = useMessagePanels({ showReasoningByDefault: showByDefault });
   // Subtle indicator for long time-to-first-token
   const waitingForFirstToken = useMemo(() => {
     if (!isStreaming) return false;
@@ -238,7 +208,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
               setLightbox={setLightbox}
               waitingForFirstToken={waitingForFirstToken && message.id === lastMessageId}
               lastMessageId={lastMessageId}
-              panels={panelControls}
+              panels={getPanelState(message.id)}
               onOpenMobileSheet={openMobileSheet}
             />
           );

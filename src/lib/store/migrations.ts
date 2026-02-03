@@ -1,5 +1,4 @@
 import type { PersistedStoreState } from '@/lib/store/types';
-import { migrateChatSettingsRecord, migrateGenSettingsRecord } from '@/lib/settings/migrations';
 import { isRecord } from '@/lib/utils/guards';
 
 type PersistedState = Record<string, unknown>;
@@ -29,19 +28,6 @@ const stripDeprecatedUiFields = (ui: Record<string, unknown>): Record<string, un
 const compactRecord = <T extends Record<string, unknown>>(input: T): T | undefined => {
   const entries = Object.entries(input).filter(([, value]) => value !== undefined);
   return entries.length ? (Object.fromEntries(entries) as T) : undefined;
-};
-
-const migrateSearchSettings = <T>(input: T): T => {
-  if (!isRecord(input)) return input;
-  const next = { ...input } as Record<string, unknown>;
-  if ('search_with_brave' in next) {
-    if (next.search_enabled == null) next.search_enabled = !!next.search_with_brave;
-    if (next.search_provider == null && next.search_with_brave === true) {
-      next.search_provider = 'brave';
-    }
-    delete next['search_with_brave'];
-  }
-  return next as T;
 };
 
 const migrateUiToNested = (ui: Record<string, unknown>): Record<string, unknown> => {
@@ -84,36 +70,6 @@ const migrateUiToNested = (ui: Record<string, unknown>): Record<string, unknown>
 export const migrateToV2 = (state: PersistedState): PersistedState => {
   const next: PersistedState = { ...state };
 
-  if (Array.isArray(state.chats)) {
-    next.chats = state.chats.map((chat) => {
-      if (!isRecord(chat)) return chat;
-      const updatedSettings = migrateSearchSettings(chat.settings);
-      return { ...chat, settings: updatedSettings };
-    });
-  }
-
-  if (isRecord(state.messages)) {
-    const migratedMessages: Record<string, unknown> = {};
-    for (const [chatId, list] of Object.entries(state.messages)) {
-      if (!Array.isArray(list)) {
-        migratedMessages[chatId] = list;
-        continue;
-      }
-      migratedMessages[chatId] = list.map((message) => {
-        if (!isRecord(message)) return message;
-        const nextMessage: Record<string, unknown> = { ...message };
-        if ('genSettings' in nextMessage) {
-          nextMessage.genSettings = migrateSearchSettings(nextMessage.genSettings);
-        }
-        if ('settings' in nextMessage) {
-          nextMessage.settings = migrateSearchSettings(nextMessage.settings);
-        }
-        return nextMessage;
-      });
-    }
-    next.messages = migratedMessages;
-  }
-
   if (isRecord(state.ui)) {
     next.ui = stripDeprecatedUiFields(state.ui);
   }
@@ -132,41 +88,7 @@ export const migrateToV4 = (state: PersistedState): PersistedState => {
 };
 
 export const migrateToV5 = (state: PersistedState): PersistedState => {
-  const next: PersistedState = { ...state };
-
-  if (Array.isArray(state.chats)) {
-    next.chats = state.chats.map((chat) => {
-      if (!isRecord(chat)) return chat;
-      const { next: settings } = migrateChatSettingsRecord(chat.settings);
-      return { ...chat, settings };
-    });
-  }
-
-  if (isRecord(state.messages)) {
-    const migratedMessages: Record<string, unknown> = {};
-    for (const [chatId, list] of Object.entries(state.messages)) {
-      if (!Array.isArray(list)) {
-        migratedMessages[chatId] = list;
-        continue;
-      }
-      migratedMessages[chatId] = list.map((message) => {
-        if (!isRecord(message)) return message;
-        const nextMessage: Record<string, unknown> = { ...message };
-        if ('genSettings' in nextMessage) {
-          const { next: genSettings } = migrateGenSettingsRecord(nextMessage.genSettings);
-          nextMessage.genSettings = genSettings;
-        }
-        if ('settings' in nextMessage) {
-          const { next: settings } = migrateChatSettingsRecord(nextMessage.settings);
-          nextMessage.settings = settings;
-        }
-        return nextMessage;
-      });
-    }
-    next.messages = migratedMessages;
-  }
-
-  return next;
+  return state;
 };
 
 export const migrate = (persistedState: unknown, version = 0): PersistedStoreState => {

@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { NextRequest } from 'next/server';
 import { jsonError } from './route';
 import { readEnvValue } from '@/lib/env/values';

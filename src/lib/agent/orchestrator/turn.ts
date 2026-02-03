@@ -5,6 +5,8 @@ import type {
   ModelMessage,
   PlanTurnOptions,
   PlanTurnResult,
+  PlanTurnSideEffect,
+  PlanTurnOutput,
   TurnComposition,
   TurnContext,
   StreamFinalOptions,
@@ -13,13 +15,14 @@ import type {
 import type { TransportAuth } from '@/lib/auth/transport';
 
 type ComposeFn = (args: ComposeTurnArgs) => Promise<TurnComposition>;
-type PlanFn = (args: PlanTurnOptions) => Promise<PlanTurnResult>;
+type PlanFn = (args: PlanTurnOptions) => Promise<PlanTurnOutput>;
 type StreamFn = (args: StreamFinalOptions) => Promise<void>;
 type BaseTurnContext = Omit<TurnContext, 'auth'>;
 
 export type RunTurnHooks = {
   onComposition?: (composition: TurnComposition) => void;
   onPlanResult?: (plan: PlanTurnResult) => void;
+  onPlanSideEffects?: (effects: PlanTurnSideEffect[]) => void;
   beforeStream?: (args: { composition: TurnComposition; plan?: PlanTurnResult }) => void;
 };
 
@@ -112,8 +115,9 @@ export const runTurn = async ({
   };
 
   let planResult: PlanTurnResult | undefined;
+  let planSideEffects: PlanTurnSideEffect[] = [];
   if (composition.shouldPlan) {
-    planResult = await plan({
+    const planOutput = await plan({
       chat,
       chatId,
       assistantMessage,
@@ -125,7 +129,10 @@ export const runTurn = async ({
       turn: turnContext,
       settings: composition.settings,
     });
+    planResult = planOutput.result;
+    planSideEffects = planOutput.sideEffects;
     hooks?.onPlanResult?.(planResult);
+    hooks?.onPlanSideEffects?.(planSideEffects);
 
     if (shouldShortCircuit?.(planResult)) {
       return { composition, plan: planResult, shortCircuited: true };

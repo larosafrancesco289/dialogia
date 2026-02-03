@@ -6,16 +6,17 @@ import { useTierCuratedModels } from '@/lib/hooks/useTierModels';
 import { useTier } from '@/lib/auth/tierContext';
 import { isFreeModel } from '@/data/freeModels';
 import type { ZdrLists } from '@/lib/policy/zdr';
-import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { getModelTransportLabel } from '@/lib/providers';
 import { ModelSearch } from '@/components/ModelSearch';
 import type { ModelSearchResult } from '@/lib/models/search';
 import { PortalDropdown } from '@/components/PortalDropdown';
-import { FavoriteModelCard, ModelCard } from '@/components/modelPicker/ModelCards';
+import { FavoriteModelCard, ModelCard } from '@/components/model-picker/ModelCards';
 import {
   useModelPickerController,
   type ModelPickerOption,
-} from '@/components/modelPicker/useModelPickerController';
+} from '@/components/model-picker/useModelPickerController';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -120,7 +121,7 @@ export function ModelPicker({
   const modalRef = useRef<HTMLDivElement | null>(null);
   const searchDropdownRef = useRef<HTMLDivElement | null>(null);
   const favoritesEndRef = useRef<HTMLDivElement | null>(null);
-  const isMobile = useIsMobile();
+  const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const maxSelectable = enableMultiModelChat ? (isMobile ? 2 : 4) : 1;
   const limitTimeoutRef = useRef<number | null>(null);
   const [limitPulse, setLimitPulse] = useState(false);

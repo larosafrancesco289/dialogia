@@ -3,6 +3,24 @@ import type { GenerationSettings, SearchProvider } from '@/lib/types/chat';
 import type { DeepResearchEvent } from '@/lib/types/deepResearch';
 import type { MessageMetrics } from '@/lib/types/metrics';
 import type { LearnerModel, MessageTutor } from '@/lib/types/tutor';
+import type {
+  MessageRole,
+  MessageSource,
+  ToolCallCategory,
+  ToolCallStatus,
+} from '@/lib/types/enums';
+export type {
+  MessageRole,
+  MessageSource,
+  ToolCallCategory,
+  ToolCallStatus,
+} from '@/lib/types/enums';
+export {
+  MessageRoleEnum,
+  MessageSourceEnum,
+  ToolCallCategoryEnum,
+  ToolCallStatusEnum,
+} from '@/lib/types/enums';
 
 export type GenSettingsSnapshot = GenerationSettings & {
   searchEnabled?: boolean;
@@ -14,8 +32,8 @@ export type ToolCallLogEntry = {
   id: string;
   name: string;
   timestamp: number;
-  status: 'pending' | 'success' | 'error';
-  category?: 'search' | 'tutor' | 'planning' | 'system' | 'other';
+  status: ToolCallStatus;
+  category?: ToolCallCategory;
   input: Record<string, unknown>;
   output?: Record<string, unknown>;
   error?: string;
@@ -44,7 +62,7 @@ export type MessageDeepResearch = {
 export type Message = {
   id: string;
   chatId: string;
-  role: 'system' | 'user' | 'assistant';
+  role: MessageRole;
   content: string;
   // Not shown in the UI, but included in LLM conversation history
   hiddenContent?: string;
@@ -72,7 +90,7 @@ export type Message = {
     hiddenFromUser?: boolean;
     kind?: string;
     /** Source of the message (e.g., 'voice' for voice agent) */
-    source?: 'voice' | 'text';
+    source?: MessageSource;
     /** Audio length in ms (for voice messages) */
     audioLengthMs?: number;
   };

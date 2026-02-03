@@ -1,6 +1,6 @@
 import Image from 'next/image';
-import { FolderRow } from '@/components/sidebar/FolderRow';
-import { ChatRow } from '@/components/sidebar/ChatRow';
+import { FolderRowContainer } from '@/components/sidebar/FolderRowContainer';
+import { ChatRowContainer } from '@/components/sidebar/ChatRowContainer';
 import { SidebarSearch } from '@/components/sidebar/SidebarSearch';
 import { IconButton } from '@/components/ui/IconButton';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -133,11 +133,11 @@ export function ChatSidebarView({
         onDrop={handleRootDrop}
       >
         {filteredRootFolders.map((folder) => (
-          <FolderRow key={folder.id} folder={folder} />
+          <FolderRowContainer key={folder.id} folder={folder} />
         ))}
 
         {filteredRootChats.map((chat) => (
-          <ChatRow
+          <ChatRowContainer
             key={chat.id}
             chat={chat}
             collapsed={collapsed}

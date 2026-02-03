@@ -4,7 +4,7 @@ import {
   getLatestLearnerModel,
   initializeLearnerModel,
   updateLearnerModel,
-} from '@/lib/agent/learnerModel';
+} from '@/lib/agent/learner-model';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 
 type UpdateLearnerModelArgs = {

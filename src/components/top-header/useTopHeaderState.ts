@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { findModelById, formatModelLabel } from '@/lib/models';
-import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/learningPlan/service';
-import { getBreadcrumbPath, getMilestones } from '@/lib/learningPlan/breadcrumb';
-import { getLatestLearnerModel } from '@/lib/agent/learnerModel';
+import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/learning-plan/service';
+import { getBreadcrumbPath, getMilestones } from '@/lib/learning-plan/breadcrumb';
+import { getLatestLearnerModel } from '@/lib/agent/learner-model';
 import {
   selectCurrentChat,
   selectIsTutorEnabled,
@@ -22,7 +22,7 @@ import type {
   LearningPlanNode,
   StudyCondition,
 } from '@/lib/types';
-import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
+import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
 import type { LearnerModelEditCallbacks } from '@/components/plan/PlanSheet';
 import { logAction } from '@/lib/study';
 

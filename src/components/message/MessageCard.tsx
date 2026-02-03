@@ -1,22 +1,9 @@
 'use client';
 import { memo, useCallback } from 'react';
-import { MessagePanelsUpper, TutorPanelSection } from '@/components/message/MessagePanels';
-import styles from './MessageCard.module.css';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
 import { useMessageCardController } from '@/components/message/useMessageCardController';
-import { AssistantMessage } from '@/components/message/AssistantMessage';
-import { UserMessage } from '@/components/message/UserMessage';
-
-export type MessagePanelControls = {
-  isSourcesExpanded: (messageId: string) => boolean;
-  toggleSources: (messageId: string) => void;
-  isDebugExpanded: (messageId: string) => boolean;
-  toggleDebug: (messageId: string) => void;
-  isReasoningExpanded: (messageId: string) => boolean;
-  toggleReasoning: (messageId: string) => void;
-  isStatsExpanded: (messageId: string) => boolean;
-  toggleStats: (messageId: string) => void;
-};
+import type { MessagePanelState } from '@/components/message/hooks/useMessagePanels';
+import { MessageCardView, type MessageCardViewData } from '@/components/message/MessageCardView';
 
 export type MessageCardProps = {
   chatId: string;
@@ -40,7 +27,7 @@ export type MessageCardProps = {
   ) => void;
   waitingForFirstToken: boolean;
   lastMessageId?: string;
-  panels: MessagePanelControls;
+  panels: MessagePanelState;
   onOpenMobileSheet: (value: { id: string; role: 'assistant' | 'user' }) => void;
 };
 
@@ -64,172 +51,51 @@ function MessageCardComponent({
   panels,
   onOpenMobileSheet,
 }: MessageCardProps) {
-  const {
-    message,
-    chat,
-    models,
-    isStreaming,
-    braveGloballyEnabled,
-    braveEntry,
-    debugMode,
-    debugEntry,
-    tutorGloballyEnabled,
-    tutorEntry,
-    autoReasoningModelIds,
-    showToolCallLog,
-    showDebugRawJson,
-    showStats,
-    tutorEnabled,
-    actions,
-  } = useMessageCardController({ chatId, messageId });
+  const viewModel = useMessageCardController({ chatId, messageId });
+  const { message } = viewModel;
 
-  // All hooks must be called before any conditional returns
-  const { onPointerDown, onContextMenu } = useLongPressSheet({
-    isEnabled: isMobile && !!message,
-    onTrigger: () => {
+  const handleCopy = useCallback(() => copyMessage(messageId), [copyMessage, messageId]);
+  const handleStartEdit = useCallback(
+    () => startEditingMessage(messageId),
+    [messageId, startEditingMessage],
+  );
+  const handleSaveEdit = useCallback(() => saveEdit(messageId), [messageId, saveEdit]);
+
+  const longPress = useLongPressSheet({
+    enabled: isMobile && !!message,
+    onLongPress: () => {
       if (message) {
         onOpenMobileSheet({ id: message.id, role: message.role as 'assistant' | 'user' });
       }
     },
   });
 
-  const handleToggleSources = useCallback(
-    () => message && panels.toggleSources(message.id),
-    [message, panels],
-  );
-  const handleToggleDebug = useCallback(
-    () => message && panels.toggleDebug(message.id),
-    [message, panels],
-  );
-  const handleToggleReasoning = useCallback(
-    () => message && panels.toggleReasoning(message.id),
-    [message, panels],
-  );
-  const handleToggleStats = useCallback(
-    () => message && panels.toggleStats(message.id),
-    [message, panels],
-  );
+  const cardViewModel: MessageCardViewData = {
+    ...viewModel,
+    chatId,
+    messageId,
+    isMobile,
+    isActive,
+    showInlineActions,
+    isEditing,
+    draft,
+    setDraft,
+    setEditingId,
+    onSaveEdit: handleSaveEdit,
+    onStartEdit: handleStartEdit,
+    onCopy: handleCopy,
+    copiedId,
+    setLightbox,
+    waitingForFirstToken,
+    lastMessageId,
+    panels,
+    onPointerDown: longPress.onPointerDown,
+    onPointerMove: longPress.onPointerMove,
+    onPointerUp: longPress.onPointerUp,
+    onPointerCancel: longPress.onPointerCancel,
+  };
 
-  if (!message) return null;
-
-  const isAssistant = message.role === 'assistant';
-  const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
-
-  const messageClassName = [
-    'card',
-    'p-0',
-    'group',
-    styles.messageCard,
-    isAssistant ? styles.assistant : styles.user,
-    isMobile && isActive ? styles.active : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const handleCopy = () => copyMessage(message.id);
-  const handleStartEdit = () => startEditingMessage(message.id);
-  const handleSaveEdit = () => saveEdit(message.id);
-  const handleBranch = actions.branchFromMessage;
-  const handleRegenerate = actions.regenerateMessage;
-  const attachments = Array.isArray(message.attachments) ? message.attachments : [];
-
-  const isSourcesExpanded = panels.isSourcesExpanded(message.id);
-  const isDebugExpanded = panels.isDebugExpanded(message.id);
-  const isReasoningExpanded = panels.isReasoningExpanded(message.id);
-  const statsExpanded = panels.isStatsExpanded(message.id);
-
-  // Upper panels (debug, reasoning, brave sources) - appear ABOVE message content
-  const upperPanelsNode = isAssistant ? (
-    <MessagePanelsUpper
-      message={message}
-      chat={chat}
-      models={models}
-      braveGloballyEnabled={braveGloballyEnabled}
-      braveEntry={braveEntry}
-      isSourcesExpanded={isSourcesExpanded}
-      onToggleSources={handleToggleSources}
-      debugMode={debugMode}
-      debugEntry={debugEntry}
-      isDebugExpanded={isDebugExpanded}
-      onToggleDebug={handleToggleDebug}
-      autoReasoningModelIds={autoReasoningModelIds}
-      isStreaming={isStreaming}
-      lastMessageId={lastMessageId}
-      reasoningExpanded={isReasoningExpanded}
-      onToggleReasoning={handleToggleReasoning}
-      showToolCallLog={showToolCallLog}
-      showDebugRawJson={showDebugRawJson}
-      toolCalls={Array.isArray(message.toolCalls) ? message.toolCalls : undefined}
-      highlightToolCalls={message.id === lastMessageId}
-    />
-  ) : null;
-
-  // Tutor panel - appears BELOW message content (so tutor's text shows first, then interactive tools)
-  const tutorPanelNode = isAssistant ? (
-    <TutorPanelSection
-      messageId={message.id}
-      tutorGloballyEnabled={tutorGloballyEnabled}
-      tutorEntry={tutorEntry}
-    />
-  ) : null;
-
-  return (
-    <div
-      className={messageClassName}
-      data-mid={message.id}
-      aria-label={message.role === 'assistant' ? 'Assistant message' : 'Your message'}
-      onPointerDown={onPointerDown}
-      onContextMenu={onContextMenu}
-    >
-      {isAssistant ? (
-        <AssistantMessage
-          message={message}
-          isMobile={isMobile}
-          showInlineActions={showInlineActions}
-          isStreaming={isStreaming}
-          isEditing={isEditing}
-          copyMessage={handleCopy}
-          copiedId={copiedId}
-          startEditingMessage={handleStartEdit}
-          saveEdit={handleSaveEdit}
-          setEditingId={setEditingId}
-          setDraft={setDraft}
-          draft={draft}
-          waitingForFirstToken={waitingForFirstToken}
-          isLatestAssistant={isLatestAssistant}
-          lastMessageId={lastMessageId}
-          models={models}
-          chat={chat}
-          showStats={showStats}
-          statsExpanded={statsExpanded}
-          onToggleStats={handleToggleStats}
-          branchFromMessage={handleBranch}
-          onChooseRegenerateModel={handleRegenerate}
-          setLightbox={setLightbox}
-          attachments={attachments}
-          tutorEnabled={tutorEnabled}
-          upperPanelsNode={upperPanelsNode}
-          tutorPanelNode={tutorPanelNode}
-        />
-      ) : (
-        <UserMessage
-          message={message}
-          isMobile={isMobile}
-          showInlineActions={showInlineActions}
-          isEditing={isEditing}
-          copyMessage={handleCopy}
-          copiedId={copiedId}
-          startEditingMessage={handleStartEdit}
-          saveEdit={handleSaveEdit}
-          setEditingId={setEditingId}
-          setDraft={setDraft}
-          draft={draft}
-          setLightbox={setLightbox}
-          attachments={attachments}
-        />
-      )}
-    </div>
-  );
+  return <MessageCardView viewModel={cardViewModel} />;
 }
 
 export const MessageCard = memo(MessageCardComponent);

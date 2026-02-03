@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { runWebSearch } from '@/lib/deepResearch/server/tools.server';
-import type { WebSearchToolArgs } from '@/lib/tools/definitions/webSearch';
+import { runWebSearch } from '@/lib/deep-research/server/tools.server';
+import { normalizeWebSearchArgs, type WebSearchArgs } from '@/lib/search/args';
 import { jsonError } from '@/lib/server/route';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';
@@ -22,29 +22,27 @@ export const GET = route('brave-search')
     }
 
     try {
-      const args: WebSearchToolArgs = { query: q };
-      if (Number.isFinite(count)) args.count = count;
-      const freshness = searchParams.get('freshness');
-      if (freshness) {
-        const allowed = new Set(['d', 'w', 'm', 'y', 'all']);
-        if (allowed.has(freshness)) args.freshness = freshness as WebSearchToolArgs['freshness'];
-      }
-      const country = searchParams.get('country');
-      if (country) args.country = country;
       const includeDomains = searchParams.get('include_domains');
-      if (includeDomains) {
-        args.include_domains = includeDomains
-          .split(',')
-          .map((entry) => entry.trim())
-          .filter(Boolean);
-      }
       const excludeDomains = searchParams.get('exclude_domains');
-      if (excludeDomains) {
-        args.exclude_domains = excludeDomains
-          .split(',')
-          .map((entry) => entry.trim())
-          .filter(Boolean);
-      }
+      const args: WebSearchArgs = normalizeWebSearchArgs({
+        query: q,
+        count,
+        freshness: searchParams.get('freshness'),
+        country: searchParams.get('country'),
+        include_domains: includeDomains
+          ? includeDomains
+              .split(',')
+              .map((entry) => entry.trim())
+              .filter(Boolean)
+          : undefined,
+        exclude_domains: excludeDomains
+          ? excludeDomains
+              .split(',')
+              .map((entry) => entry.trim())
+              .filter(Boolean)
+          : undefined,
+        provider: 'brave',
+      });
 
       const results = await runWebSearch(args);
       return NextResponse.json({ results });

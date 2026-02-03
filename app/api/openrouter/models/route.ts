@@ -1,23 +1,21 @@
 import { orFetchModels } from '@/lib/openrouter/http';
 import { jsonError } from '@/lib/server/route';
 import { getRequestOrigin, proxyJson, withProxyErrors } from '@/lib/server/proxy';
-import { getOpenRouterApiKeyForTier } from '@/lib/auth/tierApiKey';
-import { buildTransportAuth } from '@/lib/auth/transport';
+import { resolveOpenRouterAccess } from '@/lib/openrouter/pipeline.server';
 import { route } from '@/lib/server/routeBuilder';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 
 export const GET = route('openrouter-models')
   .rateLimit('openrouter-models', RATE_LIMITS.STANDARD)
   .handler(async (req) => {
-    let apiKey: string;
+    let access: Awaited<ReturnType<typeof resolveOpenRouterAccess>>;
     try {
-      apiKey = await getOpenRouterApiKeyForTier();
+      access = await resolveOpenRouterAccess();
     } catch {
       return jsonError(500, 'missing_env', 'OPENROUTER_API_KEY');
     }
     return withProxyErrors(async () => {
-      const auth = buildTransportAuth({ transport: 'openrouter', apiKey, useProxy: false });
-      const res = await orFetchModels(auth, { origin: getRequestOrigin(req) });
+      const res = await orFetchModels(access.auth, { origin: getRequestOrigin(req) });
       return proxyJson(res);
     }, 'proxy_error');
   });

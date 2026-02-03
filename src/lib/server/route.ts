@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { NextResponse } from 'next/server';
 
 const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());

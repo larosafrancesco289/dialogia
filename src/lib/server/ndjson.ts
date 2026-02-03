@@ -1,3 +1,5 @@
+import 'server-only';
+
 type NdjsonWriter = {
   send: (payload: unknown) => void;
   close: () => void;

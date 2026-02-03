@@ -6,7 +6,7 @@ import {
   toPdfAttachment,
   toAudioAttachment,
   clampImages,
-} from '@/lib/attachments';
+} from '@/lib/attachments/ui';
 
 type UseComposerAttachmentsOptions = {
   canVision: boolean;

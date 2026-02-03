@@ -1,0 +1,1 @@
+export const STORE_MIGRATION_VERSION = 5;

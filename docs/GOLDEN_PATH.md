@@ -6,25 +6,22 @@ Short, practical guide for extending Dialogia without violating module boundarie
 
 - Allowed: `src/lib/store/*` (selectors/actions), `src/lib/ui/*`, `src/lib/hooks/*`, and UI-safe
   helpers under `src/lib/messages/*`.
-- Avoid: `src/lib/api/*`, `src/lib/openrouter/*`, `src/lib/transport/*`, `src/lib/eval/*`, and
-  `src/lib/headless/*` in UI components.
+- Avoid: `src/lib/api/*`, `src/lib/openrouter/*`, `src/lib/transport/*`, `src/tooling/eval/*`, and
+  `src/tooling/headless/*` in UI components.
+
+## Public surfaces
+
+- Prefer `src/lib/agent/index.ts`, `src/lib/tools/index.ts`, and `src/lib/search/index.ts` for
+  cross-domain imports; avoid deep internal modules unless you are extending that domain.
 
 ## Add a tool
 
 1. Define or update a zod schema under `src/lib/schemas/*` for the tool payload.
-2. Define the tool schema under `src/lib/agent/tools/definitions/` using `toJsonSchema(...)`
-   (export a `ToolDefinition`).
-3. Re-export it from `src/lib/agent/tools/definitions/tutorTools.ts` or a new definitions entrypoint.
-4. Add the tool name to `TUTOR_TOOL_NAMES` or `TOOL_NAMES` in `src/lib/agent/types.ts`.
-5. Add metadata in `src/lib/agent/tools/metadata.ts` for category/tags.
-6. Implement a handler:
-   - Tutor tools: add handler under `src/lib/agent/tools/tutor/handlers/` and register it in
-     `src/lib/agent/tools/tutor.ts`.
-   - Other tools: add handler in the relevant module (e.g., `src/lib/agent/tools/web.ts`) and
-     route it through `src/lib/agent/tools/router.ts` or `src/lib/agent/tools/exec.ts`.
-7. Wire it into planning/streaming if needed (`src/lib/agent/planning.ts`,
-   `src/lib/agent/planning/*`, `src/lib/agent/streaming.ts`).
-8. Add tests next to the handler or under `tests/`.
+2. If needed, add a JSON-schema helper under `src/lib/tools/definitions/*` using `toJsonSchema(...)`.
+3. Register the tool in `src/lib/tools/registry.ts` with definition, metadata, and handler.
+4. Use `src/lib/tools/index.ts` for the public exports (tutor and general tool lists are derived).
+5. Wire it into planning/streaming if needed (`src/lib/agent/planning/*`, `src/lib/agent/streaming.ts`).
+6. Add tests next to the handler or under `tests/`.
 
 ## Add a provider
 
@@ -32,7 +29,7 @@ Short, practical guide for extending Dialogia without violating module boundarie
 2. Extend `ModelTransport` in `src/lib/types/models.ts`.
 3. Register the client in `src/lib/transport/registry.ts`.
 4. Add provider/model metadata in `src/data/curatedModels.ts` and helpers in
-   `src/lib/models.ts` as needed.
+   `src/lib/models/index.ts` as needed.
 5. Keep shared contracts in `src/lib/transport/models.ts` and `src/lib/transport/completions.ts`.
 6. Update request building in the provider adapter (e.g., `src/lib/openrouter/request.ts`) and keep
    `src/lib/agent/request.ts` focused on plugin selection.

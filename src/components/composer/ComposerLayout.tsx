@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type DragEventHandler } from 'react';
-import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 
 export function ComposerLayout({
@@ -17,7 +18,7 @@ export function ComposerLayout({
 }) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [composerHeight, setComposerHeight] = useState(0);
-  const isCompact = useIsMobile();
+  const isCompact = useMediaQuery(MEDIA_QUERIES.mobile);
 
   const shouldPinToViewport =
     isCompact && variant !== 'hero' && (focused || keyboardMetrics.offset > 0);

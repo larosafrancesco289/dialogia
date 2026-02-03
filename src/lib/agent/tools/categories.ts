@@ -6,7 +6,7 @@ import {
   tutorContentTools,
   tutorMetaTools,
   type ToolCategory,
-} from '@/lib/agent/tools/metadata';
+} from '@/lib/tools/registry';
 
 export { isTutorContentTool, isTutorMetaTool, isSearchTool, tutorContentTools, tutorMetaTools };
 export type { ToolCategory };

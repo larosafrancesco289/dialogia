@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAuthToken, verifyAuthToken } from '@/lib/auth';
-import { verifyAuthTokenEdge } from '@/lib/auth/edge';
+import { createAuthToken, verifyAuthToken } from '@/lib/auth/token.server';
+import { verifyAuthTokenEdge } from '@/lib/auth/token.edge';
 
 test('auth token verifies across node and edge helpers', async () => {
   const previous = process.env.AUTH_COOKIE_SECRET;

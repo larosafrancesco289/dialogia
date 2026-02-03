@@ -3,13 +3,13 @@ import {
   getLatestLearnerModel,
   initializeLearnerModel,
   persistLearnerModel,
-} from '@/lib/agent/learnerModel';
+} from '@/lib/agent/learner-model';
 import { snapshotGenSettings } from '@/lib/agent/generation';
 import type { RunTurnHooks } from './turn';
 import type { StoreGetter, StoreSetter, TurnComposition, PlanTurnResult } from '@/lib/agent/types';
 import type { Chat, LearnerModel, Message } from '@/lib/types';
 import type { LearnerModelDebugEntry } from '@/lib/contracts/ui';
-import { diffPlanUpdates, persistLearningPlan } from '@/lib/learningPlan/service';
+import { diffPlanUpdates, persistLearningPlan } from '@/lib/learning-plan/service';
 
 export type TurnLifecycleOptions = {
   chatId: string;

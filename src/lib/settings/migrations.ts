@@ -1,5 +1,6 @@
-import type { SearchProvider } from '@/lib/types';
+import type { ReasoningEffort, SearchProvider } from '@/lib/types/enums';
 import { asNumber, asStringArray, isRecord } from '@/lib/utils/guards';
+import { ReasoningEffortEnum, SearchProviderEnum } from '@/lib/types/enums';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -15,16 +16,14 @@ const readRecord = (value: unknown): UnknownRecord | undefined =>
   isRecord(value) ? value : undefined;
 
 const readSearchProvider = (value: unknown): SearchProvider | undefined =>
-  value === 'brave' || value === 'openrouter' ? value : undefined;
+  Object.values(SearchProviderEnum).includes(value as SearchProvider)
+    ? (value as SearchProvider)
+    : undefined;
 
-type ReasoningEffort = 'none' | 'low' | 'medium' | 'high';
-
-const readReasoningEffort = (value: unknown): ReasoningEffort | undefined => {
-  if (value === 'none' || value === 'low' || value === 'medium' || value === 'high') {
-    return value;
-  }
-  return undefined;
-};
+const readReasoningEffort = (value: unknown): ReasoningEffort | undefined =>
+  Object.values(ReasoningEffortEnum).includes(value as ReasoningEffort)
+    ? (value as ReasoningEffort)
+    : undefined;
 
 const compactRecord = <T extends UnknownRecord>(input: T): T | undefined => {
   const entries = Object.entries(input).filter(([, value]) => value !== undefined);

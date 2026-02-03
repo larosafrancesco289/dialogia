@@ -44,6 +44,19 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
 - `NEXT_PUBLIC_APP_BASE_URL` — optional absolute origin when deploying behind a proxy. Used for
   absolute URLs in share/export flows.
 
+## Rate Limiting
+
+Dialogia uses a best-effort in-memory limiter by default. This is **per-instance only** and is not
+durable across serverless invocations. For production-grade rate limiting, configure Upstash:
+
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
+
+The effective `RATE_LIMIT_STRATEGY` is:
+
+- `memory` (default, development-friendly, not shared)
+- `upstash` (when both Upstash env vars are present)
+
 ## Runtime Checklist
 
 UI requires:
@@ -74,7 +87,7 @@ Headless scripts require:
 - Keep provider keys (`OPENROUTER_API_KEY`, `BRAVE_SEARCH_API_KEY`) server-side only. Do not commit
   them or expose via `NEXT_PUBLIC_*`.
 - Proxy mode adds CORS-friendly headers (`X-Title`, `HTTP-Referer`) inside
-  `src/lib/api/openrouterClient.ts`. Update the client if new headers are required.
+  `src/lib/api/config.ts`. Update the config if new headers are required.
 - Access gate secrets should be long random hex strings. Regenerate when rotating codes.
 - Zero Data Retention (ZDR) lists fetch from OpenRouter and are cached in
   `src/lib/policy/zdr/cache.ts`. The refresh schedule is wired in `src/lib/services/bootstrap.ts`

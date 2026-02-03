@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
-import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import {
   findModelById,
   isReasoningSupported,
@@ -73,8 +74,8 @@ export function Composer({
   const taRef = useRef<HTMLTextAreaElement>(null);
   const uiNext = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const [focused, setFocused] = useState(false);
-  const isTablet = useIsMobile(768);
-  const isMobile = useIsMobile(640);
+  const isTablet = useMediaQuery(MEDIA_QUERIES.tablet);
+  const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const tutorEnabled = useChatStore(selectIsTutorEnabled);
   const searchEnabled = useChatStore(selectSearchEnabled);
   const searchProvider = useChatStore(selectSearchProvider);

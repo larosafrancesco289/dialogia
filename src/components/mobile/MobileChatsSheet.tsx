@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
@@ -10,6 +9,7 @@ import { springs } from '@/lib/mobile/springConfig';
 import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import styles from './MobileChatsSheet.module.css';
+import { DialogPortal, DialogSurface } from '@/components/ui/Dialog';
 
 /**
  * MobileChatsSheet - Full-screen chat list overlay.
@@ -116,10 +116,11 @@ export function MobileChatsSheet() {
     </>
   );
 
-  return createPortal(
-    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label="Chats">
-      {content}
-    </div>,
-    document.body,
+  return (
+    <DialogPortal>
+      <DialogSurface className={styles.overlay} role="dialog" ariaLabel="Chats">
+        {content}
+      </DialogSurface>
+    </DialogPortal>
   );
 }

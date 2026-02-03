@@ -4,14 +4,14 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import type { Repository } from '@/lib/db/repository';
-import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
+import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
 import type { Message } from '@/lib/types';
 import {
   applyLearnerModelFeedback,
   getLatestLearnerModel,
   initializeLearnerModel,
-} from '@/lib/agent/learnerModel';
-import { processPlanProgress } from '@/lib/learningPlan/service';
+} from '@/lib/agent/learner-model';
+import { processPlanProgress } from '@/lib/learning-plan/service';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';

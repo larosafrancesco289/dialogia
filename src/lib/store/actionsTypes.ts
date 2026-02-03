@@ -1,4 +1,4 @@
-import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
+import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
 import type {
   ChatSettingsPatch,
   DraftAttachment,

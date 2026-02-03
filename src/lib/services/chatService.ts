@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Repository } from '@/lib/db/repository';
 import type { Chat, Folder, Message } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/policy';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { resolveNewChatSettings } from '@/lib/settings/resolve';
 import type { AccessTier } from '@/lib/auth/types';
 import { getDefaultModelIdForTier, isTutorForcedForTier } from '@/lib/auth/tierFeatures';

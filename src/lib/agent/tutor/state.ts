@@ -1,9 +1,10 @@
 import type { TutorToolName } from '@/lib/agent/types';
+import type { TutorPhase } from '@/lib/agent/tutor/types';
 import type { TutorToolUsageSnapshot, UiSnapshot } from '@/lib/contracts/ui';
 import type { Chat, Message, MessageTutor, TutorResearchMode } from '@/lib/types';
-import { getTutorToolsByPhase, getTutorToolsByTag } from '@/lib/agent/tools/metadata';
+import { getTutorToolsByPhase, getTutorToolsByTag } from '@/lib/tools/registry';
 
-export type TutorPhase = 'intake' | 'diagnostic' | 'planning' | 'teaching' | 'practice' | 'review';
+export type { TutorPhase } from '@/lib/agent/tutor/types';
 
 function latestTutorPayload(messages: Message[], ui?: UiSnapshot): MessageTutor | undefined {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -181,4 +182,21 @@ export function deriveTutorToolPolicy(args: {
         : Math.max(0, budget.maxDiagnosticsPerSession - diagnosticsUsed),
     maxToolsPerTurn: budget.maxToolsPerTurn ?? DEFAULT_TOOL_BUDGET.maxToolsPerTurn,
   };
+}
+
+export type TutorToolEligibility = {
+  allowedTutorTools: Set<TutorToolName>;
+  toolPolicy: TutorToolPolicy;
+};
+
+export function getTutorToolEligibility(args: {
+  chat: Chat;
+  ui?: UiSnapshot;
+  phase: TutorPhase;
+  activeNodeId?: string | null;
+}): TutorToolEligibility {
+  const { chat, ui, phase, activeNodeId } = args;
+  const toolPolicy = deriveTutorToolPolicy({ chat, ui, activeNodeId });
+  const allowedTutorTools = new Set(allowedTutorToolsForPhase(phase, toolPolicy));
+  return { allowedTutorTools, toolPolicy };
 }

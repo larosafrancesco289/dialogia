@@ -6,10 +6,10 @@ import {
   ChatBubbleLeftEllipsisIcon,
 } from '@heroicons/react/24/outline';
 import type { LearningPlan, LearnerModel, LearningPlanNode } from '@/lib/types';
-import { isNodeReady, getAllPrerequisites, getNextNode } from '@/lib/learningPlan/service';
+import { isNodeReady, getAllPrerequisites, getNextNode } from '@/lib/learning-plan/service';
 import { PlanNode } from './PlanNode';
 import { useMemo } from 'react';
-import type { LearnerModelFeedback } from '@/lib/agent/learnerModel';
+import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
 import { LearnerStats, LearnerInsights } from './LearnerModelView';
 import { PlanEditingHint } from './PlanEditingHint';
 

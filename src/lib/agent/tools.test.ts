@@ -1,11 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  detectPlanningToolCalls,
-  extractWebSearchArgs,
-  normalizeTutorQuizPayload,
-  parseJsonAfter,
-} from '@/lib/agent/tools';
+import { detectPlanningToolCalls, normalizeTutorQuizPayload } from '@/lib/agent/tools';
+import { extractWebSearchArgs } from '@/lib/search';
+import { parseJsonAfter } from '@/lib/tools/json';
 import type { AssistantModelMessage, ToolCall, ToolDefinition } from '@/lib/agent/types';
 
 test('extractWebSearchArgs finds inline JSON payloads', () => {
@@ -18,7 +15,7 @@ test('extractWebSearchArgs unwraps function-style payloads', () => {
   const content =
     'Calling function {"name":"web_search","arguments":"{\\"query\\":\\"open router\\"}"}';
   const args = extractWebSearchArgs(content);
-  assert.deepEqual(args, { query: 'open router', count: undefined });
+  assert.deepEqual(args, { query: 'open router' });
 });
 
 test('normalizeTutorQuizPayload trims invalid ids and caps length', () => {
