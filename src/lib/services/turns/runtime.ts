@@ -7,7 +7,7 @@ import type { StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelCapabilityFlags } from '@/lib/models';
 import type { Repository } from '@/lib/db/repository';
-import { FREE_MODEL_IDS } from '@/data/freeModels';
+import { isFreeModel } from '@/data/freeModels';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { ensureTutorDefaults } from '@/lib/agent/tutorFlow';
 import { createModelAuthResolver, type ModelAuth } from '@/lib/services/auth';
@@ -91,9 +91,7 @@ export const prepareSendRuntime = async ({
       tutorDefaultModelId ||
       DEFAULT_TUTOR_MODEL_ID;
     const allowAllModels = canUseAllModelsForTier(tier);
-    const freeFallbackFromIndex = modelIndex.all.find((model) =>
-      FREE_MODEL_IDS.includes(model.id),
-    )?.id;
+    const freeFallbackFromIndex = modelIndex.all.find((model) => isFreeModel(model.id))?.id;
     let resolvedTutorModelId = preferredTutorModelId;
     if (
       !allowAllModels &&

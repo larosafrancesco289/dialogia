@@ -7,7 +7,7 @@ import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import { useTier } from '@/lib/auth/tierContext';
-import { FREE_MODEL_IDS } from '@/data/freeModels';
+import { isFreeModel } from '@/data/freeModels';
 import { isModelTransportAvailable } from '@/lib/policy/providerAvailability';
 import { selectNextOverrides } from '@/lib/store/selectors';
 
@@ -138,11 +138,8 @@ export function useModelPickerController(): ModelPickerController {
     const cleaned = fromChat.filter((id): id is string => typeof id === 'string' && id.length > 0);
 
     // Validate models for free tier - filter out paid models
-    const validated = tierLoading
-      ? cleaned
-      : isFreeTier
-        ? cleaned.filter((id) => FREE_MODEL_IDS.includes(id))
-        : cleaned;
+    const shouldFilterPaidModels = !tierLoading && isFreeTier;
+    const validated = shouldFilterPaidModels ? cleaned.filter((id) => isFreeModel(id)) : cleaned;
 
     const deduped: string[] = [];
     for (const id of validated) {

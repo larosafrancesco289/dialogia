@@ -13,7 +13,7 @@ import {
   selectStudyCondition,
 } from '@/lib/store/selectors';
 import { useTier } from '@/lib/auth/tierContext';
-import { DEFAULT_FREE_TUTOR_MODEL_ID, FREE_MODEL_IDS } from '@/data/freeModels';
+import { useTierTutorModelId } from '@/lib/hooks/useTierModels';
 import type { UiPlanSnapshot } from '@/lib/contracts/ui';
 import type {
   Chat,
@@ -77,7 +77,7 @@ export type TopHeaderState = {
 } & LearnerModelEditCallbacks;
 
 export function useTopHeaderState(): TopHeaderState {
-  const { isFreeTier, isStudyTier } = useTier();
+  const { isStudyTier } = useTier();
 
   const {
     chat,
@@ -131,13 +131,7 @@ export function useTopHeaderState(): TopHeaderState {
   // Resolve tutor model with tier awareness
   const rawTutorModelId =
     chat?.settings?.features.tutor.defaultModelId || chat?.settings?.modelId || tutorDefaultModelId;
-  const tutorModelId = useMemo(() => {
-    // If on free tier and the model isn't free, use the free tutor model
-    if (isFreeTier && rawTutorModelId && !FREE_MODEL_IDS.includes(rawTutorModelId)) {
-      return DEFAULT_FREE_TUTOR_MODEL_ID;
-    }
-    return rawTutorModelId;
-  }, [isFreeTier, rawTutorModelId]);
+  const tutorModelId = useTierTutorModelId(rawTutorModelId);
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(
     () =>
