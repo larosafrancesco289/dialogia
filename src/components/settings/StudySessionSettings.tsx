@@ -1,7 +1,11 @@
 'use client';
 import { motion } from 'framer-motion';
-import type { RefObject } from 'react';
+import { useCallback, useMemo, type RefObject } from 'react';
+import { shallow } from 'zustand/shallow';
+import { ModelSearch } from '@/components/ModelSearch';
 import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
+import { useChatStore } from '@/lib/store';
+import { findModelById, formatModelLabel } from '@/lib/models';
 import type { StudyCondition } from '@/lib/types';
 import type { StudySessionInfo } from '@/components/settings/hooks/useSettingsDrawerState';
 
@@ -116,8 +120,50 @@ export function StudySessionSettings({
   onResetForNextParticipant: () => void;
   isResetting: boolean;
 }) {
+  const { chats, selectedChatId, updateChatSettings, setUI, ui, models } = useChatStore(
+    (state) => ({
+      chats: state.chats,
+      selectedChatId: state.selectedChatId,
+      updateChatSettings: state.updateChatSettings,
+      setUI: state.setUI,
+      ui: state.ui,
+      models: state.models,
+    }),
+    shallow,
+  );
+  const chat = chats.find((c) => c.id === selectedChatId);
   const hasActiveSession = !!studySessionInfo && !studySessionInfo.isEnded;
   const canStartSession = participantId.trim().length > 0 && !hasActiveSession;
+  const activeModelId =
+    chat?.settings?.features?.tutor?.defaultModelId ||
+    chat?.settings?.modelId ||
+    ui?.tutor?.defaultModelId;
+  const activeModelMeta = useMemo(
+    () => findModelById(models, activeModelId),
+    [models, activeModelId],
+  );
+  const activeModelLabel = useMemo(() => {
+    if (!activeModelId) return 'No model selected';
+    return formatModelLabel({ model: activeModelMeta, fallbackId: activeModelId });
+  }, [activeModelMeta, activeModelId]);
+
+  const handleModelSelect = useCallback(
+    (modelId: string) => {
+      if (!modelId) return;
+      setUI(
+        chat
+          ? { tutor: { defaultModelId: modelId } }
+          : { tutor: { defaultModelId: modelId }, overrides: { modelId } },
+      );
+      if (chat) {
+        updateChatSettings({
+          modelId,
+          features: { tutor: { defaultModelId: modelId } },
+        }).catch(() => void 0);
+      }
+    },
+    [chat, setUI, updateChatSettings],
+  );
 
   return (
     <SettingsDrawerShell
@@ -220,6 +266,34 @@ export function StudySessionSettings({
                   disabled={hasActiveSession}
                 />
               </div>
+            </div>
+
+            {/* Model Selection */}
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wider text-[var(--color-fg-muted)] mb-2">
+                Active Model
+              </label>
+              <div className="rounded-lg border border-[var(--rule-subtle)] bg-transparent px-4 py-3">
+                <div className="text-sm font-medium text-[var(--color-fg)]">
+                  {activeModelLabel}
+                </div>
+                {activeModelId && activeModelLabel !== activeModelId && (
+                  <div className="text-[11px] text-[var(--color-fg-muted)]/80">{activeModelId}</div>
+                )}
+              </div>
+              <div className="mt-3">
+                <ModelSearch
+                  placeholder="Search models to swap (e.g., GPT-4o, Claude, Grok)"
+                  selectedIds={activeModelId ? [activeModelId] : []}
+                  clearOnSelect
+                  actionLabel="Set"
+                  selectedLabel="Active"
+                  onSelect={(result) => handleModelSelect(result.id)}
+                />
+              </div>
+              <p className="mt-2 text-[11px] text-[var(--color-fg-muted)] leading-relaxed">
+                Updates the tutor default model immediately, even while a session is active.
+              </p>
             </div>
 
             {/* Start Session Button (only if no active session) */}
