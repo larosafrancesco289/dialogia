@@ -185,8 +185,9 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
                 id: 'call_1',
                 type: 'function',
                 function: {
-                  name: 'quiz_mcq',
+                  name: 'quiz',
                   arguments: JSON.stringify({
+                    type: 'mcq',
                     title: 'Quiz',
                     items: [
                       {
@@ -203,8 +204,9 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
                 id: 'call_2',
                 type: 'function',
                 function: {
-                  name: 'quiz_fill_blank',
+                  name: 'quiz',
                   arguments: JSON.stringify({
+                    type: 'fill_blank',
                     title: 'Extra',
                     items: [
                       {
@@ -220,8 +222,9 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
                 id: 'call_3',
                 type: 'function',
                 function: {
-                  name: 'assess_answer',
+                  name: 'record_learning',
                   arguments: JSON.stringify({
+                    source: 'assessment',
                     nodeId: 'node-1',
                     interaction: {
                       question: 'Q?',
@@ -289,20 +292,19 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   const toolLog = state.messagesById[assistantMessage.id]?.toolCalls;
   assert.ok(Array.isArray(toolLog) && toolLog.length >= 2);
   const searchEntries = toolLog.filter((entry: any) => entry?.name === 'web_search');
-  const tutorEntries = toolLog.filter((entry: any) => entry?.name === 'quiz_mcq');
-  const skippedFill = toolLog.filter((entry: any) => entry?.name === 'quiz_fill_blank');
-  const assessEntries = toolLog.filter((entry: any) => entry?.name === 'assess_answer');
+  const quizEntries = toolLog.filter((entry: any) => entry?.name === 'quiz');
+  const recordEntries = toolLog.filter((entry: any) => entry?.name === 'record_learning');
   assert.ok(searchEntries.length >= 1);
-  assert.ok(tutorEntries.length >= 1);
-  assert.equal(skippedFill.length, 0);
-  assert.ok(assessEntries.length >= 1);
+  // Only one quiz should be processed (first one), second is skipped due to alreadyUsedContent
+  assert.ok(quizEntries.length >= 1);
+  assert.ok(recordEntries.length >= 1);
   assert.equal(searchEntries[0]?.category, 'search');
   assert.equal(searchEntries[0]?.metadata?.provider, 'brave');
   assert.equal(searchEntries[0]?.metadata?.round, 1);
   assert.equal(searchEntries[0]?.metadata?.results, 1);
-  assert.equal(tutorEntries[0]?.category, 'tutor');
-  assert.equal(tutorEntries[0]?.metadata?.round, 1);
-  assert.equal(tutorEntries[0]?.metadata?.usedContent, true);
+  assert.equal(quizEntries[0]?.category, 'tutor');
+  assert.equal(quizEntries[0]?.metadata?.round, 1);
+  assert.equal(quizEntries[0]?.metadata?.usedContent, true);
 
   restoreFetch();
 });

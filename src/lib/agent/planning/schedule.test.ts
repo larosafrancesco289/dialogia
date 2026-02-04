@@ -5,13 +5,13 @@ import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
 
 test('schedulePlanningRound filters disallowed tutor tools', () => {
   const toolCalls = [
-    createToolCall('quiz_mcq', { items: [] }, 'call-1'),
-    createToolCall('quiz_fill_blank', { items: [] }, 'call-2'),
+    createToolCall('quiz', { type: 'mcq', items: [] }, 'call-1'),
+    createToolCall('learning_plan', { plan: {} }, 'call-2'),
   ];
 
   const scheduled = schedulePlanningRound({
     toolCalls,
-    allowedTutorTools: new Set(['quiz_mcq']),
+    allowedTutorTools: new Set(['quiz']),
     toolPolicy: { maxToolsPerTurn: 2, quizzesRemaining: 2 },
     phase: 'practice',
     currentPlan: undefined,
@@ -24,15 +24,15 @@ test('schedulePlanningRound filters disallowed tutor tools', () => {
   });
 
   assert.equal(scheduled.length, 1);
-  assert.equal(scheduled[0].function.name, 'quiz_mcq');
+  assert.equal(scheduled[0].function.name, 'quiz');
 });
 
 test('schedulePlanningRound enforces quiz budget', () => {
-  const toolCalls = [createToolCall('quiz_mcq', { items: [] }, 'call-1')];
+  const toolCalls = [createToolCall('quiz', { type: 'mcq', items: [] }, 'call-1')];
 
   const scheduled = schedulePlanningRound({
     toolCalls,
-    allowedTutorTools: new Set(['quiz_mcq']),
+    allowedTutorTools: new Set(['quiz']),
     toolPolicy: { maxToolsPerTurn: 1, quizzesRemaining: 0 },
     phase: 'practice',
     currentPlan: undefined,

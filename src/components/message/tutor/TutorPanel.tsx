@@ -6,7 +6,6 @@ import { selectStudyCondition } from '@/lib/store/selectors';
 import type {
   TutorDiagnostic,
   TutorFillBlankItem,
-  TutorFlashcardItem,
   TutorLearnerModelUpdate,
   TutorMCQItem,
   TutorOpenItem,
@@ -22,7 +21,6 @@ import { DiagnosticCard } from '@/components/message/tutor/DiagnosticCard';
 import { McqCard } from '@/components/message/tutor/McqCard';
 import { FillBlankCard } from '@/components/message/tutor/FillBlankCard';
 import { OpenEndedCard } from '@/components/message/tutor/OpenEndedCard';
-import { FlashcardsCard } from '@/components/message/tutor/FlashcardsCard';
 import { LearnerUpdatesCard } from '@/components/message/tutor/LearnerUpdatesCard';
 import { GradingFeedbackCard } from '@/components/message/tutor/GradingFeedbackCard';
 
@@ -32,7 +30,6 @@ export function TutorPanel(props: {
   mcq?: TutorMCQItem[];
   fillBlank?: TutorFillBlankItem[];
   openEnded?: TutorOpenItem[];
-  flashcards?: TutorFlashcardItem[];
   questionnaire?: TutorQuestionnaire;
   diagnostic?: TutorDiagnostic;
   planProposal?: TutorPlanProposal;
@@ -50,7 +47,6 @@ export function TutorPanel(props: {
     mcq,
     fillBlank,
     openEnded,
-    flashcards,
     questionnaire,
     diagnostic,
     planProposal,
@@ -72,7 +68,6 @@ export function TutorPanel(props: {
     (mcq && mcq.length > 0) ||
     (fillBlank && fillBlank.length > 0) ||
     (openEnded && openEnded.length > 0) ||
-    (flashcards && flashcards.length > 0) ||
     (grading && Object.keys(grading).length > 0);
 
   if (!hasAny) return null;
@@ -118,7 +113,6 @@ export function TutorPanel(props: {
             {openEnded && openEnded.length > 0 && (
               <OpenEndedCard messageId={messageId} items={openEnded} grading={grading} />
             )}
-            {flashcards && flashcards.length > 0 && <FlashcardsCard items={flashcards} />}
             {canShowUpdates && assessmentUpdates && assessmentUpdates.length > 0 && (
               <LearnerUpdatesCard updates={assessmentUpdates} />
             )}

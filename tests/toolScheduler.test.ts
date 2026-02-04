@@ -10,12 +10,7 @@ const buildCall = (name: string): ToolCall => ({
 });
 
 test('scheduler keeps meta, one search, and one prioritized content tool', () => {
-  const calls = [
-    buildCall('web_search'),
-    buildCall('quiz_mcq'),
-    buildCall('quiz_fill_blank'),
-    buildCall('assess_answer'),
-  ];
+  const calls = [buildCall('web_search'), buildCall('quiz'), buildCall('record_learning')];
 
   const scheduled = schedulePlanningToolCalls(calls, {
     hasPlan: true,
@@ -26,7 +21,7 @@ test('scheduler keeps meta, one search, and one prioritized content tool', () =>
   assert.equal(scheduled.length, 3);
   assert.deepEqual(
     scheduled.map((c) => c.function.name),
-    ['assess_answer', 'web_search', 'quiz_mcq'],
+    ['record_learning', 'web_search', 'quiz'],
   );
 });
 
@@ -34,7 +29,7 @@ test('scheduler drops content when already used and search disabled', () => {
   const calls = [
     buildCall('web_search'),
     buildCall('create_diagnostic'),
-    buildCall('update_learner_model'),
+    buildCall('record_learning'),
   ];
 
   const scheduled = schedulePlanningToolCalls(calls, {
@@ -44,5 +39,5 @@ test('scheduler drops content when already used and search disabled', () => {
   });
 
   assert.equal(scheduled.length, 1);
-  assert.equal(scheduled[0].function.name, 'update_learner_model');
+  assert.equal(scheduled[0].function.name, 'record_learning');
 });

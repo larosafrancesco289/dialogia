@@ -5,71 +5,65 @@ import { normalizeLearningPlanInput } from '@/lib/schemas/learningPlan';
 import { parseSchema } from '@/lib/schemas/parse';
 import { TutorPlanProposalToolSchema, type TutorPlanProposalInput } from '@/lib/schemas/tutor';
 
-export function createPlanProposalHandler(
-  defaultRequiresConfirmation: boolean,
-): TutorToolHandler<TutorPlanProposalInput> {
-  return {
-    parseArgs(input) {
-      const parsed = parseSchema(TutorPlanProposalToolSchema, input);
-      return parsed.ok ? parsed.data : null;
-    },
-    async apply(ctx, args) {
-      const plan = normalizeLearningPlanInput(args.plan, {
-        fallbackGoal:
-          ctx.chat.settings.features.tutor.learningPlan?.goal || 'Personalized Learning Plan',
-      });
+export const learningPlanHandler: TutorToolHandler<TutorPlanProposalInput> = {
+  parseArgs(input) {
+    const parsed = parseSchema(TutorPlanProposalToolSchema, input);
+    return parsed.ok ? parsed.data : null;
+  },
+  async apply(ctx, args) {
+    const existingPlan = ctx.chat.settings.features.tutor.learningPlan;
+    const isCreate = !existingPlan;
 
-      if (plan.nodes.length === 0) {
-        return { handled: false, usedContent: false };
-      }
+    const plan = normalizeLearningPlanInput(args.plan, {
+      fallbackGoal: existingPlan?.goal || 'Personalized Learning Plan',
+    });
 
-      const validation = validateLearningPlan(plan);
-      if (!validation.valid) {
-        return { handled: false, usedContent: false };
-      }
+    if (plan.nodes.length === 0) {
+      return { handled: false, usedContent: false };
+    }
 
-      const requiresConfirmation =
-        typeof args.requiresConfirmation === 'boolean'
-          ? args.requiresConfirmation
-          : defaultRequiresConfirmation;
-      const confirmationMessage =
-        typeof args.confirmationMessage === 'string' ? args.confirmationMessage.trim() : undefined;
+    const validation = validateLearningPlan(plan);
+    if (!validation.valid) {
+      return { handled: false, usedContent: false };
+    }
 
-      const normalizedSuggestions = Array.isArray(args.suggestions)
-        ? normalizePlanSuggestions(args.suggestions as unknown[])
-        : undefined;
+    // For create, default to requiring confirmation; for update, default to not requiring
+    const requiresConfirmation =
+      typeof args.requiresConfirmation === 'boolean' ? args.requiresConfirmation : isCreate;
+    const confirmationMessage =
+      typeof args.confirmationMessage === 'string' ? args.confirmationMessage.trim() : undefined;
 
-      await ctx.applyTutorPatch((prev) =>
-        withContentReset('planProposal', {
-          planProposal: {
-            plan,
-            requiresConfirmation,
-            confirmationMessage,
-            status: 'pending' as const,
-            requestedAt: Date.now(),
-          },
-          planSuggestions:
-            normalizedSuggestions && normalizedSuggestions.length > 0
-              ? normalizedSuggestions
-              : Array.isArray(prev.planSuggestions)
-                ? prev.planSuggestions
-                : undefined,
-        }),
-      );
+    const normalizedSuggestions = Array.isArray(args.suggestions)
+      ? normalizePlanSuggestions(args.suggestions as unknown[])
+      : undefined;
 
-      try {
-        return {
-          handled: true,
-          usedContent: true,
-          payload: JSON.stringify({
-            status: 'plan_ready',
-            requiresConfirmation,
-            nodes: plan.nodes.length,
-          }),
-        };
-      } catch {
-        return { handled: true, usedContent: true };
-      }
-    },
-  };
-}
+    await ctx.applyTutorPatch((prev) =>
+      withContentReset('planProposal', {
+        planProposal: {
+          plan,
+          requiresConfirmation,
+          confirmationMessage,
+          status: 'pending' as const,
+          requestedAt: Date.now(),
+        },
+        planSuggestions:
+          normalizedSuggestions && normalizedSuggestions.length > 0
+            ? normalizedSuggestions
+            : Array.isArray(prev.planSuggestions)
+              ? prev.planSuggestions
+              : undefined,
+      }),
+    );
+
+    return {
+      handled: true,
+      usedContent: true,
+      payload: JSON.stringify({
+        status: 'plan_ready',
+        action: isCreate ? 'created' : 'updated',
+        requiresConfirmation,
+        nodes: plan.nodes.length,
+      }),
+    };
+  },
+};

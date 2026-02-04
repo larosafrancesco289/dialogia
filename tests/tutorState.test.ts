@@ -46,7 +46,7 @@ test('getTutorPhase returns intake when no plan and questionnaire pending', () =
   assert.equal(phase, 'intake');
   const allowed = allowedTutorToolsForPhase(phase);
   assert.ok(allowed.includes('ask_student_question'));
-  assert.ok(allowed.includes('generate_plan'));
+  assert.ok(allowed.includes('learning_plan'));
   assert.ok(allowed.includes('create_diagnostic'));
 });
 
@@ -99,7 +99,7 @@ test('getTutorPhase returns practice when plan active and practice widget presen
   const phase = getTutorPhase(chat, messages);
   assert.equal(phase, 'practice');
   const allowed = allowedTutorToolsForPhase(phase);
-  assert.ok(allowed.includes('quiz_mcq'));
-  assert.ok(allowed.includes('grade_open_response'));
-  assert.ok(!allowed.includes('generate_plan'));
+  assert.ok(allowed.includes('quiz'));
+  assert.ok(allowed.includes('record_learning'));
+  assert.ok(allowed.includes('learning_plan')); // learning_plan is now available in practice phase for updates
 });

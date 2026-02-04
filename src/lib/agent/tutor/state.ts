@@ -33,8 +33,7 @@ export function getTutorPhase(chat: Chat, messages: Message[], ui?: UiSnapshot):
   const hasPracticeWidget =
     (tutor?.mcq && tutor.mcq.length > 0) ||
     (tutor?.fillBlank && tutor.fillBlank.length > 0) ||
-    (tutor?.openEnded && tutor.openEnded.length > 0) ||
-    (tutor?.flashcards && tutor.flashcards.length > 0);
+    (tutor?.openEnded && tutor.openEnded.length > 0);
 
   if (!activeNode) {
     if (completedCount > 0 && completedCount === plan.nodes.length) return 'review';
@@ -62,6 +61,7 @@ export type TutorToolFilters = {
   allowPlanTools?: boolean;
   allowLearnerModel?: boolean;
   allowUpdatePlan?: boolean;
+  planExists?: boolean;
   disablePlanGeneration?: boolean;
   quizzesRemaining?: number;
   diagnosticsRemaining?: number;
@@ -93,6 +93,7 @@ function applyTutorFilters(
 ): TutorToolName[] {
   let tools = [...base];
   const researchMode = filters?.researchMode;
+  const planExists = filters?.planExists === true;
 
   if (researchMode === 'baseline_chat') {
     tools = BASELINE_TOOLS.slice();
@@ -107,12 +108,16 @@ function applyTutorFilters(
   }
 
   if (filters?.disablePlanGeneration) {
-    tools = tools.filter((name) => name !== 'generate_plan');
+    if (!planExists) {
+      tools = tools.filter((name) => name !== 'learning_plan');
+    }
   }
 
-  // Filter update_plan specifically based on planEditable condition
+  // Filter learning_plan based on planEditable condition (for updates only)
   if (filters?.allowUpdatePlan === false) {
-    tools = tools.filter((name) => name !== 'update_plan');
+    if (planExists) {
+      tools = tools.filter((name) => name !== 'learning_plan');
+    }
   }
 
   if (filters?.diagnosticsRemaining === 0) {
@@ -129,7 +134,7 @@ function applyTutorFilters(
     tools = tools.filter((name) => {
       if (THESIS_CORE_TOOLS.has(name)) return true;
       if (!allowReadinessChecks) return false;
-      return name === 'quiz_mcq';
+      return name === 'quiz';
     });
   }
 
@@ -171,6 +176,7 @@ export function deriveTutorToolPolicy(args: {
     allowLearnerModel:
       chat.settings.features.tutor.enableLearnerModel !== false && researchMode !== 'plan_only',
     allowUpdatePlan: chat.settings.features.tutor.planEditable !== false,
+    planExists,
     disablePlanGeneration: chat.settings.features.tutor.disablePlanGeneration === true,
     quizzesRemaining:
       budget.maxQuizzesPerNode == null

@@ -71,17 +71,15 @@ const createTutorHarness = () => {
   return { chat, assistantMessage, state, set, get };
 };
 
-test('tutor tool definitions expose agentic planning tools', () => {
+test('tutor tool definitions expose consolidated planning tools', () => {
   const toolNames = getTutorToolDefinitions().map((tool: any) => tool.function.name as string);
   const expected = [
     'ask_student_question',
     'create_diagnostic',
-    'generate_plan',
-    'update_plan',
-    'get_plan_suggestions',
-    'assess_answer',
-    'update_learner_model',
-    'quiz_mcq',
+    'learning_plan',
+    'record_learning',
+    'advance_topic',
+    'quiz',
   ];
   for (const name of expected) {
     assert.ok(toolNames.includes(name), `expected tutor tool definitions to include ${name}`);
@@ -129,8 +127,9 @@ test('ask_student_question tool stores questionnaire for the message', async () 
 test('content tools replace previous tutor widgets to enforce one active payload', async () => {
   const { chat, assistantMessage, state, set, get } = createTutorHarness();
   await applyTutorToolCall({
-    name: 'quiz_mcq',
+    name: 'quiz',
     args: {
+      type: 'mcq',
       title: 'Round one',
       items: [
         {
@@ -150,8 +149,9 @@ test('content tools replace previous tutor widgets to enforce one active payload
   });
 
   await applyTutorToolCall({
-    name: 'quiz_fill_blank',
+    name: 'quiz',
     args: {
+      type: 'fill_blank',
       title: 'Second',
       items: [
         {
@@ -175,7 +175,7 @@ test('content tools replace previous tutor widgets to enforce one active payload
   assert.equal(tutorState?.attempts, undefined);
 });
 
-test('plan tools persist a valid learning plan from tool payloads', async () => {
+test('learning_plan tool persists a valid learning plan from tool payloads', async () => {
   const { chat, assistantMessage, state, set, get } = createTutorHarness();
   const args = {
     plan: {
@@ -205,40 +205,9 @@ test('plan tools persist a valid learning plan from tool payloads', async () => 
     confirmationMessage: 'Let me know if you want to tweak anything.',
   };
 
-  for (const toolName of ['generate_plan', 'update_plan'] as const) {
-    const outcome = await applyTutorToolCall({
-      name: toolName,
-      args,
-      chat,
-      chatId: 'chat-test',
-      assistantMessage,
-      set,
-      get,
-      persistMessage: async () => Promise.resolve(),
-    });
-
-    assert.equal(outcome.handled, true);
-    const plan = state.ui.tutor.byMessageId?.['assistant-1']?.planProposal?.plan;
-    assert.ok(plan, `expected plan proposal to be stored for ${toolName}`);
-    const validation = validateLearningPlan(plan);
-    assert.equal(validation.valid, true);
-    assert.deepEqual(plan.nodes[0].children, ['derivatives']);
-  }
-});
-
-test('plan suggestions append normalized entries', async () => {
-  const { chat, assistantMessage, state, set, get } = createTutorHarness();
   const outcome = await applyTutorToolCall({
-    name: 'get_plan_suggestions',
-    args: {
-      suggestions: [
-        {
-          action: 'Add a practice checkpoint after limits',
-          priority: 'medium',
-          rationale: 'Validate understanding before derivatives.',
-        },
-      ],
-    },
+    name: 'learning_plan',
+    args,
     chat,
     chatId: 'chat-test',
     assistantMessage,
@@ -248,18 +217,21 @@ test('plan suggestions append normalized entries', async () => {
   });
 
   assert.equal(outcome.handled, true);
-  const suggestions = state.ui.tutor.byMessageId?.['assistant-1']?.planSuggestions;
-  assert.ok(Array.isArray(suggestions));
-  assert.equal(suggestions.length, 1);
+  const plan = state.ui.tutor.byMessageId?.['assistant-1']?.planProposal?.plan;
+  assert.ok(plan, 'expected plan proposal to be stored');
+  const validation = validateLearningPlan(plan);
+  assert.equal(validation.valid, true);
+  assert.deepEqual(plan.nodes[0].children, ['derivatives']);
 });
 
-test('quiz and flashcard tools accept schema-aligned payloads', async () => {
+test('quiz tool accepts all types with schema-aligned payloads', async () => {
   const { chat, assistantMessage, state, set, get } = createTutorHarness();
   const cases = [
     {
-      name: 'quiz_mcq' as const,
+      type: 'mcq',
       key: 'mcq',
       args: {
+        type: 'mcq',
         items: [
           {
             question: '1 + 1 = ?',
@@ -270,9 +242,10 @@ test('quiz and flashcard tools accept schema-aligned payloads', async () => {
       },
     },
     {
-      name: 'quiz_fill_blank' as const,
+      type: 'fill_blank',
       key: 'fillBlank',
       args: {
+        type: 'fill_blank',
         items: [
           {
             prompt: '2 + 2 = ____',
@@ -282,9 +255,10 @@ test('quiz and flashcard tools accept schema-aligned payloads', async () => {
       },
     },
     {
-      name: 'quiz_open_ended' as const,
+      type: 'open_ended',
       key: 'openEnded',
       args: {
+        type: 'open_ended',
         items: [
           {
             prompt: 'Explain the chain rule.',
@@ -293,24 +267,11 @@ test('quiz and flashcard tools accept schema-aligned payloads', async () => {
         ],
       },
     },
-    {
-      name: 'flashcards' as const,
-      key: 'flashcards',
-      args: {
-        items: [
-          {
-            front: 'Derivative of x^2',
-            back: '2x',
-            hint: 'Power rule',
-          },
-        ],
-      },
-    },
   ];
 
   for (const entry of cases) {
     const outcome = await applyTutorToolCall({
-      name: entry.name,
+      name: 'quiz',
       args: entry.args,
       chat,
       chatId: 'chat-test',
@@ -319,7 +280,7 @@ test('quiz and flashcard tools accept schema-aligned payloads', async () => {
       get,
       persistMessage: async () => Promise.resolve(),
     });
-    assert.equal(outcome.handled, true, `expected ${entry.name} to be handled`);
+    assert.equal(outcome.handled, true, `expected quiz type ${entry.type} to be handled`);
     const tutorState = state.ui.tutor.byMessageId?.['assistant-1'];
     assert.ok(Array.isArray(tutorState?.[entry.key]), `expected ${entry.key} to be stored`);
   }

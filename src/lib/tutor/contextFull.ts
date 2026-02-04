@@ -40,16 +40,6 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
         skill: it.skill,
         difficulty: it.difficulty,
       }));
-    if (Array.isArray(t.flashcards))
-      out.flashcards = t.flashcards.map((it) => ({
-        id: it.id,
-        front: it.front,
-        back: it.back,
-        hint: it.hint,
-        topic: it.topic,
-        skill: it.skill,
-        difficulty: it.difficulty,
-      }));
     if (t.questionnaire)
       out.questionnaire = {
         status: t.questionnaire.status,

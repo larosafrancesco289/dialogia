@@ -6,22 +6,12 @@ import { mergeSearchResults, performWebSearchTool } from '@/lib/search';
 import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import { WEB_SEARCH_TOOL } from '@/lib/tools/definitions/webSearch';
-import { addToDeckTool } from '@/lib/tools/definitions/tutor/addToDeck';
 import { advanceTopicTool } from '@/lib/tools/definitions/tutor/advanceTopic';
-import { applyLearnerModelFeedbackTool } from '@/lib/tools/definitions/tutor/applyLearnerModelFeedback';
-import { assessAnswerTool } from '@/lib/tools/definitions/tutor/assessAnswer';
 import { askStudentQuestionTool } from '@/lib/tools/definitions/tutor/askStudentQuestion';
 import { createDiagnosticTool } from '@/lib/tools/definitions/tutor/createDiagnostic';
-import { flashcardsTool } from '@/lib/tools/definitions/tutor/flashcards';
-import { generatePlanTool } from '@/lib/tools/definitions/tutor/generatePlan';
-import { getPlanSuggestionsTool } from '@/lib/tools/definitions/tutor/getPlanSuggestions';
-import { gradeOpenResponseTool } from '@/lib/tools/definitions/tutor/gradeOpenResponse';
-import { quizFillBlankTool } from '@/lib/tools/definitions/tutor/quizFillBlank';
-import { quizMcqTool } from '@/lib/tools/definitions/tutor/quizMcq';
-import { quizOpenEndedTool } from '@/lib/tools/definitions/tutor/quizOpenEnded';
-import { srsReviewTool } from '@/lib/tools/definitions/tutor/srsReview';
-import { updateLearnerModelTool } from '@/lib/tools/definitions/tutor/updateLearnerModel';
-import { updatePlanTool } from '@/lib/tools/definitions/tutor/updatePlan';
+import { learningPlanTool } from '@/lib/tools/definitions/tutor/learningPlan';
+import { quizTool } from '@/lib/tools/definitions/tutor/quiz';
+import { recordLearningTool } from '@/lib/tools/definitions/tutor/recordLearning';
 
 export type ToolCategory = 'tutor_content' | 'tutor_meta' | 'search' | 'other';
 
@@ -49,20 +39,10 @@ export type PlanningToolHandler = (args: ToolExecutionArgs) => Promise<PlanningT
 export const TUTOR_TOOL_NAMES = [
   'ask_student_question',
   'create_diagnostic',
-  'generate_plan',
-  'update_plan',
-  'assess_answer',
-  'update_learner_model',
+  'learning_plan',
+  'record_learning',
   'advance_topic',
-  'apply_learner_model_feedback',
-  'get_plan_suggestions',
-  'quiz_mcq',
-  'quiz_fill_blank',
-  'quiz_open_ended',
-  'flashcards',
-  'grade_open_response',
-  'add_to_deck',
-  'srs_review',
+  'quiz',
 ] as const;
 
 export type TutorToolName = (typeof TUTOR_TOOL_NAMES)[number];
@@ -84,24 +64,13 @@ const TUTOR_TOOL_METADATA: Record<TutorToolName, ToolMetadata> = {
     priorityGroup: 'diagnostic',
     tags: { diagnostic: true, thesisCore: true },
   },
-  generate_plan: {
+  learning_plan: {
     category: 'tutor_content',
-    phases: ['intake', 'planning'],
+    phases: ['intake', 'planning', 'teaching', 'practice'],
     priorityGroup: 'plan',
     tags: { plan: true, thesisCore: true },
   },
-  update_plan: {
-    category: 'tutor_content',
-    phases: ['planning', 'teaching', 'practice'],
-    priorityGroup: 'plan',
-    tags: { plan: true, thesisCore: true },
-  },
-  assess_answer: {
-    category: 'tutor_meta',
-    phases: ['diagnostic', 'practice', 'review', 'teaching'],
-    tags: { baseline: true, thesisCore: true },
-  },
-  update_learner_model: {
+  record_learning: {
     category: 'tutor_meta',
     phases: ['diagnostic', 'practice', 'review', 'teaching'],
     tags: { learnerModel: true, thesisCore: true },
@@ -111,53 +80,9 @@ const TUTOR_TOOL_METADATA: Record<TutorToolName, ToolMetadata> = {
     phases: ['teaching', 'practice', 'review'],
     tags: { plan: true, thesisCore: true },
   },
-  apply_learner_model_feedback: {
-    category: 'tutor_meta',
-    phases: ['diagnostic', 'practice', 'review', 'teaching'],
-    tags: { learnerModel: true, thesisCore: true },
-  },
-  get_plan_suggestions: {
-    category: 'tutor_meta',
-    phases: ['planning'],
-    tags: { plan: true, thesisCore: true },
-  },
-  quiz_mcq: {
+  quiz: {
     category: 'tutor_content',
     phases: ['diagnostic', 'practice', 'teaching'],
-    priorityGroup: 'practice',
-    tags: { quiz: true },
-  },
-  quiz_fill_blank: {
-    category: 'tutor_content',
-    phases: ['diagnostic', 'practice', 'teaching'],
-    priorityGroup: 'practice',
-    tags: { quiz: true },
-  },
-  quiz_open_ended: {
-    category: 'tutor_content',
-    phases: ['practice', 'teaching'],
-    priorityGroup: 'practice',
-    tags: { quiz: true },
-  },
-  flashcards: {
-    category: 'tutor_content',
-    phases: ['practice', 'review', 'teaching'],
-    priorityGroup: 'practice',
-    tags: { quiz: true },
-  },
-  grade_open_response: {
-    category: 'tutor_meta',
-    phases: ['practice', 'teaching'],
-    tags: { quiz: true },
-  },
-  add_to_deck: {
-    category: 'tutor_meta',
-    phases: ['practice', 'teaching'],
-    tags: { quiz: true },
-  },
-  srs_review: {
-    category: 'tutor_content',
-    phases: ['review'],
     priorityGroup: 'practice',
     tags: { quiz: true },
   },
@@ -166,20 +91,10 @@ const TUTOR_TOOL_METADATA: Record<TutorToolName, ToolMetadata> = {
 const TUTOR_TOOL_DEFINITIONS: Record<TutorToolName, ToolDefinition> = {
   ask_student_question: askStudentQuestionTool,
   create_diagnostic: createDiagnosticTool,
-  generate_plan: generatePlanTool,
-  update_plan: updatePlanTool,
-  get_plan_suggestions: getPlanSuggestionsTool,
-  assess_answer: assessAnswerTool,
-  apply_learner_model_feedback: applyLearnerModelFeedbackTool,
-  update_learner_model: updateLearnerModelTool,
+  learning_plan: learningPlanTool,
+  record_learning: recordLearningTool,
   advance_topic: advanceTopicTool,
-  quiz_mcq: quizMcqTool,
-  quiz_fill_blank: quizFillBlankTool,
-  quiz_open_ended: quizOpenEndedTool,
-  flashcards: flashcardsTool,
-  grade_open_response: gradeOpenResponseTool,
-  add_to_deck: addToDeckTool,
-  srs_review: srsReviewTool,
+  quiz: quizTool,
 };
 
 export type ToolRegistryEntry = {

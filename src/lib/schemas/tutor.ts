@@ -80,21 +80,6 @@ export const TutorQuizOpenEndedToolSchema = z.object({
   items: z.array(TutorOpenEndedItemSchema).min(1).max(8),
 });
 
-export const TutorFlashcardItemSchema = z.object({
-  id: z.string().optional(),
-  front: z.string(),
-  back: z.string(),
-  hint: z.string().optional(),
-  topic: z.string().optional(),
-  skill: z.string().optional(),
-  difficulty: difficultySchema.optional(),
-});
-
-export const TutorFlashcardsToolSchema = z.object({
-  title: z.string().optional(),
-  items: z.array(TutorFlashcardItemSchema).min(1).max(20),
-});
-
 export const TutorDiagnosticItemSchema = z
   .object({
     id: z.string().optional(),
@@ -137,5 +122,4 @@ export type TutorPlanSuggestionsInput = z.infer<typeof TutorPlanSuggestionsToolS
 export type TutorQuizMcqInput = z.infer<typeof TutorQuizMcqToolSchema>;
 export type TutorQuizFillBlankInput = z.infer<typeof TutorQuizFillBlankToolSchema>;
 export type TutorQuizOpenEndedInput = z.infer<typeof TutorQuizOpenEndedToolSchema>;
-export type TutorFlashcardsInput = z.infer<typeof TutorFlashcardsToolSchema>;
 export type TutorDiagnosticInput = z.infer<typeof TutorDiagnosticToolSchema>;
