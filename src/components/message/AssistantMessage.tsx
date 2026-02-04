@@ -171,10 +171,10 @@ export function AssistantMessage({
         )}
       </div>
 
-      {tutorPanelNode}
+      {!isStreaming && tutorPanelNode}
 
       {/* Learner Model Updates */}
-      {!isEditing && studyCondition !== 'A' && <LearnerModelUpdates message={message} />}
+      {!isEditing && !isStreaming && studyCondition !== 'A' && <LearnerModelUpdates message={message} />}
 
       <StatsToggle
         showStats={showStats}
