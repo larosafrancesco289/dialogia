@@ -211,6 +211,7 @@ export class HeadlessTutorSession {
               set: this.store.setState.bind(this.store),
             }),
         },
+        pipeline: this.pipeline,
       });
 
       if (runArtifacts.shortCircuited) {

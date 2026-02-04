@@ -274,9 +274,7 @@ export function StudySessionSettings({
                 Active Model
               </label>
               <div className="rounded-lg border border-[var(--rule-subtle)] bg-transparent px-4 py-3">
-                <div className="text-sm font-medium text-[var(--color-fg)]">
-                  {activeModelLabel}
-                </div>
+                <div className="text-sm font-medium text-[var(--color-fg)]">{activeModelLabel}</div>
                 {activeModelId && activeModelLabel !== activeModelId && (
                   <div className="text-[11px] text-[var(--color-fg-muted)]/80">{activeModelId}</div>
                 )}

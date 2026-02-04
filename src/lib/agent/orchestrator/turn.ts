@@ -13,6 +13,8 @@ import type {
   ResolvedTurnSettings,
 } from '@/lib/agent/types';
 import type { TransportAuth } from '@/lib/auth/transport';
+import type { PipelineClient } from '@/lib/agent/pipelineClient';
+import { executeStreamingTurn } from '@/lib/agent/streaming/streamingTurn';
 
 type ComposeFn = (args: ComposeTurnArgs) => Promise<TurnComposition>;
 type PlanFn = (args: PlanTurnOptions) => Promise<PlanTurnOutput>;
@@ -50,6 +52,7 @@ export type RunTurnArgs = {
   shouldShortCircuit?: (plan: PlanTurnResult) => boolean;
   hooks?: RunTurnHooks;
   startBuffered?: boolean;
+  pipeline?: PipelineClient;
 };
 
 export type RunTurnResult = {
@@ -89,6 +92,7 @@ export const runTurn = async ({
   shouldShortCircuit,
   hooks,
   startBuffered = false,
+  pipeline,
 }: RunTurnArgs): Promise<RunTurnResult> => {
   const attachments = attachmentPreparer
     ? await attachmentPreparer(modelId)
@@ -116,6 +120,52 @@ export const runTurn = async ({
 
   let planResult: PlanTurnResult | undefined;
   let planSideEffects: PlanTurnSideEffect[] = [];
+
+  // Use unified streaming turn when planning is needed and tools are available
+  // This replaces the two-phase plan+stream approach with a single streaming call
+  const hasTools = Array.isArray(composition.tools) && composition.tools.length > 0;
+  if (composition.shouldPlan && hasTools) {
+    hooks?.beforeStream?.({ composition, plan: undefined });
+
+    const streamingResult = await executeStreamingTurn({
+      chat,
+      chatId,
+      assistantMessage,
+      messages: composition.messages,
+      controller,
+      turn: turnContext,
+      settings: composition.settings,
+      plugins: composition.plugins,
+      toolDefinition: composition.tools,
+      startBuffered,
+      userContent,
+      combinedSystem: composition.system,
+      pipeline,
+      onPlanResult: hooks?.onPlanResult,
+      onPlanSideEffects: hooks?.onPlanSideEffects,
+      shouldShortCircuit,
+    });
+
+    // Convert streaming result to plan result format for compatibility
+    planResult = {
+      finalSystem: streamingResult.finalSystem,
+      usedTutorContentTool: streamingResult.usedTutorContentTool,
+      hasSearchResults: streamingResult.hasSearchResults,
+      learnerModel: streamingResult.learnerModel,
+      planUpdates: streamingResult.planUpdates,
+      updatedPlan: streamingResult.updatedPlan,
+      learnerModelDebug: streamingResult.learnerModelDebug,
+    };
+    planSideEffects = streamingResult.sideEffects;
+
+    if (streamingResult.shortCircuited) {
+      return { composition, plan: planResult, shortCircuited: true };
+    }
+
+    return { composition, plan: planResult, shortCircuited: false };
+  }
+
+  // Legacy path: use old plan+stream when planning without tools, or no planning needed
   if (composition.shouldPlan) {
     const planOutput = await plan({
       chat,

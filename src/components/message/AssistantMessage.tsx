@@ -174,7 +174,9 @@ export function AssistantMessage({
       {!isStreaming && tutorPanelNode}
 
       {/* Learner Model Updates */}
-      {!isEditing && !isStreaming && studyCondition !== 'A' && <LearnerModelUpdates message={message} />}
+      {!isEditing && !isStreaming && studyCondition !== 'A' && (
+        <LearnerModelUpdates message={message} />
+      )}
 
       <StatsToggle
         showStats={showStats}
