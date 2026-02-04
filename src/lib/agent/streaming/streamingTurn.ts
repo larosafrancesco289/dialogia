@@ -6,7 +6,8 @@ import { getStreamChatCompletion, type PipelineClient } from '@/lib/agent/pipeli
 import { captureRequestDebug } from '@/lib/agent/debug';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
-import { clearTurnController } from '@/lib/turns/runtime';
+import { clearTurnController, startToolCallLogEntry } from '@/lib/turns/runtime';
+import { getToolCategory } from '@/lib/tools/registry';
 import { isReasoningRequested } from '@/lib/settings/generation';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
 import { formatSourcesBlock } from '@/lib/search';
@@ -282,6 +283,34 @@ export async function executeStreamingTurn(
       { startedAt },
     );
 
+  // Track which tool call indices we've already pre-logged
+  const preLoggedToolIndices = new Set<number>();
+
+  // Pre-log a tool call as pending for immediate UI feedback
+  const preLogToolCall = (name: string) => {
+    const category = getToolCategory(name);
+    startToolCallLogEntry({
+      set,
+      chatId,
+      messageId: assistantMessage.id,
+      name,
+      input: {},
+      category: category === 'tutor_content' || category === 'tutor_meta' ? 'tutor' : category,
+    });
+  };
+
+  // Handle tool call deltas as they stream in - pre-log immediately on first delta
+  const handleToolCallDelta = (deltas: Array<{ index: number; function?: { name?: string } }>) => {
+    for (const delta of deltas) {
+      if (preLoggedToolIndices.has(delta.index)) continue;
+      const name = delta.function?.name;
+      if (name && name.length > 0) {
+        preLoggedToolIndices.add(delta.index);
+        preLogToolCall(name);
+      }
+    }
+  };
+
   // If no tools available, just do a single streaming call with UI callbacks
   if (!hasTools) {
     const finalSystem = buildFinalSystem();
@@ -393,6 +422,7 @@ export async function executeStreamingTurn(
       roundContent += delta;
       uiCallbacks.onToken?.(delta);
     },
+    onToolCallDelta: handleToolCallDelta,
     onDone: (full, extras) => {
       roundFinishReason = extras?.finishReason;
       roundReasoningDetails = extras?.reasoningDetails;
@@ -450,6 +480,7 @@ export async function executeStreamingTurn(
       onToken: (delta) => {
         roundContent += delta;
       },
+      onToolCallDelta: handleToolCallDelta,
       onDone: (_full, extras) => {
         roundFinishReason = extras?.finishReason;
         roundReasoningDetails = extras?.reasoningDetails;

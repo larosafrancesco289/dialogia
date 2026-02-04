@@ -8,6 +8,7 @@ export {
 export { computeMetrics, formatMetricsForDisplay } from '@/lib/turns/runtime/metrics';
 export {
   clearToolCallLogs,
+  findPendingToolCallEntry,
   startToolCallLogEntry,
   updateToolCallLogEntry,
 } from '@/lib/turns/runtime/toolCallLog';

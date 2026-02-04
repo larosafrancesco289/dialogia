@@ -20,6 +20,8 @@ export type MessageCardViewModel = {
   showDebugRawJson: boolean;
   showStats: boolean;
   tutorEnabled: boolean;
+  /** Explicitly tracked for reactivity - changes trigger re-render */
+  toolCallsLength: number;
 };
 
 export function useMessageCardViewModel({
@@ -52,6 +54,8 @@ export function useMessageCardViewModel({
       showDebugRawJson: chat?.settings?.ui.showDebugRawJson ?? true,
       showStats: chat?.settings?.ui.showStats ?? false,
       tutorEnabled,
+      // Explicitly track toolCalls length for reactivity
+      toolCallsLength: message?.toolCalls?.length ?? 0,
     };
   }, shallow);
 
