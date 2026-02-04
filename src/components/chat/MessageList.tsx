@@ -10,7 +10,6 @@ import { MessageCard } from '@/components/message/MessageCard';
 import { useMessageListWindow } from '@/components/message/hooks/useMessageListWindow';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
-import { useMessagePanels } from '@/components/message/hooks/useMessagePanels';
 import { useMessageListController } from '@/components/message/useMessageListController';
 import { selectIsStreamingForChat, selectMessagesForChat } from '@/lib/store/selectors';
 
@@ -63,8 +62,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   const {
     copiedId,
     editingId,
-    draft,
-    setDraft,
     setEditingId,
     saveEdit,
     startEditingMessage,
@@ -155,7 +152,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   // Composer is now rendered outside this scroll container in ChatPane.
 
   const showByDefault = chat?.settings.ui.showThinkingByDefault ?? false;
-  const { getPanelState } = useMessagePanels({ showReasoningByDefault: showByDefault });
   // Subtle indicator for long time-to-first-token
   const waitingForFirstToken = useMemo(() => {
     if (!isStreaming) return false;
@@ -188,6 +184,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         {visibleMessages.map((message) => {
           const isEditingThisMessage = editingId === message.id;
           const showInlineActions = !isMobile || isEditingThisMessage;
+          const scopedCopiedId = copiedId === message.id ? copiedId : null;
 
           return (
             <MessageCard
@@ -198,18 +195,20 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
               isActive={isMobile && activeMessageId === message.id}
               showInlineActions={showInlineActions}
               isEditing={isEditingThisMessage}
-              draft={draft}
-              setDraft={setDraft}
               setEditingId={setEditingId}
               saveEdit={saveEdit}
               startEditingMessage={startEditingMessage}
               copyMessage={copyMessage}
-              copiedId={copiedId}
+              copiedId={scopedCopiedId}
               setLightbox={setLightbox}
               waitingForFirstToken={waitingForFirstToken && message.id === lastMessageId}
               lastMessageId={lastMessageId}
-              panels={getPanelState(message.id)}
+              showReasoningByDefault={showByDefault}
+              isStreaming={isStreaming && message.id === lastMessageId}
+              isChatStreaming={isStreaming}
               onOpenMobileSheet={openMobileSheet}
+              onBranch={branchFromMessage}
+              onRegenerate={regenerateMessage}
             />
           );
         })}

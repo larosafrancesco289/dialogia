@@ -78,6 +78,8 @@ export function MessageAttachments({
             height={imageDimsByVariant[variant].height}
             sizes={imageSizesByVariant[variant]}
             unoptimized
+            loading="lazy"
+            decoding="async"
             className={`${imageSizeByVariant[variant]} object-cover rounded border border-border`}
           />
         </button>
@@ -88,7 +90,7 @@ export function MessageAttachments({
           className={`${audioSizeByVariant[variant]} rounded border border-border bg-muted/50 flex items-center gap-2`}
         >
           {attachment.dataURL ? (
-            <audio controls src={attachment.dataURL} className="h-10" />
+            <audio controls preload="none" src={attachment.dataURL} className="h-10" />
           ) : (
             <span className="text-xs">Audio attached</span>
           )}

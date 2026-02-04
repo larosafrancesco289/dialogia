@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { motion, type Variants } from 'framer-motion';
+import { motion, MotionConfig, useReducedMotion, type Variants } from 'framer-motion';
 import {
   DocumentTextIcon,
   ClockIcon,
@@ -67,22 +67,26 @@ const itemVariants: Variants = {
 };
 
 export function DeepResearchTimeline({ trace }: Props) {
+  const reduceMotion = useReducedMotion();
   if (!trace || trace.length === 0) return null;
+  const shouldAnimate = !reduceMotion && trace.length <= 12;
 
   return (
-    <motion.div
-      className="relative pl-6 space-y-6 my-4 text-[var(--color-fg)]"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      {/* Timeline line - accent colored like marginalia left border */}
-      <div className="absolute left-[11px] top-2 bottom-2 w-[2px] bg-gradient-to-b from-transparent via-[var(--color-accent)]/40 to-transparent" />
+    <MotionConfig reducedMotion={shouldAnimate ? 'never' : 'always'}>
+      <motion.div
+        className="relative pl-6 space-y-6 my-4 text-[var(--color-fg)]"
+        variants={containerVariants}
+        initial={shouldAnimate ? 'hidden' : false}
+        animate={shouldAnimate ? 'visible' : false}
+      >
+        {/* Timeline line - accent colored like marginalia left border */}
+        <div className="absolute left-[11px] top-2 bottom-2 w-[2px] bg-gradient-to-b from-transparent via-[var(--color-accent)]/40 to-transparent" />
 
-      {trace.map((item, idx) => (
-        <TimelineItem key={idx} item={item} />
-      ))}
-    </motion.div>
+        {trace.map((item, idx) => (
+          <TimelineItem key={idx} item={item} />
+        ))}
+      </motion.div>
+    </MotionConfig>
   );
 }
 
@@ -171,6 +175,8 @@ function TimelineItem({ item }: { item: DeepResearchEvent }) {
                       height={14}
                       sizes="14px"
                       unoptimized
+                      loading="lazy"
+                      decoding="async"
                       className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100 transition-opacity"
                       onError={(e) => (e.currentTarget.style.display = 'none')}
                     />

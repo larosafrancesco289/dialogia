@@ -94,21 +94,53 @@ export function useChatSidebarState({
 
   const rootFolders = useMemo(() => folders.filter((f) => !f.parentId), [folders]);
   const rootChats = useMemo(() => chats.filter((c) => !c.folderId), [chats]);
+  const folderById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder])), [folders]);
+  const childFoldersById = useMemo(() => {
+    const map = new Map<string, Folder[]>();
+    for (const folder of folders) {
+      if (!folder.parentId) continue;
+      const list = map.get(folder.parentId);
+      if (list) list.push(folder);
+      else map.set(folder.parentId, [folder]);
+    }
+    return map;
+  }, [folders]);
+  const chatsByFolderId = useMemo(() => {
+    const map = new Map<string, Chat[]>();
+    for (const chat of chats) {
+      if (!chat.folderId) continue;
+      const list = map.get(chat.folderId);
+      if (list) list.push(chat);
+      else map.set(chat.folderId, [chat]);
+    }
+    return map;
+  }, [chats]);
 
   const filteredRootFolders = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rootFolders;
     const matchText = (text?: string) => (text || '').toLowerCase().includes(q);
+    const folderMatchCache = new Map<string, boolean>();
     const folderMatches = (folderId: string): boolean => {
-      const folder = folders.find((x) => x.id === folderId);
-      if (!folder) return false;
-      if (matchText(folder.name)) return true;
-      const subFolders = folders.filter((x) => x.parentId === folderId);
-      const hasChat = chats.some((c) => c.folderId === folderId && matchText(c.title));
-      return hasChat || subFolders.some((sf) => folderMatches(sf.id));
+      const cached = folderMatchCache.get(folderId);
+      if (typeof cached === 'boolean') return cached;
+      const folder = folderById.get(folderId);
+      if (!folder) {
+        folderMatchCache.set(folderId, false);
+        return false;
+      }
+      if (matchText(folder.name)) {
+        folderMatchCache.set(folderId, true);
+        return true;
+      }
+      const subFolders = childFoldersById.get(folderId) ?? [];
+      const hasChat = (chatsByFolderId.get(folderId) ?? []).some((c) => matchText(c.title));
+      const matches = hasChat || subFolders.some((sf) => folderMatches(sf.id));
+      folderMatchCache.set(folderId, matches);
+      return matches;
     };
     return rootFolders.filter((folder) => folderMatches(folder.id));
-  }, [query, rootFolders, folders, chats]);
+  }, [query, rootFolders, folderById, childFoldersById, chatsByFolderId]);
 
   const filteredRootChats = useMemo(() => {
     const q = query.trim().toLowerCase();

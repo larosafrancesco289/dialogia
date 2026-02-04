@@ -114,10 +114,12 @@ export function TutorPanelSection({
   messageId,
   tutorGloballyEnabled,
   tutorEntry,
+  isLatestAssistant,
 }: {
   messageId: string;
   tutorGloballyEnabled: boolean;
   tutorEntry?: MessageTutor;
+  isLatestAssistant?: boolean;
 }) {
   if (!tutorGloballyEnabled || !tutorEntry) return null;
 
@@ -135,6 +137,7 @@ export function TutorPanelSection({
       planSuggestions={tutorEntry.planSuggestions}
       assessmentUpdates={tutorEntry.assessmentUpdates}
       grading={tutorEntry.grading}
+      isLatestAssistant={isLatestAssistant}
     />
   );
 }

@@ -128,6 +128,12 @@ export function createTypewriter(onEmit: (text: string) => void, config?: Typewr
       return;
     }
 
+    const fastPath = !done && buffer.length <= cfg.passthroughThreshold;
+    if (fastPath) {
+      timeoutId = setTimeout(() => tick(nowMs()), 0);
+      return;
+    }
+
     if (typeof requestAnimationFrame === 'function') {
       rafId = requestAnimationFrame(tick);
     } else {
