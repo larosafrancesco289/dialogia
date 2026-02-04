@@ -23,6 +23,7 @@ export type AssistantMessageProps = {
   isMobile: boolean;
   showInlineActions: boolean;
   isStreaming: boolean;
+  isChatStreaming: boolean;
   isEditing: boolean;
   copyMessage: () => void;
   copiedId: string | null;
@@ -60,6 +61,7 @@ export function AssistantMessage({
   isMobile,
   showInlineActions,
   isStreaming,
+  isChatStreaming,
   isEditing,
   copyMessage,
   copiedId,
@@ -117,7 +119,7 @@ export function AssistantMessage({
             onClick={copyMessage}
             showFeedback={copiedId === message.id}
           />
-          {!isStreaming && (
+          {!isChatStreaming && (
             <ActionButton
               icon={<PencilSquareIcon className="h-4 w-4" />}
               title="Edit message"
@@ -130,7 +132,7 @@ export function AssistantMessage({
             title="Create a new chat starting from this reply"
             ariaLabel="Branch chat from here"
             onClick={branchFromMessage}
-            disabled={isStreaming}
+            disabled={isChatStreaming}
           />
           {!tutorEnabled && <RegenerateMenu onChoose={onChooseRegenerateModel} />}
         </MessageActions>

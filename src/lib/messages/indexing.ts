@@ -1,6 +1,15 @@
 import type { Message } from '@/lib/types';
 import { sortMessages } from '@/lib/messages/ordering';
 
+type MessageListCacheEntry = {
+  idsRef: string[];
+  refs: Array<Message | undefined>;
+  list: Message[];
+};
+
+const EMPTY_MESSAGES: Message[] = [];
+const messageListCache = new Map<string, MessageListCacheEntry>();
+
 export type MessageIndexState = {
   messagesById: Record<string, Message>;
   messageIdsByChatId: Record<string, string[]>;
@@ -23,12 +32,32 @@ export function buildMessageIndex(messages: Record<string, Message[]>): MessageI
 
 export function getMessagesForChat(state: MessageIndexState, chatId: string): Message[] {
   const ids = state.messageIdsByChatId[chatId];
-  if (!ids || ids.length === 0) return [];
+  if (!ids || ids.length === 0) {
+    messageListCache.delete(chatId);
+    return EMPTY_MESSAGES;
+  }
+
+  const cached = messageListCache.get(chatId);
+  if (cached && cached.idsRef === ids && cached.refs.length === ids.length) {
+    let unchanged = true;
+    for (let i = 0; i < ids.length; i += 1) {
+      const message = state.messagesById[ids[i]];
+      if (message !== cached.refs[i]) {
+        unchanged = false;
+        break;
+      }
+    }
+    if (unchanged) return cached.list;
+  }
+
+  const refs: Array<Message | undefined> = new Array(ids.length);
   const messages: Message[] = [];
-  for (const id of ids) {
-    const message = state.messagesById[id];
+  for (let i = 0; i < ids.length; i += 1) {
+    const message = state.messagesById[ids[i]];
+    refs[i] = message;
     if (message) messages.push(message);
   }
+  messageListCache.set(chatId, { idsRef: ids, refs, list: messages });
   return messages;
 }
 

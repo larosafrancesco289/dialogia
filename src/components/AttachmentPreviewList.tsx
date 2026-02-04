@@ -46,6 +46,8 @@ function renderPreview(attachment: DraftAttachment) {
         height={64}
         sizes="64px"
         unoptimized
+        loading="lazy"
+        decoding="async"
         className="h-16 w-16 object-cover rounded border border-border"
       />
     );
@@ -54,7 +56,7 @@ function renderPreview(attachment: DraftAttachment) {
   if (attachment.kind === 'audio' && attachment.dataURL) {
     return (
       <div className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2">
-        <audio controls src={attachment.dataURL} className="h-10" />
+        <audio controls preload="none" src={attachment.dataURL} className="h-10" />
         <div className="min-w-0">
           <div className="text-xs font-medium truncate" title={attachment.name || 'Audio'}>
             {attachment.name || 'Audio'}

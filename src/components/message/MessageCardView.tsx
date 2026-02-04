@@ -31,6 +31,10 @@ export type MessageCardViewData = MessageCardViewModel & {
   waitingForFirstToken: boolean;
   lastMessageId?: string;
   panels: MessagePanelState;
+  isStreaming: boolean;
+  isChatStreaming: boolean;
+  onBranch: () => void;
+  onChooseRegenerateModel: (modelId?: string) => void;
   onPointerDown?: PointerEventHandler<HTMLDivElement>;
   onPointerMove?: PointerEventHandler<HTMLDivElement>;
   onPointerUp?: PointerEventHandler<HTMLDivElement>;
@@ -42,7 +46,6 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     message,
     chat,
     models,
-    isStreaming,
     braveGloballyEnabled,
     braveEntry,
     debugMode,
@@ -54,7 +57,6 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     showDebugRawJson,
     showStats,
     tutorEnabled,
-    actions,
     isMobile,
     isActive,
     showInlineActions,
@@ -70,6 +72,10 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     waitingForFirstToken,
     lastMessageId,
     panels,
+    isStreaming,
+    isChatStreaming,
+    onBranch,
+    onChooseRegenerateModel,
     onPointerDown,
     onPointerMove,
     onPointerUp,
@@ -123,6 +129,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
       messageId={message.id}
       tutorGloballyEnabled={tutorGloballyEnabled}
       tutorEntry={tutorEntry}
+      isLatestAssistant={isLatestAssistant}
     />
   ) : null;
 
@@ -142,6 +149,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
           isMobile={isMobile}
           showInlineActions={showInlineActions}
           isStreaming={isStreaming}
+          isChatStreaming={isChatStreaming}
           isEditing={isEditing}
           copyMessage={onCopy}
           copiedId={copiedId}
@@ -158,8 +166,8 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
           showStats={showStats}
           statsExpanded={panels.stats.expanded}
           onToggleStats={panels.stats.onToggle}
-          branchFromMessage={actions.branchFromMessage}
-          onChooseRegenerateModel={actions.regenerateMessage}
+          branchFromMessage={onBranch}
+          onChooseRegenerateModel={onChooseRegenerateModel}
           setLightbox={setLightbox}
           attachments={attachments}
           tutorEnabled={tutorEnabled}

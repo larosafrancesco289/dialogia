@@ -1,5 +1,5 @@
 'use client';
-import React, { Children, useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { Children, useEffect, useId, useMemo, useRef, useState, memo } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -24,7 +24,7 @@ function readWrapPreference(): boolean {
   try {
     const stored = window.localStorage.getItem(WRAP_STORAGE_KEY);
     if (stored === 'off') return false;
-    if (stored === 'on') return true;
+  if (stored === 'on') return true;
   } catch {
     // ignore storage access failures
   }
@@ -115,14 +115,17 @@ function PreWithTools(
       setIsOverflowing(over);
     };
     compute();
-    const ro = new ResizeObserver(() => compute());
-    ro.observe(el);
+    let ro: ResizeObserver | null = null;
+    if (!expanded && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => compute());
+      ro.observe(el);
+    }
     const tid = setTimeout(compute, 0);
     return () => {
-      ro.disconnect();
+      ro?.disconnect();
       clearTimeout(tid);
     };
-  }, [expanded, props.children]);
+  }, [expanded, wrap, props.children]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -190,7 +193,30 @@ function PreWithTools(
 function MermaidBlock({ code }: { code: string }) {
   const id = useId().replace(/[:]/g, '_');
   const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
   useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible) return;
     let cancelled = false;
     (async () => {
       try {
@@ -209,7 +235,7 @@ function MermaidBlock({ code }: { code: string }) {
     return () => {
       cancelled = true;
     };
-  }, [code, id]);
+  }, [code, id, isVisible]);
   return <div className="mermaid-diagram" ref={ref} />;
 }
 
@@ -234,6 +260,9 @@ function normalizeLanguage(lang?: string): string | undefined {
   if (l === 'html' || l === 'xml' || l === 'svg') return 'markup';
   return l;
 }
+
+const PRISM_CACHE = new Map<string, string>();
+const PRISM_CACHE_MAX = 200;
 
 async function ensurePrismLanguage(lang?: string) {
   const PrismLib = (await import('prismjs')).default;
@@ -306,13 +335,25 @@ function CodeBlock({ code, language }: { code: string; language?: string }) {
   const lang = normalizeLanguage(language);
   useEffect(() => {
     let cancelled = false;
+    const cacheKey = `${lang ?? 'markup'}::${code}`;
+    const cached = PRISM_CACHE.get(cacheKey);
+    if (cached) {
+      setHtml((prev) => (prev === cached ? prev : cached));
+      return () => {
+        cancelled = true;
+      };
+    }
     (async () => {
       try {
         const Prism = await ensurePrismLanguage(lang);
         const grammar = (lang && Prism.languages[lang]) || Prism.languages.markup;
         const h = Prism.highlight(code, grammar, (lang as string) || 'markup');
-        if (!cancelled) {
-          setHtml((prev) => (prev === h ? prev : h));
+        if (cancelled) return;
+        setHtml((prev) => (prev === h ? prev : h));
+        PRISM_CACHE.set(cacheKey, h);
+        if (PRISM_CACHE.size > PRISM_CACHE_MAX) {
+          const oldestKey = PRISM_CACHE.keys().next().value;
+          if (oldestKey) PRISM_CACHE.delete(oldestKey);
         }
       } catch {
         if (!cancelled) {
@@ -339,8 +380,9 @@ function escapeCurrency(text: string): string {
   return text.replace(/\$(\d[\d,]*(?:\.\d+)?[KMBkmb]?)\b/g, '\\$$1');
 }
 
-export function Markdown({ content }: { content: string }) {
+export const Markdown = memo(function Markdown({ content }: { content: string }) {
   const processedContent = useMemo(() => escapeCurrency(content), [content]);
+  const rootRef = useRef<HTMLDivElement>(null);
   // Prism highlighting is handled per-block to avoid React clobbering DOM
 
   // Attach medium-zoom to images inside markdown for a better reading experience
@@ -350,9 +392,13 @@ export function Markdown({ content }: { content: string }) {
     const run = async () => {
       if (typeof window === 'undefined' || cancelled) return;
       try {
+        const root = rootRef.current;
+        if (!root) return;
+        const images = root.querySelectorAll('img');
+        if (images.length === 0) return;
         const mediumZoom = (await import('medium-zoom')).default as MediumZoomFactory;
         if (!cancelled) {
-          zoom = mediumZoom('.markdown img', { background: 'rgba(0,0,0,0.7)', margin: 24 });
+          zoom = mediumZoom(images, { background: 'rgba(0,0,0,0.7)', margin: 24 });
         }
       } catch (error) {
         logger.error('Failed to initialize image zoom', error);
@@ -374,56 +420,59 @@ export function Markdown({ content }: { content: string }) {
     };
   }, [processedContent]);
 
-  const components: Components = {
-    pre: ({ children, ...preProps }) => {
-      // Detect Mermaid blocks and render as diagrams instead of <pre>
-      const lang = detectLanguageFromPreChildren(children);
-      if (lang === 'mermaid') {
+  const components: Components = useMemo(
+    () => ({
+      pre: ({ children, ...preProps }) => {
+        // Detect Mermaid blocks and render as diagrams instead of <pre>
+        const lang = detectLanguageFromPreChildren(children);
+        if (lang === 'mermaid') {
+          const code = extractCodeText(children);
+          return <MermaidBlock code={code} />;
+        }
         const code = extractCodeText(children);
-        return <MermaidBlock code={code} />;
-      }
-      const code = extractCodeText(children);
-      return (
-        <PreWithTools {...preProps} language={lang} rawText={code}>
-          <CodeBlock code={code} language={lang} />
-        </PreWithTools>
-      );
-    },
-    code: (props) => {
-      const { inline, className, children, ...codeProps } = props as typeof props & {
-        inline?: boolean;
-      };
-      // Only style inline code; block code is handled by the <pre> wrapper above
-      if (!inline) {
         return (
-          <code className={className || ''} {...codeProps}>
+          <PreWithTools {...preProps} language={lang} rawText={code}>
+            <CodeBlock code={code} language={lang} />
+          </PreWithTools>
+        );
+      },
+      code: (props) => {
+        const { inline, className, children, ...codeProps } = props as typeof props & {
+          inline?: boolean;
+        };
+        // Only style inline code; block code is handled by the <pre> wrapper above
+        if (!inline) {
+          return (
+            <code className={className || ''} {...codeProps}>
+              {children}
+            </code>
+          );
+        }
+        return (
+          <code className={`bg-muted rounded px-1 py-0.5 ${className || ''}`} {...codeProps}>
             {children}
           </code>
         );
-      }
-      return (
-        <code className={`bg-muted rounded px-1 py-0.5 ${className || ''}`} {...codeProps}>
-          {children}
-        </code>
-      );
-    },
-    a: ({ href, children, ...props }) => {
-      const isExternal = href && /^https?:\/\//.test(href);
-      return (
-        <a
-          href={href}
-          target={isExternal ? '_blank' : undefined}
-          rel={isExternal ? 'noopener noreferrer' : undefined}
-          {...props}
-        >
-          {children}
-        </a>
-      );
-    },
-  };
+      },
+      a: ({ href, children, ...props }) => {
+        const isExternal = href && /^https?:\/\//.test(href);
+        return (
+          <a
+            href={href}
+            target={isExternal ? '_blank' : undefined}
+            rel={isExternal ? 'noopener noreferrer' : undefined}
+            {...props}
+          >
+            {children}
+          </a>
+        );
+      },
+    }),
+    [],
+  );
 
   return (
-    <div className="markdown">
+    <div ref={rootRef} className="markdown">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[
@@ -440,4 +489,4 @@ export function Markdown({ content }: { content: string }) {
       </ReactMarkdown>
     </div>
   );
-}
+});

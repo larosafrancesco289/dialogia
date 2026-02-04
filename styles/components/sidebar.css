@@ -20,6 +20,13 @@
     position: relative;
     border: 1px solid color-mix(in oklab, var(--color-border) 65%, transparent);
   }
+  @supports (content-visibility: auto) {
+    .chat-item,
+    .folder-row {
+      content-visibility: auto;
+      contain-intrinsic-size: 1px 44px;
+    }
+  }
   .chat-item:hover:not(.selected) {
     background: color-mix(in oklab, var(--color-muted) 60%, transparent);
     border-color: color-mix(in oklab, var(--color-border) 85%, transparent);

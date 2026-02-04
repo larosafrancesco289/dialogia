@@ -1,5 +1,5 @@
 'use client';
-import { motion } from 'framer-motion';
+import { motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
 import { selectStudyCondition } from '@/lib/store/selectors';
@@ -39,8 +39,10 @@ export function TutorPanel(props: {
   planSuggestions?: TutorPlanSuggestion[];
   assessmentUpdates?: TutorLearnerModelUpdate[];
   grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
+  isLatestAssistant?: boolean;
 }) {
   const studyCondition = useChatStore(selectStudyCondition);
+  const reduceMotion = useReducedMotion();
 
   const {
     messageId,
@@ -55,9 +57,11 @@ export function TutorPanel(props: {
     planSuggestions,
     assessmentUpdates,
     grading,
+    isLatestAssistant,
   } = props;
 
   const canShowUpdates = studyCondition !== 'A';
+  const shouldAnimate = !!isLatestAssistant && !reduceMotion;
 
   const hasAny =
     (questionnaire && questionnaire.questions && questionnaire.questions.length > 0) ||
@@ -74,52 +78,56 @@ export function TutorPanel(props: {
   if (!hasAny) return null;
 
   return (
-    <div className="mt-4 mb-2">
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        variants={cardVariants}
-        className="marginalia overflow-hidden"
-      >
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--rule-light)] bg-[var(--color-muted)]/20">
-          <div className="flex items-center gap-2 min-w-0 text-[var(--color-accent)]">
-            <AcademicCapIcon className="h-4 w-4" />
-            <div className="text-xs font-bold uppercase tracking-wider truncate">
-              {title || 'Tutor Tools'}
+    <MotionConfig reducedMotion={shouldAnimate ? 'never' : 'always'}>
+      <div className="mt-4 mb-2">
+        <motion.div
+          initial={shouldAnimate ? 'hidden' : false}
+          animate={shouldAnimate ? 'visible' : false}
+          variants={cardVariants}
+          className="marginalia overflow-hidden"
+        >
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--rule-light)] bg-[var(--color-muted)]/20">
+            <div className="flex items-center gap-2 min-w-0 text-[var(--color-accent)]">
+              <AcademicCapIcon className="h-4 w-4" />
+              <div className="text-xs font-bold uppercase tracking-wider truncate">
+                {title || 'Tutor Tools'}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="p-4 space-y-6">
-          {questionnaire && questionnaire.questions?.length ? (
-            <QuestionnaireCard messageId={messageId} questionnaire={questionnaire} />
-          ) : null}
-          {planProposal ? (
-            <PlanProposalCard
-              messageId={messageId}
-              proposal={planProposal}
-              suggestions={planSuggestions}
-            />
-          ) : null}
-          {!planProposal && planSuggestions && planSuggestions.length > 0 ? (
-            <PlanSuggestionsCard suggestions={planSuggestions} />
-          ) : null}
-          {diagnostic && diagnostic.items?.length ? (
-            <DiagnosticCard messageId={messageId} diagnostic={diagnostic} />
-          ) : null}
-          {mcq && mcq.length > 0 && <McqCard messageId={messageId} items={mcq} />}
-          {fillBlank && fillBlank.length > 0 && (
-            <FillBlankCard messageId={messageId} items={fillBlank} />
-          )}
-          {openEnded && openEnded.length > 0 && (
-            <OpenEndedCard messageId={messageId} items={openEnded} grading={grading} />
-          )}
-          {flashcards && flashcards.length > 0 && <FlashcardsCard items={flashcards} />}
-          {canShowUpdates && assessmentUpdates && assessmentUpdates.length > 0 && (
-            <LearnerUpdatesCard updates={assessmentUpdates} />
-          )}
-          {grading && Object.keys(grading).length > 0 && <GradingFeedbackCard grading={grading} />}
-        </div>
-      </motion.div>
-    </div>
+          <div className="p-4 space-y-6">
+            {questionnaire && questionnaire.questions?.length ? (
+              <QuestionnaireCard messageId={messageId} questionnaire={questionnaire} />
+            ) : null}
+            {planProposal ? (
+              <PlanProposalCard
+                messageId={messageId}
+                proposal={planProposal}
+                suggestions={planSuggestions}
+              />
+            ) : null}
+            {!planProposal && planSuggestions && planSuggestions.length > 0 ? (
+              <PlanSuggestionsCard suggestions={planSuggestions} />
+            ) : null}
+            {diagnostic && diagnostic.items?.length ? (
+              <DiagnosticCard messageId={messageId} diagnostic={diagnostic} />
+            ) : null}
+            {mcq && mcq.length > 0 && <McqCard messageId={messageId} items={mcq} />}
+            {fillBlank && fillBlank.length > 0 && (
+              <FillBlankCard messageId={messageId} items={fillBlank} />
+            )}
+            {openEnded && openEnded.length > 0 && (
+              <OpenEndedCard messageId={messageId} items={openEnded} grading={grading} />
+            )}
+            {flashcards && flashcards.length > 0 && <FlashcardsCard items={flashcards} />}
+            {canShowUpdates && assessmentUpdates && assessmentUpdates.length > 0 && (
+              <LearnerUpdatesCard updates={assessmentUpdates} />
+            )}
+            {grading && Object.keys(grading).length > 0 && (
+              <GradingFeedbackCard grading={grading} />
+            )}
+          </div>
+        </motion.div>
+      </div>
+    </MotionConfig>
   );
 }

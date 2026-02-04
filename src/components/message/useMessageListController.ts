@@ -15,7 +15,7 @@ export function useMessageListController(args: {
   ) => Promise<void>;
   editAssistantMessage: (messageId: string, content: string) => Promise<void>;
   branchFrom: (messageId: string) => void;
-  regenerate: (messageId: string) => void;
+  regenerate: (messageId: string, opts?: { modelId?: string }) => void;
 }) {
   const {
     messages,
@@ -28,7 +28,6 @@ export function useMessageListController(args: {
   } = args;
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState('');
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
   const [mobileSheet, setMobileSheet] = useState<MobileSheetState | null>(null);
 
@@ -43,12 +42,11 @@ export function useMessageListController(args: {
   }, []);
 
   const saveEdit = useCallback(
-    (messageId: string) => {
-      const text = draft.trim();
+    (messageId: string, content: string) => {
+      const text = content.trim();
       if (!text) return;
-      const payload = draft;
+      const payload = content;
       setEditingId(null);
-      setDraft('');
       const role = messages.find((mm) => mm.id === messageId)?.role;
       if (role === 'assistant') {
         editAssistantMessage(messageId, payload).catch(() => void 0);
@@ -56,7 +54,7 @@ export function useMessageListController(args: {
         editUserMessage(messageId, payload, { rerun: true }).catch(() => void 0);
       }
     },
-    [draft, editAssistantMessage, editUserMessage, messages],
+    [editAssistantMessage, editUserMessage, messages],
   );
 
   const copyMessage = useCallback(
@@ -79,7 +77,6 @@ export function useMessageListController(args: {
       const msg = messages.find((x) => x.id === messageId);
       if (!msg) return;
       setEditingId(messageId);
-      setDraft(msg.content || '');
     },
     [messages],
   );
@@ -93,8 +90,8 @@ export function useMessageListController(args: {
   );
 
   const regenerateMessage = useCallback(
-    (messageId: string) => {
-      regenerate(messageId);
+    (messageId: string, modelId?: string) => {
+      regenerate(messageId, modelId ? { modelId } : undefined);
     },
     [regenerate],
   );
@@ -162,8 +159,6 @@ export function useMessageListController(args: {
   return {
     copiedId,
     editingId,
-    draft,
-    setDraft,
     setEditingId,
     saveEdit,
     startEditingMessage,
