@@ -24,7 +24,7 @@ function readWrapPreference(): boolean {
   try {
     const stored = window.localStorage.getItem(WRAP_STORAGE_KEY);
     if (stored === 'off') return false;
-  if (stored === 'on') return true;
+    if (stored === 'on') return true;
   } catch {
     // ignore storage access failures
   }

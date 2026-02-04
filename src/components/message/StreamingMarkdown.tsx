@@ -35,8 +35,7 @@ export function StreamingMarkdown({ content }: { content: string }) {
     if (timeoutId.current) clearTimeout(timeoutId.current);
     timeoutId.current = setTimeout(() => {
       if (pending.current == null) return;
-      lastUpdateAt.current =
-        typeof performance !== 'undefined' ? performance.now() : Date.now();
+      lastUpdateAt.current = typeof performance !== 'undefined' ? performance.now() : Date.now();
       setRendered(pending.current);
       pending.current = null;
     }, scheduleDelay);

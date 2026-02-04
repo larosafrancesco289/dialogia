@@ -1,13 +1,33 @@
 import type { Usage } from '@/lib/api/normalizers';
-import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
+import type {
+  ModelMessage,
+  PluginConfig,
+  ToolDefinition,
+  ToolCall,
+} from '@/lib/transport/contracts';
 import type { ProviderSort } from '@/lib/models/providerSort';
 import type { ChatCompletion } from '@/lib/transport/completions';
 import type { ModelDescriptor } from '@/lib/transport/models';
 import type { TransportAuth } from '@/lib/auth/transport';
 
+export type ToolCallDelta = {
+  index: number;
+  id?: string;
+  type?: 'function';
+  function?: {
+    name?: string;
+    arguments?: string;
+  };
+};
+
+export type FinishReason = 'stop' | 'tool_calls' | 'length' | 'content_filter';
+
 export type StreamDoneExtras = {
   usage?: Usage;
   annotations?: unknown;
+  finishReason?: FinishReason;
+  toolCalls?: ToolCall[];
+  reasoningDetails?: unknown;
 };
 
 export type StreamCallbacks = {
@@ -16,6 +36,7 @@ export type StreamCallbacks = {
   onReasoningToken?: (delta: string) => void;
   onImage?: (dataUrl: string) => void;
   onAnnotations?: (annotations: unknown) => void;
+  onToolCallDelta?: (deltas: ToolCallDelta[]) => void;
   onDone?: (full: string, extras?: StreamDoneExtras) => void;
   onError?: (err: Error) => void;
 };

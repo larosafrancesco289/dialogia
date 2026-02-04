@@ -94,7 +94,10 @@ export function useChatSidebarState({
 
   const rootFolders = useMemo(() => folders.filter((f) => !f.parentId), [folders]);
   const rootChats = useMemo(() => chats.filter((c) => !c.folderId), [chats]);
-  const folderById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder])), [folders]);
+  const folderById = useMemo(
+    () => new Map(folders.map((folder) => [folder.id, folder])),
+    [folders],
+  );
   const childFoldersById = useMemo(() => {
     const map = new Map<string, Folder[]>();
     for (const folder of folders) {
