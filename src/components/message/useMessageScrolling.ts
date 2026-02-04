@@ -188,7 +188,8 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
           const oldDistanceFromBottom =
             prevScrollHeight - containerEl.scrollTop - containerEl.clientHeight;
           // Only adjust if we were effectively at the bottom (strict threshold)
-          wasAtBottom = oldDistanceFromBottom < 20;
+          // and auto-scroll is enabled to prevent jumps from UI updates like plan card state changes
+          wasAtBottom = oldDistanceFromBottom < 20 && autoScrollEnabledRef.current;
         }
         pendingDelta += delta;
         prevScrollHeight = currentScrollHeight;

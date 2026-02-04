@@ -22,9 +22,9 @@ export const DEFAULT_CHAT_MODEL: CuratedModel = {
 };
 
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
-  id: 'google/gemini-3-flash-preview',
-  name: 'Gemini 3 Flash',
-  description: 'Fast multimodal reasoning and knowledge tasks',
+  id: 'anthropic/claude-haiku-4.5',
+  name: 'Claude Haiku 4.5',
+  description: 'Fast and efficient for tutoring and learning tasks',
   Icon: BoltIcon,
 };
 
