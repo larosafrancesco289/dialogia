@@ -27,6 +27,7 @@ export async function applyToolExecutions(args: {
   const next: PlanningExecutionState = { ...state };
   const logger = createToolExecutionLogger({
     set: context.set,
+    get: context.get,
     chatId: context.chatId,
     messageId: context.assistantMessage.id,
   });

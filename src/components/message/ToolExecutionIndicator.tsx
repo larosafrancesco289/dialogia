@@ -1,7 +1,13 @@
 'use client';
 
+import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AcademicCapIcon, MapIcon, CogIcon } from '@heroicons/react/24/outline';
+import {
+  AcademicCapIcon,
+  MagnifyingGlassIcon,
+  MapIcon,
+  CogIcon,
+} from '@heroicons/react/24/outline';
 import type { ToolCallLogEntry, ToolCallCategory } from '@/lib/types';
 import styles from './ToolExecutionIndicator.module.css';
 
@@ -20,7 +26,7 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_ICONS: Record<ToolCallCategory | 'default', typeof CogIcon> = {
-  search: CogIcon,
+  search: MagnifyingGlassIcon,
   tutor: AcademicCapIcon,
   planning: MapIcon,
   system: CogIcon,
@@ -66,12 +72,31 @@ export function ToolExecutionIndicator({
   toolCalls,
   isExecuting,
 }: ToolExecutionIndicatorProps): React.ReactNode {
-  if (toolCalls.length === 0) return null;
+  const visibleTools = useMemo(() => {
+    // Show pending tools while executing
+    const pending = toolCalls.filter((tc) => tc.status === 'pending');
+    if (pending.length > 0) return pending;
+
+    // Show the most recent completed tool briefly for visual feedback
+    const completed = toolCalls.filter((tc) => tc.status === 'success' || tc.status === 'error');
+    if (completed.length > 0) {
+      const last = completed[completed.length - 1];
+      // Keep the last completed tool visible while we're still executing
+      // (prevents a gap before tool UI appears)
+      if (isExecuting) return [last];
+      const completedAt = last.timestamp + (last.duration ?? 0);
+      if (Date.now() - completedAt < 1500) return [last];
+    }
+
+    return [];
+  }, [toolCalls, isExecuting]);
+
+  if (visibleTools.length === 0) return null;
 
   return (
     <AnimatePresence mode="popLayout">
       <div className={styles.stack}>
-        {toolCalls.map((tool) => {
+        {visibleTools.map((tool) => {
           const Icon = getCategoryIcon(tool.category);
           const categoryLabel = getCategoryLabel(tool.category);
           const isActive = tool.status === 'pending' && isExecuting;

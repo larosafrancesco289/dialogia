@@ -1,6 +1,10 @@
-import type { StoreSetter } from '@/lib/agent/types';
+import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import type { ToolCallLogEntry } from '@/lib/types';
-import { startToolCallLogEntry, updateToolCallLogEntry } from '@/lib/turns/runtime';
+import {
+  findPendingToolCallEntry,
+  startToolCallLogEntry,
+  updateToolCallLogEntry,
+} from '@/lib/turns/runtime';
 
 export type ToolExecutionLog = {
   success: (output?: Record<string, unknown>, metadataPatch?: ToolCallLogEntry['metadata']) => void;
@@ -22,22 +26,28 @@ export type ToolExecutionLogger = {
 
 export function createToolExecutionLogger(opts: {
   set: StoreSetter;
+  get?: StoreGetter;
   chatId: string;
   messageId: string;
 }): ToolExecutionLogger {
-  const { set, chatId, messageId } = opts;
+  const { set, get, chatId, messageId } = opts;
 
   return {
     start({ name, input, category, metadata }) {
-      const entry = startToolCallLogEntry({
-        set,
-        chatId,
-        messageId,
-        name,
-        input,
-        category,
-        metadata,
-      });
+      // Check if there's already a pre-logged pending entry for this tool
+      const existing = get ? findPendingToolCallEntry({ get, chatId, messageId, name }) : undefined;
+
+      const entry =
+        existing ??
+        startToolCallLogEntry({
+          set,
+          chatId,
+          messageId,
+          name,
+          input,
+          category,
+          metadata,
+        });
       const startedAt = performance.now();
 
       return {

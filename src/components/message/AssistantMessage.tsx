@@ -89,7 +89,7 @@ export function AssistantMessage({
   tutorPanelNode,
 }: AssistantMessageProps) {
   const studyCondition = useChatStore(selectStudyCondition);
-  const { isExecutingTools, pendingTools } = useToolExecutionState(message, isStreaming);
+  const { isExecutingTools, toolCalls } = useToolExecutionState(message, isStreaming);
 
   const displayContent = useMemo(() => {
     if (message.content) return message.content;
@@ -170,7 +170,7 @@ export function AssistantMessage({
         ) : isExecutingTools ? (
           <>
             {displayContent && <StreamingMarkdown content={displayContent} />}
-            <ToolExecutionIndicator toolCalls={pendingTools} isExecuting />
+            <ToolExecutionIndicator toolCalls={toolCalls} isExecuting />
           </>
         ) : isStreaming && isLatestAssistant ? (
           <StreamingMarkdown content={displayContent} />

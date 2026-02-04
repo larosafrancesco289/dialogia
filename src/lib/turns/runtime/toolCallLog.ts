@@ -110,3 +110,23 @@ export function clearToolCallLogs({
     return patch ?? state;
   });
 }
+
+export type FindPendingToolCallArgs = {
+  get: () => MessageIndexState;
+  chatId: string;
+  messageId: string;
+  name: string;
+};
+
+export function findPendingToolCallEntry({
+  get,
+  chatId,
+  messageId,
+  name,
+}: FindPendingToolCallArgs): ToolCallLogEntry | undefined {
+  const state = get();
+  const msg = state.messagesById?.[messageId];
+  if (!msg || msg.chatId !== chatId) return undefined;
+  const toolCalls = msg.toolCalls ?? [];
+  return toolCalls.find((tc) => tc.name === name && tc.status === 'pending');
+}
