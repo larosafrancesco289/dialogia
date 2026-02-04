@@ -13,8 +13,10 @@ import { LearnerModelUpdates } from '@/components/message/LearnerModelUpdates';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
+import { ToolExecutionIndicator } from '@/components/message/ToolExecutionIndicator';
 import { useChatStore } from '@/lib/store';
 import { selectStudyCondition } from '@/lib/store/selectors';
+import { useToolExecutionState } from '@/lib/hooks/useToolExecutionState';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import styles from './MessageCard.module.css';
 
@@ -87,6 +89,7 @@ export function AssistantMessage({
   tutorPanelNode,
 }: AssistantMessageProps) {
   const studyCondition = useChatStore(selectStudyCondition);
+  const { isExecutingTools, pendingTools } = useToolExecutionState(message, isStreaming);
 
   const displayContent = useMemo(() => {
     if (message.content) return message.content;
@@ -164,6 +167,11 @@ export function AssistantMessage({
             <span className={styles.typingBar} />
             <span className={styles.typingBar} />
           </div>
+        ) : isExecutingTools ? (
+          <>
+            {displayContent && <StreamingMarkdown content={displayContent} />}
+            <ToolExecutionIndicator toolCalls={pendingTools} isExecuting />
+          </>
         ) : isStreaming && isLatestAssistant ? (
           <StreamingMarkdown content={displayContent} />
         ) : (

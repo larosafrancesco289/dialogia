@@ -59,15 +59,16 @@ test('detectPlanningToolCalls returns provided tool_calls before inline hints', 
 
 test('detectPlanningToolCalls synthesizes inline tutor calls and respects tool definitions', () => {
   const toolDefinition: ToolDefinition[] = [
-    { type: 'function', function: { name: 'quiz_mcq', parameters: {} } },
+    { type: 'function', function: { name: 'quiz', parameters: {} } },
   ];
   const message = {
-    content: 'quiz_mcq: {"items":[{"id":"q1","question":"1+1?","choices":["1","2"],"correct":1}]}',
+    content:
+      'quiz: {"type":"mcq","items":[{"id":"q1","question":"1+1?","choices":["1","2"],"correct":1}]}',
   };
   const calls = detectPlanningToolCalls({
     message,
     toolDefinition,
   });
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].function.name, 'quiz_mcq');
+  assert.equal(calls[0].function.name, 'quiz');
 });

@@ -54,7 +54,7 @@ export function OpenEndedCard({
     const trimmed = String(answer || '').trim();
     if (!trimmed) return;
     const prompt = activeItem.prompt.replace(/\n/g, ' ').slice(0, 200);
-    const msg = `Please grade my answer for open-ended item ${activeItem.id} ("${prompt}").\nAnswer: ${trimmed}\nUse the tool grade_open_response with item_id and feedback (and optional score).`;
+    const msg = `Please give feedback on my answer for open-ended item ${activeItem.id} ("${prompt}").\nAnswer: ${trimmed}`;
     send(msg).catch(() => void 0);
   };
 

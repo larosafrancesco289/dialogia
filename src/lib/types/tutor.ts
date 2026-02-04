@@ -41,16 +41,6 @@ export type TutorOpenItem = {
   difficulty?: 'easy' | 'medium' | 'hard';
 };
 
-export type TutorFlashcardItem = {
-  id: string;
-  front: string;
-  back: string;
-  hint?: string;
-  topic?: string;
-  skill?: string;
-  difficulty?: 'easy' | 'medium' | 'hard';
-};
-
 export type TutorQuestionnaireOption = {
   label: string;
   description?: string;
@@ -138,7 +128,6 @@ export type MessageTutor = {
   mcq?: TutorMCQItem[];
   fillBlank?: TutorFillBlankItem[];
   openEnded?: TutorOpenItem[];
-  flashcards?: TutorFlashcardItem[];
   questionnaire?: TutorQuestionnaire;
   diagnostic?: TutorDiagnostic;
   diagnosticMeta?: {

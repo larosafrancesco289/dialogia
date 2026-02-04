@@ -12,7 +12,6 @@ const CONTENT_KEYS: Array<keyof MessageTutor> = [
   'mcq',
   'fillBlank',
   'openEnded',
-  'flashcards',
 ];
 
 export function normalizeTutorQuizPayload(args: unknown): TutorQuizPayload | null {

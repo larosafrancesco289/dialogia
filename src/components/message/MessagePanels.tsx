@@ -130,7 +130,6 @@ export function TutorPanelSection({
       mcq={tutorEntry.mcq}
       fillBlank={tutorEntry.fillBlank}
       openEnded={tutorEntry.openEnded}
-      flashcards={tutorEntry.flashcards}
       questionnaire={tutorEntry.questionnaire}
       diagnostic={tutorEntry.diagnostic}
       planProposal={tutorEntry.planProposal}

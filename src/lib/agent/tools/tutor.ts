@@ -11,22 +11,12 @@ import type {
   TutorToolHandler,
 } from '@/lib/agent/tools/tutor/types';
 import {
-  addToDeckHandler,
   advanceTopicHandler,
-  applyLearnerModelFeedbackHandler,
-  assessAnswerHandler,
   askStudentQuestionHandler,
   createDiagnosticHandler,
-  flashcardsHandler,
-  generatePlanHandler,
-  getPlanSuggestionsHandler,
-  gradeOpenResponseHandler,
-  quizFillBlankHandler,
-  quizMcqHandler,
-  quizOpenEndedHandler,
-  srsReviewHandler,
-  updateLearnerModelHandler,
-  updatePlanHandler,
+  learningPlanHandler,
+  quizHandler,
+  recordLearningHandler,
 } from '@/lib/agent/tools/tutor/handlers';
 
 export { normalizeTutorQuizPayload, type TutorQuizPayload } from '@/lib/agent/tools/tutor/shared';
@@ -78,20 +68,10 @@ type AnyTutorToolHandler = TutorToolHandler<unknown>;
 const tutorToolHandlers: Record<TutorToolName, AnyTutorToolHandler> = {
   ask_student_question: askStudentQuestionHandler as AnyTutorToolHandler,
   create_diagnostic: createDiagnosticHandler as AnyTutorToolHandler,
-  generate_plan: generatePlanHandler as AnyTutorToolHandler,
-  update_plan: updatePlanHandler as AnyTutorToolHandler,
-  assess_answer: assessAnswerHandler as AnyTutorToolHandler,
-  update_learner_model: updateLearnerModelHandler as AnyTutorToolHandler,
+  learning_plan: learningPlanHandler as AnyTutorToolHandler,
+  record_learning: recordLearningHandler as AnyTutorToolHandler,
   advance_topic: advanceTopicHandler as AnyTutorToolHandler,
-  apply_learner_model_feedback: applyLearnerModelFeedbackHandler as AnyTutorToolHandler,
-  get_plan_suggestions: getPlanSuggestionsHandler as AnyTutorToolHandler,
-  quiz_mcq: quizMcqHandler as AnyTutorToolHandler,
-  quiz_fill_blank: quizFillBlankHandler as AnyTutorToolHandler,
-  quiz_open_ended: quizOpenEndedHandler as AnyTutorToolHandler,
-  flashcards: flashcardsHandler as AnyTutorToolHandler,
-  grade_open_response: gradeOpenResponseHandler as AnyTutorToolHandler,
-  add_to_deck: addToDeckHandler as AnyTutorToolHandler,
-  srs_review: srsReviewHandler as AnyTutorToolHandler,
+  quiz: quizHandler as AnyTutorToolHandler,
 };
 
 export async function applyTutorToolCall(opts: {

@@ -9,37 +9,21 @@ Tutor tools are invoked via function calls using these names:
 
 - `ask_student_question`
 - `create_diagnostic`
-- `generate_plan`
-- `update_plan`
-- `assess_answer`
-- `update_learner_model`
+- `learning_plan`
+- `record_learning`
 - `advance_topic`
-- `apply_learner_model_feedback`
-- `get_plan_suggestions`
-- `quiz_mcq`
-- `quiz_fill_blank`
-- `quiz_open_ended`
-- `flashcards`
-- `grade_open_response`
-- `add_to_deck`
-- `srs_review`
+- `quiz`
 
 ## Payload Shapes (Tool → Message.tutor)
 
 Tool handlers normalize inputs and patch `Message.tutor` with these fields:
 
-- `quiz_mcq` → `mcq: TutorMCQItem[]` (title optional, per-item `id`, `question`, `choices`, `correct`)
-- `quiz_fill_blank` → `fillBlank: TutorFillBlankItem[]` (per-item `id`, `prompt`, `answer`)
-- `quiz_open_ended` → `openEnded: TutorOpenItem[]` (per-item `id`, `prompt`)
-- `flashcards` → `flashcards: TutorFlashcardItem[]`
+- `quiz` (type: 'mcq') → `mcq: TutorMCQItem[]` (title optional, per-item `id`, `question`, `choices`, `correct`)
+- `quiz` (type: 'fill_blank') → `fillBlank: TutorFillBlankItem[]` (per-item `id`, `prompt`, `answer`)
+- `quiz` (type: 'open_ended') → `openEnded: TutorOpenItem[]` (per-item `id`, `prompt`)
 - `create_diagnostic` → `diagnostic: TutorDiagnostic` (items, status, score optional)
-- `generate_plan` / `update_plan` → `planProposal: TutorPlanProposal`
-- `get_plan_suggestions` → `planSuggestions: TutorPlanSuggestion[]`
-- `assess_answer` → `assessmentUpdates: TutorLearnerModelUpdate[]`
-- `update_learner_model` / `apply_learner_model_feedback` → `assessmentUpdates` and learner model
-  side-effects (see “Plan & Learner Model”)
-- `grade_open_response` → `grading: Record<string, TutorGradingResult>`
-- `add_to_deck` / `srs_review` → `flashcards` and SRS metadata as needed
+- `learning_plan` → `planProposal: TutorPlanProposal` (auto-detects create vs update)
+- `record_learning` → `assessmentUpdates: TutorLearnerModelUpdate[]` and learner model side-effects
 
 Tool argument schemas live under `src/lib/tools/definitions/tutor/` and the per-tool handlers under
 `src/lib/agent/tools/tutor/handlers/` are responsible for validation and patching.
@@ -60,7 +44,7 @@ Tool argument schemas live under `src/lib/tools/definitions/tutor/` and the per-
 Tutor UI components render from `Message.tutor` and `ui.tutor.byMessageId`:
 
 - `src/components/message/tutor/TutorPanel.tsx` composes the widget cards
-- `McqCard`, `FillBlankCard`, `OpenEndedCard`, `FlashcardsCard`, `DiagnosticCard`,
+- `McqCard`, `FillBlankCard`, `OpenEndedCard`, `DiagnosticCard`,
   `PlanProposalCard`, `LearnerUpdatesCard` render specific payloads
 - `PlanProposalCard` updates plan status and persists via store actions
 
