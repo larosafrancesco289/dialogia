@@ -12,6 +12,7 @@ import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { LearnerModelUpdates } from '@/components/message/LearnerModelUpdates';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
+import { StreamingText } from '@/components/message/StreamingText';
 import { useChatStore } from '@/lib/store';
 import { selectStudyCondition } from '@/lib/store/selectors';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
@@ -161,6 +162,8 @@ export function AssistantMessage({
             <span className={styles.typingBar} />
             <span className={styles.typingBar} />
           </div>
+        ) : isStreaming && isLatestAssistant ? (
+          <StreamingText content={displayContent} />
         ) : (
           <Markdown content={displayContent} />
         )}
