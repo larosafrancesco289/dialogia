@@ -22,8 +22,8 @@ export const DEFAULT_CHAT_MODEL: CuratedModel = {
 };
 
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
-  id: 'moonshotai/kimi-k2.5',
-  name: 'Kimi K2.5',
+  id: 'google/gemini-3-flash-preview',
+  name: 'Gemini 3 Flash',
   description: 'Fast multimodal reasoning and knowledge tasks',
   Icon: BoltIcon,
 };
