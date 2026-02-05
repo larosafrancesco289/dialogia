@@ -24,7 +24,7 @@ export {
 } from './logger';
 
 // Export
-export { downloadStudyLog, getSessionSummary } from './export';
+export { copyStudyLogToClipboard, getSessionSummary } from './export';
 
 // Reset
 export { resetForNextParticipant, clearAllAppData } from './reset';

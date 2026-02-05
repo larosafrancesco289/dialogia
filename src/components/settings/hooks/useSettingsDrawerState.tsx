@@ -23,6 +23,7 @@ import {
 import {
   useStudySessionControls,
   type StudySessionInfo,
+  type CopyStatus,
 } from '@/components/settings/hooks/useStudySessionControls';
 import { ModelsPanel } from '@/components/settings/sections/ModelsPanel';
 import { ChatPanel } from '@/components/settings/sections/ChatPanel';
@@ -55,7 +56,9 @@ export type SettingsDrawerState = {
   setParticipantId: (id: string) => void;
   studySessionInfo: StudySessionInfo;
   onStartStudySession: () => void;
-  onExportStudyLog: () => void;
+  onCopyStudyLog: () => void;
+  copyStatus: CopyStatus;
+  copyError?: string;
   onResetForNextParticipant: () => void;
   isResetting: boolean;
 };
@@ -163,7 +166,9 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     setParticipantId,
     studySessionInfo,
     onStartStudySession,
-    onExportStudyLog,
+    onCopyStudyLog,
+    copyStatus,
+    copyError,
     onResetForNextParticipant,
     isResetting,
   } = useStudySessionControls();
@@ -383,7 +388,9 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     setParticipantId,
     studySessionInfo,
     onStartStudySession,
-    onExportStudyLog,
+    onCopyStudyLog,
+    copyStatus,
+    copyError,
     onResetForNextParticipant,
     isResetting,
   };

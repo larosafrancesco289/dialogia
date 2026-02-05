@@ -1,6 +1,6 @@
-import { clearAllStudyStorage } from './storage';
+import { clearAllStudyStorage, getStudySession, saveStudySession } from './storage';
 import { endSession } from './logger';
-import { downloadStudyLog } from './export';
+import { copyStudyLogToClipboard } from './export';
 
 const INDEXED_DB_NAMES = ['dialogia-chats', 'dialogia-messages', 'dialogia'];
 const LOCAL_STORAGE_PREFIXES = ['dialogia-ui', 'dialogia-study'];
@@ -46,10 +46,18 @@ export type ResetOptions = {
 export async function resetForNextParticipant(options: ResetOptions = {}): Promise<void> {
   const { exportBeforeReset = true } = options;
 
+  const sessionSnapshot = exportBeforeReset ? getStudySession() : null;
+
   endSession();
 
   if (exportBeforeReset) {
-    downloadStudyLog();
+    const result = await copyStudyLogToClipboard();
+    if (!result.success) {
+      if (sessionSnapshot) saveStudySession(sessionSnapshot);
+      const message = result.error || 'Clipboard access denied';
+      window.alert(`Copy failed: ${message}. Reset cancelled so data is preserved.`);
+      return;
+    }
   }
 
   clearAllStudyStorage();

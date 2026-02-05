@@ -38,7 +38,9 @@ export function SettingsDrawerView({
   setParticipantId,
   studySessionInfo,
   onStartStudySession,
-  onExportStudyLog,
+  onCopyStudyLog,
+  copyStatus,
+  copyError,
   onResetForNextParticipant,
   isResetting,
 }: SettingsDrawerState) {
@@ -54,7 +56,9 @@ export function SettingsDrawerView({
         setParticipantId={setParticipantId}
         studySessionInfo={studySessionInfo}
         onStartStudySession={onStartStudySession}
-        onExportStudyLog={onExportStudyLog}
+        onCopyStudyLog={onCopyStudyLog}
+        copyStatus={copyStatus}
+        copyError={copyError}
         onResetForNextParticipant={onResetForNextParticipant}
         isResetting={isResetting}
       />
