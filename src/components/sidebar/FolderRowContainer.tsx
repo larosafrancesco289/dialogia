@@ -7,7 +7,7 @@ import { useDragAndDrop } from '@/lib/dragDrop';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
-import { getFolderChildren } from '@/lib/ui/sidebar/folderTree';
+import { getFolderChildren, type FolderTreeIndex } from '@/lib/ui/sidebar/folderTree';
 import { RowActionSheet } from '@/components/ui/RowActionSheet';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ChatRowContainer } from '@/components/sidebar/ChatRowContainer';
@@ -17,30 +17,26 @@ import type { Folder } from '@/lib/types';
 
 interface FolderRowContainerProps {
   folder: Folder;
+  folderTreeIndex: FolderTreeIndex;
   depth?: number;
 }
 
-export function FolderRowContainer({ folder, depth = 0 }: FolderRowContainerProps) {
-  const {
-    chats,
-    folders,
-    selectedChatId,
-    selectChat,
-    renameFolder,
-    deleteFolder,
-    toggleFolderExpanded,
-  } = useChatStore(
-    (s) => ({
-      chats: s.chats,
-      folders: s.folders,
-      selectedChatId: s.selectedChatId,
-      selectChat: s.selectChat,
-      renameFolder: s.renameFolder,
-      deleteFolder: s.deleteFolder,
-      toggleFolderExpanded: s.toggleFolderExpanded,
-    }),
-    shallow,
-  );
+export function FolderRowContainer({
+  folder,
+  folderTreeIndex,
+  depth = 0,
+}: FolderRowContainerProps) {
+  const { selectedChatId, selectChat, renameFolder, deleteFolder, toggleFolderExpanded } =
+    useChatStore(
+      (s) => ({
+        selectedChatId: s.selectedChatId,
+        selectChat: s.selectChat,
+        renameFolder: s.renameFolder,
+        deleteFolder: s.deleteFolder,
+        toggleFolderExpanded: s.toggleFolderExpanded,
+      }),
+      shallow,
+    );
 
   const { handleDragOver, handleDrop, handleDragStart, handleDragEnd, getDragData } =
     useDragAndDrop();
@@ -52,7 +48,7 @@ export function FolderRowContainer({ folder, depth = 0 }: FolderRowContainerProp
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
-  const { chats: folderChats, folders: subFolders } = getFolderChildren(folders, chats, folder.id);
+  const { chats: folderChats, folders: subFolders } = getFolderChildren(folderTreeIndex, folder.id);
 
   const handleToggleExpanded = () => {
     toggleFolderExpanded(folder.id);
@@ -170,7 +166,12 @@ export function FolderRowContainer({ folder, depth = 0 }: FolderRowContainerProp
       {folder.isExpanded && (
         <div>
           {subFolders.map((subFolder) => (
-            <FolderRowContainer key={subFolder.id} folder={subFolder} depth={depth + 1} />
+            <FolderRowContainer
+              key={subFolder.id}
+              folder={subFolder}
+              folderTreeIndex={folderTreeIndex}
+              depth={depth + 1}
+            />
           ))}
 
           {folderChats.map((chat) => (

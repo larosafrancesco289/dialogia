@@ -153,6 +153,13 @@ export function useComposerAttachments({ canVision, canAudio }: UseComposerAttac
     setAttachments([]);
   }, [setAttachments]);
 
+  const replaceAttachments = useCallback(
+    (next: DraftAttachment[]) => {
+      setAttachments(next);
+    },
+    [setAttachments],
+  );
+
   const attachmentsHint = useMemo(() => {
     if (canVision && canAudio) return 'Attach images, audio (mp3/wav), or PDFs';
     if (canVision) return 'Attach images or PDFs';
@@ -174,5 +181,6 @@ export function useComposerAttachments({ canVision, canAudio }: UseComposerAttac
     openFilePicker,
     removeAttachment,
     resetAttachments,
+    replaceAttachments,
   };
 }

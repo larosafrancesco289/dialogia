@@ -14,6 +14,7 @@ import {
 import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 import type { UiNextOverrides } from '@/lib/contracts/ui';
+import type { DraftAttachment } from '@/lib/types';
 import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
 import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
@@ -31,6 +32,9 @@ import {
 } from '@/lib/store/selectors';
 
 const EMPTY_OVERRIDES: UiNextOverrides = {};
+const WELCOME_DRAFT_SCOPE_KEY = '__welcome__';
+
+const resolveDraftScopeKey = (chatId?: string) => chatId ?? WELCOME_DRAFT_SCOPE_KEY;
 
 export function Composer({
   variant = 'sticky',
@@ -72,6 +76,15 @@ export function Composer({
   const chat = chats.find((c) => c.id === selectedChatId);
   const [text, setText] = useState('');
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const draftScopeKey = useMemo(() => resolveDraftScopeKey(selectedChatId), [selectedChatId]);
+  const activeDraftScopeRef = useRef(draftScopeKey);
+  const draftsByScopeRef = useRef<Record<string, string>>({});
+  const pendingSendSnapshotRef = useRef<{
+    text: string;
+    attachments: DraftAttachment[];
+    scope: string;
+  } | null>(null);
+  const recoveredAttachmentsByScopeRef = useRef<Record<string, DraftAttachment[]>>({});
   const uiNext = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const [focused, setFocused] = useState(false);
   const isTablet = useMediaQuery(MEDIA_QUERIES.tablet);
@@ -88,14 +101,30 @@ export function Composer({
     }
   }, [focused, isMobile, setUI]);
 
+  useEffect(() => {
+    draftsByScopeRef.current[activeDraftScopeRef.current] = text;
+  }, [text]);
+
+  useEffect(() => {
+    const previousScope = activeDraftScopeRef.current;
+    if (previousScope === draftScopeKey) return;
+    draftsByScopeRef.current[previousScope] = text;
+    activeDraftScopeRef.current = draftScopeKey;
+    setText(draftsByScopeRef.current[draftScopeKey] ?? '');
+    if (Object.prototype.hasOwnProperty.call(recoveredAttachmentsByScopeRef.current, draftScopeKey)) {
+      replaceAttachments(recoveredAttachmentsByScopeRef.current[draftScopeKey] ?? []);
+      delete recoveredAttachmentsByScopeRef.current[draftScopeKey];
+    }
+  }, [draftScopeKey, text]);
+
   // Consume pending composer draft from store (e.g., from quick start buttons)
   useEffect(() => {
-    if (composerDraft) {
-      setText(composerDraft);
-      setUI({ composerDraft: undefined });
-      // Focus the textarea after filling
-      setTimeout(() => taRef.current?.focus(), 0);
-    }
+    if (composerDraft == null) return;
+    setText(composerDraft);
+    draftsByScopeRef.current[activeDraftScopeRef.current] = composerDraft;
+    setUI({ composerDraft: undefined });
+    // Focus the textarea after filling
+    setTimeout(() => taRef.current?.focus(), 0);
   }, [composerDraft, setUI]);
 
   const tierDefaultModelId = useTierDefaultModelId();
@@ -117,6 +146,7 @@ export function Composer({
     openFilePicker,
     removeAttachment,
     resetAttachments,
+    replaceAttachments,
   } = useComposerAttachments({ canVision, canAudio });
 
   const { handleSubmit } = useComposerShortcuts({
@@ -131,22 +161,60 @@ export function Composer({
     defaultModelId: tierDefaultModelId,
   });
 
+  const clearActiveDraft = () => {
+    const scope = activeDraftScopeRef.current;
+    draftsByScopeRef.current[scope] = '';
+    setText('');
+  };
+
   const onSend = async () => {
-    const result = await handleSubmit({
+    const snapshot = {
       text,
       attachments: attachments.slice(),
+      scope: activeDraftScopeRef.current,
+    };
+    const result = await handleSubmit({
+      text,
+      attachments: snapshot.attachments,
       onBeforeSend: () => {
-        setText('');
+        pendingSendSnapshotRef.current = snapshot;
+        delete recoveredAttachmentsByScopeRef.current[snapshot.scope];
+        draftsByScopeRef.current[snapshot.scope] = '';
+        clearActiveDraft();
         resetAttachments();
         if (isTablet) taRef.current?.blur();
         else taRef.current?.focus();
       },
+      onAfterSend: () => {
+        pendingSendSnapshotRef.current = null;
+      },
       onCommandHandled: () => {
-        setText('');
+        pendingSendSnapshotRef.current = null;
+        clearActiveDraft();
         taRef.current?.focus();
       },
     });
     if (result === 'noop') return;
+  };
+
+  const onSendWithRecovery = async () => {
+    try {
+      await onSend();
+    } catch {
+      const snapshot = pendingSendSnapshotRef.current;
+      pendingSendSnapshotRef.current = null;
+      if (!snapshot) return;
+      draftsByScopeRef.current[snapshot.scope] = snapshot.text;
+      if (snapshot.scope === activeDraftScopeRef.current) {
+        setText(snapshot.text);
+        replaceAttachments(snapshot.attachments);
+        setNotice('Failed to send. Your draft was restored.');
+        taRef.current?.focus();
+        return;
+      }
+      recoveredAttachmentsByScopeRef.current[snapshot.scope] = snapshot.attachments;
+      setNotice('Failed to send. Your draft was restored in the original chat.');
+    }
   };
 
   const canAutoFocus = !isTablet;
@@ -220,7 +288,7 @@ export function Composer({
         <ComposerInput
           value={text}
           onChange={setText}
-          onSend={onSend}
+          onSend={onSendWithRecovery}
           isStreaming={isStreaming}
           textareaRef={taRef}
           maxHeight={maxTextareaHeight}
@@ -231,7 +299,7 @@ export function Composer({
         <ComposerActions
           isStreaming={isStreaming}
           onStop={handleStop}
-          onSend={onSend}
+          onSend={onSendWithRecovery}
           openFilePicker={openFilePicker}
           attachmentsHint={attachmentsHint}
           searchEnabled={searchEnabled}

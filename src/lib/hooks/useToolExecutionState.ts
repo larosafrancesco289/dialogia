@@ -37,7 +37,8 @@ export function useToolExecutionState(message: Message, isStreaming: boolean): T
     // Show indicator if:
     // 1. Tools are pending, OR
     // 2. We have tools, streaming is active, and no new content has appeared since tools started
-    const contentGrew = contentAtToolsRef.current !== null && contentLength > contentAtToolsRef.current;
+    const contentGrew =
+      contentAtToolsRef.current !== null && contentLength > contentAtToolsRef.current;
     const isExecutingTools = isStreaming && hasAnyTools && (hasPending || !contentGrew);
 
     return { isExecutingTools, toolCalls };

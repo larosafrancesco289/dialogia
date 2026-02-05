@@ -22,6 +22,7 @@ export function ChatSidebarView({
   editingId,
   filteredRootFolders,
   filteredRootChats,
+  folderTreeIndex,
   folders,
   selectedChatId,
   isMobile,
@@ -133,7 +134,7 @@ export function ChatSidebarView({
         onDrop={handleRootDrop}
       >
         {filteredRootFolders.map((folder) => (
-          <FolderRowContainer key={folder.id} folder={folder} />
+          <FolderRowContainer key={folder.id} folder={folder} folderTreeIndex={folderTreeIndex} />
         ))}
 
         {filteredRootChats.map((chat) => (
