@@ -8,26 +8,19 @@ export type SessionSummary = {
   isEnded: boolean;
 };
 
-export function downloadStudyLog(): boolean {
+export async function copyStudyLogToClipboard(): Promise<{ success: boolean; error?: string }> {
   const session = getStudySession();
-  if (!session) return false;
+  if (!session) return { success: false, error: 'No active session' };
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `dialogia-study-${session.participantId}-${timestamp}.json`;
   const json = JSON.stringify(session, null, 2);
 
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  return true;
+  try {
+    await navigator.clipboard.writeText(json);
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Clipboard access denied';
+    return { success: false, error: message };
+  }
 }
 
 export function getSessionSummary(): SessionSummary | null {

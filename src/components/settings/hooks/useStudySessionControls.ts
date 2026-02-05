@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { selectStudyCondition } from '@/lib/store/selectors';
 import type { StudyCondition } from '@/lib/types';
@@ -7,12 +7,13 @@ import type { SessionSummary } from '@/lib/study';
 import {
   getParticipantId,
   initializeSession,
-  downloadStudyLog,
+  copyStudyLogToClipboard,
   getSessionSummary,
   resetForNextParticipant,
 } from '@/lib/study';
 
 export type StudySessionInfo = SessionSummary | null;
+export type CopyStatus = 'idle' | 'copying' | 'copied' | 'error';
 
 export function useStudySessionControls() {
   const setUI = useChatStore((s) => s.setUI);
@@ -30,6 +31,36 @@ export function useStudySessionControls() {
     getSessionSummary(),
   );
   const [isResetting, setIsResetting] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle');
+  const [copyError, setCopyError] = useState<string | undefined>();
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const onCopyStudyLog = useCallback(async () => {
+    if (copyStatus === 'copying') return;
+
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+
+    setCopyStatus('copying');
+    setCopyError(undefined);
+
+    const result = await copyStudyLogToClipboard();
+    const nextStatus = result.success ? 'copied' : 'error';
+    const resetDelay = result.success ? 2000 : 3000;
+
+    setCopyStatus(nextStatus);
+    if (!result.success) setCopyError(result.error);
+
+    copyTimeoutRef.current = setTimeout(() => {
+      setCopyStatus('idle');
+      setCopyError(undefined);
+    }, resetDelay);
+  }, [copyStatus]);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -47,7 +78,7 @@ export function useStudySessionControls() {
 
   const onResetForNextParticipant = useCallback(async () => {
     const confirmed = window.confirm(
-      'This will export the current log, clear all data, and reload the app. Continue?',
+      'This will copy the session log to clipboard, clear all data, and reload the app. Continue?',
     );
     if (!confirmed) return;
     setIsResetting(true);
@@ -61,7 +92,9 @@ export function useStudySessionControls() {
     setParticipantId,
     studySessionInfo,
     onStartStudySession,
-    onExportStudyLog: downloadStudyLog,
+    onCopyStudyLog,
+    copyStatus,
+    copyError,
     onResetForNextParticipant,
     isResetting,
   };

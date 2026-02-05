@@ -7,7 +7,7 @@ import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
 import { useChatStore } from '@/lib/store';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import type { StudyCondition } from '@/lib/types';
-import type { StudySessionInfo } from '@/components/settings/hooks/useSettingsDrawerState';
+import type { StudySessionInfo, CopyStatus } from '@/components/settings/hooks/useStudySessionControls';
 
 function ConditionSelector({
   condition,
@@ -48,6 +48,77 @@ function ConditionSelector({
       )}
     </button>
   );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
+    </svg>
+  );
+}
+
+function CopyButtonContent({ status, error }: { status: CopyStatus; error?: string }) {
+  switch (status) {
+    case 'copying':
+      return (
+        <>
+          <SpinnerIcon />
+          Copying...
+        </>
+      );
+    case 'copied':
+      return (
+        <>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          Copied to Clipboard
+        </>
+      );
+    case 'error':
+      return (
+        <>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          {error || 'Copy Failed'}
+        </>
+      );
+    default:
+      return (
+        <>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+            />
+          </svg>
+          Copy Session Log
+        </>
+      );
+  }
+}
+
+function getCopyButtonStyles(status: CopyStatus): string {
+  switch (status) {
+    case 'copied':
+      return 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5';
+    case 'error':
+      return 'border-red-500/50 text-red-600 dark:text-red-400 bg-red-500/5';
+    default:
+      return 'border-[var(--rule-subtle)] text-[var(--color-fg)] hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-accent)]/5';
+  }
 }
 
 function SessionStatusCard({ info }: { info: StudySessionInfo }) {
@@ -103,7 +174,9 @@ export function StudySessionSettings({
   setParticipantId,
   studySessionInfo,
   onStartStudySession,
-  onExportStudyLog,
+  onCopyStudyLog,
+  copyStatus,
+  copyError,
   onResetForNextParticipant,
   isResetting,
 }: {
@@ -116,7 +189,9 @@ export function StudySessionSettings({
   setParticipantId: (id: string) => void;
   studySessionInfo: StudySessionInfo;
   onStartStudySession: () => void;
-  onExportStudyLog: () => void;
+  onCopyStudyLog: () => void;
+  copyStatus: CopyStatus;
+  copyError?: string;
   onResetForNextParticipant: () => void;
   isResetting: boolean;
 }) {
@@ -325,69 +400,37 @@ export function StudySessionSettings({
               </h3>
 
               <button
-                onClick={onExportStudyLog}
-                className="
-                    w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg
-                    border border-[var(--rule-subtle)] text-[var(--color-fg)]
-                    hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-accent)]/5
-                    transition-all duration-200 text-sm font-medium
-                  "
+                onClick={onCopyStudyLog}
+                disabled={copyStatus === 'copying'}
+                className={`
+                  w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg
+                  border text-sm font-medium transition-all duration-200
+                  disabled:cursor-not-allowed
+                  ${getCopyButtonStyles(copyStatus)}
+                `}
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  />
-                </svg>
-                Export Session Log
+                <CopyButtonContent status={copyStatus} error={copyError} />
               </button>
 
               <button
                 onClick={onResetForNextParticipant}
                 disabled={isResetting}
                 className="
-                    w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg
-                    border border-amber-500/30 text-amber-600 dark:text-amber-400
-                    hover:border-amber-500/50 hover:bg-amber-500/5
-                    transition-all duration-200 text-sm font-medium
-                    disabled:opacity-50 disabled:cursor-not-allowed
-                  "
+                  w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg
+                  border border-amber-500/30 text-amber-600 dark:text-amber-400
+                  hover:border-amber-500/50 hover:bg-amber-500/5
+                  transition-all duration-200 text-sm font-medium
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                "
               >
                 {isResetting ? (
                   <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
+                    <SpinnerIcon />
                     Resetting...
                   </>
                 ) : (
                   <>
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -400,7 +443,7 @@ export function StudySessionSettings({
               </button>
 
               <p className="text-[11px] text-[var(--color-fg-muted)] text-center leading-relaxed">
-                Reset will export the current log, clear all app data, and reload.
+                Reset will copy the session log to clipboard, clear all app data, and reload.
               </p>
             </div>
           )}
