@@ -7,7 +7,10 @@ import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
 import { useChatStore } from '@/lib/store';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import type { StudyCondition } from '@/lib/types';
-import type { StudySessionInfo, CopyStatus } from '@/components/settings/hooks/useStudySessionControls';
+import type {
+  StudySessionInfo,
+  CopyStatus,
+} from '@/components/settings/hooks/useStudySessionControls';
 
 function ConditionSelector({
   condition,
@@ -75,7 +78,13 @@ function CopyButtonContent({ status, error }: { status: CopyStatus; error?: stri
     case 'copied':
       return (
         <>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
           Copied to Clipboard
@@ -84,7 +93,13 @@ function CopyButtonContent({ status, error }: { status: CopyStatus; error?: stri
     case 'error':
       return (
         <>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -97,7 +112,13 @@ function CopyButtonContent({ status, error }: { status: CopyStatus; error?: stri
     default:
       return (
         <>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -430,7 +451,13 @@ export function StudySessionSettings({
                   </>
                 ) : (
                   <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"

@@ -2,7 +2,7 @@
 // Responsibility: Unified streaming with inline tool execution for tutor/study mode.
 // Replaces the two-phase plan+stream approach with a single streaming call.
 
-import { getStreamChatCompletion, type PipelineClient } from '@/lib/agent/pipelineClient';
+import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
 import { captureRequestDebug } from '@/lib/agent/debug';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';

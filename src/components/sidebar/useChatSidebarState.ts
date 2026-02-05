@@ -4,6 +4,11 @@ import { useChatStore } from '@/lib/store';
 import { useDragAndDrop } from '@/lib/dragDrop';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import {
+  buildFolderTreeIndex,
+  getFolderChildren,
+  type FolderTreeIndex,
+} from '@/lib/ui/sidebar/folderTree';
 import type { Chat, Folder } from '@/lib/types';
 
 type ChatSidebarStateInput = {
@@ -19,6 +24,7 @@ export type ChatSidebarState = {
   editingId: string | null;
   filteredRootFolders: Folder[];
   filteredRootChats: Chat[];
+  folderTreeIndex: FolderTreeIndex;
   folders: Folder[];
   selectedChatId?: string;
   isMobile: boolean;
@@ -92,32 +98,16 @@ export function useChatSidebarState({
     loadModels();
   }, [loadModels]);
 
-  const rootFolders = useMemo(() => folders.filter((f) => !f.parentId), [folders]);
-  const rootChats = useMemo(() => chats.filter((c) => !c.folderId), [chats]);
+  const folderTreeIndex = useMemo(() => buildFolderTreeIndex(folders, chats), [folders, chats]);
+  const rootChildren = useMemo(() => getFolderChildren(folderTreeIndex), [folderTreeIndex]);
+  const rootFolders = rootChildren.folders;
+  const rootChats = rootChildren.chats;
   const folderById = useMemo(
     () => new Map(folders.map((folder) => [folder.id, folder])),
     [folders],
   );
-  const childFoldersById = useMemo(() => {
-    const map = new Map<string, Folder[]>();
-    for (const folder of folders) {
-      if (!folder.parentId) continue;
-      const list = map.get(folder.parentId);
-      if (list) list.push(folder);
-      else map.set(folder.parentId, [folder]);
-    }
-    return map;
-  }, [folders]);
-  const chatsByFolderId = useMemo(() => {
-    const map = new Map<string, Chat[]>();
-    for (const chat of chats) {
-      if (!chat.folderId) continue;
-      const list = map.get(chat.folderId);
-      if (list) list.push(chat);
-      else map.set(chat.folderId, [chat]);
-    }
-    return map;
-  }, [chats]);
+  const childFoldersById = folderTreeIndex.foldersByParentId;
+  const chatsByFolderId = folderTreeIndex.chatsByFolderId;
 
   const filteredRootFolders = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -232,6 +222,7 @@ export function useChatSidebarState({
     editingId,
     filteredRootFolders,
     filteredRootChats,
+    folderTreeIndex,
     folders,
     selectedChatId,
     isMobile,
