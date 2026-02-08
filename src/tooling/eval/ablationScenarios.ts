@@ -99,7 +99,7 @@ const linearEquationsScenario: AblationScenario = {
     goal: 'Master solving linear equations',
     nodes: [
       {
-        id: 'inverse_operations',
+        id: 'inverse-operations',
         name: 'Inverse Operations',
         description:
           'Understanding addition/subtraction and multiplication/division as inverse operations',
@@ -108,26 +108,26 @@ const linearEquationsScenario: AblationScenario = {
         estimatedMinutes: 10,
       },
       {
-        id: 'one_step',
+        id: 'one-step-equations',
         name: 'One-Step Equations',
         description: 'Solving equations like x + 5 = 12 or 3x = 15',
         objectives: [
           'Solve addition/subtraction equations',
           'Solve multiplication/division equations',
         ],
-        prerequisites: ['inverse_operations'],
+        prerequisites: ['inverse-operations'],
         estimatedMinutes: 15,
       },
       {
-        id: 'two_step',
+        id: 'two-step-equations',
         name: 'Two-Step Equations',
         description: 'Solving equations like 2x + 3 = 11',
         objectives: ['Apply operations in correct order', 'Check solutions'],
-        prerequisites: ['one_step'],
+        prerequisites: ['one-step-equations'],
         estimatedMinutes: 15,
       },
       {
-        id: 'word_problems',
+        id: 'word-problems',
         name: 'Word Problems',
         description: 'Translating word problems into equations',
         objectives: [
@@ -135,7 +135,7 @@ const linearEquationsScenario: AblationScenario = {
           'Set up equation from context',
           'Solve and interpret',
         ],
-        prerequisites: ['two_step'],
+        prerequisites: ['two-step-equations'],
         estimatedMinutes: 20,
       },
     ],
@@ -147,7 +147,7 @@ const linearEquationsScenario: AblationScenario = {
       question: 'What is the inverse operation of addition?',
       options: ['Multiplication', 'Subtraction', 'Division', 'Exponentiation'],
       correctIndex: 1,
-      topicId: 'inverse_operations',
+      topicId: 'inverse-operations',
       difficulty: 'easy',
     },
     {
@@ -155,7 +155,7 @@ const linearEquationsScenario: AblationScenario = {
       question: 'Solve for x: x + 7 = 12',
       options: ['x = 19', 'x = 5', 'x = -5', 'x = 7'],
       correctIndex: 1,
-      topicId: 'one_step',
+      topicId: 'one-step-equations',
       difficulty: 'easy',
     },
     {
@@ -163,7 +163,7 @@ const linearEquationsScenario: AblationScenario = {
       question: 'Solve for x: 4x = 20',
       options: ['x = 80', 'x = 16', 'x = 5', 'x = 24'],
       correctIndex: 2,
-      topicId: 'one_step',
+      topicId: 'one-step-equations',
       difficulty: 'easy',
     },
     {
@@ -171,7 +171,7 @@ const linearEquationsScenario: AblationScenario = {
       question: 'Solve for x: 3x + 4 = 19',
       options: ['x = 5', 'x = 7.67', 'x = 15', 'x = 23'],
       correctIndex: 0,
-      topicId: 'two_step',
+      topicId: 'two-step-equations',
       difficulty: 'medium',
     },
     {
@@ -179,7 +179,7 @@ const linearEquationsScenario: AblationScenario = {
       question: 'A number doubled and increased by 6 equals 20. What equation represents this?',
       options: ['2x + 6 = 20', 'x + 6 = 20', '2(x + 6) = 20', '6x + 2 = 20'],
       correctIndex: 0,
-      topicId: 'word_problems',
+      topicId: 'word-problems',
       difficulty: 'medium',
     },
   ],
@@ -190,7 +190,7 @@ const linearEquationsScenario: AblationScenario = {
       question: 'What is the inverse operation of multiplication?',
       options: ['Addition', 'Subtraction', 'Division', 'Squaring'],
       correctIndex: 2,
-      topicId: 'inverse_operations',
+      topicId: 'inverse-operations',
       difficulty: 'easy',
     },
     {
@@ -198,7 +198,7 @@ const linearEquationsScenario: AblationScenario = {
       question: 'Solve for y: y - 9 = 15',
       options: ['y = 6', 'y = 24', 'y = -6', 'y = 135'],
       correctIndex: 1,
-      topicId: 'one_step',
+      topicId: 'one-step-equations',
       difficulty: 'easy',
     },
     {
@@ -206,7 +206,7 @@ const linearEquationsScenario: AblationScenario = {
       question: 'Solve for y: 6y = 42',
       options: ['y = 252', 'y = 36', 'y = 7', 'y = 48'],
       correctIndex: 2,
-      topicId: 'one_step',
+      topicId: 'one-step-equations',
       difficulty: 'easy',
     },
     {
@@ -214,7 +214,7 @@ const linearEquationsScenario: AblationScenario = {
       question: 'Solve for y: 5y - 3 = 22',
       options: ['y = 5', 'y = 3.8', 'y = 25', 'y = 19'],
       correctIndex: 0,
-      topicId: 'two_step',
+      topicId: 'two-step-equations',
       difficulty: 'medium',
     },
     {
@@ -222,7 +222,7 @@ const linearEquationsScenario: AblationScenario = {
       question: 'Three times a number minus 8 equals 16. What equation represents this?',
       options: ['3x - 8 = 16', 'x - 8 = 16', '3(x - 8) = 16', '8x - 3 = 16'],
       correctIndex: 0,
-      topicId: 'word_problems',
+      topicId: 'word-problems',
       difficulty: 'medium',
     },
   ],
@@ -230,12 +230,12 @@ const linearEquationsScenario: AblationScenario = {
   // Knowledge gaps: Student struggles with multi-step and word problems (target pre-test: ~60%)
   knowledgeGaps: [
     {
-      topicId: 'two_step',
+      topicId: 'two-step-equations',
       errorRate: 0.8,
       misconception: 'Often applies operations in wrong order (divides before subtracting)',
     },
     {
-      topicId: 'word_problems',
+      topicId: 'word-problems',
       errorRate: 0.9,
       misconception: 'Confuses "doubled and increased by" with "increased then doubled"',
     },
@@ -270,7 +270,7 @@ const derivativesScenario: AblationScenario = {
     goal: 'Master basic differentiation',
     nodes: [
       {
-        id: 'limit_definition',
+        id: 'limit-definition',
         name: 'Limit Definition of Derivative',
         description: "Understanding f'(x) = lim(h→0) [f(x+h) - f(x)]/h",
         objectives: [
@@ -281,35 +281,35 @@ const derivativesScenario: AblationScenario = {
         estimatedMinutes: 20,
       },
       {
-        id: 'power_rule',
+        id: 'power-rule',
         name: 'Power Rule',
         description: 'd/dx[x^n] = nx^(n-1)',
         objectives: ['Apply power rule to monomials', 'Handle negative and fractional exponents'],
-        prerequisites: ['limit_definition'],
+        prerequisites: ['limit-definition'],
         estimatedMinutes: 15,
       },
       {
-        id: 'constant_rule',
+        id: 'constant-rule',
         name: 'Constant Rule',
         description: "d/dx[c] = 0 and d/dx[cf(x)] = c·f'(x)",
         objectives: ['Differentiate constants', 'Factor out constant multipliers'],
-        prerequisites: ['limit_definition'],
+        prerequisites: ['limit-definition'],
         estimatedMinutes: 10,
       },
       {
-        id: 'sum_rule',
+        id: 'sum-rule',
         name: 'Sum and Difference Rule',
         description: "d/dx[f(x) ± g(x)] = f'(x) ± g'(x)",
         objectives: ['Differentiate term by term', 'Combine with power and constant rules'],
-        prerequisites: ['power_rule', 'constant_rule'],
+        prerequisites: ['power-rule', 'constant-rule'],
         estimatedMinutes: 15,
       },
       {
-        id: 'polynomial_practice',
+        id: 'polynomial-practice',
         name: 'Polynomial Differentiation',
         description: 'Combining all rules for polynomial functions',
         objectives: ['Differentiate any polynomial', 'Find tangent line equations'],
-        prerequisites: ['sum_rule'],
+        prerequisites: ['sum-rule'],
         estimatedMinutes: 20,
       },
       {
@@ -317,7 +317,7 @@ const derivativesScenario: AblationScenario = {
         name: 'Applications: Rates of Change',
         description: 'Interpreting derivatives as instantaneous rate of change',
         objectives: ['Compute velocity from position', 'Interpret derivative in context'],
-        prerequisites: ['polynomial_practice'],
+        prerequisites: ['polynomial-practice'],
         estimatedMinutes: 15,
       },
     ],
@@ -334,7 +334,7 @@ const derivativesScenario: AblationScenario = {
         'The y-intercept',
       ],
       correctIndex: 1,
-      topicId: 'limit_definition',
+      topicId: 'limit-definition',
       difficulty: 'easy',
     },
     {
@@ -342,7 +342,7 @@ const derivativesScenario: AblationScenario = {
       question: 'What is the derivative of f(x) = x³?',
       options: ['3x²', 'x²', '3x³', 'x⁴/4'],
       correctIndex: 0,
-      topicId: 'power_rule',
+      topicId: 'power-rule',
       difficulty: 'easy',
     },
     {
@@ -350,7 +350,7 @@ const derivativesScenario: AblationScenario = {
       question: 'What is the derivative of f(x) = 7?',
       options: ['7', '1', '0', '7x'],
       correctIndex: 2,
-      topicId: 'constant_rule',
+      topicId: 'constant-rule',
       difficulty: 'easy',
     },
     {
@@ -358,7 +358,7 @@ const derivativesScenario: AblationScenario = {
       question: 'What is the derivative of f(x) = x² + 3x - 1?',
       options: ['2x + 3', 'x² + 3', '2x + 3x', '2x² + 3'],
       correctIndex: 0,
-      topicId: 'sum_rule',
+      topicId: 'sum-rule',
       difficulty: 'medium',
     },
     {
@@ -382,7 +382,7 @@ const derivativesScenario: AblationScenario = {
         'Computing the integral',
       ],
       correctIndex: 1,
-      topicId: 'limit_definition',
+      topicId: 'limit-definition',
       difficulty: 'easy',
     },
     {
@@ -390,7 +390,7 @@ const derivativesScenario: AblationScenario = {
       question: 'What is the derivative of g(x) = x⁵?',
       options: ['5x⁴', 'x⁴', '5x⁵', 'x⁶/6'],
       correctIndex: 0,
-      topicId: 'power_rule',
+      topicId: 'power-rule',
       difficulty: 'easy',
     },
     {
@@ -398,7 +398,7 @@ const derivativesScenario: AblationScenario = {
       question: 'What is the derivative of g(x) = -3?',
       options: ['-3', '-1', '0', '3x'],
       correctIndex: 2,
-      topicId: 'constant_rule',
+      topicId: 'constant-rule',
       difficulty: 'easy',
     },
     {
@@ -406,7 +406,7 @@ const derivativesScenario: AblationScenario = {
       question: 'What is the derivative of g(x) = 2x³ - 5x + 4?',
       options: ['6x² - 5', '2x³ - 5', '6x² - 5x', '2x² - 5'],
       correctIndex: 0,
-      topicId: 'sum_rule',
+      topicId: 'sum-rule',
       difficulty: 'medium',
     },
     {
@@ -422,12 +422,12 @@ const derivativesScenario: AblationScenario = {
   // Knowledge gaps: Student weak on conceptual and application topics (target pre-test: ~40%)
   knowledgeGaps: [
     {
-      topicId: 'limit_definition',
+      topicId: 'limit-definition',
       errorRate: 0.7,
       misconception: 'Confuses derivative with integral - thinks derivative finds area',
     },
     {
-      topicId: 'sum_rule',
+      topicId: 'sum-rule',
       errorRate: 0.8,
       misconception: 'Forgets to differentiate each term separately',
     },
@@ -467,7 +467,7 @@ const pythonDebuggingScenario: AblationScenario = {
     goal: 'Master Python debugging basics',
     nodes: [
       {
-        id: 'error_messages',
+        id: 'error-messages',
         name: 'Reading Error Messages',
         description: 'Understanding Python tracebacks and error types',
         objectives: ['Identify error type from traceback', 'Locate line number of error'],
@@ -475,27 +475,27 @@ const pythonDebuggingScenario: AblationScenario = {
         estimatedMinutes: 10,
       },
       {
-        id: 'syntax_errors',
+        id: 'syntax-errors',
         name: 'Syntax Errors',
         description: 'Common syntax mistakes: missing colons, parentheses, quotes',
         objectives: ['Spot missing syntax elements', 'Fix indentation errors'],
-        prerequisites: ['error_messages'],
+        prerequisites: ['error-messages'],
         estimatedMinutes: 10,
       },
       {
-        id: 'logic_errors',
+        id: 'logic-errors',
         name: 'Logic Errors',
         description: "Bugs that don't cause crashes but produce wrong results",
         objectives: ['Identify off-by-one errors', 'Trace variable values'],
-        prerequisites: ['syntax_errors'],
+        prerequisites: ['syntax-errors'],
         estimatedMinutes: 15,
       },
       {
-        id: 'print_debugging',
+        id: 'print-debugging',
         name: 'Print Debugging',
         description: 'Using print statements to trace program execution',
         objectives: ['Insert diagnostic prints', 'Interpret output to find bugs'],
-        prerequisites: ['logic_errors'],
+        prerequisites: ['logic-errors'],
         estimatedMinutes: 10,
       },
     ],
@@ -512,7 +512,7 @@ const pythonDebuggingScenario: AblationScenario = {
         'Division by zero',
       ],
       correctIndex: 1,
-      topicId: 'error_messages',
+      topicId: 'error-messages',
       difficulty: 'easy',
     },
     {
@@ -520,7 +520,7 @@ const pythonDebuggingScenario: AblationScenario = {
       question: 'Which line has a syntax error?\n1: for i in range(5)\n2:     print(i)',
       options: ['Line 1 (missing colon)', 'Line 2 (wrong indentation)', 'Both lines', 'No error'],
       correctIndex: 0,
-      topicId: 'syntax_errors',
+      topicId: 'syntax-errors',
       difficulty: 'easy',
     },
     {
@@ -528,7 +528,7 @@ const pythonDebuggingScenario: AblationScenario = {
       question: 'What does range(1, 5) produce?',
       options: ['[1, 2, 3, 4, 5]', '[1, 2, 3, 4]', '[0, 1, 2, 3, 4]', '[0, 1, 2, 3, 4, 5]'],
       correctIndex: 1,
-      topicId: 'logic_errors',
+      topicId: 'logic-errors',
       difficulty: 'medium',
     },
     {
@@ -536,7 +536,7 @@ const pythonDebuggingScenario: AblationScenario = {
       question: 'If a loop should run 5 times but runs 4 times, what is this bug called?',
       options: ['Syntax error', 'Off-by-one error', 'Type error', 'Name error'],
       correctIndex: 1,
-      topicId: 'logic_errors',
+      topicId: 'logic-errors',
       difficulty: 'medium',
     },
     {
@@ -549,7 +549,7 @@ const pythonDebuggingScenario: AblationScenario = {
         'To create a new variable',
       ],
       correctIndex: 1,
-      topicId: 'print_debugging',
+      topicId: 'print-debugging',
       difficulty: 'easy',
     },
   ],
@@ -565,7 +565,7 @@ const pythonDebuggingScenario: AblationScenario = {
         'The syntax is incorrect',
       ],
       correctIndex: 1,
-      topicId: 'error_messages',
+      topicId: 'error-messages',
       difficulty: 'easy',
     },
     {
@@ -578,7 +578,7 @@ const pythonDebuggingScenario: AblationScenario = {
         'No error',
       ],
       correctIndex: 1,
-      topicId: 'syntax_errors',
+      topicId: 'syntax-errors',
       difficulty: 'easy',
     },
     {
@@ -586,7 +586,7 @@ const pythonDebuggingScenario: AblationScenario = {
       question: 'What does range(0, 4) produce?',
       options: ['[0, 1, 2, 3, 4]', '[0, 1, 2, 3]', '[1, 2, 3, 4]', '[1, 2, 3]'],
       correctIndex: 1,
-      topicId: 'logic_errors',
+      topicId: 'logic-errors',
       difficulty: 'medium',
     },
     {
@@ -594,7 +594,7 @@ const pythonDebuggingScenario: AblationScenario = {
       question: 'A function should return items at indices 0-4 but returns 0-3. This is:',
       options: ['A syntax error', 'An off-by-one error', 'A type error', 'A name error'],
       correctIndex: 1,
-      topicId: 'logic_errors',
+      topicId: 'logic-errors',
       difficulty: 'medium',
     },
     {
@@ -607,7 +607,7 @@ const pythonDebuggingScenario: AblationScenario = {
         'To declare variables',
       ],
       correctIndex: 1,
-      topicId: 'print_debugging',
+      topicId: 'print-debugging',
       difficulty: 'easy',
     },
   ],
@@ -615,12 +615,12 @@ const pythonDebuggingScenario: AblationScenario = {
   // Knowledge gaps: Student struggles with logic errors (target pre-test: ~60%)
   knowledgeGaps: [
     {
-      topicId: 'logic_errors',
+      topicId: 'logic-errors',
       errorRate: 0.8,
       misconception: 'Thinks range(1, 5) produces [1, 2, 3, 4, 5] including the end value',
     },
     {
-      topicId: 'print_debugging',
+      topicId: 'print-debugging',
       errorRate: 0.5,
       misconception: 'Not sure when print debugging is useful vs other approaches',
     },
@@ -655,7 +655,7 @@ const bayesRuleScenario: AblationScenario = {
     goal: "Master Bayes' Rule application",
     nodes: [
       {
-        id: 'basic_probability',
+        id: 'basic-probability',
         name: 'Basic Probability Review',
         description: 'Events, P(A), P(A and B), independent events',
         objectives: [
@@ -666,35 +666,35 @@ const bayesRuleScenario: AblationScenario = {
         estimatedMinutes: 10,
       },
       {
-        id: 'conditional_probability',
+        id: 'conditional-probability',
         name: 'Conditional Probability',
         description: 'P(A|B) = P(A and B) / P(B)',
         objectives: ['Compute conditional probability', 'Interpret "given that" correctly'],
-        prerequisites: ['basic_probability'],
+        prerequisites: ['basic-probability'],
         estimatedMinutes: 15,
       },
       {
-        id: 'base_rate',
+        id: 'base-rate',
         name: 'Base Rate and Prior',
         description: 'Understanding prevalence and prior probability',
         objectives: ['Identify base rate in problems', 'Explain why base rate matters'],
-        prerequisites: ['conditional_probability'],
+        prerequisites: ['conditional-probability'],
         estimatedMinutes: 10,
       },
       {
-        id: 'bayes_formula',
+        id: 'bayes-formula',
         name: "Bayes' Rule Formula",
         description: 'P(A|B) = P(B|A)·P(A) / P(B)',
         objectives: ["State Bayes' formula", 'Identify each component in context'],
-        prerequisites: ['base_rate'],
+        prerequisites: ['base-rate'],
         estimatedMinutes: 15,
       },
       {
-        id: 'medical_application',
+        id: 'medical-application',
         name: 'Medical Test Application',
         description: "Applying Bayes' rule to diagnostic testing",
         objectives: ['Calculate positive predictive value', 'Explain false positive paradox'],
-        prerequisites: ['bayes_formula'],
+        prerequisites: ['bayes-formula'],
         estimatedMinutes: 20,
       },
     ],
@@ -706,7 +706,7 @@ const bayesRuleScenario: AblationScenario = {
       question: 'If you flip a fair coin twice, what is P(two heads)?',
       options: ['1/2', '1/4', '1/3', '1/8'],
       correctIndex: 1,
-      topicId: 'basic_probability',
+      topicId: 'basic-probability',
       difficulty: 'easy',
     },
     {
@@ -719,7 +719,7 @@ const bayesRuleScenario: AblationScenario = {
         'Probability of A times B',
       ],
       correctIndex: 1,
-      topicId: 'conditional_probability',
+      topicId: 'conditional-probability',
       difficulty: 'easy',
     },
     {
@@ -727,7 +727,7 @@ const bayesRuleScenario: AblationScenario = {
       question: 'A disease affects 1% of the population. This 1% is called:',
       options: ['The likelihood', 'The posterior', 'The base rate/prior', 'The conditional'],
       correctIndex: 2,
-      topicId: 'base_rate',
+      topicId: 'base-rate',
       difficulty: 'medium',
     },
     {
@@ -735,7 +735,7 @@ const bayesRuleScenario: AblationScenario = {
       question: "In Bayes' formula P(A|B) = P(B|A)·P(A)/P(B), what is P(A)?",
       options: ['Likelihood', 'Prior probability of A', 'Posterior probability', 'Evidence'],
       correctIndex: 1,
-      topicId: 'bayes_formula',
+      topicId: 'bayes-formula',
       difficulty: 'medium',
     },
     {
@@ -749,7 +749,7 @@ const bayesRuleScenario: AblationScenario = {
         'Cannot determine',
       ],
       correctIndex: 1,
-      topicId: 'medical_application',
+      topicId: 'medical-application',
       difficulty: 'hard',
     },
   ],
@@ -760,7 +760,7 @@ const bayesRuleScenario: AblationScenario = {
       question: 'If you roll a fair die, what is P(even number)?',
       options: ['1/6', '1/3', '1/2', '2/3'],
       correctIndex: 2,
-      topicId: 'basic_probability',
+      topicId: 'basic-probability',
       difficulty: 'easy',
     },
     {
@@ -773,7 +773,7 @@ const bayesRuleScenario: AblationScenario = {
         'Probability of rain or clouds',
       ],
       correctIndex: 1,
-      topicId: 'conditional_probability',
+      topicId: 'conditional-probability',
       difficulty: 'easy',
     },
     {
@@ -786,7 +786,7 @@ const bayesRuleScenario: AblationScenario = {
         'False positive rate',
       ],
       correctIndex: 2,
-      topicId: 'base_rate',
+      topicId: 'base-rate',
       difficulty: 'medium',
     },
     {
@@ -794,7 +794,7 @@ const bayesRuleScenario: AblationScenario = {
       question: "In Bayes' formula, P(B|A) is called the:",
       options: ['Prior', 'Posterior', 'Likelihood', 'Evidence'],
       correctIndex: 2,
-      topicId: 'bayes_formula',
+      topicId: 'bayes-formula',
       difficulty: 'medium',
     },
     {
@@ -808,7 +808,7 @@ const bayesRuleScenario: AblationScenario = {
         'Cannot determine without more info',
       ],
       correctIndex: 1,
-      topicId: 'medical_application',
+      topicId: 'medical-application',
       difficulty: 'hard',
     },
   ],
@@ -816,17 +816,17 @@ const bayesRuleScenario: AblationScenario = {
   // Knowledge gaps: Student falls for classic base rate neglect (target pre-test: ~40%)
   knowledgeGaps: [
     {
-      topicId: 'base_rate',
+      topicId: 'base-rate',
       errorRate: 0.7,
       misconception: 'Ignores base rate when evaluating test results',
     },
     {
-      topicId: 'bayes_formula',
+      topicId: 'bayes-formula',
       errorRate: 0.8,
       misconception: "Confuses P(A|B) with P(B|A) - the prosecutor's fallacy",
     },
     {
-      topicId: 'medical_application',
+      topicId: 'medical-application',
       errorRate: 0.9,
       misconception:
         'Thinks high test accuracy means high probability of disease given positive test',

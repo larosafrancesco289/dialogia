@@ -37,6 +37,72 @@ export function normalizeForMatching(text: string): string {
 }
 
 /**
+ * Extract the first balanced JSON object from text using brace counting.
+ * Handles LLM responses that include extra closing braces or trailing content.
+ */
+function extractFirstBalancedJson(text: string): string | undefined {
+  const start = text.indexOf('{');
+  if (start === -1) return undefined;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return undefined;
+}
+
+/** Words too common to count as meaningful evidence tokens. */
+const STOP_WORDS = new Set([
+  'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+  'should', 'may', 'might', 'shall', 'can', 'need', 'must', 'and', 'but',
+  'or', 'nor', 'not', 'so', 'yet', 'both', 'either', 'neither', 'each',
+  'every', 'all', 'any', 'few', 'more', 'most', 'other', 'some', 'such',
+  'no', 'only', 'own', 'same', 'than', 'too', 'very', 'just', 'because',
+  'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about',
+  'against', 'between', 'through', 'during', 'before', 'after', 'above',
+  'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over',
+  'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when',
+  'where', 'why', 'how', 'what', 'which', 'who', 'whom', 'this', 'that',
+  'these', 'those', 'i', 'me', 'my', 'we', 'our', 'you', 'your', 'he',
+  'him', 'his', 'she', 'her', 'it', 'its', 'they', 'them', 'their',
+]);
+
+/**
+ * Verify evidence via fuzzy token overlap.
+ * Returns true if ≥60% of meaningful evidence tokens appear in the transcript.
+ * This replaces exact substring matching which fails on LLM paraphrases.
+ */
+export function verifyEvidenceTokenOverlap(evidence: string, transcript: string): boolean {
+  const normalizedEvidence = normalizeForMatching(evidence);
+  if (normalizedEvidence.length < 10) return false;
+
+  const tokens = normalizedEvidence
+    .split(' ')
+    .filter((w) => w.length > 3 && !STOP_WORDS.has(w));
+  if (tokens.length === 0) return false;
+
+  const normalizedTranscript = normalizeForMatching(transcript);
+  let matchCount = 0;
+  for (const token of tokens) {
+    if (normalizedTranscript.includes(token)) matchCount++;
+  }
+
+  return matchCount / tokens.length >= 0.6;
+}
+
+/**
  * Extract only tutor turns from a transcript.
  * Tutor turns are identified by lines starting with "Tutor:" or "Tutor (".
  */
@@ -236,80 +302,49 @@ async function askQuestion(
 
   // For post-test with gap and transcript, parse JSON and verify evidence
   if (isPostTest && gap && options.sessionTranscript) {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const jsonStr = extractFirstBalancedJson(text);
 
-    // No JSON found - force wrong answer for evidence-required questions
-    if (!jsonMatch) {
-      if (evidenceRequired) {
-        const rng = seededRandom(
-          hashSeed(options.errorSeed ?? options.runId ?? 'default', question.id + '_no_json'),
-        );
-        const wrongIndices = question.options
-          .map((_, i) => i)
-          .filter((i) => i !== question.correctIndex);
-        return {
-          answer: wrongIndices[Math.floor(rng() * wrongIndices.length)],
-          evidenceVerified: false,
-          jsonParseFailed: true,
-          rawResponse: text.slice(0, 500),
-        };
-      }
+    // No JSON found — trust the plain-text answer, flag as unverified
+    if (!jsonStr) {
       const answer = parseAnswer(text, question.options.length);
-      return { answer, evidenceVerified: false, evidenceQuote: '' };
+      return {
+        answer,
+        evidenceVerified: false,
+        jsonParseFailed: true,
+        rawResponse: text.slice(0, 500),
+      };
     }
 
     try {
-      const parsed = JSON.parse(jsonMatch[0]) as { answer?: number; evidence?: string };
+      const parsed = JSON.parse(jsonStr) as { answer?: number; evidence?: string };
       const evidence = parsed.evidence || '';
 
-      // Normalize and verify evidence against transcript
+      // Verify evidence using fuzzy token overlap instead of exact substring matching
       const searchIn =
         options.restrictEvidenceToTutorTurns !== false
           ? extractTutorTurns(options.sessionTranscript)
           : options.sessionTranscript;
 
-      const normalizedEvidence = normalizeForMatching(evidence);
-      const normalizedTranscript = normalizeForMatching(searchIn);
+      const evidenceVerified = verifyEvidenceTokenOverlap(evidence, searchIn);
 
-      const evidenceVerified =
-        normalizedEvidence.length > 10 && normalizedTranscript.includes(normalizedEvidence);
-
-      if (!evidenceVerified) {
-        // Force wrong answer if evidence not verified
-        const rng = seededRandom(
-          hashSeed(options.errorSeed ?? options.runId ?? 'default', question.id + '_post'),
-        );
-        const wrongIndices = question.options
-          .map((_, i) => i)
-          .filter((i) => i !== question.correctIndex);
-        return {
-          answer: wrongIndices[Math.floor(rng() * wrongIndices.length)],
-          evidenceVerified: false,
-          evidenceQuote: evidence,
-        };
-      }
-
+      // Trust the LLM answer regardless of verification — evidence rate is a quality metric,
+      // not a gating mechanism. Forcing wrong answers on verification failure systematically
+      // corrupts gap scores across all conditions.
+      const answer = parsed.answer ?? parseAnswer(text, question.options.length);
       return {
-        answer: parsed.answer ?? parseAnswer(text, question.options.length),
-        evidenceVerified: true,
+        answer,
+        evidenceVerified,
         evidenceQuote: evidence,
       };
     } catch {
-      // JSON parse error - force wrong answer for evidence-required questions
-      if (evidenceRequired) {
-        const rng = seededRandom(
-          hashSeed(options.errorSeed ?? options.runId ?? 'default', question.id + '_json_fail'),
-        );
-        const wrongIndices = question.options
-          .map((_, i) => i)
-          .filter((i) => i !== question.correctIndex);
-        return {
-          answer: wrongIndices[Math.floor(rng() * wrongIndices.length)],
-          evidenceVerified: false,
-          jsonParseFailed: true,
-          rawResponse: text.slice(0, 500),
-        };
-      }
+      // JSON parse error — trust the plain-text answer, flag as unverified
+      const answer = parseAnswer(text, question.options.length);
+      return {
+        answer,
+        evidenceVerified: false,
+        jsonParseFailed: true,
+        rawResponse: text.slice(0, 500),
+      };
     }
   }
 

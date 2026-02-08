@@ -4,12 +4,13 @@ import {
   administerTest,
   normalizeForMatching,
   extractTutorTurns,
+  verifyEvidenceTokenOverlap,
 } from '@/tooling/eval/prePostTest';
 import { shuffleArray } from '@/tooling/eval/ablationRunner';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import type { KnowledgeGap, TestQuestion } from '@/tooling/eval/ablationScenarios';
 
-test('post-test gap questions force wrong answer on invalid JSON', async () => {
+test('post-test gap questions trust LLM answer on invalid JSON but flag as unverified', async () => {
   const question: TestQuestion = {
     id: 'q1',
     topicId: 'topic_1',
@@ -35,7 +36,7 @@ test('post-test gap questions force wrong answer on invalid JSON', async () => {
         {
           index: 0,
           finish_reason: 'stop',
-          // Invalid JSON: unquoted keys
+          // Invalid JSON: unquoted keys — but contains "2" as a parseable answer
           message: { role: 'assistant', content: '{answer: 2, evidence: "not valid JSON"}' },
         },
       ],
@@ -53,14 +54,14 @@ test('post-test gap questions force wrong answer on invalid JSON', async () => {
     runId: 'run-1',
   });
 
-  // Should have forced a wrong answer due to JSON parse failure
+  // Should be flagged as JSON parse failure and unverified, but answer is trusted
   assert.equal(result.answerMetadata?.[0]?.jsonParseFailed, true);
   assert.equal(result.answerMetadata?.[0]?.evidenceVerified, false);
-  // Answer should NOT be the correct index (2)
-  assert.notEqual(result.answers[0], 2, 'Invalid JSON should force wrong answer');
+  // Answer should be parsed from the raw text (finds "2")
+  assert.equal(result.answers[0], 2, 'LLM answer should be trusted even on JSON parse failure');
 });
 
-test('post-test gap questions force wrong answer when no JSON found', async () => {
+test('post-test gap questions trust LLM answer when no JSON found but flag as unverified', async () => {
   const question: TestQuestion = {
     id: 'q2',
     topicId: 'topic_1',
@@ -104,11 +105,30 @@ test('post-test gap questions force wrong answer when no JSON found', async () =
     runId: 'run-2',
   });
 
-  // Should have forced a wrong answer due to no JSON found
+  // Should be flagged as JSON parse failure and unverified, but answer is trusted
   assert.equal(result.answerMetadata?.[0]?.jsonParseFailed, true);
   assert.equal(result.answerMetadata?.[0]?.evidenceVerified, false);
-  // Answer should NOT be the correct index (1)
-  assert.notEqual(result.answers[0], 1, 'Missing JSON should force wrong answer');
+  // Answer should be parsed from the raw text (finds "1")
+  assert.equal(result.answers[0], 1, 'LLM answer should be trusted even without JSON');
+});
+
+test('verifyEvidenceTokenOverlap accepts paraphrased evidence', () => {
+  const transcript = 'Tutor: To solve equations, you need to isolate the variable by performing inverse operations on both sides.';
+  // Paraphrased — not an exact substring, but tokens overlap
+  const evidence = 'The tutor explained isolating the variable using inverse operations on both sides';
+  assert.equal(verifyEvidenceTokenOverlap(evidence, transcript), true);
+});
+
+test('verifyEvidenceTokenOverlap rejects unrelated evidence', () => {
+  const transcript = 'Tutor: To solve equations, you need to isolate the variable by performing inverse operations.';
+  const evidence = 'The tutor discussed photosynthesis and cellular respiration in plants';
+  assert.equal(verifyEvidenceTokenOverlap(evidence, transcript), false);
+});
+
+test('verifyEvidenceTokenOverlap rejects too-short evidence', () => {
+  const transcript = 'Tutor: A long tutoring session about mathematics.';
+  assert.equal(verifyEvidenceTokenOverlap('short', transcript), false);
+  assert.equal(verifyEvidenceTokenOverlap('', transcript), false);
 });
 
 test('normalizeForMatching collapses whitespace and lowercases', () => {

@@ -15,6 +15,30 @@ import type {
 import { logger } from '@/lib/logger';
 
 /**
+ * Normalize a node ID for fuzzy matching: lowercase, strip hyphens/underscores/spaces.
+ */
+function normalizeNodeId(id: string): string {
+  return id.toLowerCase().replace(/[-_\s]+/g, '');
+}
+
+/**
+ * Resolve a node ID against the mastery record, falling back to fuzzy matching
+ * when the exact key is missing. This handles LLM-generated IDs that use
+ * different separator styles (hyphens vs underscores vs camelCase).
+ */
+export function resolveNodeId(
+  mastery: Record<string, TopicMastery>,
+  rawId: string,
+): string | undefined {
+  if (mastery[rawId]) return rawId;
+  const normalized = normalizeNodeId(rawId);
+  for (const key of Object.keys(mastery)) {
+    if (normalizeNodeId(key) === normalized) return key;
+  }
+  return undefined;
+}
+
+/**
  * Initialize an empty learner model for a learning plan
  */
 export function initializeLearnerModel(chatId: string, plan: LearningPlan): LearnerModel {
@@ -123,9 +147,10 @@ export function updateLearnerModel(
 ): LearnerModel {
   // Clone mastery records
   const mastery = { ...model.mastery };
-  const topic = mastery[update.nodeId];
+  const resolvedId = resolveNodeId(mastery, update.nodeId);
+  const topic = resolvedId ? mastery[resolvedId] : undefined;
 
-  if (!topic) {
+  if (!topic || !resolvedId) {
     logger.warn(`Node ${update.nodeId} not found in learner model`);
     return model;
   }
@@ -159,7 +184,7 @@ export function updateLearnerModel(
     }
   }
 
-  mastery[update.nodeId] = updatedTopic;
+  mastery[resolvedId] = updatedTopic;
 
   const globalMetrics = computeGlobalMetrics(mastery, model.globalMetrics, 1);
 
@@ -193,8 +218,9 @@ export function applyLearnerModelFeedback(
   appliedFloor?: number;
   note?: string;
 } {
-  const topic = model.mastery[feedback.nodeId];
-  if (!topic) {
+  const resolvedFeedbackId = resolveNodeId(model.mastery, feedback.nodeId);
+  const topic = resolvedFeedbackId ? model.mastery[resolvedFeedbackId] : undefined;
+  if (!topic || !resolvedFeedbackId) {
     return { model, note: 'Topic not found in learner model' };
   }
 
@@ -212,13 +238,13 @@ export function applyLearnerModelFeedback(
   };
 
   const updatedWithEvidence = updateLearnerModel(model, {
-    nodeId: feedback.nodeId,
+    nodeId: resolvedFeedbackId,
     evidence,
   });
 
   const mastery = { ...updatedWithEvidence.mastery };
-  const target = { ...mastery[feedback.nodeId] };
-  mastery[feedback.nodeId] = target;
+  const target = { ...mastery[resolvedFeedbackId] };
+  mastery[resolvedFeedbackId] = target;
   const resolved: string[] = [];
   let appliedFloor: number | undefined;
   let adjusted = false;
@@ -270,7 +296,7 @@ export function applyLearnerModelFeedback(
   return {
     model: nextModel,
     from: topic.confidence,
-    to: nextModel.mastery[feedback.nodeId]?.confidence ?? topic.confidence,
+    to: nextModel.mastery[resolvedFeedbackId]?.confidence ?? topic.confidence,
     resolved: resolved.length ? resolved : undefined,
     appliedFloor,
     note: feedback.reason,
