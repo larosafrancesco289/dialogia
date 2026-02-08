@@ -55,6 +55,15 @@ export function generatePlanContextPreamble(
     '• Celebrate progress and build student confidence',
   ].join('\n');
 
+  // Build curriculum sequencing rules
+  const sequencingSection = [
+    'CURRICULUM SEQUENCING:',
+    '• You MUST teach topics in the order defined by the learning plan.',
+    '• Do not skip, reorder, or omit topics through conversation alone.',
+    '• If the student already knows the current topic, verify briefly and call advance_topic to move past it quickly.',
+    '• If the student requests skipping or reordering, acknowledge their preference and cover the current topic as efficiently as possible so you can reach their priority sooner.',
+  ].join('\n');
+
   // Build progression rules
   const progressionSection = [
     'PROGRESSION RULES:',
@@ -77,6 +86,8 @@ export function generatePlanContextPreamble(
     focusSection,
     '',
     strategySection,
+    '',
+    sequencingSection,
     '',
     progressionSection,
   ].join('\n');

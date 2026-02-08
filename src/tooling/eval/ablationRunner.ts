@@ -29,7 +29,11 @@ import { createModelIndex, isReasoningSupported } from '@/lib/models';
 import { resolveModelTransport } from '@/lib/providers';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
-import { buildJudgeMessages, type JudgeVerdict } from '@/tooling/eval/judgePrompts';
+import {
+  buildJudgeMessages,
+  JUDGE_WEIGHTS,
+  type JudgeVerdict,
+} from '@/tooling/eval/judgePrompts';
 import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learner-model';
 import { summarizeLearningPlan } from '@/lib/learning-plan/service';
 import { getOpenRouterKeyFallback } from '@/lib/env/keys';
@@ -137,6 +141,7 @@ type AblationSummary = {
         gapNormalizedGain: { mean: number; sd: number; n: number };
         turnsUsed: { mean: number; sd: number; n: number };
         judgeScore: { mean: number; sd: number; n: number };
+        judgeSubscores: Record<string, { mean: number; sd: number; n: number }>;
         mechanismMetrics: MechanismMetrics;
       }
     >;
@@ -154,9 +159,14 @@ type AblationSummary = {
       gapCondition1Mean: number;
       gapCondition2Mean: number;
       gapTTest: { t: number; df: number; p: number; significant: boolean };
+      // Judge score comparison
+      judgeCohenD: number;
+      judgeInterpretation: string;
+      judgeTTest: { t: number; df: number; p: number; significant: boolean };
     }>;
     interactionEffect: number;
     anova?: AnovaResult;
+    anovaJudge?: AnovaResult;
   };
 };
 
@@ -185,6 +195,29 @@ const RETRY_DELAY_MS = 5000;
 const CHECKPOINT_FILENAME = 'ablation-checkpoint.json';
 const DEFAULT_CONCURRENCY = 4;
 const MAX_CONCURRENCY = 10;
+
+/** Judge dimension names, derived once from JUDGE_WEIGHTS keys. */
+const JUDGE_DIMENSIONS = Object.keys(JUDGE_WEIGHTS) as Array<keyof typeof JUDGE_WEIGHTS>;
+
+/**
+ * Extract judge overall scores for a given condition from run results.
+ */
+function judgeScoresForCondition(
+  results: AblationRunResult[],
+  condition: AblationCondition,
+): number[] {
+  return results
+    .filter((r) => r.condition === condition && r.judgeVerdict?.overall_score != null)
+    .map((r) => r.judgeVerdict!.overall_score);
+}
+
+/**
+ * Compute the arithmetic mean of an array, returning 0 for empty arrays.
+ */
+function mean(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
 
 // ============================================================================
 // Concurrency Utilities
@@ -899,6 +932,7 @@ async function runSingleAblation(
   const judgeMessages = buildJudgeMessages({
     scenario,
     transcript,
+    knowledgeGaps: scenario.knowledgeGaps,
   });
 
   const judgeResponse = await getChatCompletion()({
@@ -1093,9 +1127,16 @@ function calculateStatistics(
     const gapGains = conditionResults.map((r) => r.gapLearningGain);
     const gapNormalizedGains = conditionResults.map((r) => r.gapNormalizedGain);
     const turns = conditionResults.map((r) => r.turnsUsed);
-    const judgeScores = conditionResults
-      .filter((r) => r.judgeVerdict?.overall_score != null)
-      .map((r) => r.judgeVerdict!.overall_score);
+    const judgeScores = judgeScoresForCondition(results, condition);
+
+    // Compute per-dimension judge subscores
+    const judgeSubscores: Record<string, { mean: number; sd: number; n: number }> = {};
+    for (const dim of JUDGE_DIMENSIONS) {
+      const dimScores = conditionResults
+        .filter((r) => r.judgeVerdict?.subscores?.[dim] != null)
+        .map((r) => r.judgeVerdict!.subscores[dim]);
+      judgeSubscores[dim] = calculateStats(dimScores);
+    }
 
     // Compute mechanism metrics
     const planEditsCount = conditionResults.reduce(
@@ -1130,6 +1171,7 @@ function calculateStatistics(
       gapNormalizedGain: calculateStats(gapNormalizedGains),
       turnsUsed: calculateStats(turns),
       judgeScore: calculateStats(judgeScores),
+      judgeSubscores,
       mechanismMetrics: {
         planEditsCount,
         masteryOverridesCount,
@@ -1146,58 +1188,52 @@ function calculateStatistics(
   const comparisons = COMPARISON_PAIRS.filter(
     (p) => conditions.includes(p.conditions[0]) && conditions.includes(p.conditions[1]),
   ).map((pair) => {
+    const [c1, c2] = pair.conditions;
+
     // Overall metrics
-    const gains1 = results
-      .filter((r) => r.condition === pair.conditions[0])
-      .map((r) => r.normalizedGain);
-    const gains2 = results
-      .filter((r) => r.condition === pair.conditions[1])
-      .map((r) => r.normalizedGain);
+    const gains1 = results.filter((r) => r.condition === c1).map((r) => r.normalizedGain);
+    const gains2 = results.filter((r) => r.condition === c2).map((r) => r.normalizedGain);
     const { d, interpretation } = calculateCohenD(gains1, gains2);
     const tTest = welchTTest(gains1, gains2);
 
     // Gap-only metrics (primary for hypothesis testing)
-    const gapGains1 = results
-      .filter((r) => r.condition === pair.conditions[0])
-      .map((r) => r.gapNormalizedGain);
-    const gapGains2 = results
-      .filter((r) => r.condition === pair.conditions[1])
-      .map((r) => r.gapNormalizedGain);
+    const gapGains1 = results.filter((r) => r.condition === c1).map((r) => r.gapNormalizedGain);
+    const gapGains2 = results.filter((r) => r.condition === c2).map((r) => r.gapNormalizedGain);
     const { d: gapD, interpretation: gapInterpretation } = calculateCohenD(gapGains1, gapGains2);
     const gapTTest = welchTTest(gapGains1, gapGains2);
+
+    // Judge score comparison
+    const judgeScores1 = judgeScoresForCondition(results, c1);
+    const judgeScores2 = judgeScoresForCondition(results, c2);
+    const { d: judgeD, interpretation: judgeInterpretation } = calculateCohenD(
+      judgeScores1,
+      judgeScores2,
+    );
+    const judgeTTest = welchTTest(judgeScores1, judgeScores2);
 
     return {
       name: pair.name,
       hypothesis: pair.hypothesis,
       cohenD: d,
       interpretation,
-      condition1Mean: gains1.length > 0 ? gains1.reduce((a, b) => a + b, 0) / gains1.length : 0,
-      condition2Mean: gains2.length > 0 ? gains2.reduce((a, b) => a + b, 0) / gains2.length : 0,
-      tTest: {
-        t: tTest.t,
-        df: tTest.df,
-        p: tTest.p,
-        significant: tTest.significant,
-      },
-      // Gap-only metrics
+      condition1Mean: mean(gains1),
+      condition2Mean: mean(gains2),
+      tTest,
       gapCohenD: gapD,
       gapInterpretation,
-      gapCondition1Mean:
-        gapGains1.length > 0 ? gapGains1.reduce((a, b) => a + b, 0) / gapGains1.length : 0,
-      gapCondition2Mean:
-        gapGains2.length > 0 ? gapGains2.reduce((a, b) => a + b, 0) / gapGains2.length : 0,
-      gapTTest: {
-        t: gapTTest.t,
-        df: gapTTest.df,
-        p: gapTTest.p,
-        significant: gapTTest.significant,
-      },
+      gapCondition1Mean: mean(gapGains1),
+      gapCondition2Mean: mean(gapGains2),
+      gapTTest,
+      judgeCohenD: judgeD,
+      judgeInterpretation,
+      judgeTTest,
     };
   });
 
   // Calculate interaction effect and ANOVA when all 4 conditions are present
   let interactionEffect = 0;
   let anova: AnovaResult | undefined;
+  let anovaJudge: AnovaResult | undefined;
 
   const hasAllConditions =
     conditions.includes('full_system') &&
@@ -1213,7 +1249,7 @@ function calculateStatistics(
       baseline: byCondition.baseline?.gapNormalizedGain.mean ?? 0,
     });
 
-    // Run 2-way ANOVA
+    // Run 2-way ANOVA on gap-normalized gain
     anova = twoWayAnova({
       fullSystem: results
         .filter((r) => r.condition === 'full_system')
@@ -1224,9 +1260,21 @@ function calculateStatistics(
         .map((r) => r.gapNormalizedGain),
       baseline: results.filter((r) => r.condition === 'baseline').map((r) => r.gapNormalizedGain),
     });
+
+    // Run 2-way ANOVA on judge overall scores only when each cell has enough parsed data.
+    const judgeAnovaGroups = {
+      fullSystem: judgeScoresForCondition(results, 'full_system'),
+      planOnly: judgeScoresForCondition(results, 'plan_only'),
+      modelOnly: judgeScoresForCondition(results, 'model_only'),
+      baseline: judgeScoresForCondition(results, 'baseline'),
+    };
+    const hasEnoughJudgeScores = Object.values(judgeAnovaGroups).every((scores) => scores.length >= 2);
+    if (hasEnoughJudgeScores) {
+      anovaJudge = twoWayAnova(judgeAnovaGroups);
+    }
   }
 
-  return { byCondition, comparisons, interactionEffect, anova };
+  return { byCondition, comparisons, interactionEffect, anova, anovaJudge };
 }
 
 // ============================================================================
@@ -1254,6 +1302,22 @@ async function saveResults(summary: AblationSummary, outputDir: string): Promise
   console.log(`Saved statistics to: ${statsPath}`);
 }
 
+/**
+ * Format the common rows of a 2-way ANOVA table (header + three effect rows).
+ */
+function formatAnovaTable(anova: AnovaResult): string[] {
+  function row(label: string, effect: { f: number; p: number; significant: boolean }): string {
+    return `| ${label} | ${effect.f.toFixed(3)} | ${effect.p.toFixed(4)} | ${effect.significant ? '*' : ''} |`;
+  }
+  return [
+    '| Source | F | p-value | Sig. |',
+    '|--------|---|---------|------|',
+    row('Plan (main effect)', anova.planEffect),
+    row('Model (main effect)', anova.modelEffect),
+    row('Plan × Model (interaction)', anova.interaction),
+  ];
+}
+
 function generateMarkdownTables(summary: AblationSummary): string {
   const lines: string[] = [
     '# Ablation Study Results',
@@ -1270,11 +1334,13 @@ function generateMarkdownTables(summary: AblationSummary): string {
   for (const condition of summary.config.conditions) {
     const stats = summary.statistics.byCondition[condition];
     if (!stats) continue;
+    const judgeScoreCell =
+      stats.judgeScore.n > 0 ? `${stats.judgeScore.mean.toFixed(2)} ± ${stats.judgeScore.sd.toFixed(2)}` : 'N/A';
     lines.push(
       `| ${condition} | ${stats.learningGain.mean.toFixed(1)} ± ${stats.learningGain.sd.toFixed(1)} | ` +
         `${(stats.normalizedGain.mean * 100).toFixed(1)}% ± ${(stats.normalizedGain.sd * 100).toFixed(1)}% | ` +
         `${stats.turnsUsed.mean.toFixed(1)} ± ${stats.turnsUsed.sd.toFixed(1)} | ` +
-        `${stats.judgeScore.mean.toFixed(2)} ± ${stats.judgeScore.sd.toFixed(2)} |`,
+        `${judgeScoreCell} |`,
     );
   }
 
@@ -1301,11 +1367,7 @@ function generateMarkdownTables(summary: AblationSummary): string {
       '',
       '## 2-Way ANOVA (Plan × Model, Gap-Normalized Gain)',
       '',
-      '| Source | F | p-value | Sig. |',
-      '|--------|---|---------|------|',
-      `| Plan (main effect) | ${anova.planEffect.f.toFixed(3)} | ${anova.planEffect.p.toFixed(4)} | ${anova.planEffect.significant ? '*' : ''} |`,
-      `| Model (main effect) | ${anova.modelEffect.f.toFixed(3)} | ${anova.modelEffect.p.toFixed(4)} | ${anova.modelEffect.significant ? '*' : ''} |`,
-      `| Plan × Model (interaction) | ${anova.interaction.f.toFixed(3)} | ${anova.interaction.p.toFixed(4)} | ${anova.interaction.significant ? '*' : ''} |`,
+      ...formatAnovaTable(anova),
       '',
       `Residual MS: ${anova.residualMS.toFixed(6)}`,
       '',
@@ -1321,6 +1383,56 @@ function generateMarkdownTables(summary: AblationSummary): string {
       `Plan × Model Interaction: ${(summary.statistics.interactionEffect * 100).toFixed(2)}%`,
       '',
       '> Positive value indicates synergy between plan and learner model editability.',
+    );
+  }
+
+  // Judge scores by condition and dimension
+  lines.push(
+    '',
+    '## Judge Scores by Condition and Dimension',
+    '',
+    `| Condition | Overall | ${JUDGE_DIMENSIONS.join(' | ')} |`,
+    `|-----------|---------|${JUDGE_DIMENSIONS.map(() => '---').join('|')}|`,
+  );
+
+  for (const condition of summary.config.conditions) {
+    const stats = summary.statistics.byCondition[condition];
+    if (!stats) continue;
+    const overallJudgeCell =
+      stats.judgeScore.n > 0 ? `${stats.judgeScore.mean.toFixed(2)}±${stats.judgeScore.sd.toFixed(2)}` : 'N/A';
+    const dimCells = JUDGE_DIMENSIONS.map((dim) => {
+      const s = stats.judgeSubscores[dim];
+      return s && s.n > 0 ? `${s.mean.toFixed(2)}±${s.sd.toFixed(2)}` : 'N/A';
+    }).join(' | ');
+    lines.push(
+      `| ${condition} | ${overallJudgeCell} | ${dimCells} |`,
+    );
+  }
+
+  // Judge score pairwise comparisons
+  lines.push(
+    '',
+    "## Judge Score Pairwise Comparisons (Welch's t-test)",
+    '',
+    "| Comparison | Judge Cohen's d | Interp. | t | df | p-value | Sig. |",
+    '|------------|----------------|---------|---|----|---------|----- |',
+  );
+
+  for (const comp of summary.statistics.comparisons) {
+    const sig = comp.judgeTTest.significant ? '*' : '';
+    lines.push(
+      `| ${comp.name} | ${comp.judgeCohenD.toFixed(3)} | ${comp.judgeInterpretation} | ` +
+        `${comp.judgeTTest.t.toFixed(3)} | ${comp.judgeTTest.df.toFixed(1)} | ${comp.judgeTTest.p.toFixed(4)} | ${sig} |`,
+    );
+  }
+
+  // Judge ANOVA
+  if (summary.statistics.anovaJudge) {
+    lines.push(
+      '',
+      '## 2-Way ANOVA (Plan × Model, Judge Overall Score)',
+      '',
+      ...formatAnovaTable(summary.statistics.anovaJudge),
     );
   }
 
@@ -1498,6 +1610,44 @@ function generateStatsReport(summary: AblationSummary): string {
             `and baseline (M = ${(primaryComparison.gapCondition2Mean * 100).toFixed(1)}%).`,
       '',
     );
+  }
+
+  // Judge score analysis
+  lines.push('### Judge Score Analysis', '');
+
+  const notableJudgeComparisons = summary.statistics.comparisons.filter(
+    (c) => c.judgeInterpretation === 'medium' || c.judgeInterpretation === 'large',
+  );
+
+  if (notableJudgeComparisons.length > 0) {
+    lines.push('Notable judge score effect sizes:', '');
+    for (const comp of notableJudgeComparisons) {
+      lines.push(
+        `- **${comp.name}**: d = ${comp.judgeCohenD.toFixed(3)} (${comp.judgeInterpretation}), ` +
+          `p = ${comp.judgeTTest.p.toFixed(4)}${comp.judgeTTest.significant ? ' *' : ''}`,
+      );
+    }
+    lines.push('');
+  } else {
+    lines.push('No comparisons showed medium or large effect sizes on judge scores.', '');
+  }
+
+  if (summary.statistics.anovaJudge) {
+    const aj = summary.statistics.anovaJudge;
+    const judgeEffects: string[] = [];
+    if (aj.planEffect.significant) {
+      judgeEffects.push(
+        `Plan editability shows a significant effect on judge scores (F = ${aj.planEffect.f.toFixed(2)}, p = ${aj.planEffect.p.toFixed(4)}).`,
+      );
+    }
+    if (aj.modelEffect.significant) {
+      judgeEffects.push(
+        `Learner model editability shows a significant effect on judge scores (F = ${aj.modelEffect.f.toFixed(2)}, p = ${aj.modelEffect.p.toFixed(4)}).`,
+      );
+    }
+    if (judgeEffects.length > 0) {
+      lines.push('ANOVA on judge scores:', '', ...judgeEffects.map((e) => `- ${e}`), '');
+    }
   }
 
   // Mechanism verification warnings

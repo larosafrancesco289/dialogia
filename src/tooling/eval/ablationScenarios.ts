@@ -1,7 +1,7 @@
 import type { TutorScenario } from '@/tooling/eval/tutorScenarios';
 import type { LearningPlan, LearningPlanNode } from '@/lib/types';
 
-export const DEFAULT_ABLATION_TUTOR_MODEL_ID = 'moonshotai/kimi-k2.5';
+export const DEFAULT_ABLATION_TUTOR_MODEL_ID = 'google/gemini-3-flash-preview';
 
 /**
  * MCQ question for pre/post testing.
@@ -11,7 +11,8 @@ export type TestQuestion = {
   question: string;
   options: string[];
   correctIndex: number;
-  topicId: string; // Maps to a node in the learning plan DAG
+  /** Maps to a node ID in the learning plan DAG. */
+  topicId: string;
   difficulty: 'easy' | 'medium' | 'hard';
 };
 
@@ -21,8 +22,14 @@ export type TestQuestion = {
  */
 export type KnowledgeGap = {
   topicId: string;
-  misconception?: string; // What the student wrongly believes
-  errorRate: number; // 0-1, probability of answering incorrectly
+  /** What the student wrongly believes. */
+  misconception?: string;
+  /** Probability of answering incorrectly (0-1). */
+  errorRate: number;
+  /** Post-test option index aligned with the misconception (used as forced answer when evidence fails). */
+  misconceptionDistractor?: number;
+  /** Topic-specific keywords the evidence quote must contain (at least one) to be considered relevant. */
+  evidenceKeywords?: string[];
 };
 
 /**
@@ -34,8 +41,10 @@ export type AblationScenario = TutorScenario & {
     nodes: Omit<LearningPlanNode, 'status' | 'startedAt' | 'completedAt'>[];
   };
   preTestQuestions: TestQuestion[];
-  postTestQuestions: TestQuestion[]; // Isomorphic to pre-test
-  knowledgeGaps: KnowledgeGap[]; // Topics the student doesn't know initially
+  /** Isomorphic to pre-test (same topics, comparable difficulty). */
+  postTestQuestions: TestQuestion[];
+  /** Topics the student does not know initially -- drives pre-test error forcing and post-test evidence gating. */
+  knowledgeGaps: KnowledgeGap[];
 };
 
 /**
@@ -81,12 +90,12 @@ const linearEquationsScenario: AblationScenario = {
   level: 'beginner',
   goal: 'Master solving linear equations of the form ax + b = c',
   constraints: [
-    'High school student',
-    'Exam in 3 days',
-    'Nervous about word problems',
-    'Already practiced inverse operations in class yesterday and feels confident on those',
+    'High school student preparing for a test in 3 days',
+    'Your test specifically covers two-step equations and word problems — basic operations will not be tested',
+    'Nervous about word problems especially',
+    'Already practiced inverse operations and one-step equations in class and feel confident on those',
   ],
-  maxTurns: 6,
+  maxTurns: 5,
   teacherModelId: DEFAULT_ABLATION_TUTOR_MODEL_ID,
   studentModelId: 'google/gemini-2.5-flash-lite',
   judgeModelId: 'anthropic/claude-haiku-4.5',
@@ -233,11 +242,15 @@ const linearEquationsScenario: AblationScenario = {
       topicId: 'two-step-equations',
       errorRate: 0.8,
       misconception: 'Often applies operations in wrong order (divides before subtracting)',
+      misconceptionDistractor: 1, // post_4: y = 3.8 (divides before subtracting)
+      evidenceKeywords: ['two-step', 'two step', 'reverse order', 'undo addition', 'subtraction first'],
     },
     {
       topicId: 'word-problems',
       errorRate: 0.9,
       misconception: 'Confuses "doubled and increased by" with "increased then doubled"',
+      misconceptionDistractor: 2, // post_5: 3(x - 8) = 16 ("increased then doubled" pattern)
+      evidenceKeywords: ['word problem', 'translate', 'scenario', 'story', 'sentence', 'represents'],
     },
   ],
 };
@@ -252,12 +265,12 @@ const derivativesScenario: AblationScenario = {
   level: 'intermediate',
   goal: 'Master basic differentiation rules and apply to polynomial functions',
   constraints: [
-    'College freshman',
-    'Preparing for midterm',
+    'College freshman preparing for midterm exam',
+    'Your midterm focuses on combining differentiation rules (sum rule) and rate-of-change applications — it will not test individual rules like power rule or constant rule in isolation',
+    'Comfortable with power rule and constant rule individually from homework',
     'Weak algebra foundation',
-    'Midterm only covers power rule through applications — limit definition proofs are not tested',
   ],
-  maxTurns: 8,
+  maxTurns: 6,
   teacherModelId: DEFAULT_ABLATION_TUTOR_MODEL_ID,
   studentModelId: 'google/gemini-2.5-flash-lite',
   judgeModelId: 'anthropic/claude-haiku-4.5',
@@ -425,16 +438,22 @@ const derivativesScenario: AblationScenario = {
       topicId: 'limit-definition',
       errorRate: 0.7,
       misconception: 'Confuses derivative with integral - thinks derivative finds area',
+      misconceptionDistractor: 3, // post_1: "Computing the integral" (confuses derivative with integral)
+      evidenceKeywords: ['limit', 'h to zero', 'first principles', 'tangent', 'instantaneous'],
     },
     {
       topicId: 'sum-rule',
       errorRate: 0.8,
       misconception: 'Forgets to differentiate each term separately',
+      misconceptionDistractor: 2, // post_4: 6x² - 5x (doesn't differentiate -5x correctly)
+      evidenceKeywords: ['sum rule', 'term by term', 'each term', 'separately', 'difference rule'],
     },
     {
       topicId: 'applications',
       errorRate: 0.9,
       misconception: 'Confuses velocity (derivative) with position (original function)',
+      misconceptionDistractor: 1, // post_5: 21 = s(3) = 3(9)-2(3), plugging into position instead
+      evidenceKeywords: ['rate of change', 'velocity', 'position', 'speed', 'motion'],
     },
   ],
 };
@@ -449,12 +468,12 @@ const pythonDebuggingScenario: AblationScenario = {
   level: 'beginner',
   goal: 'Learn to identify and fix common Python bugs',
   constraints: [
-    'New to programming',
-    'Limited time (15 min)',
-    'Prefers hands-on practice',
-    'Already comfortable reading basic error messages from class exercises',
+    'New to programming with a homework assignment due tomorrow',
+    'Your code runs but produces wrong outputs — you need to find and fix logic errors, not syntax problems',
+    'Already comfortable reading error messages and fixing syntax errors from class exercises',
+    'Prefers hands-on practice over theory',
   ],
-  maxTurns: 5,
+  maxTurns: 4,
   teacherModelId: DEFAULT_ABLATION_TUTOR_MODEL_ID,
   studentModelId: 'google/gemini-2.5-flash-lite',
   judgeModelId: 'anthropic/claude-haiku-4.5',
@@ -618,11 +637,15 @@ const pythonDebuggingScenario: AblationScenario = {
       topicId: 'logic-errors',
       errorRate: 0.8,
       misconception: 'Thinks range(1, 5) produces [1, 2, 3, 4, 5] including the end value',
+      misconceptionDistractor: 0, // post_3: [0, 1, 2, 3, 4] (includes end value)
+      evidenceKeywords: ['logic error', 'off-by-one', 'range', 'wrong result', 'wrong output'],
     },
     {
       topicId: 'print-debugging',
       errorRate: 0.5,
       misconception: 'Not sure when print debugging is useful vs other approaches',
+      misconceptionDistractor: 0, // post_5: "To speed up execution" (wrong purpose)
+      evidenceKeywords: ['print', 'debugging', 'trace', 'diagnostic', 'inspect'],
     },
   ],
 };
@@ -637,12 +660,12 @@ const bayesRuleScenario: AblationScenario = {
   level: 'intermediate',
   goal: "Apply Bayes' rule to medical test and real-world scenarios",
   constraints: [
-    'Overconfident learner',
-    'Tends to rush through problems',
-    'Strong intuitions that may be wrong',
+    'Overconfident learner who tends to rush through problems',
+    'Stats final tomorrow has a dedicated section on Bayes\' rule applications in medical/diagnostic testing — basic probability is not on the exam',
     'Took a probability course last semester and considers basic probability review unnecessary',
+    'Strong intuitions about probability that are often wrong (e.g., base rate neglect)',
   ],
-  maxTurns: 7,
+  maxTurns: 5,
   teacherModelId: DEFAULT_ABLATION_TUTOR_MODEL_ID,
   studentModelId: 'google/gemini-2.5-flash-lite',
   judgeModelId: 'anthropic/claude-haiku-4.5',
@@ -819,17 +842,23 @@ const bayesRuleScenario: AblationScenario = {
       topicId: 'base-rate',
       errorRate: 0.7,
       misconception: 'Ignores base rate when evaluating test results',
+      misconceptionDistractor: 0, // post_3: "Likelihood of spam" (confuses with base rate)
+      evidenceKeywords: ['base rate', 'prevalence', 'prior probability', 'population rate'],
     },
     {
       topicId: 'bayes-formula',
       errorRate: 0.8,
       misconception: "Confuses P(A|B) with P(B|A) - the prosecutor's fallacy",
+      misconceptionDistractor: 1, // post_4: "Posterior" (confuses likelihood with posterior)
+      evidenceKeywords: ['bayes', 'likelihood', 'P(B|A)', 'posterior', 'formula'],
     },
     {
       topicId: 'medical-application',
       errorRate: 0.9,
       misconception:
         'Thinks high test accuracy means high probability of disease given positive test',
+      misconceptionDistractor: 0, // post_5: "Yes, 95% sensitive means 95% chance" (base rate neglect)
+      evidenceKeywords: ['false positive', 'sensitivity', 'specificity', 'screening', 'medical test'],
     },
   ],
 };
