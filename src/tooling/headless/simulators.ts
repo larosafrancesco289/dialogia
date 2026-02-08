@@ -122,9 +122,13 @@ export class LLMUserSimulator {
     ];
     if (context?.planSummary) {
       cues.push(`Learning plan context: ${context.planSummary}`);
+      cues.push(
+        'If any planned topics feel unnecessary or wrongly ordered given your background, mention it.',
+      );
     }
     if (context?.learnerModelSummary) {
       cues.push(`Learner model context: ${context.learnerModelSummary}`);
+      cues.push('If the assessment of your knowledge seems inaccurate, correct it.');
     }
     if (this.knowledgeGaps.length > 0) {
       cues.push(

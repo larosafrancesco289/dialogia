@@ -32,7 +32,7 @@ import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { buildJudgeMessages, type JudgeVerdict } from '@/tooling/eval/judgePrompts';
 import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learner-model';
 import { summarizeLearningPlan } from '@/lib/learning-plan/service';
-import { getOpenRouterKeyFallback } from '@/lib/env/server';
+import { getOpenRouterKeyFallback } from '@/lib/env/keys';
 import { fetchModels } from '@/lib/openrouter';
 import {
   ABLATION_CONDITIONS,
@@ -183,7 +183,7 @@ type AblationCheckpoint = {
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 5000;
 const CHECKPOINT_FILENAME = 'ablation-checkpoint.json';
-const DEFAULT_CONCURRENCY = 3;
+const DEFAULT_CONCURRENCY = 4;
 const MAX_CONCURRENCY = 10;
 
 // ============================================================================
@@ -759,19 +759,21 @@ async function runSingleAblation(
     },
   });
 
-  // Setup student simulator with condition-independent realistic behaviors
-  // NOTE: We intentionally do NOT tell the simulator about editability per condition.
-  // This avoids confounding student behavior with system capability.
-  // The simulator behaves identically; only the system's ability to respond differs.
+  // Setup student simulator with condition-independent realistic behaviors.
+  // Students are given natural motivations (via persona/constraints) to request
+  // curriculum changes and mastery corrections, but are NOT told whether the system
+  // can act on these requests. The same behaviors occur across all conditions;
+  // only the system's ability to respond differs.
   const conditionConfig = CONDITION_CONFIGS[condition];
   const realisticStudentBehaviors = [
-    'As a realistic student, you may naturally:',
-    '- Mention if you already understand something well or find it too easy',
-    '- Express confusion about why a topic is being covered',
-    '- Ask to focus more on areas where you struggle',
-    '- Speak up if the tutor seems to misjudge your level (too advanced or too basic)',
-    '- Request to skip ahead or slow down based on your comfort',
-    'Express these preferences naturally when they arise - do not force them.',
+    'As a realistic student, you should naturally:',
+    '- If you already know a topic, tell the tutor you want to skip it or move faster',
+    '- If you think topics should be covered in a different order, suggest a change',
+    '- If a topic feels irrelevant to your goal or exam, say so and ask to skip it',
+    '- Ask to spend more time on topics you find difficult or important',
+    '- If the tutor over- or under-estimates your knowledge level, correct them directly',
+    '- Express frustration if coverage feels redundant or too slow for your needs',
+    'Act on these when your persona and constraints call for it — do not force them every turn.',
   ].join('\n');
 
   const studentSim = new LLMUserSimulator({
@@ -979,14 +981,14 @@ function extractEditEvents(
 
   const looksLikePlanEditRequest = (text: string | undefined): boolean => {
     if (!text) return false;
-    return /\b(skip|remove|add|insert|reorder|change order|move|drop|swap|edit plan|update plan)\b/i.test(
+    return /\b(skip|remove|drop|don't need|add|insert|reorder|change order|move|swap|different order|edit plan|update plan|modify plan|adjust plan|change the plan|already know|already understand|already covered|already learned|jump ahead|jump to|go straight to|get straight to|not on the exam|not on my exam|not on the midterm|not tested|not relevant|not important|focus on|focus more|spend more time|spend less time|too basic|too easy|too simple|waste of time|redundant)\b/i.test(
       text,
     );
   };
 
   const looksLikeModelOverrideRequest = (text: string | undefined): boolean => {
     if (!text) return false;
-    return /\b(too high|too low|overestimating|underestimating|I already know|I know this|I don't know|my mastery|my confidence|adjust|update)\b/i.test(
+    return /\b(too high|too low|overestimating|underestimating|I already know|I know this|I don't know|my mastery|my confidence|adjust|update|actually good at|actually understand|better than you think|not as weak|still confused|still don't get|still don't understand|still struggling|that was too easy|that was too hard|stronger than|weaker than|misjudging|wrong about my|know more than|know less than)\b/i.test(
       text,
     );
   };

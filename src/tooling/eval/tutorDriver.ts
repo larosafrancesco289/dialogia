@@ -15,7 +15,7 @@ import type { Chat, Message, ModelDescriptor, ModelTransport } from '@/lib/types
 import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learner-model';
 import { generatePlanContextPreamble } from '@/lib/agent/tutor/planContext';
 import { isTutorContentTool, isTutorMetaTool, isSearchTool } from '@/lib/agent/tools/categories';
-import { getOpenRouterKeyFallback } from '@/lib/env/server';
+import { getOpenRouterKeyFallback } from '@/lib/env/keys';
 import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
 import { createOpenRouterAccess } from '@/lib/openrouter/pipeline';
 
