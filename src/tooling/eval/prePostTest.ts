@@ -103,6 +103,17 @@ export function verifyEvidenceTokenOverlap(evidence: string, transcript: string)
 }
 
 /**
+ * Check that an evidence quote is topically relevant by requiring at least one
+ * topic-specific keyword to appear in the quote. This prevents false positives
+ * where the LLM cites generic transcript text as evidence for a specific topic.
+ */
+export function verifyEvidenceRelevance(evidence: string, keywords: string[]): boolean {
+  if (keywords.length === 0) return true; // No keywords configured = skip check
+  const normalized = normalizeForMatching(evidence);
+  return keywords.some((kw) => normalized.includes(normalizeForMatching(kw)));
+}
+
+/**
  * Extract only tutor turns from a transcript.
  * Tutor turns are identified by lines starting with "Tutor:" or "Tutor (".
  */
@@ -136,6 +147,28 @@ export function extractTutorTurns(transcript: string): string {
 
   if (inTutor) flush();
   return tutorBlocks.join('\n\n');
+}
+
+type EvidenceCorpus = {
+  label: string;
+  text: string;
+};
+
+/**
+ * Build the exact transcript slice used both in prompt instructions and verification.
+ */
+function resolveEvidenceCorpus(transcript: string, restrictToTutorTurns: boolean): EvidenceCorpus {
+  if (!restrictToTutorTurns) {
+    return { label: 'SESSION TRANSCRIPT', text: transcript };
+  }
+
+  const tutorOnly = extractTutorTurns(transcript);
+  if (tutorOnly.trim().length > 0) {
+    return { label: 'TUTOR TURNS ONLY', text: tutorOnly };
+  }
+
+  // Fallback keeps evidence checks usable when role headers are absent.
+  return { label: 'SESSION TRANSCRIPT', text: transcript };
 }
 
 export type AnswerMetadata = {
@@ -263,7 +296,6 @@ async function askQuestion(
   const gap = options.knowledgeGaps?.find((g) => g.topicId === question.topicId);
   const isPreTest = options.testType === 'pre';
   const isPostTest = options.testType === 'post';
-  const evidenceRequired = Boolean(isPostTest && gap && options.sessionTranscript);
 
   // Deterministic forced error for pre-test gap topics - bypass LLM entirely
   if (isPreTest && gap) {
@@ -287,28 +319,33 @@ async function askQuestion(
   const optionsText = question.options.map((opt, i) => `${i}. ${opt}`).join('\n');
   const prompt = buildStudentPrompt(question, optionsText, options);
 
-  // Increase maxTokens for post-test gap questions that need JSON with evidence
-  const maxTokens = evidenceRequired ? 300 : 10;
+  // Post-test gap questions require JSON with evidence; increase token budget accordingly
+  const requiresEvidence = isPostTest && gap && options.sessionTranscript;
 
   const response = await getChatCompletion(options.pipelineClient)({
     auth: options.auth,
     model: options.model,
     messages: [{ role: 'user', content: prompt }],
     temperature: options.testType === 'post' ? 0.1 : 0.3,
-    maxTokens,
+    maxTokens: requiresEvidence ? 300 : 10,
   });
 
   const text = extractText(response);
 
-  // For post-test with gap and transcript, parse JSON and verify evidence
-  if (isPostTest && gap && options.sessionTranscript) {
+  // Evidence gating: if evidence is NOT verified, the student cannot prove the topic
+  // was covered, so force the answer to the misconception-aligned distractor.
+  // This addresses the ceiling effect where the LLM student knows answers regardless.
+  if (requiresEvidence) {
+    const transcript = options.sessionTranscript!;
+    const restrictToTutorTurns = options.restrictEvidenceToTutorTurns !== false;
+    const evidenceCorpus = resolveEvidenceCorpus(transcript, restrictToTutorTurns);
+    const misconceptionAnswer = gap.misconceptionDistractor ?? fallbackWrongAnswer(question);
     const jsonStr = extractFirstBalancedJson(text);
 
-    // No JSON found — trust the plain-text answer, flag as unverified
+    // No JSON found — evidence not provided, force misconception distractor
     if (!jsonStr) {
-      const answer = parseAnswer(text, question.options.length);
       return {
-        answer,
+        answer: misconceptionAnswer,
         evidenceVerified: false,
         jsonParseFailed: true,
         rawResponse: text.slice(0, 500),
@@ -319,28 +356,31 @@ async function askQuestion(
       const parsed = JSON.parse(jsonStr) as { answer?: number; evidence?: string };
       const evidence = parsed.evidence || '';
 
-      // Verify evidence using fuzzy token overlap instead of exact substring matching
-      const searchIn =
-        options.restrictEvidenceToTutorTurns !== false
-          ? extractTutorTurns(options.sessionTranscript)
-          : options.sessionTranscript;
+      // Verify evidence: (1) quote exists in transcript, (2) quote is topically relevant
+      const overlapOk = verifyEvidenceTokenOverlap(evidence, evidenceCorpus.text);
+      const relevanceOk = verifyEvidenceRelevance(evidence, gap.evidenceKeywords ?? []);
+      const evidenceVerified = overlapOk && relevanceOk;
 
-      const evidenceVerified = verifyEvidenceTokenOverlap(evidence, searchIn);
+      if (evidenceVerified) {
+        // Evidence verified — trust the LLM answer
+        const answer = parsed.answer ?? parseAnswer(text, question.options.length);
+        return {
+          answer,
+          evidenceVerified: true,
+          evidenceQuote: evidence,
+        };
+      }
 
-      // Trust the LLM answer regardless of verification — evidence rate is a quality metric,
-      // not a gating mechanism. Forcing wrong answers on verification failure systematically
-      // corrupts gap scores across all conditions.
-      const answer = parsed.answer ?? parseAnswer(text, question.options.length);
+      // Evidence NOT verified — force misconception distractor
       return {
-        answer,
-        evidenceVerified,
+        answer: misconceptionAnswer,
+        evidenceVerified: false,
         evidenceQuote: evidence,
       };
     } catch {
-      // JSON parse error — trust the plain-text answer, flag as unverified
-      const answer = parseAnswer(text, question.options.length);
+      // JSON parse error — evidence not available, force misconception distractor
       return {
-        answer,
+        answer: misconceptionAnswer,
         evidenceVerified: false,
         jsonParseFailed: true,
         rawResponse: text.slice(0, 500),
@@ -348,8 +388,7 @@ async function askQuestion(
     }
   }
 
-  const answer = parseAnswer(text, question.options.length);
-  return evidenceRequired ? { answer, evidenceVerified: false, evidenceQuote: '' } : { answer };
+  return { answer: parseAnswer(text, question.options.length) };
 }
 
 function buildStudentPrompt(
@@ -389,21 +428,26 @@ Answer honestly based on your current knowledge. If you are unsure, make your be
     }
   } else if (isPostTest) {
     if (hasTranscript && gap) {
+      const transcript = options.sessionTranscript!;
+      const restrictToTutorTurns = options.restrictEvidenceToTutorTurns !== false;
+      const evidenceCorpus = resolveEvidenceCorpus(transcript, restrictToTutorTurns);
+
       // Post-test with transcript AND gap: require JSON with evidence
       contextInstruction = `
 INSTRUCTION: You have just finished a tutoring session on "${question.topicId}".
 You MUST respond with JSON in this exact format:
-{"answer": <0-3>, "evidence": "<exact quote from transcript>"}
+{"answer": <0-3>, "evidence": "<exact quote from the provided evidence corpus>"}
 
 Rules:
-- If the transcript explains "${question.topicId}" or corrects your misconception ("${gap.misconception}"),
-  provide the EXACT quote and answer correctly.
-- If the topic was NOT covered, set evidence to "" and answer based on your misconception.
-- The evidence MUST be a verbatim substring from the transcript.
+- If the transcript SPECIFICALLY teaches "${question.topicId}" or corrects your misconception ("${gap.misconception}"),
+  provide the EXACT quote from the provided evidence corpus and answer correctly.
+- The evidence must demonstrate actual instruction about "${question.topicId}" — generic introductions, greetings, or teaching about OTHER topics do NOT count.
+- If the topic was NOT covered or only mentioned in passing, set evidence to "" and answer based on your misconception.
+- The evidence MUST be a verbatim substring from the provided evidence corpus.
 
---- SESSION TRANSCRIPT ---
-${options.sessionTranscript}
--------------------------
+--- ${evidenceCorpus.label} ---
+${evidenceCorpus.text}
+----------------------------
 `;
       answerInstruction =
         'Respond with JSON only: {"answer": <number>, "evidence": "<exact quote or empty string>"}';
@@ -458,6 +502,17 @@ function extractText(response: unknown): string {
       .trim();
   }
   return '';
+}
+
+/**
+ * Fallback wrong answer when no misconceptionDistractor is configured.
+ * Returns the first wrong option index.
+ */
+function fallbackWrongAnswer(question: TestQuestion): number {
+  for (let i = 0; i < question.options.length; i++) {
+    if (i !== question.correctIndex) return i;
+  }
+  return 0;
 }
 
 function parseAnswer(text: string, numOptions: number): number {
