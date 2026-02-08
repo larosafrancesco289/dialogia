@@ -15,7 +15,7 @@ import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { parseArgs } from '@/lib/cli/args';
 import { loadEnvDefaults } from '@/lib/cli/env.node';
-import { getOpenRouterKeyFallback } from '@/lib/env/server';
+import { getOpenRouterKeyFallback } from '@/lib/env/keys';
 import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
 import { createOpenRouterAccess } from '@/lib/openrouter/pipeline';
 

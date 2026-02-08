@@ -113,12 +113,6 @@ export function getDeepResearchReasoningOnly(): boolean {
   return readBooleanValue(process.env.DEEP_RESEARCH_REASONING_ONLY, true);
 }
 
-export function getOpenRouterKeyFallback(): string | undefined {
-  return (
-    getServerOpenRouterKey() ||
-    readEnvValue(process.env.NEXT_PUBLIC_OPENROUTER_API_KEY) ||
-    readEnvValue(process.env.OPENROUTER_KEY)
-  );
-}
+export { getOpenRouterKeyFallback } from '@/lib/env/keys';
 
 export { isProd };
