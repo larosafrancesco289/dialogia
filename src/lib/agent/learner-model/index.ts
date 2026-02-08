@@ -2,6 +2,7 @@ export {
   applyLearnerModelFeedback,
   calculateMastery,
   initializeLearnerModel,
+  resolveNodeId,
   syncLearnerModelWithPlan,
   updateLearnerModel,
 } from './core';

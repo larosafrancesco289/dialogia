@@ -4,6 +4,7 @@ import {
   applyLearnerModelFeedback,
   getLatestLearnerModel,
   initializeLearnerModel,
+  resolveNodeId,
   updateLearnerModel,
 } from '@/lib/agent/learner-model';
 import { processPlanProgress } from '@/lib/learning-plan/service';
@@ -267,6 +268,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
         misconceptionId,
         misconceptionDescription,
       });
+      const resolvedId = resolveNodeId(currentModel.mastery, nodeId) ?? nodeId;
 
       const planResult = await processPlanProgress(plan, result.model);
       const hasMasteryDelta = result.from != null && result.to != null && result.from !== result.to;
@@ -280,15 +282,15 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
           summary = `${nodeMeta.name}: mastery reviewed (learner feedback)`;
         }
       } else if (hasMasteryDelta) {
-        summary = `Adjusted mastery for ${nodeId}`;
+        summary = `Adjusted mastery for ${resolvedId}`;
       } else {
-        summary = `Reviewed mastery for ${nodeId}`;
+        summary = `Reviewed mastery for ${resolvedId}`;
       }
 
       const planUpdatesWithSummary: Message['planUpdates'] | undefined =
         (planResult?.planUpdates as Message['planUpdates'] | undefined) ??
         (hasMasteryDelta
-          ? { masteryChanges: [{ nodeId, from: result.from!, to: result.to! }] }
+          ? { masteryChanges: [{ nodeId: resolvedId, from: result.from!, to: result.to! }] }
           : undefined);
 
       if (planUpdatesWithSummary) {
@@ -302,7 +304,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
         planUpdates: planUpdatesWithSummary,
         updatedPlan: planResult?.updatedPlan ?? plan,
         learnerModelDebug: {
-          nodeId,
+          nodeId: resolvedId,
           weight: (result.to ?? 0) - (result.from ?? 0),
           oldConfidence: result.from,
           newConfidence: result.to,
@@ -388,8 +390,9 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
       });
     });
 
-    const oldConfidence = currentModel.mastery[nodeId]?.confidence ?? 0;
-    const newConfidence = updatedModel.mastery[nodeId]?.confidence ?? oldConfidence;
+    const resolvedId = resolveNodeId(currentModel.mastery, nodeId) ?? nodeId;
+    const oldConfidence = currentModel.mastery[resolvedId]?.confidence ?? 0;
+    const newConfidence = updatedModel.mastery[resolvedId]?.confidence ?? oldConfidence;
 
     const hasMasteryDelta = oldConfidence !== newConfidence;
     const label = nodeMeta?.name ?? nodeId;
@@ -404,7 +407,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
 
     const planUpdatesWithSummary: Message['planUpdates'] | undefined = hasMasteryDelta
       ? {
-          masteryChanges: [{ nodeId, from: oldConfidence, to: newConfidence }],
+          masteryChanges: [{ nodeId: resolvedId, from: oldConfidence, to: newConfidence }],
           summary,
         }
       : undefined;
@@ -416,7 +419,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
       planUpdates: planUpdatesWithSummary,
       updatedPlan: plan,
       learnerModelDebug: {
-        nodeId,
+        nodeId: resolvedId,
         nodeName: nodeMeta?.name,
         evidenceType: evidenceToApply[0]?.type,
         weight: appliedWeight,

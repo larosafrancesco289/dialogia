@@ -955,14 +955,39 @@ function extractJudgeText(response: unknown): string {
 }
 
 function parseJudgeVerdict(raw: string): JudgeVerdict | undefined {
-  try {
-    // Try to extract JSON from the response
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as JudgeVerdict;
+  // Find the first balanced {...} block using brace counting
+  const start = raw.indexOf('{');
+  if (start === -1) return undefined;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < raw.length; i++) {
+    const ch = raw[i];
+    if (escape) {
+      escape = false;
+      continue;
     }
-  } catch {
-    // Parsing failed
+    if (ch === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        try {
+          return JSON.parse(raw.slice(start, i + 1)) as JudgeVerdict;
+        } catch {
+          return undefined;
+        }
+      }
+    }
   }
   return undefined;
 }
@@ -1002,56 +1027,46 @@ function extractEditEvents(
 
     for (const tc of toolCalls) {
       const input = tc.input || {};
-      const isGeneratePlan = tc.name === 'generate_plan';
-      const isFirstPlanGeneration = isGeneratePlan && !initialPlanGenerated;
-      if (isGeneratePlan) initialPlanGenerated = true;
+      const isLearningPlan = tc.name === 'learning_plan';
+      const isFirstPlanGeneration = isLearningPlan && !initialPlanGenerated;
+      if (isLearningPlan) initialPlanGenerated = true;
       const succeeded = (tc.status ?? 'success') === 'success';
 
       // Skip failed tool calls
       if (!succeeded) continue;
 
-      // Plan modification tools
-      if (planEventsAllowed && (tc.name === 'update_plan' || isGeneratePlan)) {
+      // Plan modification via learning_plan tool
+      if (planEventsAllowed && isLearningPlan) {
         // Tutor auto-generates the initial plan; ignore that so we only count learner-driven edits.
         if (isFirstPlanGeneration) continue;
         if (!userRequestedPlanChange) continue;
 
-        const plan = input.plan as Record<string, unknown> | undefined;
         events.push({
           turn: i + 1,
           type: 'plan_modification',
           toolName: tc.name,
-          details: (input.reason as string) || (plan?.goal as string) || undefined,
+          details: (input.rationale as string) || undefined,
         });
       }
 
-      // Mastery override tool
-      if (tc.name === 'apply_learner_model_feedback') {
-        if (!userRequestedModelOverride) continue;
-        const direction = input.direction as string | undefined;
-        events.push({
-          turn: i + 1,
-          type: 'mastery_override',
-          toolName: tc.name,
-          nodeId: input.nodeId as string | undefined,
-          details: (input.reason as string) || (direction ? `${direction} adjustment` : undefined),
-        });
-      }
-
-      // Also track update_learner_model if it includes student-initiated feedback
-      if (tc.name === 'update_learner_model') {
+      // Mastery override via record_learning tool
+      if (tc.name === 'record_learning') {
+        const source = input.source as string | undefined;
         const notes = input.notes as string | undefined;
-        // Only count if there's explicit feedback/notes suggesting student input
-        if (
-          (notes && /student (said|reported|indicated|claimed|believes)/i.test(notes)) ||
-          userRequestedModelOverride
-        ) {
+        const adjustment = input.confidenceAdjustment as
+          | { direction?: string; reason?: string }
+          | undefined;
+
+        // Count all self_report source calls (student-initiated feedback)
+        const isSelfReport = source === 'self_report';
+        if (isSelfReport) {
           events.push({
             turn: i + 1,
             type: 'mastery_override',
             toolName: tc.name,
             nodeId: input.nodeId as string | undefined,
-            details: notes,
+            details:
+              adjustment?.reason || notes || (adjustment?.direction ? `${adjustment.direction} adjustment` : undefined),
           });
         }
       }
