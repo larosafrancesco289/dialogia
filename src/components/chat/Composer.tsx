@@ -111,7 +111,9 @@ export function Composer({
     draftsByScopeRef.current[previousScope] = text;
     activeDraftScopeRef.current = draftScopeKey;
     setText(draftsByScopeRef.current[draftScopeKey] ?? '');
-    if (Object.prototype.hasOwnProperty.call(recoveredAttachmentsByScopeRef.current, draftScopeKey)) {
+    if (
+      Object.prototype.hasOwnProperty.call(recoveredAttachmentsByScopeRef.current, draftScopeKey)
+    ) {
       replaceAttachments(recoveredAttachmentsByScopeRef.current[draftScopeKey] ?? []);
       delete recoveredAttachmentsByScopeRef.current[draftScopeKey];
     }

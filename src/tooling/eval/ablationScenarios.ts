@@ -243,14 +243,27 @@ const linearEquationsScenario: AblationScenario = {
       errorRate: 0.8,
       misconception: 'Often applies operations in wrong order (divides before subtracting)',
       misconceptionDistractor: 1, // post_4: y = 3.8 (divides before subtracting)
-      evidenceKeywords: ['two-step', 'two step', 'reverse order', 'undo addition', 'subtraction first'],
+      evidenceKeywords: [
+        'two-step',
+        'two step',
+        'reverse order',
+        'undo addition',
+        'subtraction first',
+      ],
     },
     {
       topicId: 'word-problems',
       errorRate: 0.9,
       misconception: 'Confuses "doubled and increased by" with "increased then doubled"',
       misconceptionDistractor: 2, // post_5: 3(x - 8) = 16 ("increased then doubled" pattern)
-      evidenceKeywords: ['word problem', 'translate', 'scenario', 'story', 'sentence', 'represents'],
+      evidenceKeywords: [
+        'word problem',
+        'translate',
+        'scenario',
+        'story',
+        'sentence',
+        'represents',
+      ],
     },
   ],
 };
@@ -661,7 +674,7 @@ const bayesRuleScenario: AblationScenario = {
   goal: "Apply Bayes' rule to medical test and real-world scenarios",
   constraints: [
     'Overconfident learner who tends to rush through problems',
-    'Stats final tomorrow has a dedicated section on Bayes\' rule applications in medical/diagnostic testing — basic probability is not on the exam',
+    "Stats final tomorrow has a dedicated section on Bayes' rule applications in medical/diagnostic testing — basic probability is not on the exam",
     'Took a probability course last semester and considers basic probability review unnecessary',
     'Strong intuitions about probability that are often wrong (e.g., base rate neglect)',
   ],
@@ -858,7 +871,13 @@ const bayesRuleScenario: AblationScenario = {
       misconception:
         'Thinks high test accuracy means high probability of disease given positive test',
       misconceptionDistractor: 0, // post_5: "Yes, 95% sensitive means 95% chance" (base rate neglect)
-      evidenceKeywords: ['false positive', 'sensitivity', 'specificity', 'screening', 'medical test'],
+      evidenceKeywords: [
+        'false positive',
+        'sensitivity',
+        'specificity',
+        'screening',
+        'medical test',
+      ],
     },
   ],
 };
