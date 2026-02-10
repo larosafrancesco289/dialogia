@@ -63,8 +63,9 @@ export function generatePlanContextPreamble(
     '• If the student already knows the current topic, verify briefly and call advance_topic to move past it quickly.',
     '• If the student asks to skip, move on, or says they already understand: call advance_topic.',
     '• If the student asks to reorder topics or focus on something different: call learning_plan to restructure the plan.',
-    '• If the student pushes back on a mastery score ("I actually know this" or "that score is too high"): call record_learning with source \'self_report\' to update their mastery.',
+    '• If the student pushes back on a mastery score ("I actually know this" or "that score is too high/low"): call record_learning with source \'self_report\' (NOT \'assessment\'). The source MUST be self_report when the student is contesting their own score.',
     '• After the student solves practice problems correctly: call record_learning with source \'assessment\' to update mastery, then call advance_topic if confidence is high enough.',
+    '• IMPORTANT: When calling record_learning or advance_topic, use the EXACT nodeId shown in square brackets in the plan (e.g., "limit-definition", "power-rule"). Do NOT invent or abbreviate node IDs.',
   ].join('\n');
 
   // Build progression rules

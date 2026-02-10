@@ -277,6 +277,73 @@ test('post-test gap questions use fallback wrong answer when no misconceptionDis
   assert.equal(result.answers[0], 1, 'Should use first wrong answer as fallback distractor');
 });
 
+test('post-test gap questions parse evidence with LaTeX backslashes', async () => {
+  const question: TestQuestion = {
+    id: 'q_latex',
+    topicId: 'limit-definition',
+    difficulty: 'easy',
+    question: 'The limit definition of the derivative involves:',
+    options: ['Taking h to infinity', 'Taking h to zero', 'Finding the average slope', 'Computing the integral'],
+    correctIndex: 1,
+  };
+
+  const gap: KnowledgeGap = {
+    topicId: 'limit-definition',
+    misconception: 'Confuses derivative with integral',
+    errorRate: 0.7,
+    misconceptionDistractor: 3,
+    evidenceKeywords: ['limit', 'h to zero', 'h to 0', 'tangent'],
+  };
+
+  // Simulate LLM returning evidence with LaTeX backslashes that break JSON.parse
+  // \lim has \l (invalid JSON escape), \frac has \f (formfeed), \to has \t (tab)
+  const latexEvidence =
+    '$$f\'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}$$';
+  const pipelineClient = {
+    chatCompletion: async () => ({
+      id: 'test-completion',
+      object: 'chat.completion',
+      created: Date.now(),
+      model: 'test-model',
+      choices: [
+        {
+          index: 0,
+          finish_reason: 'stop',
+          message: {
+            role: 'assistant',
+            content: `{"answer": 1, "evidence": "${latexEvidence}"}`,
+          },
+        },
+      ],
+    }),
+    streamChatCompletion: async () => undefined,
+  } satisfies PipelineClient;
+
+  const transcript =
+    'Tutor: The limit definition is f\'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}. We take h to zero to find the instantaneous rate of change.';
+
+  const result = await administerTest([question], 'post', {
+    auth: { transport: 'openrouter', useProxy: true },
+    model: 'test-model',
+    pipelineClient,
+    knowledgeGaps: [gap],
+    testType: 'post',
+    sessionTranscript: transcript,
+    runId: 'run-latex',
+  });
+
+  // Should NOT be flagged as JSON parse failure — LaTeX sanitization should handle it
+  assert.equal(
+    result.answerMetadata?.[0]?.jsonParseFailed,
+    undefined,
+    'Should not flag as JSON parse failure when LaTeX can be sanitized',
+  );
+  // Evidence should be verified since the transcript contains matching content
+  assert.equal(result.answerMetadata?.[0]?.evidenceVerified, true);
+  // Should trust the LLM answer (1 = correct)
+  assert.equal(result.answers[0], 1, 'Should trust LLM answer when LaTeX evidence is verified');
+});
+
 test('verifyEvidenceTokenOverlap accepts paraphrased evidence', () => {
   const transcript =
     'Tutor: To solve equations, you need to isolate the variable by performing inverse operations on both sides.';
