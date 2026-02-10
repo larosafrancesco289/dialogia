@@ -140,7 +140,7 @@ export class LLMUserSimulator {
       cues.push(`Your mastery scores (visible on screen): ${context.learnerModelSummary}`);
       if (context.learnerModelEditable) {
         cues.push(
-          'These mastery scores are editable — you can ask the tutor to correct them. You know your own understanding better than any algorithm. If a score feels too generous for a topic where you are actually confused, or too harsh for something you feel solid on, you would not just accept it — you would push back and explain what you really know.',
+          'These mastery scores are editable — you can ask the tutor to correct them. Look at the scores and compare them to what you actually know. When a score does not match your real confidence, tell the tutor directly. For example: "That 40% on power rule is too low — I can do basic power rule problems fine, it should be higher" or "The score on sum rule is too high, I\'m actually still confused about when to use it." You do not silently accept scores that feel wrong — you speak up so the tutor can fix them.',
         );
       }
       // Non-editable: no mastery agency cue. Scores are visible but the student
