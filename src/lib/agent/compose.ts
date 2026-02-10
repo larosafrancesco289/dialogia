@@ -84,19 +84,19 @@ export async function composeTurn({
 
     // Add learning plan context if plan exists
     const allowPlanContext = tutorToolPolicy?.researchMode !== 'model_only';
+    // Tutor always sees the numerical learner model (it's internal system state).
+    // learnerModelVisible controls student-facing UI only, not tutor context.
     const allowLearnerModelContext = tutorToolPolicy?.researchMode !== 'plan_only';
-    const learnerModelVisible = chat.settings.features.tutor.learnerModelVisible ?? true;
-    const includeLearnerModelContext = allowLearnerModelContext && learnerModelVisible;
     if (allowPlanContext && chat.settings.features.tutor.learningPlan) {
       const { generatePlanContextPreamble } = await import('@/lib/agent/tutor/planContext');
       const { getLatestLearnerModel } = await import('@/lib/agent/learner-model');
-      const learnerModel = includeLearnerModelContext
+      const learnerModel = allowLearnerModelContext
         ? getLatestLearnerModel(priorMessages)
         : undefined;
       const planContext = generatePlanContextPreamble(
         chat.settings.features.tutor.learningPlan,
         learnerModel,
-        { includeLearnerModel: includeLearnerModelContext },
+        { includeLearnerModel: allowLearnerModelContext },
       );
       if (planContext) preambles.push(planContext);
     }

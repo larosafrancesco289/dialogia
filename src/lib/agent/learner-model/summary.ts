@@ -28,7 +28,7 @@ export function generateModelSummary(model: LearnerModel, plan: LearningPlan): s
     }
 
     lines.push(
-      `${status} ${node.name}: ${confidence}% confident (${mastery.interactions} interactions)`,
+      `${status} ${node.name} [${node.id}]: ${confidence}% confident (${mastery.interactions} interactions)`,
     );
 
     // Include active misconceptions

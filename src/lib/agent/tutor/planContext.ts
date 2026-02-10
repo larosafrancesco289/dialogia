@@ -38,7 +38,7 @@ export function generatePlanContextPreamble(
 
   // Build current focus section
   const focusSection = [
-    `CURRENT FOCUS: ${currentNode.name}`,
+    `CURRENT FOCUS: ${currentNode.name} [${currentNode.id}]`,
     `Description: ${currentNode.description || 'No description'}`,
     'Learning Objectives:',
     ...currentNode.objectives.map((obj) => `  • ${obj}`),
