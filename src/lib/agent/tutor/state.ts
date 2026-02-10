@@ -51,12 +51,10 @@ export function getTutorPhase(chat: Chat, messages: Message[], ui?: UiSnapshot):
 const QUIZ_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('quiz'));
 const PLAN_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('plan'));
 const LEARNER_MODEL_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('learnerModel'));
-const THESIS_CORE_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('thesisCore'));
 const BASELINE_TOOLS: TutorToolName[] = getTutorToolsByTag('baseline');
 const DIAGNOSTIC_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('diagnostic'));
 
 export type TutorToolFilters = {
-  thesisMode?: boolean;
   researchMode?: TutorResearchMode;
   allowPlanTools?: boolean;
   allowLearnerModel?: boolean;
@@ -129,14 +127,6 @@ function applyTutorFilters(
     tools = tools.filter((name) => !QUIZ_TOOLS.has(name));
   }
 
-  if (filters?.thesisMode) {
-    const allowReadinessChecks = hasQuizAllowance && phase !== 'intake' && phase !== 'planning';
-    tools = tools.filter((name) => {
-      if (THESIS_CORE_TOOLS.has(name)) return true;
-      if (!allowReadinessChecks) return false;
-      return name === 'quiz';
-    });
-  }
 
   return Array.from(new Set(tools));
 }
@@ -163,14 +153,12 @@ export function deriveTutorToolPolicy(args: {
   const diagnosticsUsed = usage?.diagnosticsUsed ?? 0;
   const researchMode =
     chat.settings.features.tutor.researchMode || ui?.tutor.researchMode || 'plan_plus_model';
-  const thesisMode = chat.settings.features.tutor.thesisMode ?? ui?.tutor.thesisMode ?? false;
   const studyCondition = ui?.tutor.studyCondition ?? 'B';
   const planExists = !!chat.settings.features.tutor.learningPlan;
   // Condition A freezes plan tools once a plan exists; otherwise defer to research mode
   const conditionAFrozen = studyCondition === 'A' && planExists;
 
   return {
-    thesisMode,
     researchMode,
     allowPlanTools: !conditionAFrozen && researchMode !== 'model_only',
     allowLearnerModel:

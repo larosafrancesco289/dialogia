@@ -130,7 +130,7 @@ export class LLMUserSimulator {
       cues.push(`Learning plan context: ${context.planSummary}`);
       if (context.planEditable) {
         cues.push(
-          'You can see and modify the learning plan displayed on screen. If you want to skip a topic you already know, reorder topics to match your priorities, or focus on something specific, ask the tutor to change the plan.',
+          'The learning plan on screen is yours to shape. You are the kind of student who has strong opinions about what you need — you know your weak spots and your deadline. If the topic order feels wrong for your situation, or if the tutor is spending time on something you already get, you would naturally speak up and suggest a different order or ask to skip ahead.',
         );
       }
       // Non-editable: no plan agency cue. The plan is visible but the student
@@ -140,7 +140,7 @@ export class LLMUserSimulator {
       cues.push(`Your mastery scores (visible on screen): ${context.learnerModelSummary}`);
       if (context.learnerModelEditable) {
         cues.push(
-          'You can see your mastery scores for each topic on screen. If a score seems too high or too low, tell the tutor what you think your actual level is and ask them to update it.',
+          'These mastery scores are editable — you can ask the tutor to correct them. You know your own understanding better than any algorithm. If a score feels too generous for a topic where you are actually confused, or too harsh for something you feel solid on, you would not just accept it — you would push back and explain what you really know.',
         );
       }
       // Non-editable: no mastery agency cue. Scores are visible but the student

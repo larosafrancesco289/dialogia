@@ -81,8 +81,6 @@ export function getConditionSettings(condition: AblationCondition): ChatSettings
         learnerModelVisible: config.learnerModelVisible,
         disablePlanGeneration: true,
         planEditable: config.planEditable,
-        // Additional flags for fine-grained control (used by tutor/state.ts)
-        thesisMode: true,
       },
     },
   };

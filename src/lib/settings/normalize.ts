@@ -93,8 +93,6 @@ export function normalizeChatSettings(
         enabled: typeof tutorRecord.enabled === 'boolean' ? tutorRecord.enabled : false,
         defaultModelId:
           typeof tutorRecord.defaultModelId === 'string' ? tutorRecord.defaultModelId : undefined,
-        thesisMode:
-          typeof tutorRecord.thesisMode === 'boolean' ? tutorRecord.thesisMode : undefined,
         researchMode:
           typeof tutorRecord.researchMode === 'string' &&
           Object.values(TutorResearchModeEnum).includes(

@@ -30,10 +30,22 @@ function hashSeed(runId: string, questionId: string): number {
 // ============================================================================
 
 /**
- * Normalize text for fuzzy matching by lowercasing and collapsing whitespace.
+ * Normalize text for fuzzy matching by lowercasing, stripping LaTeX markup,
+ * and collapsing whitespace. LaTeX stripping converts common notation
+ * (e.g. `\lim_{h \to 0}`) into plain text (`lim h to 0`) so that
+ * evidence keywords like "h to zero" can match math-heavy transcripts.
  */
 export function normalizeForMatching(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, ' ').trim();
+  return text
+    .replace(/\$\$?/g, '') // strip $ and $$
+    .replace(/\\(?:frac|sqrt|text|mathrm|mathbf|mathit)\{([^}]*)\}/g, '$1') // unwrap \frac{...} etc.
+    .replace(/\\(lim|sin|cos|tan|log|ln|exp|inf|sum|prod|int)\b/g, '$1') // \lim → lim
+    .replace(/\\to\b/g, 'to') // \to → to
+    .replace(/[_{^}]/g, ' ') // braces/subscript/superscript → space
+    .replace(/\\/g, '') // remaining backslashes
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**

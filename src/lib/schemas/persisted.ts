@@ -57,7 +57,6 @@ export const TutorSettingsSchema = z
   .object({
     enabled: z.boolean(),
     defaultModelId: z.string().optional(),
-    thesisMode: z.boolean().optional(),
     researchMode: z.nativeEnum(TutorResearchModeEnum).optional(),
     toolBudget: TutorToolBudgetSchema.optional(),
     learningPlan: LearningPlanSchema.optional(),
