@@ -26,6 +26,7 @@ export async function composeTurn({
 }: ComposeTurnArgs): Promise<TurnComposition> {
   const tutorEnabled = settings.tutorEnabled;
   const searchEnabled = settings.searchEnabled;
+
   const searchProvider = settings.searchProvider || 'openrouter';
 
   const priorMessages = prior ?? [];

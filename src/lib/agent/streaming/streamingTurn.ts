@@ -196,6 +196,7 @@ export async function executeStreamingTurn(
   const supportsTools = isToolCallingSupported(modelMeta);
   const hasTools =
     supportsTools && Array.isArray(planningToolDefinition) && planningToolDefinition.length > 0;
+
   const combinedPlugins = Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined;
   const generation = settings.generation;
   const disableReasoning = caps.canReason && !isReasoningRequested(generation);

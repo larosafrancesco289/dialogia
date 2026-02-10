@@ -33,6 +33,7 @@ function buildToolCalls(accumulator: Map<number, Partial<ToolCall>>): ToolCall[]
 export async function streamChatCompletion(params: TransportStreamParams): Promise<void> {
   const callbacks = params.callbacks;
   const body = buildChatBody({
+
     model: params.model,
     messages: params.messages,
     stream: true,
