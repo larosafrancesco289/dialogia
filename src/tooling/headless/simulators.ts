@@ -130,7 +130,7 @@ export class LLMUserSimulator {
       cues.push(`Learning plan context: ${context.planSummary}`);
       if (context.planEditable) {
         cues.push(
-          'The learning plan on screen is yours to shape. You are the kind of student who has strong opinions about what you need — you know your weak spots and your deadline. If the topic order feels wrong for your situation, or if the tutor is spending time on something you already get, you would naturally speak up and suggest a different order or ask to skip ahead.',
+          'The learning plan on screen is yours to shape. You are the kind of student who takes charge of your own learning — you know your weak spots and your deadline. When the topic order does not match your priorities, you directly ask the tutor to change the plan. For example, you might say "Can you move the practice problems before the theory?" or "I want to skip topic X and jump to Y" or "Can we reorder the plan to start with what I need most for the exam?" You do not just hint — you make clear requests for the tutor to update the plan.',
         );
       }
       // Non-editable: no plan agency cue. The plan is visible but the student

@@ -58,10 +58,13 @@ export function generatePlanContextPreamble(
   // Build curriculum sequencing rules
   const sequencingSection = [
     'CURRICULUM SEQUENCING:',
-    '• You MUST teach topics in the order defined by the learning plan.',
-    '• Do not skip, reorder, or omit topics through conversation alone.',
+    '• Follow the learning plan topic order by default.',
+    '• Do not skip, reorder, or omit topics through conversation alone — use tools to make changes official.',
     '• If the student already knows the current topic, verify briefly and call advance_topic to move past it quickly.',
-    '• If the student requests skipping or reordering, acknowledge their preference and cover the current topic as efficiently as possible so you can reach their priority sooner.',
+    '• If the student asks to skip, move on, or says they already understand: call advance_topic.',
+    '• If the student asks to reorder topics or focus on something different: call learning_plan to restructure the plan.',
+    '• If the student pushes back on a mastery score ("I actually know this" or "that score is too high"): call record_learning with source \'self_report\' to update their mastery.',
+    '• After the student solves practice problems correctly: call record_learning with source \'assessment\' to update mastery, then call advance_topic if confidence is high enough.',
   ].join('\n');
 
   // Build progression rules
