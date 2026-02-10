@@ -30,7 +30,11 @@ import { resolveModelTransport } from '@/lib/providers';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { buildJudgeMessages, JUDGE_WEIGHTS, type JudgeVerdict } from '@/tooling/eval/judgePrompts';
-import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learner-model';
+import {
+  getLatestLearnerModel,
+  generateModelSummary,
+  initializeLearnerModel,
+} from '@/lib/agent/learner-model';
 import { summarizeLearningPlan } from '@/lib/learning-plan/service';
 import { getOpenRouterKeyFallback } from '@/lib/env/keys';
 import { fetchModels } from '@/lib/openrouter';
@@ -877,26 +881,11 @@ async function runSingleAblation(
     })),
   });
 
-  // Build default learner model from plan so student sees mastery scores from turn 1
-  const defaultLearnerModel: import('@/lib/types').LearnerModel | undefined = initialPlan
-    ? {
-        chatId: chat.id,
-        updatedAt: Date.now(),
-        version: 1,
-        mastery: Object.fromEntries(
-          initialPlan.nodes.map((node) => [
-            node.id,
-            {
-              nodeId: node.id,
-              confidence: 0.4,
-              interactions: 0,
-              lastInteraction: Date.now(),
-              evidence: [],
-              misconceptions: [],
-            },
-          ]),
-        ),
-      }
+  // Initialize learner model from plan (mirrors UI behaviour where the model
+  // is created right after the plan is adopted) so the student sees mastery
+  // scores from turn 1 in model-visible conditions.
+  const defaultLearnerModel = initialPlan
+    ? initializeLearnerModel(chat.id, initialPlan)
     : undefined;
 
   // Run tutoring session
