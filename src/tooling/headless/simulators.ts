@@ -113,7 +113,13 @@ export class LLMUserSimulator {
 
   async respond(
     tutorMessage: string,
-    context?: { planSummary?: string; learnerModelSummary?: string; turn?: number },
+    context?: {
+      planSummary?: string;
+      planEditable?: boolean;
+      learnerModelSummary?: string;
+      learnerModelEditable?: boolean;
+      turn?: number;
+    },
   ): Promise<string> {
     const cues: string[] = [
       tutorMessage,
@@ -122,13 +128,23 @@ export class LLMUserSimulator {
     ];
     if (context?.planSummary) {
       cues.push(`Learning plan context: ${context.planSummary}`);
-      cues.push(
-        'If any planned topics feel unnecessary or wrongly ordered given your background, mention it.',
-      );
+      if (context.planEditable) {
+        cues.push(
+          'You can see and modify the learning plan displayed on screen. If you want to skip a topic you already know, reorder topics to match your priorities, or focus on something specific, ask the tutor to change the plan.',
+        );
+      }
+      // Non-editable: no plan agency cue. The plan is visible but the student
+      // does not comment on ordering or request changes (ChatTutor-equivalent).
     }
     if (context?.learnerModelSummary) {
-      cues.push(`Learner model context: ${context.learnerModelSummary}`);
-      cues.push('If the assessment of your knowledge seems inaccurate, correct it.');
+      cues.push(`Your mastery scores (visible on screen): ${context.learnerModelSummary}`);
+      if (context.learnerModelEditable) {
+        cues.push(
+          'You can see your mastery scores for each topic on screen. If a score seems too high or too low, tell the tutor what you think your actual level is and ask them to update it.',
+        );
+      }
+      // Non-editable: no mastery agency cue. Scores are visible but the student
+      // does not contest or request corrections (passive OLM display).
     }
     if (this.knowledgeGaps.length > 0) {
       cues.push(

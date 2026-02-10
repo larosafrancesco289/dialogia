@@ -870,7 +870,9 @@ async function runSingleAblation(
 
     studentMessage = await studentSim.respond(tutorMessage, {
       planSummary,
+      planEditable: conditionConfig.planEditable,
       learnerModelSummary,
+      learnerModelEditable: conditionConfig.learnerModelEditable,
       turn,
     });
   }

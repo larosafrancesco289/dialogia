@@ -143,14 +143,14 @@ export function summarizeLearningPlan(plan: LearningPlan): string {
   ];
 
   if (currentNode) {
-    lines.push(`Current Focus: ${currentNode.name}`);
+    lines.push(`Current Focus: ${currentNode.name} [${currentNode.id}]`);
     lines.push(`Objectives: ${currentNode.objectives.join('; ')}`);
   }
 
   // List completed nodes
   const completedNodes = plan.nodes.filter((n) => n.status === 'completed');
   if (completedNodes.length > 0) {
-    lines.push(`Completed: ${completedNodes.map((n) => n.name).join(', ')}`);
+    lines.push(`Completed: ${completedNodes.map((n) => `${n.name} [${n.id}]`).join(', ')}`);
   }
 
   // List upcoming ready nodes
@@ -158,7 +158,7 @@ export function summarizeLearningPlan(plan: LearningPlan): string {
     (n) => n.status === 'not_started' && isNodeReady(n.id, plan),
   );
   if (upcomingNodes.length > 0 && upcomingNodes.length <= 3) {
-    lines.push(`Next up: ${upcomingNodes.map((n) => n.name).join(', ')}`);
+    lines.push(`Next up: ${upcomingNodes.map((n) => `${n.name} [${n.id}]`).join(', ')}`);
   }
 
   return lines.join('\n');
