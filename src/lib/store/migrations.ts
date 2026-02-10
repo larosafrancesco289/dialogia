@@ -48,7 +48,6 @@ const migrateUiToNested = (ui: Record<string, unknown>): Record<string, unknown>
   });
   const tutor = compactRecord({
     contextMode: readString(baseTutor?.contextMode) ?? readString(base.tutorContextMode),
-    thesisMode: readBoolean(baseTutor?.thesisMode) ?? readBoolean(base.tutorThesisMode),
     researchMode: readString(baseTutor?.researchMode) ?? readString(base.tutorResearchMode),
     defaultModelId: readString(baseTutor?.defaultModelId) ?? readString(base.tutorDefaultModelId),
     forceMode: readBoolean(baseTutor?.forceMode) ?? readBoolean(base.forceTutorMode),

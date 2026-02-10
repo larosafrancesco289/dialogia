@@ -19,7 +19,6 @@ export type TutorToolTag =
   | 'quiz'
   | 'plan'
   | 'learnerModel'
-  | 'thesisCore'
   | 'baseline'
   | 'diagnostic';
 
@@ -56,29 +55,29 @@ const TUTOR_TOOL_METADATA: Record<TutorToolName, ToolMetadata> = {
     category: 'tutor_content',
     phases: ['intake'],
     priorityGroup: 'intake',
-    tags: { baseline: true, thesisCore: true },
+    tags: { baseline: true },
   },
   create_diagnostic: {
     category: 'tutor_content',
     phases: ['intake', 'diagnostic'],
     priorityGroup: 'diagnostic',
-    tags: { diagnostic: true, thesisCore: true },
+    tags: { diagnostic: true },
   },
   learning_plan: {
     category: 'tutor_content',
     phases: ['intake', 'planning', 'teaching', 'practice'],
     priorityGroup: 'plan',
-    tags: { plan: true, thesisCore: true },
+    tags: { plan: true },
   },
   record_learning: {
     category: 'tutor_meta',
     phases: ['diagnostic', 'practice', 'review', 'teaching'],
-    tags: { learnerModel: true, thesisCore: true },
+    tags: { learnerModel: true },
   },
   advance_topic: {
     category: 'tutor_meta',
     phases: ['teaching', 'practice', 'review'],
-    tags: { plan: true, thesisCore: true },
+    tags: { plan: true },
   },
   quiz: {
     category: 'tutor_content',

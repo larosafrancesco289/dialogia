@@ -108,7 +108,6 @@ export function resolveNewChatSettings(opts: {
       tutor: {
         enabled: tutorEnabledSetting,
         defaultModelId: previousTutor?.defaultModelId,
-        thesisMode: previousTutor?.thesisMode,
         researchMode: previousTutor?.researchMode,
         toolBudget: previousTutor?.toolBudget,
         learningPlan: previousTutor?.learningPlan,

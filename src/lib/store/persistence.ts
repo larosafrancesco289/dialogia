@@ -53,7 +53,6 @@ export function buildPersistedState(state: StoreState): PersistedStoreState {
       debug: { mode: state.ui.debug.mode },
       tutor: {
         contextMode: state.ui.tutor.contextMode,
-        thesisMode: state.ui.tutor.thesisMode,
         researchMode: state.ui.tutor.researchMode,
         defaultModelId: state.ui.tutor.defaultModelId,
         forceMode: state.ui.tutor.forceMode,

@@ -445,14 +445,16 @@ const derivativesScenario: AblationScenario = {
     },
   ],
 
-  // Knowledge gaps: Student weak on conceptual and application topics (target pre-test: ~40%)
+  // Knowledge gaps: limit-definition and sum-rule (2 gaps, target pre-test: ~60%).
+  // Applications gap removed — 3 deep misconceptions was too many for a short session,
+  // producing net-negative learning gains across all conditions in pilot testing.
   knowledgeGaps: [
     {
       topicId: 'limit-definition',
       errorRate: 0.7,
       misconception: 'Confuses derivative with integral - thinks derivative finds area',
       misconceptionDistractor: 3, // post_1: "Computing the integral" (confuses derivative with integral)
-      evidenceKeywords: ['limit', 'h to zero', 'first principles', 'tangent', 'instantaneous'],
+      evidenceKeywords: ['limit', 'h to zero', 'h to 0', 'first principles', 'tangent', 'instantaneous'],
     },
     {
       topicId: 'sum-rule',
@@ -460,13 +462,6 @@ const derivativesScenario: AblationScenario = {
       misconception: 'Forgets to differentiate each term separately',
       misconceptionDistractor: 2, // post_4: 6x² - 5x (doesn't differentiate -5x correctly)
       evidenceKeywords: ['sum rule', 'term by term', 'each term', 'separately', 'difference rule'],
-    },
-    {
-      topicId: 'applications',
-      errorRate: 0.9,
-      misconception: 'Confuses velocity (derivative) with position (original function)',
-      misconceptionDistractor: 1, // post_5: 21 = s(3) = 3(9)-2(3), plugging into position instead
-      evidenceKeywords: ['rate of change', 'velocity', 'position', 'speed', 'motion'],
     },
   ],
 };

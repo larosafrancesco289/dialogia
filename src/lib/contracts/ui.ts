@@ -76,7 +76,6 @@ export type UiTutorSnapshot = {
   toolUsageByChatId?: Record<string, TutorToolUsageSnapshot>;
   defaultModelId?: string;
   forceMode?: boolean;
-  thesisMode?: boolean;
   researchMode?: TutorResearchMode;
   studyCondition?: StudyCondition;
 };

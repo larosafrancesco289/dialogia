@@ -863,7 +863,7 @@ async function runSingleAblation(
       `Goal: ${scenario.goal}`,
       `Persona: ${scenario.studentPersona}`,
       `Your pre-test score was ${preTest.score.toFixed(0)}%.`,
-      'Respond naturally, ask questions when confused, and occasionally make mistakes fitting your persona.',
+      'You are an active, opinionated learner — not a passive recipient. Respond naturally, ask questions when confused, push back when something feels off, and occasionally make mistakes fitting your persona.',
       scenario.constraints?.length ? `Constraints: ${scenario.constraints.join('; ')}` : '',
       '',
       realisticStudentBehaviors,
@@ -963,6 +963,7 @@ async function runSingleAblation(
   // Extract edit events (plan modifications, mastery overrides)
   const editEvents = extractEditEvents(result.snapshots, {
     planEditable: conditionConfig.planEditable,
+    planPreGenerated: true,
   });
   if (editEvents.length > 0) {
     console.log(
@@ -1090,11 +1091,13 @@ function parseJudgeVerdict(raw: string): JudgeVerdict | undefined {
  */
 function extractEditEvents(
   snapshots: HeadlessTurnSnapshot[],
-  options?: { planEditable?: boolean },
+  options?: { planEditable?: boolean; planPreGenerated?: boolean },
 ): EditEvent[] {
   const events: EditEvent[] = [];
   const planEventsAllowed = options?.planEditable !== false;
-  let initialPlanGenerated = false;
+  // If the plan was pre-generated (ablation mode), the first learning_plan call
+  // is an edit, not initial generation.
+  let initialPlanGenerated = options?.planPreGenerated === true;
 
   const looksLikePlanEditRequest = (text: string | undefined): boolean => {
     if (!text) return false;

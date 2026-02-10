@@ -25,7 +25,7 @@ The UI store persists only stable preferences (see `PersistedStoreState` in
 - `ui.showSettings`, `ui.sidebarCollapsed`, `ui.zdrOnly`, `ui.routePreference`
 - `ui.flags` (feature toggles)
 - `ui.debug.mode`
-- `ui.tutor` preferences (`contextMode`, `thesisMode`, `researchMode`, `defaultModelId`, `forceMode`)
+- `ui.tutor` preferences (`contextMode`, `researchMode`, `defaultModelId`, `forceMode`)
 
 Ephemeral UI state (streaming flags, per-message tutor attempts, search results, etc.) is not
 persisted.

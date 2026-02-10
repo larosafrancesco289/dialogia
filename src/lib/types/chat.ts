@@ -29,7 +29,6 @@ export type ChatSearchSettings = {
 export type TutorSettings = {
   enabled: boolean;
   defaultModelId?: string;
-  thesisMode?: boolean;
   researchMode?: TutorResearchMode;
   toolBudget?: TutorToolBudget;
   learningPlan?: LearningPlan;
