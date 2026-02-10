@@ -278,14 +278,17 @@ test('post-test gap questions use fallback wrong answer when no misconceptionDis
 });
 
 test('verifyEvidenceTokenOverlap accepts paraphrased evidence', () => {
-  const transcript = 'Tutor: To solve equations, you need to isolate the variable by performing inverse operations on both sides.';
+  const transcript =
+    'Tutor: To solve equations, you need to isolate the variable by performing inverse operations on both sides.';
   // Paraphrased — not an exact substring, but tokens overlap
-  const evidence = 'The tutor explained isolating the variable using inverse operations on both sides';
+  const evidence =
+    'The tutor explained isolating the variable using inverse operations on both sides';
   assert.equal(verifyEvidenceTokenOverlap(evidence, transcript), true);
 });
 
 test('verifyEvidenceTokenOverlap rejects unrelated evidence', () => {
-  const transcript = 'Tutor: To solve equations, you need to isolate the variable by performing inverse operations.';
+  const transcript =
+    'Tutor: To solve equations, you need to isolate the variable by performing inverse operations.';
   const evidence = 'The tutor discussed photosynthesis and cellular respiration in plants';
   assert.equal(verifyEvidenceTokenOverlap(evidence, transcript), false);
 });
@@ -340,7 +343,8 @@ test('verifyEvidenceRelevance accepts evidence with matching keyword', () => {
 });
 
 test('verifyEvidenceRelevance rejects evidence without any matching keyword', () => {
-  const evidence = 'Solving linear equations is a foundational skill that opens doors to much more in math.';
+  const evidence =
+    'Solving linear equations is a foundational skill that opens doors to much more in math.';
   const keywords = ['word problem', 'translate', 'scenario', 'story', 'sentence', 'represents'];
   assert.equal(verifyEvidenceRelevance(evidence, keywords), false);
 });

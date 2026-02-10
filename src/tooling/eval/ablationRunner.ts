@@ -29,11 +29,7 @@ import { createModelIndex, isReasoningSupported } from '@/lib/models';
 import { resolveModelTransport } from '@/lib/providers';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
-import {
-  buildJudgeMessages,
-  JUDGE_WEIGHTS,
-  type JudgeVerdict,
-} from '@/tooling/eval/judgePrompts';
+import { buildJudgeMessages, JUDGE_WEIGHTS, type JudgeVerdict } from '@/tooling/eval/judgePrompts';
 import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learner-model';
 import { summarizeLearningPlan } from '@/lib/learning-plan/service';
 import { getOpenRouterKeyFallback } from '@/lib/env/keys';
@@ -62,6 +58,7 @@ import {
   twoWayAnova,
   type TestResult,
   type AnovaResult,
+  type AnovaEffect,
 } from '@/tooling/eval/prePostTest';
 import type { Chat, ModelDescriptor, ModelTransport, LearnerModel } from '@/lib/types';
 import type { HeadlessTurnSnapshot } from '@/tooling/headless/types';
@@ -112,6 +109,8 @@ type AblationRunResult = {
 type MechanismMetrics = {
   planEditsCount: number;
   masteryOverridesCount: number;
+  advanceTopicCount: number;
+  runsWithAdvanceTopic: number;
   gapEvidenceVerifiedCount: number;
   gapEvidenceTotal: number;
   gapEvidenceJsonParseFailedCount: number;
@@ -135,13 +134,13 @@ type AblationSummary = {
     byCondition: Record<
       AblationCondition,
       {
-        learningGain: { mean: number; sd: number; n: number };
-        normalizedGain: { mean: number; sd: number; n: number };
-        gapLearningGain: { mean: number; sd: number; n: number };
-        gapNormalizedGain: { mean: number; sd: number; n: number };
-        turnsUsed: { mean: number; sd: number; n: number };
-        judgeScore: { mean: number; sd: number; n: number };
-        judgeSubscores: Record<string, { mean: number; sd: number; n: number }>;
+        learningGain: ReturnType<typeof calculateStats>;
+        normalizedGain: ReturnType<typeof calculateStats>;
+        gapLearningGain: ReturnType<typeof calculateStats>;
+        gapNormalizedGain: ReturnType<typeof calculateStats>;
+        turnsUsed: ReturnType<typeof calculateStats>;
+        judgeScore: ReturnType<typeof calculateStats>;
+        judgeSubscores: Record<string, ReturnType<typeof calculateStats>>;
         mechanismMetrics: MechanismMetrics;
       }
     >;
@@ -152,17 +151,41 @@ type AblationSummary = {
       interpretation: string;
       condition1Mean: number;
       condition2Mean: number;
-      tTest: { t: number; df: number; p: number; significant: boolean };
+      tTest: {
+        t: number;
+        df: number;
+        p: number;
+        significant: boolean;
+        ciLower: number;
+        ciUpper: number;
+      };
+      adjustedP: number; // Holm-Bonferroni corrected p (overall)
       // Gap-only metrics for comparisons
       gapCohenD: number;
       gapInterpretation: string;
       gapCondition1Mean: number;
       gapCondition2Mean: number;
-      gapTTest: { t: number; df: number; p: number; significant: boolean };
+      gapTTest: {
+        t: number;
+        df: number;
+        p: number;
+        significant: boolean;
+        ciLower: number;
+        ciUpper: number;
+      };
+      gapAdjustedP: number; // Holm-Bonferroni corrected p (gap)
       // Judge score comparison
       judgeCohenD: number;
       judgeInterpretation: string;
-      judgeTTest: { t: number; df: number; p: number; significant: boolean };
+      judgeTTest: {
+        t: number;
+        df: number;
+        p: number;
+        significant: boolean;
+        ciLower: number;
+        ciUpper: number;
+      };
+      judgeAdjustedP: number; // Holm-Bonferroni corrected p (judge)
     }>;
     interactionEffect: number;
     anova?: AnovaResult;
@@ -558,6 +581,26 @@ function validateScenario(scenario: AblationScenario): string[] {
         `Knowledge gap "${gap.topicId}" has invalid errorRate=${String(gap.errorRate)}; expected 0..1.`,
       );
     }
+
+    // Validate misconceptionDistractor index against the matching post-test question
+    if (gap.misconceptionDistractor != null) {
+      const postQ = scenario.postTestQuestions.find((q) => q.topicId === gap.topicId);
+      if (postQ) {
+        if (
+          gap.misconceptionDistractor < 0 ||
+          gap.misconceptionDistractor >= postQ.options.length
+        ) {
+          errors.push(
+            `Knowledge gap "${gap.topicId}" has misconceptionDistractor=${gap.misconceptionDistractor} out of bounds [0, ${postQ.options.length - 1}].`,
+          );
+        }
+        if (gap.misconceptionDistractor === postQ.correctIndex) {
+          errors.push(
+            `Knowledge gap "${gap.topicId}" has misconceptionDistractor=${gap.misconceptionDistractor} equal to correctIndex — distractor must differ from correct answer.`,
+          );
+        }
+      }
+    }
   }
 
   const gapTopicIds = new Set(scenario.knowledgeGaps.map((g) => g.topicId));
@@ -602,7 +645,9 @@ function assertValidScenarios(scenarios: AblationScenario[]): void {
 // Model Setup
 // ============================================================================
 
-const normalizeModelId = (id: string): string => id.trim().toLowerCase();
+function normalizeModelId(id: string): string {
+  return id.trim().toLowerCase();
+}
 
 async function resolveReasoningSupportMap(
   modelIds: string[],
@@ -948,6 +993,17 @@ async function runSingleAblation(
   const judgeRaw = extractJudgeText(judgeResponse);
   const judgeVerdict = parseJudgeVerdict(judgeRaw);
 
+  // Recompute overall_score from subscores using canonical weights
+  // instead of trusting the LLM's arithmetic
+  if (judgeVerdict?.subscores) {
+    let recomputed = 0;
+    for (const [dim, weight] of Object.entries(JUDGE_WEIGHTS)) {
+      const score = judgeVerdict.subscores[dim as keyof typeof JUDGE_WEIGHTS];
+      if (score != null) recomputed += score * weight;
+    }
+    judgeVerdict.overall_score = recomputed;
+  }
+
   const durationMs = Date.now() - startTime;
   console.log(
     `  [${runId}] Complete. Gain: ${learningGain >= 0 ? '+' : ''}${learningGain.toFixed(1)}%, ` +
@@ -1102,7 +1158,9 @@ function extractEditEvents(
             toolName: tc.name,
             nodeId: input.nodeId as string | undefined,
             details:
-              adjustment?.reason || notes || (adjustment?.direction ? `${adjustment.direction} adjustment` : undefined),
+              adjustment?.reason ||
+              notes ||
+              (adjustment?.direction ? `${adjustment.direction} adjustment` : undefined),
           });
         }
       }
@@ -1110,6 +1168,35 @@ function extractEditEvents(
   }
 
   return events;
+}
+
+// ============================================================================
+// Multiple Comparison Correction
+// ============================================================================
+
+/**
+ * Holm-Bonferroni step-down correction for a family of p-values.
+ * Returns adjusted p-values that control the family-wise error rate.
+ * The adjusted p for rank i = max(p_j * (m - j + 1)) for j = 1..i,
+ * capped at 1.0 and enforcing monotonicity.
+ */
+function holmBonferroni(pValues: number[]): number[] {
+  const m = pValues.length;
+  if (m === 0) return [];
+
+  // Create indexed array and sort by raw p ascending
+  const indexed = pValues.map((p, i) => ({ p, i }));
+  indexed.sort((a, b) => a.p - b.p);
+
+  const adjusted = new Array<number>(m);
+  let runningMax = 0;
+  for (let rank = 0; rank < m; rank++) {
+    const corrected = indexed[rank].p * (m - rank);
+    runningMax = Math.max(runningMax, corrected);
+    adjusted[indexed[rank].i] = Math.min(runningMax, 1);
+  }
+
+  return adjusted;
 }
 
 // ============================================================================
@@ -1132,7 +1219,7 @@ function calculateStatistics(
     const judgeScores = judgeScoresForCondition(results, condition);
 
     // Compute per-dimension judge subscores
-    const judgeSubscores: Record<string, { mean: number; sd: number; n: number }> = {};
+    const judgeSubscores: Record<string, ReturnType<typeof calculateStats>> = {};
     for (const dim of JUDGE_DIMENSIONS) {
       const dimScores = conditionResults
         .filter((r) => r.judgeVerdict?.subscores?.[dim] != null)
@@ -1149,6 +1236,14 @@ function calculateStatistics(
       (sum, r) => sum + r.editEvents.filter((e) => e.type === 'mastery_override').length,
       0,
     );
+    const advanceTopicCount = conditionResults.reduce(
+      (sum, r) => sum + (r.toolUsage['advance_topic'] ?? 0),
+      0,
+    );
+    const runsWithAdvanceTopic = conditionResults.filter(
+      (r) => (r.toolUsage['advance_topic'] ?? 0) > 0,
+    ).length;
+
     const gapEvidenceAttempts = conditionResults.flatMap((r) =>
       (r.postTest.answerMetadata ?? []).filter(
         (m) => m?.evidenceQuote !== undefined || m?.jsonParseFailed === true,
@@ -1177,6 +1272,8 @@ function calculateStatistics(
       mechanismMetrics: {
         planEditsCount,
         masteryOverridesCount,
+        advanceTopicCount,
+        runsWithAdvanceTopic,
         gapEvidenceVerifiedCount,
         gapEvidenceTotal,
         gapEvidenceJsonParseFailedCount,
@@ -1221,16 +1318,31 @@ function calculateStatistics(
       condition1Mean: mean(gains1),
       condition2Mean: mean(gains2),
       tTest,
+      adjustedP: tTest.p, // raw p; Holm-Bonferroni applied below when m > 1
       gapCohenD: gapD,
       gapInterpretation,
       gapCondition1Mean: mean(gapGains1),
       gapCondition2Mean: mean(gapGains2),
       gapTTest,
+      gapAdjustedP: gapTTest.p, // raw p; Holm-Bonferroni applied below when m > 1
       judgeCohenD: judgeD,
       judgeInterpretation,
       judgeTTest,
+      judgeAdjustedP: judgeTTest.p, // raw p; Holm-Bonferroni applied below when m > 1
     };
   });
+
+  // Apply Holm-Bonferroni correction to each family of comparisons
+  if (comparisons.length > 1) {
+    const overallAdj = holmBonferroni(comparisons.map((c) => c.tTest.p));
+    const gapAdj = holmBonferroni(comparisons.map((c) => c.gapTTest.p));
+    const judgeAdj = holmBonferroni(comparisons.map((c) => c.judgeTTest.p));
+    for (let i = 0; i < comparisons.length; i++) {
+      comparisons[i].adjustedP = overallAdj[i];
+      comparisons[i].gapAdjustedP = gapAdj[i];
+      comparisons[i].judgeAdjustedP = judgeAdj[i];
+    }
+  }
 
   // Calculate interaction effect and ANOVA when all 4 conditions are present
   let interactionEffect = 0;
@@ -1270,7 +1382,9 @@ function calculateStatistics(
       modelOnly: judgeScoresForCondition(results, 'model_only'),
       baseline: judgeScoresForCondition(results, 'baseline'),
     };
-    const hasEnoughJudgeScores = Object.values(judgeAnovaGroups).every((scores) => scores.length >= 2);
+    const hasEnoughJudgeScores = Object.values(judgeAnovaGroups).every(
+      (scores) => scores.length >= 2,
+    );
     if (hasEnoughJudgeScores) {
       anovaJudge = twoWayAnova(judgeAnovaGroups);
     }
@@ -1308,12 +1422,12 @@ async function saveResults(summary: AblationSummary, outputDir: string): Promise
  * Format the common rows of a 2-way ANOVA table (header + three effect rows).
  */
 function formatAnovaTable(anova: AnovaResult): string[] {
-  function row(label: string, effect: { f: number; p: number; significant: boolean }): string {
-    return `| ${label} | ${effect.f.toFixed(3)} | ${effect.p.toFixed(4)} | ${effect.significant ? '*' : ''} |`;
+  function row(label: string, effect: AnovaEffect): string {
+    return `| ${label} | ${effect.f.toFixed(3)} | ${effect.p.toFixed(4)} | ${effect.etaSquared.toFixed(3)} | ${effect.significant ? '*' : ''} |`;
   }
   return [
-    '| Source | F | p-value | Sig. |',
-    '|--------|---|---------|------|',
+    '| Source | F | p-value | η²_p | Sig. |',
+    '|--------|---|---------|------|------|',
     row('Plan (main effect)', anova.planEffect),
     row('Model (main effect)', anova.modelEffect),
     row('Plan × Model (interaction)', anova.interaction),
@@ -1329,18 +1443,26 @@ function generateMarkdownTables(summary: AblationSummary): string {
     '',
     '## Learning Gains by Condition',
     '',
-    '| Condition | Learning Gain | Normalized Gain | Turns Used | Judge Score |',
-    '|-----------|--------------|-----------------|------------|-------------|',
+    '| Condition | Learning Gain | Normalized Gain | 95% CI (Norm. Gain) | Turns Used | Judge Score |',
+    '|-----------|--------------|-----------------|---------------------|------------|-------------|',
   ];
 
   for (const condition of summary.config.conditions) {
     const stats = summary.statistics.byCondition[condition];
     if (!stats) continue;
     const judgeScoreCell =
-      stats.judgeScore.n > 0 ? `${stats.judgeScore.mean.toFixed(2)} ± ${stats.judgeScore.sd.toFixed(2)}` : 'N/A';
+      stats.judgeScore.n > 0
+        ? `${stats.judgeScore.mean.toFixed(2)} ± ${stats.judgeScore.sd.toFixed(2)}`
+        : 'N/A';
+    const ng = stats.normalizedGain;
+    const ciCell =
+      ng.n >= 2
+        ? `[${(ng.ci95Lower * 100).toFixed(1)}, ${(ng.ci95Upper * 100).toFixed(1)}]%`
+        : 'N/A';
     lines.push(
       `| ${condition} | ${stats.learningGain.mean.toFixed(1)} ± ${stats.learningGain.sd.toFixed(1)} | ` +
-        `${(stats.normalizedGain.mean * 100).toFixed(1)}% ± ${(stats.normalizedGain.sd * 100).toFixed(1)}% | ` +
+        `${(ng.mean * 100).toFixed(1)}% ± ${(ng.sd * 100).toFixed(1)}% | ` +
+        `${ciCell} | ` +
         `${stats.turnsUsed.mean.toFixed(1)} ± ${stats.turnsUsed.sd.toFixed(1)} | ` +
         `${judgeScoreCell} |`,
     );
@@ -1350,16 +1472,17 @@ function generateMarkdownTables(summary: AblationSummary): string {
     '',
     "## Pairwise Comparisons (Welch's t-test)",
     '',
-    "| Comparison | Cohen's d | Interp. | t | df | p-value | Sig. | C1 Mean | C2 Mean |",
-    '|------------|-----------|---------|---|----|---------|----- |---------|---------|',
+    "| Comparison | Cohen's d | Interp. | t | df | p-value | Adj. p | Sig. | C1 Mean | C2 Mean | 95% CI (Diff) |",
+    '|------------|-----------|---------|---|---------|--------|--------|------|---------|---------|---------------|',
   );
 
   for (const comp of summary.statistics.comparisons) {
-    const sig = comp.tTest.significant ? '*' : '';
+    const sig = comp.adjustedP < 0.05 ? '*' : '';
+    const ci = `[${(comp.tTest.ciLower * 100).toFixed(1)}, ${(comp.tTest.ciUpper * 100).toFixed(1)}]`;
     lines.push(
       `| ${comp.name} | ${comp.cohenD.toFixed(3)} | ${comp.interpretation} | ` +
-        `${comp.tTest.t.toFixed(3)} | ${comp.tTest.df.toFixed(1)} | ${comp.tTest.p.toFixed(4)} | ${sig} | ` +
-        `${(comp.condition1Mean * 100).toFixed(1)}% | ${(comp.condition2Mean * 100).toFixed(1)}% |`,
+        `${comp.tTest.t.toFixed(3)} | ${comp.tTest.df.toFixed(1)} | ${comp.tTest.p.toFixed(4)} | ${comp.adjustedP.toFixed(4)} | ${sig} | ` +
+        `${(comp.condition1Mean * 100).toFixed(1)}% | ${(comp.condition2Mean * 100).toFixed(1)}% | ${ci} |`,
     );
   }
 
@@ -1401,14 +1524,14 @@ function generateMarkdownTables(summary: AblationSummary): string {
     const stats = summary.statistics.byCondition[condition];
     if (!stats) continue;
     const overallJudgeCell =
-      stats.judgeScore.n > 0 ? `${stats.judgeScore.mean.toFixed(2)}±${stats.judgeScore.sd.toFixed(2)}` : 'N/A';
+      stats.judgeScore.n > 0
+        ? `${stats.judgeScore.mean.toFixed(2)}±${stats.judgeScore.sd.toFixed(2)}`
+        : 'N/A';
     const dimCells = JUDGE_DIMENSIONS.map((dim) => {
       const s = stats.judgeSubscores[dim];
       return s && s.n > 0 ? `${s.mean.toFixed(2)}±${s.sd.toFixed(2)}` : 'N/A';
     }).join(' | ');
-    lines.push(
-      `| ${condition} | ${overallJudgeCell} | ${dimCells} |`,
-    );
+    lines.push(`| ${condition} | ${overallJudgeCell} | ${dimCells} |`);
   }
 
   // Judge score pairwise comparisons
@@ -1416,15 +1539,16 @@ function generateMarkdownTables(summary: AblationSummary): string {
     '',
     "## Judge Score Pairwise Comparisons (Welch's t-test)",
     '',
-    "| Comparison | Judge Cohen's d | Interp. | t | df | p-value | Sig. |",
-    '|------------|----------------|---------|---|----|---------|----- |',
+    "| Comparison | Judge Cohen's d | Interp. | t | df | p-value | Adj. p | Sig. | 95% CI (Diff) |",
+    '|------------|----------------|---------|---|---------|--------|--------|------|---------------|',
   );
 
   for (const comp of summary.statistics.comparisons) {
-    const sig = comp.judgeTTest.significant ? '*' : '';
+    const sig = comp.judgeAdjustedP < 0.05 ? '*' : '';
+    const ci = `[${comp.judgeTTest.ciLower.toFixed(3)}, ${comp.judgeTTest.ciUpper.toFixed(3)}]`;
     lines.push(
       `| ${comp.name} | ${comp.judgeCohenD.toFixed(3)} | ${comp.judgeInterpretation} | ` +
-        `${comp.judgeTTest.t.toFixed(3)} | ${comp.judgeTTest.df.toFixed(1)} | ${comp.judgeTTest.p.toFixed(4)} | ${sig} |`,
+        `${comp.judgeTTest.t.toFixed(3)} | ${comp.judgeTTest.df.toFixed(1)} | ${comp.judgeTTest.p.toFixed(4)} | ${comp.judgeAdjustedP.toFixed(4)} | ${sig} | ${ci} |`,
     );
   }
 
@@ -1443,8 +1567,8 @@ function generateMarkdownTables(summary: AblationSummary): string {
     '',
     '## Mechanism Metrics by Condition',
     '',
-    '| Condition | Plan Edits | Mastery Overrides | Evidence Verified | JSON Failures | Runs w/ Edits | Runs w/ Overrides |',
-    '|-----------|------------|-------------------|-------------------|--------------|---------------|-------------------|',
+    '| Condition | Plan Edits | Mastery Overrides | Advance Topic | Evidence Verified | JSON Failures | Runs w/ Edits | Runs w/ Overrides | Runs w/ Advance |',
+    '|-----------|------------|-------------------|---------------|-------------------|--------------|---------------|-------------------|-----------------|',
   );
 
   for (const condition of summary.config.conditions) {
@@ -1460,7 +1584,7 @@ function generateMarkdownTables(summary: AblationSummary): string {
         ? `${m.gapEvidenceJsonParseFailedCount}/${m.gapEvidenceTotal} (${((m.gapEvidenceJsonParseFailedCount / m.gapEvidenceTotal) * 100).toFixed(0)}%)`
         : 'N/A';
     lines.push(
-      `| ${condition} | ${m.planEditsCount} | ${m.masteryOverridesCount} | ${evidenceRate} | ${jsonFailureRate} | ${m.runsWithPlanEdits} | ${m.runsWithMasteryOverrides} |`,
+      `| ${condition} | ${m.planEditsCount} | ${m.masteryOverridesCount} | ${m.advanceTopicCount} | ${evidenceRate} | ${jsonFailureRate} | ${m.runsWithPlanEdits} | ${m.runsWithMasteryOverrides} | ${m.runsWithAdvanceTopic} |`,
     );
   }
 
@@ -1471,16 +1595,21 @@ function generateMarkdownTables(summary: AblationSummary): string {
     '',
     '> Gap-only metrics focus on knowledge gap topics, providing a more sensitive measure of tutoring effectiveness.',
     '',
-    '| Condition | Gap Learning Gain | Gap Normalized Gain |',
-    '|-----------|------------------|---------------------|',
+    '| Condition | Gap Learning Gain | Gap Normalized Gain | 95% CI (Gap Norm.) |',
+    '|-----------|------------------|---------------------|---------------------|',
   );
 
   for (const condition of summary.config.conditions) {
     const stats = summary.statistics.byCondition[condition];
     if (!stats) continue;
+    const gn = stats.gapNormalizedGain;
+    const ciCell =
+      gn.n >= 2
+        ? `[${(gn.ci95Lower * 100).toFixed(1)}, ${(gn.ci95Upper * 100).toFixed(1)}]%`
+        : 'N/A';
     lines.push(
       `| ${condition} | ${stats.gapLearningGain.mean.toFixed(1)} ± ${stats.gapLearningGain.sd.toFixed(1)} | ` +
-        `${(stats.gapNormalizedGain.mean * 100).toFixed(1)}% ± ${(stats.gapNormalizedGain.sd * 100).toFixed(1)}% |`,
+        `${(gn.mean * 100).toFixed(1)}% ± ${(gn.sd * 100).toFixed(1)}% | ${ciCell} |`,
     );
   }
 
@@ -1489,16 +1618,17 @@ function generateMarkdownTables(summary: AblationSummary): string {
     '',
     "## Gap-Only Pairwise Comparisons (Welch's t-test)",
     '',
-    "| Comparison | Gap Cohen's d | Interp. | t | df | p-value | Sig. | Gap C1 Mean | Gap C2 Mean |",
-    '|------------|--------------|---------|---|----|---------|----- |-------------|-------------|',
+    "| Comparison | Gap Cohen's d | Interp. | t | df | p-value | Adj. p | Sig. | Gap C1 Mean | Gap C2 Mean | 95% CI (Diff) |",
+    '|------------|--------------|---------|---|---------|--------|--------|------|-------------|-------------|---------------|',
   );
 
   for (const comp of summary.statistics.comparisons) {
-    const sig = comp.gapTTest.significant ? '*' : '';
+    const sig = comp.gapAdjustedP < 0.05 ? '*' : '';
+    const ci = `[${(comp.gapTTest.ciLower * 100).toFixed(1)}, ${(comp.gapTTest.ciUpper * 100).toFixed(1)}]`;
     lines.push(
       `| ${comp.name} | ${comp.gapCohenD.toFixed(3)} | ${comp.gapInterpretation} | ` +
-        `${comp.gapTTest.t.toFixed(3)} | ${comp.gapTTest.df.toFixed(1)} | ${comp.gapTTest.p.toFixed(4)} | ${sig} | ` +
-        `${(comp.gapCondition1Mean * 100).toFixed(1)}% | ${(comp.gapCondition2Mean * 100).toFixed(1)}% |`,
+        `${comp.gapTTest.t.toFixed(3)} | ${comp.gapTTest.df.toFixed(1)} | ${comp.gapTTest.p.toFixed(4)} | ${comp.gapAdjustedP.toFixed(4)} | ${sig} | ` +
+        `${(comp.gapCondition1Mean * 100).toFixed(1)}% | ${(comp.gapCondition2Mean * 100).toFixed(1)}% | ${ci} |`,
     );
   }
 
@@ -1516,6 +1646,9 @@ function generateStatsReport(summary: AblationSummary): string {
     `- Runs per cell: ${summary.config.runsPerCell}`,
     `- Tutor model: ${summary.config.tutorModel}`,
     '- Primary outcome: Gap-only normalized gain (gap-topic post-test answers require verified transcript evidence)',
+    '- Multiple comparison correction: Holm-Bonferroni (applied separately to overall, gap, and judge comparison families)',
+    '- Confidence intervals: 95% CIs for means (t-distribution) and mean differences (Welch t)',
+    '- Effect size: Partial eta-squared (η²_p) for ANOVA effects',
     '',
     "## Effect Size Interpretation (Cohen's d)",
     '',
@@ -1554,19 +1687,19 @@ function generateStatsReport(summary: AblationSummary): string {
     const effects: string[] = [];
     if (anova.planEffect.significant) {
       effects.push(
-        `Plan editability shows a significant main effect (F = ${anova.planEffect.f.toFixed(2)}, p = ${anova.planEffect.p.toFixed(4)}), ` +
+        `Plan editability shows a significant main effect (F = ${anova.planEffect.f.toFixed(2)}, p = ${anova.planEffect.p.toFixed(4)}, η²_p = ${anova.planEffect.etaSquared.toFixed(3)}), ` +
           'indicating that curriculum editability affects learning outcomes independent of learner model editability.',
       );
     }
     if (anova.modelEffect.significant) {
       effects.push(
-        `Learner model editability shows a significant main effect (F = ${anova.modelEffect.f.toFixed(2)}, p = ${anova.modelEffect.p.toFixed(4)}), ` +
+        `Learner model editability shows a significant main effect (F = ${anova.modelEffect.f.toFixed(2)}, p = ${anova.modelEffect.p.toFixed(4)}, η²_p = ${anova.modelEffect.etaSquared.toFixed(3)}), ` +
           'indicating that mastery editability affects learning outcomes independent of plan editability.',
       );
     }
     if (anova.interaction.significant) {
       effects.push(
-        `The interaction is significant (F = ${anova.interaction.f.toFixed(2)}, p = ${anova.interaction.p.toFixed(4)}), ` +
+        `The interaction is significant (F = ${anova.interaction.f.toFixed(2)}, p = ${anova.interaction.p.toFixed(4)}, η²_p = ${anova.interaction.etaSquared.toFixed(3)}), ` +
           'indicating that the effect of one factor depends on the presence of the other.',
       );
     }
@@ -1598,18 +1731,20 @@ function generateStatsReport(summary: AblationSummary): string {
     (c) => c.name === 'Full vs Baseline',
   );
   if (primaryComparison) {
+    const adjSig = primaryComparison.gapAdjustedP < 0.05;
     lines.push(
       '### Primary Hypothesis (H1): Full System vs Baseline (Gap-Only)',
       '',
       `Welch's t-test: t(${primaryComparison.gapTTest.df.toFixed(1)}) = ${primaryComparison.gapTTest.t.toFixed(3)}, ` +
-        `p = ${primaryComparison.gapTTest.p.toFixed(4)}, d = ${primaryComparison.gapCohenD.toFixed(3)}`,
+        `p = ${primaryComparison.gapTTest.p.toFixed(4)}, p_adj = ${primaryComparison.gapAdjustedP.toFixed(4)}, ` +
+        `d = ${primaryComparison.gapCohenD.toFixed(3)}, 95% CI [${(primaryComparison.gapTTest.ciLower * 100).toFixed(1)}, ${(primaryComparison.gapTTest.ciUpper * 100).toFixed(1)}]%`,
       '',
-      primaryComparison.gapTTest.significant
+      adjSig
         ? `The full system (M = ${(primaryComparison.gapCondition1Mean * 100).toFixed(1)}%) significantly ` +
             `outperformed the baseline (M = ${(primaryComparison.gapCondition2Mean * 100).toFixed(1)}%) ` +
-            `with a ${primaryComparison.gapInterpretation} effect size.`
+            `with a ${primaryComparison.gapInterpretation} effect size (Holm-Bonferroni corrected).`
         : `No significant difference was detected between the full system (M = ${(primaryComparison.gapCondition1Mean * 100).toFixed(1)}%) ` +
-            `and baseline (M = ${(primaryComparison.gapCondition2Mean * 100).toFixed(1)}%).`,
+            `and baseline (M = ${(primaryComparison.gapCondition2Mean * 100).toFixed(1)}%) after Holm-Bonferroni correction.`,
       '',
     );
   }
@@ -1624,9 +1759,10 @@ function generateStatsReport(summary: AblationSummary): string {
   if (notableJudgeComparisons.length > 0) {
     lines.push('Notable judge score effect sizes:', '');
     for (const comp of notableJudgeComparisons) {
+      const adjSig = comp.judgeAdjustedP < 0.05;
       lines.push(
         `- **${comp.name}**: d = ${comp.judgeCohenD.toFixed(3)} (${comp.judgeInterpretation}), ` +
-          `p = ${comp.judgeTTest.p.toFixed(4)}${comp.judgeTTest.significant ? ' *' : ''}`,
+          `p = ${comp.judgeTTest.p.toFixed(4)}, p_adj = ${comp.judgeAdjustedP.toFixed(4)}${adjSig ? ' *' : ''}`,
       );
     }
     lines.push('');
@@ -1917,11 +2053,11 @@ export async function runAblationCli(argv: string[]) {
 
   // Mutex for atomic checkpoint updates
   let checkpointLock = Promise.resolve();
-  const withCheckpointLock = async (fn: () => Promise<void>): Promise<void> => {
+  async function withCheckpointLock(fn: () => Promise<void>): Promise<void> {
     const prev = checkpointLock;
     checkpointLock = prev.then(fn).catch(() => {});
     await checkpointLock;
-  };
+  }
 
   // Setup graceful shutdown handler
   let shuttingDown = false;

@@ -49,9 +49,18 @@ function extractFirstBalancedJson(text: string): string | undefined {
   let escape = false;
   for (let i = start; i < text.length; i++) {
     const ch = text[i];
-    if (escape) { escape = false; continue; }
-    if (ch === '\\' && inString) { escape = true; continue; }
-    if (ch === '"') { inString = !inString; continue; }
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
     if (inString) continue;
     if (ch === '{') depth++;
     else if (ch === '}') {
@@ -64,19 +73,123 @@ function extractFirstBalancedJson(text: string): string | undefined {
 
 /** Words too common to count as meaningful evidence tokens. */
 const STOP_WORDS = new Set([
-  'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-  'should', 'may', 'might', 'shall', 'can', 'need', 'must', 'and', 'but',
-  'or', 'nor', 'not', 'so', 'yet', 'both', 'either', 'neither', 'each',
-  'every', 'all', 'any', 'few', 'more', 'most', 'other', 'some', 'such',
-  'no', 'only', 'own', 'same', 'than', 'too', 'very', 'just', 'because',
-  'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about',
-  'against', 'between', 'through', 'during', 'before', 'after', 'above',
-  'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over',
-  'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when',
-  'where', 'why', 'how', 'what', 'which', 'who', 'whom', 'this', 'that',
-  'these', 'those', 'i', 'me', 'my', 'we', 'our', 'you', 'your', 'he',
-  'him', 'his', 'she', 'her', 'it', 'its', 'they', 'them', 'their',
+  'the',
+  'a',
+  'an',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'been',
+  'being',
+  'have',
+  'has',
+  'had',
+  'do',
+  'does',
+  'did',
+  'will',
+  'would',
+  'could',
+  'should',
+  'may',
+  'might',
+  'shall',
+  'can',
+  'need',
+  'must',
+  'and',
+  'but',
+  'or',
+  'nor',
+  'not',
+  'so',
+  'yet',
+  'both',
+  'either',
+  'neither',
+  'each',
+  'every',
+  'all',
+  'any',
+  'few',
+  'more',
+  'most',
+  'other',
+  'some',
+  'such',
+  'no',
+  'only',
+  'own',
+  'same',
+  'than',
+  'too',
+  'very',
+  'just',
+  'because',
+  'as',
+  'until',
+  'while',
+  'of',
+  'at',
+  'by',
+  'for',
+  'with',
+  'about',
+  'against',
+  'between',
+  'through',
+  'during',
+  'before',
+  'after',
+  'above',
+  'below',
+  'to',
+  'from',
+  'up',
+  'down',
+  'in',
+  'out',
+  'on',
+  'off',
+  'over',
+  'under',
+  'again',
+  'further',
+  'then',
+  'once',
+  'here',
+  'there',
+  'when',
+  'where',
+  'why',
+  'how',
+  'what',
+  'which',
+  'who',
+  'whom',
+  'this',
+  'that',
+  'these',
+  'those',
+  'i',
+  'me',
+  'my',
+  'we',
+  'our',
+  'you',
+  'your',
+  'he',
+  'him',
+  'his',
+  'she',
+  'her',
+  'it',
+  'its',
+  'they',
+  'them',
+  'their',
 ]);
 
 /**
@@ -88,9 +201,7 @@ export function verifyEvidenceTokenOverlap(evidence: string, transcript: string)
   const normalizedEvidence = normalizeForMatching(evidence);
   if (normalizedEvidence.length < 10) return false;
 
-  const tokens = normalizedEvidence
-    .split(' ')
-    .filter((w) => w.length > 3 && !STOP_WORDS.has(w));
+  const tokens = normalizedEvidence.split(' ').filter((w) => w.length > 3 && !STOP_WORDS.has(w));
   if (tokens.length === 0) return false;
 
   const normalizedTranscript = normalizeForMatching(transcript);
@@ -332,6 +443,8 @@ async function askQuestion(
 
   const text = extractText(response);
 
+  const fallbackSeed = hashSeed(options.errorSeed ?? options.runId ?? 'default', question.id);
+
   // Evidence gating: if evidence is NOT verified, the student cannot prove the topic
   // was covered, so force the answer to the misconception-aligned distractor.
   // This addresses the ceiling effect where the LLM student knows answers regardless.
@@ -339,7 +452,7 @@ async function askQuestion(
     const transcript = options.sessionTranscript!;
     const restrictToTutorTurns = options.restrictEvidenceToTutorTurns !== false;
     const evidenceCorpus = resolveEvidenceCorpus(transcript, restrictToTutorTurns);
-    const misconceptionAnswer = gap.misconceptionDistractor ?? fallbackWrongAnswer(question);
+    const misconceptionAnswer = validatedDistractor(gap, question);
     const jsonStr = extractFirstBalancedJson(text);
 
     // No JSON found — evidence not provided, force misconception distractor
@@ -363,7 +476,7 @@ async function askQuestion(
 
       if (evidenceVerified) {
         // Evidence verified — trust the LLM answer
-        const answer = parsed.answer ?? parseAnswer(text, question.options.length);
+        const answer = parsed.answer ?? parseAnswer(text, question.options.length, fallbackSeed);
         return {
           answer,
           evidenceVerified: true,
@@ -388,7 +501,7 @@ async function askQuestion(
     }
   }
 
-  return { answer: parseAnswer(text, question.options.length) };
+  return { answer: parseAnswer(text, question.options.length, fallbackSeed) };
 }
 
 function buildStudentPrompt(
@@ -515,7 +628,29 @@ function fallbackWrongAnswer(question: TestQuestion): number {
   return 0;
 }
 
-function parseAnswer(text: string, numOptions: number): number {
+/**
+ * Validate and return the misconception distractor for a knowledge gap.
+ * Throws if the configured distractor is out of bounds or equals the correct answer.
+ * Falls back to the first wrong option when no distractor is configured.
+ */
+function validatedDistractor(gap: KnowledgeGap, question: TestQuestion): number {
+  const raw = gap.misconceptionDistractor;
+  if (raw == null) return fallbackWrongAnswer(question);
+
+  if (raw < 0 || raw >= question.options.length) {
+    throw new Error(
+      `misconceptionDistractor ${raw} out of bounds for question "${question.id}" with ${question.options.length} options`,
+    );
+  }
+  if (raw === question.correctIndex) {
+    throw new Error(
+      `misconceptionDistractor ${raw} equals correctIndex for question "${question.id}"`,
+    );
+  }
+  return raw;
+}
+
+function parseAnswer(text: string, numOptions: number, seed?: number): number {
   // Try to extract a number from the response
   const match = text.match(/\b([0-3])\b/);
   if (match) {
@@ -524,8 +659,9 @@ function parseAnswer(text: string, numOptions: number): number {
       return num;
     }
   }
-  // Fallback: random answer (simulates confused student)
-  return Math.floor(Math.random() * numOptions);
+  // Fallback: seeded random answer for reproducibility (simulates confused student)
+  const rng = seed != null ? seededRandom(seed) : seededRandom(Date.now());
+  return Math.floor(rng() * numOptions);
 }
 
 /**
@@ -589,6 +725,8 @@ export type TTestResult = {
   mean1: number;
   mean2: number;
   se: number;
+  ciLower: number;
+  ciUpper: number;
 };
 
 /**
@@ -597,7 +735,17 @@ export type TTestResult = {
  */
 export function welchTTest(group1: number[], group2: number[]): TTestResult {
   if (group1.length < 2 || group2.length < 2) {
-    return { t: 0, df: 0, p: 1, significant: false, mean1: 0, mean2: 0, se: 0 };
+    return {
+      t: 0,
+      df: 0,
+      p: 1,
+      significant: false,
+      mean1: 0,
+      mean2: 0,
+      se: 0,
+      ciLower: 0,
+      ciUpper: 0,
+    };
   }
 
   const n1 = group1.length;
@@ -616,7 +764,18 @@ export function welchTTest(group1: number[], group2: number[]): TTestResult {
       t = mean1 > mean2 ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
       p = 0;
     }
-    return { t, df: n1 + n2 - 2, p, significant: p < 0.05, mean1, mean2, se: 0 };
+    const diff = mean1 - mean2;
+    return {
+      t,
+      df: n1 + n2 - 2,
+      p,
+      significant: p < 0.05,
+      mean1,
+      mean2,
+      se: 0,
+      ciLower: diff,
+      ciUpper: diff,
+    };
   }
 
   const t = (mean1 - mean2) / se;
@@ -629,6 +788,12 @@ export function welchTTest(group1: number[], group2: number[]): TTestResult {
   // Calculate p-value using t-distribution CDF
   const p = 2 * (1 - tDistCDF(Math.abs(t), df));
 
+  // 95% CI for the mean difference
+  const tCrit = tQuantile(0.975, df);
+  const diff = mean1 - mean2;
+  const ciLower = diff - tCrit * se;
+  const ciUpper = diff + tCrit * se;
+
   return {
     t,
     df,
@@ -637,13 +802,22 @@ export function welchTTest(group1: number[], group2: number[]): TTestResult {
     mean1,
     mean2,
     se,
+    ciLower,
+    ciUpper,
   };
 }
 
+export type AnovaEffect = {
+  f: number;
+  p: number;
+  significant: boolean;
+  etaSquared: number;
+};
+
 export type AnovaResult = {
-  planEffect: { f: number; p: number; significant: boolean };
-  modelEffect: { f: number; p: number; significant: boolean };
-  interaction: { f: number; p: number; significant: boolean };
+  planEffect: AnovaEffect;
+  modelEffect: AnovaEffect;
+  interaction: AnovaEffect;
   residualMS: number;
   grandMean: number;
 };
@@ -672,9 +846,9 @@ export function twoWayAnova(groups: AnovaGroups): AnovaResult {
     baseline.length < 2
   ) {
     return {
-      planEffect: { f: 0, p: 1, significant: false },
-      modelEffect: { f: 0, p: 1, significant: false },
-      interaction: { f: 0, p: 1, significant: false },
+      planEffect: { f: 0, p: 1, significant: false, etaSquared: 0 },
+      modelEffect: { f: 0, p: 1, significant: false, etaSquared: 0 },
+      interaction: { f: 0, p: 1, significant: false, etaSquared: 0 },
       residualMS: 0,
       grandMean: 0,
     };
@@ -706,9 +880,6 @@ export function twoWayAnova(groups: AnovaGroups): AnovaResult {
     (planOnly.reduce((a, b) => a + b, 0) + baseline.reduce((a, b) => a + b, 0)) / nModelHid;
 
   // Sum of squares
-  // SS Total
-  const _ssTotal = allData.reduce((sum, x) => sum + (x - grandMean) ** 2, 0);
-
   // SS for Plan factor (main effect)
   const ssPlan =
     nPlanVis * (meanPlanVis - grandMean) ** 2 + nPlanHid * (meanPlanHid - grandMean) ** 2;
@@ -778,10 +949,21 @@ export function twoWayAnova(groups: AnovaGroups): AnovaResult {
   const pModel = 1 - fDistCDF(fModel, dfModel, dfResidual);
   const pInteraction = 1 - fDistCDF(fInteraction, dfInteraction, dfResidual);
 
+  // Partial eta-squared: η²_p = SS_effect / (SS_effect + SS_residual)
+  const etaSqPlan = ssResidual + ssPlan > 0 ? ssPlan / (ssPlan + ssResidual) : 0;
+  const etaSqModel = ssResidual + ssModel > 0 ? ssModel / (ssModel + ssResidual) : 0;
+  const etaSqInteraction =
+    ssResidual + ssInteraction > 0 ? ssInteraction / (ssInteraction + ssResidual) : 0;
+
   return {
-    planEffect: { f: fPlan, p: pPlan, significant: pPlan < 0.05 },
-    modelEffect: { f: fModel, p: pModel, significant: pModel < 0.05 },
-    interaction: { f: fInteraction, p: pInteraction, significant: pInteraction < 0.05 },
+    planEffect: { f: fPlan, p: pPlan, significant: pPlan < 0.05, etaSquared: etaSqPlan },
+    modelEffect: { f: fModel, p: pModel, significant: pModel < 0.05, etaSquared: etaSqModel },
+    interaction: {
+      f: fInteraction,
+      p: pInteraction,
+      significant: pInteraction < 0.05,
+      etaSquared: etaSqInteraction,
+    },
     residualMS: msResidual,
     grandMean,
   };
@@ -905,21 +1087,52 @@ function lnGamma(z: number): number {
 }
 
 /**
- * Calculate descriptive statistics for a group.
+ * Approximate the quantile of the t-distribution via bisection on tDistCDF.
+ * Returns t such that P(T <= t) ≈ p for the given degrees of freedom.
  */
-export function calculateStats(values: number[]): {
+function tQuantile(p: number, df: number): number {
+  if (df <= 0 || p <= 0 || p >= 1) return 0;
+  let lo = -20;
+  let hi = 20;
+  for (let i = 0; i < 100; i++) {
+    const mid = (lo + hi) / 2;
+    if (tDistCDF(mid, df) < p) lo = mid;
+    else hi = mid;
+    if (hi - lo < 1e-10) break;
+  }
+  return (lo + hi) / 2;
+}
+
+export type DescriptiveStats = {
   mean: number;
   sd: number;
   min: number;
   max: number;
   n: number;
-} {
+  ci95Lower: number;
+  ci95Upper: number;
+};
+
+/**
+ * Calculate descriptive statistics for a group.
+ */
+export function calculateStats(values: number[]): DescriptiveStats {
   const n = values.length;
-  if (n === 0) return { mean: 0, sd: 0, min: 0, max: 0, n: 0 };
+  if (n === 0) return { mean: 0, sd: 0, min: 0, max: 0, n: 0, ci95Lower: 0, ci95Upper: 0 };
 
   const mean = values.reduce((a, b) => a + b, 0) / n;
   const variance = values.reduce((sum, x) => sum + (x - mean) ** 2, 0) / (n - 1 || 1);
   const sd = Math.sqrt(variance);
+
+  // 95% CI for the mean using t-distribution
+  let ci95Lower = mean;
+  let ci95Upper = mean;
+  if (n >= 2) {
+    const se = sd / Math.sqrt(n);
+    const tCrit = tQuantile(0.975, n - 1);
+    ci95Lower = mean - tCrit * se;
+    ci95Upper = mean + tCrit * se;
+  }
 
   return {
     mean,
@@ -927,6 +1140,8 @@ export function calculateStats(values: number[]): {
     min: Math.min(...values),
     max: Math.max(...values),
     n,
+    ci95Lower,
+    ci95Upper,
   };
 }
 
