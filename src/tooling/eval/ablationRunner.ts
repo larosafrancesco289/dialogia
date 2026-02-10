@@ -804,7 +804,9 @@ async function runSingleAblation(
     },
   };
 
-  const models: ModelDescriptor[] = [
+  // Build deduplicated model list. When tutor and judge share the same model ID,
+  // the tutor's capabilities (supportsTools: true) must be preserved in the index.
+  const stubs = [
     createStubModel(
       config.tutorModel,
       tutorTransport,
@@ -824,6 +826,22 @@ async function runSingleAblation(
       supportsReasoning(config.judgeModel, config.reasoningSupport),
     ),
   ];
+  const modelById = new Map<string, ModelDescriptor>();
+  for (const stub of stubs) {
+    const existing = modelById.get(stub.id);
+    if (existing) {
+      // Merge supported_parameters (union) so no capabilities are lost
+      const existingRaw = existing.raw as Record<string, unknown> | undefined;
+      const stubRaw = stub.raw as Record<string, unknown> | undefined;
+      const existingParams: string[] = (existingRaw?.supported_parameters as string[]) ?? [];
+      const newParams: string[] = (stubRaw?.supported_parameters as string[]) ?? [];
+      const merged = [...new Set([...existingParams, ...newParams])];
+      existing.raw = { ...existingRaw, supported_parameters: merged };
+    } else {
+      modelById.set(stub.id, stub);
+    }
+  }
+  const models: ModelDescriptor[] = Array.from(modelById.values());
   const modelIndex = createModelIndex(models);
 
   const runner = createHeadlessRunner({
