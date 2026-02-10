@@ -877,6 +877,28 @@ async function runSingleAblation(
     })),
   });
 
+  // Build default learner model from plan so student sees mastery scores from turn 1
+  const defaultLearnerModel: import('@/lib/types').LearnerModel | undefined = initialPlan
+    ? {
+        chatId: chat.id,
+        updatedAt: Date.now(),
+        version: 1,
+        mastery: Object.fromEntries(
+          initialPlan.nodes.map((node) => [
+            node.id,
+            {
+              nodeId: node.id,
+              confidence: 0.4,
+              interactions: 0,
+              lastInteraction: Date.now(),
+              evidence: [],
+              misconceptions: [],
+            },
+          ]),
+        ),
+      }
+    : undefined;
+
   // Run tutoring session
   console.log(`  [${runId}] Running tutoring session (${scenario.maxTurns} turns)...`);
   let studentMessage = `Hi! I need help with ${scenario.topic}. My goal is: ${scenario.goal}`;
@@ -902,7 +924,8 @@ async function runSingleAblation(
         .getSession()
         .getState()
         .chats.find((c) => c.id === chat.id)?.settings.features.tutor.learningPlan ?? initialPlan;
-    const latestLearnerModel = getLatestLearnerModel(runner.toResult().messages);
+    const latestLearnerModel =
+      getLatestLearnerModel(runner.toResult().messages) ?? defaultLearnerModel;
     const planSummary = conditionConfig.planVisible
       ? currentPlan
         ? summarizeLearningPlan(currentPlan)
