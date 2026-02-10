@@ -14,11 +14,16 @@ Always call this after quiz interactions or when you observe evidence of learnin
     parameters: {
       type: 'object',
       properties: {
-        nodeId: { type: 'string', description: 'Learning plan node id' },
+        nodeId: {
+          type: 'string',
+          description:
+            'The EXACT node ID from the learning plan (shown in square brackets, e.g. "limit-definition", "power-rule"). Do NOT invent or abbreviate node IDs.',
+        },
         source: {
           type: 'string',
           enum: ['assessment', 'self_report'],
-          description: 'Source of the evidence',
+          description:
+            "Source of the evidence. Use 'assessment' when YOU observed the learner's performance. Use 'self_report' when the STUDENT says their mastery score is wrong or requests a confidence adjustment.",
         },
         // For assessment source
         interaction: {

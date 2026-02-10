@@ -15,3 +15,7 @@ export function getOpenRouterKeyFallback(): string | undefined {
     readEnvValue(process.env.OPENROUTER_KEY)
   );
 }
+
+export function getAnthropicKeyFallback(): string | undefined {
+  return readEnvValue(process.env.ANTHROPIC_API_KEY);
+}

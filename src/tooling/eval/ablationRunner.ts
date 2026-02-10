@@ -36,7 +36,8 @@ import {
   initializeLearnerModel,
 } from '@/lib/agent/learner-model';
 import { summarizeLearningPlan } from '@/lib/learning-plan/service';
-import { getOpenRouterKeyFallback } from '@/lib/env/keys';
+import { getOpenRouterKeyFallback, getAnthropicKeyFallback } from '@/lib/env/keys';
+import { anthropicChatCompletion, resolveAnthropicDirectModelId } from '@/lib/anthropic/chat';
 import { fetchModels } from '@/lib/openrouter';
 import {
   ABLATION_CONDITIONS,
@@ -743,7 +744,7 @@ async function runSingleAblation(
     tutorModel: string;
     studentModel: string;
     judgeModel: string;
-    apiKeys: { openrouter?: string };
+    apiKeys: { openrouter?: string; anthropic?: string };
     reasoningSupport: Record<string, boolean>;
   },
 ): Promise<AblationRunResult> {
@@ -995,13 +996,26 @@ async function runSingleAblation(
     knowledgeGaps: scenario.knowledgeGaps,
   });
 
-  const judgeResponse = await getChatCompletion()({
-    auth: resolveAuth({ modelId: config.judgeModel, transport: judgeTransport }),
-    model: config.judgeModel,
-    messages: judgeMessages,
-    temperature: 0,
-    maxTokens: 2048,
-  });
+  const directJudgeModelId =
+    config.apiKeys.anthropic && config.judgeModel.startsWith('anthropic/')
+      ? resolveAnthropicDirectModelId(config.judgeModel.slice('anthropic/'.length))
+      : undefined;
+  const useAnthropicDirect = Boolean(directJudgeModelId);
+  const judgeResponse = useAnthropicDirect
+    ? await anthropicChatCompletion({
+        apiKey: config.apiKeys.anthropic!,
+        model: directJudgeModelId!,
+        messages: judgeMessages,
+        temperature: 0,
+        maxTokens: 4096,
+      })
+    : await getChatCompletion()({
+        auth: resolveAuth({ modelId: config.judgeModel, transport: judgeTransport }),
+        model: config.judgeModel,
+        messages: judgeMessages,
+        temperature: 0,
+        maxTokens: 4096,
+      });
 
   const judgeRaw = extractJudgeText(judgeResponse);
   const judgeVerdict = parseJudgeVerdict(judgeRaw);
@@ -2030,16 +2044,28 @@ export async function runAblationCli(argv: string[]) {
   console.log(`Student:    ${studentModel}`);
   console.log(`Judge:      ${judgeModel}`);
   console.log(`Output:     ${outputDir}`);
-  console.log('Routing:    OpenRouter');
+
+  const apiKeys = {
+    openrouter: getOpenRouterKeyFallback(),
+    anthropic: getAnthropicKeyFallback(),
+  };
+
+  const directJudgeModelId =
+    apiKeys.anthropic && judgeModel.startsWith('anthropic/')
+      ? resolveAnthropicDirectModelId(judgeModel.slice('anthropic/'.length))
+      : undefined;
+  const judgeRoute = apiKeys.anthropic && directJudgeModelId ? 'Anthropic direct' : 'OpenRouter';
+  console.log(`Routing:    tutor/student via OpenRouter, judge via ${judgeRoute}`);
+  if (apiKeys.anthropic && judgeModel.startsWith('anthropic/') && !directJudgeModelId) {
+    console.warn(
+      `Warning: Judge model "${judgeModel}" is not in the Anthropic direct alias allowlist; using OpenRouter.`,
+    );
+  }
 
   if (args['dry-run']) {
     console.log('\n[DRY RUN] Would execute the above configuration.');
     return;
   }
-
-  const apiKeys = {
-    openrouter: getOpenRouterKeyFallback(),
-  };
 
   if (!apiKeys.openrouter) {
     console.error('Error: OPENROUTER_API_KEY not found in environment');

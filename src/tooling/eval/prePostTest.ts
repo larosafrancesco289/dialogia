@@ -49,6 +49,16 @@ export function normalizeForMatching(text: string): string {
 }
 
 /**
+ * Sanitize LaTeX backslash sequences inside JSON strings so JSON.parse succeeds.
+ * LLMs often write \frac, \lim, \to inside JSON evidence quotes — these contain
+ * invalid JSON escapes (\l) or unintended control characters (\f = formfeed, \t = tab).
+ * We escape any backslash followed by a letter, which covers all LaTeX commands.
+ */
+function sanitizeLatexInJson(jsonStr: string): string {
+  return jsonStr.replace(/\\([a-zA-Z])/g, '\\\\$1');
+}
+
+/**
  * Extract the first balanced JSON object from text using brace counting.
  * Handles LLM responses that include extra closing braces or trailing content.
  */
@@ -477,40 +487,50 @@ async function askQuestion(
       };
     }
 
+    let parsed: { answer?: number; evidence?: string };
     try {
-      const parsed = JSON.parse(jsonStr) as { answer?: number; evidence?: string };
-      const evidence = parsed.evidence || '';
-
-      // Verify evidence: (1) quote exists in transcript, (2) quote is topically relevant
-      const overlapOk = verifyEvidenceTokenOverlap(evidence, evidenceCorpus.text);
-      const relevanceOk = verifyEvidenceRelevance(evidence, gap.evidenceKeywords ?? []);
-      const evidenceVerified = overlapOk && relevanceOk;
-
-      if (evidenceVerified) {
-        // Evidence verified — trust the LLM answer
-        const answer = parsed.answer ?? parseAnswer(text, question.options.length, fallbackSeed);
+      parsed = JSON.parse(jsonStr) as { answer?: number; evidence?: string };
+    } catch {
+      // LaTeX backslashes (\frac, \lim, \to) break JSON.parse — try sanitizing
+      try {
+        parsed = JSON.parse(sanitizeLatexInJson(jsonStr)) as {
+          answer?: number;
+          evidence?: string;
+        };
+      } catch {
+        // Still can't parse — force misconception distractor
         return {
-          answer,
-          evidenceVerified: true,
-          evidenceQuote: evidence,
+          answer: misconceptionAnswer,
+          evidenceVerified: false,
+          jsonParseFailed: true,
+          rawResponse: text.slice(0, 500),
         };
       }
+    }
 
-      // Evidence NOT verified — force misconception distractor
+    const evidence = parsed.evidence || '';
+
+    // Verify evidence: (1) quote exists in transcript, (2) quote is topically relevant
+    const overlapOk = verifyEvidenceTokenOverlap(evidence, evidenceCorpus.text);
+    const relevanceOk = verifyEvidenceRelevance(evidence, gap.evidenceKeywords ?? []);
+    const evidenceVerified = overlapOk && relevanceOk;
+
+    if (evidenceVerified) {
+      // Evidence verified — trust the LLM answer
+      const answer = parsed.answer ?? parseAnswer(text, question.options.length, fallbackSeed);
       return {
-        answer: misconceptionAnswer,
-        evidenceVerified: false,
+        answer,
+        evidenceVerified: true,
         evidenceQuote: evidence,
       };
-    } catch {
-      // JSON parse error — evidence not available, force misconception distractor
-      return {
-        answer: misconceptionAnswer,
-        evidenceVerified: false,
-        jsonParseFailed: true,
-        rawResponse: text.slice(0, 500),
-      };
     }
+
+    // Evidence NOT verified — force misconception distractor
+    return {
+      answer: misconceptionAnswer,
+      evidenceVerified: false,
+      evidenceQuote: evidence,
+    };
   }
 
   return { answer: parseAnswer(text, question.options.length, fallbackSeed) };
