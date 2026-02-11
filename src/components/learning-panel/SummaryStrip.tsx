@@ -57,8 +57,7 @@ export function SummaryStrip({
         <div className="plan-summary__text">
           <span className="plan-summary__hl">{Math.round(stats.avgConfidence * 100)}%</span> mastery
           <span className="plan-summary__dot">&middot;</span>
-          <strong>{stats.inProgress}</strong> of <strong>{stats.total}</strong>{' '}
-          in progress
+          <strong>{stats.inProgress}</strong> of <strong>{stats.total}</strong> in progress
           {stats.estHours != null && (
             <>
               <span className="plan-summary__dot">&middot;</span>~{stats.estHours}h left
@@ -89,8 +88,7 @@ export function SummaryStrip({
   return (
     <div className="plan-summary">
       <div className="plan-summary__text">
-        <strong>{stats.inProgress}</strong> of <strong>{stats.total}</strong>{' '}
-        topics in progress
+        <strong>{stats.inProgress}</strong> of <strong>{stats.total}</strong> topics in progress
         {stats.estHours != null && (
           <>
             <span className="plan-summary__dot">&middot;</span>~{stats.estHours}h total
