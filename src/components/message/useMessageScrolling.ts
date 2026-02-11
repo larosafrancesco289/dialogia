@@ -37,6 +37,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   const autoScrollEnabledRef = useRef(autoScrollPreference);
   const programmaticScrollRef = useRef(false);
   const atBottomRef = useRef(true);
+  const userScrolledAwayRef = useRef(false);
   const scrollToBottomRef = useRef<(behavior: ScrollBehavior) => void>(() => {});
   const lastMessageMetaRef = useRef<{
     id?: string;
@@ -75,7 +76,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
         autoScrollEnabledRef.current = false;
         scrolledAway = true;
       }
-    } else {
+    } else if (!userScrolledAwayRef.current) {
       autoScrollEnabledRef.current = true;
     }
 
@@ -146,6 +147,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     if (!chatId) return;
     // Reset scroll state and scroll to bottom when chat changes
     autoScrollEnabledRef.current = true;
+    userScrolledAwayRef.current = false;
     programmaticScrollRef.current = false;
     lastMessageMetaRef.current = undefined;
     // Use 'auto' (instant) scroll when switching chats for immediate positioning
@@ -154,7 +156,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
   // Force unlock autoscroll immediately on user interaction
   const onUserScroll = useCallback(() => {
-    // Only break lock if it was active
+    userScrolledAwayRef.current = true;
     if (autoScrollEnabledRef.current) {
       autoScrollEnabledRef.current = false;
       if (onScrollAwayRef.current) onScrollAwayRef.current();
@@ -236,14 +238,18 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     const handleScroll = () => {
       // If programmatic, ignore
       if (programmaticScrollRef.current) {
-        // Re-enable autoscroll once the animation settles if we're at bottom?
-        // Actually syncScrollState handles re-enabling if at bottom.
         return;
       }
 
       // Check position
       const { wasProgrammatic } = syncScrollState();
       if (wasProgrammatic) return;
+
+      // User manually reached bottom — clear scroll-away lock
+      if (userScrolledAwayRef.current && atBottomRef.current) {
+        userScrolledAwayRef.current = false;
+        autoScrollEnabledRef.current = true;
+      }
     };
 
     el.addEventListener('scroll', handleScroll, { passive: true });
@@ -273,6 +279,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     if (messages.length === 0) {
       lastMessageMetaRef.current = undefined;
       autoScrollEnabledRef.current = true;
+      userScrolledAwayRef.current = false;
       programmaticScrollRef.current = false;
       atBottomRef.current = true;
       // Reset state only when it changes to avoid render loops on new-array renders.
@@ -310,6 +317,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     lastMessageMetaRef.current = meta;
     const hasRecentUserMessage = meta.role === 'user' || meta.placeholder;
     if (hasRecentUserMessage && autoScrollPreference) {
+      userScrolledAwayRef.current = false;
       autoScrollEnabledRef.current = true;
     }
 
@@ -341,6 +349,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   }, [isStreaming, lastLen, autoScrollPreference]);
 
   const jumpToLatest = useCallback(() => {
+    userScrolledAwayRef.current = false;
     autoScrollEnabledRef.current = true;
     setShowJump(false); // Explicitly hide it immediately on click
     scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
