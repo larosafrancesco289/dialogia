@@ -82,7 +82,11 @@ export function useStudySessionControls() {
     );
     if (!confirmed) return;
     setIsResetting(true);
-    await resetForNextParticipant({ exportBeforeReset: true });
+    try {
+      await resetForNextParticipant({ exportBeforeReset: true });
+    } finally {
+      setIsResetting(false);
+    }
   }, []);
 
   return {

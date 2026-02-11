@@ -9,6 +9,7 @@ import { initializeLearnerModel, syncLearnerModelWithPlan } from '@/lib/agent/le
 import { PlanSuggestionsCard } from '@/components/message/tutor/PlanSuggestionsCard';
 import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
 import { PlanFeedbackModal } from '@/components/plan/PlanFeedbackModal';
+import { logAction } from '@/lib/study';
 
 export function PlanProposalCard({
   messageId,
@@ -52,10 +53,16 @@ export function PlanProposalCard({
     setTutorPlanProposalStatus(messageId, status);
   };
 
+  const handleOpenFullPlan = () => {
+    setUI({ plan: { sheetOpen: true, sheetPlanOverride: proposal.plan } });
+    logAction('plan_viewed', { source: 'plan_proposal' });
+  };
+
   const handleApprove = async () => {
     if (!chat) return;
     setApproving(true);
     try {
+      const hadExistingPlan = !!chat.settings.features.tutor.learningPlan;
       const now = Date.now();
       let adoptedPlan = { ...proposal.plan, updatedAt: now };
       const hasInProgress = adoptedPlan.nodes.some((n) => n.status === 'in_progress');
@@ -80,6 +87,9 @@ export function PlanProposalCard({
           },
         },
       });
+      if (hadExistingPlan) {
+        logAction('plan_edited', { source: 'plan_proposal' });
+      }
       await applyProposalStatus('approved', { plan: adoptedPlan });
 
       const currentNode = getNextNode(adoptedPlan);
@@ -107,6 +117,7 @@ export function PlanProposalCard({
     setDeclining(true);
     try {
       await applyProposalStatus('declined');
+      logAction('plan_feedback_sent', { source: 'plan_proposal' });
       await sendUserMessage(
         `Plan feedback:\n${feedback}\nPlease update the plan and confirm the changes.`,
       );
@@ -155,9 +166,7 @@ export function PlanProposalCard({
             <div className="mt-5 flex flex-wrap items-center gap-2">
               <button
                 className="btn btn-outline btn-sm"
-                onClick={() =>
-                  setUI({ plan: { sheetOpen: true, sheetPlanOverride: proposal.plan } })
-                }
+                onClick={handleOpenFullPlan}
               >
                 View full plan
               </button>
