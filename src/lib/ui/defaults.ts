@@ -56,6 +56,8 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
     plan: {
       sheetOpen: false,
       sheetPlanOverride: null,
+      rightPanelOpen: false,
+      rightPanelTab: 'plan',
       generationByChatId: {},
     },
     mobile: DEFAULT_MOBILE_STATE,

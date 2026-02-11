@@ -51,8 +51,14 @@ export type PersistedUiState = {
   debug?: Pick<UIDebugState, 'mode'>;
   tutor?: Pick<
     UITutorState,
-    'contextMode' | 'researchMode' | 'defaultModelId' | 'forceMode' | 'studyCondition' | 'autoScroll'
+    | 'contextMode'
+    | 'researchMode'
+    | 'defaultModelId'
+    | 'forceMode'
+    | 'studyCondition'
+    | 'autoScroll'
   >;
+  plan?: Pick<UIPlanState, 'rightPanelOpen'>;
 };
 
 export type SessionUiState = Omit<

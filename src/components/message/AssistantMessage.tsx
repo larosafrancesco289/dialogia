@@ -180,17 +180,21 @@ export function AssistantMessage({
         )}
       </div>
 
-      {!isStreaming && !isChatStreaming && isLatestAssistant && !isEditing && !displayContent.trim() && (
-        <div className="px-4 pb-2">
-          <button
-            className="btn btn-ghost btn-sm text-xs text-warning gap-1.5"
-            onClick={() => onChooseRegenerateModel()}
-          >
-            <ArrowPathIcon className="h-3.5 w-3.5" />
-            Response incomplete — tap to retry
-          </button>
-        </div>
-      )}
+      {!isStreaming &&
+        !isChatStreaming &&
+        isLatestAssistant &&
+        !isEditing &&
+        !displayContent.trim() && (
+          <div className="px-4 pb-2">
+            <button
+              className="btn btn-ghost btn-sm text-xs text-warning gap-1.5"
+              onClick={() => onChooseRegenerateModel()}
+            >
+              <ArrowPathIcon className="h-3.5 w-3.5" />
+              Response incomplete — tap to retry
+            </button>
+          </div>
+        )}
 
       {!isStreaming && tutorPanelNode}
 

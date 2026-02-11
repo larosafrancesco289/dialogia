@@ -23,6 +23,7 @@ export function MyProgressView({
   onSetConfidenceFloor,
   onFlagForReview,
   onMarkKnown,
+  compact,
 }: {
   plan: LearningPlan;
   learnerModel?: LearnerModel;
@@ -32,6 +33,7 @@ export function MyProgressView({
   onSetConfidenceFloor: (nodeId: string, floor: number) => void;
   onFlagForReview: (nodeId: string) => void;
   onMarkKnown: (nodeId: string) => void;
+  compact?: boolean;
 }) {
   const [filter, setFilter] = useState<FilterMode>('all');
   const [pendingAction, setPendingAction] = useState<EditConfirmAction | null>(null);
@@ -212,74 +214,78 @@ export function MyProgressView({
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Global Stats Section */}
-      <section className="grid grid-cols-3 gap-3">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0 }}
-          className="p-3 space-y-1"
-          style={{
-            background: 'var(--marginalia-bg)',
-            border: '1px solid var(--rule-light)',
-            borderLeft: '2px solid var(--color-accent)',
-            borderRadius: 'var(--radius-editorial)',
-          }}
-        >
-          <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider flex items-center gap-1.5">
-            <SparklesIcon className="w-3.5 h-3.5" style={{ color: 'var(--color-accent)' }} />
-            Mastery
-          </div>
-          <div className="text-xl font-bold text-foreground">
-            {Math.round(stats.avgConfidence * 100)}%
-          </div>
-        </motion.div>
+    <div className={compact ? 'space-y-4' : 'space-y-6'}>
+      {/* Global Stats Section (hidden in compact — SummaryStrip handles this) */}
+      {!compact && (
+        <section className="grid grid-cols-3 gap-3">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0 }}
+            className="p-3 space-y-1"
+            style={{
+              background: 'var(--marginalia-bg)',
+              border: '1px solid var(--rule-light)',
+              borderLeft: '2px solid var(--color-accent)',
+              borderRadius: 'var(--radius-editorial)',
+            }}
+          >
+            <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <SparklesIcon className="w-3.5 h-3.5" style={{ color: 'var(--color-accent)' }} />
+              Mastery
+            </div>
+            <div className="text-xl font-bold text-foreground">
+              {Math.round(stats.avgConfidence * 100)}%
+            </div>
+          </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="p-3 space-y-1"
-          style={{
-            background: 'var(--marginalia-bg)',
-            border: '1px solid var(--rule-light)',
-            borderLeft: '2px solid var(--color-success)',
-            borderRadius: 'var(--radius-editorial)',
-          }}
-        >
-          <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider flex items-center gap-1.5">
-            <CheckCircleIcon className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} />
-            Topics
-          </div>
-          <div className="text-xl font-bold text-foreground">
-            {stats.masteredTopics}{' '}
-            <span className="text-sm font-normal text-muted-foreground">/ {stats.totalTopics}</span>
-          </div>
-        </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="p-3 space-y-1"
+            style={{
+              background: 'var(--marginalia-bg)',
+              border: '1px solid var(--rule-light)',
+              borderLeft: '2px solid var(--color-success)',
+              borderRadius: 'var(--radius-editorial)',
+            }}
+          >
+            <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <CheckCircleIcon className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} />
+              Topics
+            </div>
+            <div className="text-xl font-bold text-foreground">
+              {stats.masteredTopics}{' '}
+              <span className="text-sm font-normal text-muted-foreground">
+                / {stats.totalTopics}
+              </span>
+            </div>
+          </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="p-3 space-y-1"
-          style={{
-            background: 'var(--marginalia-bg)',
-            border: '1px solid var(--rule-light)',
-            borderLeft: '2px solid var(--color-accent-2)',
-            borderRadius: 'var(--radius-editorial)',
-          }}
-        >
-          <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider flex items-center gap-1.5">
-            <ClockIcon className="w-3.5 h-3.5" style={{ color: 'var(--color-accent-2)' }} />
-            Activity
-          </div>
-          <div className="text-xl font-bold text-foreground">
-            {stats.totalInteractions}{' '}
-            <span className="text-sm font-normal text-muted-foreground">interactions</span>
-          </div>
-        </motion.div>
-      </section>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="p-3 space-y-1"
+            style={{
+              background: 'var(--marginalia-bg)',
+              border: '1px solid var(--rule-light)',
+              borderLeft: '2px solid var(--color-accent-2)',
+              borderRadius: 'var(--radius-editorial)',
+            }}
+          >
+            <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <ClockIcon className="w-3.5 h-3.5" style={{ color: 'var(--color-accent-2)' }} />
+              Activity
+            </div>
+            <div className="text-xl font-bold text-foreground">
+              {stats.totalInteractions}{' '}
+              <span className="text-sm font-normal text-muted-foreground">interactions</span>
+            </div>
+          </motion.div>
+        </section>
+      )}
 
       {/* Misconceptions Alert */}
       {stats.totalMisconceptions > 0 && (

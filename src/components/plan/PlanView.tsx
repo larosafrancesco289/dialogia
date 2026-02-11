@@ -23,6 +23,7 @@ export function PlanView({
   onMarkKnown,
   readOnly,
   onSuggestPhaseChange,
+  compact,
 }: {
   plan: LearningPlan;
   onNodeStatusChange?: (
@@ -37,6 +38,7 @@ export function PlanView({
   onMarkKnown?: (nodeId: string) => void;
   readOnly?: boolean;
   onSuggestPhaseChange?: (phaseName: string, phaseIndex: number) => void;
+  compact?: boolean;
 }) {
   const nextNode = getNextNode(plan);
   const allCompleted = plan.nodes.every((n) => n.status === 'completed');
@@ -113,18 +115,21 @@ export function PlanView({
     },
   ].filter(Boolean) as { label: string; style: React.CSSProperties }[];
 
+  const spacing = compact ? 'space-y-4' : 'space-y-6';
+  const phaseSpacing = compact ? 'space-y-5' : 'space-y-8';
+
   return (
-    <div className="space-y-6 max-w-full">
-      {/* Top: Learner Stats */}
-      {!readOnly && (
+    <div className={`${spacing} max-w-full`}>
+      {/* Top: Learner Stats (hidden in compact — SummaryStrip handles this) */}
+      {!compact && !readOnly && (
         <section className="w-full">
           <LearnerStats learnerModel={learnerModel} plan={plan} />
         </section>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className={compact ? '' : 'grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'}>
         {/* LEFT COLUMN: Timeline (Main) */}
-        <div className="lg:col-span-7 xl:col-span-8 space-y-8">
+        <div className={compact ? phaseSpacing : `lg:col-span-7 xl:col-span-8 ${phaseSpacing}`}>
           {/* Header info */}
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -139,11 +144,11 @@ export function PlanView({
               ))}
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">{plan.goal}</p>
-            {!readOnly && <PlanEditingHint />}
+            {!readOnly && !compact && <PlanEditingHint />}
           </div>
 
           {/* Phases List */}
-          <div className="space-y-8 pl-2">
+          <div className={`${phaseSpacing} pl-2`}>
             {phases.map((phase, groupIdx) => (
               <section key={groupIdx} className="relative">
                 {phases.length > 1 && (
@@ -211,67 +216,69 @@ export function PlanView({
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Sidebar (Next Up, Insights) */}
-        <aside className="lg:col-span-5 xl:col-span-4 space-y-6 sticky top-4">
-          {/* Next Up Card - editorial marginalia style */}
-          {nextNode && !allCompleted && !readOnly && (
-            <div className="marginalia p-4" style={{ borderLeftColor: 'var(--color-accent)' }}>
-              <div className="mb-2 flex items-center justify-between">
-                <span
-                  className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: 'var(--color-accent)' }}
+        {/* RIGHT COLUMN: Sidebar (hidden in compact mode) */}
+        {!compact && (
+          <aside className="lg:col-span-5 xl:col-span-4 space-y-6 sticky top-4">
+            {/* Next Up Card - editorial marginalia style */}
+            {nextNode && !allCompleted && !readOnly && (
+              <div className="marginalia p-4" style={{ borderLeftColor: 'var(--color-accent)' }}>
+                <div className="mb-2 flex items-center justify-between">
+                  <span
+                    className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--color-accent)' }}
+                  >
+                    <SparklesIcon className="h-3 w-3" />
+                    Up Next
+                  </span>
+                </div>
+
+                <h3
+                  className="text-sm font-semibold text-foreground mb-1"
+                  style={{ fontFamily: 'var(--font-serif-assistant)' }}
                 >
-                  <SparklesIcon className="h-3 w-3" />
-                  Up Next
-                </span>
+                  {nextNode.name}
+                </h3>
+                {nextNode.description && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {nextNode.description}
+                  </p>
+                )}
               </div>
+            )}
 
-              <h3
-                className="text-sm font-semibold text-foreground mb-1"
-                style={{ fontFamily: 'var(--font-serif-assistant)' }}
+            {/* Completion Card - editorial style */}
+            {allCompleted && (
+              <div
+                className="marginalia p-5 text-center"
+                style={{ borderLeftColor: 'var(--color-success)' }}
               >
-                {nextNode.name}
-              </h3>
-              {nextNode.description && (
-                <p className="text-xs text-muted-foreground line-clamp-2">
-                  {nextNode.description}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Completion Card - editorial style */}
-          {allCompleted && (
-            <div
-              className="marginalia p-5 text-center"
-              style={{ borderLeftColor: 'var(--color-success)' }}
-            >
-              <CheckCircleIcon
-                className="h-8 w-8 mx-auto mb-2"
-                style={{ color: 'var(--color-success)' }}
-              />
-              <h3
-                className="font-semibold text-foreground"
-                style={{ fontFamily: 'var(--font-serif-assistant)' }}
-              >
-                Journey Complete!
-              </h3>
-            </div>
-          )}
-
-          {/* Latest Update Summary - editorial style */}
-          {!readOnly && latestUpdateSummary && (
-            <div className="marginalia p-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                Latest Agent Update
+                <CheckCircleIcon
+                  className="h-8 w-8 mx-auto mb-2"
+                  style={{ color: 'var(--color-success)' }}
+                />
+                <h3
+                  className="font-semibold text-foreground"
+                  style={{ fontFamily: 'var(--font-serif-assistant)' }}
+                >
+                  Journey Complete!
+                </h3>
               </div>
-              <p className="text-xs text-foreground/90 leading-relaxed">{latestUpdateSummary}</p>
-            </div>
-          )}
+            )}
 
-          {/* Insights Panel */}
-          {!readOnly && <LearnerInsights learnerModel={learnerModel} plan={plan} />}
-        </aside>
+            {/* Latest Update Summary - editorial style */}
+            {!readOnly && latestUpdateSummary && (
+              <div className="marginalia p-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  Latest Agent Update
+                </div>
+                <p className="text-xs text-foreground/90 leading-relaxed">{latestUpdateSummary}</p>
+              </div>
+            )}
+
+            {/* Insights Panel */}
+            {!readOnly && <LearnerInsights learnerModel={learnerModel} plan={plan} />}
+          </aside>
+        )}
       </div>
     </div>
   );
