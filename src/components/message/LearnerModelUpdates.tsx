@@ -42,7 +42,7 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
             <span>{planUpdates?.summary}</span>
             <button
               className="text-xs text-accent hover:underline flex items-center gap-1"
-              onClick={() => setUI({ plan: { sheetOpen: true } })}
+              onClick={() => setUI({ plan: { rightPanelOpen: true, rightPanelTab: 'progress' } })}
             >
               <SparklesIcon className="w-3 h-3" />
               Hub

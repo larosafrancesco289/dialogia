@@ -23,7 +23,7 @@ export function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpda
         </div>
         <button
           className="text-xs text-accent hover:underline font-medium"
-          onClick={() => setUI({ plan: { sheetOpen: true } })}
+          onClick={() => setUI({ plan: { rightPanelOpen: true, rightPanelTab: 'progress' } })}
         >
           View Learning Hub
         </button>

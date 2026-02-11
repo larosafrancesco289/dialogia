@@ -20,6 +20,7 @@ const mergePersistedUiState = (
     flags: { ...current.flags, ...(persisted.flags ?? {}) },
     debug: { ...current.debug, ...(persisted.debug ?? {}) },
     tutor: { ...current.tutor, ...(persisted.tutor ?? {}) },
+    plan: { ...current.plan, ...(persisted.plan ?? {}) },
   };
 };
 
@@ -58,6 +59,9 @@ export function buildPersistedState(state: StoreState): PersistedStoreState {
         forceMode: state.ui.tutor.forceMode,
         studyCondition: state.ui.tutor.studyCondition,
         autoScroll: state.ui.tutor.autoScroll,
+      },
+      plan: {
+        rightPanelOpen: state.ui.plan.rightPanelOpen,
       },
     },
   };

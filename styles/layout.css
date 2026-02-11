@@ -120,7 +120,7 @@
   .app-shell {
     --header-height: 56px;
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto 1fr auto;
     height: var(--viewport-height);
     min-height: var(--viewport-height);
     position: relative;
@@ -129,6 +129,12 @@
   }
 
   .sidebar-slot {
+    overflow: hidden;
+    position: relative;
+    z-index: 10;
+  }
+
+  .right-panel-slot {
     overflow: hidden;
     position: relative;
     z-index: 10;
@@ -327,12 +333,150 @@
     }
   }
 
+  /* Right panel — Learning Hub */
+  .learning-panel {
+    background: var(--surface-paper);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-editorial);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Gold accent rule at top */
+  .learning-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 12px;
+    right: 12px;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--rule-accent) 15%,
+      var(--rule-accent) 85%,
+      transparent
+    );
+    opacity: 0.6;
+    z-index: 2;
+  }
+
+  .learning-panel__header {
+    padding: var(--space-3) var(--space-3) 0;
+    flex-shrink: 0;
+  }
+
+  .learning-panel__title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+  }
+
+  .learning-panel__title {
+    font-family: var(--font-serif-assistant);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-fg);
+  }
+
+  .learning-panel__collapse-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-editorial);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--duration-fast) var(--ease-standard);
+  }
+  .learning-panel__collapse-btn:hover {
+    background: var(--color-muted);
+    border-color: var(--rule-light);
+    color: var(--color-fg);
+  }
+
+  /* Summary strip */
+  .summary-strip {
+    display: flex;
+    gap: 1px;
+    margin: var(--space-2) var(--space-3) 0;
+    background: var(--rule-light);
+    border-radius: var(--radius-editorial);
+    overflow: hidden;
+    border: 1px solid var(--rule-light);
+  }
+
+  .summary-stat {
+    flex: 1;
+    padding: 8px 8px;
+    background: var(--marginalia-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .stat-value {
+    font-family: var(--font-mono, monospace);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-fg);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .stat-value.accent {
+    color: var(--color-accent);
+  }
+  .stat-value.success {
+    color: var(--color-success);
+  }
+
+  .stat-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-fg-muted);
+    line-height: 1;
+  }
+
+  /* Scrollable content area */
+  .learning-panel__content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--space-3);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+  .learning-panel__content::-webkit-scrollbar {
+    width: 5px;
+  }
+  .learning-panel__content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .learning-panel__content::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+  }
+
   @media (max-width: 640px) {
     .app-shell {
       grid-template-columns: 1fr; /* collapse grid to one column */
     }
     .app-shell aside.sidebar {
       display: none; /* hide static sidebar column on small screens */
+    }
+    .right-panel-slot {
+      display: none; /* hide right panel on small screens */
     }
     .app-shell {
       column-gap: var(--space-1);

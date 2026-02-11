@@ -333,7 +333,14 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     } else if (!atBottomRef.current) {
       setShowJump((prev) => (prev === true ? prev : true));
     }
-  }, [messages, prefersReducedMotion, isAssistantPlaceholder, showJump, atBottom, autoScrollPreference]);
+  }, [
+    messages,
+    prefersReducedMotion,
+    isAssistantPlaceholder,
+    showJump,
+    atBottom,
+    autoScrollPreference,
+  ]);
 
   useEffect(() => {
     if (!autoScrollPreference) return; // user disabled auto-scroll

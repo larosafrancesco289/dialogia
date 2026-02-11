@@ -84,6 +84,8 @@ export type UiTutorSnapshot = {
 export type UiPlanSnapshot = {
   sheetOpen?: boolean;
   sheetPlanOverride?: LearningPlan | null;
+  rightPanelOpen?: boolean;
+  rightPanelTab?: 'plan' | 'progress';
   generationByChatId?: Record<
     string,
     {

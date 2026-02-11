@@ -42,6 +42,7 @@ export function TopHeaderView({
   onToggleTutor,
   onOpenPlanSheet,
   onClosePlanSheet,
+  onToggleRightPanel,
   onPlanUpdate,
   onStartLesson,
   onMarkKnown,
@@ -98,7 +99,7 @@ export function TopHeaderView({
           </>
         )}
 
-        {/* Plan status badge (only shown when tutor active and has plan) */}
+        {/* Plan status badge — toggles right panel instead of opening sheet */}
         {tutorActive && hasPlan && (
           <>
             <PlanStatusBadge
@@ -106,7 +107,7 @@ export function TopHeaderView({
               hasPlan={hasPlan}
               planProgress={planProgress}
               learningPlan={learningPlan}
-              onOpenPlanSheet={onOpenPlanSheet}
+              onToggleRightPanel={onToggleRightPanel}
             />
             <HeaderDivider />
           </>
@@ -150,7 +151,7 @@ export function TopHeaderView({
         </div>
       </div>
 
-      {/* Plan sheet modal */}
+      {/* Plan sheet modal — kept for message card triggers that set sheetPlanOverride */}
       <PlanSheet
         plan={plan}
         isOpen={planSheetOpen}
