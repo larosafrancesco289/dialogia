@@ -94,8 +94,11 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
           plan.planUpdates ??
           diffPlanUpdates(chat.settings.features.tutor.learningPlan, plan.updatedPlan);
         if (diff) pendingPlanUpdates = diff;
+        // Re-read chat so persistLearningPlan spreads from a snapshot that
+        // already includes the learner-model update (its set() is synchronous).
+        const chatForPlan = plan.learnerModel ? getChatForTurn() : chat;
         void persistLearningPlan({
-          chat,
+          chat: chatForPlan,
           chatId,
           plan: plan.updatedPlan,
           set,
@@ -134,6 +137,12 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
           /* best effort */
         }
       }
+
+      // Attach learner model to the assistant message now that pendingLearnerModel
+      // is set.  In the unified streaming path, beforeStream fires *before*
+      // executeStreamingTurn so pendingLearnerModel is still undefined there.
+      // Calling here guarantees the message gets the model regardless of ordering.
+      attachLearnerContextToAssistant();
     },
     beforeStream: () => {
       attachLearnerContextToAssistant();

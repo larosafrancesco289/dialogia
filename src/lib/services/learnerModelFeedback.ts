@@ -35,13 +35,18 @@ export async function applyLearnerModelFeedbackFromUser({
 
   const plan = chat.settings.features.tutor.learningPlan;
   const messages = getMessagesForChat(state, chatId);
-  const baseModel = getLatestLearnerModel(messages) ?? initializeLearnerModel(chatId, plan);
+  const baseModel =
+    getLatestLearnerModel(messages) ??
+    chat.settings.features.tutor.learnerModel ??
+    initializeLearnerModel(chatId, plan);
   const feedback = applyLearnerModelFeedback(baseModel, input);
   const planResult = await processPlanProgress(plan, feedback.model);
   const updatedPlan = planResult.updatedPlan ?? plan;
 
   if (typeof state.updateChatSettings === 'function') {
-    await state.updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
+    await state.updateChatSettings({
+      features: { tutor: { learningPlan: updatedPlan, learnerModel: feedback.model } },
+    });
   }
 
   const nodeMeta = plan.nodes.find((n) => n.id === input.nodeId);

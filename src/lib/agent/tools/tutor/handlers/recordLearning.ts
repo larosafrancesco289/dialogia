@@ -237,10 +237,10 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
 
     const state = ctx.get();
     const messagesForChat = getMessagesForChat(state, ctx.chatId);
-    let currentModel = getLatestLearnerModel(messagesForChat);
-    if (!currentModel) {
-      currentModel = initializeLearnerModel(ctx.chatId, plan);
-    }
+    let currentModel =
+      getLatestLearnerModel(messagesForChat) ??
+      ctx.chat.settings.features.tutor.learnerModel ??
+      initializeLearnerModel(ctx.chatId, plan);
 
     const nodeMeta = plan.nodes.find((node) => node.id === nodeId);
 
