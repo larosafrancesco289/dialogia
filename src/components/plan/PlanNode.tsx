@@ -1,65 +1,60 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
-import {
-  CheckCircleIcon,
-  ClockIcon,
-  ChevronDownIcon,
-  LockClosedIcon,
-  SparklesIcon,
-  AcademicCapIcon,
-} from '@heroicons/react/24/outline';
-import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
+import { useState, useCallback } from 'react';
 import type { LearningPlanNode, TopicMastery } from '@/lib/types';
-import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
 import { EditConfirmDialog, EditConfirmAction } from './EditConfirmDialog';
+
+const CIRCUMFERENCE = 2 * Math.PI * 16; // r=16, matching POC
+
+function masteryLevel(confidence: number) {
+  if (confidence >= 0.7) return { label: 'Strong', color: 'var(--color-success)' };
+  if (confidence >= 0.4) return { label: 'Developing', color: 'var(--color-accent)' };
+  return { label: 'Needs work', color: 'var(--color-danger)' };
+}
+
+function badgeClass(confidence: number) {
+  if (confidence >= 0.7) return 'plan-index-badge--hi';
+  if (confidence >= 0.4) return 'plan-index-badge--mi';
+  return 'plan-index-badge--lo';
+}
 
 export function PlanNode({
   node,
   isReady,
-  prerequisites,
-  onStatusChange,
-  onStartLesson,
+  isLocked,
+  isCurrent,
   mastery,
-  isLast,
-  focused,
-  onAdjust,
-  onMarkKnown,
+  learnerModelVisible,
   readOnly,
+  expanded,
+  onToggle,
+  onMarkKnown,
+  onConfidenceAdjust,
+  onMisconceptionResolve,
+  onFlagForReview,
+  prerequisites,
 }: {
   node: LearningPlanNode;
   isReady: boolean;
-  prerequisites: LearningPlanNode[];
-  onStatusChange?: (status: 'not_started' | 'in_progress' | 'completed') => void;
-  onStartLesson?: (nodeId: string) => void;
+  isLocked: boolean;
+  isCurrent: boolean;
   mastery?: TopicMastery;
-  isLast?: boolean;
-  focused?: boolean;
-  onAdjust?: (feedback: LearnerModelFeedback) => void;
-  onMarkKnown?: (nodeId: string) => void;
+  learnerModelVisible?: boolean;
   readOnly?: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  onMarkKnown?: (nodeId: string) => void;
+  onConfidenceAdjust?: (nodeId: string, newConfidence: number, reason?: string) => void;
+  onMisconceptionResolve?: (nodeId: string, misconceptionId: string) => void;
+  onFlagForReview?: (nodeId: string) => void;
+  prerequisites: LearningPlanNode[];
 }) {
-  const [expanded, setExpanded] = useState(false);
   const [pendingAction, setPendingAction] = useState<EditConfirmAction | null>(null);
   const [pendingCallback, setPendingCallback] = useState<(() => void) | null>(null);
+  const [sliderValue, setSliderValue] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (focused) setExpanded(true);
-  }, [focused]);
-
-  const isLocked = !isReady && node.status === 'not_started';
-  const canModifyStatus = !!onStatusChange && node.status !== 'completed' && !isLocked && !readOnly;
-
-  const handleMarkKnown = useCallback(() => {
-    setPendingAction({
-      type: 'mark_known',
-      nodeId: node.id,
-      nodeName: node.name,
-    });
-    setPendingCallback(() => () => {
-      onMarkKnown?.(node.id);
-      onStatusChange?.('completed');
-    });
-  }, [node.id, node.name, onMarkKnown, onStatusChange]);
+  const confidence = mastery ? Math.round((mastery.confidence ?? 0) * 100) : 0;
+  const unresolved = mastery?.misconceptions?.filter((m) => !m.resolved) ?? [];
+  const level = masteryLevel(confidence / 100);
 
   const handleConfirm = useCallback(() => {
     pendingCallback?.();
@@ -70,386 +65,286 @@ export function PlanNode({
   const handleCancel = useCallback(() => {
     setPendingAction(null);
     setPendingCallback(null);
+    setSliderValue(null);
   }, []);
 
-  const statusColor =
-    node.status === 'completed'
-      ? 'var(--color-accent)'
-      : node.status === 'in_progress'
-        ? 'var(--color-accent-2)'
-        : 'var(--color-muted)';
+  const handleMarkKnown = useCallback(() => {
+    setPendingAction({ type: 'mark_known', nodeId: node.id, nodeName: node.name });
+    setPendingCallback(() => () => onMarkKnown?.(node.id));
+  }, [node.id, node.name, onMarkKnown]);
 
-  const confidence = mastery ? Math.round((mastery.confidence ?? 0) * 100) : undefined;
-  const unresolved = mastery?.misconceptions?.filter((m) => !m.resolved) ?? [];
-  const lastEvidence = mastery?.evidence?.[mastery.evidence.length - 1];
-  const barColor =
-    (confidence ?? 0) >= 70
-      ? 'color-mix(in oklab, var(--color-accent) 75%, transparent)'
-      : (confidence ?? 0) >= 40
-        ? 'color-mix(in oklab, var(--color-accent-2) 70%, transparent)'
-        : 'color-mix(in oklab, var(--color-danger) 70%, transparent)';
+  const handleSliderCommit = useCallback(
+    (value: number) => {
+      const newConf = value / 100;
+      setPendingAction({
+        type: 'confidence_adjust',
+        nodeId: node.id,
+        nodeName: node.name,
+        from: mastery?.confidence ?? 0,
+        to: newConf,
+      });
+      setPendingCallback(
+        () => () => onConfidenceAdjust?.(node.id, newConf, `Adjusted to ${value}%`),
+      );
+    },
+    [node.id, node.name, mastery?.confidence, onConfidenceAdjust],
+  );
+
+  const commitSliderIfChanged = useCallback(() => {
+    if (sliderValue != null && sliderValue !== confidence) {
+      handleSliderCommit(sliderValue);
+    }
+  }, [sliderValue, confidence, handleSliderCommit]);
+
+  const handleResolveMisconception = useCallback(
+    (miscId: string, miscDesc: string) => {
+      setPendingAction({
+        type: 'misconception_resolve',
+        nodeId: node.id,
+        nodeName: node.name,
+        misconceptionDesc: miscDesc,
+      });
+      setPendingCallback(() => () => onMisconceptionResolve?.(node.id, miscId));
+    },
+    [node.id, node.name, onMisconceptionResolve],
+  );
+
+  const handleFlagForReview = useCallback(() => {
+    setPendingAction({ type: 'flag_review', nodeId: node.id, nodeName: node.name });
+    setPendingCallback(() => () => onFlagForReview?.(node.id));
+  }, [node.id, node.name, onFlagForReview]);
+
+  function getDotClass(): string {
+    if (node.status === 'in_progress') return 'plan-index-dot--act';
+    if (node.status === 'completed') return 'plan-index-dot--done';
+    if (isLocked) return 'plan-index-dot--lock';
+    return 'plan-index-dot--idl';
+  }
+  const dotClass = getDotClass();
+
+  function getStatusText(): string {
+    if (node.status === 'in_progress') return 'In progress';
+    if (node.status === 'completed') return 'Completed';
+    if (isLocked) return `Requires ${prerequisites.map((p) => p.name).join(' & ')}`;
+    if (node.estimatedMinutes) return `~${node.estimatedMinutes} min`;
+    return '';
+  }
+  const statusText = getStatusText();
+
+  const rowClasses = [
+    'plan-index-row',
+    isCurrent && 'plan-index-row--cur',
+    isLocked && 'plan-index-row--lk',
+    expanded && 'plan-index-row--open',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const displaySlider = sliderValue ?? confidence;
 
   return (
-    <div className="relative flex gap-4">
-      {/* Timeline Column */}
-      <div className="flex flex-col items-center">
-        {/* Node Dot - editorial style */}
-        <div
-          className="z-10 flex h-7 w-7 items-center justify-center border transition-colors duration-300"
-          style={{
-            background: 'var(--surface-paper)',
-            borderColor: statusColor,
-            color: statusColor,
-            borderRadius: 'var(--radius-editorial)',
-            boxShadow: node.status === 'in_progress' ? '0 0 0 3px var(--marginalia-bg)' : undefined,
-          }}
-        >
-          {node.status === 'completed' ? (
-            <CheckCircleSolid className="h-5 w-5" />
-          ) : node.status === 'in_progress' ? (
-            <ClockIcon className="h-5 w-5" />
-          ) : isLocked ? (
-            <LockClosedIcon className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <div className="h-2.5 w-2.5 rounded-full bg-current opacity-40" />
-          )}
-        </div>
+    <>
+      <div
+        className={rowClasses}
+        onClick={onToggle}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+      >
+        <div className={`plan-index-dot ${dotClass}`} />
+        <span className="plan-index-row__name">{node.name}</span>
 
-        {/* Connecting Line */}
-        {!isLast && (
-          <div
-            className="w-0.5 flex-1 transition-colors duration-300"
-            style={{
-              background: `linear-gradient(to bottom, ${statusColor} 0%, var(--color-border) 80%)`,
-              opacity: 0.5,
-            }}
-          />
+        {learnerModelVisible && mastery ? (
+          <>
+            {unresolved.length > 0 && (
+              <svg
+                className="plan-index-warn"
+                width="11"
+                height="11"
+                viewBox="0 0 16 16"
+                fill="var(--color-danger)"
+              >
+                <path d="M8.982 1.566a1.13 1.13 0 00-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 01-1.1 0L7.1 5.995A.905.905 0 018 5zm.002 6a1 1 0 110 2 1 1 0 010-2z" />
+              </svg>
+            )}
+            <span className={`plan-index-badge ${badgeClass(mastery.confidence ?? 0)}`}>
+              {confidence}%
+            </span>
+          </>
+        ) : (
+          <span
+            className={`plan-index-status ${node.status === 'in_progress' ? 'plan-index-status--ip' : ''}`}
+          >
+            {statusText}
+          </span>
         )}
+
+        <span className="plan-index-chevron">&#x25B8;</span>
       </div>
 
-      {/* Content Card - editorial style */}
-      <div className="flex-1 pb-8">
-        <div
-          className="group relative overflow-hidden transition-all duration-300"
-          style={{
-            background: 'var(--surface-paper)',
-            border:
-              node.status === 'in_progress'
-                ? '1px solid var(--rule-accent)'
-                : '1px solid var(--rule-light)',
-            borderLeft:
-              node.status === 'in_progress'
-                ? '2px solid var(--color-accent-2)'
-                : '2px solid var(--rule-light)',
-            borderRadius: 'var(--radius-editorial)',
-            boxShadow: focused ? '0 0 0 2px var(--focus-ring)' : undefined,
-          }}
-        >
-          {/* Progress Bar (Top) */}
-          {mastery && (
-            <div className="absolute left-0 top-0 h-1 w-full bg-muted/20">
-              <div
-                className="h-full transition-all duration-500"
-                style={{
-                  width: `${confidence ?? 0}%`,
-                  background: `linear-gradient(90deg, var(--color-accent), var(--color-accent-2))`,
-                }}
-              />
-            </div>
-          )}
+      {expanded && (
+        <div className="plan-expanded">
+          <div className="plan-expanded__card">
+            {node.description && <p className="plan-expanded__desc">{node.description}</p>}
 
-          <button
-            type="button"
-            onClick={() => setExpanded((prev) => !prev)}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none"
-          >
-            <div className="flex-1 min-w-0 space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`font-semibold ${node.status === 'completed' ? 'text-muted-foreground line-through decoration-border' : 'text-foreground'}`}
-                >
-                  {node.name}
-                </span>
-                {confidence && confidence > 80 && (
-                  <SparklesIcon className="h-3.5 w-3.5 text-amber-500" />
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                {node.estimatedMinutes && <span>~{node.estimatedMinutes} min</span>}
-                {node.objectives.length > 0 && <span>· {node.objectives.length} objectives</span>}
-              </div>
-            </div>
-
-            {/* I know this button */}
-            {isReady && node.status === 'not_started' && !readOnly && onMarkKnown && (
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleMarkKnown();
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer"
-                style={{
-                  background: 'var(--marginalia-bg)',
-                  color: 'var(--color-success)',
-                  border:
-                    '1px solid color-mix(in oklab, var(--color-success) 30%, var(--rule-light))',
-                  borderRadius: 'var(--radius-editorial)',
-                }}
-                title="Skip this topic - I already know it"
-              >
-                <AcademicCapIcon className="h-3 w-3" />I know this
-              </div>
-            )}
-
-            <div className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>
-              <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </button>
-
-          {/* Expanded Details - editorial style */}
-          {expanded && (
-            <div
-              className="px-4 pb-4 pt-3"
-              style={{
-                borderTop: '1px solid var(--rule-light)',
-                background: 'var(--marginalia-bg)',
-              }}
-            >
-              {isLocked && (
-                <div
-                  className="mb-3 flex items-start gap-2 p-2 text-xs text-muted-foreground"
-                  style={{
-                    border: '1px dashed var(--rule-light)',
-                    borderRadius: 'var(--radius-editorial)',
-                  }}
-                >
-                  <LockClosedIcon className="h-4 w-4 flex-shrink-0" />
-                  <span>Complete the prerequisites first to unlock this topic.</span>
-                </div>
-              )}
-
-              {node.description && (
-                <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-                  {node.description}
-                </p>
-              )}
-
-              {mastery && (
-                <div
-                  className="mb-3 p-3"
-                  style={{
-                    background: 'var(--surface-paper)',
-                    border: '1px solid var(--rule-light)',
-                    borderRadius: 'var(--radius-editorial)',
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                        Mastery & evidence
-                      </div>
-                      <div className="text-sm font-semibold text-foreground">
-                        {confidence ?? 0}% confidence
-                      </div>
+            {/* Condition B: mastery block */}
+            {learnerModelVisible && mastery && (
+              <>
+                <div className="plan-mastery-block">
+                  <div className="plan-mastery-ring">
+                    <svg width="40" height="40" viewBox="0 0 40 40">
+                      <circle
+                        cx="20"
+                        cy="20"
+                        r="16"
+                        fill="none"
+                        stroke="var(--rule-light)"
+                        strokeWidth="3.5"
+                      />
+                      <circle
+                        cx="20"
+                        cy="20"
+                        r="16"
+                        fill="none"
+                        stroke={level.color}
+                        strokeWidth="3.5"
+                        strokeDasharray={CIRCUMFERENCE}
+                        strokeDashoffset={CIRCUMFERENCE * (1 - confidence / 100)}
+                        strokeLinecap="round"
+                        style={{ transform: 'rotate(-90deg)', transformOrigin: 'center' }}
+                      />
+                    </svg>
+                    <div className="plan-mastery-ring__val" style={{ color: level.color }}>
+                      {confidence}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                  </div>
+                  <div className="plan-mastery-info">
+                    <div className="plan-mastery-info__level" style={{ color: level.color }}>
+                      {level.label}
+                    </div>
+                    <div className="plan-mastery-info__sub">
                       {mastery.interactions} interaction{mastery.interactions === 1 ? '' : 's'}
+                      {node.estimatedMinutes ? ` \u00b7 ~${node.estimatedMinutes} min` : ''}
+                    </div>
+                    <div className="plan-mastery-bar">
+                      <div
+                        className="plan-mastery-bar__fill"
+                        style={{ width: `${confidence}%`, background: level.color }}
+                      />
                     </div>
                   </div>
-                  <div
-                    className="mt-2 h-1 w-full"
-                    style={{ background: 'var(--rule-light)', borderRadius: '2px' }}
-                  >
-                    <div
-                      className="h-full transition-all"
-                      style={{
-                        width: `${confidence ?? 0}%`,
-                        background: barColor,
-                        borderRadius: '2px',
-                      }}
+                </div>
+
+                {/* Confidence slider */}
+                {!readOnly && onConfidenceAdjust && (
+                  <div className="plan-slider-row" onClick={(e) => e.stopPropagation()}>
+                    <span className="plan-slider-row__label">Adjust</span>
+                    <input
+                      type="range"
+                      className="plan-slider-row__input"
+                      min={0}
+                      max={100}
+                      value={displaySlider}
+                      onChange={(e) => setSliderValue(Number(e.target.value))}
+                      onMouseUp={commitSliderIfChanged}
+                      onTouchEnd={commitSliderIfChanged}
                     />
+                    <span
+                      className="plan-slider-row__val"
+                      style={{ color: masteryLevel(displaySlider / 100).color }}
+                    >
+                      {displaySlider}%
+                    </span>
                   </div>
-                  {unresolved.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-amber-600">
-                      {unresolved.map((m) => (
-                        <span
-                          key={m.id}
-                          className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 font-medium"
-                        >
-                          <LockClosedIcon className="h-3 w-3" />
-                          {m.description}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {lastEvidence && (
-                    <div className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                      <span className="font-medium text-foreground">Recent evidence:</span>{' '}
-                      {lastEvidence.details}
-                    </div>
-                  )}
-                  {!readOnly && onAdjust && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onAdjust({
-                            nodeId: node.id,
-                            direction: 'up',
-                            reason: 'Learner marked this as easier than expected.',
-                          });
-                        }}
-                        className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
-                        style={{
-                          border: '1px solid var(--rule-light)',
-                          borderRadius: 'var(--radius-editorial)',
-                        }}
-                      >
-                        Feels easier
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onAdjust({
-                            nodeId: node.id,
-                            direction: 'down',
-                            reason: 'Learner marked this as harder than expected.',
-                          });
-                        }}
-                        className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
-                        style={{
-                          border: '1px solid var(--rule-light)',
-                          borderRadius: 'var(--radius-editorial)',
-                        }}
-                      >
-                        Feels harder
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onAdjust({
-                            nodeId: node.id,
-                            confidenceFloor: Math.max(0.7, mastery.confidence ?? 0),
-                            reason: 'Learner is confident and wants a higher floor.',
-                          });
-                        }}
-                        className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
-                        style={{
-                          border: '1px solid var(--rule-light)',
-                          borderRadius: 'var(--radius-editorial)',
-                        }}
-                      >
-                        Set 70% floor
-                      </button>
-                      {unresolved[0] && (
+                )}
+
+                {/* Misconception alert */}
+                {unresolved.map((m) => (
+                  <div
+                    key={m.id}
+                    className="plan-misconception"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8.982 1.566a1.13 1.13 0 00-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 01-1.1 0L7.1 5.995A.905.905 0 018 5zm.002 6a1 1 0 110 2 1 1 0 010-2z" />
+                    </svg>
+                    <div className="plan-misconception__text">
+                      {m.description}
+                      {m.occurrences > 1 && (
+                        <div className="plan-misconception__meta">Seen {m.occurrences}x</div>
+                      )}
+                      {!readOnly && onMisconceptionResolve && (
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onAdjust({
-                              nodeId: node.id,
-                              misconceptionId: unresolved[0].id,
-                              misconceptionDescription: unresolved[0].description,
-                              reason: 'Misconception resolved by learner',
-                              direction: 'up',
-                            });
-                          }}
-                          className="px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:text-[var(--color-accent)]"
-                          style={{
-                            border: '1px solid var(--rule-light)',
-                            borderRadius: 'var(--radius-editorial)',
-                          }}
+                          className="plan-misconception__resolve"
+                          onClick={() => handleResolveMisconception(m.id, m.description)}
                         >
-                          Resolve misconception
+                          Mark resolved
                         </button>
                       )}
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                ))}
+              </>
+            )}
 
-              <div className="space-y-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                  Objectives
-                </div>
-                <ul className="space-y-1.5">
-                  {node.objectives.map((obj, i) => (
-                    <li key={i} className="flex gap-2 text-xs text-foreground/90">
-                      <div className="mt-1.5 h-1 w-1 rounded-full bg-muted-foreground/50" />
-                      <span className="leading-snug">{obj}</span>
-                    </li>
-                  ))}
-                </ul>
+            {/* Condition A: meta line */}
+            {!learnerModelVisible && (
+              <div className="plan-expanded__meta">
+                {node.estimatedMinutes && <span>~{node.estimatedMinutes} min</span>}
+                {node.objectives.length > 0 && (
+                  <>
+                    <span>&middot;</span>
+                    <span>{node.objectives.length} objectives</span>
+                  </>
+                )}
+                {mastery && (
+                  <>
+                    <span>&middot;</span>
+                    <span>{mastery.interactions} interactions</span>
+                  </>
+                )}
               </div>
+            )}
 
-              {prerequisites.length > 0 && (
-                <div className="mt-3">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mb-1.5">
-                    Prerequisites
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {prerequisites.map((p) => (
-                      <span
-                        key={p.id}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium"
-                        style={{
-                          border:
-                            p.status === 'completed'
-                              ? '1px solid var(--color-success)'
-                              : '1px solid var(--rule-light)',
-                          background:
-                            p.status === 'completed'
-                              ? 'color-mix(in oklab, var(--color-success) 10%, var(--surface-paper))'
-                              : 'var(--surface-paper)',
-                          color:
-                            p.status === 'completed'
-                              ? 'var(--color-success)'
-                              : 'var(--color-fg-muted)',
-                          borderRadius: 'var(--radius-editorial)',
-                        }}
-                      >
-                        {p.status === 'completed' && <CheckCircleIcon className="h-3 w-3" />}
-                        {p.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+            {/* Objectives */}
+            {node.objectives.length > 0 && (
+              <ul className="plan-expanded__objs">
+                {node.objectives.map((obj, i) => (
+                  <li key={i}>{obj}</li>
+                ))}
+              </ul>
+            )}
 
-              {/* Admin Controls */}
-              {canModifyStatus && (
-                <div className="mt-4 flex items-center gap-2 border-t border-border/50 pt-3">
-                  {node.status === 'in_progress' && (
-                    <button
-                      onClick={() => onStatusChange?.('completed')}
-                      className="text-[10px] font-medium hover:underline"
-                      style={{ color: 'var(--color-success)' }}
-                    >
-                      Mark as Complete
-                    </button>
-                  )}
-                  {node.status !== 'not_started' && (
-                    <button
-                      onClick={() => onStatusChange?.('not_started')}
-                      className="text-[10px] font-medium text-muted-foreground hover:underline"
-                    >
-                      Reset Status
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+            {/* Action buttons (Condition B, non-readonly) */}
+            {learnerModelVisible && !readOnly && (
+              <div className="plan-expanded__actions" onClick={(e) => e.stopPropagation()}>
+                {isReady && node.status !== 'completed' && onMarkKnown && (
+                  <button className="plan-action-btn plan-action-btn--ok" onClick={handleMarkKnown}>
+                    &#10003; I know this
+                  </button>
+                )}
+                {onFlagForReview && (
+                  <button className="plan-action-btn" onClick={handleFlagForReview}>
+                    Need more practice
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Confirmation Dialog */}
       <EditConfirmDialog
         isOpen={pendingAction !== null}
         action={pendingAction}
         onConfirm={handleConfirm}
         onCancel={handleCancel}
       />
-    </div>
+    </>
   );
 }

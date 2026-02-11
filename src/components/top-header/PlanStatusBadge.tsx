@@ -18,12 +18,14 @@ export function PlanStatusBadge({
   hasPlan,
   planProgress,
   learningPlan,
+  panelOpen,
   onToggleRightPanel,
 }: {
   planGeneration?: PlanGeneration;
   hasPlan: boolean;
   planProgress: PlanProgress | null;
   learningPlan?: LearningPlan;
+  panelOpen?: boolean;
   onToggleRightPanel: () => void;
 }) {
   if (planGeneration?.status === 'loading') {
@@ -69,10 +71,11 @@ export function PlanStatusBadge({
   return (
     <button
       type="button"
-      className="plan-button"
+      className={`plan-button${panelOpen ? ' plan-button--active' : ''}`}
       onClick={onToggleRightPanel}
-      title="Toggle Learning Hub"
-      aria-label="Toggle Learning Hub"
+      title={panelOpen ? 'Close Learning Hub' : 'Open Learning Hub'}
+      aria-label={panelOpen ? 'Close Learning Hub' : 'Open Learning Hub'}
+      aria-pressed={panelOpen}
     >
       <ClipboardDocumentListIcon className="plan-button__icon h-5 w-5" />
       <span className="plan-button__text">Plan</span>

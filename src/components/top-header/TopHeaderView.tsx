@@ -42,6 +42,7 @@ export function TopHeaderView({
   onToggleTutor,
   onOpenPlanSheet,
   onClosePlanSheet,
+  rightPanelOpen,
   onToggleRightPanel,
   onPlanUpdate,
   onStartLesson,
@@ -107,6 +108,7 @@ export function TopHeaderView({
               hasPlan={hasPlan}
               planProgress={planProgress}
               learningPlan={learningPlan}
+              panelOpen={rightPanelOpen}
               onToggleRightPanel={onToggleRightPanel}
             />
             <HeaderDivider />
@@ -160,7 +162,6 @@ export function TopHeaderView({
         onStartLesson={onStartLesson}
         learnerModel={learnerModel}
         onMarkKnown={onMarkKnown}
-        onLearnerModelFeedback={onLearnerModelFeedback}
         onConfidenceAdjust={onConfidenceAdjust}
         onMisconceptionResolve={onMisconceptionResolve}
         onSetConfidenceFloor={onSetConfidenceFloor}
