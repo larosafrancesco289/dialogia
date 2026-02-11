@@ -5,6 +5,7 @@ import {
   CheckIcon,
   ClipboardIcon,
   ArrowUturnRightIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { Markdown } from '@/components/Markdown';
 import { RegenerateMenu } from '@/components/RegenerateMenu';
@@ -137,7 +138,7 @@ export function AssistantMessage({
             onClick={branchFromMessage}
             disabled={isChatStreaming}
           />
-          {!tutorEnabled && <RegenerateMenu onChoose={onChooseRegenerateModel} />}
+          <RegenerateMenu onChoose={onChooseRegenerateModel} />
         </MessageActions>
       )}
 
@@ -178,6 +179,18 @@ export function AssistantMessage({
           <Markdown content={displayContent} />
         )}
       </div>
+
+      {!isStreaming && !isChatStreaming && isLatestAssistant && !isEditing && !displayContent.trim() && (
+        <div className="px-4 pb-2">
+          <button
+            className="btn btn-ghost btn-sm text-xs text-warning gap-1.5"
+            onClick={() => onChooseRegenerateModel()}
+          >
+            <ArrowPathIcon className="h-3.5 w-3.5" />
+            Response incomplete — tap to retry
+          </button>
+        </div>
+      )}
 
       {!isStreaming && tutorPanelNode}
 

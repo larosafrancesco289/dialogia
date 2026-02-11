@@ -31,6 +31,21 @@ import type {
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
 
+/** Returns true if the model response looks truncated or empty. */
+function looksIncomplete(
+  content: string,
+  finishReason?: StreamDoneExtras['finishReason'],
+): boolean {
+  const trimmed = content.trim();
+  if (!trimmed) return true;
+  if (finishReason === 'length') return true;
+  const fencedCodeBlocks = trimmed.match(/```/g);
+  if (fencedCodeBlocks && fencedCodeBlocks.length % 2 === 1) return true;
+  if (/[([{]$/.test(trimmed)) return true;
+  if (/[,:;-]$/.test(trimmed)) return true;
+  return false;
+}
+
 export type StreamingTurnOptions = StreamFinalOptions & {
   userContent: string;
   combinedSystem?: string;
@@ -412,6 +427,7 @@ export async function executeStreamingTurn(
   let roundToolCalls: ToolCall[] = [];
   let roundFinishReason: StreamDoneExtras['finishReason'];
   let roundReasoningDetails: StreamDoneExtras['reasoningDetails'];
+  let shouldRetryFirstRound = false;
 
   const uiCallbacks = createUiCallbacks(performance.now());
   const finalizeShortCircuit = () => {
@@ -435,9 +451,16 @@ export async function executeStreamingTurn(
       }
       // Only call uiCallbacks.onDone if we're NOT going to execute tools
       if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
-        const finalSystem = buildFinalSystem();
-        emitPlanResult(finalSystem);
-        uiCallbacks.onDone?.(full, extras);
+        shouldRetryFirstRound = Boolean(
+          planningToolDefinition?.length &&
+            looksIncomplete(full || roundContent, roundFinishReason) &&
+            !controller.signal.aborted,
+        );
+        if (!shouldRetryFirstRound) {
+          const finalSystem = buildFinalSystem();
+          emitPlanResult(finalSystem);
+          uiCallbacks.onDone?.(full, extras);
+        }
       }
     },
   };
@@ -449,9 +472,46 @@ export async function executeStreamingTurn(
     callbacks: firstRoundCallbacks,
   });
 
-  // No tool calls - we're done
+  // No tool calls — retry once if the response looks incomplete and tools were available
   if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
-    return buildResult(state, buildFinalSystem(), sideEffects);
+    if (shouldRetryFirstRound) {
+      roundContent = '';
+      roundToolCalls = [];
+      roundFinishReason = undefined;
+      roundReasoningDetails = undefined;
+
+      const retryCallbacks: StreamCallbacks = {
+        ...uiCallbacks,
+        onToken: (delta) => {
+          roundContent += delta;
+          uiCallbacks.onToken?.(delta);
+        },
+        onToolCallDelta: handleToolCallDelta,
+        onDone: (full, extras) => {
+          roundFinishReason = extras?.finishReason;
+          roundReasoningDetails = extras?.reasoningDetails;
+          if (extras?.toolCalls) roundToolCalls = extras.toolCalls;
+          if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
+            emitPlanResult(buildFinalSystem());
+            uiCallbacks.onDone?.(full, extras);
+          }
+        },
+      };
+
+      await executeStreamCall(ctx, {
+        messages: applyCacheBreakpoints(convo),
+        tools: planningToolDefinition,
+        toolChoice: 'auto',
+        callbacks: retryCallbacks,
+      });
+
+      if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
+        return buildResult(state, buildFinalSystem(), sideEffects);
+      }
+      // Fall through to tool scheduling
+    } else {
+      return buildResult(state, buildFinalSystem(), sideEffects);
+    }
   }
 
   // Schedule first round of tools
