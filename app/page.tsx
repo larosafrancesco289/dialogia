@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { ChatPane } from '@/components/chat/ChatPane';
 import { TopHeader } from '@/components/TopHeader';
@@ -10,6 +11,7 @@ import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useSidebarGestures } from '@/lib/hooks/useSidebarGestures';
 import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
+import { selectIsTutorEnabled } from '@/lib/store/selectors';
 import { motion } from 'framer-motion';
 import { springs } from '@/lib/mobile/springConfig';
 
@@ -23,15 +25,21 @@ const GlobalNotice = lazyClient(() =>
 );
 
 export default function HomePage() {
-  const { collapsed, isSettingsOpen } = useChatStore(
+  const { collapsed, isSettingsOpen, tutorActive } = useChatStore(
     (s) => ({
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
+      tutorActive: selectIsTutorEnabled(s),
     }),
     shallow,
   );
   const setUI = useChatStore((s) => s.setUI);
   const { mounted, isMobile } = useAppBootstrap({ mobileBreakpoint: 768 });
+
+  // Auto-collapse sidebar when tutor activates (desktop only)
+  useEffect(() => {
+    if (tutorActive && !isMobile) setUI({ sidebarCollapsed: true });
+  }, [tutorActive, isMobile, setUI]);
 
   // Mobile: attach swipe gestures for sidebar open/close
   useSidebarGestures({

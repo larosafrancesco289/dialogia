@@ -102,6 +102,26 @@ export function TutorPanel(props: TutorPanelProps) {
                   </div>
                 </div>
                 <div className="space-y-1">
+                  <label className="text-sm block">Auto-scroll during tutoring</label>
+                  <div className="segmented">
+                    <button
+                      className={`segment ${ui?.tutor.autoScroll ? 'is-active' : ''}`}
+                      onClick={() => setUI({ tutor: { autoScroll: true } })}
+                    >
+                      On
+                    </button>
+                    <button
+                      className={`segment ${!ui?.tutor.autoScroll ? 'is-active' : ''}`}
+                      onClick={() => setUI({ tutor: { autoScroll: false } })}
+                    >
+                      Off
+                    </button>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Automatically scroll to the latest message as the tutor responds.
+                  </div>
+                </div>
+                <div className="space-y-1">
                   <label className="text-sm block">Adaptive learning plan</label>
                   <div className="text-xs text-muted-foreground space-y-1">
                     <p>

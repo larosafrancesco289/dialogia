@@ -78,6 +78,7 @@ export type UiTutorSnapshot = {
   forceMode?: boolean;
   researchMode?: TutorResearchMode;
   studyCondition?: StudyCondition;
+  autoScroll?: boolean;
 };
 
 export type UiPlanSnapshot = {

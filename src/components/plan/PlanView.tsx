@@ -1,7 +1,6 @@
 'use client';
 import {
   SparklesIcon,
-  PlayIcon,
   CheckCircleIcon,
   ChatBubbleLeftEllipsisIcon,
 } from '@heroicons/react/24/outline';
@@ -41,7 +40,6 @@ export function PlanView({
 }) {
   const nextNode = getNextNode(plan);
   const allCompleted = plan.nodes.every((n) => n.status === 'completed');
-  const canStartLesson = !readOnly && (!!onStartLesson || !!onNodeStatusChange);
   const phases = useMemo(() => {
     const groups: { name: string; nodes: LearningPlanNode[] }[] = [];
     let currentGroup: { name: string; nodes: LearningPlanNode[] } | null = null;
@@ -235,23 +233,9 @@ export function PlanView({
                 {nextNode.name}
               </h3>
               {nextNode.description && (
-                <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                <p className="text-xs text-muted-foreground line-clamp-2">
                   {nextNode.description}
                 </p>
-              )}
-
-              {canStartLesson && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onStartLesson) onStartLesson(nextNode.id);
-                    else onNodeStatusChange?.(nextNode.id, 'in_progress');
-                  }}
-                  className="btn w-full inline-flex justify-center items-center gap-2 px-3 py-1.5 text-xs font-semibold"
-                >
-                  <PlayIcon className="h-3 w-3" />
-                  {nextNode.status === 'in_progress' ? 'Continue Lesson' : 'Start Lesson'}
-                </button>
               )}
             </div>
           )}

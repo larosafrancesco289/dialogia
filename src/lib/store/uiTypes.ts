@@ -51,7 +51,7 @@ export type PersistedUiState = {
   debug?: Pick<UIDebugState, 'mode'>;
   tutor?: Pick<
     UITutorState,
-    'contextMode' | 'researchMode' | 'defaultModelId' | 'forceMode' | 'studyCondition'
+    'contextMode' | 'researchMode' | 'defaultModelId' | 'forceMode' | 'studyCondition' | 'autoScroll'
   >;
 };
 

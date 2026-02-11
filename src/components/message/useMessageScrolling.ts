@@ -11,6 +11,8 @@ export type MessageScrollingOptions = {
   prefersReducedMotion: boolean;
   isAssistantPlaceholder: (message?: Message, previous?: Message) => boolean;
   onScrollAway?: () => void;
+  /** When false, disable streaming auto-scroll (still scrolls on user messages). Defaults to true. */
+  autoScrollPreference?: boolean;
 };
 
 export function useMessageScrolling(options: MessageScrollingOptions) {
@@ -22,6 +24,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     prefersReducedMotion,
     isAssistantPlaceholder,
     onScrollAway,
+    autoScrollPreference = true,
   } = options;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -31,7 +34,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   const [showJump, setShowJump] = useState(false);
   const lastScrollTsRef = useRef(0);
   const onScrollAwayRef = useRef(onScrollAway);
-  const autoScrollEnabledRef = useRef(true);
+  const autoScrollEnabledRef = useRef(autoScrollPreference);
   const programmaticScrollRef = useRef(false);
   const atBottomRef = useRef(true);
   const scrollToBottomRef = useRef<(behavior: ScrollBehavior) => void>(() => {});
@@ -306,12 +309,14 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
     lastMessageMetaRef.current = meta;
     const hasRecentUserMessage = meta.role === 'user' || meta.placeholder;
-    if (hasRecentUserMessage) {
+    if (hasRecentUserMessage && autoScrollPreference) {
       autoScrollEnabledRef.current = true;
     }
 
+    // Always scroll user's own message into view; only follow assistant when preference is on
     const shouldFollow =
-      (atBottomRef.current && autoScrollEnabledRef.current) || hasRecentUserMessage;
+      hasRecentUserMessage ||
+      (autoScrollPreference && atBottomRef.current && autoScrollEnabledRef.current);
 
     if (shouldFollow) {
       if (!programmaticScrollRef.current) {
@@ -320,9 +325,10 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     } else if (!atBottomRef.current) {
       setShowJump((prev) => (prev === true ? prev : true));
     }
-  }, [messages, prefersReducedMotion, isAssistantPlaceholder, showJump, atBottom]);
+  }, [messages, prefersReducedMotion, isAssistantPlaceholder, showJump, atBottom, autoScrollPreference]);
 
   useEffect(() => {
+    if (!autoScrollPreference) return; // user disabled auto-scroll
     if (!autoScrollEnabledRef.current) return;
     if (isStreaming && atBottomRef.current) {
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -332,7 +338,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       }
     }
     if (!isStreaming) lastScrollTsRef.current = 0;
-  }, [isStreaming, lastLen]);
+  }, [isStreaming, lastLen, autoScrollPreference]);
 
   const jumpToLatest = useCallback(() => {
     autoScrollEnabledRef.current = true;

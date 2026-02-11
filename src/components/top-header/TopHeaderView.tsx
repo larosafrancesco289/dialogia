@@ -11,7 +11,6 @@ import { PlanStatusBadge } from '@/components/top-header/PlanStatusBadge';
 import { TutorToggle } from '@/components/top-header/TutorToggle';
 import { HeaderDivider } from '@/components/top-header/HeaderDivider';
 import { ModelPickerTrigger } from '@/components/top-header/ModelPickerTrigger';
-import { TutorStatusBar } from '@/components/top-header/TutorStatusBar';
 import type { TopHeaderState } from '@/components/top-header/useTopHeaderState';
 
 export function TopHeaderView({
@@ -150,15 +149,6 @@ export function TopHeaderView({
           />
         </div>
       </div>
-
-      {/* Tutor status bar (second row, only when tutor active with plan) */}
-      {tutorActive && hasPlan && milestones.length > 0 && (
-        <TutorStatusBar
-          milestones={milestones}
-          breadcrumbPath={breadcrumbPath}
-          currentNodeId={currentNode?.id}
-        />
-      )}
 
       {/* Plan sheet modal */}
       <PlanSheet
