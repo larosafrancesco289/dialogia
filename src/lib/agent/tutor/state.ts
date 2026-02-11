@@ -135,7 +135,6 @@ function applyTutorFilters(
     tools = tools.filter((name) => !QUIZ_TOOLS.has(name));
   }
 
-
   return Array.from(new Set(tools));
 }
 

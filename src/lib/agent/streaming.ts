@@ -3,6 +3,7 @@
 
 import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
 import { captureRequestDebug } from '@/lib/agent/debug';
+import { applyCacheBreakpoints } from '@/lib/agent/cache';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
 import { clearTurnController } from '@/lib/turns/runtime';
@@ -33,11 +34,13 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
   const toolsForStreaming = includeTools ? (toolDefinition as ToolDefinition[]) : undefined;
   const generation = settings.generation;
 
+  const cachedMessages = applyCacheBreakpoints(messages);
+
   captureRequestDebug({
     turn,
     messageId: assistantMessage.id,
     modelId: settings.modelId,
-    messages,
+    messages: cachedMessages,
     stream: true,
     includeUsage: shouldIncludeUsage(true),
     canImageOut,
@@ -75,7 +78,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
   await getStreamChatCompletion(opts.pipeline)({
     auth,
     model: settings.modelId,
-    messages,
+    messages: cachedMessages,
     modalities,
     temperature: generation.temperature,
     topP: generation.topP,

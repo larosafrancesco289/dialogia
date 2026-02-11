@@ -34,8 +34,7 @@ export async function composeTurn({
   const hadPdfEarlier = priorMessages.some(
     (m) => Array.isArray(m.attachments) && m.attachments.some((att) => att.kind === 'pdf'),
   );
-  const hasPdf =
-    preparedAttachments.some((att) => att.kind === 'pdf') || (hadPdfEarlier ? true : false);
+  const hasPdf = preparedAttachments.some((att) => att.kind === 'pdf') || hadPdfEarlier;
 
   const plugins = composePlugins({ hasPdf, searchEnabled, searchProvider });
 
@@ -68,17 +67,21 @@ export async function composeTurn({
       : [];
   const tools = [...searchTools, ...tutorTools];
 
-  const preambles: string[] = [];
+  // Collect preambles split into stable (cacheable) and dynamic (per-turn) groups.
+  // Stable: tool preamble, tutor preamble, learner profile, learner preference.
+  // Dynamic: plan context (includes mastery scores that change each turn).
+  const stablePreambles: string[] = [];
+  const dynamicPreambles: string[] = [];
   if (searchEnabled && searchProvider === 'brave') {
-    preambles.push(TOOL_PREAMBLE);
+    stablePreambles.push(TOOL_PREAMBLE);
   }
   if (tutorEnabled) {
     const tutorPreamble = getTutorPreamble();
-    if (tutorPreamble) preambles.push(tutorPreamble);
+    if (tutorPreamble) stablePreambles.push(tutorPreamble);
     try {
       const profile = await tutorProfileService.loadTutorProfile(chat.id);
       const summary = tutorProfileService.summarizeTutorProfile(profile);
-      if (summary) preambles.push(`Learner Profile:\n${summary}`);
+      if (summary) stablePreambles.push(`Learner Profile:\n${summary}`);
     } catch {
       // ignore profile load failures
     }
@@ -99,18 +102,22 @@ export async function composeTurn({
         learnerModel,
         { includeLearnerModel: allowLearnerModelContext },
       );
-      if (planContext) preambles.push(planContext);
+      if (planContext) dynamicPreambles.push(planContext);
     }
 
     if (settings.tutorNudge) {
-      preambles.push(`Learner Preference: ${settings.tutorNudge.replace(/_/g, ' ')}`);
+      stablePreambles.push(`Learner Preference: ${settings.tutorNudge.replace(/_/g, ' ')}`);
     }
   }
 
   // When tutor is enabled, the tutor preamble is complete - don't add the normal system prompt
   const baseSystem =
     !tutorEnabled && typeof settings.system === 'string' ? settings.system : undefined;
+  const preambles = [...stablePreambles, ...dynamicPreambles];
   const system = combineSystem(baseSystem, preambles);
+  const systemStable =
+    stablePreambles.length > 0 ? combineSystem(baseSystem, stablePreambles) : undefined;
+  const systemDynamic = dynamicPreambles.length > 0 ? dynamicPreambles.join('\n\n') : undefined;
 
   const chatForMessages = {
     ...chat,
@@ -139,6 +146,8 @@ export async function composeTurn({
 
   return {
     system,
+    systemStable,
+    systemDynamic,
     messages,
     tools: tools.length > 0 ? tools : undefined,
     plugins: Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined,

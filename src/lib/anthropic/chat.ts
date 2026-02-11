@@ -68,14 +68,54 @@ export async function anthropicChatCompletion({
   const systemMessages = messages.filter((m) => m.role === 'system');
   const nonSystemMessages = messages.filter((m) => m.role !== 'system');
 
-  const systemText = systemMessages
-    .map((m) => (typeof m.content === 'string' ? m.content : ''))
-    .join('\n\n');
+  // Build system content -- use content block array when cache_control is present
+  // (for prompt caching), fall back to plain string for backwards compat.
+  type SystemTextBlock = { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } };
+  const systemBlocks: SystemTextBlock[] = [];
+  for (const msg of systemMessages) {
+    if (Array.isArray(msg.content)) {
+      for (const block of msg.content) {
+        if (block.type === 'text') {
+          systemBlocks.push(
+            block.cache_control
+              ? { type: 'text', text: block.text, cache_control: block.cache_control }
+              : { type: 'text', text: block.text },
+          );
+        }
+      }
+    } else if (typeof msg.content === 'string' && msg.content) {
+      systemBlocks.push({ type: 'text', text: msg.content });
+    }
+  }
+  const hasCacheControl = systemBlocks.some((b) => b.cache_control != null);
 
-  const anthropicMessages = nonSystemMessages.map((m) => ({
-    role: m.role as 'user' | 'assistant',
-    content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
-  }));
+  const toAnthropicMessageContent = (
+    content: ModelMessage['content'],
+  ): string | SystemTextBlock[] => {
+    if (Array.isArray(content)) {
+      if (content.length === 0) return '';
+
+      const textBlocks = content.filter(
+        (block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text',
+      );
+      const hasOnlyTextBlocks = textBlocks.length === content.length;
+      if (!hasOnlyTextBlocks) {
+        // Fallback to string to avoid sending OpenAI-style blocks Anthropic doesn't accept.
+        return JSON.stringify(content);
+      }
+
+      return textBlocks.map((block) =>
+        block.cache_control
+          ? { type: 'text', text: block.text, cache_control: block.cache_control }
+          : { type: 'text', text: block.text },
+      );
+    }
+    return typeof content === 'string' ? content : JSON.stringify(content);
+  };
+
+  const anthropicMessages = nonSystemMessages.map((m) => {
+    return { role: m.role as 'user' | 'assistant', content: toAnthropicMessageContent(m.content) };
+  });
 
   const resolvedModel = resolveAnthropicDirectModelId(model);
   if (!resolvedModel) {
@@ -88,8 +128,8 @@ export async function anthropicChatCompletion({
     max_tokens: maxTokens,
     temperature,
   };
-  if (systemText) {
-    body.system = systemText;
+  if (systemBlocks.length > 0) {
+    body.system = hasCacheControl ? systemBlocks : systemBlocks.map((b) => b.text).join('\n\n');
   }
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {

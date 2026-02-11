@@ -15,12 +15,7 @@ import { recordLearningTool } from '@/lib/tools/definitions/tutor/recordLearning
 
 export type ToolCategory = 'tutor_content' | 'tutor_meta' | 'search' | 'other';
 
-export type TutorToolTag =
-  | 'quiz'
-  | 'plan'
-  | 'learnerModel'
-  | 'baseline'
-  | 'diagnostic';
+export type TutorToolTag = 'quiz' | 'plan' | 'learnerModel' | 'baseline' | 'diagnostic';
 
 export type TutorToolPriorityGroup = 'intake' | 'diagnostic' | 'plan' | 'practice';
 

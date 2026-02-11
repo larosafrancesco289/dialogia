@@ -164,10 +164,7 @@ export function PlanProposalCard({
               </div>
             )}
             <div className="mt-5 flex flex-wrap items-center gap-2">
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={handleOpenFullPlan}
-              >
+              <button className="btn btn-outline btn-sm" onClick={handleOpenFullPlan}>
                 View full plan
               </button>
               <button

@@ -1,5 +1,6 @@
 import { getChatCompletion, type PipelineClient } from '@/lib/agent/pipelineClient';
 import { captureRequestDebug } from '@/lib/agent/debug';
+import { applyCacheBreakpoints } from '@/lib/agent/cache';
 import { detectPlanningToolCalls } from '@/lib/agent/tools/router';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
 import { isToolCallingSupported } from '@/lib/models';
@@ -37,11 +38,13 @@ export async function runPlanningRound(args: {
       ? toolDefinition
       : undefined;
 
+  const cachedConvo = applyCacheBreakpoints(convo);
+
   captureRequestDebug({
     turn,
     messageId: assistantMessage.id,
     modelId: settings.modelId,
-    messages: convo,
+    messages: cachedConvo,
     stream: false,
     includeUsage: shouldIncludeUsage(false),
     temperature: generation.temperature,
@@ -59,7 +62,7 @@ export async function runPlanningRound(args: {
   const resp = await getChatCompletion(args.pipeline)({
     auth,
     model: settings.modelId,
-    messages: convo,
+    messages: cachedConvo,
     temperature: generation.temperature,
     topP: generation.topP,
     maxTokens: generation.maxTokens,

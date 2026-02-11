@@ -283,7 +283,12 @@ test('post-test gap questions parse evidence with LaTeX backslashes', async () =
     topicId: 'limit-definition',
     difficulty: 'easy',
     question: 'The limit definition of the derivative involves:',
-    options: ['Taking h to infinity', 'Taking h to zero', 'Finding the average slope', 'Computing the integral'],
+    options: [
+      'Taking h to infinity',
+      'Taking h to zero',
+      'Finding the average slope',
+      'Computing the integral',
+    ],
     correctIndex: 1,
   };
 
@@ -297,8 +302,7 @@ test('post-test gap questions parse evidence with LaTeX backslashes', async () =
 
   // Simulate LLM returning evidence with LaTeX backslashes that break JSON.parse
   // \lim has \l (invalid JSON escape), \frac has \f (formfeed), \to has \t (tab)
-  const latexEvidence =
-    '$$f\'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}$$';
+  const latexEvidence = "$$f'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}$$";
   const pipelineClient = {
     chatCompletion: async () => ({
       id: 'test-completion',
@@ -320,7 +324,7 @@ test('post-test gap questions parse evidence with LaTeX backslashes', async () =
   } satisfies PipelineClient;
 
   const transcript =
-    'Tutor: The limit definition is f\'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}. We take h to zero to find the instantaneous rate of change.';
+    "Tutor: The limit definition is f'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}. We take h to zero to find the instantaneous rate of change.";
 
   const result = await administerTest([question], 'post', {
     auth: { transport: 'openrouter', useProxy: true },

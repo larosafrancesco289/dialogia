@@ -1161,7 +1161,7 @@ function extractEditEvents(
     const snap = snapshots[i];
     const userContent = snap.user?.content;
     const userRequestedPlanChange = looksLikePlanEditRequest(userContent);
-    const userRequestedModelOverride = looksLikeModelOverrideRequest(userContent);
+    const _userRequestedModelOverride = looksLikeModelOverrideRequest(userContent);
     const toolCalls = snap.assistant.toolCalls || [];
 
     for (const tc of toolCalls) {

@@ -6,6 +6,7 @@ import { MAX_PLANNING_ROUNDS, shouldAppendSources } from '@/lib/agent/policy';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { followUpPrompt } from '@/lib/agent/prompts/followUp';
 import { combineSystem } from '@/lib/agent/system';
+import { buildSystemMessage } from '@/lib/agent/cache';
 import type {
   ModelMessage,
   PlanTurnOptions,
@@ -22,12 +23,14 @@ import { getMessagesForChat } from '@/lib/messages/indexing';
 function buildPlanningMessages(
   baseMessages: ModelMessage[],
   combinedSystem?: string,
+  systemStable?: string,
+  systemDynamic?: string,
 ): ModelMessage[] {
-  const planningSystem =
-    combinedSystem != null ? ({ role: 'system', content: combinedSystem } as const) : undefined;
-  return planningSystem
-    ? [planningSystem, ...baseMessages.filter((entry) => entry.role !== 'system')]
-    : baseMessages.slice();
+  const sysMsg = buildSystemMessage({ combinedSystem, systemStable, systemDynamic });
+  if (sysMsg) {
+    return [sysMsg, ...baseMessages.filter((m) => m.role !== 'system')];
+  }
+  return baseMessages.slice();
 }
 
 export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
@@ -37,6 +40,8 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
     assistantMessage,
     userContent,
     combinedSystem,
+    systemStable,
+    systemDynamic,
     baseMessages,
     toolDefinition,
     controller,
@@ -57,7 +62,12 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
     currentPlan,
   });
 
-  const planningMessages = buildPlanningMessages(baseMessages, combinedSystem);
+  const planningMessages = buildPlanningMessages(
+    baseMessages,
+    combinedSystem,
+    systemStable,
+    systemDynamic,
+  );
 
   const convo = planningMessages.slice();
   let rounds = 0;

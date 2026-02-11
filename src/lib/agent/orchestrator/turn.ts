@@ -140,6 +140,8 @@ export const runTurn = async ({
       startBuffered,
       userContent,
       combinedSystem: composition.system,
+      systemStable: composition.systemStable,
+      systemDynamic: composition.systemDynamic,
       pipeline,
       onPlanResult: hooks?.onPlanResult,
       onPlanSideEffects: hooks?.onPlanSideEffects,
@@ -173,6 +175,8 @@ export const runTurn = async ({
       assistantMessage,
       userContent,
       combinedSystem: composition.system,
+      systemStable: composition.systemStable,
+      systemDynamic: composition.systemDynamic,
       baseMessages: composition.messages,
       toolDefinition: composition.tools,
       controller,
@@ -203,6 +207,8 @@ export const runTurn = async ({
     plugins: composition.plugins,
     toolDefinition: composition.tools,
     startBuffered,
+    systemStable: composition.systemStable,
+    systemDynamic: composition.systemDynamic,
   });
 
   return { composition, plan: planResult, shortCircuited: false };
