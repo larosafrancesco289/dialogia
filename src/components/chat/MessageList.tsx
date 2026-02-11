@@ -11,20 +11,28 @@ import { useMessageListWindow } from '@/components/message/hooks/useMessageListW
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { useMessageListController } from '@/components/message/useMessageListController';
-import { selectIsStreamingForChat, selectMessagesForChat } from '@/lib/store/selectors';
+import {
+  selectIsStreamingForChat,
+  selectIsTutorEnabledForChat,
+  selectMessagesForChat,
+} from '@/lib/store/selectors';
 
 const EMPTY_MESSAGES: Message[] = [];
 export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
-  const { allMessages, chat, isStreaming, planGeneration, composerFocused } = useChatStore(
-    (state) => ({
-      allMessages: selectMessagesForChat(chatId)(state) ?? EMPTY_MESSAGES,
-      chat: state.chats.find((c) => c.id === chatId),
-      isStreaming: selectIsStreamingForChat(chatId)(state),
-      planGeneration: state.ui.plan.generationByChatId?.[chatId],
-      composerFocused: state.ui.mobile.composerFocused,
-    }),
-    shallow,
-  );
+  const { allMessages, chat, isStreaming, planGeneration, composerFocused, autoScrollPref } =
+    useChatStore(
+      (state) => ({
+        allMessages: selectMessagesForChat(chatId)(state) ?? EMPTY_MESSAGES,
+        chat: state.chats.find((c) => c.id === chatId),
+        isStreaming: selectIsStreamingForChat(chatId)(state),
+        planGeneration: state.ui.plan.generationByChatId?.[chatId],
+        composerFocused: state.ui.mobile.composerFocused,
+        autoScrollPref: selectIsTutorEnabledForChat(chatId)(state)
+          ? (state.ui.tutor.autoScroll ?? false)
+          : true,
+      }),
+      shallow,
+    );
   const { regenerate, branchFrom } = useChatStore(
     (state) => ({
       regenerate: state.regenerateAssistantMessage,
@@ -114,6 +122,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     prefersReducedMotion,
     isAssistantPlaceholder,
     onScrollAway: () => setActiveMessageId(null),
+    autoScrollPreference: autoScrollPref,
   });
 
   // Track previous composerFocused state to detect when keyboard opens

@@ -11,6 +11,7 @@ export function useMessageListWindow(args: {
   isAssistantPlaceholder: (message?: Message, previous?: Message) => boolean;
   onScrollAway?: () => void;
   pageSize?: number;
+  autoScrollPreference?: boolean;
 }) {
   const {
     messages,
@@ -21,6 +22,7 @@ export function useMessageListWindow(args: {
     isAssistantPlaceholder,
     onScrollAway,
     pageSize = 150,
+    autoScrollPreference,
   } = args;
   const { visibleItems, hiddenCount, showMore } = useMessageWindow(messages, {
     pageSize,
@@ -34,6 +36,7 @@ export function useMessageListWindow(args: {
     prefersReducedMotion,
     isAssistantPlaceholder,
     onScrollAway,
+    autoScrollPreference,
   });
 
   return {

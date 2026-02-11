@@ -5,7 +5,6 @@ import {
   ClockIcon,
   ChevronDownIcon,
   LockClosedIcon,
-  PlayIcon,
   SparklesIcon,
   AcademicCapIcon,
 } from '@heroicons/react/24/outline';
@@ -48,7 +47,6 @@ export function PlanNode({
   }, [focused]);
 
   const isLocked = !isReady && node.status === 'not_started';
-  const canStartLesson = !readOnly && (!!onStartLesson || !!onStatusChange);
   const canModifyStatus = !!onStatusChange && node.status !== 'completed' && !isLocked && !readOnly;
 
   const handleMarkKnown = useCallback(() => {
@@ -183,51 +181,24 @@ export function PlanNode({
               </div>
             </div>
 
-            {/* Primary Action (Start/Continue) - editorial style */}
-            {isReady && node.status !== 'completed' && canStartLesson && (
-              <div className="flex items-center gap-2">
-                {/* I know this button */}
-                {!readOnly && onMarkKnown && node.status === 'not_started' && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMarkKnown();
-                    }}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer"
-                    style={{
-                      background: 'var(--marginalia-bg)',
-                      color: 'var(--color-success)',
-                      border:
-                        '1px solid color-mix(in oklab, var(--color-success) 30%, var(--rule-light))',
-                      borderRadius: 'var(--radius-editorial)',
-                    }}
-                    title="Skip this topic - I already know it"
-                  >
-                    <AcademicCapIcon className="h-3 w-3" />I know this
-                  </div>
-                )}
-
-                {/* Start/Continue button */}
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onStartLesson) onStartLesson(node.id);
-                    else onStatusChange?.('in_progress');
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer"
-                  style={{
-                    background:
-                      node.status === 'in_progress'
-                        ? 'var(--marginalia-bg)'
-                        : 'var(--color-accent)',
-                    color: node.status === 'in_progress' ? 'var(--color-accent-2)' : '#0b0b0b',
-                    border: node.status === 'in_progress' ? '1px solid var(--rule-light)' : 'none',
-                    borderRadius: 'var(--radius-editorial)',
-                  }}
-                >
-                  <PlayIcon className="h-3 w-3" />
-                  {node.status === 'in_progress' ? 'Continue' : 'Start'}
-                </div>
+            {/* I know this button */}
+            {isReady && node.status === 'not_started' && !readOnly && onMarkKnown && (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleMarkKnown();
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-transform active:scale-95 cursor-pointer"
+                style={{
+                  background: 'var(--marginalia-bg)',
+                  color: 'var(--color-success)',
+                  border:
+                    '1px solid color-mix(in oklab, var(--color-success) 30%, var(--rule-light))',
+                  borderRadius: 'var(--radius-editorial)',
+                }}
+                title="Skip this topic - I already know it"
+              >
+                <AcademicCapIcon className="h-3 w-3" />I know this
               </div>
             )}
 
