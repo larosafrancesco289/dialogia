@@ -19,6 +19,7 @@ import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
 import { applyToolExecutions } from '@/lib/agent/planning/apply';
 import { followUpPrompt } from '@/lib/agent/prompts/followUp';
 import { getMessagesForChat } from '@/lib/messages/indexing';
+import { applyCacheBreakpoints, buildSystemMessage } from '@/lib/agent/cache';
 import type {
   ModelMessage,
   PlanTurnResult,
@@ -170,6 +171,8 @@ export async function executeStreamingTurn(
     startBuffered,
     userContent,
     combinedSystem,
+    systemStable,
+    systemDynamic,
     onPlanResult,
     onPlanSideEffects,
     shouldShortCircuit,
@@ -232,9 +235,8 @@ export async function executeStreamingTurn(
       ? Math.max(1, toolPolicy.maxToolsPerTurn)
       : Infinity;
 
-  // Build initial messages with system prompt
-  const planningSystem =
-    combinedSystem != null ? ({ role: 'system', content: combinedSystem } as const) : undefined;
+  // Build initial messages with system prompt (multipart when stable/dynamic split available)
+  const planningSystem = buildSystemMessage({ combinedSystem, systemStable, systemDynamic });
   const convo: ModelMessage[] = planningSystem
     ? [planningSystem, ...baseMessages.filter((m) => m.role !== 'system')]
     : baseMessages.slice();
@@ -316,13 +318,14 @@ export async function executeStreamingTurn(
   if (!hasTools) {
     const finalSystem = buildFinalSystem();
     const finalMessages: ModelMessage[] = [
-      { role: 'system', content: finalSystem },
+      // buildSystemMessage always returns a value when combinedSystem is defined
+      buildSystemMessage({ combinedSystem: finalSystem, systemStable, systemDynamic })!,
       ...convo.filter((m) => m.role !== 'system'),
     ];
 
     emitPlanResult(finalSystem);
     await executeStreamCall(ctx, {
-      messages: finalMessages,
+      messages: applyCacheBreakpoints(finalMessages),
       tools: undefined,
       toolChoice: undefined,
       callbacks: createUiCallbacks(performance.now()),
@@ -440,7 +443,7 @@ export async function executeStreamingTurn(
   };
 
   await executeStreamCall(ctx, {
-    messages: convo,
+    messages: applyCacheBreakpoints(convo),
     tools: planningToolDefinition,
     toolChoice: 'auto',
     callbacks: firstRoundCallbacks,
@@ -492,7 +495,7 @@ export async function executeStreamingTurn(
     };
 
     await executeStreamCall(ctx, {
-      messages: convo,
+      messages: applyCacheBreakpoints(convo),
       tools: planningToolDefinition,
       toolChoice: 'auto',
       callbacks: roundCallbacks,
@@ -522,12 +525,12 @@ export async function executeStreamingTurn(
     return buildResult(state, finalSystem, sideEffects, true);
   }
   const finalMessages: ModelMessage[] = [
-    { role: 'system', content: finalSystem },
+    buildSystemMessage({ combinedSystem: finalSystem, systemStable, systemDynamic })!,
     ...convo.filter((m) => m.role !== 'system'),
   ];
 
   await executeStreamCall(ctx, {
-    messages: finalMessages,
+    messages: applyCacheBreakpoints(finalMessages),
     tools: planningToolDefinition,
     toolChoice: 'none',
     callbacks: createUiCallbacks(performance.now()),

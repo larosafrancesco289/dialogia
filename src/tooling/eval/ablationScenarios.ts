@@ -454,7 +454,14 @@ const derivativesScenario: AblationScenario = {
       errorRate: 0.7,
       misconception: 'Confuses derivative with integral - thinks derivative finds area',
       misconceptionDistractor: 3, // post_1: "Computing the integral" (confuses derivative with integral)
-      evidenceKeywords: ['limit', 'h to zero', 'h to 0', 'first principles', 'tangent', 'instantaneous'],
+      evidenceKeywords: [
+        'limit',
+        'h to zero',
+        'h to 0',
+        'first principles',
+        'tangent',
+        'instantaneous',
+      ],
     },
     {
       topicId: 'sum-rule',

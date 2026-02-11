@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveAnthropicDirectModelId } from '@/lib/anthropic/chat';
+import { anthropicChatCompletion, resolveAnthropicDirectModelId } from '@/lib/anthropic/chat';
 
 test('resolveAnthropicDirectModelId maps current aliases to direct IDs', () => {
   assert.equal(resolveAnthropicDirectModelId('claude-opus-4-6'), 'claude-opus-4-6');
@@ -13,7 +13,10 @@ test('resolveAnthropicDirectModelId maps legacy aliases to direct IDs', () => {
   assert.equal(resolveAnthropicDirectModelId('claude-opus-4-1'), 'claude-opus-4-1-20250805');
   assert.equal(resolveAnthropicDirectModelId('claude-sonnet-4-0'), 'claude-sonnet-4-20250514');
   assert.equal(resolveAnthropicDirectModelId('claude-opus-4-0'), 'claude-opus-4-20250514');
-  assert.equal(resolveAnthropicDirectModelId('claude-3-7-sonnet-latest'), 'claude-3-7-sonnet-latest');
+  assert.equal(
+    resolveAnthropicDirectModelId('claude-3-7-sonnet-latest'),
+    'claude-3-7-sonnet-latest',
+  );
 });
 
 test('resolveAnthropicDirectModelId accepts snapshot IDs as-is', () => {
@@ -34,4 +37,81 @@ test('resolveAnthropicDirectModelId strips anthropic prefix', () => {
 test('resolveAnthropicDirectModelId returns undefined for unknown aliases', () => {
   assert.equal(resolveAnthropicDirectModelId('claude-sonnet-5'), undefined);
   assert.equal(resolveAnthropicDirectModelId('anthropic/foo'), undefined);
+});
+
+test('anthropicChatCompletion stringifies non-text content block arrays', async () => {
+  const originalFetch = globalThis.fetch;
+  let body: Record<string, unknown> | undefined;
+  globalThis.fetch = async (_input, init) => {
+    body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    return new Response(
+      JSON.stringify({
+        id: 'msg_123',
+        model: 'claude-opus-4-6',
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: 'ok' }],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+
+  try {
+    await anthropicChatCompletion({
+      apiKey: 'test-key',
+      model: 'claude-opus-4-6',
+      messages: [
+        { role: 'system', content: 'You are helpful.' },
+        {
+          role: 'user',
+          content: [{ type: 'image_url', image_url: { url: 'data:image/png;base64,AAA=' } }],
+        },
+      ],
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.ok(body && Array.isArray(body.messages));
+  const outbound = body.messages as Array<{ content: unknown }>;
+  assert.equal(typeof outbound[0]?.content, 'string');
+  assert.match(String(outbound[0]?.content), /image_url/);
+});
+
+test('anthropicChatCompletion preserves text block arrays for cache_control', async () => {
+  const originalFetch = globalThis.fetch;
+  let body: Record<string, unknown> | undefined;
+  globalThis.fetch = async (_input, init) => {
+    body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    return new Response(
+      JSON.stringify({
+        id: 'msg_123',
+        model: 'claude-opus-4-6',
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: 'ok' }],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+
+  try {
+    await anthropicChatCompletion({
+      apiKey: 'test-key',
+      model: 'claude-opus-4-6',
+      messages: [
+        { role: 'system', content: 'You are helpful.' },
+        {
+          role: 'user',
+          content: [{ type: 'text', text: 'hello', cache_control: { type: 'ephemeral' } }],
+        },
+      ],
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.ok(body && Array.isArray(body.messages));
+  const outbound = body.messages as Array<{ content: unknown }>;
+  assert.deepEqual(outbound[0]?.content, [
+    { type: 'text', text: 'hello', cache_control: { type: 'ephemeral' } },
+  ]);
 });

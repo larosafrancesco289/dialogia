@@ -28,6 +28,7 @@ import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport
 
 export type {
   AssistantModelMessage,
+  CacheControl,
   ModelContentBlock,
   ModelMessage,
   PdfPluginConfig,
@@ -76,6 +77,8 @@ export type PlanTurnOptions = {
   assistantMessage: Message;
   userContent: string;
   combinedSystem?: string;
+  systemStable?: string;
+  systemDynamic?: string;
   baseMessages: ModelMessage[];
   toolDefinition?: ToolDefinition[];
   controller: AbortController;
@@ -121,6 +124,10 @@ export type ComposeTurnArgs = {
 
 export type TurnComposition = {
   system?: string;
+  /** Stable portion of the system prompt (cacheable across turns). */
+  systemStable?: string;
+  /** Dynamic portion of the system prompt (changes per turn, e.g. mastery scores). */
+  systemDynamic?: string;
   messages: ModelMessage[];
   tools?: ToolDefinition[];
   plugins?: PluginConfig[];
@@ -142,6 +149,8 @@ export type StreamFinalOptions = {
   toolDefinition?: ToolDefinition[];
   startBuffered: boolean;
   pipeline?: PipelineClient;
+  systemStable?: string;
+  systemDynamic?: string;
 };
 
 export type RegenerateOptions = {

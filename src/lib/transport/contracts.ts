@@ -1,5 +1,7 @@
+export type CacheControl = { type: 'ephemeral' };
+
 export type ModelContentBlock =
-  | { type: 'text'; text: string }
+  | { type: 'text'; text: string; cache_control?: CacheControl }
   | { type: 'image_url'; image_url: { url: string } }
   | { type: 'file'; file: { filename: string; file_data: string } }
   | { type: 'input_audio'; input_audio: { data: string; format: string } };
@@ -17,7 +19,7 @@ export type ToolCall = {
 
 export type SystemModelMessage = {
   role: 'system';
-  content: string;
+  content: string | ModelContentBlock[];
 };
 
 export type UserModelMessage = {

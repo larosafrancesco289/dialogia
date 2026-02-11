@@ -111,7 +111,7 @@ export function useTopHeaderState(): TopHeaderState {
       updateChatSettings: s.updateChatSettings,
       clearChatMessages: s.clearChatMessages,
       sendUserMessage: s.sendUserMessage,
-    applyLearnerModelFeedbackFromUser: s.applyLearnerModelFeedbackFromUser,
+      applyLearnerModelFeedbackFromUser: s.applyLearnerModelFeedbackFromUser,
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
       planSheetOpen: s.ui.plan.sheetOpen ?? false,

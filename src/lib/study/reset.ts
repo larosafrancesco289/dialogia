@@ -35,13 +35,12 @@ function deleteDatabase(name: string): Promise<void> {
       finish(() => reject(request.error || new Error(`Failed to delete database "${name}".`)));
     request.onblocked = () => {
       window.setTimeout(() => {
-        finish(
-          () =>
-            reject(
-              new Error(
-                `Database "${name}" is blocked. Close other Dialogia tabs/windows and retry.`,
-              ),
+        finish(() =>
+          reject(
+            new Error(
+              `Database "${name}" is blocked. Close other Dialogia tabs/windows and retry.`,
             ),
+          ),
         );
       }, 1500);
     };
