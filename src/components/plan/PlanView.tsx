@@ -1,285 +1,159 @@
 'use client';
-import {
-  SparklesIcon,
-  CheckCircleIcon,
-  ChatBubbleLeftEllipsisIcon,
-} from '@heroicons/react/24/outline';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { LearningPlan, LearnerModel, LearningPlanNode } from '@/lib/types';
-import { isNodeReady, getAllPrerequisites, getNextNode } from '@/lib/learning-plan/service';
+import { isNodeReady, getAllPrerequisites } from '@/lib/learning-plan/service';
 import { PlanNode } from './PlanNode';
-import { useMemo } from 'react';
-import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
-import { LearnerStats, LearnerInsights } from './LearnerModelView';
-import { PlanEditingHint } from './PlanEditingHint';
+
+type SortMode = 'plan' | 'attention';
+
+type Section = {
+  key: string;
+  label: string;
+  nodes: LearningPlanNode[];
+};
 
 export function PlanView({
   plan,
+  learnerModel,
+  learnerModelVisible,
+  readOnly,
+  focusNodeId,
   onNodeStatusChange,
   onStartLesson,
-  learnerModel,
-  focusNodeId,
-  onLearnerModelFeedback,
-  latestUpdateSummary,
   onMarkKnown,
-  readOnly,
-  onSuggestPhaseChange,
-  compact,
+  onConfidenceAdjust,
+  onMisconceptionResolve,
+  onFlagForReview,
 }: {
   plan: LearningPlan;
+  learnerModel?: LearnerModel;
+  learnerModelVisible?: boolean;
+  readOnly?: boolean;
+  focusNodeId?: string;
   onNodeStatusChange?: (
     nodeId: string,
     status: 'not_started' | 'in_progress' | 'completed',
   ) => void;
   onStartLesson?: (nodeId: string) => void;
-  learnerModel?: LearnerModel;
-  focusNodeId?: string;
-  onLearnerModelFeedback?: (feedback: LearnerModelFeedback) => void;
-  latestUpdateSummary?: string;
   onMarkKnown?: (nodeId: string) => void;
-  readOnly?: boolean;
-  onSuggestPhaseChange?: (phaseName: string, phaseIndex: number) => void;
-  compact?: boolean;
+  onConfidenceAdjust?: (nodeId: string, newConfidence: number, reason?: string) => void;
+  onMisconceptionResolve?: (nodeId: string, misconceptionId: string) => void;
+  onFlagForReview?: (nodeId: string) => void;
 }) {
-  const nextNode = getNextNode(plan);
-  const allCompleted = plan.nodes.every((n) => n.status === 'completed');
-  const phases = useMemo(() => {
-    const groups: { name: string; nodes: LearningPlanNode[] }[] = [];
-    let currentGroup: { name: string; nodes: LearningPlanNode[] } | null = null;
-    let fallbackGroup: { name: string; nodes: LearningPlanNode[] } | null = null;
+  const uiLearnerModel = learnerModelVisible ? learnerModel : undefined;
 
-    plan.nodes.forEach((node) => {
-      const match = node.name.match(/^(Phase|Module|Part|Section)\s+(\d+|[A-Za-z]+):?\s*(.*)/i);
-      if (match) {
-        const phaseName = `${match[1]} ${match[2]}`;
-        if (!currentGroup || currentGroup.name !== phaseName) {
-          if (currentGroup) groups.push(currentGroup);
-          currentGroup = { name: phaseName, nodes: [] };
-        }
-        currentGroup.nodes.push(node);
-      } else {
-        if (currentGroup) {
-          currentGroup.nodes.push(node);
-        } else {
-          if (!fallbackGroup) fallbackGroup = { name: 'Topics', nodes: [] };
-          fallbackGroup.nodes.push(node);
-        }
-      }
-    });
+  // Auto-expand the current in-progress topic (tracks changes reactively)
+  const currentNodeId = plan.nodes.find((n) => n.status === 'in_progress')?.id;
+  const defaultExpanded = focusNodeId ?? currentNodeId ?? null;
 
-    if (currentGroup) groups.push(currentGroup);
-    if (fallbackGroup) {
-      if (groups.length === 0) {
-        groups.push(fallbackGroup);
+  const [expandedId, setExpandedId] = useState<string | null>(defaultExpanded);
+  const [sortMode, setSortMode] = useState<SortMode>('plan');
+
+  // Update expanded node when the in-progress topic changes
+  useEffect(() => {
+    if (currentNodeId) setExpandedId(currentNodeId);
+  }, [currentNodeId]);
+
+  const handleToggle = useCallback((nodeId: string) => {
+    setExpandedId((prev) => (prev === nodeId ? null : nodeId));
+  }, []);
+
+  // Classify nodes into sections
+  const sections = useMemo((): Section[] => {
+    const inProgress: LearningPlanNode[] = [];
+    const upNext: LearningPlanNode[] = [];
+    const completed: LearningPlanNode[] = [];
+    const locked: LearningPlanNode[] = [];
+
+    for (const node of plan.nodes) {
+      if (node.status === 'in_progress') {
+        inProgress.push(node);
+      } else if (node.status === 'completed') {
+        completed.push(node);
+      } else if (isNodeReady(node.id, plan)) {
+        upNext.push(node);
       } else {
-        groups.unshift(fallbackGroup);
+        locked.push(node);
       }
     }
 
-    if (groups.length === 1 && groups[0].name === 'Topics') {
-      groups[0].name = 'Your Journey';
+    // Apply attention sort for non-locked nodes in Condition B
+    if (sortMode === 'attention' && uiLearnerModel) {
+      const byMastery = (a: LearningPlanNode, b: LearningPlanNode) => {
+        const confA = uiLearnerModel.mastery?.[a.id]?.confidence ?? 0;
+        const confB = uiLearnerModel.mastery?.[b.id]?.confidence ?? 0;
+        return confA - confB; // lowest first
+      };
+      inProgress.sort(byMastery);
+      upNext.sort(byMastery);
+      completed.sort(byMastery);
     }
 
-    return groups;
-  }, [plan.nodes]);
-
-  const getMastery = (nodeId: string) => {
-    if (!learnerModel) return undefined;
-    return learnerModel.mastery[nodeId];
-  };
-
-  // Metadata badges - editorial style
-  const metadataBadges = [
-    plan.metadata?.difficulty && {
-      label: plan.metadata.difficulty,
-      style: {
-        background: 'var(--marginalia-bg)',
-        color: 'var(--color-accent)',
-        border: '1px solid var(--rule-accent)',
-      },
-    },
-    plan.metadata?.estimatedHours && {
-      label: `~${plan.metadata.estimatedHours}h`,
-      style: {
-        background: 'var(--marginalia-bg)',
-        color: 'var(--color-accent-2)',
-        border: '1px solid var(--rule-light)',
-      },
-    },
-    {
-      label: `${plan.nodes.length} topics`,
-      style: {
-        background: 'var(--marginalia-bg)',
-        color: 'var(--color-fg-muted)',
-        border: '1px solid var(--rule-light)',
-      },
-    },
-  ].filter(Boolean) as { label: string; style: React.CSSProperties }[];
-
-  const spacing = compact ? 'space-y-4' : 'space-y-6';
-  const phaseSpacing = compact ? 'space-y-5' : 'space-y-8';
+    const result: Section[] = [];
+    if (inProgress.length)
+      result.push({ key: 'in_progress', label: 'In progress', nodes: inProgress });
+    if (upNext.length) result.push({ key: 'up_next', label: 'Up next', nodes: upNext });
+    if (completed.length) result.push({ key: 'completed', label: 'Completed', nodes: completed });
+    if (locked.length) result.push({ key: 'locked', label: 'Locked', nodes: locked });
+    return result;
+  }, [plan, sortMode, uiLearnerModel]);
 
   return (
-    <div className={`${spacing} max-w-full`}>
-      {/* Top: Learner Stats (hidden in compact — SummaryStrip handles this) */}
-      {!compact && !readOnly && (
-        <section className="w-full">
-          <LearnerStats learnerModel={learnerModel} plan={plan} />
-        </section>
-      )}
-
-      <div className={compact ? '' : 'grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'}>
-        {/* LEFT COLUMN: Timeline (Main) */}
-        <div className={compact ? phaseSpacing : `lg:col-span-7 xl:col-span-8 ${phaseSpacing}`}>
-          {/* Header info */}
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              {metadataBadges.map((badge, i) => (
-                <span
-                  key={i}
-                  className="inline-flex items-center px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                  style={{ ...badge.style, borderRadius: 'var(--radius-editorial)' }}
-                >
-                  {badge.label}
-                </span>
-              ))}
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">{plan.goal}</p>
-            {!readOnly && !compact && <PlanEditingHint />}
-          </div>
-
-          {/* Phases List */}
-          <div className={`${phaseSpacing} pl-2`}>
-            {phases.map((phase, groupIdx) => (
-              <section key={groupIdx} className="relative">
-                {phases.length > 1 && (
-                  <div className="mb-4 flex items-center gap-3">
-                    <div
-                      className="flex h-6 w-6 items-center justify-center font-mono text-[10px] font-bold text-muted-foreground"
-                      style={{
-                        background: 'var(--marginalia-bg)',
-                        border: '1px solid var(--rule-light)',
-                        borderRadius: 'var(--radius-editorial)',
-                      }}
-                    >
-                      {groupIdx + 1}
-                    </div>
-                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
-                      {phase.name}
-                    </h4>
-                    {!readOnly && onSuggestPhaseChange && (
-                      <button
-                        onClick={() => onSuggestPhaseChange(phase.name, groupIdx)}
-                        className="inline-flex items-center gap-1 text-[10px] font-medium transition-colors hover:text-accent"
-                        style={{ color: 'var(--color-fg-muted)' }}
-                        title={`Suggest changes to ${phase.name}`}
-                      >
-                        <ChatBubbleLeftEllipsisIcon className="h-3 w-3" />
-                        <span>Suggest changes</span>
-                      </button>
-                    )}
-                    <div className="h-px flex-1" style={{ background: 'var(--rule-light)' }} />
-                  </div>
-                )}
-
-                <div
-                  className={`space-y-0 ${phases.length > 1 ? 'ml-3 border-l border-dashed border-border/40 pl-5' : ''}`}
-                >
-                  {phase.nodes.map((node, idx) => {
-                    const ready = isNodeReady(node.id, plan);
-                    const prerequisites = getAllPrerequisites(node.id, plan);
-                    const isLast = idx === phase.nodes.length - 1 && groupIdx === phases.length - 1;
-
-                    return (
-                      <PlanNode
-                        key={node.id}
-                        node={node}
-                        isReady={ready}
-                        prerequisites={prerequisites}
-                        onStatusChange={
-                          onNodeStatusChange
-                            ? (status) => onNodeStatusChange(node.id, status)
-                            : undefined
-                        }
-                        onStartLesson={onStartLesson}
-                        mastery={getMastery(node.id)}
-                        isLast={isLast}
-                        focused={focusNodeId === node.id}
-                        onAdjust={onLearnerModelFeedback}
-                        onMarkKnown={onMarkKnown}
-                        readOnly={readOnly}
-                      />
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
+    <div className="plan-index">
+      {/* Sort toggle (Condition B only) */}
+      {learnerModelVisible && uiLearnerModel && (
+        <div className="plan-sort-row">
+          <span className="plan-sort-row__label">Sort</span>
+          <div className="plan-sort-pills">
+            <button
+              className={`plan-sort-pill ${sortMode === 'plan' ? 'plan-sort-pill--on' : ''}`}
+              onClick={() => setSortMode('plan')}
+            >
+              By plan
+            </button>
+            <button
+              className={`plan-sort-pill ${sortMode === 'attention' ? 'plan-sort-pill--on' : ''}`}
+              onClick={() => setSortMode('attention')}
+            >
+              By attention
+            </button>
           </div>
         </div>
+      )}
 
-        {/* RIGHT COLUMN: Sidebar (hidden in compact mode) */}
-        {!compact && (
-          <aside className="lg:col-span-5 xl:col-span-4 space-y-6 sticky top-4">
-            {/* Next Up Card - editorial marginalia style */}
-            {nextNode && !allCompleted && !readOnly && (
-              <div className="marginalia p-4" style={{ borderLeftColor: 'var(--color-accent)' }}>
-                <div className="mb-2 flex items-center justify-between">
-                  <span
-                    className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: 'var(--color-accent)' }}
-                  >
-                    <SparklesIcon className="h-3 w-3" />
-                    Up Next
-                  </span>
-                </div>
+      {/* Sections */}
+      {sections.map((section) => (
+        <div key={section.key}>
+          <div className="plan-section-sep">
+            <span>{section.label}</span>
+          </div>
+          {section.nodes.map((node) => {
+            const ready = isNodeReady(node.id, plan);
+            const nodeIsLocked = node.status === 'not_started' && !ready;
+            const prerequisites = getAllPrerequisites(node.id, plan);
 
-                <h3
-                  className="text-sm font-semibold text-foreground mb-1"
-                  style={{ fontFamily: 'var(--font-serif-assistant)' }}
-                >
-                  {nextNode.name}
-                </h3>
-                {nextNode.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {nextNode.description}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Completion Card - editorial style */}
-            {allCompleted && (
-              <div
-                className="marginalia p-5 text-center"
-                style={{ borderLeftColor: 'var(--color-success)' }}
-              >
-                <CheckCircleIcon
-                  className="h-8 w-8 mx-auto mb-2"
-                  style={{ color: 'var(--color-success)' }}
-                />
-                <h3
-                  className="font-semibold text-foreground"
-                  style={{ fontFamily: 'var(--font-serif-assistant)' }}
-                >
-                  Journey Complete!
-                </h3>
-              </div>
-            )}
-
-            {/* Latest Update Summary - editorial style */}
-            {!readOnly && latestUpdateSummary && (
-              <div className="marginalia p-3">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                  Latest Agent Update
-                </div>
-                <p className="text-xs text-foreground/90 leading-relaxed">{latestUpdateSummary}</p>
-              </div>
-            )}
-
-            {/* Insights Panel */}
-            {!readOnly && <LearnerInsights learnerModel={learnerModel} plan={plan} />}
-          </aside>
-        )}
-      </div>
+            return (
+              <PlanNode
+                key={node.id}
+                node={node}
+                isReady={ready}
+                isLocked={nodeIsLocked}
+                isCurrent={node.id === currentNodeId}
+                mastery={uiLearnerModel?.mastery?.[node.id]}
+                learnerModelVisible={learnerModelVisible}
+                readOnly={readOnly}
+                expanded={expandedId === node.id}
+                onToggle={() => handleToggle(node.id)}
+                onMarkKnown={onMarkKnown}
+                onConfidenceAdjust={onConfidenceAdjust}
+                onMisconceptionResolve={onMisconceptionResolve}
+                onFlagForReview={onFlagForReview}
+                prerequisites={prerequisites}
+              />
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }

@@ -2,15 +2,12 @@
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { LearningPlan, LearnerModel, StudyCondition } from '@/lib/types';
 import { PlanView } from './PlanView';
-import { MyProgressView } from './MyProgressView';
-import { HubTabs, HubTabId } from './HubTabs';
+import { PlanEditingHint } from './PlanEditingHint';
+import { SummaryStrip } from '@/components/learning-panel/SummaryStrip';
 import { updateNodeStatus } from '@/lib/learning-plan/service';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
-import { AnimatePresence, motion } from 'framer-motion';
 import { PlanFeedbackModal, type PlanFeedbackContext } from './PlanFeedbackModal';
-import { logAction } from '@/lib/study';
 
 export type LearnerModelEditCallbacks = {
   onConfidenceAdjust: (nodeId: string, newConfidence: number, reason?: string) => void;
@@ -28,14 +25,10 @@ export function PlanSheet({
   onStartLesson,
   learnerModel,
   focusNodeId,
-  onLearnerModelFeedback,
-  latestUpdateSummary,
   onConfidenceAdjust,
   onMisconceptionResolve,
-  onSetConfidenceFloor,
   onFlagForReview,
   onMarkKnown,
-  defaultTab = 'plan',
   studyCondition,
   onSendFeedback,
 }: {
@@ -46,32 +39,16 @@ export function PlanSheet({
   onStartLesson?: (nodeId: string) => void;
   learnerModel?: LearnerModel;
   focusNodeId?: string;
-  onLearnerModelFeedback?: (feedback: LearnerModelFeedback) => void;
-  latestUpdateSummary?: string;
-  defaultTab?: HubTabId;
   studyCondition?: StudyCondition;
   onSendFeedback?: (message: string) => void;
 } & Partial<LearnerModelEditCallbacks>) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [closing, setClosing] = useState(false);
-  const [activeTab, setActiveTab] = useState<HubTabId>(defaultTab);
   const [feedbackContext, setFeedbackContext] = useState<PlanFeedbackContext | null>(null);
-  const feedbackModalOpen = feedbackContext !== null;
 
-  // Track tab changes to log learner model viewing
-  const handleTabChange = useCallback((tab: HubTabId) => {
-    setActiveTab(tab);
-    if (tab === 'progress') {
-      logAction('learner_model_viewed');
-    }
-  }, []);
-
-  // Reset tab when sheet opens
-  useEffect(() => {
-    if (isOpen) {
-      setActiveTab(defaultTab);
-    }
-  }, [isOpen, defaultTab]);
+  const isConditionA = studyCondition === 'A';
+  const learnerModelVisible = !isConditionA;
+  const planEditable = !isConditionA;
 
   const handleRequestClose = useCallback(() => {
     if (closing) return;
@@ -85,7 +62,7 @@ export function PlanSheet({
       setClosing(false);
       return;
     }
-    if (!isOpen && shouldRender) {
+    if (shouldRender) {
       setClosing(true);
       const timer = window.setTimeout(() => {
         setClosing(false);
@@ -93,23 +70,20 @@ export function PlanSheet({
       }, 210);
       return () => window.clearTimeout(timer);
     }
-    return;
   }, [isOpen, shouldRender]);
 
-  // Close on Escape key
   useEffect(() => {
     if (!shouldRender) return;
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (feedbackModalOpen) return;
+        if (feedbackContext) return;
         handleRequestClose();
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [shouldRender, handleRequestClose, feedbackModalOpen]);
+  }, [shouldRender, handleRequestClose, feedbackContext]);
 
-  // Prevent body scroll when open and restore previous overflow when closed
   useEffect(() => {
     if (!shouldRender) return;
     const previousOverflow = document.body.style.overflow;
@@ -128,29 +102,19 @@ export function PlanSheet({
     return parts.join(' · ');
   }, [plan]);
 
-  const handleSuggestPhaseChange = useCallback((phaseName: string, phaseIndex: number) => {
-    setFeedbackContext({ type: 'phase', phaseName, phaseIndex });
-  }, []);
-
   const handleFeedbackSubmit = useCallback(
-    async (feedback: string, context: PlanFeedbackContext) => {
+    (feedback: string, context: PlanFeedbackContext) => {
       if (!onSendFeedback) return;
       const prefix =
         context.type === 'phase' ? `Plan feedback for ${context.phaseName}:\n` : 'Plan feedback:\n';
-      const message = `${prefix}${feedback}\nPlease update the plan and confirm the changes.`;
-      onSendFeedback(message);
+      onSendFeedback(`${prefix}${feedback}\nPlease update the plan and confirm the changes.`);
     },
     [onSendFeedback],
   );
 
-  // Close modal when sheet closes
   useEffect(() => {
-    if (!isOpen) {
-      setFeedbackContext(null);
-    }
+    if (!isOpen) setFeedbackContext(null);
   }, [isOpen]);
-
-  const isConditionA = studyCondition === 'A';
 
   if (!plan || !shouldRender) return null;
   if (typeof document === 'undefined') return null;
@@ -171,18 +135,14 @@ export function PlanSheet({
 
   const sheet = (
     <>
-      {/* Overlay */}
       <div
-        className={`fixed inset-0 z-[70] bg-black/30 settings-overlay plan-sheet-overlay${
-          closing ? ' is-closing' : ''
-        }`}
+        className={`fixed inset-0 z-[70] bg-black/30 settings-overlay plan-sheet-overlay${closing ? ' is-closing' : ''}`}
         onClick={handleRequestClose}
         aria-hidden="true"
       />
 
-      {/* Side Sheet */}
       <div
-        className={`plan-sheet settings-drawer fixed inset-y-0 right-0 z-[80] w-full overflow-y-auto border-l border-border shadow-[var(--shadow-card)] sm:w-[55vw] md:max-w-xl${closing ? ' is-closing' : ''}`}
+        className={`plan-sheet settings-drawer fixed inset-y-0 right-0 z-[80] w-full overflow-hidden border-l border-border shadow-[var(--shadow-card)] sm:w-[55vw] md:max-w-xl${closing ? ' is-closing' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="plan-sheet-title"
@@ -190,6 +150,8 @@ export function PlanSheet({
           overscrollBehavior: 'contain',
           paddingBottom: bottomSafePadding,
           background: 'var(--surface-paper)',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {/* Header */}
@@ -200,6 +162,7 @@ export function PlanSheet({
             paddingTop: topSafePadding,
             paddingBottom: 'var(--space-3)',
             background: 'var(--surface-paper)',
+            flexShrink: 0,
           }}
         >
           <div className="flex min-w-0 flex-col">
@@ -236,70 +199,49 @@ export function PlanSheet({
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        {!isConditionA && (
-          <div className="px-4 py-3 sm:px-6" style={{ background: 'var(--surface-paper)' }}>
-            <HubTabs activeTab={activeTab} onTabChange={handleTabChange} />
+        {/* Summary strip */}
+        <SummaryStrip
+          learnerModel={learnerModel}
+          plan={plan}
+          learnerModelVisible={learnerModelVisible}
+        />
+
+        {/* Agency cue */}
+        {planEditable && <PlanEditingHint />}
+
+        {/* Scrollable content */}
+        <div className="plan-sheet__body flex-1 overflow-y-auto px-4 pt-2 pb-4 sm:px-6">
+          <PlanView
+            plan={plan}
+            focusNodeId={focusNodeId}
+            readOnly={isConditionA}
+            learnerModel={learnerModel}
+            learnerModelVisible={learnerModelVisible}
+            onNodeStatusChange={isConditionA ? undefined : handleNodeStatusChange}
+            onStartLesson={isConditionA ? undefined : onStartLesson}
+            onMarkKnown={isConditionA ? undefined : onMarkKnown}
+            onConfidenceAdjust={isConditionA ? undefined : onConfidenceAdjust}
+            onMisconceptionResolve={isConditionA ? undefined : onMisconceptionResolve}
+            onFlagForReview={isConditionA ? undefined : onFlagForReview}
+          />
+        </div>
+
+        {/* Bottom bar */}
+        {learnerModelVisible && (
+          <div className="learning-panel__bottom-bar" style={{ flexShrink: 0 }}>
+            <button
+              className="plan-bottom-btn plan-bottom-btn--pri"
+              onClick={() => setFeedbackContext({ type: 'general' })}
+            >
+              Suggest plan changes
+            </button>
           </div>
         )}
-
-        {/* Subtle rule */}
-        <div className="pointer-events-none h-px" style={{ background: 'var(--rule-accent)' }} />
-
-        {/* Content */}
-        <div className="plan-sheet__body px-4 pt-5 pb-10 sm:px-6 w-full h-full">
-          <AnimatePresence mode="wait">
-            {isConditionA || activeTab === 'plan' ? (
-              <motion.div
-                key="plan"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                transition={{ duration: 0.15 }}
-              >
-                <PlanView
-                  plan={plan}
-                  focusNodeId={focusNodeId}
-                  readOnly={isConditionA}
-                  {...(!isConditionA && {
-                    onNodeStatusChange: handleNodeStatusChange,
-                    onStartLesson,
-                    learnerModel,
-                    onLearnerModelFeedback,
-                    latestUpdateSummary,
-                    onMarkKnown,
-                    onSuggestPhaseChange: onSendFeedback ? handleSuggestPhaseChange : undefined,
-                  })}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="progress"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.15 }}
-              >
-                <MyProgressView
-                  plan={plan}
-                  learnerModel={learnerModel}
-                  focusNodeId={focusNodeId}
-                  onConfidenceAdjust={onConfidenceAdjust ?? (() => {})}
-                  onMisconceptionResolve={onMisconceptionResolve ?? (() => {})}
-                  onSetConfidenceFloor={onSetConfidenceFloor ?? (() => {})}
-                  onFlagForReview={onFlagForReview ?? (() => {})}
-                  onMarkKnown={onMarkKnown ?? (() => {})}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
       </div>
 
-      {/* Phase Feedback Modal */}
       {feedbackContext && (
         <PlanFeedbackModal
-          isOpen={feedbackModalOpen}
+          isOpen
           context={feedbackContext}
           onSubmit={handleFeedbackSubmit}
           onClose={() => setFeedbackContext(null)}

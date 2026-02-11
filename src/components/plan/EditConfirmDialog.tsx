@@ -1,5 +1,6 @@
 'use client';
-import { Fragment, useEffect } from 'react';
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
@@ -128,7 +129,9 @@ export function EditConfirmDialog({
 
   const { title, changes, warning } = getDialogContent();
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -269,6 +272,7 @@ export function EditConfirmDialog({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

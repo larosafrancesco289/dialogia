@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { calculatePlanProgress, updateNodeStatus } from '@/lib/learning-plan/service';
+import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/learning-plan/service';
 import { getLatestLearnerModel } from '@/lib/agent/learner-model';
 import {
   selectCurrentChat,
@@ -111,15 +111,31 @@ export function usePlanCallbacks(): PlanCallbacks {
       if (!learningPlan) return;
       const node = learningPlan.nodes.find((n) => n.id === nodeId);
       if (!node) return;
-      const updatedPlan = updateNodeStatus(learningPlan, nodeId, 'completed');
+
+      // 1. Mark topic completed in plan + advance to next topic
+      let updatedPlan = updateNodeStatus(learningPlan, nodeId, 'completed');
+      const nextNode = getNextNode(updatedPlan);
+      if (nextNode && nextNode.status === 'not_started') {
+        updatedPlan = updateNodeStatus(updatedPlan, nextNode.id, 'in_progress');
+      }
       await updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
+
+      // 2. Set confidence to 70% floor directly
+      void applyLearnerModelFeedbackFromUser({
+        nodeId,
+        estimatedConfidence: 0.7,
+        reason: `Student marked "${node.name}" as already known`,
+      });
+
+      // 3. Notify tutor (hidden from student)
       await sendUserMessage(
         `I already know the topic "${node.name}". Please skip teaching this and move to the next topic.`,
         { metadata: { hiddenFromUser: true, kind: 'tutor_skip_topic' } },
       );
-      setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
+
+      logAction('learner_model_edited', { editAction: 'mark_known' });
     },
-    [learningPlan, sendUserMessage, setUI, updateChatSettings],
+    [learningPlan, sendUserMessage, updateChatSettings, applyLearnerModelFeedbackFromUser],
   );
 
   const onLearnerModelFeedback = useCallback(

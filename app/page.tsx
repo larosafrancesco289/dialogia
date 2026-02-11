@@ -28,19 +28,26 @@ const GlobalNotice = lazyClient(() =>
 const PANEL_WIDTH_TRANSITION = { duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] } as const;
 
 export default function HomePage() {
-  const { collapsed, isSettingsOpen, tutorActive, rightPanelOpen, hasPlan, planSheetOverride, chatId } =
-    useChatStore(
-      (s) => ({
-        collapsed: s.ui.sidebarCollapsed ?? false,
-        isSettingsOpen: s.ui.showSettings,
-        tutorActive: selectIsTutorEnabled(s),
-        rightPanelOpen: s.ui.plan.rightPanelOpen ?? false,
-        hasPlan: !!selectCurrentChat(s)?.settings?.features.tutor.learningPlan,
-        planSheetOverride: s.ui.plan.sheetPlanOverride ?? null,
-        chatId: s.selectedChatId ?? null,
-      }),
-      shallow,
-    );
+  const {
+    collapsed,
+    isSettingsOpen,
+    tutorActive,
+    rightPanelOpen,
+    hasPlan,
+    planSheetOverride,
+    chatId,
+  } = useChatStore(
+    (s) => ({
+      collapsed: s.ui.sidebarCollapsed ?? false,
+      isSettingsOpen: s.ui.showSettings,
+      tutorActive: selectIsTutorEnabled(s),
+      rightPanelOpen: s.ui.plan.rightPanelOpen ?? false,
+      hasPlan: !!selectCurrentChat(s)?.settings?.features.tutor.learningPlan,
+      planSheetOverride: s.ui.plan.sheetPlanOverride ?? null,
+      chatId: s.selectedChatId ?? null,
+    }),
+    shallow,
+  );
   const setUI = useChatStore((s) => s.setUI);
   const { mounted, isMobile } = useAppBootstrap({ mobileBreakpoint: 768 });
 
@@ -111,13 +118,13 @@ export default function HomePage() {
       <motion.div
         className="right-panel-slot"
         initial={false}
-        animate={{ width: showRightPanel ? 360 : 0 }}
+        animate={{ width: showRightPanel ? 400 : 0 }}
         transition={PANEL_WIDTH_TRANSITION}
       >
         <motion.div
-          style={{ width: 360, height: '100%' }}
+          style={{ width: 400, height: '100%' }}
           initial={false}
-          animate={{ x: showRightPanel ? 0 : 360 }}
+          animate={{ x: showRightPanel ? 0 : 400 }}
           transition={springs.smooth}
         >
           <LearningPanel />

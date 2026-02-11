@@ -5,7 +5,8 @@ import { XMarkIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 
 export type PlanFeedbackContext =
   | { type: 'plan_proposal' }
-  | { type: 'phase'; phaseName: string; phaseIndex: number };
+  | { type: 'phase'; phaseName: string; phaseIndex: number }
+  | { type: 'general' };
 
 export function PlanFeedbackModal({
   isOpen,
