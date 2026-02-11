@@ -57,6 +57,7 @@ const DIAGNOSTIC_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('diagnostic')
 export type TutorToolFilters = {
   researchMode?: TutorResearchMode;
   allowPlanTools?: boolean;
+  allowAdvanceTopic?: boolean;
   allowLearnerModel?: boolean;
   allowUpdatePlan?: boolean;
   planExists?: boolean;
@@ -103,6 +104,13 @@ function applyTutorFilters(
 
   if (researchMode === 'model_only' || filters?.allowPlanTools === false) {
     tools = tools.filter((name) => !PLAN_TOOLS.has(name));
+  }
+  if (
+    filters?.allowAdvanceTopic &&
+    researchMode !== 'model_only' &&
+    base.includes('advance_topic')
+  ) {
+    tools.push('advance_topic');
   }
 
   if (filters?.disablePlanGeneration) {
@@ -161,6 +169,7 @@ export function deriveTutorToolPolicy(args: {
   return {
     researchMode,
     allowPlanTools: !conditionAFrozen && researchMode !== 'model_only',
+    allowAdvanceTopic: conditionAFrozen && researchMode !== 'model_only',
     allowLearnerModel:
       chat.settings.features.tutor.enableLearnerModel !== false && researchMode !== 'plan_only',
     allowUpdatePlan: chat.settings.features.tutor.planEditable !== false,

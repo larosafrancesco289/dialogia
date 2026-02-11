@@ -9,21 +9,66 @@ function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }
 
+async function closeOpenDbConnections(): Promise<void> {
+  if (!isBrowser()) return;
+  try {
+    const { db } = await import('@/lib/db');
+    (db as { close?: () => void }).close?.();
+  } catch {
+    // Best effort: continue even if DB module fails to load.
+  }
+}
+
+function deleteDatabase(name: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.deleteDatabase(name);
+    let settled = false;
+
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      fn();
+    };
+
+    request.onsuccess = () => finish(resolve);
+    request.onerror = () =>
+      finish(() => reject(request.error || new Error(`Failed to delete database "${name}".`)));
+    request.onblocked = () => {
+      window.setTimeout(() => {
+        finish(
+          () =>
+            reject(
+              new Error(
+                `Database "${name}" is blocked. Close other Dialogia tabs/windows and retry.`,
+              ),
+            ),
+        );
+      }, 1500);
+    };
+  });
+}
+
 async function clearIndexedDB(): Promise<void> {
   if (!isBrowser()) return;
+  await closeOpenDbConnections();
 
   const databases = await window.indexedDB.databases?.();
+  const targets = new Set<string>();
   if (databases) {
     for (const db of databases) {
       if (db.name && INDEXED_DB_NAMES.some((name) => db.name?.includes(name))) {
-        window.indexedDB.deleteDatabase(db.name);
+        targets.add(db.name);
       }
     }
-  } else {
+  }
+
+  if (targets.size === 0) {
     for (const name of INDEXED_DB_NAMES) {
-      window.indexedDB.deleteDatabase(name);
+      targets.add(name);
     }
   }
+
+  await Promise.all(Array.from(targets).map((name) => deleteDatabase(name)));
 }
 
 function clearLocalStorageByPrefix(): void {
@@ -60,9 +105,15 @@ export async function resetForNextParticipant(options: ResetOptions = {}): Promi
     }
   }
 
-  clearAllStudyStorage();
-  clearLocalStorageByPrefix();
-  await clearIndexedDB();
+  try {
+    await clearIndexedDB();
+    clearAllStudyStorage();
+    clearLocalStorageByPrefix();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown reset error';
+    window.alert(`Reset failed: ${message}`);
+    return;
+  }
 
   window.location.reload();
 }

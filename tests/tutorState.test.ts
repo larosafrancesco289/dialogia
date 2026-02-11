@@ -103,3 +103,25 @@ test('getTutorPhase returns practice when plan active and practice widget presen
   assert.ok(allowed.includes('record_learning'));
   assert.ok(allowed.includes('learning_plan')); // learning_plan is now available in practice phase for updates
 });
+
+test('condition A tool filtering keeps advance_topic but blocks learning_plan updates', () => {
+  const allowed = allowedTutorToolsForPhase('teaching', {
+    allowPlanTools: false,
+    allowAdvanceTopic: true,
+    allowLearnerModel: true,
+    planExists: true,
+  });
+  assert.ok(allowed.includes('advance_topic'));
+  assert.equal(allowed.includes('learning_plan'), false);
+});
+
+test('model_only filtering blocks advance_topic even when plan tools are frozen', () => {
+  const allowed = allowedTutorToolsForPhase('teaching', {
+    researchMode: 'model_only',
+    allowPlanTools: false,
+    allowAdvanceTopic: true,
+    allowLearnerModel: true,
+    planExists: true,
+  });
+  assert.equal(allowed.includes('advance_topic'), false);
+});
