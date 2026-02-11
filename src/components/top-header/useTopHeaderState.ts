@@ -88,6 +88,7 @@ export function useTopHeaderState(): TopHeaderState {
     updateChatSettings,
     clearChatMessages,
     sendUserMessage,
+    applyLearnerModelFeedbackFromUser,
     collapsed,
     isSettingsOpen,
     planSheetOpen,
@@ -110,6 +111,7 @@ export function useTopHeaderState(): TopHeaderState {
       updateChatSettings: s.updateChatSettings,
       clearChatMessages: s.clearChatMessages,
       sendUserMessage: s.sendUserMessage,
+    applyLearnerModelFeedbackFromUser: s.applyLearnerModelFeedbackFromUser,
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
       planSheetOpen: s.ui.plan.sheetOpen ?? false,
@@ -313,49 +315,9 @@ export function useTopHeaderState(): TopHeaderState {
 
   const onLearnerModelFeedback = useCallback(
     async (feedback: LearnerModelFeedback) => {
-      if (!learningPlan) return;
-      const node = learningPlan.nodes.find((n) => n.id === feedback.nodeId);
-      const nodeName = node?.name ?? feedback.nodeId;
-      const confidenceAdjustment =
-        feedback.direction || feedback.magnitude != null || feedback.reason
-          ? (Object.fromEntries(
-              Object.entries({
-                direction: feedback.direction,
-                magnitude: feedback.magnitude,
-                reason: feedback.reason,
-              }).filter(([, value]) => value !== undefined),
-            ) as { direction?: 'up' | 'down'; magnitude?: number; reason?: string })
-          : undefined;
-
-      const payload = Object.fromEntries(
-        Object.entries({
-          nodeId: feedback.nodeId,
-          source: 'self_report',
-          confidenceAdjustment,
-          estimatedConfidence: feedback.estimatedConfidence,
-          confidenceFloor: feedback.confidenceFloor,
-          misconceptionId: feedback.misconceptionId,
-          misconceptionDescription: feedback.misconceptionDescription,
-        }).filter(([, value]) => value !== undefined),
-      );
-
-      // Build a message describing the feedback
-      let message = `I'm providing feedback on my understanding of "${nodeName}".`;
-      if (feedback.reason) {
-        message += ` ${feedback.reason}`;
-      }
-      if (feedback.direction === 'up') {
-        message += ' I feel more confident about this topic.';
-      } else if (feedback.direction === 'down') {
-        message += ' I feel less confident about this topic.';
-      }
-      message += `\n\nRecord learner feedback via record_learning with ${JSON.stringify(payload)}.`;
-
-      await sendUserMessage(message, {
-        metadata: { hiddenFromUser: true, kind: 'tutor_learner_feedback' },
-      });
+      await applyLearnerModelFeedbackFromUser(feedback);
     },
-    [learningPlan, sendUserMessage],
+    [applyLearnerModelFeedbackFromUser],
   );
 
   const onConfidenceAdjust = useCallback(
