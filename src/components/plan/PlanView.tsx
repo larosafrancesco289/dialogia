@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { LearningPlan, LearnerModel, LearningPlanNode } from '@/lib/types';
-import { isNodeReady, getAllPrerequisites } from '@/lib/learning-plan/service';
+import { isNodeReady, getAllPrerequisites, getNextNode } from '@/lib/learning-plan/service';
 import { PlanNode } from './PlanNode';
 
 type SortMode = 'plan' | 'attention';
@@ -42,8 +42,8 @@ export function PlanView({
 }) {
   const uiLearnerModel = learnerModelVisible ? learnerModel : undefined;
 
-  // Auto-expand the current in-progress topic (tracks changes reactively)
-  const currentNodeId = plan.nodes.find((n) => n.status === 'in_progress')?.id;
+  // Auto-expand the current recommended topic (in-progress when available, otherwise next ready).
+  const currentNodeId = getNextNode(plan)?.id;
   const defaultExpanded = focusNodeId ?? currentNodeId ?? null;
 
   const [expandedId, setExpandedId] = useState<string | null>(defaultExpanded);
