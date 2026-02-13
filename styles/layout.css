@@ -392,9 +392,9 @@
     flex-shrink: 0;
   }
   .plan-summary__text {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--color-fg-muted);
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     display: flex;
     gap: 5px;
     align-items: center;
@@ -408,7 +408,7 @@
     color: var(--color-accent);
     font-weight: 600;
     font-family: var(--font-mono, monospace);
-    font-size: 12.5px;
+    font-size: 14px;
   }
   .plan-summary__dot {
     color: var(--rule-accent);
@@ -431,9 +431,9 @@
   .plan-prog-labels {
     display: flex;
     justify-content: space-between;
-    font-size: 9.5px;
+    font-size: 12px;
     color: var(--color-fg-muted);
-    margin-top: 4px;
+    margin-top: 6px;
   }
 
   /* Heat strip (Condition B) */
@@ -461,7 +461,7 @@
     transform: translateX(-50%);
     background: var(--color-fg);
     color: var(--surface-paper);
-    font-size: 9.5px;
+    font-size: 11px;
     padding: 3px 7px;
     border-radius: 3px;
     white-space: nowrap;
@@ -488,7 +488,7 @@
     border: 1px solid color-mix(in oklab, var(--color-accent) 14%, transparent);
     border-left: 3px solid var(--color-accent);
     border-radius: 0 var(--radius-editorial) var(--radius-editorial) 0;
-    font-size: 11px;
+    font-size: 12.5px;
     color: var(--color-fg-muted);
     line-height: 1.45;
     flex-shrink: 0;
@@ -531,7 +531,7 @@
     flex-shrink: 0;
   }
   .plan-sort-row__label {
-    font-size: 9.5px;
+    font-size: 11px;
     color: var(--color-fg-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -545,9 +545,9 @@
     border: 1px solid var(--rule-light);
   }
   .plan-sort-pill {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 500;
-    padding: 3px 10px;
+    padding: 4px 11px;
     border: none;
     background: transparent;
     color: var(--color-fg-muted);
@@ -569,7 +569,7 @@
     gap: 8px;
   }
   .plan-section-sep span {
-    font-size: 10px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--color-fg-muted);
@@ -587,12 +587,12 @@
   .plan-index-row {
     display: flex;
     align-items: center;
-    padding: 10px 20px;
+    padding: 12px 20px;
     gap: 10px;
     cursor: pointer;
     transition: background 0.12s;
     border-left: 3px solid transparent;
-    min-height: 44px;
+    min-height: 52px;
   }
   .plan-index-row:hover {
     background: color-mix(in oklab, var(--color-fg) 1.5%, transparent);
@@ -602,7 +602,7 @@
     background: color-mix(in oklab, var(--color-accent) 3.5%, transparent);
   }
   .plan-index-row--lk {
-    opacity: 0.55;
+    background: color-mix(in oklab, var(--rule-light) 18%, transparent);
     cursor: pointer;
   }
   .plan-index-row--lk:hover {
@@ -633,24 +633,32 @@
   /* Row name */
   .plan-index-row__name {
     flex: 1;
-    font-size: 13.5px;
+    font-size: 16px;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
-    line-height: 1.2;
+    line-height: 1.3;
   }
   .plan-index-row--lk .plan-index-row__name {
-    color: var(--color-fg-muted);
+    color: var(--color-fg);
   }
 
   /* Status text (Condition A) */
   .plan-index-status {
-    font-size: 10.5px;
+    font-size: 12.5px;
     color: var(--color-fg-muted);
-    flex-shrink: 0;
+    flex: 0 1 48%;
+    min-width: 0;
+    max-width: 48%;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: right;
+  }
+  .plan-index-status:empty {
+    display: none;
   }
   .plan-index-status--ip {
     color: var(--color-accent);
@@ -660,7 +668,7 @@
   /* Mastery badge pill (Condition B) */
   .plan-index-badge {
     font-family: var(--font-mono, monospace);
-    font-size: 10.5px;
+    font-size: 12px;
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 10px;
@@ -691,11 +699,11 @@
   /* Chevron */
   .plan-index-chevron {
     color: var(--color-fg-muted);
-    font-size: 11px;
+    font-size: 13px;
     flex-shrink: 0;
     transition: transform 0.2s;
     opacity: 0;
-    width: 12px;
+    width: 14px;
     text-align: center;
   }
   .plan-index-row:hover .plan-index-chevron {
@@ -731,7 +739,7 @@
     gap: 10px;
   }
   .plan-expanded__desc {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--color-fg-muted);
     line-height: 1.55;
     font-family: var(--font-serif-assistant);
@@ -741,7 +749,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 4px 10px;
-    font-size: 10.5px;
+    font-size: 12px;
     color: var(--color-fg-muted);
   }
   .plan-expanded__objs {
@@ -753,7 +761,7 @@
     margin: 0;
   }
   .plan-expanded__objs li {
-    font-size: 11.5px;
+    font-size: 13px;
     color: var(--color-fg-muted);
     display: flex;
     gap: 6px;
