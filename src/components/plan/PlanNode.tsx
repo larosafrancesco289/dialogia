@@ -125,11 +125,15 @@ export function PlanNode({
   function getStatusText(): string {
     if (node.status === 'in_progress') return 'In progress';
     if (node.status === 'completed') return 'Completed';
-    if (isLocked) return `Requires ${prerequisites.map((p) => p.name).join(' & ')}`;
+    if (isLocked) {
+      if (!prerequisites.length) return 'Locked';
+      return `Requires ${prerequisites.length} prerequisite${prerequisites.length === 1 ? '' : 's'}`;
+    }
     if (node.estimatedMinutes) return `~${node.estimatedMinutes} min`;
     return '';
   }
   const statusText = getStatusText();
+  const lockedPrerequisites = prerequisites.map((p) => p.name).join(' & ');
 
   const rowClasses = [
     'plan-index-row',
@@ -179,6 +183,7 @@ export function PlanNode({
         ) : (
           <span
             className={`plan-index-status ${node.status === 'in_progress' ? 'plan-index-status--ip' : ''}`}
+            title={isLocked && lockedPrerequisites ? `Requires ${lockedPrerequisites}` : undefined}
           >
             {statusText}
           </span>
