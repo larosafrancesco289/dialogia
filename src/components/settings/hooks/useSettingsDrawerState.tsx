@@ -23,6 +23,7 @@ import {
 import {
   useStudySessionControls,
   type StudySessionInfo,
+  type StudyTelemetryInspector,
   type CopyStatus,
 } from '@/components/settings/hooks/useStudySessionControls';
 import { ModelsPanel } from '@/components/settings/sections/ModelsPanel';
@@ -55,6 +56,7 @@ export type SettingsDrawerState = {
   participantId: string;
   setParticipantId: (id: string) => void;
   studySessionInfo: StudySessionInfo;
+  telemetryInspector: StudyTelemetryInspector;
   onStartStudySession: () => void;
   onCopyStudyLog: () => void;
   copyStatus: CopyStatus;
@@ -165,6 +167,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     participantId,
     setParticipantId,
     studySessionInfo,
+    telemetryInspector,
     onStartStudySession,
     onCopyStudyLog,
     copyStatus,
@@ -387,6 +390,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     participantId,
     setParticipantId,
     studySessionInfo,
+    telemetryInspector,
     onStartStudySession,
     onCopyStudyLog,
     copyStatus,

@@ -3,17 +3,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { selectIsStreaming, selectStudyCondition } from '@/lib/store/selectors';
 import type { StudyCondition } from '@/lib/types';
-import type { SessionSummary } from '@/lib/study';
+import type { SessionSummary, StudyInspectorSnapshot } from '@/lib/study';
 import {
   getParticipantId,
   initializeSession,
   setSessionCondition,
   copyStudyLogToClipboard,
   getSessionSummary,
+  getStudyInspectorSnapshot,
   resetForNextParticipant,
 } from '@/lib/study';
 
 export type StudySessionInfo = SessionSummary | null;
+export type StudyTelemetryInspector = StudyInspectorSnapshot | null;
 export type CopyStatus = 'idle' | 'copying' | 'copied' | 'error';
 
 export function useStudySessionControls() {
@@ -26,6 +28,9 @@ export function useStudySessionControls() {
   const [participantId, setParticipantId] = useState(() => getParticipantId() || '');
   const [studySessionInfo, setStudySessionInfo] = useState<StudySessionInfo>(() =>
     getSessionSummary(),
+  );
+  const [telemetryInspector, setTelemetryInspector] = useState<StudyTelemetryInspector>(() =>
+    getStudyInspectorSnapshot({ scope: 'current_condition', recentLimit: 10 }),
   );
   const [isResetting, setIsResetting] = useState(false);
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle');
@@ -62,6 +67,7 @@ export function useStudySessionControls() {
   useEffect(() => {
     const interval = setInterval(() => {
       setStudySessionInfo(getSessionSummary());
+      setTelemetryInspector(getStudyInspectorSnapshot({ scope: 'current_condition', recentLimit: 10 }));
     }, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -93,6 +99,7 @@ export function useStudySessionControls() {
         setNotice('Condition changed, but creating a fresh chat failed. Start a new chat manually.');
       }
       setStudySessionInfo(getSessionSummary());
+      setTelemetryInspector(getStudyInspectorSnapshot({ scope: 'current_condition', recentLimit: 10 }));
     },
     [isStreaming, newChat, setNotice, setUI, studyCondition, studySessionInfo],
   );
@@ -103,6 +110,7 @@ export function useStudySessionControls() {
     if (getSessionSummary()) return;
     initializeSession(trimmedId, studyCondition);
     setStudySessionInfo(getSessionSummary());
+    setTelemetryInspector(getStudyInspectorSnapshot({ scope: 'current_condition', recentLimit: 10 }));
   }, [participantId, studyCondition]);
 
   const onResetForNextParticipant = useCallback(async () => {
@@ -124,6 +132,7 @@ export function useStudySessionControls() {
     participantId,
     setParticipantId,
     studySessionInfo,
+    telemetryInspector,
     onStartStudySession,
     onCopyStudyLog,
     copyStatus,
