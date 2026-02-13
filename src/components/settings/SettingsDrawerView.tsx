@@ -37,6 +37,7 @@ export function SettingsDrawerView({
   participantId,
   setParticipantId,
   studySessionInfo,
+  telemetryInspector,
   onStartStudySession,
   onCopyStudyLog,
   copyStatus,
@@ -55,6 +56,7 @@ export function SettingsDrawerView({
         participantId={participantId}
         setParticipantId={setParticipantId}
         studySessionInfo={studySessionInfo}
+        telemetryInspector={telemetryInspector}
         onStartStudySession={onStartStudySession}
         onCopyStudyLog={onCopyStudyLog}
         copyStatus={copyStatus}

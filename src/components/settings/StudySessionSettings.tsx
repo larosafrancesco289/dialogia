@@ -9,6 +9,7 @@ import { findModelById, formatModelLabel } from '@/lib/models';
 import type { StudyCondition } from '@/lib/types';
 import type {
   StudySessionInfo,
+  StudyTelemetryInspector,
   CopyStatus,
 } from '@/components/settings/hooks/useStudySessionControls';
 
@@ -196,6 +197,101 @@ function SessionStatusCard({ info }: { info: StudySessionInfo }) {
   );
 }
 
+function TelemetryInspectorCard({ inspector }: { inspector: StudyTelemetryInspector }) {
+  if (!inspector) return null;
+  const countRows = Object.entries(inspector.entriesByAction).sort(([, a], [, b]) => b - a);
+  const recentEvents = inspector.recentEvents;
+
+  return (
+    <div className="rounded-lg border border-[var(--rule-subtle)] bg-[var(--color-muted)]/5 p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wider text-[var(--color-fg-muted)]">
+            Telemetry Inspector
+          </div>
+          <div className="text-sm text-[var(--color-fg)]">
+            Condition {inspector.condition} · {inspector.totalEntries} entries
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+        <div className="rounded border border-[var(--rule-subtle)] p-2">
+          <div className="text-[var(--color-fg-muted)]">Inspected nodes</div>
+          <div className="text-sm font-semibold text-[var(--color-fg)]">
+            {inspector.investigation.inspectedNodeCount}
+          </div>
+        </div>
+        <div className="rounded border border-[var(--rule-subtle)] p-2">
+          <div className="text-[var(--color-fg-muted)]">Deep dives</div>
+          <div className="text-sm font-semibold text-[var(--color-fg)]">
+            {inspector.investigation.deepNodeCount}
+          </div>
+        </div>
+        <div className="rounded border border-[var(--rule-subtle)] p-2">
+          <div className="text-[var(--color-fg-muted)]">Avg dwell</div>
+          <div className="text-sm font-semibold text-[var(--color-fg)]">
+            {inspector.investigation.averageDwellMs}ms
+          </div>
+        </div>
+        <div className="rounded border border-[var(--rule-subtle)] p-2">
+          <div className="text-[var(--color-fg-muted)]">Node interactions</div>
+          <div className="text-sm font-semibold text-[var(--color-fg)]">
+            {inspector.investigation.totalNodeInteractions}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div className="text-xs font-medium uppercase tracking-wider text-[var(--color-fg-muted)] mb-2">
+          Event Counts
+        </div>
+        {countRows.length === 0 ? (
+          <div className="text-xs text-[var(--color-fg-muted)]">No events recorded yet.</div>
+        ) : (
+          <div className="space-y-1">
+            {countRows.map(([action, count]) => (
+              <div key={action} className="flex items-center justify-between text-xs">
+                <span className="font-mono text-[var(--color-fg-muted)]">{action}</span>
+                <span className="text-[var(--color-fg)]">{count}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div className="text-xs font-medium uppercase tracking-wider text-[var(--color-fg-muted)] mb-2">
+          Recent Events
+        </div>
+        {recentEvents.length === 0 ? (
+          <div className="text-xs text-[var(--color-fg-muted)]">No recent events.</div>
+        ) : (
+          <div className="max-h-52 overflow-y-auto space-y-2">
+            {recentEvents.map((event, index) => (
+              <div key={`${event.timestamp}-${index}`} className="rounded border border-[var(--rule-subtle)] p-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-mono text-[var(--color-fg)]">{event.action}</span>
+                  <span className="text-[var(--color-fg-muted)]">
+                    {new Date(event.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+                {event.metadata && (
+                  <div className="mt-1 text-[10px] text-[var(--color-fg-muted)] break-all">
+                    {Object.entries(event.metadata)
+                      .map(([k, v]) => `${k}=${String(v)}`)
+                      .join(' · ')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function StudySessionSettings({
   closing,
   drawerRef,
@@ -205,6 +301,7 @@ export function StudySessionSettings({
   participantId,
   setParticipantId,
   studySessionInfo,
+  telemetryInspector,
   onStartStudySession,
   onCopyStudyLog,
   copyStatus,
@@ -220,6 +317,7 @@ export function StudySessionSettings({
   participantId: string;
   setParticipantId: (id: string) => void;
   studySessionInfo: StudySessionInfo;
+  telemetryInspector: StudyTelemetryInspector;
   onStartStudySession: () => void;
   onCopyStudyLog: () => void;
   copyStatus: CopyStatus;
@@ -452,6 +550,8 @@ export function StudySessionSettings({
               <h3 className="text-xs font-medium uppercase tracking-wider text-[var(--color-fg-muted)]">
                 Data Management
               </h3>
+
+              <TelemetryInspectorCard inspector={telemetryInspector} />
 
               <button
                 onClick={onCopyStudyLog}

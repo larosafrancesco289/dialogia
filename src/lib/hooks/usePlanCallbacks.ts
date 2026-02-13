@@ -211,6 +211,14 @@ export function usePlanCallbacks(): PlanCallbacks {
 
   const onOpenRightPanel = useCallback(
     (tab?: 'plan' | 'progress') => {
+      const nextTab = tab ?? rightPanelTab;
+      if (nextTab !== rightPanelTab) {
+        logAction('plan_tab_changed', {
+          from: rightPanelTab,
+          to: nextTab,
+          source: 'learning_hub_open',
+        });
+      }
       setUI({
         plan: tab ? { rightPanelOpen: true, rightPanelTab: tab } : { rightPanelOpen: true },
       });
@@ -220,7 +228,7 @@ export function usePlanCallbacks(): PlanCallbacks {
         manual: true,
       });
     },
-    [setUI],
+    [rightPanelTab, setUI],
   );
 
   const onCloseRightPanel = useCallback(() => {

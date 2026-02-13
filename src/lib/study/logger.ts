@@ -1,4 +1,10 @@
-import { StudyActionType, StudyLogEntry, StudySession } from './types';
+import type {
+  AnyStudyLogEntry,
+  StudyActionMetadataMap,
+  StudyActionType,
+  StudyLogEntry,
+  StudySession,
+} from './types';
 import {
   getParticipantId,
   getCondition,
@@ -26,12 +32,12 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-function createEntry(
+function createEntry<A extends StudyActionType>(
   participantId: string,
   condition: 'A' | 'B',
-  action: StudyActionType,
-  metadata?: Record<string, unknown>,
-): StudyLogEntry {
+  action: A,
+  metadata?: StudyActionMetadataMap[A],
+): AnyStudyLogEntry {
   return {
     id: generateId(),
     participantId,
@@ -39,7 +45,7 @@ function createEntry(
     timestamp: Date.now(),
     action,
     ...(metadata && { metadata }),
-  };
+  } as StudyLogEntry<A> as AnyStudyLogEntry;
 }
 
 export function initializeSession(participantId: string, condition: 'A' | 'B'): StudySession {
@@ -85,7 +91,10 @@ export function resumeSession(): StudySession | null {
   return session && !session.endedAt ? session : null;
 }
 
-export function logAction(action: StudyActionType, metadata?: Record<string, unknown>): void {
+export function logAction<A extends StudyActionType>(
+  action: A,
+  metadata?: StudyActionMetadataMap[A],
+): void {
   if (!isStudyModeActive()) return;
 
   const session = getStudySession();

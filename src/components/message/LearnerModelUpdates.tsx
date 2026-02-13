@@ -13,6 +13,14 @@ import { logAction } from '@/lib/study';
 export function LearnerModelUpdates({ message }: { message: Message }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const setUI = useChatStore((s) => s.setUI);
+  const handleToggleDetails = () => {
+    const nextExpanded = !isExpanded;
+    setIsExpanded(nextExpanded);
+    logAction('learner_model_details_toggled', {
+      expanded: nextExpanded,
+      source: 'learner_model_updates',
+    });
+  };
 
   const { planUpdates, learnerModel } = message;
   const masteryEntries: Array<[string, TopicMastery]> = learnerModel
@@ -153,7 +161,7 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
             }
           >
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={handleToggleDetails}
               className="w-full px-3 py-2 flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <span>View learner model details</span>
