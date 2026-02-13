@@ -34,6 +34,7 @@ tmp/
 .eslintcache
 
 # Thesis files
+thesis/
 
 # Speech files
 speech/
