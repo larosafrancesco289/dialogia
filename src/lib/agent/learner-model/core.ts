@@ -224,49 +224,62 @@ export function applyLearnerModelFeedback(
     return { model, note: 'Topic not found in learner model' };
   }
 
-  const magnitude = clamp(Math.abs(feedback.magnitude ?? 0.15), 0.05, 0.4);
-  const weight = feedback.direction === 'down' ? -magnitude : magnitude;
-  const evidence: Evidence = {
-    timestamp: Date.now(),
-    type: 'insight_demonstrated',
-    weight,
-    details:
-      feedback.reason ||
-      (weight >= 0
-        ? 'Learner reported this topic feels easier than estimated.'
-        : 'Learner reported this topic feels harder than estimated.'),
-  };
+  const hasDirectionalAdjustment = feedback.direction === 'up' || feedback.direction === 'down';
+  const inferredEstimatedConfidence =
+    feedback.estimatedConfidence != null
+      ? clamp(feedback.estimatedConfidence, 0, 1)
+      : !hasDirectionalAdjustment && feedback.magnitude != null
+        ? clamp(feedback.magnitude, 0, 1)
+        : undefined;
 
-  const updatedWithEvidence = updateLearnerModel(model, {
-    nodeId: resolvedFeedbackId,
-    evidence,
-  });
+  let updatedModel = model;
+  if (hasDirectionalAdjustment) {
+    const magnitude = clamp(Math.abs(feedback.magnitude ?? 0.15), 0.05, 0.4);
+    const weight = feedback.direction === 'down' ? -magnitude : magnitude;
+    const evidence: Evidence = {
+      timestamp: Date.now(),
+      type: 'insight_demonstrated',
+      weight,
+      details:
+        feedback.reason ||
+        (weight >= 0
+          ? 'Learner reported this topic feels easier than estimated.'
+          : 'Learner reported this topic feels harder than estimated.'),
+    };
 
-  const mastery = { ...updatedWithEvidence.mastery };
+    updatedModel = updateLearnerModel(model, {
+      nodeId: resolvedFeedbackId,
+      evidence,
+    });
+  }
+
+  const mastery = { ...updatedModel.mastery };
   const target = { ...mastery[resolvedFeedbackId] };
   mastery[resolvedFeedbackId] = target;
   const resolved: string[] = [];
   let appliedFloor: number | undefined;
   let adjusted = false;
 
-  const desiredFloor = clamp(
-    Math.max(
-      feedback.confidenceFloor ?? 0,
-      feedback.estimatedConfidence != null ? feedback.estimatedConfidence : 0,
-    ),
-    0,
-    1,
-  );
-  if (desiredFloor > 0 && target.confidence < desiredFloor) {
+  const desiredFloor =
+    feedback.confidenceFloor != null ? clamp(feedback.confidenceFloor, 0, 1) : undefined;
+
+  if (desiredFloor != null && target.confidence < desiredFloor) {
     target.confidence = desiredFloor;
     appliedFloor = desiredFloor;
     adjusted = true;
-  } else if (feedback.estimatedConfidence != null) {
-    const selfReported = clamp(feedback.estimatedConfidence, 0, 1);
-    if (selfReported > target.confidence) {
-      target.confidence = selfReported;
-      appliedFloor = selfReported;
+  }
+
+  if (inferredEstimatedConfidence != null) {
+    const targetConfidence =
+      desiredFloor != null
+        ? Math.max(inferredEstimatedConfidence, desiredFloor)
+        : inferredEstimatedConfidence;
+    if (target.confidence !== targetConfidence) {
+      target.confidence = targetConfidence;
       adjusted = true;
+    }
+    if (desiredFloor != null && targetConfidence === desiredFloor) {
+      appliedFloor = desiredFloor;
     }
   }
 
@@ -287,11 +300,11 @@ export function applyLearnerModelFeedback(
 
   const nextModel: LearnerModel = adjusted
     ? {
-        ...updatedWithEvidence,
+        ...updatedModel,
         mastery,
-        globalMetrics: computeGlobalMetrics(mastery, updatedWithEvidence.globalMetrics, 0),
+        globalMetrics: computeGlobalMetrics(mastery, updatedModel.globalMetrics, 0),
       }
-    : updatedWithEvidence;
+    : updatedModel;
 
   return {
     model: nextModel,

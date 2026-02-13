@@ -69,7 +69,8 @@ Always call this after quiz interactions or when you observe evidence of learnin
         // For self_report source
         confidenceAdjustment: {
           type: 'object',
-          description: 'Adjustment based on learner self-report',
+          description:
+            "Relative confidence adjustment from learner self-report. Use 'direction' for up/down changes. If omitted, magnitude is interpreted as an absolute confidence target (0-1).",
           properties: {
             direction: { type: 'string', enum: ['up', 'down'] },
             magnitude: { type: 'number', description: 'Magnitude of adjustment (0-1)' },
@@ -78,7 +79,8 @@ Always call this after quiz interactions or when you observe evidence of learnin
         },
         estimatedConfidence: {
           type: 'number',
-          description: 'Learner self-reported confidence (0-1). Only increases confidence.',
+          description:
+            'Learner self-reported confidence target (0-1). Sets confidence to this value (subject to confidenceFloor if provided).',
         },
         confidenceFloor: {
           type: 'number',

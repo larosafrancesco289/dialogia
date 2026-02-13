@@ -92,11 +92,61 @@ export function AssistantMessage({
   const studyCondition = useChatStore(selectStudyCondition);
   const { isExecutingTools, toolCalls } = useToolExecutionState(message, isStreaming);
 
+  const normalizeSummaryText = (value: string) => value.trim().replace(/\s+/g, ' ');
+
   const displayContent = useMemo(() => {
     if (message.content) return message.content;
     if (message.deepResearch?.answer) return message.deepResearch.answer;
     return '';
   }, [message.content, message.deepResearch?.answer]);
+
+  const shouldHideDuplicateSummaryContent = useMemo(() => {
+    if (studyCondition === 'A') return false;
+    const summary = message.planUpdates?.summary;
+    if (!summary || !displayContent) return false;
+    return normalizeSummaryText(displayContent) === normalizeSummaryText(summary);
+  }, [displayContent, message.planUpdates?.summary, studyCondition]);
+
+  let messageBody: ReactNode = null;
+  if (isEditing) {
+    messageBody = (
+      <textarea
+        className="message-edit-textarea"
+        rows={Math.min(12, Math.max(4, Math.ceil((draft.length || 1) / 50)))}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+            event.preventDefault();
+            saveEdit();
+          }
+        }}
+        placeholder="Edit message..."
+        autoFocus
+      />
+    );
+  } else if (waitingForFirstToken && message.id === lastMessageId && !displayContent) {
+    messageBody = (
+      <div className={styles.typingIndicator} aria-live="polite" aria-label="Generating">
+        <span className={styles.typingBar} />
+        <span className={styles.typingBar} />
+        <span className={styles.typingBar} />
+      </div>
+    );
+  } else if (!shouldHideDuplicateSummaryContent) {
+    if (isExecutingTools) {
+      messageBody = (
+        <>
+          {displayContent && <StreamingMarkdown content={displayContent} />}
+          <ToolExecutionIndicator toolCalls={toolCalls} isExecuting />
+        </>
+      );
+    } else if (isStreaming && isLatestAssistant) {
+      messageBody = <StreamingMarkdown content={displayContent} />;
+    } else {
+      messageBody = <Markdown content={displayContent} />;
+    }
+  }
 
   return (
     <div className="relative">
@@ -146,39 +196,7 @@ export function AssistantMessage({
 
       <MessageAttachments attachments={attachments} onOpenLightbox={setLightbox} />
 
-      <div className="px-4 py-3">
-        {isEditing ? (
-          <textarea
-            className="message-edit-textarea"
-            rows={Math.min(12, Math.max(4, Math.ceil((draft.length || 1) / 50)))}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-                event.preventDefault();
-                saveEdit();
-              }
-            }}
-            placeholder="Edit message..."
-            autoFocus
-          />
-        ) : waitingForFirstToken && message.id === lastMessageId && !displayContent ? (
-          <div className={styles.typingIndicator} aria-live="polite" aria-label="Generating">
-            <span className={styles.typingBar} />
-            <span className={styles.typingBar} />
-            <span className={styles.typingBar} />
-          </div>
-        ) : isExecutingTools ? (
-          <>
-            {displayContent && <StreamingMarkdown content={displayContent} />}
-            <ToolExecutionIndicator toolCalls={toolCalls} isExecuting />
-          </>
-        ) : isStreaming && isLatestAssistant ? (
-          <StreamingMarkdown content={displayContent} />
-        ) : (
-          <Markdown content={displayContent} />
-        )}
-      </div>
+      {messageBody && <div className="px-4 py-3">{messageBody}</div>}
 
       {!isStreaming &&
         !isChatStreaming &&
