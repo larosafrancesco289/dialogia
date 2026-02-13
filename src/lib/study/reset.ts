@@ -95,7 +95,7 @@ export async function resetForNextParticipant(options: ResetOptions = {}): Promi
   endSession();
 
   if (exportBeforeReset) {
-    const result = await copyStudyLogToClipboard();
+    const result = await copyStudyLogToClipboard({ scope: 'full_session' });
     if (!result.success) {
       if (sessionSnapshot) saveStudySession(sessionSnapshot);
       const message = result.error || 'Clipboard access denied';

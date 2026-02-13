@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import { selectStudyCondition } from '@/lib/store/selectors';
+import { selectIsStreaming, selectStudyCondition } from '@/lib/store/selectors';
 import type { StudyCondition } from '@/lib/types';
 import type { SessionSummary } from '@/lib/study';
 import {
@@ -18,7 +18,10 @@ export type CopyStatus = 'idle' | 'copying' | 'copied' | 'error';
 
 export function useStudySessionControls() {
   const setUI = useChatStore((s) => s.setUI);
+  const newChat = useChatStore((s) => s.newChat);
+  const setNotice = useChatStore((s) => s.setNotice);
   const studyCondition = useChatStore(selectStudyCondition);
+  const isStreaming = useChatStore(selectIsStreaming);
 
   const [participantId, setParticipantId] = useState(() => getParticipantId() || '');
   const [studySessionInfo, setStudySessionInfo] = useState<StudySessionInfo>(() =>
@@ -37,7 +40,7 @@ export function useStudySessionControls() {
     setCopyStatus('copying');
     setCopyError(undefined);
 
-    const result = await copyStudyLogToClipboard();
+    const result = await copyStudyLogToClipboard({ scope: 'current_condition' });
     const nextStatus = result.success ? 'copied' : 'error';
     const resetDelay = result.success ? 2000 : 3000;
 
@@ -64,8 +67,12 @@ export function useStudySessionControls() {
   }, []);
 
   const onStudyConditionChange = useCallback(
-    (c: StudyCondition) => {
+    async (c: StudyCondition) => {
       if (c === studyCondition) return;
+      if (isStreaming) {
+        setNotice('Wait for the current response to finish before switching condition.');
+        return;
+      }
 
       const hasActiveSession = !!studySessionInfo && !studySessionInfo.isEnded;
       if (hasActiveSession) {
@@ -75,11 +82,19 @@ export function useStudySessionControls() {
         if (!confirmed) return;
       }
 
-      setUI({ tutor: { studyCondition: c } });
+      setUI({
+        tutor: { studyCondition: c },
+        plan: { rightPanelOpen: false, sheetOpen: false, sheetPlanOverride: null },
+      });
       setSessionCondition(c);
+      try {
+        await newChat();
+      } catch {
+        setNotice('Condition changed, but creating a fresh chat failed. Start a new chat manually.');
+      }
       setStudySessionInfo(getSessionSummary());
     },
-    [setUI, studyCondition, studySessionInfo],
+    [isStreaming, newChat, setNotice, setUI, studyCondition, studySessionInfo],
   );
 
   const onStartStudySession = useCallback(() => {

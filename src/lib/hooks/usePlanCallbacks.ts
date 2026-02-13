@@ -194,27 +194,43 @@ export function usePlanCallbacks(): PlanCallbacks {
   const onToggleRightPanel = useCallback(() => {
     if (rightPanelOpen) {
       setUI({ plan: { rightPanelOpen: false, sheetPlanOverride: null } });
-      logAction('plan_closed');
+      logAction('plan_closed', {
+        source: 'plan_status_badge',
+        tab: rightPanelTab,
+        manual: true,
+      });
       return;
     }
     setUI({ plan: { rightPanelOpen: true } });
-    logAction('plan_viewed');
-  }, [rightPanelOpen, setUI]);
+    logAction('plan_viewed', {
+      source: 'plan_status_badge',
+      tab: rightPanelTab,
+      manual: true,
+    });
+  }, [rightPanelOpen, rightPanelTab, setUI]);
 
   const onOpenRightPanel = useCallback(
     (tab?: 'plan' | 'progress') => {
       setUI({
         plan: tab ? { rightPanelOpen: true, rightPanelTab: tab } : { rightPanelOpen: true },
       });
-      logAction(tab === 'progress' ? 'learner_model_viewed' : 'plan_viewed');
+      logAction(tab === 'progress' ? 'learner_model_viewed' : 'plan_viewed', {
+        source: 'learning_hub_open',
+        tab: tab ?? 'plan',
+        manual: true,
+      });
     },
     [setUI],
   );
 
   const onCloseRightPanel = useCallback(() => {
     setUI({ plan: { rightPanelOpen: false, sheetPlanOverride: null } });
-    logAction('plan_closed');
-  }, [setUI]);
+    logAction('plan_closed', {
+      source: 'learning_hub_close',
+      tab: rightPanelTab,
+      manual: true,
+    });
+  }, [rightPanelTab, setUI]);
 
   const onSendPlanFeedback = useCallback(
     (message: string) => {

@@ -57,7 +57,7 @@ export function PlanProposalCard({
     setUI({
       plan: { rightPanelOpen: true, rightPanelTab: 'plan', sheetPlanOverride: proposal.plan },
     });
-    logAction('plan_viewed', { source: 'plan_proposal' });
+    logAction('plan_viewed', { source: 'plan_proposal', tab: 'plan', manual: true });
   };
 
   const handleApprove = async () => {
