@@ -1,6 +1,7 @@
 export type StudyActionType =
   | 'session_start'
   | 'session_end'
+  | 'condition_changed'
   | 'message_sent'
   | 'message_received'
   | 'plan_viewed'

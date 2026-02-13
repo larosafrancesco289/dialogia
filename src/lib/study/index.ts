@@ -18,6 +18,7 @@ export {
   isStudyModeActive,
   getStudyModeEnabled,
   initializeSession,
+  setSessionCondition,
   resumeSession,
   logAction,
   endSession,

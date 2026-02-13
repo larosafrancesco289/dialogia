@@ -149,14 +149,25 @@ function SessionStatusCard({ info }: { info: StudySessionInfo }) {
     hour: '2-digit',
     minute: '2-digit',
   });
+  const isActive = !info.isEnded;
 
   return (
-    <div className="rounded-lg border border-[var(--rule-accent)] bg-[var(--marginalia-bg)] p-4">
+    <div
+      className={`rounded-lg border p-4 ${
+        isActive
+          ? 'border-[var(--rule-accent)] bg-[var(--marginalia-bg)]'
+          : 'border-[var(--rule-subtle)] bg-[var(--color-muted)]/10'
+      }`}
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div
+            className={`w-2 h-2 rounded-full ${
+              isActive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+            }`}
+          />
           <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-fg-muted)]">
-            Session Active
+            {isActive ? 'Session Active' : 'Session Ended'}
           </span>
         </div>
         <span className="text-xs text-[var(--color-fg-muted)]">Started {startTime}</span>
@@ -228,8 +239,9 @@ export function StudySessionSettings({
     shallow,
   );
   const chat = chats.find((c) => c.id === selectedChatId);
+  const hasSession = !!studySessionInfo;
   const hasActiveSession = !!studySessionInfo && !studySessionInfo.isEnded;
-  const canStartSession = participantId.trim().length > 0 && !hasActiveSession;
+  const canStartSession = participantId.trim().length > 0 && !hasSession;
   const activeModelId =
     chat?.settings?.features?.tutor?.defaultModelId ||
     chat?.settings?.modelId ||
@@ -245,7 +257,7 @@ export function StudySessionSettings({
 
   const handleModelSelect = useCallback(
     (modelId: string) => {
-      if (!modelId) return;
+      if (!modelId || hasSession) return;
       setUI(
         chat
           ? { tutor: { defaultModelId: modelId } }
@@ -258,7 +270,7 @@ export function StudySessionSettings({
         }).catch(() => void 0);
       }
     },
-    [chat, setUI, updateChatSettings],
+    [chat, hasSession, setUI, updateChatSettings],
   );
 
   return (
@@ -301,8 +313,8 @@ export function StudySessionSettings({
             </p>
           </div>
 
-          {/* Session Status (if active) */}
-          {hasActiveSession && (
+          {/* Session Status */}
+          {hasSession && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -353,15 +365,21 @@ export function StudySessionSettings({
                   condition="A"
                   active={studyCondition}
                   onChange={onStudyConditionChange}
-                  disabled={hasActiveSession}
+                  disabled={isResetting}
                 />
                 <ConditionSelector
                   condition="B"
                   active={studyCondition}
                   onChange={onStudyConditionChange}
-                  disabled={hasActiveSession}
+                  disabled={isResetting}
                 />
               </div>
+              {hasActiveSession && (
+                <p className="mt-2 text-[11px] text-[var(--color-fg-muted)] leading-relaxed">
+                  Switch condition when moving from System 1 to System 2. New events are logged
+                  under the selected condition.
+                </p>
+              )}
             </div>
 
             {/* Model Selection */}
@@ -376,22 +394,30 @@ export function StudySessionSettings({
                 )}
               </div>
               <div className="mt-3">
-                <ModelSearch
-                  placeholder="Search models to swap (e.g., GPT-4o, Claude, Grok)"
-                  selectedIds={activeModelId ? [activeModelId] : []}
-                  clearOnSelect
-                  actionLabel="Set"
-                  selectedLabel="Active"
-                  onSelect={(result) => handleModelSelect(result.id)}
-                />
+                {hasSession ? (
+                  <div className="rounded-lg border border-[var(--rule-subtle)] px-3 py-2 text-xs text-[var(--color-fg-muted)]">
+                    Model selection is locked for this session.
+                  </div>
+                ) : (
+                  <ModelSearch
+                    placeholder="Search models to swap (e.g., GPT-4o, Claude, Grok)"
+                    selectedIds={activeModelId ? [activeModelId] : []}
+                    clearOnSelect
+                    actionLabel="Set"
+                    selectedLabel="Active"
+                    onSelect={(result) => handleModelSelect(result.id)}
+                  />
+                )}
               </div>
               <p className="mt-2 text-[11px] text-[var(--color-fg-muted)] leading-relaxed">
-                Updates the tutor default model immediately, even while a session is active.
+                {hasSession
+                  ? 'Model changes are locked once a session has started to avoid study confounds.'
+                  : 'Set the tutor model before starting the session.'}
               </p>
             </div>
 
-            {/* Start Session Button (only if no active session) */}
-            {!hasActiveSession && (
+            {/* Start Session Button */}
+            {!hasSession && (
               <button
                 onClick={onStartStudySession}
                 disabled={!canStartSession}
@@ -408,13 +434,20 @@ export function StudySessionSettings({
                 Start Session
               </button>
             )}
+
+            {!hasActiveSession && hasSession && (
+              <p className="text-[11px] text-[var(--color-fg-muted)] leading-relaxed">
+                This session is ended. Copy/export the log, then reset before starting another
+                participant.
+              </p>
+            )}
           </div>
 
           {/* Divider */}
-          {hasActiveSession && <div className="my-8 border-t border-[var(--rule-subtle)]" />}
+          {hasSession && <div className="my-8 border-t border-[var(--rule-subtle)]" />}
 
-          {/* Data Management (only if session active) */}
-          {hasActiveSession && (
+          {/* Data Management */}
+          {hasSession && (
             <div className="space-y-4">
               <h3 className="text-xs font-medium uppercase tracking-wider text-[var(--color-fg-muted)]">
                 Data Management

@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { usePlanCallbacks } from '@/lib/hooks/usePlanCallbacks';
 import { useChatStore } from '@/lib/store';
+import { selectStudyCondition } from '@/lib/store/selectors';
 import { updateNodeStatus } from '@/lib/learning-plan/service';
 import { LearningPanelHeader } from './LearningPanelHeader';
 import { SummaryStrip } from './SummaryStrip';
@@ -30,10 +31,12 @@ export function LearningPanel() {
     }),
     shallow,
   );
+  const studyCondition = useChatStore(selectStudyCondition);
 
   const tutorFlags = chat?.settings?.features.tutor;
-  const planEditable = tutorFlags?.planEditable !== false;
-  const learnerModelVisible = tutorFlags?.learnerModelVisible !== false;
+  const isConditionA = studyCondition === 'A';
+  const planEditable = !isConditionA && tutorFlags?.planEditable !== false;
+  const learnerModelVisible = !isConditionA && tutorFlags?.learnerModelVisible !== false;
 
   const [feedbackContext, setFeedbackContext] = useState<PlanFeedbackContext | null>(null);
   const plan = planSheetOverride ?? learningPlan;
