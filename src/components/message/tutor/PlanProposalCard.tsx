@@ -93,6 +93,14 @@ export function PlanProposalCard({
         logAction('plan_edited', { source: 'plan_proposal' });
       }
       await applyProposalStatus('approved', { plan: adoptedPlan });
+      setUI({
+        plan: {
+          rightPanelOpen: true,
+          rightPanelTab: 'plan',
+          sheetPlanOverride: null,
+          sheetOpen: false,
+        },
+      });
 
       const currentNode = getNextNode(adoptedPlan);
       const nextTopic = currentNode ? currentNode.name : 'our next topic';

@@ -42,7 +42,17 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
     },
 
     selectChat(id: string) {
-      set({ selectedChatId: id });
+      set((s) => ({
+        selectedChatId: id,
+        ui: {
+          ...s.ui,
+          plan: {
+            ...s.ui.plan,
+            sheetOpen: false,
+            sheetPlanOverride: null,
+          },
+        },
+      }));
     },
 
     async renameChat(id: string, title: string) {
@@ -58,11 +68,25 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       await ChatService.deleteChat(id, repository);
       set((s) => {
         const chats = s.chats.filter((c) => c.id !== id);
-        const selectedChatId = s.selectedChatId === id ? chats[0]?.id : s.selectedChatId;
+        const deletingSelectedChat = s.selectedChatId === id;
+        const selectedChatId = deletingSelectedChat ? chats[0]?.id : s.selectedChatId;
         return {
           chats,
           selectedChatId,
           ...removeChatMessages(s, id),
+          ...(deletingSelectedChat
+            ? {
+                ui: {
+                  ...s.ui,
+                  plan: {
+                    ...s.ui.plan,
+                    rightPanelOpen: false,
+                    sheetOpen: false,
+                    sheetPlanOverride: null,
+                  },
+                },
+              }
+            : {}),
         };
       });
     },
