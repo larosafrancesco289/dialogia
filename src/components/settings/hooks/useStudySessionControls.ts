@@ -7,6 +7,7 @@ import type { SessionSummary } from '@/lib/study';
 import {
   getParticipantId,
   initializeSession,
+  setSessionCondition,
   copyStudyLogToClipboard,
   getSessionSummary,
   resetForNextParticipant,
@@ -18,13 +19,6 @@ export type CopyStatus = 'idle' | 'copying' | 'copied' | 'error';
 export function useStudySessionControls() {
   const setUI = useChatStore((s) => s.setUI);
   const studyCondition = useChatStore(selectStudyCondition);
-
-  const onStudyConditionChange = useCallback(
-    (c: StudyCondition) => {
-      setUI({ tutor: { studyCondition: c } });
-    },
-    [setUI],
-  );
 
   const [participantId, setParticipantId] = useState(() => getParticipantId() || '');
   const [studySessionInfo, setStudySessionInfo] = useState<StudySessionInfo>(() =>
@@ -69,9 +63,29 @@ export function useStudySessionControls() {
     return () => clearInterval(interval);
   }, []);
 
+  const onStudyConditionChange = useCallback(
+    (c: StudyCondition) => {
+      if (c === studyCondition) return;
+
+      const hasActiveSession = !!studySessionInfo && !studySessionInfo.isEnded;
+      if (hasActiveSession) {
+        const confirmed = window.confirm(
+          `Switch to Condition ${c}? Subsequent events will be logged under this condition.`,
+        );
+        if (!confirmed) return;
+      }
+
+      setUI({ tutor: { studyCondition: c } });
+      setSessionCondition(c);
+      setStudySessionInfo(getSessionSummary());
+    },
+    [setUI, studyCondition, studySessionInfo],
+  );
+
   const onStartStudySession = useCallback(() => {
     const trimmedId = participantId.trim();
     if (!trimmedId) return;
+    if (getSessionSummary()) return;
     initializeSession(trimmedId, studyCondition);
     setStudySessionInfo(getSessionSummary());
   }, [participantId, studyCondition]);

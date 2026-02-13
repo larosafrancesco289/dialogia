@@ -43,6 +43,9 @@ function createEntry(
 }
 
 export function initializeSession(participantId: string, condition: 'A' | 'B'): StudySession {
+  const existing = getStudySession();
+  if (existing) return existing;
+
   setParticipantId(participantId);
   setCondition(condition);
 
@@ -55,6 +58,26 @@ export function initializeSession(participantId: string, condition: 'A' | 'B'): 
 
   saveStudySession(session);
   return session;
+}
+
+export function setSessionCondition(nextCondition: 'A' | 'B'): void {
+  const previousCondition = getCondition();
+  if (previousCondition === nextCondition) return;
+
+  setCondition(nextCondition);
+
+  const session = getStudySession();
+  const participantId = getParticipantId();
+  if (!studyModeEnabled || !session || session.endedAt || !participantId) return;
+
+  session.condition = nextCondition;
+  session.entries.push(
+    createEntry(participantId, nextCondition, 'condition_changed', {
+      from: previousCondition ?? null,
+      to: nextCondition,
+    }),
+  );
+  saveStudySession(session);
 }
 
 export function resumeSession(): StudySession | null {
