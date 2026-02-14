@@ -34,9 +34,21 @@ export function buildChatBody(params: BuildChatBodyParams): OpenRouterChatReques
   if (typeof params.maxTokens === 'number') body.max_tokens = params.maxTokens;
 
   const reasoning: OpenRouterReasoning = {};
-  if (typeof params.reasoningEffort === 'string') reasoning.effort = params.reasoningEffort;
-  if (typeof params.reasoningTokens === 'number') reasoning.max_tokens = params.reasoningTokens;
-  if (params.disableReasoning) reasoning.exclude = true;
+  const hasReasoningTokens =
+    typeof params.reasoningTokens === 'number' && Number.isFinite(params.reasoningTokens)
+      ? params.reasoningTokens > 0
+      : false;
+
+  if (params.disableReasoning || params.reasoningEffort === 'none') {
+    // Force-disable reasoning. Avoid `exclude` because that still allows internal thinking.
+    reasoning.effort = 'none';
+  } else if (typeof params.reasoningEffort === 'string') {
+    // OpenRouter expects either effort or max_tokens, not both.
+    reasoning.effort = params.reasoningEffort;
+  } else if (hasReasoningTokens) {
+    reasoning.max_tokens = params.reasoningTokens;
+  }
+
   if (Object.keys(reasoning).length) body.reasoning = reasoning;
 
   if (Array.isArray(params.tools) && params.tools.length) body.tools = params.tools;

@@ -64,9 +64,21 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
       return true;
     }
     if (applyToChat) {
-      await ctx.updateChatSettings({ generation: { reasoningEffort: effort } });
+      await ctx.updateChatSettings({
+        generation: {
+          reasoningEffort: effort,
+          ...(effort === 'none' ? { reasoningTokens: undefined } : {}),
+        },
+      });
     } else {
-      ctx.setUI({ overrides: { reasoning: { effort } } });
+      ctx.setUI({
+        overrides: {
+          reasoning: {
+            effort,
+            ...(effort === 'none' ? { tokens: undefined } : {}),
+          },
+        },
+      });
     }
     ctx.setNotice(`Reasoning effort: ${effort}`);
     return true;
