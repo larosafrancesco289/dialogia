@@ -76,7 +76,7 @@ test('buildDebugBody includes optional knobs when provided', () => {
   assert.equal(body.temperature, 0.5);
   assert.equal(body.top_p, 0.9);
   assert.equal(body.max_tokens, 256);
-  assert.deepEqual(body.reasoning, { effort: 'medium', max_tokens: 1024 });
+  assert.deepEqual(body.reasoning, { effort: 'medium' });
   assert.equal(body.tools?.[0]?.function?.name, 'tutor_call');
   assert.equal(body.tool_choice, 'auto');
   assert.deepEqual(body.provider, { sort: 'price' });

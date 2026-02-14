@@ -40,8 +40,23 @@ export function ReasoningEffortMenu() {
   const active = current && current !== 'none';
 
   const choose = async (effort: Effort) => {
-    if (chat) await updateSettings({ generation: { reasoningEffort: effort } });
-    else setUI({ overrides: { reasoning: { effort } } });
+    if (chat) {
+      await updateSettings({
+        generation: {
+          reasoningEffort: effort,
+          ...(effort === 'none' ? { reasoningTokens: undefined } : {}),
+        },
+      });
+    } else {
+      setUI({
+        overrides: {
+          reasoning: {
+            effort,
+            ...(effort === 'none' ? { tokens: undefined } : {}),
+          },
+        },
+      });
+    }
     setOpen(false);
   };
 

@@ -259,8 +259,23 @@ export function Composer({
   };
 
   const handleSelectEffort = async (effort: Effort) => {
-    if (chat) await updateSettings({ generation: { reasoningEffort: effort } });
-    else setUI({ overrides: { reasoning: { effort } } });
+    if (chat) {
+      await updateSettings({
+        generation: {
+          reasoningEffort: effort,
+          ...(effort === 'none' ? { reasoningTokens: undefined } : {}),
+        },
+      });
+    } else {
+      setUI({
+        overrides: {
+          reasoning: {
+            effort,
+            ...(effort === 'none' ? { tokens: undefined } : {}),
+          },
+        },
+      });
+    }
   };
 
   const handleStop = () => {

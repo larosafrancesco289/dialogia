@@ -323,6 +323,10 @@ export function ChatPanel(props: ChatPanelProps) {
                     value === 'high'
                   ) {
                     setReasoningEffort(value);
+                    if (value === 'none') {
+                      setReasoningTokens(undefined);
+                      setReasoningTokensStr('');
+                    }
                   }
                 }}
               >

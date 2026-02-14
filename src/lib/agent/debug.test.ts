@@ -54,7 +54,7 @@ test('buildRequestDebugBody mirrors buildDebugBody options for streaming', () =>
   assert.equal(payload.temperature, 0.2);
   assert.equal(payload.top_p, 0.9);
   assert.equal(payload.max_tokens, 200);
-  assert.deepEqual(payload.reasoning, { effort: 'medium', max_tokens: 800 });
+  assert.deepEqual(payload.reasoning, { effort: 'medium' });
   assert.equal(payload.tools?.[0]?.function?.name, 'tool');
   assert.equal(payload.tool_choice, 'auto');
   assert.deepEqual(payload.plugins, [{ id: 'web' }]);
