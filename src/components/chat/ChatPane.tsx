@@ -32,8 +32,8 @@ export function ChatPane() {
 
   if (!chat) return <WelcomeHero keyboardMetrics={keyboardMetrics} />;
   return (
-    <div className="h-full flex flex-col" style={keyboardVars}>
-      <div className="flex-1 min-h-0">
+    <div className="h-full min-w-0 flex flex-col" style={keyboardVars}>
+      <div className="flex-1 min-h-0 min-w-0">
         {multiColumn ? (
           <div className="flex h-full flex-col">
             <div className="flex flex-wrap items-center gap-2 px-1 pb-3">

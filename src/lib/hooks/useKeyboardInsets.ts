@@ -17,6 +17,15 @@ export type KeyboardTrackerState = {
   fallbackKeyboardVisible: boolean;
 };
 
+export function shouldTrackVirtualKeyboard(win: Window): boolean {
+  const nav = win.navigator;
+  const hasTouchPoints = typeof nav?.maxTouchPoints === 'number' && nav.maxTouchPoints > 0;
+  const coarsePointer =
+    typeof win.matchMedia === 'function' && win.matchMedia('(pointer: coarse)').matches;
+
+  return hasTouchPoints || coarsePointer;
+}
+
 export function createKeyboardTrackerState(
   win: Window,
   viewport: VisualViewport | null,
@@ -117,6 +126,7 @@ export function useKeyboardInsets(): KeyboardMetrics {
     if (typeof window === 'undefined') return undefined;
 
     const viewport = window.visualViewport || null;
+    const trackVirtualKeyboard = shouldTrackVirtualKeyboard(window);
     const trackerState = createKeyboardTrackerState(window, viewport);
     let frameHandle = 0;
     const doc = typeof document !== 'undefined' ? document : null;
@@ -151,8 +161,16 @@ export function useKeyboardInsets(): KeyboardMetrics {
       }
     };
 
-    const computeMetrics = (): KeyboardMetrics =>
-      computeKeyboardMetrics(trackerState, { window, viewport });
+    const computeMetrics = (): KeyboardMetrics => {
+      if (!trackVirtualKeyboard) {
+        return {
+          offset: 0,
+          viewportHeight: viewport?.height ?? window.innerHeight,
+          viewportTop: viewport?.offsetTop ?? 0,
+        };
+      }
+      return computeKeyboardMetrics(trackerState, { window, viewport });
+    };
 
     const handleChange = () => {
       cancelAnimationFrame(frameHandle);

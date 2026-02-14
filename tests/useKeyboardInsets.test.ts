@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createKeyboardTrackerState,
   computeKeyboardMetrics,
+  shouldTrackVirtualKeyboard,
   type KeyboardTrackerState,
 } from '@/lib/hooks/useKeyboardInsets';
 
@@ -49,4 +50,22 @@ test('computeKeyboardMetrics handles fallback mode without visual viewport', () 
   const next = computeKeyboardMetrics(state, { window: win, viewport: null });
   assert.equal(next.offset, 0);
   assert.equal(state.fallbackKeyboardVisible, false);
+});
+
+test('shouldTrackVirtualKeyboard disables keyboard tracking on desktop pointers', () => {
+  const win = {
+    navigator: { maxTouchPoints: 0 },
+    matchMedia: (query: string) => ({ matches: query === '(pointer: coarse)' ? false : false }),
+  } as unknown as Window;
+
+  assert.equal(shouldTrackVirtualKeyboard(win), false);
+});
+
+test('shouldTrackVirtualKeyboard enables tracking for touch devices', () => {
+  const win = {
+    navigator: { maxTouchPoints: 5 },
+    matchMedia: () => ({ matches: false }),
+  } as unknown as Window;
+
+  assert.equal(shouldTrackVirtualKeyboard(win), true);
 });
