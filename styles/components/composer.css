@@ -273,6 +273,7 @@
     display: flex;
     align-items: flex-end;
     gap: var(--space-2);
+    min-width: 0;
   }
 
   /* Voice status pill — always visible when voice mode is active */

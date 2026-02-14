@@ -120,7 +120,7 @@
   .app-shell {
     --header-height: 56px;
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     height: var(--viewport-height);
     min-height: var(--viewport-height);
     position: relative;
@@ -168,11 +168,13 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    min-width: 0;
   }
 
   /* Ensure the main content scrolls behind a sticky composer */
   .content > .flex-1 {
     min-height: 0;
+    min-width: 0;
   }
 
   /* Unified header bar — "Scholar's Ribbon" aesthetic */
