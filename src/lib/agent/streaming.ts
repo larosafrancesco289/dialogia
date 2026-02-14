@@ -3,7 +3,7 @@
 
 import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
 import { captureRequestDebug } from '@/lib/agent/debug';
-import { applyCacheBreakpoints } from '@/lib/agent/cache';
+import { applyCacheBreakpoints, buildSystemMessage } from '@/lib/agent/cache';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
 import { clearTurnController } from '@/lib/turns/runtime';
@@ -22,6 +22,8 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     plugins,
     toolDefinition,
     startBuffered,
+    systemStable,
+    systemDynamic,
   } = opts;
   const { auth, set, get, modelIndex, persistMessage } = turn;
 
@@ -34,7 +36,26 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
   const toolsForStreaming = includeTools ? (toolDefinition as ToolDefinition[]) : undefined;
   const generation = settings.generation;
 
-  const cachedMessages = applyCacheBreakpoints(messages);
+  const withSystemSplit = (() => {
+    if (!systemStable) return messages;
+
+    const firstSystem = messages.find((msg) => msg.role === 'system');
+    const combinedSystem =
+      typeof firstSystem?.content === 'string'
+        ? firstSystem.content
+        : typeof settings.system === 'string'
+          ? settings.system
+          : undefined;
+    const rebuiltSystem = buildSystemMessage({
+      combinedSystem,
+      systemStable,
+      systemDynamic,
+    });
+    if (!rebuiltSystem) return messages;
+    return [rebuiltSystem, ...messages.filter((msg) => msg.role !== 'system')];
+  })();
+
+  const cachedMessages = applyCacheBreakpoints(withSystemSplit);
 
   captureRequestDebug({
     turn,
