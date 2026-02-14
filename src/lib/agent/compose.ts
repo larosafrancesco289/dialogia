@@ -12,6 +12,7 @@ import tutorProfileService from '@/lib/tutor/profile';
 import { combineSystem } from '@/lib/agent/system';
 import { getNextNode } from '@/lib/learning-plan/service';
 import { isTutorToolName } from '@/lib/agent/tools';
+import { getSessionSummary, isStudyModeActive } from '@/lib/study';
 import type { Message } from '@/lib/types';
 import { TOOL_PREAMBLE } from '@/lib/agent/prompts/toolPreamble';
 
@@ -78,6 +79,24 @@ export async function composeTurn({
   if (tutorEnabled) {
     const tutorPreamble = getTutorPreamble();
     if (tutorPreamble) stablePreambles.push(tutorPreamble);
+
+    // Inject study-session preamble only during an active study session.
+    const studySession = getSessionSummary();
+    const hasActiveStudySession = isStudyModeActive() && !!studySession && !studySession.isEnded;
+    if (hasActiveStudySession) {
+      stablePreambles.push(
+        `## STUDY SESSION MODE\n\n` +
+          `This is a **15-minute timed** learning session.\n\n` +
+          `**Pacing rules (non-negotiable):**\n` +
+          `- Keep EVERY response under 3 sentences. Prefer asking one question over giving a paragraph.\n` +
+          `- One focused concept per turn. Break explanations into back-and-forth dialogue.\n` +
+          `- Move through the plan efficiently. When the student demonstrates mastery (2+ correct answers), call record_learning then advance_topic immediately.\n` +
+          `- Skip lengthy worked examples — give a hint, let them try, then correct.\n` +
+          `- Create a focused plan with 3–4 topics maximum. Depth over breadth.\n\n` +
+          `Brevity here is not rudeness — it respects the learner's time constraint.`,
+      );
+    }
+
     try {
       const profile = await tutorProfileService.loadTutorProfile(chat.id);
       const summary = tutorProfileService.summarizeTutorProfile(profile);

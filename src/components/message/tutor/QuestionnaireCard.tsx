@@ -178,12 +178,12 @@ export function QuestionnaireCard({
                       {activeItem.category}
                     </span>
                   )}
-                  <div className="text-sm font-medium leading-relaxed mt-1 text-[var(--color-fg)]">
+                  <div className="text-base font-medium leading-relaxed mt-1 text-[var(--color-fg)]">
                     {activeItem.question}
                   </div>
                 </div>
                 {allowMultiple && (
-                  <span className="text-[10px] text-[var(--color-fg-muted)] uppercase tracking-wider bg-[var(--color-muted)] px-1.5 py-0.5 rounded-[var(--radius-editorial)]">
+                  <span className="text-xs text-[var(--color-fg-muted)] uppercase tracking-wider bg-[var(--color-muted)] px-1.5 py-0.5 rounded-[var(--radius-editorial)]">
                     Multi-select
                   </span>
                 )}
@@ -210,7 +210,7 @@ export function QuestionnaireCard({
                       <div className="flex flex-col items-start text-left w-full">
                         <span className="font-medium text-sm">{option.label}</span>
                         {option.description && (
-                          <span className="text-xs opacity-80 mt-0.5 font-normal">
+                          <span className="text-sm opacity-80 mt-0.5 font-normal">
                             {option.description}
                           </span>
                         )}
