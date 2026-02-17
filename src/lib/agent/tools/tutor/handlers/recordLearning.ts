@@ -4,6 +4,7 @@ import {
   applyLearnerModelFeedback,
   getLatestLearnerModel,
   initializeLearnerModel,
+  resolvePlanNodeId,
   resolveNodeId,
   updateLearnerModel,
 } from '@/lib/agent/learner-model';
@@ -242,7 +243,9 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
       ctx.chat.settings.features.tutor.learnerModel ??
       initializeLearnerModel(ctx.chatId, plan);
 
-    const nodeMeta = plan.nodes.find((node) => node.id === nodeId);
+    const effectiveNodeId =
+      resolvePlanNodeId(plan, nodeId) ?? resolveNodeId(currentModel.mastery, nodeId) ?? nodeId;
+    const nodeMeta = plan.nodes.find((node) => node.id === effectiveNodeId);
 
     // Handle self_report source - apply feedback adjustment
     if (source === 'self_report') {
@@ -259,7 +262,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
         return { handled: true, usedContent: false };
       }
       const result = applyLearnerModelFeedback(currentModel, {
-        nodeId,
+        nodeId: effectiveNodeId,
         direction: confidenceAdjustment?.direction,
         magnitude: confidenceAdjustment?.magnitude,
         reason: confidenceAdjustment?.reason,
@@ -268,7 +271,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
         misconceptionId,
         misconceptionDescription,
       });
-      const resolvedId = resolveNodeId(currentModel.mastery, nodeId) ?? nodeId;
+      const resolvedId = resolveNodeId(currentModel.mastery, effectiveNodeId) ?? effectiveNodeId;
 
       const planResult = await processPlanProgress(plan, result.model);
       const hasMasteryDelta = result.from != null && result.to != null && result.from !== result.to;
@@ -334,7 +337,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
         type,
         weight,
         details: `Q: ${interaction.question}\nA: ${interaction.studentAnswer}`,
-        skill: nodeId,
+        skill: effectiveNodeId,
       });
     }
 
@@ -344,7 +347,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
         type: 'misconception_detected',
         weight: 0,
         details: 'Misconception observed without specific evidence weight',
-        skill: nodeId,
+        skill: effectiveNodeId,
       });
     }
 
@@ -367,7 +370,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
       const misconceptionMeta = misconceptionQueue.shift();
       const misconceptionObj: Misconception | undefined = misconceptionMeta
         ? {
-            id: misconceptionMeta.id || `misc_${nodeId}_${now + index}`,
+            id: misconceptionMeta.id || `misc_${effectiveNodeId}_${now + index}`,
             description: misconceptionMeta.description,
             firstObserved: now + index,
             occurrences: 1,
@@ -384,18 +387,18 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
         skill: entry.skill,
       };
       updatedModel = updateLearnerModel(updatedModel, {
-        nodeId,
+        nodeId: effectiveNodeId,
         evidence: evidenceObj,
         misconception: misconceptionObj,
       });
     });
 
-    const resolvedId = resolveNodeId(currentModel.mastery, nodeId) ?? nodeId;
+    const resolvedId = resolveNodeId(currentModel.mastery, effectiveNodeId) ?? effectiveNodeId;
     const oldConfidence = currentModel.mastery[resolvedId]?.confidence ?? 0;
     const newConfidence = updatedModel.mastery[resolvedId]?.confidence ?? oldConfidence;
 
     const hasMasteryDelta = oldConfidence !== newConfidence;
-    const label = nodeMeta?.name ?? nodeId;
+    const label = nodeMeta?.name ?? effectiveNodeId;
     let summary: string;
     if (hasMasteryDelta) {
       const fromPct = Math.round(oldConfidence * 100);

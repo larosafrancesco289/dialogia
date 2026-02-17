@@ -247,6 +247,84 @@ export function verifyEvidenceRelevance(evidence: string, keywords: string[]): b
 }
 
 /**
+ * Lightweight semantic similarity fallback for evidence verification.
+ * Uses hashed character 3-gram embeddings and cosine similarity against transcript chunks.
+ * This helps when wording differs enough that token-overlap misses valid paraphrases.
+ */
+export function verifyEvidenceSemanticSimilarity(
+  evidence: string,
+  transcript: string,
+  threshold = 0.52,
+): boolean {
+  const normalizedEvidence = normalizeForMatching(evidence);
+  const normalizedTranscript = normalizeForMatching(transcript);
+  if (normalizedEvidence.length < 10 || normalizedTranscript.length < 20) return false;
+
+  const evidenceVec = embedCharNGrams(normalizedEvidence);
+  const chunks = chunkTranscriptForSemanticMatch(normalizedTranscript);
+  let best = 0;
+  for (const chunk of chunks) {
+    const sim = cosineSimilarity(evidenceVec, embedCharNGrams(chunk));
+    if (sim > best) best = sim;
+    if (best >= threshold) return true;
+  }
+  return false;
+}
+
+const EMBEDDING_DIM = 256;
+
+function chunkTranscriptForSemanticMatch(text: string): string[] {
+  const parts = text
+    .split(/[.!?\n]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 20);
+
+  if (parts.length === 0) return [text];
+  const chunks: string[] = [];
+
+  for (let i = 0; i < parts.length; i++) {
+    chunks.push(parts[i]);
+    if (i + 1 < parts.length) chunks.push(`${parts[i]} ${parts[i + 1]}`);
+  }
+  return chunks;
+}
+
+function embedCharNGrams(text: string): Float64Array {
+  const vec = new Float64Array(EMBEDDING_DIM);
+  const compact = text.replace(/\s+/g, ' ').trim();
+  if (!compact) return vec;
+  const padded = ` ${compact} `;
+  for (let i = 0; i <= padded.length - 3; i++) {
+    const tri = padded.slice(i, i + 3);
+    const index = hashText(tri) % EMBEDDING_DIM;
+    vec[index] += 1;
+  }
+  return vec;
+}
+
+function hashText(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) || 1;
+}
+
+function cosineSimilarity(a: Float64Array, b: Float64Array): number {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  if (normA <= 0 || normB <= 0) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+/**
  * Extract only tutor turns from a transcript.
  * Tutor turns are identified by lines starting with "Tutor:" or "Tutor (".
  */
@@ -513,7 +591,8 @@ async function askQuestion(
     // Verify evidence: (1) quote exists in transcript, (2) quote is topically relevant
     const overlapOk = verifyEvidenceTokenOverlap(evidence, evidenceCorpus.text);
     const relevanceOk = verifyEvidenceRelevance(evidence, gap.evidenceKeywords ?? []);
-    const evidenceVerified = overlapOk && relevanceOk;
+    const semanticOk = overlapOk ? true : verifyEvidenceSemanticSimilarity(evidence, evidenceCorpus.text);
+    const evidenceVerified = relevanceOk && (overlapOk || semanticOk);
 
     if (evidenceVerified) {
       // Evidence verified — trust the LLM answer
@@ -683,12 +762,15 @@ function validatedDistractor(gap: KnowledgeGap, question: TestQuestion): number 
 }
 
 function parseAnswer(text: string, numOptions: number, seed?: number): number {
-  // Try to extract a number from the response
-  const match = text.match(/\b([0-3])\b/);
-  if (match) {
-    const num = parseInt(match[1], 10);
-    if (num >= 0 && num < numOptions) {
-      return num;
+  // Try to extract an integer option index from the response.
+  // We scan all numeric tokens and accept the first in-range index.
+  const matches = text.match(/\b\d+\b/g);
+  if (matches) {
+    for (const token of matches) {
+      const num = parseInt(token, 10);
+      if (num >= 0 && num < numOptions) {
+        return num;
+      }
     }
   }
   // Fallback: seeded random answer for reproducibility (simulates confused student)
@@ -757,6 +839,18 @@ export type TTestResult = {
   mean1: number;
   mean2: number;
   se: number;
+  ciLower: number;
+  ciUpper: number;
+};
+
+export type PairedTTestResult = {
+  nPairs: number;
+  t: number;
+  df: number;
+  p: number;
+  significant: boolean;
+  meanDiff: number;
+  seDiff: number;
   ciLower: number;
   ciUpper: number;
 };
@@ -834,6 +928,72 @@ export function welchTTest(group1: number[], group2: number[]): TTestResult {
     mean1,
     mean2,
     se,
+    ciLower,
+    ciUpper,
+  };
+}
+
+/**
+ * Perform paired t-test on matched samples.
+ * Inputs must be aligned pairwise (x[i] matched with y[i]).
+ */
+export function pairedTTest(group1: number[], group2: number[]): PairedTTestResult {
+  const n = Math.min(group1.length, group2.length);
+  if (n < 2) {
+    return {
+      nPairs: n,
+      t: 0,
+      df: 0,
+      p: 1,
+      significant: false,
+      meanDiff: 0,
+      seDiff: 0,
+      ciLower: 0,
+      ciUpper: 0,
+    };
+  }
+
+  const diffs: number[] = [];
+  for (let i = 0; i < n; i++) {
+    diffs.push(group1[i] - group2[i]);
+  }
+
+  const meanDiff = diffs.reduce((a, b) => a + b, 0) / n;
+  const varianceDiff = diffs.reduce((sum, d) => sum + (d - meanDiff) ** 2, 0) / (n - 1);
+  const sdDiff = Math.sqrt(Math.max(varianceDiff, 0));
+  const seDiff = sdDiff / Math.sqrt(n);
+  const df = n - 1;
+
+  if (seDiff === 0) {
+    const t = meanDiff === 0 ? 0 : meanDiff > 0 ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+    const p = meanDiff === 0 ? 1 : 0;
+    return {
+      nPairs: n,
+      t,
+      df,
+      p,
+      significant: p < 0.05,
+      meanDiff,
+      seDiff: 0,
+      ciLower: meanDiff,
+      ciUpper: meanDiff,
+    };
+  }
+
+  const t = meanDiff / seDiff;
+  const p = 2 * (1 - tDistCDF(Math.abs(t), df));
+  const tCrit = tQuantile(0.975, df);
+  const ciLower = meanDiff - tCrit * seDiff;
+  const ciUpper = meanDiff + tCrit * seDiff;
+
+  return {
+    nPairs: n,
+    t,
+    df,
+    p,
+    significant: p < 0.05,
+    meanDiff,
+    seDiff,
     ciLower,
     ciUpper,
   };

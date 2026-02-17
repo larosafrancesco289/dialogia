@@ -21,6 +21,29 @@ function normalizeNodeId(id: string): string {
   return id.toLowerCase().replace(/[-_\s]+/g, '');
 }
 
+function normalizeNodeText(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function tokenize(text: string): string[] {
+  return normalizeNodeText(text)
+    .split(' ')
+    .map((t) => t.trim())
+    // Keep multi-char tokens plus single-digit numeric tokens (e.g., "topic 2").
+    .filter((t) => t.length > 1 || /^\d$/.test(t));
+}
+
+function tokenOverlapScore(a: string[], b: string[]): number {
+  if (a.length === 0 || b.length === 0) return 0;
+  const aSet = new Set(a);
+  const bSet = new Set(b);
+  let inter = 0;
+  for (const t of aSet) {
+    if (bSet.has(t)) inter++;
+  }
+  return inter / Math.max(aSet.size, bSet.size);
+}
+
 /**
  * Resolve a node ID against the mastery record, falling back to fuzzy matching
  * when the exact key is missing. This handles LLM-generated IDs that use
@@ -35,6 +58,40 @@ export function resolveNodeId(
   for (const key of Object.keys(mastery)) {
     if (normalizeNodeId(key) === normalized) return key;
   }
+  return undefined;
+}
+
+/**
+ * Resolve a tool-provided node reference against a learning plan.
+ * Supports exact/fuzzy ID matching and name/token overlap fallback.
+ */
+export function resolvePlanNodeId(plan: LearningPlan, rawId: string): string | undefined {
+  const input = rawId.trim();
+  if (!input) return undefined;
+
+  const exact = plan.nodes.find((n) => n.id === input);
+  if (exact) return exact.id;
+
+  const normalizedInputId = normalizeNodeId(input);
+  const byId = plan.nodes.find((n) => normalizeNodeId(n.id) === normalizedInputId);
+  if (byId) return byId.id;
+
+  const normalizedInputText = normalizeNodeText(input);
+  const byNameExact = plan.nodes.find((n) => normalizeNodeText(n.name) === normalizedInputText);
+  if (byNameExact) return byNameExact.id;
+
+  const inputTokens = tokenize(input);
+  let best: { id: string; score: number } | undefined;
+  for (const node of plan.nodes) {
+    const idScore = tokenOverlapScore(inputTokens, tokenize(node.id));
+    const nameScore = tokenOverlapScore(inputTokens, tokenize(node.name));
+    const score = Math.max(idScore, nameScore);
+    if (!best || score > best.score) {
+      best = { id: node.id, score };
+    }
+  }
+
+  if (best && best.score >= 0.5) return best.id;
   return undefined;
 }
 

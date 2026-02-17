@@ -1,7 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { LearningPlan } from '@/lib/types';
-import { applyLearnerModelFeedback, initializeLearnerModel } from '@/lib/agent/learner-model/core';
+import {
+  applyLearnerModelFeedback,
+  initializeLearnerModel,
+  resolvePlanNodeId,
+} from '@/lib/agent/learner-model/core';
 
 function createPlan(): LearningPlan {
   return {
@@ -75,4 +79,44 @@ test('confidenceFloor applies without adding implicit directional adjustment', (
   assert.equal(result.to, 0.5);
   assert.equal(result.model.mastery['node-1'].confidence, 0.5);
   assert.equal(result.model.mastery['node-1'].interactions, model.mastery['node-1'].interactions);
+});
+
+test('resolvePlanNodeId handles exact and fuzzy id/name references', () => {
+  const plan = createPlan();
+
+  assert.equal(resolvePlanNodeId(plan, 'node-1'), 'node-1');
+  assert.equal(resolvePlanNodeId(plan, 'node_1'), 'node-1');
+  assert.equal(resolvePlanNodeId(plan, 'Node 1'), 'node-1');
+});
+
+test('resolvePlanNodeId returns undefined for unknown references', () => {
+  const plan = createPlan();
+  assert.equal(resolvePlanNodeId(plan, 'unrelated topic'), undefined);
+});
+
+test('resolvePlanNodeId preserves numeric tokens for disambiguation', () => {
+  const plan: LearningPlan = {
+    goal: 'Numeric disambiguation',
+    generatedAt: Date.now(),
+    updatedAt: Date.now(),
+    version: 1,
+    nodes: [
+      {
+        id: 'topic-1',
+        name: 'Topic 1',
+        objectives: ['Understand topic 1'],
+        prerequisites: [],
+        status: 'in_progress',
+      },
+      {
+        id: 'topic-2',
+        name: 'Topic 2',
+        objectives: ['Understand topic 2'],
+        prerequisites: [],
+        status: 'not_started',
+      },
+    ],
+  };
+
+  assert.equal(resolvePlanNodeId(plan, 'topic 2 please'), 'topic-2');
 });
