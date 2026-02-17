@@ -373,6 +373,11 @@ export async function executeStreamingTurn(
     options?: { reasoningDetails?: unknown; applySideEffect?: boolean },
   ): Promise<void> => {
     const applySideEffect = options?.applySideEffect ?? true;
+    if (roundContent.trim()) {
+      toolRoundDraftContent = toolRoundDraftContent.trim()
+        ? `${toolRoundDraftContent}\n\n${roundContent.trim()}`
+        : roundContent.trim();
+    }
     // Add assistant message with tool calls to conversation
     const assistantMsg: ModelMessage = {
       role: 'assistant',
@@ -428,12 +433,19 @@ export async function executeStreamingTurn(
   let roundFinishReason: StreamDoneExtras['finishReason'];
   let roundReasoningDetails: StreamDoneExtras['reasoningDetails'];
   let shouldRetryFirstRound = false;
+  let toolRoundDraftContent = '';
 
   const uiCallbacks = createUiCallbacks(performance.now());
-  const finalizeShortCircuit = () => {
+  const finalizeShortCircuit = (fallbackContent?: string) => {
     const snapshot = get?.();
     const current = snapshot?.messagesById?.[assistantMessage.id];
-    const content = typeof current?.content === 'string' ? current.content : '';
+    const currentContent = typeof current?.content === 'string' ? current.content : '';
+    const fallback = fallbackContent || '';
+    const preferFallback =
+      !!fallback &&
+      (!currentContent || looksIncomplete(currentContent)) &&
+      !looksIncomplete(fallback);
+    const content = preferFallback ? fallback : currentContent || fallback;
     uiCallbacks.onDone?.(content, { finishReason: 'tool_calls' });
   };
   const firstRoundCallbacks: StreamCallbacks = {
@@ -520,7 +532,7 @@ export async function executeStreamingTurn(
     const finalSystem = buildFinalSystem();
     const planResult = emitPlanResult(finalSystem);
     if (shouldShortCircuit?.(planResult)) {
-      finalizeShortCircuit();
+      finalizeShortCircuit(roundContent);
       return buildResult(state, finalSystem, sideEffects, true);
     }
     uiCallbacks.onDone?.(roundContent, { finishReason: roundFinishReason });
@@ -580,8 +592,15 @@ export async function executeStreamingTurn(
   // Final streaming call with updated system and toolChoice='none'
   const finalSystem = buildFinalSystem();
   const planResult = emitPlanResult(finalSystem);
-  if (shouldShortCircuit?.(planResult)) {
-    finalizeShortCircuit();
+  const preserveDraftWithoutFinalOverwrite =
+    !planResult.hasSearchResults &&
+    toolRoundDraftContent.trim().length > 0 &&
+    !looksIncomplete(toolRoundDraftContent);
+
+  // If the model already drafted a coherent answer before non-search tool updates,
+  // keep that text and avoid a second user-visible rewrite.
+  if (shouldShortCircuit?.(planResult) || preserveDraftWithoutFinalOverwrite) {
+    finalizeShortCircuit(toolRoundDraftContent);
     return buildResult(state, finalSystem, sideEffects, true);
   }
   const finalMessages: ModelMessage[] = [
