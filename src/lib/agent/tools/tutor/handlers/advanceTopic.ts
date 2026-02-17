@@ -1,5 +1,6 @@
 import type { Message } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
+import { resolvePlanNodeId } from '@/lib/agent/learner-model';
 import { getNextNode, updateNodeStatus, isPlanComplete } from '@/lib/learning-plan/service';
 
 type AdvanceTopicArgs = {
@@ -24,7 +25,9 @@ export const advanceTopicHandler: TutorToolHandler<AdvanceTopicArgs> = {
     }
 
     const currentNode = getNextNode(plan);
-    const resolvedId = args.nodeId ?? currentNode?.id;
+    const resolvedId = args.nodeId
+      ? (resolvePlanNodeId(plan, args.nodeId) ?? args.nodeId)
+      : currentNode?.id;
 
     if (!resolvedId) {
       // No active topic — plan may already be complete

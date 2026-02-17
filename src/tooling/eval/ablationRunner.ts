@@ -59,11 +59,13 @@ import {
   calculateLearningGain,
   calculateCohenD,
   calculateStats,
+  pairedTTest,
   welchTTest,
   twoWayAnova,
   type TestResult,
   type AnovaResult,
   type AnovaEffect,
+  type PairedTTestResult,
 } from '@/tooling/eval/prePostTest';
 import type { Chat, ModelDescriptor, ModelTransport, LearnerModel } from '@/lib/types';
 import type { HeadlessTurnSnapshot } from '@/tooling/headless/types';
@@ -103,6 +105,8 @@ type AblationRunResult = {
   turnsUsed: number;
   toolUsage: Record<string, number>;
   editEvents: EditEvent[];
+  planEditRequests: number;
+  masteryOverrideRequests: number;
   finalLearnerModel?: LearnerModel;
   masteryTrajectory: Array<{ turn: number; avgConfidence: number }>;
   judgeVerdict?: JudgeVerdict;
@@ -113,17 +117,71 @@ type AblationRunResult = {
 
 type MechanismMetrics = {
   planEditsCount: number;
+  planEditRequestCount: number;
+  planEditRequestSuccessRate: number | null;
   masteryOverridesCount: number;
+  masteryOverrideRequestCount: number;
+  masteryOverrideRequestSuccessRate: number | null;
   advanceTopicCount: number;
   runsWithAdvanceTopic: number;
   gapEvidenceVerifiedCount: number;
   gapEvidenceTotal: number;
   gapEvidenceJsonParseFailedCount: number;
   runsWithPlanEdits: number;
+  runsWithPlanEditRequests: number;
   runsWithMasteryOverrides: number;
+  runsWithMasteryOverrideRequests: number;
+};
+
+type ComparisonResult = {
+  name: string;
+  hypothesis: string;
+  cohenD: number;
+  interpretation: string;
+  condition1Mean: number;
+  condition2Mean: number;
+  tTest: {
+    t: number;
+    df: number;
+    p: number;
+    significant: boolean;
+    ciLower: number;
+    ciUpper: number;
+  };
+  pairedTTest: PairedTTestResult;
+  adjustedP: number; // Holm-Bonferroni corrected p (overall)
+  // Gap-only metrics for comparisons
+  gapCohenD: number;
+  gapInterpretation: string;
+  gapCondition1Mean: number;
+  gapCondition2Mean: number;
+  gapTTest: {
+    t: number;
+    df: number;
+    p: number;
+    significant: boolean;
+    ciLower: number;
+    ciUpper: number;
+  };
+  gapPairedTTest: PairedTTestResult;
+  gapAdjustedP: number; // Holm-Bonferroni corrected p (gap)
+  // Judge score comparison
+  judgeCohenD: number;
+  judgeInterpretation: string;
+  judgeTTest: {
+    t: number;
+    df: number;
+    p: number;
+    significant: boolean;
+    ciLower: number;
+    ciUpper: number;
+  };
+  judgePairedTTest: PairedTTestResult;
+  judgeAdjustedP: number; // Holm-Bonferroni corrected p (judge)
 };
 
 type AblationSummary = {
+  sessionId: string;
   startedAt: number;
   completedAt: number;
   totalRuns: number;
@@ -133,6 +191,9 @@ type AblationSummary = {
     scenarios: string[];
     runsPerCell: number;
     tutorModel: string;
+    studentModel: string;
+    judgeModel: string;
+    seed?: number;
   };
   results: AblationRunResult[];
   statistics: {
@@ -149,49 +210,7 @@ type AblationSummary = {
         mechanismMetrics: MechanismMetrics;
       }
     >;
-    comparisons: Array<{
-      name: string;
-      hypothesis: string;
-      cohenD: number;
-      interpretation: string;
-      condition1Mean: number;
-      condition2Mean: number;
-      tTest: {
-        t: number;
-        df: number;
-        p: number;
-        significant: boolean;
-        ciLower: number;
-        ciUpper: number;
-      };
-      adjustedP: number; // Holm-Bonferroni corrected p (overall)
-      // Gap-only metrics for comparisons
-      gapCohenD: number;
-      gapInterpretation: string;
-      gapCondition1Mean: number;
-      gapCondition2Mean: number;
-      gapTTest: {
-        t: number;
-        df: number;
-        p: number;
-        significant: boolean;
-        ciLower: number;
-        ciUpper: number;
-      };
-      gapAdjustedP: number; // Holm-Bonferroni corrected p (gap)
-      // Judge score comparison
-      judgeCohenD: number;
-      judgeInterpretation: string;
-      judgeTTest: {
-        t: number;
-        df: number;
-        p: number;
-        significant: boolean;
-        ciLower: number;
-        ciUpper: number;
-      };
-      judgeAdjustedP: number; // Holm-Bonferroni corrected p (judge)
-    }>;
+    comparisons: ComparisonResult[];
     interactionEffect: number;
     anova?: AnovaResult;
     anovaJudge?: AnovaResult;
@@ -205,6 +224,7 @@ type AblationConfig = {
   tutorModel: string;
   studentModel: string;
   judgeModel: string;
+  seed?: number;
 };
 
 type AblationCheckpoint = {
@@ -245,6 +265,59 @@ function judgeScoresForCondition(
 function mean(values: number[]): number {
   if (values.length === 0) return 0;
   return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+function looksLikePlanEditRequest(text: string | undefined): boolean {
+  if (!text) return false;
+  return /\b(skip|remove|drop|don't need|add|insert|reorder|change order|move|swap|different order|edit plan|update plan|modify plan|adjust plan|change the plan|already know|already understand|already covered|already learned|jump ahead|jump to|go straight to|get straight to|not on the exam|not on my exam|not on the midterm|not tested|not relevant|not important|focus on|focus more|spend more time|spend less time|too basic|too easy|too simple|waste of time|redundant)\b/i.test(
+    text,
+  );
+}
+
+function looksLikeModelOverrideRequest(text: string | undefined): boolean {
+  if (!text) return false;
+  return /\b(too high|too low|overestimating|underestimating|I already know|I know this|I don't know|my mastery|my confidence|adjust|update|actually good at|actually understand|better than you think|not as weak|still confused|still don't get|still don't understand|still struggling|that was too easy|that was too hard|stronger than|weaker than|misjudging|wrong about my|know more than|know less than)\b/i.test(
+    text,
+  );
+}
+
+type PairedSamples = {
+  values1: number[];
+  values2: number[];
+};
+
+function collectPairedSamples(
+  results: AblationRunResult[],
+  condition1: AblationCondition,
+  condition2: AblationCondition,
+  selector: (run: AblationRunResult) => number | undefined,
+  scenarioFilter?: string,
+): PairedSamples {
+  const keyFor = (run: AblationRunResult): string => `${run.scenario}::${run.runIndex}`;
+  const values2ByKey = new Map<string, number>();
+
+  for (const run of results) {
+    if (run.condition !== condition2) continue;
+    if (scenarioFilter && run.scenario !== scenarioFilter) continue;
+    const value = selector(run);
+    if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+    values2ByKey.set(keyFor(run), value);
+  }
+
+  const values1: number[] = [];
+  const values2: number[] = [];
+  for (const run of results) {
+    if (run.condition !== condition1) continue;
+    if (scenarioFilter && run.scenario !== scenarioFilter) continue;
+    const value1 = selector(run);
+    if (typeof value1 !== 'number' || !Number.isFinite(value1)) continue;
+    const value2 = values2ByKey.get(keyFor(run));
+    if (typeof value2 !== 'number' || !Number.isFinite(value2)) continue;
+    values1.push(value1);
+    values2.push(value2);
+  }
+
+  return { values1, values2 };
 }
 
 // ============================================================================
@@ -315,6 +388,13 @@ export function shuffleArray<T>(array: T[], seed: number): void {
     const j = Math.floor(rng() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]];
   }
+}
+
+export function parseStrictIntegerArg(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!/^-?\d+$/.test(trimmed)) return undefined;
+  const parsed = Number(trimmed);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
 }
 
 /**
@@ -455,6 +535,12 @@ function validateCheckpointConfig(
       expected: currentConfig.judgeModel,
       actual: checkpoint.config.judgeModel,
     },
+    {
+      field: 'Seed',
+      valid: (checkpoint.config.seed ?? undefined) === (currentConfig.seed ?? undefined),
+      expected: String(currentConfig.seed ?? ''),
+      actual: String(checkpoint.config.seed ?? ''),
+    },
   ];
 
   const failed = checks.find((c) => !c.valid);
@@ -476,8 +562,9 @@ function generateRunId(condition: AblationCondition, scenarioId: string, runInde
  * Generate a condition-independent seed for deterministic forced errors.
  * This ensures the same pre-test realizations across conditions for the same scenario/run.
  */
-function generateErrorSeed(scenarioId: string, runIndex: number): string {
-  return `${scenarioId}_run${runIndex}`;
+function generateErrorSeed(scenarioId: string, runIndex: number, seed?: number): string {
+  const prefix = Number.isFinite(seed) ? `seed${seed}` : 'default';
+  return `${prefix}_${scenarioId}_run${runIndex}`;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -502,10 +589,12 @@ Options:
   --runs <n>            Runs per condition×scenario (default: 3)
   --concurrency <n>     Max parallel API calls (default: ${DEFAULT_CONCURRENCY}, max: ${MAX_CONCURRENCY})
   --no-shuffle          Disable run order randomization (for debugging)
+  --seed <n>            Global integer seed for deterministic run order/error forcing
   --tutor-model <id>    Tutor model (default: ${DEFAULT_ABLATION_TUTOR_MODEL_ID})
   --student-model <id>  Student simulator model (default: google/gemini-2.5-flash-lite)
   --judge-model <id>    Judge model (default: anthropic/claude-haiku-4.5)
   --out <dir>           Output directory (default: tmp/ablation/)
+  --strict-manipulation Fail if any plan-editability manipulation warning is detected
   --dry-run             Show what would be run without executing
   --resume              Resume from last checkpoint in output directory
   --list                List available scenarios and conditions
@@ -744,6 +833,7 @@ async function runSingleAblation(
     tutorModel: string;
     studentModel: string;
     judgeModel: string;
+    seed?: number;
     apiKeys: { openrouter?: string; anthropic?: string };
     reasoningSupport: Record<string, boolean>;
   },
@@ -760,7 +850,7 @@ async function runSingleAblation(
 
   // Run pre-test (with knowledge gaps to simulate realistic student knowledge)
   console.log(`  [${runId}] Running pre-test...`);
-  const errorSeed = generateErrorSeed(scenario.id, runIndex);
+  const errorSeed = generateErrorSeed(scenario.id, runIndex, config.seed);
   const preTest = await administerTest(scenario.preTestQuestions, 'pre', {
     auth: resolveAuth({ modelId: config.studentModel, transport: studentTransport }),
     model: config.studentModel,
@@ -996,6 +1086,7 @@ async function runSingleAblation(
     planEditable: conditionConfig.planEditable,
     planPreGenerated: true,
   });
+  const { planEditRequests, masteryOverrideRequests } = extractEditRequestSignals(result.snapshots);
   if (editEvents.length > 0) {
     console.log(
       `  [${runId}] Edit events: ${editEvents.length} (${editEvents.map((e) => e.type).join(', ')})`,
@@ -1071,6 +1162,8 @@ async function runSingleAblation(
     turnsUsed: result.snapshots.length,
     toolUsage,
     editEvents,
+    planEditRequests,
+    masteryOverrideRequests,
     finalLearnerModel,
     masteryTrajectory,
     judgeVerdict,
@@ -1143,25 +1236,11 @@ function extractEditEvents(
   // is an edit, not initial generation.
   let initialPlanGenerated = options?.planPreGenerated === true;
 
-  const looksLikePlanEditRequest = (text: string | undefined): boolean => {
-    if (!text) return false;
-    return /\b(skip|remove|drop|don't need|add|insert|reorder|change order|move|swap|different order|edit plan|update plan|modify plan|adjust plan|change the plan|already know|already understand|already covered|already learned|jump ahead|jump to|go straight to|get straight to|not on the exam|not on my exam|not on the midterm|not tested|not relevant|not important|focus on|focus more|spend more time|spend less time|too basic|too easy|too simple|waste of time|redundant)\b/i.test(
-      text,
-    );
-  };
-
-  const looksLikeModelOverrideRequest = (text: string | undefined): boolean => {
-    if (!text) return false;
-    return /\b(too high|too low|overestimating|underestimating|I already know|I know this|I don't know|my mastery|my confidence|adjust|update|actually good at|actually understand|better than you think|not as weak|still confused|still don't get|still don't understand|still struggling|that was too easy|that was too hard|stronger than|weaker than|misjudging|wrong about my|know more than|know less than)\b/i.test(
-      text,
-    );
-  };
-
   for (let i = 0; i < snapshots.length; i++) {
     const snap = snapshots[i];
     const userContent = snap.user?.content;
     const userRequestedPlanChange = looksLikePlanEditRequest(userContent);
-    const _userRequestedModelOverride = looksLikeModelOverrideRequest(userContent);
+    const userRequestedModelOverride = looksLikeModelOverrideRequest(userContent);
     const toolCalls = snap.assistant.toolCalls || [];
 
     for (const tc of toolCalls) {
@@ -1190,20 +1269,31 @@ function extractEditEvents(
 
       // Mastery override via record_learning tool
       if (tc.name === 'record_learning') {
-        const source = input.source as string | undefined;
-        const notes = input.notes as string | undefined;
-        const adjustment = input.confidenceAdjustment as
+        const recordInput = input as Record<string, unknown>;
+        const source = recordInput.source as string | undefined;
+        const notes = recordInput.notes as string | undefined;
+        const adjustment = recordInput.confidenceAdjustment as
           | { direction?: string; reason?: string }
           | undefined;
+        const hasAdjustmentPayload =
+          (recordInput.confidenceAdjustment &&
+            typeof recordInput.confidenceAdjustment === 'object') ||
+          typeof recordInput.estimatedConfidence === 'number' ||
+          typeof recordInput.confidenceFloor === 'number' ||
+          typeof recordInput.misconceptionId === 'string' ||
+          typeof recordInput.misconceptionDescription === 'string';
 
-        // Count all self_report source calls (student-initiated feedback)
+        // Primary signal: explicit self_report source.
+        // Fallback signal: user contested mastery and tutor attempted an adjustment payload,
+        // even if source was mislabeled as assessment.
         const isSelfReport = source === 'self_report';
-        if (isSelfReport) {
+        const isLikelyOverride = userRequestedModelOverride && hasAdjustmentPayload;
+        if (isSelfReport || isLikelyOverride) {
           events.push({
             turn: i + 1,
             type: 'mastery_override',
             toolName: tc.name,
-            nodeId: input.nodeId as string | undefined,
+            nodeId: recordInput.nodeId as string | undefined,
             details:
               adjustment?.reason ||
               notes ||
@@ -1215,6 +1305,22 @@ function extractEditEvents(
   }
 
   return events;
+}
+
+function extractEditRequestSignals(snapshots: HeadlessTurnSnapshot[]): {
+  planEditRequests: number;
+  masteryOverrideRequests: number;
+} {
+  let planEditRequests = 0;
+  let masteryOverrideRequests = 0;
+
+  for (const snap of snapshots) {
+    const userContent = snap.user?.content;
+    if (looksLikePlanEditRequest(userContent)) planEditRequests += 1;
+    if (looksLikeModelOverrideRequest(userContent)) masteryOverrideRequests += 1;
+  }
+
+  return { planEditRequests, masteryOverrideRequests };
 }
 
 // ============================================================================
@@ -1279,8 +1385,16 @@ function calculateStatistics(
       (sum, r) => sum + r.editEvents.filter((e) => e.type === 'plan_modification').length,
       0,
     );
+    const planEditRequestCount = conditionResults.reduce(
+      (sum, r) => sum + (r.planEditRequests ?? 0),
+      0,
+    );
     const masteryOverridesCount = conditionResults.reduce(
       (sum, r) => sum + r.editEvents.filter((e) => e.type === 'mastery_override').length,
+      0,
+    );
+    const masteryOverrideRequestCount = conditionResults.reduce(
+      (sum, r) => sum + (r.masteryOverrideRequests ?? 0),
       0,
     );
     const advanceTopicCount = conditionResults.reduce(
@@ -1304,8 +1418,13 @@ function calculateStatistics(
     const runsWithPlanEdits = conditionResults.filter((r) =>
       r.editEvents.some((e) => e.type === 'plan_modification'),
     ).length;
+    const runsWithPlanEditRequests = conditionResults.filter((r) => (r.planEditRequests ?? 0) > 0)
+      .length;
     const runsWithMasteryOverrides = conditionResults.filter((r) =>
       r.editEvents.some((e) => e.type === 'mastery_override'),
+    ).length;
+    const runsWithMasteryOverrideRequests = conditionResults.filter(
+      (r) => (r.masteryOverrideRequests ?? 0) > 0,
     ).length;
 
     byCondition[condition] = {
@@ -1318,20 +1437,30 @@ function calculateStatistics(
       judgeSubscores,
       mechanismMetrics: {
         planEditsCount,
+        planEditRequestCount,
+        planEditRequestSuccessRate:
+          planEditRequestCount > 0 ? planEditsCount / planEditRequestCount : null,
         masteryOverridesCount,
+        masteryOverrideRequestCount,
+        masteryOverrideRequestSuccessRate:
+          masteryOverrideRequestCount > 0
+            ? masteryOverridesCount / masteryOverrideRequestCount
+            : null,
         advanceTopicCount,
         runsWithAdvanceTopic,
         gapEvidenceVerifiedCount,
         gapEvidenceTotal,
         gapEvidenceJsonParseFailedCount,
         runsWithPlanEdits,
+        runsWithPlanEditRequests,
         runsWithMasteryOverrides,
+        runsWithMasteryOverrideRequests,
       },
     };
   }
 
   // Calculate comparisons with t-tests (using gap-only metrics as primary)
-  const comparisons = COMPARISON_PAIRS.filter(
+  const comparisons: ComparisonResult[] = COMPARISON_PAIRS.filter(
     (p) => conditions.includes(p.conditions[0]) && conditions.includes(p.conditions[1]),
   ).map((pair) => {
     const [c1, c2] = pair.conditions;
@@ -1341,12 +1470,16 @@ function calculateStatistics(
     const gains2 = results.filter((r) => r.condition === c2).map((r) => r.normalizedGain);
     const { d, interpretation } = calculateCohenD(gains1, gains2);
     const tTest = welchTTest(gains1, gains2);
+    const pairedOverall = collectPairedSamples(results, c1, c2, (r) => r.normalizedGain);
+    const pairedOverallTTest = pairedTTest(pairedOverall.values1, pairedOverall.values2);
 
     // Gap-only metrics (primary for hypothesis testing)
     const gapGains1 = results.filter((r) => r.condition === c1).map((r) => r.gapNormalizedGain);
     const gapGains2 = results.filter((r) => r.condition === c2).map((r) => r.gapNormalizedGain);
     const { d: gapD, interpretation: gapInterpretation } = calculateCohenD(gapGains1, gapGains2);
     const gapTTest = welchTTest(gapGains1, gapGains2);
+    const pairedGap = collectPairedSamples(results, c1, c2, (r) => r.gapNormalizedGain);
+    const pairedGapTTest = pairedTTest(pairedGap.values1, pairedGap.values2);
 
     // Judge score comparison
     const judgeScores1 = judgeScoresForCondition(results, c1);
@@ -1356,6 +1489,13 @@ function calculateStatistics(
       judgeScores2,
     );
     const judgeTTest = welchTTest(judgeScores1, judgeScores2);
+    const pairedJudge = collectPairedSamples(
+      results,
+      c1,
+      c2,
+      (r) => r.judgeVerdict?.overall_score,
+    );
+    const pairedJudgeTTest = pairedTTest(pairedJudge.values1, pairedJudge.values2);
 
     return {
       name: pair.name,
@@ -1365,16 +1505,19 @@ function calculateStatistics(
       condition1Mean: mean(gains1),
       condition2Mean: mean(gains2),
       tTest,
+      pairedTTest: pairedOverallTTest,
       adjustedP: tTest.p, // raw p; Holm-Bonferroni applied below when m > 1
       gapCohenD: gapD,
       gapInterpretation,
       gapCondition1Mean: mean(gapGains1),
       gapCondition2Mean: mean(gapGains2),
       gapTTest,
+      gapPairedTTest: pairedGapTTest,
       gapAdjustedP: gapTTest.p, // raw p; Holm-Bonferroni applied below when m > 1
       judgeCohenD: judgeD,
       judgeInterpretation,
       judgeTTest,
+      judgePairedTTest: pairedJudgeTTest,
       judgeAdjustedP: judgeTTest.p, // raw p; Holm-Bonferroni applied below when m > 1
     };
   });
@@ -1444,6 +1587,39 @@ function calculateStatistics(
 // Output Generation
 // ============================================================================
 
+function buildReproducibilityManifest(summary: AblationSummary) {
+  const scenarioConditionCounts: Record<string, Record<string, number>> = {};
+  for (const scenarioId of summary.config.scenarios) {
+    scenarioConditionCounts[scenarioId] = {};
+    for (const condition of summary.config.conditions) {
+      scenarioConditionCounts[scenarioId][condition] = summary.results.filter(
+        (r) => r.scenario === scenarioId && r.condition === condition,
+      ).length;
+    }
+  }
+
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date(summary.completedAt).toISOString(),
+    sessionId: summary.sessionId,
+    runtime: {
+      node: process.version,
+      bun: (process.versions as Record<string, string | undefined>).bun ?? null,
+      platform: process.platform,
+      arch: process.arch,
+    },
+    configuration: summary.config,
+    runCounts: {
+      totalRuns: summary.totalRuns,
+      completedRuns: summary.completedRuns,
+      byScenarioCondition: scenarioConditionCounts,
+    },
+    integrity: {
+      manipulationWarnings: collectManipulationWarnings(summary),
+    },
+  };
+}
+
 async function saveResults(summary: AblationSummary, outputDir: string): Promise<void> {
   await fs.mkdir(outputDir, { recursive: true });
 
@@ -1463,6 +1639,11 @@ async function saveResults(summary: AblationSummary, outputDir: string): Promise
   const stats = generateStatsReport(summary);
   await fs.writeFile(statsPath, stats);
   console.log(`Saved statistics to: ${statsPath}`);
+
+  const manifestPath = path.join(outputDir, 'ablation-manifest.json');
+  const manifest = buildReproducibilityManifest(summary);
+  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+  console.log(`Saved reproducibility manifest to: ${manifestPath}`);
 }
 
 /**
@@ -1519,16 +1700,18 @@ function generateMarkdownTables(summary: AblationSummary): string {
     '',
     "## Pairwise Comparisons (Welch's t-test)",
     '',
-    "| Comparison | Cohen's d | Interp. | t | df | p-value | Adj. p | Sig. | C1 Mean | C2 Mean | 95% CI (Diff) |",
-    '|------------|-----------|---------|---|---------|--------|--------|------|---------|---------|---------------|',
+    "| Comparison | Cohen's d | Interp. | Welch t | df | Welch p | Adj. p | Paired n | Paired p | Sig. | C1 Mean | C2 Mean | 95% CI (Diff) |",
+    '|------------|-----------|---------|---------|----|---------|--------|----------|----------|------|---------|---------|---------------|',
   );
 
   for (const comp of summary.statistics.comparisons) {
     const sig = comp.adjustedP < 0.05 ? '*' : '';
     const ci = `[${(comp.tTest.ciLower * 100).toFixed(1)}, ${(comp.tTest.ciUpper * 100).toFixed(1)}]`;
+    const pairedP = comp.pairedTTest.nPairs >= 2 ? comp.pairedTTest.p.toFixed(4) : 'N/A';
     lines.push(
       `| ${comp.name} | ${comp.cohenD.toFixed(3)} | ${comp.interpretation} | ` +
-        `${comp.tTest.t.toFixed(3)} | ${comp.tTest.df.toFixed(1)} | ${comp.tTest.p.toFixed(4)} | ${comp.adjustedP.toFixed(4)} | ${sig} | ` +
+        `${comp.tTest.t.toFixed(3)} | ${comp.tTest.df.toFixed(1)} | ${comp.tTest.p.toFixed(4)} | ${comp.adjustedP.toFixed(4)} | ` +
+        `${comp.pairedTTest.nPairs} | ${pairedP} | ${sig} | ` +
         `${(comp.condition1Mean * 100).toFixed(1)}% | ${(comp.condition2Mean * 100).toFixed(1)}% | ${ci} |`,
     );
   }
@@ -1586,16 +1769,18 @@ function generateMarkdownTables(summary: AblationSummary): string {
     '',
     "## Judge Score Pairwise Comparisons (Welch's t-test)",
     '',
-    "| Comparison | Judge Cohen's d | Interp. | t | df | p-value | Adj. p | Sig. | 95% CI (Diff) |",
-    '|------------|----------------|---------|---|---------|--------|--------|------|---------------|',
+    "| Comparison | Judge Cohen's d | Interp. | Welch t | df | Welch p | Adj. p | Paired n | Paired p | Sig. | 95% CI (Diff) |",
+    '|------------|----------------|---------|---------|----|---------|--------|----------|----------|------|---------------|',
   );
 
   for (const comp of summary.statistics.comparisons) {
     const sig = comp.judgeAdjustedP < 0.05 ? '*' : '';
     const ci = `[${comp.judgeTTest.ciLower.toFixed(3)}, ${comp.judgeTTest.ciUpper.toFixed(3)}]`;
+    const pairedP = comp.judgePairedTTest.nPairs >= 2 ? comp.judgePairedTTest.p.toFixed(4) : 'N/A';
     lines.push(
       `| ${comp.name} | ${comp.judgeCohenD.toFixed(3)} | ${comp.judgeInterpretation} | ` +
-        `${comp.judgeTTest.t.toFixed(3)} | ${comp.judgeTTest.df.toFixed(1)} | ${comp.judgeTTest.p.toFixed(4)} | ${comp.judgeAdjustedP.toFixed(4)} | ${sig} | ${ci} |`,
+        `${comp.judgeTTest.t.toFixed(3)} | ${comp.judgeTTest.df.toFixed(1)} | ${comp.judgeTTest.p.toFixed(4)} | ${comp.judgeAdjustedP.toFixed(4)} | ` +
+        `${comp.judgePairedTTest.nPairs} | ${pairedP} | ${sig} | ${ci} |`,
     );
   }
 
@@ -1614,8 +1799,8 @@ function generateMarkdownTables(summary: AblationSummary): string {
     '',
     '## Mechanism Metrics by Condition',
     '',
-    '| Condition | Plan Edits | Mastery Overrides | Advance Topic | Evidence Verified | JSON Failures | Runs w/ Edits | Runs w/ Overrides | Runs w/ Advance |',
-    '|-----------|------------|-------------------|---------------|-------------------|--------------|---------------|-------------------|-----------------|',
+    '| Condition | Plan Edits | Plan Edit Requests | Plan Edit Success | Mastery Overrides | Mastery Override Requests | Mastery Override Success | Advance Topic | Evidence Verified | JSON Failures | Runs w/ Edits | Runs w/ Plan Requests | Runs w/ Overrides | Runs w/ Override Requests | Runs w/ Advance |',
+    '|-----------|------------|--------------------|-------------------|-------------------|---------------------------|--------------------------|---------------|-------------------|--------------|---------------|-----------------------|-------------------|---------------------------|-----------------|',
   );
 
   for (const condition of summary.config.conditions) {
@@ -1630,8 +1815,19 @@ function generateMarkdownTables(summary: AblationSummary): string {
       m.gapEvidenceTotal > 0
         ? `${m.gapEvidenceJsonParseFailedCount}/${m.gapEvidenceTotal} (${((m.gapEvidenceJsonParseFailedCount / m.gapEvidenceTotal) * 100).toFixed(0)}%)`
         : 'N/A';
+    const planEditSuccess =
+      m.planEditRequestSuccessRate != null
+        ? `${(m.planEditRequestSuccessRate * 100).toFixed(0)}%`
+        : 'N/A';
+    const masteryOverrideSuccess =
+      m.masteryOverrideRequestSuccessRate != null
+        ? `${(m.masteryOverrideRequestSuccessRate * 100).toFixed(0)}%`
+        : 'N/A';
     lines.push(
-      `| ${condition} | ${m.planEditsCount} | ${m.masteryOverridesCount} | ${m.advanceTopicCount} | ${evidenceRate} | ${jsonFailureRate} | ${m.runsWithPlanEdits} | ${m.runsWithMasteryOverrides} | ${m.runsWithAdvanceTopic} |`,
+      `| ${condition} | ${m.planEditsCount} | ${m.planEditRequestCount} | ${planEditSuccess} | ` +
+        `${m.masteryOverridesCount} | ${m.masteryOverrideRequestCount} | ${masteryOverrideSuccess} | ` +
+        `${m.advanceTopicCount} | ${evidenceRate} | ${jsonFailureRate} | ${m.runsWithPlanEdits} | ` +
+        `${m.runsWithPlanEditRequests} | ${m.runsWithMasteryOverrides} | ${m.runsWithMasteryOverrideRequests} | ${m.runsWithAdvanceTopic} |`,
     );
   }
 
@@ -1665,21 +1861,142 @@ function generateMarkdownTables(summary: AblationSummary): string {
     '',
     "## Gap-Only Pairwise Comparisons (Welch's t-test)",
     '',
-    "| Comparison | Gap Cohen's d | Interp. | t | df | p-value | Adj. p | Sig. | Gap C1 Mean | Gap C2 Mean | 95% CI (Diff) |",
-    '|------------|--------------|---------|---|---------|--------|--------|------|-------------|-------------|---------------|',
+    "| Comparison | Gap Cohen's d | Interp. | Welch t | df | Welch p | Adj. p | Paired n | Paired p | Sig. | Gap C1 Mean | Gap C2 Mean | 95% CI (Diff) |",
+    '|------------|--------------|---------|---------|----|---------|--------|----------|----------|------|-------------|-------------|---------------|',
   );
 
   for (const comp of summary.statistics.comparisons) {
     const sig = comp.gapAdjustedP < 0.05 ? '*' : '';
     const ci = `[${(comp.gapTTest.ciLower * 100).toFixed(1)}, ${(comp.gapTTest.ciUpper * 100).toFixed(1)}]`;
+    const pairedP = comp.gapPairedTTest.nPairs >= 2 ? comp.gapPairedTTest.p.toFixed(4) : 'N/A';
     lines.push(
       `| ${comp.name} | ${comp.gapCohenD.toFixed(3)} | ${comp.gapInterpretation} | ` +
-        `${comp.gapTTest.t.toFixed(3)} | ${comp.gapTTest.df.toFixed(1)} | ${comp.gapTTest.p.toFixed(4)} | ${comp.gapAdjustedP.toFixed(4)} | ${sig} | ` +
+        `${comp.gapTTest.t.toFixed(3)} | ${comp.gapTTest.df.toFixed(1)} | ${comp.gapTTest.p.toFixed(4)} | ${comp.gapAdjustedP.toFixed(4)} | ` +
+        `${comp.gapPairedTTest.nPairs} | ${pairedP} | ${sig} | ` +
         `${(comp.gapCondition1Mean * 100).toFixed(1)}% | ${(comp.gapCondition2Mean * 100).toFixed(1)}% | ${ci} |`,
     );
   }
 
+  const scenarios = [...new Set(summary.results.map((r) => r.scenario))].sort();
+  if (scenarios.length > 0) {
+    lines.push(
+      '',
+      '## Per-Scenario Gap-Normalized Means',
+      '',
+      `| Scenario | ${summary.config.conditions.join(' | ')} |`,
+      `|----------|${summary.config.conditions.map(() => '---').join('|')}|`,
+    );
+    for (const scenarioId of scenarios) {
+      const cells = summary.config.conditions.map((condition) => {
+        const values = summary.results
+          .filter((r) => r.scenario === scenarioId && r.condition === condition)
+          .map((r) => r.gapNormalizedGain);
+        if (values.length === 0) return 'N/A';
+        const stats = calculateStats(values);
+        return `${(stats.mean * 100).toFixed(1)}% (n=${stats.n})`;
+      });
+      lines.push(`| ${scenarioId} | ${cells.join(' | ')} |`);
+    }
+  }
+
+  if (
+    summary.config.conditions.includes('full_system') &&
+    summary.config.conditions.includes('baseline')
+  ) {
+    lines.push(
+      '',
+      '## Per-Scenario Full vs Baseline Effects (Gap-Normalized)',
+      '',
+      '| Scenario | Full Mean | Baseline Mean | Diff (pp) | Cohen d | Welch p | Paired n | Paired p |',
+      '|----------|-----------|---------------|-----------|---------|---------|----------|----------|',
+    );
+
+    for (const scenarioId of scenarios) {
+      const full = summary.results
+        .filter((r) => r.scenario === scenarioId && r.condition === 'full_system')
+        .map((r) => r.gapNormalizedGain);
+      const baseline = summary.results
+        .filter((r) => r.scenario === scenarioId && r.condition === 'baseline')
+        .map((r) => r.gapNormalizedGain);
+      if (full.length === 0 || baseline.length === 0) continue;
+
+      const fullMean = mean(full);
+      const baselineMean = mean(baseline);
+      const diff = (fullMean - baselineMean) * 100;
+      const { d } = calculateCohenD(full, baseline);
+      const welch = welchTTest(full, baseline);
+      const paired = collectPairedSamples(
+        summary.results,
+        'full_system',
+        'baseline',
+        (r) => r.gapNormalizedGain,
+        scenarioId,
+      );
+      const pairedTest = pairedTTest(paired.values1, paired.values2);
+      const pairedP = pairedTest.nPairs >= 2 ? pairedTest.p.toFixed(4) : 'N/A';
+
+      lines.push(
+        `| ${scenarioId} | ${(fullMean * 100).toFixed(1)}% | ${(baselineMean * 100).toFixed(1)}% | ${diff.toFixed(1)} | ` +
+          `${d.toFixed(3)} | ${welch.p.toFixed(4)} | ${pairedTest.nPairs} | ${pairedP} |`,
+      );
+    }
+  }
+
   return lines.join('\n');
+}
+
+function collectManipulationWarnings(summary: AblationSummary): string[] {
+  const warnings: string[] = [];
+  const fullSystemStats = summary.statistics.byCondition['full_system'];
+  const planOnlyStats = summary.statistics.byCondition['plan_only'];
+  const modelOnlyStats = summary.statistics.byCondition['model_only'];
+  const baselineStats = summary.statistics.byCondition['baseline'];
+
+  const editablePlanConditions: Array<[string, typeof fullSystemStats]> = [
+    ['full_system', fullSystemStats],
+    ['plan_only', planOnlyStats],
+  ];
+  for (const [name, stats] of editablePlanConditions) {
+    if (!stats) continue;
+    const m = stats.mechanismMetrics;
+    if (m.planEditRequestCount === 0) {
+      warnings.push(
+        `⚠️ **${name}** had zero plan-edit requests from the simulator; manipulation exercise may be too weak.`,
+      );
+      continue;
+    }
+    if (m.planEditsCount === 0) {
+      warnings.push(
+        `⚠️ **${name}** had ${m.planEditRequestCount} plan-edit requests but zero successful plan edits.`,
+      );
+    }
+  }
+
+  // Non-editable conditions must not show plan edits.
+  if (modelOnlyStats && modelOnlyStats.mechanismMetrics.planEditsCount > 0) {
+    warnings.push(
+      `⚠️ **model_only** condition had ${modelOnlyStats.mechanismMetrics.planEditsCount} plan edits, but plan editability should be disabled!`,
+    );
+  }
+  if (baselineStats && baselineStats.mechanismMetrics.planEditsCount > 0) {
+    warnings.push(
+      `⚠️ **baseline** condition had ${baselineStats.mechanismMetrics.planEditsCount} plan edits, but plan editability should be disabled!`,
+    );
+  }
+
+  // Conditions without learner model editability should not show mastery overrides.
+  if (planOnlyStats && planOnlyStats.mechanismMetrics.masteryOverridesCount > 0) {
+    warnings.push(
+      `⚠️ **plan_only** condition had ${planOnlyStats.mechanismMetrics.masteryOverridesCount} mastery overrides, but learner-model editability should be disabled!`,
+    );
+  }
+  if (baselineStats && baselineStats.mechanismMetrics.masteryOverridesCount > 0) {
+    warnings.push(
+      `⚠️ **baseline** condition had ${baselineStats.mechanismMetrics.masteryOverridesCount} mastery overrides, but learner-model editability should be disabled!`,
+    );
+  }
+
+  return warnings;
 }
 
 function generateStatsReport(summary: AblationSummary): string {
@@ -1692,9 +2009,13 @@ function generateStatsReport(summary: AblationSummary): string {
     `- Scenarios: ${summary.config.scenarios.join(', ')}`,
     `- Runs per cell: ${summary.config.runsPerCell}`,
     `- Tutor model: ${summary.config.tutorModel}`,
+    `- Student model: ${summary.config.studentModel}`,
+    `- Judge model: ${summary.config.judgeModel}`,
+    `- Global seed: ${summary.config.seed ?? 'none (time/session-derived)'}`,
     '- Primary outcome: Gap-only normalized gain (gap-topic post-test answers require verified transcript evidence)',
     '- Multiple comparison correction: Holm-Bonferroni (applied separately to overall, gap, and judge comparison families)',
-    '- Confidence intervals: 95% CIs for means (t-distribution) and mean differences (Welch t)',
+    '- Hypothesis tests: Welch t-test (primary) + paired t-test robustness check (matched by scenario×run index)',
+    '- Confidence intervals: 95% CIs for means (t-distribution) and mean differences (Welch/paired t)',
     '- Effect size: Partial eta-squared (η²_p) for ANOVA effects',
     '',
     "## Effect Size Interpretation (Cohen's d)",
@@ -1786,6 +2107,10 @@ function generateStatsReport(summary: AblationSummary): string {
         `p = ${primaryComparison.gapTTest.p.toFixed(4)}, p_adj = ${primaryComparison.gapAdjustedP.toFixed(4)}, ` +
         `d = ${primaryComparison.gapCohenD.toFixed(3)}, 95% CI [${(primaryComparison.gapTTest.ciLower * 100).toFixed(1)}, ${(primaryComparison.gapTTest.ciUpper * 100).toFixed(1)}]%`,
       '',
+      `Paired t-test (scenario×run matched): n = ${primaryComparison.gapPairedTTest.nPairs}, ` +
+        `t(${primaryComparison.gapPairedTTest.df.toFixed(1)}) = ${primaryComparison.gapPairedTTest.t.toFixed(3)}, ` +
+        `p = ${primaryComparison.gapPairedTTest.p.toFixed(4)}, 95% CI [${(primaryComparison.gapPairedTTest.ciLower * 100).toFixed(1)}, ${(primaryComparison.gapPairedTTest.ciUpper * 100).toFixed(1)}]%`,
+      '',
       adjSig
         ? `The full system (M = ${(primaryComparison.gapCondition1Mean * 100).toFixed(1)}%) significantly ` +
             `outperformed the baseline (M = ${(primaryComparison.gapCondition2Mean * 100).toFixed(1)}%) ` +
@@ -1838,35 +2163,7 @@ function generateStatsReport(summary: AblationSummary): string {
   // Mechanism verification warnings
   lines.push('### Mechanism Verification', '');
 
-  const warnings: string[] = [];
-  const fullSystemStats = summary.statistics.byCondition['full_system'];
-  const planOnlyStats = summary.statistics.byCondition['plan_only'];
-  const modelOnlyStats = summary.statistics.byCondition['model_only'];
-  const baselineStats = summary.statistics.byCondition['baseline'];
-
-  // Warn if plan-editable conditions have zero plan edits
-  if (fullSystemStats && fullSystemStats.mechanismMetrics.planEditsCount === 0) {
-    warnings.push(
-      '⚠️ **full_system** condition had zero plan edits. The plan editability manipulation may not have been exercised by the simulator.',
-    );
-  }
-  if (planOnlyStats && planOnlyStats.mechanismMetrics.planEditsCount === 0) {
-    warnings.push(
-      '⚠️ **plan_only** condition had zero plan edits. The plan editability manipulation may not have been exercised by the simulator.',
-    );
-  }
-
-  // Warn if non-editable conditions unexpectedly show edits
-  if (modelOnlyStats && modelOnlyStats.mechanismMetrics.planEditsCount > 0) {
-    warnings.push(
-      `⚠️ **model_only** condition had ${modelOnlyStats.mechanismMetrics.planEditsCount} plan edits, but plan editability should be disabled!`,
-    );
-  }
-  if (baselineStats && baselineStats.mechanismMetrics.planEditsCount > 0) {
-    warnings.push(
-      `⚠️ **baseline** condition had ${baselineStats.mechanismMetrics.planEditsCount} plan edits, but plan editability should be disabled!`,
-    );
-  }
+  const warnings = collectManipulationWarnings(summary);
 
   // Report evidence verification rate
   const allGapEvidence = summary.config.conditions.flatMap((c) => {
@@ -1894,6 +2191,56 @@ function generateStatsReport(summary: AblationSummary): string {
         '',
       );
     }
+  }
+
+  for (const condition of summary.config.conditions) {
+    const stats = summary.statistics.byCondition[condition];
+    if (!stats) continue;
+    const m = stats.mechanismMetrics;
+    const planSuccess =
+      m.planEditRequestSuccessRate != null
+        ? `${(m.planEditRequestSuccessRate * 100).toFixed(1)}%`
+        : 'N/A';
+    const masterySuccess =
+      m.masteryOverrideRequestSuccessRate != null
+        ? `${(m.masteryOverrideRequestSuccessRate * 100).toFixed(1)}%`
+        : 'N/A';
+    lines.push(
+      `- ${condition}: plan edit success ${planSuccess} (${m.planEditsCount}/${m.planEditRequestCount}), mastery override success ${masterySuccess} (${m.masteryOverridesCount}/${m.masteryOverrideRequestCount})`,
+    );
+  }
+  lines.push('');
+
+  const scenarios = [...new Set(summary.results.map((r) => r.scenario))].sort();
+  if (
+    scenarios.length > 0 &&
+    summary.config.conditions.includes('full_system') &&
+    summary.config.conditions.includes('baseline')
+  ) {
+    lines.push('### Per-Scenario Full vs Baseline (Gap-Normalized)', '');
+    for (const scenarioId of scenarios) {
+      const paired = collectPairedSamples(
+        summary.results,
+        'full_system',
+        'baseline',
+        (r) => r.gapNormalizedGain,
+        scenarioId,
+      );
+      const full = summary.results
+        .filter((r) => r.scenario === scenarioId && r.condition === 'full_system')
+        .map((r) => r.gapNormalizedGain);
+      const baseline = summary.results
+        .filter((r) => r.scenario === scenarioId && r.condition === 'baseline')
+        .map((r) => r.gapNormalizedGain);
+      if (full.length === 0 || baseline.length === 0) continue;
+      const diff = (mean(full) - mean(baseline)) * 100;
+      const welch = welchTTest(full, baseline);
+      const pairedTest = pairedTTest(paired.values1, paired.values2);
+      lines.push(
+        `- ${scenarioId}: Δ = ${diff.toFixed(1)} pp, Welch p = ${welch.p.toFixed(4)}, paired p = ${pairedTest.p.toFixed(4)} (n=${pairedTest.nPairs})`,
+      );
+    }
+    lines.push('');
   }
 
   if (warnings.length > 0) {
@@ -1988,6 +2335,16 @@ export async function runAblationCli(argv: string[]) {
   }
   const concurrency = Math.min(MAX_CONCURRENCY, Math.max(1, requestedConcurrency));
   const shuffleRuns = args['no-shuffle'] !== true;
+  const strictManipulation = args['strict-manipulation'] === true;
+  const seedArg = typeof args.seed === 'string' ? args.seed : undefined;
+  let globalSeed: number | undefined;
+  if (seedArg != null) {
+    globalSeed = parseStrictIntegerArg(seedArg);
+    if (globalSeed == null) {
+      console.error(`Error: Invalid --seed value: ${seedArg} (expected integer).`);
+      process.exit(1);
+    }
+  }
   const tutorModel =
     typeof args['tutor-model'] === 'string' ? args['tutor-model'] : DEFAULT_ABLATION_TUTOR_MODEL_ID;
   const studentModel =
@@ -2006,6 +2363,7 @@ export async function runAblationCli(argv: string[]) {
     tutorModel,
     studentModel,
     judgeModel,
+    seed: globalSeed,
   };
 
   const totalRuns = conditions.length * scenarios.length * runsPerCell;
@@ -2058,6 +2416,8 @@ export async function runAblationCli(argv: string[]) {
   console.log(`Total runs: ${totalRuns}`);
   console.log(`Concurrency: ${concurrency}`);
   console.log(`Shuffle:    ${shuffleRuns ? 'enabled' : 'disabled'}`);
+  console.log(`Seed:       ${globalSeed ?? 'none'}`);
+  console.log(`Strict manipulation checks: ${strictManipulation ? 'enabled' : 'disabled'}`);
   console.log(`Tutor:      ${tutorModel}`);
   console.log(`Student:    ${studentModel}`);
   console.log(`Judge:      ${judgeModel}`);
@@ -2156,7 +2516,9 @@ export async function runAblationCli(argv: string[]) {
 
   // Shuffle to address run-order confound (using session seed for determinism when resuming)
   if (shuffleRuns) {
-    const shuffleSeed = checkpoint?.sessionId ? hashString(checkpoint.sessionId) : Date.now();
+    const shuffleSeed =
+      globalSeed ??
+      (checkpoint?.sessionId ? hashString(checkpoint.sessionId) : Date.now());
     shuffleArray(pendingTasks, shuffleSeed);
     console.log(`\nRun order: shuffled (seed: ${shuffleSeed})`);
   } else {
@@ -2184,6 +2546,7 @@ export async function runAblationCli(argv: string[]) {
               tutorModel,
               studentModel,
               judgeModel,
+              seed: globalSeed,
               apiKeys,
               reasoningSupport,
             },
@@ -2246,6 +2609,7 @@ export async function runAblationCli(argv: string[]) {
 
   // Build summary
   const summary: AblationSummary = {
+    sessionId,
     startedAt: startTime,
     completedAt: Date.now(),
     totalRuns,
@@ -2255,10 +2619,30 @@ export async function runAblationCli(argv: string[]) {
       scenarios: scenarios.map((s) => s.id),
       runsPerCell,
       tutorModel,
+      studentModel,
+      judgeModel,
+      seed: globalSeed,
     },
     results,
     statistics,
   };
+
+  const manipulationWarnings = collectManipulationWarnings(summary);
+  const contaminationWarnings = manipulationWarnings.filter((msg) =>
+    msg.includes('should be disabled'),
+  );
+  const shouldFailManipulation =
+    contaminationWarnings.length > 0 || (strictManipulation && manipulationWarnings.length > 0);
+  if (shouldFailManipulation) {
+    console.error('\nError: Manipulation integrity checks failed.');
+    for (const warning of manipulationWarnings) {
+      console.error(`  - ${warning}`);
+    }
+    console.error(
+      '\nAborting before result export. Re-run after fixing mechanism separation (or disable strict mode).',
+    );
+    process.exit(1);
+  }
 
   // Save results and delete checkpoint
   await saveResults(summary, outputDir);

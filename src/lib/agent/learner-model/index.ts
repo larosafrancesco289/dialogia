@@ -2,6 +2,7 @@ export {
   applyLearnerModelFeedback,
   calculateMastery,
   initializeLearnerModel,
+  resolvePlanNodeId,
   resolveNodeId,
   syncLearnerModelWithPlan,
   updateLearnerModel,

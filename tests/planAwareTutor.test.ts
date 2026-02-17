@@ -559,6 +559,18 @@ test('advance_topic handles explicit nodeId', async () => {
   assert.equal(derivativesNode!.status, 'completed');
 });
 
+test('advance_topic resolves fuzzy node reference from node name', async () => {
+  const plan = createMockPlan();
+  const ctx = createMockToolContext(plan);
+  const args = advanceTopicHandler.parseArgs({ nodeId: 'basic derivatives' });
+
+  const result = await advanceTopicHandler.apply(ctx, args!);
+
+  assert.equal(result.handled, true);
+  const derivativesNode = result.updatedPlan!.nodes.find((n) => n.id === 'derivatives');
+  assert.equal(derivativesNode!.status, 'completed');
+});
+
 test('advance_topic handles no active topic', async () => {
   const plan = createMockPlan();
   plan.nodes.forEach((n) => {

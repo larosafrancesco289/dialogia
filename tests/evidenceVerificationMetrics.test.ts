@@ -4,10 +4,11 @@ import {
   administerTest,
   normalizeForMatching,
   extractTutorTurns,
+  verifyEvidenceSemanticSimilarity,
   verifyEvidenceTokenOverlap,
   verifyEvidenceRelevance,
 } from '@/tooling/eval/prePostTest';
-import { shuffleArray } from '@/tooling/eval/ablationRunner';
+import { parseStrictIntegerArg, shuffleArray } from '@/tooling/eval/ablationRunner';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import type { KnowledgeGap, TestQuestion } from '@/tooling/eval/ablationScenarios';
 
@@ -277,6 +278,44 @@ test('post-test gap questions use fallback wrong answer when no misconceptionDis
   assert.equal(result.answers[0], 1, 'Should use first wrong answer as fallback distractor');
 });
 
+test('parseAnswer accepts option indexes beyond 3 when question has more choices', async () => {
+  const question: TestQuestion = {
+    id: 'q_dynamic_options',
+    topicId: 'topic_dynamic',
+    difficulty: 'easy',
+    question: 'Choose the best option.',
+    options: ['A', 'B', 'C', 'D', 'E'],
+    correctIndex: 4,
+  };
+
+  const pipelineClient = {
+    chatCompletion: async () => ({
+      id: 'test-completion',
+      object: 'chat.completion',
+      created: Date.now(),
+      model: 'test-model',
+      choices: [
+        {
+          index: 0,
+          finish_reason: 'stop',
+          message: { role: 'assistant', content: 'I choose option 4.' },
+        },
+      ],
+    }),
+    streamChatCompletion: async () => undefined,
+  } satisfies PipelineClient;
+
+  const result = await administerTest([question], 'pre', {
+    auth: { transport: 'openrouter', useProxy: true },
+    model: 'test-model',
+    pipelineClient,
+    testType: 'pre',
+    runId: 'run-dynamic-options',
+  });
+
+  assert.equal(result.answers[0], 4);
+});
+
 test('post-test gap questions parse evidence with LaTeX backslashes', async () => {
   const question: TestQuestion = {
     id: 'q_latex',
@@ -368,6 +407,14 @@ test('verifyEvidenceTokenOverlap rejects too-short evidence', () => {
   const transcript = 'Tutor: A long tutoring session about mathematics.';
   assert.equal(verifyEvidenceTokenOverlap('short', transcript), false);
   assert.equal(verifyEvidenceTokenOverlap('', transcript), false);
+});
+
+test('verifyEvidenceSemanticSimilarity catches paraphrase missed by strict overlap', () => {
+  const transcript =
+    'Tutor: You isolate the variable by applying inverse operations step by step.';
+  const evidence = 'Use opposite operations to isolate the variable gradually.';
+
+  assert.equal(verifyEvidenceSemanticSimilarity(evidence, transcript), true);
 });
 
 test('normalizeForMatching collapses whitespace and lowercases', () => {
@@ -465,4 +512,15 @@ test('shuffleArray actually shuffles the array', () => {
     arr.sort((a, b) => a - b),
     original.sort((a, b) => a - b),
   );
+});
+
+test('parseStrictIntegerArg accepts valid integer strings', () => {
+  assert.equal(parseStrictIntegerArg('42'), 42);
+  assert.equal(parseStrictIntegerArg(' -7 '), -7);
+});
+
+test('parseStrictIntegerArg rejects malformed integer strings', () => {
+  assert.equal(parseStrictIntegerArg('12abc'), undefined);
+  assert.equal(parseStrictIntegerArg('3.5'), undefined);
+  assert.equal(parseStrictIntegerArg(''), undefined);
 });

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { calculateCohenD, extractTutorTurns, welchTTest, twoWayAnova } from './prePostTest';
+import { calculateCohenD, extractTutorTurns, pairedTTest, welchTTest, twoWayAnova } from './prePostTest';
 
 test('calculateCohenD returns insufficient-data when either group is too small', () => {
   const emptyGroup = calculateCohenD([], [1, 2, 3]);
@@ -69,6 +69,23 @@ test('welchTTest approximates known values', () => {
   // t = (5 - 2.5) / sqrt(6.67/4 + 1.67/4) = 2.5 / sqrt(2.085) ≈ 1.73
   assert.ok(Math.abs(result.t - 1.73) < 0.1, `t ≈ 1.73, got ${result.t}`);
   assert.ok(result.df > 3 && result.df < 7, `df should be between 3 and 7, got ${result.df}`);
+});
+
+test('pairedTTest detects improvement in paired samples', () => {
+  const before = [0.2, 0.3, 0.4, 0.5, 0.6];
+  const after = [0.4, 0.5, 0.6, 0.7, 0.8];
+  const result = pairedTTest(after, before);
+
+  assert.equal(result.nPairs, 5);
+  assert.ok(result.t > 0, `expected positive t-statistic, got ${result.t}`);
+  assert.ok(result.p < 0.05, `expected significant p-value, got ${result.p}`);
+});
+
+test('pairedTTest returns neutral values for insufficient pairs', () => {
+  const result = pairedTTest([1], [2]);
+  assert.equal(result.nPairs, 1);
+  assert.equal(result.p, 1);
+  assert.equal(result.significant, false);
 });
 
 // ============================================================================
