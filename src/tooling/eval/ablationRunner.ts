@@ -24,6 +24,12 @@ import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { createHeadlessRunner } from '@/tooling/headless/runner';
 import { LLMUserSimulator } from '@/tooling/headless/simulators';
+import {
+  executeStudentToolCalls,
+  getStudentToolDefinitions,
+  type StudentToolCall,
+  type StudentToolExecutionEvent,
+} from '@/tooling/headless/studentTools';
 import { renderSnapshotTranscript } from '@/tooling/headless/transcript';
 import { createModelIndex, isReasoningSupported } from '@/lib/models';
 import { resolveModelTransport } from '@/lib/providers';
@@ -35,7 +41,7 @@ import {
   generateModelSummary,
   initializeLearnerModel,
 } from '@/lib/agent/learner-model';
-import { summarizeLearningPlan } from '@/lib/learning-plan/service';
+import { getNextNode, summarizeLearningPlan } from '@/lib/learning-plan/service';
 import { getOpenRouterKeyFallback, getAnthropicKeyFallback } from '@/lib/env/keys';
 import { anthropicChatCompletion, resolveAnthropicDirectModelId } from '@/lib/anthropic/chat';
 import { fetchModels } from '@/lib/openrouter';
@@ -86,6 +92,7 @@ type EditEvent = {
   turn: number;
   type: 'plan_modification' | 'mastery_override';
   toolName: string;
+  actor: 'student' | 'tutor';
   nodeId?: string;
   details?: string;
 };
@@ -104,6 +111,7 @@ type AblationRunResult = {
   transcript: string;
   turnsUsed: number;
   toolUsage: Record<string, number>;
+  studentToolEvents: StudentToolExecutionEvent[];
   editEvents: EditEvent[];
   planEditRequests: number;
   masteryOverrideRequests: number;
@@ -279,6 +287,102 @@ function looksLikeModelOverrideRequest(text: string | undefined): boolean {
   return /\b(too high|too low|overestimating|underestimating|I already know|I know this|I don't know|my mastery|my confidence|adjust|update|actually good at|actually understand|better than you think|not as weak|still confused|still don't get|still don't understand|still struggling|that was too easy|that was too hard|stronger than|weaker than|misjudging|wrong about my|know more than|know less than)\b/i.test(
     text,
   );
+}
+
+function pickLikelyNodeId(
+  text: string,
+  plan: Chat['settings']['features']['tutor']['learningPlan'] | undefined,
+): string | undefined {
+  if (!plan || plan.nodes.length === 0) return undefined;
+  const normalized = text.toLowerCase();
+  const exact = plan.nodes.find((node) => {
+    const name = node.name.toLowerCase();
+    const id = node.id.toLowerCase();
+    return normalized.includes(name) || normalized.includes(id);
+  });
+  if (exact) return exact.id;
+  return getNextNode(plan)?.id ?? plan.nodes[0]?.id;
+}
+
+function parseConfidenceHint(text: string): number | undefined {
+  const percentageMatch = text.match(/\b(100|[1-9]?\d)\s*%/);
+  if (percentageMatch) {
+    const value = Number(percentageMatch[1]);
+    if (Number.isFinite(value)) return Math.min(Math.max(value / 100, 0), 1);
+  }
+  const decimalMatch = text.match(/\b0?\.\d+\b/);
+  if (decimalMatch) {
+    const value = Number(decimalMatch[0]);
+    if (Number.isFinite(value)) return Math.min(Math.max(value, 0), 1);
+  }
+  return undefined;
+}
+
+function inferStudentToolCallsFromText(opts: {
+  text: string;
+  plan: Chat['settings']['features']['tutor']['learningPlan'] | undefined;
+  learnerModel: LearnerModel | undefined;
+  turn: number;
+  planEditable: boolean;
+}): StudentToolCall[] {
+  const { text, plan, learnerModel, turn, planEditable } = opts;
+  if (!looksLikeModelOverrideRequest(text)) return [];
+  const lower = text.toLowerCase();
+  const nodeId = pickLikelyNodeId(text, plan);
+  if (!nodeId) return [];
+
+  const requestedConfidence = parseConfidenceHint(text);
+  const currentConfidence = learnerModel?.mastery?.[nodeId]?.confidence ?? 0.3;
+
+  const buildCall = (name: StudentToolCall['name'], args: Record<string, unknown>) => ({
+    id: `heuristic_${turn}_${name}`,
+    name,
+    args,
+  });
+
+  if (
+    /\b(already know|already understand|too easy|skip this|skip ahead|move ahead|jump ahead)\b/i.test(
+      lower,
+    )
+  ) {
+    if (planEditable) {
+      return [buildCall('mark_topic_known', { nodeId })];
+    }
+    return [
+      buildCall('adjust_mastery', {
+        nodeId,
+        confidence: Math.max(currentConfidence, requestedConfidence ?? 0.7),
+        reason: 'Inferred from student self-assessment ("already know").',
+      }),
+    ];
+  }
+
+  if (
+    /\b(too high|overestimating|still confused|still don't get|still don't understand|still struggling|too hard|weaker than)\b/i.test(
+      lower,
+    )
+  ) {
+    return [buildCall('flag_for_review', { nodeId })];
+  }
+
+  const confidence =
+    requestedConfidence ??
+    Math.min(
+      1,
+      Math.max(
+        0,
+        currentConfidence +
+          (/\b(too low|underestimating|better than|stronger than)\b/i.test(lower) ? 0.2 : 0.1),
+      ),
+    );
+
+  return [
+    buildCall('adjust_mastery', {
+      nodeId,
+      confidence,
+      reason: 'Inferred from student self-assessment in message text.',
+    }),
+  ];
 }
 
 type PairedSamples = {
@@ -594,7 +698,7 @@ Options:
   --student-model <id>  Student simulator model (default: google/gemini-2.5-flash-lite)
   --judge-model <id>    Judge model (default: anthropic/claude-haiku-4.5)
   --out <dir>           Output directory (default: tmp/ablation/)
-  --strict-manipulation Fail if any plan-editability manipulation warning is detected
+  --strict-manipulation Fail if any manipulation warning is detected
   --dry-run             Show what would be run without executing
   --resume              Resume from last checkpoint in output directory
   --list                List available scenarios and conditions
@@ -956,6 +1060,9 @@ async function runSingleAblation(
   // can act on these requests. The same behaviors occur across all conditions;
   // only the system's ability to respond differs.
   const conditionConfig = CONDITION_CONFIGS[condition];
+  const studentTools = conditionConfig.learnerModelEditable
+    ? getStudentToolDefinitions({ planEditable: conditionConfig.planEditable })
+    : [];
   const realisticStudentBehaviors = [
     'As a realistic student, you should naturally:',
     '- If you already know a topic, tell the tutor you want to skip it or move faster',
@@ -984,6 +1091,7 @@ async function runSingleAblation(
       .filter(Boolean)
       .join('\n'),
     temperature: 0.7,
+    toolDefinitions: studentTools,
     knowledgeGaps: scenario.knowledgeGaps.map((gap) => ({
       topicId: gap.topicId,
       misconception: gap.misconception,
@@ -1001,12 +1109,18 @@ async function runSingleAblation(
   console.log(`  [${runId}] Running tutoring session (${scenario.maxTurns} turns)...`);
   let studentMessage = `Hi! I need help with ${scenario.topic}. My goal is: ${scenario.goal}`;
   const masteryTrajectory: Array<{ turn: number; avgConfidence: number }> = [];
+  const studentToolEvents: StudentToolExecutionEvent[] = [];
 
   for (let turn = 0; turn < scenario.maxTurns; turn++) {
     const snapshot = await runner.runTurn({ content: studentMessage, turnIndex: turn });
 
     // Track mastery trajectory
-    const learnerModel = getLatestLearnerModel(runner.toResult().messages);
+    const learnerModelFromSettings = runner
+      .getSession()
+      .getState()
+      .chats.find((c) => c.id === chat.id)?.settings.features.tutor.learnerModel;
+    const learnerModel =
+      getLatestLearnerModel(runner.toResult().messages) ?? learnerModelFromSettings;
     if (learnerModel?.mastery) {
       const confidences = Object.values(learnerModel.mastery).map((m) => m.confidence);
       const avgConfidence =
@@ -1023,7 +1137,12 @@ async function runSingleAblation(
         .getState()
         .chats.find((c) => c.id === chat.id)?.settings.features.tutor.learningPlan ?? initialPlan;
     const latestLearnerModel =
-      getLatestLearnerModel(runner.toResult().messages) ?? defaultLearnerModel;
+      getLatestLearnerModel(runner.toResult().messages) ??
+      runner
+        .getSession()
+        .getState()
+        .chats.find((c) => c.id === chat.id)?.settings.features.tutor.learnerModel ??
+      defaultLearnerModel;
     const planSummary = conditionConfig.planVisible
       ? currentPlan
         ? summarizeLearningPlan(currentPlan)
@@ -1034,13 +1153,51 @@ async function runSingleAblation(
         ? generateModelSummary(latestLearnerModel, currentPlan)
         : undefined;
 
-    studentMessage = await studentSim.respond(tutorMessage, {
+    const studentTurn = await studentSim.respondWithTools(tutorMessage, {
       planSummary,
       planEditable: conditionConfig.planEditable,
       learnerModelSummary,
       learnerModelEditable: conditionConfig.learnerModelEditable,
       turn,
     });
+
+    const inferredStudentTools =
+      conditionConfig.learnerModelEditable && studentTurn.toolCalls.length === 0
+        ? inferStudentToolCallsFromText({
+            text: studentTurn.text,
+            plan: currentPlan,
+            learnerModel: latestLearnerModel,
+            turn: turn + 2,
+            planEditable: conditionConfig.planEditable,
+          })
+        : [];
+
+    const studentCalls = [...studentTurn.toolCalls, ...inferredStudentTools];
+
+    const toolResults = await executeStudentToolCalls({
+      session: runner.getSession(),
+      chatId: chat.id,
+      turn: turn + 2,
+      calls: studentCalls,
+      learnerModelEditable: conditionConfig.learnerModelEditable,
+      planEditable: conditionConfig.planEditable,
+    });
+    if (toolResults.length > 0) {
+      studentToolEvents.push(...toolResults);
+      const summary = toolResults.map((result) => `${result.name}:${result.status}`).join(', ');
+      console.log(`  [${runId}] Student tools (turn ${turn + 2}): ${summary}`);
+    }
+
+    const notifications = toolResults
+      .filter((result) => result.status === 'success' && result.tutorNotification)
+      .map((result) => result.tutorNotification as string);
+    const studentText = studentTurn.text.trim();
+    studentMessage = [notifications.join('\n'), studentText]
+      .filter((chunk) => chunk.trim().length > 0)
+      .join('\n');
+    if (!studentMessage) {
+      studentMessage = 'Can we continue to the next topic?';
+    }
   }
 
   const result = runner.toResult();
@@ -1080,13 +1237,30 @@ async function runSingleAblation(
       toolUsage[tc.name] = (toolUsage[tc.name] || 0) + 1;
     }
   }
+  for (const event of studentToolEvents) {
+    if (event.status !== 'success') continue;
+    const key = `student:${event.name}`;
+    toolUsage[key] = (toolUsage[key] || 0) + 1;
+  }
 
   // Extract edit events (plan modifications, mastery overrides)
-  const editEvents = extractEditEvents(result.snapshots, {
-    planEditable: conditionConfig.planEditable,
-    planPreGenerated: true,
-  });
-  const { planEditRequests, masteryOverrideRequests } = extractEditRequestSignals(result.snapshots);
+  const editEvents = extractEditEvents(
+    result.snapshots,
+    {
+      planEditable: conditionConfig.planEditable,
+      planPreGenerated: true,
+    },
+    studentToolEvents,
+  );
+  const { planEditRequests, masteryOverrideRequests: masteryTextRequests } =
+    extractEditRequestSignals(result.snapshots);
+  const studentOverrideRequests = studentToolEvents.filter(
+    (event) =>
+      ['adjust_mastery', 'mark_topic_known', 'flag_for_review', 'resolve_misconception'].includes(
+        event.name,
+      ) && event.status !== 'skipped',
+  ).length;
+  const masteryOverrideRequests = Math.max(masteryTextRequests, studentOverrideRequests);
   if (editEvents.length > 0) {
     console.log(
       `  [${runId}] Edit events: ${editEvents.length} (${editEvents.map((e) => e.type).join(', ')})`,
@@ -1094,7 +1268,12 @@ async function runSingleAblation(
   }
 
   // Get final learner model
-  const finalLearnerModel = getLatestLearnerModel(result.messages);
+  const finalLearnerModel =
+    getLatestLearnerModel(result.messages) ??
+    runner
+      .getSession()
+      .getState()
+      .chats.find((c) => c.id === chat.id)?.settings.features.tutor.learnerModel;
 
   // Run judge evaluation
   console.log(`  [${runId}] Running judge evaluation...`);
@@ -1161,6 +1340,7 @@ async function runSingleAblation(
     transcript,
     turnsUsed: result.snapshots.length,
     toolUsage,
+    studentToolEvents,
     editEvents,
     planEditRequests,
     masteryOverrideRequests,
@@ -1229,6 +1409,7 @@ function parseJudgeVerdict(raw: string): JudgeVerdict | undefined {
 function extractEditEvents(
   snapshots: HeadlessTurnSnapshot[],
   options?: { planEditable?: boolean; planPreGenerated?: boolean },
+  studentToolEvents: StudentToolExecutionEvent[] = [],
 ): EditEvent[] {
   const events: EditEvent[] = [];
   const planEventsAllowed = options?.planEditable !== false;
@@ -1263,6 +1444,7 @@ function extractEditEvents(
           turn: i + 1,
           type: 'plan_modification',
           toolName: tc.name,
+          actor: 'tutor',
           details: (input.rationale as string) || undefined,
         });
       }
@@ -1293,6 +1475,7 @@ function extractEditEvents(
             turn: i + 1,
             type: 'mastery_override',
             toolName: tc.name,
+            actor: 'tutor',
             nodeId: recordInput.nodeId as string | undefined,
             details:
               adjustment?.reason ||
@@ -1302,6 +1485,27 @@ function extractEditEvents(
         }
       }
     }
+  }
+
+  for (const event of studentToolEvents) {
+    if (event.status !== 'success') continue;
+    if (
+      !['adjust_mastery', 'mark_topic_known', 'flag_for_review', 'resolve_misconception'].includes(
+        event.name,
+      )
+    ) {
+      continue;
+    }
+    events.push({
+      turn: event.turn,
+      type: 'mastery_override',
+      toolName: event.name,
+      actor: 'student',
+      nodeId:
+        typeof event.output?.nodeId === 'string' ? (event.output.nodeId as string) : undefined,
+      details:
+        event.tutorNotification || (typeof event.error === 'string' ? event.error : undefined),
+    });
   }
 
   return events;
@@ -1418,8 +1622,9 @@ function calculateStatistics(
     const runsWithPlanEdits = conditionResults.filter((r) =>
       r.editEvents.some((e) => e.type === 'plan_modification'),
     ).length;
-    const runsWithPlanEditRequests = conditionResults.filter((r) => (r.planEditRequests ?? 0) > 0)
-      .length;
+    const runsWithPlanEditRequests = conditionResults.filter(
+      (r) => (r.planEditRequests ?? 0) > 0,
+    ).length;
     const runsWithMasteryOverrides = conditionResults.filter((r) =>
       r.editEvents.some((e) => e.type === 'mastery_override'),
     ).length;
@@ -1489,12 +1694,7 @@ function calculateStatistics(
       judgeScores2,
     );
     const judgeTTest = welchTTest(judgeScores1, judgeScores2);
-    const pairedJudge = collectPairedSamples(
-      results,
-      c1,
-      c2,
-      (r) => r.judgeVerdict?.overall_score,
-    );
+    const pairedJudge = collectPairedSamples(results, c1, c2, (r) => r.judgeVerdict?.overall_score);
     const pairedJudgeTTest = pairedTTest(pairedJudge.values1, pairedJudge.values2);
 
     return {
@@ -1968,6 +2168,26 @@ function collectManipulationWarnings(summary: AblationSummary): string[] {
     if (m.planEditsCount === 0) {
       warnings.push(
         `⚠️ **${name}** had ${m.planEditRequestCount} plan-edit requests but zero successful plan edits.`,
+      );
+    }
+  }
+
+  const editableModelConditions: Array<[string, typeof fullSystemStats]> = [
+    ['full_system', fullSystemStats],
+    ['model_only', modelOnlyStats],
+  ];
+  for (const [name, stats] of editableModelConditions) {
+    if (!stats) continue;
+    const m = stats.mechanismMetrics;
+    if (m.masteryOverridesCount === 0 && m.masteryOverrideRequestCount === 0) {
+      warnings.push(
+        `⚠️ **${name}** had no mastery override activity (no direct edits and no requests); model-editability manipulation may be too weak.`,
+      );
+      continue;
+    }
+    if (m.masteryOverrideRequestCount > 0 && m.masteryOverridesCount === 0) {
+      warnings.push(
+        `⚠️ **${name}** had ${m.masteryOverrideRequestCount} mastery override requests but zero successful overrides.`,
       );
     }
   }
@@ -2517,8 +2737,7 @@ export async function runAblationCli(argv: string[]) {
   // Shuffle to address run-order confound (using session seed for determinism when resuming)
   if (shuffleRuns) {
     const shuffleSeed =
-      globalSeed ??
-      (checkpoint?.sessionId ? hashString(checkpoint.sessionId) : Date.now());
+      globalSeed ?? (checkpoint?.sessionId ? hashString(checkpoint.sessionId) : Date.now());
     shuffleArray(pendingTasks, shuffleSeed);
     console.log(`\nRun order: shuffled (seed: ${shuffleSeed})`);
   } else {

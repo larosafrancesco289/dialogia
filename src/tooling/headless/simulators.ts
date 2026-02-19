@@ -3,7 +3,9 @@ import type { HeadlessTurnSnapshot } from '@/tooling/headless/types';
 import type { HeadlessRunResult } from '@/tooling/headless/runner';
 import type { Message } from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
+import { normalizeToolCalls, parseToolArguments } from '@/lib/agent/parsers';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
+import type { ToolDefinition } from '@/lib/transport/contracts';
 import { isRecord } from '@/lib/utils/guards';
 import type { TransportAuth } from '@/lib/auth/transport';
 
@@ -62,7 +64,29 @@ export type LLMUserSimulatorOptions = {
   maxTokens?: number;
   memoryDepth?: number;
   knowledgeGaps?: Array<{ topicId: string; misconception?: string }>;
+  toolDefinitions?: ToolDefinition[];
 };
+
+export type StudentSimulatorToolCall = {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+};
+
+export type LLMUserSimulatorResponse = {
+  text: string;
+  toolCalls: StudentSimulatorToolCall[];
+};
+
+function fallbackStudentText(toolCalls: StudentSimulatorToolCall[]): string {
+  if (toolCalls.some((call) => call.name === 'mark_topic_known')) {
+    return 'I already know this topic well. Please skip ahead to the next one.';
+  }
+  if (toolCalls.length > 0) {
+    return 'I updated my learning panel based on my confidence. Can we continue?';
+  }
+  return 'I need a moment to think about that.';
+}
 
 export class LLMUserSimulator {
   private readonly history: ModelMessage[];
@@ -70,6 +94,7 @@ export class LLMUserSimulator {
   private readonly options: LLMUserSimulatorOptions;
   private readonly maxTurns: number;
   private readonly knowledgeGaps: Array<{ topicId: string; misconception?: string }>;
+  private readonly toolDefinitions: ToolDefinition[];
 
   constructor(options: LLMUserSimulatorOptions) {
     this.options = {
@@ -80,6 +105,7 @@ export class LLMUserSimulator {
       ...options,
     };
     this.knowledgeGaps = Array.isArray(options.knowledgeGaps) ? options.knowledgeGaps : [];
+    this.toolDefinitions = Array.isArray(options.toolDefinitions) ? options.toolDefinitions : [];
     const basePersona =
       options.personaPrompt ??
       [
@@ -108,7 +134,8 @@ export class LLMUserSimulator {
       `Briefly explain what you want help with: ${goal || 'a subject you are learning'}.`,
       'Greet the tutor warmly and mention any constraints (timeline, upcoming exam, etc.) if relevant.',
     ].join('\n');
-    return this.generate(prompt);
+    const response = await this.generate(prompt);
+    return response.text;
   }
 
   async respond(
@@ -121,6 +148,20 @@ export class LLMUserSimulator {
       turn?: number;
     },
   ): Promise<string> {
+    const response = await this.respondWithTools(tutorMessage, context);
+    return response.text;
+  }
+
+  async respondWithTools(
+    tutorMessage: string,
+    context?: {
+      planSummary?: string;
+      planEditable?: boolean;
+      learnerModelSummary?: string;
+      learnerModelEditable?: boolean;
+      turn?: number;
+    },
+  ): Promise<LLMUserSimulatorResponse> {
     const cues: string[] = [
       tutorMessage,
       '',
@@ -142,6 +183,11 @@ export class LLMUserSimulator {
         cues.push(
           'These mastery scores are editable — you can ask the tutor to correct them. Look at the scores and compare them to what you actually know. When a score does not match your real confidence, tell the tutor directly. For example: "That 40% on power rule is too low — I can do basic power rule problems fine, it should be higher" or "The score on sum rule is too high, I\'m actually still confused about when to use it." You do not silently accept scores that feel wrong — you speak up so the tutor can fix them.',
         );
+        if (this.toolDefinitions.length > 0) {
+          cues.push(
+            'When you use learning-panel controls, call tools directly: adjust_mastery, mark_topic_known, flag_for_review, resolve_misconception. You can still send a short normal chat reply in the same turn.',
+          );
+        }
       }
       // Non-editable: no mastery agency cue. Scores are visible but the student
       // does not contest or request corrections (passive OLM display).
@@ -158,7 +204,7 @@ export class LLMUserSimulator {
     return this.generate(prompt);
   }
 
-  private async generate(userContent: string): Promise<string> {
+  private async generate(userContent: string): Promise<LLMUserSimulatorResponse> {
     pushWithLimit(this.history, { role: 'user', content: userContent }, this.maxTurns);
     const response = await getChatCompletion()({
       auth: this.options.auth,
@@ -167,10 +213,22 @@ export class LLMUserSimulator {
       temperature: this.options.temperature,
       topP: this.options.topP,
       maxTokens: this.options.maxTokens,
+      tools: this.toolDefinitions.length > 0 ? this.toolDefinitions : undefined,
+      toolChoice: this.toolDefinitions.length > 0 ? 'auto' : undefined,
+      parallelToolCalls: false,
     });
-    const text = extractAssistantText(response) || 'I need a moment to think about that.';
+    const firstChoice = isRecord(response?.choices?.[0]) ? response.choices?.[0] : undefined;
+    const message = isRecord(firstChoice?.message) ? firstChoice.message : undefined;
+    const toolCalls = message
+      ? normalizeToolCalls(message).map((call) => ({
+          id: call.id,
+          name: call.function.name,
+          args: parseToolArguments(call),
+        }))
+      : [];
+    const text = (extractAssistantText(response) || fallbackStudentText(toolCalls)).trim();
     pushWithLimit(this.history, { role: 'assistant', content: text }, this.maxTurns);
-    return text;
+    return { text, toolCalls };
   }
 }
 
