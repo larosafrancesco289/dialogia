@@ -76,6 +76,8 @@ export type StudentSimulatorToolCall = {
 export type LLMUserSimulatorResponse = {
   text: string;
   toolCalls: StudentSimulatorToolCall[];
+  /** True when the model only produced tool calls and text was synthesised from fallbackStudentText(). */
+  isTextFallback: boolean;
 };
 
 function fallbackStudentText(toolCalls: StudentSimulatorToolCall[]): string {
@@ -161,17 +163,24 @@ export class LLMUserSimulator {
       learnerModelEditable?: boolean;
       turn?: number;
     },
+    options?: {
+      /**
+       * When true, tool-call-only fallback responses are not kept in memory.
+       * Used by two-phase callers that immediately request a real text reply.
+       */
+      skipHistoryForToolOnlyFallback?: boolean;
+    },
   ): Promise<LLMUserSimulatorResponse> {
     const cues: string[] = [
       tutorMessage,
       '',
-      'Reply as the student. Clarify doubts, show your thinking, and mention if you feel ready to proceed.',
+      'Reply as the student. Engage with what the tutor said — ask questions, show your thinking, or try to answer. Keep it 2-4 sentences.',
     ];
     if (context?.planSummary) {
       cues.push(`Learning plan context: ${context.planSummary}`);
       if (context.planEditable) {
         cues.push(
-          'The learning plan on screen is yours to shape. You are the kind of student who takes charge of your own learning — you know your weak spots and your deadline. When the topic order does not match your priorities, you directly ask the tutor to change the plan. For example, you might say "Can you move the practice problems before the theory?" or "I want to skip topic X and jump to Y" or "Can we reorder the plan to start with what I need most for the exam?" You do not just hint — you make clear requests for the tutor to update the plan.',
+          'The learning plan is yours to shape. If the current topic order genuinely does not fit your needs or deadline, ask the tutor to adjust it — but only if something actually feels off. Most turns you will just engage with the tutoring content.',
         );
       }
       // Non-editable: no plan agency cue. The plan is visible but the student
@@ -180,12 +189,13 @@ export class LLMUserSimulator {
     if (context?.learnerModelSummary) {
       cues.push(`Your mastery scores (visible on screen): ${context.learnerModelSummary}`);
       if (context.learnerModelEditable) {
-        cues.push(
-          'These mastery scores are editable — you can ask the tutor to correct them. Look at the scores and compare them to what you actually know. When a score does not match your real confidence, tell the tutor directly. For example: "That 40% on power rule is too low — I can do basic power rule problems fine, it should be higher" or "The score on sum rule is too high, I\'m actually still confused about when to use it." You do not silently accept scores that feel wrong — you speak up so the tutor can fix them.',
-        );
         if (this.toolDefinitions.length > 0) {
           cues.push(
-            'When you use learning-panel controls, call tools directly: adjust_mastery, mark_topic_known, flag_for_review, resolve_misconception. You can still send a short normal chat reply in the same turn.',
+            'If a score genuinely does not match your understanding — noticeably too high or too low — use the tool to correct it (adjust_mastery, flag_for_review, or resolve_misconception once corrected). Do this sparingly: only when a score is clearly wrong, not every turn. Never use mark_topic_known on a topic where you have a known misconception — you still need to learn it. When you use a tool, always also reply to the tutor\'s message in the same response.',
+          );
+        } else {
+          cues.push(
+            'If a score genuinely does not match your understanding, mention it to the tutor. Do this sparingly — only when something is clearly off.',
           );
         }
       }
@@ -201,11 +211,22 @@ export class LLMUserSimulator {
       cues.push('If you feel confident, you may summarize your learning or request to wrap up.');
     }
     const prompt = cues.join('\n');
-    return this.generate(prompt);
+    return this.generate(prompt, {
+      skipHistoryForToolOnlyFallback: options?.skipHistoryForToolOnlyFallback,
+    });
   }
 
-  private async generate(userContent: string): Promise<LLMUserSimulatorResponse> {
+  private async generate(
+    userContent: string,
+    options?: {
+      noTools?: boolean;
+      skipHistoryForToolOnlyFallback?: boolean;
+    },
+  ): Promise<LLMUserSimulatorResponse> {
+    const noTools = options?.noTools ?? false;
+    const skipHistoryForToolOnlyFallback = options?.skipHistoryForToolOnlyFallback ?? false;
     pushWithLimit(this.history, { role: 'user', content: userContent }, this.maxTurns);
+    const toolDefs = noTools ? [] : this.toolDefinitions;
     const response = await getChatCompletion()({
       auth: this.options.auth,
       model: this.options.modelId,
@@ -213,8 +234,8 @@ export class LLMUserSimulator {
       temperature: this.options.temperature,
       topP: this.options.topP,
       maxTokens: this.options.maxTokens,
-      tools: this.toolDefinitions.length > 0 ? this.toolDefinitions : undefined,
-      toolChoice: this.toolDefinitions.length > 0 ? 'auto' : undefined,
+      tools: toolDefs.length > 0 ? toolDefs : undefined,
+      toolChoice: toolDefs.length > 0 ? 'auto' : undefined,
       parallelToolCalls: false,
     });
     const firstChoice = isRecord(response?.choices?.[0]) ? response.choices?.[0] : undefined;
@@ -226,9 +247,50 @@ export class LLMUserSimulator {
           args: parseToolArguments(call),
         }))
       : [];
-    const text = (extractAssistantText(response) || fallbackStudentText(toolCalls)).trim();
-    pushWithLimit(this.history, { role: 'assistant', content: text }, this.maxTurns);
-    return { text, toolCalls };
+    const rawText = extractAssistantText(response);
+    const isTextFallback = rawText.trim() === '' && toolCalls.length > 0;
+    const text = (rawText || fallbackStudentText(toolCalls)).trim();
+    if (skipHistoryForToolOnlyFallback && isTextFallback) {
+      // Drop the just-added prompt so tool-call-only scaffolding does not
+      // pollute memory before the real conversational follow-up.
+      const last = this.history[this.history.length - 1];
+      if (last?.role === 'user' && last.content === userContent) {
+        this.history.pop();
+      }
+    } else {
+      pushWithLimit(this.history, { role: 'assistant', content: text }, this.maxTurns);
+    }
+    return { text, toolCalls, isTextFallback };
+  }
+
+  /**
+   * After tool calls have been executed, get a conversational reply to the tutor's last
+   * message without offering tools. Called when the initial respondWithTools() response
+   * was tool-call-only (isTextFallback=true), so the tool interaction does not consume
+   * a tutoring exchange.
+   */
+  async respondTextOnly(context?: {
+    planSummary?: string;
+    planEditable?: boolean;
+    learnerModelSummary?: string;
+    turn?: number;
+  }): Promise<string> {
+    const cues = [
+      "Now reply to the tutor's most recent message. Engage conversationally — ask questions, show your thinking, or try to answer. Keep it 2-4 sentences. Do not mention any tool actions you just took.",
+    ];
+    if (context?.planSummary && context.planEditable) {
+      cues.push(
+        'If the topic order genuinely does not fit your needs, ask the tutor to adjust — but only if something actually feels off.',
+      );
+    }
+    if (context?.learnerModelSummary) {
+      cues.push(`Your updated mastery scores: ${context.learnerModelSummary}`);
+    }
+    if ((context?.turn ?? 0) > 4) {
+      cues.push('If you feel confident, you may summarize your learning or request to wrap up.');
+    }
+    const response = await this.generate(cues.join('\n'), { noTools: true });
+    return response.text;
   }
 }
 
