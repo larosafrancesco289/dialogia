@@ -97,7 +97,7 @@ const linearEquationsScenario: AblationScenario = {
   ],
   maxTurns: 5,
   teacherModelId: DEFAULT_ABLATION_TUTOR_MODEL_ID,
-  studentModelId: 'google/gemini-2.5-flash-lite',
+  studentModelId: 'x-ai/grok-4.1-fast',
   judgeModelId: 'anthropic/claude-haiku-4.5',
   studentPersona:
     'Anxious high-schooler who second-guesses answers and prefers step-by-step guidance before trying alone.',
@@ -283,9 +283,9 @@ const derivativesScenario: AblationScenario = {
     'Comfortable with power rule and constant rule individually from homework',
     'Weak algebra foundation',
   ],
-  maxTurns: 6,
+  maxTurns: 5,
   teacherModelId: DEFAULT_ABLATION_TUTOR_MODEL_ID,
-  studentModelId: 'google/gemini-2.5-flash-lite',
+  studentModelId: 'x-ai/grok-4.1-fast',
   judgeModelId: 'anthropic/claude-haiku-4.5',
   studentPersona:
     'College freshman who struggles with abstraction but excels with worked examples and visual intuition.',
@@ -488,9 +488,9 @@ const pythonDebuggingScenario: AblationScenario = {
     'Already comfortable reading error messages and fixing syntax errors from class exercises',
     'Prefers hands-on practice over theory',
   ],
-  maxTurns: 4,
+  maxTurns: 5,
   teacherModelId: DEFAULT_ABLATION_TUTOR_MODEL_ID,
-  studentModelId: 'google/gemini-2.5-flash-lite',
+  studentModelId: 'x-ai/grok-4.1-fast',
   judgeModelId: 'anthropic/claude-haiku-4.5',
   studentPersona:
     'Curious new coder who makes common syntax mistakes but is eager to understand why errors occur.',
@@ -682,7 +682,7 @@ const bayesRuleScenario: AblationScenario = {
   ],
   maxTurns: 5,
   teacherModelId: DEFAULT_ABLATION_TUTOR_MODEL_ID,
-  studentModelId: 'google/gemini-2.5-flash-lite',
+  studentModelId: 'x-ai/grok-4.1-fast',
   judgeModelId: 'anthropic/claude-haiku-4.5',
   studentPersona:
     'Overconfident learner who answers quickly and sometimes skips justification, but is receptive to gentle correction.',
