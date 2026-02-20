@@ -115,3 +115,115 @@ test('anthropicChatCompletion preserves text block arrays for cache_control', as
     { type: 'text', text: 'hello', cache_control: { type: 'ephemeral' } },
   ]);
 });
+
+test('anthropicChatCompletion enables top-level automatic caching for supported models', async () => {
+  const originalFetch = globalThis.fetch;
+  let body: Record<string, unknown> | undefined;
+  globalThis.fetch = async (_input, init) => {
+    body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    return new Response(
+      JSON.stringify({
+        id: 'msg_123',
+        model: 'claude-opus-4-6',
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: 'ok' }],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+
+  try {
+    await anthropicChatCompletion({
+      apiKey: 'test-key',
+      model: 'claude-opus-4-6',
+      messages: [
+        { role: 'system', content: 'You are helpful.' },
+        { role: 'user', content: 'hello' },
+      ],
+      enableAutomaticCaching: true,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(body?.cache_control, { type: 'ephemeral' });
+});
+
+test('anthropicChatCompletion skips automatic caching when 4 explicit breakpoints are present', async () => {
+  const originalFetch = globalThis.fetch;
+  let body: Record<string, unknown> | undefined;
+  globalThis.fetch = async (_input, init) => {
+    body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    return new Response(
+      JSON.stringify({
+        id: 'msg_123',
+        model: 'claude-opus-4-6',
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: 'ok' }],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+
+  try {
+    await anthropicChatCompletion({
+      apiKey: 'test-key',
+      model: 'claude-opus-4-6',
+      messages: [
+        {
+          role: 'system',
+          content: [{ type: 'text', text: 's1', cache_control: { type: 'ephemeral' } }],
+        },
+        {
+          role: 'user',
+          content: [{ type: 'text', text: 'u1', cache_control: { type: 'ephemeral' } }],
+        },
+        {
+          role: 'assistant',
+          content: [{ type: 'text', text: 'a1', cache_control: { type: 'ephemeral' } }],
+        },
+        {
+          role: 'user',
+          content: [{ type: 'text', text: 'u2', cache_control: { type: 'ephemeral' } }],
+        },
+      ],
+      enableAutomaticCaching: true,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(body?.cache_control, undefined);
+});
+
+test('anthropicChatCompletion keeps automatic caching disabled by default', async () => {
+  const originalFetch = globalThis.fetch;
+  let body: Record<string, unknown> | undefined;
+  globalThis.fetch = async (_input, init) => {
+    body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    return new Response(
+      JSON.stringify({
+        id: 'msg_123',
+        model: 'claude-opus-4-6',
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: 'ok' }],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+
+  try {
+    await anthropicChatCompletion({
+      apiKey: 'test-key',
+      model: 'claude-opus-4-6',
+      messages: [
+        { role: 'system', content: 'You are helpful.' },
+        { role: 'user', content: 'hello' },
+      ],
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(body?.cache_control, undefined);
+});

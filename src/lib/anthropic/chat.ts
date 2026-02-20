@@ -25,6 +25,21 @@ const MODEL_ALIAS_MAP: Record<string, string> = {
 };
 
 const SNAPSHOT_MODEL_ID_RE = /^claude-[a-z0-9-]+-\d{8}$/;
+const MAX_EXPLICIT_CACHE_BREAKPOINTS = 4;
+const AUTOMATIC_CACHE_CONTROL = { type: 'ephemeral' } as const;
+const PROMPT_CACHING_MODEL_ID_RE_LIST = [
+  /^claude-opus-4(?:-\d{8}|-[0-9](?:-\d{8})?)?$/,
+  /^claude-sonnet-4(?:-\d{8}|-[0-9](?:-\d{8})?)?$/,
+  /^claude-sonnet-3-7(?:-\d{8}|-latest)?$/,
+  /^claude-3-7-sonnet(?:-\d{8}|-latest)?$/,
+  /^claude-haiku-4-5(?:-\d{8})?$/,
+  /^claude-haiku-3-5(?:-\d{8}|-latest)?$/,
+  /^claude-3-5-haiku(?:-\d{8}|-latest)?$/,
+  /^claude-haiku-3(?:-\d{8}|-latest)?$/,
+  /^claude-3-haiku(?:-\d{8}|-latest)?$/,
+  /^claude-opus-3(?:-\d{8}|-latest)?$/,
+  /^claude-3-opus(?:-\d{8}|-latest)?$/,
+] as const;
 
 function normalizeModelSlug(model: string): string {
   let normalized = model.trim().toLowerCase();
@@ -51,18 +66,25 @@ export function resolveAnthropicDirectModelId(model: string): string | undefined
   return undefined;
 }
 
+function supportsAnthropicPromptCaching(model: string): boolean {
+  const normalized = normalizeModelSlug(model).replace(/\./g, '-');
+  return PROMPT_CACHING_MODEL_ID_RE_LIST.some((re) => re.test(normalized));
+}
+
 export async function anthropicChatCompletion({
   apiKey,
   model,
   messages,
   temperature = 0,
   maxTokens = 2048,
+  enableAutomaticCaching = false,
 }: {
   apiKey: string;
   model: string;
   messages: ModelMessage[];
   temperature?: number;
   maxTokens?: number;
+  enableAutomaticCaching?: boolean;
 }): Promise<ChatCompletion> {
   // Split system message from the rest
   const systemMessages = messages.filter((m) => m.role === 'system');
@@ -117,6 +139,19 @@ export async function anthropicChatCompletion({
     return { role: m.role as 'user' | 'assistant', content: toAnthropicMessageContent(m.content) };
   });
 
+  const explicitCacheBreakpoints =
+    systemBlocks.reduce((count, block) => count + (block.cache_control ? 1 : 0), 0) +
+    anthropicMessages.reduce((count, message) => {
+      if (!Array.isArray(message.content)) return count;
+      return (
+        count +
+        message.content.reduce(
+          (messageCount, block) => messageCount + (block.cache_control ? 1 : 0),
+          0,
+        )
+      );
+    }, 0);
+
   const resolvedModel = resolveAnthropicDirectModelId(model);
   if (!resolvedModel) {
     throw new Error(`Unsupported Anthropic direct model alias: ${model}`);
@@ -130,6 +165,13 @@ export async function anthropicChatCompletion({
   };
   if (systemBlocks.length > 0) {
     body.system = hasCacheControl ? systemBlocks : systemBlocks.map((b) => b.text).join('\n\n');
+  }
+  if (
+    enableAutomaticCaching &&
+    supportsAnthropicPromptCaching(resolvedModel) &&
+    explicitCacheBreakpoints < MAX_EXPLICIT_CACHE_BREAKPOINTS
+  ) {
+    body.cache_control = AUTOMATIC_CACHE_CONTROL;
   }
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
