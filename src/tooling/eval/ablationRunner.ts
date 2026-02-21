@@ -8,7 +8,7 @@
  *   --conditions <list>   Comma-separated conditions (default: all)
  *   --scenarios <list>    Comma-separated scenario IDs (default: all)
  *   --runs <n>            Runs per condition×scenario (default: 3)
- *   --tutor-model <id>    Tutor model (default: moonshotai/kimi-k2.5)
+ *   --tutor-model <id>    Tutor model (default: google/gemini-3-flash-preview)
  *   --out <dir>           Output directory (default: tmp/ablation/)
  *   --dry-run             Show what would be run without executing
  *   --resume              Resume from last checkpoint (requires --out with checkpoint)
