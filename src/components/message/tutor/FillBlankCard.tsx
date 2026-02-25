@@ -22,6 +22,8 @@ export function FillBlankCard({
 }) {
   const log = useChatStore((s) => s.logTutorResult);
   const setTutorAttemptFillBlank = useChatStore((s) => s.setTutorAttemptFillBlank);
+  const patchTutorEntry = useChatStore((s) => s.patchTutorEntry);
+  const sendUserMessage = useChatStore((s) => s.sendUserMessage);
   const tutorEntry = useChatStore((s) => s.ui.tutor.byMessageId?.[messageId]);
   const attempts = tutorEntry?.attempts;
   const fb = useMemo(
@@ -45,6 +47,7 @@ export function FillBlankCard({
     isPending,
   );
   const advanceTimer = useRef<number | null>(null);
+  const completionStarted = useRef(false);
 
   useEffect(
     () => () => {
@@ -55,6 +58,43 @@ export function FillBlankCard({
     },
     [],
   );
+
+  const revealedCount = useMemo(
+    () => items.filter((item) => fb[item.id]?.revealed).length,
+    [items, fb],
+  );
+  const correctCount = useMemo(
+    () => items.filter((item) => fb[item.id]?.revealed && fb[item.id]?.correct).length,
+    [items, fb],
+  );
+
+  useEffect(() => {
+    if (total === 0 || revealedCount !== total) return;
+    if (completionStarted.current) return;
+    if (typeof tutorEntry?.quizMeta?.completedAt === 'number') return;
+    completionStarted.current = true;
+
+    const now = Date.now();
+    const prevQuizMeta = tutorEntry?.quizMeta || {};
+    void patchTutorEntry(messageId, {
+      quizMeta: {
+        ...prevQuizMeta,
+        completedAt: now,
+        type: 'fill_blank',
+      },
+    })
+      .then(() =>
+        sendUserMessage(`Completed fill-blank quiz (${correctCount}/${total} correct).`, {
+          metadata: {
+            hiddenFromUser: true,
+            kind: 'tutor_quiz_completion',
+          },
+        }),
+      )
+      .catch(() => {
+        completionStarted.current = false;
+      });
+  }, [correctCount, messageId, patchTutorEntry, revealedCount, sendUserMessage, total, tutorEntry]);
 
   if (!total || !activeItem) return null;
 

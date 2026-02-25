@@ -128,6 +128,10 @@ export type MessageTutor = {
   mcq?: TutorMCQItem[];
   fillBlank?: TutorFillBlankItem[];
   openEnded?: TutorOpenItem[];
+  quizMeta?: {
+    completedAt?: number;
+    type?: 'mcq' | 'fill_blank' | 'open_ended';
+  };
   questionnaire?: TutorQuestionnaire;
   diagnostic?: TutorDiagnostic;
   diagnosticMeta?: {

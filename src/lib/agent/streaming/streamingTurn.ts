@@ -243,6 +243,8 @@ export async function executeStreamingTurn(
     currentPlan,
     toolsUsedThisTurn: 0,
     quizCallsThisTurn: 0,
+    successfulToolCallsThisTurn: 0,
+    failedToolCallsThisTurn: 0,
   };
 
   const maxToolsPerTurn =
@@ -596,10 +598,19 @@ export async function executeStreamingTurn(
     !planResult.hasSearchResults &&
     toolRoundDraftContent.trim().length > 0 &&
     !looksIncomplete(toolRoundDraftContent);
+  const preserveDraftAfterFailedTools =
+    state.failedToolCallsThisTurn > 0 &&
+    state.successfulToolCallsThisTurn === 0 &&
+    toolRoundDraftContent.trim().length > 0 &&
+    !looksIncomplete(toolRoundDraftContent);
 
   // If the model already drafted a coherent answer before non-search tool updates,
   // keep that text and avoid a second user-visible rewrite.
-  if (shouldShortCircuit?.(planResult) || preserveDraftWithoutFinalOverwrite) {
+  if (
+    shouldShortCircuit?.(planResult) ||
+    preserveDraftWithoutFinalOverwrite ||
+    preserveDraftAfterFailedTools
+  ) {
     finalizeShortCircuit(toolRoundDraftContent);
     return buildResult(state, finalSystem, sideEffects, true);
   }

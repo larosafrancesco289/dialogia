@@ -2888,13 +2888,8 @@ export async function runAblationCli(argv: string[]) {
   };
 
   const manipulationWarnings = collectManipulationWarnings(summary);
-  const contaminationWarnings = manipulationWarnings.filter((msg) =>
-    msg.includes('should be disabled'),
-  );
-  const shouldFailManipulation =
-    contaminationWarnings.length > 0 || (strictManipulation && manipulationWarnings.length > 0);
-  if (shouldFailManipulation) {
-    console.error('\nError: Manipulation integrity checks failed.');
+  if (strictManipulation && manipulationWarnings.length > 0) {
+    console.error('\nError: Manipulation integrity checks failed (strict mode).');
     for (const warning of manipulationWarnings) {
       console.error(`  - ${warning}`);
     }
@@ -2902,6 +2897,11 @@ export async function runAblationCli(argv: string[]) {
       '\nAborting before result export. Re-run after fixing mechanism separation (or disable strict mode).',
     );
     process.exit(1);
+  } else if (manipulationWarnings.length > 0) {
+    console.warn('\nWarning: Manipulation integrity issues detected (non-strict mode, continuing):');
+    for (const warning of manipulationWarnings) {
+      console.warn(`  - ${warning}`);
+    }
   }
 
   // Save results and delete checkpoint

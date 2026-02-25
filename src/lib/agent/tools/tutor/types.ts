@@ -10,6 +10,7 @@ import type { PersistMessage, StoreGetter, StoreSetter } from '@/lib/agent/types
 export type TutorToolApplyResult = {
   handled: boolean;
   usedContent: boolean;
+  error?: string;
   payload?: string;
   learnerModel?: LearnerModel;
   planUpdates?: Message['planUpdates'];

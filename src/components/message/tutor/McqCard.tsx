@@ -16,6 +16,8 @@ import { useStepper } from '@/components/message/tutor/hooks/useStepper';
 export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId: string }) {
   const log = useChatStore((s) => s.logTutorResult);
   const setTutorAttemptMcq = useChatStore((s) => s.setTutorAttemptMcq);
+  const patchTutorEntry = useChatStore((s) => s.patchTutorEntry);
+  const sendUserMessage = useChatStore((s) => s.sendUserMessage);
   const tutorEntry = useChatStore((s) => s.ui.tutor.byMessageId?.[messageId]);
   const attempts = tutorEntry?.attempts;
   const mcq = useMemo(
@@ -30,6 +32,7 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
     isPending,
   );
   const advanceTimer = useRef<number | null>(null);
+  const completionStarted = useRef(false);
 
   useEffect(
     () => () => {
@@ -40,6 +43,44 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
     },
     [],
   );
+
+  const answeredCount = useMemo(
+    () => items.filter((item) => mcq[item.id]?.done).length,
+    [items, mcq],
+  );
+  const correctCount = useMemo(
+    () => items.filter((item) => mcq[item.id]?.done && mcq[item.id]?.correct).length,
+    [items, mcq],
+  );
+
+  useEffect(() => {
+    if (total === 0 || answeredCount !== total) return;
+    if (completionStarted.current) return;
+    if (tutorEntry?.diagnostic) return;
+    if (typeof tutorEntry?.quizMeta?.completedAt === 'number') return;
+    completionStarted.current = true;
+
+    const now = Date.now();
+    const prevQuizMeta = tutorEntry?.quizMeta || {};
+    void patchTutorEntry(messageId, {
+      quizMeta: {
+        ...prevQuizMeta,
+        completedAt: now,
+        type: 'mcq',
+      },
+    })
+      .then(() =>
+        sendUserMessage(`Completed quiz (${correctCount}/${total} correct).`, {
+          metadata: {
+            hiddenFromUser: true,
+            kind: 'tutor_quiz_completion',
+          },
+        }),
+      )
+      .catch(() => {
+        completionStarted.current = false;
+      });
+  }, [answeredCount, correctCount, messageId, patchTutorEntry, sendUserMessage, total, tutorEntry]);
 
   const activeAttempt = activeItem ? mcq[activeItem.id] || {} : {};
   const picked = activeAttempt.choice;

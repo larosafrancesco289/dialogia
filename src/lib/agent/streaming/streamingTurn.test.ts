@@ -353,3 +353,318 @@ test('executeStreamingTurn prefers complete fallback draft over incomplete curre
   assert.ok(!finalMessage?.content.includes('short replacement'));
   assert.equal(persisted[persisted.length - 1]?.content, goodDraft);
 });
+
+test('executeStreamingTurn keeps draft when all tool calls fail to execute', async () => {
+  const chatId = 'chat-streaming-turn-failed-tool-preserve-draft';
+  const model: ModelDescriptor = {
+    id: 'provider/model',
+    name: 'Provider Model',
+    context_length: 16000,
+    pricing: undefined,
+    raw: { supported_parameters: ['tools'] },
+  };
+
+  const chat: Chat = {
+    id: chatId,
+    title: 'Tutor chat',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    settings: {
+      modelId: model.id,
+      generation: {},
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: false,
+        showDebugRawJson: false,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: {
+          enabled: true,
+          defaultModelId: model.id,
+          learningPlan: {
+            goal: 'Master linear equations',
+            generatedAt: Date.now(),
+            updatedAt: Date.now(),
+            version: 1,
+            nodes: [
+              {
+                id: 'node-1',
+                name: 'Solve one-step equations',
+                objectives: ['Solve x + a = b'],
+                prerequisites: [],
+                status: 'in_progress',
+              },
+            ],
+          },
+        },
+      },
+    },
+  };
+
+  const assistantMessage = createAssistantMessage({
+    id: 'assistant-3',
+    chatId,
+    content: '',
+    model: model.id,
+    createdAt: Date.now(),
+  });
+
+  const { messagesById, messageIdsByChatId } = buildMessageIndex({
+    [chatId]: [assistantMessage],
+  });
+  const { state, set, get } = createTestStoreState({
+    chats: [chat],
+    messagesById,
+    messageIdsByChatId,
+    models: [model],
+    modelIndex: createModelIndex([model]),
+  });
+
+  const persisted: Message[] = [];
+  const goodDraft = 'Let me quickly quiz you before we proceed.';
+
+  let streamCallCount = 0;
+  const pipeline = createPipelineClient({
+    streamChatCompletion: async ({ callbacks }) => {
+      streamCallCount += 1;
+
+      if (streamCallCount === 1) {
+        callbacks?.onToken?.(goodDraft);
+        callbacks?.onDone?.(goodDraft, {
+          finishReason: 'tool_calls',
+          toolCalls: [
+            {
+              id: 'call_1',
+              type: 'function',
+              function: {
+                name: 'quiz',
+                arguments: '{"type":"object"}',
+              },
+            },
+          ],
+        });
+        return;
+      }
+
+      if (streamCallCount === 2) {
+        callbacks?.onDone?.('tool call failed', { finishReason: 'stop' });
+        return;
+      }
+
+      callbacks?.onDone?.('replacement text', { finishReason: 'stop' });
+    },
+  });
+
+  const result = await executeStreamingTurn({
+    chat,
+    chatId,
+    assistantMessage,
+    messages: [
+      { role: 'system', content: 'You are a tutor.' },
+      { role: 'user', content: 'Teach me one-step equations.' },
+    ],
+    controller: new AbortController(),
+    turn: {
+      auth: buildTransportAuth({
+        transport: 'openrouter',
+        apiKey: 'test-key',
+        useProxy: false,
+      }),
+      set,
+      get,
+      models: [model],
+      modelIndex: state.modelIndex,
+      persistMessage: async (message) => {
+        persisted.push(message);
+      },
+    },
+    settings: {
+      modelId: model.id,
+      modelMeta: model,
+      caps: {
+        canReason: false,
+        canSee: false,
+        canAudio: false,
+        canImageOut: false,
+      },
+      generation: {},
+      searchEnabled: false,
+      searchProvider: 'openrouter',
+      tutorEnabled: true,
+      system: undefined,
+    },
+    toolDefinition: getTutorToolDefinitions(),
+    startBuffered: false,
+    userContent: 'Teach me one-step equations.',
+    combinedSystem: 'You are a tutor.',
+    pipeline,
+  });
+
+  assert.equal(streamCallCount, 2, 'should skip final overwrite call after failed tools');
+  assert.equal(result.shortCircuited, true);
+
+  const finalMessage = get().messagesById[assistantMessage.id];
+  assert.equal(finalMessage?.content, goodDraft);
+  assert.ok(!finalMessage?.content.includes('replacement text'));
+  assert.equal(persisted[persisted.length - 1]?.content, goodDraft);
+});
+
+test('executeStreamingTurn does not preserve incomplete draft when tools fail', async () => {
+  const chatId = 'chat-streaming-turn-failed-tool-incomplete-draft';
+  const model: ModelDescriptor = {
+    id: 'provider/model',
+    name: 'Provider Model',
+    context_length: 16000,
+    pricing: undefined,
+    raw: { supported_parameters: ['tools'] },
+  };
+
+  const chat: Chat = {
+    id: chatId,
+    title: 'Tutor chat',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    settings: {
+      modelId: model.id,
+      generation: {},
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: false,
+        showDebugRawJson: false,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: {
+          enabled: true,
+          defaultModelId: model.id,
+          learningPlan: {
+            goal: 'Master linear equations',
+            generatedAt: Date.now(),
+            updatedAt: Date.now(),
+            version: 1,
+            nodes: [
+              {
+                id: 'node-1',
+                name: 'Solve one-step equations',
+                objectives: ['Solve x + a = b'],
+                prerequisites: [],
+                status: 'in_progress',
+              },
+            ],
+          },
+        },
+      },
+    },
+  };
+
+  const assistantMessage = createAssistantMessage({
+    id: 'assistant-4',
+    chatId,
+    content: '',
+    model: model.id,
+    createdAt: Date.now(),
+  });
+
+  const { messagesById, messageIdsByChatId } = buildMessageIndex({
+    [chatId]: [assistantMessage],
+  });
+  const { state, set, get } = createTestStoreState({
+    chats: [chat],
+    messagesById,
+    messageIdsByChatId,
+    models: [model],
+    modelIndex: createModelIndex([model]),
+  });
+
+  const persisted: Message[] = [];
+  const incompleteDraft = 'Let me quickly quiz you before we proceed:';
+  const finalReply = 'Thanks for waiting. Let us continue with one-step equations now.';
+
+  let streamCallCount = 0;
+  const pipeline = createPipelineClient({
+    streamChatCompletion: async ({ callbacks }) => {
+      streamCallCount += 1;
+
+      if (streamCallCount === 1) {
+        callbacks?.onToken?.(incompleteDraft);
+        callbacks?.onDone?.(incompleteDraft, {
+          finishReason: 'tool_calls',
+          toolCalls: [
+            {
+              id: 'call_1',
+              type: 'function',
+              function: {
+                name: 'quiz',
+                arguments: '{"type":"object"}',
+              },
+            },
+          ],
+        });
+        return;
+      }
+
+      if (streamCallCount === 2) {
+        callbacks?.onDone?.('tool call failed', { finishReason: 'stop' });
+        return;
+      }
+
+      callbacks?.onDone?.(finalReply, { finishReason: 'stop' });
+    },
+  });
+
+  const result = await executeStreamingTurn({
+    chat,
+    chatId,
+    assistantMessage,
+    messages: [
+      { role: 'system', content: 'You are a tutor.' },
+      { role: 'user', content: 'Teach me one-step equations.' },
+    ],
+    controller: new AbortController(),
+    turn: {
+      auth: buildTransportAuth({
+        transport: 'openrouter',
+        apiKey: 'test-key',
+        useProxy: false,
+      }),
+      set,
+      get,
+      models: [model],
+      modelIndex: state.modelIndex,
+      persistMessage: async (message) => {
+        persisted.push(message);
+      },
+    },
+    settings: {
+      modelId: model.id,
+      modelMeta: model,
+      caps: {
+        canReason: false,
+        canSee: false,
+        canAudio: false,
+        canImageOut: false,
+      },
+      generation: {},
+      searchEnabled: false,
+      searchProvider: 'openrouter',
+      tutorEnabled: true,
+      system: undefined,
+    },
+    toolDefinition: getTutorToolDefinitions(),
+    startBuffered: false,
+    userContent: 'Teach me one-step equations.',
+    combinedSystem: 'You are a tutor.',
+    pipeline,
+  });
+
+  assert.equal(streamCallCount, 3, 'should run final completion call for incomplete draft');
+  assert.notEqual(result.shortCircuited, true);
+
+  const finalMessage = get().messagesById[assistantMessage.id];
+  assert.equal(finalMessage?.content, finalReply);
+  assert.ok(!finalMessage?.content.includes(incompleteDraft));
+  assert.equal(persisted[persisted.length - 1]?.content, finalReply);
+});

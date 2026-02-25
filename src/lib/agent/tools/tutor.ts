@@ -74,6 +74,19 @@ const tutorToolHandlers: Record<TutorToolName, AnyTutorToolHandler> = {
   quiz: quizHandler as AnyTutorToolHandler,
 };
 
+const summarizeArgKeys = (args: Record<string, unknown>): string => {
+  const keys = Object.keys(args);
+  return keys.length > 0 ? keys.join(', ') : '(none)';
+};
+
+const invalidArgsError = (name: TutorToolName, args: Record<string, unknown>): string => {
+  const keySummary = summarizeArgKeys(args);
+  if (name === 'quiz') {
+    return `Invalid arguments for quiz. Required shape: { type: "mcq"|"fill_blank"|"open_ended", items: [...] }. Received keys: ${keySummary}.`;
+  }
+  return `Invalid arguments for ${name}. Received keys: ${keySummary}.`;
+};
+
 export async function applyTutorToolCall(opts: {
   name: TutorToolName;
   args: Record<string, unknown>;
@@ -120,9 +133,21 @@ export async function applyTutorToolCall(opts: {
   };
 
   const handler = tutorToolHandlers[name];
-  if (!handler) return { handled: false, usedContent: false };
+  if (!handler) {
+    return {
+      handled: false,
+      usedContent: false,
+      error: `Unsupported tutor tool: ${name}`,
+    };
+  }
   const parsed = handler.parseArgs(args);
-  if (!parsed) return { handled: false, usedContent: false };
+  if (!parsed) {
+    return {
+      handled: false,
+      usedContent: false,
+      error: invalidArgsError(name, args),
+    };
+  }
 
   const context: TutorToolContext = {
     chat,

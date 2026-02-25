@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   EyeIcon,
@@ -24,6 +24,7 @@ export function OpenEndedCard({
 }) {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const setTutorAttemptOpen = useChatStore((s) => s.setTutorAttemptOpen);
+  const patchTutorEntry = useChatStore((s) => s.patchTutorEntry);
   const send = useChatStore((s) => s.sendUserMessage);
   const tutorEntry = useChatStore((s) => s.ui.tutor.byMessageId?.[messageId]);
   const attempts = tutorEntry?.attempts;
@@ -42,6 +43,40 @@ export function OpenEndedCard({
     items,
     isPending,
   );
+  const completionStarted = useRef(false);
+
+  const answeredCount = useMemo(
+    () => items.filter((item) => (open[item.id]?.answer || '').trim().length > 0).length,
+    [items, open],
+  );
+
+  useEffect(() => {
+    if (total === 0 || answeredCount !== total) return;
+    if (completionStarted.current) return;
+    if (typeof tutorEntry?.quizMeta?.completedAt === 'number') return;
+    completionStarted.current = true;
+
+    const now = Date.now();
+    const prevQuizMeta = tutorEntry?.quizMeta || {};
+    void patchTutorEntry(messageId, {
+      quizMeta: {
+        ...prevQuizMeta,
+        completedAt: now,
+        type: 'open_ended',
+      },
+    })
+      .then(() =>
+        send(`Completed open-ended quiz (${answeredCount}/${total} responses).`, {
+          metadata: {
+            hiddenFromUser: true,
+            kind: 'tutor_quiz_completion',
+          },
+        }),
+      )
+      .catch(() => {
+        completionStarted.current = false;
+      });
+  }, [answeredCount, messageId, patchTutorEntry, send, total, tutorEntry]);
 
   if (!total || !activeItem) return null;
 

@@ -220,6 +220,7 @@ const createTutorHandler = (name: TutorToolName, metadata: ToolMetadata): Planni
       handled: tutorOutcome.handled,
       usedContent: tutorOutcome.usedContent,
     };
+    if (tutorOutcome.error) output.error = tutorOutcome.error;
     if (tutorOutcome.payload) output.payload = tutorOutcome.payload;
     if (tutorOutcome.learnerModelDebug) output.learnerModelDebug = tutorOutcome.learnerModelDebug;
     if (tutorOutcome.planUpdates) output.planUpdates = tutorOutcome.planUpdates;
@@ -268,7 +269,10 @@ const createTutorHandler = (name: TutorToolName, metadata: ToolMetadata): Planni
           role: 'tool',
           name,
           tool_call_id: toolCall.id,
-          content: JSON.stringify({ ok: false }),
+          content: JSON.stringify({
+            ok: false,
+            error: tutorOutcome.error || `Tutor tool "${name}" call was not handled`,
+          }),
         },
       ],
       aggregatedResults,
