@@ -19,8 +19,6 @@ Tutor tools are invoked via function calls using these names:
 Tool handlers normalize inputs and patch `Message.tutor` with these fields:
 
 - `quiz` (type: 'mcq') → `mcq: TutorMCQItem[]` (title optional, per-item `id`, `question`, `choices`, `correct`)
-- `quiz` (type: 'fill_blank') → `fillBlank: TutorFillBlankItem[]` (per-item `id`, `prompt`, `answer`)
-- `quiz` (type: 'open_ended') → `openEnded: TutorOpenItem[]` (per-item `id`, `prompt`)
 - `create_diagnostic` → `diagnostic: TutorDiagnostic` (items, status, score optional)
 - `learning_plan` → `planProposal: TutorPlanProposal` (auto-detects create vs update)
 - `record_learning` → `assessmentUpdates: TutorLearnerModelUpdate[]` and learner model side-effects
@@ -41,18 +39,15 @@ Tool argument schemas live under `src/lib/tools/definitions/tutor/` and the per-
   `ui.tutor.byMessageId` during app initialization (`loadRepositorySnapshot`).
 - **Ephemeral**: `ui.tutor.byMessageId` contains UI-only state (e.g., user attempts) and is not
   persisted by Zustand.
-- **Attempts**: UI interactions (MCQ selections, fill-blank answers, open-ended responses) update
-  `ui.tutor.byMessageId` and optionally patch the message payload via store actions:
-  `setTutorAttemptMcq`, `setTutorAttemptFillBlank`, `setTutorAttemptOpen`,
-  `setTutorPlanProposalStatus`.
+- **Attempts**: UI interactions (MCQ selections) update `ui.tutor.byMessageId` and optionally
+  patch the message payload via store actions: `setTutorAttemptMcq`, `setTutorPlanProposalStatus`.
 
 ## UI Rendering Responsibilities
 
 Tutor UI components render from `Message.tutor` and `ui.tutor.byMessageId`:
 
 - `src/components/message/tutor/TutorPanel.tsx` composes the widget cards
-- `McqCard`, `FillBlankCard`, `OpenEndedCard`, `DiagnosticCard`,
-  `PlanProposalCard`, `LearnerUpdatesCard` render specific payloads
+- `McqCard`, `DiagnosticCard`, `PlanProposalCard`, `LearnerUpdatesCard` render specific payloads
 - `PlanProposalCard` updates plan status and persists via store actions
 
 Tool calls should never mutate UI state directly; they should patch message payloads and let UI
