@@ -1,98 +1,41 @@
-import type { MessageTutor } from '@/lib/types';
+import type { TutorMCQItem } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import { normalizeTutorQuizPayload, withContentReset } from '@/lib/agent/tools/tutor/shared';
 import { parseSchema } from '@/lib/schemas/parse';
 import { UnifiedQuizToolSchema, type UnifiedQuizInput } from '@/lib/tools/definitions/tutor/quiz';
 
-type QuizType = 'mcq' | 'fill_blank' | 'open_ended';
-
 type UnifiedQuizArgs = {
-  type: QuizType;
+  type: 'mcq';
   items: Array<{ id: string; [key: string]: unknown }>;
   title?: string;
   nodeId?: string;
 };
 
-const TYPE_TO_MAP_KEY: Record<
-  UnifiedQuizArgs['type'],
-  keyof Pick<MessageTutor, 'mcq' | 'fillBlank' | 'openEnded'>
-> = {
-  mcq: 'mcq',
-  fill_blank: 'fillBlank',
-  open_ended: 'openEnded',
-};
-
 const asTrimmedString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 
-const normalizeQuizType = (value: unknown): QuizType | undefined => {
+const normalizeQuizType = (value: unknown): 'mcq' | undefined => {
   const raw = asTrimmedString(value)?.toLowerCase();
   if (!raw) return undefined;
   if (raw === 'mcq' || raw === 'multiple_choice' || raw === 'multiple-choice') return 'mcq';
-  if (raw === 'fill_blank' || raw === 'fill-in-the-blank' || raw === 'fillblank') {
-    return 'fill_blank';
-  }
-  if (raw === 'open_ended' || raw === 'open-ended' || raw === 'open') return 'open_ended';
   return undefined;
 };
 
-const normalizeItemForType = (
-  type: QuizType,
-  item: Record<string, unknown>,
-): Record<string, unknown> => {
+const normalizeItemForMcq = (item: Record<string, unknown>): Record<string, unknown> => {
   const normalized: Record<string, unknown> = { ...item };
-  if (!asTrimmedString(normalized.prompt)) {
-    const fallbackPrompt =
-      asTrimmedString(normalized.question) ||
+  if (!Array.isArray(normalized.choices) && Array.isArray(normalized.options)) {
+    normalized.choices = normalized.options;
+  }
+  if (typeof normalized.correct !== 'number' && typeof normalized.correctAnswer === 'number') {
+    normalized.correct = normalized.correctAnswer;
+  }
+  if (!asTrimmedString(normalized.question)) {
+    const fallback =
+      asTrimmedString(normalized.prompt) ||
       asTrimmedString(normalized.questionText) ||
       asTrimmedString(normalized.question_text) ||
       asTrimmedString(normalized.text);
-    if (fallbackPrompt) normalized.prompt = fallbackPrompt;
-  }
-  if (type === 'mcq') {
-    if (!Array.isArray(normalized.choices) && Array.isArray(normalized.options)) {
-      normalized.choices = normalized.options;
-    }
-    if (typeof normalized.correct !== 'number' && typeof normalized.correctAnswer === 'number') {
-      normalized.correct = normalized.correctAnswer;
-    }
-    if (!asTrimmedString(normalized.question) && asTrimmedString(normalized.prompt)) {
-      normalized.question = normalized.prompt;
-    }
-  } else {
-    if (
-      type === 'fill_blank' &&
-      !asTrimmedString(normalized.answer) &&
-      asTrimmedString(normalized.correctAnswer)
-    ) {
-      normalized.answer = normalized.correctAnswer;
-    }
-    if (
-      type === 'fill_blank' &&
-      !asTrimmedString(normalized.answer) &&
-      typeof normalized.correct === 'string'
-    ) {
-      normalized.answer = normalized.correct;
-    }
-    if (
-      type === 'fill_blank' &&
-      !asTrimmedString(normalized.answer) &&
-      typeof normalized.correct === 'number' &&
-      Array.isArray(normalized.choices)
-    ) {
-      const choices = normalized.choices as unknown[];
-      const candidate = choices[normalized.correct];
-      if (typeof candidate === 'string' && candidate.trim().length > 0) {
-        normalized.answer = candidate;
-      }
-    }
-    if (type === 'open_ended') {
-      const sample =
-        asTrimmedString(normalized.sample_answer) || asTrimmedString(normalized.sampleAnswer);
-      if (sample && !asTrimmedString(normalized.sample_answer)) {
-        normalized.sample_answer = sample;
-      }
-    }
+    if (fallback) normalized.question = fallback;
   }
   return normalized;
 };
@@ -120,10 +63,6 @@ const coerceLegacyQuizInput = (input: unknown): Record<string, unknown> | null =
             choices: record.choices,
             correct: record.correct,
             correctAnswer: record.correctAnswer,
-            answer: record.answer,
-            aliases: record.aliases,
-            sample_answer: record.sample_answer,
-            rubric: record.rubric,
             explanation: record.explanation,
             topic: record.topic,
             skill: record.skill,
@@ -132,7 +71,7 @@ const coerceLegacyQuizInput = (input: unknown): Record<string, unknown> | null =
         ];
 
   const normalizedItems = items
-    .map((entry) => (entry && typeof entry === 'object' ? normalizeItemForType(type, entry) : null))
+    .map((entry) => (entry && typeof entry === 'object' ? normalizeItemForMcq(entry) : null))
     .filter(Boolean) as Array<Record<string, unknown>>;
   if (normalizedItems.length === 0) return null;
 
@@ -162,7 +101,7 @@ export const quizHandler: TutorToolHandler<UnifiedQuizArgs> = {
     const title = typeof data.title === 'string' ? data.title.trim() : undefined;
     const nodeId = typeof data.nodeId === 'string' ? data.nodeId.trim() : undefined;
     return {
-      type: data.type,
+      type: 'mcq',
       items: normalized.items,
       title,
       nodeId,
@@ -170,19 +109,18 @@ export const quizHandler: TutorToolHandler<UnifiedQuizArgs> = {
   },
 
   async apply(ctx, args) {
-    const { type, items, title } = args;
-    const mapKey = TYPE_TO_MAP_KEY[type];
+    const { items, title } = args;
 
     await ctx.applyTutorPatch((prev) =>
-      withContentReset(mapKey, {
-        [mapKey]: items,
+      withContentReset('mcq', {
+        mcq: items as unknown as TutorMCQItem[],
         title:
           title ||
           (typeof prev.title === 'string' && prev.title.trim().length > 0 ? prev.title : undefined),
       }),
     );
 
-    const payload = title ? { type, items, title } : { type, items };
+    const payload = title ? { type: 'mcq', items, title } : { type: 'mcq', items };
     return { handled: true, usedContent: true, payload: JSON.stringify(payload) };
   },
 };

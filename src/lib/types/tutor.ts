@@ -20,27 +20,6 @@ export type TutorMCQItem = {
   difficulty?: 'easy' | 'medium' | 'hard';
 };
 
-export type TutorFillBlankItem = {
-  id: string;
-  prompt: string; // contains the blank (e.g., "____")
-  answer: string;
-  aliases?: string[]; // alternative accepted answers
-  explanation?: string;
-  topic?: string;
-  skill?: string;
-  difficulty?: 'easy' | 'medium' | 'hard';
-};
-
-export type TutorOpenItem = {
-  id: string;
-  prompt: string;
-  sample_answer?: string;
-  rubric?: string;
-  topic?: string;
-  skill?: string;
-  difficulty?: 'easy' | 'medium' | 'hard';
-};
-
 export type TutorQuestionnaireOption = {
   label: string;
   description?: string;
@@ -131,11 +110,9 @@ export type TutorLearnerModelUpdate = {
 export type MessageTutor = {
   title?: string;
   mcq?: TutorMCQItem[];
-  fillBlank?: TutorFillBlankItem[];
-  openEnded?: TutorOpenItem[];
   quizMeta?: {
     completedAt?: number;
-    type?: 'mcq' | 'fill_blank' | 'open_ended';
+    type?: 'mcq';
   };
   questionnaire?: TutorQuestionnaire;
   diagnostic?: TutorDiagnostic;
@@ -145,13 +122,10 @@ export type MessageTutor = {
   planProposal?: TutorPlanProposal;
   planSuggestions?: TutorPlanSuggestion[];
   assessmentUpdates?: TutorLearnerModelUpdate[];
-  // User attempts and grading results
+  // User attempts
   attempts?: {
     mcq?: Record<string, { choice?: number; done?: boolean; correct?: boolean }>;
-    fillBlank?: Record<string, { answer?: string; revealed?: boolean; correct?: boolean }>;
-    open?: Record<string, { answer?: string }>;
   };
-  grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
 };
 
 // Tutor session and grading metadata (ephemeral; UI/agent coordination only)
@@ -186,7 +160,7 @@ export type TutorProfile = {
 };
 
 export type TutorEvent = {
-  kind: 'mcq' | 'fill_blank' | 'open' | 'flashcard';
+  kind: 'mcq' | 'flashcard';
   itemId?: string;
   correct?: boolean;
   topic?: string;
@@ -239,7 +213,7 @@ export type Evidence = {
     | 'misconception_detected'
     | 'insight_demonstrated';
   details: string; // Description of what happened
-  weight: number; // 0.0 - 1.0 (how much this updates mastery)
+  weight: number; // -0.5 to 0.7 — positive for correct/insight, negative for incorrect/misconception
   skill?: string;
 };
 

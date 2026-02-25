@@ -25,7 +25,7 @@ export async function updateTutorProfile(chatId: string, evt: TutorEvent): Promi
     } satisfies TutorProfile);
 
   const next: TutorProfile = { ...prev, updatedAt: Date.now() };
-  if (evt.kind === 'mcq' || evt.kind === 'fill_blank' || evt.kind === 'flashcard') {
+  if (evt.kind === 'mcq' || evt.kind === 'flashcard') {
     const isCorrect = !!evt.correct;
     next.totalAnswered += 1;
     if (isCorrect) next.totalCorrect += 1;

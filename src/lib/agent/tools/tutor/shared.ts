@@ -10,8 +10,6 @@ const CONTENT_KEYS: Array<keyof MessageTutor> = [
   'diagnostic',
   'planProposal',
   'mcq',
-  'fillBlank',
-  'openEnded',
 ];
 
 export function normalizeTutorQuizPayload(args: unknown): TutorQuizPayload | null {
@@ -72,6 +70,5 @@ export function withContentReset(
     reset[key] = undefined;
   });
   reset.attempts = undefined;
-  reset.grading = undefined;
   return { ...reset, ...patch };
 }

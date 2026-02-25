@@ -50,8 +50,6 @@ const baseState = (messages: Record<string, Message[]>): StoreState => {
     applyLearnerModelFeedbackFromUser: noopAsync,
     patchTutorEntry: noopAsync,
     setTutorAttemptMcq: noop,
-    setTutorAttemptFillBlank: noop,
-    setTutorAttemptOpen: noop,
     setTutorPlanProposalStatus: noop,
     loadModels: noopAsync,
     toggleFavoriteModel: noop,

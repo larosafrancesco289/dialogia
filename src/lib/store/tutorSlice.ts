@@ -11,8 +11,6 @@ import {
 import { applyLearnerModelFeedbackFromUser as applyLearnerModelFeedbackFromUserService } from '@/lib/services/learnerModelFeedback';
 
 type McqAttempts = NonNullable<MessageTutor['attempts']>['mcq'];
-type FillBlankAttempts = NonNullable<MessageTutor['attempts']>['fillBlank'];
-type OpenAttempts = NonNullable<MessageTutor['attempts']>['open'];
 
 export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
   const updateTutorEntry = (messageId: string, updater: (prev: MessageTutor) => MessageTutor) => {
@@ -155,47 +153,5 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
       void get().persistTutorStateForMessage(messageId);
     },
 
-    setTutorAttemptFillBlank(messageId, itemId, answer, revealed, correct) {
-      updateTutorEntry(messageId, (prev) => {
-        const prevAttempts = prev.attempts || {};
-        const prevFill: FillBlankAttempts = prevAttempts.fillBlank ?? {};
-        const prevEntry = prevFill[itemId] || {};
-        const nextEntry = {
-          ...prevEntry,
-          answer,
-          ...(typeof revealed === 'boolean' ? { revealed } : {}),
-          ...(typeof correct === 'boolean' ? { correct } : {}),
-        };
-        return {
-          ...prev,
-          attempts: {
-            ...prevAttempts,
-            fillBlank: {
-              ...prevFill,
-              [itemId]: nextEntry,
-            },
-          },
-        };
-      });
-      void get().persistTutorStateForMessage(messageId);
-    },
-
-    setTutorAttemptOpen(messageId, itemId, answer) {
-      updateTutorEntry(messageId, (prev) => {
-        const prevAttempts = prev.attempts || {};
-        const prevOpen: OpenAttempts = prevAttempts.open ?? {};
-        return {
-          ...prev,
-          attempts: {
-            ...prevAttempts,
-            open: {
-              ...prevOpen,
-              [itemId]: { ...(prevOpen[itemId] || {}), answer },
-            },
-          },
-        };
-      });
-      void get().persistTutorStateForMessage(messageId);
-    },
   } satisfies Partial<StoreState>;
 }

@@ -206,13 +206,14 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
                 function: {
                   name: 'quiz',
                   arguments: JSON.stringify({
-                    type: 'fill_blank',
+                    type: 'mcq',
                     title: 'Extra',
                     items: [
                       {
-                        id: 'blank1',
-                        prompt: '1 + 1 = ____',
-                        answer: '2',
+                        id: 'mcq2',
+                        question: '1 + 1 = ?',
+                        choices: ['1', '2'],
+                        correct: 1,
                       },
                     ],
                   }),
@@ -288,7 +289,6 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   const savedTutor = savedMessages.find((msg) => Array.isArray((msg as any)?.tutor?.mcq))
     ?.tutor as any;
   assert.ok(Array.isArray(savedTutor?.mcq) && savedTutor.mcq.length === 1);
-  assert.equal(Array.isArray(savedTutor?.fillBlank), false);
   const toolLog = state.messagesById[assistantMessage.id]?.toolCalls;
   assert.ok(Array.isArray(toolLog) && toolLog.length >= 2);
   const searchEntries = toolLog.filter((entry: any) => entry?.name === 'web_search');

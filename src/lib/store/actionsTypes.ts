@@ -54,14 +54,6 @@ export type StoreActions = VoiceActions & {
     choiceIdx: number,
     correct: boolean,
   ) => void;
-  setTutorAttemptFillBlank: (
-    messageId: string,
-    itemId: string,
-    answer: string,
-    revealed?: boolean,
-    correct?: boolean,
-  ) => void;
-  setTutorAttemptOpen: (messageId: string, itemId: string, answer: string) => void;
   setTutorPlanProposalStatus: (
     messageId: string,
     status: 'pending' | 'approved' | 'declined',

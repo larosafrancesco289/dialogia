@@ -124,8 +124,6 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
     applyLearnerModelFeedbackFromUser: async () => {},
     patchTutorEntry: async () => {},
     setTutorAttemptMcq: () => {},
-    setTutorAttemptFillBlank: () => {},
-    setTutorAttemptOpen: () => {},
     setTutorPlanProposalStatus: () => {},
     setSearchStatus: () => {},
 

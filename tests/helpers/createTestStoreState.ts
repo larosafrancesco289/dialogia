@@ -58,8 +58,6 @@ export function createTestStoreState(overrides: StoreStateOverrides = {}) {
     applyLearnerModelFeedbackFromUser: noopAsync,
     patchTutorEntry: noopAsync,
     setTutorAttemptMcq: noop,
-    setTutorAttemptFillBlank: noop,
-    setTutorAttemptOpen: noop,
     setTutorPlanProposalStatus: noop,
     loadModels: noopAsync,
     toggleFavoriteModel: noop,

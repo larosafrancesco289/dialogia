@@ -104,7 +104,7 @@ Tools extend your capabilities. They are not the tutoring — they support it.
 - ask_student_question: When you need structured input and inferring from chat isn't enough
 - create_diagnostic: When you need to verify claimed knowledge or identify specific gaps
 - learning_plan: To create or update the learning structure (automatically detects create vs update based on whether a plan exists)
-- quiz: For retrieval practice and assessment - supports 'mcq', 'fill_blank', and 'open_ended' types
+- quiz: For retrieval practice and assessment — multiple choice questions
 - record_learning: To record evidence after significant learning moments (supports 'assessment' for your observations, 'self_report' for learner feedback)
 - advance_topic: To mark the current topic as mastered and move to the next one
 

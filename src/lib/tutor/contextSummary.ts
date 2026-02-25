@@ -19,8 +19,6 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
       }
     };
     addTopics(t.mcq);
-    addTopics(t.fillBlank);
-    addTopics(t.openEnded);
     if (topics.size > 0) lines.push(`Topics: ${Array.from(topics).slice(0, 5).join(', ')}`);
   } catch (error) {
     logger.error('Failed to collect tutor topics', error);
@@ -115,42 +113,6 @@ export function buildTutorContextSummary(t: MessageTutor | undefined): string | 
           suffix += ` · correct: ${correctLetter}${correctText ? ` “${correctText}”` : ''}`;
         }
         lines.push(`  ${i + 1}. ${qText}${suffix} · ${status}`);
-      });
-    }
-    // Fill‑blank summary
-    if (Array.isArray(t.fillBlank) && t.fillBlank.length > 0) {
-      const a: NonNullable<NonNullable<MessageTutor['attempts']>['fillBlank']> =
-        attempts.fillBlank ?? {};
-      const items = t.fillBlank.slice(0, 8);
-      lines.push('Fill‑in‑the‑blank:');
-      items.forEach((it, i: number) => {
-        const ans = a[it.id] || {};
-        const qText = clip(it.prompt);
-        const submitted = ans.revealed || typeof ans.answer === 'string';
-        const status = submitted ? (ans.correct ? 'correct' : 'incorrect') : 'unanswered';
-        let suffix =
-          typeof ans.answer === 'string' && ans.answer.trim()
-            ? ` · your: ${clip(ans.answer, 30)}`
-            : '';
-        if (ans.revealed && ans.correct === false && typeof it?.answer === 'string') {
-          suffix += ` · correct: ${clip(it.answer, 30)}`;
-        }
-        lines.push(`  ${i + 1}. ${qText}${suffix} · ${status}`);
-      });
-    }
-    // Open‑ended summary (only signal submission; grading appears separately)
-    if (Array.isArray(t.openEnded) && t.openEnded.length > 0) {
-      const a: NonNullable<NonNullable<MessageTutor['attempts']>['open']> = attempts.open ?? {};
-      const g: NonNullable<MessageTutor['grading']> = t.grading ?? {};
-      const items = t.openEnded.slice(0, 6);
-      lines.push('Open‑ended:');
-      items.forEach((it, i: number) => {
-        const ans = a[it.id] || {};
-        const submitted = typeof ans.answer === 'string' && ans.answer.trim().length > 0;
-        const graded = !!g[it.id];
-        const qText = clip(it.prompt);
-        const suffix = submitted ? ` · submitted${graded ? ' · graded' : ''}` : ' · not submitted';
-        lines.push(`  ${i + 1}. ${qText}${suffix}`);
       });
     }
   } catch (error) {

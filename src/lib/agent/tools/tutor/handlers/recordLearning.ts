@@ -382,7 +382,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
     const currentTutor = ctx.currentMessageTutor?.();
     quizAttempts = currentTutor?.attempts;
     // If not on current message, search backwards through recent messages
-    if (!quizAttempts || (!quizAttempts.mcq && !quizAttempts.fillBlank)) {
+    if (!quizAttempts || !quizAttempts.mcq) {
       const stateSnap = ctx.get();
       const byMsgId = stateSnap?.ui?.tutor?.byMessageId ?? {};
       const searchLimit = Math.max(0, messagesForChat.length - 10);
@@ -391,35 +391,22 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
         if (msg.id === ctx.assistantMessage.id) continue;
         if (msg.role !== 'assistant') continue;
         const tutorState = msg.tutor ?? byMsgId[msg.id];
-        if (tutorState?.attempts?.mcq || tutorState?.attempts?.fillBlank) {
+        if (tutorState?.attempts?.mcq) {
           quizAttempts = tutorState.attempts;
           break;
         }
       }
     }
-    if (quizAttempts && (quizAttempts.mcq || quizAttempts.fillBlank)) {
+    if (quizAttempts?.mcq) {
       const quizEvidence: typeof evidenceToApply = [];
-      if (quizAttempts.mcq) {
-        for (const [, attempt] of Object.entries(quizAttempts.mcq)) {
-          if (!attempt.done) continue;
-          quizEvidence.push({
-            type: attempt.correct ? 'correct_answer' : 'incorrect_answer',
-            weight: attempt.correct ? 0.4 : -0.3,
-            details: attempt.correct ? 'Quiz: correct answer' : 'Quiz: incorrect answer',
-            skill: effectiveNodeId,
-          });
-        }
-      }
-      if (quizAttempts.fillBlank) {
-        for (const [, attempt] of Object.entries(quizAttempts.fillBlank)) {
-          if (!attempt.revealed && typeof attempt.answer !== 'string') continue;
-          quizEvidence.push({
-            type: attempt.correct ? 'correct_answer' : 'incorrect_answer',
-            weight: attempt.correct ? 0.4 : -0.3,
-            details: attempt.correct ? 'Quiz: correct fill-blank' : 'Quiz: incorrect fill-blank',
-            skill: effectiveNodeId,
-          });
-        }
+      for (const [, attempt] of Object.entries(quizAttempts.mcq)) {
+        if (!attempt.done) continue;
+        quizEvidence.push({
+          type: attempt.correct ? 'correct_answer' : 'incorrect_answer',
+          weight: attempt.correct ? 0.4 : -0.3,
+          details: attempt.correct ? 'Quiz: correct answer' : 'Quiz: incorrect answer',
+          skill: effectiveNodeId,
+        });
       }
       if (quizEvidence.length > 0) {
         // Replace LLM-chosen evidence with quiz-derived evidence
