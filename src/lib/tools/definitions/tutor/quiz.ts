@@ -1,37 +1,13 @@
 import { z } from 'zod';
 import type { ToolDefinition } from '@/lib/transport/contracts';
-import {
-  TutorMcqItemSchema,
-  TutorFillBlankItemSchema,
-  TutorOpenEndedItemSchema,
-} from '@/lib/schemas/tutor';
+import { TutorMcqItemSchema } from '@/lib/schemas/tutor';
 
-const QuizMcqSchema = z.object({
+export const UnifiedQuizToolSchema = z.object({
   type: z.literal('mcq'),
   title: z.string().optional(),
   items: z.array(TutorMcqItemSchema).min(1).max(12),
   nodeId: z.string().optional().describe('Learning plan node this quiz assesses'),
 });
-
-const QuizFillBlankSchema = z.object({
-  type: z.literal('fill_blank'),
-  title: z.string().optional(),
-  items: z.array(TutorFillBlankItemSchema).min(1).max(12),
-  nodeId: z.string().optional().describe('Learning plan node this quiz assesses'),
-});
-
-const QuizOpenEndedSchema = z.object({
-  type: z.literal('open_ended'),
-  title: z.string().optional(),
-  items: z.array(TutorOpenEndedItemSchema).min(1).max(12),
-  nodeId: z.string().optional().describe('Learning plan node this quiz assesses'),
-});
-
-export const UnifiedQuizToolSchema = z.discriminatedUnion('type', [
-  QuizMcqSchema,
-  QuizFillBlankSchema,
-  QuizOpenEndedSchema,
-]);
 
 export type UnifiedQuizInput = z.infer<typeof UnifiedQuizToolSchema>;
 
@@ -44,8 +20,8 @@ export const QUIZ_TOOL_PARAMETER_SCHEMA: Record<string, unknown> = {
   properties: {
     type: {
       type: 'string',
-      enum: ['mcq', 'fill_blank', 'open_ended'],
-      description: 'Quiz format.',
+      enum: ['mcq'],
+      description: 'Quiz format (multiple choice).',
     },
     title: {
       type: 'string',
@@ -59,29 +35,33 @@ export const QUIZ_TOOL_PARAMETER_SCHEMA: Record<string, unknown> = {
       type: 'array',
       minItems: 1,
       maxItems: 12,
-      description:
-        'For mcq use {question, choices, correct}. For fill_blank use {prompt, answer}. For open_ended use {prompt}.',
+      description: 'Array of MCQ items: {question, choices, correct}.',
       items: {
         type: 'object',
         additionalProperties: false,
         properties: {
-          id: { type: 'string' },
-          question: { type: 'string' },
+          id: { type: 'string', description: 'Unique identifier for this quiz item.' },
+          question: { type: 'string', description: 'The question text shown to the learner.' },
           choices: {
             type: 'array',
             items: { type: 'string' },
             minItems: 2,
             maxItems: 6,
+            description: 'Answer options displayed to the learner.',
           },
-          correct: { type: 'integer', minimum: 0, maximum: 5 },
-          explanation: { type: 'string' },
-          prompt: { type: 'string' },
-          answer: { type: 'string' },
-          aliases: { type: 'array', items: { type: 'string' } },
-          sample_answer: { type: 'string' },
-          rubric: { type: 'string' },
-          topic: { type: 'string' },
-          skill: { type: 'string' },
+          correct: {
+            type: 'integer',
+            minimum: 0,
+            maximum: 5,
+            description: '0-based index into the choices array indicating the correct answer.',
+          },
+          explanation: {
+            type: 'string',
+            description:
+              'Brief explanation shown to the learner after they answer, clarifying why the correct answer is right.',
+          },
+          topic: { type: 'string', description: 'Topic this item assesses.' },
+          skill: { type: 'string', description: 'Specific skill being tested.' },
           difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
         },
       },
@@ -93,21 +73,13 @@ export const quizTool: ToolDefinition = {
   type: 'function',
   function: {
     name: 'quiz',
-    description: `Present a quiz to assess learner understanding. Use this during teaching for formative assessment or during practice for retrieval practice.
+    description: `Present a multiple-choice quiz to assess learner understanding. Use this during teaching for formative assessment or during practice for retrieval practice.
 
-Supports three question types:
-- 'mcq': Multiple choice with options array
-- 'fill_blank': Sentence with blank to fill
-- 'open_ended': Free response with rubric for grading
-
-Choose the type based on what you're assessing:
-- mcq: Recognition, factual recall, concept discrimination
-- fill_blank: Recall of specific terms, definitions, formulas
-- open_ended: Deeper understanding, synthesis, application
+Choose MCQ when assessing: recognition, factual recall, concept discrimination.
 
 Required arguments:
-- type: one of "mcq" | "fill_blank" | "open_ended"
-- items: non-empty array of quiz items matching the selected type`,
+- type: "mcq"
+- items: non-empty array of quiz items with {question, choices, correct}`,
     parameters: QUIZ_TOOL_PARAMETER_SCHEMA,
   },
 };

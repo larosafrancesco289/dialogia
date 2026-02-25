@@ -30,10 +30,7 @@ export function getTutorPhase(chat: Chat, messages: Message[], ui?: UiSnapshot):
 
   const activeNode = plan.nodes.some((node) => node.status === 'in_progress');
   const completedCount = plan.nodes.filter((node) => node.status === 'completed').length;
-  const hasPracticeWidget =
-    (tutor?.mcq && tutor.mcq.length > 0) ||
-    (tutor?.fillBlank && tutor.fillBlank.length > 0) ||
-    (tutor?.openEnded && tutor.openEnded.length > 0);
+  const hasPracticeWidget = tutor?.mcq && tutor.mcq.length > 0;
 
   if (!activeNode) {
     if (completedCount > 0 && completedCount === plan.nodes.length) return 'review';

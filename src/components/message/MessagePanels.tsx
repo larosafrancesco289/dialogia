@@ -128,14 +128,11 @@ export function TutorPanelSection({
       messageId={messageId}
       title={tutorEntry.title}
       mcq={tutorEntry.mcq}
-      fillBlank={tutorEntry.fillBlank}
-      openEnded={tutorEntry.openEnded}
       questionnaire={tutorEntry.questionnaire}
       diagnostic={tutorEntry.diagnostic}
       planProposal={tutorEntry.planProposal}
       planSuggestions={tutorEntry.planSuggestions}
       assessmentUpdates={tutorEntry.assessmentUpdates}
-      grading={tutorEntry.grading}
       isLatestAssistant={isLatestAssistant}
     />
   );

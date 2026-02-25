@@ -19,27 +19,6 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
         skill: q.skill,
         difficulty: q.difficulty,
       }));
-    if (Array.isArray(t.fillBlank))
-      out.fill_blank = t.fillBlank.map((it) => ({
-        id: it.id,
-        prompt: it.prompt,
-        answer: it.answer,
-        aliases: it.aliases,
-        explanation: it.explanation,
-        topic: it.topic,
-        skill: it.skill,
-        difficulty: it.difficulty,
-      }));
-    if (Array.isArray(t.openEnded))
-      out.open_ended = t.openEnded.map((it) => ({
-        id: it.id,
-        prompt: it.prompt,
-        sample_answer: it.sample_answer,
-        rubric: it.rubric,
-        topic: it.topic,
-        skill: it.skill,
-        difficulty: it.difficulty,
-      }));
     if (t.questionnaire)
       out.questionnaire = {
         status: t.questionnaire.status,
@@ -130,9 +109,7 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
       }));
 
     const attempts = t.attempts;
-    const grading = t.grading;
     if (attempts && Object.keys(attempts).length > 0) out.attempts = attempts;
-    if (grading && Object.keys(grading).length > 0) out.grading = grading;
 
     const json = JSON.stringify(out);
     if (!json || json === '{}') return undefined;

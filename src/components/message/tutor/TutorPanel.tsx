@@ -5,10 +5,8 @@ import { useChatStore } from '@/lib/store';
 import { selectStudyCondition } from '@/lib/store/selectors';
 import type {
   TutorDiagnostic,
-  TutorFillBlankItem,
   TutorLearnerModelUpdate,
   TutorMCQItem,
-  TutorOpenItem,
   TutorPlanProposal,
   TutorPlanSuggestion,
   TutorQuestionnaire,
@@ -19,23 +17,17 @@ import { PlanProposalCard } from '@/components/message/tutor/PlanProposalCard';
 import { PlanSuggestionsCard } from '@/components/message/tutor/PlanSuggestionsCard';
 import { DiagnosticCard } from '@/components/message/tutor/DiagnosticCard';
 import { McqCard } from '@/components/message/tutor/McqCard';
-import { FillBlankCard } from '@/components/message/tutor/FillBlankCard';
-import { OpenEndedCard } from '@/components/message/tutor/OpenEndedCard';
 import { LearnerUpdatesCard } from '@/components/message/tutor/LearnerUpdatesCard';
-import { GradingFeedbackCard } from '@/components/message/tutor/GradingFeedbackCard';
 
 export function TutorPanel(props: {
   messageId: string;
   title?: string;
   mcq?: TutorMCQItem[];
-  fillBlank?: TutorFillBlankItem[];
-  openEnded?: TutorOpenItem[];
   questionnaire?: TutorQuestionnaire;
   diagnostic?: TutorDiagnostic;
   planProposal?: TutorPlanProposal;
   planSuggestions?: TutorPlanSuggestion[];
   assessmentUpdates?: TutorLearnerModelUpdate[];
-  grading?: Record<string, { score?: number; feedback: string; criteria?: string[] }>;
   isLatestAssistant?: boolean;
 }) {
   const studyCondition = useChatStore(selectStudyCondition);
@@ -45,14 +37,11 @@ export function TutorPanel(props: {
     messageId,
     title,
     mcq,
-    fillBlank,
-    openEnded,
     questionnaire,
     diagnostic,
     planProposal,
     planSuggestions,
     assessmentUpdates,
-    grading,
     isLatestAssistant,
   } = props;
 
@@ -65,10 +54,7 @@ export function TutorPanel(props: {
     (planSuggestions && planSuggestions.length > 0) ||
     (diagnostic && diagnostic.items && diagnostic.items.length > 0) ||
     (canShowUpdates && assessmentUpdates && assessmentUpdates.length > 0) ||
-    (mcq && mcq.length > 0) ||
-    (fillBlank && fillBlank.length > 0) ||
-    (openEnded && openEnded.length > 0) ||
-    (grading && Object.keys(grading).length > 0);
+    (mcq && mcq.length > 0);
 
   if (!hasAny) return null;
 
@@ -107,17 +93,8 @@ export function TutorPanel(props: {
               <DiagnosticCard messageId={messageId} diagnostic={diagnostic} />
             ) : null}
             {mcq && mcq.length > 0 && <McqCard messageId={messageId} items={mcq} />}
-            {fillBlank && fillBlank.length > 0 && (
-              <FillBlankCard messageId={messageId} items={fillBlank} />
-            )}
-            {openEnded && openEnded.length > 0 && (
-              <OpenEndedCard messageId={messageId} items={openEnded} grading={grading} />
-            )}
             {canShowUpdates && assessmentUpdates && assessmentUpdates.length > 0 && (
               <LearnerUpdatesCard updates={assessmentUpdates} />
-            )}
-            {grading && Object.keys(grading).length > 0 && (
-              <GradingFeedbackCard grading={grading} />
             )}
           </div>
         </motion.div>

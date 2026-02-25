@@ -163,13 +163,14 @@ test('content tools replace previous tutor widgets to enforce one active payload
   await applyTutorToolCall({
     name: 'quiz',
     args: {
-      type: 'fill_blank',
+      type: 'mcq',
       title: 'Second',
       items: [
         {
-          id: 'blank-1',
-          prompt: '2 + 2 = ____',
-          answer: '4',
+          id: 'mcq-2',
+          question: 'Second?',
+          choices: ['c', 'd'],
+          correct: 1,
         },
       ],
     },
@@ -182,8 +183,9 @@ test('content tools replace previous tutor widgets to enforce one active payload
   });
 
   const tutorState = state.ui.tutor.byMessageId?.['assistant-1'];
-  assert.ok(Array.isArray(tutorState?.fillBlank));
-  assert.equal(Array.isArray(tutorState?.mcq), false);
+  assert.ok(Array.isArray(tutorState?.mcq));
+  assert.equal(tutorState?.mcq?.length, 1);
+  assert.equal(tutorState?.mcq?.[0]?.question, 'Second?');
   assert.equal(tutorState?.attempts, undefined);
 });
 
@@ -236,66 +238,30 @@ test('learning_plan tool persists a valid learning plan from tool payloads', asy
   assert.deepEqual(plan.nodes[0].children, ['derivatives']);
 });
 
-test('quiz tool accepts all types with schema-aligned payloads', async () => {
+test('quiz tool accepts mcq with schema-aligned payloads', async () => {
   const { chat, assistantMessage, state, set, get } = createTutorHarness();
-  const cases = [
-    {
+  const outcome = await applyTutorToolCall({
+    name: 'quiz',
+    args: {
       type: 'mcq',
-      key: 'mcq',
-      args: {
-        type: 'mcq',
-        items: [
-          {
-            question: '1 + 1 = ?',
-            choices: ['1', '2'],
-            correct: 1,
-          },
-        ],
-      },
+      items: [
+        {
+          question: '1 + 1 = ?',
+          choices: ['1', '2'],
+          correct: 1,
+        },
+      ],
     },
-    {
-      type: 'fill_blank',
-      key: 'fillBlank',
-      args: {
-        type: 'fill_blank',
-        items: [
-          {
-            prompt: '2 + 2 = ____',
-            answer: '4',
-          },
-        ],
-      },
-    },
-    {
-      type: 'open_ended',
-      key: 'openEnded',
-      args: {
-        type: 'open_ended',
-        items: [
-          {
-            prompt: 'Explain the chain rule.',
-            sample_answer: 'Differentiate outer, multiply by inner derivative.',
-          },
-        ],
-      },
-    },
-  ];
-
-  for (const entry of cases) {
-    const outcome = await applyTutorToolCall({
-      name: 'quiz',
-      args: entry.args,
-      chat,
-      chatId: 'chat-test',
-      assistantMessage,
-      set,
-      get,
-      persistMessage: async () => Promise.resolve(),
-    });
-    assert.equal(outcome.handled, true, `expected quiz type ${entry.type} to be handled`);
-    const tutorState = state.ui.tutor.byMessageId?.['assistant-1'];
-    assert.ok(Array.isArray(tutorState?.[entry.key]), `expected ${entry.key} to be stored`);
-  }
+    chat,
+    chatId: 'chat-test',
+    assistantMessage,
+    set,
+    get,
+    persistMessage: async () => Promise.resolve(),
+  });
+  assert.equal(outcome.handled, true, 'expected mcq quiz to be handled');
+  const tutorState = state.ui.tutor.byMessageId?.['assistant-1'];
+  assert.ok(Array.isArray(tutorState?.mcq), 'expected mcq to be stored');
 });
 
 test('quiz tool accepts legacy single-question argument shape', async () => {
@@ -322,58 +288,6 @@ test('quiz tool accepts legacy single-question argument shape', async () => {
   assert.equal(mcq[0]?.question, '2 + 2 = ?');
 });
 
-test('quiz tool normalizes legacy fill_blank question payloads', async () => {
-  const { chat, assistantMessage, state, set, get } = createTutorHarness();
-  const outcome = await applyTutorToolCall({
-    name: 'quiz',
-    args: {
-      questionType: 'fill-in-the-blank',
-      question: 'The derivative of x^2 is ____.',
-      correctAnswer: '2x',
-    },
-    chat,
-    chatId: 'chat-test',
-    assistantMessage,
-    set,
-    get,
-    persistMessage: async () => Promise.resolve(),
-  });
-
-  assert.equal(outcome.handled, true);
-  const fillBlank = state.ui.tutor.byMessageId?.['assistant-1']?.fillBlank;
-  assert.ok(Array.isArray(fillBlank), 'expected fillBlank quiz to be stored');
-  assert.equal(fillBlank[0]?.prompt, 'The derivative of x^2 is ____.');
-  assert.equal(fillBlank[0]?.answer, '2x');
-});
-
-test('quiz tool normalizes open-ended payload aliases and questions array', async () => {
-  const { chat, assistantMessage, state, set, get } = createTutorHarness();
-  const outcome = await applyTutorToolCall({
-    name: 'quiz',
-    args: {
-      quizType: 'open-ended',
-      questions: [
-        {
-          questionText: 'Explain why limits matter in calculus.',
-          sampleAnswer: 'Limits define continuity and derivatives.',
-        },
-      ],
-    },
-    chat,
-    chatId: 'chat-test',
-    assistantMessage,
-    set,
-    get,
-    persistMessage: async () => Promise.resolve(),
-  });
-
-  assert.equal(outcome.handled, true);
-  const openEnded = state.ui.tutor.byMessageId?.['assistant-1']?.openEnded;
-  assert.ok(Array.isArray(openEnded), 'expected openEnded quiz to be stored');
-  assert.equal(openEnded[0]?.prompt, 'Explain why limits matter in calculus.');
-  assert.equal(openEnded[0]?.sample_answer, 'Limits define continuity and derivatives.');
-});
-
 test('quiz tool returns actionable parse errors for invalid arguments', async () => {
   const { chat, assistantMessage, set, get } = createTutorHarness();
   const outcome = await applyTutorToolCall({
@@ -389,31 +303,6 @@ test('quiz tool returns actionable parse errors for invalid arguments', async ()
 
   assert.equal(outcome.handled, false);
   assert.match(outcome.error || '', /Invalid arguments for quiz/);
-});
-
-test('quiz tool accepts open_ended payloads with up to twelve items', async () => {
-  const { chat, assistantMessage, state, set, get } = createTutorHarness();
-  const outcome = await applyTutorToolCall({
-    name: 'quiz',
-    args: {
-      type: 'open_ended',
-      items: Array.from({ length: 9 }, (_, index) => ({
-        id: `q-${index + 1}`,
-        prompt: `Explain concept ${index + 1}.`,
-      })),
-    },
-    chat,
-    chatId: 'chat-test',
-    assistantMessage,
-    set,
-    get,
-    persistMessage: async () => Promise.resolve(),
-  });
-
-  assert.equal(outcome.handled, true);
-  const openEnded = state.ui.tutor.byMessageId?.['assistant-1']?.openEnded;
-  assert.ok(Array.isArray(openEnded), 'expected open_ended quiz to be stored');
-  assert.equal(openEnded.length, 9);
 });
 
 test('diagnostic tool stores items from schema-aligned payloads', async () => {

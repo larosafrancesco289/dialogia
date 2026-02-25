@@ -145,26 +145,45 @@ export function usePlanCallbacks(): PlanCallbacks {
 
   const onConfidenceAdjust = useCallback(
     (nodeId: string, newConfidence: number, reason?: string) => {
-      void onLearnerModelFeedback({
+      const feedback = {
         nodeId,
         estimatedConfidence: newConfidence,
         reason: reason ?? `Adjusted confidence to ${Math.round(newConfidence * 100)}%`,
-      });
+      };
       logAction('learner_model_edited', { editAction: 'confidence_adjust' });
+      const pct = Math.round(newConfidence * 100);
+      const nodeName = learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
+      void onLearnerModelFeedback(feedback)
+        .then(() =>
+          sendUserMessage(
+            `I adjusted my confidence for "${nodeName}" to ${pct}%. Please acknowledge and adapt your teaching accordingly.`,
+            { metadata: { hiddenFromUser: true, kind: 'tutor_confidence_adjust' } },
+          ),
+        )
+        .catch(() => undefined);
     },
-    [onLearnerModelFeedback],
+    [onLearnerModelFeedback, sendUserMessage, learningPlan],
   );
 
   const onMisconceptionResolve = useCallback(
     (nodeId: string, misconceptionId: string) => {
-      void onLearnerModelFeedback({
+      const feedback = {
         nodeId,
         misconceptionId,
         reason: 'I believe I have resolved this misconception.',
-      });
+      };
       logAction('learner_model_edited', { editAction: 'misconception_resolve' });
+      const nodeName = learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
+      void onLearnerModelFeedback(feedback)
+        .then(() =>
+          sendUserMessage(
+            `I marked a misconception as resolved for "${nodeName}". Please acknowledge this update.`,
+            { metadata: { hiddenFromUser: true, kind: 'tutor_misconception_resolve' } },
+          ),
+        )
+        .catch(() => undefined);
     },
-    [onLearnerModelFeedback],
+    [onLearnerModelFeedback, sendUserMessage, learningPlan],
   );
 
   const onSetConfidenceFloor = useCallback(
@@ -181,14 +200,23 @@ export function usePlanCallbacks(): PlanCallbacks {
 
   const onFlagForReview = useCallback(
     (nodeId: string) => {
-      void onLearnerModelFeedback({
+      const feedback = {
         nodeId,
-        direction: 'down',
+        direction: 'down' as const,
         reason: 'I flagged this topic for review.',
-      });
+      };
       logAction('learner_model_edited', { editAction: 'flag_for_review' });
+      const nodeName = learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
+      void onLearnerModelFeedback(feedback)
+        .then(() =>
+          sendUserMessage(
+            `I flagged "${nodeName}" for review — I need more practice on this topic.`,
+            { metadata: { hiddenFromUser: true, kind: 'tutor_flag_for_review' } },
+          ),
+        )
+        .catch(() => undefined);
     },
-    [onLearnerModelFeedback],
+    [onLearnerModelFeedback, sendUserMessage, learningPlan],
   );
 
   const onToggleRightPanel = useCallback(() => {

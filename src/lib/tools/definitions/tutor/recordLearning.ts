@@ -45,8 +45,16 @@ Always call this after quiz interactions or when you observe evidence of learnin
             type: 'object',
             required: ['type', 'weight'],
             properties: {
-              type: { type: 'string' },
-              weight: { type: 'number' },
+              type: {
+                type: 'string',
+                description:
+                  "Evidence type: 'correct_answer' (+), 'incorrect_answer' (-), 'partial_answer', 'hint_needed' (-), 'misconception_detected' (-), 'insight_demonstrated' (+).",
+              },
+              weight: {
+                type: 'number',
+                description:
+                  'Mastery update weight. Positive for correct/insight (e.g. +0.3 to +0.5), negative for incorrect/misconception (e.g. -0.2 to -0.4). Clamped to [-0.5, 0.7]. For quizzes: use +0.4 per correct, -0.3 per incorrect.',
+              },
               details: { type: 'string' },
               skill: { type: 'string' },
             },

@@ -49,37 +49,6 @@ export const TutorQuizMcqToolSchema = z.object({
   items: z.array(TutorMcqItemSchema).min(1).max(12),
 });
 
-export const TutorFillBlankItemSchema = z.object({
-  id: z.string().optional(),
-  prompt: z.string(),
-  answer: z.string(),
-  aliases: z.array(z.string()).optional(),
-  explanation: z.string().optional(),
-  topic: z.string().optional(),
-  skill: z.string().optional(),
-  difficulty: difficultySchema.optional(),
-});
-
-export const TutorQuizFillBlankToolSchema = z.object({
-  title: z.string().optional(),
-  items: z.array(TutorFillBlankItemSchema).min(1).max(12),
-});
-
-export const TutorOpenEndedItemSchema = z.object({
-  id: z.string().optional(),
-  prompt: z.string(),
-  sample_answer: z.string().optional(),
-  rubric: z.string().optional(),
-  topic: z.string().optional(),
-  skill: z.string().optional(),
-  difficulty: difficultySchema.optional(),
-});
-
-export const TutorQuizOpenEndedToolSchema = z.object({
-  title: z.string().optional(),
-  items: z.array(TutorOpenEndedItemSchema).min(1).max(8),
-});
-
 export const TutorDiagnosticItemSchema = z
   .object({
     id: z.string().optional(),
@@ -120,6 +89,4 @@ export const TutorDiagnosticToolSchema = z.object({
 export type TutorPlanProposalInput = z.infer<typeof TutorPlanProposalToolSchema>;
 export type TutorPlanSuggestionsInput = z.infer<typeof TutorPlanSuggestionsToolSchema>;
 export type TutorQuizMcqInput = z.infer<typeof TutorQuizMcqToolSchema>;
-export type TutorQuizFillBlankInput = z.infer<typeof TutorQuizFillBlankToolSchema>;
-export type TutorQuizOpenEndedInput = z.infer<typeof TutorQuizOpenEndedToolSchema>;
 export type TutorDiagnosticInput = z.infer<typeof TutorDiagnosticToolSchema>;

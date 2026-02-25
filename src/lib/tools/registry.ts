@@ -240,7 +240,27 @@ const createTutorHandler = (name: TutorToolName, metadata: ToolMetadata): Planni
         ...(tutorOutcome.learnerModel ? { modelUpdated: true } : {}),
         ...(tutorOutcome.planUpdates ? { planUpdated: true } : {}),
       });
-      const toolResultContent = tutorOutcome.payload || JSON.stringify({ ok: true });
+      let toolResultContent = tutorOutcome.payload;
+      if (!toolResultContent) {
+        const debug = tutorOutcome.learnerModelDebug;
+        if (debug && debug.oldConfidence != null && debug.newConfidence != null) {
+          toolResultContent = JSON.stringify({
+            ok: true,
+            nodeId: debug.nodeId,
+            nodeName: debug.nodeName,
+            confidenceBefore: Math.round(debug.oldConfidence * 100) + '%',
+            confidenceAfter: Math.round(debug.newConfidence * 100) + '%',
+            masteryLevel:
+              debug.newConfidence >= 0.8
+                ? 'mastered'
+                : debug.newConfidence >= 0.5
+                  ? 'developing'
+                  : 'novice',
+          });
+        } else {
+          toolResultContent = JSON.stringify({ ok: true });
+        }
+      }
       const usedTutorContentTool =
         metadata.category === 'tutor_content' ? tutorOutcome.handled : !!tutorOutcome.usedContent;
       return {
