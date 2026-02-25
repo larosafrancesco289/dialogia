@@ -86,6 +86,8 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
     currentPlan,
     toolsUsedThisTurn: 0,
     quizCallsThisTurn: 0,
+    successfulToolCallsThisTurn: 0,
+    failedToolCallsThisTurn: 0,
   };
   const maxToolsPerTurn =
     toolPolicy.maxToolsPerTurn && Number.isFinite(toolPolicy.maxToolsPerTurn)

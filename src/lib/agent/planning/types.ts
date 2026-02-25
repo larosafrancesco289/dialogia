@@ -24,4 +24,6 @@ export type PlanningExecutionState = {
   currentPlan?: PlanTurnOptions['chat']['settings']['features']['tutor']['learningPlan'];
   toolsUsedThisTurn: number;
   quizCallsThisTurn: number;
+  successfulToolCallsThisTurn: number;
+  failedToolCallsThisTurn: number;
 };

@@ -28,6 +28,13 @@ Tool handlers normalize inputs and patch `Message.tutor` with these fields:
 Tool argument schemas live under `src/lib/tools/definitions/tutor/` and the per-tool handlers under
 `src/lib/agent/tools/tutor/handlers/` are responsible for validation and patching.
 
+## Error Contract
+
+- When a tutor tool call cannot be parsed or handled, the tool response now returns
+  `{ "ok": false, "error": "..." }` (never bare `{ "ok": false }`).
+- `quiz` accepts the canonical payload (`type` + `items`) and also normalizes common legacy aliases
+  like `questionType`, `options`, and `correctAnswer` when possible.
+
 ## Persistence Rules
 
 - **Persisted**: `Message.tutor` is stored in IndexedDB via `saveMessage` and restored into

@@ -60,6 +60,11 @@ export async function applyToolExecutions(args: {
     if (execution.usedTutorContentTool) {
       next.usedTutorContentTool = true;
     }
+    if (execution.usedTool) {
+      next.successfulToolCallsThisTurn += 1;
+    } else {
+      next.failedToolCallsThisTurn += 1;
+    }
     if (isQuizToolName(toolName)) {
       next.quizCallsThisTurn += 1;
     }
