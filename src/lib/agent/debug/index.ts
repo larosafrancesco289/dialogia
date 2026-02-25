@@ -139,12 +139,15 @@ export function captureDebugPayload(
 export function captureRequestDebug({
   turn,
   messageId,
+  round,
   ...rest
-}: { turn: TurnContext; messageId: string } & RequestDebugOptions) {
+}: { turn: TurnContext; messageId: string; round?: number } & RequestDebugOptions) {
   const current = turn.get();
   if (!current?.ui?.debug?.mode) return;
+  // Use compound key when round is provided so tool-calling rounds don't overwrite each other
+  const debugKey = round != null ? `${messageId}_r${round}` : messageId;
   try {
-    captureDebugPayload(turn, messageId, () => buildRequestDebugBody(rest));
+    captureDebugPayload(turn, debugKey, () => buildRequestDebugBody(rest));
   } catch {
     /* ignore debug capture failures */
   }

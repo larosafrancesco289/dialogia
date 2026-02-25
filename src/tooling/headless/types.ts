@@ -85,7 +85,18 @@ export function buildHeadlessTurnSnapshot(
   }
 
   const tutorUi = selectTutorEntry(state.ui, assistantMessageId) ?? artifacts.tutorUi;
-  const debugEntry = state.ui.debug.byMessageId?.[assistantMessageId];
+  // Look up debug entry by exact messageId or by round-keyed entries (e.g. msgId_r0, msgId_r1)
+  const debugMap = state.ui.debug.byMessageId ?? {};
+  let debugEntry = debugMap[assistantMessageId];
+  if (!debugEntry) {
+    // Collect all round entries for this message, prefer the latest round
+    const roundEntries = Object.entries(debugMap)
+      .filter(([key]) => key.startsWith(`${assistantMessageId}_r`))
+      .sort(([a], [b]) => a.localeCompare(b));
+    if (roundEntries.length > 0) {
+      debugEntry = roundEntries[roundEntries.length - 1][1];
+    }
+  }
   const learnerModelDebug = state.ui.debug.learnerModelDebugByMessageId?.[assistantMessageId];
 
   return {

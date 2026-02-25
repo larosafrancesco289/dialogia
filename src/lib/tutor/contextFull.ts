@@ -102,17 +102,30 @@ export function buildTutorContextFull(t: MessageTutor | undefined): string | und
         masteryLevel: u.masteryLevel,
         tutorComment: u.tutorComment,
         evidence: Array.isArray(u.evidence)
-          ? u.evidence.map((ev) => ({
-              question: ev.question,
-              studentAnswer: ev.studentAnswer,
-              correctAnswer: ev.correctAnswer,
-              result: ev.result,
-              questionType: ev.questionType,
-              skill: ev.skill,
-              difficulty: ev.difficulty,
-              hintsUsed: ev.hintsUsed,
-              feedback: ev.feedback,
-            }))
+          ? u.evidence.map((ev) => {
+              // Evidence-array shape (type/weight/details present)
+              if (ev.type != null || ev.weight != null) {
+                return {
+                  type: ev.type,
+                  weight: ev.weight,
+                  details: ev.details,
+                  skill: ev.skill,
+                  result: ev.result,
+                };
+              }
+              // Interaction-based shape
+              return {
+                question: ev.question,
+                studentAnswer: ev.studentAnswer,
+                correctAnswer: ev.correctAnswer,
+                result: ev.result,
+                questionType: ev.questionType,
+                skill: ev.skill,
+                difficulty: ev.difficulty,
+                hintsUsed: ev.hintsUsed,
+                feedback: ev.feedback,
+              };
+            })
           : [],
       }));
 

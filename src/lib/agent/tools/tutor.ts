@@ -149,6 +149,13 @@ export async function applyTutorToolCall(opts: {
     };
   }
 
+  const currentMessageTutor: TutorToolContext['currentMessageTutor'] = () => {
+    const state = get();
+    return (state?.ui?.tutor?.byMessageId?.[assistantMessage.id] as
+      | import('@/lib/types').MessageTutor
+      | undefined);
+  };
+
   const context: TutorToolContext = {
     chat,
     chatId,
@@ -158,6 +165,7 @@ export async function applyTutorToolCall(opts: {
     persistMessage,
     applyTutorPatch,
     getCurrentPlan,
+    currentMessageTutor,
   };
 
   const result: TutorToolApplyResult = await handler.apply(context, parsed);
