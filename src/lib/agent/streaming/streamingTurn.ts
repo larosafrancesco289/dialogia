@@ -6,6 +6,7 @@ import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
 import { captureRequestDebug } from '@/lib/agent/debug';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
+import { logger } from '@/lib/logger';
 import { clearTurnController, startToolCallLogEntry } from '@/lib/turns/runtime';
 import { getToolCategory } from '@/lib/tools/registry';
 import { isReasoningRequested } from '@/lib/settings/generation';
@@ -80,6 +81,7 @@ type StreamCallParams = {
   tools: ToolDefinition[] | undefined;
   toolChoice: 'auto' | 'none' | undefined;
   callbacks: StreamCallbacks;
+  round?: number;
 };
 
 /**
@@ -93,6 +95,7 @@ async function executeStreamCall(ctx: StreamingContext, params: StreamCallParams
   captureRequestDebug({
     turn,
     messageId: opts.assistantMessage.id,
+    round: params.round,
     modelId: settings.modelId,
     messages: params.messages,
     stream: true,
@@ -211,7 +214,29 @@ export async function executeStreamingTurn(
   const modelMeta = settings.modelMeta ?? modelIndex.get(settings.modelId);
   const caps = settings.caps ?? modelIndex.caps(settings.modelId);
   const canImageOut = caps.canImageOut;
-  const supportsTools = isToolCallingSupported(modelMeta);
+  let supportsTools = isToolCallingSupported(modelMeta);
+  // Defensive fallback: when modelMeta is missing but we have tool definitions, assume support
+  if (
+    !supportsTools &&
+    !modelMeta &&
+    Array.isArray(planningToolDefinition) &&
+    planningToolDefinition.length > 0
+  ) {
+    logger.warn(
+      `Tool calling check failed for ${settings.modelId} (no modelMeta). ` +
+        `Assuming tool support since ${planningToolDefinition.length} tools are defined.`,
+    );
+    supportsTools = true;
+  } else if (
+    !supportsTools &&
+    Array.isArray(planningToolDefinition) &&
+    planningToolDefinition.length > 0
+  ) {
+    logger.warn(
+      `Tool calling not supported for ${settings.modelId} per metadata. ` +
+        `${planningToolDefinition.length} tool definitions will be dropped.`,
+    );
+  }
   const hasTools =
     supportsTools && Array.isArray(planningToolDefinition) && planningToolDefinition.length > 0;
 
@@ -484,6 +509,7 @@ export async function executeStreamingTurn(
     tools: planningToolDefinition,
     toolChoice: 'auto',
     callbacks: firstRoundCallbacks,
+    round: 0,
   });
 
   // No tool calls — retry once if the response looks incomplete and tools were available
@@ -517,6 +543,7 @@ export async function executeStreamingTurn(
         tools: planningToolDefinition,
         toolChoice: 'auto',
         callbacks: retryCallbacks,
+        round: 0,
       });
 
       if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
@@ -573,6 +600,7 @@ export async function executeStreamingTurn(
       tools: planningToolDefinition,
       toolChoice: 'auto',
       callbacks: roundCallbacks,
+      round: rounds + 1,
     });
 
     // No tool calls - break out
@@ -624,6 +652,7 @@ export async function executeStreamingTurn(
     tools: planningToolDefinition,
     toolChoice: 'none',
     callbacks: createUiCallbacks(performance.now()),
+    round: rounds + 1,
   });
 
   return buildResult(state, finalSystem, sideEffects);

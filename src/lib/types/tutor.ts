@@ -102,15 +102,20 @@ export type TutorPlanSuggestion = {
 };
 
 export type TutorAssessmentEvidence = {
-  question: string;
-  studentAnswer: string;
+  // Interaction-based fields (from interaction path)
+  question?: string;
+  studentAnswer?: string;
   correctAnswer?: string;
   questionType?: 'mcq' | 'fill-blank' | 'open-ended' | 'explanation' | 'application';
   skill?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
-  result: 'correct' | 'incorrect' | 'partial';
+  result?: 'correct' | 'incorrect' | 'partial';
   hintsUsed?: number;
   feedback?: string;
+  // Evidence-array fields (from evidence path)
+  type?: string;
+  weight?: number;
+  details?: string;
 };
 
 export type TutorLearnerModelUpdate = {

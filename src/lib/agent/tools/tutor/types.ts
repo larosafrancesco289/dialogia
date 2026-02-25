@@ -4,6 +4,7 @@ import type {
   LearningPlan,
   LearnerModelDebugSnapshot,
   Message,
+  MessageTutor,
 } from '@/lib/types';
 import type { PersistMessage, StoreGetter, StoreSetter } from '@/lib/agent/types';
 
@@ -33,6 +34,11 @@ export type TutorToolContext = {
    * Falls back to chat.settings.features.tutor.learningPlan if not provided.
    */
   getCurrentPlan?: () => LearningPlan | undefined;
+  /**
+   * Get the current message's tutor state (includes quiz attempts).
+   * Used to cross-reference quiz results when recording learning evidence.
+   */
+  currentMessageTutor?: () => MessageTutor | undefined;
 };
 
 export type TutorToolHandler<Args> = {

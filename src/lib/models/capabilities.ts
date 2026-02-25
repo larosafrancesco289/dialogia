@@ -26,9 +26,14 @@ export function isReasoningSupported(model?: ModelDescriptor | null): boolean {
   return false;
 }
 
+const KNOWN_TOOL_CALLING_PROVIDERS = ['anthropic/', 'openai/', 'google/', 'x-ai/', 'meta-llama/'];
+
 export function isToolCallingSupported(model?: ModelDescriptor | null): boolean {
   const supported = getSupportedParameters(model);
   if (supported.includes('tools')) return true;
+  // Fallback: known providers always support tool calling even if metadata is missing
+  const id = String(model?.id || '').toLowerCase();
+  if (KNOWN_TOOL_CALLING_PROVIDERS.some((prefix) => id.startsWith(prefix))) return true;
   return false;
 }
 

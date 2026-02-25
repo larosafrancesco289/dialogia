@@ -1,4 +1,4 @@
-import type { Evidence, Message, Misconception } from '@/lib/types';
+import type { Evidence, Message, MessageTutor, Misconception } from '@/lib/types';
 import type { TutorToolHandler } from '@/lib/agent/tools/tutor/types';
 import {
   applyLearnerModelFeedback,
@@ -86,10 +86,14 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
           typeof record.weight === 'number' && Number.isFinite(record.weight)
             ? record.weight
             : undefined;
-        if (!type || weight == null) return null;
+        // Default missing type/weight when at least skill or details is present
+        const hasContent =
+          (typeof record.skill === 'string' && record.skill.trim()) ||
+          (typeof record.details === 'string' && record.details.trim());
+        if (!type && weight == null && !hasContent) return null;
         return {
-          type: type as Evidence['type'],
-          weight,
+          type: (type ?? 'partial_answer') as Evidence['type'],
+          weight: weight ?? 0.1,
           details: typeof record.details === 'string' ? record.details.trim() : undefined,
           skill: typeof record.skill === 'string' ? record.skill.trim() : undefined,
         };
@@ -274,6 +278,25 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
       const resolvedId = resolveNodeId(currentModel.mastery, effectiveNodeId) ?? effectiveNodeId;
 
       const planResult = await processPlanProgress(plan, result.model);
+
+      // Enrich the assessmentUpdate with confidence delta (Bug 2 fix)
+      if (result.from != null && result.to != null) {
+        const masteryLevel =
+          result.to >= 0.8 ? 'mastered' : result.to >= 0.5 ? 'developing' : 'novice';
+        await ctx.applyTutorPatch((prev) => {
+          const prior = Array.isArray(prev.assessmentUpdates)
+            ? (prev.assessmentUpdates as Record<string, unknown>[])
+            : [];
+          // Enrich the last entry (the one we just added)
+          if (prior.length === 0) return {};
+          const last = { ...prior[prior.length - 1] };
+          last.confidenceBefore = result.from;
+          last.confidenceAfter = result.to;
+          last.masteryLevel = masteryLevel;
+          return { assessmentUpdates: [...prior.slice(0, -1), last] };
+        });
+      }
+
       const hasMasteryDelta = result.from != null && result.to != null && result.from !== result.to;
       let summary: string;
       if (nodeMeta && result.from != null && result.to != null) {
@@ -351,6 +374,60 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
       });
     }
 
+    // Cross-reference quiz results from recent message attempts (Bug 1 fix)
+    // The quiz is rendered in a PREVIOUS assistant message; the record_learning call
+    // happens in the CURRENT message. Search backwards to find the most recent quiz attempts.
+    let quizAttempts: MessageTutor['attempts'] | undefined;
+    // Check current message first (in case quiz + record_learning happen in same turn)
+    const currentTutor = ctx.currentMessageTutor?.();
+    quizAttempts = currentTutor?.attempts;
+    // If not on current message, search backwards through recent messages
+    if (!quizAttempts || (!quizAttempts.mcq && !quizAttempts.fillBlank)) {
+      const stateSnap = ctx.get();
+      const byMsgId = stateSnap?.ui?.tutor?.byMessageId ?? {};
+      const searchLimit = Math.max(0, messagesForChat.length - 10);
+      for (let i = messagesForChat.length - 1; i >= searchLimit; i--) {
+        const msg = messagesForChat[i];
+        if (msg.id === ctx.assistantMessage.id) continue;
+        if (msg.role !== 'assistant') continue;
+        const tutorState = msg.tutor ?? byMsgId[msg.id];
+        if (tutorState?.attempts?.mcq || tutorState?.attempts?.fillBlank) {
+          quizAttempts = tutorState.attempts;
+          break;
+        }
+      }
+    }
+    if (quizAttempts && (quizAttempts.mcq || quizAttempts.fillBlank)) {
+      const quizEvidence: typeof evidenceToApply = [];
+      if (quizAttempts.mcq) {
+        for (const [, attempt] of Object.entries(quizAttempts.mcq)) {
+          if (!attempt.done) continue;
+          quizEvidence.push({
+            type: attempt.correct ? 'correct_answer' : 'incorrect_answer',
+            weight: attempt.correct ? 0.4 : -0.3,
+            details: attempt.correct ? 'Quiz: correct answer' : 'Quiz: incorrect answer',
+            skill: effectiveNodeId,
+          });
+        }
+      }
+      if (quizAttempts.fillBlank) {
+        for (const [, attempt] of Object.entries(quizAttempts.fillBlank)) {
+          if (!attempt.revealed && typeof attempt.answer !== 'string') continue;
+          quizEvidence.push({
+            type: attempt.correct ? 'correct_answer' : 'incorrect_answer',
+            weight: attempt.correct ? 0.4 : -0.3,
+            details: attempt.correct ? 'Quiz: correct fill-blank' : 'Quiz: incorrect fill-blank',
+            skill: effectiveNodeId,
+          });
+        }
+      }
+      if (quizEvidence.length > 0) {
+        // Replace LLM-chosen evidence with quiz-derived evidence
+        evidenceToApply.length = 0;
+        evidenceToApply.push(...quizEvidence);
+      }
+    }
+
     if (!currentModel || evidenceToApply.length === 0) {
       return {
         handled: true,
@@ -358,6 +435,12 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
         learnerModel: currentModel,
         updatedPlan: plan,
       };
+    }
+
+    // Clamp evidence weights to prevent runaway confidence (Bug 1 fix)
+    const WEIGHT_BOUNDS = { min: -0.5, max: 0.7 };
+    for (const entry of evidenceToApply) {
+      entry.weight = Math.min(WEIGHT_BOUNDS.max, Math.max(WEIGHT_BOUNDS.min, entry.weight));
     }
 
     const now = Date.now();
@@ -396,6 +479,21 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
     const resolvedId = resolveNodeId(currentModel.mastery, effectiveNodeId) ?? effectiveNodeId;
     const oldConfidence = currentModel.mastery[resolvedId]?.confidence ?? 0;
     const newConfidence = updatedModel.mastery[resolvedId]?.confidence ?? oldConfidence;
+
+    // Enrich the assessmentUpdate with confidence delta (Bug 2 fix)
+    const masteryLevel =
+      newConfidence >= 0.8 ? 'mastered' : newConfidence >= 0.5 ? 'developing' : 'novice';
+    await ctx.applyTutorPatch((prev) => {
+      const prior = Array.isArray(prev.assessmentUpdates)
+        ? (prev.assessmentUpdates as Record<string, unknown>[])
+        : [];
+      if (prior.length === 0) return {};
+      const last = { ...prior[prior.length - 1] };
+      last.confidenceBefore = oldConfidence;
+      last.confidenceAfter = newConfidence;
+      last.masteryLevel = masteryLevel;
+      return { assessmentUpdates: [...prior.slice(0, -1), last] };
+    });
 
     const hasMasteryDelta = oldConfidence !== newConfidence;
     const label = nodeMeta?.name ?? effectiveNodeId;

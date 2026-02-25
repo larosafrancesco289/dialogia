@@ -140,7 +140,7 @@ function applyTutorFilters(
 
 const DEFAULT_TOOL_BUDGET = {
   maxToolsPerTurn: 3,
-  maxQuizzesPerNode: 1,
+  maxQuizzesPerNode: 3,
   maxDiagnosticsPerSession: 1,
 };
 
