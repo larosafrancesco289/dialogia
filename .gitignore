@@ -33,7 +33,7 @@ tmp/
 *.log
 .eslintcache
 
-# Thesis files
+# Thesis build artifacts
 thesis/
 
 # Speech files

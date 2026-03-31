@@ -67,7 +67,9 @@ export function useStudySessionControls() {
   useEffect(() => {
     const interval = setInterval(() => {
       setStudySessionInfo(getSessionSummary());
-      setTelemetryInspector(getStudyInspectorSnapshot({ scope: 'current_condition', recentLimit: 10 }));
+      setTelemetryInspector(
+        getStudyInspectorSnapshot({ scope: 'current_condition', recentLimit: 10 }),
+      );
     }, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -96,10 +98,14 @@ export function useStudySessionControls() {
       try {
         await newChat();
       } catch {
-        setNotice('Condition changed, but creating a fresh chat failed. Start a new chat manually.');
+        setNotice(
+          'Condition changed, but creating a fresh chat failed. Start a new chat manually.',
+        );
       }
       setStudySessionInfo(getSessionSummary());
-      setTelemetryInspector(getStudyInspectorSnapshot({ scope: 'current_condition', recentLimit: 10 }));
+      setTelemetryInspector(
+        getStudyInspectorSnapshot({ scope: 'current_condition', recentLimit: 10 }),
+      );
     },
     [isStreaming, newChat, setNotice, setUI, studyCondition, studySessionInfo],
   );
@@ -110,7 +116,9 @@ export function useStudySessionControls() {
     if (getSessionSummary()) return;
     initializeSession(trimmedId, studyCondition);
     setStudySessionInfo(getSessionSummary());
-    setTelemetryInspector(getStudyInspectorSnapshot({ scope: 'current_condition', recentLimit: 10 }));
+    setTelemetryInspector(
+      getStudyInspectorSnapshot({ scope: 'current_condition', recentLimit: 10 }),
+    );
   }, [participantId, studyCondition]);
 
   const onResetForNextParticipant = useCallback(async () => {

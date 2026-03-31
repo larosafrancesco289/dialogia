@@ -139,7 +139,7 @@ export function useTopHeaderState(): TopHeaderState {
     [tutorModelMeta, tutorModelId],
   );
 
-  const { learningPlan, hasPlan, planProgress } = planCallbacks;
+  const { learningPlan, planProgress } = planCallbacks;
   const currentNode = useMemo(
     () => (learningPlan ? getNextNode(learningPlan) : null),
     [learningPlan],

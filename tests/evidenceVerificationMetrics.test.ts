@@ -410,8 +410,7 @@ test('verifyEvidenceTokenOverlap rejects too-short evidence', () => {
 });
 
 test('verifyEvidenceSemanticSimilarity catches paraphrase missed by strict overlap', () => {
-  const transcript =
-    'Tutor: You isolate the variable by applying inverse operations step by step.';
+  const transcript = 'Tutor: You isolate the variable by applying inverse operations step by step.';
   const evidence = 'Use opposite operations to isolate the variable gradually.';
 
   assert.equal(verifyEvidenceSemanticSimilarity(evidence, transcript), true);

@@ -152,6 +152,5 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
       });
       void get().persistTutorStateForMessage(messageId);
     },
-
   } satisfies Partial<StoreState>;
 }

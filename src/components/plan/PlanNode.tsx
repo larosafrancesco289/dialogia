@@ -75,12 +75,10 @@ export function PlanNode({
 
   const handleMarkKnown = useCallback(() => {
     setPendingAction({ type: 'mark_known', nodeId: node.id, nodeName: node.name });
-    setPendingCallback(
-      () => () => {
-        onInteraction?.(node.id, 'mark_known');
-        onMarkKnown?.(node.id);
-      },
-    );
+    setPendingCallback(() => () => {
+      onInteraction?.(node.id, 'mark_known');
+      onMarkKnown?.(node.id);
+    });
   }, [node.id, node.name, onInteraction, onMarkKnown]);
 
   const handleSliderCommit = useCallback(
@@ -93,12 +91,10 @@ export function PlanNode({
         from: mastery?.confidence ?? 0,
         to: newConf,
       });
-      setPendingCallback(
-        () => () => {
-          onInteraction?.(node.id, 'confidence_adjust');
-          onConfidenceAdjust?.(node.id, newConf, `Adjusted to ${value}%`);
-        },
-      );
+      setPendingCallback(() => () => {
+        onInteraction?.(node.id, 'confidence_adjust');
+        onConfidenceAdjust?.(node.id, newConf, `Adjusted to ${value}%`);
+      });
     },
     [node.id, node.name, mastery?.confidence, onConfidenceAdjust, onInteraction],
   );
@@ -117,24 +113,20 @@ export function PlanNode({
         nodeName: node.name,
         misconceptionDesc: miscDesc,
       });
-      setPendingCallback(
-        () => () => {
-          onInteraction?.(node.id, 'misconception_resolve');
-          onMisconceptionResolve?.(node.id, miscId);
-        },
-      );
+      setPendingCallback(() => () => {
+        onInteraction?.(node.id, 'misconception_resolve');
+        onMisconceptionResolve?.(node.id, miscId);
+      });
     },
     [node.id, node.name, onInteraction, onMisconceptionResolve],
   );
 
   const handleFlagForReview = useCallback(() => {
     setPendingAction({ type: 'flag_review', nodeId: node.id, nodeName: node.name });
-    setPendingCallback(
-      () => () => {
-        onInteraction?.(node.id, 'flag_for_review');
-        onFlagForReview?.(node.id);
-      },
-    );
+    setPendingCallback(() => () => {
+      onInteraction?.(node.id, 'flag_for_review');
+      onFlagForReview?.(node.id);
+    });
   }, [node.id, node.name, onFlagForReview, onInteraction]);
 
   function getDotClass(): string {

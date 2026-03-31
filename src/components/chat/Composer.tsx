@@ -93,6 +93,27 @@ export function Composer({
   const searchEnabled = useChatStore(selectSearchEnabled);
   const searchProvider = useChatStore(selectSearchProvider);
   const resolvedTurnSettings = useChatStore(selectResolvedTurnSettings);
+  const tierDefaultModelId = useTierDefaultModelId();
+  const modelId = useChatStore(
+    useMemo(() => selectResolvedModelId(tierDefaultModelId), [tierDefaultModelId]),
+  );
+  const modelMeta = findModelById(models, modelId);
+  const canVision = isVisionSupported(modelMeta);
+  const canAudio = isAudioInputSupported(modelMeta);
+  const supportsReasoning = isReasoningSupported(modelMeta);
+
+  const {
+    attachments,
+    attachmentsHint,
+    fileInputRef,
+    handleFileInputChange,
+    handlePaste,
+    handleDrop,
+    openFilePicker,
+    removeAttachment,
+    resetAttachments,
+    replaceAttachments,
+  } = useComposerAttachments({ canVision, canAudio });
 
   // Sync focus state to store for mobile tab bar visibility
   useEffect(() => {
@@ -117,7 +138,7 @@ export function Composer({
       replaceAttachments(recoveredAttachmentsByScopeRef.current[draftScopeKey] ?? []);
       delete recoveredAttachmentsByScopeRef.current[draftScopeKey];
     }
-  }, [draftScopeKey, text]);
+  }, [draftScopeKey, replaceAttachments, text]);
 
   // Consume pending composer draft from store (e.g., from quick start buttons)
   useEffect(() => {
@@ -128,28 +149,6 @@ export function Composer({
     // Focus the textarea after filling
     setTimeout(() => taRef.current?.focus(), 0);
   }, [composerDraft, setUI]);
-
-  const tierDefaultModelId = useTierDefaultModelId();
-  const modelId = useChatStore(
-    useMemo(() => selectResolvedModelId(tierDefaultModelId), [tierDefaultModelId]),
-  );
-  const modelMeta = findModelById(models, modelId);
-  const canVision = isVisionSupported(modelMeta);
-  const canAudio = isAudioInputSupported(modelMeta);
-  const supportsReasoning = isReasoningSupported(modelMeta);
-
-  const {
-    attachments,
-    attachmentsHint,
-    fileInputRef,
-    handleFileInputChange,
-    handlePaste,
-    handleDrop,
-    openFilePicker,
-    removeAttachment,
-    resetAttachments,
-    replaceAttachments,
-  } = useComposerAttachments({ canVision, canAudio });
 
   const { handleSubmit } = useComposerShortcuts({
     chat,

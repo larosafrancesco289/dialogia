@@ -191,7 +191,7 @@ export class LLMUserSimulator {
       if (context.learnerModelEditable) {
         if (this.toolDefinitions.length > 0) {
           cues.push(
-            'If a score genuinely does not match your understanding — noticeably too high or too low — use the tool to correct it (adjust_mastery, flag_for_review, or resolve_misconception once corrected). Do this sparingly: only when a score is clearly wrong, not every turn. Never use mark_topic_known on a topic where you have a known misconception — you still need to learn it. When you use a tool, always also reply to the tutor\'s message in the same response.',
+            "If a score genuinely does not match your understanding — noticeably too high or too low — use the tool to correct it (adjust_mastery, flag_for_review, or resolve_misconception once corrected). Do this sparingly: only when a score is clearly wrong, not every turn. Never use mark_topic_known on a topic where you have a known misconception — you still need to learn it. When you use a tool, always also reply to the tutor's message in the same response.",
           );
         } else {
           cues.push(

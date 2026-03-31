@@ -308,7 +308,7 @@ function hashText(text: string): number {
     h ^= text.charCodeAt(i);
     h = Math.imul(h, 16777619);
   }
-  return (h >>> 0) || 1;
+  return h >>> 0 || 1;
 }
 
 function cosineSimilarity(a: Float64Array, b: Float64Array): number {
@@ -591,7 +591,9 @@ async function askQuestion(
     // Verify evidence: (1) quote exists in transcript, (2) quote is topically relevant
     const overlapOk = verifyEvidenceTokenOverlap(evidence, evidenceCorpus.text);
     const relevanceOk = verifyEvidenceRelevance(evidence, gap.evidenceKeywords ?? []);
-    const semanticOk = overlapOk ? true : verifyEvidenceSemanticSimilarity(evidence, evidenceCorpus.text);
+    const semanticOk = overlapOk
+      ? true
+      : verifyEvidenceSemanticSimilarity(evidence, evidenceCorpus.text);
     const evidenceVerified = relevanceOk && (overlapOk || semanticOk);
 
     if (evidenceVerified) {
@@ -965,7 +967,8 @@ export function pairedTTest(group1: number[], group2: number[]): PairedTTestResu
   const df = n - 1;
 
   if (seDiff === 0) {
-    const t = meanDiff === 0 ? 0 : meanDiff > 0 ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+    const t =
+      meanDiff === 0 ? 0 : meanDiff > 0 ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
     const p = meanDiff === 0 ? 1 : 0;
     return {
       nPairs: n,
