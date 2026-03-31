@@ -85,7 +85,7 @@ export function AssistantMessage({
   onChooseRegenerateModel,
   setLightbox,
   attachments,
-  tutorEnabled,
+  tutorEnabled: _tutorEnabled,
   upperPanelsNode,
   tutorPanelNode,
 }: AssistantMessageProps) {

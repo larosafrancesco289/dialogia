@@ -269,7 +269,10 @@ function TelemetryInspectorCard({ inspector }: { inspector: StudyTelemetryInspec
         ) : (
           <div className="max-h-52 overflow-y-auto space-y-2">
             {recentEvents.map((event, index) => (
-              <div key={`${event.timestamp}-${index}`} className="rounded border border-[var(--rule-subtle)] p-2">
+              <div
+                key={`${event.timestamp}-${index}`}
+                className="rounded border border-[var(--rule-subtle)] p-2"
+              >
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-mono text-[var(--color-fg)]">{event.action}</span>
                   <span className="text-[var(--color-fg-muted)]">

@@ -234,7 +234,9 @@ async function main() {
   console.log('\n=== Checklist ===');
   for (const step of steps) {
     const badge = step.status === 'pass' ? 'PASS' : 'FAIL';
-    console.log(`${badge} ${step.name} (${step.durationMs}ms)${step.detail ? ` - ${step.detail}` : ''}`);
+    console.log(
+      `${badge} ${step.name} (${step.durationMs}ms)${step.detail ? ` - ${step.detail}` : ''}`,
+    );
   }
   console.log(`Report: ${reportPath}`);
 

@@ -98,8 +98,14 @@ test('getStudentToolDefinitions excludes plan-mutating tools when plan is not ed
   const allTools = getStudentToolDefinitions();
   const modelOnlyTools = getStudentToolDefinitions({ planEditable: false });
 
-  assert.equal(allTools.some((tool) => tool.function.name === 'mark_topic_known'), true);
-  assert.equal(modelOnlyTools.some((tool) => tool.function.name === 'mark_topic_known'), false);
+  assert.equal(
+    allTools.some((tool) => tool.function.name === 'mark_topic_known'),
+    true,
+  );
+  assert.equal(
+    modelOnlyTools.some((tool) => tool.function.name === 'mark_topic_known'),
+    false,
+  );
 });
 
 test('executeStudentToolCalls skips mark_topic_known when plan editability is disabled', async () => {

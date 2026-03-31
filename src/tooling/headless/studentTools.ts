@@ -109,7 +109,8 @@ export function getStudentToolDefinitions(opts?: { planEditable?: boolean }): To
   const allowPlanMutations = opts?.planEditable !== false;
   return STUDENT_TOOL_DEFINITIONS.filter(
     (definition) =>
-      allowPlanMutations || !PLAN_MUTATING_STUDENT_TOOLS.has(definition.function.name as StudentToolName),
+      allowPlanMutations ||
+      !PLAN_MUTATING_STUDENT_TOOLS.has(definition.function.name as StudentToolName),
   );
 }
 

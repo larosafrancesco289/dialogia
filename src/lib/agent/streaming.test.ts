@@ -103,7 +103,10 @@ test('streamFinal rebuilds multipart system prompt when stable split is provided
   assert.equal(systemMessage.content[0]?.text, systemStable);
   assert.deepEqual(systemMessage.content[0]?.cache_control, { type: 'ephemeral' });
   assert.equal(systemMessage.content[1]?.type, 'text');
-  assert.equal(systemMessage.content[1]?.text, `${systemDynamic}\n\nSources:\n- https://example.com`);
+  assert.equal(
+    systemMessage.content[1]?.text,
+    `${systemDynamic}\n\nSources:\n- https://example.com`,
+  );
 
   const planningPrefix = capturedMessages.find((msg) => msg.role === 'assistant');
   assert.ok(planningPrefix, 'expected assistant prefix message');

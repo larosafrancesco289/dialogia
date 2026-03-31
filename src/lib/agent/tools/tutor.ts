@@ -151,9 +151,9 @@ export async function applyTutorToolCall(opts: {
 
   const currentMessageTutor: TutorToolContext['currentMessageTutor'] = () => {
     const state = get();
-    return (state?.ui?.tutor?.byMessageId?.[assistantMessage.id] as
+    return state?.ui?.tutor?.byMessageId?.[assistantMessage.id] as
       | import('@/lib/types').MessageTutor
-      | undefined);
+      | undefined;
   };
 
   const context: TutorToolContext = {

@@ -1153,17 +1153,21 @@ async function runSingleAblation(
         ? generateModelSummary(latestLearnerModel, currentPlan)
         : undefined;
 
-    const studentTurn = await studentSim.respondWithTools(tutorMessage, {
-      planSummary,
-      planEditable: conditionConfig.planEditable,
-      learnerModelSummary,
-      learnerModelEditable: conditionConfig.learnerModelEditable,
-      turn,
-    }, {
-      // Two-phase flow replaces tool-only fallback text with a real follow-up
-      // response, so fallback scaffolding should not be stored in history.
-      skipHistoryForToolOnlyFallback: true,
-    });
+    const studentTurn = await studentSim.respondWithTools(
+      tutorMessage,
+      {
+        planSummary,
+        planEditable: conditionConfig.planEditable,
+        learnerModelSummary,
+        learnerModelEditable: conditionConfig.learnerModelEditable,
+        turn,
+      },
+      {
+        // Two-phase flow replaces tool-only fallback text with a real follow-up
+        // response, so fallback scaffolding should not be stored in history.
+        skipHistoryForToolOnlyFallback: true,
+      },
+    );
 
     const inferredStudentTools =
       conditionConfig.learnerModelEditable && studentTurn.toolCalls.length === 0
@@ -1228,7 +1232,9 @@ async function runSingleAblation(
         learnerModelSummary: updatedLearnerModelSummary,
         turn,
       });
-      console.log(`  [${runId}] Two-phase turn ${turn + 1}: text reply obtained after tool execution.`);
+      console.log(
+        `  [${runId}] Two-phase turn ${turn + 1}: text reply obtained after tool execution.`,
+      );
     } else {
       studentText = studentTurn.text.trim();
     }
@@ -2609,9 +2615,7 @@ export async function runAblationCli(argv: string[]) {
   const tutorModel =
     typeof args['tutor-model'] === 'string' ? args['tutor-model'] : DEFAULT_ABLATION_TUTOR_MODEL_ID;
   const studentModel =
-    typeof args['student-model'] === 'string'
-      ? args['student-model']
-      : 'x-ai/grok-4.1-fast';
+    typeof args['student-model'] === 'string' ? args['student-model'] : 'x-ai/grok-4.1-fast';
   const judgeModel =
     typeof args['judge-model'] === 'string' ? args['judge-model'] : 'anthropic/claude-haiku-4.5';
   const outputDir = typeof args.out === 'string' ? args.out : 'tmp/ablation';
@@ -2898,7 +2902,9 @@ export async function runAblationCli(argv: string[]) {
     );
     process.exit(1);
   } else if (manipulationWarnings.length > 0) {
-    console.warn('\nWarning: Manipulation integrity issues detected (non-strict mode, continuing):');
+    console.warn(
+      '\nWarning: Manipulation integrity issues detected (non-strict mode, continuing):',
+    );
     for (const warning of manipulationWarnings) {
       console.warn(`  - ${warning}`);
     }

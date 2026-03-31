@@ -22,15 +22,20 @@ function normalizeNodeId(id: string): string {
 }
 
 function normalizeNodeText(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 function tokenize(text: string): string[] {
-  return normalizeNodeText(text)
-    .split(' ')
-    .map((t) => t.trim())
-    // Keep multi-char tokens plus single-digit numeric tokens (e.g., "topic 2").
-    .filter((t) => t.length > 1 || /^\d$/.test(t));
+  return (
+    normalizeNodeText(text)
+      .split(' ')
+      .map((t) => t.trim())
+      // Keep multi-char tokens plus single-digit numeric tokens (e.g., "topic 2").
+      .filter((t) => t.length > 1 || /^\d$/.test(t))
+  );
 }
 
 function tokenOverlapScore(a: string[], b: string[]): number {
