@@ -48,9 +48,9 @@ const KNOWN_ANTHROPIC_PRICING: Record<
   string,
   { prompt: number; completion: number; currency: string }
 > = {
-  'claude-opus-4-6': { prompt: 5, completion: 25, currency: 'usd' },
-  'claude-sonnet-4-6': { prompt: 3, completion: 15, currency: 'usd' },
-  'claude-haiku-4-5': { prompt: 1, completion: 5, currency: 'usd' },
+  'claude-opus-4-6': { prompt: 0.000005, completion: 0.000025, currency: 'usd' },
+  'claude-sonnet-4-6': { prompt: 0.000003, completion: 0.000015, currency: 'usd' },
+  'claude-haiku-4-5': { prompt: 0.000001, completion: 0.000005, currency: 'usd' },
 };
 
 function normalizeSlug(model: string): string {
