@@ -47,3 +47,69 @@ test('buildAnthropicBody preserves function tools alongside web search', () => {
     'web_search_20250305',
   );
 });
+
+test('buildAnthropicBody enables top-level automatic caching for supported Anthropic models', () => {
+  const body = buildAnthropicBody({
+    model: 'anthropic/claude-sonnet-4.6',
+    messages: [
+      { role: 'system', content: 'You are helpful.' },
+      { role: 'user', content: 'Hello' },
+    ],
+    stream: false,
+    enableAutomaticCaching: true,
+  });
+
+  assert.deepEqual(body.cache_control, { type: 'ephemeral' });
+});
+
+test('buildAnthropicBody preserves assistant text block cache_control markers', () => {
+  const body = buildAnthropicBody({
+    model: 'anthropic/claude-sonnet-4.6',
+    messages: [
+      { role: 'user', content: 'First turn' },
+      {
+        role: 'assistant',
+        content: [
+          { type: 'text', text: 'Cached assistant turn', cache_control: { type: 'ephemeral' } },
+        ],
+      },
+      { role: 'user', content: 'Follow-up' },
+    ],
+    stream: false,
+  });
+
+  assert.deepEqual(body.messages[1], {
+    role: 'assistant',
+    content: [
+      { type: 'text', text: 'Cached assistant turn', cache_control: { type: 'ephemeral' } },
+    ],
+  });
+});
+
+test('buildAnthropicBody skips automatic caching when four explicit breakpoints already exist', () => {
+  const body = buildAnthropicBody({
+    model: 'anthropic/claude-sonnet-4.6',
+    messages: [
+      {
+        role: 'system',
+        content: [
+          { type: 'text', text: 'System A', cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: 'System B', cache_control: { type: 'ephemeral' } },
+        ],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'text', text: 'User A', cache_control: { type: 'ephemeral' } }],
+      },
+      {
+        role: 'assistant',
+        content: [{ type: 'text', text: 'Assistant A', cache_control: { type: 'ephemeral' } }],
+      },
+      { role: 'user', content: 'Follow-up' },
+    ],
+    stream: false,
+    enableAutomaticCaching: true,
+  });
+
+  assert.equal(body.cache_control, undefined);
+});

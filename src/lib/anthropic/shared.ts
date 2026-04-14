@@ -31,6 +31,7 @@ const DIRECT_TO_PUBLIC_MODEL_MAP = new Map<string, string>(
 
 const SNAPSHOT_MODEL_ID_RE = /^claude-[a-z0-9-]+-\d{8}$/;
 const PROMPT_CACHING_MODEL_ID_RE_LIST = [
+  /^claude-mythos-preview$/,
   /^claude-opus-4(?:-\d{8}|-[0-9](?:-\d{8})?)?$/,
   /^claude-sonnet-4(?:-\d{8}|-[0-9](?:-\d{8})?)?$/,
   /^claude-sonnet-3-7(?:-\d{8}|-latest)?$/,

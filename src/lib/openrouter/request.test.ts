@@ -43,3 +43,34 @@ test('buildChatBody treats effort none as a hard disable even with stale tokens'
   });
   assert.deepEqual(body.reasoning, { effort: 'none' });
 });
+
+test('buildChatBody preserves explicit cache_control message blocks for OpenRouter Anthropic routing', () => {
+  const body = buildChatBody({
+    model: 'anthropic/claude-sonnet-4.6',
+    stream: false,
+    messages: [
+      {
+        role: 'system',
+        content: [{ type: 'text', text: 'Stable preamble', cache_control: { type: 'ephemeral' } }],
+      },
+      {
+        role: 'assistant',
+        content: [
+          { type: 'text', text: 'Cached assistant turn', cache_control: { type: 'ephemeral' } },
+        ],
+      },
+      { role: 'user', content: 'Latest user turn' },
+    ],
+  });
+
+  assert.deepEqual(body.messages[0], {
+    role: 'system',
+    content: [{ type: 'text', text: 'Stable preamble', cache_control: { type: 'ephemeral' } }],
+  });
+  assert.deepEqual(body.messages[1], {
+    role: 'assistant',
+    content: [
+      { type: 'text', text: 'Cached assistant turn', cache_control: { type: 'ephemeral' } },
+    ],
+  });
+});
