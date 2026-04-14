@@ -223,7 +223,13 @@ export async function sendUserTurn({
   }
 
   if (currentChat.title === 'New Chat') {
-    triggerAsyncTitleGeneration(currentChat.id, content, get().renameChat.bind(get()), tier);
+    triggerAsyncTitleGeneration(
+      currentChat.id,
+      content,
+      get().renameChat.bind(get()),
+      tier,
+      primaryContext.auth.transport,
+    );
   }
 
   const runPerModel = (modelId: string) =>

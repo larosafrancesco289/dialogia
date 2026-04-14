@@ -668,3 +668,160 @@ test('executeStreamingTurn does not preserve incomplete draft when tools fail', 
   assert.ok(!finalMessage?.content.includes(incompleteDraft));
   assert.equal(persisted[persisted.length - 1]?.content, finalReply);
 });
+
+test('executeStreamingTurn omits follow-up user prompt after Anthropic tool results', async () => {
+  const chatId = 'chat-streaming-turn-anthropic-tool-results';
+  const model: ModelDescriptor = {
+    id: 'anthropic-direct/claude-haiku-4-5',
+    name: 'Claude Haiku 4.5',
+    context_length: 200000,
+    pricing: undefined,
+    raw: { supported_parameters: ['tools'] },
+    transport: 'anthropic',
+    transportModelId: 'claude-haiku-4-5-20251001',
+    providerDisplay: 'Anthropic',
+  };
+
+  const chat: Chat = {
+    id: chatId,
+    title: 'Tutor chat',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    settings: {
+      modelId: model.id,
+      generation: {},
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: false,
+        showDebugRawJson: false,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: {
+          enabled: true,
+          defaultModelId: model.id,
+          learningPlan: {
+            goal: 'Master linear equations',
+            generatedAt: Date.now(),
+            updatedAt: Date.now(),
+            version: 1,
+            nodes: [
+              {
+                id: 'node-1',
+                name: 'Solve one-step equations',
+                objectives: ['Solve x + a = b'],
+                prerequisites: [],
+                status: 'in_progress',
+              },
+            ],
+          },
+        },
+      },
+    },
+  };
+
+  const assistantMessage = createAssistantMessage({
+    id: 'assistant-anthropic-1',
+    chatId,
+    content: '',
+    model: model.id,
+    createdAt: Date.now(),
+  });
+
+  const { messagesById, messageIdsByChatId } = buildMessageIndex({
+    [chatId]: [assistantMessage],
+  });
+
+  const { state, set, get } = createTestStoreState({
+    chats: [chat],
+    messagesById,
+    messageIdsByChatId,
+    models: [model],
+    modelIndex: createModelIndex([model]),
+  });
+
+  const persisted: Message[] = [];
+  const capturedMessageRoles: string[][] = [];
+  let streamCallCount = 0;
+  const draftedAnswer =
+    'You nailed the first step. Keep isolating x, and then check your answer by substitution.';
+
+  const pipeline = createPipelineClient({
+    streamChatCompletion: async ({ callbacks, messages }) => {
+      streamCallCount += 1;
+      capturedMessageRoles.push(messages.map((message) => message.role));
+
+      if (streamCallCount === 1) {
+        callbacks?.onToken?.(draftedAnswer);
+        callbacks?.onDone?.(draftedAnswer, {
+          finishReason: 'tool_calls',
+          toolCalls: [
+            {
+              id: 'call_1',
+              type: 'function',
+              function: {
+                name: 'advance_topic',
+                arguments: '{}',
+              },
+            },
+          ],
+        });
+        return;
+      }
+
+      callbacks?.onDone?.('internal follow up', { finishReason: 'stop' });
+    },
+  });
+
+  const result = await executeStreamingTurn({
+    chat,
+    chatId,
+    assistantMessage,
+    messages: [
+      { role: 'system', content: 'You are a tutor.' },
+      { role: 'user', content: 'Teach me one-step equations.' },
+    ],
+    controller: new AbortController(),
+    turn: {
+      auth: buildTransportAuth({
+        transport: 'anthropic',
+        apiKey: 'test-key',
+        useProxy: false,
+      }),
+      set,
+      get,
+      models: [model],
+      modelIndex: state.modelIndex,
+      persistMessage: async (message) => {
+        persisted.push(message);
+      },
+    },
+    settings: {
+      modelId: model.id,
+      modelMeta: model,
+      caps: {
+        canReason: false,
+        canSee: false,
+        canAudio: false,
+        canImageOut: false,
+      },
+      generation: {},
+      searchEnabled: false,
+      searchProvider: 'openrouter',
+      tutorEnabled: true,
+      system: undefined,
+    },
+    toolDefinition: getTutorToolDefinitions(),
+    startBuffered: false,
+    userContent: 'Teach me one-step equations.',
+    combinedSystem: 'You are a tutor.',
+    pipeline,
+  });
+
+  assert.equal(streamCallCount, 2, 'Anthropic flow should short-circuit after tool round draft');
+  assert.equal(result.shortCircuited, true);
+  assert.deepEqual(capturedMessageRoles[1], ['system', 'user', 'assistant', 'tool']);
+  assert.equal(get().messagesById[assistantMessage.id]?.content, draftedAnswer);
+  assert.equal(persisted[persisted.length - 1]?.content, draftedAnswer);
+});

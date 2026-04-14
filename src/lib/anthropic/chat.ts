@@ -1,76 +1,238 @@
-/**
- * Minimal Anthropic Messages API client for judge evaluation.
- * Converts ModelMessage[] to Anthropic format and maps the response
- * back to ChatCompletion so the ablation runner can use it unchanged.
- */
-
+import { normalizeUsage } from '@/lib/api/normalizers';
+import { API_ERROR_CODES } from '@/lib/api/errors';
+import type { TransportChatParams } from '@/lib/transport/types';
 import type { ModelMessage } from '@/lib/transport/contracts';
 import type { ChatCompletion } from '@/lib/transport/completions';
+import { buildTransportAuth } from '@/lib/auth/transport';
+import { anMessages } from '@/lib/anthropic/http';
+import {
+  buildAnthropicBody,
+  type AnthropicAssistantMessageContent,
+  type AnthropicMessagesRequest,
+} from '@/lib/anthropic/request';
+import { buildAnthropicError, wrapAnthropicClientError } from '@/lib/anthropic/errors';
+import { resolveAnthropicDirectModelId } from '@/lib/anthropic/shared';
+import { isRecord } from '@/lib/utils/guards';
 
-/** Map documented Anthropic aliases to concrete API model IDs (or stable alias IDs). */
-const MODEL_ALIAS_MAP: Record<string, string> = {
-  // Current models
-  'claude-opus-4-6': 'claude-opus-4-6',
-  'claude-haiku-4.5': 'claude-haiku-4-5-20251001',
-  'claude-haiku-4-5': 'claude-haiku-4-5-20251001',
-  'claude-sonnet-4.5': 'claude-sonnet-4-5-20250929',
-  'claude-sonnet-4-5': 'claude-sonnet-4-5-20250929',
+const MAX_PAUSE_TURN_CONTINUATIONS = 5;
 
-  // Legacy aliases
-  'claude-opus-4-5': 'claude-opus-4-5-20251101',
-  'claude-opus-4-1': 'claude-opus-4-1-20250805',
-  'claude-sonnet-4-0': 'claude-sonnet-4-20250514',
-  'claude-3-7-sonnet-latest': 'claude-3-7-sonnet-latest',
-  'claude-opus-4-0': 'claude-opus-4-20250514',
-};
-
-const SNAPSHOT_MODEL_ID_RE = /^claude-[a-z0-9-]+-\d{8}$/;
-const MAX_EXPLICIT_CACHE_BREAKPOINTS = 4;
-const AUTOMATIC_CACHE_CONTROL = { type: 'ephemeral' } as const;
-const PROMPT_CACHING_MODEL_ID_RE_LIST = [
-  /^claude-opus-4(?:-\d{8}|-[0-9](?:-\d{8})?)?$/,
-  /^claude-sonnet-4(?:-\d{8}|-[0-9](?:-\d{8})?)?$/,
-  /^claude-sonnet-3-7(?:-\d{8}|-latest)?$/,
-  /^claude-3-7-sonnet(?:-\d{8}|-latest)?$/,
-  /^claude-haiku-4-5(?:-\d{8})?$/,
-  /^claude-haiku-3-5(?:-\d{8}|-latest)?$/,
-  /^claude-3-5-haiku(?:-\d{8}|-latest)?$/,
-  /^claude-haiku-3(?:-\d{8}|-latest)?$/,
-  /^claude-3-haiku(?:-\d{8}|-latest)?$/,
-  /^claude-opus-3(?:-\d{8}|-latest)?$/,
-  /^claude-3-opus(?:-\d{8}|-latest)?$/,
-] as const;
-
-function normalizeModelSlug(model: string): string {
-  let normalized = model.trim().toLowerCase();
-  if (normalized.startsWith('anthropic/')) {
-    normalized = normalized.slice('anthropic/'.length);
+function mapStopReason(value: unknown): string {
+  if (value === 'tool_use') return 'tool_calls';
+  if (
+    value === 'max_tokens' ||
+    value === 'model_context_window_exceeded' ||
+    value === 'pause_turn'
+  ) {
+    return 'length';
   }
-  return normalized;
+  if (value === 'refusal') return 'content_filter';
+  return 'stop';
 }
 
-export function resolveAnthropicDirectModelId(model: string): string | undefined {
-  const normalized = normalizeModelSlug(model);
-  if (!normalized) return undefined;
-
-  const mapped = MODEL_ALIAS_MAP[normalized];
-  if (mapped) return mapped;
-
-  const dottedVariant = normalized.replace(/\./g, '-');
-  const mappedDotted = MODEL_ALIAS_MAP[dottedVariant];
-  if (mappedDotted) return mappedDotted;
-
-  if (SNAPSHOT_MODEL_ID_RE.test(normalized)) return normalized;
-  if (SNAPSHOT_MODEL_ID_RE.test(dottedVariant)) return dottedVariant;
-
-  return undefined;
+function buildReasoningDetails(content: unknown) {
+  if (!Array.isArray(content)) return undefined;
+  const thinkingBlocks = content
+    .map((entry) => {
+      if (!isRecord(entry)) return null;
+      if (entry.type !== 'thinking') return null;
+      if (typeof entry.signature !== 'string') return null;
+      return {
+        type: 'thinking',
+        thinking: typeof entry.thinking === 'string' ? entry.thinking : '',
+        signature: entry.signature,
+      };
+    })
+    .filter(
+      (entry): entry is { type: 'thinking'; thinking: string; signature: string } => entry !== null,
+    );
+  if (thinkingBlocks.length === 0) return undefined;
+  return {
+    provider: 'anthropic',
+    thinkingBlocks,
+  };
 }
 
-function supportsAnthropicPromptCaching(model: string): boolean {
-  const normalized = normalizeModelSlug(model).replace(/\./g, '-');
-  return PROMPT_CACHING_MODEL_ID_RE_LIST.some((re) => re.test(normalized));
+function buildToolCalls(content: unknown) {
+  if (!Array.isArray(content)) return undefined;
+  const toolCalls = content
+    .map((entry, index) => {
+      if (!isRecord(entry) || entry.type !== 'tool_use') return null;
+      if (typeof entry.id !== 'string' || typeof entry.name !== 'string') return null;
+      const input = isRecord(entry.input) ? entry.input : {};
+      return {
+        id: entry.id,
+        type: 'function' as const,
+        function: {
+          name: entry.name,
+          arguments: JSON.stringify(input),
+        },
+        index,
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  return toolCalls.length > 0 ? toolCalls : undefined;
 }
 
+function buildTextContent(content: unknown): string {
+  if (!Array.isArray(content)) return '';
+  return content
+    .filter(
+      (entry): entry is { type: 'text'; text: string } =>
+        isRecord(entry) && entry.type === 'text' && typeof entry.text === 'string',
+    )
+    .map((entry) => entry.text)
+    .join('');
+}
+
+function appendContinuationMessage(
+  body: AnthropicMessagesRequest,
+  content: unknown,
+): AnthropicMessagesRequest {
+  if (!Array.isArray(content) || content.length === 0) return body;
+  return {
+    ...body,
+    messages: [
+      ...body.messages,
+      {
+        role: 'assistant',
+        content: content as AnthropicAssistantMessageContent,
+      },
+    ],
+  };
+}
+
+function sumUsage(
+  base: ReturnType<typeof normalizeUsage>,
+  next: ReturnType<typeof normalizeUsage>,
+) {
+  if (!base) return next;
+  if (!next) return base;
+  const add = (left?: number, right?: number) =>
+    typeof left === 'number' || typeof right === 'number' ? (left ?? 0) + (right ?? 0) : undefined;
+  return {
+    prompt_tokens: add(base.prompt_tokens, next.prompt_tokens),
+    completion_tokens: add(base.completion_tokens, next.completion_tokens),
+    total_tokens: add(base.total_tokens, next.total_tokens),
+    input_tokens: add(base.input_tokens, next.input_tokens),
+    output_tokens: add(base.output_tokens, next.output_tokens),
+  };
+}
+
+async function requestAnthropicMessageSequence(args: {
+  auth: TransportChatParams['auth'];
+  body: AnthropicMessagesRequest;
+  signal?: AbortSignal;
+  origin?: string;
+}): Promise<Record<string, unknown>> {
+  let body = args.body;
+  let finalData: Record<string, unknown> | undefined;
+  let continuations = 0;
+  let combinedUsage: ReturnType<typeof normalizeUsage> | undefined;
+
+  while (true) {
+    let res: Response;
+    try {
+      res = await anMessages({
+        auth: args.auth,
+        body,
+        signal: args.signal,
+        origin: args.origin,
+      });
+    } catch (error) {
+      throw wrapAnthropicClientError(error, API_ERROR_CODES.PROVIDER_CHAT_FAILED);
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      throw await buildAnthropicError(res, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key');
+    }
+    if (res.status === 429) {
+      throw await buildAnthropicError(res, API_ERROR_CODES.RATE_LIMITED, 'Rate limited');
+    }
+    if (!res.ok) {
+      throw await buildAnthropicError(res, API_ERROR_CODES.PROVIDER_CHAT_FAILED);
+    }
+
+    const data = (await res.json()) as Record<string, unknown>;
+    combinedUsage = sumUsage(combinedUsage, normalizeUsage(data.usage as Record<string, number>));
+    finalData = data;
+    if (data.stop_reason !== 'pause_turn') {
+      if (combinedUsage) finalData = { ...finalData, usage: combinedUsage };
+      return finalData;
+    }
+
+    if (continuations >= MAX_PAUSE_TURN_CONTINUATIONS) {
+      if (combinedUsage) finalData = { ...finalData, usage: combinedUsage };
+      return finalData;
+    }
+
+    const nextBody = appendContinuationMessage(body, data.content);
+    if (nextBody === body) {
+      if (combinedUsage) finalData = { ...finalData, usage: combinedUsage };
+      return finalData;
+    }
+    body = nextBody;
+    continuations += 1;
+  }
+}
+
+function mapAnthropicResponseToChatCompletion(
+  data: Record<string, unknown>,
+  requestedModel: string,
+): ChatCompletion {
+  const content = Array.isArray(data.content) ? data.content : [];
+  const toolCalls = buildToolCalls(content);
+  const reasoningDetails = buildReasoningDetails(content);
+
+  return {
+    id: typeof data.id === 'string' ? data.id : '',
+    object: 'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model: typeof data.model === 'string' ? data.model : requestedModel,
+    choices: [
+      {
+        index: 0,
+        finish_reason: mapStopReason(data.stop_reason),
+        message: {
+          role: 'assistant',
+          content: buildTextContent(content),
+          ...(toolCalls ? { tool_calls: toolCalls } : {}),
+          ...(reasoningDetails ? { reasoning_details: reasoningDetails } : {}),
+        },
+      },
+    ],
+    usage: normalizeUsage(data.usage as Record<string, number>),
+  };
+}
+
+export async function chatCompletion(params: TransportChatParams): Promise<ChatCompletion> {
+  const body = buildAnthropicBody({
+    model: params.model,
+    messages: params.messages,
+    stream: false,
+    temperature: params.temperature,
+    topP: params.topP,
+    maxTokens: params.maxTokens,
+    reasoningEffort: params.reasoningEffort,
+    reasoningTokens: params.reasoningTokens,
+    disableReasoning: params.disableReasoning,
+    tools: params.tools,
+    toolChoice: params.toolChoice,
+    plugins: params.plugins,
+    enableAutomaticCaching: true,
+  });
+  const data = await requestAnthropicMessageSequence({
+    auth: params.auth,
+    body,
+    signal: params.signal,
+    origin: params.origin,
+  });
+  return mapAnthropicResponseToChatCompletion(data, params.model);
+}
+
+/**
+ * Compatibility helper used by the ablation runner.
+ * This intentionally routes through the same request builder as the UI transport.
+ */
 export async function anthropicChatCompletion({
   apiKey,
   model,
@@ -86,134 +248,25 @@ export async function anthropicChatCompletion({
   maxTokens?: number;
   enableAutomaticCaching?: boolean;
 }): Promise<ChatCompletion> {
-  // Split system message from the rest
-  const systemMessages = messages.filter((m) => m.role === 'system');
-  const nonSystemMessages = messages.filter((m) => m.role !== 'system');
-
-  // Build system content -- use content block array when cache_control is present
-  // (for prompt caching), fall back to plain string for backwards compat.
-  type SystemTextBlock = { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } };
-  const systemBlocks: SystemTextBlock[] = [];
-  for (const msg of systemMessages) {
-    if (Array.isArray(msg.content)) {
-      for (const block of msg.content) {
-        if (block.type === 'text') {
-          systemBlocks.push(
-            block.cache_control
-              ? { type: 'text', text: block.text, cache_control: block.cache_control }
-              : { type: 'text', text: block.text },
-          );
-        }
-      }
-    } else if (typeof msg.content === 'string' && msg.content) {
-      systemBlocks.push({ type: 'text', text: msg.content });
-    }
-  }
-  const hasCacheControl = systemBlocks.some((b) => b.cache_control != null);
-
-  const toAnthropicMessageContent = (
-    content: ModelMessage['content'],
-  ): string | SystemTextBlock[] => {
-    if (Array.isArray(content)) {
-      if (content.length === 0) return '';
-
-      const textBlocks = content.filter(
-        (block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text',
-      );
-      const hasOnlyTextBlocks = textBlocks.length === content.length;
-      if (!hasOnlyTextBlocks) {
-        // Fallback to string to avoid sending OpenAI-style blocks Anthropic doesn't accept.
-        return JSON.stringify(content);
-      }
-
-      return textBlocks.map((block) =>
-        block.cache_control
-          ? { type: 'text', text: block.text, cache_control: block.cache_control }
-          : { type: 'text', text: block.text },
-      );
-    }
-    return typeof content === 'string' ? content : JSON.stringify(content);
-  };
-
-  const anthropicMessages = nonSystemMessages.map((m) => {
-    return { role: m.role as 'user' | 'assistant', content: toAnthropicMessageContent(m.content) };
+  const auth = buildTransportAuth({
+    transport: 'anthropic',
+    apiKey,
+    useProxy: false,
   });
-
-  const explicitCacheBreakpoints =
-    systemBlocks.reduce((count, block) => count + (block.cache_control ? 1 : 0), 0) +
-    anthropicMessages.reduce((count, message) => {
-      if (!Array.isArray(message.content)) return count;
-      return (
-        count +
-        message.content.reduce(
-          (messageCount, block) => messageCount + (block.cache_control ? 1 : 0),
-          0,
-        )
-      );
-    }, 0);
-
-  const resolvedModel = resolveAnthropicDirectModelId(model);
-  if (!resolvedModel) {
-    throw new Error(`Unsupported Anthropic direct model alias: ${model}`);
-  }
-
-  const body: Record<string, unknown> = {
-    model: resolvedModel,
-    messages: anthropicMessages,
-    max_tokens: maxTokens,
+  const body = buildAnthropicBody({
+    model,
+    messages,
+    stream: false,
     temperature,
-  };
-  if (systemBlocks.length > 0) {
-    body.system = hasCacheControl ? systemBlocks : systemBlocks.map((b) => b.text).join('\n\n');
-  }
-  if (
-    enableAutomaticCaching &&
-    supportsAnthropicPromptCaching(resolvedModel) &&
-    explicitCacheBreakpoints < MAX_EXPLICIT_CACHE_BREAKPOINTS
-  ) {
-    body.cache_control = AUTOMATIC_CACHE_CONTROL;
-  }
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(body),
+    maxTokens,
+    plugins: undefined,
+    enableAutomaticCaching,
   });
-
-  if (!res.ok) {
-    const errBody = await res.text();
-    throw new Error(`Anthropic API error ${res.status}: ${errBody}`);
-  }
-
-  const data = await res.json();
-
-  // Map Anthropic response → ChatCompletion shape
-  const textContent = (data.content ?? [])
-    .filter((b: { type: string }) => b.type === 'text')
-    .map((b: { text: string }) => b.text)
-    .join('');
-
-  return {
-    id: data.id ?? '',
-    object: 'chat.completion',
-    created: Math.floor(Date.now() / 1000),
-    model: data.model ?? model,
-    choices: [
-      {
-        index: 0,
-        finish_reason: data.stop_reason === 'end_turn' ? 'stop' : (data.stop_reason ?? 'stop'),
-        message: { role: 'assistant', content: textContent },
-      },
-    ],
-    usage: {
-      input_tokens: data.usage?.input_tokens,
-      output_tokens: data.usage?.output_tokens,
-      prompt_tokens: data.usage?.input_tokens,
-      completion_tokens: data.usage?.output_tokens,
-    },
-  };
+  const data = await requestAnthropicMessageSequence({
+    auth,
+    body,
+  });
+  return mapAnthropicResponseToChatCompletion(data, model);
 }
+
+export { resolveAnthropicDirectModelId } from '@/lib/anthropic/shared';

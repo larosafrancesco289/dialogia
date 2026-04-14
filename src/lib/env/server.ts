@@ -77,8 +77,16 @@ export function getServerOpenRouterFreeKey(): string | undefined {
   return readEnvValue(process.env.OPENROUTER_FREE_API_KEY);
 }
 
+export function getServerAnthropicKey(): string | undefined {
+  return readEnvValue(process.env.ANTHROPIC_API_KEY);
+}
+
 export function requireServerOpenRouterKey(): string {
   return requireServerEnv('OPENROUTER_API_KEY');
+}
+
+export function requireServerAnthropicKey(): string {
+  return requireServerEnv('ANTHROPIC_API_KEY');
 }
 
 export function getBraveSearchKey(): string | undefined {

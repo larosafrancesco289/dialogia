@@ -8,8 +8,12 @@ import type { TransportAuth } from '@/lib/auth/transport';
 import { getClientTier } from '@/lib/auth/tier.client';
 import type { AccessTier } from '@/lib/auth/types';
 import { logger } from '@/lib/logger';
+import type { ModelTransport } from '@/lib/types';
 
-const TITLE_MODEL = 'openai/gpt-oss-20b';
+const TITLE_MODELS: Record<ModelTransport, string> = {
+  openrouter: 'openai/gpt-oss-20b',
+  anthropic: 'anthropic-direct/claude-haiku-4-5',
+};
 const TITLE_MAX_TOKENS = 150; // Needs extra tokens for reasoning models
 const TITLE_TIMEOUT_MS = 15_000;
 
@@ -20,7 +24,10 @@ const TITLE_SYSTEM_PROMPT = `You are a chat title generator. Given the user's fi
  * Returns null on any failure (timeout, API error, invalid response).
  * Designed to be called fire-and-forget style.
  */
-export async function generateChatTitle(userMessage: string): Promise<string | null> {
+export async function generateChatTitle(
+  userMessage: string,
+  preferredTransport: ModelTransport = 'openrouter',
+): Promise<string | null> {
   if (!userMessage.trim()) {
     return null;
   }
@@ -36,14 +43,14 @@ export async function generateChatTitle(userMessage: string): Promise<string | n
   try {
     let auth: TransportAuth;
     try {
-      auth = requireTransportAuth('openrouter');
+      auth = requireTransportAuth(preferredTransport);
     } catch {
       clearTimeout(timeoutId);
       return null;
     }
     const response = await getChatCompletion()({
       auth,
-      model: TITLE_MODEL,
+      model: TITLE_MODELS[preferredTransport],
       messages,
       maxTokens: TITLE_MAX_TOKENS,
       temperature: 0.7,
@@ -76,6 +83,7 @@ export function triggerAsyncTitleGeneration(
   userMessage: string,
   renameChat: (id: string, title: string) => Promise<void>,
   tier?: AccessTier,
+  preferredTransport?: ModelTransport,
 ) {
   // Skip title generation for free tier - feature only available for paid tiers
   const resolvedTier = tier ?? getClientTier();
@@ -83,7 +91,7 @@ export function triggerAsyncTitleGeneration(
     return;
   }
 
-  generateChatTitle(userMessage)
+  generateChatTitle(userMessage, preferredTransport)
     .then((title) => {
       if (title) {
         return renameChat(chatId, title);

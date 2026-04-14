@@ -7,7 +7,15 @@ import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
 export function requireTransportAuth(transport: ModelTransport): TransportAuth {
   switch (transport) {
     case 'openrouter': {
-      const status = requireClientKeyOrProxy();
+      const status = requireClientKeyOrProxy('openrouter');
+      return buildTransportAuth({
+        transport,
+        apiKey: status.key,
+        useProxy: status.useProxy,
+      });
+    }
+    case 'anthropic': {
+      const status = requireClientKeyOrProxy('anthropic');
       return buildTransportAuth({
         transport,
         apiKey: status.key,
@@ -15,7 +23,7 @@ export function requireTransportAuth(transport: ModelTransport): TransportAuth {
       });
     }
     default: {
-      const status = requireClientKeyOrProxy();
+      const status = requireClientKeyOrProxy(transport);
       return buildTransportAuth({
         transport,
         apiKey: status.key,

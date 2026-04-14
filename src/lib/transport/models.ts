@@ -1,4 +1,4 @@
-export type ModelTransport = 'openrouter';
+export type ModelTransport = 'openrouter' | 'anthropic';
 
 export type ModelDescriptor = {
   id: string;

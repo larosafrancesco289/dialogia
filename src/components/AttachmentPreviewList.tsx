@@ -74,7 +74,7 @@ function renderPreview(attachment: DraftAttachment) {
         <div className="text-xs font-medium truncate" title={attachment.name || 'PDF'}>
           {attachment.name || 'PDF'}
         </div>
-        <div className="text-[11px] text-muted-foreground">Attached (parsed by OpenRouter)</div>
+        <div className="text-[11px] text-muted-foreground">Attached (parsed locally)</div>
       </div>
     </div>
   );

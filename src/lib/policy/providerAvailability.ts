@@ -3,6 +3,7 @@ import { getModelTransport } from '@/lib/providers';
 
 export const TRANSPORT_AVAILABILITY: Record<ModelTransport, boolean> = {
   openrouter: true,
+  anthropic: true,
 };
 
 export function isTransportAvailable(transport?: ModelTransport): boolean {

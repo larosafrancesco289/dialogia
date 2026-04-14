@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { clearAnthropicCachesForTest } from '@/lib/anthropic';
 import { clearOpenRouterCachesForTest } from '@/lib/openrouter';
 import { resetTransportRegistry } from '@/lib/transport/registry';
 
@@ -20,6 +21,7 @@ async function clearTable(table?: ClearableTable) {
 
 export async function resetGlobals() {
   resetTransportRegistry();
+  clearAnthropicCachesForTest();
   clearOpenRouterCachesForTest();
 
   await Promise.all([
