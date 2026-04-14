@@ -90,6 +90,12 @@
   opacity: 0;
 }
 
+/* Assistant actions sit near the left-aligned text, not the far right edge */
+.assistant .actions {
+  right: auto;
+  left: var(--space-3);
+}
+
 .messageCard :global(.markdown) {
   max-width: 72ch;
 }

@@ -170,7 +170,7 @@ export function ReasoningPanel({
     }
   };
 
-  if (!hasReasoning && !isStreaming) return null;
+  if (!hasReasoning && !isStreaming && !isDeepResearch) return null;
 
   return (
     <div className="mt-4 mb-2">

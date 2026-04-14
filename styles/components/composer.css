@@ -106,6 +106,76 @@
     border: 0 !important;
   }
 
+  /* Reasoning effort button — standalone icon in composer row */
+  .composer-btn-reasoning {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-editorial);
+    background: transparent;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-standard);
+    position: relative;
+  }
+  .composer-btn-reasoning:hover {
+    background: var(--color-muted);
+    color: var(--color-fg);
+  }
+  .composer-btn-reasoning.is-open {
+    background: var(--color-muted);
+    color: var(--color-fg);
+  }
+  .composer-btn-reasoning.is-active {
+    color: var(--color-accent);
+  }
+  .composer-btn-reasoning.is-active:not(.is-open):not(:hover) {
+    background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+  }
+  .composer-btn-reasoning:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .composer-btn-reasoning:active {
+    transform: scale(0.92);
+  }
+  .composer-btn-reasoning[data-effort='low'] {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 8%, transparent);
+  }
+  .composer-btn-reasoning[data-effort='medium'] {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-accent) 15%, transparent);
+  }
+  .composer-btn-reasoning[data-effort='high'] {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-accent) 18%, transparent);
+    animation: filament-pulse 2s ease-in-out infinite;
+  }
+  @keyframes filament-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.82;
+    }
+  }
+
+  /* Reasoning effort popover */
+  .composer-reasoning-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    z-index: 50;
+    min-width: 148px;
+    padding: var(--space-1);
+    background: var(--surface-paper);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-editorial);
+    box-shadow: var(--shadow-2);
+  }
+
   /* Overflow menu button — muted, small */
   .composer-btn-overflow {
     display: inline-flex;
@@ -133,6 +203,9 @@
   .composer-btn-overflow:focus-visible {
     box-shadow: 0 0 0 2px var(--focus-ring);
   }
+  .composer-btn-overflow:active {
+    transform: scale(0.92);
+  }
 
   /* Indicator dot for active states */
   .composer-btn-overflow__indicator {
@@ -157,17 +230,6 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-editorial);
     box-shadow: var(--shadow-2);
-    animation: composer-menu-enter 160ms var(--ease-emphasized);
-  }
-  @keyframes composer-menu-enter {
-    from {
-      opacity: 0;
-      transform: translateY(4px) scale(0.96);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
   }
 
   /* Menu items */
@@ -348,8 +410,37 @@
     transition: opacity var(--duration-fast) var(--ease-standard);
   }
 
+  /* Reasoning menu items — highlight & intensity dots */
+  .composer-reasoning-item {
+    position: relative;
+  }
+  .composer-effort-highlight {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+    pointer-events: none;
+  }
+  .composer-effort-dots {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    margin-left: auto;
+  }
+  .composer-effort-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--color-fg-muted);
+    transition: background var(--duration-fast) var(--ease-standard);
+  }
+  .composer-reasoning-item.is-active .composer-effort-dot {
+    background: var(--color-accent);
+  }
+
   /* Mobile adjustments */
   @media (max-width: 640px) {
+    .composer-btn-reasoning,
     .composer-btn-overflow,
     .composer-btn-send,
     .composer-btn-stop {
@@ -359,6 +450,11 @@
 
     .composer-overflow-menu {
       min-width: 200px;
+      right: -8px;
+    }
+
+    .composer-reasoning-menu {
+      min-width: 172px;
       right: -8px;
     }
 
