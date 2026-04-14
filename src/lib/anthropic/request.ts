@@ -12,13 +12,18 @@ import {
   defaultAnthropicThinkingBudget,
   resolveAnthropicDirectModelId,
   supportsAnthropicAdaptiveThinking,
+  supportsAnthropicPromptCaching,
   supportsAnthropicReasoning,
 } from '@/lib/anthropic/shared';
+
+type AnthropicCacheControl = {
+  type: 'ephemeral';
+};
 
 type AnthropicTextBlock = {
   type: 'text';
   text: string;
-  cache_control?: { type: 'ephemeral' };
+  cache_control?: AnthropicCacheControl;
 };
 
 type AnthropicThinkingBlock = {
@@ -102,6 +107,7 @@ export type AnthropicMessagesRequest = {
   messages: AnthropicMessageParam[];
   max_tokens: number;
   stream?: boolean;
+  cache_control?: AnthropicCacheControl;
   temperature?: number;
   top_p?: number;
   system?: string | AnthropicTextBlock[];
@@ -241,9 +247,20 @@ function convertAssistantContent(message: Extract<ModelMessage, { role: 'assista
   const thinkingBlocks = readAnthropicThinkingBlocks(message.reasoning_details);
   if (thinkingBlocks?.length) blocks.push(...thinkingBlocks);
 
-  const text = normalizeTextContent(message.content);
-  if (text.trim()) {
-    blocks.push({ type: 'text', text });
+  if (Array.isArray(message.content)) {
+    for (const block of message.content) {
+      if (block.type !== 'text' || !block.text.trim()) continue;
+      blocks.push(
+        block.cache_control
+          ? { type: 'text', text: block.text, cache_control: block.cache_control }
+          : { type: 'text', text: block.text },
+      );
+    }
+  } else {
+    const text = normalizeTextContent(message.content);
+    if (text.trim()) {
+      blocks.push({ type: 'text', text });
+    }
   }
 
   if (Array.isArray(message.tool_calls)) {
@@ -349,6 +366,28 @@ function convertMessages(messages: ModelMessage[]): {
   };
 }
 
+function countExplicitCacheBreakpoints(params: {
+  system?: string | AnthropicTextBlock[];
+  messages: AnthropicMessageParam[];
+}): number {
+  let count = 0;
+
+  if (Array.isArray(params.system)) {
+    for (const block of params.system) {
+      if (block.cache_control) count += 1;
+    }
+  }
+
+  for (const message of params.messages) {
+    if (!Array.isArray(message.content)) continue;
+    for (const block of message.content) {
+      if (block.type === 'text' && block.cache_control) count += 1;
+    }
+  }
+
+  return count;
+}
+
 function mapToolDefinitions(tools?: ToolDefinition[]): AnthropicToolDefinition[] | undefined {
   if (!Array.isArray(tools) || tools.length === 0) return undefined;
   return tools
@@ -450,6 +489,14 @@ export function buildAnthropicBody(
     max_tokens: params.maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
     stream: params.stream,
   };
+
+  if (
+    params.enableAutomaticCaching &&
+    supportsAnthropicPromptCaching(resolvedModel) &&
+    countExplicitCacheBreakpoints({ system, messages }) < 4
+  ) {
+    body.cache_control = { type: 'ephemeral' };
+  }
 
   if (typeof params.temperature === 'number') body.temperature = params.temperature;
   if (typeof params.topP === 'number') body.top_p = params.topP;

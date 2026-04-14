@@ -133,7 +133,7 @@ test('anthropicChatCompletion preserves text block arrays for cache_control', as
   ]);
 });
 
-test('anthropicChatCompletion does not invent unsupported top-level caching params', async () => {
+test('anthropicChatCompletion enables top-level automatic caching when requested', async () => {
   const originalFetch = globalThis.fetch;
   let body: Record<string, unknown> | undefined;
   globalThis.fetch = async (_input, init) => {
@@ -163,7 +163,7 @@ test('anthropicChatCompletion does not invent unsupported top-level caching para
     globalThis.fetch = originalFetch;
   }
 
-  assert.equal('cache_control' in (body ?? {}), false);
+  assert.deepEqual(body?.cache_control, { type: 'ephemeral' });
 });
 
 test('chatCompletion continues Anthropic pause_turn responses', async () => {
