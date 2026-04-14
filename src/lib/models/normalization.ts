@@ -11,8 +11,17 @@ const parsePricing = (
   value: unknown,
 ): { prompt?: number; completion?: number; currency?: string } | undefined => {
   if (!isRecord(value)) return undefined;
-  const prompt = typeof value.prompt === 'number' ? value.prompt : undefined;
-  const completion = typeof value.completion === 'number' ? value.completion : undefined;
+  const parseRate = (rate: unknown): number | undefined => {
+    if (typeof rate === 'number' && Number.isFinite(rate)) return rate;
+    if (typeof rate !== 'string') return undefined;
+    const trimmed = rate.trim();
+    if (!trimmed) return undefined;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
+  const prompt = parseRate(value.prompt);
+  const completion = parseRate(value.completion);
   const currency = typeof value.currency === 'string' ? value.currency : undefined;
   if (prompt == null && completion == null && currency == null) return undefined;
   return { prompt, completion, currency };

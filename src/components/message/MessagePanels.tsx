@@ -1,5 +1,4 @@
 'use client';
-import { findModelById, isReasoningSupported } from '@/lib/models';
 import type { Chat, Message, MessageTutor, ModelDescriptor, ToolCallLogEntry } from '@/lib/types';
 import type { UISearchState } from '@/lib/store/types';
 import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
@@ -31,6 +30,28 @@ export type MessagePanelsProps = {
   toolCalls?: ToolCallLogEntry[];
   highlightToolCalls?: boolean;
 };
+
+export function getReasoningPanelState({
+  message,
+  isStreaming,
+  lastMessageId,
+}: {
+  message: Message;
+  isStreaming: boolean;
+  lastMessageId?: string;
+}) {
+  const reasoningText = typeof message.reasoning === 'string' ? message.reasoning : '';
+  const hasReasoning = reasoningText.trim().length > 0;
+  const hasDeepResearch = !!(message.deepResearch?.trace && message.deepResearch.trace.length > 0);
+  const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
+
+  return {
+    reasoningText,
+    hasDeepResearch,
+    shouldRender: hasReasoning || hasDeepResearch,
+    shouldStream: isLatestAssistant && isStreaming && (hasReasoning || hasDeepResearch),
+  };
+}
 
 /**
  * Renders panels that appear ABOVE the message content:
@@ -92,9 +113,6 @@ export function MessagePanelsUpper({
 
   const reasoningPanel = buildReasoningPanel({
     message,
-    chat,
-    models,
-    autoReasoningModelIds,
     isStreaming,
     lastMessageId,
     reasoningExpanded,
@@ -140,58 +158,25 @@ export function TutorPanelSection({
 
 function buildReasoningPanel({
   message,
-  chat,
-  models,
-  autoReasoningModelIds,
   isStreaming,
   lastMessageId,
   reasoningExpanded,
   onToggleReasoning,
 }: {
   message: Message;
-  chat?: Chat | null;
-  models: ModelDescriptor[];
-  autoReasoningModelIds: Record<string, boolean>;
   isStreaming: boolean;
   lastMessageId?: string;
   reasoningExpanded: boolean;
   onToggleReasoning: () => void;
 }): React.ReactNode {
-  const reasoningText = typeof message.reasoning === 'string' ? (message.reasoning as string) : '';
   const deepResearch = message.deepResearch;
-  const hasDeepResearch = !!(deepResearch?.trace && deepResearch.trace.length > 0);
-  const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
-  const messageModelId = (message.model || chat?.settings?.modelId) ?? undefined;
-  const modelMeta = messageModelId ? findModelById(models, messageModelId) : undefined;
-  const modelAllowsReasoning = !!modelMeta && isReasoningSupported(modelMeta);
-  const hasReasoning = reasoningText.trim().length > 0;
+  const { reasoningText, shouldRender, shouldStream } = getReasoningPanelState({
+    message,
+    isStreaming,
+    lastMessageId,
+  });
 
-  const messageEffort = message.genSettings?.reasoningEffort;
-  const messageTokens = message.genSettings?.reasoningTokens;
-  const chatEffort = chat?.settings.generation.reasoningEffort;
-  const chatTokens = chat?.settings.generation.reasoningTokens;
-  const effortRequested =
-    typeof messageEffort === 'string'
-      ? messageEffort !== 'none'
-      : typeof chatEffort === 'string'
-        ? chatEffort !== 'none'
-        : false;
-  const tokensRequested =
-    typeof messageTokens === 'number'
-      ? messageTokens > 0
-      : typeof chatTokens === 'number'
-        ? chatTokens > 0
-        : false;
-  const isAutoReasoningModel = !!(messageModelId && autoReasoningModelIds[messageModelId]);
-  const allowStreaming =
-    (effortRequested || tokensRequested || isAutoReasoningModel) &&
-    modelAllowsReasoning &&
-    isLatestAssistant &&
-    isStreaming;
-
-  const shouldStream = isLatestAssistant && isStreaming && (allowStreaming || hasDeepResearch);
-
-  if (!hasReasoning && !allowStreaming && !hasDeepResearch) return null;
+  if (!shouldRender) return null;
 
   return (
     <ReasoningPanel

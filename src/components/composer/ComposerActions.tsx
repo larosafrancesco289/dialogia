@@ -9,11 +9,52 @@ import {
   EllipsisHorizontalIcon,
   CheckIcon,
   XMarkIcon,
+  LightBulbIcon,
 } from '@heroicons/react/24/outline';
+import { LightBulbIcon as LightBulbSolidIcon } from '@heroicons/react/24/solid';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import { useXAIVoice } from '@/lib/hooks/useXAIVoice';
 import { useCanUseVoice, useIsStudyTier } from '@/lib/auth/tierContext';
+import { springs } from '@/lib/mobile/springConfig';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
+
+const EFFORT_DOTS: Record<Effort, number> = {
+  none: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+};
+
+const menuContainerVariants = {
+  hidden: { opacity: 0, y: 6, scale: 0.96 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 400,
+      damping: 30,
+      staggerChildren: 0.03,
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: 4,
+    scale: 0.97,
+    transition: { duration: 0.12 },
+  },
+};
+
+const menuItemVariants = {
+  hidden: { opacity: 0, y: 4 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring' as const, stiffness: 400, damping: 30 },
+  },
+};
 
 export type ComposerActionsProps = {
   isStreaming: boolean;
@@ -48,12 +89,13 @@ export function ComposerActions({
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  // Check if voice mode is available for the current tier
+  const [reasoningOpen, setReasoningOpen] = useState(false);
+  const reasoningButtonRef = useRef<HTMLButtonElement | null>(null);
+  const reasoningMenuRef = useRef<HTMLDivElement | null>(null);
+
   const canUseVoice = useCanUseVoice();
-  // Check if user is in study tier (hide certain features)
   const isStudyTier = useIsStudyTier();
 
-  // Voice hook lifted here so it doesn't unmount when menu closes
   const addVoiceUserMessage = useChatStore((s) => s.addVoiceUserMessage);
   const addVoiceAssistantMessage = useChatStore((s) => s.addVoiceAssistantMessage);
   const ensureChatForVoice = useChatStore((s) => s.ensureChatForVoice);
@@ -62,7 +104,6 @@ export function ComposerActions({
     onAssistantMessage: (content: string) => addVoiceAssistantMessage(content),
   });
 
-  // Close menu on outside click
   useEffect(() => {
     if (!menuOpen) return;
     const handlePointerDown = (event: PointerEvent) => {
@@ -73,11 +114,38 @@ export function ComposerActions({
       const inTrigger = !!(trigger && target && trigger.contains(target));
       if (!inMenu && !inTrigger) setMenuOpen(false);
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
     document.addEventListener('pointerdown', handlePointerDown, true);
-    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleKeyDown, true);
+    };
   }, [menuOpen]);
 
-  // Voice state for surfacing active indicator
+  useEffect(() => {
+    if (!reasoningOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const menu = reasoningMenuRef.current;
+      const trigger = reasoningButtonRef.current;
+      const target = event.target as Node | null;
+      const inMenu = !!(menu && target && menu.contains(target));
+      const inTrigger = !!(trigger && target && trigger.contains(target));
+      if (!inMenu && !inTrigger) setReasoningOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setReasoningOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [reasoningOpen]);
+
   const isVoiceActive = useChatStore((s) => s.voice.isActive);
 
   if (isStreaming) {
@@ -95,12 +163,99 @@ export function ComposerActions({
     );
   }
 
+  const reasoningActive = !!currentEffort && currentEffort !== 'none';
+  const effortLabel = (e: Effort) =>
+    e === 'none' ? 'Off' : e.charAt(0).toUpperCase() + e.slice(1);
+
   return (
     <div className="flex shrink-0 items-center gap-1.5">
-      {/* Voice status pill — only visible when voice is active and tier allows it */}
       {canUseVoice && isVoiceActive && <VoiceStatusPill onStop={stopVoice} />}
 
-      {/* Overflow menu button — hide when voice is active */}
+      {!isVoiceActive && showReasoningMenu && (
+        <div className="relative">
+          <button
+            ref={reasoningButtonRef}
+            className={`composer-btn-reasoning ${reasoningActive ? 'is-active' : ''} ${reasoningOpen ? 'is-open' : ''}`}
+            data-effort={currentEffort ?? 'none'}
+            aria-haspopup="menu"
+            aria-expanded={reasoningOpen}
+            aria-label="Reasoning effort"
+            title={
+              reasoningActive ? `Reasoning: ${effortLabel(currentEffort!)}` : 'Reasoning effort'
+            }
+            onClick={() => {
+              setReasoningOpen((v) => !v);
+              setMenuOpen(false);
+            }}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={reasoningActive ? 'solid' : 'outline'}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.12 }}
+                className="flex items-center justify-center"
+              >
+                {reasoningActive ? (
+                  <LightBulbSolidIcon className="h-4 w-4" />
+                ) : (
+                  <LightBulbIcon className="h-4 w-4" />
+                )}
+              </motion.span>
+            </AnimatePresence>
+          </button>
+
+          <AnimatePresence>
+            {reasoningOpen && (
+              <motion.div
+                ref={reasoningMenuRef}
+                variants={menuContainerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                role="menu"
+                className="composer-reasoning-menu"
+                aria-label="Reasoning effort"
+              >
+                <motion.div variants={menuItemVariants} className="composer-overflow-label">
+                  Reasoning effort
+                </motion.div>
+                {(['none', 'low', 'medium', 'high'] as Effort[]).map((effort) => (
+                  <motion.button
+                    key={effort}
+                    variants={menuItemVariants}
+                    className={`composer-overflow-item composer-reasoning-item ${currentEffort === effort ? 'is-active' : ''}`}
+                    role="menuitemradio"
+                    aria-checked={currentEffort === effort}
+                    onClick={() => {
+                      void onSelectEffort(effort);
+                      setReasoningOpen(false);
+                    }}
+                  >
+                    {currentEffort === effort && (
+                      <motion.span
+                        layoutId="effort-highlight"
+                        className="composer-effort-highlight"
+                        transition={springs.snappy}
+                      />
+                    )}
+                    <span className="relative z-[1]">{effortLabel(effort)}</span>
+                    {EFFORT_DOTS[effort] > 0 && (
+                      <span className="composer-effort-dots relative z-[1]">
+                        {Array.from({ length: EFFORT_DOTS[effort] }, (_, i) => (
+                          <span key={i} className="composer-effort-dot" />
+                        ))}
+                      </span>
+                    )}
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
       {!isVoiceActive && (
         <div className="relative">
           <button
@@ -110,101 +265,80 @@ export function ComposerActions({
             aria-expanded={menuOpen}
             aria-label="More actions"
             title="More actions"
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={() => {
+              setMenuOpen((v) => !v);
+              setReasoningOpen(false);
+            }}
           >
             <EllipsisHorizontalIcon className="h-4 w-4" />
-            {/* Indicator dot when search is enabled (not shown for study tier) */}
             {searchEnabled && !isStudyTier && (
               <span className="composer-btn-overflow__indicator" aria-hidden="true" />
             )}
           </button>
 
-          {/* Overflow menu popover */}
-          {menuOpen && (
-            <div
-              ref={menuRef}
-              role="menu"
-              className="composer-overflow-menu"
-              aria-label="Composer actions"
-            >
-              {/* Attach files */}
-              <button
-                className="composer-overflow-item"
-                role="menuitem"
-                onClick={() => {
-                  openFilePicker();
-                  setMenuOpen(false);
-                }}
+          <AnimatePresence>
+            {menuOpen && (
+              <motion.div
+                ref={menuRef}
+                variants={menuContainerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                role="menu"
+                className="composer-overflow-menu"
+                aria-label="Composer actions"
               >
-                <PaperClipIcon className="h-4 w-4" />
-                <span>Attach files</span>
-              </button>
+                <motion.div variants={menuItemVariants}>
+                  <button
+                    className="composer-overflow-item"
+                    role="menuitem"
+                    onClick={() => {
+                      openFilePicker();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <PaperClipIcon className="h-4 w-4" />
+                    <span>Attach files</span>
+                  </button>
+                </motion.div>
 
-              {/* Web search toggle — hidden for study tier */}
-              {!isStudyTier && (
-                <button
-                  className={`composer-overflow-item ${searchEnabled ? 'is-active' : ''}`}
-                  role="menuitemcheckbox"
-                  aria-checked={searchEnabled}
-                  onClick={() => {
-                    toggleSearch();
-                  }}
-                >
-                  <MagnifyingGlassIcon className="h-4 w-4" />
-                  <span>Web search</span>
-                  {searchEnabled && <CheckIcon className="h-3.5 w-3.5 ml-auto" />}
-                </button>
-              )}
-
-              {/* Voice mode — only shown for developer tier */}
-              {canUseVoice && (
-                <VoiceMenuItem
-                  onStart={async () => {
-                    await ensureChatForVoice();
-                    await startVoice();
-                  }}
-                  onClose={() => setMenuOpen(false)}
-                />
-              )}
-
-              {/* Reasoning effort */}
-              {showReasoningMenu && (
-                <>
-                  <div className="composer-overflow-divider" />
-                  <div className="composer-overflow-label">Reasoning effort</div>
-                  {(['none', 'low', 'medium', 'high'] as Effort[]).map((effort) => (
+                {!isStudyTier && (
+                  <motion.div variants={menuItemVariants}>
                     <button
-                      key={effort}
-                      className={`composer-overflow-item ${currentEffort === effort ? 'is-active' : ''}`}
-                      role="menuitemradio"
-                      aria-checked={currentEffort === effort}
+                      className={`composer-overflow-item ${searchEnabled ? 'is-active' : ''}`}
+                      role="menuitemcheckbox"
+                      aria-checked={searchEnabled}
                       onClick={() => {
-                        void onSelectEffort(effort);
-                        setMenuOpen(false);
+                        toggleSearch();
                       }}
                     >
-                      <span>
-                        {effort === 'none'
-                          ? 'Off'
-                          : effort.charAt(0).toUpperCase() + effort.slice(1)}
-                      </span>
-                      {currentEffort === effort && <CheckIcon className="h-3.5 w-3.5 ml-auto" />}
+                      <MagnifyingGlassIcon className="h-4 w-4" />
+                      <span>Web search</span>
+                      {searchEnabled && <CheckIcon className="h-3.5 w-3.5 ml-auto" />}
                     </button>
-                  ))}
-                </>
-              )}
-            </div>
-          )}
+                  </motion.div>
+                )}
+
+                {canUseVoice && (
+                  <motion.div variants={menuItemVariants}>
+                    <VoiceMenuItem
+                      onStart={async () => {
+                        await ensureChatForVoice();
+                        await startVoice();
+                      }}
+                      onClose={() => setMenuOpen(false)}
+                    />
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
-      {/* Primary send button */}
       <button
         className={`composer-btn-send ${hasContent ? 'has-content' : ''}`}
-        onMouseDown={(e) => {
-          // Prevent blur of textarea before click registers
-          e.preventDefault();
-        }}
+        onMouseDown={(e) => e.preventDefault()}
         onClick={onSend}
         aria-label="Send message"
         title="Send"
@@ -216,7 +350,6 @@ export function ComposerActions({
   );
 }
 
-/** Voice status pill — visible in main row when voice is active */
 function VoiceStatusPill({ onStop }: { onStop: () => void }) {
   const isConnected = useChatStore((s) => s.voice.isConnected);
   const isListening = useChatStore((s) => s.voice.isListening);
@@ -253,7 +386,6 @@ function VoiceStatusPill({ onStop }: { onStop: () => void }) {
   );
 }
 
-/** Voice menu item */
 function VoiceMenuItem({
   onStart,
   onClose,
