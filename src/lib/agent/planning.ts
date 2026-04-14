@@ -19,6 +19,7 @@ import { runPlanningRound } from '@/lib/agent/planning/round';
 import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 import { getMessagesForChat } from '@/lib/messages/indexing';
+import { resolveModelTransport } from '@/lib/providers';
 
 function buildPlanningMessages(
   baseMessages: ModelMessage[],
@@ -73,6 +74,8 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
   let rounds = 0;
   const searchEnabled = settings.searchEnabled;
   const searchProvider = settings.searchProvider || 'openrouter';
+  const shouldAppendToolFollowUp =
+    resolveModelTransport(settings.modelId, settings.modelMeta) !== 'anthropic';
 
   // Learner model updates are now handled by the tutor via tool calls at meaningful moments,
   // rather than automatically every turn. This reduces latency and API costs.
@@ -165,8 +168,10 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
     });
     currentPlan = state.currentPlan ?? currentPlan;
 
-    const followup = followUpPrompt({ searchEnabled, searchProvider });
-    convo.push({ role: 'user', content: followup });
+    if (shouldAppendToolFollowUp) {
+      const followup = followUpPrompt({ searchEnabled, searchProvider });
+      convo.push({ role: 'user', content: followup });
+    }
     rounds += 1;
   }
 

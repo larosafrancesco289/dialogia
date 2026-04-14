@@ -186,6 +186,10 @@ export const RATE_LIMITS = {
   AUTH_STRICT: { limit: 5, windowMs: 60 * 60 * 1000 },
   /** Auth routes: 10 requests per hour */
   AUTH: { limit: 10, windowMs: 60 * 60 * 1000 },
+  /** Anthropic free/self-serve accounts are commonly limited to 5 RPM */
+  ANTHROPIC_CHAT: { limit: 5, windowMs: 60 * 1000 },
+  /** Model metadata is cacheable, so keep this modest too */
+  ANTHROPIC_MODELS: { limit: 10, windowMs: 60 * 1000 },
   /** Expensive API routes: 10 requests per minute */
   EXPENSIVE: { limit: 10, windowMs: 60 * 1000 },
   /** Standard API routes: 30 requests per minute */

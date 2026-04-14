@@ -1,5 +1,4 @@
 import type { StoreState } from '@/lib/store/types';
-import { fetchModels as fetchOpenRouterModels } from '@/lib/openrouter';
 import { requireTransportAuth } from '@/lib/auth/require';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
 import { computeZdrFilterCached } from '@/lib/policy/zdr/cache';
@@ -8,6 +7,7 @@ import { CURATED_MODELS } from '@/data/curatedModels';
 import { createModelIndex, EMPTY_MODEL_INDEX, formatModelLabel } from '@/lib/models';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
+import { getTransportClient } from '@/lib/transport/registry';
 import {
   NOTICE_INVALID_KEY,
   NOTICE_MISSING_CLIENT_KEY,
@@ -15,6 +15,13 @@ import {
 } from '@/lib/store/notices';
 import { applyNextOverrides, readNextOverrides } from '@/lib/ui/next';
 import { notify } from '@/lib/store/notify';
+import type { ModelTransport } from '@/lib/types';
+
+const SUPPORTED_MODEL_TRANSPORTS: ModelTransport[] = ['openrouter', 'anthropic'];
+
+function getModelTransportNoticeLabel(transport: ModelTransport): string {
+  return transport === 'anthropic' ? 'Anthropic' : 'OpenRouter';
+}
 
 export const createModelSlice = createStoreSlice((set, get) => {
   let isLoadingModels = false;
@@ -27,74 +34,131 @@ export const createModelSlice = createStoreSlice((set, get) => {
 
     async loadModels(_opts?: { showErrors?: boolean }) {
       if (isLoadingModels) return;
-      let openrouterAuth = null;
-      try {
-        openrouterAuth = requireTransportAuth('openrouter');
-      } catch {
-        openrouterAuth = null;
-      }
-      if (!openrouterAuth) {
+      const authEntries = SUPPORTED_MODEL_TRANSPORTS.flatMap((transport) => {
+        try {
+          return [[transport, requireTransportAuth(transport)] as const];
+        } catch {
+          return [];
+        }
+      });
+      if (authEntries.length === 0) {
         notify(get, NOTICE_MISSING_CLIENT_KEY);
         return;
       }
+
       isLoadingModels = true;
       try {
         const zdrOnly = get().ui.zdrOnly === true;
-        let openrouterModels: StoreState['models'] = [];
+        const modelsByTransport: Partial<Record<ModelTransport, StoreState['models']>> = {};
         const noticeSegments: string[] = [];
         let fallbackModelId: string | undefined;
         let defaultModelAvailable = false;
-        try {
-          openrouterModels = await fetchOpenRouterModels(openrouterAuth);
-          const availableIds = new Set(openrouterModels.map((model) => model.id));
-          const missingCurated = CURATED_MODELS.filter((entry) => !availableIds.has(entry.id));
-          if (missingCurated.length > 0) {
-            noticeSegments.push(
-              `Unavailable curated models: ${missingCurated
-                .map((entry) => entry.name || entry.id)
-                .join(', ')}`,
-            );
-          }
 
-          defaultModelAvailable = availableIds.has(DEFAULT_MODEL_ID);
-          if (!defaultModelAvailable && openrouterModels.length > 0 && !fallbackModelId) {
-            const fallback = openrouterModels[0];
-            fallbackModelId = fallback.id;
-            const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
-            noticeSegments.push(
-              `Default model ${DEFAULT_MODEL_NAME} unavailable. Using ${fallbackLabel}.`,
-            );
-          }
+        let zdrUnavailable = false;
+        let hadUnauthorizedFailure = false;
 
-          const { filter, filtered } = await computeZdrFilterCached(
-            openrouterModels,
-            zdrOnly ? 'enforce' : 'informational',
-            set,
-            get,
-          );
-          if (zdrOnly) {
-            if (filter.status === 'unknown') {
-              openrouterModels = [];
-              notify(get, ZDR_UNAVAILABLE_NOTICE);
-            } else {
-              openrouterModels = filtered;
+        await Promise.all(
+          authEntries.map(async ([transport, auth]) => {
+            if (transport === 'anthropic' && zdrOnly) {
+              modelsByTransport[transport] = [];
+              noticeSegments.push('Anthropic models are hidden while ZDR-only mode is enabled.');
+              return;
             }
-          } else {
-            openrouterModels = filtered;
-          }
-        } catch (error: unknown) {
-          openrouterModels = [];
-          if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
-            notify(get, NOTICE_INVALID_KEY);
-          }
+
+            try {
+              const transportClient = getTransportClient(transport);
+              let models = await transportClient.fetchModels(auth);
+
+              if (transport === 'openrouter') {
+                const { filter, filtered } = await computeZdrFilterCached(
+                  models,
+                  zdrOnly ? 'enforce' : 'informational',
+                  set,
+                  get,
+                );
+                if (zdrOnly) {
+                  if (filter.status === 'unknown') {
+                    zdrUnavailable = true;
+                    models = [];
+                  } else {
+                    models = filtered;
+                  }
+                } else {
+                  models = filtered;
+                }
+              }
+
+              modelsByTransport[transport] = models;
+            } catch (error: unknown) {
+              modelsByTransport[transport] = [];
+              if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
+                hadUnauthorizedFailure = true;
+                noticeSegments.push(
+                  `${getModelTransportNoticeLabel(transport)} models unavailable: invalid API key.`,
+                );
+                return;
+              }
+
+              if (isApiError(error) && error.code === API_ERROR_CODES.RATE_LIMITED) {
+                noticeSegments.push(
+                  `${getModelTransportNoticeLabel(transport)} models unavailable: rate limited.`,
+                );
+                return;
+              }
+
+              noticeSegments.push(
+                `${getModelTransportNoticeLabel(transport)} models unavailable right now.`,
+              );
+            }
+          }),
+        );
+
+        const mergedModels = SUPPORTED_MODEL_TRANSPORTS.flatMap(
+          (transport) => modelsByTransport[transport] ?? [],
+        );
+        const availableIds = new Set(mergedModels.map((model) => model.id));
+        const missingCurated = CURATED_MODELS.filter((entry) => !availableIds.has(entry.id));
+        if (missingCurated.length > 0) {
+          noticeSegments.push(
+            `Unavailable curated models: ${missingCurated
+              .map((entry) => entry.name || entry.id)
+              .join(', ')}`,
+          );
         }
 
-        if (openrouterModels.length === 0) {
+        defaultModelAvailable = availableIds.has(DEFAULT_MODEL_ID);
+        if (!defaultModelAvailable && mergedModels.length > 0 && !fallbackModelId) {
+          const fallback = mergedModels[0];
+          fallbackModelId = fallback.id;
+          const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
+          noticeSegments.push(
+            `Default model ${DEFAULT_MODEL_NAME} unavailable. Using ${fallbackLabel}.`,
+          );
+        }
+
+        if (mergedModels.length === 0) {
+          if (zdrOnly && zdrUnavailable) {
+            notify(get, ZDR_UNAVAILABLE_NOTICE);
+            return;
+          }
+          if (hadUnauthorizedFailure && authEntries.length === 1) {
+            notify(get, NOTICE_INVALID_KEY);
+            return;
+          }
+          if (noticeSegments.length > 0 && !get().ui.notice) {
+            notify(get, noticeSegments.join(' '));
+            return;
+          }
           if (!get().ui.notice) {
             notify(get, NOTICE_MODELS_UNAVAILABLE);
           }
           return;
         }
+
+        if (zdrOnly && zdrUnavailable && !(get().ui.notice || noticeSegments.length > 0)) {
+          notify(get, ZDR_UNAVAILABLE_NOTICE);
+        }
+
         if (noticeSegments.length > 0 || fallbackModelId) {
           set((s) => ({
             ui: (() => {
@@ -111,7 +175,7 @@ export const createModelSlice = createStoreSlice((set, get) => {
             notify(get, message);
           }
         }
-        set({ models: openrouterModels, modelIndex: createModelIndex(openrouterModels) });
+        set({ models: mergedModels, modelIndex: createModelIndex(mergedModels) });
       } finally {
         isLoadingModels = false;
       }

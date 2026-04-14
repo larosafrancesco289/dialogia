@@ -5,6 +5,7 @@ import { useChatStore } from '@/lib/store';
 import { useTier } from '@/lib/auth/tierContext';
 import { FREE_CURATED_MODELS } from '@/data/freeModels';
 import { CURATED_MODELS } from '@/data/curatedModels';
+import { filterCuratedModelsByAvailability } from '@/lib/models/curatedAvailability';
 import {
   canUseAllModelsForTier,
   getDefaultModelIdForTier,
@@ -41,14 +42,18 @@ export function useTierModels() {
  * Defaults to free models while loading to prevent paid model requests with free API key.
  */
 export function useTierCuratedModels() {
+  const allModels = useChatStore((s) => s.models);
   const { tier, isLoading } = useTier();
 
   return useMemo(() => {
     // Default to free models while loading to be safe
     const effectiveTier = isLoading ? 'free' : tier;
-    if (!isTransportAvailable('openrouter')) return [];
-    return canUseAllModelsForTier(effectiveTier) ? CURATED_MODELS : FREE_CURATED_MODELS;
-  }, [isLoading, tier]);
+    if (!isTransportAvailable('openrouter') && !isTransportAvailable('anthropic')) return [];
+    const curated = canUseAllModelsForTier(effectiveTier) ? CURATED_MODELS : FREE_CURATED_MODELS;
+    const availableIds = new Set((allModels || []).map((model) => model.id));
+    if (availableIds.size === 0) return [];
+    return filterCuratedModelsByAvailability(curated, availableIds);
+  }, [allModels, isLoading, tier]);
 }
 
 /**

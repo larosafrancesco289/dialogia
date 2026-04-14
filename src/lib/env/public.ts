@@ -1,12 +1,21 @@
 import { readBooleanValue, readEnvValue } from '@/lib/env/values';
 import { isProd } from '@/lib/env/runtime';
+import type { ModelTransport } from '@/lib/types';
 
 export function getPublicOpenRouterKey(): string | undefined {
   return readEnvValue(process.env.NEXT_PUBLIC_OPENROUTER_API_KEY);
 }
 
+export function getPublicAnthropicKey(): string | undefined {
+  return readEnvValue(process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY);
+}
+
 export function isOpenRouterProxyEnabled(): boolean {
   return readBooleanValue(process.env.NEXT_PUBLIC_USE_OR_PROXY, false);
+}
+
+export function isAnthropicProxyEnabled(): boolean {
+  return readBooleanValue(process.env.NEXT_PUBLIC_USE_ANTHROPIC_PROXY, false);
 }
 
 export function getPublicAppBaseUrl(): string | undefined {
@@ -42,12 +51,17 @@ export function getDefaultLogLevel(): string {
   return isProd() ? 'warn' : 'debug';
 }
 
-export function requireClientKeyOrProxy(): { key?: string; useProxy: boolean } {
-  const key = getPublicOpenRouterKey();
-  const useProxy = isOpenRouterProxyEnabled();
+export function requireClientKeyOrProxy(transport: ModelTransport = 'openrouter'): {
+  key?: string;
+  useProxy: boolean;
+} {
+  const key = transport === 'anthropic' ? getPublicAnthropicKey() : getPublicOpenRouterKey();
+  const useProxy =
+    transport === 'anthropic' ? isAnthropicProxyEnabled() : isOpenRouterProxyEnabled();
   if (!key && !useProxy) {
     const error = new Error('missing_client_key_or_proxy');
     (error as { code?: string }).code = 'missing_client_key_or_proxy';
+    (error as { transport?: ModelTransport }).transport = transport;
     throw error;
   }
   return { key, useProxy };

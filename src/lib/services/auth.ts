@@ -6,7 +6,7 @@ import type { ModelIndex } from '@/lib/models';
 import { resolveModelTransport } from '@/lib/providers';
 import type { ModelTransport } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
-import { NOTICE_MISSING_CLIENT_KEY } from '@/lib/store/notices';
+import { NOTICE_MISSING_ANTHROPIC_KEY, NOTICE_MISSING_CLIENT_KEY } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import { isRecord } from '@/lib/utils/guards';
 import type { TransportAuth } from '@/lib/auth/transport';
@@ -18,7 +18,8 @@ export type ModelAuthResolver = {
   ensureAll: (modelIds: Iterable<string>) => boolean;
 };
 
-const noticeForTransport = (_transport?: ModelTransport) => NOTICE_MISSING_CLIENT_KEY;
+const noticeForTransport = (transport?: ModelTransport) =>
+  transport === 'anthropic' ? NOTICE_MISSING_ANTHROPIC_KEY : NOTICE_MISSING_CLIENT_KEY;
 
 const notifyMissingAuth = (getState: StoreGetter, transport?: ModelTransport) => {
   const notice = noticeForTransport(transport);

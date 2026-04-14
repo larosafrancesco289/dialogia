@@ -21,6 +21,7 @@ import { applyToolExecutions } from '@/lib/agent/planning/apply';
 import { followUpPrompt } from '@/lib/agent/prompts/followUp';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { applyCacheBreakpoints, buildSystemMessage } from '@/lib/agent/cache';
+import { resolveModelTransport } from '@/lib/providers';
 import type {
   ModelMessage,
   PlanTurnResult,
@@ -245,6 +246,8 @@ export async function executeStreamingTurn(
   const disableReasoning = caps.canReason && !isReasoningRequested(generation);
   const searchEnabled = settings.searchEnabled;
   const searchProvider = settings.searchProvider || 'openrouter';
+  const shouldAppendToolFollowUp =
+    resolveModelTransport(settings.modelId, modelMeta) !== 'anthropic';
   const modalities = canImageOut ? (['image', 'text'] as Array<'image' | 'text'>) : undefined;
 
   // Streaming context for helper functions
@@ -450,7 +453,9 @@ export async function executeStreamingTurn(
     currentPlan = state.currentPlan ?? currentPlan;
 
     // Add follow-up prompt for next round
-    convo.push({ role: 'user', content: followUpPrompt({ searchEnabled, searchProvider }) });
+    if (shouldAppendToolFollowUp) {
+      convo.push({ role: 'user', content: followUpPrompt({ searchEnabled, searchProvider }) });
+    }
   };
 
   // First round: stream with UI callbacks connected
