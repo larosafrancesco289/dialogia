@@ -6,20 +6,17 @@ import {
   buildSettingsSavePatch,
   type SettingsSaveInput,
 } from '@/components/settings/saveSettings';
-import type { StoreState, UIState } from '@/lib/store/types';
-import type { Chat } from '@/lib/types';
+import type { StoreState } from '@/lib/store/types';
 
 export type SettingsAutoSaveState = {
   saveStatus: ReturnType<typeof useAutoSave>['status'];
   markDirty: () => void;
   createAutoSaveSetter: <T>(setter: (value: T) => void) => (value: T) => void;
+  flushPendingSave: () => Promise<void>;
 };
 
 export function useSettingsAutoSave(args: {
-  chat?: Chat;
-  ui: UIState;
   setUI: StoreState['setUI'];
-  updateChatSettings: StoreState['updateChatSettings'];
   system: SettingsSaveInput['system'];
   temperature: SettingsSaveInput['temperature'];
   topP: SettingsSaveInput['topP'];
@@ -33,10 +30,7 @@ export function useSettingsAutoSave(args: {
   tutorDefaultModel: SettingsSaveInput['tutorDefaultModel'];
 }): SettingsAutoSaveState {
   const {
-    chat,
-    ui,
     setUI,
-    updateChatSettings,
     system,
     temperature,
     topP,
@@ -52,8 +46,6 @@ export function useSettingsAutoSave(args: {
 
   const performSave = useCallback(() => {
     const patch = buildSettingsSavePatch({
-      chat,
-      ui,
       system,
       temperature,
       topP,
@@ -69,11 +61,8 @@ export function useSettingsAutoSave(args: {
     applySettingsSavePatch({
       patch,
       setUI,
-      updateChatSettings,
     });
   }, [
-    chat,
-    ui,
     system,
     temperature,
     topP,
@@ -86,10 +75,9 @@ export function useSettingsAutoSave(args: {
     showDebugRawJson,
     tutorDefaultModel,
     setUI,
-    updateChatSettings,
   ]);
 
-  const { status: saveStatus, markDirty } = useAutoSave({
+  const { status: saveStatus, markDirty, forceSave } = useAutoSave({
     delay: 600,
     onSave: performSave,
   });
@@ -104,5 +92,10 @@ export function useSettingsAutoSave(args: {
     [markDirty],
   );
 
-  return { saveStatus, markDirty, createAutoSaveSetter };
+  return {
+    saveStatus,
+    markDirty,
+    createAutoSaveSetter,
+    flushPendingSave: forceSave,
+  };
 }

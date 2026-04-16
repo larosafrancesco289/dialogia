@@ -8,6 +8,7 @@ import type {
   StoreState,
   UIState,
 } from '@/lib/store/types';
+import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
 
 const mergePersistedUiState = (
   current: UIState,
@@ -17,6 +18,7 @@ const mergePersistedUiState = (
   return {
     ...current,
     ...persisted,
+    chatDefaults: mergeChatDefaults(current.chatDefaults, persisted.chatDefaults),
     flags: { ...current.flags, ...(persisted.flags ?? {}) },
     debug: { ...current.debug, ...(persisted.debug ?? {}) },
     tutor: { ...current.tutor, ...(persisted.tutor ?? {}) },
@@ -46,6 +48,7 @@ export function buildPersistedState(state: StoreState): PersistedStoreState {
       sidebarCollapsed: state.ui.sidebarCollapsed,
       zdrOnly: state.ui.zdrOnly,
       routePreference: state.ui.routePreference,
+      chatDefaults: state.ui.chatDefaults,
       flags: {
         experimentalBrave: state.ui.flags.experimentalBrave,
         experimentalTutor: state.ui.flags.experimentalTutor,

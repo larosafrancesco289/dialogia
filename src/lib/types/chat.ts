@@ -67,6 +67,17 @@ export type ChatSettingsPatch = {
   };
 };
 
+export type ChatDefaults = {
+  modelId?: string;
+  parallelModels?: string[];
+  system?: string;
+  generation?: Partial<GenerationSettings>;
+  ui?: Partial<ChatUiSettings>;
+  features?: {
+    search?: Partial<ChatSearchSettings>;
+  };
+};
+
 export type Chat = {
   id: string;
   title: string;

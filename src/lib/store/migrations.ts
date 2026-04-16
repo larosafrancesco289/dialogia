@@ -86,25 +86,14 @@ export const migrateToV4 = (state: PersistedState): PersistedState => {
   return next;
 };
 
-export const migrateToV5 = (state: PersistedState): PersistedState => {
-  return state;
-};
+// V5 and V6 are no-ops — the version bumps invalidate stale caches
+// (chatDefaults was introduced as a persisted field at v6).
 
 export const migrate = (persistedState: unknown, version = 0): PersistedStoreState => {
   if (!isRecord(persistedState)) return {} as PersistedStoreState;
-  const currentVersion = version;
   let state: PersistedState = persistedState;
-  if (currentVersion < 2) {
-    state = migrateToV2(state);
-  }
-  if (currentVersion < 3) {
-    state = migrateToV3(state);
-  }
-  if (currentVersion < 4) {
-    state = migrateToV4(state);
-  }
-  if (currentVersion < 5) {
-    state = migrateToV5(state);
-  }
+  if (version < 2) state = migrateToV2(state);
+  if (version < 3) state = migrateToV3(state);
+  if (version < 4) state = migrateToV4(state);
   return state as PersistedStoreState;
 };

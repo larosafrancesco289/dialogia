@@ -25,6 +25,7 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
     ...EPHEMERAL_DEFAULTS,
     zdrOnly: getDefaultZdrOnly(),
     routePreference: getRoutePreferenceDefault(),
+    chatDefaults: undefined,
     flags: {
       experimentalBrave: false,
       experimentalTutor: true,

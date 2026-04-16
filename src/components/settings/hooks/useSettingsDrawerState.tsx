@@ -101,8 +101,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     }),
     shallow,
   );
-  const chat = chats.find((c) => c.id === selectedChatId);
-
+  const chat = chats.find((entry) => entry.id === selectedChatId);
   const {
     system,
     setSystem,
@@ -138,7 +137,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     setPresets,
     selectedPresetId,
     setSelectedPresetId,
-  } = useSettingsFormState({ chat, ui });
+  } = useSettingsFormState({ ui });
 
   const {
     drawerRef,
@@ -176,11 +175,8 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     isResetting,
   } = useStudySessionControls();
 
-  const { saveStatus, markDirty, createAutoSaveSetter } = useSettingsAutoSave({
-    chat,
-    ui,
+  const { saveStatus, markDirty, createAutoSaveSetter, flushPendingSave } = useSettingsAutoSave({
     setUI,
-    updateChatSettings,
     system,
     temperature,
     topP,
@@ -195,9 +191,20 @@ export function useSettingsDrawerState(): SettingsDrawerState {
   });
 
   const closeWithAnim = useCallback(() => {
+    void flushPendingSave();
     setClosing(true);
     window.setTimeout(() => setUI({ showSettings: false }), 190);
-  }, [setUI]);
+  }, [flushPendingSave, setUI]);
+
+  const onForceTutorModeChange = useCallback(
+    async (enabled: boolean) => {
+      setUI({ tutor: { forceMode: enabled } });
+      if (enabled && chat && !chat.settings.features.tutor.enabled) {
+        await updateChatSettings({ features: { tutor: { enabled: true } } });
+      }
+    },
+    [chat, setUI, updateChatSettings],
+  );
 
   // Prevent background scroll while drawer is open
   useEffect(() => {
@@ -259,10 +266,8 @@ export function useSettingsDrawerState(): SettingsDrawerState {
       case 'models-routing':
         return (
           <ModelsPanel
-            chat={chat}
             favoriteModelIds={favoriteModelIds}
             toggleFavoriteModel={toggleFavoriteModel}
-            updateChatSettings={updateChatSettings}
             setUI={setUI}
             loadModels={loadModels}
             hiddenModelIds={hiddenModelIds}
@@ -276,14 +281,12 @@ export function useSettingsDrawerState(): SettingsDrawerState {
       case 'chat':
         return (
           <ChatPanel
-            chat={chat}
             system={system}
             setSystem={createAutoSaveSetter(setSystem)}
             presets={presets}
             setPresets={setPresets}
             selectedPresetId={selectedPresetId}
             setSelectedPresetId={setSelectedPresetId}
-            updateChatSettings={updateChatSettings}
             renderSection={renderSection}
             temperatureStr={temperatureStr}
             setTemperatureStr={setTemperatureStr}
@@ -304,12 +307,11 @@ export function useSettingsDrawerState(): SettingsDrawerState {
       case 'tutor':
         return (
           <TutorPanel
-            chat={chat}
             renderSection={renderSection}
             experimentalTutor={experimentalTutor}
-            setUI={setUI}
             ui={ui}
-            updateChatSettings={updateChatSettings}
+            setUI={setUI}
+            onForceTutorModeChange={onForceTutorModeChange}
             tutorDefaultModel={tutorDefaultModel}
             setTutorDefaultModel={createAutoSaveSetter(setTutorDefaultModel)}
           />

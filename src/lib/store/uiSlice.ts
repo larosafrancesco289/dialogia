@@ -3,6 +3,7 @@ import { createStoreSlice } from '@/lib/store/createSlice';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
 import { applyNextOverrides } from '@/lib/ui/next';
 import { resolveNotice } from '@/lib/store/notices';
+import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
 
 export const createUiSlice = createStoreSlice((set, get) => {
   const initial: UIState = buildDefaultUIState();
@@ -11,11 +12,13 @@ export const createUiSlice = createStoreSlice((set, get) => {
     ui: initial,
     setUI(partial: UIStatePartial) {
       set((s) => {
-        const { overrides, flags, debug, search, tutor, plan, mobile, ...rest } = partial;
+        const { overrides, flags, debug, search, tutor, plan, mobile, chatDefaults, ...rest } =
+          partial;
         const hasOverrides = Object.prototype.hasOwnProperty.call(partial, 'overrides');
         let nextUi: UIState = {
           ...s.ui,
           ...rest,
+          chatDefaults: mergeChatDefaults(s.ui.chatDefaults, chatDefaults),
           flags: flags ? { ...s.ui.flags, ...flags } : s.ui.flags,
           debug: debug ? { ...s.ui.debug, ...debug } : s.ui.debug,
           search: search ? { ...s.ui.search, ...search } : s.ui.search,

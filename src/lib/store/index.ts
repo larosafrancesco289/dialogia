@@ -12,6 +12,8 @@ import { migrate } from '@/lib/store/migrations';
 import { STORE_MIGRATION_VERSION } from '@/lib/store/versions';
 import { buildPersistedState, mergePersistedState } from '@/lib/store/persistence';
 
+export const PERSISTED_STORE_KEY = 'dialogia-ui';
+
 export const useChatStore = createWithEqualityFn<StoreState>()(
   persist<StoreState, [], [], PersistedStoreState>(
     (set, get, store) => {
@@ -37,7 +39,7 @@ export const useChatStore = createWithEqualityFn<StoreState>()(
       };
     },
     {
-      name: 'dialogia-ui',
+      name: PERSISTED_STORE_KEY,
       version: STORE_MIGRATION_VERSION,
       migrate,
       merge: (persistedState, currentState) =>
