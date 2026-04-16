@@ -6,6 +6,7 @@ import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { repository } from '@/lib/db';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { bootstrapApp } from '@/lib/services/bootstrap';
+import { settingsEqual } from '@/lib/settings/equality';
 import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { Chat, ChatSettingsPatch } from '@/lib/types';
 import { getClientTier } from '@/lib/auth/tier.client';
@@ -17,28 +18,72 @@ import {
 } from '@/lib/messages/indexing';
 
 export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
+  const findLatestEmptyDraft = (state: StoreState): Chat | undefined => {
+    let candidate: Chat | undefined;
+    for (const chat of state.chats) {
+      if (chat.title !== 'New Chat') continue;
+      if (getMessagesForChat(state, chat.id).length > 0) continue;
+      const candidateStamp = candidate?.updatedAt ?? candidate?.createdAt ?? -Infinity;
+      const chatStamp = chat.updatedAt ?? chat.createdAt ?? 0;
+      if (!candidate || chatStamp > candidateStamp) candidate = chat;
+    }
+    return candidate;
+  };
+
   return {
     async initializeApp() {
       await bootstrapApp(set, get);
     },
 
     async newChat() {
+      const snapshot = get();
+      const reusableDraft = findLatestEmptyDraft(snapshot);
+
+      if (reusableDraft) {
+        const refreshedSettings = ChatService.buildSettingsForNewChat({
+          ui: snapshot.ui,
+          chats: snapshot.chats,
+          selectedChatId: snapshot.selectedChatId,
+          tier: getClientTier(),
+        });
+        const nextDraft = settingsEqual(reusableDraft.settings, refreshedSettings)
+          ? reusableDraft
+          : await ChatService.updateChat(
+              reusableDraft,
+              { settings: refreshedSettings },
+              repository,
+            );
+
+        set((s) => ({
+          chats: s.chats.map((c) => (c.id === nextDraft.id ? nextDraft : c)),
+          selectedChatId: nextDraft.id,
+          ui: resetEphemeralUi({
+            ...s.ui,
+            plan: { ...s.ui.plan, sheetOpen: false, sheetPlanOverride: null },
+          }),
+        }));
+
+        if (nextDraft.settings.features.tutor.enabled) {
+          primeTutorWelcome(nextDraft.id, { set, get });
+        }
+        return;
+      }
+
       const chat = await ChatService.createChat({
-        ui: get().ui,
-        chats: get().chats,
-        selectedChatId: get().selectedChatId,
+        ui: snapshot.ui,
+        chats: snapshot.chats,
+        selectedChatId: snapshot.selectedChatId,
         repository,
         tier: getClientTier(),
       });
 
-      set((s) => ({ chats: [chat, ...s.chats], selectedChatId: chat.id }));
-
-      if (chat.settings.features.tutor.enabled) primeTutorWelcome(chat.id, { set, get });
-
-      // Reset ephemeral "next" flags so they only apply to this new chat
       set((s) => ({
+        chats: [chat, ...s.chats],
+        selectedChatId: chat.id,
         ui: resetEphemeralUi(s.ui),
       }));
+
+      if (chat.settings.features.tutor.enabled) primeTutorWelcome(chat.id, { set, get });
     },
 
     selectChat(id: string) {

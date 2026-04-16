@@ -1,5 +1,6 @@
 import type {
   Chat,
+  ChatDefaults,
   ChatSettings,
   GenerationSettings,
   ModelDescriptor,
@@ -33,7 +34,7 @@ export function resolveNewChatSettings(opts: {
   fallbackModelId: string;
   fallbackSystem?: string;
   lastUsedModelId?: string;
-  previous?: ChatSettings;
+  defaults?: ChatDefaults;
   braveEnabled: boolean;
   tutorEnabled: boolean;
   forceTutorMode: boolean;
@@ -43,48 +44,41 @@ export function resolveNewChatSettings(opts: {
     fallbackModelId,
     fallbackSystem = DEFAULT_BASE_SYSTEM,
     lastUsedModelId,
-    previous,
+    defaults,
     braveEnabled,
     tutorEnabled,
     forceTutorMode,
   } = opts;
 
   const next = readNextOverrides(ui);
-  const previousGeneration = previous?.generation;
-  const previousUi = previous?.ui;
-  const previousFeatures = previous?.features;
-  const previousSearch = previousFeatures?.search;
-  const previousTutor = previousFeatures?.tutor;
+  const defaultGeneration = defaults?.generation;
+  const defaultUi = defaults?.ui;
+  const defaultSearch = defaults?.features?.search;
 
-  const baseModel = next.modelId ?? previous?.modelId ?? lastUsedModelId ?? fallbackModelId;
-  const system = next.system ?? previous?.system ?? fallbackSystem;
-  const temperature = next.temperature ?? previousGeneration?.temperature;
-  const topP = next.topP ?? previousGeneration?.topP;
-  const maxTokens = next.maxTokens ?? previousGeneration?.maxTokens;
-  const reasoningEffort =
-    next.reasoning?.effort ?? previousGeneration?.reasoningEffort ?? undefined;
-  const reasoningTokens = next.reasoning?.tokens ?? previousGeneration?.reasoningTokens;
+  const baseModel = next.modelId ?? defaults?.modelId ?? lastUsedModelId ?? fallbackModelId;
+  const system = next.system ?? defaults?.system ?? fallbackSystem;
+  const temperature = next.temperature ?? defaultGeneration?.temperature;
+  const topP = next.topP ?? defaultGeneration?.topP;
+  const maxTokens = next.maxTokens ?? defaultGeneration?.maxTokens;
+  const reasoningEffort = next.reasoning?.effort ?? defaultGeneration?.reasoningEffort ?? undefined;
+  const reasoningTokens = next.reasoning?.tokens ?? defaultGeneration?.reasoningTokens;
 
   const uiSettings = {
-    showThinkingByDefault: next.show?.thinking ?? previousUi?.showThinkingByDefault ?? false,
-    showStats: next.show?.stats ?? previousUi?.showStats ?? false,
-    showToolCallLog: next.show?.toolCallLog ?? previousUi?.showToolCallLog ?? false,
-    showDebugRawJson: next.show?.debugRawJson ?? previousUi?.showDebugRawJson ?? true,
+    showThinkingByDefault: next.show?.thinking ?? defaultUi?.showThinkingByDefault ?? false,
+    showStats: next.show?.stats ?? defaultUi?.showStats ?? false,
+    showToolCallLog: next.show?.toolCallLog ?? defaultUi?.showToolCallLog ?? false,
+    showDebugRawJson: next.show?.debugRawJson ?? defaultUi?.showDebugRawJson ?? true,
   };
 
-  const searchEnabled = next.search?.enabled ?? previousSearch?.enabled ?? false;
-  const nextProvider = next.search?.provider ?? previousSearch?.provider;
+  const searchEnabled = next.search?.enabled ?? defaultSearch?.enabled ?? false;
+  const nextProvider = next.search?.provider ?? defaultSearch?.provider;
   const searchProvider = braveEnabled && nextProvider === 'brave' ? 'brave' : 'openrouter';
 
-  const tutorEnabledSetting = forceTutorMode
-    ? true
-    : tutorEnabled
-      ? (next.tutorMode ?? previousTutor?.enabled ?? false)
-      : false;
+  const tutorEnabledSetting = forceTutorMode ? true : tutorEnabled ? !!next.tutorMode : false;
 
   const parallelFromUi = Array.isArray(next.parallelModels)
     ? next.parallelModels
-    : previous?.parallelModels;
+    : defaults?.parallelModels;
   const normalizedParallel = normalizeParallelModels(baseModel, parallelFromUi);
 
   const settings: ChatSettings = {
@@ -97,7 +91,7 @@ export function resolveNewChatSettings(opts: {
       maxTokens,
       reasoningEffort,
       reasoningTokens,
-      providerSort: previousGeneration?.providerSort,
+      providerSort: defaultGeneration?.providerSort,
     },
     ui: uiSettings,
     features: {
@@ -107,16 +101,6 @@ export function resolveNewChatSettings(opts: {
       },
       tutor: {
         enabled: tutorEnabledSetting,
-        defaultModelId: previousTutor?.defaultModelId,
-        researchMode: previousTutor?.researchMode,
-        toolBudget: previousTutor?.toolBudget,
-        learningPlan: previousTutor?.learningPlan,
-        planGenerated: previousTutor?.planGenerated,
-        planGenerationModel: previousTutor?.planGenerationModel,
-        disablePlanGeneration: previousTutor?.disablePlanGeneration,
-        enableLearnerModel: previousTutor?.enableLearnerModel,
-        learnerModelVisible: previousTutor?.learnerModelVisible,
-        learnerModel: previousTutor?.learnerModel,
       },
     },
   };

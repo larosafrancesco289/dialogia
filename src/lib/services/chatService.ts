@@ -12,17 +12,13 @@ import { getDefaultModelIdForTier, isTutorForcedForTier } from '@/lib/auth/tierF
 import { ensureHiddenTutorContent } from '@/lib/services/messagePersistence';
 
 export class ChatService {
-  static async createChat(params: {
+  static buildSettingsForNewChat(params: {
     ui: UIState;
     chats: Chat[];
     selectedChatId?: string;
-    repository: Repository;
     tier: AccessTier;
-  }): Promise<Chat> {
-    const { ui, chats, selectedChatId, repository, tier } = params;
-    const id = uuidv4();
-    const now = Date.now();
-
+  }): Chat['settings'] {
+    const { ui, chats, selectedChatId, tier } = params;
     const selected = selectedChatId ? chats.find((c) => c.id === selectedChatId) : undefined;
 
     const lastNonTutorModel = (() => {
@@ -45,14 +41,33 @@ export class ChatService {
     const braveEnabled = !!ui.flags.experimentalBrave;
     const forceTutorMode = isTutorForcedForTier(tier) || !!(ui.tutor.forceMode ?? false);
 
-    const baseSettings = resolveNewChatSettings({
+    return resolveNewChatSettings({
       ui,
       fallbackModelId: getDefaultModelIdForTier(tier),
       fallbackSystem: DEFAULT_BASE_SYSTEM,
       lastUsedModelId: lastUsedModel,
+      defaults: ui.chatDefaults,
       braveEnabled,
       tutorEnabled: tutorEnabledGlobally,
       forceTutorMode,
+    });
+  }
+
+  static async createChat(params: {
+    ui: UIState;
+    chats: Chat[];
+    selectedChatId?: string;
+    repository: Repository;
+    tier: AccessTier;
+  }): Promise<Chat> {
+    const { ui, chats, selectedChatId, repository, tier } = params;
+    const id = uuidv4();
+    const now = Date.now();
+    const baseSettings = ChatService.buildSettingsForNewChat({
+      ui,
+      chats,
+      selectedChatId,
+      tier,
     });
 
     const chat: Chat = {

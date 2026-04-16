@@ -2,111 +2,119 @@
 
 import { useEffect, useState } from 'react';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import type { SystemPreset } from '@/lib/presets';
-import type { Chat, ChatSettings } from '@/lib/types';
+import type { ChatSettings } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
 import { loadSystemPresets } from '@/lib/settings/systemPresets';
 
 type SettingsFormStateArgs = {
-  chat?: Chat;
   ui: UIState;
 };
 
-export function useSettingsFormState({ chat, ui }: SettingsFormStateArgs) {
-  const [system, setSystem] = useState(chat?.settings.system ?? '');
+const DEFAULT_CHAT_UI_SETTINGS = {
+  showThinkingByDefault: false,
+  showStats: false,
+  showToolCallLog: false,
+  showDebugRawJson: true,
+} as const;
+
+export function useSettingsFormState({ ui }: SettingsFormStateArgs) {
+  const chatDefaults = ui.chatDefaults;
+  const [system, setSystem] = useState(chatDefaults?.system ?? DEFAULT_BASE_SYSTEM);
   const [temperature, setTemperature] = useState<number | undefined>(
-    chat?.settings.generation.temperature,
+    chatDefaults?.generation?.temperature,
   );
-  const [topP, setTopP] = useState<number | undefined>(chat?.settings.generation.topP);
+  const [topP, setTopP] = useState<number | undefined>(chatDefaults?.generation?.topP);
   const [maxTokens, setMaxTokens] = useState<number | undefined>(
-    chat?.settings.generation.maxTokens,
+    chatDefaults?.generation?.maxTokens,
   );
   // Local string mirrors to avoid type=number focus/validation quirks
   const [temperatureStr, setTemperatureStr] = useState<string>(
-    chat?.settings.generation.temperature != null
-      ? String(chat.settings.generation.temperature)
+    chatDefaults?.generation?.temperature != null
+      ? String(chatDefaults.generation.temperature)
       : '',
   );
   const [topPStr, setTopPStr] = useState<string>(
-    chat?.settings.generation.topP != null ? String(chat.settings.generation.topP) : '',
+    chatDefaults?.generation?.topP != null ? String(chatDefaults.generation.topP) : '',
   );
   const [maxTokensStr, setMaxTokensStr] = useState<string>(
-    chat?.settings.generation.maxTokens != null ? String(chat.settings.generation.maxTokens) : '',
+    chatDefaults?.generation?.maxTokens != null ? String(chatDefaults.generation.maxTokens) : '',
   );
   const [reasoningEffort, setReasoningEffort] = useState<
     ChatSettings['generation']['reasoningEffort']
-  >(chat?.settings.generation.reasoningEffort);
+  >(chatDefaults?.generation?.reasoningEffort);
   const [reasoningTokens, setReasoningTokens] = useState<number | undefined>(
-    chat?.settings.generation.reasoningTokens,
+    chatDefaults?.generation?.reasoningTokens,
   );
   const [reasoningTokensStr, setReasoningTokensStr] = useState<string>(
-    chat?.settings.generation.reasoningTokens != null
-      ? String(chat.settings.generation.reasoningTokens)
+    chatDefaults?.generation?.reasoningTokens != null
+      ? String(chatDefaults.generation.reasoningTokens)
       : '',
   );
   const [tutorDefaultModel, setTutorDefaultModel] = useState<string>(
-    chat?.settings.features.tutor.defaultModelId ||
-      ui?.tutor.defaultModelId ||
-      DEFAULT_TUTOR_MODEL_ID,
+    ui?.tutor.defaultModelId || DEFAULT_TUTOR_MODEL_ID,
   );
   const [showThinking, setShowThinking] = useState<boolean>(
-    chat?.settings.ui.showThinkingByDefault ?? false,
+    chatDefaults?.ui?.showThinkingByDefault ?? DEFAULT_CHAT_UI_SETTINGS.showThinkingByDefault,
   );
-  const [showStats, setShowStats] = useState<boolean>(chat?.settings.ui.showStats ?? false);
+  const [showStats, setShowStats] = useState<boolean>(
+    chatDefaults?.ui?.showStats ?? DEFAULT_CHAT_UI_SETTINGS.showStats,
+  );
   const [showToolCallLog, setShowToolCallLog] = useState<boolean>(
-    chat?.settings.ui.showToolCallLog ?? false,
+    chatDefaults?.ui?.showToolCallLog ?? DEFAULT_CHAT_UI_SETTINGS.showToolCallLog,
   );
   const [showDebugRawJson, setShowDebugRawJson] = useState<boolean>(
-    chat?.settings.ui.showDebugRawJson ?? true,
+    chatDefaults?.ui?.showDebugRawJson ?? DEFAULT_CHAT_UI_SETTINGS.showDebugRawJson,
   );
   const [presets, setPresets] = useState<SystemPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
 
   // Keep local state in sync when switching chats or reopening the drawer
   useEffect(() => {
-    setSystem(chat?.settings.system ?? '');
-    setTemperature(chat?.settings.generation.temperature);
-    setTopP(chat?.settings.generation.topP);
-    setMaxTokens(chat?.settings.generation.maxTokens);
+    setSystem(chatDefaults?.system ?? DEFAULT_BASE_SYSTEM);
+    setTemperature(chatDefaults?.generation?.temperature);
+    setTopP(chatDefaults?.generation?.topP);
+    setMaxTokens(chatDefaults?.generation?.maxTokens);
     setTemperatureStr(
-      chat?.settings.generation.temperature != null
-        ? String(chat.settings.generation.temperature)
+      chatDefaults?.generation?.temperature != null
+        ? String(chatDefaults.generation.temperature)
         : '',
     );
-    setTopPStr(chat?.settings.generation.topP != null ? String(chat.settings.generation.topP) : '');
+    setTopPStr(chatDefaults?.generation?.topP != null ? String(chatDefaults.generation.topP) : '');
     setMaxTokensStr(
-      chat?.settings.generation.maxTokens != null ? String(chat.settings.generation.maxTokens) : '',
+      chatDefaults?.generation?.maxTokens != null ? String(chatDefaults.generation.maxTokens) : '',
     );
-    setReasoningEffort(chat?.settings.generation.reasoningEffort);
-    setReasoningTokens(chat?.settings.generation.reasoningTokens);
+    setReasoningEffort(chatDefaults?.generation?.reasoningEffort);
+    setReasoningTokens(chatDefaults?.generation?.reasoningTokens);
     setReasoningTokensStr(
-      chat?.settings.generation.reasoningTokens != null
-        ? String(chat.settings.generation.reasoningTokens)
+      chatDefaults?.generation?.reasoningTokens != null
+        ? String(chatDefaults.generation.reasoningTokens)
         : '',
     );
-    setShowThinking(chat?.settings.ui.showThinkingByDefault ?? false);
-    setShowStats(chat?.settings.ui.showStats ?? false);
-    setShowToolCallLog(chat?.settings.ui.showToolCallLog ?? false);
-    setShowDebugRawJson(chat?.settings.ui.showDebugRawJson ?? true);
-    setTutorDefaultModel(
-      chat?.settings.features.tutor.defaultModelId ||
-        ui?.tutor.defaultModelId ||
-        DEFAULT_TUTOR_MODEL_ID,
+    setShowThinking(
+      chatDefaults?.ui?.showThinkingByDefault ?? DEFAULT_CHAT_UI_SETTINGS.showThinkingByDefault,
     );
+    setShowStats(chatDefaults?.ui?.showStats ?? DEFAULT_CHAT_UI_SETTINGS.showStats);
+    setShowToolCallLog(
+      chatDefaults?.ui?.showToolCallLog ?? DEFAULT_CHAT_UI_SETTINGS.showToolCallLog,
+    );
+    setShowDebugRawJson(
+      chatDefaults?.ui?.showDebugRawJson ?? DEFAULT_CHAT_UI_SETTINGS.showDebugRawJson,
+    );
+    setTutorDefaultModel(ui?.tutor.defaultModelId || DEFAULT_TUTOR_MODEL_ID);
   }, [
-    chat?.id,
-    chat?.settings.system,
-    chat?.settings.generation.temperature,
-    chat?.settings.generation.topP,
-    chat?.settings.generation.maxTokens,
-    chat?.settings.generation.reasoningEffort,
-    chat?.settings.generation.reasoningTokens,
-    chat?.settings.ui.showThinkingByDefault,
-    chat?.settings.ui.showStats,
+    chatDefaults?.system,
+    chatDefaults?.generation?.temperature,
+    chatDefaults?.generation?.topP,
+    chatDefaults?.generation?.maxTokens,
+    chatDefaults?.generation?.reasoningEffort,
+    chatDefaults?.generation?.reasoningTokens,
+    chatDefaults?.ui?.showThinkingByDefault,
+    chatDefaults?.ui?.showStats,
+    chatDefaults?.ui?.showToolCallLog,
+    chatDefaults?.ui?.showDebugRawJson,
     ui?.tutor.defaultModelId,
-    chat?.settings.ui.showToolCallLog,
-    chat?.settings.ui.showDebugRawJson,
-    chat?.settings.features.tutor.defaultModelId,
   ]);
 
   // Load saved system prompt presets on mount

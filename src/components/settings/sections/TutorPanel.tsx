@@ -1,29 +1,26 @@
 'use client';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ModelSearch } from '@/components/ModelSearch';
-import type { Chat, ChatSettingsPatch } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
 
 type TutorPanelProps = {
-  chat: Chat | undefined;
   renderSection: RenderSection;
   experimentalTutor: boolean;
   setUI: (ui: Partial<StoreState['ui']>) => void;
   ui: StoreState['ui'];
-  updateChatSettings: (changes: ChatSettingsPatch) => Promise<void>;
+  onForceTutorModeChange: (enabled: boolean) => Promise<void>;
   tutorDefaultModel: string;
   setTutorDefaultModel: (value: string) => void;
 };
 
 export function TutorPanel(props: TutorPanelProps) {
   const {
-    chat,
     renderSection,
     experimentalTutor,
     setUI,
     ui,
-    updateChatSettings,
+    onForceTutorModeChange,
     tutorDefaultModel,
     setTutorDefaultModel,
   } = props;
@@ -62,17 +59,17 @@ export function TutorPanel(props: TutorPanelProps) {
                   <div className="segmented">
                     <button
                       className={`segment ${ui?.tutor.forceMode ? 'is-active' : ''}`}
-                      onClick={async () => {
-                        setUI({ tutor: { forceMode: true } });
-                        if (chat)
-                          await updateChatSettings({ features: { tutor: { enabled: true } } });
+                      onClick={() => {
+                        void onForceTutorModeChange(true);
                       }}
                     >
                       On
                     </button>
                     <button
                       className={`segment ${!ui?.tutor.forceMode ? 'is-active' : ''}`}
-                      onClick={() => setUI({ tutor: { forceMode: false } })}
+                      onClick={() => {
+                        void onForceTutorModeChange(false);
+                      }}
                     >
                       Off
                     </button>

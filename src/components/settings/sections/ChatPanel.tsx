@@ -9,18 +9,15 @@ import {
   renameSystemPreset,
   saveSystemPreset,
 } from '@/lib/settings/systemPresets';
-import type { Chat, ChatSettingsPatch } from '@/lib/types';
 import type { RenderSection } from '@/components/settings/types';
 
 type ChatPanelProps = {
-  chat: Chat | undefined;
   system: string;
   setSystem: (value: string) => void;
   presets: SystemPreset[];
   setPresets: (list: SystemPreset[]) => void;
   selectedPresetId: string;
   setSelectedPresetId: (id: string) => void;
-  updateChatSettings: (changes: ChatSettingsPatch) => Promise<void>;
   renderSection: RenderSection;
   temperatureStr: string;
   setTemperatureStr: (value: string) => void;
@@ -40,14 +37,12 @@ type ChatPanelProps = {
 
 export function ChatPanel(props: ChatPanelProps) {
   const {
-    chat,
     system,
     setSystem,
     presets,
     setPresets,
     selectedPresetId,
     setSelectedPresetId,
-    updateChatSettings,
     renderSection,
     temperatureStr,
     setTemperatureStr,
@@ -65,11 +60,10 @@ export function ChatPanel(props: ChatPanelProps) {
     setReasoningTokens,
   } = props;
 
-  const applyPreset = async () => {
+  const applyPreset = () => {
     const preset = presets.find((p) => p.id === selectedPresetId);
     if (!preset) return;
     setSystem(preset.system);
-    if (chat) await updateChatSettings({ system: preset.system });
   };
 
   const refreshPresets = async () => {
@@ -126,13 +120,7 @@ export function ChatPanel(props: ChatPanelProps) {
                 ))}
               </select>
               <div className="flex items-center gap-1">
-                <IconButton
-                  title="Apply preset"
-                  onClick={() => {
-                    void applyPreset();
-                  }}
-                  disabled={!selectedPresetId}
-                >
+                <IconButton title="Apply preset" onClick={applyPreset} disabled={!selectedPresetId}>
                   <CheckIcon className="h-5 w-5" />
                 </IconButton>
                 <IconButton
@@ -168,14 +156,11 @@ export function ChatPanel(props: ChatPanelProps) {
               rows={4}
               value={system}
               onChange={(e) => setSystem(e.target.value)}
-              onBlur={async () => {
-                if (!chat) return;
-                await updateChatSettings({ system });
-              }}
               onKeyDown={(e) => e.stopPropagation()}
             />
             <div className="text-xs text-muted-foreground">
-              Customize the default system prompt for this chat.
+              Customize the default system prompt for future chats. Tutor Mode remains a separate
+              overlay.
             </div>
           </div>
         </SettingsSection>,

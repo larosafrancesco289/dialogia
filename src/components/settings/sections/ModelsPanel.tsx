@@ -2,17 +2,13 @@
 import type { Ref } from 'react';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ModelSearch, type ModelSearchHandle } from '@/components/ModelSearch';
-import type { Chat, ChatSettingsPatch } from '@/lib/types';
-import type { StoreState } from '@/lib/store/types';
+import type { StoreState, UIStatePartial } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
-import { readNextOverrides } from '@/lib/ui/next';
 
 type ModelsPanelProps = {
-  chat: Chat | undefined;
   favoriteModelIds?: string[];
   toggleFavoriteModel: (id: string) => void;
-  updateChatSettings: (changes: ChatSettingsPatch) => Promise<void>;
-  setUI: (ui: Partial<StoreState['ui']>) => void;
+  setUI: (ui: UIStatePartial) => void;
   loadModels: () => Promise<void>;
   hiddenModelIds?: string[];
   resetHiddenModels: () => void;
@@ -24,10 +20,8 @@ type ModelsPanelProps = {
 
 export function ModelsPanel(props: ModelsPanelProps) {
   const {
-    chat,
     favoriteModelIds,
     toggleFavoriteModel,
-    updateChatSettings,
     setUI,
     loadModels,
     hiddenModelIds,
@@ -37,8 +31,9 @@ export function ModelsPanel(props: ModelsPanelProps) {
     experimentalBrave,
     ui,
   } = props;
-  const nextOverrides = readNextOverrides(ui);
   const routePref = ui.routePreference ?? 'speed';
+  const selectedModelId = ui.chatDefaults?.modelId;
+  const searchProvider = ui.chatDefaults?.features?.search?.provider ?? 'openrouter';
 
   return (
     <>
@@ -54,13 +49,32 @@ export function ModelsPanel(props: ModelsPanelProps) {
               clearOnSelect
               onSelect={(result) => {
                 if (!favoriteModelIds?.includes(result.id)) toggleFavoriteModel(result.id);
-                if (chat) {
-                  updateChatSettings({ modelId: result.id }).catch(() => void 0);
-                } else {
-                  setUI({ overrides: { modelId: result.id } });
-                }
+                setUI({ chatDefaults: { modelId: result.id, parallelModels: [] } });
               }}
             />
+            <div className="text-xs text-muted-foreground">
+              {selectedModelId
+                ? `New chats start with ${selectedModelId}.`
+                : 'New chats use the tier default. Pick a model to override.'}{' '}
+              Switch models inside a chat from the composer.
+            </div>
+            {selectedModelId && (
+              <div>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() =>
+                    setUI({
+                      chatDefaults: {
+                        modelId: undefined,
+                        parallelModels: undefined,
+                      },
+                    })
+                  }
+                >
+                  Use tier default
+                </button>
+              </div>
+            )}
             <div>
               <button className="btn btn-ghost" onClick={() => loadModels()}>
                 Refresh model list
@@ -90,26 +104,20 @@ export function ModelsPanel(props: ModelsPanelProps) {
               <div className="segmented">
                 {experimentalBrave && (
                   <button
-                    className={`segment ${(chat?.settings?.features.search.provider ?? nextOverrides.search?.provider ?? 'openrouter') === 'brave' ? 'is-active' : ''}`}
+                    className={`segment ${searchProvider === 'brave' ? 'is-active' : ''}`}
                     onClick={() => {
-                      if (chat)
-                        updateChatSettings({
-                          features: { search: { provider: 'brave' } },
-                        }).catch(() => void 0);
-                      else setUI({ overrides: { search: { provider: 'brave' } } });
+                      setUI({ chatDefaults: { features: { search: { provider: 'brave' } } } });
                     }}
                   >
                     Brave
                   </button>
                 )}
                 <button
-                  className={`segment ${(chat?.settings?.features.search.provider ?? nextOverrides.search?.provider ?? 'openrouter') === 'openrouter' ? 'is-active' : ''}`}
+                  className={`segment ${searchProvider === 'openrouter' ? 'is-active' : ''}`}
                   onClick={() => {
-                    if (chat)
-                      updateChatSettings({
-                        features: { search: { provider: 'openrouter' } },
-                      }).catch(() => void 0);
-                    else setUI({ overrides: { search: { provider: 'openrouter' } } });
+                    setUI({
+                      chatDefaults: { features: { search: { provider: 'openrouter' } } },
+                    });
                   }}
                 >
                   OpenRouter

@@ -1,4 +1,4 @@
-import type { TutorProfile } from '@/lib/types';
+import type { ChatDefaults, TutorProfile } from '@/lib/types';
 import type {
   LearnerModelDebugEntry as ContractLearnerModelDebugEntry,
   TutorToolUsageSnapshot,
@@ -47,6 +47,7 @@ export type PersistedUiState = {
   sidebarCollapsed?: boolean;
   zdrOnly?: UiSnapshot['zdrOnly'];
   routePreference?: UiSnapshot['routePreference'];
+  chatDefaults?: ChatDefaults;
   flags?: Pick<UIFlags, 'experimentalBrave' | 'experimentalTutor' | 'enableMultiModelChat'>;
   debug?: Pick<UIDebugState, 'mode'>;
   tutor?: Pick<
@@ -79,7 +80,7 @@ export type UIState = SessionUiState & PersistedUiState;
  */
 export type UIStatePartial = Omit<
   Partial<UIState>,
-  'mobile' | 'flags' | 'debug' | 'search' | 'tutor' | 'plan'
+  'mobile' | 'flags' | 'debug' | 'search' | 'tutor' | 'plan' | 'chatDefaults'
 > & {
   mobile?: Partial<UIMobileState>;
   flags?: Partial<UIFlags>;
@@ -87,4 +88,5 @@ export type UIStatePartial = Omit<
   search?: Partial<UISearchState>;
   tutor?: Partial<UITutorState>;
   plan?: Partial<UIPlanState>;
+  chatDefaults?: ChatDefaults;
 };
