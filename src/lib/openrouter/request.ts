@@ -1,6 +1,7 @@
 import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { OpenRouterChatRequest, OpenRouterReasoning } from '@/lib/openrouter/types';
+import type { ReasoningEffort } from '@/lib/types/enums';
 
 export type BuildChatBodyParams = {
   model: string;
@@ -10,7 +11,7 @@ export type BuildChatBodyParams = {
   temperature?: number;
   topP?: number;
   maxTokens?: number;
-  reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  reasoningEffort?: ReasoningEffort;
   reasoningTokens?: number;
   disableReasoning?: boolean;
   tools?: ToolDefinition[];

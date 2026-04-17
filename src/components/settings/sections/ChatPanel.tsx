@@ -10,6 +10,7 @@ import {
   saveSystemPreset,
 } from '@/lib/settings/systemPresets';
 import type { RenderSection } from '@/components/settings/types';
+import type { ReasoningEffort } from '@/lib/types';
 
 type ChatPanelProps = {
   system: string;
@@ -28,8 +29,8 @@ type ChatPanelProps = {
   maxTokensStr: string;
   setMaxTokensStr: (value: string) => void;
   setMaxTokens: (value: number | undefined) => void;
-  reasoningEffort: 'none' | 'low' | 'medium' | 'high' | undefined;
-  setReasoningEffort: (value: 'none' | 'low' | 'medium' | 'high' | undefined) => void;
+  reasoningEffort: ReasoningEffort | undefined;
+  setReasoningEffort: (value: ReasoningEffort | undefined) => void;
   reasoningTokensStr: string;
   setReasoningTokensStr: (value: string) => void;
   setReasoningTokens: (value: number | undefined) => void;
@@ -305,7 +306,8 @@ export function ChatPanel(props: ChatPanelProps) {
                     value === 'none' ||
                     value === 'low' ||
                     value === 'medium' ||
-                    value === 'high'
+                    value === 'high' ||
+                    value === 'xhigh'
                   ) {
                     setReasoningEffort(value);
                     if (value === 'none') {
@@ -320,6 +322,7 @@ export function ChatPanel(props: ChatPanelProps) {
                 <option value="low">low</option>
                 <option value="medium">medium</option>
                 <option value="high">high</option>
+                <option value="xhigh">extra high</option>
               </select>
               <div className="text-xs text-muted-foreground">
                 Request model reasoning depth (if supported).

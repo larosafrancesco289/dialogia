@@ -113,3 +113,29 @@ test('buildAnthropicBody skips automatic caching when four explicit breakpoints 
 
   assert.equal(body.cache_control, undefined);
 });
+
+test('buildAnthropicBody resolves Anthropic Opus 4.7 alias and uses adaptive thinking', () => {
+  const body = buildAnthropicBody({
+    model: 'anthropic-direct/claude-opus-4-7',
+    messages: [{ role: 'user', content: 'Think hard.' }],
+    stream: false,
+    reasoningEffort: 'xhigh',
+  });
+
+  assert.equal(body.model, 'claude-opus-4-7');
+  assert.deepEqual(body.thinking, { type: 'adaptive', display: 'summarized' });
+  assert.deepEqual(body.output_config, { effort: 'xhigh' });
+});
+
+test('buildAnthropicBody keeps Opus 4.7 snapshots on adaptive thinking', () => {
+  const body = buildAnthropicBody({
+    model: 'anthropic-direct/claude-opus-4-7-20260101',
+    messages: [{ role: 'user', content: 'Think hard.' }],
+    stream: false,
+    reasoningEffort: 'xhigh',
+  });
+
+  assert.equal(body.model, 'claude-opus-4-7-20260101');
+  assert.deepEqual(body.thinking, { type: 'adaptive', display: 'summarized' });
+  assert.deepEqual(body.output_config, { effort: 'xhigh' });
+});

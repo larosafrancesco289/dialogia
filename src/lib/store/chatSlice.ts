@@ -7,6 +7,7 @@ import { repository } from '@/lib/db';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { bootstrapApp } from '@/lib/services/bootstrap';
 import { settingsEqual } from '@/lib/settings/equality';
+import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
 import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { Chat, ChatSettingsPatch } from '@/lib/types';
 import { getClientTier } from '@/lib/auth/tier.client';
@@ -247,9 +248,30 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         repository,
       );
 
+      const stickyReasoningDefaults =
+        partial.generation &&
+        (Object.prototype.hasOwnProperty.call(partial.generation, 'reasoningEffort') ||
+          Object.prototype.hasOwnProperty.call(partial.generation, 'reasoningTokens'))
+          ? {
+              generation: {
+                ...(Object.prototype.hasOwnProperty.call(partial.generation, 'reasoningEffort')
+                  ? { reasoningEffort: nextSettings.generation.reasoningEffort }
+                  : {}),
+                ...(Object.prototype.hasOwnProperty.call(partial.generation, 'reasoningTokens')
+                  ? { reasoningTokens: nextSettings.generation.reasoningTokens }
+                  : {}),
+              },
+            }
+          : undefined;
+
       set((s) => ({
         chats: s.chats.map((c) => (c.id === id ? updatedChat : c)),
-        ui: { ...s.ui },
+        ui: {
+          ...s.ui,
+          chatDefaults: stickyReasoningDefaults
+            ? mergeChatDefaults(s.ui.chatDefaults, stickyReasoningDefaults)
+            : s.ui.chatDefaults,
+        },
       }));
 
       const turnedOn =

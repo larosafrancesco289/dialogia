@@ -11,6 +11,7 @@ const ANTHROPIC_ACCEPTED_PREFIXES = [ANTHROPIC_TRANSPORT_PREFIX, 'anthropic/'] a
  * When an alias already matches the API ID, it maps to itself.
  */
 export const ANTHROPIC_MODEL_ALIAS_MAP: Record<string, string> = {
+  'claude-opus-4-7': 'claude-opus-4-7',
   'claude-opus-4-6': 'claude-opus-4-6',
   'claude-sonnet-4-6': 'claude-sonnet-4-6',
   'claude-haiku-4-5': 'claude-haiku-4-5-20251001',
@@ -43,6 +44,12 @@ const PROMPT_CACHING_MODEL_ID_RE_LIST = [
   /^claude-3-haiku(?:-\d{8}|-latest)?$/,
   /^claude-opus-3(?:-\d{8}|-latest)?$/,
   /^claude-3-opus(?:-\d{8}|-latest)?$/,
+] as const;
+const ADAPTIVE_THINKING_MODEL_ID_RE_LIST = [
+  /^claude-opus-4-6(?:-\d{8})?$/,
+  /^claude-opus-4-7(?:-\d{8})?$/,
+  /^claude-sonnet-4-6(?:-\d{8})?$/,
+  /^claude-mythos-preview$/,
 ] as const;
 
 const KNOWN_ANTHROPIC_PRICING: Record<
@@ -111,12 +118,8 @@ export function supportsAnthropicPromptCaching(model: string): boolean {
 }
 
 export function supportsAnthropicAdaptiveThinking(model: string): boolean {
-  const normalized = resolveAnthropicPublicModelId(model);
-  return (
-    normalized === 'claude-opus-4-6' ||
-    normalized === 'claude-sonnet-4-6' ||
-    normalized === 'claude-mythos-preview'
-  );
+  const normalized = normalizeSlug(model).replace(/\./g, '-');
+  return ADAPTIVE_THINKING_MODEL_ID_RE_LIST.some((re) => re.test(normalized));
 }
 
 export function supportsAnthropicReasoning(model: string): boolean {
@@ -135,10 +138,11 @@ export function supportsAnthropicToolUse(model: string): boolean {
 }
 
 export function defaultAnthropicThinkingBudget(
-  effort: 'low' | 'medium' | 'high' | undefined,
+  effort: 'low' | 'medium' | 'high' | 'xhigh' | undefined,
 ): number {
   if (effort === 'low') return 1024;
   if (effort === 'medium') return 2048;
+  if (effort === 'xhigh') return 8192;
   return 4096;
 }
 

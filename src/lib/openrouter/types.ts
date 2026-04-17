@@ -1,8 +1,9 @@
 import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
 import type { ProviderSort } from '@/lib/models/providerSort';
+import type { ReasoningEffort } from '@/lib/types/enums';
 
 export type OpenRouterReasoning = {
-  effort?: 'none' | 'low' | 'medium' | 'high';
+  effort?: ReasoningEffort;
   max_tokens?: number;
   exclude?: boolean;
 };

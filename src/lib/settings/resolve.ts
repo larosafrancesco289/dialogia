@@ -8,6 +8,7 @@ import type {
 } from '@/lib/types';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelIndex, ModelCapabilityFlags } from '@/lib/models';
+import { supportsXhighReasoningEffort } from '@/lib/models';
 import type { AccessTier } from '@/lib/auth/types';
 import { providerSortFromRoutePref, selectSearchProvider } from '@/lib/policy/provider';
 import { readNextOverrides } from '@/lib/ui/next';
@@ -132,9 +133,18 @@ export function resolveTurnSettings(args: {
   const temperature = overrides.temperature ?? chat.settings.generation.temperature;
   const topP = overrides.topP ?? chat.settings.generation.topP;
   const maxTokens = overrides.maxTokens ?? chat.settings.generation.maxTokens;
-  const reasoningEffort = supportsReasoning
+  const rawReasoningEffort = supportsReasoning
     ? (overrides.reasoning?.effort ?? chat.settings.generation.reasoningEffort)
     : undefined;
+  // Only demote xhigh when we have positive evidence the model doesn't support it.
+  // When modelMeta is undefined (model list not yet loaded, or unknown id) we preserve
+  // the user's setting — the request layer sees the same metadata and will do the
+  // right thing, and users on xhigh-capable models don't lose their selection while
+  // the index is hydrating.
+  const reasoningEffort =
+    rawReasoningEffort === 'xhigh' && modelMeta && !supportsXhighReasoningEffort(modelMeta)
+      ? 'high'
+      : rawReasoningEffort;
   const reasoningTokens = supportsReasoning
     ? (overrides.reasoning?.tokens ?? chat.settings.generation.reasoningTokens)
     : undefined;

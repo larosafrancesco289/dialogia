@@ -10,6 +10,7 @@ import {
   isReasoningSupported,
   isVisionSupported,
   isAudioInputSupported,
+  supportsXhighReasoningEffort,
 } from '@/lib/models';
 import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
@@ -101,6 +102,7 @@ export function Composer({
   const canVision = isVisionSupported(modelMeta);
   const canAudio = isAudioInputSupported(modelMeta);
   const supportsReasoning = isReasoningSupported(modelMeta);
+  const supportsXhigh = supportsXhighReasoningEffort(modelMeta);
 
   const {
     attachments,
@@ -322,6 +324,7 @@ export function Composer({
           searchProvider={searchProvider}
           toggleSearch={toggleSearch}
           showReasoningMenu={showReasoningMenu}
+          supportsXhigh={supportsXhigh}
           currentEffort={currentEffort}
           onSelectEffort={handleSelectEffort}
           hasContent={text.trim().length > 0 || attachments.length > 0}

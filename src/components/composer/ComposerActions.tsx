@@ -24,6 +24,7 @@ const EFFORT_DOTS: Record<Effort, number> = {
   low: 1,
   medium: 2,
   high: 3,
+  xhigh: 4,
 };
 
 const menuContainerVariants = {
@@ -66,6 +67,7 @@ export type ComposerActionsProps = {
   searchProvider: 'brave' | 'openrouter';
   toggleSearch: () => void;
   showReasoningMenu: boolean;
+  supportsXhigh?: boolean;
   currentEffort?: Effort;
   onSelectEffort: (effort: Effort) => Promise<void> | void;
   hasContent?: boolean;
@@ -81,6 +83,7 @@ export function ComposerActions({
   searchProvider: _searchProvider,
   toggleSearch,
   showReasoningMenu,
+  supportsXhigh,
   currentEffort,
   onSelectEffort,
   hasContent,
@@ -165,7 +168,7 @@ export function ComposerActions({
 
   const reasoningActive = !!currentEffort && currentEffort !== 'none';
   const effortLabel = (e: Effort) =>
-    e === 'none' ? 'Off' : e.charAt(0).toUpperCase() + e.slice(1);
+    e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra High' : e.charAt(0).toUpperCase() + e.slice(1);
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
@@ -221,7 +224,10 @@ export function ComposerActions({
                 <motion.div variants={menuItemVariants} className="composer-overflow-label">
                   Reasoning effort
                 </motion.div>
-                {(['none', 'low', 'medium', 'high'] as Effort[]).map((effort) => (
+                {(supportsXhigh
+                  ? (['none', 'low', 'medium', 'high', 'xhigh'] as Effort[])
+                  : (['none', 'low', 'medium', 'high'] as Effort[])
+                ).map((effort) => (
                   <motion.button
                     key={effort}
                     variants={menuItemVariants}

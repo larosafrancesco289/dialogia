@@ -10,6 +10,7 @@ export const ReasoningEffortEnum = {
   Low: 'low',
   Medium: 'medium',
   High: 'high',
+  XHigh: 'xhigh',
 } as const;
 
 export type ReasoningEffort = (typeof ReasoningEffortEnum)[keyof typeof ReasoningEffortEnum];

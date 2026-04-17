@@ -9,6 +9,7 @@ import type { ProviderSort } from '@/lib/models/providerSort';
 import type { ChatCompletion } from '@/lib/transport/completions';
 import type { ModelDescriptor } from '@/lib/transport/models';
 import type { TransportAuth } from '@/lib/auth/transport';
+import type { ReasoningEffort } from '@/lib/types/enums';
 
 export type ToolCallDelta = {
   index: number;
@@ -49,7 +50,7 @@ export type TransportChatParams = {
   temperature?: number;
   topP?: number;
   maxTokens?: number;
-  reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  reasoningEffort?: ReasoningEffort;
   reasoningTokens?: number;
   disableReasoning?: boolean;
   tools?: ToolDefinition[];

@@ -7,6 +7,7 @@ import type {
   ToolDefinition,
   TurnContext,
 } from '@/lib/agent/types';
+import type { ReasoningEffort } from '@/lib/types';
 
 export const DEBUG_LOG_TTL_MS = 1000 * 60 * 60 * 2;
 export const DEBUG_LOG_MAX_ENTRIES = 50;
@@ -19,7 +20,7 @@ export type BuildDebugBodyArgs = {
   temperature?: number;
   topP?: number;
   maxTokens?: number;
-  reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  reasoningEffort?: ReasoningEffort;
   reasoningTokens?: number;
   tools?: ToolDefinition[];
   toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
@@ -57,7 +58,7 @@ export type RequestDebugOptions = {
   temperature?: number;
   topP?: number;
   maxTokens?: number;
-  reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
+  reasoningEffort?: ReasoningEffort;
   reasoningTokens?: number;
   tools?: ToolDefinition[];
   toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
