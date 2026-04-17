@@ -116,7 +116,7 @@ export type AnthropicMessagesRequest = {
   thinking?:
     | { type: 'adaptive'; display?: 'summarized' | 'omitted' }
     | { type: 'enabled'; budget_tokens: number; display?: 'summarized' | 'omitted' };
-  output_config?: { effort: 'low' | 'medium' | 'high' };
+  output_config?: { effort: 'low' | 'medium' | 'high' | 'xhigh' };
 };
 
 const ANTHROPIC_WEB_SEARCH_TOOL: AnthropicWebSearchToolDefinition = {

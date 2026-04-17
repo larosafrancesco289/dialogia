@@ -77,7 +77,11 @@ export function useSettingsAutoSave(args: {
     setUI,
   ]);
 
-  const { status: saveStatus, markDirty, forceSave } = useAutoSave({
+  const {
+    status: saveStatus,
+    markDirty,
+    forceSave,
+  } = useAutoSave({
     delay: 600,
     onSave: performSave,
   });

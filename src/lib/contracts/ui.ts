@@ -4,6 +4,7 @@ import type {
   LearningPlan,
   Message,
   MessageTutor,
+  ReasoningEffort,
   StudyCondition,
   TutorResearchMode,
 } from '@/lib/types';
@@ -20,7 +21,7 @@ export type UiNextOverrides = {
   deepResearch?: boolean;
   tutorMode?: boolean;
   tutorNudge?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
-  reasoning?: { effort?: 'none' | 'low' | 'medium' | 'high'; tokens?: number };
+  reasoning?: { effort?: ReasoningEffort; tokens?: number };
   system?: string;
   temperature?: number;
   topP?: number;

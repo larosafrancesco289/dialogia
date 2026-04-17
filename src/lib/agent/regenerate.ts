@@ -64,7 +64,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   const pickReasoningEffort = (
     snapshotVal: unknown,
     chatVal: unknown,
-  ): 'none' | 'low' | 'medium' | 'high' | undefined => {
+  ): NonNullable<Chat['settings']['generation']['reasoningEffort']> | undefined => {
     if (!supportsReasoning) return undefined;
     const fromSnapshot = isReasoningEffort(snapshotVal) ? snapshotVal : undefined;
     const fromChat = isReasoningEffort(chatVal) ? chatVal : undefined;
@@ -224,7 +224,11 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
 const isReasoningEffort = (
   value: unknown,
 ): value is NonNullable<Chat['settings']['generation']['reasoningEffort']> =>
-  value === 'none' || value === 'low' || value === 'medium' || value === 'high';
+  value === 'none' ||
+  value === 'low' ||
+  value === 'medium' ||
+  value === 'high' ||
+  value === 'xhigh';
 
 const isSearchProvider = (value: unknown): value is SearchProvider =>
   value === 'brave' || value === 'openrouter';

@@ -80,5 +80,6 @@ export {
   isReasoningSupported,
   isToolCallingSupported,
   isVisionSupported,
+  supportsXhighReasoningEffort,
   type ModelCapabilityFlags,
 } from '@/lib/models/capabilities';

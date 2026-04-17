@@ -1,8 +1,9 @@
 'use client';
 import { useEffect } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import type { ReasoningEffort } from '@/lib/types';
 
-export type Effort = 'none' | 'low' | 'medium' | 'high';
+export type Effort = ReasoningEffort;
 
 export type ComposerMobileMenuProps = {
   isOpen: boolean;
@@ -14,6 +15,7 @@ export type ComposerMobileMenuProps = {
   searchProvider: 'brave' | 'openrouter';
   toggleSearch: () => void;
   showReasoningMenu: boolean;
+  supportsXhigh?: boolean;
   currentEffort?: Effort;
   onSelectEffort: (effort: Effort) => void;
 };
@@ -28,6 +30,7 @@ export function ComposerMobileMenu({
   searchProvider,
   toggleSearch,
   showReasoningMenu,
+  supportsXhigh,
   currentEffort,
   onSelectEffort,
 }: ComposerMobileMenuProps) {
@@ -82,7 +85,10 @@ export function ComposerMobileMenu({
           {showReasoningMenu && (
             <>
               <div className="text-xs text-muted-foreground px-2 pt-1">Reasoning</div>
-              {(['none', 'low', 'medium', 'high'] as Effort[]).map((effort) => (
+              {(supportsXhigh
+                ? (['none', 'low', 'medium', 'high', 'xhigh'] as Effort[])
+                : (['none', 'low', 'medium', 'high'] as Effort[])
+              ).map((effort) => (
                 <div
                   key={effort}
                   className={`menu-item text-sm ${currentEffort === effort ? 'font-semibold' : ''}`}
@@ -93,7 +99,7 @@ export function ComposerMobileMenu({
                     onClose();
                   }}
                 >
-                  {effort[0].toUpperCase() + effort.slice(1)}
+                  {effort === 'xhigh' ? 'Extra High' : effort[0].toUpperCase() + effort.slice(1)}
                 </div>
               ))}
             </>

@@ -8,6 +8,7 @@ import {
 import { buildTransportAuth } from '@/lib/auth/transport';
 
 test('resolveAnthropicDirectModelId maps current aliases to direct IDs', () => {
+  assert.equal(resolveAnthropicDirectModelId('claude-opus-4-7'), 'claude-opus-4-7');
   assert.equal(resolveAnthropicDirectModelId('claude-opus-4-6'), 'claude-opus-4-6');
   assert.equal(resolveAnthropicDirectModelId('claude-sonnet-4.5'), 'claude-sonnet-4-5-20250929');
   assert.equal(resolveAnthropicDirectModelId('claude-haiku-4.5'), 'claude-haiku-4-5-20251001');
@@ -33,6 +34,11 @@ test('resolveAnthropicDirectModelId accepts snapshot IDs as-is', () => {
 });
 
 test('resolveAnthropicDirectModelId strips anthropic prefix', () => {
+  assert.equal(resolveAnthropicDirectModelId('anthropic/claude-opus-4-7'), 'claude-opus-4-7');
+  assert.equal(
+    resolveAnthropicDirectModelId('anthropic-direct/claude-opus-4-7'),
+    'claude-opus-4-7',
+  );
   assert.equal(
     resolveAnthropicDirectModelId('anthropic/claude-sonnet-4-5'),
     'claude-sonnet-4-5-20250929',

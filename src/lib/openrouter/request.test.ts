@@ -44,6 +44,14 @@ test('buildChatBody treats effort none as a hard disable even with stale tokens'
   assert.deepEqual(body.reasoning, { effort: 'none' });
 });
 
+test('buildChatBody forwards xhigh reasoning effort verbatim', () => {
+  const body = buildChatBody({
+    ...base,
+    reasoningEffort: 'xhigh',
+  });
+  assert.deepEqual(body.reasoning, { effort: 'xhigh' });
+});
+
 test('buildChatBody preserves explicit cache_control message blocks for OpenRouter Anthropic routing', () => {
   const body = buildChatBody({
     model: 'anthropic/claude-sonnet-4.6',

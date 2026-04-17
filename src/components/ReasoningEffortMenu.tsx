@@ -3,15 +3,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { LightBulbIcon } from '@heroicons/react/24/outline';
-import { findModelById, isReasoningSupported } from '@/lib/models';
+import { findModelById, isReasoningSupported, supportsXhighReasoningEffort } from '@/lib/models';
 import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import {
   selectNextOverrides,
   selectResolvedModelId,
   selectResolvedTurnSettings,
 } from '@/lib/store/selectors';
+import type { ReasoningEffort } from '@/lib/types';
 
-type Effort = 'none' | 'low' | 'medium' | 'high';
+type Effort = ReasoningEffort;
 
 export function ReasoningEffortMenu() {
   const { chat, models, updateSettings, setUI, nextOverrides } = useChatStore(
@@ -33,6 +34,7 @@ export function ReasoningEffortMenu() {
   );
   const selectedModel = useMemo(() => findModelById(models, modelId), [models, modelId]);
   const supportsReasoning = useMemo(() => isReasoningSupported(selectedModel), [selectedModel]);
+  const supportsXhigh = useMemo(() => supportsXhighReasoningEffort(selectedModel), [selectedModel]);
 
   const resolvedTurnSettings = useChatStore(selectResolvedTurnSettings);
   const current: Effort | undefined =
@@ -95,6 +97,7 @@ export function ReasoningEffortMenu() {
               { key: 'low', label: 'Low' },
               { key: 'medium', label: 'Medium' },
               { key: 'high', label: 'High' },
+              ...(supportsXhigh ? ([{ key: 'xhigh', label: 'Extra High' }] as const) : []),
             ] as const
           ).map((o) => (
             <div

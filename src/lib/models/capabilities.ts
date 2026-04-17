@@ -26,6 +26,20 @@ export function isReasoningSupported(model?: ModelDescriptor | null): boolean {
   return false;
 }
 
+const XHIGH_MODEL_ID_PATTERNS: RegExp[] = [
+  /^anthropic-direct\/claude-opus-4-7/,
+  /^anthropic\/claude-opus-4-7/,
+  /^openai\/gpt-5[.-](?:2|3|4)/,
+];
+
+export function supportsXhighReasoningEffort(model?: ModelDescriptor | null): boolean {
+  if (!isReasoningSupported(model)) return false;
+  const supported = getSupportedParameters(model);
+  if (supported.includes('reasoning_effort_xhigh') || supported.includes('xhigh')) return true;
+  const id = String(model?.id || '').toLowerCase();
+  return XHIGH_MODEL_ID_PATTERNS.some((re) => re.test(id));
+}
+
 const KNOWN_TOOL_CALLING_PROVIDERS = ['anthropic/', 'openai/', 'google/', 'x-ai/', 'meta-llama/'];
 
 export function isToolCallingSupported(model?: ModelDescriptor | null): boolean {

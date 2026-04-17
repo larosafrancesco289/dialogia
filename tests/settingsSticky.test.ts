@@ -214,6 +214,78 @@ test('newChat does not reuse a draft that already has messages', async () => {
   assert.equal(state.chats.length, 2);
 });
 
+test('in-chat reasoning changes become sticky for future chats', async () => {
+  const activeChat: Chat = {
+    id: 'active-chat',
+    title: 'Started Chat',
+    createdAt: 5,
+    updatedAt: 20,
+    settings: {
+      modelId: 'openai/gpt-5.4',
+      system: 'Sticky system',
+      generation: {
+        reasoningEffort: 'high',
+      },
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: false,
+        showDebugRawJson: true,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: { enabled: false },
+      },
+    },
+  };
+
+  const state: any = {
+    chats: [activeChat],
+    folders: [],
+    messagesById: {},
+    messageIdsByChatId: {},
+    selectedChatId: 'active-chat',
+    ui: buildDefaultUIState(),
+  };
+
+  const set = (partial: any) => {
+    const next = typeof partial === 'function' ? partial(state) : partial;
+    Object.assign(state, next);
+  };
+  const get = () => state;
+
+  const originalUpdateChat = ChatService.updateChat;
+  ChatService.updateChat = (async (chat, changes) => ({
+    ...chat,
+    ...changes,
+    updatedAt: 99,
+  })) as typeof ChatService.updateChat;
+
+  try {
+    const slice = createChatSlice(set as any, get as any);
+    await slice.updateChatSettings({
+      generation: {
+        reasoningEffort: 'xhigh',
+      },
+    });
+  } finally {
+    ChatService.updateChat = originalUpdateChat;
+  }
+
+  assert.equal(state.chats[0].settings.generation.reasoningEffort, 'xhigh');
+  assert.equal(state.ui.chatDefaults?.generation?.reasoningEffort, 'xhigh');
+
+  const nextSettings = ChatService.buildSettingsForNewChat({
+    ui: state.ui,
+    chats: state.chats,
+    selectedChatId: state.selectedChatId,
+    tier: 'developer',
+  });
+
+  assert.equal(nextSettings.modelId, 'openai/gpt-5.4');
+  assert.equal(nextSettings.generation.reasoningEffort, 'xhigh');
+});
+
 test('settings drawer patch only touches UI defaults (never the active chat)', () => {
   const patch = buildSettingsSavePatch({
     system: 'Drawer system',

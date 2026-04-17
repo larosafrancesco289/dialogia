@@ -7,11 +7,12 @@ import type {
   ModelDescriptor,
 } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
-import { findModelById, isReasoningSupported } from '@/lib/models';
+import { findModelById, isReasoningSupported, supportsXhighReasoningEffort } from '@/lib/models';
 import type { UiNextOverrides } from '@/lib/contracts/ui';
 import type { UIState } from '@/lib/store/types';
+import type { ReasoningEffort } from '@/lib/types';
 
-type Effort = 'none' | 'low' | 'medium' | 'high';
+type Effort = ReasoningEffort;
 
 type NextOverrides = UiNextOverrides;
 
@@ -56,11 +57,15 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
   }
 
   if (command === 'reasoning' || command === 'think') {
-    const allowed: Effort[] = ['none', 'low', 'medium', 'high'];
+    const allowed: Effort[] = ['none', 'low', 'medium', 'high', 'xhigh'];
     const effort = arg.toLowerCase() as Effort;
     if (!allowed.includes(effort)) return false;
     if (!isReasoningSupported(currentModel)) {
       ctx.setNotice('Reasoning not supported by current model');
+      return true;
+    }
+    if (effort === 'xhigh' && !supportsXhighReasoningEffort(currentModel)) {
+      ctx.setNotice('Extra-high reasoning not supported by current model');
       return true;
     }
     if (applyToChat) {
@@ -104,7 +109,9 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
   }
 
   if (command === 'help') {
-    ctx.setNotice('Slash: /model <id>, /search on|off|toggle, /reasoning none|low|medium|high');
+    ctx.setNotice(
+      'Slash: /model <id>, /search on|off|toggle, /reasoning none|low|medium|high|xhigh',
+    );
     return true;
   }
 
