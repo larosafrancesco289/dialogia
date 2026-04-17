@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import {
   StopIcon,
   MagnifyingGlassIcon,
@@ -9,9 +10,9 @@ import {
   EllipsisHorizontalIcon,
   CheckIcon,
   XMarkIcon,
-  LightBulbIcon,
 } from '@heroicons/react/24/outline';
 import { LightBulbIcon as LightBulbSolidIcon } from '@heroicons/react/24/solid';
+import { Lightbulb as LucideLightbulb, LightbulbOff as LucideLightbulbOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import { useXAIVoice } from '@/lib/hooks/useXAIVoice';
@@ -19,13 +20,175 @@ import { useCanUseVoice, useIsStudyTier } from '@/lib/auth/tierContext';
 import { springs } from '@/lib/mobile/springConfig';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
 
-const EFFORT_DOTS: Record<Effort, number> = {
+// ─────────────────────────────────────────────────────────────────────────────
+// Reasoning effort — "Lightbulb, off to radiant"
+// The physical icon morphs along the effort scale:
+//   none  → Lucide LightbulbOff  (muted, thin)
+//   low   → Lucide Lightbulb     (accent-soft, thin)
+//   medium→ Lucide Lightbulb     (accent, bold)
+//   high  → Heroicons solid bulb (accent)
+//   xhigh → Heroicons solid bulb (accent, scaled)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const EFFORT_LEVEL: Record<Effort, number> = {
   none: 0,
   low: 1,
   medium: 2,
   high: 3,
   xhigh: 4,
 };
+
+const effortLabel = (e: Effort) =>
+  e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra High' : e.charAt(0).toUpperCase() + e.slice(1);
+
+type BulbKind = 'off' | 'outline' | 'outline-bold' | 'solid' | 'solid-plus';
+
+const EFFORT_KIND: Record<Effort, BulbKind> = {
+  none: 'off',
+  low: 'outline',
+  medium: 'outline-bold',
+  high: 'solid',
+  xhigh: 'solid-plus',
+};
+
+function ReasoningBulbIcon({ effort, size = 16 }: { effort: Effort; size?: number }) {
+  const kind = EFFORT_KIND[effort];
+  let node: React.ReactNode;
+  switch (kind) {
+    case 'off':
+      node = <LucideLightbulbOff size={size} strokeWidth={1.5} />;
+      break;
+    case 'outline':
+      node = <LucideLightbulb size={size} strokeWidth={1.5} />;
+      break;
+    case 'outline-bold':
+      node = <LucideLightbulb size={size} strokeWidth={2} />;
+      break;
+    case 'solid':
+      node = <LightBulbSolidIcon width={size} height={size} />;
+      break;
+    case 'solid-plus':
+      node = <LightBulbSolidIcon width={size} height={size} />;
+      break;
+  }
+  const scale = kind === 'solid-plus' ? 1.12 : 1;
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.span
+        key={kind}
+        initial={{ opacity: 0, scale: scale * 0.82 }}
+        animate={{ opacity: 1, scale }}
+        exit={{ opacity: 0, scale: scale * 0.82 }}
+        transition={{ duration: 0.14 }}
+        className="composer-reasoning-icon"
+      >
+        {node}
+      </motion.span>
+    </AnimatePresence>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 160° size-graded radial picker. Each tick renders the icon at its own effort
+// level, so the fan itself reads as the progression.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FAN = {
+  spread: 160,
+  radius: 54,
+  tickSizeStart: 28,
+  tickSizeEnd: 44,
+};
+
+type ReasoningFanProps = {
+  supportsXhigh?: boolean;
+  currentEffort?: Effort;
+  onSelect: (e: Effort) => void;
+  onClose: () => void;
+  menuRef: RefObject<HTMLDivElement>;
+};
+
+function ReasoningFan({
+  supportsXhigh,
+  currentEffort,
+  onSelect,
+  onClose,
+  menuRef,
+}: ReasoningFanProps) {
+  const [hover, setHover] = useState<Effort | null>(null);
+  const efforts: Effort[] = supportsXhigh
+    ? ['none', 'low', 'medium', 'high', 'xhigh']
+    : ['none', 'low', 'medium', 'high'];
+  const { spread, radius, tickSizeStart, tickSizeEnd } = FAN;
+
+  return (
+    <motion.div
+      ref={menuRef}
+      role="radiogroup"
+      aria-label="Reasoning effort"
+      className="composer-reasoning-fan"
+      initial={{ opacity: 0, y: 4, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 4, scale: 0.96 }}
+      transition={springs.snappy}
+    >
+      {efforts.map((e, i) => {
+        const t = efforts.length > 1 ? i / (efforts.length - 1) : 0.5;
+        const clockDeg = -spread / 2 + spread * t;
+        const rad = ((clockDeg - 90) * Math.PI) / 180;
+        const level = EFFORT_LEVEL[e];
+        const tickSize = tickSizeStart + (tickSizeEnd - tickSizeStart) * (level / 4);
+        const tx = radius * Math.cos(rad);
+        const ty = radius * Math.sin(rad);
+        const iconSize = Math.max(14, Math.round(tickSize * 0.52));
+        const current = currentEffort === e;
+        return (
+          <button
+            key={e}
+            type="button"
+            role="radio"
+            aria-checked={current}
+            aria-label={effortLabel(e)}
+            className="composer-reasoning-tick"
+            data-current={current ? 'true' : 'false'}
+            data-effort={e}
+            style={{
+              width: tickSize,
+              height: tickSize,
+              margin: `-${tickSize / 2}px`,
+              transform: `translate(${tx}px, ${ty}px)`,
+            }}
+            onMouseEnter={() => setHover(e)}
+            onMouseLeave={() => setHover((v) => (v === e ? null : v))}
+            onFocus={() => setHover(e)}
+            onBlur={() => setHover((v) => (v === e ? null : v))}
+            onClick={() => {
+              onSelect(e);
+              onClose();
+            }}
+          >
+            <ReasoningBulbIcon effort={e} size={iconSize} />
+          </button>
+        );
+      })}
+      <AnimatePresence>
+        {hover !== null && (
+          <motion.span
+            key={hover}
+            className="composer-reasoning-caption"
+            style={{ top: -(radius + tickSizeEnd + 12) }}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.12 }}
+          >
+            {effortLabel(hover)}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
 
 const menuContainerVariants = {
   hidden: { opacity: 0, y: 6, scale: 0.96 },
@@ -166,9 +329,8 @@ export function ComposerActions({
     );
   }
 
-  const reasoningActive = !!currentEffort && currentEffort !== 'none';
-  const effortLabel = (e: Effort) =>
-    e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra High' : e.charAt(0).toUpperCase() + e.slice(1);
+  const effort: Effort = currentEffort ?? 'none';
+  const reasoningActive = effort !== 'none';
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
@@ -179,84 +341,27 @@ export function ComposerActions({
           <button
             ref={reasoningButtonRef}
             className={`composer-btn-reasoning ${reasoningActive ? 'is-active' : ''} ${reasoningOpen ? 'is-open' : ''}`}
-            data-effort={currentEffort ?? 'none'}
-            aria-haspopup="menu"
+            data-effort={effort}
+            aria-haspopup="listbox"
             aria-expanded={reasoningOpen}
             aria-label="Reasoning effort"
-            title={
-              reasoningActive ? `Reasoning: ${effortLabel(currentEffort!)}` : 'Reasoning effort'
-            }
+            title={reasoningActive ? `Reasoning: ${effortLabel(effort)}` : 'Reasoning effort'}
             onClick={() => {
               setReasoningOpen((v) => !v);
               setMenuOpen(false);
             }}
           >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={reasoningActive ? 'solid' : 'outline'}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.12 }}
-                className="flex items-center justify-center"
-              >
-                {reasoningActive ? (
-                  <LightBulbSolidIcon className="h-4 w-4" />
-                ) : (
-                  <LightBulbIcon className="h-4 w-4" />
-                )}
-              </motion.span>
-            </AnimatePresence>
+            <ReasoningBulbIcon effort={effort} size={16} />
           </button>
-
           <AnimatePresence>
             {reasoningOpen && (
-              <motion.div
-                ref={reasoningMenuRef}
-                variants={menuContainerVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                role="menu"
-                className="composer-reasoning-menu"
-                aria-label="Reasoning effort"
-              >
-                <motion.div variants={menuItemVariants} className="composer-overflow-label">
-                  Reasoning effort
-                </motion.div>
-                {(supportsXhigh
-                  ? (['none', 'low', 'medium', 'high', 'xhigh'] as Effort[])
-                  : (['none', 'low', 'medium', 'high'] as Effort[])
-                ).map((effort) => (
-                  <motion.button
-                    key={effort}
-                    variants={menuItemVariants}
-                    className={`composer-overflow-item composer-reasoning-item ${currentEffort === effort ? 'is-active' : ''}`}
-                    role="menuitemradio"
-                    aria-checked={currentEffort === effort}
-                    onClick={() => {
-                      void onSelectEffort(effort);
-                      setReasoningOpen(false);
-                    }}
-                  >
-                    {currentEffort === effort && (
-                      <motion.span
-                        layoutId="effort-highlight"
-                        className="composer-effort-highlight"
-                        transition={springs.snappy}
-                      />
-                    )}
-                    <span className="relative z-[1]">{effortLabel(effort)}</span>
-                    {EFFORT_DOTS[effort] > 0 && (
-                      <span className="composer-effort-dots relative z-[1]">
-                        {Array.from({ length: EFFORT_DOTS[effort] }, (_, i) => (
-                          <span key={i} className="composer-effort-dot" />
-                        ))}
-                      </span>
-                    )}
-                  </motion.button>
-                ))}
-              </motion.div>
+              <ReasoningFan
+                supportsXhigh={supportsXhigh}
+                currentEffort={effort}
+                onSelect={(e) => void onSelectEffort(e)}
+                onClose={() => setReasoningOpen(false)}
+                menuRef={reasoningMenuRef}
+              />
             )}
           </AnimatePresence>
         </div>
