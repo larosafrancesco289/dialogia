@@ -142,38 +142,88 @@
   .composer-btn-reasoning:active {
     transform: scale(0.92);
   }
-  .composer-btn-reasoning[data-effort='low'] {
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 8%, transparent);
-  }
-  .composer-btn-reasoning[data-effort='medium'] {
-    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-accent) 15%, transparent);
-  }
-  .composer-btn-reasoning[data-effort='high'] {
-    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-accent) 18%, transparent);
-    animation: filament-pulse 2s ease-in-out infinite;
-  }
-  @keyframes filament-pulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.82;
-    }
+  /* The icon itself carries the level signal — no external halo/pulse. */
+  .composer-reasoning-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
   }
 
-  /* Reasoning effort popover */
-  .composer-reasoning-menu {
+  /* Reasoning effort — 160° size-graded radial picker.
+     Origin is pinned to the trigger button's horizontal centre, just above it.
+     Each tick is a circular button; ticks sit on a 160° arc and grow toward
+     the high-effort end so the fan itself reads as the progression. */
+  .composer-reasoning-fan {
     position: absolute;
-    bottom: calc(100% + 8px);
-    right: 0;
+    left: 50%;
+    bottom: 100%;
+    width: 0;
+    height: 0;
     z-index: 50;
-    min-width: 148px;
-    padding: var(--space-1);
-    background: var(--surface-paper);
+    pointer-events: none;
+    transform-origin: 50% 100%;
+  }
+  .composer-reasoning-tick {
+    position: absolute;
+    left: 0;
+    top: 0;
+    padding: 0;
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-editorial);
-    box-shadow: var(--shadow-2);
+    border-radius: 999px;
+    background: var(--surface-paper);
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: var(--shadow-1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      background var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+  .composer-reasoning-tick[data-effort='none'] {
+    color: var(--color-fg-muted);
+  }
+  .composer-reasoning-tick[data-effort='low'],
+  .composer-reasoning-tick[data-effort='medium'],
+  .composer-reasoning-tick[data-effort='high'],
+  .composer-reasoning-tick[data-effort='xhigh'] {
+    color: var(--color-accent);
+  }
+  .composer-reasoning-tick:hover,
+  .composer-reasoning-tick:focus-visible {
+    background: var(--color-muted);
+    outline: none;
+  }
+  .composer-reasoning-tick:focus-visible {
+    box-shadow:
+      0 0 0 2px var(--focus-ring),
+      var(--shadow-1);
+  }
+  .composer-reasoning-tick[data-current='true'] {
+    background: color-mix(in oklab, var(--color-accent) 16%, var(--surface-paper));
+    border-color: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 14%, transparent);
+  }
+  .composer-reasoning-caption {
+    position: absolute;
+    left: 0;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--color-fg);
+    color: var(--color-canvas);
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: var(--shadow-1);
   }
 
   /* Overflow menu button — muted, small */
@@ -410,34 +460,6 @@
     transition: opacity var(--duration-fast) var(--ease-standard);
   }
 
-  /* Reasoning menu items — highlight & intensity dots */
-  .composer-reasoning-item {
-    position: relative;
-  }
-  .composer-effort-highlight {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: color-mix(in oklab, var(--color-accent) 10%, transparent);
-    pointer-events: none;
-  }
-  .composer-effort-dots {
-    display: flex;
-    gap: 3px;
-    align-items: center;
-    margin-left: auto;
-  }
-  .composer-effort-dot {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--color-fg-muted);
-    transition: background var(--duration-fast) var(--ease-standard);
-  }
-  .composer-reasoning-item.is-active .composer-effort-dot {
-    background: var(--color-accent);
-  }
-
   /* Mobile adjustments */
   @media (max-width: 640px) {
     .composer-btn-reasoning,
@@ -450,11 +472,6 @@
 
     .composer-overflow-menu {
       min-width: 200px;
-      right: -8px;
-    }
-
-    .composer-reasoning-menu {
-      min-width: 172px;
       right: -8px;
     }
 
