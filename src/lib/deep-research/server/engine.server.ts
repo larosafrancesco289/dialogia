@@ -1,6 +1,8 @@
 import 'server-only';
 import { chatCompletion } from '@/lib/openrouter';
 import { apiDefaults } from '@/lib/api/config';
+import { normalizeUsage, sumUsage, type Usage } from '@/lib/api/normalizers';
+import { applyCacheBreakpoints } from '@/lib/agent/cache';
 import { getDeepResearchReasoningOnly } from '@/lib/env/server';
 import type { ModelMessage } from '@/lib/agent/types';
 import type { ProviderSort } from '@/lib/models/providerSort';
@@ -28,6 +30,7 @@ export type DeepResearchParams = {
   cite?: 'inline' | 'footnotes';
   maxIterations?: number;
   providerSort?: ProviderSort;
+  zdrOnly?: boolean;
   onProgress?: (event: DeepResearchEvent) => void;
   // Brave options defaults are handled in tool impl
 };
@@ -36,7 +39,7 @@ export type DeepResearchOutput = {
   answer: string;
   sources: DeepSearchResult[];
   trace?: Array<DeepResearchEvent>;
-  usage?: unknown;
+  usage?: Usage;
   model: string;
 };
 
@@ -54,6 +57,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
     cite,
     maxIterations = 10,
     providerSort,
+    zdrOnly,
     onProgress,
   } = params;
   const origin = apiDefaults.resolveOrigin();
@@ -75,7 +79,7 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
   const trace: DeepResearchOutput['trace'] = [];
   const collectedSources: DeepSearchResult[] = [];
   const seenUrls = new Set<string>();
-  let usage: unknown | undefined;
+  let usage: Usage | undefined;
   let lastSourceCount = 0;
 
   const budget = Math.max(1, Math.min(maxIterations, 20));
@@ -97,15 +101,16 @@ export async function deepResearch(params: DeepResearchParams): Promise<DeepRese
     const resp = await chatCompletion({
       auth,
       model,
-      messages,
+      messages: applyCacheBreakpoints(messages),
       tools: allowTools ? tools : undefined,
       toolChoice: allowTools ? 'auto' : undefined,
       // Encourage sequential tool calls for interleaved reasoning
       parallelToolCalls: allowTools ? false : undefined,
       providerSort,
+      zdrOnly,
       origin,
     });
-    usage = resp?.usage || usage;
+    usage = sumUsage(usage, normalizeUsage(resp?.usage));
     const choice = resp?.choices?.[0];
     const msg = choice?.message || {};
     const toolCalls = normalizeToolCalls(msg);

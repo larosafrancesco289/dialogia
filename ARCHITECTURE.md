@@ -10,8 +10,8 @@ business logic that is easy to test.
 - Key entrypoints: `src/lib/store/index.ts` (state composition), `src/lib/services/turns.ts`
   (send/regenerate flow), `src/lib/agent/compose.ts` (message assembly), and
   `src/lib/agent/orchestrator/turn.ts` (turn runner).
-- Transport lives in `src/lib/openrouter/*` and `src/lib/transport/*` with shared HTTP helpers in
-  `src/lib/api/*`; API routes live under `app/api/*`.
+- Transport lives in `src/lib/openrouter/*`, `src/lib/anthropic/*`, and `src/lib/transport/*` with
+  shared HTTP helpers in `src/lib/api/*`; API routes live under `app/api/*`.
 
 ## Refactor Invariants
 
@@ -42,14 +42,16 @@ business logic that is easy to test.
 - **Services** — Cross-cutting orchestrators in `src/lib/services/*` that connect the store to the
   agent layer. `services/turns.ts` owns send/regenerate flows, with shared helpers in
   `src/lib/services/turns/*`. Services prepare context and hand off to the agent orchestrator.
-- **Transport** — Provider adapters in `src/lib/openrouter/*`, shared contracts in
-  `src/lib/transport/*`, and HTTP utilities in `src/lib/api/*`. OpenRouter-specific request building
-  lives in `src/lib/openrouter/request.ts`, while `src/lib/openrouter/http.ts` handles the raw HTTP
+- **Transport** — Provider adapters in `src/lib/openrouter/*` and `src/lib/anthropic/*`, shared
+  contracts in `src/lib/transport/*`, and HTTP utilities in `src/lib/api/*`. OpenRouter-specific
+  request building lives in `src/lib/openrouter/request.ts`, while provider HTTP modules handle raw
   calls. Shared helpers in `src/lib/api/config.ts`, `src/lib/api/stream.ts`, and
-  `src/lib/api/errors.ts` encapsulate defaults, SSE parsing, and typed error construction.
+  `src/lib/api/errors.ts` encapsulate defaults, SSE parsing, usage normalization, and typed error
+  construction.
   - ZDR cache helpers and enforcement live under `src/lib/policy/zdr/*`, with
     `src/lib/policy/zdr/index.ts` re-exporting helpers (`computeZdrFilter`,
     `computeZdrFilterCached`, `guardZdrOrNotifyCached`) so services can rely on a single façade.
+    Request builders also pass OpenRouter `provider.zdr=true` whenever the ZDR toggle is active.
 - **Attachments** — Pipeline lives in `src/lib/attachments/*` with UI → prepare → prompt stages.
   PDFs are extracted client-side into text blocks for prompt use, with small files optionally sent
   as file blocks.
@@ -63,19 +65,20 @@ business logic that is easy to test.
 Prefer these public entrypoints over deep internal imports when extending the system. They provide
 the stable, supported surface for cross-domain use.
 
-| Area                 | Import from                       | Notes                                                                 |
-| -------------------- | --------------------------------- | --------------------------------------------------------------------- |
-| Store entrypoints    | `src/lib/store/index.ts`          | Zustand store composition + `useChatStore`.                           |
-| Message helpers      | `src/lib/messages/indexing.ts`    | O(1) message lookup/update helpers.                                   |
-| Agent entrypoints    | `src/lib/agent/index.ts`          | Compose/plan/stream + orchestrator exports.                           |
-| Tool registry        | `src/lib/tools/index.ts`          | Tool definitions, metadata, handlers, and name guards.                |
-| Search helpers       | `src/lib/search/index.ts`         | Search tool definitions + source formatting helpers.                  |
-| Turn runtime helpers | `src/lib/turns/runtime/*`         | Abort controllers, metrics, tool-call logging.                        |
-| Tutor domain         | `src/lib/tutor/index.ts`          | Profile, context, defaults, deck.                                     |
-| DeepResearch client  | `src/lib/deep-research/index.ts`  | Client-safe entrypoint for the DeepResearch flow.                     |
-| DeepResearch server  | `src/lib/deep-research/server.ts` | Server-only engine/tools for API routes.                              |
-| OpenRouter transport | `src/lib/openrouter/index.ts`     | Transport client; request builder in `src/lib/openrouter/request.ts`. |
-| Schemas              | `src/lib/schemas/*`               | Zod schemas + JSON schema builder.                                    |
+| Area                 | Import from                       | Notes                                                                   |
+| -------------------- | --------------------------------- | ----------------------------------------------------------------------- |
+| Store entrypoints    | `src/lib/store/index.ts`          | Zustand store composition + `useChatStore`.                             |
+| Message helpers      | `src/lib/messages/indexing.ts`    | O(1) message lookup/update helpers.                                     |
+| Agent entrypoints    | `src/lib/agent/index.ts`          | Compose/plan/stream + orchestrator exports.                             |
+| Tool registry        | `src/lib/tools/index.ts`          | Tool definitions, metadata, handlers, and name guards.                  |
+| Search helpers       | `src/lib/search/index.ts`         | Search tool definitions + source formatting helpers.                    |
+| Turn runtime helpers | `src/lib/turns/runtime/*`         | Abort controllers, metrics, tool-call logging.                          |
+| Tutor domain         | `src/lib/tutor/index.ts`          | Profile, context, defaults, deck.                                       |
+| DeepResearch client  | `src/lib/deep-research/index.ts`  | Client-safe entrypoint for the DeepResearch flow.                       |
+| DeepResearch server  | `src/lib/deep-research/server.ts` | Server-only engine/tools for API routes.                                |
+| OpenRouter transport | `src/lib/openrouter/index.ts`     | Transport client; request builder in `src/lib/openrouter/request.ts`.   |
+| Anthropic transport  | `src/lib/anthropic/index.ts`      | Direct Claude transport, proxy routes, model loading, streaming, tools. |
+| Schemas              | `src/lib/schemas/*`               | Zod schemas + JSON schema builder.                                      |
 
 ## Server-only Import Policy
 

@@ -31,7 +31,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
     experimentalBrave,
     ui,
   } = props;
-  const routePref = ui.routePreference ?? 'speed';
+  const routePref = ui.routePreference ?? 'balanced';
   const selectedModelId = ui.chatDefaults?.modelId;
   const searchProvider = ui.chatDefaults?.features?.search?.provider ?? 'openrouter';
 
@@ -141,6 +141,14 @@ export function ModelsPanel(props: ModelsPanelProps) {
             <label className="text-sm block">Route preference</label>
             <div className="segmented">
               <button
+                className={`segment ${routePref === 'balanced' ? 'is-active' : ''}`}
+                onClick={() => {
+                  setUI({ routePreference: 'balanced' });
+                }}
+              >
+                Balanced
+              </button>
+              <button
                 className={`segment ${routePref === 'speed' ? 'is-active' : ''}`}
                 onClick={() => {
                   setUI({ routePreference: 'speed' });
@@ -158,8 +166,8 @@ export function ModelsPanel(props: ModelsPanelProps) {
               </button>
             </div>
             <div className="text-xs text-muted-foreground">
-              Speed sorts by provider throughput; Cost sorts by price. OpenRouter routing uses this
-              hint when selecting a provider for the chosen model.
+              Balanced leaves OpenRouter default routing on. Speed and Cost set explicit provider
+              sorting for the chosen model.
             </div>
           </div>
         </SettingsSection>,

@@ -185,6 +185,7 @@ export function createMessageStreamCallbacks(
         hiddenContent: current?.hiddenContent,
         toolCalls: current?.toolCalls ?? assistantMessage.toolCalls,
         metrics,
+        usage: extras?.usage,
         tokensIn: metrics.promptTokens,
         tokensOut: metrics.completionTokens,
         annotations: current?.annotations ?? extras?.annotations,

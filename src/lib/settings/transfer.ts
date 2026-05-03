@@ -1,5 +1,5 @@
 import { exportAll, importAll } from '@/lib/db';
-import { useChatStore } from '@/lib/store';
+import { PERSISTED_STORE_KEY, useChatStore } from '@/lib/store';
 import { buildPersistedState, mergePersistedState } from '@/lib/store/persistence';
 import { migrate } from '@/lib/store/migrations';
 import { STORE_MIGRATION_VERSION } from '@/lib/store/versions';
@@ -7,6 +7,27 @@ import { err, ok, type Result } from '@/lib/utils/result';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+async function persistImportedStoreSnapshot() {
+  const snapshot = {
+    state: buildPersistedState(useChatStore.getState()),
+    version: STORE_MIGRATION_VERSION,
+  };
+  const persistApi = (
+    useChatStore as unknown as {
+      persist?: {
+        getOptions?: () => {
+          storage?: {
+            setItem?: (name: string, value: unknown) => void | Promise<void>;
+          };
+        };
+      };
+    }
+  ).persist;
+  const storage = persistApi?.getOptions?.().storage;
+  await storage?.setItem?.(PERSISTED_STORE_KEY, snapshot);
+  globalThis.localStorage?.setItem?.(PERSISTED_STORE_KEY, JSON.stringify(snapshot));
+}
 
 const buildExportFilename = (timestamp: Date): string => {
   const pad = (value: number) => String(value).padStart(2, '0');
@@ -51,8 +72,8 @@ export async function importChatExport(
           ? data.persistedStoreVersion
           : STORE_MIGRATION_VERSION;
       const migrated = migrate(data.persistedStore, version);
-      // setState triggers zustand's persist middleware, which writes to localStorage.
       useChatStore.setState(mergePersistedState(useChatStore.getState(), migrated));
+      await persistImportedStoreSnapshot();
     }
 
     return ok({ imported: true });

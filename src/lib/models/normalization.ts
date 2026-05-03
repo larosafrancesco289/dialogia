@@ -7,9 +7,7 @@ type NormalizeModelOptions = {
   providerDisplay?: string;
 };
 
-const parsePricing = (
-  value: unknown,
-): { prompt?: number; completion?: number; currency?: string } | undefined => {
+const parsePricing = (value: unknown): ModelDescriptor['pricing'] | undefined => {
   if (!isRecord(value)) return undefined;
   const parseRate = (rate: unknown): number | undefined => {
     if (typeof rate === 'number' && Number.isFinite(rate)) return rate;
@@ -22,9 +20,36 @@ const parsePricing = (
 
   const prompt = parseRate(value.prompt);
   const completion = parseRate(value.completion);
+  const inputCacheRead = parseRate(value.input_cache_read ?? value.inputCacheRead);
+  const inputCacheWrite = parseRate(value.input_cache_write ?? value.inputCacheWrite);
+  const image = parseRate(value.image);
+  const audio = parseRate(value.audio);
+  const webSearch = parseRate(value.web_search ?? value.webSearch);
+  const internalReasoning = parseRate(value.internal_reasoning ?? value.internalReasoning);
   const currency = typeof value.currency === 'string' ? value.currency : undefined;
-  if (prompt == null && completion == null && currency == null) return undefined;
-  return { prompt, completion, currency };
+  if (
+    prompt == null &&
+    completion == null &&
+    inputCacheRead == null &&
+    inputCacheWrite == null &&
+    image == null &&
+    audio == null &&
+    webSearch == null &&
+    internalReasoning == null &&
+    currency == null
+  )
+    return undefined;
+  const pricing: ModelDescriptor['pricing'] = {};
+  if (prompt != null) pricing.prompt = prompt;
+  if (completion != null) pricing.completion = completion;
+  if (inputCacheRead != null) pricing.inputCacheRead = inputCacheRead;
+  if (inputCacheWrite != null) pricing.inputCacheWrite = inputCacheWrite;
+  if (image != null) pricing.image = image;
+  if (audio != null) pricing.audio = audio;
+  if (webSearch != null) pricing.webSearch = webSearch;
+  if (internalReasoning != null) pricing.internalReasoning = internalReasoning;
+  if (currency != null) pricing.currency = currency;
+  return pricing;
 };
 
 export function normalizeModelDescriptor(

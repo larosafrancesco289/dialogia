@@ -6,6 +6,8 @@ import { isDeepResearchEvent } from '@/lib/deep-research/events';
 import { notify } from '@/lib/store/notify';
 import { adjustActiveTurnCount, clearActiveTurnCount } from '@/lib/ui/streaming';
 import { readApiErrorResponse } from '@/lib/api/errors';
+import { normalizeUsage } from '@/lib/api/normalizers';
+import { providerSortFromRoutePref } from '@/lib/policy/provider';
 
 export type DeepResearchContext = {
   task: string;
@@ -40,10 +42,13 @@ export async function runDeepResearchTurn({
   }
 
   try {
+    const state = get();
+    const providerSort = providerSortFromRoutePref(state.ui.routePreference);
+    const zdrOnly = state.ui.zdrOnly === true;
     const res = await fetch('/api/deep-research', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task: trimmedTask, model: modelId }),
+      body: JSON.stringify({ task: trimmedTask, model: modelId, providerSort, zdrOnly }),
       cache: 'no-store',
       signal: controller.signal,
     } as RequestInit);
@@ -90,10 +95,20 @@ export async function runDeepResearchTurn({
     if (!finalResult) throw new Error('stream_ended_no_result');
 
     const answer = getDeepResearchAnswer(finalResult) || '';
+    const usage = getDeepResearchUsage(finalResult);
+    const promptTokens = usage?.prompt_tokens ?? usage?.input_tokens;
+    const completionTokens = usage?.completion_tokens ?? usage?.output_tokens;
     const finalMessage: Message = {
       ...assistantMessage,
       content: answer,
       deepResearch: { trace: trace.slice(), answer },
+      usage,
+      metrics:
+        promptTokens != null || completionTokens != null
+          ? { promptTokens, completionTokens }
+          : undefined,
+      tokensIn: promptTokens,
+      tokensOut: completionTokens,
     };
     set((state) => ({
       messagesById: {
@@ -126,4 +141,13 @@ function getDeepResearchAnswer(value: unknown): string | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   const record = value as Record<string, unknown>;
   return typeof record.answer === 'string' ? record.answer : undefined;
+}
+
+function getDeepResearchUsage(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  if (!record.usage || typeof record.usage !== 'object' || Array.isArray(record.usage)) {
+    return undefined;
+  }
+  return normalizeUsage(record.usage as Record<string, unknown>);
 }

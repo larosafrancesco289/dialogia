@@ -26,6 +26,7 @@ export type BuildDebugBodyArgs = {
   toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
   parallelToolCalls?: boolean;
   providerSort?: ProviderSort;
+  zdrOnly?: boolean;
   plugins?: PluginConfig[];
   canImageOut?: boolean;
 };
@@ -45,6 +46,7 @@ export function buildDebugBody(args: BuildDebugBodyArgs) {
     toolChoice: args.toolChoice,
     parallelToolCalls: args.parallelToolCalls,
     providerSort: args.providerSort,
+    zdrOnly: args.zdrOnly,
     plugins: args.plugins,
     modalities: args.canImageOut ? (['image', 'text'] as Array<'image' | 'text'>) : undefined,
   });
@@ -64,6 +66,7 @@ export type RequestDebugOptions = {
   toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
   parallelToolCalls?: boolean;
   providerSort?: ProviderSort;
+  zdrOnly?: boolean;
   plugins?: PluginConfig[];
   canImageOut?: boolean;
 };
@@ -83,6 +86,7 @@ export function buildRequestDebugBody(options: RequestDebugOptions) {
     toolChoice: options.toolChoice,
     parallelToolCalls: options.parallelToolCalls,
     providerSort: options.providerSort,
+    zdrOnly: options.zdrOnly,
     plugins: options.plugins,
     canImageOut: options.canImageOut,
   });

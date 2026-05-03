@@ -26,6 +26,7 @@ export function MessageMeta({
       model: modelInfo,
       promptTokens: pt,
       completionTokens: ct,
+      usage: message.usage,
     });
     cost = total && total > 0 ? `${currency} ${total.toFixed(5)}` : undefined;
     const contextLimit = modelInfo?.context_length ?? 8000;

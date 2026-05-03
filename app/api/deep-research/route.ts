@@ -35,6 +35,7 @@ export const POST = route('deep-research')
     if (!task) return jsonError(400, 'missing_task');
     if (!model) return jsonError(400, 'missing_model');
     const providerSort = parsed.data.providerSort;
+    const zdrOnly = parsed.data.zdrOnly === true;
     const style = parsed.data.style;
     const cite = parsed.data.cite;
     const origin = apiDefaults.resolveOrigin();
@@ -70,6 +71,7 @@ export const POST = route('deep-research')
           cite,
           maxIterations: parsed.data.maxIterations,
           providerSort,
+          zdrOnly,
           onProgress: (event) => {
             send({ type: 'trace', data: event });
           },

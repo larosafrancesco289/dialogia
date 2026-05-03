@@ -92,6 +92,7 @@ type StreamCallParams = {
 async function executeStreamCall(ctx: StreamingContext, params: StreamCallParams): Promise<void> {
   const { opts, generation, modalities, disableReasoning, canImageOut, combinedPlugins } = ctx;
   const { turn, settings, controller } = opts;
+  const zdrOnly = turn.get()?.ui?.zdrOnly === true;
 
   captureRequestDebug({
     turn,
@@ -110,6 +111,7 @@ async function executeStreamCall(ctx: StreamingContext, params: StreamCallParams
     tools: params.tools,
     toolChoice: params.toolChoice,
     providerSort: generation.providerSort,
+    zdrOnly,
     plugins: combinedPlugins,
   });
 
@@ -125,6 +127,7 @@ async function executeStreamCall(ctx: StreamingContext, params: StreamCallParams
     reasoningTokens: generation.reasoningTokens,
     disableReasoning,
     providerSort: generation.providerSort,
+    zdrOnly,
     signal: controller.signal,
     tools: params.tools,
     toolChoice: params.toolChoice,

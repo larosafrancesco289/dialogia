@@ -117,7 +117,7 @@ export type UiSnapshot = {
   activeTurnByChatId: Record<string, number>;
   notice?: string;
   overrides?: UiNextOverrides;
-  routePreference?: 'speed' | 'cost';
+  routePreference?: 'balanced' | 'speed' | 'cost';
   zdrOnly?: boolean;
   flags: UiFlagsSnapshot;
   debug: UiDebugSnapshot;

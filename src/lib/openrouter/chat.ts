@@ -23,6 +23,7 @@ export async function chatCompletion(params: TransportChatParams): Promise<ChatC
     toolChoice: params.toolChoice,
     parallelToolCalls: params.parallelToolCalls,
     providerSort: params.providerSort,
+    zdrOnly: params.zdrOnly,
     plugins: params.plugins,
   });
 

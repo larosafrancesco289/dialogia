@@ -11,6 +11,7 @@ import {
 } from '@/lib/types/enums';
 import { LearningPlanSchema } from '@/lib/schemas/learningPlan';
 import type { LearnerModel, MessageDeepResearch, MessageMetrics, MessageTutor } from '@/lib/types';
+import type { Usage } from '@/lib/api/normalizers';
 
 export const GenerationSettingsSchema = z
   .object({
@@ -151,6 +152,7 @@ export const MessageSchema = z
         .passthrough() as z.ZodType<MessageDeepResearch>
     ).optional(),
     metrics: z.custom<MessageMetrics>().optional(),
+    usage: z.custom<Usage>().optional(),
     attachments: z.array(PersistedAttachmentSchema).optional(),
     metadata: z
       .object({

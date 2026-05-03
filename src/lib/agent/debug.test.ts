@@ -44,6 +44,7 @@ test('buildRequestDebugBody mirrors buildDebugBody options for streaming', () =>
     tools: [{ type: 'function', function: { name: 'tool', parameters: { type: 'object' } } }],
     toolChoice: 'auto',
     providerSort: ProviderSort.Price,
+    zdrOnly: true,
     plugins: [{ id: 'web' }],
     canImageOut: true,
   });
@@ -57,6 +58,7 @@ test('buildRequestDebugBody mirrors buildDebugBody options for streaming', () =>
   assert.deepEqual(payload.reasoning, { effort: 'medium' });
   assert.equal(payload.tools?.[0]?.function?.name, 'tool');
   assert.equal(payload.tool_choice, 'auto');
+  assert.deepEqual(payload.provider, { sort: 'price', zdr: true });
   assert.deepEqual(payload.plugins, [{ id: 'web' }]);
   assert.deepEqual(payload.modalities, ['image', 'text']);
 });

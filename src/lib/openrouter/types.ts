@@ -20,7 +20,7 @@ export type OpenRouterChatRequest = {
   tools?: ToolDefinition[];
   tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
   parallel_tool_calls?: boolean;
-  provider?: { sort?: ProviderSort };
+  provider?: { sort?: ProviderSort; zdr?: boolean };
   plugins?: PluginConfig[];
   stream_options?: { include_usage?: boolean };
 };

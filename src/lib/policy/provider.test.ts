@@ -25,6 +25,7 @@ const baseUi = {
 test('providerSortFromRoutePref maps UI preference', () => {
   assert.equal(providerSortFromRoutePref('speed'), 'throughput');
   assert.equal(providerSortFromRoutePref('cost'), 'price');
+  assert.equal(providerSortFromRoutePref('balanced'), undefined);
   assert.equal(providerSortFromRoutePref(undefined), undefined);
 });
 

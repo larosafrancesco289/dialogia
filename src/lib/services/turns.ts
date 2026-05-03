@@ -229,6 +229,7 @@ export async function sendUserTurn({
       get().renameChat.bind(get()),
       tier,
       primaryContext.auth.transport,
+      get().ui.zdrOnly === true,
     );
   }
 

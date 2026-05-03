@@ -6,6 +6,16 @@ export type Usage = {
   total_tokens?: number;
   input_tokens?: number;
   output_tokens?: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
+  prompt_tokens_details?: Record<string, unknown>;
+  completion_tokens_details?: Record<string, unknown>;
+  cost?: number;
+  cost_details?: Record<string, unknown>;
+  cache_discount?: number;
+  server_tool_use?: Record<string, unknown>;
+  is_byok?: boolean;
+  [key: string]: unknown;
 };
 
 export type ChatCompletionMessage = {

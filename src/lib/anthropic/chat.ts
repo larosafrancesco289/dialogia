@@ -1,4 +1,4 @@
-import { normalizeUsage } from '@/lib/api/normalizers';
+import { normalizeUsage, sumUsage } from '@/lib/api/normalizers';
 import { API_ERROR_CODES } from '@/lib/api/errors';
 import type { TransportChatParams } from '@/lib/transport/types';
 import type { ModelMessage } from '@/lib/transport/contracts';
@@ -98,23 +98,6 @@ function appendContinuationMessage(
         content: content as AnthropicAssistantMessageContent,
       },
     ],
-  };
-}
-
-function sumUsage(
-  base: ReturnType<typeof normalizeUsage>,
-  next: ReturnType<typeof normalizeUsage>,
-) {
-  if (!base) return next;
-  if (!next) return base;
-  const add = (left?: number, right?: number) =>
-    typeof left === 'number' || typeof right === 'number' ? (left ?? 0) + (right ?? 0) : undefined;
-  return {
-    prompt_tokens: add(base.prompt_tokens, next.prompt_tokens),
-    completion_tokens: add(base.completion_tokens, next.completion_tokens),
-    total_tokens: add(base.total_tokens, next.total_tokens),
-    input_tokens: add(base.input_tokens, next.input_tokens),
-    output_tokens: add(base.output_tokens, next.output_tokens),
   };
 }
 

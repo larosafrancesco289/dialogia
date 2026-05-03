@@ -1,5 +1,5 @@
 import { consumeSse } from '@/lib/api/stream';
-import { normalizeUsage, type Usage } from '@/lib/api/normalizers';
+import { mergeUsage, normalizeUsage, sumUsage, type Usage } from '@/lib/api/normalizers';
 import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
 import type { TransportStreamParams, FinishReason, ToolCallDelta } from '@/lib/transport/types';
 import type { ToolCall } from '@/lib/transport/contracts';
@@ -40,32 +40,6 @@ function mapStopReason(value: unknown): FinishReason | undefined {
   if (value === 'refusal') return 'content_filter';
   if (value === 'end_turn' || value === 'stop_sequence') return 'stop';
   return undefined;
-}
-
-function mergeUsage(base: Usage | undefined, next: Usage | undefined): Usage | undefined {
-  if (!base) return next;
-  if (!next) return base;
-  return {
-    prompt_tokens: next.prompt_tokens ?? base.prompt_tokens,
-    completion_tokens: next.completion_tokens ?? base.completion_tokens,
-    total_tokens: next.total_tokens ?? base.total_tokens,
-    input_tokens: next.input_tokens ?? base.input_tokens,
-    output_tokens: next.output_tokens ?? base.output_tokens,
-  };
-}
-
-function sumUsage(base: Usage | undefined, next: Usage | undefined): Usage | undefined {
-  if (!base) return next;
-  if (!next) return base;
-  const add = (left?: number, right?: number) =>
-    typeof left === 'number' || typeof right === 'number' ? (left ?? 0) + (right ?? 0) : undefined;
-  return {
-    prompt_tokens: add(base.prompt_tokens, next.prompt_tokens),
-    completion_tokens: add(base.completion_tokens, next.completion_tokens),
-    total_tokens: add(base.total_tokens, next.total_tokens),
-    input_tokens: add(base.input_tokens, next.input_tokens),
-    output_tokens: add(base.output_tokens, next.output_tokens),
-  };
 }
 
 function appendContinuationMessage(

@@ -27,11 +27,11 @@ export function getDefaultZdrOnly(): boolean {
   return readBooleanValue(process.env.NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT, false);
 }
 
-export type RoutePreferenceDefault = 'speed' | 'cost';
+export type RoutePreferenceDefault = 'balanced' | 'speed' | 'cost';
 
-const ROUTE_PREFERENCE_VALUES: RoutePreferenceDefault[] = ['speed', 'cost'];
+const ROUTE_PREFERENCE_VALUES: RoutePreferenceDefault[] = ['balanced', 'speed', 'cost'];
 
-// UI defaults map directly to transport mapping in agent/request.providerSortFromRoutePref.
+// Balanced leaves provider.sort unset so OpenRouter can use its price-weighted defaults.
 export function getRoutePreferenceDefault(): RoutePreferenceDefault {
   const value = readEnvValue(process.env.NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT);
   if (value) {
@@ -40,7 +40,7 @@ export function getRoutePreferenceDefault(): RoutePreferenceDefault {
       return normalized;
     }
   }
-  return 'speed';
+  return 'balanced';
 }
 
 export function getLogLevelSetting(): string | undefined {
