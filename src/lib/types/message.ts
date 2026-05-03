@@ -3,6 +3,7 @@ import type { GenerationSettings, SearchProvider } from '@/lib/types/chat';
 import type { DeepResearchEvent } from '@/lib/types/deepResearch';
 import type { MessageMetrics } from '@/lib/types/metrics';
 import type { LearnerModel, MessageTutor } from '@/lib/types/tutor';
+import type { Usage } from '@/lib/api/normalizers';
 import type {
   MessageRole,
   MessageSource,
@@ -84,6 +85,7 @@ export type Message = {
   // DeepResearch trace data (separate from model reasoning tokens)
   deepResearch?: MessageDeepResearch;
   metrics?: MessageMetrics;
+  usage?: Usage;
   // Optional attachments (currently images) associated to the message
   attachments?: PersistedAttachment[];
   metadata?: {

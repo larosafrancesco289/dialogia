@@ -42,3 +42,43 @@ test('computeCost handles missing pricing gracefully', () => {
   assert.equal(cost.currency, 'USD');
   assert.equal(cost.total, undefined);
 });
+
+test('computeCost trusts provider-reported cost when present', () => {
+  const cost = computeCost({
+    model: { id: 'openai/gpt-5', pricing: { prompt: 1, completion: 1, currency: 'USD' } },
+    promptTokens: 100,
+    completionTokens: 200,
+    usage: {
+      prompt_tokens: 100,
+      completion_tokens: 200,
+      cost: 0.012345,
+    },
+  });
+
+  assert.equal(cost.total, 0.012345);
+});
+
+test('computeCost accounts for direct Anthropic cache read and write tokens', () => {
+  const model: any = {
+    id: 'anthropic-direct/claude-sonnet-4-6',
+    transport: 'anthropic',
+    pricing: {
+      prompt: 0.000003,
+      completion: 0.000015,
+      inputCacheRead: 0.0000003,
+      inputCacheWrite: 0.00000375,
+      currency: 'USD',
+    },
+  };
+  const cost = computeCost({
+    model,
+    usage: {
+      input_tokens: 100,
+      cache_creation_input_tokens: 200,
+      cache_read_input_tokens: 300,
+      output_tokens: 50,
+    },
+  });
+
+  assert.equal(Number(cost.total?.toFixed(5)), 0.00189);
+});

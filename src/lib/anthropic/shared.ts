@@ -54,11 +54,35 @@ const ADAPTIVE_THINKING_MODEL_ID_RE_LIST = [
 
 const KNOWN_ANTHROPIC_PRICING: Record<
   string,
-  { prompt: number; completion: number; currency: string }
+  {
+    prompt: number;
+    completion: number;
+    inputCacheRead: number;
+    inputCacheWrite: number;
+    currency: string;
+  }
 > = {
-  'claude-opus-4-6': { prompt: 0.000005, completion: 0.000025, currency: 'usd' },
-  'claude-sonnet-4-6': { prompt: 0.000003, completion: 0.000015, currency: 'usd' },
-  'claude-haiku-4-5': { prompt: 0.000001, completion: 0.000005, currency: 'usd' },
+  'claude-opus-4-6': {
+    prompt: 0.000005,
+    completion: 0.000025,
+    inputCacheRead: 0.0000005,
+    inputCacheWrite: 0.00000625,
+    currency: 'usd',
+  },
+  'claude-sonnet-4-6': {
+    prompt: 0.000003,
+    completion: 0.000015,
+    inputCacheRead: 0.0000003,
+    inputCacheWrite: 0.00000375,
+    currency: 'usd',
+  },
+  'claude-haiku-4-5': {
+    prompt: 0.000001,
+    completion: 0.000005,
+    inputCacheRead: 0.0000001,
+    inputCacheWrite: 0.00000125,
+    currency: 'usd',
+  },
 };
 
 function normalizeSlug(model: string): string {

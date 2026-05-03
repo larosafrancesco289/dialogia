@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildChatBody } from '@/lib/openrouter/request';
+import { ProviderSort } from '@/lib/models/providerSort';
 
 const base = {
   model: 'provider/model',
@@ -50,6 +51,16 @@ test('buildChatBody forwards xhigh reasoning effort verbatim', () => {
     reasoningEffort: 'xhigh',
   });
   assert.deepEqual(body.reasoning, { effort: 'xhigh' });
+});
+
+test('buildChatBody enforces ZDR alongside provider sorting', () => {
+  const body = buildChatBody({
+    ...base,
+    providerSort: ProviderSort.Price,
+    zdrOnly: true,
+  });
+
+  assert.deepEqual(body.provider, { sort: 'price', zdr: true });
 });
 
 test('buildChatBody preserves explicit cache_control message blocks for OpenRouter Anthropic routing', () => {

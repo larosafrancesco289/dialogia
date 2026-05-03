@@ -42,10 +42,11 @@ export async function generateLearningPlan(
     priorKnowledge?: string[];
     timeConstraint?: number; // Hours available
     difficulty?: 'beginner' | 'intermediate' | 'advanced';
+    zdrOnly?: boolean;
     signal?: AbortSignal;
   },
 ): Promise<LearningPlan> {
-  const { auth, model, priorKnowledge, timeConstraint, difficulty, signal } = options;
+  const { auth, model, priorKnowledge, timeConstraint, difficulty, zdrOnly, signal } = options;
 
   // Build user prompt with context
   const contextParts: string[] = [];
@@ -80,6 +81,7 @@ export async function generateLearningPlan(
     messages,
     maxTokens: 3000,
     temperature: 0.7,
+    zdrOnly,
     signal,
   });
 

@@ -34,7 +34,9 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
   that advertise reasoning support; set to `false` to allow experimental providers during testing.
   DeepResearch always executes with the server-side `OPENROUTER_API_KEY`.
 - `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT` — if `true`, new sessions start with ZDR-only enforcement.
-- `NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT` — optional routing hint (`speed` | `cost`).
+- `NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT` — optional routing hint (`balanced` | `speed` |
+  `cost`). The default is `balanced`, which leaves OpenRouter's default price-weighted routing
+  active. `speed` and `cost` send explicit `provider.sort` values.
 - `AUTH_COOKIE_SECRET`, `ACCESS_CODE_PEPPER`, `ACCESS_CODES_INDIVIDUAL_HASHED`,
   `ACCESS_CODES_DEVELOPER_HASHED` — configure the access gate in `middleware.ts` and `app/access`
   routes.
@@ -91,5 +93,5 @@ Headless scripts require:
 - Access gate secrets should be long random hex strings. Regenerate when rotating codes.
 - Zero Data Retention (ZDR) lists fetch from OpenRouter and are cached in
   `src/lib/policy/zdr/cache.ts`. The refresh schedule is wired in `src/lib/services/bootstrap.ts`
-  (every 6 hours) to prevent stale provider/model data. Update documentation if new flags or
-  endpoints appear.
+  (every 6 hours) to prevent stale provider/model data. When the ZDR toggle is enabled, OpenRouter
+  requests also send `provider.zdr=true` so enforcement happens per request.

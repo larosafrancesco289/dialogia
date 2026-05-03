@@ -9,6 +9,7 @@ export const DeepResearchRequestSchema = z.object({
   cite: z.enum(['inline', 'footnotes']).optional(),
   maxIterations: z.number().optional(),
   providerSort: z.nativeEnum(ProviderSort).optional(),
+  zdrOnly: z.boolean().optional(),
 });
 
 export const VerifyCodeRequestSchema = z.object({

@@ -32,6 +32,7 @@ export async function runPlanningRound(args: {
   const { convo, assistantMessage, toolDefinition, controller, turn, settings } = args;
   const { auth } = turn;
   const generation = settings.generation;
+  const zdrOnly = turn.get()?.ui?.zdrOnly === true;
   const supportsTools = isToolCallingSupported(settings.modelMeta);
   const toolsForPlanning =
     supportsTools && Array.isArray(toolDefinition) && toolDefinition.length > 0
@@ -55,6 +56,7 @@ export async function runPlanningRound(args: {
     tools: toolsForPlanning,
     toolChoice: toolsForPlanning ? 'auto' : undefined,
     providerSort: generation.providerSort,
+    zdrOnly,
   });
 
   const disableReasoning = settings.caps.canReason && !isReasoningRequested(generation);
@@ -70,6 +72,7 @@ export async function runPlanningRound(args: {
     reasoningTokens: generation.reasoningTokens,
     disableReasoning,
     providerSort: generation.providerSort,
+    zdrOnly,
     tools: toolsForPlanning,
     toolChoice: toolsForPlanning ? ('auto' as const) : undefined,
     signal: controller.signal,

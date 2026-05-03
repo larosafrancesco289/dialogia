@@ -33,6 +33,8 @@ test('fetchModels exposes Anthropic pricing in per-token units', async () => {
   assert.deepEqual(models[0]?.pricing, {
     prompt: 0.000005,
     completion: 0.000025,
+    inputCacheRead: 0.0000005,
+    inputCacheWrite: 0.00000625,
     currency: 'usd',
   });
   assert.equal(describeModelPricing(models[0]), 'in $5.00/M · out $25.00/M');

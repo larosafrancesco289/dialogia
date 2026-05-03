@@ -19,6 +19,7 @@ const createTestStore = (initialUi: any): StoreAccess & { state: { ui: any } } =
 test('providerSortFromRoutePref maps UI preferences to provider sort', () => {
   assert.equal(providerSortFromRoutePref('speed'), ProviderSort.Throughput);
   assert.equal(providerSortFromRoutePref('cost'), ProviderSort.Price);
+  assert.equal(providerSortFromRoutePref('balanced'), undefined);
   assert.equal(providerSortFromRoutePref(undefined), undefined);
   assert.equal(providerSortFromRoutePref(null as any), undefined);
 });
@@ -65,6 +66,7 @@ test('buildDebugBody includes optional knobs when provided', () => {
     ],
     toolChoice: 'auto',
     providerSort: ProviderSort.Price,
+    zdrOnly: true,
     plugins: [{ id: 'web' }],
     canImageOut: true,
   });
@@ -79,7 +81,7 @@ test('buildDebugBody includes optional knobs when provided', () => {
   assert.deepEqual(body.reasoning, { effort: 'medium' });
   assert.equal(body.tools?.[0]?.function?.name, 'tutor_call');
   assert.equal(body.tool_choice, 'auto');
-  assert.deepEqual(body.provider, { sort: 'price' });
+  assert.deepEqual(body.provider, { sort: 'price', zdr: true });
   assert.deepEqual(body.plugins, [{ id: 'web' }]);
 });
 

@@ -1,18 +1,78 @@
 import type { ModelDescriptor } from '@/lib/types';
+import type { Usage } from '@/lib/api/normalizers';
+
+function usageNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function detailNumber(details: Record<string, unknown> | undefined, ...keys: string[]) {
+  if (!details) return undefined;
+  for (const key of keys) {
+    const value = usageNumber(details[key]);
+    if (value != null) return value;
+  }
+  return undefined;
+}
+
+function getCacheReadTokens(usage?: Usage): number | undefined {
+  return (
+    usageNumber(usage?.cache_read_input_tokens) ??
+    detailNumber(usage?.prompt_tokens_details, 'cache_read_tokens', 'cached_tokens')
+  );
+}
+
+function getCacheWriteTokens(usage?: Usage): number | undefined {
+  return (
+    usageNumber(usage?.cache_creation_input_tokens) ??
+    detailNumber(usage?.prompt_tokens_details, 'cache_write_tokens')
+  );
+}
 
 export function computeCost(opts: {
   model?: ModelDescriptor;
   promptTokens?: number;
   completionTokens?: number;
+  usage?: Usage;
 }): { currency?: string; total?: number } {
-  const { model, promptTokens, completionTokens } = opts;
+  const { model, usage } = opts;
   const currency = model?.pricing?.currency || 'USD';
+  const reportedCost = usageNumber(usage?.cost);
+  if (reportedCost != null) return { currency, total: reportedCost };
+
+  const promptTokens =
+    usageNumber(usage?.prompt_tokens) ?? usageNumber(usage?.input_tokens) ?? opts.promptTokens;
+  const completionTokens =
+    usageNumber(usage?.completion_tokens) ??
+    usageNumber(usage?.output_tokens) ??
+    opts.completionTokens;
+  const cacheReadTokens = getCacheReadTokens(usage);
+  const cacheWriteTokens = getCacheWriteTokens(usage);
   const promptRate = model?.pricing?.prompt; // per token
   const completionRate = model?.pricing?.completion; // per token
-  const pCost = promptRate != null && promptTokens != null ? promptRate * promptTokens : 0;
+  const cacheReadRate = model?.pricing?.inputCacheRead;
+  const cacheWriteRate = model?.pricing?.inputCacheWrite;
+  const hasCacheRates = cacheReadRate != null || cacheWriteRate != null;
+  const directAnthropic =
+    model?.transport === 'anthropic' || model?.id?.startsWith('anthropic-direct/');
+  const billablePromptTokens =
+    !directAnthropic && hasCacheRates
+      ? Math.max(0, (promptTokens ?? 0) - (cacheReadTokens ?? 0) - (cacheWriteTokens ?? 0))
+      : promptTokens;
+
+  const pCost =
+    promptRate != null && billablePromptTokens != null ? promptRate * billablePromptTokens : 0;
+  const cacheReadCost =
+    cacheReadRate != null && cacheReadTokens != null ? cacheReadRate * cacheReadTokens : 0;
+  const cacheWriteCost =
+    cacheWriteRate != null && cacheWriteTokens != null ? cacheWriteRate * cacheWriteTokens : 0;
   const cCost =
     completionRate != null && completionTokens != null ? completionRate * completionTokens : 0;
-  const total = pCost + cCost;
+  const total = pCost + cacheReadCost + cacheWriteCost + cCost;
   return { currency, total: total || undefined };
 }
 
@@ -24,12 +84,7 @@ function formatUsd(amount?: number): string | undefined {
 
 // Normalize potentially string pricing fields from OpenRouter to numbers (per token)
 function toNumber(val: unknown): number | undefined {
-  if (typeof val === 'number' && Number.isFinite(val)) return val;
-  if (typeof val === 'string' && val.trim() !== '') {
-    const n = Number(val);
-    return Number.isFinite(n) ? n : undefined;
-  }
-  return undefined;
+  return usageNumber(val);
 }
 
 // Convert per-token price to per-million for display

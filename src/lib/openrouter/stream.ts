@@ -47,6 +47,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
     toolChoice: params.toolChoice,
     parallelToolCalls: params.parallelToolCalls,
     providerSort: params.providerSort,
+    zdrOnly: params.zdrOnly,
     plugins: params.plugins,
     includeUsage: shouldIncludeUsage(true),
   });

@@ -18,6 +18,7 @@ export type BuildChatBodyParams = {
   toolChoice?: OpenRouterChatRequest['tool_choice'];
   parallelToolCalls?: boolean;
   providerSort?: ProviderSort;
+  zdrOnly?: boolean;
   plugins?: PluginConfig[];
   includeUsage?: boolean;
 };
@@ -61,6 +62,9 @@ export function buildChatBody(params: BuildChatBodyParams): OpenRouterChatReques
     params.providerSort === ProviderSort.Throughput
   ) {
     body.provider = { ...(body.provider || {}), sort: params.providerSort };
+  }
+  if (params.zdrOnly) {
+    body.provider = { ...(body.provider || {}), zdr: true };
   }
   if (Array.isArray(params.plugins) && params.plugins.length) body.plugins = params.plugins;
   if (params.includeUsage && params.stream) body.stream_options = { include_usage: true };

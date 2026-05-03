@@ -58,6 +58,7 @@ export type TransportChatParams = {
   parallelToolCalls?: boolean;
   signal?: AbortSignal;
   providerSort?: ProviderSort;
+  zdrOnly?: boolean;
   plugins?: PluginConfig[];
   origin?: string;
 };

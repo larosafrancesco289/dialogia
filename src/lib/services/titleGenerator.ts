@@ -27,6 +27,7 @@ const TITLE_SYSTEM_PROMPT = `You are a chat title generator. Given the user's fi
 export async function generateChatTitle(
   userMessage: string,
   preferredTransport: ModelTransport = 'openrouter',
+  zdrOnly = false,
 ): Promise<string | null> {
   if (!userMessage.trim()) {
     return null;
@@ -54,6 +55,7 @@ export async function generateChatTitle(
       messages,
       maxTokens: TITLE_MAX_TOKENS,
       temperature: 0.7,
+      zdrOnly,
       signal: controller.signal,
     });
 
@@ -84,6 +86,7 @@ export function triggerAsyncTitleGeneration(
   renameChat: (id: string, title: string) => Promise<void>,
   tier?: AccessTier,
   preferredTransport?: ModelTransport,
+  zdrOnly = false,
 ) {
   // Skip title generation for free tier - feature only available for paid tiers
   const resolvedTier = tier ?? getClientTier();
@@ -91,7 +94,7 @@ export function triggerAsyncTitleGeneration(
     return;
   }
 
-  generateChatTitle(userMessage, preferredTransport)
+  generateChatTitle(userMessage, preferredTransport, zdrOnly)
     .then((title) => {
       if (title) {
         return renameChat(chatId, title);

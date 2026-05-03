@@ -36,11 +36,13 @@ test('getDefaultZdrOnly respects env flag', () => {
   assert.equal(getDefaultZdrOnly(), true);
 });
 
-test('getRoutePreferenceDefault falls back to speed', () => {
+test('getRoutePreferenceDefault falls back to balanced', () => {
   delete process.env.NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT;
-  assert.equal(getRoutePreferenceDefault(), 'speed');
+  assert.equal(getRoutePreferenceDefault(), 'balanced');
+  process.env.NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT = 'balanced';
+  assert.equal(getRoutePreferenceDefault(), 'balanced');
   process.env.NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT = 'cost';
   assert.equal(getRoutePreferenceDefault(), 'cost');
   process.env.NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT = 'invalid';
-  assert.equal(getRoutePreferenceDefault(), 'speed');
+  assert.equal(getRoutePreferenceDefault(), 'balanced');
 });

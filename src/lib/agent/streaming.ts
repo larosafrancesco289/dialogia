@@ -35,6 +35,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
   const combinedPlugins = Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined;
   const toolsForStreaming = includeTools ? (toolDefinition as ToolDefinition[]) : undefined;
   const generation = settings.generation;
+  const zdrOnly = get()?.ui?.zdrOnly === true;
 
   const withSystemSplit = (() => {
     if (!systemStable) return messages;
@@ -73,6 +74,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     tools: toolsForStreaming,
     toolChoice: includeTools ? 'none' : undefined,
     providerSort: generation.providerSort,
+    zdrOnly,
     plugins: combinedPlugins,
   });
 
@@ -108,6 +110,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     reasoningTokens: generation.reasoningTokens,
     disableReasoning,
     providerSort: generation.providerSort,
+    zdrOnly,
     signal: controller.signal,
     tools: toolsForStreaming,
     toolChoice,
