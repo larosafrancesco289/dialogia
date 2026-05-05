@@ -6,7 +6,6 @@ business logic that is easy to test.
 
 ## Architecture Quickstart
 
-- Golden path guide: `docs/GOLDEN_PATH.md` for common extension workflows.
 - Key entrypoints: `src/lib/store/index.ts` (state composition), `src/lib/services/turns.ts`
   (send/regenerate flow), `src/lib/agent/compose.ts` (message assembly), and
   `src/lib/agent/orchestrator/turn.ts` (turn runner).
@@ -82,6 +81,9 @@ the stable, supported surface for cross-domain use.
 - Server-only modules live under `src/lib/server/*`, `src/lib/env/server`, and `*.server.ts`.
 - UI components and client hooks must never import server-only modules.
 - API routes can import server-only and shared modules, but never UI components.
+- Runtime-specific filenames make boundaries explicit: `*.client.ts(x)` is browser-only,
+  `*.server.ts` is server-only and must import `server-only`, `*.edge.ts` is edge-only, and
+  `*.shared.ts` must remain environment-neutral.
 
 ## Module Boundaries
 
@@ -137,6 +139,23 @@ the stable, supported surface for cross-domain use.
 6. The UI reacts via selectors (`useChatMessages`, `useModelStore`) and rerenders declaratively. The
    persisted portions of the store sync to IndexedDB through Zustand persistence adapters.
 
+## Persistence
+
+Long-lived user data is stored in IndexedDB through Dexie (`src/lib/db/*`): chats, messages,
+folders, and small KV records such as presets, tutor profiles, and decks. Export/import flows use
+`exportAll`/`importAll` from `src/lib/db/index.ts`.
+
+Zustand persistence is reserved for stable UI preferences in `PersistedStoreState`
+(`src/lib/store/types.ts`), including the selected chat, favorite/hidden models, settings drawer
+state, collapsed sidebar state, ZDR-only mode, route preference, feature flags, debug mode, and
+tutor preferences. Ephemeral state such as streaming flags, per-message tutor attempts, search
+results, and controllers is rebuilt or discarded on startup.
+
+Migrations are versioned in `src/lib/db/versions.ts`: `DB_SCHEMA_VERSION` for IndexedDB upgrades and
+`STORE_MIGRATION_VERSION` for Zustand persisted state. Dexie upgrades sanitize stored messages via
+`src/lib/db/sanitize.ts`; Zustand migrations live in `src/lib/store/migrations.ts`. Keep migrations
+additive unless a schema version bump explicitly requires destructive cleanup.
+
 ## Rationale
 
 - UI components are thin and declarative; business logic resides in the agent/service layers.
@@ -160,6 +179,45 @@ the stable, supported surface for cross-domain use.
 4. Keep tool execution wiring in `src/lib/tools/registry.ts` and route side-effects through
    services (store writes, notices), not UI components.
 5. Update `CONFIGURATION.md` with any new environment variables and document proxy requirements.
+
+## Extension Recipes
+
+When adding UI, import store selectors/actions, `src/lib/ui/*`, `src/lib/hooks/*`, and UI-safe
+message helpers. UI components should avoid transport, API, eval, and headless tooling modules.
+
+To add a tool, define or update the Zod schema under `src/lib/schemas/*`, add JSON-schema helpers
+under `src/lib/tools/definitions/*` when needed, register definition/metadata/handler in
+`src/lib/tools/registry.ts`, export through `src/lib/tools/index.ts`, wire planning or streaming
+only if the tool changes turn orchestration, and add focused tests.
+
+To add a provider, implement a transport client or provider module, extend `ModelTransport`, register
+the client in `src/lib/transport/registry.ts`, add model metadata in `src/data/curatedModels.ts`,
+keep shared contracts in `src/lib/transport/*`, update provider request building, add an `app/api/*`
+proxy route if keys must stay server-side, then document env keys in `CONFIGURATION.md`.
+
+To add a settings panel, create it under `src/components/settings/sections/`, add the section config,
+render it from `SettingsDrawer`, use `SettingsSection`, and route behavior through store
+selectors/actions.
+
+To add a store slice, create the slice module, update store state/action types, compose it in
+`src/lib/store/index.ts`, update persisted state and migrations when needed, and add selector or
+migration tests.
+
+## Tutor Tool Contract
+
+Tutor tools are source-defined in `src/lib/tools/registry.ts` and `src/lib/tools/definitions/tutor/*`.
+The current tool names are `ask_student_question`, `create_diagnostic`, `learning_plan`,
+`record_learning`, `advance_topic`, and `quiz`.
+
+Tool handlers normalize inputs and patch `Message.tutor`: `quiz` writes MCQ items,
+`create_diagnostic` writes diagnostics, `learning_plan` writes plan proposals, and
+`record_learning` writes assessment updates plus learner-model side effects. Invalid tutor tool
+arguments must return `{ "ok": false, "error": "..." }`, not a bare failure object.
+
+`Message.tutor` is persisted in IndexedDB with messages and restored into `ui.tutor.byMessageId`
+during app initialization. UI-only tutor state, such as MCQ attempts, remains ephemeral unless a
+store action explicitly patches the message payload. Tutor UI renders from persisted `Message.tutor`
+plus ephemeral attempts; tool handlers should not mutate UI state directly.
 
 ## Glossary
 
