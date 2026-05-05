@@ -1,24 +1,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { TUTOR_TOOL_NAMES } from '@/lib/tools';
+import {
+  TUTOR_TOOL_NAMES,
+  getTutorToolDefinitions,
+  getTutorToolsByPhase,
+  getTutorToolsByTag,
+  isTutorToolName,
+} from '@/lib/tools';
 
-test('TUTOR_TOOL_CONTRACT tool list matches TUTOR_TOOL_NAMES', () => {
-  const contractPath = path.join(process.cwd(), 'TUTOR_TOOL_CONTRACT.md');
-  const content = fs.readFileSync(contractPath, 'utf8');
-  const sectionMatch = content.match(/## Tool Names[\s\S]*?(?=## |\n# |\n$)/);
-  assert.ok(sectionMatch, 'Tool Names section not found');
+test('tutor tool registry exposes one definition for every tutor tool name', () => {
+  const definitions = getTutorToolDefinitions();
+  const definitionNames = definitions.map((definition) => definition.function.name);
 
-  const lines = sectionMatch[0].split('\n');
-  const listed = lines
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith('- `'))
-    .map((line) => {
-      const match = line.match(/`([^`]+)`/);
-      return match ? match[1] : '';
-    })
-    .filter(Boolean);
+  assert.deepEqual(definitionNames, [...TUTOR_TOOL_NAMES]);
+  for (const name of TUTOR_TOOL_NAMES) {
+    assert.equal(isTutorToolName(name), true);
+  }
+});
 
-  assert.deepEqual(listed, [...TUTOR_TOOL_NAMES]);
+test('tutor tool registry keeps required phase and tag groups populated', () => {
+  assert.ok(getTutorToolsByPhase('intake').includes('ask_student_question'));
+  assert.ok(getTutorToolsByPhase('diagnostic').includes('create_diagnostic'));
+  assert.ok(getTutorToolsByPhase('teaching').includes('advance_topic'));
+  assert.ok(getTutorToolsByTag('quiz').includes('quiz'));
+  assert.ok(getTutorToolsByTag('learnerModel').includes('record_learning'));
+  assert.ok(getTutorToolsByTag('plan').includes('learning_plan'));
 });

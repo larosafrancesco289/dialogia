@@ -77,19 +77,19 @@ Wrappers and helpers:
 
 ### Key concepts and entrypoints
 
-- Golden path: `docs/GOLDEN_PATH.md`
 - Architecture boundaries: `ARCHITECTURE.md`
-- State and persistence: `STATE_PERSISTENCE.md`
-- Tutor tool contract: `TUTOR_TOOL_CONTRACT.md`
 
 ### How to style
 
-See `docs/DESIGN.md` for the design system and guidance on where styles live.
+See `DESIGN.md` for the design system and guidance on where styles live.
 
 ### Local Artifacts
 
 The following are local-only (already in `.gitignore`) and should not be committed: `.next/`,
 `node_modules/`, `.eslintcache`, `.DS_Store`, `tmp/`, `tsconfig.tsbuildinfo`.
+
+Evaluation and simulation scripts write local-only outputs to `tmp/` by default, including
+`tmp/tutor_evals/`, `tmp/ablation/`, and `tmp/tutor-sim-*.json`.
 
 ### Usage
 

@@ -91,4 +91,6 @@ Headless scripts require:
 - Zero Data Retention (ZDR) lists fetch from OpenRouter and are cached in
   `src/lib/policy/zdr/cache.ts`. The refresh schedule is wired in `src/lib/services/bootstrap.ts`
   (every 6 hours) to prevent stale provider/model data. When the ZDR toggle is enabled, OpenRouter
-  requests also send `provider.zdr=true` so enforcement happens per request.
+  requests also send `provider.zdr=true` so enforcement happens per request. The ZDR policy module
+  under `src/lib/policy/zdr/*` filters available models, blocks non-compliant requests when strict
+  mode is active, and caches model/provider compliance status.
