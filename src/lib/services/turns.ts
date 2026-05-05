@@ -7,20 +7,16 @@ import type { StoreAccess, StoreGetter, StoreSetter, TurnContext } from '@/lib/a
 import type { Repository } from '@/lib/db/repository';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { attachTutorUiState, ensureTutorDefaults } from '@/lib/agent/tutorFlow';
-import { runDeepResearchTurn } from '@/lib/deep-research';
 import { regenerate } from '@/lib/agent/regenerate';
 import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
 import { clearTurnController, setTurnController } from '@/lib/turns/runtime';
-import { applyNextOverrides } from '@/lib/ui/next';
 import { prepareSendRuntime } from '@/lib/turns/runtime';
 import { spawnTurnMessages } from '@/lib/services/turns/spawn';
 import { executeModelTurn } from '@/lib/services/turns/executor';
 import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { resolveSingleModelAuth } from '@/lib/services/auth';
-import { evaluateDeepResearchPolicy } from '@/lib/policy/deepResearch';
 import { enforceZdrGate, isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { selectTutorEntry } from '@/lib/ui/tutorSelectors';
-import { findModelById } from '@/lib/models';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import {
   createMessagePersister,
@@ -35,7 +31,6 @@ import {
   getMessagesForChat,
   setMessagesForChat,
 } from '@/lib/messages/indexing';
-import { notify } from '@/lib/store/notify';
 import { logAction } from '@/lib/study';
 
 export type SendTurnOptions = {
@@ -182,44 +177,6 @@ export async function sendUserTurn({
   if (!primaryContext) {
     completeAll();
     return;
-  }
-
-  // Auto-activate DeepResearch if:
-  // 1. Search is enabled in chat settings
-  // 2. Primary model supports reasoning
-  // 3. We are not in tutor mode (simplification, tutor has its own tools)
-  // 4. Transport is OpenRouter (DeepResearch requirement)
-  const modelMeta = findModelById(get().models, primaryModelId);
-  const deepResearchDecision = evaluateDeepResearchPolicy({
-    searchEnabled: !!currentChat.settings.features.search.enabled,
-    tutorEnabled,
-    transport: primaryContext.auth.transport,
-    modelMeta,
-    tier,
-  });
-
-  if (deepResearchDecision.notice) {
-    set((state) => ({
-      ui: applyNextOverrides(state.ui, { deepResearch: false }),
-    }));
-    if (!get().ui.notice) {
-      notify(get, deepResearchDecision.notice);
-    }
-  } else if (deepResearchDecision.shouldRun) {
-    const handled = await runDeepResearchTurn({
-      task: content,
-      modelId: primaryModelId,
-      chatId,
-      assistantMessage: primaryAssistant,
-      set,
-      get,
-      persistMessage: createMessagePersister(repository),
-      controller: masterController,
-    });
-    if (handled) {
-      completeAll();
-      return;
-    }
   }
 
   if (currentChat.title === 'New Chat') {

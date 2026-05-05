@@ -33,7 +33,7 @@ test('sanitizeMessageRecord trims hidden content and drops empty fields', () => 
   assert.equal(original.hiddenContent, '  Tutor recap  ');
 });
 
-test('sanitizeMessageRecord leaves deep research traces untouched', () => {
+test('sanitizeMessageRecord leaves legacy research traces untouched', () => {
   const trace = [{ type: 'thought', output: 'Thinking...' }];
   const original: Message = {
     id: 'm2',

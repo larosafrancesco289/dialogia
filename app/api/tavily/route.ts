@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
-import { runWebSearch } from '@/lib/deep-research/server/tools.server';
+import { getTavilyApiKey } from '@/lib/env/server';
+import { runTavilySearchDirect } from '@/lib/search/api/tavily';
 import { normalizeWebSearchArgs, type WebSearchArgs } from '@/lib/search/args';
 import { jsonError } from '@/lib/server/route';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';
 
-export const GET = route('brave-search')
-  .rateLimit('brave', RATE_LIMITS.STANDARD)
+export const GET = route('tavily-search')
+  .rateLimit('tavily', RATE_LIMITS.STANDARD)
   .requireTier({
     deny: ['free'],
     message: 'Web search is not available on the free tier',
   })
-  .requireEnv('BRAVE_SEARCH_API_KEY')
+  .requireEnv('TAVILY_API_KEY')
   .handler(async (req) => {
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get('q') || '').trim();
@@ -41,18 +42,19 @@ export const GET = route('brave-search')
               .map((entry) => entry.trim())
               .filter(Boolean)
           : undefined,
-        provider: 'brave',
+        provider: 'tavily',
       });
 
-      const results = await runWebSearch(args);
+      const apiKey = getTavilyApiKey();
+      const results = await runTavilySearchDirect(args, { apiKey: apiKey || '' });
       return NextResponse.json({ results });
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : typeof err === 'string' ? err : 'unknown_error';
-      if (typeof message === 'string' && message.startsWith('brave_error_')) {
-        const code = Number(message.replace('brave_error_', ''));
-        return jsonError(Number.isFinite(code) ? code : 502, 'brave_error', message);
+      if (typeof message === 'string' && message.startsWith('tavily_error_')) {
+        const code = Number(message.replace('tavily_error_', ''));
+        return jsonError(Number.isFinite(code) ? code : 502, 'tavily_error', message);
       }
-      return jsonError(500, 'brave_error', message);
+      return jsonError(500, 'tavily_error', message);
     }
   });

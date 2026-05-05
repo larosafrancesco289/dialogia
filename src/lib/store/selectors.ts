@@ -10,6 +10,7 @@ import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { getClientTier } from '@/lib/auth/tier.client';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
+import { isTavilySearchConfigured } from '@/lib/env/public';
 
 export const selectCurrentChat = (state: StoreState) => {
   const chatId = state.selectedChatId;
@@ -117,8 +118,9 @@ export const selectSearchProvider = (state: StoreState) => {
   const resolved = selectResolvedTurnSettings(state);
   if (resolved) return resolved.searchProvider;
   const next = selectNextOverrides(state);
-  const configured = next.search?.provider ?? 'openrouter';
-  return state.ui.flags.experimentalBrave && configured === 'brave' ? 'brave' : 'openrouter';
+  const configured =
+    next.search?.provider ?? (isTavilySearchConfigured() ? 'tavily' : 'openrouter');
+  return configured === 'tavily' ? 'tavily' : 'openrouter';
 };
 
 export const selectStudyCondition = (state: StoreState): StudyCondition =>

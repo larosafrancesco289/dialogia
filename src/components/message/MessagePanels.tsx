@@ -1,7 +1,7 @@
 'use client';
 import type { Chat, Message, MessageTutor, ModelDescriptor, ToolCallLogEntry } from '@/lib/types';
 import type { UISearchState } from '@/lib/store/types';
-import { BraveSourcesPanel } from '@/components/message/BraveSourcesPanel';
+import { SearchSourcesPanel } from '@/components/message/SearchSourcesPanel';
 import { ReasoningPanel } from '@/components/message/ReasoningPanel';
 import { DebugPanel } from '@/components/message/DebugPanel';
 import { TutorPanel } from '@/components/message/tutor/TutorPanel';
@@ -10,8 +10,7 @@ export type MessagePanelsProps = {
   message: Message;
   chat?: Chat | null;
   models: ModelDescriptor[];
-  braveGloballyEnabled: boolean;
-  braveEntry?: NonNullable<UISearchState['braveByMessageId']>[string];
+  tavilyEntry?: NonNullable<UISearchState['tavilyByMessageId']>[string];
   isSourcesExpanded: boolean;
   onToggleSources: () => void;
   debugMode: boolean;
@@ -42,36 +41,30 @@ export function getReasoningPanelState({
 }) {
   const reasoningText = typeof message.reasoning === 'string' ? message.reasoning : '';
   const hasReasoning = reasoningText.trim().length > 0;
-  const hasDeepResearch = !!(message.deepResearch?.trace && message.deepResearch.trace.length > 0);
   const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
 
   return {
     reasoningText,
-    hasDeepResearch,
-    shouldRender: hasReasoning || hasDeepResearch,
-    shouldStream: isLatestAssistant && isStreaming && (hasReasoning || hasDeepResearch),
+    shouldRender: hasReasoning,
+    shouldStream: isLatestAssistant && isStreaming && hasReasoning,
   };
 }
 
 /**
  * Renders panels that appear ABOVE the message content:
- * - Brave sources
+ * - Tavily sources
  * - Debug panel
  * - Reasoning panel
  */
 export function MessagePanelsUpper({
   message,
-  chat,
-  models,
-  braveGloballyEnabled,
-  braveEntry,
+  tavilyEntry,
   isSourcesExpanded,
   onToggleSources,
   debugMode,
   debugEntry,
   isDebugExpanded,
   onToggleDebug,
-  autoReasoningModelIds,
   isStreaming,
   lastMessageId,
   reasoningExpanded,
@@ -83,11 +76,11 @@ export function MessagePanelsUpper({
 }: Omit<MessagePanelsProps, 'tutorGloballyEnabled' | 'tutorEntry'>) {
   const panels: React.ReactNode[] = [];
 
-  if (braveGloballyEnabled && braveEntry) {
+  if (tavilyEntry) {
     panels.push(
-      <BraveSourcesPanel
-        key="brave"
-        data={braveEntry}
+      <SearchSourcesPanel
+        key="tavily"
+        data={tavilyEntry}
         expanded={isSourcesExpanded}
         onToggle={onToggleSources}
       />,
@@ -169,7 +162,6 @@ function buildReasoningPanel({
   reasoningExpanded: boolean;
   onToggleReasoning: () => void;
 }): React.ReactNode {
-  const deepResearch = message.deepResearch;
   const { reasoningText, shouldRender, shouldStream } = getReasoningPanelState({
     message,
     isStreaming,
@@ -182,7 +174,6 @@ function buildReasoningPanel({
     <ReasoningPanel
       key="reasoning"
       reasoning={reasoningText}
-      deepResearch={deepResearch}
       expanded={reasoningExpanded}
       onToggle={onToggleReasoning}
       isStreaming={shouldStream}

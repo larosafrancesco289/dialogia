@@ -227,7 +227,7 @@ export type ComposerActionsProps = {
   openFilePicker: () => void;
   attachmentsHint: string;
   searchEnabled: boolean;
-  searchProvider: 'brave' | 'openrouter';
+  searchProvider: 'tavily' | 'openrouter';
   toggleSearch: () => void;
   showReasoningMenu: boolean;
   supportsXhigh?: boolean;

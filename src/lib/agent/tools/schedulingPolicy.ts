@@ -40,7 +40,7 @@ export function schedulePlanningTools(args: {
     hasPlan,
     hasActiveNode,
     alreadyUsedContent: usedTutorContentTool,
-    allowSearch: searchEnabled && searchProvider === 'brave',
+    allowSearch: searchEnabled && searchProvider === 'tavily',
     phase,
   });
 

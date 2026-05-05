@@ -17,6 +17,7 @@ import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { normalizeParallelModels } from '@/lib/models/normalization';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { normalizeChatSettings } from '@/lib/settings/normalize';
+import { isTavilySearchConfigured } from '@/lib/env/public';
 
 export type ResolvedTurnSettings = {
   modelId: string;
@@ -36,7 +37,6 @@ export function resolveNewChatSettings(opts: {
   fallbackSystem?: string;
   lastUsedModelId?: string;
   defaults?: ChatDefaults;
-  braveEnabled: boolean;
   tutorEnabled: boolean;
   forceTutorMode: boolean;
 }): ChatSettings {
@@ -46,7 +46,6 @@ export function resolveNewChatSettings(opts: {
     fallbackSystem = DEFAULT_BASE_SYSTEM,
     lastUsedModelId,
     defaults,
-    braveEnabled,
     tutorEnabled,
     forceTutorMode,
   } = opts;
@@ -73,7 +72,15 @@ export function resolveNewChatSettings(opts: {
 
   const searchEnabled = next.search?.enabled ?? defaultSearch?.enabled ?? false;
   const nextProvider = next.search?.provider ?? defaultSearch?.provider;
-  const searchProvider = braveEnabled && nextProvider === 'brave' ? 'brave' : 'openrouter';
+  const rawSearchProvider = nextProvider as unknown;
+  const searchProvider =
+    rawSearchProvider === 'tavily' || rawSearchProvider === 'brave'
+      ? 'tavily'
+      : rawSearchProvider === 'openrouter'
+        ? 'openrouter'
+        : isTavilySearchConfigured()
+          ? 'tavily'
+          : 'openrouter';
 
   const tutorEnabledSetting = forceTutorMode ? true : tutorEnabled ? !!next.tutorMode : false;
 

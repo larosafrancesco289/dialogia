@@ -8,7 +8,7 @@ export const WEB_SEARCH_TOOL: ToolDefinition = {
   function: {
     name: 'web_search',
     description:
-      'Query the public web via Brave to gather up-to-date, verifiable references with titles, URLs, and summary snippets. Use this when you need fresh facts, statistics, or citations that are not already in context. Craft a precise query and optionally request a small number of results (1-10). You can also apply freshness, country, or domain filters.',
+      'Query the public web via Tavily to gather up-to-date, verifiable references with titles, URLs, and summary snippets. Use this when you need fresh facts, statistics, or citations that are not already in context. Craft a precise query and optionally request a small number of results (1-10). You can also apply freshness, country, or domain filters.',
     parameters: {
       type: 'object',
       properties: {
@@ -28,8 +28,7 @@ export const WEB_SEARCH_TOOL: ToolDefinition = {
         },
         country: {
           type: 'string',
-          description: '2-letter country code (e.g., us, gb, de).',
-          default: 'us',
+          description: 'Country name or common 2-letter country code (e.g., united states, us).',
         },
         include_domains: {
           type: 'array',
@@ -43,9 +42,9 @@ export const WEB_SEARCH_TOOL: ToolDefinition = {
         },
         provider: {
           type: 'string',
-          description: 'Search provider to use. Defaults to brave.',
-          enum: ['brave'],
-          default: 'brave',
+          description: 'Search provider to use. Defaults to tavily.',
+          enum: ['tavily'],
+          default: 'tavily',
         },
       },
       required: ['query'],

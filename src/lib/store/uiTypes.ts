@@ -48,7 +48,7 @@ export type PersistedUiState = {
   zdrOnly?: UiSnapshot['zdrOnly'];
   routePreference?: UiSnapshot['routePreference'];
   chatDefaults?: ChatDefaults;
-  flags?: Pick<UIFlags, 'experimentalBrave' | 'experimentalTutor' | 'enableMultiModelChat'>;
+  flags?: Pick<UIFlags, 'experimentalTutor' | 'enableMultiModelChat'>;
   debug?: Pick<UIDebugState, 'mode'>;
   tutor?: Pick<
     UITutorState,

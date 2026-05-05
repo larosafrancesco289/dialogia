@@ -1,23 +1,23 @@
-import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
-import { runBraveSearchProxy } from '@/lib/search/api/brave';
+import { NOTICE_MISSING_TAVILY_KEY } from '@/lib/store/notices';
+import { runTavilySearchProxy } from '@/lib/search/api/tavily';
 import { isApiError } from '@/lib/api/errors';
 import type { SearchResult } from '@/lib/search/types';
+import type { WebSearchArgs } from '@/lib/search/args';
 import { err, ok, type Result } from '@/lib/utils/result';
 
-export async function runBraveSearch(
-  query: string,
-  count: number,
+export async function runTavilySearch(
+  args: WebSearchArgs,
   opts?: { signal?: AbortSignal },
 ): Promise<Result<{ results: SearchResult[] }, string | undefined>> {
   try {
-    const results = await runBraveSearchProxy({ query, count }, { signal: opts?.signal });
+    const results = await runTavilySearchProxy(args, { signal: opts?.signal });
     return ok({ results });
   } catch (error: unknown) {
     if (isApiError(error)) {
       const detail =
         typeof error.detail === 'string' && error.detail.trim() ? error.detail : undefined;
-      if (error.code === 'missing_env' && error.detail === 'BRAVE_SEARCH_API_KEY') {
-        return err(NOTICE_MISSING_BRAVE_KEY, { results: [] });
+      if (error.code === 'missing_env' && error.detail === 'TAVILY_API_KEY') {
+        return err(NOTICE_MISSING_TAVILY_KEY, { results: [] });
       }
       return err(detail ?? error.code, { results: [] });
     }

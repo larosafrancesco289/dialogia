@@ -9,6 +9,6 @@ export function followUpPrompt(args: {
   searchEnabled: boolean;
   searchProvider: SearchProvider;
 }): string {
-  if (args.searchEnabled && args.searchProvider === 'brave') return FOLLOW_UP_WITH_SEARCH;
+  if (args.searchEnabled && args.searchProvider === 'tavily') return FOLLOW_UP_WITH_SEARCH;
   return FOLLOW_UP_DEFAULT;
 }

@@ -10,8 +10,8 @@ export function formatSourcesBlock(results: SearchResult[], provider: SearchProv
     )
     .join('\n');
   if (!lines) return '';
-  if (provider === 'brave') {
-    return `\n\nWeb search results (Brave):\n${lines}\n\nInstructions: Use these results to answer and cite sources inline as [n].`;
+  if (provider === 'tavily') {
+    return `\n\nWeb search results (Tavily):\n${lines}\n\nInstructions: Use these results to answer and cite sources inline as [n].`;
   }
   return `\n\nWeb search results:\n${lines}`;
 }

@@ -40,7 +40,6 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
       Begin a new <span className={styles.headlineEmphasis}>dialogue</span>
     </>
   );
-
   return (
     <div className={styles.hero}>
       <div className={`${styles.heroGradient} hero-gradient`} />

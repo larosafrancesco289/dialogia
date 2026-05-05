@@ -29,7 +29,7 @@ describe('parsePartialJson', () => {
     assert.deepEqual(parsePartialJson('{"a": "hello'), { a: 'hello' });
   });
 
-  it('parses DeepResearch trace scenario', () => {
+  it('parses streamed trace scenario', () => {
     const input = '{"type": "search", "input": {"query": "foo"}, "output":';
     // We expect it to strip the "output": part
     assert.deepEqual(parsePartialJson(input), { type: 'search', input: { query: 'foo' } });

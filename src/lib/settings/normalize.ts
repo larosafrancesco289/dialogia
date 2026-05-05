@@ -87,7 +87,10 @@ export function normalizeChatSettings(
     features: {
       search: {
         enabled: typeof searchRecord.enabled === 'boolean' ? searchRecord.enabled : false,
-        provider: searchRecord.provider === 'brave' ? 'brave' : 'openrouter',
+        provider:
+          searchRecord.provider === 'tavily' || searchRecord.provider === 'brave'
+            ? 'tavily'
+            : 'openrouter',
       },
       tutor: {
         enabled: typeof tutorRecord.enabled === 'boolean' ? tutorRecord.enabled : false,

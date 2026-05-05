@@ -38,7 +38,6 @@ export class ChatService {
       : lastNonTutorModel;
 
     const tutorEnabledGlobally = !!ui.flags.experimentalTutor;
-    const braveEnabled = !!ui.flags.experimentalBrave;
     const forceTutorMode = isTutorForcedForTier(tier) || !!(ui.tutor.forceMode ?? false);
 
     return resolveNewChatSettings({
@@ -47,7 +46,6 @@ export class ChatService {
       fallbackSystem: DEFAULT_BASE_SYSTEM,
       lastUsedModelId: lastUsedModel,
       defaults: ui.chatDefaults,
-      braveEnabled,
       tutorEnabled: tutorEnabledGlobally,
       forceTutorMode,
     });

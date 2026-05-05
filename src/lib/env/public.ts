@@ -18,6 +18,14 @@ export function isAnthropicProxyEnabled(): boolean {
   return readBooleanValue(process.env.NEXT_PUBLIC_USE_ANTHROPIC_PROXY, false);
 }
 
+export function isTavilySearchConfigured(): boolean {
+  return Boolean(
+    readEnvValue(process.env.TAVILY_API_KEY) ||
+      readEnvValue(process.env.NEXT_PUBLIC_TAVILY_API_KEY) ||
+      readBooleanValue(process.env.NEXT_PUBLIC_TAVILY_SEARCH_ENABLED, false),
+  );
+}
+
 export function getPublicAppBaseUrl(): string | undefined {
   return readEnvValue(process.env.NEXT_PUBLIC_APP_BASE_URL);
 }

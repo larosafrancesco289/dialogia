@@ -10,7 +10,12 @@ import {
   TutorResearchModeEnum,
 } from '@/lib/types/enums';
 import { LearningPlanSchema } from '@/lib/schemas/learningPlan';
-import type { LearnerModel, MessageDeepResearch, MessageMetrics, MessageTutor } from '@/lib/types';
+import type {
+  LearnerModel,
+  MessageLegacyResearch,
+  MessageMetrics,
+  MessageTutor,
+} from '@/lib/types';
 import type { Usage } from '@/lib/api/normalizers';
 
 export const GenerationSettingsSchema = z
@@ -149,7 +154,7 @@ export const MessageSchema = z
           trace: z.array(z.unknown()),
           answer: z.string().optional(),
         })
-        .passthrough() as z.ZodType<MessageDeepResearch>
+        .passthrough() as z.ZodType<MessageLegacyResearch>
     ).optional(),
     metrics: z.custom<MessageMetrics>().optional(),
     usage: z.custom<Usage>().optional(),

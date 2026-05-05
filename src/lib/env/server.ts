@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { readBooleanValue, readEnvValue } from '@/lib/env/values';
+import { readEnvValue } from '@/lib/env/values';
 import { isProd } from '@/lib/env/runtime';
 
 export type MissingEnvError = Error & { code: 'missing_env'; env: string };
@@ -89,16 +89,16 @@ export function requireServerAnthropicKey(): string {
   return requireServerEnv('ANTHROPIC_API_KEY');
 }
 
-export function getBraveSearchKey(): string | undefined {
-  return readEnvValue(process.env.BRAVE_SEARCH_API_KEY);
+export function getTavilyApiKey(): string | undefined {
+  return readEnvValue(process.env.TAVILY_API_KEY);
 }
 
-export function requireBraveSearchKey(): string {
-  return requireServerEnv('BRAVE_SEARCH_API_KEY');
+export function requireTavilyApiKey(): string {
+  return requireServerEnv('TAVILY_API_KEY');
 }
 
-export function hasBraveKey(): boolean {
-  return Boolean(getBraveSearchKey());
+export function hasTavilyApiKey(): boolean {
+  return Boolean(getTavilyApiKey());
 }
 
 export function getFalKey(): string | undefined {
@@ -115,10 +115,6 @@ export function getXaiApiKey(): string | undefined {
 
 export function requireXaiApiKey(): string {
   return requireServerEnv('XAI_API_KEY');
-}
-
-export function getDeepResearchReasoningOnly(): boolean {
-  return readBooleanValue(process.env.DEEP_RESEARCH_REASONING_ONLY, true);
 }
 
 export { getOpenRouterKeyFallback } from '@/lib/env/keys';

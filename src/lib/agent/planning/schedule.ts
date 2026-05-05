@@ -11,7 +11,7 @@ export function schedulePlanningRound(args: {
   phase: TutorPhase;
   currentPlan?: LearningPlan;
   searchEnabled: boolean;
-  searchProvider: 'brave' | 'openrouter';
+  searchProvider: 'tavily' | 'openrouter';
   usedTutorContentTool: boolean;
   quizCallsThisTurn: number;
   maxToolsPerTurn: number;

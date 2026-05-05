@@ -1,23 +1,23 @@
 'use client';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 
-export type BraveData = {
+export type SearchSourcesData = {
   query: string;
   status: 'loading' | 'done' | 'error';
   results?: { title?: string; url?: string; description?: string }[];
   error?: string;
 };
 
-export function BraveSourcesPanel({
+export function SearchSourcesPanel({
   data,
   expanded,
   onToggle,
-  provider = 'Brave',
+  provider = 'Tavily',
 }: {
-  data: BraveData;
+  data: SearchSourcesData;
   expanded: boolean;
   onToggle: () => void;
-  provider?: 'Brave' | 'OpenRouter';
+  provider?: 'Tavily' | 'OpenRouter';
 }) {
   if (data.status === 'loading') {
     return (

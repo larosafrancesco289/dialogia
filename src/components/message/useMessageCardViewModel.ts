@@ -9,8 +9,7 @@ export type MessageCardViewModel = {
   message?: Message;
   chat?: Chat;
   models: ModelDescriptor[];
-  braveGloballyEnabled: boolean;
-  braveEntry?: NonNullable<UISearchState['braveByMessageId']>[string];
+  tavilyEntry?: NonNullable<UISearchState['tavilyByMessageId']>[string];
   debugMode: boolean;
   debugEntry?: NonNullable<UIDebugState['byMessageId']>[string];
   tutorGloballyEnabled: boolean;
@@ -43,8 +42,7 @@ export function useMessageCardViewModel({
       message,
       chat,
       models: state.models,
-      braveGloballyEnabled: !!state.ui.flags.experimentalBrave,
-      braveEntry: state.ui.search.braveByMessageId?.[messageId],
+      tavilyEntry: state.ui.search.tavilyByMessageId?.[messageId],
       debugMode: !!state.ui.debug.mode,
       debugEntry: state.ui.debug.byMessageId?.[messageId],
       tutorGloballyEnabled,

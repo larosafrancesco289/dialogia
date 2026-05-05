@@ -1,5 +1,5 @@
-import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
-import { runBraveSearch } from '@/lib/search/tool/runBraveSearch';
+import { NOTICE_MISSING_TAVILY_KEY } from '@/lib/store/notices';
+import { runTavilySearch } from '@/lib/search/tool/runTavilySearch';
 import { withAbort } from '@/lib/utils/abort';
 import type { SearchProvider, SearchResult } from '@/lib/search/types';
 import type { StoreGetter, StoreSetter, ToolExecutionResult } from '@/lib/agent/types';
@@ -31,8 +31,9 @@ export async function performWebSearchTool(opts: {
   const parsedCount = Number.parseInt(String(args?.count ?? ''), 10);
   const count = Math.min(Math.max(Number.isFinite(parsedCount) ? parsedCount : 5, 1), 10);
   if (!rawQuery) rawQuery = fallbackQuery.trim().slice(0, 256);
+  const searchArgs: WebSearchArgs = { ...args, query: rawQuery, count };
 
-  if (searchProvider === 'brave') {
+  if (searchProvider === 'tavily') {
     setSearchUiStatus({ set, get }, assistantMessageId, { query: rawQuery, status: 'loading' });
   }
 
@@ -40,12 +41,12 @@ export async function performWebSearchTool(opts: {
     const timeout = setTimeout(() => fetchController.abort(), 20000);
     try {
       const result =
-        searchProvider === 'brave'
-          ? await runBraveSearch(rawQuery, count, { signal: fetchController.signal })
+        searchProvider === 'tavily'
+          ? await runTavilySearch(searchArgs, { signal: fetchController.signal })
           : { ok: false, results: [] as SearchResult[], error: undefined };
 
       if (result.ok) {
-        if (searchProvider === 'brave') {
+        if (searchProvider === 'tavily') {
           setSearchUiStatus({ set, get }, assistantMessageId, {
             query: rawQuery,
             status: 'done',
@@ -55,7 +56,7 @@ export async function performWebSearchTool(opts: {
         return { ok: true, results: result.results, query: rawQuery };
       }
 
-      if (searchProvider === 'brave') {
+      if (searchProvider === 'tavily') {
         setSearchUiStatus({ set, get }, assistantMessageId, {
           query: rawQuery,
           status: 'error',
@@ -63,13 +64,13 @@ export async function performWebSearchTool(opts: {
           error: result.error || 'No results',
         });
       }
-      if (result.error === NOTICE_MISSING_BRAVE_KEY) {
-        notify(get, NOTICE_MISSING_BRAVE_KEY);
+      if (result.error === NOTICE_MISSING_TAVILY_KEY) {
+        notify(get, NOTICE_MISSING_TAVILY_KEY);
       }
       return { ok: false, results: [], error: result.error, query: rawQuery };
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : undefined;
-      if (searchProvider === 'brave') {
+      if (searchProvider === 'tavily') {
         setSearchUiStatus({ set, get }, assistantMessageId, {
           query: rawQuery,
           status: 'error',

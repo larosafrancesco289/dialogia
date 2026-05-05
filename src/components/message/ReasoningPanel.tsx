@@ -1,118 +1,47 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
-import {
-  ChevronDownIcon,
-  DocumentDuplicateIcon,
-  SparklesIcon,
-  CpuChipIcon,
-} from '@heroicons/react/24/outline';
+import { ChevronDownIcon, DocumentDuplicateIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Markdown } from '@/components/Markdown';
 import { logger } from '@/lib/logger';
-import { DeepResearchTimeline } from './DeepResearchTimeline';
-import type { MessageDeepResearch } from '@/lib/types';
-import { motion, AnimatePresence } from 'framer-motion';
 
 type ReasoningPanelProps = {
   reasoning: string;
-  deepResearch?: MessageDeepResearch;
   expanded: boolean;
   onToggle: () => void;
   isStreaming?: boolean;
 };
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
-}
-
-function getString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
-}
-
 export function ReasoningPanel({
   reasoning,
-  deepResearch,
   expanded,
   onToggle,
   isStreaming = false,
 }: ReasoningPanelProps) {
-  const hasReasoning = !!(reasoning && reasoning.trim().length > 0);
-
-  const trace = useMemo(() => {
-    if (!deepResearch?.trace || deepResearch.trace.length === 0) return null;
-    return deepResearch.trace;
-  }, [deepResearch]);
-
-  const filteredTrace = useMemo(() => {
-    if (!trace || trace.length === 0) return null;
-    let finalAnswerFound = false;
-
-    const cleaned = trace.filter((item) => {
-      if (item?.type !== 'thought') return true;
-
-      // If we already found the start of the final answer, hide subsequent thought parts
-      // assuming they are part of the answer being streamed.
-      if (finalAnswerFound) return false;
-
-      const output = typeof item.output === 'string' ? item.output.trim().toLowerCase() : '';
-      if (!output) return true;
-
-      const normalized = output
-        .replace(/^#+\s*/, '')
-        .replace(/^\*\*|^\*|^__|^_/, '')
-        .trim();
-
-      if (normalized.startsWith('final answer')) {
-        finalAnswerFound = true;
-        return false;
-      }
-
-      return true;
-    });
-    return cleaned.length > 0 ? cleaned : null;
-  }, [trace]);
-
-  const isDeepResearch = !!filteredTrace;
-
   const bodyId = useId();
+  const hasReasoning = !!(reasoning && reasoning.trim().length > 0);
   const [copied, setCopied] = useState(false);
   const [pulse, setPulse] = useState(false);
   const prevStreamingRef = useRef<boolean>(isStreaming);
   const throttledRef = useRef(0);
 
   const previewText = useMemo(() => {
-    if (isDeepResearch && filteredTrace && filteredTrace.length > 0) {
-      const last = filteredTrace[filteredTrace.length - 1];
-      if (last.type === 'thought') {
-        return typeof last.output === 'string' ? last.output : 'Thinking...';
-      }
-      if (last.type === 'search') {
-        const input = asRecord(last.input);
-        return `Searching: ${getString(input?.query) || ''}`;
-      }
-      if (last.type === 'fetch') {
-        const input = asRecord(last.input);
-        return `Reading: ${getString(input?.url) || ''}`;
-      }
-      return 'Deep Research active...';
-    }
-
     if (hasReasoning) {
       const trimmed = reasoning.trim().replace(/\s+/g, ' ');
       if (!isStreaming) {
         if (trimmed.length <= 160) return trimmed;
         const slice = trimmed.slice(0, 160);
         const lastSpace = slice.lastIndexOf(' ');
-        return `${slice.slice(0, lastSpace > 110 ? lastSpace : 160)}…`;
+        return `${slice.slice(0, lastSpace > 110 ? lastSpace : 160)}...`;
       }
       if (trimmed.length <= 110) return trimmed;
       const tail = trimmed.slice(-110);
-      return `…${tail.trimStart()}`;
+      return `...${tail.trimStart()}`;
     }
-    if (isStreaming) return 'Reasoning stream in progress…';
-    return 'Reasoning hidden — tap to reveal the full trace.';
-  }, [hasReasoning, reasoning, isStreaming, isDeepResearch, filteredTrace]);
+    if (isStreaming) return 'Reasoning stream in progress...';
+    return 'Reasoning hidden. Tap to reveal the full trace.';
+  }, [hasReasoning, reasoning, isStreaming]);
 
   const [displayPreview, setDisplayPreview] = useState(previewText);
 
@@ -122,7 +51,7 @@ export function ReasoningPanel({
       return;
     }
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const minInterval = 480; // ms
+    const minInterval = 480;
     if (now - throttledRef.current >= minInterval) {
       throttledRef.current = now;
       setDisplayPreview(previewText);
@@ -158,8 +87,8 @@ export function ReasoningPanel({
     if (!expanded) setCopied(false);
   }, [expanded]);
 
-  const handleCopy = async (e: MouseEvent) => {
-    e.stopPropagation();
+  const handleCopy = async (event: MouseEvent) => {
+    event.stopPropagation();
     if (!hasReasoning) return;
     try {
       await navigator.clipboard.writeText(reasoning);
@@ -170,7 +99,7 @@ export function ReasoningPanel({
     }
   };
 
-  if (!hasReasoning && !isStreaming && !isDeepResearch) return null;
+  if (!hasReasoning && !isStreaming) return null;
 
   return (
     <div className="mt-4 mb-2">
@@ -179,7 +108,6 @@ export function ReasoningPanel({
         initial={false}
         className={`marginalia relative overflow-hidden ${pulse ? 'ring-2 ring-[var(--color-accent)]/20' : ''} ${isStreaming ? 'border-[var(--color-accent)]/40' : ''}`}
       >
-        {/* Streaming shimmer effect */}
         {isStreaming && (
           <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[var(--radius-editorial)]">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--color-accent)]/8 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
@@ -200,11 +128,7 @@ export function ReasoningPanel({
                 : 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] group-hover:bg-[var(--color-accent)]/20'
             }`}
           >
-            {isDeepResearch ? (
-              <CpuChipIcon className="w-5 h-5" />
-            ) : (
-              <SparklesIcon className="w-5 h-5" />
-            )}
+            <SparklesIcon className="w-5 h-5" />
           </div>
 
           <div className="flex-1 min-w-0 flex flex-col gap-0.5">
@@ -216,7 +140,7 @@ export function ReasoningPanel({
                     : 'text-[var(--color-fg-muted)] group-hover:text-[var(--color-fg)]'
                 } transition-colors`}
               >
-                {isDeepResearch ? 'Deep Research' : 'Reasoning Process'}
+                Reasoning Process
               </span>
               {isStreaming && (
                 <span className="flex h-1.5 w-1.5 rounded-full bg-[var(--color-accent)] animate-ping" />
@@ -255,9 +179,7 @@ export function ReasoningPanel({
                 <div className="h-px w-full bg-[var(--rule-light)] mb-4" />
 
                 <div className="max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[var(--color-border)]/50 scrollbar-track-transparent">
-                  {isDeepResearch && filteredTrace ? (
-                    <DeepResearchTimeline trace={filteredTrace} />
-                  ) : hasReasoning ? (
+                  {hasReasoning ? (
                     <div className="prose prose-sm dark:prose-invert max-w-none text-[var(--color-fg)]/90 leading-relaxed font-[var(--font-sans)]">
                       <Markdown content={reasoning} />
                     </div>
@@ -282,7 +204,7 @@ export function ReasoningPanel({
                   )}
                 </div>
 
-                {!isDeepResearch && hasReasoning && (
+                {hasReasoning && (
                   <div className="absolute top-4 right-0">
                     <button
                       type="button"

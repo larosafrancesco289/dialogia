@@ -21,7 +21,7 @@ type ComposerChipsProps = {
   canVision: boolean;
   canImageOut: boolean;
   canAudio: boolean;
-  searchProvider: 'brave' | 'openrouter';
+  searchProvider: 'tavily' | 'openrouter';
   searchEnabled: boolean;
   toggleSearch: () => void;
   supportsReasoning: boolean;
@@ -93,12 +93,12 @@ export function ComposerChips({
       {!isStudyTier && (
         <button
           className="badge flex items-center gap-1"
-          title={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} web search for next message`}
+          title={`Toggle ${searchProvider === 'openrouter' ? 'OpenRouter' : 'Tavily'} web search for next message`}
           onClick={toggleSearch}
           aria-pressed={searchEnabled}
         >
           <MagnifyingGlassIcon className="h-3.5 w-3.5" />
-          {(searchProvider === 'openrouter' ? 'OR' : 'Brave') +
+          {(searchProvider === 'openrouter' ? 'OR' : 'Tavily') +
             ' ' +
             (searchEnabled ? 'On' : 'Off')}
         </button>

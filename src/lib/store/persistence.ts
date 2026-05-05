@@ -50,7 +50,6 @@ export function buildPersistedState(state: StoreState): PersistedStoreState {
       routePreference: state.ui.routePreference,
       chatDefaults: state.ui.chatDefaults,
       flags: {
-        experimentalBrave: state.ui.flags.experimentalBrave,
         experimentalTutor: state.ui.flags.experimentalTutor,
         enableMultiModelChat: state.ui.flags.enableMultiModelChat,
       },

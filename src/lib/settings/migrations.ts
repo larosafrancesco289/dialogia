@@ -16,9 +16,11 @@ const readRecord = (value: unknown): UnknownRecord | undefined =>
   isRecord(value) ? value : undefined;
 
 const readSearchProvider = (value: unknown): SearchProvider | undefined =>
-  Object.values(SearchProviderEnum).includes(value as SearchProvider)
-    ? (value as SearchProvider)
-    : undefined;
+  value === 'brave'
+    ? 'tavily'
+    : Object.values(SearchProviderEnum).includes(value as SearchProvider)
+      ? (value as SearchProvider)
+      : undefined;
 
 const readReasoningEffort = (value: unknown): ReasoningEffort | undefined =>
   Object.values(ReasoningEffortEnum).includes(value as ReasoningEffort)
@@ -56,7 +58,7 @@ export function migrateGenSettingsRecord(input: unknown): MigrationResult<unknow
   const searchProvider =
     readSearchProvider(record.searchProvider) ??
     readSearchProvider(record.search_provider) ??
-    (legacySearchWithBrave ? 'brave' : undefined);
+    (legacySearchWithBrave ? 'tavily' : undefined);
   const tutorEnabled =
     readBoolean(record.tutorEnabled) ??
     readBoolean(record.tutor_mode) ??
@@ -146,7 +148,7 @@ export function migrateChatSettingsRecord(input: unknown): MigrationResult<unkno
     readSearchProvider(search?.provider) ??
     readSearchProvider(settings.searchProvider) ??
     readSearchProvider(settings.search_provider) ??
-    (legacySearchWithBrave ? 'brave' : undefined) ??
+    (legacySearchWithBrave ? 'tavily' : undefined) ??
     'openrouter';
 
   const tutorEnabled =

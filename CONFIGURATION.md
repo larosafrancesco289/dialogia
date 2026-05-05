@@ -28,11 +28,8 @@ Next.js API routes under `/api/openrouter/*` forward requests using the server k
 - `NEXT_PUBLIC_OPENROUTER_API_KEY` — client-side key (avoid in production). Only read when proxy is
   disabled.
 - `OPENROUTER_API_KEY` — server-side key for OpenRouter. Required when proxy is enabled.
-- `BRAVE_SEARCH_API_KEY` — enables the Brave Search tool. Used only on the server.
+- `TAVILY_API_KEY` — enables local Tavily web search. Used only on the server.
 - `XAI_API_KEY` — server-side key for X.AI (Grok) voice sessions via `/api/xai/session`.
-- `DEEP_RESEARCH_REASONING_ONLY` — defaults to `true`. Forces the DeepResearch agent to pick models
-  that advertise reasoning support; set to `false` to allow experimental providers during testing.
-  DeepResearch always executes with the server-side `OPENROUTER_API_KEY`.
 - `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT` — if `true`, new sessions start with ZDR-only enforcement.
 - `NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT` — optional routing hint (`balanced` | `speed` |
   `cost`). The default is `balanced`, which leaves OpenRouter's default price-weighted routing
@@ -68,8 +65,8 @@ UI requires:
 
 Server API routes require:
 
-- `/api/openrouter/*` and DeepResearch: `OPENROUTER_API_KEY`
-- DeepResearch search: `BRAVE_SEARCH_API_KEY`
+- `/api/openrouter/*`: `OPENROUTER_API_KEY`
+- `/api/tavily`: `TAVILY_API_KEY`
 - `/api/xai/session`: `XAI_API_KEY`
 - Access gate: `AUTH_COOKIE_SECRET`, `ACCESS_CODE_PEPPER`, access code hashes
 
@@ -86,7 +83,7 @@ Headless scripts require:
 
 ## Security Notes
 
-- Keep provider keys (`OPENROUTER_API_KEY`, `BRAVE_SEARCH_API_KEY`) server-side only. Do not commit
+- Keep provider keys (`OPENROUTER_API_KEY`, `TAVILY_API_KEY`) server-side only. Do not commit
   them or expose via `NEXT_PUBLIC_*`.
 - Proxy mode adds CORS-friendly headers (`X-Title`, `HTTP-Referer`) inside
   `src/lib/api/config.ts`. Update the config if new headers are required.

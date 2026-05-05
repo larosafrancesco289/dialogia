@@ -88,8 +88,8 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   };
 
   const pickProvider = (snapshotVal: unknown, chatVal: unknown): SearchProvider | undefined => {
-    const fromSnapshot = isSearchProvider(snapshotVal) ? snapshotVal : undefined;
-    const fromChat = isSearchProvider(chatVal) ? chatVal : undefined;
+    const fromSnapshot = normalizeSearchProvider(snapshotVal);
+    const fromChat = normalizeSearchProvider(chatVal);
     if (modelChanged) return fromChat ?? fromSnapshot;
     return fromSnapshot ?? fromChat;
   };
@@ -230,5 +230,7 @@ const isReasoningEffort = (
   value === 'high' ||
   value === 'xhigh';
 
-const isSearchProvider = (value: unknown): value is SearchProvider =>
-  value === 'brave' || value === 'openrouter';
+const normalizeSearchProvider = (value: unknown): SearchProvider | undefined => {
+  if (value === 'brave') return 'tavily';
+  return value === 'tavily' || value === 'openrouter' ? value : undefined;
+};
