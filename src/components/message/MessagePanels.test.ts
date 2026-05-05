@@ -43,24 +43,3 @@ test('renders reasoning panel once actual reasoning text exists', () => {
   assert.equal(state.shouldRender, true);
   assert.equal(state.shouldStream, true);
 });
-
-test('keeps deep research visible even without model reasoning text', () => {
-  const message = createAssistantMessage({
-    chatId: 'chat-1',
-    content: 'Done.',
-    model: 'openai/o4-mini',
-  });
-
-  message.deepResearch = {
-    trace: [{ type: 'thought', output: 'Searching for supporting evidence.' }],
-  };
-
-  const state = getReasoningPanelState({
-    message,
-    isStreaming: false,
-    lastMessageId: message.id,
-  });
-
-  assert.equal(state.shouldRender, true);
-  assert.equal(state.shouldStream, false);
-});

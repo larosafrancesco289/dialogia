@@ -11,7 +11,6 @@ export function deriveChatSettingsFromUi(opts: {
   fallbackSystem?: string;
   lastUsedModelId?: string;
   previous?: ChatSettings;
-  braveEnabled: boolean;
   tutorEnabled: boolean;
   forceTutorMode: boolean;
 }): ChatSettings {

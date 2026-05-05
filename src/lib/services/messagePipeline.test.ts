@@ -35,7 +35,7 @@ const mergeState = (target: any, patch: any) => {
   });
 };
 
-test('planTurn applies tutor tools and updates Brave UI state', async () => {
+test('planTurn applies tutor tools and updates Tavily UI state', async () => {
   const chat: Chat = {
     id: 'chat-1',
     title: 'Test Chat',
@@ -59,7 +59,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
         showDebugRawJson: true,
       },
       features: {
-        search: { enabled: true, provider: 'brave' },
+        search: { enabled: true, provider: 'tavily' },
         tutor: {
           enabled: true,
           defaultModelId: 'provider/model',
@@ -109,7 +109,6 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
       activeTurnByChatId: {},
       flags: {
         experimentalTutor: true,
-        experimentalBrave: true,
       },
       debug: {
         mode: false,
@@ -117,11 +116,11 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
         autoReasoningModelIds: {},
         learnerModelDebugByMessageId: {},
       },
-      search: { braveByMessageId: {} },
+      search: { tavilyByMessageId: {} },
       tutor: { byMessageId: {}, forceMode: false },
     },
     setSearchStatus: (messageId: string, entry: any) => {
-      state.ui.search.braveByMessageId[messageId] = entry;
+      state.ui.search.tavilyByMessageId[messageId] = entry;
     },
     setNotice: (notice?: string) => {
       state.ui.notice = notice;
@@ -178,7 +177,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
                 type: 'function',
                 function: {
                   name: 'web_search',
-                  arguments: JSON.stringify({ query: 'brave query', count: 3 }),
+                  arguments: JSON.stringify({ query: 'tavily query', count: 3 }),
                 },
               },
               {
@@ -281,11 +280,11 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   });
   applyPlanSideEffects({ sideEffects: planOutput.sideEffects, set });
 
-  const braveEntry = state.ui.search.braveByMessageId[assistantMessage.id];
-  assert.ok(braveEntry);
-  assert.equal(braveEntry.status, 'done');
-  assert.equal(braveEntry.query, 'brave query');
-  assert.ok(Array.isArray(braveEntry.results) && braveEntry.results.length === 1);
+  const tavilyEntry = state.ui.search.tavilyByMessageId[assistantMessage.id];
+  assert.ok(tavilyEntry);
+  assert.equal(tavilyEntry.status, 'done');
+  assert.equal(tavilyEntry.query, 'tavily query');
+  assert.ok(Array.isArray(tavilyEntry.results) && tavilyEntry.results.length === 1);
   const savedTutor = savedMessages.find((msg) => Array.isArray((msg as any)?.tutor?.mcq))
     ?.tutor as any;
   assert.ok(Array.isArray(savedTutor?.mcq) && savedTutor.mcq.length === 1);
@@ -299,7 +298,7 @@ test('planTurn applies tutor tools and updates Brave UI state', async () => {
   assert.ok(quizEntries.length >= 1);
   assert.ok(recordEntries.length >= 1);
   assert.equal(searchEntries[0]?.category, 'search');
-  assert.equal(searchEntries[0]?.metadata?.provider, 'brave');
+  assert.equal(searchEntries[0]?.metadata?.provider, 'tavily');
   assert.equal(searchEntries[0]?.metadata?.round, 1);
   assert.equal(searchEntries[0]?.metadata?.results, 1);
   assert.equal(quizEntries[0]?.category, 'tutor');
@@ -382,7 +381,6 @@ test('regenerate reuses snapshots and records debug payload', async () => {
       activeTurnByChatId: {},
       flags: {
         experimentalTutor: false,
-        experimentalBrave: false,
       },
       debug: {
         mode: true,
@@ -390,7 +388,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
         autoReasoningModelIds: {},
         learnerModelDebugByMessageId: {},
       },
-      search: { braveByMessageId: {} },
+      search: { tavilyByMessageId: {} },
       tutor: { byMessageId: {}, forceMode: false },
     },
     setNotice: (notice?: string) => {

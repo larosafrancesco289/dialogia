@@ -13,7 +13,7 @@ export const TAB_SECTIONS: Record<TabId, SectionId[]> = {
   chat: ['general', 'generation', 'reasoning'],
   tutor: ['tutor'],
   appearance: ['display', 'theme', 'privacy'],
-  advanced: ['data', 'experimental', 'usage-stats'],
+  advanced: ['data', 'developer', 'usage-stats'],
 };
 
 export const SECTION_TITLES: Record<SectionId, string> = {
@@ -28,6 +28,6 @@ export const SECTION_TITLES: Record<SectionId, string> = {
   theme: 'Theme',
   privacy: 'Privacy',
   data: 'Data',
-  experimental: 'Experimental',
+  developer: 'Developer',
   'usage-stats': 'Usage Statistics',
 };

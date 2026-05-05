@@ -8,7 +8,7 @@ export type WebSearchArgs = {
   country?: string;
   include_domains?: string[];
   exclude_domains?: string[];
-  provider?: 'brave';
+  provider?: 'tavily';
 };
 
 export type WebSearchToolArgs = WebSearchArgs;
@@ -39,7 +39,7 @@ export function normalizeWebSearchArgs(input: Record<string, unknown>): WebSearc
   const country = typeof input.country === 'string' ? input.country : undefined;
   const include_domains = normalizeDomainList(input.include_domains);
   const exclude_domains = normalizeDomainList(input.exclude_domains);
-  const provider = input.provider === 'brave' ? 'brave' : undefined;
+  const provider = input.provider === 'tavily' || input.provider === 'brave' ? 'tavily' : undefined;
 
   const result: WebSearchArgs = { query };
   if (count != null) result.count = count;

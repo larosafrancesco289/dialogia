@@ -74,8 +74,8 @@ export const createUiSlice = createStoreSlice((set, get) => {
           ...state.ui,
           search: {
             ...state.ui.search,
-            braveByMessageId: {
-              ...(state.ui.search.braveByMessageId || {}),
+            tavilyByMessageId: {
+              ...(state.ui.search.tavilyByMessageId || {}),
               [messageId]: entry,
             },
           },

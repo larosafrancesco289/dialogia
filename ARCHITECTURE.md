@@ -55,9 +55,8 @@ business logic that is easy to test.
 - **Attachments** — Pipeline lives in `src/lib/attachments/*` with UI → prepare → prompt stages.
   PDFs are extracted client-side into text blocks for prompt use, with small files optionally sent
   as file blocks.
-- **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Brave search proxy in
-  `app/api/brave/route.ts`, X.AI voice session in
-  `app/api/xai/session/route.ts`, DeepResearch in `app/api/deep-research/route.ts`, and auth routes
+- **External APIs** — OpenRouter proxy routes in `app/api/openrouter/*`, Tavily search proxy in
+  `app/api/tavily/route.ts`, X.AI voice session in `app/api/xai/session/route.ts`, and auth routes
   in `app/api/auth/*`. These never import UI modules.
 
 ## Public Module Surfaces
@@ -65,20 +64,18 @@ business logic that is easy to test.
 Prefer these public entrypoints over deep internal imports when extending the system. They provide
 the stable, supported surface for cross-domain use.
 
-| Area                 | Import from                       | Notes                                                                   |
-| -------------------- | --------------------------------- | ----------------------------------------------------------------------- |
-| Store entrypoints    | `src/lib/store/index.ts`          | Zustand store composition + `useChatStore`.                             |
-| Message helpers      | `src/lib/messages/indexing.ts`    | O(1) message lookup/update helpers.                                     |
-| Agent entrypoints    | `src/lib/agent/index.ts`          | Compose/plan/stream + orchestrator exports.                             |
-| Tool registry        | `src/lib/tools/index.ts`          | Tool definitions, metadata, handlers, and name guards.                  |
-| Search helpers       | `src/lib/search/index.ts`         | Search tool definitions + source formatting helpers.                    |
-| Turn runtime helpers | `src/lib/turns/runtime/*`         | Abort controllers, metrics, tool-call logging.                          |
-| Tutor domain         | `src/lib/tutor/index.ts`          | Profile, context, defaults, deck.                                       |
-| DeepResearch client  | `src/lib/deep-research/index.ts`  | Client-safe entrypoint for the DeepResearch flow.                       |
-| DeepResearch server  | `src/lib/deep-research/server.ts` | Server-only engine/tools for API routes.                                |
-| OpenRouter transport | `src/lib/openrouter/index.ts`     | Transport client; request builder in `src/lib/openrouter/request.ts`.   |
-| Anthropic transport  | `src/lib/anthropic/index.ts`      | Direct Claude transport, proxy routes, model loading, streaming, tools. |
-| Schemas              | `src/lib/schemas/*`               | Zod schemas + JSON schema builder.                                      |
+| Area                 | Import from                    | Notes                                                                   |
+| -------------------- | ------------------------------ | ----------------------------------------------------------------------- |
+| Store entrypoints    | `src/lib/store/index.ts`       | Zustand store composition + `useChatStore`.                             |
+| Message helpers      | `src/lib/messages/indexing.ts` | O(1) message lookup/update helpers.                                     |
+| Agent entrypoints    | `src/lib/agent/index.ts`       | Compose/plan/stream + orchestrator exports.                             |
+| Tool registry        | `src/lib/tools/index.ts`       | Tool definitions, metadata, handlers, and name guards.                  |
+| Search helpers       | `src/lib/search/index.ts`      | Search tool definitions + source formatting helpers.                    |
+| Turn runtime helpers | `src/lib/turns/runtime/*`      | Abort controllers, metrics, tool-call logging.                          |
+| Tutor domain         | `src/lib/tutor/index.ts`       | Profile, context, defaults, deck.                                       |
+| OpenRouter transport | `src/lib/openrouter/index.ts`  | Transport client; request builder in `src/lib/openrouter/request.ts`.   |
+| Anthropic transport  | `src/lib/anthropic/index.ts`   | Direct Claude transport, proxy routes, model loading, streaming, tools. |
+| Schemas              | `src/lib/schemas/*`            | Zod schemas + JSON schema builder.                                      |
 
 ## Server-only Import Policy
 
@@ -173,6 +170,3 @@ the stable, supported surface for cross-domain use.
 - **Tutor tools** — pedagogy-focused tools in `src/lib/tools/definitions/tutor/*` and the tool
   registry (`src/lib/tools/registry.ts`).
 - **Search tools** — web retrieval tools in `src/lib/search/*` and the tool registry.
-- **DeepResearch** — extended research flow with trace data; client runner lives in
-  `src/lib/deep-research/client/runDeepResearchTurn.client.ts`, server engine in
-  `src/lib/deep-research/server/engine.server.ts`.

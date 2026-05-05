@@ -3,7 +3,6 @@ import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import { UsageStatsPanel } from '@/components/settings/sections/UsageStatsPanel';
 import { VoicePanel } from '@/components/settings/sections/VoicePanel';
-import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
 
 type AdvancedPanelProps = {
@@ -11,9 +10,6 @@ type AdvancedPanelProps = {
   // Data
   onExport: () => Promise<void> | void;
   onImportPicked: (file?: File | null) => Promise<void> | void;
-  // Labs
-  experimentalBrave: boolean;
-  setUI: (ui: Partial<StoreState['ui']>) => void;
   // Debug
   uiDebugMode: boolean;
   showToolCallLog: boolean;
@@ -28,8 +24,6 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     renderSection,
     onExport,
     onImportPicked,
-    experimentalBrave,
-    setUI,
     uiDebugMode,
     showToolCallLog,
     showDebugRawJson,
@@ -88,17 +82,10 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
 
       {renderSection(
         'advanced',
-        'experimental',
+        'developer',
         <div className="settings-section">
-          <div className="settings-section-header">Experimental</div>
+          <div className="settings-section-header">Developer</div>
           <div className="settings-section-content">
-            <ToggleSwitch
-              checked={experimentalBrave}
-              onChange={(checked) => setUI({ flags: { experimentalBrave: checked } })}
-              label="Brave Web Search"
-              description="Toggle Brave integration for web search and sources panel."
-            />
-
             <CollapsibleSection title="Debug Options" defaultOpen={false}>
               <div className="space-y-4">
                 <ToggleSwitch

@@ -97,12 +97,14 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     if (!message || message.role !== 'assistant' || previous?.role !== 'user') return false;
     const hasContent = message.content.trim().length > 0;
     const hasReasoning = !!(message.reasoning && message.reasoning.trim().length > 0);
-    const hasDeepResearch =
+    const hasLegacyResearch =
       !!(message.deepResearch?.trace && message.deepResearch.trace.length > 0) ||
       !!message.deepResearch?.answer;
     const hasAttachments = Array.isArray(message.attachments) && message.attachments.length > 0;
     const hasTutorPayload = !!(message.tutor || message.tutorWelcome);
-    return !hasContent && !hasReasoning && !hasDeepResearch && !hasAttachments && !hasTutorPayload;
+    return (
+      !hasContent && !hasReasoning && !hasLegacyResearch && !hasAttachments && !hasTutorPayload
+    );
   }, []);
 
   const {

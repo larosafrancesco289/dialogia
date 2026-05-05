@@ -6,13 +6,11 @@ export const NOTICE_CATALOG = {
   missingAnthropicKey: 'Missing NEXT_PUBLIC_ANTHROPIC_API_KEY',
   invalidKey: 'Invalid API key',
   rateLimited: 'Rate limited. Retry later.',
-  missingBraveKey: 'Missing BRAVE_SEARCH_API_KEY',
+  missingTavilyKey: 'Missing TAVILY_API_KEY',
   modelsUnavailable: 'Unable to load models.',
   exportedChats: 'Exported chats to JSON',
   importedData: 'Imported data',
   planApplyFailed: 'Failed to apply learning plan. Please try again.',
-  deepResearchNotAvailable: 'Deep research is not available on the free tier.',
-  deepResearchRequiresOpenRouter: 'DeepResearch currently requires an OpenRouter model selection.',
 } as const;
 
 export type NoticeId = keyof typeof NOTICE_CATALOG;
@@ -26,11 +24,8 @@ export const NOTICE_MISSING_CLIENT_KEY = NOTICE_CATALOG.missingClientKey;
 export const NOTICE_MISSING_ANTHROPIC_KEY = NOTICE_CATALOG.missingAnthropicKey;
 export const NOTICE_INVALID_KEY = NOTICE_CATALOG.invalidKey;
 export const NOTICE_RATE_LIMITED = NOTICE_CATALOG.rateLimited;
-export const NOTICE_MISSING_BRAVE_KEY = NOTICE_CATALOG.missingBraveKey;
+export const NOTICE_MISSING_TAVILY_KEY = NOTICE_CATALOG.missingTavilyKey;
 export const NOTICE_MODELS_UNAVAILABLE = NOTICE_CATALOG.modelsUnavailable;
 export const NOTICE_EXPORTED_CHATS = NOTICE_CATALOG.exportedChats;
 export const NOTICE_IMPORTED_DATA = NOTICE_CATALOG.importedData;
 export const NOTICE_PLAN_APPLY_FAILED = NOTICE_CATALOG.planApplyFailed;
-export const NOTICE_DEEP_RESEARCH_NOT_AVAILABLE = NOTICE_CATALOG.deepResearchNotAvailable;
-export const NOTICE_DEEP_RESEARCH_REQUIRES_OPENROUTER =
-  NOTICE_CATALOG.deepResearchRequiresOpenRouter;

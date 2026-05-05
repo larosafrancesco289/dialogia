@@ -12,13 +12,13 @@ const baseSettings = {
     showDebugRawJson: true,
   },
   features: {
-    search: { enabled: true, provider: 'brave' as const },
+    search: { enabled: true, provider: 'tavily' as const },
     tutor: { enabled: false },
   },
 };
 
 const baseUi = {
-  flags: { experimentalBrave: true },
+  flags: {},
   routePreference: 'speed' as const,
 } as any;
 
@@ -29,15 +29,8 @@ test('providerSortFromRoutePref maps UI preference', () => {
   assert.equal(providerSortFromRoutePref(undefined), undefined);
 });
 
-test('selectSearchProvider respects UI brave toggle', () => {
-  assert.equal(selectSearchProvider(baseSettings as any, baseUi), 'brave');
-  assert.equal(
-    selectSearchProvider(
-      baseSettings as any,
-      { ...baseUi, flags: { experimentalBrave: false } } as any,
-    ),
-    'openrouter',
-  );
+test('selectSearchProvider respects configured provider', () => {
+  assert.equal(selectSearchProvider(baseSettings as any, baseUi), 'tavily');
   assert.equal(
     selectSearchProvider(
       {
@@ -53,9 +46,32 @@ test('selectSearchProvider respects UI brave toggle', () => {
   );
 });
 
+test('selectSearchProvider defaults to Tavily when configured', () => {
+  const previous = process.env.TAVILY_API_KEY;
+  process.env.TAVILY_API_KEY = 'test-tavily-key';
+  try {
+    assert.equal(
+      selectSearchProvider(
+        {
+          ...baseSettings,
+          features: {
+            ...baseSettings.features,
+            search: { enabled: true },
+          },
+        } as any,
+        baseUi,
+      ),
+      'tavily',
+    );
+  } finally {
+    if (previous == null) delete process.env.TAVILY_API_KEY;
+    else process.env.TAVILY_API_KEY = previous;
+  }
+});
+
 test('buildProviderPolicy surfaces unified routing decisions', () => {
   const policy = buildProviderPolicy({ settings: baseSettings as any, ui: baseUi });
   assert.equal(policy.searchEnabled, true);
-  assert.equal(policy.searchProvider, 'brave');
+  assert.equal(policy.searchProvider, 'tavily');
   assert.equal(policy.providerSort, 'throughput');
 });

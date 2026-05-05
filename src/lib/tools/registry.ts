@@ -3,7 +3,8 @@ import type { TutorPhase } from '@/lib/agent/tutor/types';
 import type { ToolExecutionArgs, PlanningToolExecutionResult } from '@/lib/tools/execution';
 import type { ToolDefinition } from '@/lib/transport/contracts';
 import { mergeSearchResults, performWebSearchTool } from '@/lib/search';
-import { NOTICE_MISSING_BRAVE_KEY } from '@/lib/store/notices';
+import { normalizeWebSearchArgs } from '@/lib/search/args';
+import { NOTICE_MISSING_TAVILY_KEY } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import { WEB_SEARCH_TOOL } from '@/lib/tools/definitions/webSearch';
 import { advanceTopicTool } from '@/lib/tools/definitions/tutor/advanceTopic';
@@ -114,10 +115,15 @@ const executeWebSearchTool: PlanningToolHandler = async ({
     metadata: { ...(roundMeta || {}), provider: searchProvider },
   });
 
-  const searchArgs = {
+  const searchArgs = normalizeWebSearchArgs({
     query: typeof parsedArgs.query === 'string' ? parsedArgs.query : '',
     count: typeof parsedArgs.count === 'number' ? parsedArgs.count : undefined,
-  };
+    freshness: parsedArgs.freshness,
+    country: parsedArgs.country,
+    include_domains: parsedArgs.include_domains,
+    exclude_domains: parsedArgs.exclude_domains,
+    provider: parsedArgs.provider,
+  });
   const searchResult = await performWebSearchTool({
     args: searchArgs,
     fallbackQuery: userContent,
@@ -164,8 +170,8 @@ const executeWebSearchTool: PlanningToolHandler = async ({
     };
   }
 
-  if (searchResult.error === NOTICE_MISSING_BRAVE_KEY) {
-    notify(get, NOTICE_MISSING_BRAVE_KEY);
+  if (searchResult.error === NOTICE_MISSING_TAVILY_KEY) {
+    notify(get, NOTICE_MISSING_TAVILY_KEY);
   }
   log.error(
     output,

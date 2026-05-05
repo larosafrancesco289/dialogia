@@ -156,7 +156,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
 
   const modelSearchRef = useRef<ModelSearchHandle | null>(null);
 
-  const experimentalBrave = useChatStore((s) => !!s.ui.flags.experimentalBrave);
   const experimentalTutor = useChatStore((s) => !!s.ui.flags.experimentalTutor);
   const enableMultiModelChat = useChatStore((s) => !!s.ui.flags.enableMultiModelChat);
 
@@ -274,7 +273,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
             resetHiddenModels={resetHiddenModels}
             renderSection={renderSection}
             modelSearchRef={modelSearchRef}
-            experimentalBrave={experimentalBrave}
             ui={ui}
           />
         );
@@ -352,8 +350,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
             renderSection={renderSection}
             onExport={onExport}
             onImportPicked={onImportPicked}
-            experimentalBrave={experimentalBrave}
-            setUI={setUI}
             uiDebugMode={!!ui?.debug.mode}
             showToolCallLog={showToolCallLog}
             showDebugRawJson={showDebugRawJson}

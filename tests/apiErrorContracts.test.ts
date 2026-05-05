@@ -7,9 +7,9 @@ import { route } from '@/lib/server/routeBuilder';
 import { readApiErrorResponse } from '@/lib/api/errors';
 
 test('readApiErrorResponse parses jsonError payloads', async () => {
-  const res = jsonError(500, 'missing_env', 'BRAVE_SEARCH_API_KEY');
+  const res = jsonError(500, 'missing_env', 'TAVILY_API_KEY');
   const parsed = await readApiErrorResponse(res);
-  assert.deepEqual(parsed, { error: 'missing_env', detail: 'BRAVE_SEARCH_API_KEY' });
+  assert.deepEqual(parsed, { error: 'missing_env', detail: 'TAVILY_API_KEY' });
 });
 
 test('routeBuilder returns missing_env detail for required env', async () => {

@@ -8,7 +8,7 @@
 - Styles in `styles/`.
 - Tests in `tests/` and colocated `src/**/*.test.ts(x)`.
 - Path aliases: `@/components/*`, `@/lib/*`, `@/data/*` (see `tsconfig.json`).
-- API proxy routes under `app/api/*` (OpenRouter, Brave, X.AI, auth, deep-research). See ARCHITECTURE.md.
+- API proxy routes under `app/api/*` (OpenRouter, Tavily, X.AI, auth). See ARCHITECTURE.md.
 
 ## Build, Test, and Development Commands
 

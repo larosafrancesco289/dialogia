@@ -14,7 +14,6 @@ type ModelsPanelProps = {
   resetHiddenModels: () => void;
   renderSection: RenderSection;
   modelSearchRef: Ref<ModelSearchHandle | null>;
-  experimentalBrave: boolean;
   ui: StoreState['ui'];
 };
 
@@ -28,12 +27,13 @@ export function ModelsPanel(props: ModelsPanelProps) {
     resetHiddenModels,
     renderSection,
     modelSearchRef,
-    experimentalBrave,
     ui,
   } = props;
   const routePref = ui.routePreference ?? 'balanced';
   const selectedModelId = ui.chatDefaults?.modelId;
-  const searchProvider = ui.chatDefaults?.features?.search?.provider ?? 'openrouter';
+  const rawSearchProvider = ui.chatDefaults?.features?.search?.provider as unknown;
+  const searchProvider =
+    rawSearchProvider === 'tavily' || rawSearchProvider === 'brave' ? 'tavily' : 'openrouter';
 
   return (
     <>
@@ -102,16 +102,14 @@ export function ModelsPanel(props: ModelsPanelProps) {
             <div className="space-y-1">
               <label className="text-sm block">Provider</label>
               <div className="segmented">
-                {experimentalBrave && (
-                  <button
-                    className={`segment ${searchProvider === 'brave' ? 'is-active' : ''}`}
-                    onClick={() => {
-                      setUI({ chatDefaults: { features: { search: { provider: 'brave' } } } });
-                    }}
-                  >
-                    Brave
-                  </button>
-                )}
+                <button
+                  className={`segment ${searchProvider === 'tavily' ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setUI({ chatDefaults: { features: { search: { provider: 'tavily' } } } });
+                  }}
+                >
+                  Tavily
+                </button>
                 <button
                   className={`segment ${searchProvider === 'openrouter' ? 'is-active' : ''}`}
                   onClick={() => {
@@ -124,9 +122,8 @@ export function ModelsPanel(props: ModelsPanelProps) {
                 </button>
               </div>
               <div className="text-xs text-muted-foreground">
-                {experimentalBrave
-                  ? 'Brave uses local function-calling; OpenRouter injects the web plugin to include citations.'
-                  : 'OpenRouter injects the web plugin to include citations.'}
+                Tavily uses the local web_search tool; OpenRouter injects its web plugin when
+                available.
               </div>
             </div>
           </div>

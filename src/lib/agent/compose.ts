@@ -57,7 +57,7 @@ export async function composeTurn({
   const allowedTutorTools = tutorEligibility?.allowedTutorTools;
 
   const searchTools: ToolDefinition[] =
-    searchEnabled && searchProvider === 'brave' ? getSearchToolDefinition() : [];
+    searchEnabled && searchProvider === 'tavily' ? getSearchToolDefinition() : [];
   const tutorTools: ToolDefinition[] =
     tutorEnabled && allowedTutorTools
       ? getTutorToolDefinitions().filter((def) => {
@@ -73,7 +73,7 @@ export async function composeTurn({
   // Dynamic: plan context (includes mastery scores that change each turn).
   const stablePreambles: string[] = [];
   const dynamicPreambles: string[] = [];
-  if (searchEnabled && searchProvider === 'brave') {
+  if (searchEnabled && searchProvider === 'tavily') {
     stablePreambles.push(TOOL_PREAMBLE);
   }
   if (tutorEnabled) {
@@ -161,7 +161,7 @@ export async function composeTurn({
     newUserAttachments: userAttachments,
   });
 
-  const shouldPlan = tutorEnabled || (searchEnabled && searchProvider === 'brave');
+  const shouldPlan = tutorEnabled || (searchEnabled && searchProvider === 'tavily');
 
   return {
     system,

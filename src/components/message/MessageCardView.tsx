@@ -46,8 +46,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     message,
     chat,
     models,
-    braveGloballyEnabled,
-    braveEntry,
+    tavilyEntry,
     debugMode,
     debugEntry,
     tutorGloballyEnabled,
@@ -104,8 +103,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
       message={message}
       chat={chat}
       models={models}
-      braveGloballyEnabled={braveGloballyEnabled}
-      braveEntry={braveEntry}
+      tavilyEntry={tavilyEntry}
       isSourcesExpanded={panels.sources.expanded}
       onToggleSources={panels.sources.onToggle}
       debugMode={debugMode}

@@ -15,7 +15,7 @@ export async function applyToolExecutions(args: {
     chatId: string;
     assistantMessage: Message;
     userContent: string;
-    searchProvider: 'brave' | 'openrouter';
+    searchProvider: 'tavily' | 'openrouter';
     controller: AbortController;
     set: PlanTurnOptions['turn']['set'];
     get: PlanTurnOptions['turn']['get'];

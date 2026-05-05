@@ -27,7 +27,6 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
     routePreference: getRoutePreferenceDefault(),
     chatDefaults: undefined,
     flags: {
-      experimentalBrave: false,
       experimentalTutor: true,
       enableMultiModelChat: false,
     },
@@ -38,7 +37,7 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
       learnerModelDebugByMessageId: {},
     },
     search: {
-      braveByMessageId: {},
+      tavilyByMessageId: {},
     },
     tutor: {
       byMessageId: {},

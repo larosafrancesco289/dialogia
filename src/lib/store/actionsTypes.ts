@@ -34,7 +34,7 @@ export type StoreActions = VoiceActions & {
   setNotice: (notice?: NoticeId | string) => void;
   setSearchStatus: (
     messageId: string,
-    entry: NonNullable<UISearchState['braveByMessageId']>[string],
+    entry: NonNullable<UISearchState['tavilyByMessageId']>[string],
   ) => void;
 
   // tutor

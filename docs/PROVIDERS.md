@@ -5,7 +5,7 @@
 - OpenRouter: primary model transport for chat completions and model metadata.
 - Anthropic: direct Claude transport with proxy routes, model loading, streaming, tool conversion,
   reasoning/thinking support, web-search tool support, and prompt-cache breakpoints.
-- Brave Search: web search tool used by `web_search` and DeepResearch.
+- Tavily: server-side web search tool used by `web_search`.
 
 ## Planned / placeholders
 

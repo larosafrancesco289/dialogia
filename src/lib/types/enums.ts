@@ -1,5 +1,5 @@
 export const SearchProviderEnum = {
-  Brave: 'brave',
+  Tavily: 'tavily',
   OpenRouter: 'openrouter',
 } as const;
 

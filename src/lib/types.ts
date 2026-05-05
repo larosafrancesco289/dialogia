@@ -1,6 +1,5 @@
 export * from '@/lib/types/attachments';
 export * from '@/lib/types/chat';
-export * from '@/lib/types/deepResearch';
 export * from '@/lib/types/enums';
 export * from '@/lib/types/learningPlan';
 export * from '@/lib/types/kv';

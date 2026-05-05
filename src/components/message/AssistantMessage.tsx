@@ -53,7 +53,7 @@ export type AssistantMessageProps = {
   ) => void;
   attachments: PersistedAttachment[];
   tutorEnabled: boolean;
-  /** Debug, reasoning, and brave source panels - rendered above message content */
+  /** Debug, reasoning, and source panels - rendered above message content */
   upperPanelsNode: ReactNode;
   /** Tutor panel - rendered below message content so tutor's text appears first */
   tutorPanelNode: ReactNode;

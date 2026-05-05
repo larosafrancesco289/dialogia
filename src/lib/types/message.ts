@@ -1,6 +1,5 @@
 import type { PersistedAttachment } from '@/lib/types/attachments';
 import type { GenerationSettings, SearchProvider } from '@/lib/types/chat';
-import type { DeepResearchEvent } from '@/lib/types/deepResearch';
 import type { MessageMetrics } from '@/lib/types/metrics';
 import type { LearnerModel, MessageTutor } from '@/lib/types/tutor';
 import type { Usage } from '@/lib/api/normalizers';
@@ -55,8 +54,8 @@ export type ToolCallLogEntry = {
   };
 };
 
-export type MessageDeepResearch = {
-  trace: DeepResearchEvent[];
+export type MessageLegacyResearch = {
+  trace: unknown[];
   answer?: string;
 };
 
@@ -82,8 +81,8 @@ export type Message = {
   model?: string;
   // For thinking models; accumulated via streaming
   reasoning?: string;
-  // DeepResearch trace data (separate from model reasoning tokens)
-  deepResearch?: MessageDeepResearch;
+  // Legacy research trace data retained so older saved chats can still deserialize.
+  deepResearch?: MessageLegacyResearch;
   metrics?: MessageMetrics;
   usage?: Usage;
   // Optional attachments (currently images) associated to the message

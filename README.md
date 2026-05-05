@@ -11,7 +11,7 @@ Local-first, privacy-focused multi-model chat UI for OpenRouter and beyond.
 - Reasoning: Optional “thinking” stream for reasoning-capable models with effort control.
 - Streaming + metrics: TTFT, token counts, tokens/sec; provider-reported cost when available.
 - Compare drawer: Run one prompt across multiple models; copy, insert to chat, or switch model.
-- Web search: Optional Brave Search or OpenRouter web plugin augmentation for grounded answers.
+- Web search: Optional Tavily tool calling or OpenRouter web plugin augmentation for grounded answers.
 
 ### Screenshots
 
@@ -101,12 +101,11 @@ The following are local-only (already in `.gitignore`) and should not be committ
   - PDFs: text is extracted client-side and sent as text blocks; small files may fall back to file
     blocks.
 - Reasoning: toggle effort in the composer for thinking models; view “Thinking” panel per message.
-- Web search: toggle the search icon to ground the next reply with sources. Brave runs locally when enabled; otherwise the OpenRouter web plugin is attached.
-- DeepResearch: when search is enabled on a reasoning-capable OpenRouter model (and tutor mode is off), the next turn runs the multi-step research flow. Results appear as an assistant message with a sources panel and aggregate usage.
+- Web search: toggle the search icon to ground the next reply with sources. Tavily runs through the local `web_search` tool when selected; OpenRouter injects its web plugin when selected.
 - Compare: click the grid icon in the header to run a prompt across multiple models and review metrics.
 - Slash commands:
   - `/model <id|name>` — set the model.
-  - `/search on|off|toggle` — toggle Brave web search.
+  - `/search on|off|toggle` — toggle web search.
   - `/reasoning none|low|medium|high` — set reasoning effort.
   - `/help` — list supported commands.
 
@@ -229,11 +228,10 @@ Progress indicators use color coding:
 
 - Framework: Next.js App Router (React 18)
 - State: Zustand with local persistence; Dexie for IndexedDB tables
-- API proxy: `/api/openrouter/*` and `/api/anthropic/*` for model traffic; `/api/brave` for web search; `/api/xai/session` for X.AI voice
+- API proxy: `/api/openrouter/*` and `/api/anthropic/*` for model traffic; `/api/tavily` for web search; `/api/xai/session` for X.AI voice
 - Markdown: `react-markdown` + GFM, Prism, KaTeX, Mermaid
 - Styles: Tailwind v4 base + `styles/foundations.css` tokens; `app/globals.css` layout
 - Agent services: `src/lib/agent/request.ts` (request building), `src/lib/search/*` (search orchestration), and `src/lib/agent/tutorFlow.ts` (tutor memory composition) centralize turn logic.
-- DeepResearch: `src/lib/deep-research/server/*` runs the server engine and tool adapters; `src/lib/deep-research/client/*` handles client orchestration.
 - Capabilities: Derived from OpenRouter model metadata (vision, audio input, image output, reasoning)
 - PDFs: Text is extracted client-side and preferred in prompts; small files may be sent as file blocks.
 
@@ -241,7 +239,7 @@ Security notes:
 
 - Prefer proxy mode (`NEXT_PUBLIC_USE_OR_PROXY=true`) to keep provider keys server-side.
 - Avoid placing secrets in `NEXT_PUBLIC_*` env vars when possible.
-- Brave Search runs only server-side and requires `BRAVE_SEARCH_API_KEY`.
+- Tavily Search runs only server-side and requires `TAVILY_API_KEY`.
 - ZDR-only: Opt-in via Settings or `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=true`; OpenRouter requests enforce it with `provider.zdr=true`.
 - Access gate: Middleware validates a signed, HttpOnly cookie on every request; unauthenticated users are redirected to `/access`. Add env vars above and distribute plaintext codes privately.
 

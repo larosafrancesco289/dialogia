@@ -10,15 +10,13 @@ import type {
 } from '@/lib/types';
 
 export type UiFlagsSnapshot = {
-  experimentalBrave?: boolean;
   experimentalTutor?: boolean;
   enableMultiModelChat?: boolean;
 };
 
 export type UiNextOverrides = {
   modelId?: string;
-  search?: { enabled?: boolean; provider?: 'brave' | 'openrouter' };
-  deepResearch?: boolean;
+  search?: { enabled?: boolean; provider?: 'tavily' | 'openrouter' };
   tutorMode?: boolean;
   tutorNudge?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
   reasoning?: { effort?: ReasoningEffort; tokens?: number };
@@ -62,7 +60,7 @@ export type UiSearchEntry = {
 };
 
 export type UiSearchSnapshot = {
-  braveByMessageId?: Record<string, UiSearchEntry>;
+  tavilyByMessageId?: Record<string, UiSearchEntry>;
 };
 
 export type TutorToolUsageSnapshot = {

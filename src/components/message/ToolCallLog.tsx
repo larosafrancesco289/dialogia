@@ -66,7 +66,7 @@ const CATEGORY_LABEL: Record<NonNullable<ToolCallLogEntry['category']>, string> 
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
-  brave: 'Brave',
+  tavily: 'Tavily',
   openrouter: 'OpenRouter',
 };
 

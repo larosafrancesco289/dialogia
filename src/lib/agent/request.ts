@@ -17,7 +17,7 @@ export function pdfPlugins(hasPdf: boolean): PluginConfig[] | undefined {
 export function composePlugins(opts: {
   hasPdf: boolean;
   searchEnabled?: boolean;
-  searchProvider?: 'brave' | 'openrouter';
+  searchProvider?: 'tavily' | 'openrouter';
 }): PluginConfig[] | undefined {
   const arr: PluginConfig[] = [];
   const base = pdfPlugins(opts.hasPdf);

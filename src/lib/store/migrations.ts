@@ -22,6 +22,7 @@ const stripDeprecatedUiFields = (ui: Record<string, unknown>): Record<string, un
   delete next['tutorGlobalMemory'];
   delete next['tutorMemoryDebugByMessageId'];
   delete next['nextSearchWithBrave'];
+  delete next['experimentalBrave'];
   return next;
 };
 
@@ -36,8 +37,6 @@ const migrateUiToNested = (ui: Record<string, unknown>): Record<string, unknown>
   const baseDebug = isRecord(base.debug) ? base.debug : undefined;
   const baseTutor = isRecord(base.tutor) ? base.tutor : undefined;
   const flags = compactRecord({
-    experimentalBrave:
-      readBoolean(baseFlags?.experimentalBrave) ?? readBoolean(base.experimentalBrave),
     experimentalTutor:
       readBoolean(baseFlags?.experimentalTutor) ?? readBoolean(base.experimentalTutor),
     enableMultiModelChat:

@@ -409,7 +409,7 @@ test('chat export and import preserve sticky chat defaults', async () => {
           system: 'Exported sticky system',
           features: {
             search: {
-              provider: 'brave',
+              provider: 'tavily',
             },
           },
         },

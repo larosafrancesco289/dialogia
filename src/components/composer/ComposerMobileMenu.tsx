@@ -12,7 +12,7 @@ export type ComposerMobileMenuProps = {
   buttonRef: React.MutableRefObject<HTMLButtonElement | null>;
   onAttachClick: () => void;
   searchEnabled: boolean;
-  searchProvider: 'brave' | 'openrouter';
+  searchProvider: 'tavily' | 'openrouter';
   toggleSearch: () => void;
   showReasoningMenu: boolean;
   supportsXhigh?: boolean;
@@ -80,7 +80,7 @@ export function ComposerMobileMenu({
               onClose();
             }}
           >
-            {`${searchProvider === 'openrouter' ? 'OpenRouter' : 'Brave'} Search: ${searchEnabled ? 'On' : 'Off'}`}
+            {`${searchProvider === 'openrouter' ? 'OpenRouter' : 'Tavily'} Search: ${searchEnabled ? 'On' : 'Off'}`}
           </div>
           {showReasoningMenu && (
             <>

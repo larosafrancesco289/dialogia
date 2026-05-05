@@ -29,7 +29,7 @@ const baseChat = (): Chat => ({
       showDebugRawJson: true,
     },
     features: {
-      search: { enabled: true, provider: 'brave' },
+      search: { enabled: true, provider: 'tavily' },
       tutor: {
         enabled: true,
         defaultModelId: 'provider/model-alpha',
@@ -114,7 +114,7 @@ test('composeTurn merges tutor and search context with plugins and tools', async
 
   const chat = baseChat();
   const ui = {
-    flags: { experimentalTutor: true, experimentalBrave: true },
+    flags: { experimentalTutor: true },
     tutor: { forceMode: false },
     routePreference: 'speed',
     overrides: { tutorNudge: 'more_practice' },
@@ -156,7 +156,7 @@ test('composeTurn merges tutor and search context with plugins and tools', async
     });
 
     assert.equal(result.settings.tutorEnabled, true);
-    assert.equal(result.settings.searchProvider, 'brave');
+    assert.equal(result.settings.searchProvider, 'tavily');
     assert.equal(result.settings.searchEnabled, true);
     assert.equal(result.hasPdf, true);
     assert.equal(result.shouldPlan, true);
@@ -178,11 +178,11 @@ test('composeTurn merges tutor and search context with plugins and tools', async
   }
 });
 
-test('composeTurn falls back to OpenRouter search when Brave experiment disabled', async () => {
+test('composeTurn uses Tavily search when configured', async () => {
   const chat = baseChat();
-  chat.settings.features.search.provider = 'brave';
+  chat.settings.features.search.provider = 'tavily';
   const ui = {
-    flags: { experimentalBrave: false, experimentalTutor: false },
+    flags: { experimentalTutor: false },
     tutor: { forceMode: false },
     routePreference: 'speed',
   } as any;
@@ -202,5 +202,6 @@ test('composeTurn falls back to OpenRouter search when Brave experiment disabled
     attachments: [],
   });
 
-  assert.equal(result.settings.searchProvider, 'openrouter');
+  assert.equal(result.settings.searchProvider, 'tavily');
+  assert.equal(result.tools?.[0]?.function.name, 'web_search');
 });
