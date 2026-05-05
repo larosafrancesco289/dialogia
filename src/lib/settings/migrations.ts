@@ -73,7 +73,7 @@ export function migrateGenSettingsRecord(input: unknown): MigrationResult<unknow
       reasoningTokens,
       providerSort,
       searchEnabled,
-      searchProvider: searchProvider ?? (searchEnabled ? 'openrouter' : undefined),
+      searchProvider: searchProvider ?? (searchEnabled ? 'tavily' : undefined),
       tutorEnabled,
     }) ?? {};
 
@@ -149,7 +149,7 @@ export function migrateChatSettingsRecord(input: unknown): MigrationResult<unkno
     readSearchProvider(settings.searchProvider) ??
     readSearchProvider(settings.search_provider) ??
     (legacySearchWithBrave ? 'tavily' : undefined) ??
-    'openrouter';
+    'tavily';
 
   const tutorEnabled =
     readBoolean(tutor?.enabled) ??

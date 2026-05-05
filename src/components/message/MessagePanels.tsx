@@ -1,8 +1,7 @@
 'use client';
 import type { Chat, Message, MessageTutor, ModelDescriptor, ToolCallLogEntry } from '@/lib/types';
 import type { UISearchState } from '@/lib/store/types';
-import { SearchSourcesPanel } from '@/components/message/SearchSourcesPanel';
-import { ReasoningPanel } from '@/components/message/ReasoningPanel';
+import { ResponseContextPanel } from '@/components/message/ResponseContextPanel';
 import { DebugPanel } from '@/components/message/DebugPanel';
 import { TutorPanel } from '@/components/message/tutor/TutorPanel';
 
@@ -59,8 +58,8 @@ export function getReasoningPanelState({
 export function MessagePanelsUpper({
   message,
   tavilyEntry,
-  isSourcesExpanded,
-  onToggleSources,
+  isSourcesExpanded: _isSourcesExpanded,
+  onToggleSources: _onToggleSources,
   debugMode,
   debugEntry,
   isDebugExpanded,
@@ -76,18 +75,18 @@ export function MessagePanelsUpper({
 }: Omit<MessagePanelsProps, 'tutorGloballyEnabled' | 'tutorEntry'>) {
   const panels: React.ReactNode[] = [];
 
-  if (tavilyEntry) {
-    panels.push(
-      <SearchSourcesPanel
-        key="tavily"
-        data={tavilyEntry}
-        expanded={isSourcesExpanded}
-        onToggle={onToggleSources}
-      />,
-    );
-  }
-
   const toolCallList = Array.isArray(toolCalls) ? toolCalls : undefined;
+  const contextPanel = buildResponseContextPanel({
+    message,
+    tavilyEntry,
+    toolCalls: toolCallList,
+    isStreaming,
+    lastMessageId,
+    expanded: reasoningExpanded || _isSourcesExpanded,
+    onToggle: onToggleReasoning,
+  });
+  if (contextPanel) panels.push(contextPanel);
+
   const shouldShowToolLog = showToolCallLog && toolCallList && toolCallList.length > 0;
   if (debugMode && (debugEntry?.body || shouldShowToolLog)) {
     panels.push(
@@ -103,15 +102,6 @@ export function MessagePanelsUpper({
       />,
     );
   }
-
-  const reasoningPanel = buildReasoningPanel({
-    message,
-    isStreaming,
-    lastMessageId,
-    reasoningExpanded,
-    onToggleReasoning,
-  });
-  if (reasoningPanel) panels.push(reasoningPanel);
 
   if (panels.length === 0) return null;
   return <>{panels}</>;
@@ -149,18 +139,22 @@ export function TutorPanelSection({
   );
 }
 
-function buildReasoningPanel({
+function buildResponseContextPanel({
   message,
+  tavilyEntry,
+  toolCalls,
   isStreaming,
   lastMessageId,
-  reasoningExpanded,
-  onToggleReasoning,
+  expanded,
+  onToggle,
 }: {
   message: Message;
+  tavilyEntry?: NonNullable<UISearchState['tavilyByMessageId']>[string];
+  toolCalls?: ToolCallLogEntry[];
   isStreaming: boolean;
   lastMessageId?: string;
-  reasoningExpanded: boolean;
-  onToggleReasoning: () => void;
+  expanded: boolean;
+  onToggle: () => void;
 }): React.ReactNode {
   const { reasoningText, shouldRender, shouldStream } = getReasoningPanelState({
     message,
@@ -168,14 +162,20 @@ function buildReasoningPanel({
     lastMessageId,
   });
 
-  if (!shouldRender) return null;
+  const hasSearch = !!tavilyEntry;
+  const hasTools = Array.isArray(toolCalls) && toolCalls.length > 0;
+
+  if (!shouldRender && !hasSearch && !hasTools) return null;
 
   return (
-    <ReasoningPanel
-      key="reasoning"
+    <ResponseContextPanel
+      key="response-context"
       reasoning={reasoningText}
-      expanded={reasoningExpanded}
-      onToggle={onToggleReasoning}
+      toolCalls={toolCalls}
+      activity={message.activity}
+      sources={tavilyEntry}
+      expanded={expanded}
+      onToggle={onToggle}
       isStreaming={shouldStream}
     />
   );

@@ -7,17 +7,15 @@ import {
   ArrowUturnRightIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
-import { Markdown } from '@/components/Markdown';
+import { Markdown, type MarkdownCitationSource } from '@/components/Markdown';
 import { RegenerateMenu } from '@/components/RegenerateMenu';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { LearnerModelUpdates } from '@/components/message/LearnerModelUpdates';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
-import { ToolExecutionIndicator } from '@/components/message/ToolExecutionIndicator';
 import { useChatStore } from '@/lib/store';
 import { selectStudyCondition } from '@/lib/store/selectors';
-import { useToolExecutionState } from '@/lib/hooks/useToolExecutionState';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import styles from './MessageCard.module.css';
 
@@ -53,11 +51,37 @@ export type AssistantMessageProps = {
   ) => void;
   attachments: PersistedAttachment[];
   tutorEnabled: boolean;
-  /** Debug, reasoning, and source panels - rendered above message content */
+  /** Debug, reasoning, and source context for this message */
   upperPanelsNode: ReactNode;
   /** Tutor panel - rendered below message content so tutor's text appears first */
   tutorPanelNode: ReactNode;
+  citationSources?: MarkdownCitationSource[];
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function annotationSources(value: unknown): MarkdownCitationSource[] {
+  if (Array.isArray(value)) return value.flatMap(annotationSources);
+  if (!isRecord(value)) return [];
+
+  const directUrl = typeof value.url === 'string' ? value.url : undefined;
+  const directTitle = typeof value.title === 'string' ? value.title : undefined;
+  const directDescription =
+    typeof value.content === 'string'
+      ? value.content
+      : typeof value.description === 'string'
+        ? value.description
+        : undefined;
+  const nested = ['annotations', 'citations', 'sources'].flatMap((key) =>
+    annotationSources(value[key]),
+  );
+
+  return directUrl
+    ? [{ title: directTitle, url: directUrl, description: directDescription }, ...nested]
+    : nested;
+}
 
 export function AssistantMessage({
   message,
@@ -88,9 +112,9 @@ export function AssistantMessage({
   tutorEnabled: _tutorEnabled,
   upperPanelsNode,
   tutorPanelNode,
+  citationSources,
 }: AssistantMessageProps) {
   const studyCondition = useChatStore(selectStudyCondition);
-  const { isExecutingTools, toolCalls } = useToolExecutionState(message, isStreaming);
 
   const normalizeSummaryText = (value: string) => value.trim().replace(/\s+/g, ' ');
 
@@ -99,6 +123,11 @@ export function AssistantMessage({
     if (message.deepResearch?.answer) return message.deepResearch.answer;
     return '';
   }, [message.content, message.deepResearch?.answer]);
+  const resolvedCitationSources = useMemo(() => {
+    if (citationSources?.length) return citationSources;
+    const fromAnnotations = annotationSources(message.annotations);
+    return fromAnnotations.length ? fromAnnotations : undefined;
+  }, [citationSources, message.annotations]);
 
   const shouldHideDuplicateSummaryContent = useMemo(() => {
     if (studyCondition === 'A') return false;
@@ -134,17 +163,12 @@ export function AssistantMessage({
       </div>
     );
   } else if (!shouldHideDuplicateSummaryContent) {
-    if (isExecutingTools) {
+    if (isStreaming && isLatestAssistant) {
       messageBody = (
-        <>
-          {displayContent && <StreamingMarkdown content={displayContent} />}
-          <ToolExecutionIndicator toolCalls={toolCalls} isExecuting />
-        </>
+        <StreamingMarkdown content={displayContent} sources={resolvedCitationSources} />
       );
-    } else if (isStreaming && isLatestAssistant) {
-      messageBody = <StreamingMarkdown content={displayContent} />;
     } else {
-      messageBody = <Markdown content={displayContent} />;
+      messageBody = <Markdown content={displayContent} sources={resolvedCitationSources} />;
     }
   }
 

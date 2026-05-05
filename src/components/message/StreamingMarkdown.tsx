@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Markdown } from '@/components/Markdown';
+import { Markdown, type MarkdownCitationSource } from '@/components/Markdown';
 
 const MIN_INTERVAL_MS = 80;
 const MAX_INTERVAL_MS = 220;
@@ -15,7 +15,13 @@ function shouldUpdateImmediately(next: string, delta: number) {
   return false;
 }
 
-export function StreamingMarkdown({ content }: { content: string }) {
+export function StreamingMarkdown({
+  content,
+  sources,
+}: {
+  content: string;
+  sources?: MarkdownCitationSource[];
+}) {
   const [rendered, setRendered] = useState(content);
   const lastUpdateAt = useRef<number>(0);
   const pending = useRef<string | null>(null);
@@ -52,5 +58,5 @@ export function StreamingMarkdown({ content }: { content: string }) {
   }, []);
 
   if (!rendered) return null;
-  return <Markdown content={rendered} />;
+  return <Markdown content={rendered} sources={sources} />;
 }

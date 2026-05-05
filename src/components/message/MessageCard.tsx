@@ -60,7 +60,7 @@ function MessageCardComponent({
   const prevEditingRef = useRef(isEditing);
   const [reasoningOverride, setReasoningOverride] = useState<boolean | null>(null);
   const reasoningExpanded = reasoningOverride ?? showReasoningByDefault;
-  const [sourcesExpanded, setSourcesExpanded] = useState(true);
+  const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [debugExpanded, setDebugExpanded] = useState(false);
   const [statsExpanded, setStatsExpanded] = useState(false);
 

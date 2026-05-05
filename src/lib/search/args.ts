@@ -13,6 +13,19 @@ export type WebSearchArgs = {
 
 export type WebSearchToolArgs = WebSearchArgs;
 
+export type WebFetchArgs = {
+  url: string;
+  extract_depth?: 'basic' | 'advanced';
+  format?: 'markdown' | 'text';
+  include_images?: boolean;
+  include_favicon?: boolean;
+  query?: string;
+  chunks_per_source?: number;
+  provider?: 'tavily';
+};
+
+export type WebFetchToolArgs = WebFetchArgs;
+
 const normalizeDomainList = (value: unknown): string[] | undefined => {
   if (!Array.isArray(value)) return undefined;
   const filtered = value.filter(
@@ -30,6 +43,15 @@ const normalizeFreshness = (value: unknown): WebSearchArgs['freshness'] | undefi
 const normalizeCount = (value: unknown): number | undefined => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
   return Math.max(1, Math.min(10, Math.floor(value)));
+};
+
+const normalizeChunksPerSource = (value: unknown): number | undefined => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  return Math.max(1, Math.min(5, Math.floor(value)));
+};
+
+const normalizeBoolean = (value: unknown): boolean | undefined => {
+  return typeof value === 'boolean' ? value : undefined;
 };
 
 export function normalizeWebSearchArgs(input: Record<string, unknown>): WebSearchArgs {
@@ -51,10 +73,41 @@ export function normalizeWebSearchArgs(input: Record<string, unknown>): WebSearc
   return result;
 }
 
+export function normalizeWebFetchArgs(input: Record<string, unknown>): WebFetchArgs {
+  const url = typeof input.url === 'string' ? input.url.trim() : '';
+  const extract_depth =
+    input.extract_depth === 'advanced' || input.extract_depth === 'basic'
+      ? input.extract_depth
+      : undefined;
+  const format = input.format === 'text' || input.format === 'markdown' ? input.format : undefined;
+  const include_images = normalizeBoolean(input.include_images);
+  const include_favicon = normalizeBoolean(input.include_favicon);
+  const query = typeof input.query === 'string' ? input.query.trim() : undefined;
+  const chunks_per_source = normalizeChunksPerSource(input.chunks_per_source);
+  const provider = input.provider === 'tavily' ? 'tavily' : undefined;
+
+  const result: WebFetchArgs = { url };
+  if (extract_depth) result.extract_depth = extract_depth;
+  if (format) result.format = format;
+  if (include_images != null) result.include_images = include_images;
+  if (include_favicon != null) result.include_favicon = include_favicon;
+  if (query) result.query = query;
+  if (chunks_per_source != null) result.chunks_per_source = chunks_per_source;
+  if (provider) result.provider = provider;
+  return result;
+}
+
 export function parseWebSearchArgs(input: unknown): WebSearchArgs | null {
   if (!isRecord(input)) return null;
   const normalized = normalizeWebSearchArgs(input);
   if (!normalized.query) return null;
+  return normalized;
+}
+
+export function parseWebFetchArgs(input: unknown): WebFetchArgs | null {
+  if (!isRecord(input)) return null;
+  const normalized = normalizeWebFetchArgs(input);
+  if (!normalized.url) return null;
   return normalized;
 }
 

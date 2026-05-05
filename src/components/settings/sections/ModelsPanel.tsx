@@ -32,8 +32,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
   const routePref = ui.routePreference ?? 'balanced';
   const selectedModelId = ui.chatDefaults?.modelId;
   const rawSearchProvider = ui.chatDefaults?.features?.search?.provider as unknown;
-  const searchProvider =
-    rawSearchProvider === 'tavily' || rawSearchProvider === 'brave' ? 'tavily' : 'openrouter';
+  const searchProvider = rawSearchProvider === 'openrouter' ? 'openrouter' : 'tavily';
 
   return (
     <>
@@ -122,7 +121,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
                 </button>
               </div>
               <div className="text-xs text-muted-foreground">
-                Tavily uses the local web_search tool; OpenRouter injects its web plugin when
+                Tavily uses local web_search/web_fetch tools; OpenRouter injects its web plugin when
                 available.
               </div>
             </div>

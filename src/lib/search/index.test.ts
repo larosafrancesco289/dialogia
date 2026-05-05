@@ -4,20 +4,23 @@ import {
   getSearchToolDefinition,
   mergeSearchResults,
   formatSourcesBlock,
+  runTavilyFetch,
   runTavilySearch,
 } from './index';
 import type { SearchResult } from '@/lib/search/types';
 import { NOTICE_MISSING_TAVILY_KEY } from '@/lib/store/notices';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
-import { buildTavilySearchBody } from '@/lib/search/api/tavily';
+import { buildTavilyExtractBody, buildTavilySearchBody } from '@/lib/search/api/tavily';
 
-test('getSearchToolDefinition exposes web_search function schema', () => {
+test('getSearchToolDefinition exposes web search and fetch function schemas', () => {
   const tools = getSearchToolDefinition();
   assert.equal(Array.isArray(tools), true);
   assert.equal(tools[0]?.function?.name, 'web_search');
+  assert.equal(tools[1]?.function?.name, 'web_fetch');
   const params = tools[0]?.function?.parameters;
   assert.equal(params?.type, 'object');
   assert.deepEqual(params?.required, ['query']);
+  assert.deepEqual(tools[1]?.function?.parameters?.required, ['url']);
 });
 
 test('mergeSearchResults deduplicates entries by URL', () => {
@@ -64,6 +67,26 @@ test('buildTavilySearchBody keeps search payload lean', () => {
   assert.equal(body.time_range, 'month');
   assert.equal(body.country, 'united states');
   assert.deepEqual(body.include_domains, ['ed.gov']);
+});
+
+test('buildTavilyExtractBody keeps fetch payload focused', () => {
+  const body = buildTavilyExtractBody({
+    url: 'https://example.com/docs',
+    extract_depth: 'advanced',
+    format: 'text',
+    include_images: true,
+    include_favicon: true,
+    query: 'pricing table',
+    chunks_per_source: 9,
+  });
+
+  assert.equal(body.urls, 'https://example.com/docs');
+  assert.equal(body.extract_depth, 'advanced');
+  assert.equal(body.format, 'text');
+  assert.equal(body.include_images, true);
+  assert.equal(body.include_favicon, true);
+  assert.equal(body.query, 'pricing table');
+  assert.equal(body.chunks_per_source, 5);
 });
 
 test('runTavilySearch returns results and propagates errors', async () => {
@@ -126,4 +149,44 @@ test('runTavilySearch forwards supported filters to proxy', async () => {
   assert.equal(url.searchParams.get('country'), 'us');
   assert.equal(url.searchParams.get('include_domains'), 'example.com');
   assert.equal(url.searchParams.get('exclude_domains'), 'spam.test');
+});
+
+test('runTavilyFetch returns extracted content and forwards options', async () => {
+  let requestedUrl = '';
+  const restore = mockFetch((async (input: RequestInfo | URL) => {
+    requestedUrl = String(input);
+    return {
+      ok: true,
+      json: async () => ({
+        results: [
+          {
+            url: 'https://example.com/page',
+            raw_content: '# Page\n\nExtracted content',
+            images: ['https://example.com/image.png'],
+          },
+        ],
+      }),
+    };
+  }) as any);
+
+  try {
+    const result = await runTavilyFetch({
+      url: 'https://example.com/page',
+      extract_depth: 'basic',
+      format: 'markdown',
+      include_images: true,
+      query: 'alpha',
+      chunks_per_source: 2,
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.results[0]?.raw_content, '# Page\n\nExtracted content');
+  } finally {
+    restore();
+  }
+
+  const url = new URL(requestedUrl, 'https://dialogia.test');
+  assert.equal(url.searchParams.get('url'), 'https://example.com/page');
+  assert.equal(url.searchParams.get('include_images'), 'true');
+  assert.equal(url.searchParams.get('query'), 'alpha');
+  assert.equal(url.searchParams.get('chunks_per_source'), '2');
 });

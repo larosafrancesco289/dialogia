@@ -20,6 +20,7 @@ import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
 import { applyToolExecutions } from '@/lib/agent/planning/apply';
 import { followUpPrompt } from '@/lib/agent/prompts/followUp';
 import { getMessagesForChat } from '@/lib/messages/indexing';
+import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { applyCacheBreakpoints, buildSystemMessage } from '@/lib/agent/cache';
 import { resolveModelTransport } from '@/lib/providers';
 import type {
@@ -334,6 +335,31 @@ export async function executeStreamingTurn(
       { startedAt },
     );
 
+  const appendActivityReasoning = (text: string, round?: number) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    set((store) => {
+      const result = updateMessageById(store, chatId, assistantMessage.id, (msg) => {
+        const activity = Array.isArray(msg.activity) ? msg.activity : [];
+        return {
+          ...msg,
+          activity: [
+            ...activity,
+            {
+              id: `${assistantMessage.id}-reasoning-${round ?? activity.length}-${Date.now()}`,
+              type: 'reasoning' as const,
+              text: trimmed,
+              timestamp: Date.now(),
+              status: 'done' as const,
+              round,
+            },
+          ],
+        };
+      });
+      return result ?? store;
+    });
+  };
+
   // Track which tool call indices we've already pre-logged
   const preLoggedToolIndices = new Set<number>();
 
@@ -403,7 +429,7 @@ export async function executeStreamingTurn(
     roundContent: string,
     scheduled: ToolCall[],
     round: number,
-    options?: { reasoningDetails?: unknown; applySideEffect?: boolean },
+    options?: { reasoningDetails?: unknown; reasoningText?: string; applySideEffect?: boolean },
   ): Promise<void> => {
     const applySideEffect = options?.applySideEffect ?? true;
     if (roundContent.trim()) {
@@ -421,6 +447,7 @@ export async function executeStreamingTurn(
         : {}),
     };
     convo.push(assistantMsg);
+    appendActivityReasoning(options?.reasoningText ?? '', round);
 
     // Record planning content as side effect for UI
     if (roundContent.trim()) {
@@ -578,6 +605,7 @@ export async function executeStreamingTurn(
 
   await processToolRound(roundContent, scheduled, 1, {
     reasoningDetails: roundReasoningDetails,
+    reasoningText: '',
     applySideEffect: false,
   });
   let rounds = 1;
@@ -588,10 +616,14 @@ export async function executeStreamingTurn(
     roundToolCalls = [];
     roundFinishReason = undefined;
     roundReasoningDetails = undefined;
+    let roundReasoningText = '';
 
     const roundCallbacks: StreamCallbacks = {
       onToken: (delta) => {
         roundContent += delta;
+      },
+      onReasoningToken: (delta) => {
+        roundReasoningText += delta;
       },
       onToolCallDelta: handleToolCallDelta,
       onDone: (_full, extras) => {
@@ -613,6 +645,7 @@ export async function executeStreamingTurn(
 
     // No tool calls - break out
     if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
+      appendActivityReasoning(roundReasoningText, rounds + 1);
       break;
     }
 
@@ -623,6 +656,7 @@ export async function executeStreamingTurn(
 
     await processToolRound(roundContent, scheduled, rounds + 1, {
       reasoningDetails: roundReasoningDetails,
+      reasoningText: roundReasoningText,
     });
     rounds += 1;
   }

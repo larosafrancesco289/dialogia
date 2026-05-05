@@ -60,6 +60,7 @@ export function createMessageStreamCallbacks(
   let startedStreaming = startBuffered ? false : true;
   let leadingBuffer = '';
   let firstTokenAt: number | undefined;
+  let reasoningActivityId: string | undefined;
 
   const flushDelta = (delta: string) => {
     if (!delta) return;
@@ -75,10 +76,34 @@ export function createMessageStreamCallbacks(
   const updateReasoning = (delta: string) => {
     if (!delta) return;
     set((state) => {
-      const result = updateMessageById(state, chatId, assistantMessage.id, (msg) => ({
-        ...msg,
-        reasoning: (msg.reasoning || '') + delta,
-      }));
+      const result = updateMessageById(state, chatId, assistantMessage.id, (msg) => {
+        const activity = Array.isArray(msg.activity) ? msg.activity : [];
+        let nextActivity = activity;
+        if (!reasoningActivityId) {
+          reasoningActivityId = uuidv4();
+          nextActivity = [
+            ...activity,
+            {
+              id: reasoningActivityId,
+              type: 'reasoning',
+              text: delta,
+              timestamp: Date.now(),
+              status: 'streaming',
+            },
+          ];
+        } else {
+          nextActivity = activity.map((item) =>
+            item.type === 'reasoning' && item.id === reasoningActivityId
+              ? { ...item, text: item.text + delta, status: 'streaming' }
+              : item,
+          );
+        }
+        return {
+          ...msg,
+          reasoning: (msg.reasoning || '') + delta,
+          activity: nextActivity,
+        };
+      });
       const partial: Partial<TurnStoreState> = result ? (result as Partial<TurnStoreState>) : {};
       if (autoReasoningEligible && modelIdUsed) {
         const prev = state.ui.debug.autoReasoningModelIds || {};
@@ -178,6 +203,11 @@ export function createMessageStreamCallbacks(
         ...assistantMessage,
         content,
         reasoning: current?.reasoning,
+        activity: (current?.activity ?? assistantMessage.activity)?.map((item) =>
+          item.type === 'reasoning' && item.id === reasoningActivityId
+            ? { ...item, status: 'done' }
+            : item,
+        ),
         attachments: current?.attachments,
         systemSnapshot: current?.systemSnapshot,
         genSettings: current?.genSettings,

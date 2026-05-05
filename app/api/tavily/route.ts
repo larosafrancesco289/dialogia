@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getTavilyApiKey } from '@/lib/env/server';
-import { runTavilySearchDirect } from '@/lib/search/api/tavily';
-import { normalizeWebSearchArgs, type WebSearchArgs } from '@/lib/search/args';
+import { runTavilyExtractDirect, runTavilySearchDirect } from '@/lib/search/api/tavily';
+import {
+  normalizeWebFetchArgs,
+  normalizeWebSearchArgs,
+  type WebFetchArgs,
+  type WebSearchArgs,
+} from '@/lib/search/args';
 import { jsonError } from '@/lib/server/route';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';
@@ -15,14 +20,34 @@ export const GET = route('tavily-search')
   .requireEnv('TAVILY_API_KEY')
   .handler(async (req) => {
     const { searchParams } = new URL(req.url);
+    const url = (searchParams.get('url') || '').trim();
     const q = (searchParams.get('q') || '').trim();
     const rawCount = searchParams.get('count');
     const count = rawCount ? parseInt(rawCount, 10) : undefined;
-    if (!q) {
+    if (!q && !url) {
       return jsonError(400, 'missing_query');
     }
 
     try {
+      const apiKey = getTavilyApiKey();
+      if (url) {
+        const rawChunks = searchParams.get('chunks_per_source');
+        const chunksPerSource = rawChunks ? parseInt(rawChunks, 10) : undefined;
+        const args: WebFetchArgs = normalizeWebFetchArgs({
+          url,
+          extract_depth: searchParams.get('extract_depth'),
+          format: searchParams.get('format'),
+          include_images: searchParams.get('include_images') === 'true',
+          include_favicon: searchParams.get('include_favicon') === 'true',
+          query: searchParams.get('query'),
+          chunks_per_source: chunksPerSource,
+          provider: 'tavily',
+        });
+
+        const results = await runTavilyExtractDirect(args, { apiKey: apiKey || '' });
+        return NextResponse.json({ results });
+      }
+
       const includeDomains = searchParams.get('include_domains');
       const excludeDomains = searchParams.get('exclude_domains');
       const args: WebSearchArgs = normalizeWebSearchArgs({
@@ -45,7 +70,6 @@ export const GET = route('tavily-search')
         provider: 'tavily',
       });
 
-      const apiKey = getTavilyApiKey();
       const results = await runTavilySearchDirect(args, { apiKey: apiKey || '' });
       return NextResponse.json({ results });
     } catch (err: unknown) {

@@ -204,4 +204,5 @@ test('composeTurn uses Tavily search when configured', async () => {
 
   assert.equal(result.settings.searchProvider, 'tavily');
   assert.equal(result.tools?.[0]?.function.name, 'web_search');
+  assert.equal(result.tools?.[1]?.function.name, 'web_fetch');
 });
