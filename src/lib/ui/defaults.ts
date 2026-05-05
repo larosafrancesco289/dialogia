@@ -1,5 +1,5 @@
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { getDefaultZdrOnly, getRoutePreferenceDefault } from '@/lib/env/public';
+import { getDefaultZdrOnly } from '@/lib/env/public';
 import type { UIState, UIMobileState } from '@/lib/store/types';
 
 const EPHEMERAL_DEFAULTS: Partial<UIState> = {
@@ -24,11 +24,9 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
     sidebarCollapsed: false,
     ...EPHEMERAL_DEFAULTS,
     zdrOnly: getDefaultZdrOnly(),
-    routePreference: getRoutePreferenceDefault(),
     chatDefaults: undefined,
     flags: {
       experimentalTutor: true,
-      enableMultiModelChat: false,
     },
     debug: {
       mode: false,

@@ -4,9 +4,6 @@ import type { StoreState, UIStatePartial } from '@/lib/store/types';
 
 export type SettingsSaveInput = {
   system: string;
-  temperature?: number;
-  topP?: number;
-  maxTokens?: number;
   reasoningEffort?: ChatSettings['generation']['reasoningEffort'];
   reasoningTokens?: number;
   showThinking: boolean;
@@ -28,9 +25,6 @@ export function buildSettingsSavePatch(input: SettingsSaveInput): SettingsSavePa
       chatDefaults: {
         system: input.system,
         generation: {
-          temperature: input.temperature,
-          topP: input.topP,
-          maxTokens: input.maxTokens,
           reasoningEffort: input.reasoningEffort,
           reasoningTokens: input.reasoningTokens,
         },

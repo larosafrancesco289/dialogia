@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'react';
 import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { ChatPane } from '@/components/chat/ChatPane';
 import { TopHeader } from '@/components/TopHeader';
-import { MobileHeader } from '@/components/MobileHeader';
 import { MobileShell } from '@/components/mobile/MobileShell';
 import { FreeTierBanner } from '@/components/FreeTierBanner';
 import { LearningPanel } from '@/components/learning-panel/LearningPanel';
@@ -105,7 +104,7 @@ export default function HomePage() {
         </motion.aside>
       </motion.div>
       <main className="content">
-        {isMobile ? <MobileHeader /> : <TopHeader />}
+        <TopHeader />
         <FreeTierBanner />
         <div className="flex-1 min-h-0">
           <ChatPane />

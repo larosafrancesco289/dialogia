@@ -105,18 +105,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
   const {
     system,
     setSystem,
-    temperature,
-    setTemperature,
-    topP,
-    setTopP,
-    maxTokens,
-    setMaxTokens,
-    temperatureStr,
-    setTemperatureStr,
-    topPStr,
-    setTopPStr,
-    maxTokensStr,
-    setMaxTokensStr,
     reasoningEffort,
     setReasoningEffort,
     reasoningTokens,
@@ -157,8 +145,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
   const modelSearchRef = useRef<ModelSearchHandle | null>(null);
 
   const experimentalTutor = useChatStore((s) => !!s.ui.flags.experimentalTutor);
-  const enableMultiModelChat = useChatStore((s) => !!s.ui.flags.enableMultiModelChat);
-
   const {
     studyCondition,
     onStudyConditionChange,
@@ -177,9 +163,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
   const { saveStatus, markDirty, createAutoSaveSetter, flushPendingSave } = useSettingsAutoSave({
     setUI,
     system,
-    temperature,
-    topP,
-    maxTokens,
     reasoningEffort,
     reasoningTokens,
     showThinking,
@@ -286,15 +269,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
             selectedPresetId={selectedPresetId}
             setSelectedPresetId={setSelectedPresetId}
             renderSection={renderSection}
-            temperatureStr={temperatureStr}
-            setTemperatureStr={setTemperatureStr}
-            setTemperature={createAutoSaveSetter(setTemperature)}
-            topPStr={topPStr}
-            setTopPStr={setTopPStr}
-            setTopP={createAutoSaveSetter(setTopP)}
-            maxTokensStr={maxTokensStr}
-            setMaxTokensStr={setMaxTokensStr}
-            setMaxTokens={createAutoSaveSetter(setMaxTokens)}
             reasoningEffort={reasoningEffort}
             setReasoningEffort={createAutoSaveSetter(setReasoningEffort)}
             reasoningTokensStr={reasoningTokensStr}
@@ -320,22 +294,8 @@ export function useSettingsDrawerState(): SettingsDrawerState {
             renderSection={renderSection}
             showThinking={showThinking}
             showStats={showStats}
-            showToolCallLog={showToolCallLog}
-            showDebugRawJson={showDebugRawJson}
-            enableMultiModelChat={enableMultiModelChat}
-            uiDebugMode={!!ui?.debug.mode}
             setShowThinking={createAutoSaveSetter(setShowThinking)}
             setShowStats={createAutoSaveSetter(setShowStats)}
-            setShowToolCallLog={createAutoSaveSetter(setShowToolCallLog)}
-            setShowDebugRawJson={createAutoSaveSetter(setShowDebugRawJson)}
-            setEnableMultiModelChat={(value: boolean) => {
-              setUI({ flags: { enableMultiModelChat: value } });
-              markDirty();
-            }}
-            setDebugMode={(value: boolean) => {
-              setUI({ debug: { mode: value } });
-              markDirty();
-            }}
             zdrOnly={ui?.zdrOnly}
             setZdrOnly={(value: boolean) => {
               setUI({ zdrOnly: value });
@@ -350,15 +310,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
             renderSection={renderSection}
             onExport={onExport}
             onImportPicked={onImportPicked}
-            uiDebugMode={!!ui?.debug.mode}
-            showToolCallLog={showToolCallLog}
-            showDebugRawJson={showDebugRawJson}
-            setDebugMode={(value: boolean) => {
-              setUI({ debug: { mode: value } });
-              markDirty();
-            }}
-            setShowToolCallLog={createAutoSaveSetter(setShowToolCallLog)}
-            setShowDebugRawJson={createAutoSaveSetter(setShowDebugRawJson)}
           />
         );
       default:

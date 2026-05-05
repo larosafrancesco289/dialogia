@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import type { StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
-import { buildDefaultVoiceState } from '@/lib/voice/types';
 import { buildMessageIndex } from '@/lib/messages/indexing';
 
 const noop = () => undefined;
@@ -27,7 +26,6 @@ const baseState = (messages: Record<string, Message[]>): StoreState => {
     favoriteModelIds: [],
     hiddenModelIds: [],
     ui: {} as StoreState['ui'],
-    voice: buildDefaultVoiceState(),
     initializeApp: noopAsync,
     newChat: noopAsync,
     selectChat: noop,
@@ -65,17 +63,6 @@ const baseState = (messages: Record<string, Message[]>): StoreState => {
     editAssistantMessage: noopAsync,
     appendAssistantMessage: noopAsync,
     persistTutorStateForMessage: noopAsync,
-    // Voice actions (no-ops for tests)
-    setVoiceActive: noop,
-    setVoiceConnected: noop,
-    setVoiceListening: noop,
-    setVoiceSpeaking: noop,
-    setVoiceError: noop,
-    setVoiceConfig: noop,
-    resetVoiceState: noop,
-    ensureChatForVoice: async () => 'chat-1',
-    addVoiceUserMessage: noopAsync,
-    addVoiceAssistantMessage: noopAsync,
   } as StoreState;
 };
 

@@ -6,11 +6,10 @@ import type {
   MessageTutor,
   TutorEvent,
 } from '@/lib/types';
-import type { VoiceActions } from '@/lib/voice/types';
 import type { UISearchState, UIStatePartial } from '@/lib/store/uiTypes';
 import type { NoticeId } from '@/lib/store/notices';
 
-export type StoreActions = VoiceActions & {
+export type StoreActions = {
   // lifecycle
   initializeApp: () => Promise<void>;
 

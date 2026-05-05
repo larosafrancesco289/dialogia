@@ -4,17 +4,12 @@ export type TabId = 'models-routing' | 'chat' | 'tutor' | 'appearance' | 'advanc
 
 export type SectionId =
   | 'models'
-  | 'web-search'
-  | 'routing'
   | 'general'
-  | 'generation'
   | 'reasoning'
   | 'tutor'
   | 'display'
   | 'theme'
   | 'privacy'
-  | 'data'
-  | 'developer'
-  | 'usage-stats';
+  | 'data';
 
 export type RenderSection = (tabId: TabId, sectionId: SectionId, content: ReactNode) => ReactNode;

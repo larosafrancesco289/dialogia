@@ -18,9 +18,6 @@ export type SettingsAutoSaveState = {
 export function useSettingsAutoSave(args: {
   setUI: StoreState['setUI'];
   system: SettingsSaveInput['system'];
-  temperature: SettingsSaveInput['temperature'];
-  topP: SettingsSaveInput['topP'];
-  maxTokens: SettingsSaveInput['maxTokens'];
   reasoningEffort: SettingsSaveInput['reasoningEffort'];
   reasoningTokens: SettingsSaveInput['reasoningTokens'];
   showThinking: SettingsSaveInput['showThinking'];
@@ -32,9 +29,6 @@ export function useSettingsAutoSave(args: {
   const {
     setUI,
     system,
-    temperature,
-    topP,
-    maxTokens,
     reasoningEffort,
     reasoningTokens,
     showThinking,
@@ -47,9 +41,6 @@ export function useSettingsAutoSave(args: {
   const performSave = useCallback(() => {
     const patch = buildSettingsSavePatch({
       system,
-      temperature,
-      topP,
-      maxTokens,
       reasoningEffort,
       reasoningTokens,
       showThinking,
@@ -64,9 +55,6 @@ export function useSettingsAutoSave(args: {
     });
   }, [
     system,
-    temperature,
-    topP,
-    maxTokens,
     reasoningEffort,
     reasoningTokens,
     showThinking,

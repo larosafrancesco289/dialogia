@@ -122,9 +122,9 @@ export type Message = {
   metadata?: {
     hiddenFromUser?: boolean;
     kind?: string;
-    /** Source of the message (e.g., 'voice' for voice agent) */
+    /** Legacy source marker retained for imported chats. */
     source?: MessageSource;
-    /** Audio length in ms (for voice messages) */
+    /** Legacy audio length retained for imported chats. */
     audioLengthMs?: number;
   };
   // Optional: persisted tutor payload for interactive content and attempts

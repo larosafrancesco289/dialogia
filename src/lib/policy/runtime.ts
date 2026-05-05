@@ -32,5 +32,3 @@ export const enforceZdrGate = async (
   }
   return true;
 };
-
-export const getRoutePreference = (ui: UiSnapshot) => ui.routePreference;

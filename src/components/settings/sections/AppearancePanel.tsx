@@ -10,16 +10,8 @@ type AppearancePanelProps = {
   // Display settings
   showThinking: boolean;
   showStats: boolean;
-  showToolCallLog: boolean;
-  showDebugRawJson: boolean;
-  enableMultiModelChat: boolean;
-  uiDebugMode: boolean;
   setShowThinking: (v: boolean) => void;
   setShowStats: (v: boolean) => void;
-  setShowToolCallLog: (v: boolean) => void;
-  setShowDebugRawJson: (v: boolean) => void;
-  setEnableMultiModelChat: (v: boolean) => void;
-  setDebugMode: (v: boolean) => void;
   // Privacy settings
   zdrOnly: boolean | undefined;
   setZdrOnly: (v: boolean) => void;
@@ -31,16 +23,8 @@ export function AppearancePanel(props: AppearancePanelProps) {
     renderSection,
     showThinking,
     showStats,
-    showToolCallLog: _showToolCallLog,
-    showDebugRawJson: _showDebugRawJson,
-    enableMultiModelChat,
-    uiDebugMode: _uiDebugMode,
     setShowThinking,
     setShowStats,
-    setShowToolCallLog: _setShowToolCallLog,
-    setShowDebugRawJson: _setShowDebugRawJson,
-    setEnableMultiModelChat,
-    setDebugMode: _setDebugMode,
     zdrOnly,
     setZdrOnly,
     reloadModels,
@@ -79,12 +63,6 @@ export function AppearancePanel(props: AppearancePanelProps) {
               onChange={setShowStats}
               label="Show stats"
               description="Display model, timing, and cost info under messages."
-            />
-            <ToggleSwitch
-              checked={enableMultiModelChat}
-              onChange={setEnableMultiModelChat}
-              label="Multi-model chat"
-              description="Allow selecting and chatting with multiple models simultaneously."
             />
           </div>
         </div>,
