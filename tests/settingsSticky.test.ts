@@ -16,8 +16,6 @@ test('createChat uses sticky chat defaults for future chats', async () => {
     modelId: 'openai/gpt-4.1-mini',
     system: 'Be terse and direct.',
     generation: {
-      temperature: 0.25,
-      topP: 0.9,
       maxTokens: 512,
       reasoningEffort: 'low',
       reasoningTokens: 128,
@@ -54,7 +52,9 @@ test('createChat uses sticky chat defaults for future chats', async () => {
   assert.equal(saved.length, 1);
   assert.equal(chat.settings.modelId, 'openai/gpt-4.1-mini');
   assert.equal(chat.settings.system, 'Be terse and direct.');
-  assert.equal(chat.settings.generation.temperature, 0.25);
+  assert.equal(chat.settings.generation.temperature, undefined);
+  assert.equal(chat.settings.generation.topP, undefined);
+  assert.equal(chat.settings.generation.maxTokens, 512);
   assert.equal(chat.settings.generation.reasoningEffort, 'low');
   assert.equal(chat.settings.ui.showThinkingByDefault, true);
   assert.equal(chat.settings.ui.showDebugRawJson, false);
@@ -289,9 +289,6 @@ test('in-chat reasoning changes become sticky for future chats', async () => {
 test('settings drawer patch only touches UI defaults (never the active chat)', () => {
   const patch = buildSettingsSavePatch({
     system: 'Drawer system',
-    temperature: 0.4,
-    topP: 0.8,
-    maxTokens: 2048,
     reasoningEffort: 'medium',
     reasoningTokens: 256,
     showThinking: true,
@@ -303,7 +300,7 @@ test('settings drawer patch only touches UI defaults (never the active chat)', (
 
   assert.ok(patch.uiPatch.chatDefaults, 'uiPatch.chatDefaults should be set');
   assert.equal(patch.uiPatch.chatDefaults?.system, 'Drawer system');
-  assert.equal(patch.uiPatch.chatDefaults?.generation?.temperature, 0.4);
+  assert.equal(patch.uiPatch.chatDefaults?.generation?.reasoningEffort, 'medium');
   assert.equal(patch.uiPatch.chatDefaults?.ui?.showThinkingByDefault, true);
   assert.equal(patch.uiPatch.tutor?.defaultModelId, 'anthropic/claude-haiku-4.5');
   assert.equal(

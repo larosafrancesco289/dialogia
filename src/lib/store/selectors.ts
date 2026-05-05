@@ -5,7 +5,6 @@ import type { Chat, StudyCondition } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import type { ModelCapabilityFlags } from '@/lib/models';
 import { readNextOverrides } from '@/lib/ui/next';
-import { normalizeParallelModels } from '@/lib/store/normalize';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { getClientTier } from '@/lib/auth/tier.client';
 import { getMessagesForChat } from '@/lib/messages/indexing';
@@ -71,8 +70,6 @@ export const selectFavoriteModelIds = (state: StoreState) => state.favoriteModel
 
 export const selectHiddenModelIds = (state: StoreState) => state.hiddenModelIds;
 
-export const selectRoutePreference = (state: StoreState) => state.ui.routePreference;
-
 export const selectNotice = (state: StoreState) => state.ui.notice;
 
 export const selectModels = (state: StoreState) => state.models;
@@ -103,9 +100,7 @@ export const selectResolvedTurnSettings = (state: StoreState) => {
 export const selectActiveModelIds = (state: StoreState) => {
   const chat = selectCurrentChat(state);
   if (!chat) return [];
-  const baseId = chat.settings.modelId;
-  const parallel = normalizeParallelModels(baseId, chat.settings.parallelModels);
-  return baseId ? [baseId, ...parallel] : parallel;
+  return chat.settings.modelId ? [chat.settings.modelId] : [];
 };
 
 export const selectSearchEnabled = (state: StoreState) => {

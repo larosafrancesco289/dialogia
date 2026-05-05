@@ -5,7 +5,7 @@ import { applyNextOverrides } from '@/lib/ui/next';
 import { resolveNotice } from '@/lib/store/notices';
 import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
 
-export const createUiSlice = createStoreSlice((set, get) => {
+export const createUiSlice = createStoreSlice((set) => {
   const initial: UIState = buildDefaultUIState();
 
   return {
@@ -36,27 +36,11 @@ export const createUiSlice = createStoreSlice((set, get) => {
           nextUi.tutor = { ...nextUi.tutor, forceMode: false };
           nextUi = applyNextOverrides(nextUi, { tutorMode: false });
         }
-        if (flags?.enableMultiModelChat === false) {
-          nextUi = applyNextOverrides(nextUi, { parallelModels: undefined });
-        }
         if (plan?.sheetOpen === false) {
           nextUi.plan = { ...nextUi.plan, sheetPlanOverride: null };
         }
         return { ui: nextUi };
       });
-      if (partial.flags?.enableMultiModelChat === false) {
-        const { selectedChatId, chats, updateChatSettings } = get();
-        if (!selectedChatId || typeof updateChatSettings !== 'function') return;
-        const activeChat = chats.find((chat) => chat.id === selectedChatId);
-        if (
-          !activeChat ||
-          !Array.isArray(activeChat.settings.parallelModels) ||
-          activeChat.settings.parallelModels.length === 0
-        ) {
-          return;
-        }
-        void updateChatSettings({ parallelModels: [] });
-      }
     },
     setNotice(notice) {
       const resolved = resolveNotice(notice);

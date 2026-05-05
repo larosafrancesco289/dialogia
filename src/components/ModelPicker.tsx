@@ -89,7 +89,6 @@ export function ModelPicker({
     modelMap,
     zdrModelIds,
     zdrProviderIds,
-    enableMultiModelChat,
   } = useModelPickerController();
 
   const curatedModels = useTierCuratedModels();
@@ -122,7 +121,7 @@ export function ModelPicker({
   const searchDropdownRef = useRef<HTMLDivElement | null>(null);
   const favoritesEndRef = useRef<HTMLDivElement | null>(null);
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
-  const maxSelectable = enableMultiModelChat ? (isMobile ? 2 : 4) : 1;
+  const maxSelectable = 1;
   const limitTimeoutRef = useRef<number | null>(null);
   const [limitPulse, setLimitPulse] = useState(false);
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
@@ -166,24 +165,14 @@ export function ModelPicker({
         return;
       }
       if (selectedIds.length >= maxSelectable) {
-        if (!enableMultiModelChat) {
-          setModels([id]);
-          setOpen(false);
-          return;
-        }
-        setLimitPulse(true);
-        if (limitTimeoutRef.current != null) {
-          window.clearTimeout(limitTimeoutRef.current);
-        }
-        limitTimeoutRef.current = window.setTimeout(() => setLimitPulse(false), 1200);
+        setModels([id]);
+        setOpen(false);
         return;
       }
       setModels([...selectedIds, id]);
-      if (!enableMultiModelChat) {
-        setOpen(false);
-      }
+      setOpen(false);
     },
-    [selectedIds, maxSelectable, enableMultiModelChat, setModels],
+    [selectedIds, maxSelectable, setModels],
   );
 
   const handleAddFavorite = useCallback(
@@ -292,18 +281,6 @@ export function ModelPicker({
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
-
-            {/* Multi-model selection indicator */}
-            {enableMultiModelChat && selectedIds.length > 0 && (
-              <div className="mb-4 text-xs text-muted-foreground">
-                Selected: {selectedIds.length}/{maxSelectable} models
-                {selectedIds.length >= maxSelectable && (
-                  <span className="ml-2 text-amber-600">
-                    (max {maxSelectable} on {isMobile ? 'mobile' : 'desktop'})
-                  </span>
-                )}
-              </div>
-            )}
 
             {/* Recommended Section */}
             <div className="mb-6">

@@ -34,7 +34,6 @@ export type ModelPickerController = {
   setUI: StoreState['setUI'];
   zdrHiddenCount: number;
   zdrRestricted: boolean;
-  enableMultiModelChat: boolean;
 };
 
 export function useModelPickerController(): ModelPickerController {
@@ -127,14 +126,8 @@ export function useModelPickerController(): ModelPickerController {
 
   const selectedIds = useMemo(() => {
     const fromChat = chat
-      ? [
-          chat.settings.modelId || tierDefaultModelId,
-          ...((chat.settings.parallelModels as string[] | undefined) ?? []),
-        ]
-      : [
-          nextOverrides.modelId || tierDefaultModelId,
-          ...((nextOverrides.parallelModels as string[] | undefined) ?? []),
-        ];
+      ? [chat.settings.modelId || tierDefaultModelId]
+      : [nextOverrides.modelId || tierDefaultModelId];
     const cleaned = fromChat.filter((id): id is string => typeof id === 'string' && id.length > 0);
 
     // Validate models for free tier - filter out paid models
@@ -147,14 +140,7 @@ export function useModelPickerController(): ModelPickerController {
     }
     if (deduped.length === 0) deduped.push(tierDefaultModelId);
     return deduped;
-  }, [
-    chat,
-    nextOverrides.modelId,
-    nextOverrides.parallelModels,
-    tierDefaultModelId,
-    isFreeTier,
-    tierLoading,
-  ]);
+  }, [chat, nextOverrides.modelId, tierDefaultModelId, isFreeTier, tierLoading]);
 
   const selectedId = selectedIds[0];
   const effectiveSelectedId =
@@ -171,11 +157,11 @@ export function useModelPickerController(): ModelPickerController {
       if (!deduped.includes(id)) deduped.push(id);
     }
     const final = deduped.length ? deduped : [tierDefaultModelId];
-    const [primary, ...rest] = final;
+    const primary = final[0];
     if (chat) {
-      updateChatSettings({ modelId: primary, parallelModels: rest });
+      updateChatSettings({ modelId: primary, parallelModels: [] });
     } else {
-      setUI({ overrides: { modelId: primary, parallelModels: rest } });
+      setUI({ overrides: { modelId: primary } });
     }
   };
 
@@ -206,6 +192,5 @@ export function useModelPickerController(): ModelPickerController {
     setUI,
     zdrHiddenCount,
     zdrRestricted: ui?.zdrOnly === true,
-    enableMultiModelChat: ui?.flags.enableMultiModelChat === true,
   };
 }

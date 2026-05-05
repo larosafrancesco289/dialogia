@@ -12,7 +12,6 @@ interface TierContextValue {
   isIndividualTier: boolean;
   isDeveloperTier: boolean;
   isStudyTier: boolean;
-  canUseVoice: boolean;
   canUseAllModels: boolean;
 }
 
@@ -66,15 +65,6 @@ export function TierProvider({ children }: { children: ReactNode }) {
 
 export function useTier(): TierContextValue {
   return useContext(TierContext);
-}
-
-/**
- * Hook that returns true if voice mode should be available.
- */
-export function useCanUseVoice(): boolean {
-  const { canUseVoice, isLoading } = useTier();
-  // Default to false while loading to avoid flash of voice UI
-  return isLoading ? false : canUseVoice;
 }
 
 /**

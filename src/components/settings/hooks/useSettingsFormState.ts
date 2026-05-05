@@ -22,25 +22,6 @@ const DEFAULT_CHAT_UI_SETTINGS = {
 export function useSettingsFormState({ ui }: SettingsFormStateArgs) {
   const chatDefaults = ui.chatDefaults;
   const [system, setSystem] = useState(chatDefaults?.system ?? DEFAULT_BASE_SYSTEM);
-  const [temperature, setTemperature] = useState<number | undefined>(
-    chatDefaults?.generation?.temperature,
-  );
-  const [topP, setTopP] = useState<number | undefined>(chatDefaults?.generation?.topP);
-  const [maxTokens, setMaxTokens] = useState<number | undefined>(
-    chatDefaults?.generation?.maxTokens,
-  );
-  // Local string mirrors to avoid type=number focus/validation quirks
-  const [temperatureStr, setTemperatureStr] = useState<string>(
-    chatDefaults?.generation?.temperature != null
-      ? String(chatDefaults.generation.temperature)
-      : '',
-  );
-  const [topPStr, setTopPStr] = useState<string>(
-    chatDefaults?.generation?.topP != null ? String(chatDefaults.generation.topP) : '',
-  );
-  const [maxTokensStr, setMaxTokensStr] = useState<string>(
-    chatDefaults?.generation?.maxTokens != null ? String(chatDefaults.generation.maxTokens) : '',
-  );
   const [reasoningEffort, setReasoningEffort] = useState<
     ChatSettings['generation']['reasoningEffort']
   >(chatDefaults?.generation?.reasoningEffort);
@@ -73,18 +54,6 @@ export function useSettingsFormState({ ui }: SettingsFormStateArgs) {
   // Keep local state in sync when switching chats or reopening the drawer
   useEffect(() => {
     setSystem(chatDefaults?.system ?? DEFAULT_BASE_SYSTEM);
-    setTemperature(chatDefaults?.generation?.temperature);
-    setTopP(chatDefaults?.generation?.topP);
-    setMaxTokens(chatDefaults?.generation?.maxTokens);
-    setTemperatureStr(
-      chatDefaults?.generation?.temperature != null
-        ? String(chatDefaults.generation.temperature)
-        : '',
-    );
-    setTopPStr(chatDefaults?.generation?.topP != null ? String(chatDefaults.generation.topP) : '');
-    setMaxTokensStr(
-      chatDefaults?.generation?.maxTokens != null ? String(chatDefaults.generation.maxTokens) : '',
-    );
     setReasoningEffort(chatDefaults?.generation?.reasoningEffort);
     setReasoningTokens(chatDefaults?.generation?.reasoningTokens);
     setReasoningTokensStr(
@@ -105,9 +74,6 @@ export function useSettingsFormState({ ui }: SettingsFormStateArgs) {
     setTutorDefaultModel(ui?.tutor.defaultModelId || DEFAULT_TUTOR_MODEL_ID);
   }, [
     chatDefaults?.system,
-    chatDefaults?.generation?.temperature,
-    chatDefaults?.generation?.topP,
-    chatDefaults?.generation?.maxTokens,
     chatDefaults?.generation?.reasoningEffort,
     chatDefaults?.generation?.reasoningTokens,
     chatDefaults?.ui?.showThinkingByDefault,
@@ -133,18 +99,6 @@ export function useSettingsFormState({ ui }: SettingsFormStateArgs) {
   return {
     system,
     setSystem,
-    temperature,
-    setTemperature,
-    topP,
-    setTopP,
-    maxTokens,
-    setMaxTokens,
-    temperatureStr,
-    setTemperatureStr,
-    topPStr,
-    setTopPStr,
-    maxTokensStr,
-    setMaxTokensStr,
     reasoningEffort,
     setReasoningEffort,
     reasoningTokens,

@@ -4,7 +4,6 @@ import type {
   StoreGetter as ContractStoreGetter,
   StoreSetter as ContractStoreSetter,
 } from '@/lib/contracts/store';
-import type { VoiceState } from '@/lib/voice/types';
 import type { PersistedUiState, UIState } from '@/lib/store/uiTypes';
 import type { StoreActions } from '@/lib/store/actionsTypes';
 
@@ -27,9 +26,6 @@ export type StoreDataState = {
   zdrFetchedAt?: number;
 
   ui: UIState;
-
-  // Voice agent state
-  voice: VoiceState;
 };
 
 export type StoreState = StoreDataState & StoreActions;

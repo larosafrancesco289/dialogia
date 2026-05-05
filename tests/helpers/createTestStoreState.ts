@@ -7,18 +7,15 @@ import type {
 } from '@/lib/store/types';
 import { createModelIndex } from '@/lib/models';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
-import { buildDefaultVoiceState } from '@/lib/voice/types';
 import { resolveNotice } from '@/lib/store/notices';
 
-type StoreStateOverrides = Omit<Partial<StoreState>, 'ui' | 'voice'> & {
+type StoreStateOverrides = Omit<Partial<StoreState>, 'ui'> & {
   ui?: Partial<StoreState['ui']>;
-  voice?: Partial<StoreState['voice']>;
 };
 
 export function createTestStoreState(overrides: StoreStateOverrides = {}) {
   const noop = (..._args: unknown[]) => {};
   const noopAsync = async (..._args: unknown[]) => {};
-  const noopAsyncString = async (..._args: unknown[]) => 'test-chat';
   const noopAsyncOptionalString = async (..._args: unknown[]) => undefined;
 
   const baseData: StoreDataState = {
@@ -32,7 +29,6 @@ export function createTestStoreState(overrides: StoreStateOverrides = {}) {
     favoriteModelIds: [],
     hiddenModelIds: [],
     ui: buildDefaultUIState(),
-    voice: buildDefaultVoiceState(),
   };
 
   const baseActions: StoreActions = {
@@ -73,16 +69,6 @@ export function createTestStoreState(overrides: StoreStateOverrides = {}) {
     editAssistantMessage: noopAsync,
     appendAssistantMessage: noopAsync,
     persistTutorStateForMessage: noopAsync,
-    setVoiceActive: noop,
-    setVoiceConnected: noop,
-    setVoiceListening: noop,
-    setVoiceSpeaking: noop,
-    setVoiceError: noop,
-    setVoiceConfig: noop,
-    resetVoiceState: noop,
-    ensureChatForVoice: noopAsyncString,
-    addVoiceUserMessage: noopAsync,
-    addVoiceAssistantMessage: noopAsync,
   };
 
   const base: StoreState = {
@@ -96,10 +82,6 @@ export function createTestStoreState(overrides: StoreStateOverrides = {}) {
     ui: {
       ...base.ui,
       ...(overrides.ui || {}),
-    },
-    voice: {
-      ...base.voice,
-      ...(overrides.voice || {}),
     },
   };
 

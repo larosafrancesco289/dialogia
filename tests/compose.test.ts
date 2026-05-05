@@ -160,7 +160,7 @@ test('composeTurn merges tutor and search context with plugins and tools', async
     assert.equal(result.settings.searchEnabled, true);
     assert.equal(result.hasPdf, true);
     assert.equal(result.shouldPlan, true);
-    assert.equal(result.settings.generation.providerSort, ProviderSort.Throughput);
+    assert.equal(result.settings.generation.providerSort, undefined);
     assert.equal(result.consumedTutorNudge, 'more_practice');
     assert.ok(result.system && result.system.includes('Learner Profile:'));
     // When tutor is enabled, the base system prompt should NOT be included

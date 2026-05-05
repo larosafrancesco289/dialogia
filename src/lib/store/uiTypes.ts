@@ -46,9 +46,8 @@ export type PersistedUiState = {
   showSettings: UiSnapshot['showSettings'];
   sidebarCollapsed?: boolean;
   zdrOnly?: UiSnapshot['zdrOnly'];
-  routePreference?: UiSnapshot['routePreference'];
   chatDefaults?: ChatDefaults;
-  flags?: Pick<UIFlags, 'experimentalTutor' | 'enableMultiModelChat'>;
+  flags?: Pick<UIFlags, 'experimentalTutor'>;
   debug?: Pick<UIDebugState, 'mode'>;
   tutor?: Pick<
     UITutorState,
@@ -64,7 +63,7 @@ export type PersistedUiState = {
 
 export type SessionUiState = Omit<
   UiSnapshot,
-  'flags' | 'debug' | 'tutor' | 'showSettings' | 'routePreference' | 'zdrOnly'
+  'flags' | 'debug' | 'tutor' | 'showSettings' | 'zdrOnly'
 > & {
   flags: UIFlags;
   debug: UIDebugState;

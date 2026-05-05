@@ -47,11 +47,9 @@ export function buildPersistedState(state: StoreState): PersistedStoreState {
       showSettings: state.ui.showSettings,
       sidebarCollapsed: state.ui.sidebarCollapsed,
       zdrOnly: state.ui.zdrOnly,
-      routePreference: state.ui.routePreference,
       chatDefaults: state.ui.chatDefaults,
       flags: {
         experimentalTutor: state.ui.flags.experimentalTutor,
-        enableMultiModelChat: state.ui.flags.enableMultiModelChat,
       },
       debug: { mode: state.ui.debug.mode },
       tutor: {

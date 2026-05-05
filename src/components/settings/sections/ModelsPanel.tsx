@@ -29,10 +29,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
     modelSearchRef,
     ui,
   } = props;
-  const routePref = ui.routePreference ?? 'balanced';
   const selectedModelId = ui.chatDefaults?.modelId;
-  const rawSearchProvider = ui.chatDefaults?.features?.search?.provider as unknown;
-  const searchProvider = rawSearchProvider === 'openrouter' ? 'openrouter' : 'tavily';
 
   return (
     <>
@@ -48,7 +45,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
               clearOnSelect
               onSelect={(result) => {
                 if (!favoriteModelIds?.includes(result.id)) toggleFavoriteModel(result.id);
-                setUI({ chatDefaults: { modelId: result.id, parallelModels: [] } });
+                setUI({ chatDefaults: { modelId: result.id } });
               }}
             />
             <div className="text-xs text-muted-foreground">
@@ -65,7 +62,6 @@ export function ModelsPanel(props: ModelsPanelProps) {
                     setUI({
                       chatDefaults: {
                         modelId: undefined,
-                        parallelModels: undefined,
                       },
                     })
                   }
@@ -89,82 +85,6 @@ export function ModelsPanel(props: ModelsPanelProps) {
                 </button>
               </div>
             )}
-          </div>
-        </SettingsSection>,
-      )}
-
-      {renderSection(
-        'models-routing',
-        'web-search',
-        <SettingsSection title="Web Search">
-          <div className="space-y-2">
-            <div className="space-y-1">
-              <label className="text-sm block">Provider</label>
-              <div className="segmented">
-                <button
-                  className={`segment ${searchProvider === 'tavily' ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setUI({ chatDefaults: { features: { search: { provider: 'tavily' } } } });
-                  }}
-                >
-                  Tavily
-                </button>
-                <button
-                  className={`segment ${searchProvider === 'openrouter' ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setUI({
-                      chatDefaults: { features: { search: { provider: 'openrouter' } } },
-                    });
-                  }}
-                >
-                  OpenRouter
-                </button>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Tavily uses local web_search/web_fetch tools; OpenRouter injects its web plugin when
-                available.
-              </div>
-            </div>
-          </div>
-        </SettingsSection>,
-      )}
-
-      {renderSection(
-        'models-routing',
-        'routing',
-        <SettingsSection title="Routing">
-          <div className="space-y-2">
-            <label className="text-sm block">Route preference</label>
-            <div className="segmented">
-              <button
-                className={`segment ${routePref === 'balanced' ? 'is-active' : ''}`}
-                onClick={() => {
-                  setUI({ routePreference: 'balanced' });
-                }}
-              >
-                Balanced
-              </button>
-              <button
-                className={`segment ${routePref === 'speed' ? 'is-active' : ''}`}
-                onClick={() => {
-                  setUI({ routePreference: 'speed' });
-                }}
-              >
-                Speed
-              </button>
-              <button
-                className={`segment ${routePref === 'cost' ? 'is-active' : ''}`}
-                onClick={() => {
-                  setUI({ routePreference: 'cost' });
-                }}
-              >
-                Cost
-              </button>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Balanced leaves OpenRouter default routing on. Speed and Cost set explicit provider
-              sorting for the chosen model.
-            </div>
           </div>
         </SettingsSection>,
       )}

@@ -10,11 +10,10 @@ import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelIndex, ModelCapabilityFlags } from '@/lib/models';
 import { supportsXhighReasoningEffort } from '@/lib/models';
 import type { AccessTier } from '@/lib/auth/types';
-import { providerSortFromRoutePref, selectSearchProvider } from '@/lib/policy/provider';
+import { selectSearchProvider } from '@/lib/policy/provider';
 import { readNextOverrides } from '@/lib/ui/next';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
-import { normalizeParallelModels } from '@/lib/models/normalization';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { normalizeChatSettings } from '@/lib/settings/normalize';
 
@@ -56,8 +55,6 @@ export function resolveNewChatSettings(opts: {
 
   const baseModel = next.modelId ?? defaults?.modelId ?? lastUsedModelId ?? fallbackModelId;
   const system = next.system ?? defaults?.system ?? fallbackSystem;
-  const temperature = next.temperature ?? defaultGeneration?.temperature;
-  const topP = next.topP ?? defaultGeneration?.topP;
   const maxTokens = next.maxTokens ?? defaultGeneration?.maxTokens;
   const reasoningEffort = next.reasoning?.effort ?? defaultGeneration?.reasoningEffort ?? undefined;
   const reasoningTokens = next.reasoning?.tokens ?? defaultGeneration?.reasoningTokens;
@@ -81,22 +78,14 @@ export function resolveNewChatSettings(opts: {
 
   const tutorEnabledSetting = forceTutorMode ? true : tutorEnabled ? !!next.tutorMode : false;
 
-  const parallelFromUi = Array.isArray(next.parallelModels)
-    ? next.parallelModels
-    : defaults?.parallelModels;
-  const normalizedParallel = normalizeParallelModels(baseModel, parallelFromUi);
-
   const settings: ChatSettings = {
     modelId: baseModel,
-    parallelModels: normalizedParallel,
+    parallelModels: [],
     system,
     generation: {
-      temperature,
-      topP,
       maxTokens,
       reasoningEffort,
       reasoningTokens,
-      providerSort: defaultGeneration?.providerSort,
     },
     ui: uiSettings,
     features: {
@@ -134,8 +123,6 @@ export function resolveTurnSettings(args: {
   const supportsReasoning = caps.canReason;
 
   const system = overrides.system ?? chat.settings.system;
-  const temperature = overrides.temperature ?? chat.settings.generation.temperature;
-  const topP = overrides.topP ?? chat.settings.generation.topP;
   const maxTokens = overrides.maxTokens ?? chat.settings.generation.maxTokens;
   const rawReasoningEffort = supportsReasoning
     ? (overrides.reasoning?.effort ?? chat.settings.generation.reasoningEffort)
@@ -155,7 +142,6 @@ export function resolveTurnSettings(args: {
   const searchEnabled = overrides.search?.enabled ?? chat.settings.features.search.enabled;
   const searchProviderCandidate =
     overrides.search?.provider ?? chat.settings.features.search.provider;
-  const providerSort = providerSortFromRoutePref(ui.routePreference);
   const searchProvider: SearchProvider = selectSearchProvider(
     {
       ...chat.settings,
@@ -190,12 +176,9 @@ export function resolveTurnSettings(args: {
   const tutorEnabled = isTutorRuntimeEnabled(ui, policyChat, tier);
 
   const generation: GenerationSettings = {
-    temperature,
-    topP,
     maxTokens,
     reasoningEffort,
     reasoningTokens,
-    providerSort,
   };
 
   return {

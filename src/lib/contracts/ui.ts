@@ -11,7 +11,6 @@ import type {
 
 export type UiFlagsSnapshot = {
   experimentalTutor?: boolean;
-  enableMultiModelChat?: boolean;
 };
 
 export type UiNextOverrides = {
@@ -21,8 +20,6 @@ export type UiNextOverrides = {
   tutorNudge?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
   reasoning?: { effort?: ReasoningEffort; tokens?: number };
   system?: string;
-  temperature?: number;
-  topP?: number;
   maxTokens?: number;
   show?: {
     thinking?: boolean;
@@ -30,7 +27,6 @@ export type UiNextOverrides = {
     toolCallLog?: boolean;
     debugRawJson?: boolean;
   };
-  parallelModels?: string[];
 };
 
 export type UiDebugEntry = {
@@ -115,7 +111,6 @@ export type UiSnapshot = {
   activeTurnByChatId: Record<string, number>;
   notice?: string;
   overrides?: UiNextOverrides;
-  routePreference?: 'balanced' | 'speed' | 'cost';
   zdrOnly?: boolean;
   flags: UiFlagsSnapshot;
   debug: UiDebugSnapshot;

@@ -20,15 +20,6 @@ type ChatPanelProps = {
   selectedPresetId: string;
   setSelectedPresetId: (id: string) => void;
   renderSection: RenderSection;
-  temperatureStr: string;
-  setTemperatureStr: (value: string) => void;
-  setTemperature: (value: number | undefined) => void;
-  topPStr: string;
-  setTopPStr: (value: string) => void;
-  setTopP: (value: number | undefined) => void;
-  maxTokensStr: string;
-  setMaxTokensStr: (value: string) => void;
-  setMaxTokens: (value: number | undefined) => void;
   reasoningEffort: ReasoningEffort | undefined;
   setReasoningEffort: (value: ReasoningEffort | undefined) => void;
   reasoningTokensStr: string;
@@ -45,15 +36,6 @@ export function ChatPanel(props: ChatPanelProps) {
     selectedPresetId,
     setSelectedPresetId,
     renderSection,
-    temperatureStr,
-    setTemperatureStr,
-    setTemperature,
-    topPStr,
-    setTopPStr,
-    setTopP,
-    maxTokensStr,
-    setMaxTokensStr,
-    setMaxTokens,
     reasoningEffort,
     setReasoningEffort,
     reasoningTokensStr,
@@ -162,117 +144,6 @@ export function ChatPanel(props: ChatPanelProps) {
             <div className="text-xs text-muted-foreground">
               Customize the default system prompt for future chats. Tutor Mode remains a separate
               overlay.
-            </div>
-          </div>
-        </SettingsSection>,
-      )}
-
-      {renderSection(
-        'chat',
-        'generation',
-        <SettingsSection title="Generation">
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-sm flex items-center justify-between">
-                <span>Temperature</span>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => {
-                    setTemperature(undefined);
-                    setTemperatureStr('');
-                  }}
-                >
-                  Reset
-                </button>
-              </label>
-              <input
-                className="input w-full"
-                inputMode="decimal"
-                placeholder="model default"
-                value={temperatureStr}
-                onChange={(e) => setTemperatureStr(e.target.value)}
-                onBlur={() => {
-                  const value = temperatureStr.trim();
-                  if (value === '') {
-                    setTemperature(undefined);
-                    return;
-                  }
-                  const parsed = Number(value);
-                  if (!Number.isNaN(parsed)) setTemperature(parsed);
-                }}
-                onKeyDown={(e) => e.stopPropagation()}
-              />
-              <div className="text-xs text-muted-foreground">
-                Higher = more creative. Leave blank for model default.
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm flex items-center justify-between">
-                <span>Top_p</span>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => {
-                    setTopP(undefined);
-                    setTopPStr('');
-                  }}
-                >
-                  Reset
-                </button>
-              </label>
-              <input
-                className="input w-full"
-                inputMode="decimal"
-                placeholder="model default"
-                value={topPStr}
-                onChange={(e) => setTopPStr(e.target.value)}
-                onBlur={() => {
-                  const value = topPStr.trim();
-                  if (value === '') {
-                    setTopP(undefined);
-                    return;
-                  }
-                  const parsed = Number(value);
-                  if (!Number.isNaN(parsed)) setTopP(parsed);
-                }}
-                onKeyDown={(e) => e.stopPropagation()}
-              />
-              <div className="text-xs text-muted-foreground">
-                Nucleus sampling. 1.0 ≈ off. Leave blank for default.
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm flex items-center justify-between">
-                <span>Max tokens</span>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => {
-                    setMaxTokens(undefined);
-                    setMaxTokensStr('');
-                  }}
-                >
-                  Auto
-                </button>
-              </label>
-              <input
-                className="input w-full"
-                inputMode="numeric"
-                placeholder="auto"
-                value={maxTokensStr}
-                onChange={(e) => setMaxTokensStr(e.target.value)}
-                onBlur={() => {
-                  const value = maxTokensStr.trim();
-                  if (value === '') {
-                    setMaxTokens(undefined);
-                    return;
-                  }
-                  const parsed = Number(value);
-                  if (!Number.isNaN(parsed)) setMaxTokens(Math.floor(parsed));
-                }}
-                onKeyDown={(e) => e.stopPropagation()}
-              />
-              <div className="text-xs text-muted-foreground">
-                Upper bound on output length. Leave blank to auto-select.
-              </div>
             </div>
           </div>
         </SettingsSection>,

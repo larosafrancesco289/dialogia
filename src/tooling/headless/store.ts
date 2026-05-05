@@ -3,7 +3,6 @@ import { createModelIndex } from '@/lib/models';
 import type { StoreState, UIState, UIStatePartial } from '@/lib/store/types';
 import type { Chat, ChatSettingsPatch, Message, ModelDescriptor } from '@/lib/types';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
-import { buildDefaultVoiceState } from '@/lib/voice/types';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { appendMessagesToChat, buildMessageIndex } from '@/lib/messages/indexing';
 import { resolveNotice } from '@/lib/store/notices';
@@ -47,7 +46,6 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
       ...HEADLESS_UI_OVERRIDES,
       ...(uiOverrides ?? {}),
     }),
-    voice: buildDefaultVoiceState(),
 
     initializeApp: async () => {},
 
@@ -165,17 +163,5 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
       set((state) => appendMessagesToChat(state, chat.id, [message]));
     },
     persistTutorStateForMessage: async () => {},
-
-    // Voice actions (no-ops for headless mode)
-    setVoiceActive: () => {},
-    setVoiceConnected: () => {},
-    setVoiceListening: () => {},
-    setVoiceSpeaking: () => {},
-    setVoiceError: () => {},
-    setVoiceConfig: () => {},
-    resetVoiceState: () => {},
-    ensureChatForVoice: async () => chat.id,
-    addVoiceUserMessage: async () => {},
-    addVoiceAssistantMessage: async () => {},
   }));
 }

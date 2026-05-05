@@ -66,5 +66,5 @@ test('buildProviderPolicy surfaces unified routing decisions', () => {
   const policy = buildProviderPolicy({ settings: baseSettings as any, ui: baseUi });
   assert.equal(policy.searchEnabled, true);
   assert.equal(policy.searchProvider, 'tavily');
-  assert.equal(policy.providerSort, 'throughput');
+  assert.equal(policy.providerSort, undefined);
 });
