@@ -46,27 +46,20 @@ test('selectSearchProvider respects configured provider', () => {
   );
 });
 
-test('selectSearchProvider defaults to Tavily when configured', () => {
-  const previous = process.env.TAVILY_API_KEY;
-  process.env.TAVILY_API_KEY = 'test-tavily-key';
-  try {
-    assert.equal(
-      selectSearchProvider(
-        {
-          ...baseSettings,
-          features: {
-            ...baseSettings.features,
-            search: { enabled: true },
-          },
-        } as any,
-        baseUi,
-      ),
-      'tavily',
-    );
-  } finally {
-    if (previous == null) delete process.env.TAVILY_API_KEY;
-    else process.env.TAVILY_API_KEY = previous;
-  }
+test('selectSearchProvider defaults to Tavily without an explicit provider', () => {
+  assert.equal(
+    selectSearchProvider(
+      {
+        ...baseSettings,
+        features: {
+          ...baseSettings.features,
+          search: { enabled: true },
+        },
+      } as any,
+      baseUi,
+    ),
+    'tavily',
+  );
 });
 
 test('buildProviderPolicy surfaces unified routing decisions', () => {

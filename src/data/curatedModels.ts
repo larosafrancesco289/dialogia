@@ -15,16 +15,16 @@ type CuratedModel = {
 };
 
 export const DEFAULT_CHAT_MODEL: CuratedModel = {
-  id: 'moonshotai/kimi-k2.5',
-  name: 'Kimi K2.5',
-  description: 'Great for general chat and quick conversations',
+  id: 'openai/gpt-5.5',
+  name: 'GPT-5.5',
+  description: 'Frontier default for hard reasoning, writing, tools, and polish',
   Icon: ChatBubbleLeftRightIcon,
 };
 
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
-  id: 'anthropic/claude-haiku-4.5',
-  name: 'Claude Haiku 4.5',
-  description: 'Fast and efficient for tutoring and learning tasks',
+  id: '~anthropic/claude-opus-latest',
+  name: 'Claude Opus Latest',
+  description: 'Premium tutor for deep reasoning and high-stakes explanations',
   Icon: BoltIcon,
 };
 
@@ -36,21 +36,27 @@ export const CURATED_MODELS: CuratedModel[] = [
   DEFAULT_CHAT_MODEL,
   DEFAULT_TUTOR_MODEL,
   {
-    id: 'minimax/minimax-m2.1',
-    name: 'Minimax M2.1',
-    description: 'Strong coding and reasoning capabilities',
+    id: 'google/gemini-3.1-pro-preview',
+    name: 'Gemini 3.1 Pro',
+    description: 'Best multimodal research pick with a massive context window',
+    Icon: RocketLaunchIcon,
+  },
+  {
+    id: 'moonshotai/kimi-k2.6',
+    name: 'Kimi K2.6',
+    description: 'Top open-weight option for coding, agents, and value',
     Icon: CodeBracketIcon,
   },
   {
-    id: 'google/gemini-3-pro-image-preview',
-    name: 'Gemini 3 Pro Image',
-    description: 'State-of-the-art image generation',
+    id: 'openai/gpt-5.4-image-2',
+    name: 'GPT-5.4 Image 2',
+    description: 'Best creative option for image-capable multimodal work',
     Icon: PhotoIcon,
   },
   {
-    id: 'x-ai/grok-4.1-fast',
-    name: 'Grok 4.1 Fast',
-    description: 'Very fast with huge context, great for bulk processing',
+    id: 'x-ai/grok-4.3',
+    name: 'Grok 4.3',
+    description: 'Fast long-context reasoning for agentic and bulk tasks',
     Icon: RocketLaunchIcon,
   },
 ];

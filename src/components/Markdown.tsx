@@ -12,6 +12,12 @@ import { logger } from '@/lib/logger';
 const WRAP_STORAGE_KEY = 'dialogia:code-wrap';
 const WRAP_EVENT = 'dialogia:code-wrap-change';
 
+export type MarkdownCitationSource = {
+  title?: string;
+  url?: string;
+  description?: string;
+};
+
 type WindowWithIdleCallback = Window & {
   requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
 };
@@ -380,8 +386,32 @@ function escapeCurrency(text: string): string {
   return text.replace(/\$(\d[\d,]*(?:\.\d+)?[KMBkmb]?)\b/g, '\\$$1');
 }
 
-export const Markdown = memo(function Markdown({ content }: { content: string }) {
-  const processedContent = useMemo(() => escapeCurrency(content), [content]);
+function markdownUrl(url: string) {
+  return `<${url.replace(/>/g, '%3E')}>`;
+}
+
+export function linkCitationMarkers(content: string, sources?: MarkdownCitationSource[]) {
+  if (!sources?.length) return content;
+  return content.replace(/\[(\d+)\](?!\()/g, (match, rawIndex: string) => {
+    const index = Number(rawIndex);
+    if (!Number.isInteger(index) || index < 1) return match;
+    const source = sources[index - 1];
+    if (!source?.url) return match;
+    return `[${rawIndex}](${markdownUrl(source.url)})`;
+  });
+}
+
+export const Markdown = memo(function Markdown({
+  content,
+  sources,
+}: {
+  content: string;
+  sources?: MarkdownCitationSource[];
+}) {
+  const processedContent = useMemo(
+    () => linkCitationMarkers(escapeCurrency(content), sources),
+    [content, sources],
+  );
   const rootRef = useRef<HTMLDivElement>(null);
   // Prism highlighting is handled per-block to avoid React clobbering DOM
 

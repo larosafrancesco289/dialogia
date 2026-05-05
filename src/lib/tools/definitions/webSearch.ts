@@ -1,7 +1,8 @@
 import type { ToolDefinition } from '@/lib/transport/contracts';
-import type { WebSearchArgs } from '@/lib/search/args';
+import type { WebFetchArgs, WebSearchArgs } from '@/lib/search/args';
 
 export type WebSearchToolArgs = WebSearchArgs;
+export type WebFetchToolArgs = WebFetchArgs;
 
 export const WEB_SEARCH_TOOL: ToolDefinition = {
   type: 'function',
@@ -52,6 +53,63 @@ export const WEB_SEARCH_TOOL: ToolDefinition = {
   },
 };
 
+export const WEB_FETCH_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'web_fetch',
+    description:
+      'Fetch and extract clean content from a specific public URL via Tavily Extract. Use this when the user provides a URL, when search results need source inspection, or when you need page text for accurate citation. Prefer markdown unless plain text is specifically useful.',
+    parameters: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'The public URL to fetch and extract.' },
+        extract_depth: {
+          type: 'string',
+          description:
+            'Extraction depth. Use basic by default; advanced can retrieve more tables and embedded content but may be slower.',
+          enum: ['basic', 'advanced'],
+          default: 'basic',
+        },
+        format: {
+          type: 'string',
+          description: 'Output format for extracted page content.',
+          enum: ['markdown', 'text'],
+          default: 'markdown',
+        },
+        include_images: {
+          type: 'boolean',
+          description: 'Whether to include extracted image URLs.',
+          default: false,
+        },
+        include_favicon: {
+          type: 'boolean',
+          description: 'Whether to include the page favicon URL.',
+          default: false,
+        },
+        query: {
+          type: 'string',
+          description:
+            'Optional focused query. When provided, Tavily can return the most relevant chunks from the source.',
+        },
+        chunks_per_source: {
+          type: 'integer',
+          description: 'Relevant chunks to return when query is provided (1-5).',
+          minimum: 1,
+          maximum: 5,
+          default: 3,
+        },
+        provider: {
+          type: 'string',
+          description: 'Fetch provider to use. Defaults to tavily.',
+          enum: ['tavily'],
+          default: 'tavily',
+        },
+      },
+      required: ['url'],
+    },
+  },
+};
+
 export function getWebSearchToolDefinition(): ToolDefinition[] {
-  return [WEB_SEARCH_TOOL];
+  return [WEB_SEARCH_TOOL, WEB_FETCH_TOOL];
 }

@@ -90,7 +90,9 @@ export function normalizeChatSettings(
         provider:
           searchRecord.provider === 'tavily' || searchRecord.provider === 'brave'
             ? 'tavily'
-            : 'openrouter',
+            : searchRecord.provider === 'openrouter'
+              ? 'openrouter'
+              : 'tavily',
       },
       tutor: {
         enabled: typeof tutorRecord.enabled === 'boolean' ? tutorRecord.enabled : false,

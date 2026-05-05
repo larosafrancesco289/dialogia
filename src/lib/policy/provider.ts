@@ -5,7 +5,6 @@
 import type { ChatSettings, SearchProvider } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import { ProviderSort } from '@/lib/models/providerSort';
-import { isTavilySearchConfigured } from '@/lib/env/public';
 
 export function providerSortFromRoutePref(
   pref?: UiSnapshot['routePreference'] | null,
@@ -17,8 +16,7 @@ export function providerSortFromRoutePref(
 
 export function selectSearchProvider(settings: ChatSettings, _ui: UiSnapshot): SearchProvider {
   const configuredProvider =
-    (settings.features.search.provider as SearchProvider | undefined) ||
-    (isTavilySearchConfigured() ? ('tavily' as const) : ('openrouter' as const));
+    (settings.features.search.provider as SearchProvider | undefined) || ('tavily' as const);
   if (configuredProvider === 'tavily') return 'tavily';
   return 'openrouter';
 }

@@ -17,7 +17,6 @@ import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { normalizeParallelModels } from '@/lib/models/normalization';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { normalizeChatSettings } from '@/lib/settings/normalize';
-import { isTavilySearchConfigured } from '@/lib/env/public';
 
 export type ResolvedTurnSettings = {
   modelId: string;
@@ -78,9 +77,7 @@ export function resolveNewChatSettings(opts: {
       ? 'tavily'
       : rawSearchProvider === 'openrouter'
         ? 'openrouter'
-        : isTavilySearchConfigured()
-          ? 'tavily'
-          : 'openrouter';
+        : 'tavily';
 
   const tutorEnabledSetting = forceTutorMode ? true : tutorEnabled ? !!next.tutorMode : false;
 

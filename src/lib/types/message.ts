@@ -54,6 +54,38 @@ export type ToolCallLogEntry = {
   };
 };
 
+export type MessageActivityItem =
+  | {
+      id: string;
+      type: 'reasoning';
+      text: string;
+      timestamp: number;
+      status?: 'streaming' | 'done';
+      round?: number;
+    }
+  | {
+      id: string;
+      type: 'tool_call';
+      name: string;
+      timestamp: number;
+      status: ToolCallStatus;
+      input?: Record<string, unknown>;
+      output?: Record<string, unknown>;
+      error?: string;
+      duration?: number;
+      category?: ToolCallCategory;
+      round?: number;
+      metadata?: ToolCallLogEntry['metadata'];
+    }
+  | {
+      id: string;
+      type: 'text';
+      text: string;
+      timestamp: number;
+      status?: 'streaming' | 'done';
+      round?: number;
+    };
+
 export type MessageLegacyResearch = {
   trace: unknown[];
   answer?: string;
@@ -108,4 +140,6 @@ export type Message = {
   };
   // Tool call transparency log for this assistant turn
   toolCalls?: ToolCallLogEntry[];
+  // Ordered stream of model activity for this assistant turn.
+  activity?: MessageActivityItem[];
 };

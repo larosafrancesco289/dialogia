@@ -11,7 +11,7 @@ Local-first, privacy-focused multi-model chat UI for OpenRouter and beyond.
 - Reasoning: Optional “thinking” stream for reasoning-capable models with effort control.
 - Streaming + metrics: TTFT, token counts, tokens/sec; provider-reported cost when available.
 - Compare drawer: Run one prompt across multiple models; copy, insert to chat, or switch model.
-- Web search: Optional Tavily tool calling or OpenRouter web plugin augmentation for grounded answers.
+- Web search: Optional Tavily search/fetch tool calling or OpenRouter web plugin augmentation for grounded answers.
 
 ### Screenshots
 
@@ -101,7 +101,7 @@ The following are local-only (already in `.gitignore`) and should not be committ
   - PDFs: text is extracted client-side and sent as text blocks; small files may fall back to file
     blocks.
 - Reasoning: toggle effort in the composer for thinking models; view “Thinking” panel per message.
-- Web search: toggle the search icon to ground the next reply with sources. Tavily runs through the local `web_search` tool when selected; OpenRouter injects its web plugin when selected.
+- Web search: toggle the search icon to ground the next reply with sources. Tavily runs through the local `web_search` and `web_fetch` tools when selected; OpenRouter injects its web plugin when selected.
 - Compare: click the grid icon in the header to run a prompt across multiple models and review metrics.
 - Slash commands:
   - `/model <id|name>` — set the model.

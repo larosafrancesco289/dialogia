@@ -171,6 +171,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
           tutorEnabled={tutorEnabled}
           upperPanelsNode={upperPanelsNode}
           tutorPanelNode={tutorPanelNode}
+          citationSources={tavilyEntry?.results}
         />
       ) : (
         <UserMessage

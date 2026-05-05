@@ -62,8 +62,7 @@
 /* User: Right-positioned with warm box styling — like a note or query */
 .user {
   background: var(--surface-paper-warm);
-  border: 1px solid var(--rule-accent);
-  border-left: 3px solid var(--color-accent);
+  border: 1px solid color-mix(in oklab, var(--color-accent) 38%, var(--rule-accent));
   margin-left: auto;
   margin-right: 0;
   padding: var(--space-3) var(--space-4);

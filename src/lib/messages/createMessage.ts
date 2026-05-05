@@ -31,6 +31,7 @@ export type CreateAssistantMessageArgs = BaseMessageArgs & {
   content: string;
   model?: string;
   reasoning?: string;
+  activity?: Message['activity'];
   attachments?: PersistedAttachment[];
   toolCalls?: Message['toolCalls'];
   metadata?: Message['metadata'];
@@ -49,6 +50,7 @@ export function createAssistantMessage(args: CreateAssistantMessageArgs): Messag
     content,
     model,
     reasoning = '',
+    activity,
     attachments,
     toolCalls,
     metadata,
@@ -67,6 +69,7 @@ export function createAssistantMessage(args: CreateAssistantMessageArgs): Messag
     createdAt,
     model,
     reasoning,
+    activity: activity ?? [],
     toolCalls: toolCalls ?? [],
     ...(attachments !== undefined ? { attachments } : {}),
     ...(metadata ? { metadata } : {}),

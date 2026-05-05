@@ -2,11 +2,12 @@ import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 import type { TutorPhase } from '@/lib/agent/tutor/types';
 import type { ToolExecutionArgs, PlanningToolExecutionResult } from '@/lib/tools/execution';
 import type { ToolDefinition } from '@/lib/transport/contracts';
-import { mergeSearchResults, performWebSearchTool } from '@/lib/search';
-import { normalizeWebSearchArgs } from '@/lib/search/args';
+import { mergeSearchResults, performWebSearchTool, runTavilyFetch } from '@/lib/search';
+import { normalizeWebFetchArgs, normalizeWebSearchArgs } from '@/lib/search/args';
 import { NOTICE_MISSING_TAVILY_KEY } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
-import { WEB_SEARCH_TOOL } from '@/lib/tools/definitions/webSearch';
+import { WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@/lib/tools/definitions/webSearch';
+import { withAbort } from '@/lib/utils/abort';
 import { advanceTopicTool } from '@/lib/tools/definitions/tutor/advanceTopic';
 import { askStudentQuestionTool } from '@/lib/tools/definitions/tutor/askStudentQuestion';
 import { createDiagnosticTool } from '@/lib/tools/definitions/tutor/createDiagnostic';
@@ -42,9 +43,9 @@ export const TUTOR_TOOL_NAMES = [
 
 export type TutorToolName = (typeof TUTOR_TOOL_NAMES)[number];
 
-export type ToolName = 'web_search' | TutorToolName;
+export type ToolName = 'web_search' | 'web_fetch' | TutorToolName;
 
-export const TOOL_NAMES = ['web_search', ...TUTOR_TOOL_NAMES] as const;
+export const TOOL_NAMES = ['web_search', 'web_fetch', ...TUTOR_TOOL_NAMES] as const;
 
 const TUTOR_TOOL_METADATA: Record<TutorToolName, ToolMetadata> = {
   ask_student_question: {
@@ -197,6 +198,107 @@ const executeWebSearchTool: PlanningToolHandler = async ({
   };
 };
 
+const executeWebFetchTool: PlanningToolHandler = async ({
+  toolCall,
+  parsedArgs,
+  roundMeta,
+  context,
+  aggregatedResults,
+}) => {
+  const { searchProvider, controller, get, logger } = context;
+
+  const fetchArgs = normalizeWebFetchArgs({
+    url: typeof parsedArgs.url === 'string' ? parsedArgs.url : '',
+    extract_depth: parsedArgs.extract_depth,
+    format: parsedArgs.format,
+    include_images: parsedArgs.include_images,
+    include_favicon: parsedArgs.include_favicon,
+    query: parsedArgs.query,
+    chunks_per_source: parsedArgs.chunks_per_source,
+    provider: parsedArgs.provider,
+  });
+
+  const log = logger.start({
+    name: 'web_fetch',
+    input: fetchArgs,
+    category: 'search',
+    metadata: { ...(roundMeta || {}), provider: searchProvider },
+  });
+
+  if (searchProvider !== 'tavily') {
+    const output = { ok: false, url: fetchArgs.url, error: 'unsupported_search_provider' };
+    log.error(output, 'web_fetch only supports Tavily', roundMeta ? { ...roundMeta } : undefined);
+    return {
+      convoMessages: [
+        {
+          role: 'tool',
+          name: 'web_fetch',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(output),
+        },
+      ],
+      aggregatedResults,
+      usedTool: true,
+      usedTutorContentTool: false,
+    };
+  }
+
+  const result = await withAbort(controller.signal, async (fetchController) => {
+    const timeout = setTimeout(() => fetchController.abort(), 30000);
+    try {
+      return await runTavilyFetch(fetchArgs, { signal: fetchController.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
+  });
+
+  const metadataBase = roundMeta ? { ...roundMeta } : undefined;
+  if (result.ok) {
+    const payload = result.results.slice(0, 3).map((entry) => ({
+      url: entry.url,
+      content: typeof entry.raw_content === 'string' ? entry.raw_content.slice(0, 12000) : '',
+      images: entry.images?.slice(0, 8),
+      favicon: entry.favicon,
+    }));
+    log.success(
+      { ok: true, url: fetchArgs.url, results: result.results.length },
+      { ...(metadataBase || {}), results: result.results.length },
+    );
+    return {
+      convoMessages: [
+        {
+          role: 'tool',
+          name: 'web_fetch',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(payload),
+        },
+      ],
+      aggregatedResults,
+      usedTool: true,
+      usedTutorContentTool: false,
+    };
+  }
+
+  if (result.error === NOTICE_MISSING_TAVILY_KEY) {
+    notify(get, NOTICE_MISSING_TAVILY_KEY);
+  }
+  const output = { ok: false, url: fetchArgs.url, error: result.error || 'No content' };
+  log.error(output, result.error || 'Fetch returned no content', metadataBase);
+  return {
+    convoMessages: [
+      {
+        role: 'tool',
+        name: 'web_fetch',
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(output),
+      },
+    ],
+    aggregatedResults,
+    usedTool: true,
+    usedTutorContentTool: false,
+  };
+};
+
 const createTutorHandler = (name: TutorToolName, metadata: ToolMetadata): PlanningToolHandler => {
   return async ({ toolCall, parsedArgs, roundMeta, context, aggregatedResults }) => {
     const { chat, chatId, assistantMessage, set, get, persistMessage, logger, getCurrentPlan } =
@@ -324,6 +426,11 @@ export const TOOL_REGISTRY: Record<ToolName, ToolRegistryEntry> = {
     definition: WEB_SEARCH_TOOL,
     metadata: { category: 'search' },
     handler: executeWebSearchTool,
+  },
+  web_fetch: {
+    definition: WEB_FETCH_TOOL,
+    metadata: { category: 'search' },
+    handler: executeWebFetchTool,
   },
   ...tutorEntries,
 };

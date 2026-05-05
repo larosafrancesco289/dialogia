@@ -47,7 +47,19 @@ export function startToolCallLogEntry({
   set((state) => {
     const patch = mutateMessage(state, chatId, messageId, (msg) => {
       const existing = Array.isArray(msg.toolCalls) ? msg.toolCalls : [];
-      return { ...msg, toolCalls: [...existing, entry] };
+      const activity = Array.isArray(msg.activity) ? msg.activity : [];
+      const toolActivity = {
+        id: entry.id,
+        type: 'tool_call' as const,
+        name,
+        timestamp: entry.timestamp,
+        status: entry.status,
+        input,
+        category,
+        metadata: entry.metadata,
+        round: typeof metadata?.round === 'number' ? metadata.round : undefined,
+      };
+      return { ...msg, toolCalls: [...existing, entry], activity: [...activity, toolActivity] };
     });
     return patch ?? state;
   });
@@ -87,7 +99,24 @@ export function updateToolCallLogEntry({
         return nextCall;
       });
       if (!changed) return msg;
-      return { ...msg, toolCalls: nextCalls };
+      const activity = Array.isArray(msg.activity) ? msg.activity : [];
+      const nextActivity = activity.map((item) => {
+        if (item.type !== 'tool_call' || item.id !== toolCallId) return item;
+        const nextMetadata =
+          updates.metadata != null
+            ? { ...(item.metadata || {}), ...updates.metadata }
+            : item.metadata;
+        return {
+          ...item,
+          ...(updates.status !== undefined ? { status: updates.status } : {}),
+          ...(updates.output !== undefined ? { output: updates.output } : {}),
+          ...(updates.error !== undefined ? { error: updates.error } : {}),
+          ...(updates.duration !== undefined ? { duration: updates.duration } : {}),
+          ...(updates.category !== undefined ? { category: updates.category } : {}),
+          ...(updates.metadata !== undefined ? { metadata: nextMetadata } : {}),
+        };
+      });
+      return { ...msg, toolCalls: nextCalls, activity: nextActivity };
     });
     return patch ?? state;
   });
