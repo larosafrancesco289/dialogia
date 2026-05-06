@@ -39,22 +39,6 @@
     background-size: 110% 90%;
   }
 
-  .dark body::before {
-    opacity: 0.12;
-    mix-blend-mode: soft-light;
-  }
-
-  /* Deeper vignette in dark mode — warm candlelit atmosphere */
-  .dark body::after {
-    background: radial-gradient(
-      ellipse at 50% 50%,
-      transparent 35%,
-      rgba(20, 12, 8, 0.18) 70%,
-      rgba(15, 10, 6, 0.35) 100%
-    );
-    background-size: 100% 85%;
-  }
-
   :root {
     --keyboard-offset: 0px;
     --composer-height: 0px;
@@ -157,12 +141,6 @@
     background: linear-gradient(to right, rgba(100, 80, 50, 0.04), transparent);
     opacity: 0.7;
   }
-
-  .dark .sidebar:not(:empty)::after {
-    background: linear-gradient(to right, rgba(0, 0, 0, 0.15), transparent);
-    opacity: 1;
-  }
-
   .content {
     overflow: hidden;
     position: relative;

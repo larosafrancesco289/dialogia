@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
@@ -10,7 +9,6 @@ import { MobileCollapsingHeader } from '@/components/mobile/MobileCollapsingHead
 import { MobileChatsSheet } from '@/components/mobile/MobileChatsSheet';
 import { MobileWarningBanner } from '@/components/mobile/MobileWarningBanner';
 import { MobileFreeTierBanner } from '@/components/mobile/MobileFreeTierBanner';
-import { initializeTheme } from '@/components/ThemeToggle';
 import { lazyClient } from '@/lib/ui/lazy';
 import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
 import styles from './MobileShell.module.css';
@@ -44,10 +42,6 @@ export function MobileShell() {
     }),
     shallow,
   );
-
-  useEffect(() => {
-    initializeTheme();
-  }, []);
 
   return (
     <div className={styles.shell}>

@@ -4,7 +4,6 @@ import {
   Cog6ToothIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
 import { PlanSheet } from '@/components/plan/PlanSheet';
 import { PlanStatusBadge } from '@/components/top-header/PlanStatusBadge';
@@ -125,9 +124,6 @@ export function TopHeaderView({
           >
             <PlusIcon className="h-5 w-5" />
           </button>
-          <div className="hide-on-mobile">
-            <ThemeToggle />
-          </div>
           <button
             className="btn btn-ghost hide-on-mobile"
             aria-label="Open settings"

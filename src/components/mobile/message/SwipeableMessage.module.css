@@ -40,8 +40,3 @@
 .wrapper[data-swiping='true'] .content {
   box-shadow: 0 2px 12px rgba(80, 60, 40, 0.08);
 }
-
-/* Dark mode shadow */
-:global(.dark) .wrapper[data-swiping='true'] .content {
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-}

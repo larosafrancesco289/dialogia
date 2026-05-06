@@ -196,7 +196,7 @@ export function EditConfirmDialog({
                 </div>
                 <button
                   onClick={onCancel}
-                  className="p-1.5 rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                  className="p-1.5 rounded transition-colors hover:bg-black/5"
                   aria-label="Close"
                 >
                   <XMarkIcon className="h-5 w-5 text-muted-foreground" />

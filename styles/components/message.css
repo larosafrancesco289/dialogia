@@ -122,13 +122,6 @@
     opacity: 0.8;
     pointer-events: none;
   }
-  .dark .tutor-greeting-card__glow {
-    background:
-      radial-gradient(ellipse 55% 50% at 20% 25%, rgba(201, 162, 39, 0.14), transparent 65%),
-      radial-gradient(ellipse 60% 55% at 80% 30%, rgba(139, 90, 158, 0.1), transparent 68%),
-      radial-gradient(ellipse 50% 60% at 50% 85%, rgba(180, 140, 60, 0.1), transparent 75%);
-    opacity: 0.65;
-  }
   .tutor-greeting-card__icon {
     display: inline-flex;
     align-items: center;
@@ -284,13 +277,6 @@
       transform: translate(2%, -2%) scale(1.02);
     }
   }
-  .dark .hero-gradient::before {
-    background:
-      radial-gradient(ellipse 70% 50% at 50% 35%, rgba(201, 162, 39, 0.12), transparent 65%),
-      radial-gradient(ellipse 50% 40% at 65% 55%, rgba(139, 90, 158, 0.1), transparent 60%),
-      radial-gradient(ellipse 45% 45% at 35% 60%, rgba(180, 140, 60, 0.08), transparent 55%);
-  }
-
   /* Thinking panel effect */
   .thinking-panel {
     position: relative;
@@ -599,55 +585,6 @@
     .reasoning-caret {
       animation: none !important;
     }
-  }
-
-  .dark .thinking-panel {
-    background: color-mix(in oklab, rgba(20, 21, 34, 0.88), var(--color-muted) 18%);
-    border-color: color-mix(in oklab, rgba(225, 225, 255, 0.24), var(--color-border));
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-      0 24px 55px -38px rgba(2, 3, 12, 0.8);
-  }
-  .dark .thinking-panel::before {
-    background:
-      linear-gradient(135deg, rgba(93, 123, 255, 0.28), rgba(30, 42, 70, 0)) top,
-      linear-gradient(215deg, rgba(121, 91, 205, 0.24), rgba(22, 29, 52, 0));
-    opacity: 0.55;
-  }
-  .dark .reasoning-subtitle {
-    color: color-mix(in oklab, rgba(226, 232, 240, 0.82) 80%, transparent);
-  }
-  .dark .reasoning-loader__bar {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.24),
-      rgba(94, 153, 255, 0.28),
-      rgba(255, 255, 255, 0.22)
-    );
-  }
-  .dark .reasoning-preview {
-    color: color-mix(in oklab, rgba(226, 232, 240, 0.82) 75%, transparent);
-  }
-  .dark .reasoning-preview.is-live {
-    color: color-mix(in oklab, rgba(148, 197, 255, 0.7), rgba(226, 232, 240, 0.82));
-  }
-  .dark .reasoning-preview.is-live::after {
-    background: linear-gradient(
-      90deg,
-      transparent 10%,
-      rgba(148, 197, 255, 0.32) 55%,
-      transparent 100%
-    );
-  }
-  .dark .reasoning-status {
-    color: color-mix(in oklab, rgba(226, 232, 240, 0.82) 65%, transparent);
-  }
-  .dark .reasoning-status::before {
-    background: color-mix(in oklab, rgba(226, 232, 240, 0.82) 80%, transparent);
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
-  }
-  .dark .reasoning-status.is-live {
-    color: color-mix(in oklab, rgba(148, 197, 255, 0.88) 70%, rgba(226, 232, 240, 0.82) 30%);
   }
 
   /* Tutor UI: answer micro pop animation */

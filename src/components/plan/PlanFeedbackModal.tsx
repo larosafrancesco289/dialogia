@@ -133,7 +133,7 @@ export function PlanFeedbackModal({
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded transition-colors hover:bg-black/5 dark:hover:bg-white/5 -mr-1.5 -mt-1"
+                  className="p-1.5 rounded transition-colors hover:bg-black/5 -mr-1.5 -mt-1"
                   aria-label="Close"
                 >
                   <XMarkIcon className="h-5 w-5 text-muted-foreground" />

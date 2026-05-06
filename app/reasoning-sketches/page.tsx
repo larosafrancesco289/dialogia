@@ -356,33 +356,10 @@ function RadialGradedPicker({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Theme toggle
-// ─────────────────────────────────────────────────────────────────────────────
-
-function useThemeToggle() {
-  const [isDark, setIsDark] = useState(false);
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains('dark'));
-  }, []);
-  const toggle = () => {
-    const root = document.documentElement;
-    const next = !root.classList.contains('dark');
-    root.classList.toggle('dark', next);
-    try {
-      localStorage.setItem('theme', next ? 'dark' : 'light');
-    } catch {}
-    setIsDark(next);
-  };
-  return { isDark, toggle };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ReasoningSketchesPage() {
-  const { isDark, toggle } = useThemeToggle();
-
   const [recipeId, setRecipeId] = useState<string>('brain-family');
   const recipe = useMemo(() => RECIPES.find((r) => r.id === recipeId) ?? RECIPES[0], [recipeId]);
 
@@ -431,19 +408,6 @@ export default function ReasoningSketchesPage() {
           color: var(--color-fg-muted);
           max-width: 64ch;
         }
-        .sk-theme-btn {
-          font-size: 12px;
-          padding: 8px 12px;
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-editorial);
-          background: var(--surface-paper);
-          color: var(--color-fg);
-          cursor: pointer;
-        }
-        .sk-theme-btn:hover {
-          background: var(--color-muted);
-        }
-
         .sk-section {
           margin-top: 56px;
         }
@@ -750,9 +714,6 @@ export default function ReasoningSketchesPage() {
               so the fan <em>is</em> the progression.
             </p>
           </div>
-          <button type="button" className="sk-theme-btn" onClick={toggle} aria-label="Toggle theme">
-            {isDark ? 'Light theme' : 'Dark theme'}
-          </button>
         </header>
 
         {/* ────────── Section 1 ────────── */}
