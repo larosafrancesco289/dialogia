@@ -96,7 +96,7 @@ export function SummaryStrip({
         )}
       </div>
       <div className="plan-prog-track">
-        <div className="plan-prog-fill" style={{ width: `${progressPct}%` }} />
+        <div className="plan-prog-fill" style={{ transform: `scaleX(${progressPct / 100})` }} />
       </div>
       <div className="plan-prog-labels">
         <span>{stats.completed} completed</span>

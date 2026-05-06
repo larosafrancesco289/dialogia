@@ -12,8 +12,8 @@ import { shallow } from 'zustand/shallow';
 import { useSidebarGestures } from '@/lib/hooks/useSidebarGestures';
 import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
 import { selectCurrentChat, selectIsTutorEnabled } from '@/lib/store/selectors';
-import { motion } from 'framer-motion';
-import { springs } from '@/lib/mobile/springConfig';
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
+import { motionTransition, motionVariants } from '@/lib/ui/motion';
 
 const SettingsDrawer = lazyClient(() =>
   import(/* webpackPrefetch: true */ '@/components/settings/SettingsDrawer').then((mod) => ({
@@ -23,8 +23,6 @@ const SettingsDrawer = lazyClient(() =>
 const GlobalNotice = lazyClient(() =>
   import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
 );
-
-const PANEL_WIDTH_TRANSITION = { duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] } as const;
 
 export default function HomePage() {
   const {
@@ -85,66 +83,84 @@ export default function HomePage() {
   const showRightPanel = rightPanelOpen && (hasPlan || !!planSheetOverride);
 
   return (
-    <div className="app-shell">
-      {/* Sidebar column */}
-      <motion.div
-        className="sidebar-slot"
-        initial={false}
-        animate={{ width: collapsed ? 0 : 320 }}
-        transition={PANEL_WIDTH_TRANSITION}
-      >
-        <motion.aside
-          className="sidebar glass-panel border border-border rounded-2xl p-2"
-          initial={false}
-          animate={{ x: collapsed ? -320 : 0 }}
-          transition={springs.smooth}
-          style={{ width: 320 }}
-        >
-          <ChatSidebar />
-        </motion.aside>
-      </motion.div>
-      <main className="content">
-        <TopHeader />
-        <FreeTierBanner />
-        <div className="flex-1 min-h-0">
-          <ChatPane />
-        </div>
-        {isSettingsOpen && <SettingsDrawer />}
-        <GlobalNotice />
-      </main>
-
-      {/* Right panel — Learning Hub */}
-      <motion.div
-        className="right-panel-slot"
-        initial={false}
-        animate={{ width: showRightPanel ? 400 : 0 }}
-        transition={PANEL_WIDTH_TRANSITION}
-      >
+    <LayoutGroup>
+      <motion.div className="app-shell" layout transition={motionTransition.layout}>
+        {/* Sidebar column */}
         <motion.div
-          style={{ width: 400, height: '100%' }}
+          className="sidebar-slot"
+          layout
           initial={false}
-          animate={{ x: showRightPanel ? 0 : 400 }}
-          transition={springs.smooth}
+          animate={{ opacity: collapsed ? 0 : 1 }}
+          transition={motionTransition.layout}
+          style={{ width: collapsed ? 0 : 320 }}
+          aria-hidden={collapsed}
         >
-          <LearningPanel />
+          <AnimatePresence initial={false}>
+            {!collapsed && (
+              <motion.aside
+                className="sidebar glass-panel border border-border rounded-2xl p-2"
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                variants={motionVariants.panelLeft}
+                style={{ width: 320 }}
+              >
+                <ChatSidebar />
+              </motion.aside>
+            )}
+          </AnimatePresence>
         </motion.div>
-      </motion.div>
-
-      {/* Mobile sidebar overlay */}
-      {mounted && isMobile && !collapsed && (
-        <>
-          <button
-            className="fixed inset-0 z-[75] settings-overlay"
-            aria-label="Close sidebar"
-            onClick={() => setUI({ sidebarCollapsed: true })}
-          />
-          <div className="fixed inset-y-0 left-0 z-[80] w-[96%] max-w-[420px] p-2">
-            <div className="glass-panel border border-border rounded-2xl p-3 h-full overflow-hidden">
-              <ChatSidebar />
-            </div>
+        <motion.main className="content" layout transition={motionTransition.layout}>
+          <TopHeader />
+          <FreeTierBanner />
+          <div className="flex-1 min-h-0">
+            <ChatPane />
           </div>
-        </>
-      )}
-    </div>
+          {isSettingsOpen && <SettingsDrawer />}
+          <GlobalNotice />
+        </motion.main>
+
+        {/* Right panel — Learning Hub */}
+        <motion.div
+          className="right-panel-slot"
+          layout
+          initial={false}
+          animate={{ opacity: showRightPanel ? 1 : 0 }}
+          transition={motionTransition.layout}
+          style={{ width: showRightPanel ? 400 : 0 }}
+          aria-hidden={!showRightPanel}
+        >
+          <AnimatePresence initial={false}>
+            {showRightPanel && (
+              <motion.div
+                style={{ width: 400, height: '100%' }}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                variants={motionVariants.panelRight}
+              >
+                <LearningPanel />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Mobile sidebar overlay */}
+        {mounted && isMobile && !collapsed && (
+          <>
+            <button
+              className="fixed inset-0 z-[75] settings-overlay"
+              aria-label="Close sidebar"
+              onClick={() => setUI({ sidebarCollapsed: true })}
+            />
+            <div className="fixed inset-y-0 left-0 z-[80] w-[96%] max-w-[420px] p-2">
+              <div className="glass-panel border border-border rounded-2xl p-3 h-full overflow-hidden">
+                <ChatSidebar />
+              </div>
+            </div>
+          </>
+        )}
+      </motion.div>
+    </LayoutGroup>
   );
 }
