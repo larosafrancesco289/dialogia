@@ -343,14 +343,6 @@
     background: color-mix(in oklab, var(--color-danger) 15%, var(--color-surface));
     color: color-mix(in oklab, var(--color-danger) 70%, var(--color-fg));
   }
-  .dark .mobile-menu-item.is-danger {
-    background: color-mix(in oklab, var(--color-danger) 20%, var(--color-muted));
-    color: #130c0c;
-  }
-  .mobile-theme-item {
-    margin-top: var(--space-1);
-  }
-
   .mobile-menu-popover {
     max-height: min(70vh, 380px);
     overflow-y: auto;

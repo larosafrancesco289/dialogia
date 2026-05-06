@@ -135,9 +135,9 @@ function CopyButtonContent({ status, error }: { status: CopyStatus; error?: stri
 function getCopyButtonStyles(status: CopyStatus): string {
   switch (status) {
     case 'copied':
-      return 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5';
+      return 'border-emerald-500/50 text-emerald-600 bg-emerald-500/5';
     case 'error':
-      return 'border-red-500/50 text-red-600 dark:text-red-400 bg-red-500/5';
+      return 'border-red-500/50 text-red-600 bg-red-500/5';
     default:
       return 'border-[var(--rule-subtle)] text-[var(--color-fg)] hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-accent)]/5';
   }
@@ -574,7 +574,7 @@ export function StudySessionSettings({
                 disabled={isResetting}
                 className="
                   w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg
-                  border border-amber-500/30 text-amber-600 dark:text-amber-400
+                  border border-amber-500/30 text-amber-600
                   hover:border-amber-500/50 hover:bg-amber-500/5
                   transition-all duration-200 text-sm font-medium
                   disabled:opacity-50 disabled:cursor-not-allowed

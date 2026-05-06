@@ -3,7 +3,6 @@ import { FolderRowContainer } from '@/components/sidebar/FolderRowContainer';
 import { ChatRowContainer } from '@/components/sidebar/ChatRowContainer';
 import { SidebarSearch } from '@/components/sidebar/SidebarSearch';
 import { IconButton } from '@/components/ui/IconButton';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   PlusIcon,
   FolderPlusIcon,
@@ -81,7 +80,6 @@ export function ChatSidebarView({
             </IconButton>
           )}
           <span className="sm:hidden flex items-center gap-2">
-            <ThemeToggle />
             <IconButton
               onClick={onOpenSettings}
               title="Settings"

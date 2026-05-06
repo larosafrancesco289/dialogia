@@ -137,11 +137,6 @@
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
   }
-
-  .dark .sheet-backdrop {
-    background: rgba(0, 0, 0, 0.6);
-  }
-
   .sheet-handle {
     width: 36px;
     height: 4px;
@@ -280,16 +275,6 @@
       }
     }
   }
-
-  /* ========================================
-   * Dark Mode Adjustments
-   * ======================================== */
-
-  .dark {
-    /* Warmer shadows for mobile elevated surfaces */
-    --shadow-mobile-elevated: 0 -4px 16px rgba(0, 0, 0, 0.2), 0 -8px 32px rgba(0, 0, 0, 0.15);
-  }
-
   :root {
     --shadow-mobile-elevated:
       0 -4px 16px rgba(80, 60, 40, 0.08), 0 -8px 32px rgba(80, 60, 40, 0.05);

@@ -8,7 +8,6 @@ export type SectionId =
   | 'reasoning'
   | 'tutor'
   | 'display'
-  | 'theme'
   | 'privacy'
   | 'data';
 

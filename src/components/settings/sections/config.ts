@@ -12,7 +12,7 @@ export const TAB_SECTIONS: Record<TabId, SectionId[]> = {
   'models-routing': ['models'],
   chat: ['general', 'reasoning'],
   tutor: ['tutor'],
-  appearance: ['display', 'theme', 'privacy'],
+  appearance: ['display', 'privacy'],
   advanced: ['data'],
 };
 
@@ -22,7 +22,6 @@ export const SECTION_TITLES: Record<SectionId, string> = {
   reasoning: 'Reasoning',
   tutor: 'Tutor',
   display: 'Display',
-  theme: 'Theme',
   privacy: 'Privacy',
   data: 'Data',
 };

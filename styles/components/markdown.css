@@ -206,21 +206,6 @@
     --syntax-variable: #e36209;
     --syntax-regex: #e36209;
   }
-  /* Token color variables for dark mode */
-  .dark {
-    --syntax-comment: #8b949e;
-    --syntax-punctuation: #c9d1d9;
-    --syntax-keyword: #c38fff; /* purple-ish for keywords */
-    --syntax-string: #7ee787; /* green */
-    --syntax-function: #d2a8ff; /* purple */
-    --syntax-number: #79c0ff; /* blue */
-    --syntax-operator: #e3b341; /* gold */
-    --syntax-property: #7aa2f7; /* blue */
-    --syntax-class: #d2a8ff;
-    --syntax-variable: #ffa657; /* orange */
-    --syntax-regex: #ffab70;
-  }
-
   /* Apply token colors within rendered markdown only */
   .markdown code[class*='language-'],
   .markdown pre[class*='language-'] {

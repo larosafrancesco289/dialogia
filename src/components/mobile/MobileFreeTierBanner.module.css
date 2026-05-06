@@ -23,15 +23,6 @@
     transform var(--duration-fast) var(--ease-standard),
     box-shadow var(--duration-fast) var(--ease-standard);
 }
-
-:global(.dark) .collapsedPill {
-  background: linear-gradient(
-    135deg,
-    color-mix(in oklab, var(--color-muted) 90%, var(--color-accent)),
-    var(--color-muted)
-  );
-}
-
 .collapsedPill:active {
   transform: scale(0.98);
 }
@@ -59,15 +50,6 @@
     var(--color-muted)
   );
 }
-
-:global(.dark) .expandedBanner {
-  background: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--color-muted) 85%, var(--color-accent) 8%),
-    var(--color-muted)
-  );
-}
-
 .bannerContent {
   padding: var(--space-3) var(--space-4);
   display: flex;
@@ -212,11 +194,6 @@
   -webkit-tap-highlight-color: transparent;
   transition: opacity var(--duration-fast) var(--ease-standard);
 }
-
-:global(.dark) .submitButton {
-  color: var(--color-canvas);
-}
-
 .submitButton:active:not(:disabled) {
   opacity: 0.9;
 }

@@ -109,8 +109,3 @@
   text-transform: uppercase;
   opacity: 0.9;
 }
-
-/* Dark mode */
-:global(.dark) .actionButton {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
