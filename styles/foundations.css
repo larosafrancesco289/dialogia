@@ -159,7 +159,10 @@ a:hover {
   background: transparent;
   color: var(--color-fg-muted);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
   font-size: 0.8rem;
 }
 
@@ -260,7 +263,7 @@ a:hover {
   min-height: 32px;
   transition:
     background-color var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-spring);
+    transform var(--duration-fast) var(--ease-standard);
 }
 .badge:hover {
   background: color-mix(in oklab, var(--color-muted) 70%, transparent);
@@ -366,7 +369,11 @@ a.badge {
   border: 1px solid color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
   color: var(--color-accent);
   box-shadow: var(--shadow-2);
-  transition: all var(--duration-med) var(--ease-spring);
+  transition:
+    background-color var(--duration-med) var(--ease-standard),
+    border-color var(--duration-med) var(--ease-standard),
+    box-shadow var(--duration-med) var(--ease-standard),
+    transform var(--duration-med) var(--ease-standard);
 }
 
 .btn-fab:hover {

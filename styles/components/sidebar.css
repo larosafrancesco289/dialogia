@@ -1,7 +1,11 @@
 @layer components {
   /* Folder and chat item visual enhancements - Apple-like */
   .folder-item {
-    transition: all 0.15s ease-out;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
     border-radius: 10px;
     margin: 2px 0;
   }
@@ -13,8 +17,11 @@
   .chat-item {
     cursor: pointer;
     background: color-mix(in oklab, var(--color-surface) 96%, transparent);
-    will-change: transform;
-    transition: all 0.15s ease-out;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
     border-radius: 12px;
     margin: 2px 0;
     position: relative;
@@ -30,6 +37,7 @@
   .chat-item:hover:not(.selected) {
     background: color-mix(in oklab, var(--color-muted) 60%, transparent);
     border-color: color-mix(in oklab, var(--color-border) 85%, transparent);
+    transform: translateY(-1px);
   }
   .chat-item.selected {
     position: relative;

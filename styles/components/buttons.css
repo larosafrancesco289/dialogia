@@ -48,7 +48,7 @@
   /* Rotate settings gear when drawer is open */
   button[aria-label='Open settings'][aria-pressed='true'] > svg {
     transform: rotate(90deg);
-    transition: transform 200ms ease;
+    transition: transform var(--duration-med) var(--ease-standard);
   }
 
   /* Header buttons — refined scholarly controls */

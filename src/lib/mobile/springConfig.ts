@@ -1,119 +1,57 @@
-/**
- * Spring physics configuration for mobile animations.
- * Based on iOS-like spring dynamics for a native feel.
- */
-
 import type { Transition } from 'framer-motion';
+import { motionTransition, motionVariants } from '@/lib/ui/motion';
 
 /**
- * Framer Motion spring configurations
+ * Motion configurations tuned for product UI: fast, transform-based, no overshoot.
+ * The export name is kept for existing mobile callers.
  */
 export const springs = {
-  /** Quick, snappy response - for buttons, tabs, micro-interactions */
-  snappy: {
-    type: 'spring',
-    stiffness: 400,
-    damping: 30,
-    mass: 1,
-  } as Transition,
-
-  /** Smooth navigation - for sheets, panels, page transitions */
-  smooth: {
-    type: 'spring',
-    stiffness: 300,
-    damping: 28,
-    mass: 1,
-  } as Transition,
-
-  /** Bouncy feedback - for swipe reveal, header collapse, playful elements */
-  bouncy: {
-    type: 'spring',
-    stiffness: 350,
-    damping: 22,
-    mass: 0.8,
-  } as Transition,
-
-  /** Gentle settle - for content appearing, fade-ins */
-  gentle: {
-    type: 'spring',
-    stiffness: 200,
-    damping: 25,
-    mass: 1,
-  } as Transition,
-
-  /** Ultra responsive - for drag following, real-time feedback */
-  responsive: {
-    type: 'spring',
-    stiffness: 500,
-    damping: 35,
-    mass: 0.5,
-  } as Transition,
+  snappy: motionTransition.quick as Transition,
+  smooth: motionTransition.layout as Transition,
+  bouncy: motionTransition.standard as Transition,
+  gentle: motionTransition.reveal as Transition,
+  responsive: { type: 'spring', stiffness: 520, damping: 42, mass: 0.55 } as Transition,
 } as const;
 
-/**
- * CSS cubic-bezier approximations of spring physics
- * Use when Framer Motion isn't available
- */
 export const cssEasings = {
-  snappy: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
-  smooth: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-  bouncy: 'cubic-bezier(0.175, 0.885, 0.32, 1.1)',
-  gentle: 'cubic-bezier(0.22, 0.68, 0.0, 1.0)',
+  snappy: 'cubic-bezier(0.22, 1, 0.36, 1)',
+  smooth: 'cubic-bezier(0.25, 1, 0.5, 1)',
+  bouncy: 'cubic-bezier(0.22, 1, 0.36, 1)',
+  gentle: 'cubic-bezier(0.16, 1, 0.3, 1)',
 } as const;
 
-/**
- * Duration presets for CSS animations
- */
 export const durations = {
-  instant: 100,
-  fast: 150,
-  normal: 250,
-  slow: 400,
-  deliberate: 600,
+  instant: 120,
+  fast: 180,
+  normal: 280,
+  slow: 340,
+  deliberate: 420,
 } as const;
 
-/**
- * Framer Motion variants for common patterns
- */
 export const variants = {
-  /** Fade and slide up entrance */
-  fadeSlideUp: {
-    initial: { opacity: 0, y: 12 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -8 },
-  },
-
-  /** Fade and slide down entrance */
+  fadeSlideUp: motionVariants.fadeLift,
   fadeSlideDown: {
-    initial: { opacity: 0, y: -12 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: 12 },
+    initial: { opacity: 0, y: -8 },
+    animate: { opacity: 1, y: 0, transition: motionTransition.standard },
+    exit: { opacity: 0, y: 6, transition: motionTransition.exit },
   },
-
-  /** Scale pop entrance */
   scalePop: {
-    initial: { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.98 },
+    initial: { opacity: 0, scale: 0.98 },
+    animate: { opacity: 1, scale: 1, transition: motionTransition.quick },
+    exit: { opacity: 0, scale: 0.99, transition: motionTransition.exit },
   },
-
-  /** Slide from right (for sheets) */
   slideFromRight: {
     initial: { x: '100%' },
-    animate: { x: 0 },
-    exit: { x: '100%' },
+    animate: { x: 0, transition: motionTransition.layout },
+    exit: { x: '100%', transition: motionTransition.exit },
   },
-
-  /** Slide from bottom (for bottom sheets) */
   slideFromBottom: {
     initial: { y: '100%' },
-    animate: { y: 0 },
-    exit: { y: '100%' },
+    animate: { y: 0, transition: motionTransition.layout },
+    exit: { y: '100%', transition: motionTransition.exit },
   },
-
-  /** Collapse/expand for header */
   collapseHeader: {
-    visible: { y: 0, opacity: 1 },
-    hidden: { y: -60, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: motionTransition.standard },
+    hidden: { y: -48, opacity: 0, transition: motionTransition.exit },
   },
 } as const;

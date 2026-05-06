@@ -175,7 +175,7 @@ function RecipeIcon({
         transform: scale === 1 ? undefined : `scale(${scale})`,
         transformOrigin: 'center',
         transition: animate
-          ? 'color 240ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1)'
+          ? 'color 220ms cubic-bezier(0.25, 1, 0.5, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1)'
           : undefined,
         width: size,
         height: size,
@@ -573,7 +573,7 @@ export default function ReasoningSketchesPage() {
           justify-content: center;
           transition:
             background 120ms,
-            box-shadow 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1);
         }
         .sk-picker-tick:hover,
         .sk-picker-tick:focus-visible {

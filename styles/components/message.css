@@ -66,7 +66,11 @@
     background: transparent;
     color: var(--color-fg-muted);
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-standard);
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      opacity var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
   }
   .message-action-btn:hover:not(:disabled) {
     background: var(--color-muted);

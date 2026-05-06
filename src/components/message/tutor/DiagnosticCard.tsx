@@ -144,9 +144,10 @@ export function DiagnosticCard({
         <div className="h-2 flex-1 rounded-full bg-[var(--color-muted)] overflow-hidden">
           <motion.div
             className="h-full bg-[var(--color-accent)]/60"
-            initial={{ width: 0 }}
-            animate={{ width: `${percentComplete}%` }}
-            transition={{ duration: 0.5 }}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: percentComplete / 100 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            style={{ originX: 0 }}
           />
         </div>
         <span className="text-xs text-[var(--color-fg-muted)] font-medium w-8 text-right">

@@ -254,7 +254,10 @@ export function PlanNode({
                     <div className="plan-mastery-bar">
                       <div
                         className="plan-mastery-bar__fill"
-                        style={{ width: `${confidence}%`, background: level.color }}
+                        style={{
+                          transform: `scaleX(${confidence / 100})`,
+                          background: level.color,
+                        }}
                       />
                     </div>
                   </div>

@@ -64,8 +64,18 @@
     }
   }
 
-  /* Smooth motion defaults */
-  * {
+  /* Calm motion defaults for native controls and common UI primitives */
+  button,
+  a,
+  input,
+  textarea,
+  select,
+  [role='button'],
+  [role='switch'],
+  .btn,
+  .badge,
+  .menu-item,
+  .icon-button {
     transition:
       background-color var(--duration-fast) var(--ease-standard),
       color var(--duration-fast) var(--ease-standard),
@@ -116,12 +126,16 @@
     overflow: hidden;
     position: relative;
     z-index: 10;
+    width: 320px;
+    min-width: 0;
   }
 
   .right-panel-slot {
     overflow: hidden;
     position: relative;
     z-index: 10;
+    width: 400px;
+    min-width: 0;
   }
 
   .sidebar {
@@ -406,7 +420,8 @@
     height: 100%;
     border-radius: 3px;
     background: var(--color-accent);
-    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform var(--duration-slow) var(--ease-out-expo);
+    transform-origin: left center;
   }
   .plan-prog-labels {
     display: flex;
@@ -533,7 +548,10 @@
     color: var(--color-fg-muted);
     cursor: pointer;
     font-family: inherit;
-    transition: all 0.15s;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard);
   }
   .plan-sort-pill--on {
     background: var(--surface-paper);
@@ -803,7 +821,8 @@
   .plan-mastery-bar__fill {
     height: 100%;
     border-radius: 2px;
-    transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform var(--duration-slow) var(--ease-out-expo);
+    transform-origin: left center;
   }
 
   /* Confidence slider */
@@ -889,7 +908,10 @@
     color: var(--color-danger);
     cursor: pointer;
     font-family: inherit;
-    transition: all 0.15s;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
     white-space: nowrap;
     margin-top: 3px;
   }
@@ -913,7 +935,10 @@
     color: var(--color-fg-muted);
     cursor: pointer;
     font-family: inherit;
-    transition: all 0.15s;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
     text-align: center;
     white-space: nowrap;
   }
@@ -951,7 +976,10 @@
     color: var(--color-fg-muted);
     cursor: pointer;
     font-family: inherit;
-    transition: all 0.15s;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
     text-align: center;
   }
   .plan-bottom-btn:hover {

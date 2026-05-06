@@ -383,7 +383,8 @@
     height: 100%;
     background: var(--color-accent);
     border-radius: 2px;
-    transition: width var(--duration-med) var(--ease-standard);
+    transition: transform var(--duration-med) var(--ease-out-expo);
+    transform-origin: left center;
   }
 
   /* ============================================
