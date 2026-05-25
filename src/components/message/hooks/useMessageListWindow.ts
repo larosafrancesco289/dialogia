@@ -28,16 +28,17 @@ export function useMessageListWindow(args: {
     pageSize,
     resetKey: chatId,
   });
-  const { containerRef, contentRef, endRef, showJump, jumpToLatest } = useMessageScrolling({
-    messages,
-    chatId,
-    isStreaming,
-    isMobile,
-    prefersReducedMotion,
-    isAssistantPlaceholder,
-    onScrollAway,
-    autoScrollPreference,
-  });
+  const { containerRef, contentRef, endRef, atBottom, showJump, jumpToLatest } =
+    useMessageScrolling({
+      messages,
+      chatId,
+      isStreaming,
+      isMobile,
+      prefersReducedMotion,
+      isAssistantPlaceholder,
+      onScrollAway,
+      autoScrollPreference,
+    });
 
   return {
     visibleMessages: visibleItems,
@@ -46,6 +47,7 @@ export function useMessageListWindow(args: {
     containerRef,
     contentRef,
     endRef,
+    atBottom,
     showJump,
     jumpToLatest,
   };

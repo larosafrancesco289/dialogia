@@ -34,13 +34,29 @@
   }
 
   /* ===== Message Actions — Marginalia Style ===== */
+  .message-content-anchor {
+    position: relative;
+  }
+
+  .message-content-anchor--assistant {
+    width: fit-content;
+    min-width: 7.75rem;
+    max-width: min(100%, calc(68ch + var(--space-8)));
+  }
+
+  .message-content-anchor--editing {
+    width: min(100%, calc(68ch + var(--space-8)));
+  }
+
   .message-actions {
     position: absolute;
-    bottom: calc(-1 * var(--space-1));
-    right: var(--space-3);
+    top: 100%;
+    right: 0;
+    bottom: auto;
+    padding-top: 2px;
     z-index: 30;
     transition: opacity var(--duration-fast) var(--ease-standard);
-    transform: translateY(20%);
+    transform: none;
   }
 
   .message-actions__group {

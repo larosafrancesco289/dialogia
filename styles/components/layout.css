@@ -4,23 +4,43 @@
     /* Contain scroll so Safari doesn’t pan the page when the list hits edges */
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    /* Prevent browser scroll anchoring from fighting manual autoscroll */
-    overflow-anchor: none;
-    /* Promote to its own layer to avoid flicker on iOS when glass elements overlap */
-    transform: translateZ(0);
-    will-change: transform;
     contain: paint;
     touch-action: pan-y; /* allow vertical panning and quick taps */
   }
 
   .message-list {
+    --chat-measure: min(100%, 46rem);
+    background: transparent;
     padding: var(--space-4);
-    /* Proper bottom padding since composer is now outside this scroll area */
-    padding-bottom: calc(var(--space-6) + var(--keyboard-offset, 0px));
+    /* Keep the last turn readable behind the overlaid desktop composer. */
+    padding-bottom: calc(
+      var(--space-8) + var(--composer-height, 0px) + var(--keyboard-offset, 0px)
+    );
     scroll-padding-bottom: calc(
-      var(--space-3) + max(0px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px)
+      var(--space-4) + var(--composer-height, 0px) + max(0px, env(safe-area-inset-bottom)) +
+        var(--keyboard-offset, 0px)
     );
   }
+
+  .content .message-list {
+    padding-top: calc(var(--header-height, 56px) + var(--space-6));
+  }
+
+  .chat-pane,
+  .chat-pane__scroll {
+    background: transparent;
+  }
+
+  .message-list__content {
+    width: var(--chat-measure);
+    margin-inline: auto;
+  }
+
+  .message-list__bottom-sentinel {
+    height: 1px;
+    overflow-anchor: auto;
+  }
+
   @media (max-width: 640px) {
     .message-list {
       padding: var(--space-2);
@@ -40,7 +60,8 @@
   .jump-to-latest {
     position: sticky;
     bottom: calc(
-      var(--space-8) + max(10px, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px)
+      var(--space-8) + max(10px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) +
+        var(--keyboard-offset, 0px)
     );
     display: flex;
     justify-content: center;

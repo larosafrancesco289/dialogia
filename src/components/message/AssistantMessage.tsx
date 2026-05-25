@@ -173,7 +173,11 @@ export function AssistantMessage({
   }
 
   return (
-    <div className="relative">
+    <div
+      className={`message-content-anchor message-content-anchor--assistant${
+        isEditing ? ' message-content-anchor--editing' : ''
+      }`}
+    >
       {showInlineActions && (
         <MessageActions
           isEditing={isEditing}

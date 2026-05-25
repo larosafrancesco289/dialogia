@@ -111,6 +111,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     containerRef,
     contentRef,
     endRef,
+    atBottom,
     showJump,
     jumpToLatest,
     visibleMessages,
@@ -136,14 +137,14 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     const isNowFocused = composerFocused;
     prevComposerFocusedRef.current = composerFocused;
 
-    if (!isMobile || !wasNotFocused || !isNowFocused) return;
+    if (!isMobile || !wasNotFocused || !isNowFocused || !atBottom) return;
 
     // Keyboard just opened - scroll to show last message
     const container = containerRef.current;
     if (!container) return;
 
     // Small delay to let the keyboard animation settle
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       // Find the last message element
       const messageElements = container.querySelectorAll('[data-mid]');
       const lastMessage = messageElements[messageElements.length - 1];
@@ -153,7 +154,8 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         lastMessage.scrollIntoView({ block: 'nearest', behavior: 'auto' });
       }
     }, 100);
-  }, [composerFocused, isMobile, containerRef]);
+    return () => clearTimeout(timeoutId);
+  }, [atBottom, composerFocused, isMobile, containerRef]);
 
   const [lightbox, setLightbox] = useState<{
     images: { src: string; name?: string }[];
@@ -178,12 +180,8 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   const lastMessageId = useMemo(() => messages[messages.length - 1]?.id, [messages]);
 
   return (
-    <div
-      ref={containerRef}
-      className="scroll-area message-list h-full"
-      style={{ background: 'var(--color-canvas)' }}
-    >
-      <div ref={contentRef} className="space-y-2 pb-4">
+    <div ref={containerRef} className="scroll-area message-list h-full">
+      <div ref={contentRef} className="message-list__content space-y-2 pb-4">
         {hiddenCount > 0 && (
           <div className="flex justify-center py-2">
             <button type="button" className="btn btn-ghost btn-sm" onClick={showMore}>
@@ -257,7 +255,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         )}
 
         {/* Typing indicator is now rendered inline within the latest assistant message */}
-        <div ref={endRef} />
+        <div ref={endRef} className="message-list__bottom-sentinel" aria-hidden="true" />
       </div>
 
       {showJump && (

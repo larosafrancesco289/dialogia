@@ -15,7 +15,7 @@
   flex-direction: column;
   overflow: hidden;
   /* Account for bottom tab bar */
-  padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  padding-bottom: calc(74px + env(safe-area-inset-bottom));
 }
 
 /* When keyboard is active, remove bottom padding */

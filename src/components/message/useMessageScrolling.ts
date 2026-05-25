@@ -11,9 +11,53 @@ export type MessageScrollingOptions = {
   prefersReducedMotion: boolean;
   isAssistantPlaceholder: (message?: Message, previous?: Message) => boolean;
   onScrollAway?: () => void;
-  /** When false, disable streaming auto-scroll (still scrolls on user messages). Defaults to true. */
+  /** When false, disable streaming follow. User messages still scroll into view. */
   autoScrollPreference?: boolean;
 };
+
+export type ScrollMetrics = {
+  scrollHeight: number;
+  scrollTop: number;
+  clientHeight: number;
+};
+
+export type ScrollSnapshot = {
+  atBottom: boolean;
+  distanceFromBottom: number;
+  hasOverflow: boolean;
+  showJump: boolean;
+};
+
+export function getScrollSnapshot(
+  metrics: ScrollMetrics,
+  options: { bottomThresholdPx?: number; overflowThresholdPx?: number } = {},
+): ScrollSnapshot {
+  const bottomThresholdPx = options.bottomThresholdPx ?? 48;
+  const overflowThresholdPx = options.overflowThresholdPx ?? 8;
+  const maxScrollTop = Math.max(metrics.scrollHeight - metrics.clientHeight, 0);
+  const distanceFromBottom = Math.max(maxScrollTop - Math.max(metrics.scrollTop, 0), 0);
+  const hasOverflow = maxScrollTop > overflowThresholdPx;
+  const atBottom = !hasOverflow || distanceFromBottom <= bottomThresholdPx;
+
+  return {
+    atBottom,
+    distanceFromBottom,
+    hasOverflow,
+    showJump: hasOverflow && !atBottom,
+  };
+}
+
+type LastMessageMeta = {
+  id?: string;
+  role?: Message['role'];
+  placeholder: boolean;
+  contentLen: number;
+  reasoningLen: number;
+};
+
+function normalizeScrollBehavior(behavior: ScrollBehavior): ScrollBehavior {
+  return behavior === 'instant' ? 'auto' : behavior;
+}
 
 export function useMessageScrolling(options: MessageScrollingOptions) {
   const {
@@ -30,337 +74,316 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const onScrollAwayRef = useRef(onScrollAway);
+  const followAllowedRef = useRef(true);
+  const programmaticScrollRef = useRef(false);
+  const hasOverflowRef = useRef(false);
+  const lastMessageMetaRef = useRef<LastMessageMeta>();
+  const previousChatIdRef = useRef<string>();
+  const followFrameRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const programmaticClearFrameRef = useRef<number | null>(null);
+  const programmaticClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [showJump, setShowJump] = useState(false);
-  const lastScrollTsRef = useRef(0);
-  const onScrollAwayRef = useRef(onScrollAway);
-  const autoScrollEnabledRef = useRef(autoScrollPreference);
-  const programmaticScrollRef = useRef(false);
-  const atBottomRef = useRef(true);
-  const userScrolledAwayRef = useRef(false);
-  const scrollToBottomRef = useRef<(behavior: ScrollBehavior) => void>(() => {});
-  const lastMessageMetaRef = useRef<{
-    id?: string;
-    role?: Message['role'];
-    placeholder: boolean;
-    contentLen: number;
-    reasoningLen: number;
-  }>();
-  const followThresholdPx = isMobile ? 120 : 180;
-  const overflowThresholdPx = Math.max(48, followThresholdPx / 2);
-  // Ref for debouncing resize observer updates
-  const resizeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const bottomThresholdPx = isMobile ? 56 : 40;
 
   useEffect(() => {
     onScrollAwayRef.current = onScrollAway;
   }, [onScrollAway]);
 
-  const syncScrollState = useCallback(() => {
+  useEffect(() => {
+    return () => {
+      if (followFrameRef.current !== null) {
+        cancelAnimationFrame(followFrameRef.current);
+      }
+      if (programmaticClearFrameRef.current !== null) {
+        cancelAnimationFrame(programmaticClearFrameRef.current);
+      }
+      if (programmaticClearTimerRef.current) {
+        clearTimeout(programmaticClearTimerRef.current);
+      }
+    };
+  }, []);
+
+  const readSnapshot = useCallback(() => {
     const el = containerRef.current;
-    if (!el) return { wasProgrammatic: false, scrolledAway: false };
+    if (!el) return null;
+    return getScrollSnapshot(el, { bottomThresholdPx });
+  }, [bottomThresholdPx]);
 
-    const distanceFromBottom = Math.max(el.scrollHeight - el.scrollTop - el.clientHeight, 0);
-    const withinFollowRange = distanceFromBottom <= followThresholdPx;
-    const hasOverflow = el.scrollHeight - el.clientHeight > overflowThresholdPx;
-    const showJumpNow = hasOverflow && !withinFollowRange;
-    const wasProgrammatic = programmaticScrollRef.current;
-    let scrolledAway = false;
+  const applySnapshot = useCallback((snapshot: ScrollSnapshot | null) => {
+    if (!snapshot) return;
 
-    if (wasProgrammatic) {
-      if (withinFollowRange) {
-        programmaticScrollRef.current = false;
-      }
-      autoScrollEnabledRef.current = true;
-    } else if (!withinFollowRange) {
-      if (autoScrollEnabledRef.current) {
-        autoScrollEnabledRef.current = false;
-        scrolledAway = true;
-      }
-    } else if (!userScrolledAwayRef.current) {
-      autoScrollEnabledRef.current = true;
+    hasOverflowRef.current = snapshot.hasOverflow;
+
+    if (snapshot.atBottom) {
+      followAllowedRef.current = true;
     }
 
-    atBottomRef.current = withinFollowRange;
-    setAtBottom((prev) => (prev === withinFollowRange ? prev : withinFollowRange));
-    setShowJump((prev) => (prev === showJumpNow ? prev : showJumpNow));
+    setAtBottom((prev) => (prev === snapshot.atBottom ? prev : snapshot.atBottom));
+    setShowJump((prev) => {
+      const next = snapshot.hasOverflow && !snapshot.atBottom && !followAllowedRef.current;
+      return prev === next ? prev : next;
+    });
+  }, []);
 
-    return { wasProgrammatic, scrolledAway };
-  }, [followThresholdPx, overflowThresholdPx, setAtBottom, setShowJump]);
+  const lockFollow = useCallback(() => {
+    if (!followAllowedRef.current) return;
+    followAllowedRef.current = false;
+    onScrollAwayRef.current?.();
+  }, []);
+
+  const markUserScrolledAway = useCallback(() => {
+    lockFollow();
+
+    const snapshot = readSnapshot();
+    if (snapshot) {
+      hasOverflowRef.current = snapshot.hasOverflow;
+      setAtBottom((prev) => (prev === snapshot.atBottom ? prev : snapshot.atBottom));
+      setShowJump(snapshot.hasOverflow && !snapshot.atBottom);
+    }
+  }, [lockFollow, readSnapshot]);
 
   const scrollToBottom = useCallback(
-    (behavior: ScrollBehavior) => {
+    (behavior: ScrollBehavior = 'auto') => {
       const el = containerRef.current;
       if (!el) return;
 
+      followAllowedRef.current = true;
       programmaticScrollRef.current = true;
-      autoScrollEnabledRef.current = true;
+      setShowJump(false);
 
-      // For instant/auto scrolls (chat switching), scroll immediately without RAF delay
-      if (behavior === 'auto' || behavior === 'instant') {
-        const target = Math.max(el.scrollHeight - el.clientHeight, 0);
-        try {
-          el.scrollTo({ top: target, behavior: 'auto' });
-        } catch {
-          el.scrollTop = target;
-        }
-        // Sync state on next frame
-        requestAnimationFrame(() => {
-          programmaticScrollRef.current = false;
-          syncScrollState();
-        });
-        return;
+      const target = Math.max(el.scrollHeight - el.clientHeight, 0);
+      try {
+        el.scrollTo({ top: target, behavior: normalizeScrollBehavior(behavior) });
+      } catch {
+        el.scrollTop = target;
       }
 
-      // For smooth scrolls, use single RAF to ensure DOM is ready
-      requestAnimationFrame(() => {
-        const element = containerRef.current;
-        if (!element) {
-          programmaticScrollRef.current = false;
-          return;
-        }
+      const clearProgrammatic = () => {
+        programmaticScrollRef.current = false;
+        applySnapshot(readSnapshot());
+      };
 
-        const target = Math.max(element.scrollHeight - element.clientHeight, 0);
+      if (programmaticClearTimerRef.current) {
+        clearTimeout(programmaticClearTimerRef.current);
+        programmaticClearTimerRef.current = null;
+      }
+      if (programmaticClearFrameRef.current !== null) {
+        cancelAnimationFrame(programmaticClearFrameRef.current);
+        programmaticClearFrameRef.current = null;
+      }
 
-        try {
-          element.scrollTo({ top: target, behavior });
-        } catch {
-          element.scrollTop = target;
-        }
-
-        // Give the smooth scroll time to start before syncing
-        setTimeout(() => {
-          programmaticScrollRef.current = false;
-          syncScrollState();
-        }, 300);
-      });
+      if (behavior === 'smooth' && !prefersReducedMotion) {
+        programmaticClearTimerRef.current = setTimeout(clearProgrammatic, 320);
+      } else {
+        programmaticClearFrameRef.current = requestAnimationFrame(() => {
+          programmaticClearFrameRef.current = null;
+          clearProgrammatic();
+        });
+      }
     },
-    [syncScrollState],
+    [applySnapshot, prefersReducedMotion, readSnapshot],
   );
 
-  // Keep ref in sync to avoid dependency in effects
-  useEffect(() => {
-    scrollToBottomRef.current = scrollToBottom;
+  const followToBottom = useCallback(() => {
+    if (!followAllowedRef.current) return;
+    if (followFrameRef.current !== null) return;
+
+    followFrameRef.current = requestAnimationFrame(() => {
+      followFrameRef.current = null;
+      if (!followAllowedRef.current) return;
+      scrollToBottom('auto');
+    });
   }, [scrollToBottom]);
 
-  // Scroll to bottom when switching chats
   useEffect(() => {
-    if (!chatId) return;
-    // Reset scroll state and scroll to bottom when chat changes
-    autoScrollEnabledRef.current = true;
-    userScrolledAwayRef.current = false;
-    programmaticScrollRef.current = false;
-    lastMessageMetaRef.current = undefined;
-    // Use 'auto' (instant) scroll when switching chats for immediate positioning
-    scrollToBottomRef.current('auto');
-  }, [chatId]);
-
-  // Force unlock autoscroll immediately on user interaction
-  const onUserScroll = useCallback(() => {
-    userScrolledAwayRef.current = true;
-    if (autoScrollEnabledRef.current) {
-      autoScrollEnabledRef.current = false;
-      if (onScrollAwayRef.current) onScrollAwayRef.current();
+    const el = containerRef.current;
+    const target = endRef.current;
+    if (!el || !target || typeof IntersectionObserver === 'undefined') {
+      applySnapshot(readSnapshot());
+      return;
     }
-  }, []);
 
-  // Watch for content size changes (e.g. syntax highlighting loading, images loading)
-  useEffect(() => {
-    const contentEl = contentRef.current;
-    const containerEl = containerRef.current;
-    if (!contentEl || !containerEl || typeof ResizeObserver === 'undefined') return;
-
-    let prevScrollHeight = containerEl.scrollHeight;
-    let pendingDelta = 0;
-    let wasAtBottom = false;
-
-    const applyResize = () => {
-      resizeDebounceRef.current = null;
-      if (pendingDelta > 0 && wasAtBottom) {
-        containerEl.scrollTop += pendingDelta;
-      }
-      wasAtBottom = false;
-      prevScrollHeight = containerEl.scrollHeight;
-      pendingDelta = 0;
-      syncScrollState();
-    };
-
-    const observer = new ResizeObserver(() => {
-      const currentScrollHeight = containerEl.scrollHeight;
-      const delta = currentScrollHeight - prevScrollHeight;
-
-      if (delta !== 0) {
-        if (pendingDelta === 0) {
-          const oldDistanceFromBottom =
-            prevScrollHeight - containerEl.scrollTop - containerEl.clientHeight;
-          // Only adjust if we were effectively at the bottom (strict threshold)
-          // and auto-scroll is enabled to prevent jumps from UI updates like plan card state changes
-          wasAtBottom = oldDistanceFromBottom < 20 && autoScrollEnabledRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        const snapshot = readSnapshot();
+        if (snapshot) {
+          applySnapshot({
+            ...snapshot,
+            atBottom: snapshot.atBottom || entry.isIntersecting,
+            showJump: snapshot.showJump && !entry.isIntersecting,
+          });
         }
-        pendingDelta += delta;
-        prevScrollHeight = currentScrollHeight;
+      },
+      {
+        root: el,
+        rootMargin: `0px 0px ${bottomThresholdPx}px 0px`,
+        threshold: 0,
+      },
+    );
 
-        // Debounce to batch rapid size changes (e.g. syntax highlighting, images)
-        if (resizeDebounceRef.current) {
-          clearTimeout(resizeDebounceRef.current);
-        }
-        resizeDebounceRef.current = setTimeout(applyResize, 16); // ~1 frame
-      }
-    });
-
-    observer.observe(contentEl);
-    return () => {
-      observer.disconnect();
-      if (resizeDebounceRef.current) {
-        clearTimeout(resizeDebounceRef.current);
-        resizeDebounceRef.current = null;
-      }
-    };
-  }, [syncScrollState]);
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [applySnapshot, bottomThresholdPx, readSnapshot]);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
     const handleWheel = (event: WheelEvent) => {
-      if (atBottomRef.current) {
-        const scrollingUp = event.deltaY < 0;
-        if (!scrollingUp) return;
+      if (event.deltaY < 0 && hasOverflowRef.current) {
+        programmaticScrollRef.current = false;
+        lockFollow();
       }
-      onUserScroll();
     };
 
-    const handleTouchStart = () => {
-      if (atBottomRef.current) return;
-      onUserScroll();
+    const handleTouchStart = (event: TouchEvent) => {
+      touchStartYRef.current = event.touches[0]?.clientY ?? null;
     };
 
-    // Scroll event for checking if we're back at bottom
+    const handleTouchMove = (event: TouchEvent) => {
+      const startY = touchStartYRef.current;
+      const currentY = event.touches[0]?.clientY;
+      if (startY == null || currentY == null) return;
+      if (currentY - startY > 6 && hasOverflowRef.current) {
+        programmaticScrollRef.current = false;
+        lockFollow();
+      }
+    };
+
     const handleScroll = () => {
-      // If programmatic, ignore
+      const snapshot = readSnapshot();
+      if (!snapshot) return;
+
       if (programmaticScrollRef.current) {
+        applySnapshot(snapshot);
         return;
       }
 
-      // Check position
-      const { wasProgrammatic } = syncScrollState();
-      if (wasProgrammatic) return;
-
-      // User manually reached bottom — clear scroll-away lock
-      if (userScrolledAwayRef.current && atBottomRef.current) {
-        userScrolledAwayRef.current = false;
-        autoScrollEnabledRef.current = true;
+      if (!snapshot.atBottom) {
+        markUserScrolledAway();
+        return;
       }
+
+      followAllowedRef.current = true;
+      applySnapshot(snapshot);
     };
 
     el.addEventListener('scroll', handleScroll, { passive: true });
     el.addEventListener('wheel', handleWheel, { passive: true });
     el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchmove', handleTouchMove, { passive: true });
 
-    syncScrollState();
+    applySnapshot(readSnapshot());
 
     return () => {
       el.removeEventListener('scroll', handleScroll);
       el.removeEventListener('wheel', handleWheel);
       el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
     };
-  }, [isMobile, syncScrollState, onUserScroll]);
+  }, [applySnapshot, lockFollow, markUserScrolledAway, readSnapshot]);
 
   useEffect(() => {
-    syncScrollState();
-  }, [messages.length, syncScrollState]);
+    const contentEl = contentRef.current;
+    if (!contentEl || typeof ResizeObserver === 'undefined') return;
 
-  const lastLen = useMemo(() => {
-    const last = messages[messages.length - 1];
-    if (!last) return 0;
-    return (last.content?.length ?? 0) + (last.reasoning?.length ?? 0);
-  }, [messages]);
-
-  useEffect(() => {
-    if (messages.length === 0) {
-      lastMessageMetaRef.current = undefined;
-      autoScrollEnabledRef.current = true;
-      userScrolledAwayRef.current = false;
-      programmaticScrollRef.current = false;
-      atBottomRef.current = true;
-      // Reset state only when it changes to avoid render loops on new-array renders.
-      if (showJump || !atBottom) {
-        setShowJump(false);
-        setAtBottom(true);
+    const observer = new ResizeObserver(() => {
+      if (autoScrollPreference && followAllowedRef.current) {
+        followToBottom();
+      } else {
+        applySnapshot(readSnapshot());
       }
+    });
+
+    observer.observe(contentEl);
+    return () => observer.disconnect();
+  }, [applySnapshot, autoScrollPreference, followToBottom, readSnapshot]);
+
+  useEffect(() => {
+    if (!chatId) return;
+    if (previousChatIdRef.current === chatId) return;
+    previousChatIdRef.current = chatId;
+
+    followAllowedRef.current = true;
+    programmaticScrollRef.current = false;
+    touchStartYRef.current = null;
+    lastMessageMetaRef.current = undefined;
+    scrollToBottom('auto');
+  }, [chatId, scrollToBottom]);
+
+  const lastMessageMeta = useMemo<LastMessageMeta | null>(() => {
+    const last = messages[messages.length - 1];
+    if (!last) return null;
+    const previous = messages[messages.length - 2];
+
+    return {
+      id: last.id,
+      role: last.role,
+      placeholder: isAssistantPlaceholder(last, previous),
+      contentLen: last.content?.length ?? 0,
+      reasoningLen: last.reasoning?.length ?? 0,
+    };
+  }, [isAssistantPlaceholder, messages]);
+
+  useEffect(() => {
+    if (!lastMessageMeta) {
+      lastMessageMetaRef.current = undefined;
+      followAllowedRef.current = true;
+      programmaticScrollRef.current = false;
+      hasOverflowRef.current = false;
+      setAtBottom(true);
+      setShowJump(false);
       return;
     }
 
-    const last = messages[messages.length - 1];
-    const secondToLast = messages[messages.length - 2];
-    const placeholder = isAssistantPlaceholder(last, secondToLast);
-
-    const meta = {
-      id: last?.id,
-      role: last?.role,
-      placeholder,
-      contentLen: last?.content?.length ?? 0,
-      reasoningLen: last?.reasoning?.length ?? 0,
-    };
-
-    const prevMeta = lastMessageMetaRef.current;
+    const previous = lastMessageMetaRef.current;
     if (
-      prevMeta &&
-      prevMeta.id === meta.id &&
-      prevMeta.role === meta.role &&
-      prevMeta.placeholder === meta.placeholder &&
-      prevMeta.contentLen === meta.contentLen &&
-      prevMeta.reasoningLen === meta.reasoningLen
+      previous &&
+      previous.id === lastMessageMeta.id &&
+      previous.role === lastMessageMeta.role &&
+      previous.placeholder === lastMessageMeta.placeholder &&
+      previous.contentLen === lastMessageMeta.contentLen &&
+      previous.reasoningLen === lastMessageMeta.reasoningLen
     ) {
       return;
     }
 
-    lastMessageMetaRef.current = meta;
-    const hasRecentUserMessage = meta.role === 'user' || meta.placeholder;
-    if (hasRecentUserMessage && autoScrollPreference) {
-      userScrolledAwayRef.current = false;
-      autoScrollEnabledRef.current = true;
+    lastMessageMetaRef.current = lastMessageMeta;
+
+    const isUserTurn = lastMessageMeta.role === 'user' || lastMessageMeta.placeholder;
+    if (isUserTurn) {
+      scrollToBottom('auto');
+      return;
     }
 
-    // Always scroll user's own message into view; only follow assistant when preference is on
-    const shouldFollow =
-      hasRecentUserMessage ||
-      (autoScrollPreference && atBottomRef.current && autoScrollEnabledRef.current);
-
-    if (shouldFollow) {
-      if (!programmaticScrollRef.current) {
-        scrollToBottomRef.current(prefersReducedMotion ? 'auto' : 'smooth');
-      }
-    } else if (!atBottomRef.current) {
-      setShowJump((prev) => (prev === true ? prev : true));
+    if (autoScrollPreference && followAllowedRef.current) {
+      followToBottom();
+    } else {
+      applySnapshot(readSnapshot());
     }
   }, [
-    messages,
-    prefersReducedMotion,
-    isAssistantPlaceholder,
-    showJump,
-    atBottom,
+    applySnapshot,
     autoScrollPreference,
+    followToBottom,
+    lastMessageMeta,
+    readSnapshot,
+    scrollToBottom,
   ]);
 
   useEffect(() => {
-    if (!autoScrollPreference) return; // user disabled auto-scroll
-    if (!autoScrollEnabledRef.current) return;
-    if (isStreaming && atBottomRef.current) {
-      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      if (now - lastScrollTsRef.current > 160) {
-        scrollToBottomRef.current('auto');
-        lastScrollTsRef.current = now;
-      }
-    }
-    if (!isStreaming) lastScrollTsRef.current = 0;
-  }, [isStreaming, lastLen, autoScrollPreference]);
+    if (!isStreaming || !autoScrollPreference || !followAllowedRef.current) return;
+    followToBottom();
+  }, [autoScrollPreference, followToBottom, isStreaming]);
 
   const jumpToLatest = useCallback(() => {
-    userScrolledAwayRef.current = false;
-    autoScrollEnabledRef.current = true;
-    setShowJump(false); // Explicitly hide it immediately on click
+    followAllowedRef.current = true;
     scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
-  }, [prefersReducedMotion, scrollToBottom, setShowJump]);
+  }, [prefersReducedMotion, scrollToBottom]);
 
   return {
     containerRef,
@@ -368,7 +391,6 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     endRef,
     atBottom,
     showJump,
-    setShowJump,
     scrollToBottom,
     jumpToLatest,
   };

@@ -18,18 +18,11 @@
   overflow: visible;
   max-width: none;
   border-radius: 0;
-  margin: 0;
+  margin: 0 0 var(--space-7);
   padding: 0;
   position: relative;
   will-change: opacity;
   touch-action: manipulation;
-}
-
-@supports (content-visibility: auto) {
-  .messageCard {
-    content-visibility: auto;
-    contain-intrinsic-size: 1px 260px;
-  }
 }
 
 .messageCard:hover {
@@ -41,7 +34,7 @@
   background: transparent;
   border: none;
   margin: 0;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) 0;
   border-radius: 0;
   width: 100%;
   max-width: none;
@@ -61,46 +54,63 @@
 
 /* User: Right-positioned with warm box styling — like a note or query */
 .user {
-  background: var(--surface-paper-warm);
-  border: 1px solid color-mix(in oklab, var(--color-accent) 38%, var(--rule-accent));
+  background: color-mix(in oklab, var(--surface-paper-warm) 92%, var(--color-muted));
+  border: 1px solid color-mix(in oklab, var(--color-border) 82%, transparent);
   margin-left: auto;
   margin-right: 0;
-  padding: var(--space-3) var(--space-4);
+  padding: 0.625rem 0.875rem;
   border-radius: var(--radius-editorial);
   width: fit-content;
-  max-width: min(85%, 640px);
+  max-width: min(72%, 38rem);
   text-align: left;
-  box-shadow: var(--shadow-message);
+  box-shadow: 0 1px 2px rgba(80, 60, 40, 0.08);
   transition: box-shadow var(--duration-med) var(--ease-standard);
 
   /* Contemporary sans for user — clear and direct */
   font-family: var(--font-sans);
-  font-size: 1.05rem;
-  line-height: 1.55;
-  letter-spacing: 0.002em;
+  font-size: 0.985rem;
+  line-height: 1.5;
+  letter-spacing: 0;
   color: var(--color-fg);
 }
 
 .user:hover {
-  box-shadow: var(--shadow-message-hover);
+  box-shadow: 0 2px 8px rgba(80, 60, 40, 0.1);
 }
 
 .actions {
   opacity: 0;
+  pointer-events: auto;
 }
 
-/* Assistant actions sit near the left-aligned text, not the far right edge */
 .assistant .actions {
-  right: auto;
-  left: var(--space-3);
+  right: 0;
+  left: auto;
 }
 
 .messageCard :global(.markdown) {
-  max-width: 72ch;
+  max-width: min(100%, 68ch);
 }
 
 .assistant :global(.markdown) {
-  max-width: none;
+  max-width: min(100%, 68ch);
+}
+
+.user :global(.message-user-body) {
+  padding: 0;
+}
+
+.user :global(.markdown) {
+  max-width: 100%;
+  line-height: 1.5;
+}
+
+.user :global(.markdown p) {
+  margin: 0;
+}
+
+.user :global(.markdown p + p) {
+  margin-top: 0.65rem;
 }
 
 /* Streaming content: render as plain text to avoid markdown reparse during token flow */
@@ -179,31 +189,36 @@
 
   .messageCard .actions {
     opacity: 0;
+    pointer-events: auto;
   }
 
   .active .actions {
     opacity: 1;
+    pointer-events: auto;
   }
 
   /* Mobile: slightly tighter padding */
   .assistant {
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-2) 0;
   }
 
   .user {
-    padding: var(--space-2) var(--space-3);
-    max-width: 92%;
+    padding: 0.55rem 0.75rem;
+    max-width: 88%;
     border-radius: var(--radius-editorial);
+    font-size: 0.95rem;
   }
 }
 
 @media (min-width: 640px) {
   .messageCard .actions {
     opacity: 0;
+    pointer-events: auto;
   }
 
   .messageCard:hover .actions,
   .messageCard:focus-within .actions {
     opacity: 1;
+    pointer-events: auto;
   }
 }

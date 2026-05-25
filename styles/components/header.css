@@ -16,6 +16,20 @@
   .top-header.app-header {
     flex-direction: column;
     align-items: stretch;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    background: var(--surface-paper);
+    border: 0;
+    border-bottom: 1px solid color-mix(in oklab, var(--color-border) 62%, transparent);
+    border-radius: 0;
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--surface-paper) 72%, transparent);
+  }
+
+  .top-header.app-header::after {
+    content: none;
   }
 
   /* Center section (model picker or tutor card) */

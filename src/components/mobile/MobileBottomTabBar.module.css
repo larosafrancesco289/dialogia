@@ -1,29 +1,26 @@
 .tabBar {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  left: 50%;
   z-index: 100;
 
   /* Layout */
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  justify-content: center;
+  gap: 4px;
 
-  /* Size with safe area */
-  height: calc(56px + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  width: min(320px, calc(100% - 32px));
+  height: 52px;
+  padding: 4px;
+  transform: translateX(-50%);
 
-  /* Imperial Archive styling */
-  background: var(--surface-paper);
-  border-top: 1px solid var(--color-border);
+  background: color-mix(in oklab, var(--surface-paper) 92%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-border) 88%, transparent);
+  border-radius: 16px;
+  backdrop-filter: blur(18px);
 
-  /* Warm shadow upward - scholarly feel */
-  box-shadow:
-    0 -1px 3px rgba(120, 90, 50, 0.04),
-    0 -4px 12px rgba(100, 80, 40, 0.03);
+  box-shadow: 0 10px 28px rgba(80, 60, 40, 0.14);
 }
 
 .tab {
@@ -32,45 +29,49 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: var(--space-2) var(--space-1);
-  min-height: 56px;
+  padding: 0;
+  min-width: 0;
+  min-height: 44px;
 
   /* Reset button styles */
   background: transparent;
   border: none;
+  border-radius: 12px;
   cursor: pointer;
 
   /* Default state */
   color: var(--color-fg-muted);
-  transition: color var(--duration-fast) var(--ease-standard);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
 }
 
 .tab:hover {
   color: var(--color-fg);
+  background: color-mix(in oklab, var(--color-muted) 65%, transparent);
 }
 
 .tab.active {
   color: var(--color-accent);
+  background: color-mix(in oklab, var(--color-accent) 12%, transparent);
 }
 
 .tabIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
 }
 
 .tabLabel {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  display: none;
 }
 
 /* Primary (New Chat) tab */
 .tab.primary {
-  flex: 0 0 auto;
+  flex: 1;
   padding: 0;
 }
 
@@ -78,30 +79,28 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
 
-  /* Imperial Archive accent styling */
-  background: linear-gradient(
-    135deg,
-    var(--color-accent) 0%,
-    color-mix(in oklab, var(--color-accent) 85%, #000) 100%
-  );
-  border-radius: var(--radius-lg);
+  background: var(--color-fg);
+  border-radius: 13px;
 
-  /* Inset highlight for dimension */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 2px 8px rgba(185, 151, 91, 0.25),
-    0 4px 12px rgba(120, 90, 50, 0.15);
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 2px 8px rgba(80, 60, 40, 0.14);
 
-  color: #0b0b0b;
+  color: var(--color-canvas);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.primaryButton:hover {
+  background: color-mix(in oklab, var(--color-fg) 88%, var(--color-accent));
 }
 
 .primaryButton:active {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 1px 4px rgba(185, 151, 91, 0.2);
+  transform: scale(0.96);
 }
 
 /* Hide when keyboard is active */

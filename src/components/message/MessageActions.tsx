@@ -20,7 +20,7 @@ export function MessageActions({
   return (
     <div
       className={`${styles.actions} message-actions`}
-      style={isMobile ? { opacity: 1 } : undefined}
+      style={isMobile ? { opacity: 1, pointerEvents: 'auto' } : undefined}
     >
       {isEditing ? (
         <div className="message-actions__group">
