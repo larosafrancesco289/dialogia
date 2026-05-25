@@ -42,7 +42,7 @@ export function UserMessage({
   attachments,
 }: UserMessageProps) {
   return (
-    <div className="relative">
+    <div>
       {showInlineActions && (
         <MessageActions
           isEditing={isEditing}
@@ -77,7 +77,7 @@ export function UserMessage({
 
       <MessageAttachments attachments={attachments} onOpenLightbox={setLightbox} />
 
-      <div className="px-4 py-3">
+      <div className="message-user-body">
         {isEditing ? (
           <textarea
             className="message-edit-textarea message-edit-textarea--user"

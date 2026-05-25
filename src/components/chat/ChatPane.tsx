@@ -15,8 +15,8 @@ export function ChatPane() {
   } as CSSProperties;
   if (!chat) return <WelcomeHero keyboardMetrics={keyboardMetrics} />;
   return (
-    <div className="h-full min-w-0 flex flex-col" style={keyboardVars}>
-      <div className="flex-1 min-h-0 min-w-0">
+    <div className="chat-pane relative h-full min-w-0 flex flex-col" style={keyboardVars}>
+      <div className="chat-pane__scroll flex-1 min-h-0 min-w-0">
         <MessageList chatId={chat.id} />
       </div>
       <Composer keyboardMetrics={keyboardMetrics} />

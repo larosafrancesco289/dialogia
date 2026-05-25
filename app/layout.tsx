@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`bg-surface text-fg ${newsreader.variable} ${plusJakartaSans.variable}`}
+      className={`bg-canvas text-fg ${newsreader.variable} ${plusJakartaSans.variable}`}
       suppressHydrationWarning
     >
       <head>
