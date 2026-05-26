@@ -261,7 +261,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       {showJump && (
         <div className="jump-to-latest">
           <button
-            className="btn-fab pointer-events-auto !w-12 !h-12 !p-0"
+            className="btn-fab pointer-events-auto !w-9 !h-9 !p-0"
             aria-label="Scroll to bottom"
             title="Scroll to bottom"
             onClick={() => {
@@ -269,7 +269,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
               // Intentionally not setting setShowJump(false) here; let the scroll handler do it
             }}
           >
-            <ChevronDownIcon className="h-6 w-6" />
+            <ChevronDownIcon className="h-4 w-4" />
           </button>
         </div>
       )}

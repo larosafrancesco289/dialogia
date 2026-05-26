@@ -60,7 +60,7 @@
   .jump-to-latest {
     position: sticky;
     bottom: calc(
-      var(--space-8) + max(10px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) +
+      max(0px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) - var(--space-5) +
         var(--keyboard-offset, 0px)
     );
     display: flex;
@@ -68,26 +68,52 @@
     padding: 0;
     width: 100%;
     pointer-events: none;
-    z-index: 60;
+    z-index: 65;
     height: 0;
     overflow: visible;
   }
   .jump-to-latest__button {
     pointer-events: auto;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
   }
   @media (max-width: 640px) {
     .jump-to-latest {
       bottom: calc(
-        var(--space-8) + max(14px, env(safe-area-inset-bottom)) + var(--composer-height, 0px)
+        max(0px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) - var(--space-5)
       );
     }
 
     html.keyboard-active .jump-to-latest {
       bottom: calc(
-        var(--space-8) + max(14px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) +
+        max(0px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) - var(--space-5) +
           var(--keyboard-offset, 0px)
+      );
+    }
+  }
+
+  .chat-pane__fade {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(
+      var(--composer-height, 0px) + max(0px, env(safe-area-inset-bottom)) + var(--space-6) +
+        var(--keyboard-offset, 0px)
+    );
+    pointer-events: none;
+    z-index: 55;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-canvas) 0%, transparent) 0%,
+      color-mix(in oklab, var(--color-canvas) 70%, transparent) 35%,
+      var(--color-canvas) 75%
+    );
+  }
+  @media (max-width: 640px) {
+    .chat-pane__fade {
+      height: calc(
+        var(--composer-height, 0px) + max(0px, env(safe-area-inset-bottom)) + var(--space-4)
       );
     }
   }

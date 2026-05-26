@@ -19,6 +19,7 @@ export function ChatPane() {
       <div className="chat-pane__scroll flex-1 min-h-0 min-w-0">
         <MessageList chatId={chat.id} />
       </div>
+      <div className="chat-pane__fade" aria-hidden />
       <Composer keyboardMetrics={keyboardMetrics} />
       {/* Settings drawer is rendered at the app level so it's available on the welcome page too */}
     </div>
