@@ -4,7 +4,10 @@
 
 import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
 import { captureRequestDebug } from '@/lib/agent/debug';
-import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
+import {
+  createMessageStreamCallbacks,
+  type MessageStreamCallbacks,
+} from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
 import { logger } from '@/lib/logger';
 import { clearTurnController, startToolCallLogEntry } from '@/lib/turns/runtime';
@@ -319,7 +322,7 @@ export async function executeStreamingTurn(
   };
 
   // Create UI-connected callbacks
-  const createUiCallbacks = (startedAt: number): StreamCallbacks =>
+  const createUiCallbacks = (startedAt: number): MessageStreamCallbacks =>
     createMessageStreamCallbacks(
       {
         chatId,
@@ -357,6 +360,17 @@ export async function executeStreamingTurn(
         };
       });
       return result ?? store;
+    });
+  };
+
+  const clearVisibleDraft = (callbacks?: MessageStreamCallbacks) => {
+    callbacks?.discardPendingText();
+    set((store) => {
+      const result = updateMessageById(store, chatId, assistantMessage.id, (msg) => {
+        if (!msg.content) return msg;
+        return { ...msg, content: '' };
+      });
+      return result ?? {};
     });
   };
 
@@ -603,6 +617,7 @@ export async function executeStreamingTurn(
     return buildResult(state, finalSystem, sideEffects);
   }
 
+  clearVisibleDraft(uiCallbacks);
   await processToolRound(roundContent, scheduled, 1, {
     reasoningDetails: roundReasoningDetails,
     reasoningText: '',
@@ -689,6 +704,7 @@ export async function executeStreamingTurn(
     ...convo.filter((m) => m.role !== 'system'),
   ];
 
+  clearVisibleDraft();
   await executeStreamCall(ctx, {
     messages: applyCacheBreakpoints(finalMessages),
     tools: planningToolDefinition,
