@@ -113,12 +113,6 @@
   margin-top: 0.65rem;
 }
 
-/* Streaming content: render as plain text to avoid markdown reparse during token flow */
-.streamingText {
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
 /* Typing Indicator - simplified, inline feel */
 .typingIndicator {
   display: inline-flex;

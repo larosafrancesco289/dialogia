@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { stripLeadingToolJson } from '@/lib/agent/streaming/stripToolJson';
-import { createTypewriter } from '@/lib/agent/streaming/typewriter';
+import { createStreamAccumulator } from '@/lib/agent/streaming/accumulator';
 import type { Message } from '@/lib/types';
 import type { TurnStoreState } from '@/lib/agent/contracts';
 import type { StoreSetter, StoreGetter } from '@/lib/agent/types';
@@ -41,10 +41,14 @@ export type MessageStreamOptions = {
   persistMessage: (message: Message) => Promise<void>;
 };
 
+export type MessageStreamCallbacks = StreamCallbacks & {
+  discardPendingText: () => void;
+};
+
 export function createMessageStreamCallbacks(
   options: MessageStreamOptions,
   timing: { startedAt: number },
-): StreamCallbacks {
+): MessageStreamCallbacks {
   const {
     chatId,
     assistantMessage,
@@ -70,8 +74,7 @@ export function createMessageStreamCallbacks(
     }));
   };
 
-  // Typewriter for smooth character-by-character emission
-  const typewriter = createTypewriter(flushDelta);
+  const contentAccumulator = createStreamAccumulator(flushDelta);
 
   const updateReasoning = (delta: string) => {
     if (!delta) return;
@@ -121,8 +124,7 @@ export function createMessageStreamCallbacks(
     });
   };
 
-  // Typewriter for reasoning tokens (separate buffer)
-  const reasoningTypewriter = createTypewriter(updateReasoning);
+  const reasoningAccumulator = createStreamAccumulator(updateReasoning);
 
   const callbacks = {
     onAnnotations: (annotations: unknown) => {
@@ -167,26 +169,25 @@ export function createMessageStreamCallbacks(
           if (rest && !(rest.startsWith('{') || rest.startsWith('```'))) {
             startedStreaming = true;
             leadingBuffer = '';
-            typewriter.push(stripped);
+            contentAccumulator.push(stripped);
           }
         } else if (leadingBuffer.length > 512) {
           startedStreaming = true;
           const toEmit = leadingBuffer;
           leadingBuffer = '';
-          typewriter.push(toEmit);
+          contentAccumulator.push(toEmit);
         }
       } else {
-        typewriter.push(delta);
+        contentAccumulator.push(delta);
       }
     },
     onReasoningToken: (delta: string) => {
       if (firstTokenAt == null) firstTokenAt = performance.now();
-      reasoningTypewriter.push(delta);
+      reasoningAccumulator.push(delta);
     },
     onDone: async (full: string, extras?: StreamDoneExtras) => {
-      // Flush any remaining buffered content immediately on completion
-      typewriter.flush();
-      reasoningTypewriter.flush();
+      contentAccumulator.flush();
+      reasoningAccumulator.flush();
 
       const state = get();
       const current = state.messagesById[assistantMessage.id];
@@ -225,11 +226,13 @@ export function createMessageStreamCallbacks(
       clearController?.();
     },
     onError: (error: Error) => {
-      // Flush typewriters immediately on error (user cancellation, etc.)
-      typewriter.flush();
-      reasoningTypewriter.flush();
+      contentAccumulator.flush();
+      reasoningAccumulator.flush();
       notify(get, error.message);
       clearController?.();
+    },
+    discardPendingText: () => {
+      contentAccumulator.cancel();
     },
   };
 
