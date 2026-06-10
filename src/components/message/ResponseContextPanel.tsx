@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState, type MouseEvent } from 'react';
+import { useId, useMemo, useState } from 'react';
 import {
   ArrowTopRightOnSquareIcon,
   CheckIcon,
@@ -65,35 +65,51 @@ function labelForTool(call: ToolCallLogEntry) {
   return call.name.replace(/_/g, ' ');
 }
 
-function labelForActivityTool(item: ToolActivityItem) {
-  if (item.name === 'web_search') return 'Calling web search';
-  return `Calling ${item.name.replace(/_/g, ' ')}`;
+function toolDisplayName(name: string) {
+  const text = name.replace(/_/g, ' ');
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function summaryForActivityTool(item: ToolActivityItem) {
-  const output = item.output;
+function toolQuery(item: ToolActivityItem) {
   const input = item.input;
-  if (item.name === 'web_search') {
-    const query =
-      typeof input?.query === 'string'
-        ? input.query
-        : typeof output?.query === 'string'
-          ? output.query
-          : '';
-    const results =
-      typeof item.metadata?.results === 'number'
-        ? item.metadata.results
-        : Array.isArray(output?.resultsPreview)
-          ? output.resultsPreview.length
-          : undefined;
-    if (item.status === 'pending') return query || 'Choosing search terms';
-    if (item.status === 'error') return item.error || 'Search failed';
-    return `${results ?? 0} result${results === 1 ? '' : 's'}${query ? `, ${query}` : ''}`;
+  const output = item.output;
+  if (typeof input?.query === 'string') return input.query;
+  if (typeof output?.query === 'string') return output.query;
+  return '';
+}
+
+/** The object of the tool call — what was searched for or fetched. */
+function toolObject(item: ToolActivityItem) {
+  const query = toolQuery(item);
+  if (query) return `‘${query}’`;
+  if (typeof item.input?.url === 'string') return hostname(item.input.url);
+  return '';
+}
+
+function formatDuration(duration?: number) {
+  if (typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) return '';
+  return duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${Math.round(duration)}ms`;
+}
+
+function toolResultCount(item: ToolActivityItem) {
+  if (typeof item.metadata?.results === 'number') return item.metadata.results;
+  if (Array.isArray(item.output?.resultsPreview)) return item.output.resultsPreview.length;
+  return undefined;
+}
+
+function toolAnnotation(item: ToolActivityItem): { text: string; live?: boolean; error?: boolean } {
+  if (item.status === 'pending') {
+    return { text: item.name === 'web_search' ? 'Searching' : 'Running', live: true };
   }
-  if (item.status === 'pending') return 'Running';
-  if (item.status === 'error') return item.error || 'Failed';
-  if (typeof item.metadata?.notes === 'string') return item.metadata.notes;
-  return 'Done';
+  if (item.status === 'error') {
+    return { text: item.error || 'Failed', error: true };
+  }
+  if (item.name === 'web_search') {
+    const results = toolResultCount(item);
+    return { text: `${results ?? 0} result${results === 1 ? '' : 's'}` };
+  }
+  if (typeof item.metadata?.notes === 'string') return { text: item.metadata.notes };
+  return { text: formatDuration(item.duration) || 'Done' };
 }
 
 function activityFromToolCall(call: ToolCallLogEntry): ToolActivityItem {
@@ -177,6 +193,14 @@ export function buildOrderedResponseActivity({
   return items.sort((a, b) => a.timestamp - b.timestamp);
 }
 
+function entryGlyph(item: ToolActivityItem) {
+  if (item.name === 'web_search') return <MagnifyingGlassIcon className="h-full w-full" />;
+  if (item.name.includes('fetch') || typeof item.input?.url === 'string') {
+    return <GlobeAltIcon className="h-full w-full" />;
+  }
+  return <WrenchScrewdriverIcon className="h-full w-full" />;
+}
+
 export function ResponseContextPanel({
   reasoning,
   toolCalls = [],
@@ -203,7 +227,10 @@ export function ResponseContextPanel({
       buildOrderedResponseActivity({ activity, reasoning, toolCalls: sortedToolCalls, sources }),
     [activity, reasoning, sortedToolCalls, sources],
   );
-  const visibleToolCount = countActivity(orderedActivity, 'tool_call');
+  const toolItems = orderedActivity.filter(
+    (item): item is ToolActivityItem => item.type === 'tool_call',
+  );
+  const visibleToolCount = toolItems.length;
   const hasToolCalls = visibleToolCount > 0;
   const hasActivity = orderedActivity.length > 0;
 
@@ -212,16 +239,24 @@ export function ResponseContextPanel({
     if (runningTool) return labelForTool(runningTool);
     const latestActivity = orderedActivity[orderedActivity.length - 1];
     if (latestActivity?.type === 'tool_call' && latestActivity.status === 'pending') {
-      return labelForActivityTool(latestActivity);
+      const object = toolObject(latestActivity);
+      return `${toolDisplayName(latestActivity.name)}${object ? ` — ${object}` : ''}`;
     }
     if (isSearching) return sources?.query ? `Searching: ${sources.query}` : 'Searching sources';
     if (hasSearchError) return sources?.error || 'Search failed';
+    if (isStreaming && latestActivity?.type === 'reasoning') {
+      return compactText(latestActivity.text, 90);
+    }
     if (hasActivity) {
       const thoughtCount = countActivity(orderedActivity, 'reasoning');
-      const toolCount = countActivity(orderedActivity, 'tool_call');
+      const searchCount = toolItems.filter((item) => item.name === 'web_search').length;
+      const toolNoun =
+        visibleToolCount > 0 && searchCount === visibleToolCount
+          ? `search${visibleToolCount === 1 ? '' : 'es'}`
+          : `tool${visibleToolCount === 1 ? '' : 's'}`;
       const parts = [
         thoughtCount ? `${thoughtCount} thought${thoughtCount === 1 ? '' : 's'}` : '',
-        toolCount ? `${toolCount} tool${toolCount === 1 ? '' : 's'}` : '',
+        visibleToolCount ? `${visibleToolCount} ${toolNoun}` : '',
       ].filter(Boolean);
       return parts.join(', ');
     }
@@ -242,8 +277,7 @@ export function ResponseContextPanel({
   )
     return null;
 
-  const copyReasoning = async (event: MouseEvent) => {
-    event.stopPropagation();
+  const copyReasoning = async () => {
     if (!hasReasoning) return;
     try {
       await navigator.clipboard.writeText(reasoning);
@@ -254,217 +288,171 @@ export function ResponseContextPanel({
     }
   };
 
+  const showSourcesEntry = hasSources || isSearching || hasSearchError;
+
   return (
-    <section className="mx-4 mt-3 mb-2 overflow-hidden rounded-[var(--radius-editorial)] border border-[var(--color-border)] bg-[var(--marginalia-bg)] text-[var(--color-fg)]">
-      <button
-        type="button"
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-[var(--color-surface)]"
-        aria-expanded={expanded}
-        aria-controls={bodyId}
-        onClick={onToggle}
-      >
-        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-surface)] text-[var(--color-accent)]">
-          {isSearching ||
-          sortedToolCalls.some(
-            (call) => call.name === 'web_search' && call.status === 'pending',
-          ) ? (
-            <MagnifyingGlassIcon className="h-4 w-4" />
+    <section className="response-ledger">
+      <div className="response-ledger__head">
+        <button
+          type="button"
+          className="response-ledger__toggle"
+          aria-expanded={expanded}
+          aria-controls={bodyId}
+          onClick={onToggle}
+        >
+          {isSearching || toolItems.some((item) => item.status === 'pending') ? (
+            <MagnifyingGlassIcon className="response-ledger__glyph" />
           ) : (
-            <LightBulbIcon className="h-4 w-4" />
+            <LightBulbIcon className="response-ledger__glyph" />
           )}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold tracking-[0.08em] text-[var(--color-fg-muted)]">
-              Reasoning
-            </span>
-            {hasToolCalls && (
-              <span className="text-[11px] font-medium text-[var(--color-fg-muted)]">
-                {visibleToolCount} tool{visibleToolCount === 1 ? '' : 's'}
-              </span>
-            )}
-            {hasSearchError && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--color-danger)]">
-                <ExclamationCircleIcon className="h-3.5 w-3.5" />
-                Search failed
-              </span>
-            )}
-          </span>
+          <span className="response-ledger__title">Reasoning</span>
           {summary && (
-            <span className="mt-0.5 block truncate text-sm text-[var(--color-fg-muted)]">
+            <span className={`response-ledger__summary${isStreaming ? ' is-live' : ''}`}>
               {summary}
             </span>
           )}
-        </span>
-        <ChevronDownIcon
-          className={`h-4 w-4 shrink-0 text-[var(--color-fg-muted)] transition-transform duration-200 ${
-            expanded ? 'rotate-180' : ''
-          }`}
-        />
-      </button>
+          {hasSearchError && !expanded && (
+            <span className="response-ledger__error">
+              <ExclamationCircleIcon className="h-3.5 w-3.5" />
+              Search failed
+            </span>
+          )}
+          <span className="response-ledger__rule" aria-hidden="true" />
+          <ChevronDownIcon className={`response-ledger__chevron${expanded ? ' is-open' : ''}`} />
+        </button>
+        {expanded && hasReasoning && (
+          <button
+            type="button"
+            className={`response-ledger__copy${copied ? ' is-success' : ''}`}
+            aria-label={copied ? 'Copied' : 'Copy reasoning'}
+            title={copied ? 'Copied' : 'Copy reasoning'}
+            onClick={copyReasoning}
+          >
+            {copied ? (
+              <CheckIcon className="h-3.5 w-3.5" />
+            ) : (
+              <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+            )}
+          </button>
+        )}
+      </div>
 
       {expanded && (
         <div className="panel-reveal">
-          <div id={bodyId} className="border-t border-[var(--rule-light)] px-3 pb-2.5 pt-2">
-            <div className="space-y-1.5">
+          <div>
+            <div id={bodyId} className="response-ledger__timeline">
               {orderedActivity.map((item) => {
                 if (item.type === 'reasoning') {
                   return (
-                    <div
-                      key={item.id}
-                      className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-2 text-sm"
-                    >
-                      <span className="mt-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-surface)] text-[var(--color-fg-muted)]">
-                        <LightBulbIcon className="h-3.5 w-3.5" />
+                    <div key={item.id} className="response-ledger__entry">
+                      <span className="response-ledger__entry-glyph" aria-hidden="true">
+                        <LightBulbIcon className="h-full w-full" />
                       </span>
-                      <div className="min-w-0 rounded-[var(--radius-editorial)] px-2 py-1.5 hover:bg-[var(--color-surface)]">
-                        <div className="flex items-start gap-2">
-                          <span className="shrink-0 text-xs font-semibold tracking-[0.08em] text-[var(--color-fg-muted)]">
-                            Thought
-                          </span>
-                          <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-snug text-[var(--color-fg)]">
-                            {item.text.trim()}
-                          </p>
-                        </div>
-                      </div>
+                      <p className="response-ledger__thought">{item.text.trim()}</p>
                     </div>
                   );
                 }
                 if (item.type === 'text') {
                   return (
-                    <div
-                      key={item.id}
-                      className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-2 text-sm"
-                    >
-                      <span className="mt-1 h-5 w-5 rounded-full bg-[var(--color-surface)]" />
-                      <div className="min-w-0 rounded-[var(--radius-editorial)] px-2 py-1.5 hover:bg-[var(--color-surface)]">
-                        <span className="mr-2 text-xs font-semibold tracking-[0.08em] text-[var(--color-fg-muted)]">
-                          Draft
-                        </span>
-                        <span className="text-sm text-[var(--color-fg-muted)]">
-                          {compactText(item.text, 180)}
-                        </span>
-                      </div>
+                    <div key={item.id} className="response-ledger__entry">
+                      <span className="response-ledger__entry-glyph" aria-hidden="true" />
+                      <p className="response-ledger__thought">{compactText(item.text, 180)}</p>
                     </div>
                   );
                 }
+                const annotation = toolAnnotation(item);
+                const object = toolObject(item);
                 return (
                   <div
                     key={item.id}
-                    className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-2 text-sm"
+                    className="response-ledger__entry response-ledger__entry--tool"
                   >
-                    <span className="mt-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-surface)] text-[var(--color-fg-muted)]">
-                      {item.name === 'web_search' ? (
-                        <MagnifyingGlassIcon className="h-3.5 w-3.5" />
-                      ) : (
-                        <WrenchScrewdriverIcon className="h-3.5 w-3.5" />
-                      )}
+                    <span className="response-ledger__entry-glyph" aria-hidden="true">
+                      {entryGlyph(item)}
                     </span>
-                    <div className="min-w-0 rounded-[var(--radius-editorial)] px-2 py-1.5 hover:bg-[var(--color-surface)]">
-                      <div className="flex min-w-0 items-baseline gap-2">
-                        <span className="shrink-0 text-xs font-semibold tracking-[0.08em] text-[var(--color-fg-muted)]">
-                          Tool
-                        </span>
-                        <span className="shrink-0 font-medium text-[var(--color-fg)]">
-                          {labelForActivityTool(item)}
-                        </span>
-                        <span className="min-w-0 truncate text-[var(--color-fg-muted)]">
-                          {summaryForActivityTool(item)}
-                        </span>
-                      </div>
-                    </div>
+                    <span className="response-ledger__tool-line">
+                      <span className="response-ledger__tool-name">
+                        {toolDisplayName(item.name)}
+                      </span>
+                      {object && <span className="response-ledger__tool-object">{object}</span>}
+                    </span>
+                    <span
+                      className={`response-ledger__annotation${annotation.error ? ' is-error' : ''}`}
+                    >
+                      {annotation.live && (
+                        <span className="response-ledger__pulse" aria-hidden="true" />
+                      )}
+                      {annotation.text}
+                    </span>
                   </div>
                 );
               })}
 
-              {!hasReasoning && !hasToolCalls && !hasActivity && isStreaming && (
-                <div className="flex items-center gap-2 text-sm text-[var(--color-fg-muted)]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" />
-                  Thinking...
+              {!hasActivity && isStreaming && (
+                <div className="response-ledger__entry">
+                  <span className="response-ledger__entry-glyph" aria-hidden="true">
+                    <LightBulbIcon className="h-full w-full" />
+                  </span>
+                  <p className="response-ledger__thought">
+                    <span className="response-ledger__pulse" aria-hidden="true" /> Thinking...
+                  </p>
+                </div>
+              )}
+
+              {showSourcesEntry && (
+                <div className="response-ledger__entry">
+                  <span className="response-ledger__entry-glyph" aria-hidden="true">
+                    <GlobeAltIcon className="h-full w-full" />
+                  </span>
+                  <button
+                    type="button"
+                    className="response-ledger__sources-toggle"
+                    aria-expanded={sourcesOpen}
+                    onClick={() => setSourcesOpen((value) => !value)}
+                  >
+                    {isSearching
+                      ? `Looking for sources${sources?.query ? `: ${sources.query}` : ''}...`
+                      : hasSearchError
+                        ? sources?.error || 'Search could not return sources.'
+                        : `Consulted ${sourceItems.length} source${sourceItems.length === 1 ? '' : 's'}`}
+                    {hasSources && (
+                      <ChevronDownIcon
+                        className={`response-ledger__chevron${sourcesOpen ? ' is-open' : ''}`}
+                      />
+                    )}
+                  </button>
+                  {sourcesOpen && hasSources && (
+                    <div className="panel-reveal response-ledger__sources-reveal">
+                      <ol className="response-ledger__sources">
+                        {sourceItems.map((source, index) => (
+                          <li
+                            key={`${source.url || source.title || 'source'}-${index}`}
+                            className="response-ledger__source"
+                          >
+                            <span className="response-ledger__source-index">{index + 1}</span>
+                            <a
+                              href={source.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="response-ledger__source-link"
+                              title={source.description || titleForSource(source)}
+                            >
+                              {titleForSource(source)}
+                            </a>
+                            {source.url && (
+                              <span className="response-ledger__source-host">
+                                {hostname(source.url)}
+                              </span>
+                            )}
+                            <ArrowTopRightOnSquareIcon className="h-3 w-3 shrink-0 text-[var(--color-fg-muted)]" />
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-
-            <div className="mt-2 flex items-center justify-between gap-2 border-t border-[var(--rule-light)] pt-2">
-              <div className="flex min-w-0 items-center gap-2">
-                {(hasSources || isSearching || hasSearchError) && (
-                  <button
-                    type="button"
-                    className="inline-flex h-7 items-center gap-1.5 rounded-[var(--radius-editorial)] px-2 text-xs font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-muted)]"
-                    onClick={() => setSourcesOpen((value) => !value)}
-                  >
-                    <GlobeAltIcon className="h-3.5 w-3.5" />
-                    Sources
-                    {hasSources ? ` ${sourceItems.length}` : ''}
-                  </button>
-                )}
-              </div>
-              {hasReasoning && (
-                <button
-                  type="button"
-                  className="inline-flex h-7 items-center gap-1.5 rounded-[var(--radius-editorial)] px-2 text-xs font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-muted)]"
-                  onClick={copyReasoning}
-                >
-                  {copied ? (
-                    <>
-                      <CheckIcon className="h-3.5 w-3.5" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-                      Copy
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-
-            {sourcesOpen && (hasSources || isSearching || hasSearchError) && (
-              <div className="mt-2 rounded-[var(--radius-editorial)] bg-[var(--color-surface)] px-2.5 py-2">
-                {isSearching && (
-                  <div className="text-sm text-[var(--color-fg-muted)]">
-                    Looking for sources{sources?.query ? `: ${sources.query}` : ''}.
-                  </div>
-                )}
-
-                {hasSearchError && (
-                  <div className="text-sm text-[var(--color-danger)]">
-                    {sources?.error || 'Search could not return sources.'}
-                  </div>
-                )}
-
-                {hasSources && (
-                  <ol className="space-y-1">
-                    {sourceItems.map((source, index) => (
-                      <li
-                        key={`${source.url || source.title || 'source'}-${index}`}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <span className="shrink-0 text-xs font-semibold text-[var(--color-fg-muted)]">
-                          [{index + 1}]
-                        </span>
-                        <a
-                          href={source.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="min-w-0 flex-1 truncate font-medium text-[var(--color-fg)] hover:text-[var(--color-accent)]"
-                          title={source.description || titleForSource(source)}
-                        >
-                          {titleForSource(source)}
-                        </a>
-                        {source.url && (
-                          <span className="hidden max-w-[11rem] truncate text-xs text-[var(--color-fg-muted)] sm:inline">
-                            {hostname(source.url)}
-                          </span>
-                        )}
-                        <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 shrink-0 text-[var(--color-fg-muted)]" />
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}

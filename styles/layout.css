@@ -69,7 +69,9 @@
   /* Pause ambient (infinite) animations while the tab is hidden to save
      battery; the .tab-hidden class is toggled from useAmbientMotionPause. */
   .tab-hidden .hero-gradient::before,
-  .tab-hidden .plan-loading-bar {
+  .tab-hidden .plan-loading-bar,
+  .tab-hidden .response-ledger__pulse,
+  .tab-hidden .response-ledger__summary.is-live {
     animation-play-state: paused !important;
   }
 
