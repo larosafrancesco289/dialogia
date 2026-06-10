@@ -32,9 +32,10 @@ function getMode(): ThemeMode {
 const getServerMode = (): ThemeMode => 'auto';
 
 /**
- * Apply the resolved theme class to the root element. When `smooth` is true a
- * short-lived class enables color transitions so the palette cross-fades
- * instead of hard-cutting (see foundations.css).
+ * Apply the resolved theme class to the root element. When `smooth` is true
+ * the palette cross-fades instead of hard-cutting: preferably via the View
+ * Transitions API (one composited fade of the whole viewport), falling back
+ * to a short-lived class that enables color transitions (see foundations.css).
  */
 export function applyThemeClass(mode: ThemeMode, options?: { smooth?: boolean }) {
   if (typeof window === 'undefined') return;
@@ -42,15 +43,24 @@ export function applyThemeClass(mode: ThemeMode, options?: { smooth?: boolean })
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const isDark = mode === 'dark' || (mode === 'auto' && prefersDark);
   if (root.classList.contains('dark') === isDark) return;
-  if (options?.smooth) {
-    root.classList.add(TRANSITION_CLASS);
-    if (transitionTimer) clearTimeout(transitionTimer);
-    transitionTimer = setTimeout(() => {
-      transitionTimer = null;
-      root.classList.remove(TRANSITION_CLASS);
-    }, TRANSITION_MS);
+  const toggle = () => root.classList.toggle('dark', isDark);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!options?.smooth || reduceMotion) {
+    toggle();
+    return;
   }
-  root.classList.toggle('dark', isDark);
+  const doc = document as Document & { startViewTransition?: (callback: () => void) => unknown };
+  if (typeof doc.startViewTransition === 'function') {
+    doc.startViewTransition(toggle);
+    return;
+  }
+  root.classList.add(TRANSITION_CLASS);
+  if (transitionTimer) clearTimeout(transitionTimer);
+  transitionTimer = setTimeout(() => {
+    transitionTimer = null;
+    root.classList.remove(TRANSITION_CLASS);
+  }, TRANSITION_MS);
+  toggle();
 }
 
 function emit() {

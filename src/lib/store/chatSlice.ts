@@ -315,28 +315,35 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         repository,
       );
 
-      const stickyReasoningDefaults =
-        partial.generation &&
-        (Object.prototype.hasOwnProperty.call(partial.generation, 'reasoningEffort') ||
-          Object.prototype.hasOwnProperty.call(partial.generation, 'reasoningTokens'))
-          ? {
-              generation: {
-                ...(Object.prototype.hasOwnProperty.call(partial.generation, 'reasoningEffort')
-                  ? { reasoningEffort: nextSettings.generation.reasoningEffort }
-                  : {}),
-                ...(Object.prototype.hasOwnProperty.call(partial.generation, 'reasoningTokens')
-                  ? { reasoningTokens: nextSettings.generation.reasoningTokens }
-                  : {}),
-              },
-            }
-          : undefined;
+      // In-chat changes to model and reasoning become the sticky defaults for
+      // future chats, so a new chat continues where the user left off. Search
+      // intentionally does not stick: tool toggles reset per chat so a
+      // research session doesn't quietly add search cost to every future
+      // message. Tutor chats are excluded: their model is managed by tutor
+      // defaults and must not leak into regular chats.
+      const hasOwn = (obj: object, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
+      const isTutorChat = nextSettings.features.tutor.enabled;
+      const stickyGeneration = partial.generation
+        ? {
+            ...(hasOwn(partial.generation, 'reasoningEffort')
+              ? { reasoningEffort: nextSettings.generation.reasoningEffort }
+              : {}),
+            ...(hasOwn(partial.generation, 'reasoningTokens')
+              ? { reasoningTokens: nextSettings.generation.reasoningTokens }
+              : {}),
+          }
+        : {};
+      const stickyDefaults = {
+        ...(!isTutorChat && hasOwn(partial, 'modelId') ? { modelId: nextSettings.modelId } : {}),
+        ...(Object.keys(stickyGeneration).length ? { generation: stickyGeneration } : {}),
+      };
 
       set((s) => ({
         chats: s.chats.map((c) => (c.id === id ? updatedChat : c)),
         ui: {
           ...s.ui,
-          chatDefaults: stickyReasoningDefaults
-            ? mergeChatDefaults(s.ui.chatDefaults, stickyReasoningDefaults)
+          chatDefaults: Object.keys(stickyDefaults).length
+            ? mergeChatDefaults(s.ui.chatDefaults, stickyDefaults)
             : s.ui.chatDefaults,
         },
       }));
