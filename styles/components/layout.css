@@ -59,10 +59,12 @@
 
   .jump-to-latest {
     position: sticky;
-    bottom: calc(
-      max(0px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) - var(--space-5) +
-        var(--keyboard-offset, 0px)
-    );
+    /* The scroll container's scroll-padding-bottom already reserves the
+       composer height, safe area, and keyboard offset, and sticky offsets
+       resolve against the scrollport shrunk by scroll-padding. Adding the
+       composer height here again makes the button rise at twice the rate
+       the composer grows; only the gap above the composer belongs here. */
+    bottom: var(--space-5);
     display: flex;
     justify-content: center;
     padding: 0;
@@ -78,16 +80,11 @@
     height: 36px;
   }
   @media (max-width: 640px) {
-    .jump-to-latest {
-      bottom: calc(
-        max(0px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) - var(--space-5)
-      );
-    }
-
+    /* keyboard-active scroll-padding-bottom omits the keyboard offset and
+       safe area, so they re-enter here. */
     html.keyboard-active .jump-to-latest {
       bottom: calc(
-        max(0px, env(safe-area-inset-bottom)) + var(--composer-height, 0px) - var(--space-5) +
-          var(--keyboard-offset, 0px)
+        max(0px, env(safe-area-inset-bottom)) + var(--space-5) + var(--keyboard-offset, 0px)
       );
     }
   }

@@ -33,7 +33,9 @@
 .assistant {
   background: transparent;
   border: none;
-  margin: 0;
+  /* Bottom margin + padding clears the ~36px hover action menu that hangs
+     below the content anchor, so it never overlaps the next message. */
+  margin: 0 0 var(--space-6);
   padding: var(--space-3) 0;
   border-radius: 0;
   width: 100%;
@@ -80,7 +82,14 @@
 
 .actions {
   opacity: 0;
-  pointer-events: auto;
+  pointer-events: none;
+}
+
+/* Raise the hovered card above siblings so its overlaid menu is not painted
+   behind the next message's bubble (each card is its own stacking context). */
+.messageCard:hover,
+.messageCard:focus-within {
+  z-index: 1;
 }
 
 .assistant .actions {
@@ -165,6 +174,7 @@
 
 .active {
   /* marker class used for mobile action visibility */
+  z-index: 1;
 }
 
 @media (max-width: 640px) {
@@ -183,7 +193,7 @@
 
   .messageCard .actions {
     opacity: 0;
-    pointer-events: auto;
+    pointer-events: none;
   }
 
   .active .actions {
@@ -207,7 +217,7 @@
 @media (min-width: 640px) {
   .messageCard .actions {
     opacity: 0;
-    pointer-events: auto;
+    pointer-events: none;
   }
 
   .messageCard:hover .actions,
