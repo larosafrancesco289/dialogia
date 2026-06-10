@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dialogia · Palette Explorer — Light & Dark</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ============================================================
+         PAGE CHROME — styled as the "Imperial Archive" light surface
+         ============================================================ */
+      :root {
+        --page-canvas: #f4f1ec;
+        --page-surface: #fdfbf8;
+        --page-fg: #1e1c18;
+        --page-fg-muted: #5b534b;
+        --page-gold: #b9975b;
+        --page-purple: #6d2a8a;
+        --page-border: #d5cfc4;
+        --sans: 'Plus Jakarta Sans', -apple-system, system-ui, sans-serif;
+        --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+        --mono: 'JetBrains Mono', ui-monospace, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--page-canvas);
+        color: var(--page-fg);
+        font-family: var(--sans);
+        font-size: 16px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        background-image:
+          radial-gradient(ellipse 60% 50% at 15% 0%, rgba(185, 151, 91, 0.06), transparent 60%),
+          radial-gradient(ellipse 50% 50% at 100% 10%, rgba(109, 42, 138, 0.04), transparent 55%);
+      }
+
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 72px 28px 120px;
+      }
+
+      /* --- Masthead --- */
+      .masthead {
+        border-bottom: 1px solid var(--page-border);
+        padding-bottom: 36px;
+        margin-bottom: 12px;
+      }
+      .kicker {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--page-gold);
+        margin: 0 0 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .kicker::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, var(--page-gold), transparent);
+        opacity: 0.5;
+      }
+      h1 {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: clamp(2.6rem, 6vw, 4.2rem);
+        line-height: 1.04;
+        letter-spacing: -0.02em;
+        margin: 0 0 18px;
+      }
+      h1 em {
+        font-style: italic;
+        color: var(--page-purple);
+      }
+      .lede {
+        font-family: var(--serif);
+        font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+        line-height: 1.55;
+        color: var(--page-fg-muted);
+        max-width: 60ch;
+        margin: 0;
+      }
+
+      /* --- Section scaffolding --- */
+      section {
+        margin-top: 84px;
+      }
+      .sec-head {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        margin-bottom: 8px;
+      }
+      .sec-num {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--page-gold);
+        letter-spacing: 0.2em;
+      }
+      h2 {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+        letter-spacing: -0.015em;
+        margin: 0;
+      }
+      .sec-sub {
+        color: var(--page-fg-muted);
+        max-width: 72ch;
+        margin: 10px 0 0;
+      }
+      .sec-sub code,
+      .reason code {
+        font-family: var(--mono);
+        font-size: 0.85em;
+        background: rgba(109, 42, 138, 0.08);
+        color: var(--page-purple);
+        padding: 1px 6px;
+        border-radius: 5px;
+      }
+
+      /* ============================================================
+         PALETTE CARD — holds swatches + live mockup + reasoning
+         Each card sets --c-* tokens; the inner mock reads them.
+         ============================================================ */
+      .card {
+        margin-top: 32px;
+        border: 1px solid var(--page-border);
+        border-radius: 16px;
+        overflow: hidden;
+        background: var(--page-surface);
+        box-shadow:
+          0 1px 2px rgba(120, 90, 50, 0.05),
+          0 18px 40px -28px rgba(80, 60, 30, 0.35);
+      }
+      .card-label {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--page-border);
+        background: linear-gradient(180deg, rgba(185, 151, 91, 0.04), transparent);
+      }
+      .card-label .name {
+        font-family: var(--serif);
+        font-style: italic;
+        font-size: 1.4rem;
+      }
+      .badge {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--page-border);
+        color: var(--page-fg-muted);
+      }
+      .badge.rec {
+        color: #5a6f3a;
+        border-color: rgba(74, 140, 90, 0.45);
+        background: rgba(74, 140, 90, 0.1);
+      }
+      .badge.gold {
+        color: #8a6a26;
+        border-color: rgba(185, 151, 91, 0.5);
+        background: rgba(185, 151, 91, 0.12);
+      }
+
+      .card-body {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 0;
+      }
+      @media (max-width: 880px) {
+        .card-body {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* --- Swatch column --- */
+      .swatches {
+        padding: 22px 24px;
+        border-right: 1px solid var(--page-border);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      @media (max-width: 880px) {
+        .swatches {
+          border-right: none;
+          border-bottom: 1px solid var(--page-border);
+        }
+      }
+      .swatch {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 7px 0;
+      }
+      .chip {
+        width: 38px;
+        height: 38px;
+        border-radius: 9px;
+        flex-shrink: 0;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+      }
+      .swatch .meta {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.25;
+        min-width: 0;
+      }
+      .swatch .role {
+        font-size: 12.5px;
+        font-weight: 600;
+      }
+      .swatch .hex {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--page-fg-muted);
+      }
+
+      /* --- Mockup column: a faithful mini chat surface --- */
+      .mock {
+        padding: 0;
+        background: var(--c-canvas);
+        color: var(--c-fg);
+        font-family: var(--sans);
+        display: flex;
+        min-height: 440px;
+      }
+      .mock-rail {
+        width: 62px;
+        background: var(--c-surface);
+        border-right: 1px solid var(--c-border);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        padding: 18px 0;
+      }
+      .rail-mark {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background:
+          radial-gradient(circle at 30% 25%, var(--c-gold), transparent 70%), var(--c-purple);
+        box-shadow: 0 0 0 1px var(--c-border);
+      }
+      .rail-dot {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--c-muted);
+        border: 1px solid var(--c-border);
+      }
+      .rail-dot.active {
+        border-color: var(--c-gold);
+        box-shadow: inset 0 0 0 1px var(--c-gold);
+      }
+
+      .mock-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      .mock-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--c-border);
+        background: color-mix(in oklab, var(--c-surface) 70%, transparent);
+      }
+      .mock-title {
+        font-family: var(--serif);
+        font-size: 1.05rem;
+        font-weight: 500;
+      }
+      .mock-pill {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--c-gold);
+        border: 1px solid var(--c-border);
+        padding: 4px 9px;
+        border-radius: 999px;
+      }
+
+      .mock-feed {
+        flex: 1;
+        padding: 22px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow: hidden;
+      }
+
+      .msg {
+        max-width: 86%;
+        padding: 13px 16px;
+        border-radius: 13px;
+        font-size: 14.5px;
+        line-height: 1.55;
+      }
+      .msg.user {
+        align-self: flex-end;
+        background: var(--c-user-bg);
+        border: 1px solid var(--c-user-border);
+        border-bottom-right-radius: 5px;
+      }
+      .msg.assistant {
+        align-self: flex-start;
+        background: var(--c-assistant-bg);
+        border: 1px solid var(--c-assistant-border);
+        border-bottom-left-radius: 5px;
+        font-family: var(--serif);
+        font-size: 15.5px;
+        box-shadow: var(--c-shadow);
+      }
+      .msg .who {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--c-fg-muted);
+        margin-bottom: 6px;
+      }
+      .msg.assistant .accent-word {
+        color: var(--c-purple);
+        font-style: italic;
+      }
+
+      /* reasoning / thinking chip — the element that USED to carry the
+         clashing blue. Here it stays inside the warm gold+purple family. */
+      .reasoning {
+        align-self: flex-start;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: var(--c-reason-bg);
+        border: 1px solid var(--c-reason-border);
+        color: var(--c-reason-fg);
+        font-size: 12px;
+        font-family: var(--mono);
+        letter-spacing: 0.04em;
+      }
+      .reasoning .spark {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--c-gold);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--c-gold) 25%, transparent);
+      }
+
+      .mock-composer {
+        margin: 0 20px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 9px 9px 16px;
+        border-radius: 14px;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+      }
+      .mock-composer .ph {
+        flex: 1;
+        color: var(--c-fg-muted);
+        font-size: 14px;
+      }
+      .send {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 16px;
+        border-radius: 10px;
+        background: var(--c-gold);
+        color: var(--c-gold-on);
+        font-weight: 600;
+        font-size: 13px;
+        border: none;
+      }
+      .ghost-btn {
+        padding: 9px 14px;
+        border-radius: 10px;
+        background: transparent;
+        border: 1px solid var(--c-border);
+        color: var(--c-fg);
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      /* --- Reasoning panel below the mock --- */
+      .reason {
+        padding: 24px 24px 28px;
+        border-top: 1px solid var(--page-border);
+        grid-column: 1 / -1;
+        background: linear-gradient(180deg, rgba(185, 151, 91, 0.03), transparent);
+      }
+      .reason h4 {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--page-gold);
+        margin: 0 0 12px;
+      }
+      .reason p {
+        margin: 0 0 12px;
+        max-width: 80ch;
+      }
+      .reason .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px 36px;
+        margin-top: 6px;
+      }
+      @media (max-width: 720px) {
+        .reason .grid2 {
+          grid-template-columns: 1fr;
+        }
+      }
+      .reason strong {
+        color: var(--page-fg);
+      }
+      .pro,
+      .con {
+        font-size: 14.5px;
+      }
+      .pro b,
+      .con b {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin-bottom: 6px;
+      }
+      .pro b {
+        color: #46622f;
+        background: rgba(74, 140, 90, 0.12);
+      }
+      .con b {
+        color: #8a4a3a;
+        background: rgba(179, 90, 74, 0.12);
+      }
+
+      .contrast-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .ctag {
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 7px;
+        border: 1px solid var(--page-border);
+        background: var(--page-surface);
+      }
+      .ctag b {
+        color: #46622f;
+      }
+
+      /* Principles list */
+      .principles {
+        margin-top: 28px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+      @media (max-width: 720px) {
+        .principles {
+          grid-template-columns: 1fr;
+        }
+      }
+      .principle {
+        border: 1px solid var(--page-border);
+        border-radius: 12px;
+        padding: 18px 20px;
+        background: var(--page-surface);
+      }
+      .principle h3 {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 1.15rem;
+        margin: 0 0 6px;
+      }
+      .principle p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--page-fg-muted);
+      }
+      .principle .n {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--page-gold);
+      }
+
+      footer {
+        margin-top: 90px;
+        border-top: 1px solid var(--page-border);
+        padding-top: 24px;
+        font-size: 13px;
+        color: var(--page-fg-muted);
+      }
+      footer a {
+        color: var(--page-purple);
+      }
+
+      /* ============================================================
+         THEME TOKEN SETS
+         ============================================================ */
+
+      /* LIGHT — current Imperial Archive, lightly refined */
+      [data-theme='light'] {
+        --c-canvas: #f4f1ec;
+        --c-surface: #fdfbf8;
+        --c-muted: #f1ede7;
+        --c-fg: #1e1c18;
+        --c-fg-muted: #5b534b;
+        --c-gold: #b9975b;
+        --c-gold-on: #2a2012;
+        --c-purple: #6d2a8a;
+        --c-border: #d5cfc4;
+        --c-user-bg: #fcfaf6;
+        --c-user-border: #ded8cd;
+        --c-assistant-bg: #faf6ee;
+        --c-assistant-border: #e2d9c8;
+        --c-reason-bg: rgba(109, 42, 138, 0.06);
+        --c-reason-border: rgba(109, 42, 138, 0.22);
+        --c-reason-fg: #6d2a8a;
+        --c-shadow: 0 1px 2px rgba(120, 90, 50, 0.05), 0 8px 22px -16px rgba(80, 60, 30, 0.3);
+      }
+
+      /* DARK A — "Candlelit Study": warm charcoal, purple as accent only */
+      [data-theme='darkA'] {
+        --c-canvas: #16140f;
+        --c-surface: #1e1b16;
+        --c-muted: #262119;
+        --c-fg: #ece6db;
+        --c-fg-muted: #a89e8e;
+        --c-gold: #cda85f;
+        --c-gold-on: #1a1610;
+        --c-purple: #b48ad0;
+        --c-border: #332c22;
+        --c-user-bg: #211d16;
+        --c-user-border: #38301f;
+        --c-assistant-bg: #211c1f;
+        --c-assistant-border: #382f3a;
+        --c-reason-bg: rgba(180, 138, 208, 0.1);
+        --c-reason-border: rgba(180, 138, 208, 0.3);
+        --c-reason-fg: #c9a9e0;
+        --c-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 10px 28px -18px rgba(0, 0, 0, 0.7);
+      }
+
+      /* DARK B — "Imperial Twilight": aubergine ink, purple as the ambient hue */
+      [data-theme='darkB'] {
+        --c-canvas: #141021;
+        --c-surface: #1c1730;
+        --c-muted: #241d3c;
+        --c-fg: #ece8f2;
+        --c-fg-muted: #a39bb5;
+        --c-gold: #d4b06a;
+        --c-gold-on: #1a1224;
+        --c-purple: #c0a0ec;
+        --c-border: #2e2742;
+        --c-user-bg: #1f1934;
+        --c-user-border: #352c50;
+        --c-assistant-bg: #211b38;
+        --c-assistant-border: #3a3056;
+        --c-reason-bg: rgba(192, 160, 236, 0.1);
+        --c-reason-border: rgba(192, 160, 236, 0.3);
+        --c-reason-fg: #cdb6f2;
+        --c-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 10px 30px -18px rgba(10, 6, 24, 0.85);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <!-- ===================== MASTHEAD ===================== -->
+      <header class="masthead">
+        <p class="kicker">Dialogia · Design System · Palette Study</p>
+        <h1>Light parchment, <em>dark ink</em>.</h1>
+        <p class="lede">
+          A side-by-side study for re-introducing dark mode. The light theme keeps its
+          parchment-and-gold identity; the dark theme is rebuilt from first principles so it reads
+          as <em>tasteful</em> rather than costume. Two dark candidates below — pick one.
+        </p>
+      </header>
+
+      <!-- ===================== THE THESIS ===================== -->
+      <section>
+        <div class="sec-head">
+          <span class="sec-num">00</span>
+          <h2>The idea, and what went wrong last time</h2>
+        </div>
+        <p class="sec-sub">
+          The brand thread is <strong>gold as a precious metal</strong> — used sparingly so it reads
+          as foil, never as a yellow fill. Light mode is <strong>parchment + gold</strong>; dark
+          mode is <strong>ink + purple</strong>, with the same gold as the shared accent. The old
+          dark mode failed for three concrete reasons, all fixable:
+        </p>
+        <div class="principles">
+          <div class="principle">
+            <span class="n">Cause 1</span>
+            <h3>Cool blue contamination</h3>
+            <p>
+              The reasoning / thinking panels introduced <code>rgba(93,123,255)</code> and
+              <code>rgba(94,153,255)</code> — cold blues dropped into a warm gold+purple palette.
+              That single clash is what made it feel incoherent. Fixed: reasoning chips now stay in
+              the purple family.
+            </p>
+          </div>
+          <div class="principle">
+            <span class="n">Cause 2</span>
+            <h3>Near-black canvas</h3>
+            <p>
+              The old canvas was <code>#0a0908</code> — almost pure black. You can't show elevation
+              on black, and it makes gold "glare". Material's guidance: start at a dark grey
+              (~<code>#121212</code>) and lift surfaces with lightness, not shadow.
+            </p>
+          </div>
+          <div class="principle">
+            <span class="n">Cause 3</span>
+            <h3>Saturated accents that vibrate</h3>
+            <p>
+              Full-strength gold/purple "buzz" against dark backgrounds. The fix is the Material
+              rule: desaturate and lighten accents for dark mode (~the 200 tone) so they sit calmly
+              and still pass contrast.
+            </p>
+          </div>
+          <div class="principle">
+            <span class="n">Principle</span>
+            <h3>Gold is rationed</h3>
+            <p>
+              In both themes gold only appears on one or two elements per view — the primary action,
+              a hairline rule, a focus ring. Restraint is what separates "luxury" from "Vegas".
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== LIGHT ===================== -->
+      <section>
+        <div class="sec-head">
+          <span class="sec-num">01</span>
+          <h2>Light — Imperial Archive</h2>
+        </div>
+        <p class="sec-sub">
+          Essentially unchanged from today; this is the reference the dark theme has to feel like a
+          sibling of. Warm paper canvas, slightly brighter card surfaces, antique gold, and a single
+          deep imperial purple held in reserve for italic emphasis and links.
+        </p>
+
+        <div class="card" data-theme="light">
+          <div class="card-label">
+            <span class="name">Imperial Archive · Light</span>
+            <span class="badge gold">Keep as-is</span>
+            <span class="badge">canvas #f4f1ec</span>
+          </div>
+          <div class="card-body">
+            <div class="swatches">
+              <div class="swatch">
+                <span class="chip" style="background: #f4f1ec"></span>
+                <span class="meta"
+                  ><span class="role">Canvas</span><span class="hex">#f4f1ec</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #fdfbf8"></span>
+                <span class="meta"
+                  ><span class="role">Surface</span><span class="hex">#fdfbf8</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #1e1c18"></span>
+                <span class="meta"
+                  ><span class="role">Ink / text</span><span class="hex">#1e1c18</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #5b534b"></span>
+                <span class="meta"
+                  ><span class="role">Muted text</span><span class="hex">#5b534b</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #b9975b"></span>
+                <span class="meta"
+                  ><span class="role">Gold accent</span><span class="hex">#b9975b</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #6d2a8a"></span>
+                <span class="meta"
+                  ><span class="role">Imperial purple</span><span class="hex">#6d2a8a</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #d5cfc4"></span>
+                <span class="meta"
+                  ><span class="role">Border</span><span class="hex">#d5cfc4</span></span
+                >
+              </div>
+            </div>
+
+            <div class="mock">
+              <div class="mock-rail">
+                <span class="rail-mark"></span>
+                <span class="rail-dot active"></span>
+                <span class="rail-dot"></span>
+                <span class="rail-dot"></span>
+              </div>
+              <div class="mock-main">
+                <div class="mock-top">
+                  <span class="mock-title">On the Library of Alexandria</span>
+                  <span class="mock-pill">Opus 4.8</span>
+                </div>
+                <div class="mock-feed">
+                  <div class="msg user">
+                    <div class="who">You</div>
+                    Summarise what we actually lost when it burned.
+                  </div>
+                  <div class="reasoning">
+                    <span class="spark"></span> reasoning · weighing sources
+                  </div>
+                  <div class="msg assistant">
+                    <div class="who">Dialogia</div>
+                    The deepest loss wasn't the scrolls themselves but the
+                    <span class="accent-word">apparatus of scholarship</span> around them — the
+                    catalogues, the marginalia, the cross-references built over centuries.
+                  </div>
+                </div>
+                <div class="mock-composer">
+                  <span class="ph">Ask a follow-up…</span>
+                  <button class="ghost-btn">Attach</button>
+                  <button class="send">Send ↵</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="reason">
+              <h4>Why these colours</h4>
+              <p>
+                <strong>Warm neutrals, not white.</strong> The canvas <code>#f4f1ec</code> and
+                surface <code>#fdfbf8</code> carry a faint warm cast so the page feels like aged
+                paper, not a clinical screen. The slight canvas→surface step gives cards a quiet
+                lift without shadows doing all the work.
+              </p>
+              <p>
+                <strong>Gold earns its place.</strong> <code>#b9975b</code> is an antique, slightly
+                desaturated gold — closer to brass than to highlighter yellow. It appears only on
+                the send button and the active rail marker, so it reads as a metal detail.
+                <strong>Purple</strong> <code>#6d2a8a</code> is the foil to gold: deep, regal, and
+                used only for emphasis and links — never as a fill.
+              </p>
+              <div class="contrast-row">
+                <span class="ctag">ink on surface <b>≈ 16:1 AAA</b></span>
+                <span class="ctag">muted on canvas <b>≈ 7:1 AAA</b></span>
+                <span class="ctag">purple on surface <b>≈ 8.4:1 AAA</b></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== DARK A ===================== -->
+      <section>
+        <div class="sec-head">
+          <span class="sec-num">02</span>
+          <h2>Dark A — Candlelit Study</h2>
+        </div>
+        <p class="sec-sub">
+          The conservative, "obviously a sibling of light" option. The base is a
+          <strong>warm charcoal</strong> (brown-black, like the light theme's parchment dimmed to
+          embers). Gold stays the hero; purple appears only as a soft accent on reasoning and
+          emphasis. This is the safest reintroduction — hard to get wrong, easy to love.
+        </p>
+
+        <div class="card" data-theme="darkA">
+          <div class="card-label">
+            <span class="name">Candlelit Study · Dark A</span>
+            <span class="badge rec">Recommended</span>
+            <span class="badge">canvas #16140f</span>
+          </div>
+          <div class="card-body">
+            <div class="swatches">
+              <div class="swatch">
+                <span class="chip" style="background: #16140f"></span>
+                <span class="meta"
+                  ><span class="role">Canvas (elev 0)</span><span class="hex">#16140f</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #1e1b16"></span>
+                <span class="meta"
+                  ><span class="role">Surface (elev 1)</span><span class="hex">#1e1b16</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #262119"></span>
+                <span class="meta"
+                  ><span class="role">Raised (elev 2)</span><span class="hex">#262119</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #ece6db"></span>
+                <span class="meta"
+                  ><span class="role">Off-white text</span><span class="hex">#ece6db</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #a89e8e"></span>
+                <span class="meta"
+                  ><span class="role">Muted text</span><span class="hex">#a89e8e</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #cda85f"></span>
+                <span class="meta"
+                  ><span class="role">Gold (lifted)</span><span class="hex">#cda85f</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #b48ad0"></span>
+                <span class="meta"
+                  ><span class="role">Purple (lifted)</span><span class="hex">#b48ad0</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #332c22"></span>
+                <span class="meta"
+                  ><span class="role">Border</span><span class="hex">#332c22</span></span
+                >
+              </div>
+            </div>
+
+            <div class="mock">
+              <div class="mock-rail">
+                <span class="rail-mark"></span>
+                <span class="rail-dot active"></span>
+                <span class="rail-dot"></span>
+                <span class="rail-dot"></span>
+              </div>
+              <div class="mock-main">
+                <div class="mock-top">
+                  <span class="mock-title">On the Library of Alexandria</span>
+                  <span class="mock-pill">Opus 4.8</span>
+                </div>
+                <div class="mock-feed">
+                  <div class="msg user">
+                    <div class="who">You</div>
+                    Summarise what we actually lost when it burned.
+                  </div>
+                  <div class="reasoning">
+                    <span class="spark"></span> reasoning · weighing sources
+                  </div>
+                  <div class="msg assistant">
+                    <div class="who">Dialogia</div>
+                    The deepest loss wasn't the scrolls themselves but the
+                    <span class="accent-word">apparatus of scholarship</span> around them — the
+                    catalogues, the marginalia, the cross-references built over centuries.
+                  </div>
+                </div>
+                <div class="mock-composer">
+                  <span class="ph">Ask a follow-up…</span>
+                  <button class="ghost-btn">Attach</button>
+                  <button class="send">Send ↵</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="reason">
+              <h4>Why these colours</h4>
+              <p>
+                <strong>Warm, not black.</strong> Canvas <code>#16140f</code> is a brown-tinted
+                charcoal — the same hue family as the light parchment, just dimmed. Avoiding pure
+                black (the old <code>#0a0908</code>) is what lets the three surface steps (<code
+                  >#16140f → #1e1b16 → #262119</code
+                >) read as gentle elevation instead of flat voids.
+              </p>
+              <p>
+                <strong>Accents lifted, not amped.</strong> Gold moves to <code>#cda85f</code> and
+                purple to a lavender <code>#b48ad0</code> — both lighter and slightly desaturated
+                versus light mode, following Material's "use the 200 tone in dark" rule so they glow
+                softly rather than vibrate. Text is off-white <code>#ece6db</code>, never
+                <code>#ffffff</code>, to cut glare.
+              </p>
+              <div class="grid2">
+                <div class="pro">
+                  <b>STRENGTHS</b><br />
+                  Unmistakably the same brand as light. Lowest risk of looking "costume". Gold reads
+                  as candle-glow, which suits the archive metaphor perfectly.
+                </div>
+                <div class="con">
+                  <b>TRADE-OFF</b><br />
+                  Purple is quiet here — if you want dark mode to feel distinctly "purple" as its
+                  identity, this leans more brown than violet. That's what Dark B is for.
+                </div>
+              </div>
+              <div class="contrast-row">
+                <span class="ctag">text on canvas <b>≈ 13.8:1 AAA</b></span>
+                <span class="ctag">muted on canvas <b>≈ 6.5:1 AA+</b></span>
+                <span class="ctag">gold on surface <b>≈ 7.6:1 AAA</b></span>
+                <span class="ctag">purple on surface <b>≈ 6.1:1 AA</b></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== DARK B ===================== -->
+      <section>
+        <div class="sec-head">
+          <span class="sec-num">03</span>
+          <h2>Dark B — Imperial Twilight</h2>
+        </div>
+        <p class="sec-sub">
+          The bolder option, and the one that delivers "dark <em>and</em> purple" literally. The
+          base is a <strong>deep aubergine ink</strong> — a heavily desaturated violet-charcoal — so
+          purple is the air the whole UI breathes, not a sticker on top. Gold becomes the rare warm
+          spark against the cool dark. This is more distinctive, with slightly more care needed to
+          keep it from tipping over the top.
+        </p>
+
+        <div class="card" data-theme="darkB">
+          <div class="card-label">
+            <span class="name">Imperial Twilight · Dark B</span>
+            <span class="badge">canvas #141021</span>
+            <span class="badge">bolder identity</span>
+          </div>
+          <div class="card-body">
+            <div class="swatches">
+              <div class="swatch">
+                <span class="chip" style="background: #141021"></span>
+                <span class="meta"
+                  ><span class="role">Canvas (elev 0)</span><span class="hex">#141021</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #1c1730"></span>
+                <span class="meta"
+                  ><span class="role">Surface (elev 1)</span><span class="hex">#1c1730</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #241d3c"></span>
+                <span class="meta"
+                  ><span class="role">Raised (elev 2)</span><span class="hex">#241d3c</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #ece8f2"></span>
+                <span class="meta"
+                  ><span class="role">Off-white text</span><span class="hex">#ece8f2</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #a39bb5"></span>
+                <span class="meta"
+                  ><span class="role">Muted text</span><span class="hex">#a39bb5</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #d4b06a"></span>
+                <span class="meta"
+                  ><span class="role">Gold (warm spark)</span><span class="hex">#d4b06a</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #c0a0ec"></span>
+                <span class="meta"
+                  ><span class="role">Lavender accent</span><span class="hex">#c0a0ec</span></span
+                >
+              </div>
+              <div class="swatch">
+                <span class="chip" style="background: #2e2742"></span>
+                <span class="meta"
+                  ><span class="role">Border</span><span class="hex">#2e2742</span></span
+                >
+              </div>
+            </div>
+
+            <div class="mock">
+              <div class="mock-rail">
+                <span class="rail-mark"></span>
+                <span class="rail-dot active"></span>
+                <span class="rail-dot"></span>
+                <span class="rail-dot"></span>
+              </div>
+              <div class="mock-main">
+                <div class="mock-top">
+                  <span class="mock-title">On the Library of Alexandria</span>
+                  <span class="mock-pill">Opus 4.8</span>
+                </div>
+                <div class="mock-feed">
+                  <div class="msg user">
+                    <div class="who">You</div>
+                    Summarise what we actually lost when it burned.
+                  </div>
+                  <div class="reasoning">
+                    <span class="spark"></span> reasoning · weighing sources
+                  </div>
+                  <div class="msg assistant">
+                    <div class="who">Dialogia</div>
+                    The deepest loss wasn't the scrolls themselves but the
+                    <span class="accent-word">apparatus of scholarship</span> around them — the
+                    catalogues, the marginalia, the cross-references built over centuries.
+                  </div>
+                </div>
+                <div class="mock-composer">
+                  <span class="ph">Ask a follow-up…</span>
+                  <button class="ghost-btn">Attach</button>
+                  <button class="send">Send ↵</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="reason">
+              <h4>Why these colours</h4>
+              <p>
+                <strong>Purple as a hue, not a sticker.</strong> The base <code>#141021</code> is a
+                violet so desaturated it almost reads neutral — but every surface inherits that
+                undertone, so the lavender accents feel native rather than pasted on. This is the
+                literal "dark and purple" direction, executed with restraint via desaturation.
+              </p>
+              <p>
+                <strong>Gold becomes precious.</strong> Against a cool ground, the warm gold
+                <code>#d4b06a</code> stands out far more, so it's used even more sparingly — the
+                single send button, nothing else. Complementary warm-on-cool is what gives this
+                option its drama; the danger is doing it too much, which the rationing prevents.
+              </p>
+              <div class="grid2">
+                <div class="pro">
+                  <b>STRENGTHS</b><br />
+                  Most distinctive and memorable. Delivers the purple identity you asked for.
+                  Warm-gold-on-cool-ink is a genuinely elegant, "after-hours" mood.
+                </div>
+                <div class="con">
+                  <b>TRADE-OFF</b><br />
+                  Further from the light theme's warmth — the two modes feel like cousins, not
+                  twins. Purple tints need discipline app-wide or it can drift toward "gamer". More
+                  QA across every surface.
+                </div>
+              </div>
+              <div class="contrast-row">
+                <span class="ctag">text on canvas <b>≈ 14:1 AAA</b></span>
+                <span class="ctag">muted on canvas <b>≈ 6.4:1 AA+</b></span>
+                <span class="ctag">gold on surface <b>≈ 8.2:1 AAA</b></span>
+                <span class="ctag">lavender on surface <b>≈ 7:1 AAA</b></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== HOW TO DECIDE ===================== -->
+      <section>
+        <div class="sec-head">
+          <span class="sec-num">04</span>
+          <h2>How to choose</h2>
+        </div>
+        <p class="sec-sub">
+          Both pass WCAG AA (most pairs hit AAA) and both fix all three failure causes from the old
+          theme. The decision is purely about identity:
+        </p>
+        <div class="principles">
+          <div class="principle">
+            <span class="n">Pick A if…</span>
+            <h3>Cohesion matters most</h3>
+            <p>
+              You want dark mode to be unmistakably the same product as light, you reuse this system
+              across many projects, and you'd rather "safe and beautiful" than "bold". Lowest
+              maintenance. This is my recommendation as the default.
+            </p>
+          </div>
+          <div class="principle">
+            <span class="n">Pick B if…</span>
+            <h3>Identity matters most</h3>
+            <p>
+              You want the dark theme to have its own strong character — the "dark and purple" you
+              described — and you're willing to keep purple tints disciplined across every surface
+              to keep it tasteful.
+            </p>
+          </div>
+        </div>
+        <p class="sec-sub" style="margin-top: 22px">
+          Once you choose, I'll wire the winning set into <code>styles/tokens.css</code> under a
+          <code>.dark</code> / <code>[data-theme]</code> scope, restore the theme toggle that was
+          removed in <code>9344b5d</code>, and — critically — re-skin the reasoning/thinking panels
+          in the chosen accent so the old blue clash never returns.
+        </p>
+      </section>
+
+      <footer>
+        <p>
+          Dialogia palette study · generated for design review · fonts: Newsreader (display) +
+          Plus&nbsp;Jakarta&nbsp;Sans (body), the app's real type stack. Research basis: Material
+          Design dark theme (surface elevation, 200-tone accents), WCAG AA contrast, and gold/purple
+          luxury-pairing conventions (gold rationed as metal, purple as the regal ground).
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -28,6 +28,7 @@ type DbTable<T> = {
   get: (id: string) => Promise<T | undefined>;
   toArray: () => Promise<T[]>;
   where?: DbWhere<T>;
+  orderBy?: (index: string) => { uniqueKeys?: () => Promise<unknown[]> };
 };
 
 export type DialogiaDbLike = {
@@ -39,7 +40,10 @@ export type DialogiaDbLike = {
 export type RepositorySnapshot = {
   chats: Chat[];
   folders: Folder[];
+  /** Messages for the selected chat only; other chats load lazily. */
   messages: Record<string, Message[]>;
+  /** Chat ids that have at least one persisted message. */
+  chatIdsWithMessages: string[];
   selectedChatId?: string;
 };
 
@@ -190,25 +194,40 @@ export function createRepository(db: DialogiaDbLike) {
     });
   };
 
+  const listChatIdsWithMessages = async (): Promise<string[]> => {
+    if (typeof db.messages.orderBy === 'function') {
+      try {
+        const keys = await db.messages.orderBy('chatId').uniqueKeys?.();
+        if (keys) return keys.map((key) => String(key));
+      } catch {
+        // fall through to the full scan below
+      }
+    }
+    const all = await db.messages.toArray();
+    return Array.from(new Set(all.map((message) => message.chatId)));
+  };
+
+  // Load chats/folders plus messages for the selected chat only. Loading the
+  // whole messages table up front made startup cost scale with total history
+  // (including image attachments stored as data URLs).
   const loadRepositorySnapshot = async (selectedChatId?: string): Promise<RepositorySnapshot> => {
-    const [chats, folders, messagesArray] = await Promise.all([
+    const [chats, folders, chatIdsWithMessages] = await Promise.all([
       db.chats.toArray(),
       db.folders.toArray(),
-      db.messages.toArray(),
+      listChatIdsWithMessages(),
     ]);
 
+    const resolvedSelected = selectedChatId || chats[0]?.id;
     const messages: Record<string, Message[]> = {};
-    for (const m of messagesArray) {
-      if (!messages[m.chatId]) messages[m.chatId] = [];
-      messages[m.chatId].push(m as Message);
-    }
-    for (const key of Object.keys(messages)) {
-      messages[key] = sortMessages(messages[key]);
+    if (resolvedSelected && chatIdsWithMessages.includes(resolvedSelected)) {
+      messages[resolvedSelected] = await getMessagesForChat(db, resolvedSelected);
     }
 
-    const resolvedSelected = selectedChatId || chats[0]?.id;
-    return { chats, folders, messages, selectedChatId: resolvedSelected };
+    return { chats, folders, messages, chatIdsWithMessages, selectedChatId: resolvedSelected };
   };
+
+  const loadMessagesForChat = async (chatId: string): Promise<Message[]> =>
+    getMessagesForChat(db, chatId);
 
   const saveChatWithMessages = async (chat: Chat, list: Message[]) => {
     await runTransaction(db, [db.chats, db.messages], async () => {
@@ -237,6 +256,7 @@ export function createRepository(db: DialogiaDbLike) {
     exportAll,
     importAll,
     loadRepositorySnapshot,
+    loadMessagesForChat,
     saveChatWithMessages,
     deleteChatAndMessages,
     deleteFolder,

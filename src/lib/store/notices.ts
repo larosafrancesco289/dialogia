@@ -20,6 +20,50 @@ export function resolveNotice(notice?: NoticeId | string): string | undefined {
   return NOTICE_CATALOG[notice as NoticeId] ?? notice;
 }
 
+/** Notices that confirm an action rather than report a problem. */
+const SUCCESS_NOTICES = new Set<string>([
+  NOTICE_CATALOG.exportedChats,
+  NOTICE_CATALOG.importedData,
+]);
+
+export function isSuccessNotice(message: string): boolean {
+  return SUCCESS_NOTICES.has(message);
+}
+
+const MAX_NOTICE_LENGTH = 200;
+
+function isAbortLike(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === 'AbortError') return true;
+  if (error instanceof Error) {
+    if (error.name === 'AbortError') return true;
+    if (/\baborted?\b/i.test(error.message)) return true;
+    const cause = (error as Error & { detail?: unknown }).detail ?? error.cause;
+    if (cause && cause !== error) return isAbortLike(cause);
+  }
+  return false;
+}
+
+/**
+ * Map an arbitrary turn error onto a user-facing notice. Returns undefined for
+ * user-initiated aborts (stopping a stream is not an error) and translates
+ * common low-level failures into something actionable instead of surfacing
+ * raw provider/runtime messages.
+ */
+export function describeErrorNotice(error: unknown): string | undefined {
+  if (isAbortLike(error)) return undefined;
+  const message = error instanceof Error ? error.message : '';
+  if (/failed to fetch|load failed|networkerror|network request failed/i.test(message)) {
+    return 'Network error. Check your connection and try again.';
+  }
+  if (/timed? ?out/i.test(message)) {
+    return 'The request timed out. Please try again.';
+  }
+  if (!message.trim()) return 'An unexpected error occurred';
+  return message.length > MAX_NOTICE_LENGTH
+    ? `${message.slice(0, MAX_NOTICE_LENGTH - 1)}…`
+    : message;
+}
+
 export const NOTICE_MISSING_CLIENT_KEY = NOTICE_CATALOG.missingClientKey;
 export const NOTICE_MISSING_ANTHROPIC_KEY = NOTICE_CATALOG.missingAnthropicKey;
 export const NOTICE_INVALID_KEY = NOTICE_CATALOG.invalidKey;

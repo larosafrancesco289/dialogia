@@ -13,16 +13,24 @@ import type { Chat, ChatSettingsPatch } from '@/lib/types';
 import { getClientTier } from '@/lib/auth/tier.client';
 import { isTutorForcedForTier } from '@/lib/auth/tierFeatures';
 import {
+  appendMessagesToChat,
   getMessagesForChat,
   removeChatMessages,
   setMessagesForChat,
 } from '@/lib/messages/indexing';
+import { hydrateMessageList } from '@/lib/services/hydrate';
+import { mergeTutorMap } from '@/lib/ui/tutorSelectors';
 
 export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
+  const inflightMessageLoads = new Map<string, Promise<void>>();
+
   const findLatestEmptyDraft = (state: StoreState): Chat | undefined => {
     let candidate: Chat | undefined;
     for (const chat of state.chats) {
       if (chat.title !== 'New Chat') continue;
+      // A chat whose messages have not been loaded yet may still have
+      // persisted history; never treat it as a reusable empty draft.
+      if (!state.loadedMessageChatIds?.[chat.id] && state.nonEmptyChatIds?.[chat.id]) continue;
       if (getMessagesForChat(state, chat.id).length > 0) continue;
       const candidateStamp = candidate?.updatedAt ?? candidate?.createdAt ?? -Infinity;
       const chatStamp = chat.updatedAt ?? chat.createdAt ?? 0;
@@ -30,6 +38,11 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
     }
     return candidate;
   };
+
+  const markChatLoaded = (state: StoreState, chatId: string): Partial<StoreState> =>
+    state.loadedMessageChatIds?.[chatId]
+      ? {}
+      : { loadedMessageChatIds: { ...(state.loadedMessageChatIds ?? {}), [chatId]: true } };
 
   return {
     async initializeApp() {
@@ -58,6 +71,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         set((s) => ({
           chats: s.chats.map((c) => (c.id === nextDraft.id ? nextDraft : c)),
           selectedChatId: nextDraft.id,
+          ...markChatLoaded(s, nextDraft.id),
           ui: resetEphemeralUi({
             ...s.ui,
             plan: { ...s.ui.plan, sheetOpen: false, sheetPlanOverride: null },
@@ -81,6 +95,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       set((s) => ({
         chats: [chat, ...s.chats],
         selectedChatId: chat.id,
+        ...markChatLoaded(s, chat.id),
         ui: resetEphemeralUi(s.ui),
       }));
 
@@ -88,6 +103,9 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
     },
 
     selectChat(id: string) {
+      void get()
+        .ensureChatMessagesLoaded(id)
+        .catch(() => undefined);
       set((s) => ({
         selectedChatId: id,
         ui: {
@@ -99,6 +117,39 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
           },
         },
       }));
+    },
+
+    async ensureChatMessagesLoaded(chatId: string) {
+      if (!chatId) return;
+      if (get().loadedMessageChatIds[chatId]) return;
+      const inflight = inflightMessageLoads.get(chatId);
+      if (inflight) return inflight;
+      const load = (async () => {
+        try {
+          const list = await repository.loadMessagesForChat(chatId);
+          const { messages, tutorByMessageId } = hydrateMessageList(list);
+          set((s) => ({
+            // Merge instead of replace: messages sent while the load was in
+            // flight must survive (append dedupes by id).
+            ...appendMessagesToChat(s, chatId, messages),
+            ...markChatLoaded(s, chatId),
+            ui: mergeTutorMap(s.ui, tutorByMessageId),
+          }));
+        } finally {
+          inflightMessageLoads.delete(chatId);
+        }
+      })();
+      inflightMessageLoads.set(chatId, load);
+      return load;
+    },
+
+    async ensureAllChatMessagesLoaded() {
+      const chatIds = get().chats.map((chat) => chat.id);
+      for (const chatId of chatIds) {
+        await get()
+          .ensureChatMessagesLoaded(chatId)
+          .catch(() => undefined);
+      }
     },
 
     async renameChat(id: string, title: string) {
@@ -116,9 +167,15 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         const chats = s.chats.filter((c) => c.id !== id);
         const deletingSelectedChat = s.selectedChatId === id;
         const selectedChatId = deletingSelectedChat ? chats[0]?.id : s.selectedChatId;
+        const loadedMessageChatIds = { ...(s.loadedMessageChatIds ?? {}) };
+        delete loadedMessageChatIds[id];
+        const nonEmptyChatIds = { ...(s.nonEmptyChatIds ?? {}) };
+        delete nonEmptyChatIds[id];
         return {
           chats,
           selectedChatId,
+          loadedMessageChatIds,
+          nonEmptyChatIds,
           ...removeChatMessages(s, id),
           ...(deletingSelectedChat
             ? {
@@ -135,6 +192,14 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
             : {}),
         };
       });
+      // Falling back to another chat after deletion may select one whose
+      // messages have not been loaded yet.
+      const nextSelected = get().selectedChatId;
+      if (nextSelected) {
+        void get()
+          .ensureChatMessagesLoaded(nextSelected)
+          .catch(() => undefined);
+      }
     },
 
     clearChatMessages(chatId?: string) {
@@ -164,6 +229,8 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         chats: [result.chat, ...s.chats],
         selectedChatId: result.chat.id,
         ...setMessagesForChat(s, result.chat.id, result.messages),
+        ...markChatLoaded(s, result.chat.id),
+        nonEmptyChatIds: { ...(s.nonEmptyChatIds ?? {}), [result.chat.id]: true as const },
       }));
     },
 

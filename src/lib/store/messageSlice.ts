@@ -38,6 +38,8 @@ export function createMessageSlice(set: StoreSetter, get: () => StoreState, _sto
         metadata?: import('@/lib/types').Message['metadata'];
       },
     ) {
+      const chatId = get().selectedChatId;
+      if (chatId) await get().ensureChatMessagesLoaded(chatId);
       await sendUserTurn({
         content,
         attachments: opts?.attachments,

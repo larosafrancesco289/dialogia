@@ -24,6 +24,7 @@ export const {
   exportAll,
   importAll,
   loadRepositorySnapshot,
+  loadMessagesForChat,
   saveChatWithMessages,
   deleteChatAndMessages,
   deleteFolder,

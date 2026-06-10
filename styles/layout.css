@@ -58,9 +58,39 @@
       transform var(--duration-fast) var(--ease-standard);
   }
   @media (prefers-reduced-motion: reduce) {
-    * {
+    *,
+    *::before,
+    *::after {
       transition: none !important;
       animation: none !important;
+    }
+  }
+
+  /* Pause ambient (infinite) animations while the tab is hidden to save
+     battery; the .tab-hidden class is toggled from useAmbientMotionPause. */
+  .tab-hidden .hero-gradient::before,
+  .tab-hidden .plan-loading-bar {
+    animation-play-state: paused !important;
+  }
+
+  /* Smooth one-shot reveal for collapsible panel bodies (reasoning, sources).
+     Grid-row animation tracks the content's real height, unlike max-height. */
+  .panel-reveal {
+    display: grid;
+    animation: panel-reveal var(--duration-med) var(--ease-standard);
+  }
+  .panel-reveal > * {
+    min-height: 0;
+    overflow: hidden;
+  }
+  @keyframes panel-reveal {
+    from {
+      grid-template-rows: 0fr;
+      opacity: 0;
+    }
+    to {
+      grid-template-rows: 1fr;
+      opacity: 1;
     }
   }
 
@@ -98,12 +128,35 @@
     overflow: hidden;
   }
 
+  /* Side panels collapse via CSS width transitions. The inner content keeps a
+     fixed width so text never rewraps mid-animation; visibility flips after
+     the transition so collapsed panels drop out of the tab order. */
   .sidebar-slot {
     overflow: hidden;
     position: relative;
     z-index: 10;
     width: 320px;
     min-width: 0;
+    transition:
+      width var(--duration-slow) var(--ease-emphasized),
+      visibility 0s;
+  }
+  .sidebar-slot .sidebar {
+    width: 320px;
+    transition:
+      transform var(--duration-slow) var(--ease-emphasized),
+      opacity var(--duration-med) var(--ease-standard);
+  }
+  .sidebar-slot.is-collapsed {
+    width: 0;
+    visibility: hidden;
+    transition:
+      width var(--duration-slow) var(--ease-emphasized),
+      visibility 0s var(--duration-slow);
+  }
+  .sidebar-slot.is-collapsed .sidebar {
+    transform: translateX(-18px);
+    opacity: 0;
   }
 
   .right-panel-slot {
@@ -112,6 +165,27 @@
     z-index: 10;
     width: 400px;
     min-width: 0;
+    transition:
+      width var(--duration-slow) var(--ease-emphasized),
+      visibility 0s;
+  }
+  .right-panel-body {
+    width: 400px;
+    height: 100%;
+    transition:
+      transform var(--duration-slow) var(--ease-emphasized),
+      opacity var(--duration-med) var(--ease-standard);
+  }
+  .right-panel-slot.is-collapsed {
+    width: 0;
+    visibility: hidden;
+    transition:
+      width var(--duration-slow) var(--ease-emphasized),
+      visibility 0s var(--duration-slow);
+  }
+  .right-panel-slot.is-collapsed .right-panel-body {
+    transform: translateX(18px);
+    opacity: 0;
   }
 
   .sidebar {

@@ -22,6 +22,9 @@ export const selectSelectedChatId = (state: StoreState) => state.selectedChatId;
 export const selectMessagesForChat = (chatId?: string) => (state: StoreState) =>
   chatId ? getMessagesForChat(state, chatId) : [];
 
+export const selectChatMessagesLoaded = (chatId?: string) => (state: StoreState) =>
+  !chatId || !!state.loadedMessageChatIds[chatId];
+
 export const selectMessagesForCurrentChat = (state: StoreState) => {
   const chatId = state.selectedChatId;
   return chatId ? getMessagesForChat(state, chatId) : [];

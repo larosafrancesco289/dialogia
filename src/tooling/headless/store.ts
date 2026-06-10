@@ -36,6 +36,8 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
     messagesById,
     messageIdsByChatId,
     selectedChatId: chat.id,
+    loadedMessageChatIds: { [chat.id]: true as const },
+    nonEmptyChatIds: messages.length ? { [chat.id]: true as const } : {},
     models,
     modelIndex: resolvedIndex,
     favoriteModelIds: [],
@@ -51,6 +53,8 @@ export function createHeadlessStore(options: HeadlessStoreOptions): StoreApi<Sto
 
     newChat: async () => {},
     selectChat: (id: string) => set({ selectedChatId: id }),
+    ensureChatMessagesLoaded: async () => {},
+    ensureAllChatMessagesLoaded: async () => {},
     renameChat: async (id: string, title: string) => {
       set((state) => ({
         chats: state.chats.map((c) => (c.id === id ? { ...c, title, updatedAt: Date.now() } : c)),

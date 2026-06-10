@@ -13,6 +13,10 @@ export type StoreDataState = {
   messagesById: Record<string, Message>;
   messageIdsByChatId: Record<string, string[]>;
   selectedChatId?: string;
+  // Lazy hydration bookkeeping (ephemeral): chats whose messages are in
+  // memory, and chats known to have persisted messages not yet loaded.
+  loadedMessageChatIds: Record<string, true>;
+  nonEmptyChatIds: Record<string, true>;
 
   models: ModelDescriptor[];
   modelIndex: ModelIndex;

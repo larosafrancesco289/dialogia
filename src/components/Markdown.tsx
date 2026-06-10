@@ -196,7 +196,7 @@ function PreWithTools(
   );
 }
 
-function MermaidBlock({ code }: { code: string }) {
+function MermaidBlock({ code, streaming }: { code: string; streaming?: boolean }) {
   const id = useId().replace(/[:]/g, '_');
   const ref = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -222,9 +222,11 @@ function MermaidBlock({ code }: { code: string }) {
   }, []);
 
   useEffect(() => {
-    if (!isVisible) return;
+    // While streaming, the diagram source is still growing; rendering partial
+    // definitions just produces parse errors, so wait for the final pass.
+    if (!isVisible || streaming) return;
     let cancelled = false;
-    (async () => {
+    const tid = setTimeout(async () => {
       try {
         const mermaid = (await import('mermaid')).default;
         // Use strict security level to reduce risk from untrusted diagram content
@@ -233,15 +235,23 @@ function MermaidBlock({ code }: { code: string }) {
         if (!cancelled && ref.current) ref.current.innerHTML = svg;
       } catch {
         // ignore
-        if (ref.current) {
+        if (!cancelled && ref.current) {
           ref.current.innerText = 'Mermaid diagram failed to render.';
         }
       }
-    })();
+    }, 300);
     return () => {
       cancelled = true;
+      clearTimeout(tid);
     };
-  }, [code, id, isVisible]);
+  }, [code, id, isVisible, streaming]);
+  if (streaming) {
+    return (
+      <pre className="rounded-2xl bg-muted p-4 overflow-auto">
+        <code>{code}</code>
+      </pre>
+    );
+  }
   return <div className="mermaid-diagram" ref={ref} />;
 }
 
@@ -336,7 +346,15 @@ async function ensurePrismLanguage(lang?: string) {
   return PrismLib;
 }
 
-function CodeBlock({ code, language }: { code: string; language?: string }) {
+function CodeBlock({
+  code,
+  language,
+  streaming,
+}: {
+  code: string;
+  language?: string;
+  streaming?: boolean;
+}) {
   const [html, setHtml] = useState<string | null>(null);
   const lang = normalizeLanguage(language);
   useEffect(() => {
@@ -356,10 +374,14 @@ function CodeBlock({ code, language }: { code: string; language?: string }) {
         const h = Prism.highlight(code, grammar, (lang as string) || 'markup');
         if (cancelled) return;
         setHtml((prev) => (prev === h ? prev : h));
-        PRISM_CACHE.set(cacheKey, h);
-        if (PRISM_CACHE.size > PRISM_CACHE_MAX) {
-          const oldestKey = PRISM_CACHE.keys().next().value;
-          if (oldestKey) PRISM_CACHE.delete(oldestKey);
+        // Streaming snapshots are dead keys after the next flush; caching them
+        // would just evict useful entries.
+        if (!streaming) {
+          PRISM_CACHE.set(cacheKey, h);
+          if (PRISM_CACHE.size > PRISM_CACHE_MAX) {
+            const oldestKey = PRISM_CACHE.keys().next().value;
+            if (oldestKey) PRISM_CACHE.delete(oldestKey);
+          }
         }
       } catch {
         if (!cancelled) {
@@ -370,7 +392,7 @@ function CodeBlock({ code, language }: { code: string; language?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [code, lang]);
+  }, [code, lang, streaming]);
   const cls = `language-${lang ?? 'markup'}`;
   return <code className={cls} dangerouslySetInnerHTML={{ __html: html ?? escapeHtml(code) }} />;
 }
@@ -404,9 +426,12 @@ export function linkCitationMarkers(content: string, sources?: MarkdownCitationS
 export const Markdown = memo(function Markdown({
   content,
   sources,
+  streaming,
 }: {
   content: string;
   sources?: MarkdownCitationSource[];
+  /** True while this block's content may still change on the next flush. */
+  streaming?: boolean;
 }) {
   const processedContent = useMemo(
     () => linkCitationMarkers(escapeCurrency(content), sources),
@@ -417,6 +442,7 @@ export const Markdown = memo(function Markdown({
 
   // Attach medium-zoom to images inside markdown for a better reading experience
   useEffect(() => {
+    if (streaming) return;
     let zoom: MediumZoomInstance | undefined;
     let cancelled = false;
     const run = async () => {
@@ -448,7 +474,7 @@ export const Markdown = memo(function Markdown({
         logger.error('Failed to detach zoom', error);
       }
     };
-  }, [processedContent]);
+  }, [processedContent, streaming]);
 
   const components: Components = useMemo(
     () => ({
@@ -457,12 +483,12 @@ export const Markdown = memo(function Markdown({
         const lang = detectLanguageFromPreChildren(children);
         if (lang === 'mermaid') {
           const code = extractCodeText(children);
-          return <MermaidBlock code={code} />;
+          return <MermaidBlock code={code} streaming={streaming} />;
         }
         const code = extractCodeText(children);
         return (
           <PreWithTools {...preProps} language={lang} rawText={code}>
-            <CodeBlock code={code} language={lang} />
+            <CodeBlock code={code} language={lang} streaming={streaming} />
           </PreWithTools>
         );
       },
@@ -498,7 +524,7 @@ export const Markdown = memo(function Markdown({
         );
       },
     }),
-    [],
+    [streaming],
   );
 
   return (

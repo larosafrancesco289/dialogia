@@ -11,6 +11,25 @@ export type HydratedRepositorySnapshot = Omit<RepositorySnapshot, 'messages'> & 
   tutorByMessageId: Record<string, MessageTutor>;
 };
 
+export type HydratedMessageList = {
+  messages: Message[];
+  tutorByMessageId: Record<string, MessageTutor>;
+};
+
+/** Hydrate a single chat's persisted messages (used by lazy chat loads). */
+export const hydrateMessageList = (list: Message[]): HydratedMessageList => {
+  const tutorByMessageId: Record<string, MessageTutor> = {};
+  const messages: Message[] = [];
+  for (const message of list ?? []) {
+    const nextMessage = { ...message } as Message;
+    if (nextMessage.role === 'assistant' && nextMessage.tutor) {
+      tutorByMessageId[nextMessage.id] = nextMessage.tutor;
+    }
+    messages.push(ensureHiddenTutorContent(nextMessage));
+  }
+  return { messages, tutorByMessageId };
+};
+
 export const hydrateRepositorySnapshot = (
   snapshot: RepositorySnapshot,
 ): HydratedRepositorySnapshot => {
@@ -19,15 +38,12 @@ export const hydrateRepositorySnapshot = (
   const messageIdsByChatId: Record<string, string[]> = {};
 
   for (const [chatId, list] of Object.entries(snapshot.messages)) {
+    const hydrated = hydrateMessageList(list ?? []);
+    Object.assign(tutorByMessageId, hydrated.tutorByMessageId);
     const ids: string[] = [];
-    for (const message of list ?? []) {
-      const nextMessage = { ...message } as Message;
-      if (nextMessage.role === 'assistant' && nextMessage.tutor) {
-        tutorByMessageId[nextMessage.id] = nextMessage.tutor;
-      }
-      const hydrated = ensureHiddenTutorContent(nextMessage);
-      messagesById[hydrated.id] = hydrated;
-      ids.push(hydrated.id);
+    for (const message of hydrated.messages) {
+      messagesById[message.id] = message;
+      ids.push(message.id);
     }
     if (ids.length) messageIdsByChatId[chatId] = ids;
   }

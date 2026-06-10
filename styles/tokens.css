@@ -119,3 +119,66 @@
 :root {
   color-scheme: light;
 }
+
+/* ============================================================================
+   Dark theme — "Candlelit Study"
+   A warm charcoal sibling of the light Imperial Archive parchment. Built on
+   three principles to keep it tasteful (see design/palette-explorer.html):
+     1. No pure black — canvas is a warm dark grey so surfaces can lift via
+        lightness (Material elevation), and gold glows instead of glaring.
+     2. Accents are lifted + slightly desaturated (Material "200 tone") so they
+        sit calmly on the dark ground instead of vibrating.
+     3. Gold stays the rationed metal accent; purple is the soft secondary.
+   The reasoning/thinking panels inherit these tokens, so the old cool-blue
+   clash cannot return — everything stays in the warm gold/purple family.
+   ========================================================================== */
+.dark {
+  color-scheme: dark;
+
+  /* Surfaces — warm charcoal, three elevation steps */
+  --color-canvas: #16140f;
+  --color-surface: #1e1b16;
+  --color-muted: #262119;
+  --color-fg: #ece6db;
+  --color-fg-muted: #a89e8e;
+  /* Lifted, softened gold + lavender — glow, don't glare */
+  --color-accent: #cda85f;
+  --color-accent-2: #b48ad0;
+  --color-border: #332c22;
+
+  /* Status — slightly brightened for the dark ground */
+  --color-success: #7cb87a;
+  --color-danger: #d4645a;
+  --focus-ring: color-mix(in oklab, var(--color-accent) 50%, transparent);
+
+  /* Warm shadows with a faint amber lift; depth comes mostly from elevation */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 24px 48px rgba(0, 0, 0, 0.6);
+  --shadow-card: var(--shadow-2);
+  --shadow-message:
+    0 1px 3px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.3),
+    0 8px 24px rgba(205, 168, 95, 0.05);
+  --shadow-message-hover:
+    0 2px 6px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.35),
+    0 16px 40px rgba(205, 168, 95, 0.08);
+
+  /* Glass — slightly more opaque so blur reads against the dark canvas */
+  --glass-surface-bg: color-mix(in oklab, var(--color-surface) 80%, transparent);
+  --glass-panel-bg: color-mix(in oklab, var(--color-surface) 85%, transparent);
+  --glass-strong-bg: color-mix(in oklab, var(--color-surface) 90%, transparent);
+
+  /* Message role styling — purple-leaning assistant, gold-leaning user */
+  --message-assistant-bg: color-mix(in oklab, var(--color-surface) 93%, var(--color-accent-2));
+  --message-assistant-border: color-mix(in oklab, var(--color-border) 86%, var(--color-accent-2));
+  --message-user-bg: color-mix(in oklab, var(--color-surface) 94%, var(--color-accent));
+  --message-user-border: color-mix(in oklab, var(--color-border) 88%, var(--color-accent));
+
+  /* Interactive feedback — readable correct/incorrect on dark */
+  --feedback-correct-bg: color-mix(in oklab, var(--color-success) 12%, var(--color-muted));
+  --feedback-correct-border: color-mix(in oklab, var(--color-success) 40%, var(--color-border));
+  --feedback-correct-text: var(--color-success);
+  --feedback-incorrect-bg: color-mix(in oklab, var(--color-danger) 12%, var(--color-muted));
+  --feedback-incorrect-border: color-mix(in oklab, var(--color-danger) 40%, var(--color-border));
+  --feedback-incorrect-text: var(--color-danger);
+}

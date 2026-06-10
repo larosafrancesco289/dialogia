@@ -15,6 +15,8 @@ const baseState = (messages: Record<string, Message[]>): StoreState => {
     folders: [],
     messagesById,
     messageIdsByChatId,
+    loadedMessageChatIds: {},
+    nonEmptyChatIds: {},
     models: [],
     modelIndex: {
       all: [],
@@ -29,6 +31,8 @@ const baseState = (messages: Record<string, Message[]>): StoreState => {
     initializeApp: noopAsync,
     newChat: noopAsync,
     selectChat: noop,
+    ensureChatMessagesLoaded: noopAsync,
+    ensureAllChatMessagesLoaded: noopAsync,
     renameChat: noopAsync,
     deleteChat: noopAsync,
     clearChatMessages: noop,

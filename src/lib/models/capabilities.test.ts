@@ -63,11 +63,27 @@ test('supportsXhighReasoningEffort matches known model families', () => {
   const reasoningRaw = { supported_parameters: ['reasoning'] };
 
   assert.equal(
+    supportsXhighReasoningEffort(buildModel('anthropic-direct/claude-fable-5', reasoningRaw)),
+    true,
+  );
+  assert.equal(
+    supportsXhighReasoningEffort(buildModel('anthropic/claude-fable-5', reasoningRaw)),
+    true,
+  );
+  assert.equal(
     supportsXhighReasoningEffort(buildModel('anthropic-direct/claude-opus-4-7', reasoningRaw)),
     true,
   );
   assert.equal(
     supportsXhighReasoningEffort(buildModel('anthropic/claude-opus-4-7', reasoningRaw)),
+    true,
+  );
+  assert.equal(
+    supportsXhighReasoningEffort(buildModel('anthropic-direct/claude-opus-4-8', reasoningRaw)),
+    true,
+  );
+  assert.equal(
+    supportsXhighReasoningEffort(buildModel('anthropic/claude-opus-4.8', reasoningRaw)),
     true,
   );
   assert.equal(supportsXhighReasoningEffort(buildModel('openai/gpt-5.4', reasoningRaw)), true);

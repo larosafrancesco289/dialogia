@@ -134,8 +134,11 @@ the stable, supported surface for cross-domain use.
    (`src/lib/openrouter/index.ts`, etc.) and underlying HTTP client. Proxying through
    `/api/openrouter/*` keeps provider keys off the client whenever proxy mode is enabled.
 5. Streaming responses feed `src/lib/agent/streamHandlers.ts`, which mutate store slices via
-   dedicated update helpers (append tokens, metrics, annotations). Non-streaming responses update
-   message state in one shot.
+   dedicated update helpers (append tokens, metrics, annotations) and checkpoint the partial
+   assistant message to IndexedDB every few seconds so a crash or reload mid-stream cannot lose it.
+   Non-streaming responses update message state in one shot. During streaming the UI renders
+   markdown through `src/components/message/StreamingMarkdown.tsx`, which uses
+   `src/lib/markdown/blocks.ts` to memoize completed blocks and re-parse only the growing tail.
 6. The UI reacts via selectors (`useChatMessages`, `useModelStore`) and rerenders declaratively. The
    persisted portions of the store sync to IndexedDB through Zustand persistence adapters.
 
@@ -144,6 +147,15 @@ the stable, supported surface for cross-domain use.
 Long-lived user data is stored in IndexedDB through Dexie (`src/lib/db/*`): chats, messages,
 folders, and small KV records such as presets, tutor profiles, and decks. Export/import flows use
 `exportAll`/`importAll` from `src/lib/db/index.ts`.
+
+Message hydration is lazy. `loadRepositorySnapshot` loads all chats and folders but only the
+selected chat's messages, plus the set of chat ids that have persisted messages. Other chats
+hydrate on selection via the `ensureChatMessagesLoaded` store action (merge semantics, deduped by
+message id) and are prefetched in the background during browser idle. The store tracks this with
+`loadedMessageChatIds` and `nonEmptyChatIds` (both ephemeral, never persisted); code that needs
+every chat's messages in memory (e.g., usage statistics) should call
+`ensureAllChatMessagesLoaded` first. Export/import are unaffected because they read the database
+directly.
 
 Zustand persistence is reserved for stable UI preferences in `PersistedStoreState`
 (`src/lib/store/types.ts`), including the selected chat, favorite/hidden models, settings drawer
