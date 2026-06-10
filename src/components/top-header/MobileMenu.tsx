@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export type TopHeaderMobileMenuProps = {
   hasChat: boolean;
@@ -124,6 +125,7 @@ export function TopHeaderMobileMenu({
                 Rename chat
               </button>
             )}
+            <ThemeToggle variant="menu" onToggle={() => setIsOpen(false)} className="text-sm" />
             <button
               className="menu-item w-full text-left text-sm"
               type="button"

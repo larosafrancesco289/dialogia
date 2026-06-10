@@ -17,15 +17,62 @@ function scheduleZdrRefresh(set: StoreSetter, get: StoreGetter) {
   }, ZDR_CACHE_TTL_MS);
 }
 
+type WindowWithIdle = Window & {
+  requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+};
+
+function scheduleIdle(fn: () => void) {
+  const idle = (window as WindowWithIdle).requestIdleCallback;
+  if (typeof idle === 'function') idle(fn, { timeout: 5000 });
+  else window.setTimeout(fn, 400);
+}
+
+/**
+ * Warm the remaining chats' messages one at a time during browser idle so
+ * chat switches are instant without paying for the whole history at startup.
+ */
+function prefetchRemainingChatMessages(get: StoreGetter) {
+  if (typeof window === 'undefined') return;
+  const queue = get()
+    .chats.map((chat) => chat.id)
+    .filter((chatId) => !get().loadedMessageChatIds[chatId]);
+  if (!queue.length) return;
+
+  const runNext = () => {
+    const next = queue.shift();
+    if (!next) return;
+    get()
+      .ensureChatMessagesLoaded(next)
+      .catch(() => undefined)
+      .finally(() => {
+        if (queue.length) scheduleIdle(runNext);
+      });
+  };
+  scheduleIdle(runNext);
+}
+
 export async function bootstrapApp(set: StoreSetter, get: StoreGetter): Promise<void> {
   const snapshot = await loadRepositorySnapshot(get().selectedChatId);
   const hydrated = hydrateRepositorySnapshot(snapshot);
+
+  const nonEmptyChatIds: Record<string, true> = {};
+  for (const chatId of snapshot.chatIdsWithMessages) nonEmptyChatIds[chatId] = true;
+
+  const loadedMessageChatIds: Record<string, true> = {};
+  for (const chatId of Object.keys(snapshot.messages)) loadedMessageChatIds[chatId] = true;
+  // Chats with no persisted messages have nothing to load.
+  for (const chat of hydrated.chats) {
+    if (!nonEmptyChatIds[chat.id]) loadedMessageChatIds[chat.id] = true;
+  }
+
   set((s) => ({
     chats: hydrated.chats,
     folders: hydrated.folders,
     messagesById: hydrated.messagesById,
     messageIdsByChatId: hydrated.messageIdsByChatId,
     selectedChatId: hydrated.selectedChatId,
+    loadedMessageChatIds,
+    nonEmptyChatIds,
     ui: mergeTutorMap(s.ui, hydrated.tutorByMessageId),
   }));
 
@@ -36,6 +83,8 @@ export async function bootstrapApp(set: StoreSetter, get: StoreGetter): Promise<
   } catch {
     /* ignore tutor profile preload errors */
   }
+
+  prefetchRemainingChatMessages(get);
 
   try {
     await refreshZdrListsIfNeeded(set, get);

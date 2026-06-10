@@ -27,8 +27,8 @@ export function isReasoningSupported(model?: ModelDescriptor | null): boolean {
 }
 
 const XHIGH_MODEL_ID_PATTERNS: RegExp[] = [
-  /^anthropic-direct\/claude-opus-4-7/,
-  /^anthropic\/claude-opus-4-7/,
+  /^(?:anthropic-direct\/|anthropic\/)?claude-fable-5(?:-\d{8})?$/,
+  /^(?:anthropic-direct\/|anthropic\/)?claude-opus-4[.-](?:7|8)(?:-\d{8})?$/,
   /^openai\/gpt-5[.-](?:2|3|4)/,
 ];
 

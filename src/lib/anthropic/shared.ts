@@ -11,6 +11,8 @@ const ANTHROPIC_ACCEPTED_PREFIXES = [ANTHROPIC_TRANSPORT_PREFIX, 'anthropic/'] a
  * When an alias already matches the API ID, it maps to itself.
  */
 export const ANTHROPIC_MODEL_ALIAS_MAP: Record<string, string> = {
+  'claude-fable-5': 'claude-fable-5',
+  'claude-opus-4-8': 'claude-opus-4-8',
   'claude-opus-4-7': 'claude-opus-4-7',
   'claude-opus-4-6': 'claude-opus-4-6',
   'claude-sonnet-4-6': 'claude-sonnet-4-6',
@@ -32,6 +34,7 @@ const DIRECT_TO_PUBLIC_MODEL_MAP = new Map<string, string>(
 
 const SNAPSHOT_MODEL_ID_RE = /^claude-[a-z0-9-]+-\d{8}$/;
 const PROMPT_CACHING_MODEL_ID_RE_LIST = [
+  /^claude-fable-5(?:-\d{8})?$/,
   /^claude-mythos-preview$/,
   /^claude-opus-4(?:-\d{8}|-[0-9](?:-\d{8})?)?$/,
   /^claude-sonnet-4(?:-\d{8}|-[0-9](?:-\d{8})?)?$/,
@@ -46,6 +49,8 @@ const PROMPT_CACHING_MODEL_ID_RE_LIST = [
   /^claude-3-opus(?:-\d{8}|-latest)?$/,
 ] as const;
 const ADAPTIVE_THINKING_MODEL_ID_RE_LIST = [
+  /^claude-fable-5(?:-\d{8})?$/,
+  /^claude-opus-4-8(?:-\d{8})?$/,
   /^claude-opus-4-6(?:-\d{8})?$/,
   /^claude-opus-4-7(?:-\d{8})?$/,
   /^claude-sonnet-4-6(?:-\d{8})?$/,
@@ -62,6 +67,13 @@ const KNOWN_ANTHROPIC_PRICING: Record<
     currency: string;
   }
 > = {
+  'claude-fable-5': {
+    prompt: 0.00001,
+    completion: 0.00005,
+    inputCacheRead: 0.000001,
+    inputCacheWrite: 0.0000125,
+    currency: 'usd',
+  },
   'claude-opus-4-6': {
     prompt: 0.000005,
     completion: 0.000025,

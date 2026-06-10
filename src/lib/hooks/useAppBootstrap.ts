@@ -7,7 +7,7 @@ import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { prefetchOnIdle } from '@/lib/ui/lazy';
 import { MEDIA_QUERIES, maxWidthQuery } from '@/lib/ui/breakpoints';
 
-export function useAppBootstrap(opts?: { mobileBreakpoint?: number }) {
+export function useAppBootstrap(opts?: { mobileBreakpoint?: number; initialIsMobile?: boolean }) {
   const { initializeApp, setUI, collapsed } = useChatStore(
     (s) => ({
       initializeApp: s.initializeApp,
@@ -18,9 +18,13 @@ export function useAppBootstrap(opts?: { mobileBreakpoint?: number }) {
   );
 
   const [mounted, setMounted] = useState(false);
-  const isMobile = useMediaQuery(
+  const mediaIsMobile = useMediaQuery(
     opts?.mobileBreakpoint ? maxWidthQuery(opts.mobileBreakpoint) : MEDIA_QUERIES.tablet,
   );
+  // Until the media query resolves after mount, fall back to the server's UA
+  // hint so phones get the mobile shell on first paint instead of a desktop
+  // layout flash.
+  const isMobile = mounted ? mediaIsMobile : (opts?.initialIsMobile ?? mediaIsMobile);
 
   useEffect(() => setMounted(true), []);
 

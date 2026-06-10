@@ -12,6 +12,7 @@ import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { useMessageListController } from '@/components/message/useMessageListController';
 import {
+  selectChatMessagesLoaded,
   selectIsStreamingForChat,
   selectIsTutorEnabledForChat,
   selectMessagesForChat,
@@ -19,20 +20,28 @@ import {
 
 const EMPTY_MESSAGES: Message[] = [];
 export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
-  const { allMessages, chat, isStreaming, planGeneration, composerFocused, autoScrollPref } =
-    useChatStore(
-      (state) => ({
-        allMessages: selectMessagesForChat(chatId)(state) ?? EMPTY_MESSAGES,
-        chat: state.chats.find((c) => c.id === chatId),
-        isStreaming: selectIsStreamingForChat(chatId)(state),
-        planGeneration: state.ui.plan.generationByChatId?.[chatId],
-        composerFocused: state.ui.mobile.composerFocused,
-        autoScrollPref: selectIsTutorEnabledForChat(chatId)(state)
-          ? (state.ui.tutor.autoScroll ?? false)
-          : true,
-      }),
-      shallow,
-    );
+  const {
+    allMessages,
+    chat,
+    isStreaming,
+    planGeneration,
+    composerFocused,
+    autoScrollPref,
+    messagesLoaded,
+  } = useChatStore(
+    (state) => ({
+      allMessages: selectMessagesForChat(chatId)(state) ?? EMPTY_MESSAGES,
+      chat: state.chats.find((c) => c.id === chatId),
+      isStreaming: selectIsStreamingForChat(chatId)(state),
+      planGeneration: state.ui.plan.generationByChatId?.[chatId],
+      composerFocused: state.ui.mobile.composerFocused,
+      autoScrollPref: selectIsTutorEnabledForChat(chatId)(state)
+        ? (state.ui.tutor.autoScroll ?? false)
+        : true,
+      messagesLoaded: selectChatMessagesLoaded(chatId)(state),
+    }),
+    shallow,
+  );
   const { regenerate, branchFrom } = useChatStore(
     (state) => ({
       regenerate: state.regenerateAssistantMessage,
@@ -40,14 +49,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     }),
     shallow,
   );
-  const prefersReducedMotion = useMemo(() => {
-    if (typeof window === 'undefined' || !('matchMedia' in window)) return false;
-    try {
-      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    } catch {
-      return false;
-    }
-  }, []);
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const messages = useMemo(() => {
     const base = !modelFilter
@@ -162,6 +164,19 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     index: number;
   } | null>(null);
 
+  // Announce stream completion to screen readers; the typing indicator covers
+  // the start, but nothing else signals that the response has finished.
+  const [completionAnnouncement, setCompletionAnnouncement] = useState('');
+  const prevStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    const wasStreaming = prevStreamingRef.current;
+    prevStreamingRef.current = isStreaming;
+    if (!wasStreaming || isStreaming) return;
+    setCompletionAnnouncement('Response complete');
+    const tid = setTimeout(() => setCompletionAnnouncement(''), 2000);
+    return () => clearTimeout(tid);
+  }, [isStreaming]);
+
   // Composer is now rendered outside this scroll container in ChatPane.
 
   const showByDefault = chat?.settings.ui.showThinkingByDefault ?? false;
@@ -181,7 +196,18 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
 
   return (
     <div ref={containerRef} className="scroll-area message-list h-full">
+      <div className="sr-only" role="status" aria-live="polite">
+        {completionAnnouncement}
+      </div>
       <div ref={contentRef} className="message-list__content space-y-2 pb-4">
+        {!messagesLoaded && visibleMessages.length === 0 && (
+          <div
+            className="flex justify-center py-8 text-sm text-[var(--color-fg-muted)]"
+            role="status"
+          >
+            Loading conversation…
+          </div>
+        )}
         {hiddenCount > 0 && (
           <div className="flex justify-center py-2">
             <button type="button" className="btn btn-ghost btn-sm" onClick={showMore}>

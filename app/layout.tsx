@@ -1,7 +1,9 @@
 import './globals.css';
 import '../styles/logo.css';
 import 'katex/dist/katex.min.css';
+import Script from 'next/script';
 import type { Metadata } from 'next';
+import { injectThemeClass } from '@/lib/html';
 import { Newsreader, Plus_Jakarta_Sans } from 'next/font/google';
 import { TierProvider } from '@/lib/auth/tierContext';
 import { StudyProvider } from '@/lib/study/StudyProvider';
@@ -40,6 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {injectThemeClass()}
+        </Script>
       </head>
       <body>
         <TierProvider>

@@ -17,6 +17,21 @@ html {
   text-rendering: optimizeLegibility;
   -webkit-text-size-adjust: 100%;
 }
+
+/* Short-lived cross-fade when the theme class flips (see useThemeMode).
+   Applied only for ~240ms so it never interferes with normal interactions. */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    fill 180ms ease,
+    stroke 180ms ease,
+    box-shadow 180ms ease !important;
+}
 ::selection {
   background: color-mix(in oklab, var(--color-accent) 30%, transparent);
 }

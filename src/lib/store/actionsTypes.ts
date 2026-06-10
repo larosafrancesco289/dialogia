@@ -16,6 +16,8 @@ export type StoreActions = {
   // chats
   newChat: () => Promise<void>;
   selectChat: (id: string) => void;
+  ensureChatMessagesLoaded: (chatId: string) => Promise<void>;
+  ensureAllChatMessagesLoaded: () => Promise<void>;
   renameChat: (id: string, title: string) => Promise<void>;
   deleteChat: (id: string) => Promise<void>;
   clearChatMessages: (chatId?: string) => void;

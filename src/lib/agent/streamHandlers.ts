@@ -8,6 +8,7 @@ import { computeMetrics } from '@/lib/turns/runtime';
 import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { notify } from '@/lib/store/notify';
+import { describeErrorNotice } from '@/lib/store/notices';
 
 type MessageUpdater = (message: Message) => Message;
 
@@ -66,12 +67,41 @@ export function createMessageStreamCallbacks(
   let firstTokenAt: number | undefined;
   let reasoningActivityId: string | undefined;
 
+  // Periodically checkpoint the partial response to storage so a crash or
+  // reload mid-stream cannot lose everything that already arrived.
+  const CHECKPOINT_INTERVAL_MS = 2500;
+  let checkpointTimer: ReturnType<typeof setTimeout> | null = null;
+  let turnFinished = false;
+
+  const clearCheckpointTimer = () => {
+    if (checkpointTimer) {
+      clearTimeout(checkpointTimer);
+      checkpointTimer = null;
+    }
+  };
+
+  const persistCheckpoint = () => {
+    if (turnFinished) return;
+    const current = get().messagesById[assistantMessage.id];
+    if (!current) return;
+    void Promise.resolve(persistMessage(current)).catch(() => undefined);
+  };
+
+  const scheduleCheckpoint = () => {
+    if (turnFinished || checkpointTimer) return;
+    checkpointTimer = setTimeout(() => {
+      checkpointTimer = null;
+      persistCheckpoint();
+    }, CHECKPOINT_INTERVAL_MS);
+  };
+
   const flushDelta = (delta: string) => {
     if (!delta) return;
     applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({
       ...msg,
       content: msg.content + delta,
     }));
+    scheduleCheckpoint();
   };
 
   const contentAccumulator = createStreamAccumulator(flushDelta);
@@ -122,6 +152,7 @@ export function createMessageStreamCallbacks(
       }
       return partial;
     });
+    scheduleCheckpoint();
   };
 
   const reasoningAccumulator = createStreamAccumulator(updateReasoning);
@@ -188,6 +219,8 @@ export function createMessageStreamCallbacks(
     onDone: async (full: string, extras?: StreamDoneExtras) => {
       contentAccumulator.flush();
       reasoningAccumulator.flush();
+      turnFinished = true;
+      clearCheckpointTimer();
 
       const state = get();
       const current = state.messagesById[assistantMessage.id];
@@ -228,7 +261,13 @@ export function createMessageStreamCallbacks(
     onError: (error: Error) => {
       contentAccumulator.flush();
       reasoningAccumulator.flush();
-      notify(get, error.message);
+      clearCheckpointTimer();
+      // Persist whatever partial content made it into the store so the user
+      // does not lose it on reload after a failed stream.
+      persistCheckpoint();
+      turnFinished = true;
+      const noticeMessage = describeErrorNotice(error);
+      if (noticeMessage) notify(get, noticeMessage);
       clearController?.();
     },
     discardPendingText: () => {

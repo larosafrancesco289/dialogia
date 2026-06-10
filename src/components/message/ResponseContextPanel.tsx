@@ -304,166 +304,168 @@ export function ResponseContextPanel({
       </button>
 
       {expanded && (
-        <div id={bodyId} className="border-t border-[var(--rule-light)] px-3 pb-2.5 pt-2">
-          <div className="space-y-1.5">
-            {orderedActivity.map((item) => {
-              if (item.type === 'reasoning') {
+        <div className="panel-reveal">
+          <div id={bodyId} className="border-t border-[var(--rule-light)] px-3 pb-2.5 pt-2">
+            <div className="space-y-1.5">
+              {orderedActivity.map((item) => {
+                if (item.type === 'reasoning') {
+                  return (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-2 text-sm"
+                    >
+                      <span className="mt-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-surface)] text-[var(--color-fg-muted)]">
+                        <LightBulbIcon className="h-3.5 w-3.5" />
+                      </span>
+                      <div className="min-w-0 rounded-[var(--radius-editorial)] px-2 py-1.5 hover:bg-[var(--color-surface)]">
+                        <div className="flex items-start gap-2">
+                          <span className="shrink-0 text-xs font-semibold tracking-[0.08em] text-[var(--color-fg-muted)]">
+                            Thought
+                          </span>
+                          <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-snug text-[var(--color-fg)]">
+                            {item.text.trim()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                if (item.type === 'text') {
+                  return (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-2 text-sm"
+                    >
+                      <span className="mt-1 h-5 w-5 rounded-full bg-[var(--color-surface)]" />
+                      <div className="min-w-0 rounded-[var(--radius-editorial)] px-2 py-1.5 hover:bg-[var(--color-surface)]">
+                        <span className="mr-2 text-xs font-semibold tracking-[0.08em] text-[var(--color-fg-muted)]">
+                          Draft
+                        </span>
+                        <span className="text-sm text-[var(--color-fg-muted)]">
+                          {compactText(item.text, 180)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <div
                     key={item.id}
                     className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-2 text-sm"
                   >
                     <span className="mt-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-surface)] text-[var(--color-fg-muted)]">
-                      <LightBulbIcon className="h-3.5 w-3.5" />
+                      {item.name === 'web_search' ? (
+                        <MagnifyingGlassIcon className="h-3.5 w-3.5" />
+                      ) : (
+                        <WrenchScrewdriverIcon className="h-3.5 w-3.5" />
+                      )}
                     </span>
                     <div className="min-w-0 rounded-[var(--radius-editorial)] px-2 py-1.5 hover:bg-[var(--color-surface)]">
-                      <div className="flex items-start gap-2">
+                      <div className="flex min-w-0 items-baseline gap-2">
                         <span className="shrink-0 text-xs font-semibold tracking-[0.08em] text-[var(--color-fg-muted)]">
-                          Thought
+                          Tool
                         </span>
-                        <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-snug text-[var(--color-fg)]">
-                          {item.text.trim()}
-                        </p>
+                        <span className="shrink-0 font-medium text-[var(--color-fg)]">
+                          {labelForActivityTool(item)}
+                        </span>
+                        <span className="min-w-0 truncate text-[var(--color-fg-muted)]">
+                          {summaryForActivityTool(item)}
+                        </span>
                       </div>
                     </div>
                   </div>
                 );
-              }
-              if (item.type === 'text') {
-                return (
-                  <div
-                    key={item.id}
-                    className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-2 text-sm"
-                  >
-                    <span className="mt-1 h-5 w-5 rounded-full bg-[var(--color-surface)]" />
-                    <div className="min-w-0 rounded-[var(--radius-editorial)] px-2 py-1.5 hover:bg-[var(--color-surface)]">
-                      <span className="mr-2 text-xs font-semibold tracking-[0.08em] text-[var(--color-fg-muted)]">
-                        Draft
-                      </span>
-                      <span className="text-sm text-[var(--color-fg-muted)]">
-                        {compactText(item.text, 180)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <div
-                  key={item.id}
-                  className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-2 text-sm"
-                >
-                  <span className="mt-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-surface)] text-[var(--color-fg-muted)]">
-                    {item.name === 'web_search' ? (
-                      <MagnifyingGlassIcon className="h-3.5 w-3.5" />
-                    ) : (
-                      <WrenchScrewdriverIcon className="h-3.5 w-3.5" />
-                    )}
-                  </span>
-                  <div className="min-w-0 rounded-[var(--radius-editorial)] px-2 py-1.5 hover:bg-[var(--color-surface)]">
-                    <div className="flex min-w-0 items-baseline gap-2">
-                      <span className="shrink-0 text-xs font-semibold tracking-[0.08em] text-[var(--color-fg-muted)]">
-                        Tool
-                      </span>
-                      <span className="shrink-0 font-medium text-[var(--color-fg)]">
-                        {labelForActivityTool(item)}
-                      </span>
-                      <span className="min-w-0 truncate text-[var(--color-fg-muted)]">
-                        {summaryForActivityTool(item)}
-                      </span>
-                    </div>
-                  </div>
+              })}
+
+              {!hasReasoning && !hasToolCalls && !hasActivity && isStreaming && (
+                <div className="flex items-center gap-2 text-sm text-[var(--color-fg-muted)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" />
+                  Thinking...
                 </div>
-              );
-            })}
+              )}
+            </div>
 
-            {!hasReasoning && !hasToolCalls && !hasActivity && isStreaming && (
-              <div className="flex items-center gap-2 text-sm text-[var(--color-fg-muted)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" />
-                Thinking...
+            <div className="mt-2 flex items-center justify-between gap-2 border-t border-[var(--rule-light)] pt-2">
+              <div className="flex min-w-0 items-center gap-2">
+                {(hasSources || isSearching || hasSearchError) && (
+                  <button
+                    type="button"
+                    className="inline-flex h-7 items-center gap-1.5 rounded-[var(--radius-editorial)] px-2 text-xs font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-muted)]"
+                    onClick={() => setSourcesOpen((value) => !value)}
+                  >
+                    <GlobeAltIcon className="h-3.5 w-3.5" />
+                    Sources
+                    {hasSources ? ` ${sourceItems.length}` : ''}
+                  </button>
+                )}
               </div>
-            )}
-          </div>
-
-          <div className="mt-2 flex items-center justify-between gap-2 border-t border-[var(--rule-light)] pt-2">
-            <div className="flex min-w-0 items-center gap-2">
-              {(hasSources || isSearching || hasSearchError) && (
+              {hasReasoning && (
                 <button
                   type="button"
                   className="inline-flex h-7 items-center gap-1.5 rounded-[var(--radius-editorial)] px-2 text-xs font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-muted)]"
-                  onClick={() => setSourcesOpen((value) => !value)}
+                  onClick={copyReasoning}
                 >
-                  <GlobeAltIcon className="h-3.5 w-3.5" />
-                  Sources
-                  {hasSources ? ` ${sourceItems.length}` : ''}
+                  {copied ? (
+                    <>
+                      <CheckIcon className="h-3.5 w-3.5" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+                      Copy
+                    </>
+                  )}
                 </button>
               )}
             </div>
-            {hasReasoning && (
-              <button
-                type="button"
-                className="inline-flex h-7 items-center gap-1.5 rounded-[var(--radius-editorial)] px-2 text-xs font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-muted)]"
-                onClick={copyReasoning}
-              >
-                {copied ? (
-                  <>
-                    <CheckIcon className="h-3.5 w-3.5" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-                    Copy
-                  </>
+
+            {sourcesOpen && (hasSources || isSearching || hasSearchError) && (
+              <div className="mt-2 rounded-[var(--radius-editorial)] bg-[var(--color-surface)] px-2.5 py-2">
+                {isSearching && (
+                  <div className="text-sm text-[var(--color-fg-muted)]">
+                    Looking for sources{sources?.query ? `: ${sources.query}` : ''}.
+                  </div>
                 )}
-              </button>
+
+                {hasSearchError && (
+                  <div className="text-sm text-[var(--color-danger)]">
+                    {sources?.error || 'Search could not return sources.'}
+                  </div>
+                )}
+
+                {hasSources && (
+                  <ol className="space-y-1">
+                    {sourceItems.map((source, index) => (
+                      <li
+                        key={`${source.url || source.title || 'source'}-${index}`}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <span className="shrink-0 text-xs font-semibold text-[var(--color-fg-muted)]">
+                          [{index + 1}]
+                        </span>
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="min-w-0 flex-1 truncate font-medium text-[var(--color-fg)] hover:text-[var(--color-accent)]"
+                          title={source.description || titleForSource(source)}
+                        >
+                          {titleForSource(source)}
+                        </a>
+                        {source.url && (
+                          <span className="hidden max-w-[11rem] truncate text-xs text-[var(--color-fg-muted)] sm:inline">
+                            {hostname(source.url)}
+                          </span>
+                        )}
+                        <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 shrink-0 text-[var(--color-fg-muted)]" />
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
             )}
           </div>
-
-          {sourcesOpen && (hasSources || isSearching || hasSearchError) && (
-            <div className="mt-2 rounded-[var(--radius-editorial)] bg-[var(--color-surface)] px-2.5 py-2">
-              {isSearching && (
-                <div className="text-sm text-[var(--color-fg-muted)]">
-                  Looking for sources{sources?.query ? `: ${sources.query}` : ''}.
-                </div>
-              )}
-
-              {hasSearchError && (
-                <div className="text-sm text-[var(--color-danger)]">
-                  {sources?.error || 'Search could not return sources.'}
-                </div>
-              )}
-
-              {hasSources && (
-                <ol className="space-y-1">
-                  {sourceItems.map((source, index) => (
-                    <li
-                      key={`${source.url || source.title || 'source'}-${index}`}
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <span className="shrink-0 text-xs font-semibold text-[var(--color-fg-muted)]">
-                        [{index + 1}]
-                      </span>
-                      <a
-                        href={source.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="min-w-0 flex-1 truncate font-medium text-[var(--color-fg)] hover:text-[var(--color-accent)]"
-                        title={source.description || titleForSource(source)}
-                      >
-                        {titleForSource(source)}
-                      </a>
-                      {source.url && (
-                        <span className="hidden max-w-[11rem] truncate text-xs text-[var(--color-fg-muted)] sm:inline">
-                          {hostname(source.url)}
-                        </span>
-                      )}
-                      <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 shrink-0 text-[var(--color-fg-muted)]" />
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-          )}
         </div>
       )}
     </section>

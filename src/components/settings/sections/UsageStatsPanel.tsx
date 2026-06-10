@@ -1,6 +1,6 @@
 'use client';
 import { useChatStore } from '@/lib/store';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 export function UsageStatsPanel() {
   const chats = useChatStore((s) => s.chats);
@@ -8,6 +8,12 @@ export function UsageStatsPanel() {
     messagesById: s.messagesById,
     messageIdsByChatId: s.messageIdsByChatId,
   }));
+  const ensureAllChatMessagesLoaded = useChatStore((s) => s.ensureAllChatMessagesLoaded);
+
+  // Messages hydrate lazily per chat; pull in the rest so totals are complete.
+  useEffect(() => {
+    void ensureAllChatMessagesLoaded().catch(() => undefined);
+  }, [ensureAllChatMessagesLoaded]);
 
   const stats = useMemo(() => {
     let totalMessages = 0;

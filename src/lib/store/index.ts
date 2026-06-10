@@ -27,6 +27,8 @@ export const useChatStore = createWithEqualityFn<StoreState>()(
         messagesById: {},
         messageIdsByChatId: {},
         selectedChatId: undefined,
+        loadedMessageChatIds: {},
+        nonEmptyChatIds: {},
 
         // Feature slices (state + actions)
         ...createModelSlice(sliceSet, sliceGet, sliceStore),

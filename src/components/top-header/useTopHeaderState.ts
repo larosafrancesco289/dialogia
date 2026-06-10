@@ -83,7 +83,7 @@ export function useTopHeaderState(): TopHeaderState {
 
   const {
     chat,
-    messages,
+    ensureChatMessagesLoaded,
     renameChat,
     setUI,
     newChat,
@@ -103,7 +103,7 @@ export function useTopHeaderState(): TopHeaderState {
   } = useChatStore(
     (s) => ({
       chat: selectCurrentChat(s),
-      messages: selectMessagesForCurrentChat(s),
+      ensureChatMessagesLoaded: s.ensureChatMessagesLoaded,
       renameChat: s.renameChat,
       setUI: s.setUI,
       newChat: s.newChat,
@@ -199,8 +199,15 @@ export function useTopHeaderState(): TopHeaderState {
       return;
     }
 
-    const isTutorChat = chat.settings.features.tutor.enabled;
-    const hasUserMessages = messages && messages.some((m) => m.role === 'user');
+    const chatId = chat.id;
+    await ensureChatMessagesLoaded(chatId);
+    const latestState = useChatStore.getState();
+    if (latestState.selectedChatId !== chatId) return;
+    const latestChat = latestState.chats.find((candidate) => candidate.id === chatId) ?? chat;
+    const latestMessages = selectMessagesForCurrentChat(latestState);
+
+    const isTutorChat = latestChat.settings.features.tutor.enabled;
+    const hasUserMessages = latestMessages.some((m) => m.role === 'user');
 
     if (isTutorChat) {
       if (hasUserMessages) {
@@ -224,8 +231,8 @@ export function useTopHeaderState(): TopHeaderState {
   }, [
     chat,
     clearChatMessages,
+    ensureChatMessagesLoaded,
     forceTutorMode,
-    messages,
     newChat,
     nextTutorMode,
     setUI,
