@@ -18,8 +18,18 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
-/* Short-lived cross-fade when the theme class flips (see useThemeMode).
-   Applied only for ~240ms so it never interferes with normal interactions. */
+/* Theme flips cross-fade through the View Transitions API (see useThemeMode):
+   the browser fades a snapshot of the old palette into the new one on the
+   compositor, so the whole viewport eases over at once. Only the duration is
+   tuned; the default plus-lighter blend keeps the fade flash-free. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 280ms;
+}
+
+/* Fallback cross-fade for browsers without view transitions (see
+   useThemeMode). Applied only for ~240ms so it never interferes with normal
+   interactions. */
 .theme-transition,
 .theme-transition *,
 .theme-transition *::before,

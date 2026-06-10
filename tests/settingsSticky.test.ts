@@ -286,6 +286,78 @@ test('in-chat reasoning changes become sticky for future chats', async () => {
   assert.equal(nextSettings.generation.reasoningEffort, 'xhigh');
 });
 
+test('in-chat model changes become sticky for future chats; search does not', async () => {
+  const activeChat: Chat = {
+    id: 'active-chat',
+    title: 'Started Chat',
+    createdAt: 5,
+    updatedAt: 20,
+    settings: {
+      modelId: 'openai/gpt-5.4',
+      system: 'Sticky system',
+      generation: {},
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: false,
+        showDebugRawJson: true,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: { enabled: false },
+      },
+    },
+  };
+
+  const state: any = {
+    chats: [activeChat],
+    folders: [],
+    messagesById: {},
+    messageIdsByChatId: {},
+    selectedChatId: 'active-chat',
+    ui: buildDefaultUIState({
+      chatDefaults: {
+        modelId: 'anthropic/claude-opus-4.7',
+      },
+    }),
+  };
+
+  const set = (partial: any) => {
+    const next = typeof partial === 'function' ? partial(state) : partial;
+    Object.assign(state, next);
+  };
+  const get = () => state;
+
+  const originalUpdateChat = ChatService.updateChat;
+  ChatService.updateChat = (async (chat, changes) => ({
+    ...chat,
+    ...changes,
+    updatedAt: 99,
+  })) as typeof ChatService.updateChat;
+
+  try {
+    const slice = createChatSlice(set as any, get as any);
+    await slice.updateChatSettings({ modelId: 'x-ai/grok-4' });
+    await slice.updateChatSettings({ features: { search: { enabled: true } } });
+  } finally {
+    ChatService.updateChat = originalUpdateChat;
+  }
+
+  assert.equal(state.ui.chatDefaults?.modelId, 'x-ai/grok-4');
+  assert.equal(state.ui.chatDefaults?.features?.search?.enabled, undefined);
+  assert.equal(state.chats[0].settings.features.search.enabled, true);
+
+  const nextSettings = ChatService.buildSettingsForNewChat({
+    ui: state.ui,
+    chats: state.chats,
+    selectedChatId: state.selectedChatId,
+    tier: 'developer',
+  });
+
+  assert.equal(nextSettings.modelId, 'x-ai/grok-4');
+  assert.equal(nextSettings.features.search.enabled, false);
+});
+
 test('settings drawer patch only touches UI defaults (never the active chat)', () => {
   const patch = buildSettingsSavePatch({
     system: 'Drawer system',

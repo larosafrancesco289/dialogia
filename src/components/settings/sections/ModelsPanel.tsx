@@ -45,14 +45,13 @@ export function ModelsPanel(props: ModelsPanelProps) {
               clearOnSelect
               onSelect={(result) => {
                 if (!favoriteModelIds?.includes(result.id)) toggleFavoriteModel(result.id);
-                setUI({ chatDefaults: { modelId: result.id } });
               }}
             />
             <div className="text-xs text-muted-foreground">
+              Selecting a model adds it to your favorites.{' '}
               {selectedModelId
-                ? `New chats start with ${selectedModelId}.`
-                : 'New chats use the tier default. Pick a model to override.'}{' '}
-              Switch models inside a chat from the composer.
+                ? `New chats start with ${selectedModelId}, following the model you last used.`
+                : 'New chats use the tier default until you pick a model in a chat.'}
             </div>
             {selectedModelId && (
               <div>
