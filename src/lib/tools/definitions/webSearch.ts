@@ -9,7 +9,7 @@ export const WEB_SEARCH_TOOL: ToolDefinition = {
   function: {
     name: 'web_search',
     description:
-      'Query the public web via Tavily to gather up-to-date, verifiable references with titles, URLs, and summary snippets. Use this when you need fresh facts, statistics, or citations that are not already in context. Craft a precise query and optionally request a small number of results (1-10). You can also apply freshness, country, or domain filters.',
+      'Query the public web via Tavily to gather up-to-date, verifiable references with titles, URLs, and summary snippets. Use this when you need fresh facts, statistics, or citations that are not already in context. Craft a short, focused query (not the full user message); for multi-part questions, issue several parallel calls with one sub-question each (up to 3). Snippets are for discovery; to read a promising result in depth before citing it, follow up with web_fetch on its URL.',
     parameters: {
       type: 'object',
       properties: {
@@ -23,7 +23,8 @@ export const WEB_SEARCH_TOOL: ToolDefinition = {
         },
         freshness: {
           type: 'string',
-          description: 'Recency filter: d (day), w (week), m (month), y (year), all',
+          description:
+            'Recency filter: d (day), w (week), m (month), y (year), all. Omit by default and put the timeframe in the query text instead — narrow windows restrict to recently indexed pages and often return zero results. Reserve d/w for breaking news.',
           enum: ['d', 'w', 'm', 'y', 'all'],
           default: 'all',
         },

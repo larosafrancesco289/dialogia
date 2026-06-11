@@ -115,8 +115,10 @@
     border: 0 !important;
   }
 
-  /* Reasoning effort button — standalone icon in composer row */
-  .composer-btn-reasoning {
+  /* Standalone icon buttons in the composer row — reasoning, web search, attach */
+  .composer-btn-reasoning,
+  .composer-btn-search,
+  .composer-btn-attach {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -135,7 +137,9 @@
       transform var(--duration-fast) var(--ease-standard);
     position: relative;
   }
-  .composer-btn-reasoning:hover {
+  .composer-btn-reasoning:hover,
+  .composer-btn-search:hover,
+  .composer-btn-attach:hover {
     background: var(--color-muted);
     color: var(--color-fg);
   }
@@ -143,20 +147,27 @@
     background: var(--color-muted);
     color: var(--color-fg);
   }
-  .composer-btn-reasoning.is-active {
+  .composer-btn-reasoning.is-active,
+  .composer-btn-search.is-active {
     color: var(--color-accent);
   }
-  .composer-btn-reasoning.is-active:not(.is-open):not(:hover) {
+  .composer-btn-reasoning.is-active:not(.is-open):not(:hover),
+  .composer-btn-search.is-active:not(:hover) {
     background: color-mix(in oklab, var(--color-accent) 12%, transparent);
   }
-  .composer-btn-reasoning:focus-visible {
+  .composer-btn-reasoning:focus-visible,
+  .composer-btn-search:focus-visible,
+  .composer-btn-attach:focus-visible {
     box-shadow: 0 0 0 2px var(--focus-ring);
   }
-  .composer-btn-reasoning:active {
+  .composer-btn-reasoning:active,
+  .composer-btn-search:active,
+  .composer-btn-attach:active {
     transform: scale(0.92);
   }
-  /* The icon itself carries the level signal — no external halo/pulse. */
-  .composer-reasoning-icon {
+  /* The icon itself carries the state signal — no external halo/pulse. */
+  .composer-reasoning-icon,
+  .composer-search-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -237,107 +248,6 @@
     white-space: nowrap;
     pointer-events: none;
     box-shadow: var(--shadow-1);
-  }
-
-  /* Overflow menu button — muted, small */
-  .composer-btn-overflow {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    border: none;
-    border-radius: var(--radius-editorial);
-    background: transparent;
-    color: var(--color-fg-muted);
-    cursor: pointer;
-    transition:
-      background-color var(--duration-fast) var(--ease-standard),
-      color var(--duration-fast) var(--ease-standard),
-      box-shadow var(--duration-fast) var(--ease-standard),
-      transform var(--duration-fast) var(--ease-standard);
-    position: relative;
-  }
-  .composer-btn-overflow:hover {
-    background: var(--color-muted);
-    color: var(--color-fg);
-  }
-  .composer-btn-overflow.is-open {
-    background: var(--color-muted);
-    color: var(--color-fg);
-  }
-  .composer-btn-overflow:focus-visible {
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-  .composer-btn-overflow:active {
-    transform: scale(0.92);
-  }
-
-  /* Indicator dot for active states */
-  .composer-btn-overflow__indicator {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--color-accent);
-  }
-
-  /* Overflow menu popover */
-  .composer-overflow-menu {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    right: 0;
-    z-index: 50;
-    min-width: 180px;
-    padding: var(--space-1);
-    background: var(--surface-paper);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-editorial);
-    box-shadow: var(--shadow-2);
-  }
-
-  /* Menu items */
-  .composer-overflow-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    padding: var(--space-2) var(--space-3);
-    border: none;
-    border-radius: calc(var(--radius-editorial) - 2px);
-    background: transparent;
-    color: var(--color-fg);
-    font-size: 0.875rem;
-    text-align: left;
-    cursor: pointer;
-    transition: background var(--duration-fast) var(--ease-standard);
-  }
-  .composer-overflow-item:hover {
-    background: var(--color-muted);
-  }
-  .composer-overflow-item.is-active {
-    color: var(--color-accent);
-  }
-  .composer-overflow-item.is-active svg:last-child {
-    color: var(--color-accent);
-  }
-
-  .composer-overflow-divider {
-    height: 1px;
-    margin: var(--space-1) var(--space-2);
-    background: var(--rule-light);
-  }
-
-  .composer-overflow-label {
-    padding: var(--space-2) var(--space-3) var(--space-1);
-    font-size: 0.6875rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-fg-muted);
   }
 
   /* Primary send button */
@@ -494,20 +404,12 @@
   /* Mobile adjustments */
   @media (max-width: 640px) {
     .composer-btn-reasoning,
-    .composer-btn-overflow,
+    .composer-btn-search,
+    .composer-btn-attach,
     .composer-btn-send,
     .composer-btn-stop {
       width: 44px;
       height: 44px;
-    }
-
-    .composer-overflow-menu {
-      min-width: 200px;
-      right: -8px;
-    }
-
-    .composer-overflow-item {
-      padding: var(--space-3);
     }
 
     .composer-voice-pill {
