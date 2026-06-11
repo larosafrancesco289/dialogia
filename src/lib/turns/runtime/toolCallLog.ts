@@ -72,7 +72,10 @@ export type UpdateToolCallArgs = {
   messageId: string;
   toolCallId: string;
   updates: Partial<
-    Pick<ToolCallLogEntry, 'status' | 'output' | 'error' | 'duration' | 'metadata' | 'category'>
+    Pick<
+      ToolCallLogEntry,
+      'status' | 'input' | 'output' | 'error' | 'duration' | 'metadata' | 'category'
+    >
   >;
 };
 
@@ -109,6 +112,7 @@ export function updateToolCallLogEntry({
         return {
           ...item,
           ...(updates.status !== undefined ? { status: updates.status } : {}),
+          ...(updates.input !== undefined ? { input: updates.input } : {}),
           ...(updates.output !== undefined ? { output: updates.output } : {}),
           ...(updates.error !== undefined ? { error: updates.error } : {}),
           ...(updates.duration !== undefined ? { duration: updates.duration } : {}),
@@ -135,6 +139,40 @@ export function clearToolCallLogs({
     const patch = mutateMessage(state, chatId, messageId, (msg) => {
       if (!msg.toolCalls || msg.toolCalls.length === 0) return msg;
       return { ...msg, toolCalls: [] };
+    });
+    return patch ?? state;
+  });
+}
+
+// Pre-logged entries (created from streamed tool-call deltas with empty input)
+// whose calls were dropped by scheduling would otherwise stay "pending" in the
+// UI forever. Executed entries are resolved before this runs, so any pending
+// entry with an empty input is an orphan.
+export function removeOrphanPendingToolCalls({
+  set,
+  chatId,
+  messageId,
+}: {
+  set: StoreSetter;
+  chatId: string;
+  messageId: string;
+}): void {
+  const isOrphan = (entry: { status?: string; input?: Record<string, unknown> }) =>
+    entry.status === 'pending' && (!entry.input || Object.keys(entry.input).length === 0);
+  set((state) => {
+    const patch = mutateMessage(state, chatId, messageId, (msg) => {
+      const toolCalls = Array.isArray(msg.toolCalls) ? msg.toolCalls : [];
+      const activity = Array.isArray(msg.activity) ? msg.activity : [];
+      const orphanIds = new Set(toolCalls.filter(isOrphan).map((entry) => entry.id));
+      for (const item of activity) {
+        if (item.type === 'tool_call' && isOrphan(item)) orphanIds.add(item.id);
+      }
+      if (orphanIds.size === 0) return msg;
+      return {
+        ...msg,
+        toolCalls: toolCalls.filter((entry) => !orphanIds.has(entry.id)),
+        activity: activity.filter((item) => item.type !== 'tool_call' || !orphanIds.has(item.id)),
+      };
     });
     return patch ?? state;
   });

@@ -37,13 +37,37 @@ export async function performWebSearchTool(opts: {
     setSearchUiStatus({ set, get }, assistantMessageId, { query: rawQuery, status: 'loading' });
   }
 
+  const hasNarrowingFilters =
+    (searchArgs.freshness && searchArgs.freshness !== 'all') ||
+    !!searchArgs.country ||
+    !!searchArgs.include_domains?.length ||
+    !!searchArgs.exclude_domains?.length;
+
   return withAbort(controller.signal, async (fetchController) => {
     const timeout = setTimeout(() => fetchController.abort(), 20000);
     try {
-      const result =
+      let result =
         searchProvider === 'tavily'
           ? await runTavilySearch(searchArgs, { signal: fetchController.signal })
           : { ok: false, results: [] as SearchResult[], error: undefined };
+
+      // Narrow filters (especially tight freshness windows) routinely intersect
+      // to an empty set; retry once unfiltered before reporting zero results.
+      if (
+        result.ok &&
+        result.results.length === 0 &&
+        hasNarrowingFilters &&
+        searchProvider === 'tavily'
+      ) {
+        const {
+          freshness: _f,
+          country: _c,
+          include_domains: _i,
+          exclude_domains: _e,
+          ...rest
+        } = searchArgs;
+        result = await runTavilySearch(rest, { signal: fetchController.signal });
+      }
 
       if (result.ok) {
         if (searchProvider === 'tavily') {

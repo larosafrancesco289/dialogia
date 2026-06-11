@@ -11,6 +11,10 @@ export type ScheduleContext = {
   phase?: TutorPhase;
 };
 
+// Models split questions into parallel sub-query searches; allow a few per
+// round so dropped calls don't strand pre-logged UI entries or force re-asks.
+const MAX_SEARCH_CALLS_PER_ROUND = 3;
+
 const PRACTICE_TOOLS = getTutorToolsByPriorityGroup('practice');
 const PLAN_TOOLS = getTutorToolsByPriorityGroup('plan');
 const DIAGNOSTIC_TOOLS = getTutorToolsByPriorityGroup('diagnostic');
@@ -83,7 +87,8 @@ export function schedulePlanningToolCalls(
   const meta: ToolCall[] = [];
   const contentCandidates: ToolCall[] = [];
   const others: ToolCall[] = [];
-  let search: ToolCall | undefined;
+  const searches: ToolCall[] = [];
+  const seenSearchArgs = new Set<string>();
 
   toolCalls.forEach((call) => {
     const name = call.function?.name ?? '';
@@ -97,7 +102,12 @@ export function schedulePlanningToolCalls(
       return;
     }
     if (isSearchTool(name)) {
-      if (!search && context.allowSearch !== false) search = call;
+      if (context.allowSearch === false) return;
+      if (searches.length >= MAX_SEARCH_CALLS_PER_ROUND) return;
+      const signature = `${name}:${call.function?.arguments ?? ''}`;
+      if (seenSearchArgs.has(signature)) return;
+      seenSearchArgs.add(signature);
+      searches.push(call);
       return;
     }
     others.push(call);
@@ -106,7 +116,7 @@ export function schedulePlanningToolCalls(
   const content = pickContentTool(contentCandidates, context);
   const ordered: ToolCall[] = [];
   ordered.push(...meta);
-  if (search) ordered.push(search);
+  ordered.push(...searches);
   if (content) ordered.push(content);
   if (others.length > 0) ordered.push(...others);
   return ordered;
