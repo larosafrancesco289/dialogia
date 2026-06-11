@@ -37,6 +37,17 @@ export function createToolExecutionLogger(opts: {
       // Check if there's already a pre-logged pending entry for this tool
       const existing = get ? findPendingToolCallEntry({ get, chatId, messageId, name }) : undefined;
 
+      if (existing) {
+        // Pre-logged entries carry an empty input; fill in the real call so
+        // the UI can show what is being searched/fetched while it runs.
+        updateToolCallLogEntry({
+          set,
+          chatId,
+          messageId,
+          toolCallId: existing.id,
+          updates: { input, category, metadata },
+        });
+      }
       const entry =
         existing ??
         startToolCallLogEntry({

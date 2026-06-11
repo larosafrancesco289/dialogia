@@ -10,7 +10,11 @@ import {
 } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
 import { logger } from '@/lib/logger';
-import { clearTurnController, startToolCallLogEntry } from '@/lib/turns/runtime';
+import {
+  clearTurnController,
+  removeOrphanPendingToolCalls,
+  startToolCallLogEntry,
+} from '@/lib/turns/runtime';
 import { getToolCategory } from '@/lib/tools/registry';
 import { isReasoningRequested } from '@/lib/settings/generation';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
@@ -495,6 +499,10 @@ export async function executeStreamingTurn(
       state,
     });
     currentPlan = state.currentPlan ?? currentPlan;
+
+    // Pre-logged entries for calls the scheduler dropped would stay "pending"
+    // in the ledger forever; executed calls have resolved by now.
+    removeOrphanPendingToolCalls({ set, chatId, messageId: assistantMessage.id });
 
     // Add follow-up prompt for next round
     if (shouldAppendToolFollowUp) {

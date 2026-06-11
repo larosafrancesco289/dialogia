@@ -4,6 +4,7 @@ import type { ToolExecutionArgs, PlanningToolExecutionResult } from '@/lib/tools
 import type { ToolDefinition } from '@/lib/transport/contracts';
 import { mergeSearchResults, performWebSearchTool, runTavilyFetch } from '@/lib/search';
 import { normalizeWebFetchArgs, normalizeWebSearchArgs } from '@/lib/search/args';
+import { setSearchUiStatus } from '@/lib/search/ui/state';
 import { NOTICE_MISSING_TAVILY_KEY } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import { WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@/lib/tools/definitions/webSearch';
@@ -145,6 +146,15 @@ const executeWebSearchTool: PlanningToolHandler = async ({
 
   if (searchResult.ok) {
     const merged = mergeSearchResults([aggregatedResults, searchResult.results]);
+    if (searchProvider === 'tavily') {
+      // The sources panel should show everything consulted this turn, not just
+      // the latest call; aggregatedResults has exactly that turn-scoped lifetime.
+      setSearchUiStatus({ set, get }, assistantMessage.id, {
+        query: searchResult.query,
+        status: 'done',
+        results: merged,
+      });
+    }
     const payload = searchResult.results.slice(0, MAX_FALLBACK_RESULTS).map((result) => ({
       title: result?.title,
       url: result?.url,

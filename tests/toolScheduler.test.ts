@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { schedulePlanningToolCalls } from '@/lib/agent/tools/scheduler';
 import type { ToolCall } from '@/lib/agent/types';
 
-const buildCall = (name: string): ToolCall => ({
-  id: `${name}-1`,
+const buildCall = (name: string, args = '{}', id = `${name}-1`): ToolCall => ({
+  id,
   type: 'function',
-  function: { name, arguments: '{}' },
+  function: { name, arguments: args },
 });
 
 test('scheduler keeps meta, one search, and one prioritized content tool', () => {
@@ -22,6 +22,23 @@ test('scheduler keeps meta, one search, and one prioritized content tool', () =>
   assert.deepEqual(
     scheduled.map((c) => c.function.name),
     ['record_learning', 'web_search', 'quiz'],
+  );
+});
+
+test('scheduler keeps parallel searches up to the cap and dedupes identical queries', () => {
+  const calls = [
+    buildCall('web_search', '{"query":"a"}', 'ws-1'),
+    buildCall('web_search', '{"query":"b"}', 'ws-2'),
+    buildCall('web_search', '{"query":"b"}', 'ws-3'),
+    buildCall('web_search', '{"query":"c"}', 'ws-4'),
+    buildCall('web_search', '{"query":"d"}', 'ws-5'),
+  ];
+
+  const scheduled = schedulePlanningToolCalls(calls, {});
+
+  assert.deepEqual(
+    scheduled.map((c) => c.id),
+    ['ws-1', 'ws-2', 'ws-4'],
   );
 });
 
