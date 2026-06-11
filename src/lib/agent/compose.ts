@@ -14,7 +14,7 @@ import { getNextNode } from '@/lib/learning-plan/service';
 import { isTutorToolName } from '@/lib/agent/tools';
 import { getSessionSummary, isStudyModeActive } from '@/lib/study';
 import type { Message } from '@/lib/types';
-import { TOOL_PREAMBLE } from '@/lib/agent/prompts/toolPreamble';
+import { buildSearchDateNotice, buildToolPreamble } from '@/lib/agent/prompts/toolPreamble';
 
 export async function composeTurn({
   chat,
@@ -73,8 +73,11 @@ export async function composeTurn({
   // Dynamic: plan context (includes mastery scores that change each turn).
   const stablePreambles: string[] = [];
   const dynamicPreambles: string[] = [];
-  if (searchEnabled && searchProvider === 'tavily') {
-    stablePreambles.push(TOOL_PREAMBLE);
+  if (searchEnabled) {
+    // Stable within a day; grounds the model in the real date so it trusts
+    // post-cutoff facts enough to search instead of denying them.
+    stablePreambles.push(buildSearchDateNotice());
+    if (searchProvider === 'tavily') stablePreambles.push(buildToolPreamble());
   }
   if (tutorEnabled) {
     const tutorPreamble = getTutorPreamble();

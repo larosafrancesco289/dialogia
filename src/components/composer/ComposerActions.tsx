@@ -3,13 +3,14 @@ import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import {
   StopIcon,
-  MagnifyingGlassIcon,
+  GlobeAltIcon,
   PaperClipIcon,
   PaperAirplaneIcon,
-  EllipsisHorizontalIcon,
-  CheckIcon,
 } from '@heroicons/react/24/outline';
-import { LightBulbIcon as LightBulbSolidIcon } from '@heroicons/react/24/solid';
+import {
+  LightBulbIcon as LightBulbSolidIcon,
+  GlobeAltIcon as GlobeSolidIcon,
+} from '@heroicons/react/24/solid';
 import { Lightbulb as LucideLightbulb, LightbulbOff as LucideLightbulbOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsStudyTier } from '@/lib/auth/tierContext';
@@ -186,35 +187,31 @@ function ReasoningFan({
   );
 }
 
-const menuContainerVariants = {
-  hidden: { opacity: 0, y: 6, scale: 0.96 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      type: 'spring' as const,
-      stiffness: 400,
-      damping: 30,
-      staggerChildren: 0.03,
-    },
-  },
-  exit: {
-    opacity: 0,
-    y: 4,
-    scale: 0.97,
-    transition: { duration: 0.12 },
-  },
-};
+// ─────────────────────────────────────────────────────────────────────────────
+// Web search — globe toggle. Same physical-icon language as the reasoning bulb:
+// off is a thin outline, on is the solid glyph in accent.
+// ─────────────────────────────────────────────────────────────────────────────
 
-const menuItemVariants = {
-  hidden: { opacity: 0, y: 4 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring' as const, stiffness: 400, damping: 30 },
-  },
-};
+function SearchGlobeIcon({ enabled, size = 16 }: { enabled: boolean; size?: number }) {
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.span
+        key={enabled ? 'on' : 'off'}
+        initial={{ opacity: 0, scale: 0.82, rotate: enabled ? -24 : 24 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        exit={{ opacity: 0, scale: 0.82, rotate: enabled ? 24 : -24 }}
+        transition={{ duration: 0.14 }}
+        className="composer-search-icon"
+      >
+        {enabled ? (
+          <GlobeSolidIcon width={size} height={size} />
+        ) : (
+          <GlobeAltIcon width={size} height={size} strokeWidth={1.5} />
+        )}
+      </motion.span>
+    </AnimatePresence>
+  );
+}
 
 export type ComposerActionsProps = {
   isStreaming: boolean;
@@ -237,9 +234,9 @@ export function ComposerActions({
   onStop,
   onSend,
   openFilePicker,
-  attachmentsHint: _attachmentsHint,
+  attachmentsHint,
   searchEnabled,
-  searchProvider: _searchProvider,
+  searchProvider,
   toggleSearch,
   showReasoningMenu,
   supportsXhigh,
@@ -247,36 +244,11 @@ export function ComposerActions({
   onSelectEffort,
   hasContent,
 }: ComposerActionsProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
   const [reasoningOpen, setReasoningOpen] = useState(false);
   const reasoningButtonRef = useRef<HTMLButtonElement | null>(null);
   const reasoningMenuRef = useRef<HTMLDivElement | null>(null);
 
   const isStudyTier = useIsStudyTier();
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handlePointerDown = (event: PointerEvent) => {
-      const menu = menuRef.current;
-      const trigger = menuButtonRef.current;
-      const target = event.target as Node | null;
-      const inMenu = !!(menu && target && menu.contains(target));
-      const inTrigger = !!(trigger && target && trigger.contains(target));
-      if (!inMenu && !inTrigger) setMenuOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpen(false);
-    };
-    document.addEventListener('pointerdown', handlePointerDown, true);
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown, true);
-      document.removeEventListener('keydown', handleKeyDown, true);
-    };
-  }, [menuOpen]);
 
   useEffect(() => {
     if (!reasoningOpen) return;
@@ -317,8 +289,35 @@ export function ComposerActions({
   const effort: Effort = currentEffort ?? 'none';
   const reasoningActive = effort !== 'none';
 
+  const providerLabel = searchProvider === 'openrouter' ? 'OpenRouter' : 'Tavily';
+
   return (
     <div className="flex shrink-0 items-center gap-1.5">
+      <button
+        className="composer-btn-attach"
+        aria-label="Attach files"
+        title={attachmentsHint || 'Attach files'}
+        onClick={openFilePicker}
+      >
+        <PaperClipIcon className="h-4 w-4" />
+      </button>
+
+      {!isStudyTier && (
+        <button
+          className={`composer-btn-search ${searchEnabled ? 'is-active' : ''}`}
+          aria-pressed={searchEnabled}
+          aria-label="Web search"
+          title={
+            searchEnabled
+              ? `Web search: on (${providerLabel})`
+              : `Web search: off (${providerLabel})`
+          }
+          onClick={toggleSearch}
+        >
+          <SearchGlobeIcon enabled={searchEnabled} size={16} />
+        </button>
+      )}
+
       {showReasoningMenu && (
         <div className="relative">
           <button
@@ -329,10 +328,7 @@ export function ComposerActions({
             aria-expanded={reasoningOpen}
             aria-label="Reasoning effort"
             title={reasoningActive ? `Reasoning: ${effortLabel(effort)}` : 'Reasoning effort'}
-            onClick={() => {
-              setReasoningOpen((v) => !v);
-              setMenuOpen(false);
-            }}
+            onClick={() => setReasoningOpen((v) => !v)}
           >
             <ReasoningBulbIcon effort={effort} size={16} />
           </button>
@@ -349,72 +345,6 @@ export function ComposerActions({
           </AnimatePresence>
         </div>
       )}
-
-      <div className="relative">
-        <button
-          ref={menuButtonRef}
-          className={`composer-btn-overflow ${menuOpen ? 'is-open' : ''}`}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          aria-label="More actions"
-          title="More actions"
-          onClick={() => {
-            setMenuOpen((v) => !v);
-            setReasoningOpen(false);
-          }}
-        >
-          <EllipsisHorizontalIcon className="h-4 w-4" />
-          {searchEnabled && !isStudyTier && (
-            <span className="composer-btn-overflow__indicator" aria-hidden="true" />
-          )}
-        </button>
-
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.div
-              ref={menuRef}
-              variants={menuContainerVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              role="menu"
-              className="composer-overflow-menu"
-              aria-label="Composer actions"
-            >
-              <motion.div variants={menuItemVariants}>
-                <button
-                  className="composer-overflow-item"
-                  role="menuitem"
-                  onClick={() => {
-                    openFilePicker();
-                    setMenuOpen(false);
-                  }}
-                >
-                  <PaperClipIcon className="h-4 w-4" />
-                  <span>Attach files</span>
-                </button>
-              </motion.div>
-
-              {!isStudyTier && (
-                <motion.div variants={menuItemVariants}>
-                  <button
-                    className={`composer-overflow-item ${searchEnabled ? 'is-active' : ''}`}
-                    role="menuitemcheckbox"
-                    aria-checked={searchEnabled}
-                    onClick={() => {
-                      toggleSearch();
-                    }}
-                  >
-                    <MagnifyingGlassIcon className="h-4 w-4" />
-                    <span>Web search</span>
-                    {searchEnabled && <CheckIcon className="h-3.5 w-3.5 ml-auto" />}
-                  </button>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
 
       <button
         className={`composer-btn-send ${hasContent ? 'has-content' : ''}`}
