@@ -81,6 +81,20 @@ export function useMessageListController(args: {
     [messages],
   );
 
+  const editPreviousUserMessage = useCallback(
+    (assistantMessageId: string) => {
+      const idx = messages.findIndex((x) => x.id === assistantMessageId);
+      if (idx === -1) return;
+      for (let i = idx - 1; i >= 0; i -= 1) {
+        if (messages[i].role === 'user') {
+          setEditingId(messages[i].id);
+          return;
+        }
+      }
+    },
+    [messages],
+  );
+
   const branchFromMessage = useCallback(
     (messageId: string) => {
       if (isStreaming) return;
@@ -162,6 +176,7 @@ export function useMessageListController(args: {
     setEditingId,
     saveEdit,
     startEditingMessage,
+    editPreviousUserMessage,
     copyMessage,
     branchFromMessage,
     regenerateMessage,

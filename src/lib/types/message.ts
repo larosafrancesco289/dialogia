@@ -108,6 +108,11 @@ export type Message = {
   // When present, we include them in subsequent requests to skip re-parsing costs.
   annotations?: unknown;
   createdAt: number;
+  // Why the provider stopped generating; 'content_filter' marks a safety
+  // classifier refusal (Anthropic stop_reason "refusal") the UI must surface.
+  finishReason?: 'stop' | 'tool_calls' | 'length' | 'content_filter';
+  // Policy category the provider reported for a classifier refusal.
+  stopPolicy?: string;
   tokensIn?: number;
   tokensOut?: number;
   model?: string;

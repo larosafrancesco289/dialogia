@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { stripLeadingToolJson } from '@/lib/agent/streaming/stripToolJson';
+import { isPartialTimestampPrefix, stripLeadingTimestamp } from '@/lib/agent/prompts/timestamps';
 import { createStreamAccumulator } from '@/lib/agent/streaming/accumulator';
 import type { Message } from '@/lib/types';
 import type { TurnStoreState } from '@/lib/agent/contracts';
@@ -9,8 +10,16 @@ import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { notify } from '@/lib/store/notify';
 import { describeErrorNotice } from '@/lib/store/notices';
+import { isRecord } from '@/lib/utils/guards';
 
 type MessageUpdater = (message: Message) => Message;
+
+/** Pull the refusal policy category out of a provider stop_details payload. */
+const extractStopPolicy = (stopDetails: unknown): string | undefined => {
+  if (!isRecord(stopDetails)) return undefined;
+  const policy = stopDetails.policy ?? stopDetails.category;
+  return typeof policy === 'string' && policy ? policy : undefined;
+};
 
 const applyMessageUpdate = (
   set: StoreSetter,
@@ -106,6 +115,37 @@ export function createMessageStreamCallbacks(
 
   const contentAccumulator = createStreamAccumulator(flushDelta);
 
+  // When timestamps are enabled the model occasionally echoes the
+  // "[YYYY-MM-DD HH:MM] " prefix despite being told not to. Hold back the
+  // first few tokens while they could still be that prefix, then either drop
+  // it or release them unchanged.
+  let timestampGateOpen = false;
+  let timestampHold = '';
+  const pushContent = (text: string) => {
+    if (!text) return;
+    if (!timestampGateOpen && get().ui.messageTimestamps !== true) {
+      timestampGateOpen = true;
+    }
+    if (timestampGateOpen) {
+      contentAccumulator.push(text);
+      return;
+    }
+    timestampHold += text;
+    const stripped = stripLeadingTimestamp(timestampHold);
+    if (stripped === timestampHold && isPartialTimestampPrefix(timestampHold)) return;
+    timestampGateOpen = true;
+    timestampHold = '';
+    if (stripped) contentAccumulator.push(stripped);
+  };
+
+  const releaseTimestampHold = () => {
+    if (timestampGateOpen || !timestampHold) return;
+    timestampGateOpen = true;
+    const toEmit = stripLeadingTimestamp(timestampHold);
+    timestampHold = '';
+    if (toEmit) contentAccumulator.push(toEmit);
+  };
+
   const updateReasoning = (delta: string) => {
     if (!delta) return;
     set((state) => {
@@ -200,16 +240,16 @@ export function createMessageStreamCallbacks(
           if (rest && !(rest.startsWith('{') || rest.startsWith('```'))) {
             startedStreaming = true;
             leadingBuffer = '';
-            contentAccumulator.push(stripped);
+            pushContent(stripped);
           }
         } else if (leadingBuffer.length > 512) {
           startedStreaming = true;
           const toEmit = leadingBuffer;
           leadingBuffer = '';
-          contentAccumulator.push(toEmit);
+          pushContent(toEmit);
         }
       } else {
-        contentAccumulator.push(delta);
+        pushContent(delta);
       }
     },
     onReasoningToken: (delta: string) => {
@@ -232,7 +272,9 @@ export function createMessageStreamCallbacks(
         usage: extras?.usage,
       });
       const rawContent = stripLeadingToolJson(full || '');
-      const content = rawContent?.trim() || '';
+      const cleaned =
+        state.ui.messageTimestamps === true ? stripLeadingTimestamp(rawContent) : rawContent;
+      const content = cleaned?.trim() || '';
       const finalMessage: Message = {
         ...assistantMessage,
         content,
@@ -253,12 +295,18 @@ export function createMessageStreamCallbacks(
         tokensIn: metrics.promptTokens,
         tokensOut: metrics.completionTokens,
         annotations: current?.annotations ?? extras?.annotations,
+        finishReason: extras?.finishReason,
+        stopPolicy:
+          extras?.finishReason === 'content_filter'
+            ? extractStopPolicy(extras?.stopDetails)
+            : undefined,
       };
       applyMessageUpdate(set, chatId, assistantMessage.id, () => finalMessage);
       await persistMessage(finalMessage);
       clearController?.();
     },
     onError: (error: Error) => {
+      releaseTimestampHold();
       contentAccumulator.flush();
       reasoningAccumulator.flush();
       clearCheckpointTimer();
@@ -271,6 +319,7 @@ export function createMessageStreamCallbacks(
       clearController?.();
     },
     discardPendingText: () => {
+      timestampHold = '';
       contentAccumulator.cancel();
     },
   };

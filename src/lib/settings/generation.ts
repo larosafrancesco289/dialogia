@@ -1,6 +1,10 @@
-import type { ChatSettings, GenerationSettings } from '@/lib/types';
+import type { ChatSettings, GenerationSettings, ReasoningEffort } from '@/lib/types';
 
 export type { GenerationSettings };
+
+// Standard effort applied when a reasoning-capable model has no explicit
+// setting; new chats start here instead of with reasoning disabled.
+export const DEFAULT_REASONING_EFFORT: ReasoningEffort = 'medium';
 
 /**
  * Returns true if the user has explicitly requested reasoning via effort or token budget.

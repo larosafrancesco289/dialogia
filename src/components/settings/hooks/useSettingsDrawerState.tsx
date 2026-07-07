@@ -274,6 +274,11 @@ export function useSettingsDrawerState(): SettingsDrawerState {
             reasoningTokensStr={reasoningTokensStr}
             setReasoningTokensStr={setReasoningTokensStr}
             setReasoningTokens={createAutoSaveSetter(setReasoningTokens)}
+            messageTimestamps={ui?.messageTimestamps}
+            setMessageTimestamps={(value: boolean) => {
+              setUI({ messageTimestamps: value });
+              markDirty();
+            }}
           />
         );
       case 'tutor':

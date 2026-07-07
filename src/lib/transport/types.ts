@@ -27,6 +27,8 @@ export type StreamDoneExtras = {
   usage?: Usage;
   annotations?: unknown;
   finishReason?: FinishReason;
+  // Provider stop_details payload (Anthropic sends the refusal policy here).
+  stopDetails?: unknown;
   toolCalls?: ToolCall[];
   reasoningDetails?: unknown;
 };

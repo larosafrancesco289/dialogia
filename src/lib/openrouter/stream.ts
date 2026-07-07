@@ -193,6 +193,10 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
       if (typeof rawFinishReason === 'string' && VALID_FINISH_REASONS.has(rawFinishReason)) {
         finishReason = rawFinishReason as FinishReason;
       }
+      // Anthropic refusals surface here even when finish_reason is normalized away.
+      if (choice?.native_finish_reason === 'refusal') {
+        finishReason = 'content_filter';
+      }
 
       if (isRecord(json.usage)) usage = normalizeUsage(json.usage as Record<string, number>);
     } catch {

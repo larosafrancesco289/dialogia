@@ -46,6 +46,7 @@ export type PersistedUiState = {
   showSettings: UiSnapshot['showSettings'];
   sidebarCollapsed?: boolean;
   zdrOnly?: UiSnapshot['zdrOnly'];
+  messageTimestamps?: UiSnapshot['messageTimestamps'];
   chatDefaults?: ChatDefaults;
   flags?: Pick<UIFlags, 'experimentalTutor'>;
   debug?: Pick<UIDebugState, 'mode'>;

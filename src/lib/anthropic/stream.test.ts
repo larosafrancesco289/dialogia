@@ -166,3 +166,58 @@ test('streamChatCompletion continues pause_turn streams for Anthropic web search
   assert.equal(secondMessages.at(-1)?.role, 'assistant');
   assert.equal(Array.isArray(secondMessages.at(-1)?.content), true);
 });
+
+test('streamChatCompletion maps refusal stop_reason to content_filter with stop_details', async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async () =>
+    createSseResponse([
+      {
+        type: 'message_start',
+        message: {
+          id: 'msg_r',
+          type: 'message',
+          role: 'assistant',
+          content: [],
+          model: 'claude-fable-5',
+          usage: { input_tokens: 12, output_tokens: 0 },
+        },
+      },
+      {
+        type: 'message_delta',
+        delta: {
+          stop_reason: 'refusal',
+          stop_sequence: null,
+          stop_details: { policy: 'cybersecurity' },
+        },
+        usage: { input_tokens: 12, output_tokens: 0 },
+      },
+      { type: 'message_stop' },
+    ]);
+
+  let finishReason: string | undefined;
+  let stopDetails: unknown;
+
+  try {
+    await streamChatCompletion({
+      auth: buildTransportAuth({
+        transport: 'anthropic',
+        apiKey: 'test-key',
+        useProxy: false,
+      }),
+      model: 'anthropic/claude-fable-5',
+      messages: [{ role: 'user', content: 'Blocked prompt' }],
+      callbacks: {
+        onDone(_text, extras) {
+          finishReason = extras?.finishReason;
+          stopDetails = extras?.stopDetails;
+        },
+      },
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(finishReason, 'content_filter');
+  assert.deepEqual(stopDetails, { policy: 'cybersecurity' });
+});

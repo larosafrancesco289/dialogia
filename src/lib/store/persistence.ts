@@ -47,6 +47,7 @@ export function buildPersistedState(state: StoreState): PersistedStoreState {
       showSettings: state.ui.showSettings,
       sidebarCollapsed: state.ui.sidebarCollapsed,
       zdrOnly: state.ui.zdrOnly,
+      messageTimestamps: state.ui.messageTimestamps,
       chatDefaults: state.ui.chatDefaults,
       flags: {
         experimentalTutor: state.ui.flags.experimentalTutor,

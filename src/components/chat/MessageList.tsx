@@ -75,6 +75,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     setEditingId,
     saveEdit,
     startEditingMessage,
+    editPreviousUserMessage,
     copyMessage,
     branchFromMessage,
     regenerateMessage,
@@ -233,6 +234,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
               setEditingId={setEditingId}
               saveEdit={saveEdit}
               startEditingMessage={startEditingMessage}
+              onEditPreviousUserMessage={editPreviousUserMessage}
               copyMessage={copyMessage}
               copiedId={scopedCopiedId}
               setLightbox={setLightbox}

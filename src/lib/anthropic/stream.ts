@@ -77,6 +77,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   let full = '';
   let usage: Usage | undefined;
   let finishReason: FinishReason | undefined;
+  let rawStopDetails: unknown;
   const toolCalls = new Map<number, Partial<ToolCall>>();
   const completedThinkingBlocks: Array<{ type: 'thinking'; thinking: string; signature: string }> =
     [];
@@ -274,6 +275,9 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
 
         if (payload.type === 'message_delta') {
           rawStopReason = isRecord(payload.delta) ? payload.delta.stop_reason : undefined;
+          if (isRecord(payload.delta) && payload.delta.stop_details !== undefined) {
+            rawStopDetails = payload.delta.stop_details;
+          }
           requestUsage = mergeUsage(
             requestUsage,
             normalizeUsage(payload.usage as Record<string, number>),
@@ -344,6 +348,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   callbacks?.onDone?.(full, {
     usage,
     finishReason,
+    stopDetails: rawStopDetails,
     toolCalls: finalizedToolCalls.length > 0 ? finalizedToolCalls : undefined,
     reasoningDetails:
       completedThinkingBlocks.length > 0

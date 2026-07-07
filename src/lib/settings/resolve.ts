@@ -16,6 +16,7 @@ import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { normalizeChatSettings } from '@/lib/settings/normalize';
+import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';
 
 export type ResolvedTurnSettings = {
   modelId: string;
@@ -25,6 +26,7 @@ export type ResolvedTurnSettings = {
   searchEnabled: boolean;
   searchProvider: SearchProvider;
   tutorEnabled: boolean;
+  timestampsEnabled: boolean;
   system?: string;
   tutorNudge?: UiNextOverrides['tutorNudge'];
 };
@@ -124,8 +126,15 @@ export function resolveTurnSettings(args: {
 
   const system = overrides.system ?? chat.settings.system;
   const maxTokens = overrides.maxTokens ?? chat.settings.generation.maxTokens;
+  const explicitReasoningTokens = supportsReasoning
+    ? (overrides.reasoning?.tokens ?? chat.settings.generation.reasoningTokens)
+    : undefined;
+  // Reasoning-capable models default to the standard effort rather than
+  // disabling reasoning, unless the user set an explicit token budget instead.
   const rawReasoningEffort = supportsReasoning
-    ? (overrides.reasoning?.effort ?? chat.settings.generation.reasoningEffort)
+    ? (overrides.reasoning?.effort ??
+      chat.settings.generation.reasoningEffort ??
+      (explicitReasoningTokens === undefined ? DEFAULT_REASONING_EFFORT : undefined))
     : undefined;
   // Only demote xhigh when we have positive evidence the model doesn't support it.
   // When modelMeta is undefined (model list not yet loaded, or unknown id) we preserve
@@ -136,9 +145,7 @@ export function resolveTurnSettings(args: {
     rawReasoningEffort === 'xhigh' && modelMeta && !supportsXhighReasoningEffort(modelMeta)
       ? 'high'
       : rawReasoningEffort;
-  const reasoningTokens = supportsReasoning
-    ? (overrides.reasoning?.tokens ?? chat.settings.generation.reasoningTokens)
-    : undefined;
+  const reasoningTokens = explicitReasoningTokens;
   const searchEnabled = overrides.search?.enabled ?? chat.settings.features.search.enabled;
   const searchProviderCandidate =
     overrides.search?.provider ?? chat.settings.features.search.provider;
@@ -189,6 +196,7 @@ export function resolveTurnSettings(args: {
     searchEnabled,
     searchProvider,
     tutorEnabled,
+    timestampsEnabled: ui.messageTimestamps === true,
     system,
     tutorNudge: overrides.tutorNudge,
   };
