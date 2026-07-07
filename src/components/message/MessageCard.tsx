@@ -14,6 +14,7 @@ export type MessageCardProps = {
   setEditingId: (id: string | null) => void;
   saveEdit: (messageId: string, content: string) => void;
   startEditingMessage: (messageId: string) => void;
+  onEditPreviousUserMessage: (assistantMessageId: string) => void;
   copyMessage: (messageId: string) => Promise<void> | void;
   copiedId: string | null;
   setLightbox: (
@@ -42,6 +43,7 @@ function MessageCardComponent({
   setEditingId,
   saveEdit,
   startEditingMessage,
+  onEditPreviousUserMessage,
   copyMessage,
   copiedId,
   setLightbox,
@@ -79,6 +81,10 @@ function MessageCardComponent({
     () => startEditingMessage(messageId),
     [messageId, startEditingMessage],
   );
+  const handleEditPrevious = useCallback(
+    () => onEditPreviousUserMessage(messageId),
+    [messageId, onEditPreviousUserMessage],
+  );
   const handleSaveEdit = useCallback(
     () => saveEdit(messageId, draft),
     [messageId, saveEdit, draft],
@@ -111,6 +117,7 @@ function MessageCardComponent({
     setEditingId,
     onSaveEdit: handleSaveEdit,
     onStartEdit: handleStartEdit,
+    onEditPrevious: handleEditPrevious,
     onCopy: handleCopy,
     copiedId,
     setLightbox,

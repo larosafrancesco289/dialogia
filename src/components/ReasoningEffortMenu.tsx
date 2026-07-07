@@ -10,6 +10,7 @@ import {
   selectResolvedModelId,
   selectResolvedTurnSettings,
 } from '@/lib/store/selectors';
+import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';
 import type { ReasoningEffort } from '@/lib/types';
 
 type Effort = ReasoningEffort;
@@ -38,7 +39,11 @@ export function ReasoningEffortMenu() {
 
   const resolvedTurnSettings = useChatStore(selectResolvedTurnSettings);
   const current: Effort | undefined =
-    resolvedTurnSettings?.generation.reasoningEffort ?? nextOverrides.reasoning?.effort;
+    resolvedTurnSettings?.generation.reasoningEffort ??
+    nextOverrides.reasoning?.effort ??
+    (supportsReasoning && nextOverrides.reasoning?.tokens === undefined
+      ? DEFAULT_REASONING_EFFORT
+      : undefined);
   const active = current && current !== 'none';
 
   const choose = async (effort: Effort) => {

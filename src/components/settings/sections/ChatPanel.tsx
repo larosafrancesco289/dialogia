@@ -1,5 +1,6 @@
 'use client';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { IconButton } from '@/components/ui/IconButton';
 import { CheckIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { SystemPreset } from '@/lib/presets';
@@ -25,6 +26,8 @@ type ChatPanelProps = {
   reasoningTokensStr: string;
   setReasoningTokensStr: (value: string) => void;
   setReasoningTokens: (value: number | undefined) => void;
+  messageTimestamps: boolean | undefined;
+  setMessageTimestamps: (value: boolean) => void;
 };
 
 export function ChatPanel(props: ChatPanelProps) {
@@ -41,6 +44,8 @@ export function ChatPanel(props: ChatPanelProps) {
     reasoningTokensStr,
     setReasoningTokensStr,
     setReasoningTokens,
+    messageTimestamps,
+    setMessageTimestamps,
   } = props;
 
   const applyPreset = () => {
@@ -146,6 +151,12 @@ export function ChatPanel(props: ChatPanelProps) {
               overlay.
             </div>
           </div>
+          <ToggleSwitch
+            checked={messageTimestamps === true}
+            onChange={setMessageTimestamps}
+            label="Message timestamps"
+            description="Prefix each message sent to the model with its date and time, so it knows when the conversation happened. Adds a few tokens per message."
+          />
         </SettingsSection>,
       )}
 
@@ -188,7 +199,7 @@ export function ChatPanel(props: ChatPanelProps) {
                   }
                 }}
               >
-                <option value="">model default</option>
+                <option value="">standard (medium)</option>
                 <option value="none">none</option>
                 <option value="low">low</option>
                 <option value="medium">medium</option>
@@ -196,7 +207,8 @@ export function ChatPanel(props: ChatPanelProps) {
                 <option value="xhigh">extra high</option>
               </select>
               <div className="text-xs text-muted-foreground">
-                Request model reasoning depth (if supported).
+                Reasoning depth new chats start with (if the model supports it). Adjustable per chat
+                from the composer.
               </div>
             </div>
             <div className="space-y-1">

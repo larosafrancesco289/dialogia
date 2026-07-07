@@ -6,6 +6,7 @@ import {
   ClipboardIcon,
   ArrowUturnRightIcon,
   ArrowPathIcon,
+  ShieldExclamationIcon,
 } from '@heroicons/react/24/outline';
 import { Markdown, type MarkdownCitationSource } from '@/components/Markdown';
 import { RegenerateMenu } from '@/components/RegenerateMenu';
@@ -29,6 +30,8 @@ export type AssistantMessageProps = {
   copyMessage: () => void;
   copiedId: string | null;
   startEditingMessage: () => void;
+  /** Opens the preceding user message for editing (recovery from refusals). */
+  onEditPreviousUserMessage: () => void;
   saveEdit: () => void;
   setEditingId: (id: string | null) => void;
   setDraft: (value: string) => void;
@@ -93,6 +96,7 @@ export function AssistantMessage({
   copyMessage,
   copiedId,
   startEditingMessage,
+  onEditPreviousUserMessage,
   saveEdit,
   setEditingId,
   setDraft,
@@ -226,11 +230,59 @@ export function AssistantMessage({
 
       {messageBody && <div className="px-4 py-3">{messageBody}</div>}
 
+      {!isStreaming && !isEditing && message.finishReason === 'content_filter' && (
+        <div className="px-4 pb-3 pt-1">
+          <div
+            className="rounded-2xl border px-4 py-3"
+            style={{
+              background: 'var(--feedback-incorrect-bg)',
+              borderColor: 'var(--feedback-incorrect-border)',
+            }}
+          >
+            <div className="flex items-start gap-2.5">
+              <ShieldExclamationIcon
+                className="mt-0.5 h-4 w-4 shrink-0"
+                style={{ color: 'var(--feedback-incorrect-text)' }}
+                aria-hidden="true"
+              />
+              <div className="min-w-0 flex-1 space-y-1">
+                <p
+                  className="text-sm font-semibold"
+                  style={{ color: 'var(--feedback-incorrect-text)' }}
+                >
+                  Declined by the model&rsquo;s safety filter
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {displayContent.trim()
+                    ? 'The reply was cut short by a safety classifier.'
+                    : 'A safety classifier blocked this request before the model could answer.'}
+                  {message.stopPolicy ? ` Flagged policy: ${message.stopPolicy}.` : ''} Rewording
+                  your message and sending it again usually resolves this.
+                </p>
+              </div>
+            </div>
+            {!isChatStreaming && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-6">
+                <button className="btn btn-primary btn-sm" onClick={onEditPreviousUserMessage}>
+                  <PencilSquareIcon className="h-3.5 w-3.5" />
+                  Edit message
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={() => onChooseRegenerateModel()}>
+                  <ArrowPathIcon className="h-3.5 w-3.5" />
+                  Retry as-is
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {!isStreaming &&
         !isChatStreaming &&
         isLatestAssistant &&
         !isEditing &&
-        !displayContent.trim() && (
+        !displayContent.trim() &&
+        message.finishReason !== 'content_filter' && (
           <div className="px-4 pb-2">
             <button
               className="btn btn-ghost btn-sm text-xs text-warning gap-1.5"

@@ -84,6 +84,7 @@ test('streamFinal rebuilds multipart system prompt when stable split is provided
       searchEnabled: false,
       searchProvider: 'openrouter',
       tutorEnabled: true,
+      timestampsEnabled: false,
       system: chat.settings.system,
     },
     startBuffered: false,

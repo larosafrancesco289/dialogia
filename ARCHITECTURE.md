@@ -142,6 +142,20 @@ the stable, supported surface for cross-domain use.
 6. The UI reacts via selectors (`useChatMessages`, `useModelStore`) and rerenders declaratively. The
    persisted portions of the store sync to IndexedDB through Zustand persistence adapters.
 
+Two turn-level behaviors worth knowing:
+
+- Reasoning effort resolves at turn time in `src/lib/settings/resolve.ts`: reasoning-capable
+  models with no explicit chat/default setting fall back to `DEFAULT_REASONING_EFFORT`
+  (`src/lib/settings/generation.ts`) rather than having reasoning disabled. An explicit `none` or
+  a reasoning-token budget suppresses the fallback.
+- Safety-classifier refusals (Anthropic `stop_reason: "refusal"`, surfaced as
+  `finishReason: 'content_filter'` by both transports) are not errors: the stream completes and
+  `streamHandlers.ts` persists `finishReason`/`stopPolicy` on the assistant message. The UI
+  renders a blocked-request card whose primary action opens the preceding user message for
+  editing; `editUserMessage({ rerun: true })` regenerates the following assistant message (or
+  spawns one if the turn never produced a reply). There is deliberately no automatic model
+  fallback for refusals.
+
 ## Persistence
 
 Long-lived user data is stored in IndexedDB through Dexie (`src/lib/db/*`): chats, messages,

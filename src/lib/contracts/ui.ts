@@ -112,6 +112,7 @@ export type UiSnapshot = {
   notice?: string;
   overrides?: UiNextOverrides;
   zdrOnly?: boolean;
+  messageTimestamps?: boolean;
   flags: UiFlagsSnapshot;
   debug: UiDebugSnapshot;
   search: UiSearchSnapshot;

@@ -31,7 +31,12 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
 
   const original = messages[index];
   const priorMessages = messages.slice(0, index);
-  const payload = buildChatCompletionMessages({ chat, priorMessages, models });
+  const payload = buildChatCompletionMessages({
+    chat,
+    priorMessages,
+    models,
+    timestamps: turn.get().ui.messageTimestamps === true,
+  });
   const systemSnapshot = original.systemSnapshot;
   const convo: ModelMessage[] = systemSnapshot
     ? [

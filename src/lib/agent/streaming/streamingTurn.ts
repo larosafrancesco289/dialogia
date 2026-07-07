@@ -47,6 +47,9 @@ function looksIncomplete(
   finishReason?: StreamDoneExtras['finishReason'],
 ): boolean {
   const trimmed = content.trim();
+  // A classifier refusal is final, not truncated — retrying the same prompt
+  // would only get blocked again.
+  if (finishReason === 'content_filter') return false;
   if (!trimmed) return true;
   if (finishReason === 'length') return true;
   const fencedCodeBlocks = trimmed.match(/```/g);

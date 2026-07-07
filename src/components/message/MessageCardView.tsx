@@ -20,6 +20,7 @@ export type MessageCardViewData = MessageCardViewModel & {
   setEditingId: (id: string | null) => void;
   onSaveEdit: () => void;
   onStartEdit: () => void;
+  onEditPrevious: () => void;
   onCopy: () => void;
   copiedId: string | null;
   setLightbox: (
@@ -65,6 +66,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     setEditingId,
     onSaveEdit,
     onStartEdit,
+    onEditPrevious,
     onCopy,
     copiedId,
     setLightbox,
@@ -152,6 +154,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
           copyMessage={onCopy}
           copiedId={copiedId}
           startEditingMessage={onStartEdit}
+          onEditPreviousUserMessage={onEditPrevious}
           saveEdit={onSaveEdit}
           setEditingId={setEditingId}
           setDraft={setDraft}

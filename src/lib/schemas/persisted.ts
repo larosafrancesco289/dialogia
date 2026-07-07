@@ -144,6 +144,8 @@ export const MessageSchema = z
     genSettings: GenSettingsSnapshotSchema.optional(),
     annotations: z.unknown().optional(),
     createdAt: z.number(),
+    finishReason: z.enum(['stop', 'tool_calls', 'length', 'content_filter']).optional(),
+    stopPolicy: z.string().optional(),
     tokensIn: z.number().optional(),
     tokensOut: z.number().optional(),
     model: z.string().optional(),
