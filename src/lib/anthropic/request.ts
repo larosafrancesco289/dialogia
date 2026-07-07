@@ -116,7 +116,7 @@ export type AnthropicMessagesRequest = {
   thinking?:
     | { type: 'adaptive'; display?: 'summarized' | 'omitted' }
     | { type: 'enabled'; budget_tokens: number; display?: 'summarized' | 'omitted' };
-  output_config?: { effort: 'low' | 'medium' | 'high' | 'xhigh' };
+  output_config?: { effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max' };
 };
 
 const ANTHROPIC_WEB_SEARCH_TOOL: AnthropicWebSearchToolDefinition = {
@@ -435,8 +435,12 @@ function buildThinkingConfig(params: {
   if (!reasoningRequested) return {};
 
   if (supportsAnthropicAdaptiveThinking(params.model)) {
-    const effort =
-      params.reasoningEffort && params.reasoningEffort !== 'none' ? params.reasoningEffort : 'high';
+    // The Claude API accepts low..max; 'minimal' is an OpenRouter-only level.
+    const requested =
+      params.reasoningEffort && params.reasoningEffort !== 'none'
+        ? params.reasoningEffort
+        : undefined;
+    const effort = requested === 'minimal' ? 'low' : (requested ?? 'high');
     return {
       thinking: { type: 'adaptive', display: 'summarized' as const },
       output_config: { effort },

@@ -39,3 +39,62 @@ test('fetchModels exposes Anthropic pricing in per-token units', async () => {
   });
   assert.equal(describeModelPricing(models[0]), 'in $5.00/M · out $25.00/M');
 });
+
+test('fetchModels synthesizes reasoning metadata from effort capabilities', async () => {
+  const responseBody = {
+    data: [
+      {
+        id: 'claude-fable-5',
+        display_name: 'Claude Fable 5',
+        capabilities: {
+          thinking: { supported: true },
+          effort: {
+            supported: true,
+            low: { supported: true },
+            medium: { supported: true },
+            high: { supported: true },
+            xhigh: { supported: true },
+            max: { supported: true },
+          },
+        },
+      },
+      {
+        id: 'claude-haiku-4-5-20251001',
+        display_name: 'Claude Haiku 4.5',
+        capabilities: { thinking: { supported: true } },
+      },
+    ],
+  };
+
+  const models = await fetchModels(
+    // Distinct key so the module-level model cache from the previous test
+    // does not serve its response here.
+    { transport: 'anthropic', apiKey: 'test-key-reasoning', useProxy: false },
+    {
+      fetchFn: async () =>
+        new Response(JSON.stringify(responseBody), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    },
+  );
+
+  const fable = models.find((m) => m.id.includes('fable'));
+  const fableReasoning = (fable?.raw as Record<string, unknown>).reasoning as Record<
+    string,
+    unknown
+  >;
+  assert.deepEqual(fableReasoning.supported_efforts, ['low', 'medium', 'high', 'xhigh', 'max']);
+  assert.equal(fableReasoning.default_effort, 'high');
+  assert.equal(fableReasoning.default_enabled, true);
+  assert.equal(fableReasoning.mandatory, true);
+
+  const haiku = models.find((m) => m.id.includes('haiku'));
+  const haikuReasoning = (haiku?.raw as Record<string, unknown>).reasoning as Record<
+    string,
+    unknown
+  >;
+  // Manual-thinking model without effort capability: thinking off by default.
+  assert.equal(haikuReasoning.default_enabled, false);
+  assert.equal(haikuReasoning.mandatory, false);
+});

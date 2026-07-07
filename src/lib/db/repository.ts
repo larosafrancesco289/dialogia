@@ -5,6 +5,7 @@ import { normalizeChatSettings } from '@/lib/settings/normalize';
 import { migrateGenSettingsRecord } from '@/lib/settings/migrations';
 import { ChatSchema, MessageSchema } from '@/lib/schemas/persisted';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 import { isRecord } from '@/lib/utils/guards';
 
 type DbCollection<T> = {
@@ -156,8 +157,8 @@ export function createRepository(db: DialogiaDbLike) {
     for (const entry of rawChats) {
       if (!isRecord(entry)) continue;
       const settings = normalizeChatSettings(entry.settings, {
-        fallbackModelId: DEFAULT_MODEL_ID,
-        fallbackTutorModelId: DEFAULT_TUTOR_MODEL_ID,
+        fallbackModelId: resolveDynamicModelId(DEFAULT_MODEL_ID, []),
+        fallbackTutorModelId: resolveDynamicModelId(DEFAULT_TUTOR_MODEL_ID, []),
       });
       const candidate = { ...entry, settings };
       const parsed = ChatSchema.safeParse(candidate);

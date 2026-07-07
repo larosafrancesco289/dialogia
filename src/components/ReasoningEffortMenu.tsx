@@ -3,7 +3,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { LightBulbIcon } from '@heroicons/react/24/outline';
-import { findModelById, isReasoningSupported, supportsXhighReasoningEffort } from '@/lib/models';
+import {
+  findModelById,
+  getDefaultReasoningEffort,
+  getSelectableReasoningEfforts,
+  isReasoningSupported,
+} from '@/lib/models';
 import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import {
   selectNextOverrides,
@@ -35,14 +40,24 @@ export function ReasoningEffortMenu() {
   );
   const selectedModel = useMemo(() => findModelById(models, modelId), [models, modelId]);
   const supportsReasoning = useMemo(() => isReasoningSupported(selectedModel), [selectedModel]);
-  const supportsXhigh = useMemo(() => supportsXhighReasoningEffort(selectedModel), [selectedModel]);
+  const selectableEfforts = useMemo(
+    () => getSelectableReasoningEfforts(selectedModel),
+    [selectedModel],
+  );
+  const defaultForModel = useMemo(
+    () =>
+      supportsReasoning
+        ? (getDefaultReasoningEffort(selectedModel) ?? DEFAULT_REASONING_EFFORT)
+        : undefined,
+    [supportsReasoning, selectedModel],
+  );
 
   const resolvedTurnSettings = useChatStore(selectResolvedTurnSettings);
   const current: Effort | undefined =
     resolvedTurnSettings?.generation.reasoningEffort ??
     nextOverrides.reasoning?.effort ??
     (supportsReasoning && nextOverrides.reasoning?.tokens === undefined
-      ? DEFAULT_REASONING_EFFORT
+      ? (getDefaultReasoningEffort(selectedModel) ?? DEFAULT_REASONING_EFFORT)
       : undefined);
   const active = current && current !== 'none';
 
@@ -96,21 +111,20 @@ export function ReasoningEffortMenu() {
       {open && (
         <div className="absolute right-0 bottom-full mb-2 z-40 card p-2 w-52 popover">
           <div className="text-xs text-muted-foreground px-1 pb-1">Reasoning</div>
-          {(
-            [
-              { key: 'none', label: 'None' },
-              { key: 'low', label: 'Low' },
-              { key: 'medium', label: 'Medium' },
-              { key: 'high', label: 'High' },
-              ...(supportsXhigh ? ([{ key: 'xhigh', label: 'Extra High' }] as const) : []),
-            ] as const
-          ).map((o) => (
+          {selectableEfforts.map((key) => (
             <div
-              key={o.key}
-              className={`menu-item text-sm ${current === o.key ? 'font-semibold' : ''}`}
-              onClick={() => choose(o.key)}
+              key={key}
+              className={`menu-item text-sm ${current === key ? 'font-semibold' : ''}`}
+              onClick={() => choose(key)}
             >
-              {o.label}
+              {key === 'none'
+                ? 'None'
+                : key === 'xhigh'
+                  ? 'Extra High'
+                  : key.charAt(0).toUpperCase() + key.slice(1)}
+              {key === defaultForModel && (
+                <span className="text-xs text-muted-foreground"> · default</span>
+              )}
             </div>
           ))}
         </div>

@@ -7,10 +7,11 @@ import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import {
   findModelById,
+  getDefaultReasoningEffort,
+  getSelectableReasoningEfforts,
   isReasoningSupported,
   isVisionSupported,
   isAudioInputSupported,
-  supportsXhighReasoningEffort,
 } from '@/lib/models';
 import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
@@ -21,6 +22,7 @@ import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
 import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
+import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
 import { ComposerLayout } from '@/components/composer/ComposerLayout';
 import {
@@ -102,7 +104,14 @@ export function Composer({
   const canVision = isVisionSupported(modelMeta);
   const canAudio = isAudioInputSupported(modelMeta);
   const supportsReasoning = isReasoningSupported(modelMeta);
-  const supportsXhigh = supportsXhighReasoningEffort(modelMeta);
+  const availableEfforts = useMemo(() => getSelectableReasoningEfforts(modelMeta), [modelMeta]);
+  const defaultEffort = useMemo(
+    () =>
+      supportsReasoning
+        ? (getDefaultReasoningEffort(modelMeta) ?? DEFAULT_REASONING_EFFORT)
+        : undefined,
+    [supportsReasoning, modelMeta],
+  );
 
   const {
     attachments,
@@ -244,7 +253,8 @@ export function Composer({
   useAutogrowTextarea(taRef, [text], maxTextareaHeight);
 
   const currentEffort = (resolvedTurnSettings?.generation.reasoningEffort ??
-    (uiNext.reasoning?.effort as Effort | undefined)) as Effort | undefined;
+    (uiNext.reasoning?.effort as Effort | undefined) ??
+    (uiNext.reasoning?.tokens === undefined ? defaultEffort : undefined)) as Effort | undefined;
 
   const showReasoningMenu = supportsReasoning && !tutorEnabled;
   const toggleSearch = () => {
@@ -324,7 +334,8 @@ export function Composer({
           searchProvider={searchProvider}
           toggleSearch={toggleSearch}
           showReasoningMenu={showReasoningMenu}
-          supportsXhigh={supportsXhigh}
+          availableEfforts={availableEfforts}
+          defaultEffort={defaultEffort}
           currentEffort={currentEffort}
           onSelectEffort={handleSelectEffort}
           hasContent={text.trim().length > 0 || attachments.length > 0}

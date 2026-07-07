@@ -6,9 +6,12 @@ import { isRecord } from '@/lib/utils/guards';
 import { anFetchModels } from '@/lib/anthropic/http';
 import { buildAnthropicError, wrapAnthropicClientError } from '@/lib/anthropic/errors';
 import {
+  documentedAnthropicEffortLevels,
   getAnthropicPricing,
+  isAnthropicThinkingMandatory,
   readAnthropicCapabilityFlag,
   resolveAnthropicPublicModelId,
+  supportsAnthropicAdaptiveThinking,
   supportsAnthropicReasoning,
   supportsAnthropicToolUse,
   supportsAnthropicVision,
@@ -35,6 +38,42 @@ function extractEntries(payload: unknown): unknown[] {
     if (Array.isArray(payload.models)) return payload.models;
   }
   return Array.isArray(payload) ? payload : [];
+}
+
+const EFFORT_LEVEL_KEYS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+
+/**
+ * Normalize Anthropic's `capabilities.effort` flags into the same `reasoning`
+ * metadata shape OpenRouter publishes, so the models layer reads one format.
+ * The API default effort is `high` and cannot be read from metadata; the
+ * effort docs state "omitting the parameter" equals `high` on all supported
+ * models. Older manual-thinking models have thinking off by default.
+ */
+function buildAnthropicReasoningMetadata(
+  directId: string,
+  capabilities: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const effortCaps =
+    capabilities && isRecord(capabilities.effort) ? capabilities.effort : undefined;
+  const effortSupported = effortCaps
+    ? (readAnthropicCapabilityFlag(capabilities, 'effort') ?? true)
+    : supportsAnthropicAdaptiveThinking(directId);
+  const supportedEfforts = effortSupported
+    ? effortCaps
+      ? EFFORT_LEVEL_KEYS.filter((level) => readAnthropicCapabilityFlag(effortCaps, level) === true)
+      : documentedAnthropicEffortLevels(directId)
+    : ['low', 'medium', 'high'];
+  const mandatory = isAnthropicThinkingMandatory(directId);
+  return {
+    supported_efforts:
+      supportedEfforts.length > 0 ? supportedEfforts : documentedAnthropicEffortLevels(directId),
+    default_effort: 'high',
+    // Effort-capable models run with reasoning active by default; older
+    // manual-thinking models require explicitly enabling thinking.
+    default_enabled: effortSupported || mandatory,
+    mandatory,
+    supports_max_tokens: !supportsAnthropicAdaptiveThinking(directId),
+  };
 }
 
 function normalizeAnthropicModel(entry: unknown): ModelDescriptor | null {
@@ -75,6 +114,7 @@ function normalizeAnthropicModel(entry: unknown): ModelDescriptor | null {
     supported_parameters: supportedParameters,
     input_modalities: canSee ? ['text', 'image'] : ['text'],
     output_modalities: ['text'],
+    ...(canReason ? { reasoning: buildAnthropicReasoningMetadata(directId, capabilities) } : {}),
     anthropic: {
       public_id: publicId,
       direct_id: directId,

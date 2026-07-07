@@ -73,13 +73,27 @@ export const EMPTY_MODEL_INDEX: ModelIndex = (() => {
 
 export { formatModelLabel, stripProviderPrefix } from '@/lib/models/labels';
 export {
+  DYNAMIC_MODEL_ALIASES,
+  getDynamicModelAlias,
+  isDynamicModelId,
+  resolveDynamicModelId,
+  type DynamicModelAlias,
+} from '@/lib/models/dynamicDefaults';
+export {
+  clampReasoningEffort,
+  getDefaultReasoningEffort,
   getModelCapabilities,
+  getModelReasoningInfo,
+  getSelectableReasoningEfforts,
   getSupportedParameters,
   isAudioInputSupported,
   isImageOutputSupported,
+  isReasoningMandatory,
   isReasoningSupported,
   isToolCallingSupported,
   isVisionSupported,
+  REASONING_EFFORT_ORDER,
   supportsXhighReasoningEffort,
   type ModelCapabilityFlags,
+  type ModelReasoningInfo,
 } from '@/lib/models/capabilities';

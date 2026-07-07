@@ -186,10 +186,12 @@ export function ChatPanel(props: ChatPanelProps) {
                   }
                   if (
                     value === 'none' ||
+                    value === 'minimal' ||
                     value === 'low' ||
                     value === 'medium' ||
                     value === 'high' ||
-                    value === 'xhigh'
+                    value === 'xhigh' ||
+                    value === 'max'
                   ) {
                     setReasoningEffort(value);
                     if (value === 'none') {
@@ -199,16 +201,20 @@ export function ChatPanel(props: ChatPanelProps) {
                   }
                 }}
               >
-                <option value="">standard (medium)</option>
+                <option value="">model default</option>
                 <option value="none">none</option>
+                <option value="minimal">minimal</option>
                 <option value="low">low</option>
                 <option value="medium">medium</option>
                 <option value="high">high</option>
                 <option value="xhigh">extra high</option>
+                <option value="max">max</option>
               </select>
               <div className="text-xs text-muted-foreground">
-                Reasoning depth new chats start with (if the model supports it). Adjustable per chat
-                from the composer.
+                Reasoning depth new chats start with. &ldquo;Model default&rdquo; follows each
+                model&rsquo;s own provider default (e.g. high for Claude reasoning models); levels a
+                model doesn&rsquo;t support are clamped to the nearest one it does. Adjustable per
+                chat from the composer.
               </div>
             </div>
             <div className="space-y-1">

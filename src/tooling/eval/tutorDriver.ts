@@ -10,6 +10,7 @@ import { buildJudgeMessages, type JudgeVerdict } from '@/tooling/eval/judgePromp
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { resolveModelTransport } from '@/lib/providers';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 import type { HeadlessTurnSnapshot } from '@/tooling/headless/types';
 import type { Chat, Message, ModelDescriptor, ModelTransport } from '@/lib/types';
 import { getLatestLearnerModel, generateModelSummary } from '@/lib/agent/learner-model';
@@ -183,9 +184,10 @@ export async function runTutorScenario(
   const apiKeys = {
     openrouter: options.apiKeys?.openrouter || getOpenRouterKeyFallback(),
   };
-  const teacherModelId = scenario.teacherModelId || DEFAULT_TUTOR_MODEL_ID;
-  const studentModelId = scenario.studentModelId || DEFAULT_MODEL_ID;
-  const judgeModelId = scenario.judgeModelId || DEFAULT_MODEL_ID;
+  const teacherModelId =
+    scenario.teacherModelId || resolveDynamicModelId(DEFAULT_TUTOR_MODEL_ID, []);
+  const studentModelId = scenario.studentModelId || resolveDynamicModelId(DEFAULT_MODEL_ID, []);
+  const judgeModelId = scenario.judgeModelId || resolveDynamicModelId(DEFAULT_MODEL_ID, []);
 
   const teacherTransport = resolveModelTransport(teacherModelId) || 'openrouter';
   const studentTransport = resolveModelTransport(studentModelId) || 'openrouter';

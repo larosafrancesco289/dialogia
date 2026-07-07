@@ -12,6 +12,7 @@ import { fetchModels } from '@/lib/openrouter';
 import { resolveModelTransport } from '@/lib/providers';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { parseArgs } from '@/lib/cli/args';
 import { loadEnvDefaults } from '@/lib/cli/env.node';
@@ -471,15 +472,15 @@ export async function runTutorSimulationCli(argv: string[]) {
   const tutorModel =
     typeof args['tutor-model'] === 'string' && args['tutor-model']
       ? args['tutor-model']
-      : (preset?.tutorModel ?? DEFAULT_TUTOR_MODEL_ID);
+      : (preset?.tutorModel ?? resolveDynamicModelId(DEFAULT_TUTOR_MODEL_ID, []));
   const studentModel =
     typeof args['student-model'] === 'string' && args['student-model']
       ? args['student-model']
-      : (preset?.studentModel ?? DEFAULT_MODEL_ID);
+      : (preset?.studentModel ?? resolveDynamicModelId(DEFAULT_MODEL_ID, []));
   const judgeModel =
     typeof args['judge-model'] === 'string' && args['judge-model']
       ? args['judge-model']
-      : (preset?.judgeModel ?? DEFAULT_MODEL_ID);
+      : (preset?.judgeModel ?? resolveDynamicModelId(DEFAULT_MODEL_ID, []));
 
   const openrouterKey =
     (typeof args['openrouter-key'] === 'string' && args['openrouter-key']) ||

@@ -286,6 +286,71 @@ test('in-chat reasoning changes become sticky for future chats', async () => {
   assert.equal(nextSettings.generation.reasoningEffort, 'xhigh');
 });
 
+test('switching model resets reasoning to the new model default', async () => {
+  const activeChat: Chat = {
+    id: 'active-chat',
+    title: 'Started Chat',
+    createdAt: 5,
+    updatedAt: 20,
+    settings: {
+      modelId: 'openai/gpt-5.4',
+      system: 'Sticky system',
+      generation: {
+        reasoningEffort: 'xhigh',
+        reasoningTokens: 4096,
+      },
+      ui: {
+        showThinkingByDefault: false,
+        showStats: false,
+        showToolCallLog: false,
+        showDebugRawJson: true,
+      },
+      features: {
+        search: { enabled: false, provider: 'openrouter' },
+        tutor: { enabled: false },
+      },
+    },
+  };
+
+  const baseUi = buildDefaultUIState();
+  baseUi.chatDefaults = { generation: { reasoningEffort: 'xhigh', reasoningTokens: 4096 } };
+  const state: any = {
+    chats: [activeChat],
+    folders: [],
+    messagesById: {},
+    messageIdsByChatId: {},
+    selectedChatId: 'active-chat',
+    ui: baseUi,
+  };
+
+  const set = (partial: any) => {
+    const next = typeof partial === 'function' ? partial(state) : partial;
+    Object.assign(state, next);
+  };
+  const get = () => state;
+
+  const originalUpdateChat = ChatService.updateChat;
+  ChatService.updateChat = (async (chat, changes) => ({
+    ...chat,
+    ...changes,
+    updatedAt: 99,
+  })) as typeof ChatService.updateChat;
+
+  try {
+    const slice = createChatSlice(set as any, get as any);
+    await slice.updateChatSettings({ modelId: 'anthropic/claude-fable-5' });
+  } finally {
+    ChatService.updateChat = originalUpdateChat;
+  }
+
+  assert.equal(state.chats[0].settings.modelId, 'anthropic/claude-fable-5');
+  assert.equal(state.chats[0].settings.generation.reasoningEffort, undefined);
+  assert.equal(state.chats[0].settings.generation.reasoningTokens, undefined);
+  // The sticky default resets alongside so future chats follow the model.
+  assert.equal(state.ui.chatDefaults?.generation?.reasoningEffort, undefined);
+  assert.equal(state.ui.chatDefaults?.generation?.reasoningTokens, undefined);
+});
+
 test('in-chat model changes become sticky for future chats; search does not', async () => {
   const activeChat: Chat = {
     id: 'active-chat',

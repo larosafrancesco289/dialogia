@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { PINNED_MODEL_ID } from '@/lib/constants';
-import { findModelById } from '@/lib/models';
+import { findModelById, resolveDynamicModelId } from '@/lib/models';
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
@@ -102,27 +102,32 @@ export function useModelPickerController(): ModelPickerController {
     );
   }, [customOptions, curated, tierDefaultModelId]);
 
+  const pinnedModelId = useMemo(
+    () => resolveDynamicModelId(PINNED_MODEL_ID, models || []),
+    [models],
+  );
+
   const options = useMemo(() => {
     const hidden = new Set(hiddenModelIds || []);
     return allOptions.filter((m: ModelPickerOption) => {
-      if (m.id === PINNED_MODEL_ID) return true;
+      if (m.id === pinnedModelId) return true;
       if (hidden.has(m.id)) return false;
       if (ui?.zdrOnly === true) return allowedIds.has(m.id);
       return true;
     });
-  }, [allOptions, hiddenModelIds, ui?.zdrOnly, allowedIds]);
+  }, [allOptions, hiddenModelIds, ui?.zdrOnly, allowedIds, pinnedModelId]);
 
   const zdrHiddenCount = useMemo(() => {
     if (ui?.zdrOnly !== true) return 0;
     const hidden = new Set(hiddenModelIds || []);
     let count = 0;
     for (const option of allOptions) {
-      if (option.id === PINNED_MODEL_ID) continue;
+      if (option.id === pinnedModelId) continue;
       if (hidden.has(option.id)) continue;
       if (!allowedIds.has(option.id)) count += 1;
     }
     return count;
-  }, [ui?.zdrOnly, hiddenModelIds, allOptions, allowedIds]);
+  }, [ui?.zdrOnly, hiddenModelIds, allOptions, allowedIds, pinnedModelId]);
 
   const selectedIds = useMemo(() => {
     const fromChat = chat

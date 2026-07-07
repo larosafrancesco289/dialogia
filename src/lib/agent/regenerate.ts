@@ -3,7 +3,8 @@
 
 import { buildChatCompletionMessages } from '@/lib/agent/prompt-builder';
 import { composePlugins } from '@/lib/agent/request';
-import type { Chat, GenSettingsSnapshot } from '@/lib/types';
+import type { Chat, GenSettingsSnapshot, ReasoningEffort } from '@/lib/types';
+import { ReasoningEffortEnum } from '@/lib/types';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { ModelMessage, RegenerateOptions, SearchProvider } from '@/lib/agent/types';
 import { streamFinal } from '@/lib/agent/streaming';
@@ -73,7 +74,10 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     if (!supportsReasoning) return undefined;
     const fromSnapshot = isReasoningEffort(snapshotVal) ? snapshotVal : undefined;
     const fromChat = isReasoningEffort(chatVal) ? chatVal : undefined;
-    if (modelChanged) return fromChat ?? fromSnapshot;
+    // Regenerating on a different model must not inherit the previous
+    // model's (possibly auto-resolved) effort snapshot; without an explicit
+    // chat setting the new model's own default applies downstream.
+    if (modelChanged) return fromChat;
     return fromSnapshot ?? fromChat;
   };
 
@@ -81,7 +85,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     if (!supportsReasoning) return undefined;
     const fromSnapshot = typeof snapshotVal === 'number' ? snapshotVal : undefined;
     const fromChat = typeof chatVal === 'number' ? chatVal : undefined;
-    if (modelChanged) return fromChat ?? fromSnapshot;
+    if (modelChanged) return fromChat;
     return fromSnapshot ?? fromChat;
   };
 
@@ -229,11 +233,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
 const isReasoningEffort = (
   value: unknown,
 ): value is NonNullable<Chat['settings']['generation']['reasoningEffort']> =>
-  value === 'none' ||
-  value === 'low' ||
-  value === 'medium' ||
-  value === 'high' ||
-  value === 'xhigh';
+  Object.values(ReasoningEffortEnum).includes(value as ReasoningEffort);
 
 const normalizeSearchProvider = (value: unknown): SearchProvider | undefined => {
   if (value === 'brave') return 'tavily';

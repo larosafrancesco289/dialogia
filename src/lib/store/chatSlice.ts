@@ -59,6 +59,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
           chats: snapshot.chats,
           selectedChatId: snapshot.selectedChatId,
           tier: getClientTier(),
+          models: snapshot.models,
         });
         const nextDraft = settingsEqual(reusableDraft.settings, refreshedSettings)
           ? reusableDraft
@@ -90,6 +91,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         selectedChatId: snapshot.selectedChatId,
         repository,
         tier: getClientTier(),
+        models: snapshot.models,
       });
 
       set((s) => ({
@@ -280,6 +282,30 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
 
       let nextSettings = mergeSettings(before.settings, partial);
 
+      // Switching model returns reasoning to the new model's own default:
+      // an effort chosen for the previous model must not silently carry over
+      // to a model with different levels and defaults.
+      const hasOwn = (obj: object, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
+      const modelChanged =
+        hasOwn(partial, 'modelId') &&
+        typeof partial.modelId === 'string' &&
+        partial.modelId !== before.settings.modelId;
+      const patchSetsReasoning =
+        !!partial.generation &&
+        (hasOwn(partial.generation, 'reasoningEffort') ||
+          hasOwn(partial.generation, 'reasoningTokens'));
+      const resetReasoningForModelChange = modelChanged && !patchSetsReasoning;
+      if (resetReasoningForModelChange) {
+        nextSettings = {
+          ...nextSettings,
+          generation: {
+            ...nextSettings.generation,
+            reasoningEffort: undefined,
+            reasoningTokens: undefined,
+          },
+        };
+      }
+
       if (Array.isArray(nextSettings.parallelModels)) {
         nextSettings = {
           ...nextSettings,
@@ -321,7 +347,6 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       // research session doesn't quietly add search cost to every future
       // message. Tutor chats are excluded: their model is managed by tutor
       // defaults and must not leak into regular chats.
-      const hasOwn = (obj: object, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
       const isTutorChat = nextSettings.features.tutor.enabled;
       const stickyGeneration = partial.generation
         ? {
@@ -332,7 +357,11 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
               ? { reasoningTokens: nextSettings.generation.reasoningTokens }
               : {}),
           }
-        : {};
+        : resetReasoningForModelChange
+          ? // The model switch dropped the explicit effort; drop the sticky
+            // default too so future chats follow the new model's default.
+            { reasoningEffort: undefined, reasoningTokens: undefined }
+          : {};
       const stickyDefaults = {
         ...(!isTutorChat && hasOwn(partial, 'modelId') ? { modelId: nextSettings.modelId } : {}),
         ...(Object.keys(stickyGeneration).length ? { generation: stickyGeneration } : {}),

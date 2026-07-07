@@ -7,10 +7,16 @@ import type {
   ModelDescriptor,
 } from '@/lib/types';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
-import { findModelById, isReasoningSupported, supportsXhighReasoningEffort } from '@/lib/models';
+import {
+  findModelById,
+  getSelectableReasoningEfforts,
+  isReasoningSupported,
+  resolveDynamicModelId,
+} from '@/lib/models';
 import type { UiNextOverrides } from '@/lib/contracts/ui';
 import type { UIState } from '@/lib/store/types';
 import type { ReasoningEffort } from '@/lib/types';
+import { ReasoningEffortEnum } from '@/lib/types';
 
 type Effort = ReasoningEffort;
 
@@ -57,15 +63,16 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
   }
 
   if (command === 'reasoning' || command === 'think') {
-    const allowed: Effort[] = ['none', 'low', 'medium', 'high', 'xhigh'];
+    const allowed = Object.values(ReasoningEffortEnum) as Effort[];
     const effort = arg.toLowerCase() as Effort;
     if (!allowed.includes(effort)) return false;
     if (!isReasoningSupported(currentModel)) {
       ctx.setNotice('Reasoning not supported by current model');
       return true;
     }
-    if (effort === 'xhigh' && !supportsXhighReasoningEffort(currentModel)) {
-      ctx.setNotice('Extra-high reasoning not supported by current model');
+    const selectable = getSelectableReasoningEfforts(currentModel);
+    if (selectable.length > 0 && !selectable.includes(effort)) {
+      ctx.setNotice(`Effort "${effort}" not supported by current model`);
       return true;
     }
     if (applyToChat) {
@@ -110,7 +117,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
 
   if (command === 'help') {
     ctx.setNotice(
-      'Slash: /model <id>, /search on|off|toggle, /reasoning none|low|medium|high|xhigh',
+      'Slash: /model <id>, /search on|off|toggle, /reasoning none|minimal|low|medium|high|xhigh|max',
     );
     return true;
   }
@@ -161,7 +168,10 @@ export function useComposerShortcuts(options: {
         updateChatSettings: options.updateChatSettings,
         setUI: options.setUI,
         setNotice: options.setNotice,
-        defaultModelId: options.defaultModelId || DEFAULT_MODEL_ID,
+        defaultModelId: resolveDynamicModelId(
+          options.defaultModelId || DEFAULT_MODEL_ID,
+          options.models,
+        ),
       });
       if (commandHandled) {
         onCommandHandled?.();

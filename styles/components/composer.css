@@ -213,11 +213,26 @@
   .composer-reasoning-tick[data-effort='none'] {
     color: var(--color-fg-muted);
   }
+  .composer-reasoning-tick[data-effort='minimal'],
   .composer-reasoning-tick[data-effort='low'],
   .composer-reasoning-tick[data-effort='medium'],
   .composer-reasoning-tick[data-effort='high'],
-  .composer-reasoning-tick[data-effort='xhigh'] {
+  .composer-reasoning-tick[data-effort='xhigh'],
+  .composer-reasoning-tick[data-effort='max'] {
     color: var(--color-accent);
+  }
+  /* Quiet marker under the model's default effort so the fan reads
+     "this is where it rests" without shouting. */
+  .composer-reasoning-tick[data-default='true']::after {
+    content: '';
+    position: absolute;
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-accent) 65%, var(--color-border));
   }
   .composer-reasoning-tick:hover,
   .composer-reasoning-tick:focus-visible {

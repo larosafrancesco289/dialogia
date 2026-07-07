@@ -3,7 +3,8 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { Repository } from '@/lib/db/repository';
-import type { Chat, Folder, Message } from '@/lib/types';
+import type { Chat, Folder, Message, ModelDescriptor } from '@/lib/types';
+import { resolveDynamicModelId } from '@/lib/models';
 import type { UIState } from '@/lib/store/types';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { resolveNewChatSettings } from '@/lib/settings/resolve';
@@ -17,8 +18,9 @@ export class ChatService {
     chats: Chat[];
     selectedChatId?: string;
     tier: AccessTier;
+    models?: ModelDescriptor[];
   }): Chat['settings'] {
-    const { ui, chats, selectedChatId, tier } = params;
+    const { ui, chats, selectedChatId, tier, models = [] } = params;
     const selected = selectedChatId ? chats.find((c) => c.id === selectedChatId) : undefined;
 
     const lastNonTutorModel = (() => {
@@ -40,15 +42,25 @@ export class ChatService {
     const tutorEnabledGlobally = !!ui.flags.experimentalTutor;
     const forceTutorMode = isTutorForcedForTier(tier) || !!(ui.tutor.forceMode ?? false);
 
-    return resolveNewChatSettings({
+    const settings = resolveNewChatSettings({
       ui,
-      fallbackModelId: getDefaultModelIdForTier(tier),
+      fallbackModelId: resolveDynamicModelId(getDefaultModelIdForTier(tier), models),
       fallbackSystem: DEFAULT_BASE_SYSTEM,
       lastUsedModelId: lastUsedModel,
       defaults: ui.chatDefaults,
       tutorEnabled: tutorEnabledGlobally,
       forceTutorMode,
     });
+    // Chats persist concrete model ids; resolve any dynamic alias that
+    // slipped through defaults (e.g. the tutor default model).
+    settings.modelId = resolveDynamicModelId(settings.modelId, models);
+    if (settings.features.tutor.defaultModelId) {
+      settings.features.tutor.defaultModelId = resolveDynamicModelId(
+        settings.features.tutor.defaultModelId,
+        models,
+      );
+    }
+    return settings;
   }
 
   static async createChat(params: {
@@ -57,8 +69,9 @@ export class ChatService {
     selectedChatId?: string;
     repository: Repository;
     tier: AccessTier;
+    models?: ModelDescriptor[];
   }): Promise<Chat> {
-    const { ui, chats, selectedChatId, repository, tier } = params;
+    const { ui, chats, selectedChatId, repository, tier, models } = params;
     const id = uuidv4();
     const now = Date.now();
     const baseSettings = ChatService.buildSettingsForNewChat({
@@ -66,6 +79,7 @@ export class ChatService {
       chats,
       selectedChatId,
       tier,
+      models,
     });
 
     const chat: Chat = {

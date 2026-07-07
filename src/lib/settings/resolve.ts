@@ -8,7 +8,11 @@ import type {
 } from '@/lib/types';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelIndex, ModelCapabilityFlags } from '@/lib/models';
-import { supportsXhighReasoningEffort } from '@/lib/models';
+import {
+  clampReasoningEffort,
+  getDefaultReasoningEffort,
+  resolveDynamicModelId,
+} from '@/lib/models';
 import type { AccessTier } from '@/lib/auth/types';
 import { selectSearchProvider } from '@/lib/policy/provider';
 import { readNextOverrides } from '@/lib/ui/next';
@@ -119,7 +123,11 @@ export function resolveTurnSettings(args: {
 }): ResolvedTurnSettings {
   const { chat, ui, modelIndex, modelId, tier } = args;
   const overrides = readNextOverrides(ui);
-  const resolvedModelId = modelId || overrides.modelId || chat.settings.modelId;
+  // Safety net: dynamic default aliases must never reach the request layer.
+  const resolvedModelId = resolveDynamicModelId(
+    modelId || overrides.modelId || chat.settings.modelId,
+    modelIndex.all,
+  );
   const caps = modelIndex.caps(resolvedModelId);
   const modelMeta = modelIndex.get(resolvedModelId);
   const supportsReasoning = caps.canReason;
@@ -129,22 +137,24 @@ export function resolveTurnSettings(args: {
   const explicitReasoningTokens = supportsReasoning
     ? (overrides.reasoning?.tokens ?? chat.settings.generation.reasoningTokens)
     : undefined;
-  // Reasoning-capable models default to the standard effort rather than
-  // disabling reasoning, unless the user set an explicit token budget instead.
+  // When the user hasn't chosen an effort (and set no token budget), follow
+  // the model's own provider default (e.g. Claude reasoning models default to
+  // 'high'); fall back to the app standard when the metadata carries none.
   const rawReasoningEffort = supportsReasoning
     ? (overrides.reasoning?.effort ??
       chat.settings.generation.reasoningEffort ??
-      (explicitReasoningTokens === undefined ? DEFAULT_REASONING_EFFORT : undefined))
+      (explicitReasoningTokens === undefined
+        ? (getDefaultReasoningEffort(modelMeta) ?? DEFAULT_REASONING_EFFORT)
+        : undefined))
     : undefined;
-  // Only demote xhigh when we have positive evidence the model doesn't support it.
-  // When modelMeta is undefined (model list not yet loaded, or unknown id) we preserve
-  // the user's setting — the request layer sees the same metadata and will do the
-  // right thing, and users on xhigh-capable models don't lose their selection while
+  // Clamp to the effort levels the provider reports for this model. When
+  // modelMeta is undefined (model list not yet loaded, or unknown id) the
+  // value passes through unchanged — the request layer sees the same metadata
+  // and will do the right thing, and users don't lose their selection while
   // the index is hydrating.
-  const reasoningEffort =
-    rawReasoningEffort === 'xhigh' && modelMeta && !supportsXhighReasoningEffort(modelMeta)
-      ? 'high'
-      : rawReasoningEffort;
+  const reasoningEffort = rawReasoningEffort
+    ? clampReasoningEffort(rawReasoningEffort, modelMeta)
+    : rawReasoningEffort;
   const reasoningTokens = explicitReasoningTokens;
   const searchEnabled = overrides.search?.enabled ?? chat.settings.features.search.enabled;
   const searchProviderCandidate =

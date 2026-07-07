@@ -4,7 +4,14 @@ import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
 import { computeZdrFilterCached } from '@/lib/policy/zdr/cache';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
 import { CURATED_MODELS } from '@/data/curatedModels';
-import { createModelIndex, EMPTY_MODEL_INDEX, formatModelLabel } from '@/lib/models';
+import {
+  createModelIndex,
+  DYNAMIC_MODEL_ALIASES,
+  EMPTY_MODEL_INDEX,
+  findModelById,
+  formatModelLabel,
+  resolveDynamicModelId,
+} from '@/lib/models';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { getTransportClient } from '@/lib/transport/registry';
@@ -117,7 +124,9 @@ export const createModelSlice = createStoreSlice((set, get) => {
           (transport) => modelsByTransport[transport] ?? [],
         );
         const availableIds = new Set(mergedModels.map((model) => model.id));
-        const missingCurated = CURATED_MODELS.filter((entry) => !availableIds.has(entry.id));
+        const missingCurated = CURATED_MODELS.filter(
+          (entry) => !availableIds.has(resolveDynamicModelId(entry.id, mergedModels)),
+        );
         if (missingCurated.length > 0) {
           noticeSegments.push(
             `Unavailable curated models: ${missingCurated
@@ -126,7 +135,31 @@ export const createModelSlice = createStoreSlice((set, get) => {
           );
         }
 
-        defaultModelAvailable = availableIds.has(DEFAULT_MODEL_ID);
+        // Tell the user when a "latest" alias starts resolving to a new
+        // release, so the moving default is never silent.
+        if (mergedModels.length > 0) {
+          const previous = get().ui.dynamicDefaultResolutions ?? {};
+          const next: Record<string, string> = {};
+          for (const alias of DYNAMIC_MODEL_ALIASES) {
+            const resolved = resolveDynamicModelId(alias.id, mergedModels);
+            next[alias.id] = resolved;
+            const prior = previous[alias.id];
+            if (prior && prior !== resolved) {
+              const name = findModelById(mergedModels, resolved)?.name || resolved;
+              noticeSegments.push(`${alias.label} now resolves to ${name}.`);
+            }
+          }
+          const changed = DYNAMIC_MODEL_ALIASES.some(
+            (alias) => previous[alias.id] !== next[alias.id],
+          );
+          if (changed) {
+            set((s) => ({ ui: { ...s.ui, dynamicDefaultResolutions: next } }));
+          }
+        }
+
+        defaultModelAvailable = availableIds.has(
+          resolveDynamicModelId(DEFAULT_MODEL_ID, mergedModels),
+        );
         if (!defaultModelAvailable && mergedModels.length > 0 && !fallbackModelId) {
           const fallback = mergedModels[0];
           fallbackModelId = fallback.id;

@@ -6,6 +6,7 @@ import { useTier } from '@/lib/auth/tierContext';
 import { FREE_CURATED_MODELS } from '@/data/freeModels';
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { filterCuratedModelsByAvailability } from '@/lib/models/curatedAvailability';
+import { findModelById, isDynamicModelId, resolveDynamicModelId } from '@/lib/models';
 import {
   canUseAllModelsForTier,
   getDefaultModelIdForTier,
@@ -52,7 +53,20 @@ export function useTierCuratedModels() {
     const curated = canUseAllModelsForTier(effectiveTier) ? CURATED_MODELS : FREE_CURATED_MODELS;
     const availableIds = new Set((allModels || []).map((model) => model.id));
     if (availableIds.size === 0) return [];
-    return filterCuratedModelsByAvailability(curated, availableIds);
+    // Resolve dynamic aliases to the concrete model they currently pick, and
+    // surface that pick in the description so "latest" is never a mystery.
+    const resolved = curated.map((entry) => {
+      if (!isDynamicModelId(entry.id)) return entry;
+      const concreteId = resolveDynamicModelId(entry.id, allModels || []);
+      const concrete = findModelById(allModels || [], concreteId);
+      const currentName = concrete?.name || concreteId;
+      return {
+        ...entry,
+        id: concreteId,
+        description: `${entry.description}. Currently: ${currentName}`,
+      };
+    });
+    return filterCuratedModelsByAvailability(resolved, availableIds);
   }, [allModels, isLoading, tier]);
 }
 
@@ -61,13 +75,14 @@ export function useTierCuratedModels() {
  * Defaults to free model while loading to prevent paid model requests with free API key.
  */
 export function useTierDefaultModelId() {
+  const allModels = useChatStore((s) => s.models);
   const { tier, isLoading } = useTier();
 
   return useMemo(() => {
     // Default to free model while loading to be safe
     const effectiveTier = isLoading ? 'free' : tier;
-    return getDefaultModelIdForTier(effectiveTier);
-  }, [isLoading, tier]);
+    return resolveDynamicModelId(getDefaultModelIdForTier(effectiveTier), allModels || []);
+  }, [allModels, isLoading, tier]);
 }
 
 /**
