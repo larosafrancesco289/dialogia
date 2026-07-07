@@ -54,7 +54,32 @@ const ADAPTIVE_THINKING_MODEL_ID_RE_LIST = [
   /^claude-opus-4-6(?:-\d{8})?$/,
   /^claude-opus-4-7(?:-\d{8})?$/,
   /^claude-sonnet-4-6(?:-\d{8})?$/,
+  /^claude-sonnet-5(?:-\d{8})?$/,
   /^claude-mythos-preview$/,
+] as const;
+
+// Thinking cannot be disabled on these models: the API rejects
+// `thinking: {type: "disabled"}` (see the effort docs).
+const MANDATORY_THINKING_MODEL_ID_RE_LIST = [
+  /^claude-fable-5(?:-\d{8})?$/,
+  /^claude-mythos-5(?:-\d{8})?$/,
+  /^claude-mythos-preview$/,
+] as const;
+
+// Documented effort support per family, used only when the models API
+// response lacks `capabilities.effort` flags.
+const XHIGH_EFFORT_MODEL_ID_RE_LIST = [
+  /^claude-fable-5(?:-\d{8})?$/,
+  /^claude-mythos-5(?:-\d{8})?$/,
+  /^claude-opus-4-8(?:-\d{8})?$/,
+  /^claude-opus-4-7(?:-\d{8})?$/,
+  /^claude-sonnet-5(?:-\d{8})?$/,
+] as const;
+const MAX_EFFORT_MODEL_ID_RE_LIST = [
+  ...XHIGH_EFFORT_MODEL_ID_RE_LIST,
+  /^claude-mythos-preview$/,
+  /^claude-opus-4-6(?:-\d{8})?$/,
+  /^claude-sonnet-4-6(?:-\d{8})?$/,
 ] as const;
 
 const KNOWN_ANTHROPIC_PRICING: Record<
@@ -158,6 +183,20 @@ export function supportsAnthropicAdaptiveThinking(model: string): boolean {
   return ADAPTIVE_THINKING_MODEL_ID_RE_LIST.some((re) => re.test(normalized));
 }
 
+export function isAnthropicThinkingMandatory(model: string): boolean {
+  const normalized = normalizeSlug(model).replace(/\./g, '-');
+  return MANDATORY_THINKING_MODEL_ID_RE_LIST.some((re) => re.test(normalized));
+}
+
+/** Documented effort levels for a model, weakest first (docs-based fallback). */
+export function documentedAnthropicEffortLevels(model: string): string[] {
+  const normalized = normalizeSlug(model).replace(/\./g, '-');
+  const levels = ['low', 'medium', 'high'];
+  if (XHIGH_EFFORT_MODEL_ID_RE_LIST.some((re) => re.test(normalized))) levels.push('xhigh');
+  if (MAX_EFFORT_MODEL_ID_RE_LIST.some((re) => re.test(normalized))) levels.push('max');
+  return levels;
+}
+
 export function supportsAnthropicReasoning(model: string): boolean {
   const normalized = normalizeSlug(model);
   return normalized.startsWith('claude-');
@@ -174,11 +213,11 @@ export function supportsAnthropicToolUse(model: string): boolean {
 }
 
 export function defaultAnthropicThinkingBudget(
-  effort: 'low' | 'medium' | 'high' | 'xhigh' | undefined,
+  effort: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | undefined,
 ): number {
-  if (effort === 'low') return 1024;
+  if (effort === 'minimal' || effort === 'low') return 1024;
   if (effort === 'medium') return 2048;
-  if (effort === 'xhigh') return 8192;
+  if (effort === 'xhigh' || effort === 'max') return 8192;
   return 4096;
 }
 

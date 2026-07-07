@@ -5,6 +5,7 @@ import { DB_SCHEMA_VERSION } from '@/lib/db/versions';
 import { migrateGenSettingsRecord } from '@/lib/settings/migrations';
 import { normalizeChatSettings } from '@/lib/settings/normalize';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
+import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 
 export class DialogiaDB extends Dexie {
   chats!: Table<Chat, string>;
@@ -39,8 +40,8 @@ export class DialogiaDB extends Dexie {
         const allChats = await chatsTable.toArray();
         for (const record of allChats) {
           const settings = normalizeChatSettings(record.settings, {
-            fallbackModelId: DEFAULT_MODEL_ID,
-            fallbackTutorModelId: DEFAULT_TUTOR_MODEL_ID,
+            fallbackModelId: resolveDynamicModelId(DEFAULT_MODEL_ID, []),
+            fallbackTutorModelId: resolveDynamicModelId(DEFAULT_TUTOR_MODEL_ID, []),
           });
           const changed = JSON.stringify(settings) !== JSON.stringify(record.settings);
           if (changed) await chatsTable.put({ ...record, settings });
@@ -69,8 +70,8 @@ export class DialogiaDB extends Dexie {
 
           if ('settings' in nextRecord) {
             const settings = normalizeChatSettings(nextRecord.settings, {
-              fallbackModelId: DEFAULT_MODEL_ID,
-              fallbackTutorModelId: DEFAULT_TUTOR_MODEL_ID,
+              fallbackModelId: resolveDynamicModelId(DEFAULT_MODEL_ID, []),
+              fallbackTutorModelId: resolveDynamicModelId(DEFAULT_TUTOR_MODEL_ID, []),
             });
             if (JSON.stringify(settings) !== JSON.stringify(nextRecord.settings)) {
               changed = true;

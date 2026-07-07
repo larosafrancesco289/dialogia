@@ -6,6 +6,7 @@ import type { DraftAttachment, PersistedAttachment, Chat, Message } from '@/lib/
 import type { StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelCapabilityFlags } from '@/lib/models';
+import { resolveDynamicModelId } from '@/lib/models';
 import type { Repository } from '@/lib/db/repository';
 import { isFreeModel } from '@/data/freeModels';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
@@ -67,7 +68,10 @@ export const prepareSendRuntime = async ({
   const modelIndex = get().modelIndex;
   const next = readNextOverrides(ui);
   const tutorEnabled = isTutorRuntimeEnabled(ui, chat, tier);
-  let tutorDefaultModelId = selectTutorDefaultModelId(ui, chat, DEFAULT_TUTOR_MODEL_ID);
+  let tutorDefaultModelId = resolveDynamicModelId(
+    selectTutorDefaultModelId(ui, chat, DEFAULT_TUTOR_MODEL_ID) ?? DEFAULT_TUTOR_MODEL_ID,
+    modelIndex.all,
+  );
 
   if (tutorEnabled) {
     const ensured = ensureTutorDefaults({

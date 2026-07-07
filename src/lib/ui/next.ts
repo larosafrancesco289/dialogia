@@ -26,11 +26,15 @@ export const applyNextOverrides = <T extends UiSnapshot>(
   patch: Partial<UiNextOverrides>,
 ): T => {
   const current = readNextOverrides(ui);
+  // Staging a different model drops any staged reasoning override so the new
+  // model starts at its own default (unless the patch stages reasoning too).
+  const modelChanged =
+    typeof patch.modelId === 'string' && patch.modelId !== current.modelId && !patch.reasoning;
   const merged: UiNextOverrides = {
     ...current,
     ...patch,
     search: mergeNested(current.search, patch.search),
-    reasoning: mergeNested(current.reasoning, patch.reasoning),
+    reasoning: mergeNested(modelChanged ? undefined : current.reasoning, patch.reasoning),
     show: mergeNested(current.show, patch.show),
   };
 

@@ -113,6 +113,8 @@ export type UiSnapshot = {
   overrides?: UiNextOverrides;
   zdrOnly?: boolean;
   messageTimestamps?: boolean;
+  /** Last concrete model each dynamic default alias resolved to. */
+  dynamicDefaultResolutions?: Record<string, string>;
   flags: UiFlagsSnapshot;
   debug: UiDebugSnapshot;
   search: UiSearchSnapshot;

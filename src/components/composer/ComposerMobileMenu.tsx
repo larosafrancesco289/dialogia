@@ -15,7 +15,8 @@ export type ComposerMobileMenuProps = {
   searchProvider: 'tavily' | 'openrouter';
   toggleSearch: () => void;
   showReasoningMenu: boolean;
-  supportsXhigh?: boolean;
+  availableEfforts?: Effort[];
+  defaultEffort?: Effort;
   currentEffort?: Effort;
   onSelectEffort: (effort: Effort) => void;
 };
@@ -30,7 +31,8 @@ export function ComposerMobileMenu({
   searchProvider,
   toggleSearch,
   showReasoningMenu,
-  supportsXhigh,
+  availableEfforts,
+  defaultEffort,
   currentEffort,
   onSelectEffort,
 }: ComposerMobileMenuProps) {
@@ -85,8 +87,8 @@ export function ComposerMobileMenu({
           {showReasoningMenu && (
             <>
               <div className="text-xs text-muted-foreground px-2 pt-1">Reasoning</div>
-              {(supportsXhigh
-                ? (['none', 'low', 'medium', 'high', 'xhigh'] as Effort[])
+              {(availableEfforts?.length
+                ? availableEfforts
                 : (['none', 'low', 'medium', 'high'] as Effort[])
               ).map((effort) => (
                 <div
@@ -100,6 +102,9 @@ export function ComposerMobileMenu({
                   }}
                 >
                   {effort === 'xhigh' ? 'Extra High' : effort[0].toUpperCase() + effort.slice(1)}
+                  {effort === defaultEffort && (
+                    <span className="text-xs text-muted-foreground"> · default</span>
+                  )}
                 </div>
               ))}
             </>

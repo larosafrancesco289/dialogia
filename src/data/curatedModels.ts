@@ -14,17 +14,19 @@ type CuratedModel = {
   Icon: ComponentType<{ className?: string }>;
 };
 
+// Ids starting with '~' are dynamic aliases resolved against the live model
+// list (see src/lib/models/dynamicDefaults.ts), so defaults track releases.
 export const DEFAULT_CHAT_MODEL: CuratedModel = {
-  id: 'openai/gpt-5.5',
-  name: 'GPT-5.5',
-  description: 'Frontier default for hard reasoning, writing, tools, and polish',
+  id: '~openai/gpt-latest',
+  name: 'GPT Latest',
+  description: 'Newest flagship GPT — frontier default for reasoning, writing, tools, and polish',
   Icon: ChatBubbleLeftRightIcon,
 };
 
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
-  id: '~anthropic/claude-opus-latest',
-  name: 'Claude Opus Latest',
-  description: 'Premium tutor for deep reasoning and high-stakes explanations',
+  id: '~anthropic/frontier',
+  name: 'Claude Frontier',
+  description: 'Most capable Anthropic model — premium tutor for high-stakes explanations',
   Icon: BoltIcon,
 };
 

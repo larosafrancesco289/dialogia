@@ -50,7 +50,7 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
   }
 
   if (cmd === 'reasoning') {
-    const options = ['none', 'low', 'medium', 'high'];
+    const options = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
     const filtered = options.filter((option) => option.startsWith(arg.toLowerCase()));
     const values = filtered.length > 0 ? filtered : options;
     for (const option of values) push(`/reasoning ${option}`, `/reasoning ${option}`);

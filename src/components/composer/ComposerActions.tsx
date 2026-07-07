@@ -27,14 +27,6 @@ import type { Effort } from '@/components/composer/ComposerMobileMenu';
 //   xhigh → Heroicons solid bulb (accent, scaled)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EFFORT_LEVEL: Record<Effort, number> = {
-  none: 0,
-  low: 1,
-  medium: 2,
-  high: 3,
-  xhigh: 4,
-};
-
 const effortLabel = (e: Effort) =>
   e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra High' : e.charAt(0).toUpperCase() + e.slice(1);
 
@@ -42,11 +34,15 @@ type BulbKind = 'off' | 'outline' | 'outline-bold' | 'solid' | 'solid-plus';
 
 const EFFORT_KIND: Record<Effort, BulbKind> = {
   none: 'off',
+  minimal: 'outline',
   low: 'outline',
   medium: 'outline-bold',
   high: 'solid',
   xhigh: 'solid-plus',
+  max: 'solid-plus',
 };
+
+const DEFAULT_EFFORTS: Effort[] = ['none', 'low', 'medium', 'high'];
 
 function ReasoningBulbIcon({ effort, size = 16 }: { effort: Effort; size?: number }) {
   const kind = EFFORT_KIND[effort];
@@ -98,7 +94,8 @@ const FAN = {
 };
 
 type ReasoningFanProps = {
-  supportsXhigh?: boolean;
+  availableEfforts?: Effort[];
+  defaultEffort?: Effort;
   currentEffort?: Effort;
   onSelect: (e: Effort) => void;
   onClose: () => void;
@@ -106,17 +103,19 @@ type ReasoningFanProps = {
 };
 
 function ReasoningFan({
-  supportsXhigh,
+  availableEfforts,
+  defaultEffort,
   currentEffort,
   onSelect,
   onClose,
   menuRef,
 }: ReasoningFanProps) {
   const [hover, setHover] = useState<Effort | null>(null);
-  const efforts: Effort[] = supportsXhigh
-    ? ['none', 'low', 'medium', 'high', 'xhigh']
-    : ['none', 'low', 'medium', 'high'];
+  const efforts: Effort[] = availableEfforts?.length ? availableEfforts : DEFAULT_EFFORTS;
   const { spread, radius, tickSizeStart, tickSizeEnd } = FAN;
+  // Give crowded fans (6-7 levels) a little more arc and reach.
+  const fanSpread = efforts.length > 5 ? 190 : spread;
+  const fanRadius = efforts.length > 5 ? 66 : radius;
 
   return (
     <motion.div
@@ -131,23 +130,24 @@ function ReasoningFan({
     >
       {efforts.map((e, i) => {
         const t = efforts.length > 1 ? i / (efforts.length - 1) : 0.5;
-        const clockDeg = -spread / 2 + spread * t;
+        const clockDeg = -fanSpread / 2 + fanSpread * t;
         const rad = ((clockDeg - 90) * Math.PI) / 180;
-        const level = EFFORT_LEVEL[e];
-        const tickSize = tickSizeStart + (tickSizeEnd - tickSizeStart) * (level / 4);
-        const tx = radius * Math.cos(rad);
-        const ty = radius * Math.sin(rad);
+        const tickSize = tickSizeStart + (tickSizeEnd - tickSizeStart) * t;
+        const tx = fanRadius * Math.cos(rad);
+        const ty = fanRadius * Math.sin(rad);
         const iconSize = Math.max(14, Math.round(tickSize * 0.52));
         const current = currentEffort === e;
+        const isDefault = defaultEffort === e;
         return (
           <button
             key={e}
             type="button"
             role="radio"
             aria-checked={current}
-            aria-label={effortLabel(e)}
+            aria-label={isDefault ? `${effortLabel(e)} (model default)` : effortLabel(e)}
             className="composer-reasoning-tick"
             data-current={current ? 'true' : 'false'}
+            data-default={isDefault ? 'true' : 'false'}
             data-effort={e}
             style={{
               width: tickSize,
@@ -173,13 +173,14 @@ function ReasoningFan({
           <motion.span
             key={hover}
             className="composer-reasoning-caption"
-            style={{ top: -(radius + tickSizeEnd + 12) }}
+            style={{ top: -(fanRadius + tickSizeEnd + 12) }}
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.12 }}
           >
             {effortLabel(hover)}
+            {hover === defaultEffort ? ' · default' : ''}
           </motion.span>
         )}
       </AnimatePresence>
@@ -223,7 +224,8 @@ export type ComposerActionsProps = {
   searchProvider: 'tavily' | 'openrouter';
   toggleSearch: () => void;
   showReasoningMenu: boolean;
-  supportsXhigh?: boolean;
+  availableEfforts?: Effort[];
+  defaultEffort?: Effort;
   currentEffort?: Effort;
   onSelectEffort: (effort: Effort) => Promise<void> | void;
   hasContent?: boolean;
@@ -239,7 +241,8 @@ export function ComposerActions({
   searchProvider,
   toggleSearch,
   showReasoningMenu,
-  supportsXhigh,
+  availableEfforts,
+  defaultEffort,
   currentEffort,
   onSelectEffort,
   hasContent,
@@ -335,7 +338,8 @@ export function ComposerActions({
           <AnimatePresence>
             {reasoningOpen && (
               <ReasoningFan
-                supportsXhigh={supportsXhigh}
+                availableEfforts={availableEfforts}
+                defaultEffort={defaultEffort}
                 currentEffort={effort}
                 onSelect={(e) => void onSelectEffort(e)}
                 onClose={() => setReasoningOpen(false)}

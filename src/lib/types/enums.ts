@@ -7,10 +7,12 @@ export type SearchProvider = (typeof SearchProviderEnum)[keyof typeof SearchProv
 
 export const ReasoningEffortEnum = {
   None: 'none',
+  Minimal: 'minimal',
   Low: 'low',
   Medium: 'medium',
   High: 'high',
   XHigh: 'xhigh',
+  Max: 'max',
 } as const;
 
 export type ReasoningEffort = (typeof ReasoningEffortEnum)[keyof typeof ReasoningEffortEnum];

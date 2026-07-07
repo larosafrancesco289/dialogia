@@ -1,4 +1,5 @@
-import type { ModelDescriptor } from '@/lib/types';
+import type { ModelDescriptor, ReasoningEffort } from '@/lib/types';
+import { ReasoningEffortEnum } from '@/lib/types';
 import { isRecord } from '@/lib/utils/guards';
 
 const toLowerStrings = (value: unknown): string[] =>
@@ -26,18 +27,166 @@ export function isReasoningSupported(model?: ModelDescriptor | null): boolean {
   return false;
 }
 
+/** Effort levels the OpenRouter gateway accepts, weakest to strongest. */
+export const REASONING_EFFORT_ORDER: ReasoningEffort[] = [
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+];
+
+const isKnownEffort = (value: unknown): value is ReasoningEffort =>
+  Object.values(ReasoningEffortEnum).includes(value as ReasoningEffort);
+
+export type ModelReasoningInfo = {
+  /**
+   * Effort levels the provider reports for this model, ascending.
+   * `undefined` means the metadata did not constrain them (all gateway
+   * values accepted) or the model exposes no reasoning object at all.
+   */
+  supportedEfforts?: ReasoningEffort[];
+  /** Effort the provider pre-selects when reasoning is enabled. */
+  defaultEffort?: ReasoningEffort;
+  /** Whether the provider enables reasoning by default for this model. */
+  defaultEnabled?: boolean;
+  /** When true, reasoning cannot be disabled (e.g. Claude Fable 5). */
+  mandatory?: boolean;
+  supportsMaxTokens?: boolean;
+};
+
+/**
+ * Normalized view of the per-model `reasoning` metadata object (OpenRouter
+ * models-list shape; the Anthropic transport synthesizes the same shape).
+ * Returns undefined when the model carries no reasoning metadata.
+ */
+export function getModelReasoningInfo(
+  model?: ModelDescriptor | null,
+): ModelReasoningInfo | undefined {
+  const raw = isRecord(model?.raw) ? model.raw : undefined;
+  const reasoning = isRecord(raw?.reasoning) ? raw.reasoning : undefined;
+  if (!reasoning) return undefined;
+  const rawEfforts = reasoning.supported_efforts;
+  const supportedEfforts = Array.isArray(rawEfforts)
+    ? REASONING_EFFORT_ORDER.filter((effort) =>
+        rawEfforts.some((value) => String(value).toLowerCase() === effort),
+      )
+    : undefined;
+  return {
+    supportedEfforts:
+      supportedEfforts && supportedEfforts.length > 0 ? supportedEfforts : undefined,
+    defaultEffort: isKnownEffort(reasoning.default_effort) ? reasoning.default_effort : undefined,
+    defaultEnabled:
+      typeof reasoning.default_enabled === 'boolean' ? reasoning.default_enabled : undefined,
+    mandatory: typeof reasoning.mandatory === 'boolean' ? reasoning.mandatory : undefined,
+    supportsMaxTokens:
+      typeof reasoning.supports_max_tokens === 'boolean'
+        ? reasoning.supports_max_tokens
+        : undefined,
+  };
+}
+
+// Legacy fallback for stale metadata that predates the `reasoning` object.
 const XHIGH_MODEL_ID_PATTERNS: RegExp[] = [
   /^(?:anthropic-direct\/|anthropic\/)?claude-fable-5(?:-\d{8})?$/,
   /^(?:anthropic-direct\/|anthropic\/)?claude-opus-4[.-](?:7|8)(?:-\d{8})?$/,
   /^openai\/gpt-5[.-](?:2|3|4)/,
 ];
 
-export function supportsXhighReasoningEffort(model?: ModelDescriptor | null): boolean {
-  if (!isReasoningSupported(model)) return false;
+const LEGACY_EFFORTS: ReasoningEffort[] = ['none', 'low', 'medium', 'high'];
+
+/**
+ * Effort levels selectable for this model, ascending, always including
+ * 'none' unless the provider marks reasoning as mandatory.
+ */
+export function getSelectableReasoningEfforts(model?: ModelDescriptor | null): ReasoningEffort[] {
+  if (!isReasoningSupported(model)) return [];
+  const info = getModelReasoningInfo(model);
+  const base: ReasoningEffort[] = info?.supportedEfforts
+    ? info.supportedEfforts.filter((effort) => effort !== 'none')
+    : info
+      ? REASONING_EFFORT_ORDER.filter((effort) => effort !== 'none')
+      : [
+          ...LEGACY_EFFORTS.filter((effort) => effort !== 'none'),
+          ...(legacySupportsXhigh(model) ? (['xhigh'] as ReasoningEffort[]) : []),
+        ];
+  const withNone = info?.mandatory ? base : (['none', ...base] as ReasoningEffort[]);
+  return REASONING_EFFORT_ORDER.filter((effort) => withNone.includes(effort));
+}
+
+// Model authors' documented defaults, which take precedence over a gateway's
+// own default_effort. OpenRouter publishes default_effort "medium" for Claude
+// models, but Anthropic's effort docs state the API default is "high" on all
+// effort-capable models (Fable/Mythos, Opus 4.6+, Sonnet 4.6+, Sonnet 5).
+const AUTHOR_DEFAULT_EFFORT_OVERRIDES: Array<{ pattern: RegExp; effort: ReasoningEffort }> = [
+  { pattern: /claude-(fable|mythos)/, effort: 'high' },
+  { pattern: /claude-opus-4[.-][678]/, effort: 'high' },
+  { pattern: /claude-sonnet-(5|4[.-]6)/, effort: 'high' },
+];
+
+function documentedAuthorDefaultEffort(
+  model?: ModelDescriptor | null,
+): ReasoningEffort | undefined {
+  const id = String(model?.id || '').toLowerCase();
+  return AUTHOR_DEFAULT_EFFORT_OVERRIDES.find(({ pattern }) => pattern.test(id))?.effort;
+}
+
+/** Provider default effort when the user has not chosen one. */
+export function getDefaultReasoningEffort(
+  model?: ModelDescriptor | null,
+): ReasoningEffort | undefined {
+  const info = getModelReasoningInfo(model);
+  if (!info) return undefined;
+  if (info.defaultEnabled === false && !info.mandatory) return 'none';
+  return documentedAuthorDefaultEffort(model) ?? info.defaultEffort;
+}
+
+export function isReasoningMandatory(model?: ModelDescriptor | null): boolean {
+  return getModelReasoningInfo(model)?.mandatory === true;
+}
+
+/**
+ * Clamp an effort to the nearest level the model supports (preferring the
+ * next level down). Returns the input unchanged when support is unknown.
+ */
+export function clampReasoningEffort(
+  effort: ReasoningEffort,
+  model?: ModelDescriptor | null,
+): ReasoningEffort {
+  const selectable = getSelectableReasoningEfforts(model);
+  if (selectable.length === 0 || selectable.includes(effort)) return effort;
+  const target = REASONING_EFFORT_ORDER.indexOf(effort);
+  let below: ReasoningEffort | undefined;
+  let above: ReasoningEffort | undefined;
+  for (const candidate of selectable) {
+    const index = REASONING_EFFORT_ORDER.indexOf(candidate);
+    if (index < target) below = candidate;
+    if (index > target && !above) above = candidate;
+  }
+  // 'none' is a request to disable reasoning, not a weak effort — never
+  // resolve another effort down to it.
+  if (below && below !== 'none') return below;
+  return above ?? effort;
+}
+
+function legacySupportsXhigh(model?: ModelDescriptor | null): boolean {
   const supported = getSupportedParameters(model);
   if (supported.includes('reasoning_effort_xhigh') || supported.includes('xhigh')) return true;
   const id = String(model?.id || '').toLowerCase();
   return XHIGH_MODEL_ID_PATTERNS.some((re) => re.test(id));
+}
+
+export function supportsXhighReasoningEffort(model?: ModelDescriptor | null): boolean {
+  if (!isReasoningSupported(model)) return false;
+  const info = getModelReasoningInfo(model);
+  if (info) {
+    if (info.supportedEfforts) return info.supportedEfforts.includes('xhigh');
+    // Reasoning object present with unconstrained efforts: all gateway values accepted.
+    return true;
+  }
+  return legacySupportsXhigh(model);
 }
 
 const KNOWN_TOOL_CALLING_PROVIDERS = ['anthropic/', 'openai/', 'google/', 'x-ai/', 'meta-llama/'];

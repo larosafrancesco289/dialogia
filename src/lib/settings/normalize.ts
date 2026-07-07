@@ -4,6 +4,7 @@ import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { migrateChatSettingsRecord } from '@/lib/settings/migrations';
 import { normalizeParallelModels } from '@/lib/models/normalization';
+import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 import { applyTutorDefaults } from '@/lib/tutor/defaults';
 import { ChatSettingsSchema } from '@/lib/schemas/persisted';
 import { asNumber, asStringArray, isRecord } from '@/lib/utils/guards';
@@ -38,9 +39,10 @@ export function normalizeChatSettings(
   input: unknown,
   opts: NormalizeChatSettingsOptions = {},
 ): ChatSettings {
-  const fallbackModelId = opts.fallbackModelId ?? DEFAULT_MODEL_ID;
+  const fallbackModelId = opts.fallbackModelId ?? resolveDynamicModelId(DEFAULT_MODEL_ID, []);
   const fallbackSystem = opts.fallbackSystem ?? DEFAULT_BASE_SYSTEM;
-  const fallbackTutorModelId = opts.fallbackTutorModelId ?? DEFAULT_TUTOR_MODEL_ID;
+  const fallbackTutorModelId =
+    opts.fallbackTutorModelId ?? resolveDynamicModelId(DEFAULT_TUTOR_MODEL_ID, []);
   const { next } = migrateChatSettingsRecord(input);
   const record = isRecord(next) ? next : {};
 

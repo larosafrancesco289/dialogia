@@ -144,10 +144,21 @@ the stable, supported surface for cross-domain use.
 
 Two turn-level behaviors worth knowing:
 
-- Reasoning effort resolves at turn time in `src/lib/settings/resolve.ts`: reasoning-capable
-  models with no explicit chat/default setting fall back to `DEFAULT_REASONING_EFFORT`
-  (`src/lib/settings/generation.ts`) rather than having reasoning disabled. An explicit `none` or
-  a reasoning-token budget suppresses the fallback.
+- Reasoning effort resolves at turn time in `src/lib/settings/resolve.ts` from provider metadata:
+  each model's `raw.reasoning` object (OpenRouter models-list shape; the Anthropic transport
+  synthesizes the same shape in `src/lib/anthropic/models.ts`) supplies `supported_efforts`,
+  `default_effort`, `default_enabled`, and `mandatory`. With no explicit chat setting the model's
+  own default applies (e.g. `high` for Claude reasoning models), falling back to
+  `DEFAULT_REASONING_EFFORT` only when metadata is absent; explicit values are clamped to the
+  supported levels via `clampReasoningEffort`, and the composer offers exactly the levels the
+  model supports (`getSelectableReasoningEfforts`, no "None" when reasoning is mandatory). The
+  effort enum spans none/minimal/low/medium/high/xhigh/max.
+- Default model ids in `src/data/curatedModels.ts` may be dynamic aliases (`~anthropic/frontier`,
+  `~openai/gpt-latest`) resolved against the live model list by
+  `src/lib/models/dynamicDefaults.ts`. Chats always persist concrete ids (resolution happens at
+  chat creation and again as a safety net in `resolveTurnSettings`); the model picker shows what
+  an alias currently resolves to, and `modelSlice` posts a notice when a resolution changes
+  (tracked in persisted `ui.dynamicDefaultResolutions`).
 - Safety-classifier refusals (Anthropic `stop_reason: "refusal"`, surfaced as
   `finishReason: 'content_filter'` by both transports) are not errors: the stream completes and
   `streamHandlers.ts` persists `finishReason`/`stopPolicy` on the assistant message. The UI
