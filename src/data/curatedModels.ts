@@ -56,9 +56,9 @@ export const CURATED_MODELS: CuratedModel[] = [
     Icon: PhotoIcon,
   },
   {
-    id: 'x-ai/grok-4.3',
-    name: 'Grok 4.3',
-    description: 'Fast long-context reasoning for agentic and bulk tasks',
+    id: '~x-ai/grok-latest',
+    name: 'Grok Latest',
+    description: 'Latest long-context Grok for agentic and bulk tasks',
     Icon: RocketLaunchIcon,
   },
 ];

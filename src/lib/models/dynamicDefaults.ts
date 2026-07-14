@@ -75,6 +75,22 @@ export const DYNAMIC_MODEL_ALIASES: DynamicModelAlias[] = [
     },
     compare: (a, b) => createdAt(b) - createdAt(a) || completionPrice(b) - completionPrice(a),
   },
+  {
+    id: '~x-ai/grok-latest',
+    label: 'Grok Latest',
+    description: 'Newest mainline Grok model on OpenRouter (excludes code, image, and fast variants)',
+    fallbackId: 'x-ai/grok-4.3',
+    matches: (model) => {
+      const id = idOf(model);
+      return (
+        /^x-ai\/grok-\d/.test(id) &&
+        !EXCLUDED_VARIANT_RE.test(id) &&
+        !id.includes('code') &&
+        !id.includes('fast')
+      );
+    },
+    compare: (a, b) => createdAt(b) - createdAt(a) || completionPrice(b) - completionPrice(a),
+  },
 ];
 
 const ALIAS_BY_ID = new Map(DYNAMIC_MODEL_ALIASES.map((alias) => [alias.id, alias]));
