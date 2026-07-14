@@ -131,9 +131,20 @@ test('~openai/gpt-latest picks the newest mainline GPT, skipping pro and mini', 
   assert.equal(resolveDynamicModelId('~openai/gpt-latest', models), 'openai/gpt-6');
 });
 
+test('~x-ai/grok-latest picks the newest mainline Grok, skipping fast and code variants', () => {
+  const models = [
+    orModel('x-ai/grok-4.3', { created: 100 }),
+    orModel('x-ai/grok-5', { created: 300 }),
+    orModel('x-ai/grok-5-fast', { created: 400 }),
+    orModel('x-ai/grok-5-code', { created: 350 }),
+  ];
+  assert.equal(resolveDynamicModelId('~x-ai/grok-latest', models), 'x-ai/grok-5');
+});
+
 test('dynamic aliases fall back to their pins and pass concrete ids through', () => {
   assert.equal(resolveDynamicModelId('~anthropic/frontier', []), 'anthropic/claude-fable-5');
   assert.equal(resolveDynamicModelId('~openai/gpt-latest', []), 'openai/gpt-5.5');
+  assert.equal(resolveDynamicModelId('~x-ai/grok-latest', []), 'x-ai/grok-4.3');
   assert.equal(resolveDynamicModelId('openai/gpt-5.5', []), 'openai/gpt-5.5');
   // OpenRouter's own tilde alias models are real ids and pass through.
   assert.equal(
