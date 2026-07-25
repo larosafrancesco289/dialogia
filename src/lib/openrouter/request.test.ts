@@ -93,3 +93,54 @@ test('buildChatBody preserves explicit cache_control message blocks for OpenRout
     ],
   });
 });
+
+const CACHED_MESSAGES = [
+  {
+    role: 'system' as const,
+    content: [
+      { type: 'text' as const, text: 'stable', cache_control: { type: 'ephemeral' as const } },
+      { type: 'text' as const, text: 'dynamic' },
+    ],
+  },
+  {
+    role: 'user' as const,
+    content: [
+      { type: 'text' as const, text: 'hi', cache_control: { type: 'ephemeral' as const } },
+      { type: 'image_url' as const, image_url: { url: 'data:image/png;base64,AA' } },
+    ],
+  },
+];
+
+test('buildChatBody keeps cache_control markers when the endpoint allows caching', () => {
+  const body = buildChatBody({
+    ...base,
+    messages: CACHED_MESSAGES,
+    capabilities: { promptCaching: true, vision: true },
+  });
+  const system = body.messages[0].content as Array<Record<string, unknown>>;
+  assert.deepEqual(system[0].cache_control, { type: 'ephemeral' });
+});
+
+test('buildChatBody strips cache_control when the endpoint does not do prompt caching', () => {
+  // `cache_control` is injected in the agent layer, which knows nothing about
+  // endpoints; a strict OpenAI-compatible server 400s the whole request over
+  // the unknown key, so the capability has to be enforced here.
+  const body = buildChatBody({
+    ...base,
+    messages: CACHED_MESSAGES,
+    capabilities: { vision: true },
+  });
+  // Text-only blocks collapse back to the plain string shape a minimal server wants.
+  assert.equal(body.messages[0].content, 'stable\n\ndynamic');
+  const user = body.messages[1].content as Array<Record<string, unknown>>;
+  assert.ok(Array.isArray(user));
+  assert.equal('cache_control' in user[0], false);
+  assert.equal(user[1].type, 'image_url');
+  assert.equal(JSON.stringify(body).includes('cache_control'), false);
+});
+
+test('buildChatBody leaves built-in transports untouched by the caching gate', () => {
+  const body = buildChatBody({ ...base, messages: CACHED_MESSAGES });
+  const system = body.messages[0].content as Array<Record<string, unknown>>;
+  assert.deepEqual(system[0].cache_control, { type: 'ephemeral' });
+});

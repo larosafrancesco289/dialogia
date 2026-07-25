@@ -7,6 +7,7 @@ import type { Chat, GenSettingsSnapshot, ReasoningEffort } from '@/lib/types';
 import { ReasoningEffortEnum } from '@/lib/types';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { ModelMessage, RegenerateOptions, SearchMode } from '@/lib/agent/types';
+import { TAVILY_PROVIDER_ID } from '@/lib/search/providers';
 import { streamFinal } from '@/lib/agent/streaming';
 import { setTurnController } from '@/lib/turns/runtime';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
@@ -161,12 +162,6 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   }));
   setTurnController(chatId, controller);
 
-  const plugins = composePlugins({
-    hasPdf: hadPdfEarlier,
-    searchEnabled,
-    searchProvider: searchProvider || 'openrouter',
-  });
-
   const nextSettings: Chat['settings'] = {
     ...chat.settings,
     modelId: modelIdForTurn,
@@ -199,6 +194,15 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   });
   settings.generation.providerSort = providerSort;
 
+  // Built after `resolveTurnSettings`, never before: that is where a tool-based
+  // search provider with no key on this machine degrades to provider-native
+  // search, and native search is exactly what needs the `web` plugin.
+  const plugins = composePlugins({
+    hasPdf: hadPdfEarlier,
+    searchEnabled: settings.searchEnabled,
+    searchProvider: settings.searchProvider,
+  });
+
   try {
     await streamFinal({
       chat: chatForStream,
@@ -225,7 +229,13 @@ const isReasoningEffort = (
 ): value is NonNullable<Chat['settings']['generation']['reasoningEffort']> =>
   Object.values(ReasoningEffortEnum).includes(value as ReasoningEffort);
 
+/**
+ * `SearchMode` is open by design, so any registered provider id is valid here.
+ * An id this machine has no key for is not rejected: `selectSearchMode` further
+ * down degrades it to provider-native search.
+ */
 const normalizeSearchProvider = (value: unknown): SearchMode | undefined => {
-  if (value === 'brave') return 'tavily';
-  return value === 'tavily' || value === 'openrouter' ? value : undefined;
+  if (typeof value !== 'string' || !value) return undefined;
+  // 'brave' is a retired provider id that still sits in old persisted chats.
+  return value === 'brave' ? TAVILY_PROVIDER_ID : value;
 };
