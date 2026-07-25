@@ -134,6 +134,52 @@ module.exports = [
     },
   },
   {
+    // Feature modules are reached through `src/lib/modules.ts` and nowhere else, so
+    // deleting one is a directory plus an entry in that file.
+    //
+    // The `ignores` list is the remaining Stage 1 debt: every entry is a core file
+    // that still imports the tutor module directly and needs a module hook or a UI
+    // slot before it can be removed from this list. New violations fail the build.
+    files: ['src/lib/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}', 'app/**/*.{ts,tsx}'],
+    ignores: [
+      'src/lib/modules.ts',
+      // UI mounts awaiting typed panel slots
+      'src/components/HomeClient.tsx',
+      'src/components/message/AssistantMessage.tsx',
+      'src/components/message/MessagePanels.tsx',
+      'src/components/settings/hooks/useSettingsDrawerState.tsx',
+      'src/components/top-header/TopHeaderView.tsx',
+      'src/components/top-header/useTopHeaderState.ts',
+      // Turn/persistence paths awaiting module hooks
+      'src/lib/agent/orchestrator/lifecycle.ts',
+      'src/lib/agent/tools/router.ts',
+      'src/lib/services/bootstrap.ts',
+      'src/lib/services/messagePersistence.ts',
+      'src/lib/services/turns.ts',
+      'src/lib/settings/normalize.ts',
+      'src/lib/store/chatSlice.ts',
+      'src/lib/store/normalize.ts',
+      'src/lib/store/stateTypes.ts',
+      'src/lib/turns/runtime/context.ts',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/modules/*', '@/modules/**'],
+              message:
+                'Core must not import a feature module directly; go through @/lib/modules or a panel slot.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Core tool plumbing is module-agnostic: the registry, the scheduler, and the
     // planning pipeline reach feature modules only through `@/lib/modules`.
     files: [
