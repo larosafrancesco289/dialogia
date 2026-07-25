@@ -6,7 +6,7 @@ import { composePlugins } from '@/lib/agent/request';
 import type { Chat, GenSettingsSnapshot, ReasoningEffort } from '@/lib/types';
 import { ReasoningEffortEnum } from '@/lib/types';
 import { ProviderSort } from '@/lib/models/providerSort';
-import type { ModelMessage, RegenerateOptions, SearchProvider } from '@/lib/agent/types';
+import type { ModelMessage, RegenerateOptions, SearchMode } from '@/lib/agent/types';
 import { streamFinal } from '@/lib/agent/streaming';
 import { setTurnController } from '@/lib/turns/runtime';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
@@ -87,7 +87,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     return fromSnapshot ?? fromChat ?? fallback;
   };
 
-  const pickProvider = (snapshotVal: unknown, chatVal: unknown): SearchProvider | undefined => {
+  const pickProvider = (snapshotVal: unknown, chatVal: unknown): SearchMode | undefined => {
     const fromSnapshot = normalizeSearchProvider(snapshotVal);
     const fromChat = normalizeSearchProvider(chatVal);
     if (modelChanged) return fromChat ?? fromSnapshot;
@@ -225,7 +225,7 @@ const isReasoningEffort = (
 ): value is NonNullable<Chat['settings']['generation']['reasoningEffort']> =>
   Object.values(ReasoningEffortEnum).includes(value as ReasoningEffort);
 
-const normalizeSearchProvider = (value: unknown): SearchProvider | undefined => {
+const normalizeSearchProvider = (value: unknown): SearchMode | undefined => {
   if (value === 'brave') return 'tavily';
   return value === 'tavily' || value === 'openrouter' ? value : undefined;
 };

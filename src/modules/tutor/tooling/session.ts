@@ -1,7 +1,7 @@
 import type { StoreApi } from 'zustand/vanilla';
 import { createHeadlessStore, type HeadlessStoreOptions } from '@/modules/tutor/tooling/store';
 import type { StoreState, UIState } from '@/lib/store/types';
-import type { Chat, Message, ModelTransport, ModelDescriptor } from '@/lib/types';
+import type { Chat, Message, ModelDescriptor, ProviderEndpoint } from '@/lib/types';
 import { type PlanTurnResult, type PersistMessage, type TurnContext } from '@/lib/agent/types';
 import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
@@ -11,7 +11,7 @@ import { mergeTutorPayload } from '@/modules/tutor/agent/tutorFlow';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import { shouldShortCircuitTutor } from '@/lib/agent/policy';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
-import { resolveModelTransport } from '@/lib/providers';
+import { getModelEndpoint } from '@/lib/providers';
 import { setTurnController, clearTurnController } from '@/lib/turns/runtime';
 import type { ModelIndex } from '@/lib/models';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
@@ -28,7 +28,7 @@ import { initializeLearnerModel, syncLearnerModelWithPlan } from '@/modules/tuto
 
 export type AuthResolver = (params: {
   modelId: string;
-  transport: ModelTransport;
+  endpoint: ProviderEndpoint;
 }) => TransportAuth | null;
 
 export type ApiKeyResolver = AuthResolver;
@@ -147,9 +147,9 @@ export class HeadlessTutorSession {
 
     const authResolver = (modelId: string) => {
       const modelMeta = baseTurnContext.modelIndex.get(modelId);
-      const transport = resolveModelTransport(modelId, modelMeta);
-      const auth = this.resolveAuth({ modelId, transport });
-      if (!auth) throw new Error(`Missing auth for ${transport} transport`);
+      const endpoint = getModelEndpoint(modelMeta ?? { id: modelId });
+      const auth = this.resolveAuth({ modelId, endpoint });
+      if (!auth) throw new Error(`Missing auth for the ${endpoint.label} endpoint`);
       return auth;
     };
 

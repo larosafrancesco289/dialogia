@@ -1,6 +1,6 @@
-import type { SearchProvider } from '@/lib/types';
+import type { SearchMode } from '@/lib/types';
 
-export type { SearchProvider };
+export type { SearchMode };
 
 export type SearchResult = {
   title?: string;

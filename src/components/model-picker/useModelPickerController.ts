@@ -8,7 +8,7 @@ import type { StoreState } from '@/lib/store/types';
 import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
 import { useTier } from '@/lib/auth/tierContext';
 import { isFreeModel } from '@/data/freeModels';
-import { isModelTransportAvailable } from '@/lib/policy/providerAvailability';
+import { isModelEndpointAvailable } from '@/lib/policy/providerAvailability';
 import { selectNextOverrides } from '@/lib/store/selectors';
 
 export type ModelPickerOption = {
@@ -76,7 +76,7 @@ export function useModelPickerController(): ModelPickerController {
   const { isFreeTier, isLoading: tierLoading } = useTier();
   const allowedIds = useMemo(() => {
     const ids = (models || [])
-      .filter((model) => isModelTransportAvailable(model))
+      .filter((model) => isModelEndpointAvailable(model))
       .map((model) => model.id);
     return new Set(ids);
   }, [models]);
@@ -173,7 +173,7 @@ export function useModelPickerController(): ModelPickerController {
   const modelMap = useMemo(() => {
     const map = new Map();
     for (const model of models || []) {
-      if (!isModelTransportAvailable(model)) continue;
+      if (!isModelEndpointAvailable(model)) continue;
       map.set(model.id, model);
     }
     return map;

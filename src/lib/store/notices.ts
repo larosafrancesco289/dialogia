@@ -2,11 +2,10 @@
 // Responsibility: Centralize user-facing notice messages used across slices and services.
 
 export const NOTICE_CATALOG = {
-  missingClientKey: 'Missing provider API key or proxy configuration',
-  missingAnthropicKey: 'Missing VITE_ANTHROPIC_API_KEY',
-  invalidKey: 'Invalid API key',
+  invalidKey: 'That API key was rejected. Check it in Settings › Providers.',
   rateLimited: 'Rate limited. Retry later.',
-  missingTavilyKey: 'Missing TAVILY_API_KEY',
+  missingSearchKey: 'Add a web search key in Settings › Providers to use tool-based search.',
+  searchUnavailable: 'Web search is unavailable for this chat; answering without it.',
   modelsUnavailable: 'Unable to load models.',
   exportedChats: 'Exported chats to JSON',
   importedData: 'Imported data',
@@ -64,11 +63,10 @@ export function describeErrorNotice(error: unknown): string | undefined {
     : message;
 }
 
-export const NOTICE_MISSING_CLIENT_KEY = NOTICE_CATALOG.missingClientKey;
-export const NOTICE_MISSING_ANTHROPIC_KEY = NOTICE_CATALOG.missingAnthropicKey;
 export const NOTICE_INVALID_KEY = NOTICE_CATALOG.invalidKey;
 export const NOTICE_RATE_LIMITED = NOTICE_CATALOG.rateLimited;
-export const NOTICE_MISSING_TAVILY_KEY = NOTICE_CATALOG.missingTavilyKey;
+export const NOTICE_MISSING_SEARCH_KEY = NOTICE_CATALOG.missingSearchKey;
+export const NOTICE_SEARCH_UNAVAILABLE = NOTICE_CATALOG.searchUnavailable;
 export const NOTICE_MODELS_UNAVAILABLE = NOTICE_CATALOG.modelsUnavailable;
 export const NOTICE_EXPORTED_CHATS = NOTICE_CATALOG.exportedChats;
 export const NOTICE_IMPORTED_DATA = NOTICE_CATALOG.importedData;

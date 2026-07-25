@@ -9,12 +9,18 @@ import type {
   StoreState,
 } from '@/lib/store/types';
 import { chatPersistFragment } from '@/lib/store/chatSlice';
+import { endpointPersistFragment } from '@/lib/store/endpointSlice';
 import { modelPersistFragment } from '@/lib/store/modelSlice';
 import { uiPersistFragment } from '@/lib/store/uiSlice';
 import { ENABLED_MODULES } from '@/lib/modules';
 
 function persistFragments(): PersistFragment[] {
-  const fragments = [chatPersistFragment, modelPersistFragment, uiPersistFragment];
+  const fragments = [
+    chatPersistFragment,
+    endpointPersistFragment,
+    modelPersistFragment,
+    uiPersistFragment,
+  ];
   for (const appModule of ENABLED_MODULES) {
     if (appModule.persistFragment) fragments.push(appModule.persistFragment);
   }

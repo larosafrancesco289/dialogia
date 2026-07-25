@@ -1,4 +1,6 @@
 'use client';
+import { searchModeLabel } from '@/lib/search/ui/labels';
+import type { SearchMode } from '@/lib/search/providers/types';
 import { useEffect } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import type { ReasoningEffort } from '@/lib/types';
@@ -12,7 +14,7 @@ export type ComposerMobileMenuProps = {
   buttonRef: React.MutableRefObject<HTMLButtonElement | null>;
   onAttachClick: () => void;
   searchEnabled: boolean;
-  searchProvider: 'tavily' | 'openrouter';
+  searchProvider: SearchMode;
   toggleSearch: () => void;
   showReasoningMenu: boolean;
   availableEfforts?: Effort[];
@@ -82,7 +84,7 @@ export function ComposerMobileMenu({
               onClose();
             }}
           >
-            {`${searchProvider === 'openrouter' ? 'OpenRouter' : 'Tavily'} Search: ${searchEnabled ? 'On' : 'Off'}`}
+            {`${searchModeLabel(searchProvider)} search: ${searchEnabled ? 'On' : 'Off'}`}
           </div>
           {showReasoningMenu && (
             <>

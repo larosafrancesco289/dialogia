@@ -1,3 +1,4 @@
+import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildRequestDebugBody, captureRequestDebug } from '@/lib/agent/debug';
@@ -20,7 +21,7 @@ const createStubTurn = () => {
     },
   });
   const turn: TurnContext = {
-    auth: buildTransportAuth({ transport: 'openrouter', apiKey: 'key', useProxy: false }),
+    auth: buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'key' }),
     set,
     get,
     models: [],

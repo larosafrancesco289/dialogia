@@ -1,4 +1,5 @@
 import { buildChatBody } from '@/lib/openrouter/request';
+import { endpointBodyOptions, endpointWireModelId } from '@/lib/openrouter/endpointBody';
 import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
 import { normalizeUsage, shouldIncludeUsage, type Usage } from '@/lib/api/normalizers';
 import { consumeSse, type SseEvent } from '@/lib/api/stream';
@@ -44,7 +45,8 @@ function buildToolCalls(accumulator: Map<number, Partial<ToolCall>>): ToolCall[]
 export async function streamChatCompletion(params: TransportStreamParams): Promise<void> {
   const callbacks = params.callbacks;
   const body = buildChatBody({
-    model: params.model,
+    ...endpointBodyOptions(params.auth),
+    model: endpointWireModelId(params.auth, params.model),
     messages: params.messages,
     stream: true,
     modalities: params.modalities,

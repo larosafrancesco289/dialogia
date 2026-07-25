@@ -33,7 +33,7 @@ export async function fetchModels(
   opts: OpenRouterFetchModelsOptions = {},
 ): Promise<ModelDescriptor[]> {
   const fetchFn = opts.fetchFn ?? orFetchModels;
-  const fingerprint = auth.useProxy
+  const fingerprint = auth.endpoint.useProxy
     ? 'proxy'
     : fingerprintKey(typeof auth.apiKey === 'string' ? auth.apiKey : '');
   const cacheKey = `${opts.origin || 'default'}::${fingerprint}`;
@@ -57,8 +57,8 @@ export async function fetchModels(
   }
   const data = await res.json().catch(() => null);
   const models = normalizeModelList(data, {
-    transport: 'openrouter',
-    providerDisplay: 'OpenRouter',
+    endpointId: auth.endpoint.id,
+    providerDisplay: auth.endpoint.label,
   });
   modelCache.set(cacheKey, { models, fetchedAt: now, origin: opts.origin });
   return models;

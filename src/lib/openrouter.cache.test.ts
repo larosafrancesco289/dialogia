@@ -1,3 +1,4 @@
+import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { clearOpenRouterCachesForTest, fetchModels, fetchZdrLists } from '@/lib/openrouter';
@@ -20,7 +21,7 @@ test('fetchModels caches repeated lookups for the same API key', async () => {
     });
   };
 
-  const auth = buildTransportAuth({ transport: 'openrouter', apiKey: 'key-123', useProxy: false });
+  const auth = buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'key-123' });
   const first = await fetchModels(auth, { fetchFn: fakeFetcher });
   const second = await fetchModels(auth, { fetchFn: fakeFetcher });
 

@@ -8,12 +8,17 @@ import type {
   StoreSetter as ContractStoreSetter,
 } from '@/lib/contracts/store';
 import type { ChatSliceActions, ChatSliceState } from '@/lib/store/chatSlice';
+import type { EndpointSliceActions, EndpointSliceState } from '@/lib/store/endpointSlice';
 import type { MessageSliceActions, MessageSliceState } from '@/lib/store/messageSlice';
 import type { ModelSliceActions, ModelSliceState } from '@/lib/store/modelSlice';
 import type { UiSliceActions, UiSliceState } from '@/lib/store/uiSlice';
 import type { PersistedUiState } from '@/lib/store/uiTypes';
 
-export type StoreDataState = ChatSliceState & MessageSliceState & ModelSliceState & UiSliceState;
+export type StoreDataState = ChatSliceState &
+  EndpointSliceState &
+  MessageSliceState &
+  ModelSliceState &
+  UiSliceState;
 
 /**
  * Actions contributed by feature modules. A module augments this interface from its
@@ -23,6 +28,7 @@ export type StoreDataState = ChatSliceState & MessageSliceState & ModelSliceStat
 export interface ModuleStoreActions {}
 
 export type StoreActions = ChatSliceActions &
+  EndpointSliceActions &
   MessageSliceActions &
   ModelSliceActions &
   UiSliceActions &
@@ -37,6 +43,7 @@ export type StoreState = StoreDataState & StoreActions;
 export type PersistedStoreState = Pick<
   StoreDataState,
   | 'selectedChatId'
+  | 'customEndpoints'
   | 'favoriteModelIds'
   | 'hiddenModelIds'
   | 'zdrModelIds'

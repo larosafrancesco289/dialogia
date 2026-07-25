@@ -1,7 +1,7 @@
 import type {
   ModelMessage,
   PersistMessage,
-  SearchProvider,
+  SearchMode,
   StoreGetter,
   StoreSetter,
 } from '@/lib/agent/types';
@@ -15,7 +15,7 @@ export type ToolExecutionContext = {
   chatId: string;
   assistantMessage: Message;
   userContent: string;
-  searchProvider: SearchProvider;
+  searchProvider: SearchMode;
   controller: AbortController;
   set: StoreSetter;
   get: StoreGetter;

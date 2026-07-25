@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { searchModeLabel } from '@/lib/search/ui/labels';
+import type { SearchMode } from '@/lib/search/providers/types';
 import type { RefObject } from 'react';
 import {
   StopIcon,
@@ -220,7 +222,7 @@ export type ComposerActionsProps = {
   openFilePicker: () => void;
   attachmentsHint: string;
   searchEnabled: boolean;
-  searchProvider: 'tavily' | 'openrouter';
+  searchProvider: SearchMode;
   toggleSearch: () => void;
   showReasoningMenu: boolean;
   availableEfforts?: Effort[];
@@ -289,7 +291,7 @@ export function ComposerActions({
   const effort: Effort = currentEffort ?? 'none';
   const reasoningActive = effort !== 'none';
 
-  const providerLabel = searchProvider === 'openrouter' ? 'OpenRouter' : 'Tavily';
+  const providerLabel = searchModeLabel(searchProvider);
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">

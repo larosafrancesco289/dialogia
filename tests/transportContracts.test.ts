@@ -1,3 +1,4 @@
+import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { openrouterTransport } from '@/lib/openrouter';
@@ -28,7 +29,7 @@ function createSseResponse(chunks: string[]) {
 }
 
 const baseChatParams: TransportChatParams = {
-  auth: buildTransportAuth({ transport: 'openrouter', apiKey: 'test-key', useProxy: false }),
+  auth: buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'test-key' }),
   model: 'test-model',
   messages: [{ role: 'user', content: 'Hello' }],
 };

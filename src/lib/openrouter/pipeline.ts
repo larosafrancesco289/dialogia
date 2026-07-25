@@ -1,5 +1,6 @@
 import type { AccessTier } from '@/lib/auth/types';
 import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
+import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { isModelAllowedForTier } from '@/lib/auth/tierFeatures';
 
 export type OpenRouterAccess = {
@@ -14,9 +15,8 @@ export function createOpenRouterAccess(opts: {
   useProxy?: boolean;
 }): OpenRouterAccess {
   const auth = buildTransportAuth({
-    transport: 'openrouter',
+    endpoint: { ...OPENROUTER_ENDPOINT, useProxy: opts.useProxy ?? false },
     apiKey: opts.apiKey,
-    useProxy: opts.useProxy ?? false,
   });
 
   return {

@@ -1,39 +1,26 @@
-import type { ModelDescriptor, ModelTransport } from '@/lib/types';
+import type { ModelDescriptor } from '@/lib/types';
+import type { ProviderEndpoint, TransportKind } from '@/lib/transport/endpoints';
+import { getDefaultEndpoint, resolveModelEndpoint } from '@/lib/transport/endpointRegistry';
 
-export const DEFAULT_TRANSPORT: ModelTransport = 'openrouter';
-
-const TRANSPORT_LABELS: Record<ModelTransport, string> = {
-  openrouter: 'OpenRouter',
-  anthropic: 'Anthropic',
-};
-
-export function getTransportLabel(transport?: ModelTransport): string {
-  if (!transport) return TRANSPORT_LABELS[DEFAULT_TRANSPORT];
-  return TRANSPORT_LABELS[transport] ?? TRANSPORT_LABELS[DEFAULT_TRANSPORT];
+export function getDefaultEndpointId(): string {
+  return getDefaultEndpoint().id;
 }
 
-export function getModelTransport(model?: ModelDescriptor | null): ModelTransport {
-  if (!model) return DEFAULT_TRANSPORT;
-  return model.transport ?? DEFAULT_TRANSPORT;
+export function getModelEndpoint(model?: ModelDescriptor | null): ProviderEndpoint {
+  if (!model) return getDefaultEndpoint();
+  return resolveModelEndpoint(model.id, model);
 }
 
-export function resolveModelTransport(
+export function resolveModelTransportKind(
   modelId?: string,
   model?: ModelDescriptor | null,
-): ModelTransport {
-  if (model?.transport) return model.transport;
-  if (typeof modelId === 'string') {
-    if (modelId.startsWith('anthropic-direct/')) return 'anthropic';
-    if (modelId.startsWith('anthropic/')) return 'anthropic';
-    if (modelId.startsWith('openrouter/')) return 'openrouter';
-  }
-  return DEFAULT_TRANSPORT;
+): TransportKind {
+  return resolveModelEndpoint(modelId, model).kind;
 }
 
-export function getModelTransportLabel(model?: ModelDescriptor | null): string {
-  if (!model) return getTransportLabel();
-  if (model.providerDisplay) return model.providerDisplay;
-  return getTransportLabel(getModelTransport(model));
+export function getModelProviderLabel(model?: ModelDescriptor | null): string {
+  if (model?.providerDisplay) return model.providerDisplay;
+  return getModelEndpoint(model).label;
 }
 
 export function getTransportModelId(model?: ModelDescriptor | null): string | undefined {

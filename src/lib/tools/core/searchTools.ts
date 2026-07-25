@@ -2,14 +2,14 @@
 // Responsibility: The core web_search / web_fetch tools: handlers plus registration.
 
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
-import { mergeSearchResults, performWebSearchTool, runTavilyFetch } from '@/lib/search';
+import { mergeSearchResults, performWebFetchTool, performWebSearchTool } from '@/lib/search';
+import { getSearchProvider } from '@/lib/search/providers';
 import { normalizeWebFetchArgs, normalizeWebSearchArgs } from '@/lib/search/args';
 import { setSearchUiStatus } from '@/lib/search/ui/state';
-import { NOTICE_MISSING_TAVILY_KEY } from '@/lib/store/notices';
+import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import { WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@/lib/tools/definitions/webSearch';
 import { getToolExt, registerTool, type PlanningToolHandler } from '@/lib/tools/registry';
-import { withAbort } from '@/lib/utils/abort';
 
 export const CORE_MODULE_ID = 'core';
 
@@ -66,15 +66,13 @@ const executeWebSearchTool: PlanningToolHandler = async ({
 
   if (searchResult.ok) {
     const merged = mergeSearchResults([aggregatedResults, searchResult.results]);
-    if (searchProvider === 'tavily') {
-      // The sources panel should show everything consulted this turn, not just
-      // the latest call; aggregatedResults has exactly that turn-scoped lifetime.
-      setSearchUiStatus({ set, get }, assistantMessage.id, {
-        query: searchResult.query,
-        status: 'done',
-        results: merged,
-      });
-    }
+    // The sources panel should show everything consulted this turn, not just
+    // the latest call; aggregatedResults has exactly that turn-scoped lifetime.
+    setSearchUiStatus({ set, get }, assistantMessage.id, {
+      query: searchResult.query,
+      status: 'done',
+      results: merged,
+    });
     const payload = searchResult.results.slice(0, MAX_FALLBACK_RESULTS).map((result) => ({
       title: result?.title,
       url: result?.url,
@@ -101,8 +99,8 @@ const executeWebSearchTool: PlanningToolHandler = async ({
     };
   }
 
-  if (searchResult.error === NOTICE_MISSING_TAVILY_KEY) {
-    notify(get, NOTICE_MISSING_TAVILY_KEY);
+  if (searchResult.error === NOTICE_MISSING_SEARCH_KEY) {
+    notify(get, NOTICE_MISSING_SEARCH_KEY);
   }
   log.error(
     output,
@@ -155,9 +153,14 @@ const executeWebFetchTool: PlanningToolHandler = async ({
     metadata: { ...(roundMeta || {}), provider: searchProvider },
   });
 
-  if (searchProvider !== 'tavily') {
+  const provider = getSearchProvider(searchProvider);
+  if (!provider?.fetchPage) {
     const output = { ok: false, url: fetchArgs.url, error: 'unsupported_search_provider' };
-    log.error(output, 'web_fetch only supports Tavily', roundMeta ? { ...roundMeta } : undefined);
+    log.error(
+      output,
+      `${provider?.label ?? 'The active search provider'} cannot fetch a page`,
+      roundMeta ? { ...roundMeta } : undefined,
+    );
     return {
       convoMessages: [
         {
@@ -173,14 +176,7 @@ const executeWebFetchTool: PlanningToolHandler = async ({
     };
   }
 
-  const result = await withAbort(controller.signal, async (fetchController) => {
-    const timeout = setTimeout(() => fetchController.abort(), 30000);
-    try {
-      return await runTavilyFetch(fetchArgs, { signal: fetchController.signal });
-    } finally {
-      clearTimeout(timeout);
-    }
-  });
+  const result = await performWebFetchTool({ args: fetchArgs, searchProvider, controller });
 
   const metadataBase = roundMeta ? { ...roundMeta } : undefined;
   if (result.ok) {
@@ -209,8 +205,8 @@ const executeWebFetchTool: PlanningToolHandler = async ({
     };
   }
 
-  if (result.error === NOTICE_MISSING_TAVILY_KEY) {
-    notify(get, NOTICE_MISSING_TAVILY_KEY);
+  if (result.error === NOTICE_MISSING_SEARCH_KEY) {
+    notify(get, NOTICE_MISSING_SEARCH_KEY);
   }
   const output = { ok: false, url: fetchArgs.url, error: result.error || 'No content' };
   log.error(output, result.error || 'Fetch returned no content', metadataBase);

@@ -1,9 +1,8 @@
 import type { ModelDescriptor } from '@/lib/types';
-import type { ModelTransport } from '@/lib/transport/models';
 import { isRecord } from '@/lib/utils/guards';
 
 type NormalizeModelOptions = {
-  transport?: ModelTransport;
+  endpointId?: string;
   providerDisplay?: string;
 };
 
@@ -68,7 +67,7 @@ export function normalizeModelDescriptor(
     context_length,
     pricing: parsePricing(entry.pricing),
     raw: entry,
-    transport: opts.transport,
+    endpointId: opts.endpointId,
     transportModelId: id,
     providerDisplay: opts.providerDisplay,
   };

@@ -1,3 +1,4 @@
+import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createPipelineClient } from '@/lib/agent/pipelineClient';
@@ -11,7 +12,7 @@ const mockModel = (id: string): ModelDescriptor => ({
   id,
   name: id,
   context_length: 8000,
-  transport: 'openrouter',
+  endpointId: 'openrouter',
   raw: { supported_parameters: ['tools', 'reasoning'] },
 });
 
@@ -68,8 +69,7 @@ test('headless tutor session streams a response and captures artifacts', async (
     chat,
     models: [model],
     modelIndex: createModelIndex([model]),
-    resolveAuth: () =>
-      buildTransportAuth({ transport: 'openrouter', apiKey: 'test-key', useProxy: false }),
+    resolveAuth: () => buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'test-key' }),
     pipeline,
     uiOverrides: {
       debug: { mode: true },
