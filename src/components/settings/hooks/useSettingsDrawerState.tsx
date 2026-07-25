@@ -19,6 +19,7 @@ import {
   type SettingsAutoSaveState,
 } from '@/components/settings/hooks/useSettingsAutoSave';
 import { ModelsPanel } from '@/components/settings/sections/ModelsPanel';
+import { ProvidersPanel } from '@/components/settings/sections/ProvidersPanel';
 import { ChatPanel } from '@/components/settings/sections/ChatPanel';
 import { SettingsModuleSlot } from '@/components/ModuleSlot';
 import { AppearancePanel } from '@/components/settings/sections/AppearancePanel';
@@ -185,6 +186,8 @@ export function useSettingsDrawerState(): SettingsDrawerState {
 
   const tabContent = (() => {
     switch (activeTab) {
+      case 'providers':
+        return <ProvidersPanel renderSection={renderSection} loadModels={loadModels} />;
       case 'models-routing':
         return (
           <ModelsPanel

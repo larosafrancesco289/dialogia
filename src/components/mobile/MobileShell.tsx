@@ -22,6 +22,9 @@ const MobileSettingsSheet = lazyClient(() =>
 const GlobalNotice = lazyClient(() =>
   import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
 );
+const SetupSheet = lazyClient(() =>
+  import('@/components/SetupSheet').then((mod) => ({ default: mod.SetupSheet })),
+);
 
 /**
  * MobileShell - Root layout component for mobile devices.
@@ -32,11 +35,12 @@ const GlobalNotice = lazyClient(() =>
  * - Keyboard-aware layout
  */
 export function MobileShell() {
-  const { chatsSheetOpen, settingsSheetOpen, composerFocused } = useChatStore(
+  const { chatsSheetOpen, settingsSheetOpen, composerFocused, setupOpen } = useChatStore(
     (s) => ({
       chatsSheetOpen: s.ui.mobile.chatsSheetOpen,
       settingsSheetOpen: s.ui.mobile.settingsSheetOpen,
       composerFocused: s.ui.mobile.composerFocused,
+      setupOpen: s.ui.setupOpen === true,
     }),
     shallow,
   );
@@ -65,6 +69,8 @@ export function MobileShell() {
         {chatsSheetOpen && <MobileChatsSheet />}
         {settingsSheetOpen && <MobileSettingsSheet />}
       </AnimatePresence>
+
+      {setupOpen && <SetupSheet />}
 
       {/* Global Notice */}
       <GlobalNotice />
