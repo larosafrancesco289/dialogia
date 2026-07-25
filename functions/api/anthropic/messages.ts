@@ -14,9 +14,9 @@ import { RATE_LIMITS } from '@/lib/server/rateLimit';
 export const POST = route('anthropic-messages')
   .rateLimit('anthropic-messages', RATE_LIMITS.ANTHROPIC_CHAT)
   .handler(async (req) => {
-    let access: Awaited<ReturnType<typeof resolveAnthropicAccess>>;
+    let access: ReturnType<typeof resolveAnthropicAccess>;
     try {
-      access = await resolveAnthropicAccess();
+      access = resolveAnthropicAccess(req);
     } catch {
       return jsonError(500, 'missing_env', 'ANTHROPIC_API_KEY');
     }

@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NextRequest } from 'next/server';
 import { jsonError } from '@/lib/server/route';
 import { rateLimit } from '@/lib/server/rateLimit';
 
@@ -14,7 +13,7 @@ test('jsonError returns consistent payload and headers', async () => {
 });
 
 test('rateLimit returns 429 with retry headers', async () => {
-  const req = new NextRequest('https://example.com/api/test');
+  const req = new Request('https://example.com/api/test');
   const config = { limit: 1, windowMs: 1000 };
   const prefix = `test-${Date.now()}`;
 

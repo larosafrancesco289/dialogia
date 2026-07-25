@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { getTavilyApiKey } from '@/lib/env/server';
 import { runTavilyExtractDirect, runTavilySearchDirect } from '@/lib/search/api/tavily';
 import {
@@ -10,6 +9,12 @@ import {
 import { jsonError } from '@/lib/server/route';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';
+
+function json(payload: unknown): Response {
+  return new Response(JSON.stringify(payload), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
 export const GET = route('tavily-search')
   .rateLimit('tavily', RATE_LIMITS.STANDARD)
@@ -45,7 +50,7 @@ export const GET = route('tavily-search')
         });
 
         const results = await runTavilyExtractDirect(args, { apiKey: apiKey || '' });
-        return NextResponse.json({ results });
+        return json({ results });
       }
 
       const includeDomains = searchParams.get('include_domains');
@@ -71,7 +76,7 @@ export const GET = route('tavily-search')
       });
 
       const results = await runTavilySearchDirect(args, { apiKey: apiKey || '' });
-      return NextResponse.json({ results });
+      return json({ results });
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : typeof err === 'string' ? err : 'unknown_error';

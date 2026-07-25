@@ -8,9 +8,9 @@ import { RATE_LIMITS } from '@/lib/server/rateLimit';
 export const GET = route('anthropic-models')
   .rateLimit('anthropic-models', RATE_LIMITS.ANTHROPIC_MODELS)
   .handler(async (req) => {
-    let access: Awaited<ReturnType<typeof resolveAnthropicAccess>>;
+    let access: ReturnType<typeof resolveAnthropicAccess>;
     try {
-      access = await resolveAnthropicAccess();
+      access = resolveAnthropicAccess(req);
     } catch {
       return jsonError(500, 'missing_env', 'ANTHROPIC_API_KEY');
     }

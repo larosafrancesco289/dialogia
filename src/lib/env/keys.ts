@@ -5,16 +5,16 @@
  * keys straight from process.env without pulling in the hosted server env layer.
  */
 
-import { readEnvValue } from '@/lib/env/values';
+import { readServerEnvValue } from '@/lib/env/source';
 
 export function getOpenRouterKeyFallback(): string | undefined {
   return (
-    readEnvValue(process.env.OPENROUTER_API_KEY) ||
-    readEnvValue(process.env.VITE_OPENROUTER_API_KEY) ||
-    readEnvValue(process.env.OPENROUTER_KEY)
+    readServerEnvValue('OPENROUTER_API_KEY') ||
+    readServerEnvValue('VITE_OPENROUTER_API_KEY') ||
+    readServerEnvValue('OPENROUTER_KEY')
   );
 }
 
 export function getAnthropicKeyFallback(): string | undefined {
-  return readEnvValue(process.env.ANTHROPIC_API_KEY);
+  return readServerEnvValue('ANTHROPIC_API_KEY');
 }

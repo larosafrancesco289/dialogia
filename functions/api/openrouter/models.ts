@@ -13,9 +13,9 @@ import { RATE_LIMITS } from '@/lib/server/rateLimit';
 export const GET = route('openrouter-models')
   .rateLimit('openrouter-models', RATE_LIMITS.STANDARD)
   .handler(async (req) => {
-    let access: Awaited<ReturnType<typeof resolveOpenRouterAccess>>;
+    let access: ReturnType<typeof resolveOpenRouterAccess>;
     try {
-      access = await resolveOpenRouterAccess();
+      access = resolveOpenRouterAccess(req);
     } catch {
       return jsonError(500, 'missing_env', 'OPENROUTER_API_KEY');
     }

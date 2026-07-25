@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { AUTH_COOKIE_NAME, TIER_COOKIE_NAME } from '@/lib/auth/shared';
+import { readRequestCookie } from '@/lib/auth/cookies.server';
 import { verifyAuthTokenEdgeWithClaims } from '@/lib/auth/token.edge';
 import { computeSecretFingerprintEdge } from '@/lib/auth/fingerprint.edge';
 import type { AuthClaims } from '@/lib/auth/types';
@@ -9,17 +9,14 @@ import { getNodeEnv, isProd } from '@/lib/env/runtime';
 import { jsonError } from '@/lib/server/route';
 import { route } from '@/lib/server/routeBuilder';
 
-// Keep Node runtime to avoid Edge static generation warnings in build output.
-export const runtime = 'nodejs';
-
 export const GET = route('auth-debug').handler(async (req) => {
   const debugEnabled = !isProd() || isAuthDebugRouteEnabled();
   if (!debugEnabled) {
     return jsonError(404, 'not_found');
   }
 
-  const authCookie = req.cookies.get(AUTH_COOKIE_NAME);
-  const tierCookie = req.cookies.get(TIER_COOKIE_NAME);
+  const authToken = readRequestCookie(req, AUTH_COOKIE_NAME);
+  const tierCookie = readRequestCookie(req, TIER_COOKIE_NAME);
 
   const secret = getServerEnv('AUTH_COOKIE_SECRET');
   const hasAuthSecret = !!secret;
@@ -27,15 +24,14 @@ export const GET = route('auth-debug').handler(async (req) => {
   const nodeEnv = getNodeEnv();
   const inProd = isProd();
 
-  // Try to verify the token using Edge runtime (same as middleware)
   type EdgeVerification =
     | { valid: true; claims: AuthClaims }
     | { valid: false; reason: string }
     | null;
   let edgeVerification: EdgeVerification = null;
-  if (authCookie?.value && secret) {
+  if (authToken && secret) {
     try {
-      const claims = await verifyAuthTokenEdgeWithClaims(authCookie.value, secret);
+      const claims = await verifyAuthTokenEdgeWithClaims(authToken, secret);
       edgeVerification = claims
         ? { valid: true, claims }
         : { valid: false, reason: 'verification_failed' };
@@ -47,27 +43,29 @@ export const GET = route('auth-debug').handler(async (req) => {
     edgeVerification = { valid: false, reason: 'no_secret_in_edge' };
   }
 
-  // Simulate middleware decision
-  let middlewareWouldAllow = false;
+  // Simulate the gate's decision
+  let gateWouldAllow = false;
   if (!inProd) {
-    middlewareWouldAllow = true; // dev mode bypasses auth
-  } else if (authCookie?.value && secret) {
-    const claims = await verifyAuthTokenEdgeWithClaims(authCookie.value, secret);
-    middlewareWouldAllow = !!claims;
+    gateWouldAllow = true; // dev mode bypasses auth
+  } else if (authToken && secret) {
+    gateWouldAllow = !!(await verifyAuthTokenEdgeWithClaims(authToken, secret));
   }
 
-  return NextResponse.json({
-    nodeEnv,
-    isProd: inProd,
-    middlewareWouldAllow,
-    cookies: {
-      auth: authCookie ? { exists: true, length: authCookie.value.length } : { exists: false },
-      tier: tierCookie?.value || null,
-    },
-    edgeVerification,
-    envVars: {
-      AUTH_COOKIE_SECRET: hasAuthSecret ? 'SET' : 'MISSING',
-      AUTH_COOKIE_SECRET_FINGERPRINT: secretFingerprint,
-    },
-  });
+  return new Response(
+    JSON.stringify({
+      nodeEnv,
+      isProd: inProd,
+      gateWouldAllow,
+      cookies: {
+        auth: authToken ? { exists: true, length: authToken.length } : { exists: false },
+        tier: tierCookie || null,
+      },
+      edgeVerification,
+      envVars: {
+        AUTH_COOKIE_SECRET: hasAuthSecret ? 'SET' : 'MISSING',
+        AUTH_COOKIE_SECRET_FINGERPRINT: secretFingerprint,
+      },
+    }),
+    { headers: { 'Content-Type': 'application/json' } },
+  );
 });

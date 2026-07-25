@@ -1,21 +1,21 @@
-import { NextResponse } from 'next/server';
 import type { AccessTier, AuthClaims } from '@/lib/auth/types';
-import {
-  createAuthToken,
-  getIndividualCodeHashes,
-  getDeveloperCodeHashes,
-  getAuthCookieSecret,
-  getAccessCodePepper,
-  hmacCode,
-  hasTieredCodesConfigured,
-} from '@/lib/auth/token.server';
-import { setAuthCookies } from '@/lib/auth/cookies.server';
+import { createAuthToken, hmacHex } from '@/lib/auth/token.edge';
+import { buildAuthCookies, withSetCookies } from '@/lib/auth/cookies.server';
 import { jsonAuthError } from '@/lib/auth/errors';
+import {
+  getAccessCodePepper,
+  getAuthCookieSecret,
+  getDeveloperCodeHashes,
+  getIndividualCodeHashes,
+  hasTieredCodesConfigured,
+} from '@/lib/env/server';
 import { logger } from '@/lib/logger';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';
 import { VerifyCodeRequestSchema } from '@/lib/schemas/api';
 import { parseSchema } from '@/lib/schemas/parse';
+
+const TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 14;
 
 export const POST = route('auth-verify-code')
   .rateLimit('auth-verify', RATE_LIMITS.AUTH)
@@ -38,18 +38,16 @@ export const POST = route('auth-verify-code')
       }
 
       // Hash the submitted code
-      const hashed = hmacCode(plain, pepper);
+      const hashed = await hmacHex(plain, pepper);
 
       // Check developer codes first
-      const devHashes = getDeveloperCodeHashes();
-      const devIdx = devHashes.findIndex((h) => h === hashed);
+      const devIdx = getDeveloperCodeHashes().findIndex((h) => h === hashed);
       if (devIdx !== -1) {
         return createTokenResponse('developer', `dev:${devIdx}`);
       }
 
       // Check individual codes
-      const individualHashes = getIndividualCodeHashes();
-      const individualIdx = individualHashes.findIndex((h) => h === hashed);
+      const individualIdx = getIndividualCodeHashes().findIndex((h) => h === hashed);
       if (individualIdx !== -1) {
         return createTokenResponse('individual', `ind:${individualIdx}`);
       }
@@ -64,21 +62,15 @@ export const POST = route('auth-verify-code')
     }
   });
 
-function createTokenResponse(tier: AccessTier, sub: string): NextResponse {
+async function createTokenResponse(tier: AccessTier, sub: string): Promise<Response> {
   const now = Date.now();
-  const claims: AuthClaims = {
-    sub,
-    tier,
-    iat: now,
-    exp: now + 1000 * 60 * 60 * 24 * 14, // 14 days
-  };
+  const claims: AuthClaims = { sub, tier, iat: now, exp: now + TOKEN_TTL_MS };
 
-  // Ensure secret is present (throws if missing)
-  getAuthCookieSecret();
-  const token = createAuthToken(claims);
+  const secret = getAuthCookieSecret();
+  const token = await createAuthToken(claims, secret);
 
-  const res = NextResponse.json({ ok: true, tier });
-  setAuthCookies(res, { token, tier });
-
-  return res;
+  const res = new Response(JSON.stringify({ ok: true, tier }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return withSetCookies(res, buildAuthCookies({ token, tier }));
 }

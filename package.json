@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:hosted": "VITE_HOSTED_BUILD=true vite build",
+    "build:worker": "vite build --config vite.worker.config.ts",
+    "build:hosted": "VITE_HOSTED_BUILD=true vite build && VITE_HOSTED_BUILD=true bun run build:worker",
     "start": "vite preview --port 3000",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

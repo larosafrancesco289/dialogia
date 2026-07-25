@@ -1,10 +1,41 @@
-import { base64UrlDecode } from './shared';
+import { base64UrlDecode, base64UrlEncode } from './shared';
 import type { AccessTier, AuthClaims } from './types';
 
 export type { AccessTier, AuthClaims };
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+
+async function importHmacKey(secret: string, usage: 'sign' | 'verify'): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    [usage],
+  );
+}
+
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/** HMAC-SHA256 of `value` under `key`, hex encoded. Used for access codes. */
+export async function hmacHex(value: string, key: string): Promise<string> {
+  const cryptoKey = await importHmacKey(key, 'sign');
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(value));
+  return toHex(new Uint8Array(signature));
+}
+
+/** Mints the session token the middleware verifies. */
+export async function createAuthToken(claims: AuthClaims, secret: string): Promise<string> {
+  const payloadBytes = encoder.encode(JSON.stringify(claims));
+  const key = await importHmacKey(secret, 'sign');
+  const signature = await crypto.subtle.sign('HMAC', key, payloadBytes);
+  return `${base64UrlEncode(payloadBytes)}.${base64UrlEncode(new Uint8Array(signature))}`;
+}
 
 /**
  * Verify auth token in edge runtime.

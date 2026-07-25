@@ -14,9 +14,9 @@ import { RATE_LIMITS } from '@/lib/server/rateLimit';
 export const POST = route('openrouter-chat')
   .rateLimit('openrouter-chat', RATE_LIMITS.EXPENSIVE)
   .handler(async (req) => {
-    let access: Awaited<ReturnType<typeof resolveOpenRouterAccess>>;
+    let access: ReturnType<typeof resolveOpenRouterAccess>;
     try {
-      access = await resolveOpenRouterAccess();
+      access = resolveOpenRouterAccess(req);
     } catch {
       return jsonError(500, 'missing_env', 'OPENROUTER_API_KEY');
     }
@@ -26,15 +26,8 @@ export const POST = route('openrouter-chat')
       const { body, stream } = parseProxyBody(bodyText);
 
       // Validate model access for free tier
-      if (typeof body?.model === 'string') {
-        const allowed = await access.canUseModel(body.model);
-        if (!allowed) {
-          return jsonError(
-            403,
-            'model_not_allowed',
-            'This model is not available on the free tier',
-          );
-        }
+      if (typeof body?.model === 'string' && !access.canUseModel(body.model)) {
+        return jsonError(403, 'model_not_allowed', 'This model is not available on the free tier');
       }
 
       const res = await orChatCompletions({

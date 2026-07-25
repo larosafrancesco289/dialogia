@@ -1,10 +1,7 @@
-import 'server-only';
-
-import type { NextRequest } from 'next/server';
 import type { ZodType } from 'zod';
 import { parseSchema } from '@/lib/schemas/parse';
 import type { AccessTier } from '@/lib/auth/types';
-import { readEnvValue } from '@/lib/env/values';
+import { readServerEnvValue } from '@/lib/env/source';
 import type { RateLimitConfig } from '@/lib/server/rateLimit';
 import { jsonError, withTiming } from '@/lib/server/route';
 
@@ -20,18 +17,18 @@ export type RouteContext = {
   env: Record<string, string>;
 };
 
+export type RouteHandler = (req: Request) => Promise<Response>;
+
 export type RouteBuilder = {
   rateLimit: (prefix: string, config: RateLimitConfig) => RouteBuilder;
   requireTier: (gate: TierGate) => RouteBuilder;
   requireEnv: (...names: string[]) => RouteBuilder;
-  handler: (
-    fn: (req: NextRequest, ctx: RouteContext) => Promise<Response>,
-  ) => (req: NextRequest) => Promise<Response>;
+  handler: (fn: (req: Request, ctx: RouteContext) => Promise<Response>) => RouteHandler;
 };
 
 export function parseJson<T>(schema: ZodType<T>) {
   return async (
-    req: NextRequest,
+    req: Request,
   ): Promise<{ ok: true; data: T } | { ok: false; response: Response }> => {
     let body: unknown;
     try {
@@ -67,7 +64,7 @@ export function route(name: string): RouteBuilder {
       return builder;
     },
     handler(fn) {
-      return async (req: NextRequest) =>
+      return async (req: Request) =>
         withTiming(name, async () => {
           if (limit) {
             const { rateLimit } = await import('@/lib/server/rateLimit');
@@ -78,7 +75,7 @@ export function route(name: string): RouteBuilder {
           let tier: AccessTier | undefined;
           if (tierGate) {
             const { getServerTier } = await import('@/lib/auth/tierApiKey.server');
-            tier = await getServerTier();
+            tier = getServerTier(req);
             const deny = tierGate.deny?.includes(tier) ?? false;
             const allow =
               tierGate.allow && tierGate.allow.length > 0 ? tierGate.allow.includes(tier) : true;
@@ -93,7 +90,7 @@ export function route(name: string): RouteBuilder {
 
           const env: Record<string, string> = {};
           for (const name of requiredEnv) {
-            const value = readEnvValue(process.env[name]);
+            const value = readServerEnvValue(name);
             if (!value) return jsonError(500, 'missing_env', name);
             env[name] = value;
           }
