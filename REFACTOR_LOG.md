@@ -628,3 +628,58 @@ ten-second manual check worth doing before merge.
 - `src/lib/policy/providerAvailability.ts` shrank to two functions and now overlaps
   `endpointRegistry`; it may want folding in during Stage 4's cleanup.
 - The 5 pre-existing ESLint unused-var warnings are unchanged.
+
+## Stage 3 fix pass (2026-07-25)
+
+Branch: `stage-3-byok`, four commits on top of the Stage 3 report. Prompted by a
+three-way review of the full branch diff (transport/keys/auth, provider clients +
+worker, search + UI), which found three blockers and two misrouting bugs the Stage 3
+suite did not cover. All five are fixed here; each fix landed with a test that fails
+without it, and every intermediate commit passes `lint:types` + the full suite
+(verified with `git rebase --exec`). CI green at the tip: 477 tests (470 before),
+0 ESLint errors, the same 5 pre-existing warnings.
+
+Commits, in dependency order rather than severity order:
+
+- `57811d8` Stop trusting apiKeyRef from persisted endpoint state — `sanitizeEndpoint`
+  now always derives `apiKeyRef` from the endpoint id and ignores the blob, closing an
+  import-a-backup exfiltration: a hostile endpoint could otherwise name
+  `apiKeyRef: 'openrouter'` and have the app send the real OpenRouter key (plus the
+  conversation) to its own base URL. The `addEndpoint`/`updateEndpoint` types no
+  longer accept a caller-supplied ref, so the convention is compiler-enforced.
+- `e35a04f` Resolve proxy paths only inside a real browser context — the frozen
+  import-time `apiDefaults.isBrowser` became a call-time `isBrowserContext()`, and
+  both clients gate the proxy decision on it. Without this the hosted worker's ZDR
+  route fetched its own relative proxy path from inside the worker (a throw), so
+  ZDR-only mode on a hosted build returned zero models.
+- `300f792` Namespace user endpoint model ids and fail closed when the endpoint is
+  gone — custom endpoint model ids are now `endpoint:<slug>/<model>`; no upstream id
+  has a colon-bearing first segment, so an endpoint slugged `openai` can no longer
+  shadow OpenRouter's `openai/gpt-4o` (previously: byte-identical id, custom merged
+  last, wins). The registry split into non-throwing `findModelEndpoint` (labels and
+  body-shape decisions, which must survive stale model lists) and throwing
+  `resolveModelEndpoint` (the request path): a chat scoped to a deleted endpoint now
+  surfaces a "re-add it or pick another model" notice instead of silently falling back
+  to OpenRouter and shipping a local-only history to a third party. No migration: the
+  old id form never shipped.
+- `f79283b` Let keyless OpenAI-compatible endpoints authenticate — `requireEndpointAuth`
+  threw `missing_provider_key` for every keyless, unproxied endpoint, which dead-ended
+  the headline local path: SetupSheet → "Local" → add Ollama → zero models → the sheet
+  re-opens. `allowsKeylessCalls` (openai-compatible **and** a base URL) now gates the
+  throw, and the ProvidersPanel status only claims "Ready (no key needed)" when it is
+  true. The dead `isEndpointReady` was deleted rather than fixed.
+
+Review findings deliberately **not** fixed here, still open for Stage 4: the
+`promptCaching` capability checkbox does nothing (`cache_control` rides inside
+messages, which `buildChatBody` copies verbatim — a strict server 400s the request);
+`removeEndpoint` orphans the endpoint's key, and slug reuse can re-bind it to a new
+host; a key pasted while `loadKeys()` is still warming is evicted by the stale
+snapshot; the composer search picker reads the key cache without subscribing (and the
+Tavily `ApiKeyField` lacks `onChanged`), so a new Tavily key is invisible until
+reload; regenerate computes plugins before the search-mode fallback and can drop
+search; the SetupSheet renders at `z-50` beneath the settings drawer's `z-[70+]` and
+bypasses the Dialog primitives; assorted `'tavily'`/`'openrouter'` literals survive in
+`followUp.ts`, `regenerate.ts`, `modes.ts`; `src/lib/anthropic/models.ts` hardcodes
+the built-in endpoint id; ARCHITECTURE.md still documents the deleted
+`ModelTransport` union. The end-to-end BYOK send with a real key also remains the
+owner's ten-second pre-merge check.
