@@ -1,71 +1,47 @@
 // Module: store/persistence
-// Responsibility: Define persisted store slices and merge behavior for Zustand hydration.
+// Responsibility: Compose each slice's PersistFragment into the persisted blob and
+// back. Nothing here enumerates nested shapes; the owning slice does.
 
 import type {
+  PersistFragment,
   PersistedStoreState,
-  PersistedUiState,
   StoreDataState,
   StoreState,
-  UIState,
 } from '@/lib/store/types';
-import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
+import { chatPersistFragment } from '@/lib/store/chatSlice';
+import { modelPersistFragment } from '@/lib/store/modelSlice';
+import { uiPersistFragment } from '@/lib/store/uiSlice';
+import { ENABLED_MODULES } from '@/lib/modules';
 
-const mergePersistedUiState = (
-  current: UIState,
-  persisted?: Partial<PersistedUiState>,
-): UIState => {
-  if (!persisted) return current;
-  return {
-    ...current,
-    ...persisted,
-    chatDefaults: mergeChatDefaults(current.chatDefaults, persisted.chatDefaults),
-    flags: { ...current.flags, ...(persisted.flags ?? {}) },
-    debug: { ...current.debug, ...(persisted.debug ?? {}) },
-    tutor: { ...current.tutor, ...(persisted.tutor ?? {}) },
-    plan: { ...current.plan, ...(persisted.plan ?? {}) },
-  };
-};
+function persistFragments(): PersistFragment[] {
+  const fragments = [chatPersistFragment, modelPersistFragment, uiPersistFragment];
+  for (const appModule of ENABLED_MODULES) {
+    if (appModule.persistFragment) fragments.push(appModule.persistFragment);
+  }
+  return fragments;
+}
+
+export function buildPersistedState(state: StoreState): PersistedStoreState {
+  let persisted: Record<string, unknown> = {};
+  for (const fragment of persistFragments()) {
+    persisted = { ...persisted, ...fragment.partialize(state) };
+  }
+  return persisted as PersistedStoreState;
+}
 
 export function mergePersistedState<T extends StoreDataState>(
   currentState: T,
   persisted?: PersistedStoreState,
 ): T {
   if (!persisted) return currentState;
-  return {
-    ...currentState,
-    ...persisted,
-    ui: mergePersistedUiState(currentState.ui, persisted.ui),
-  };
-}
-
-export function buildPersistedState(state: StoreState): PersistedStoreState {
-  return {
-    selectedChatId: state.selectedChatId,
-    favoriteModelIds: state.favoriteModelIds,
-    hiddenModelIds: state.hiddenModelIds,
-    zdrModelIds: state.zdrModelIds,
-    zdrProviderIds: state.zdrProviderIds,
-    zdrFetchedAt: state.zdrFetchedAt,
-    ui: {
-      showSettings: state.ui.showSettings,
-      sidebarCollapsed: state.ui.sidebarCollapsed,
-      zdrOnly: state.ui.zdrOnly,
-      messageTimestamps: state.ui.messageTimestamps,
-      dynamicDefaultResolutions: state.ui.dynamicDefaultResolutions,
-      chatDefaults: state.ui.chatDefaults,
-      flags: {
-        experimentalTutor: state.ui.flags.experimentalTutor,
-      },
-      debug: { mode: state.ui.debug.mode },
-      tutor: {
-        contextMode: state.ui.tutor?.contextMode,
-        defaultModelId: state.ui.tutor?.defaultModelId,
-        forceMode: state.ui.tutor?.forceMode,
-        autoScroll: state.ui.tutor?.autoScroll,
-      },
-      plan: {
-        rightPanelOpen: state.ui.plan?.rightPanelOpen,
-      },
-    },
-  };
+  const raw = persisted as unknown as Record<string, unknown>;
+  // Scalars land by key. A fragment with a merge() owns a nested shape, and must
+  // see the untouched current state — the blind spread above has already replaced
+  // its key with the partial persisted value.
+  let next = { ...currentState, ...persisted } as T;
+  for (const fragment of persistFragments()) {
+    if (!fragment.merge) continue;
+    next = { ...next, ...fragment.merge(currentState as unknown as StoreState, raw) };
+  }
+  return next;
 }

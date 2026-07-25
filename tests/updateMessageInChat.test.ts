@@ -4,70 +4,12 @@ import type { StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { buildMessageIndex } from '@/lib/messages/indexing';
-
-const noop = () => undefined;
-const noopAsync = async () => undefined;
+import { createTestStoreState } from './helpers/createTestStoreState';
 
 const baseState = (messages: Record<string, Message[]>): StoreState => {
+  const { state } = createTestStoreState();
   const { messagesById, messageIdsByChatId } = buildMessageIndex(messages);
-  return {
-    chats: [],
-    folders: [],
-    messagesById,
-    messageIdsByChatId,
-    loadedMessageChatIds: {},
-    nonEmptyChatIds: {},
-    models: [],
-    modelIndex: {
-      all: [],
-      byId: new Map(),
-      get: () => undefined,
-      caps: () => ({ canReason: false, canSee: false, canAudio: false, canImageOut: false }),
-      label: () => '',
-    },
-    favoriteModelIds: [],
-    hiddenModelIds: [],
-    ui: {} as StoreState['ui'],
-    initializeApp: noopAsync,
-    newChat: noopAsync,
-    selectChat: noop,
-    ensureChatMessagesLoaded: noopAsync,
-    ensureAllChatMessagesLoaded: noopAsync,
-    renameChat: noopAsync,
-    deleteChat: noopAsync,
-    clearChatMessages: noop,
-    updateChatSettings: noopAsync,
-    moveChatToFolder: noopAsync,
-    createFolder: noopAsync,
-    renameFolder: noopAsync,
-    deleteFolder: noopAsync,
-    toggleFolderExpanded: noopAsync,
-    setUI: noop,
-    setNotice: noop,
-    setSearchStatus: noop,
-    logTutorResult: noopAsync,
-    loadTutorProfileIntoUI: noopAsync,
-    primeTutorWelcomePreview: async () => undefined,
-    prepareTutorWelcomeMessage: async () => undefined,
-    applyLearnerModelFeedbackFromUser: noopAsync,
-    patchTutorEntry: noopAsync,
-    setTutorAttemptMcq: noop,
-    setTutorPlanProposalStatus: noop,
-    loadModels: noopAsync,
-    toggleFavoriteModel: noop,
-    hideModel: noop,
-    unhideModel: noop,
-    resetHiddenModels: noop,
-    removeModelFromDropdown: noop,
-    sendUserMessage: noopAsync,
-    branchChatFromMessage: noopAsync,
-    stopStreaming: noop,
-    regenerateAssistantMessage: noopAsync,
-    editUserMessage: noopAsync,
-    editAssistantMessage: noopAsync,
-    appendAssistantMessage: noopAsync,
-    persistTutorStateForMessage: noopAsync,
-  } as StoreState;
+  return { ...state, messagesById, messageIdsByChatId };
 };
 
 const createMessage = (overrides: Partial<Message> = {}): Message => ({

@@ -1,90 +1,28 @@
-import type {
-  StoreGetter,
-  StoreSetter,
-  StoreActions,
-  StoreDataState,
-  StoreState,
-} from '@/lib/store/types';
-import { createModelIndex } from '@/lib/models';
-import { buildDefaultUIState } from '@/lib/ui/defaults';
+import { createStore } from 'zustand/vanilla';
+import type { StateCreator } from 'zustand';
+import { buildStoreInitializer } from '@/lib/store/createStore';
+import type { StoreGetter, StoreSetter, StoreState } from '@/lib/store/types';
 import { resolveNotice } from '@/lib/store/notices';
 
 type StoreStateOverrides = Omit<Partial<StoreState>, 'ui'> & {
   ui?: Partial<StoreState['ui']>;
 };
 
+/**
+ * Builds a store from the real slices, so a new field or action needs no edit here.
+ * The returned `state` is a mutable plain object (not the zustand store) because the
+ * units under test take `{ set, get }` and assert against the object directly.
+ */
 export function createTestStoreState(overrides: StoreStateOverrides = {}) {
-  const noop = (..._args: unknown[]) => {};
-  const noopAsync = async (..._args: unknown[]) => {};
-  const noopAsyncOptionalString = async (..._args: unknown[]) => undefined;
+  const initializer = buildStoreInitializer() as unknown as StateCreator<StoreState>;
+  const store = createStore<StoreState>(initializer);
 
-  const baseData: StoreDataState = {
-    chats: [],
-    folders: [],
-    messagesById: {},
-    messageIdsByChatId: {},
-    selectedChatId: undefined,
-    loadedMessageChatIds: {},
-    nonEmptyChatIds: {},
-    models: [],
-    modelIndex: createModelIndex([]),
-    favoriteModelIds: [],
-    hiddenModelIds: [],
-    ui: buildDefaultUIState(),
-  };
-
-  const baseActions: StoreActions = {
-    initializeApp: noopAsync,
-    newChat: noopAsync,
-    selectChat: noop,
-    ensureChatMessagesLoaded: noopAsync,
-    ensureAllChatMessagesLoaded: noopAsync,
-    renameChat: noopAsync,
-    deleteChat: noopAsync,
-    clearChatMessages: noop,
-    updateChatSettings: noopAsync,
-    moveChatToFolder: noopAsync,
-    createFolder: noopAsync,
-    renameFolder: noopAsync,
-    deleteFolder: noopAsync,
-    toggleFolderExpanded: noopAsync,
-    setUI: noop,
-    setNotice: noop,
-    setSearchStatus: noop,
-    logTutorResult: noopAsync,
-    loadTutorProfileIntoUI: noopAsync,
-    primeTutorWelcomePreview: noopAsyncOptionalString,
-    prepareTutorWelcomeMessage: noopAsyncOptionalString,
-    applyLearnerModelFeedbackFromUser: noopAsync,
-    patchTutorEntry: noopAsync,
-    setTutorAttemptMcq: noop,
-    setTutorPlanProposalStatus: noop,
-    loadModels: noopAsync,
-    toggleFavoriteModel: noop,
-    hideModel: noop,
-    unhideModel: noop,
-    resetHiddenModels: noop,
-    removeModelFromDropdown: noop,
-    sendUserMessage: noopAsync,
-    branchChatFromMessage: noopAsync,
-    stopStreaming: noop,
-    regenerateAssistantMessage: noopAsync,
-    editUserMessage: noopAsync,
-    editAssistantMessage: noopAsync,
-    appendAssistantMessage: noopAsync,
-    persistTutorStateForMessage: noopAsync,
-  };
-
-  const base: StoreState = {
-    ...baseData,
-    ...baseActions,
-  };
-
+  const initial = store.getState();
   const state: StoreState = {
-    ...base,
+    ...initial,
     ...overrides,
     ui: {
-      ...base.ui,
+      ...initial.ui,
       ...(overrides.ui || {}),
     },
   };

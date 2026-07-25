@@ -6,9 +6,9 @@ import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { bootstrapApp } from '@/lib/services/bootstrap';
 import { settingsEqual } from '@/lib/settings/equality';
 import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
-import type { StoreSetter, StoreState } from '@/lib/store/types';
+import type { PersistFragment, StoreSetter, StoreState } from '@/lib/store/types';
 import type * as TurnService from '@/lib/services/turns';
-import type { Chat, ChatSettingsPatch } from '@/lib/types';
+import type { Chat, ChatSettingsPatch, Folder } from '@/lib/types';
 import { getClientTier } from '@/lib/auth/tier.client';
 import {
   appendMessagesToChat,
@@ -27,7 +27,43 @@ function primeTutorWelcome(...args: Parameters<typeof TurnService.primeTutorWelc
     .catch(() => undefined);
 }
 
-export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
+export type ChatSliceState = {
+  chats: Chat[];
+  folders: Folder[];
+  selectedChatId?: string;
+  // Lazy hydration bookkeeping (ephemeral): chats whose messages are in
+  // memory, and chats known to have persisted messages not yet loaded.
+  loadedMessageChatIds: Record<string, true>;
+  nonEmptyChatIds: Record<string, true>;
+};
+
+export type ChatSliceActions = {
+  initializeApp: () => Promise<void>;
+  newChat: () => Promise<void>;
+  selectChat: (id: string) => void;
+  ensureChatMessagesLoaded: (chatId: string) => Promise<void>;
+  ensureAllChatMessagesLoaded: () => Promise<void>;
+  renameChat: (id: string, title: string) => Promise<void>;
+  deleteChat: (id: string) => Promise<void>;
+  clearChatMessages: (chatId?: string) => void;
+  branchChatFromMessage: (messageId: string) => Promise<void>;
+  updateChatSettings: (partial: ChatSettingsPatch) => Promise<void>;
+  moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
+  createFolder: (name: string, parentId?: string) => Promise<void>;
+  renameFolder: (id: string, name: string) => Promise<void>;
+  deleteFolder: (id: string) => Promise<void>;
+  toggleFolderExpanded: (id: string) => Promise<void>;
+};
+
+export const chatPersistFragment: PersistFragment = {
+  partialize: (state) => ({ selectedChatId: state.selectedChatId }),
+};
+
+export function createChatSlice(
+  set: StoreSetter,
+  get: () => StoreState,
+  _store?: unknown,
+): ChatSliceState & ChatSliceActions {
   const inflightMessageLoads = new Map<string, Promise<void>>();
 
   const findLatestEmptyDraft = (state: StoreState): Chat | undefined => {
@@ -51,6 +87,12 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       : { loadedMessageChatIds: { ...(state.loadedMessageChatIds ?? {}), [chatId]: true } };
 
   return {
+    chats: [],
+    folders: [],
+    selectedChatId: undefined,
+    loadedMessageChatIds: {},
+    nonEmptyChatIds: {},
+
     async initializeApp() {
       await bootstrapApp(set, get);
     },
