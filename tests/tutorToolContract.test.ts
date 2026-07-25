@@ -1,6 +1,6 @@
-import { test } from 'node:test';
+import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import '@/lib/tools';
+import { loadModuleRuntimes } from '@/lib/modules';
 import {
   TUTOR_TOOL_NAMES,
   getTutorToolDefinitions,
@@ -8,6 +8,10 @@ import {
   getTutorToolsByTag,
   isTutorToolName,
 } from '@/modules/tutor/tools/register';
+
+before(async () => {
+  await loadModuleRuntimes();
+});
 
 test('tutor tool registry exposes one definition for every tutor tool name', () => {
   const definitions = getTutorToolDefinitions();

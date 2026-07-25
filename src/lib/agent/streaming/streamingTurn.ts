@@ -22,6 +22,7 @@ import { formatSourcesBlock } from '@/lib/search';
 import { combineSystem } from '@/lib/agent/system';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { MAX_PLANNING_ROUNDS, shouldAppendSources } from '@/lib/agent/policy';
+import { loadModuleRuntimes } from '@/lib/modules';
 import { derivePlanningContext } from '@/lib/agent/planning/context';
 import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
 import { applyToolExecutions } from '@/lib/agent/planning/apply';
@@ -214,6 +215,7 @@ export async function executeStreamingTurn(
     onPlanSideEffects,
     shouldShortCircuit,
   } = opts;
+  await loadModuleRuntimes();
   const { set, get, modelIndex, persistMessage } = turn;
   const storeState = get?.();
   const messagesForChat = storeState ? getMessagesForChat(storeState, chatId) : [];

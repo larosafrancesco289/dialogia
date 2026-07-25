@@ -7,7 +7,7 @@ import { composePlugins } from '@/lib/agent/request';
 import { getSearchToolDefinition } from '@/lib/search';
 import { type ComposeTurnArgs, type TurnComposition, type ToolDefinition } from '@/lib/agent/types';
 import { combineSystem } from '@/lib/agent/system';
-import { ENABLED_MODULES } from '@/lib/modules';
+import { loadModuleRuntimes } from '@/lib/modules';
 import type { Message } from '@/lib/types';
 import { buildSearchDateNotice, buildToolPreamble } from '@/lib/agent/prompts/toolPreamble';
 import { buildTimestampNotice } from '@/lib/agent/prompts/timestamps';
@@ -54,8 +54,8 @@ export async function composeTurn({
   const moduleTools: ToolDefinition[] = [];
   let modulesRequirePlanning = false;
   let modulesReplaceBaseSystem = false;
-  for (const appModule of ENABLED_MODULES) {
-    const contribution = await appModule.compose?.({
+  for (const runtime of await loadModuleRuntimes()) {
+    const contribution = await runtime.compose?.({
       chat,
       ui,
       settings,

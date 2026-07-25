@@ -2,6 +2,11 @@
 // Responsibility: The single list of enabled feature modules and the only place core
 // is allowed to reach into one. Removing a module means deleting its directory and
 // its entry here.
+//
+// A module is split in two: the boot half (`storeSlice`, `persistFragment`) and the
+// turn half (`load()`). Only the boot half may be imported statically — the turn
+// half loads with the turn pipeline, which is what keeps it out of the first-load
+// bundle. Do not turn `load` into a static import.
 
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import type { ToolDefinition } from '@/lib/transport/contracts';
@@ -9,13 +14,7 @@ import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
 import type { ToolGate } from '@/lib/agent/planning/types';
 import type { PersistFragment, StoreGetter, StoreSetter } from '@/lib/store/stateTypes';
 import type { Chat, LearningPlan, Message } from '@/lib/types';
-import { registerCoreTools } from '@/lib/tools/core/searchTools';
 import { createTutorSlice } from '@/modules/tutor/store/tutorSlice';
-import { buildTutorComposeContribution } from '@/modules/tutor/agent/compose';
-import {
-  buildTutorPlanningContribution,
-  registerTutorTools,
-} from '@/modules/tutor/tools/moduleEntry';
 
 export type ModulePlanningArgs = {
   chat: Chat;
@@ -47,48 +46,70 @@ export type ModuleComposeContribution = {
   replacesBaseSystem?: boolean;
 };
 
-export type AppModule = {
-  id: string;
+/** A module's turn-time half. Loaded on demand, never at boot. */
+export type ModuleRuntime = {
   registerTools?(): void;
   /** Contributes tools and system preambles to a turn's request payload. */
   compose?(args: ModuleComposeArgs): Promise<ModuleComposeContribution | undefined>;
   /** Contributes gating and per-turn context when the module is active for this turn. */
   planning?(args: ModulePlanningArgs): ModulePlanningContribution | undefined;
-  /** Contributes state and actions to the composed store. */
+};
+
+export type AppModule = {
+  id: string;
+  /** Contributes state and actions to the composed store. Boot half. */
   storeSlice?(
     set: StoreSetter,
     get: StoreGetter,
     store?: unknown,
   ): Record<string, unknown> | undefined;
-  /** Contributes the module's own slice of the persisted blob. */
+  /** Contributes the module's own slice of the persisted blob. Boot half. */
   persistFragment?: PersistFragment;
+  /** Loads the turn half. Must stay a dynamic import. */
+  load?(): Promise<ModuleRuntime>;
 };
 
 const coreModule: AppModule = {
   id: 'core',
-  registerTools: registerCoreTools,
+  load: async () => {
+    const { registerCoreTools } = await import('@/lib/tools/core/searchTools');
+    return { registerTools: registerCoreTools };
+  },
 };
 
 const tutorModule: AppModule = {
   id: 'tutor',
-  registerTools: registerTutorTools,
-  compose: buildTutorComposeContribution,
-  planning: buildTutorPlanningContribution,
   storeSlice: (set, get, store) => createTutorSlice(set, get, store),
+  load: async () => (await import('@/modules/tutor/moduleEntry')).tutorRuntime,
 };
 
 export const ENABLED_MODULES: AppModule[] = [coreModule, tutorModule];
 
-let registered = false;
+let loading: Promise<ModuleRuntime[]> | undefined;
+let loaded: ModuleRuntime[] = [];
 
 /**
- * Registers every enabled module's tools. Idempotent; `@/lib/tools` calls it, so
- * anything importing that barrel sees a populated registry.
+ * Loads every enabled module's turn half and registers its tools. Idempotent.
+ * Called at the start of a turn (from `composeTurn`), so by the time anything
+ * reads the tool registry or the planning gate, this has resolved.
  */
-export function registerEnabledModules(modules: AppModule[] = ENABLED_MODULES): void {
-  if (modules === ENABLED_MODULES) {
-    if (registered) return;
-    registered = true;
+export function loadModuleRuntimes(): Promise<ModuleRuntime[]> {
+  if (!loading) {
+    loading = Promise.all(
+      ENABLED_MODULES.map((m): Promise<ModuleRuntime> => m.load?.() ?? Promise.resolve({})),
+    ).then((runtimes) => {
+      for (const runtime of runtimes) runtime.registerTools?.();
+      loaded = runtimes;
+      return runtimes;
+    });
   }
-  for (const appModule of modules) appModule.registerTools?.();
+  return loading;
+}
+
+/**
+ * The runtimes loaded so far, for the synchronous call sites inside a turn.
+ * Empty until `loadModuleRuntimes()` has resolved.
+ */
+export function loadedModuleRuntimes(): ModuleRuntime[] {
+  return loaded;
 }

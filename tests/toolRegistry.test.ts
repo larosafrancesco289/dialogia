@@ -1,5 +1,6 @@
-import { test } from 'node:test';
+import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { loadModuleRuntimes } from '@/lib/modules';
 import {
   getTool,
   getToolKind,
@@ -14,12 +15,16 @@ import {
 } from '@/lib/tools';
 import type { ToolDefinition } from '@/lib/transport/contracts';
 
+before(async () => {
+  await loadModuleRuntimes();
+});
+
 const definition = (name: string): ToolDefinition => ({
   type: 'function',
   function: { name, description: name, parameters: { type: 'object', properties: {} } },
 });
 
-test('enabled modules register their tools by the time the barrel is imported', () => {
+test("loadModuleRuntimes registers every enabled module's tools", () => {
   assert.ok(isRegisteredTool('web_search'));
   assert.ok(isRegisteredTool('web_fetch'));
   assert.ok(isRegisteredTool('quiz'));

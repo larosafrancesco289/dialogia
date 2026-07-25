@@ -13,6 +13,7 @@ import type {
   PlanTurnOutput,
   PlanTurnSideEffect,
 } from '@/lib/agent/types';
+import { loadModuleRuntimes } from '@/lib/modules';
 import { derivePlanningContext } from '@/lib/agent/planning/context';
 import { applyToolExecutions } from '@/lib/agent/planning/apply';
 import { runPlanningRound } from '@/lib/agent/planning/round';
@@ -52,6 +53,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
     settings,
     pipeline,
   } = opts;
+  await loadModuleRuntimes();
   const { set, get, persistMessage } = turn;
   const storeState = get?.();
   const messagesForChat = storeState ? getMessagesForChat(storeState, chatId) : [];

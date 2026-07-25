@@ -1,9 +1,13 @@
-import { test } from 'node:test';
+import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import '@/lib/tools';
+import { loadModuleRuntimes } from '@/lib/modules';
 import { schedulePlanningToolCalls } from '@/lib/agent/tools/scheduler';
 import { buildTutorContentPriority } from '@/modules/tutor/tools/contentPriority';
 import type { ToolCall } from '@/lib/agent/types';
+
+before(async () => {
+  await loadModuleRuntimes();
+});
 
 const buildCall = (name: string, args = '{}', id = `${name}-1`): ToolCall => ({
   id,
