@@ -85,7 +85,6 @@ export function resolveNewChatSettings(opts: {
 
   const settings: ChatSettings = {
     modelId: baseModel,
-    parallelModels: [],
     system,
     generation: {
       maxTokens,

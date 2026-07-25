@@ -164,7 +164,7 @@ export function useModelPickerController(): ModelPickerController {
     const final = deduped.length ? deduped : [tierDefaultModelId];
     const primary = final[0];
     if (chat) {
-      updateChatSettings({ modelId: primary, parallelModels: [] });
+      updateChatSettings({ modelId: primary });
     } else {
       setUI({ overrides: { modelId: primary } });
     }

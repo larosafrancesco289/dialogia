@@ -118,11 +118,7 @@ export function AssistantMessage({
 }: AssistantMessageProps) {
   const normalizeSummaryText = (value: string) => value.trim().replace(/\s+/g, ' ');
 
-  const displayContent = useMemo(() => {
-    if (message.content) return message.content;
-    if (message.deepResearch?.answer) return message.deepResearch.answer;
-    return '';
-  }, [message.content, message.deepResearch?.answer]);
+  const displayContent = message.content;
   const resolvedCitationSources = useMemo(() => {
     if (citationSources?.length) return citationSources;
     const fromAnnotations = annotationSources(message.annotations);

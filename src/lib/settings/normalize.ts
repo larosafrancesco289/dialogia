@@ -3,11 +3,10 @@ import type { UiSnapshot } from '@/lib/contracts/ui';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { migrateChatSettingsRecord } from '@/lib/settings/migrations';
-import { normalizeParallelModels } from '@/lib/models/normalization';
 import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 import { applyTutorDefaults } from '@/lib/tutor/defaults';
 import { ChatSettingsSchema } from '@/lib/schemas/persisted';
-import { asNumber, asStringArray, isRecord } from '@/lib/utils/guards';
+import { asNumber, isRecord } from '@/lib/utils/guards';
 import { ReasoningEffortEnum, type ReasoningEffort } from '@/lib/types/enums';
 import { ProviderSort } from '@/lib/models/providerSort';
 
@@ -45,7 +44,6 @@ export function normalizeChatSettings(
   const modelId =
     typeof record.modelId === 'string' && record.modelId.trim() ? record.modelId : fallbackModelId;
   const system = typeof record.system === 'string' ? record.system : fallbackSystem;
-  const parallelModels = normalizeParallelModels(modelId, asStringArray(record.parallelModels));
 
   const generationRecord = isRecord(record.generation) ? record.generation : {};
   const uiRecord = isRecord(record.ui) ? record.ui : {};
@@ -55,7 +53,6 @@ export function normalizeChatSettings(
 
   const settings: ChatSettings = {
     modelId,
-    parallelModels,
     system,
     generation: {
       temperature: asNumber(generationRecord.temperature),
@@ -134,7 +131,7 @@ export function normalizeChatSettings(
       chat: { settings: base },
       fallbackDefaultModelId: fallbackTutorModelId,
     }).nextSettings;
-    return { ...ensured, parallelModels: [] };
+    return ensured;
   }
 
   if (base.features.tutor.enabled && !base.features.tutor.defaultModelId) {

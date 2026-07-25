@@ -462,7 +462,6 @@ test('settingsEqual distinguishes meaningful field changes', () => {
       search: { enabled: false, provider: 'openrouter' },
       tutor: { enabled: false },
     },
-    parallelModels: ['a', 'b'],
   };
 
   assert.equal(settingsEqual(base, { ...base }), true);
@@ -471,16 +470,7 @@ test('settingsEqual distinguishes meaningful field changes', () => {
     false,
     'temperature change detected',
   );
-  assert.equal(
-    settingsEqual(base, { ...base, parallelModels: ['a', 'b'] }),
-    true,
-    'identical parallel models',
-  );
-  assert.equal(
-    settingsEqual(base, { ...base, parallelModels: ['b', 'a'] }),
-    false,
-    'parallel model order matters',
-  );
+  assert.equal(settingsEqual(base, { ...base, system: 'B' }), false, 'system change detected');
   assert.equal(
     settingsEqual(base, {
       ...base,

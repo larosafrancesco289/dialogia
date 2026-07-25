@@ -1,5 +1,5 @@
 import type { ReasoningEffort, SearchProvider } from '@/lib/types/enums';
-import { asNumber, asStringArray, isRecord } from '@/lib/utils/guards';
+import { asNumber, isRecord } from '@/lib/utils/guards';
 import { ReasoningEffortEnum, SearchProviderEnum } from '@/lib/types/enums';
 
 type UnknownRecord = Record<string, unknown>;
@@ -95,8 +95,6 @@ export function migrateChatSettingsRecord(input: unknown): MigrationResult<unkno
   const modelId =
     readString(settings.modelId) ?? readString(settings.model) ?? readString(settings.model_id);
   const system = readString(settings.system);
-  const parallelModels =
-    asStringArray(settings.parallelModels) ?? asStringArray(settings.parallel_models);
 
   const temperature = asNumber(generation?.temperature) ?? asNumber(settings.temperature);
   const topP =
@@ -233,7 +231,6 @@ export function migrateChatSettingsRecord(input: unknown): MigrationResult<unkno
 
   if (modelId !== undefined) next.modelId = modelId;
   if (system !== undefined) next.system = system;
-  if (parallelModels !== undefined) next.parallelModels = parallelModels;
 
   const changed = JSON.stringify(settings) !== JSON.stringify(next);
   return { next, changed };

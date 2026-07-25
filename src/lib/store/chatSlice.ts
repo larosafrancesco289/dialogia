@@ -1,5 +1,4 @@
 import { ChatService } from '@/lib/services/chatService';
-import { normalizeParallelModels } from '@/lib/models/normalization';
 import { applyTutorDefaults } from '@/lib/store/normalize';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { repository } from '@/lib/db';
@@ -312,16 +311,6 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         };
       }
 
-      if (Array.isArray(nextSettings.parallelModels)) {
-        nextSettings = {
-          ...nextSettings,
-          parallelModels: normalizeParallelModels(
-            nextSettings.modelId,
-            nextSettings.parallelModels,
-          ),
-        };
-      }
-
       if (forceTutorMode || nextSettings.features.tutor.enabled) {
         const ensured = applyTutorDefaults({
           ui: uiState,
@@ -337,7 +326,6 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
               enabled: true,
             },
           },
-          parallelModels: [],
         };
       }
 

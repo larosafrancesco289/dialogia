@@ -9,12 +9,7 @@ import {
   ToolCallStatusEnum,
 } from '@/lib/types/enums';
 import { LearningPlanSchema } from '@/lib/schemas/learningPlan';
-import type {
-  LearnerModel,
-  MessageLegacyResearch,
-  MessageMetrics,
-  MessageTutor,
-} from '@/lib/types';
+import type { LearnerModel, MessageMetrics, MessageTutor } from '@/lib/types';
 import type { Usage } from '@/lib/api/normalizers';
 
 export const GenerationSettingsSchema = z
@@ -77,7 +72,6 @@ export const TutorSettingsSchema = z
 export const ChatSettingsSchema = z
   .object({
     modelId: z.string(),
-    parallelModels: z.array(z.string()).optional(),
     system: z.string().optional(),
     generation: GenerationSettingsSchema,
     ui: ChatUiSettingsSchema,
@@ -148,14 +142,6 @@ export const MessageSchema = z
     tokensOut: z.number().optional(),
     model: z.string().optional(),
     reasoning: z.string().optional(),
-    deepResearch: (
-      z
-        .object({
-          trace: z.array(z.unknown()),
-          answer: z.string().optional(),
-        })
-        .passthrough() as z.ZodType<MessageLegacyResearch>
-    ).optional(),
     metrics: z.custom<MessageMetrics>().optional(),
     usage: z.custom<Usage>().optional(),
     attachments: z.array(PersistedAttachmentSchema).optional(),
