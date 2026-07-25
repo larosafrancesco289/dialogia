@@ -15,6 +15,7 @@ const loadLearnerModelFeedback = () => import('@/modules/tutor/services/learnerM
 type McqAttempts = NonNullable<MessageTutor['attempts']>['mcq'];
 
 export type TutorStoreActions = {
+  persistTutorStateForMessage: (messageId: string) => Promise<void>;
   logTutorResult: (evt: TutorEvent) => Promise<void>;
   loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
   primeTutorWelcomePreview: () => Promise<string | undefined>;
@@ -36,6 +37,10 @@ export type TutorStoreActions = {
     status: 'pending' | 'approved' | 'declined',
   ) => void;
 };
+
+declare module '@/lib/store/stateTypes' {
+  interface ModuleStoreActions extends TutorStoreActions {}
+}
 
 export function createTutorSlice(
   set: StoreSetter,
@@ -61,6 +66,13 @@ export function createTutorSlice(
   };
 
   return {
+    async persistTutorStateForMessage(messageId: string) {
+      const { persistTutorForMessage } = await import(
+        '@/modules/tutor/services/persistMessagePayload'
+      );
+      await persistTutorForMessage({ messageId, store: { set, get }, repository });
+    },
+
     async logTutorResult(evt: TutorEvent) {
       const chatId = get().selectedChatId!;
       if (!chatId) return;

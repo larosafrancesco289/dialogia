@@ -3,7 +3,7 @@
 
 import type { RepositorySnapshot } from '@/lib/db/repository';
 import type { Message, MessageTutor } from '@/lib/types';
-import { ensureHiddenTutorContent } from '@/lib/services/messagePersistence';
+import { decorateMessage } from '@/lib/messages/decorate';
 
 export type HydratedRepositorySnapshot = Omit<RepositorySnapshot, 'messages'> & {
   messagesById: Record<string, Message>;
@@ -25,7 +25,7 @@ export const hydrateMessageList = (list: Message[]): HydratedMessageList => {
     if (nextMessage.role === 'assistant' && nextMessage.tutor) {
       tutorByMessageId[nextMessage.id] = nextMessage.tutor;
     }
-    messages.push(ensureHiddenTutorContent(nextMessage));
+    messages.push(decorateMessage(nextMessage));
   }
   return { messages, tutorByMessageId };
 };

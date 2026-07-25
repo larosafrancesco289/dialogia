@@ -2,11 +2,10 @@
 // Responsibility: Orchestrate chat turn lifecycle (send, regenerate, tutor persistence)
 // while keeping the Zustand message slice focused on state updates.
 
-import type { DraftAttachment, Chat, Message, MessageTutor } from '@/lib/types';
+import type { DraftAttachment, Chat, Message } from '@/lib/types';
 import type { StoreAccess, StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
 import type { Repository } from '@/lib/db/repository';
-import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { attachTutorUiState, ensureTutorDefaults } from '@/modules/tutor/agent/tutorFlow';
+import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
 import { regenerate } from '@/lib/agent/regenerate';
 import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
 import { clearTurnController, setTurnController } from '@/lib/turns/runtime';
@@ -16,21 +15,12 @@ import { executeModelTurn } from '@/lib/services/turns/executor';
 import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { resolveSingleModelAuth } from '@/lib/services/auth';
 import { enforceZdrGate, isTutorRuntimeEnabled } from '@/lib/policy/runtime';
-import { selectTutorEntry } from '@/modules/tutor/ui/tutorSelectors';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
-import {
-  createMessagePersister,
-  ensureHiddenTutorContent,
-} from '@/lib/services/messagePersistence';
-import { scheduleTutorPersistence } from '@/modules/tutor/services/tutorPersistence';
+import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { triggerAsyncTitleGeneration } from '@/lib/services/titleGenerator';
 import { getClientTier } from '@/lib/auth/tier.client';
-import {
-  appendMessagesToChat,
-  getMessagesForChat,
-  setMessagesForChat,
-} from '@/lib/messages/indexing';
+import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 
 export type SendTurnOptions = {
   content: string;
@@ -82,36 +72,6 @@ export async function appendAssistantTurn({
   set((state) => appendMessagesToChat(state, chatId, [assistantMsg]));
   const persistMessage = createMessagePersister(repository);
   await persistMessage(assistantMsg);
-}
-
-export type PersistTutorArgs = {
-  messageId: string;
-  store: StoreAccess;
-  repository: Repository;
-};
-
-export async function persistTutorForMessage({ messageId, store, repository }: PersistTutorArgs) {
-  const { get, set } = store;
-  const state = get();
-  const uiTutor = selectTutorEntry(state.ui, messageId);
-  if (!uiTutor) return;
-  const target = state.messagesById[messageId];
-  if (!target) return;
-  const merged: MessageTutor = { ...(target.tutor || {}), ...(uiTutor || {}) };
-  const nextMessage = ensureHiddenTutorContent({
-    ...target,
-    tutor: merged,
-  }) as Message;
-  set((draft) => ({
-    messagesById: {
-      ...draft.messagesById,
-      [messageId]: nextMessage,
-    },
-  }));
-  const updatedMsg = nextMessage;
-  if (updatedMsg) {
-    scheduleTutorPersistence({ message: updatedMsg, repository });
-  }
 }
 
 export async function sendUserTurn({
@@ -231,13 +191,9 @@ export async function regenerateTurn({
   const tutorEnabled = isTutorRuntimeEnabled(uiState, chat);
 
   if (tutorEnabled) {
-    const ensured = ensureTutorDefaults({
-      ui: uiState,
-      chat,
-      fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-    });
+    const ensured = applyModuleSettingsDefaults({ chat, ui: uiState });
     overrideModelId =
-      ensured.defaultModelId ||
+      ensured.preferredModelId ||
       uiState.tutor?.defaultModelId ||
       chat.settings.features.tutor?.defaultModelId ||
       overrideModelId;
@@ -298,34 +254,4 @@ export async function regenerateTurn({
     handleTurnApiError(error, set, get, chatId);
     clearTurnController(chatId, controller);
   }
-}
-
-export type AttachTutorUiArgs = {
-  messageId: string;
-  patch: Partial<MessageTutor>;
-  store: StoreAccess;
-};
-
-export function attachTutorState({ messageId, patch, store }: AttachTutorUiArgs) {
-  const { set, get } = store;
-  const snapshot = get();
-  const { ui, selectedChatId } = snapshot;
-  if (!selectedChatId) return undefined;
-  const { nextUi, nextMessages, updatedMessage } = attachTutorUiState({
-    currentUi: ui.tutor?.byMessageId,
-    currentMessages: getMessagesForChat(snapshot, selectedChatId),
-    messageId,
-    patch,
-  });
-  set((state) => ({
-    ...setMessagesForChat(state, selectedChatId, nextMessages),
-    ui: {
-      ...state.ui,
-      tutor: {
-        ...(state.ui.tutor ?? {}),
-        byMessageId: nextUi,
-      },
-    },
-  }));
-  return updatedMessage;
 }

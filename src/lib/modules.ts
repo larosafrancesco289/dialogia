@@ -13,8 +13,11 @@ import type { ToolDefinition } from '@/lib/transport/contracts';
 import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
 import type { ToolGate } from '@/lib/agent/planning/types';
 import type { PersistFragment, StoreGetter, StoreSetter } from '@/lib/store/stateTypes';
+import type { ModuleSettingsDefaults, ModuleSettingsPhase } from '@/lib/settings/moduleDefaults';
 import type { Chat, LearningPlan, Message } from '@/lib/types';
 import { createTutorSlice } from '@/modules/tutor/store/tutorSlice';
+import { decorateTutorMessage } from '@/modules/tutor/lib/hiddenContent';
+import { tutorSettingsDefaults } from '@/modules/tutor/lib/defaults';
 
 export type ModulePlanningArgs = {
   chat: Chat;
@@ -65,6 +68,14 @@ export type AppModule = {
   ): Record<string, unknown> | undefined;
   /** Contributes the module's own slice of the persisted blob. Boot half. */
   persistFragment?: PersistFragment;
+  /** Derives fields on a message before it is stored or hydrated. Boot half. */
+  decorateMessage?(message: Message): Message;
+  /** Fills in the module's own chat-settings block. Boot half. */
+  settingsDefaults?(args: {
+    chat: Pick<Chat, 'settings'>;
+    ui?: UiSnapshot;
+    phase: ModuleSettingsPhase;
+  }): ModuleSettingsDefaults | undefined;
   /** Loads the turn half. Must stay a dynamic import. */
   load?(): Promise<ModuleRuntime>;
 };
@@ -80,6 +91,8 @@ const coreModule: AppModule = {
 const tutorModule: AppModule = {
   id: 'tutor',
   storeSlice: (set, get, store) => createTutorSlice(set, get, store),
+  decorateMessage: decorateTutorMessage,
+  settingsDefaults: tutorSettingsDefaults,
   load: async () => (await import('@/modules/tutor/moduleEntry')).tutorRuntime,
 };
 

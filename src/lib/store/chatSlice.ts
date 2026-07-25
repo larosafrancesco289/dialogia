@@ -1,8 +1,7 @@
 import { ChatService } from '@/lib/services/chatService';
-import { applyTutorDefaults } from '@/lib/store/normalize';
+import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { repository } from '@/lib/db';
-import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { bootstrapApp } from '@/lib/services/bootstrap';
 import { settingsEqual } from '@/lib/settings/equality';
 import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
@@ -17,7 +16,7 @@ import {
   setMessagesForChat,
 } from '@/lib/messages/indexing';
 import { hydrateMessageList } from '@/lib/services/hydrate';
-import { mergeTutorMap } from '@/modules/tutor/ui/tutorSelectors';
+import { mergeTutorMap } from '@/lib/ui/tutorState';
 
 // Keeps the turn pipeline out of the boot bundle; welcome priming is user-triggered
 // and fire-and-forget, so the deferred load is invisible to callers.
@@ -291,7 +290,6 @@ export function createChatSlice(
       if (!before) return;
 
       const uiState = get().ui;
-      const forceTutorMode = !!(uiState.tutor?.forceMode ?? false);
       const fallbackUi = {
         showThinkingByDefault: false,
         showStats: false,
@@ -353,23 +351,12 @@ export function createChatSlice(
         };
       }
 
-      if (forceTutorMode || nextSettings.features.tutor?.enabled) {
-        const ensured = applyTutorDefaults({
-          ui: uiState,
-          chat: { settings: nextSettings },
-          fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-        });
-        nextSettings = {
-          ...ensured.nextSettings,
-          features: {
-            ...ensured.nextSettings.features,
-            tutor: {
-              ...ensured.nextSettings.features.tutor,
-              enabled: true,
-            },
-          },
-        };
-      }
+      const withModuleDefaults = applyModuleSettingsDefaults({
+        chat: { settings: nextSettings },
+        ui: uiState,
+        phase: 'write',
+      });
+      if (withModuleDefaults.changed) nextSettings = withModuleDefaults.nextSettings;
 
       const updatedChat = await ChatService.updateChat(
         before,

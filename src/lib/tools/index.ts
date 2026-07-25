@@ -29,4 +29,4 @@ export type {
   ToolExecutionArgs,
   ToolExecutionContext,
 } from '@/lib/tools/execution';
-export { extractTutorToolCalls, parseJsonAfter } from '@/lib/tools/json';
+export { extractInlineToolCalls, parseJsonAfter } from '@/lib/tools/json';

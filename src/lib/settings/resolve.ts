@@ -108,7 +108,7 @@ export function resolveNewChatSettings(opts: {
     fallbackSystem,
     fallbackTutorModelId: DEFAULT_TUTOR_MODEL_ID,
     ui,
-    applyTutorDefaults: true,
+    applyModuleDefaults: true,
   });
 }
 

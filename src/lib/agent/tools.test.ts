@@ -1,10 +1,16 @@
-import { test } from 'node:test';
+import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { detectPlanningToolCalls } from '@/lib/agent/tools';
 import { normalizeTutorQuizPayload } from '@/modules/tutor/tools/apply';
+import { loadModuleRuntimes } from '@/lib/modules';
 import { extractWebSearchArgs } from '@/lib/search';
 import { parseJsonAfter } from '@/lib/tools/json';
 import type { AssistantModelMessage, ToolCall, ToolDefinition } from '@/lib/agent/types';
+
+// Inline tool-call detection asks the registry which names to look for.
+before(async () => {
+  await loadModuleRuntimes();
+});
 
 test('extractWebSearchArgs finds inline JSON payloads', () => {
   const content = 'Let me call web_search with {"query":"latest news","count":3}.';

@@ -11,7 +11,7 @@ import {
   updateNodeStatus,
 } from '@/modules/tutor/learning-plan/service';
 import type { ToolDefinition } from '@/lib/transport/contracts';
-import type { HeadlessTutorSession } from '@/tooling/headless/session';
+import type { HeadlessTutorSession } from '@/modules/tutor/tooling/session';
 
 const STUDENT_TOOL_NAMES = [
   'adjust_mastery',

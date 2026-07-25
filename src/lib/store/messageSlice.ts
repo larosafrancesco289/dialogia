@@ -20,7 +20,6 @@ export type MessageSliceState = {
 
 export type MessageSliceActions = {
   appendAssistantMessage: (content: string, opts?: { modelId?: string }) => Promise<void>;
-  persistTutorStateForMessage: (messageId: string) => Promise<void>;
   sendUserMessage: (
     content: string,
     opts?: { attachments?: DraftAttachment[]; metadata?: Message['metadata'] },
@@ -54,11 +53,6 @@ export function createMessageSlice(
         get,
         repository,
       });
-    },
-
-    async persistTutorStateForMessage(messageId) {
-      const { persistTutorForMessage } = await loadTurnService();
-      await persistTutorForMessage({ messageId, store: { set, get }, repository });
     },
 
     async sendUserMessage(

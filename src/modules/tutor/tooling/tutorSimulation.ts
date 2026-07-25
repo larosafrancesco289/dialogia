@@ -1,10 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { createHeadlessRunner } from '@/tooling/headless/runner';
-import { LLMJudge, LLMUserSimulator } from '@/tooling/headless/simulators';
-import { renderSnapshotTranscript } from '@/tooling/headless/transcript';
-import type { HeadlessTurnSnapshot } from '@/tooling/headless/types';
+import { createHeadlessRunner } from '@/modules/tutor/tooling/runner';
+import { LLMJudge, LLMUserSimulator } from '@/modules/tutor/tooling/simulators';
+import { renderSnapshotTranscript } from '@/modules/tutor/tooling/transcript';
+import type { HeadlessTurnSnapshot } from '@/modules/tutor/tooling/types';
 import { createModelIndex } from '@/lib/models';
 import type { Chat, Message, ModelDescriptor, ModelTransport, ToolCallLogEntry } from '@/lib/types';
 import type { PlanTurnResult } from '@/lib/agent/types';
