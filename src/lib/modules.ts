@@ -12,6 +12,7 @@ import type { UiSnapshot } from '@/lib/contracts/ui';
 import type { ToolDefinition } from '@/lib/transport/contracts';
 import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
 import type { ToolGate } from '@/lib/agent/planning/types';
+import type { ModuleTurnEffects, TurnEffectsContext } from '@/lib/agent/orchestrator/turnEffects';
 import type { PersistFragment, StoreGetter, StoreSetter } from '@/lib/store/stateTypes';
 import type { ModuleSettingsDefaults, ModuleSettingsPhase } from '@/lib/settings/moduleDefaults';
 import type { Chat, LearningPlan, Message } from '@/lib/types';
@@ -51,6 +52,8 @@ export type ModuleComposeContribution = {
 
 /** A module's turn-time half. Loaded on demand, never at boot. */
 export type ModuleRuntime = {
+  /** Reacts to the turn's composition, plan result, and message. */
+  turnEffects?(context: TurnEffectsContext): ModuleTurnEffects | undefined;
   registerTools?(): void;
   /** Contributes tools and system preambles to a turn's request payload. */
   compose?(args: ModuleComposeArgs): Promise<ModuleComposeContribution | undefined>;
