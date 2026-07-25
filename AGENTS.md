@@ -22,7 +22,8 @@ TypeScript, Zustand, Tailwind v4, Dexie/IndexedDB. Bun is the package manager an
   not add `'use client'` to it; client logic belongs in HomeClient.
 - `src/components/` — PascalCase files, named exports. `src/lib/` — state, services, agent,
   transport. `styles/` — global CSS. Tests live in `tests/` or colocated as `*.test.ts`.
-- Path aliases: `@/components/*`, `@/lib/*`, `@/data/*` (see `tsconfig.json`). Always prefer them.
+- Path aliases: `@/components/*`, `@/lib/*`, `@/modules/*`, `@/data/*` (see `tsconfig.json`).
+  Always prefer them.
 - `camelCase` functions/variables, `SCREAMING_SNAKE_CASE` module-level constants.
 - Comments only for constraints the code cannot express; match the sparse existing density.
 
@@ -50,9 +51,9 @@ import (e.g., user-facing notice text lives in `src/lib/store/notices.ts`, not i
   `ensureAllChatMessagesLoaded` first. Export/import read the DB directly and are unaffected.
 - Zustand `persist` stores preferences only (see `buildPersistedState`); chat data lives in
   IndexedDB via the repository in `src/lib/db/repository.ts`.
-- **When you add a field to `StoreDataState` or an action to `StoreActions`, update all three
-  mirrors or types will fail:** `tests/helpers/createTestStoreState.ts`, the inline `baseState` in
-  `tests/updateMessageInChat.test.ts`, and `src/tooling/headless/store.ts`.
+- The store initializer is composed from the real slices by `buildStoreInitializer()`
+  (`src/lib/store/createStore.ts`); test helpers and the tutor headless store build from it, so
+  adding a field or action touches only its slice file — there are no mirrors to update.
 
 ## Streaming path
 

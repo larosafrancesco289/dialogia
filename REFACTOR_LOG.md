@@ -171,10 +171,15 @@ mirror explicitly. It does import the tutor module.
 
 ### The tutor-delete experiment passes
 
-Deleting `src/modules/tutor` plus its `ENABLED_MODULES` entry leaves the app source
-type-checking with **zero errors** and `bun run build` succeeding (First Load JS 306 kB
-without the module). The only remaining type errors are inside test files that assert on
-tutor behaviour, which a fork removing the feature would delete along with it. The ESLint
+Deleting `src/modules/tutor` plus its registration block in `src/lib/modules.ts` (the
+imports, the `tutorModule` literal, and the `ENABLED_MODULES` entry — ~15 lines, one
+file) leaves the app source type-checking with **zero errors** and `bun run build`
+succeeding (First Load JS 306 kB without the module). At the time of the initial report
+the build also required deleting `scripts/tutor-sim.ts`; that CLI has since moved inside
+the module (see the post-review fixes below), leaving only a dangling `tutor:simulate`
+script in `package.json` that fails only if invoked. The only remaining type errors are
+inside test files that assert on tutor behaviour, which a fork removing the feature
+would delete along with it. The ESLint
 boundary's `ignores` list is now just `src/lib/modules.ts` and tests.
 
 Getting there took four further commits after the initial report, once the owner confirmed
@@ -231,3 +236,27 @@ panels became lazy. That is 21 kB below where Stage 0 left it, on top of Stage 0
   The CSS for the moved components was not touched; a pass to co-locate module CSS belongs
   with Stage 2's CSS work.
 - The 5 pre-existing ESLint unused-var warnings are unchanged.
+
+### Post-review fixes (2026-07-25)
+
+An independent review pass after the initial report found and fixed on this branch:
+
+- **Blocker:** `createTurnEffects` snapshotted `loadedModuleRuntimes()` at lifecycle
+  creation, which happens before the turn's first `loadModuleRuntimes()` await — so
+  module turn effects were silently dropped on the first turn of every page session
+  (a newly generated learning plan and learner-model update were never persisted).
+  Effects now resolve lazily at the first hook call, memoized so per-turn accumulator
+  state survives. Regression-tested in `tests/turnEffects.test.ts`.
+- Legacy deep-research messages whose only answer text lived in `deepResearch.answer`
+  (empty `content`) were silently destroyed by the sanitizer strip. The answer now
+  folds into empty `content` before the field drops, and repository reads sanitize
+  like saves do, so the text renders without waiting for a rewrite.
+- `loadModuleRuntimes` cached a rejected chunk-import promise forever, breaking every
+  turn after one flaky network failure until reload; the cache now clears on rejection
+  so the next turn retries.
+- The module-boundary lint only caught static alias imports; dynamic `import()` and
+  relative specifiers are now caught too via `no-restricted-syntax` (both probed
+  empirically).
+- The tutor simulation CLI moved from `scripts/tutor-sim.ts` to
+  `src/modules/tutor/tooling/simulate.ts`, so the delete experiment touches nothing
+  outside the module directory and `src/lib/modules.ts`.
