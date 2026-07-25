@@ -1,4 +1,9 @@
-import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
+import type {
+  ModelContentBlock,
+  ModelMessage,
+  PluginConfig,
+  ToolDefinition,
+} from '@/lib/transport/contracts';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { OpenRouterChatRequest, OpenRouterReasoning } from '@/lib/openrouter/types';
 import type { EndpointCapabilities } from '@/lib/transport/endpoints';
@@ -32,6 +37,31 @@ export type BuildChatBodyParams = {
   allowProviderExtensions?: boolean;
 };
 
+/**
+ * `cache_control` is injected upstream in `agent/cache`, which knows nothing
+ * about endpoints, so an endpoint that cannot take the markers has to have them
+ * removed here. A block array left over from the strip collapses back to a
+ * plain string when it is text-only, because that is the shape a minimal
+ * OpenAI-compatible server accepts.
+ */
+function stripCacheControl(messages: ModelMessage[]): ModelMessage[] {
+  return messages.map((message) => {
+    if (!Array.isArray(message.content)) return message;
+    const blocks = message.content as ModelContentBlock[];
+    if (!blocks.some((block) => block.type === 'text' && block.cache_control)) return message;
+    const stripped: ModelContentBlock[] = blocks.map((block) =>
+      block.type === 'text' ? { type: 'text', text: block.text } : block,
+    );
+    const allText = stripped.every((block) => block.type === 'text');
+    return {
+      ...message,
+      content: allText
+        ? stripped.map((block) => (block as { text: string }).text).join('\n\n')
+        : stripped,
+    } as ModelMessage;
+  });
+}
+
 export function buildChatBody(params: BuildChatBodyParams): OpenRouterChatRequest {
   const caps = params.capabilities;
   const allow = (name: keyof EndpointCapabilities): boolean => !caps || caps[name] === true;
@@ -39,7 +69,7 @@ export function buildChatBody(params: BuildChatBodyParams): OpenRouterChatReques
 
   const body: OpenRouterChatRequest = {
     model: params.model,
-    messages: params.messages,
+    messages: allow('promptCaching') ? params.messages : stripCacheControl(params.messages),
     stream: params.stream,
   };
   if (allowExtensions && Array.isArray(params.modalities) && params.modalities.length)

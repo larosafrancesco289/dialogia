@@ -77,7 +77,7 @@ function buildAnthropicReasoningMetadata(
   };
 }
 
-function normalizeAnthropicModel(entry: unknown): ModelDescriptor | null {
+function normalizeAnthropicModel(entry: unknown, endpointId: string): ModelDescriptor | null {
   if (!isRecord(entry) || typeof entry.id !== 'string' || !entry.id) return null;
   const directId = entry.id;
   const publicId = resolveAnthropicPublicModelId(directId);
@@ -133,7 +133,7 @@ function normalizeAnthropicModel(entry: unknown): ModelDescriptor | null {
           : undefined,
     pricing: getAnthropicPricing(publicId),
     raw,
-    endpointId: ANTHROPIC_ENDPOINT_ID,
+    endpointId,
     transportModelId: directId,
     providerDisplay: 'Anthropic',
   };
@@ -177,7 +177,7 @@ export async function fetchModels(
 
   const data = await res.json().catch(() => null);
   const models = extractEntries(data)
-    .map((entry) => normalizeAnthropicModel(entry))
+    .map((entry) => normalizeAnthropicModel(entry, auth.endpoint?.id ?? ANTHROPIC_ENDPOINT_ID))
     .filter((entry): entry is ModelDescriptor => entry !== null);
 
   const deduped = Array.from(

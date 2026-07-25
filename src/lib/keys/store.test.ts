@@ -7,6 +7,8 @@ import {
   getKey,
   hasKey,
   listKeyRefs,
+  loadKeys,
+  resetKeyStoreForTest,
   setKey,
   subscribeToKeys,
 } from '@/lib/keys/store';
@@ -47,4 +49,49 @@ test('subscribers are told when a key appears or goes away', async () => {
   await setKey('probe', 'value');
   await deleteKey('probe');
   assert.equal(calls, 2);
+});
+
+test('a key pasted while the warm-up read is in flight survives it', async () => {
+  // The read builds a fresh map from the database; without the in-flight guard
+  // it lands after the paste and evicts it, and the user sees an app that
+  // insists it has no key seconds after they gave it one.
+  let release: (records: never[]) => void = () => {};
+  const pending = new Promise<never[]>((resolve) => {
+    release = resolve;
+  });
+  resetKeyStoreForTest({
+    toArray: () => pending as Promise<never[]>,
+    put: async () => {},
+    delete: async () => {},
+  });
+
+  const warming = loadKeys();
+  await setKey('openrouter', 'sk-or-pasted');
+  release([]);
+  await warming;
+
+  assert.equal(getKey('openrouter'), 'sk-or-pasted');
+  resetKeyStoreForTest();
+});
+
+test('a key removed while the warm-up read is in flight stays removed', async () => {
+  const stored = [{ ref: 'openrouter', value: 'sk-or-old', updatedAt: 1 }];
+  let release: () => void = () => {};
+  const pending = new Promise<typeof stored>((resolve) => {
+    release = () => resolve(stored);
+  });
+  resetKeyStoreForTest({
+    toArray: () => pending,
+    put: async () => {},
+    delete: async () => {},
+  });
+
+  const warming = loadKeys();
+  await setKey('openrouter', 'sk-or-old');
+  await deleteKey('openrouter');
+  release();
+  await warming;
+
+  assert.equal(hasKey('openrouter'), false);
+  resetKeyStoreForTest();
 });
