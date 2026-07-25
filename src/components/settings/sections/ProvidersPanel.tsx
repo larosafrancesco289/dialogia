@@ -9,6 +9,7 @@ import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
 import { isTavilyProxyEnabled } from '@/lib/env/public';
 import { listSearchProviders, searchProviderKeyRef } from '@/lib/search/providers';
 import {
+  allowsKeylessCalls,
   endpointCapabilities,
   endpointKeyRef,
   isBuiltInEndpointId,
@@ -40,7 +41,11 @@ function EndpointStatus({ endpoint }: { endpoint: ProviderEndpoint }) {
     return <span className="text-xs text-muted-foreground">Keyed by this deployment</span>;
   }
   if (endpoint.kind === 'openai-compatible') {
-    return <span className="text-xs text-muted-foreground">Ready (no key needed)</span>;
+    return (
+      <span className="text-xs text-muted-foreground">
+        {allowsKeylessCalls(endpoint) ? 'Ready (no key needed)' : 'Needs a base URL'}
+      </span>
+    );
   }
   return <span className="text-xs text-muted-foreground">Needs a key</span>;
 }

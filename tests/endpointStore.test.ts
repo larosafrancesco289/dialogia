@@ -6,7 +6,9 @@ import { buildPersistedState, mergePersistedState } from '@/lib/store/persistenc
 import { parseCustomEndpoints } from '@/lib/store/endpointSlice';
 import type { StoreState } from '@/lib/store/types';
 import { listEndpoints, resetEndpointRegistryForTest } from '@/lib/transport/endpointRegistry';
-import { deleteKey, setKey } from '@/lib/keys/store';
+import { requireEndpointAuth } from '@/lib/auth/require';
+import { deleteKey, getKey, setKey } from '@/lib/keys/store';
+import { mockFetch } from './helpers/mockFetch';
 
 const freshStore = () => createStore<StoreState>(buildStoreInitializer() as never);
 
@@ -85,4 +87,32 @@ test('an imported endpoint cannot claim a key reference it does not own', () => 
   ]);
   assert.equal(parsed.length, 1);
   assert.equal(parsed[0].apiKeyRef, 'endpoint:evil');
+});
+
+test('a keyless OpenAI-compatible endpoint is callable and contributes models', async () => {
+  resetEndpointRegistryForTest();
+  const store = freshStore();
+  const endpoint = store.getState().addEndpoint({
+    kind: 'openai-compatible',
+    label: 'Ollama',
+    baseUrl: 'http://localhost:11434/v1',
+    modelIds: ['qwen3:8b'],
+  });
+  // No key stored for it, and the built-ins have none either.
+  assert.equal(getKey(endpoint.apiKeyRef!), undefined);
+  assert.doesNotThrow(() => requireEndpointAuth(endpoint));
+
+  const restore = mockFetch((async () => new Response('not found', { status: 404 })) as never);
+  try {
+    await store.getState().loadModels();
+  } finally {
+    restore();
+  }
+
+  assert.deepEqual(
+    store.getState().models.map((model) => model.id),
+    ['endpoint:ollama/qwen3:8b'],
+  );
+  // A usable endpoint means there is nothing for the setup sheet to ask for.
+  assert.notEqual(store.getState().ui.setupOpen, true);
 });
