@@ -70,15 +70,15 @@ function pickMessageCollection(
 
 async function getMessagesForChat(db: DialogiaDbLike, chatId: string): Promise<Message[]> {
   const collection = pickMessageCollection(db.messages, chatId);
+  let list: Message[] | undefined;
   if (collection) {
-    if (collection.sortBy) return sortMessages(await collection.sortBy('createdAt'));
-    if (collection.toArray) {
-      const list = await collection.toArray();
-      return sortMessages(list);
-    }
+    if (collection.sortBy) list = await collection.sortBy('createdAt');
+    else if (collection.toArray) list = await collection.toArray();
   }
-  const list = (await db.messages.toArray()).filter((entry) => entry.chatId === chatId);
-  return sortMessages(list);
+  if (!list) list = (await db.messages.toArray()).filter((entry) => entry.chatId === chatId);
+  // Reads sanitize like saves do, so legacy rows (e.g. a deep-research answer
+  // folded into content) render correctly before their next rewrite.
+  return sortMessages(list).map((message) => sanitizeMessageRecord(message).next);
 }
 
 async function deleteMessagesForChat(db: DialogiaDbLike, chatId: string): Promise<void> {
