@@ -17,6 +17,7 @@ export {
   buildSearchContext,
   getSearchProvider,
   isSearchProviderReady,
+  listReadySearchProviders,
   listSearchProviders,
   registerSearchProvider,
   resetSearchProvidersForTest,

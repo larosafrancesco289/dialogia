@@ -1,4 +1,5 @@
 'use client';
+import type { SearchMode } from '@/lib/search/providers/types';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
@@ -269,6 +270,14 @@ export function Composer({
     }
   };
 
+  const selectSearchMode = (mode: SearchMode) => {
+    if (chat) {
+      void updateSettings({ features: { search: { enabled: true, provider: mode } } });
+    } else {
+      setUI({ overrides: { search: { enabled: true, provider: mode } } });
+    }
+  };
+
   const handleSelectEffort = async (effort: Effort) => {
     if (chat) {
       await updateSettings({
@@ -333,6 +342,7 @@ export function Composer({
           searchEnabled={searchEnabled}
           searchProvider={searchProvider}
           toggleSearch={toggleSearch}
+          selectSearchMode={selectSearchMode}
           showReasoningMenu={showReasoningMenu}
           availableEfforts={availableEfforts}
           defaultEffort={defaultEffort}

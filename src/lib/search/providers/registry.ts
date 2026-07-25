@@ -42,6 +42,11 @@ export function buildSearchContext(
   };
 }
 
+/** Providers the user could switch to right now, for the composer's picker. */
+export function listReadySearchProviders(useProxy = false): SearchProvider[] {
+  return listSearchProviders().filter((provider) => isSearchProviderReady(provider, useProxy));
+}
+
 export function resetSearchProvidersForTest(): void {
   providers.clear();
 }
