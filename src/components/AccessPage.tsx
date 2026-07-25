@@ -1,4 +1,3 @@
-'use client';
 import { useState } from 'react';
 import {
   getAccessCodeErrorMessage,
@@ -6,7 +5,7 @@ import {
   verifyAccessCode,
 } from '@/lib/auth/access.client';
 
-export default function AccessPage() {
+export function AccessPage() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [freeTierLoading, setFreeTierLoading] = useState(false);

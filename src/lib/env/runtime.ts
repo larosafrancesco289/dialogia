@@ -1,7 +1,8 @@
+import { readClientMode } from '@/lib/env/importMeta';
 import { readEnvValue } from '@/lib/env/values';
 
 export function getNodeEnv(): string | undefined {
-  return readEnvValue(process.env.NODE_ENV)?.toLowerCase();
+  return readEnvValue(readClientMode())?.toLowerCase();
 }
 
 export function isProd(): boolean {
