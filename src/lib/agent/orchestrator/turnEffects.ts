@@ -5,7 +5,7 @@
 
 import type { PlanTurnResult, StoreSetter, TurnComposition } from '@/lib/agent/types';
 import type { Chat, Message } from '@/lib/types';
-import { loadedModuleRuntimes } from '@/lib/modules';
+import { loadedModuleRuntimes, type ModuleRuntime } from '@/lib/modules';
 
 export type TurnEffectsContext = {
   chatId: string;
@@ -35,17 +35,26 @@ export type TurnEffects = {
   messagePatch(): Partial<Message> | undefined;
 };
 
-export function createTurnEffects(context: TurnEffectsContext): TurnEffects {
-  const effects = loadedModuleRuntimes()
-    .map((runtime) => runtime.turnEffects?.(context))
-    .filter((entry): entry is ModuleTurnEffects => !!entry);
+export function createTurnEffects(
+  context: TurnEffectsContext,
+  runtimes: () => ModuleRuntime[] = loadedModuleRuntimes,
+): TurnEffects {
+  // The lifecycle is created before `loadModuleRuntimes()` has resolved on a cold
+  // page, so the effects list must resolve at the first hook call (every hook fires
+  // after the turn has awaited the load), and only once: module effects hold
+  // per-turn accumulator state.
+  let resolved: ModuleTurnEffects[] | undefined;
+  const effects = () =>
+    (resolved ??= runtimes()
+      .map((runtime) => runtime.turnEffects?.(context))
+      .filter((entry): entry is ModuleTurnEffects => !!entry));
 
   return {
-    onComposition: (composition) => effects.forEach((e) => e.onComposition?.(composition)),
-    onPlanResult: (plan) => effects.forEach((e) => e.onPlanResult?.(plan)),
+    onComposition: (composition) => effects().forEach((e) => e.onComposition?.(composition)),
+    onPlanResult: (plan) => effects().forEach((e) => e.onPlanResult?.(plan)),
     messagePatch: () => {
       let patch: Partial<Message> | undefined;
-      for (const effect of effects) {
+      for (const effect of effects()) {
         const contribution = effect.messagePatch?.();
         if (!contribution) continue;
         patch = { ...(patch ?? {}), ...contribution };
