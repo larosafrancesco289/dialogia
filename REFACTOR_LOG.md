@@ -56,7 +56,8 @@ Follow-ups discovered (not done):
 
 ## Stage 1 — Decouple (2026-07-25)
 
-Branch: `stage-1-decouple` (13 commits, not merged, not pushed). CI green
+Branch: `stage-1-decouple`, merged to main 2026-07-25 after an independent review pass
+(see the post-review fixes at the end of this section). CI green
 (`scripts/ci.sh`: lint:types + 432 tests + prettier + eslint, 0 errors, the same 5
 pre-existing warnings). Production build succeeds; First Load JS for `/` is 313 kB gz,
 down from Stage 0's 334 kB.
@@ -69,8 +70,8 @@ tasks are complete.
 
 Commits:
 
-- `86e9394` Move the research apparatus off main — `research` branch created locally at
-  main (`89f139b`); **not pushed**. Deleted `src/tooling/eval`, `src/lib/study`,
+- `86e9394` Move the research apparatus off main — `research` branch created at main
+  (`89f139b`); pushed to origin 2026-07-25. Deleted `src/tooling/eval`, `src/lib/study`,
   `StudySessionSettings.tsx` + `useStudySessionControls.ts`, the `study` access tier and
   its code path, `studyCondition`, `researchMode`, and the tier-derived `forceTutorMode`.
   Persisted store version 6 → 7 with a migration dropping `ui.tutor.researchMode` and
