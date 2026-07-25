@@ -1,5 +1,6 @@
 import type { PersistFragment, StoreState } from '@/lib/store/types';
 import { requireEndpointAuth } from '@/lib/auth/require';
+import { loadKeys } from '@/lib/keys/store';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
 import { computeZdrFilterCached } from '@/lib/policy/zdr/cache';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
@@ -67,6 +68,8 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
 
       async loadModels(_opts?: { showErrors?: boolean }) {
         if (isLoadingModels) return;
+        // Memoized: only the first caller actually reads IndexedDB.
+        await loadKeys();
         const authEntries = listEndpoints().flatMap((endpoint) => {
           try {
             return [[endpoint, requireEndpointAuth(endpoint)] as const];

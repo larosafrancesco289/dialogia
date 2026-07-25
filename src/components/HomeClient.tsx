@@ -23,11 +23,15 @@ const SettingsDrawer = lazyClient(() =>
 const GlobalNotice = lazyClient(() =>
   import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
 );
+const SetupSheet = lazyClient(() =>
+  import('@/components/SetupSheet').then((mod) => ({ default: mod.SetupSheet })),
+);
 
 export function HomeClient() {
   const {
     collapsed,
     isSettingsOpen,
+    isSetupOpen,
     tutorActive,
     rightPanelOpen,
     hasPlan,
@@ -37,6 +41,7 @@ export function HomeClient() {
     (s) => ({
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
+      isSetupOpen: s.ui.setupOpen === true,
       tutorActive: selectIsTutorEnabled(s),
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
       hasPlan: !!selectCurrentChat(s)?.settings?.features.tutor?.learningPlan,
@@ -104,6 +109,7 @@ export function HomeClient() {
             <ChatPane />
           </div>
           {isSettingsOpen && <SettingsDrawer />}
+          {isSetupOpen && <SetupSheet />}
           <GlobalNotice />
         </main>
 
