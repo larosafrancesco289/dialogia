@@ -136,7 +136,7 @@ function clamp(value: number, min: number, max: number): number {
 function resolveChatState(session: HeadlessTutorSession, chatId: string) {
   const state = session.getState();
   const chat = state.chats.find((entry) => entry.id === chatId);
-  const plan = chat?.settings.features.tutor.learningPlan;
+  const plan = chat?.settings.features.tutor?.learningPlan;
   if (!chat || !plan) {
     throw new Error(`Missing chat or learning plan for chat ${chatId}`);
   }
@@ -146,7 +146,7 @@ function resolveChatState(session: HeadlessTutorSession, chatId: string) {
 function getBaseLearnerModel(session: HeadlessTutorSession, chatId: string) {
   const { chat, plan } = resolveChatState(session, chatId);
   const fromMessages = getLatestLearnerModel(session.getMessages());
-  const fromSettings = chat.settings.features.tutor.learnerModel;
+  const fromSettings = chat.settings.features.tutor?.learnerModel;
   return fromMessages ?? fromSettings ?? initializeLearnerModel(chatId, plan);
 }
 

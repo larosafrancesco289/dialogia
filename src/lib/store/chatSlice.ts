@@ -85,7 +85,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
           }),
         }));
 
-        if (nextDraft.settings.features.tutor.enabled) {
+        if (nextDraft.settings.features.tutor?.enabled) {
           primeTutorWelcome(nextDraft.id, { set, get });
         }
         return;
@@ -107,7 +107,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         ui: resetEphemeralUi(s.ui),
       }));
 
-      if (chat.settings.features.tutor.enabled) primeTutorWelcome(chat.id, { set, get });
+      if (chat.settings.features.tutor?.enabled) primeTutorWelcome(chat.id, { set, get });
     },
 
     selectChat(id: string) {
@@ -249,7 +249,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       if (!before) return;
 
       const uiState = get().ui;
-      const forceTutorMode = !!(uiState.tutor.forceMode ?? false);
+      const forceTutorMode = !!(uiState.tutor?.forceMode ?? false);
       const fallbackUi = {
         showThinkingByDefault: false,
         showStats: false,
@@ -311,7 +311,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
         };
       }
 
-      if (forceTutorMode || nextSettings.features.tutor.enabled) {
+      if (forceTutorMode || nextSettings.features.tutor?.enabled) {
         const ensured = applyTutorDefaults({
           ui: uiState,
           chat: { settings: nextSettings },
@@ -341,7 +341,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       // research session doesn't quietly add search cost to every future
       // message. Tutor chats are excluded: their model is managed by tutor
       // defaults and must not leak into regular chats.
-      const isTutorChat = nextSettings.features.tutor.enabled;
+      const isTutorChat = nextSettings.features.tutor?.enabled;
       const stickyGeneration = partial.generation
         ? {
             ...(hasOwn(partial.generation, 'reasoningEffort')
@@ -372,8 +372,8 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       }));
 
       const turnedOn =
-        before.settings.features.tutor.enabled !== nextSettings.features.tutor.enabled &&
-        nextSettings.features.tutor.enabled === true;
+        before.settings.features.tutor?.enabled !== nextSettings.features.tutor?.enabled &&
+        nextSettings.features.tutor?.enabled === true;
 
       if (turnedOn && !!get().ui.flags.experimentalTutor) {
         Promise.resolve(primeTutorWelcome(id, { set, get })).catch(() => undefined);

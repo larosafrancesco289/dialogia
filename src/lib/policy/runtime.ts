@@ -3,8 +3,8 @@ import type { UiSnapshot } from '@/lib/contracts/ui';
 
 export const isTutorRuntimeEnabled = (ui: UiSnapshot, chat: Chat): boolean => {
   const tutorGloballyEnabled = !!ui.flags.experimentalTutor;
-  const forceTutorMode = !!(ui.tutor.forceMode ?? false);
-  return tutorGloballyEnabled && (forceTutorMode || !!chat.settings.features.tutor.enabled);
+  const forceTutorMode = !!(ui.tutor?.forceMode ?? false);
+  return tutorGloballyEnabled && (forceTutorMode || !!chat.settings.features.tutor?.enabled);
 };
 
 export const selectTutorDefaultModelId = (
@@ -12,7 +12,7 @@ export const selectTutorDefaultModelId = (
   chat: Chat,
   fallback?: string,
 ): string | undefined =>
-  ui.tutor.defaultModelId || chat.settings.features.tutor.defaultModelId || fallback;
+  ui.tutor?.defaultModelId || chat.settings.features.tutor?.defaultModelId || fallback;
 
 export const enforceZdrGate = async (
   ui: UiSnapshot,

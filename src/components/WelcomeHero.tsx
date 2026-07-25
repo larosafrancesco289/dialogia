@@ -10,7 +10,7 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
   const setUI = useChatStore((s) => s.setUI);
   const ui = useChatStore((s) => s.ui);
   const experimentalTutor = !!ui.flags.experimentalTutor;
-  const forceTutorMode = !!ui.tutor.forceMode;
+  const forceTutorMode = !!ui.tutor?.forceMode;
   const nextTutorMode = !!readNextOverrides(ui).tutorMode;
   const tutorActive = experimentalTutor && (forceTutorMode || nextTutorMode);
 

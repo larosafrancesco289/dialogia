@@ -100,16 +100,16 @@ export function useTopHeaderState(): TopHeaderState {
       clearChatMessages: s.clearChatMessages,
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
-      planSheetOpen: s.ui.plan.sheetOpen ?? false,
+      planSheetOpen: s.ui.plan?.sheetOpen ?? false,
       nextOverrides: selectNextOverrides(s),
-      tutorDefaultModelId: s.ui.tutor.defaultModelId,
+      tutorDefaultModelId: s.ui.tutor?.defaultModelId,
       experimentalTutor: !!s.ui.flags.experimentalTutor,
-      forceTutorMode: !!s.ui.tutor.forceMode,
+      forceTutorMode: !!s.ui.tutor?.forceMode,
       models: s.models,
       planGeneration: s.selectedChatId
-        ? s.ui.plan.generationByChatId?.[s.selectedChatId]
+        ? s.ui.plan?.generationByChatId?.[s.selectedChatId]
         : undefined,
-      planSheetOverride: s.ui.plan.sheetPlanOverride ?? null,
+      planSheetOverride: s.ui.plan?.sheetPlanOverride ?? null,
       tutorActive: selectIsTutorEnabled(s),
     }),
     shallow,
@@ -119,7 +119,9 @@ export function useTopHeaderState(): TopHeaderState {
 
   const nextTutorMode = !!nextOverrides.tutorMode;
   const rawTutorModelId =
-    chat?.settings?.features.tutor.defaultModelId || chat?.settings?.modelId || tutorDefaultModelId;
+    chat?.settings?.features.tutor?.defaultModelId ||
+    chat?.settings?.modelId ||
+    tutorDefaultModelId;
   const tutorModelId = useTierTutorModelId(rawTutorModelId);
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(
@@ -195,7 +197,7 @@ export function useTopHeaderState(): TopHeaderState {
     const latestChat = latestState.chats.find((candidate) => candidate.id === chatId) ?? chat;
     const latestMessages = selectMessagesForCurrentChat(latestState);
 
-    const isTutorChat = latestChat.settings.features.tutor.enabled;
+    const isTutorChat = latestChat.settings.features.tutor?.enabled;
     const hasUserMessages = latestMessages.some((m) => m.role === 'user');
 
     if (isTutorChat) {

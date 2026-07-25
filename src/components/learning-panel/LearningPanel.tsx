@@ -26,7 +26,7 @@ export function LearningPanel() {
   const { chat, planSheetOverride } = useChatStore(
     (s) => ({
       chat: s.chats.find((c) => c.id === s.selectedChatId),
-      planSheetOverride: s.ui.plan.sheetPlanOverride ?? null,
+      planSheetOverride: s.ui.plan?.sheetPlanOverride ?? null,
     }),
     shallow,
   );

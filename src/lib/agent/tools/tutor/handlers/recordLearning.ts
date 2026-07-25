@@ -187,7 +187,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
     } = args;
 
     // Get the most up-to-date plan
-    const plan = ctx.getCurrentPlan?.() ?? ctx.chat.settings.features.tutor.learningPlan;
+    const plan = ctx.getCurrentPlan?.() ?? ctx.chat.settings.features.tutor?.learningPlan;
 
     // Store assessment updates in UI state
     await ctx.applyTutorPatch((prev) => {
@@ -244,7 +244,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
     const messagesForChat = getMessagesForChat(state, ctx.chatId);
     let currentModel =
       getLatestLearnerModel(messagesForChat) ??
-      ctx.chat.settings.features.tutor.learnerModel ??
+      ctx.chat.settings.features.tutor?.learnerModel ??
       initializeLearnerModel(ctx.chatId, plan);
 
     const effectiveNodeId =

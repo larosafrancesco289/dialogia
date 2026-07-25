@@ -41,8 +41,8 @@ export async function composeTurn({
 
   const tutorPhase = tutorEnabled ? getTutorPhase(chat, priorMessages as Message[], ui) : undefined;
   const activeNodeId =
-    tutorEnabled && chat.settings.features.tutor.learningPlan
-      ? getNextNode(chat.settings.features.tutor.learningPlan)?.id
+    tutorEnabled && chat.settings.features.tutor?.learningPlan
+      ? getNextNode(chat.settings.features.tutor?.learningPlan)?.id
       : undefined;
   const allowedTutorTools =
     tutorEnabled && tutorPhase
@@ -89,11 +89,11 @@ export async function composeTurn({
 
     // Tutor always sees the numerical learner model (it's internal system state).
     // learnerModelVisible controls student-facing UI only, not tutor context.
-    if (chat.settings.features.tutor.learningPlan) {
+    if (chat.settings.features.tutor?.learningPlan) {
       const { generatePlanContextPreamble } = await import('@/lib/agent/tutor/planContext');
       const { getLatestLearnerModel } = await import('@/lib/agent/learner-model');
       const planContext = generatePlanContextPreamble(
-        chat.settings.features.tutor.learningPlan,
+        chat.settings.features.tutor?.learningPlan,
         getLatestLearnerModel(priorMessages),
         { includeLearnerModel: true },
       );

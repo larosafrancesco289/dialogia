@@ -11,7 +11,7 @@ export const learningPlanHandler: TutorToolHandler<TutorPlanProposalInput> = {
     return parsed.ok ? parsed.data : null;
   },
   async apply(ctx, args) {
-    const existingPlan = ctx.chat.settings.features.tutor.learningPlan;
+    const existingPlan = ctx.chat.settings.features.tutor?.learningPlan;
     const isCreate = !existingPlan;
 
     const plan = normalizeLearningPlanInput(args.plan, {

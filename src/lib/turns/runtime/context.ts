@@ -90,7 +90,7 @@ export const prepareSendRuntime = async ({
     }
     const preferredTutorModelId =
       ensured.defaultModelId ||
-      chat.settings.features.tutor.defaultModelId ||
+      chat.settings.features.tutor?.defaultModelId ||
       tutorDefaultModelId ||
       DEFAULT_TUTOR_MODEL_ID;
     const allowAllModels = canUseAllModelsForTier(tier);
@@ -117,7 +117,7 @@ export const prepareSendRuntime = async ({
     if (
       resolvedTutorModelId &&
       (chat.settings.modelId !== resolvedTutorModelId ||
-        chat.settings.features.tutor.defaultModelId !== resolvedTutorModelId)
+        chat.settings.features.tutor?.defaultModelId !== resolvedTutorModelId)
     ) {
       const updatedChat: Chat = {
         ...chat,

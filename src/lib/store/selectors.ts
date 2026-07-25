@@ -51,7 +51,7 @@ const resolveTutorEnabled = (state: StoreState, chat?: Chat) => {
   if (chat) return isTutorRuntimeEnabled(state.ui, chat);
   const overrides = readNextOverrides(state.ui);
   return (
-    !!state.ui.flags.experimentalTutor && (!!state.ui.tutor.forceMode || !!overrides.tutorMode)
+    !!state.ui.flags.experimentalTutor && (!!state.ui.tutor?.forceMode || !!overrides.tutorMode)
   );
 };
 

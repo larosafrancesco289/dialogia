@@ -238,8 +238,8 @@ export async function regenerateTurn({
     });
     overrideModelId =
       ensured.defaultModelId ||
-      uiState.tutor.defaultModelId ||
-      chat.settings.features.tutor.defaultModelId ||
+      uiState.tutor?.defaultModelId ||
+      chat.settings.features.tutor?.defaultModelId ||
       overrideModelId;
     if (ensured.changed) {
       const updatedChat: Chat = {
@@ -312,7 +312,7 @@ export function attachTutorState({ messageId, patch, store }: AttachTutorUiArgs)
   const { ui, selectedChatId } = snapshot;
   if (!selectedChatId) return undefined;
   const { nextUi, nextMessages, updatedMessage } = attachTutorUiState({
-    currentUi: ui.tutor.byMessageId,
+    currentUi: ui.tutor?.byMessageId,
     currentMessages: getMessagesForChat(snapshot, selectedChatId),
     messageId,
     patch,
@@ -322,7 +322,7 @@ export function attachTutorState({ messageId, patch, store }: AttachTutorUiArgs)
     ui: {
       ...state.ui,
       tutor: {
-        ...state.ui.tutor,
+        ...(state.ui.tutor ?? {}),
         byMessageId: nextUi,
       },
     },

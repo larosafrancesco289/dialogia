@@ -15,7 +15,7 @@ export function DiagnosticCard({
 }) {
   const patchTutorEntry = useChatStore((s) => s.patchTutorEntry);
   const sendUserMessage = useChatStore((s) => s.sendUserMessage);
-  const tutorEntry = useChatStore((s) => s.ui.tutor.byMessageId?.[messageId]);
+  const tutorEntry = useChatStore((s) => s.ui.tutor?.byMessageId?.[messageId]);
   const attempts = tutorEntry?.attempts;
   const mcqAttempts: Record<string, { done?: boolean; correct?: boolean }> = attempts?.mcq ?? {};
 

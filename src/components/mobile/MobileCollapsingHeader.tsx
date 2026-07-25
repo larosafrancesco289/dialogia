@@ -33,13 +33,15 @@ export function MobileCollapsingHeader() {
   );
 
   const uiState = useChatStore((s) => s.ui, shallow);
-  const tutorDefaultModelId = uiState.tutor.defaultModelId;
+  const tutorDefaultModelId = uiState.tutor?.defaultModelId;
 
   const chat = chats.find((c) => c.id === selectedChatId);
 
   // Resolve tutor model with tier awareness
   const rawTutorModelId =
-    chat?.settings?.features.tutor.defaultModelId || chat?.settings?.modelId || tutorDefaultModelId;
+    chat?.settings?.features.tutor?.defaultModelId ||
+    chat?.settings?.modelId ||
+    tutorDefaultModelId;
   const tutorModelId = useTierTutorModelId(rawTutorModelId);
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(

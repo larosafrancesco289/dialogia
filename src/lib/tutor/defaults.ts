@@ -42,13 +42,13 @@ export function applyTutorDefaults({ ui, chat, fallbackDefaultModelId }: ApplyTu
     changed = true;
   }
 
-  if (next.features.tutor.defaultModelId !== tutorDefaultModelId) {
-    next.features.tutor.defaultModelId = tutorDefaultModelId;
+  if (next.features.tutor?.defaultModelId !== tutorDefaultModelId) {
+    next.features.tutor = { ...next.features.tutor, defaultModelId: tutorDefaultModelId };
     changed = true;
   }
 
-  if (next.features.tutor.enableLearnerModel !== true) {
-    next.features.tutor.enableLearnerModel = true;
+  if (next.features.tutor?.enableLearnerModel !== true) {
+    next.features.tutor = { ...next.features.tutor, enableLearnerModel: true };
     changed = true;
   }
 

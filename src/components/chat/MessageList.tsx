@@ -33,10 +33,10 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       allMessages: selectMessagesForChat(chatId)(state) ?? EMPTY_MESSAGES,
       chat: state.chats.find((c) => c.id === chatId),
       isStreaming: selectIsStreamingForChat(chatId)(state),
-      planGeneration: state.ui.plan.generationByChatId?.[chatId],
+      planGeneration: state.ui.plan?.generationByChatId?.[chatId],
       composerFocused: state.ui.mobile.composerFocused,
       autoScrollPref: selectIsTutorEnabledForChat(chatId)(state)
-        ? (state.ui.tutor.autoScroll ?? false)
+        ? (state.ui.tutor?.autoScroll ?? false)
         : true,
       messagesLoaded: selectChatMessagesLoaded(chatId)(state),
     }),

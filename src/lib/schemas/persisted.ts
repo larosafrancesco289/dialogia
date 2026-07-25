@@ -55,7 +55,7 @@ export const TutorToolBudgetSchema = z
 
 export const TutorSettingsSchema = z
   .object({
-    enabled: z.boolean(),
+    enabled: z.boolean().optional(),
     defaultModelId: z.string().optional(),
     toolBudget: TutorToolBudgetSchema.optional(),
     learningPlan: LearningPlanSchema.optional(),
@@ -77,7 +77,7 @@ export const ChatSettingsSchema = z
     ui: ChatUiSettingsSchema,
     features: z.object({
       search: ChatSearchSettingsSchema,
-      tutor: TutorSettingsSchema,
+      tutor: TutorSettingsSchema.optional(),
     }),
   })
   .passthrough();

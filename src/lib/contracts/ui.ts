@@ -114,7 +114,7 @@ export type UiSnapshot = {
   flags: UiFlagsSnapshot;
   debug: UiDebugSnapshot;
   search: UiSearchSnapshot;
-  tutor: UiTutorSnapshot;
-  plan: UiPlanSnapshot;
+  tutor?: UiTutorSnapshot;
+  plan?: UiPlanSnapshot;
   mobile: UiMobileSnapshot;
 };

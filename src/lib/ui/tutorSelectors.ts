@@ -2,7 +2,7 @@ import type { MessageTutor } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 
 export const selectTutorEntry = (ui: UiSnapshot, messageId: string) =>
-  ui.tutor.byMessageId?.[messageId];
+  ui.tutor?.byMessageId?.[messageId];
 
 export const mergeTutorMap = <T extends UiSnapshot>(
   ui: T,
@@ -13,7 +13,7 @@ export const mergeTutorMap = <T extends UiSnapshot>(
     ...ui,
     tutor: {
       ...ui.tutor,
-      byMessageId: { ...(ui.tutor.byMessageId || {}), ...incoming },
+      byMessageId: { ...(ui.tutor?.byMessageId || {}), ...incoming },
     },
   } as T;
 };

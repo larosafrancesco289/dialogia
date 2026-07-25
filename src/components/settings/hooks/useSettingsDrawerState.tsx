@@ -142,7 +142,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
   const onForceTutorModeChange = useCallback(
     async (enabled: boolean) => {
       setUI({ tutor: { forceMode: enabled } });
-      if (enabled && chat && !chat.settings.features.tutor.enabled) {
+      if (enabled && chat && !chat.settings.features.tutor?.enabled) {
         await updateChatSettings({ features: { tutor: { enabled: true } } });
       }
     },

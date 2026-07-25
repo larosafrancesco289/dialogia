@@ -240,7 +240,7 @@ export class HeadlessTutorSession {
             shouldPlan: runArtifacts.composition.shouldPlan,
           },
           plan: planArtifacts,
-          tutorUi: this.store.getState().ui.tutor.byMessageId?.[assistantMessage.id],
+          tutorUi: this.store.getState().ui.tutor?.byMessageId?.[assistantMessage.id],
           toolCalls: finalMsg.toolCalls,
           debugPayload: this.store.getState().ui.debug.byMessageId?.[assistantMessage.id]?.body,
         });
@@ -285,7 +285,7 @@ export class HeadlessTutorSession {
         shouldPlan: runArtifacts?.composition.shouldPlan ?? false,
       },
       plan: planArtifacts,
-      tutorUi: this.store.getState().ui.tutor.byMessageId?.[assistantMessage.id],
+      tutorUi: this.store.getState().ui.tutor?.byMessageId?.[assistantMessage.id],
       toolCalls: assistantFinal.toolCalls,
       debugPayload: this.store.getState().ui.debug.byMessageId?.[assistantMessage.id]?.body,
     });
@@ -313,7 +313,7 @@ export class HeadlessTutorSession {
    */
   private autoApprovePendingPlanProposal(messageId: string): void {
     const state = this.store.getState();
-    const tutorState = state.ui.tutor.byMessageId?.[messageId];
+    const tutorState = state.ui.tutor?.byMessageId?.[messageId];
     const planProposal = tutorState?.planProposal;
 
     if (!planProposal || planProposal.status !== 'pending') {
@@ -334,7 +334,7 @@ export class HeadlessTutorSession {
     }
 
     // Initialize or sync learner model
-    const existingModel = chat.settings.features.tutor.learnerModel;
+    const existingModel = chat.settings.features.tutor?.learnerModel;
     const learnerModel = existingModel
       ? syncLearnerModelWithPlan(existingModel, adoptedPlan)
       : initializeLearnerModel(chat.id, adoptedPlan);
@@ -374,9 +374,9 @@ export class HeadlessTutorSession {
         tutor: {
           ...draft.ui.tutor,
           byMessageId: {
-            ...draft.ui.tutor.byMessageId,
+            ...draft.ui.tutor?.byMessageId,
             [messageId]: {
-              ...(draft.ui.tutor.byMessageId?.[messageId] || {}),
+              ...(draft.ui.tutor?.byMessageId?.[messageId] || {}),
               planProposal: nextPlanProposal,
             },
           },

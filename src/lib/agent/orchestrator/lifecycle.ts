@@ -65,10 +65,10 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
         set((state) => ({ ui: resetEphemeralUi(state.ui) }));
       }
       const chat = getChatForTurn();
-      if (composition.settings.tutorEnabled && chat.settings.features.tutor.learningPlan) {
+      if (composition.settings.tutorEnabled && chat.settings.features.tutor?.learningPlan) {
         priorLearnerModel =
           getLatestLearnerModel(priorMessages) ??
-          initializeLearnerModel(chatId, chat.settings.features.tutor.learningPlan);
+          initializeLearnerModel(chatId, chat.settings.features.tutor?.learningPlan);
       }
     },
     onPlanResult: (plan) => {
@@ -89,10 +89,10 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
         });
       }
 
-      if (plan.updatedPlan && plan.updatedPlan !== chat.settings.features.tutor.learningPlan) {
+      if (plan.updatedPlan && plan.updatedPlan !== chat.settings.features.tutor?.learningPlan) {
         const diff =
           plan.planUpdates ??
-          diffPlanUpdates(chat.settings.features.tutor.learningPlan, plan.updatedPlan);
+          diffPlanUpdates(chat.settings.features.tutor?.learningPlan, plan.updatedPlan);
         if (diff) pendingPlanUpdates = diff;
         // Re-read chat so persistLearningPlan spreads from a snapshot that
         // already includes the learner-model update (its set() is synchronous).

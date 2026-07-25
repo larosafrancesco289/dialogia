@@ -31,13 +31,13 @@ export async function applyLearnerModelFeedbackFromUser({
   const chatId = state.selectedChatId;
   if (!chatId) return;
   const chat = state.chats.find((c) => c.id === chatId);
-  if (!chat || !chat.settings.features.tutor.learningPlan) return;
+  if (!chat || !chat.settings.features.tutor?.learningPlan) return;
 
-  const plan = chat.settings.features.tutor.learningPlan;
+  const plan = chat.settings.features.tutor?.learningPlan;
   const messages = getMessagesForChat(state, chatId);
   const baseModel =
     getLatestLearnerModel(messages) ??
-    chat.settings.features.tutor.learnerModel ??
+    chat.settings.features.tutor?.learnerModel ??
     initializeLearnerModel(chatId, plan);
   const feedback = applyLearnerModelFeedback(baseModel, input);
   const planResult = await processPlanProgress(plan, feedback.model);
