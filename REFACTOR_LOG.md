@@ -401,6 +401,20 @@ transports when called directly. The remaining candidate is a boot-time path thr
 `services/auth.ts`. Cosmetic, but unexplained, and there is no pre-migration baseline
 left to compare against — worth a look during review.
 
+**Resolved during review.** The toast never came from the dev code at all. `bun start`
+(`vite preview --port 3000`) shares the dev origin, so running the production preview
+left the PWA service worker registered on `localhost:3000`; every later `bun run dev`
+visit was served the stale precached production shell instead of dev modules (hence
+instrumenting the source never fired). That shell had been built while `.env.local`
+still carried the `NEXT_PUBLIC_*` names — its baked `import.meta.env` contains no
+`VITE_*` keys, so both transports failed auth and `modelSlice`'s empty-`authEntries`
+branch fired, in the stale bundle. Meanwhile `/api/*` bypassed the worker
+(`navigateFallbackDenylist`), which is why the model list still loaded and made the
+toast look impossible. Fix: the dev server now serves a self-destroying `/sw.js`
+(`devSwSelfDestruct` in `vite.config.ts`) — a polluted browser unregisters the stale
+worker, purges its caches, and reloads into the real dev bundle on the next update
+check. Verified end to end against a browser carrying the stale worker.
+
 ### Follow-ups discovered (not done)
 
 - The PWA precache (3.7 MB) is dominated by mermaid's per-diagram chunks. Trimming it to
