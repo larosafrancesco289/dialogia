@@ -86,11 +86,6 @@ export type MessageActivityItem =
       round?: number;
     };
 
-export type MessageLegacyResearch = {
-  trace: unknown[];
-  answer?: string;
-};
-
 export type Message = {
   id: string;
   chatId: string;
@@ -118,8 +113,6 @@ export type Message = {
   model?: string;
   // For thinking models; accumulated via streaming
   reasoning?: string;
-  // Legacy research trace data retained so older saved chats can still deserialize.
-  deepResearch?: MessageLegacyResearch;
   metrics?: MessageMetrics;
   usage?: Usage;
   // Optional attachments (currently images) associated to the message

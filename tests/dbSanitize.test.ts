@@ -33,19 +33,32 @@ test('sanitizeMessageRecord trims hidden content and drops empty fields', () => 
   assert.equal(original.hiddenContent, '  Tutor recap  ');
 });
 
-test('sanitizeMessageRecord leaves legacy research traces untouched', () => {
-  const trace = [{ type: 'thought', output: 'Thinking...' }];
+test('sanitizeMessageRecord keeps reasoning and reports no change', () => {
   const original: Message = {
     id: 'm2',
     chatId: 'chat2',
     role: 'assistant',
     content: 'Final answer',
     createdAt: Date.now(),
-    reasoning: JSON.stringify(trace),
+    reasoning: 'Thinking...',
   };
 
   const { next, changed } = sanitizeMessageRecord(original);
   assert.equal(changed, false);
   assert.equal(next.reasoning, original.reasoning);
-  assert.equal(next.deepResearch, undefined);
+});
+
+test('sanitizeMessageRecord drops the legacy deepResearch field', () => {
+  const original = {
+    id: 'm3',
+    chatId: 'chat3',
+    role: 'assistant',
+    content: 'Final answer',
+    createdAt: Date.now(),
+    deepResearch: { trace: [{ type: 'thought' }], answer: 'Legacy answer' },
+  } as unknown as Message;
+
+  const { next, changed } = sanitizeMessageRecord(original);
+  assert.equal(changed, true);
+  assert.equal('deepResearch' in next, false);
 });

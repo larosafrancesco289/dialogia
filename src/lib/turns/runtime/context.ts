@@ -13,7 +13,6 @@ import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { ensureTutorDefaults } from '@/lib/agent/tutorFlow';
 import { createModelAuthResolver, type ModelAuth } from '@/lib/services/auth';
 import { prepareAttachmentsByModel } from '@/lib/attachments/prepare';
-import { normalizeParallelModels } from '@/lib/store/normalize';
 import { readNextOverrides } from '@/lib/ui/next';
 import { isTutorRuntimeEnabled, selectTutorDefaultModelId } from '@/lib/policy/runtime';
 import type { AccessTier } from '@/lib/auth/types';
@@ -145,18 +144,7 @@ export const prepareSendRuntime = async ({
     }
   }
 
-  const parallelModels = normalizeParallelModels(
-    chat.settings.modelId,
-    chat.settings.parallelModels,
-  );
-  const activeModelIds = Array.from(
-    new Set(
-      [chat.settings.modelId, ...parallelModels].filter(
-        (id): id is string => typeof id === 'string' && id.length > 0,
-      ),
-    ),
-  );
-  if (!activeModelIds.length && chat.settings.modelId) activeModelIds.push(chat.settings.modelId);
+  const activeModelIds = chat.settings.modelId ? [chat.settings.modelId] : [];
 
   const modelAuthResolver = createModelAuthResolver({
     modelIndex: get().modelIndex,

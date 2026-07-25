@@ -100,14 +100,9 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     if (!message || message.role !== 'assistant' || previous?.role !== 'user') return false;
     const hasContent = message.content.trim().length > 0;
     const hasReasoning = !!(message.reasoning && message.reasoning.trim().length > 0);
-    const hasLegacyResearch =
-      !!(message.deepResearch?.trace && message.deepResearch.trace.length > 0) ||
-      !!message.deepResearch?.answer;
     const hasAttachments = Array.isArray(message.attachments) && message.attachments.length > 0;
     const hasTutorPayload = !!(message.tutor || message.tutorWelcome);
-    return (
-      !hasContent && !hasReasoning && !hasLegacyResearch && !hasAttachments && !hasTutorPayload
-    );
+    return !hasContent && !hasReasoning && !hasAttachments && !hasTutorPayload;
   }, []);
 
   const {
@@ -186,11 +181,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     if (!isStreaming) return false;
     const last = messages[messages.length - 1];
     if (!last || last.role !== 'assistant') return false;
-    const hasText =
-      (last.content || '').length > 0 ||
-      (last.reasoning || '').length > 0 ||
-      !!last.deepResearch?.answer ||
-      !!(last.deepResearch?.trace && last.deepResearch.trace.length > 0);
+    const hasText = (last.content || '').length > 0 || (last.reasoning || '').length > 0;
     return !hasText;
   }, [isStreaming, messages]);
   const lastMessageId = useMemo(() => messages[messages.length - 1]?.id, [messages]);

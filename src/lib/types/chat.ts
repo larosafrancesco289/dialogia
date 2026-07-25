@@ -47,7 +47,6 @@ export type ChatFeatures = {
 
 export type ChatSettings = {
   modelId: string;
-  parallelModels?: string[];
   system?: string;
   generation: GenerationSettings;
   ui: ChatUiSettings;
@@ -56,7 +55,6 @@ export type ChatSettings = {
 
 export type ChatSettingsPatch = {
   modelId?: string;
-  parallelModels?: string[];
   system?: string;
   generation?: Partial<GenerationSettings>;
   ui?: Partial<ChatUiSettings>;
@@ -68,7 +66,6 @@ export type ChatSettingsPatch = {
 
 export type ChatDefaults = {
   modelId?: string;
-  parallelModels?: string[];
   system?: string;
   generation?: Partial<GenerationSettings>;
   ui?: Partial<ChatUiSettings>;

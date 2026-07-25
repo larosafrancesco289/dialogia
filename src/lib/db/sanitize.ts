@@ -1,5 +1,7 @@
 import type { Message } from '@/lib/types';
 
+const REMOVED_MESSAGE_KEYS = ['deepResearch'] as const;
+
 export function sanitizeMessageRecord(message: Message): { next: Message; changed: boolean } {
   const next: Message = { ...message };
   let changed = false;
@@ -56,6 +58,14 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
   if (next.tutorWelcome === false) {
     delete next.tutorWelcome;
     changed = true;
+  }
+
+  // Removed features whose records may still sit in older IndexedDB rows.
+  for (const key of REMOVED_MESSAGE_KEYS) {
+    if (key in next) {
+      delete (next as Record<string, unknown>)[key];
+      changed = true;
+    }
   }
 
   return { next, changed };
