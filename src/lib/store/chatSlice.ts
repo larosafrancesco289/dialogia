@@ -1,7 +1,6 @@
 import { ChatService } from '@/lib/services/chatService';
 import { normalizeParallelModels } from '@/lib/models/normalization';
 import { applyTutorDefaults } from '@/lib/store/normalize';
-import { primeTutorWelcome } from '@/lib/services/turns';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { repository } from '@/lib/db';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
@@ -9,6 +8,7 @@ import { bootstrapApp } from '@/lib/services/bootstrap';
 import { settingsEqual } from '@/lib/settings/equality';
 import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
 import type { StoreSetter, StoreState } from '@/lib/store/types';
+import type * as TurnService from '@/lib/services/turns';
 import type { Chat, ChatSettingsPatch } from '@/lib/types';
 import { getClientTier } from '@/lib/auth/tier.client';
 import { isTutorForcedForTier } from '@/lib/auth/tierFeatures';
@@ -20,6 +20,14 @@ import {
 } from '@/lib/messages/indexing';
 import { hydrateMessageList } from '@/lib/services/hydrate';
 import { mergeTutorMap } from '@/lib/ui/tutorSelectors';
+
+// Keeps the turn pipeline out of the boot bundle; welcome priming is user-triggered
+// and fire-and-forget, so the deferred load is invisible to callers.
+function primeTutorWelcome(...args: Parameters<typeof TurnService.primeTutorWelcome>) {
+  void import('@/lib/services/turns')
+    .then((mod) => mod.primeTutorWelcome(...args))
+    .catch(() => undefined);
+}
 
 export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
   const inflightMessageLoads = new Map<string, Promise<void>>();
