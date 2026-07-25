@@ -14,6 +14,8 @@ import {
   isModelAllowedForTier,
 } from '@/lib/auth/tierFeatures';
 import { hasAnyEndpoint, isModelEndpointAvailable } from '@/lib/policy/providerAvailability';
+import { getModelEndpoint } from '@/lib/providers';
+import { isEndpointProxied } from '@/lib/auth/require';
 
 /**
  * Hook that returns models filtered by the current access tier.
@@ -28,7 +30,14 @@ export function useTierModels() {
     const effectiveTier = isLoading ? 'free' : tier;
     const availableModels = allModels.filter((model) => isModelEndpointAvailable(model));
     if (canUseAllModelsForTier(effectiveTier)) return availableModels;
-    return availableModels.filter((model) => isModelAllowedForTier(effectiveTier, model.id));
+    // A tier rations the deployment's own keys. A model reached through a key
+    // or a server the user supplied costs the deployment nothing, so it is
+    // never rationed.
+    return availableModels.filter(
+      (model) =>
+        !isEndpointProxied(getModelEndpoint(model)) ||
+        isModelAllowedForTier(effectiveTier, model.id),
+    );
   }, [allModels, isLoading, tier]);
 
   return {

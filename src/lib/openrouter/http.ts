@@ -1,6 +1,6 @@
 import { apiDefaults } from '@/lib/api/config';
 import { sendApiRequest } from '@/lib/api/http';
-import type { TransportAuth } from '@/lib/auth/transport';
+import { usesProxy, type TransportAuth } from '@/lib/auth/transport';
 import type { ChatCompletionMessage, Usage } from '@/lib/transport/completions';
 import { getDefaultEndpoint } from '@/lib/transport/endpointRegistry';
 import { normalizeBaseUrl } from '@/lib/transport/endpoints';
@@ -51,7 +51,7 @@ function resolveTarget(auth?: TransportAuth): {
       includeDefaults: false,
     };
   }
-  const useProxy = endpoint.useProxy === true;
+  const useProxy = usesProxy(auth ?? { endpoint });
   return {
     baseUrl: useProxy ? apiDefaults.proxyPath : (endpoint.baseUrl ?? apiDefaults.baseUrl),
     useProxy,

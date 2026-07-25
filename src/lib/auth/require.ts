@@ -1,6 +1,6 @@
 import { getKey } from '@/lib/keys/store';
 import type { ModelIndex } from '@/lib/models';
-import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
+import { buildTransportAuth, usesProxy, type TransportAuth } from '@/lib/auth/transport';
 import type { ProviderEndpoint } from '@/lib/transport/endpoints';
 import { resolveModelEndpoint } from '@/lib/transport/endpointRegistry';
 
@@ -18,6 +18,11 @@ function missingProviderKey(endpoint: ProviderEndpoint): MissingProviderKeyError
   error.endpointId = endpoint.id;
   error.endpointLabel = endpoint.label;
   return error;
+}
+
+/** True when calls to this endpoint spend the deployment's key rather than the user's. */
+export function isEndpointProxied(endpoint: ProviderEndpoint): boolean {
+  return usesProxy({ endpoint, apiKey: getKey(endpoint.apiKeyRef) });
 }
 
 /** True when this endpoint can be called right now: key stored, or proxied. */
