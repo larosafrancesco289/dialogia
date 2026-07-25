@@ -1,13 +1,15 @@
 # AGENTS.md
 
-Dialogia is a local-first, multi-model chat and tutoring UI. Next.js 15 (App Router), React 18,
-TypeScript, Zustand, Tailwind v4, Dexie/IndexedDB. Bun is the package manager and script runner.
+Dialogia is a local-first, multi-model chat and tutoring UI. Vite + TanStack Router (SPA, no SSR),
+React 18, TypeScript, Zustand, Tailwind v4, Dexie/IndexedDB. Bun is the package manager and script
+runner; Cloudflare Pages is the deploy target.
 
 ## Commands
 
 - `bun install` — install dependencies (packageManager `bun@1.3.2`).
 - `bun run dev` — dev server at http://localhost:3000.
-- `bun run build` / `bun start` — production build / serve.
+- `bun run build` / `bun start` — static BYOK build / preview it.
+- `bun run build:hosted` — the same build plus `dist/_worker.js` (access gate + key proxies).
 - `bun run lint:types` — TypeScript check (`tsc --noEmit`). No emit step; this is the lint.
 - `bun run test` — tsx runner over `tests/**/*.test.ts` and `src/**/*.test.ts`. It always runs the
   full suite; passing a file path does not filter. The suite is fast (~3s), run all of it.
@@ -17,9 +19,15 @@ TypeScript, Zustand, Tailwind v4, Dexie/IndexedDB. Bun is the package manager an
 
 ## Layout and conventions
 
-- `app/` — routes and API proxies (`app/api/*`). `app/page.tsx` is a **server component** that
-  derives `initialIsMobile` from request headers and renders `src/components/HomeClient.tsx`. Do
-  not add `'use client'` to it; client logic belongs in HomeClient.
+- `index.html` is the SPA shell; the theme-init script is injected from `injectThemeClass()` by a
+  plugin in `vite.config.ts`, so there is one source for it. `src/main.tsx` mounts
+  `src/router.tsx`, which has exactly two routes: `/` and, in hosted builds only, `/access`.
+- `functions/` — the hosted variant: `worker.ts` (entry), `middleware.ts` (access gate),
+  `routes.ts` (path table) and `api/*` (one module per endpoint). It is built separately by
+  `vite.worker.config.ts` and is absent from the BYOK build.
+- Client build config comes from `import.meta.env.VITE_*` and is **inlined at build time**; server
+  config is read per request through `@/lib/env/source`, which the worker binds from the
+  Cloudflare environment.
 - `src/components/` — PascalCase files, named exports. `src/lib/` — state, services, agent,
   transport. `styles/` — global CSS. Tests live in `tests/` or colocated as `*.test.ts`.
 - Path aliases: `@/components/*`, `@/lib/*`, `@/modules/*`, `@/data/*` (see `tsconfig.json`).
@@ -88,8 +96,8 @@ import (e.g., user-facing notice text lives in `src/lib/store/notices.ts`, not i
 
 ## Security and configuration
 
-- Prefer proxy mode (`NEXT_PUBLIC_USE_OR_PROXY=true`); provider keys stay server-side in
-  `.env.local`. Never commit secrets or expose sensitive values as `NEXT_PUBLIC_*`.
+- Prefer proxy mode (`VITE_USE_OR_PROXY=true`); provider keys stay server-side in `.env.local`.
+  Never commit secrets or expose sensitive values as `VITE_*` — those land in the client bundle.
 - See CONFIGURATION.md for env vars and the access-gate setup.
 
 ## Working agreements
