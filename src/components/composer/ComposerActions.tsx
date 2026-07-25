@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { searchModeLabel } from '@/lib/search/ui/labels';
+import { listSearchModeOptions } from '@/lib/search/ui/modes';
 import type { SearchMode } from '@/lib/search/providers/types';
 import type { RefObject } from 'react';
 import {
@@ -27,6 +28,33 @@ import type { Effort } from '@/components/composer/ComposerMobileMenu';
 //   high  → Heroicons solid bulb (accent)
 //   xhigh → Heroicons solid bulb (accent, scaled)
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** Close a composer popover on an outside pointer press or Escape. */
+function useDismissOnOutside(
+  open: boolean,
+  setOpen: (open: boolean) => void,
+  menuRef: RefObject<HTMLElement | null>,
+  triggerRef: RefObject<HTMLElement | null>,
+) {
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      const inMenu = !!(menuRef.current && target && menuRef.current.contains(target));
+      const inTrigger = !!(triggerRef.current && target && triggerRef.current.contains(target));
+      if (!inMenu && !inTrigger) setOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [open, setOpen, menuRef, triggerRef]);
+}
 
 const effortLabel = (e: Effort) =>
   e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra High' : e.charAt(0).toUpperCase() + e.slice(1);
@@ -224,6 +252,8 @@ export type ComposerActionsProps = {
   searchEnabled: boolean;
   searchProvider: SearchMode;
   toggleSearch: () => void;
+  /** Turns search on with a specific mechanism; only shown when there is a choice. */
+  selectSearchMode: (mode: SearchMode) => void;
   showReasoningMenu: boolean;
   availableEfforts?: Effort[];
   defaultEffort?: Effort;
@@ -241,6 +271,7 @@ export function ComposerActions({
   searchEnabled,
   searchProvider,
   toggleSearch,
+  selectSearchMode,
   showReasoningMenu,
   availableEfforts,
   defaultEffort,
@@ -251,27 +282,12 @@ export function ComposerActions({
   const [reasoningOpen, setReasoningOpen] = useState(false);
   const reasoningButtonRef = useRef<HTMLButtonElement | null>(null);
   const reasoningMenuRef = useRef<HTMLDivElement | null>(null);
+  const [searchMenuOpen, setSearchMenuOpen] = useState(false);
+  const searchButtonRef = useRef<HTMLButtonElement | null>(null);
+  const searchMenuRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!reasoningOpen) return;
-    const handlePointerDown = (event: PointerEvent) => {
-      const menu = reasoningMenuRef.current;
-      const trigger = reasoningButtonRef.current;
-      const target = event.target as Node | null;
-      const inMenu = !!(menu && target && menu.contains(target));
-      const inTrigger = !!(trigger && target && trigger.contains(target));
-      if (!inMenu && !inTrigger) setReasoningOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setReasoningOpen(false);
-    };
-    document.addEventListener('pointerdown', handlePointerDown, true);
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown, true);
-      document.removeEventListener('keydown', handleKeyDown, true);
-    };
-  }, [reasoningOpen]);
+  useDismissOnOutside(reasoningOpen, setReasoningOpen, reasoningMenuRef, reasoningButtonRef);
+  useDismissOnOutside(searchMenuOpen, setSearchMenuOpen, searchMenuRef, searchButtonRef);
 
   if (isStreaming) {
     return (
@@ -292,6 +308,10 @@ export function ComposerActions({
   const reasoningActive = effort !== 'none';
 
   const providerLabel = searchModeLabel(searchProvider);
+  // With only provider-native search available there is nothing to choose
+  // between, so the button stays a plain on/off toggle.
+  const searchModes = listSearchModeOptions();
+  const hasSearchChoice = searchModes.length > 1;
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
@@ -304,17 +324,67 @@ export function ComposerActions({
         <PaperClipIcon className="h-4 w-4" />
       </button>
 
-      <button
-        className={`composer-btn-search ${searchEnabled ? 'is-active' : ''}`}
-        aria-pressed={searchEnabled}
-        aria-label="Web search"
-        title={
-          searchEnabled ? `Web search: on (${providerLabel})` : `Web search: off (${providerLabel})`
-        }
-        onClick={toggleSearch}
-      >
-        <SearchGlobeIcon enabled={searchEnabled} size={16} />
-      </button>
+      <div className="relative">
+        <button
+          ref={searchButtonRef}
+          className={`composer-btn-search ${searchEnabled ? 'is-active' : ''}`}
+          aria-pressed={hasSearchChoice ? undefined : searchEnabled}
+          aria-haspopup={hasSearchChoice ? 'menu' : undefined}
+          aria-expanded={hasSearchChoice ? searchMenuOpen : undefined}
+          aria-label="Web search"
+          title={
+            searchEnabled
+              ? `Web search: on (${providerLabel})`
+              : `Web search: off (${providerLabel})`
+          }
+          onClick={() => (hasSearchChoice ? setSearchMenuOpen((open) => !open) : toggleSearch())}
+        >
+          <SearchGlobeIcon enabled={searchEnabled} size={16} />
+        </button>
+        <AnimatePresence>
+          {hasSearchChoice && searchMenuOpen && (
+            <motion.div
+              ref={searchMenuRef}
+              role="menu"
+              aria-label="Web search"
+              className="popover card absolute bottom-full right-0 z-30 mb-2 w-56 p-1"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={springs.snappy}
+            >
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={!searchEnabled}
+                className="menu-item w-full text-left text-sm"
+                onClick={() => {
+                  if (searchEnabled) toggleSearch();
+                  setSearchMenuOpen(false);
+                }}
+              >
+                Off
+              </button>
+              {searchModes.map((option) => (
+                <button
+                  key={option.mode}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={searchEnabled && searchProvider === option.mode}
+                  className="menu-item w-full text-left text-sm"
+                  onClick={() => {
+                    selectSearchMode(option.mode);
+                    setSearchMenuOpen(false);
+                  }}
+                >
+                  {option.label}
+                  <span className="block text-xs text-muted-foreground">{option.description}</span>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {showReasoningMenu && (
         <div className="relative">

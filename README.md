@@ -47,11 +47,9 @@ ACCESS_CODES_INDIVIDUAL_HASHED=
 ACCESS_CODES_DEVELOPER_HASHED=
 ```
 
-Client-side mode (not recommended):
-
-```
-VITE_OPENROUTER_API_KEY=sk-or-v1_your_client_key_here
-```
+Bring-your-own-key needs no configuration at all: start the app, paste an OpenRouter or Anthropic
+key into the setup sheet (or point it at a local OpenAI-compatible server), and it is stored in
+your browser.
 
 Install dependencies:
 
