@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyTutorToolCall } from '@/lib/agent/tools';
-import { getTutorToolDefinitions } from '@/lib/agent/tutor';
+import { applyTutorToolCall } from '@/modules/tutor/tools/apply';
+import { getTutorToolDefinitions } from '@/modules/tutor/agent/preamble';
 import type { StoreSetter } from '@/lib/agent/types';
-import { validateLearningPlan } from '@/lib/learning-plan/validate';
+import { validateLearningPlan } from '@/modules/tutor/learning-plan/validate';
 import { buildMessageIndex } from '@/lib/messages/indexing';
 import type { Chat } from '@/lib/types';
 

@@ -3,15 +3,11 @@
 // by inspecting chat state, UI preferences, and prepared attachments.
 
 import { buildChatCompletionMessages } from '@/lib/agent/prompt-builder';
-import { getTutorPreamble, getTutorToolDefinitions } from '@/lib/agent/tutor';
-import { getTutorPhase, getTutorToolEligibility } from '@/lib/agent/tutor/state';
 import { composePlugins } from '@/lib/agent/request';
 import { getSearchToolDefinition } from '@/lib/search';
 import { type ComposeTurnArgs, type TurnComposition, type ToolDefinition } from '@/lib/agent/types';
-import tutorProfileService from '@/lib/tutor/profile';
 import { combineSystem } from '@/lib/agent/system';
-import { getNextNode } from '@/lib/learning-plan/service';
-import { isTutorToolName } from '@/lib/agent/tools';
+import { ENABLED_MODULES } from '@/lib/modules';
 import type { Message } from '@/lib/types';
 import { buildSearchDateNotice, buildToolPreamble } from '@/lib/agent/prompts/toolPreamble';
 import { buildTimestampNotice } from '@/lib/agent/prompts/timestamps';
@@ -25,7 +21,6 @@ export async function composeTurn({
   newUser,
   attachments,
 }: ComposeTurnArgs): Promise<TurnComposition> {
-  const tutorEnabled = settings.tutorEnabled;
   const searchEnabled = settings.searchEnabled;
 
   const searchProvider = settings.searchProvider || 'openrouter';
@@ -39,31 +34,9 @@ export async function composeTurn({
 
   const plugins = composePlugins({ hasPdf, searchEnabled, searchProvider });
 
-  const tutorPhase = tutorEnabled ? getTutorPhase(chat, priorMessages as Message[], ui) : undefined;
-  const activeNodeId =
-    tutorEnabled && chat.settings.features.tutor?.learningPlan
-      ? getNextNode(chat.settings.features.tutor?.learningPlan)?.id
-      : undefined;
-  const allowedTutorTools =
-    tutorEnabled && tutorPhase
-      ? getTutorToolEligibility({ chat, ui, phase: tutorPhase, activeNodeId }).allowedTutorTools
-      : undefined;
-
-  const searchTools: ToolDefinition[] =
-    searchEnabled && searchProvider === 'tavily' ? getSearchToolDefinition() : [];
-  const tutorTools: ToolDefinition[] =
-    tutorEnabled && allowedTutorTools
-      ? getTutorToolDefinitions().filter((def) => {
-          const name = def.function?.name;
-          if (!name || !isTutorToolName(name)) return false;
-          return allowedTutorTools.has(name);
-        })
-      : [];
-  const tools = [...searchTools, ...tutorTools];
-
   // Collect preambles split into stable (cacheable) and dynamic (per-turn) groups.
-  // Stable: tool preamble, tutor preamble, learner profile, learner preference.
-  // Dynamic: plan context (includes mastery scores that change each turn).
+  // Stable: tool preamble plus whatever the modules contribute.
+  // Dynamic: per-turn module context (e.g. mastery scores that change each turn).
   const stablePreambles: string[] = [];
   const dynamicPreambles: string[] = [];
   if (settings.timestampsEnabled) {
@@ -75,39 +48,31 @@ export async function composeTurn({
     stablePreambles.push(buildSearchDateNotice());
     if (searchProvider === 'tavily') stablePreambles.push(buildToolPreamble());
   }
-  if (tutorEnabled) {
-    const tutorPreamble = getTutorPreamble();
-    if (tutorPreamble) stablePreambles.push(tutorPreamble);
 
-    try {
-      const profile = await tutorProfileService.loadTutorProfile(chat.id);
-      const summary = tutorProfileService.summarizeTutorProfile(profile);
-      if (summary) stablePreambles.push(`Learner Profile:\n${summary}`);
-    } catch {
-      // ignore profile load failures
-    }
-
-    // Tutor always sees the numerical learner model (it's internal system state).
-    // learnerModelVisible controls student-facing UI only, not tutor context.
-    if (chat.settings.features.tutor?.learningPlan) {
-      const { generatePlanContextPreamble } = await import('@/lib/agent/tutor/planContext');
-      const { getLatestLearnerModel } = await import('@/lib/agent/learner-model');
-      const planContext = generatePlanContextPreamble(
-        chat.settings.features.tutor?.learningPlan,
-        getLatestLearnerModel(priorMessages),
-        { includeLearnerModel: true },
-      );
-      if (planContext) dynamicPreambles.push(planContext);
-    }
-
-    if (settings.tutorNudge) {
-      stablePreambles.push(`Learner Preference: ${settings.tutorNudge.replace(/_/g, ' ')}`);
-    }
+  const searchTools: ToolDefinition[] =
+    searchEnabled && searchProvider === 'tavily' ? getSearchToolDefinition() : [];
+  const moduleTools: ToolDefinition[] = [];
+  let modulesRequirePlanning = false;
+  let modulesReplaceBaseSystem = false;
+  for (const appModule of ENABLED_MODULES) {
+    const contribution = await appModule.compose?.({
+      chat,
+      ui,
+      settings,
+      priorMessages: priorMessages as Message[],
+    });
+    if (!contribution) continue;
+    if (contribution.tools?.length) moduleTools.push(...contribution.tools);
+    if (contribution.stablePreambles?.length) stablePreambles.push(...contribution.stablePreambles);
+    if (contribution.dynamicPreambles?.length)
+      dynamicPreambles.push(...contribution.dynamicPreambles);
+    if (contribution.requiresPlanning) modulesRequirePlanning = true;
+    if (contribution.replacesBaseSystem) modulesReplaceBaseSystem = true;
   }
+  const tools = [...searchTools, ...moduleTools];
 
-  // When tutor is enabled, the tutor preamble is complete - don't add the normal system prompt
   const baseSystem =
-    !tutorEnabled && typeof settings.system === 'string' ? settings.system : undefined;
+    !modulesReplaceBaseSystem && typeof settings.system === 'string' ? settings.system : undefined;
   const preambles = [...stablePreambles, ...dynamicPreambles];
   const system = combineSystem(baseSystem, preambles);
   const systemStable =
@@ -138,7 +103,7 @@ export async function composeTurn({
     timestamps: settings.timestampsEnabled,
   });
 
-  const shouldPlan = tutorEnabled || (searchEnabled && searchProvider === 'tavily');
+  const shouldPlan = modulesRequirePlanning || (searchEnabled && searchProvider === 'tavily');
 
   return {
     system,
@@ -150,6 +115,6 @@ export async function composeTurn({
     hasPdf,
     shouldPlan,
     settings,
-    consumedTutorNudge: tutorEnabled ? settings.tutorNudge : undefined,
+    consumedTutorNudge: settings.tutorEnabled ? settings.tutorNudge : undefined,
   };
 }

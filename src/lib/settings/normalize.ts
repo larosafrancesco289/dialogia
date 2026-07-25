@@ -4,7 +4,7 @@ import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { migrateChatSettingsRecord } from '@/lib/settings/migrations';
 import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
-import { applyTutorDefaults } from '@/lib/tutor/defaults';
+import { applyTutorDefaults } from '@/modules/tutor/lib/defaults';
 import { ChatSettingsSchema } from '@/lib/schemas/persisted';
 import { asNumber, isRecord } from '@/lib/utils/guards';
 import { ReasoningEffortEnum, type ReasoningEffort } from '@/lib/types/enums';

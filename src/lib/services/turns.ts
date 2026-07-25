@@ -6,7 +6,7 @@ import type { DraftAttachment, Chat, Message, MessageTutor } from '@/lib/types';
 import type { StoreAccess, StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
 import type { Repository } from '@/lib/db/repository';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { attachTutorUiState, ensureTutorDefaults } from '@/lib/agent/tutorFlow';
+import { attachTutorUiState, ensureTutorDefaults } from '@/modules/tutor/agent/tutorFlow';
 import { regenerate } from '@/lib/agent/regenerate';
 import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
 import { clearTurnController, setTurnController } from '@/lib/turns/runtime';
@@ -16,13 +16,13 @@ import { executeModelTurn } from '@/lib/services/turns/executor';
 import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { resolveSingleModelAuth } from '@/lib/services/auth';
 import { enforceZdrGate, isTutorRuntimeEnabled } from '@/lib/policy/runtime';
-import { selectTutorEntry } from '@/lib/ui/tutorSelectors';
+import { selectTutorEntry } from '@/modules/tutor/ui/tutorSelectors';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import {
   createMessagePersister,
   ensureHiddenTutorContent,
 } from '@/lib/services/messagePersistence';
-import { scheduleTutorPersistence } from '@/lib/services/tutorPersistence';
+import { scheduleTutorPersistence } from '@/modules/tutor/services/tutorPersistence';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { triggerAsyncTitleGeneration } from '@/lib/services/titleGenerator';
 import { getClientTier } from '@/lib/auth/tier.client';

@@ -4,15 +4,18 @@
 // its entry here.
 
 import type { UiSnapshot } from '@/lib/contracts/ui';
+import type { ToolDefinition } from '@/lib/transport/contracts';
+import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
 import type { ToolGate } from '@/lib/agent/planning/types';
 import type { PersistFragment, StoreGetter, StoreSetter } from '@/lib/store/stateTypes';
 import type { Chat, LearningPlan, Message } from '@/lib/types';
 import { registerCoreTools } from '@/lib/tools/core/searchTools';
-import { createTutorSlice } from '@/lib/store/tutorSlice';
+import { createTutorSlice } from '@/modules/tutor/store/tutorSlice';
+import { buildTutorComposeContribution } from '@/modules/tutor/agent/compose';
 import {
   buildTutorPlanningContribution,
   registerTutorTools,
-} from '@/lib/agent/tools/tutor/moduleEntry';
+} from '@/modules/tutor/tools/moduleEntry';
 
 export type ModulePlanningArgs = {
   chat: Chat;
@@ -27,9 +30,28 @@ export type ModulePlanningContribution = {
   moduleContext?: Record<string, unknown>;
 };
 
+export type ModuleComposeArgs = {
+  chat: Chat;
+  ui?: UiSnapshot;
+  settings: ResolvedTurnSettings;
+  priorMessages: Message[];
+};
+
+export type ModuleComposeContribution = {
+  tools?: ToolDefinition[];
+  stablePreambles?: string[];
+  dynamicPreambles?: string[];
+  /** The module needs the turn to run the multi-round planning loop. */
+  requiresPlanning?: boolean;
+  /** The module's preamble is a complete system prompt; suppress the base one. */
+  replacesBaseSystem?: boolean;
+};
+
 export type AppModule = {
   id: string;
   registerTools?(): void;
+  /** Contributes tools and system preambles to a turn's request payload. */
+  compose?(args: ModuleComposeArgs): Promise<ModuleComposeContribution | undefined>;
   /** Contributes gating and per-turn context when the module is active for this turn. */
   planning?(args: ModulePlanningArgs): ModulePlanningContribution | undefined;
   /** Contributes state and actions to the composed store. */
@@ -50,6 +72,7 @@ const coreModule: AppModule = {
 const tutorModule: AppModule = {
   id: 'tutor',
   registerTools: registerTutorTools,
+  compose: buildTutorComposeContribution,
   planning: buildTutorPlanningContribution,
   storeSlice: (set, get, store) => createTutorSlice(set, get, store),
 };

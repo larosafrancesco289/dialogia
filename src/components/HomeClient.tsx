@@ -5,7 +5,7 @@ import { ChatPane } from '@/components/chat/ChatPane';
 import { TopHeader } from '@/components/TopHeader';
 import { MobileShell } from '@/components/mobile/MobileShell';
 import { FreeTierBanner } from '@/components/FreeTierBanner';
-import { LearningPanel } from '@/components/learning-panel/LearningPanel';
+import { LearningPanel } from '@/modules/tutor/components/learning-panel/LearningPanel';
 import { lazyClient } from '@/lib/ui/lazy';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';

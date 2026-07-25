@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { executeStreamingTurn } from '@/lib/agent/streaming/streamingTurn';
 import { createPipelineClient } from '@/lib/agent/pipelineClient';
-import { getTutorToolDefinitions } from '@/lib/agent/tutor';
+import { getTutorToolDefinitions } from '@/modules/tutor/agent/preamble';
 import { buildTransportAuth } from '@/lib/auth/transport';
 import { createModelIndex } from '@/lib/models';
 import { createAssistantMessage } from '@/lib/messages/createMessage';

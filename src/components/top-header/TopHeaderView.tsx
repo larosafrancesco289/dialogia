@@ -6,9 +6,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
-import { PlanSheet } from '@/components/plan/PlanSheet';
+import { PlanSheet } from '@/modules/tutor/components/plan/PlanSheet';
 import { PlanStatusBadge } from '@/components/top-header/PlanStatusBadge';
-import { TutorToggle } from '@/components/top-header/TutorToggle';
+import { TutorToggle } from '@/modules/tutor/components/header/TutorToggle';
 import { HeaderDivider } from '@/components/top-header/HeaderDivider';
 import { ModelPickerTrigger } from '@/components/top-header/ModelPickerTrigger';
 import type { TopHeaderState } from '@/components/top-header/useTopHeaderState';

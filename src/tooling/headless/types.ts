@@ -1,6 +1,6 @@
 import type { PlanTurnResult, TurnComposition } from '@/lib/agent/types';
 import type { StoreState } from '@/lib/store/types';
-import { selectTutorEntry } from '@/lib/ui/tutorSelectors';
+import { selectTutorEntry } from '@/modules/tutor/ui/tutorSelectors';
 import type { Message, MessageTutor, ToolCallLogEntry, PersistedAttachment } from '@/lib/types';
 import type { LearnerModelDebugEntry } from '@/lib/store/types';
 import { getMessagesForChat } from '@/lib/messages/indexing';

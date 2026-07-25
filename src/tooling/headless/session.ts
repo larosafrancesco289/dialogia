@@ -7,7 +7,7 @@ import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
 import { applyPlanSideEffects } from '@/lib/agent/planning/sideEffects';
 import { streamFinal } from '@/lib/agent/streaming';
-import { mergeTutorPayload } from '@/lib/agent/tutorFlow';
+import { mergeTutorPayload } from '@/modules/tutor/agent/tutorFlow';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import { shouldShortCircuitTutor } from '@/lib/agent/policy';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
@@ -23,8 +23,8 @@ import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexin
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { adjustActiveTurnCount } from '@/lib/ui/streaming';
 import type { TransportAuth } from '@/lib/auth/transport';
-import { getNextNode, updateNodeStatus } from '@/lib/learning-plan/service';
-import { initializeLearnerModel, syncLearnerModelWithPlan } from '@/lib/agent/learner-model';
+import { getNextNode, updateNodeStatus } from '@/modules/tutor/learning-plan/service';
+import { initializeLearnerModel, syncLearnerModelWithPlan } from '@/modules/tutor/learner-model';
 
 export type AuthResolver = (params: {
   modelId: string;

@@ -10,7 +10,7 @@ import { resolveDynamicModelId } from '@/lib/models';
 import type { Repository } from '@/lib/db/repository';
 import { isFreeModel } from '@/data/freeModels';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
-import { ensureTutorDefaults } from '@/lib/agent/tutorFlow';
+import { ensureTutorDefaults } from '@/modules/tutor/agent/tutorFlow';
 import { createModelAuthResolver, type ModelAuth } from '@/lib/services/auth';
 import { prepareAttachmentsByModel } from '@/lib/attachments/prepare';
 import { readNextOverrides } from '@/lib/ui/next';
