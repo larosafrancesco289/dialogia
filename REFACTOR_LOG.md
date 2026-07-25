@@ -380,6 +380,27 @@ time a message needs them.
   on the local branch **`stage-2-migrate-with-dist`**, which can be deleted once the
   rewritten branch has been reviewed.
 
+### Addendum — dev-server API parity (same day)
+
+Restoring `bun run dev` to a working state needed one more commit. `next dev` used
+to serve the API routes; after the migration `vite dev` had no `/api/*` at all, so in
+proxy mode the client's model and chat calls hit the SPA fallback and got HTML back.
+`vite.config.ts` now mounts the worker's own route table as dev middleware
+(`functions/devServer.ts` bridges Node's req/res to `Request`/`Response`, piping the
+body so streamed completions still stream), reads server keys with `loadEnv` since
+Vite only exposes `VITE_*`, and answers an unmatched `/api/*` with the same 404 JSON
+the worker returns. Verified: `/api/openrouter/models` and `/api/openrouter/endpoints/zdr`
+return JSON in dev, `/api/nope` is a 404, and non-API paths still fall through to the SPA.
+
+Left unresolved: a "Missing provider API key or proxy configuration" toast still
+flashes once at boot and auto-dismisses after 10s, on a dev server where the proxy is
+configured and the model list does load. It is not `modelSlice`'s
+`authEntries.length === 0` branch (instrumented, never fired) and not a persisted
+notice (the localStorage blob has none); `requireTransportAuth` resolves for both
+transports when called directly. The remaining candidate is a boot-time path through
+`services/auth.ts`. Cosmetic, but unexplained, and there is no pre-migration baseline
+left to compare against — worth a look during review.
+
 ### Follow-ups discovered (not done)
 
 - The PWA precache (3.7 MB) is dominated by mermaid's per-diagram chunks. Trimming it to
