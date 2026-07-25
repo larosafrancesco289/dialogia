@@ -21,6 +21,7 @@ import { createTutorSlice } from '@/modules/tutor/store/tutorSlice';
 import { decorateTutorMessage } from '@/modules/tutor/lib/hiddenContent';
 import { tutorSettingsDefaults } from '@/modules/tutor/lib/defaults';
 import { tutorPanels } from '@/modules/tutor/panels';
+import { warmTutorProfile } from '@/modules/tutor/lib/bootstrap';
 
 export type ModulePlanningArgs = {
   chat: Chat;
@@ -77,6 +78,8 @@ export type AppModule = {
   decorateMessage?(message: Message): Message;
   /** Components the shell mounts into its typed UI slots. Boot half. */
   panels?: ModulePanels;
+  /** Warms whatever the module needs after the store has hydrated. Boot half. */
+  onBootstrap?(store: { get: StoreGetter; set: StoreSetter }): Promise<void> | void;
   /** Fills in the module's own chat-settings block. Boot half. */
   settingsDefaults?(args: {
     chat: Pick<Chat, 'settings'>;
@@ -101,6 +104,7 @@ const tutorModule: AppModule = {
   decorateMessage: decorateTutorMessage,
   settingsDefaults: tutorSettingsDefaults,
   panels: tutorPanels,
+  onBootstrap: warmTutorProfile,
   load: async () => (await import('@/modules/tutor/moduleEntry')).tutorRuntime,
 };
 
