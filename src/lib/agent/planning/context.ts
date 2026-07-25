@@ -1,10 +1,29 @@
+// Module: agent/planning/context
+// Responsibility: Build the per-turn PlanningContext. Gating and per-turn module
+// state come from the enabled modules; core only knows the ToolGate interface.
+
 import type { PlanTurnOptions, ToolDefinition } from '@/lib/agent/types';
-import { isTutorToolName } from '@/lib/agent/tools';
-import { getTutorPhase, getTutorToolEligibility } from '@/lib/agent/tutor/state';
-import { getNextNode } from '@/lib/learning-plan/service';
+import { ENABLED_MODULES } from '@/lib/modules';
 import type { Message } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
-import type { PlanningContext } from '@/lib/agent/planning/types';
+import type { PlanningContext, ToolGate } from '@/lib/agent/planning/types';
+
+const composeGates = (gates: ToolGate[]): ToolGate => {
+  if (gates.length === 1) return gates[0];
+  return {
+    isAllowed: (name) => gates.every((gate) => gate.isAllowed(name)),
+    onBudgetExceeded: (name) =>
+      gates.some((gate) => gate.onBudgetExceeded?.(name) === 'stop') ? 'stop' : 'skip',
+    contentPriority: gates.find((gate) => gate.contentPriority)?.contentPriority,
+    maxToolsPerTurn: gates.reduce<number | undefined>((min, gate) => {
+      if (gate.maxToolsPerTurn == null) return min;
+      return min == null ? gate.maxToolsPerTurn : Math.min(min, gate.maxToolsPerTurn);
+    }, undefined),
+    onScheduled: (name) => gates.forEach((gate) => gate.onScheduled?.(name)),
+  };
+};
+
+const ALLOW_ALL: ToolGate = { isAllowed: () => true };
 
 export function derivePlanningContext(args: {
   chat: PlanTurnOptions['chat'];
@@ -14,22 +33,26 @@ export function derivePlanningContext(args: {
   currentPlan?: PlanTurnOptions['chat']['settings']['features']['tutor']['learningPlan'];
 }): PlanningContext {
   const { chat, messagesForChat, ui, toolDefinition, currentPlan } = args;
-  const phase = getTutorPhase(chat, messagesForChat, ui);
-  const activeNodeId = currentPlan ? getNextNode(currentPlan)?.id : undefined;
-  const { allowedTutorTools, toolPolicy } = getTutorToolEligibility({
-    chat,
-    ui,
-    phase,
-    activeNodeId,
-  });
-  const planningToolDefinition =
-    Array.isArray(toolDefinition) && toolDefinition.length > 0
-      ? toolDefinition.filter((def) => {
-          const name = def.function?.name;
-          if (!name) return false;
-          if (isTutorToolName(name)) return allowedTutorTools.has(name);
-          return true;
-        })
-      : undefined;
-  return { phase, planningToolDefinition, allowedTutorTools, toolPolicy };
+
+  const gates: ToolGate[] = [];
+  let moduleContext: Record<string, unknown> | undefined;
+  for (const appModule of ENABLED_MODULES) {
+    const contribution = appModule.planning?.({ chat, messagesForChat, ui, currentPlan });
+    if (!contribution) continue;
+    gates.push(contribution.gate);
+    if (contribution.moduleContext) {
+      moduleContext = { ...(moduleContext ?? {}), ...contribution.moduleContext };
+    }
+  }
+  const gate = gates.length ? composeGates(gates) : ALLOW_ALL;
+
+  const offered = Array.isArray(toolDefinition) ? toolDefinition : [];
+  return {
+    toolDefinitions: offered.filter((def) => {
+      const name = def.function?.name;
+      return !!name && gate.isAllowed(name);
+    }),
+    gate,
+    moduleContext,
+  };
 }

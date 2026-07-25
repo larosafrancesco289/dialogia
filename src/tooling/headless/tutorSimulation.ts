@@ -241,7 +241,7 @@ function summarizePlanFlags(plan: PlanTurnResult): string {
   const segments: string[] = [];
   if (plan.learnerModel) segments.push('learner model updated');
   if (plan.planUpdates) segments.push('plan updated');
-  if (plan.usedTutorContentTool) segments.push('inline tutor UI');
+  if (plan.usedContentTool) segments.push('inline tutor UI');
   if (plan.hasSearchResults) segments.push('search results cited');
   return segments.length ? segments.join(', ') : 'no tutor tool usage';
 }

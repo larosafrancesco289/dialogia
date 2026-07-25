@@ -15,7 +15,7 @@ import {
   removeOrphanPendingToolCalls,
   startToolCallLogEntry,
 } from '@/lib/turns/runtime';
-import { getToolCategory } from '@/lib/tools/registry';
+import { getToolLogCategory } from '@/lib/tools';
 import { isReasoningRequested } from '@/lib/settings/generation';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
 import { formatSourcesBlock } from '@/lib/search';
@@ -38,7 +38,9 @@ import type {
   ToolCall,
   ToolDefinition,
 } from '@/lib/agent/types';
+import { createPlanningExecutionState } from '@/lib/agent/planning/types';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
+import { readContentModuleResult } from '@/lib/agent/planning/moduleResult';
 import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
 
 /** Returns true if the model response looks truncated or empty. */
@@ -69,7 +71,7 @@ export type StreamingTurnOptions = StreamFinalOptions & {
 
 export type StreamingTurnResult = {
   finalSystem: string;
-  usedTutorContentTool: boolean;
+  usedContentTool: boolean;
   hasSearchResults: boolean;
   learnerModel?: PlanTurnResult['learnerModel'];
   planUpdates?: PlanTurnResult['planUpdates'];
@@ -153,28 +155,30 @@ function buildResult(
   sideEffects: PlanTurnSideEffect[],
   shortCircuited = false,
 ): StreamingTurnResult {
+  const moduleResult = readContentModuleResult(state);
   return {
     finalSystem,
-    usedTutorContentTool: state.usedTutorContentTool,
+    usedContentTool: state.usedContentTool,
     hasSearchResults: shouldAppendSources(state.aggregatedResults),
-    learnerModel: state.learnerModel,
-    planUpdates: state.planUpdates,
-    updatedPlan: state.updatedPlan,
-    learnerModelDebug: state.learnerModelDebug,
+    learnerModel: moduleResult.learnerModel,
+    planUpdates: moduleResult.planUpdates,
+    updatedPlan: moduleResult.updatedPlan,
+    learnerModelDebug: moduleResult.learnerModelDebug,
     sideEffects,
     shortCircuited,
   };
 }
 
 function buildPlanResult(state: PlanningExecutionState, finalSystem: string): PlanTurnResult {
+  const moduleResult = readContentModuleResult(state);
   return {
     finalSystem,
-    usedTutorContentTool: state.usedTutorContentTool,
+    usedContentTool: state.usedContentTool,
     hasSearchResults: shouldAppendSources(state.aggregatedResults),
-    learnerModel: state.learnerModel,
-    planUpdates: state.planUpdates,
-    updatedPlan: state.updatedPlan,
-    learnerModelDebug: state.learnerModelDebug,
+    learnerModel: moduleResult.learnerModel,
+    planUpdates: moduleResult.planUpdates,
+    updatedPlan: moduleResult.updatedPlan,
+    learnerModelDebug: moduleResult.learnerModelDebug,
   };
 }
 
@@ -213,11 +217,11 @@ export async function executeStreamingTurn(
   const { set, get, modelIndex, persistMessage } = turn;
   const storeState = get?.();
   const messagesForChat = storeState ? getMessagesForChat(storeState, chatId) : [];
-  let currentPlan = chat.settings.features.tutor.learningPlan;
+  let currentPlan = chat.settings.features.tutor?.learningPlan;
   const sideEffects: PlanTurnSideEffect[] = [];
 
   // Derive planning context for tool filtering
-  const { planningToolDefinition, allowedTutorTools, toolPolicy, phase } = derivePlanningContext({
+  const { toolDefinitions: gatedToolDefinitions, gate } = derivePlanningContext({
     chat,
     messagesForChat,
     ui: storeState?.ui,
@@ -234,26 +238,26 @@ export async function executeStreamingTurn(
   if (
     !supportsTools &&
     !modelMeta &&
-    Array.isArray(planningToolDefinition) &&
-    planningToolDefinition.length > 0
+    Array.isArray(gatedToolDefinitions) &&
+    gatedToolDefinitions.length > 0
   ) {
     logger.warn(
       `Tool calling check failed for ${settings.modelId} (no modelMeta). ` +
-        `Assuming tool support since ${planningToolDefinition.length} tools are defined.`,
+        `Assuming tool support since ${gatedToolDefinitions.length} tools are defined.`,
     );
     supportsTools = true;
   } else if (
     !supportsTools &&
-    Array.isArray(planningToolDefinition) &&
-    planningToolDefinition.length > 0
+    Array.isArray(gatedToolDefinitions) &&
+    gatedToolDefinitions.length > 0
   ) {
     logger.warn(
       `Tool calling not supported for ${settings.modelId} per metadata. ` +
-        `${planningToolDefinition.length} tool definitions will be dropped.`,
+        `${gatedToolDefinitions.length} tool definitions will be dropped.`,
     );
   }
   const hasTools =
-    supportsTools && Array.isArray(planningToolDefinition) && planningToolDefinition.length > 0;
+    supportsTools && Array.isArray(gatedToolDefinitions) && gatedToolDefinitions.length > 0;
 
   const combinedPlugins = Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined;
   const generation = settings.generation;
@@ -275,24 +279,9 @@ export async function executeStreamingTurn(
   };
 
   // Initialize execution state
-  let state: PlanningExecutionState = {
-    aggregatedResults: [],
-    usedTutorContentTool: false,
-    learnerModel: undefined,
-    planUpdates: undefined,
-    updatedPlan: undefined,
-    learnerModelDebug: undefined,
-    currentPlan,
-    toolsUsedThisTurn: 0,
-    quizCallsThisTurn: 0,
-    successfulToolCallsThisTurn: 0,
-    failedToolCallsThisTurn: 0,
-  };
-
-  const maxToolsPerTurn =
-    toolPolicy.maxToolsPerTurn && Number.isFinite(toolPolicy.maxToolsPerTurn)
-      ? Math.max(1, toolPolicy.maxToolsPerTurn)
-      : Infinity;
+  let state: PlanningExecutionState = createPlanningExecutionState({
+    moduleState: currentPlan ? { contentModule: { currentPlan } } : {},
+  });
 
   // Build initial messages with system prompt (multipart when stable/dynamic split available)
   const planningSystem = buildSystemMessage({ combinedSystem, systemStable, systemDynamic });
@@ -386,14 +375,13 @@ export async function executeStreamingTurn(
 
   // Pre-log a tool call as pending for immediate UI feedback
   const preLogToolCall = (name: string) => {
-    const category = getToolCategory(name);
     startToolCallLogEntry({
       set,
       chatId,
       messageId: assistantMessage.id,
       name,
       input: {},
-      category: category === 'tutor_content' || category === 'tutor_meta' ? 'tutor' : category,
+      category: getToolLogCategory(name),
     });
   };
 
@@ -433,15 +421,10 @@ export async function executeStreamingTurn(
   const scheduleTools = (toolCalls: ToolCall[]): ToolCall[] =>
     schedulePlanningRound({
       toolCalls,
-      allowedTutorTools,
-      toolPolicy,
-      phase,
-      currentPlan: state.currentPlan ?? currentPlan,
-      usedTutorContentTool: state.usedTutorContentTool,
+      gate,
+      usedContentTool: state.usedContentTool,
       searchEnabled,
       searchProvider,
-      quizCallsThisTurn: state.quizCallsThisTurn,
-      maxToolsPerTurn,
       toolsUsedThisTurn: state.toolsUsedThisTurn,
     });
 
@@ -501,7 +484,7 @@ export async function executeStreamingTurn(
       },
       state,
     });
-    currentPlan = state.currentPlan ?? currentPlan;
+    currentPlan = readContentModuleResult(state).currentPlan ?? currentPlan;
 
     // Pre-logged entries for calls the scheduler dropped would stay "pending"
     // in the ledger forever; executed calls have resolved by now.
@@ -551,7 +534,7 @@ export async function executeStreamingTurn(
       // Only call uiCallbacks.onDone if we're NOT going to execute tools
       if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
         shouldRetryFirstRound = Boolean(
-          planningToolDefinition?.length &&
+          gatedToolDefinitions?.length &&
             looksIncomplete(full || roundContent, roundFinishReason) &&
             !controller.signal.aborted,
         );
@@ -566,7 +549,7 @@ export async function executeStreamingTurn(
 
   await executeStreamCall(ctx, {
     messages: applyCacheBreakpoints(convo),
-    tools: planningToolDefinition,
+    tools: gatedToolDefinitions,
     toolChoice: 'auto',
     callbacks: firstRoundCallbacks,
     round: 0,
@@ -600,7 +583,7 @@ export async function executeStreamingTurn(
 
       await executeStreamCall(ctx, {
         messages: applyCacheBreakpoints(convo),
-        tools: planningToolDefinition,
+        tools: gatedToolDefinitions,
         toolChoice: 'auto',
         callbacks: retryCallbacks,
         round: 0,
@@ -663,7 +646,7 @@ export async function executeStreamingTurn(
 
     await executeStreamCall(ctx, {
       messages: applyCacheBreakpoints(convo),
-      tools: planningToolDefinition,
+      tools: gatedToolDefinitions,
       toolChoice: 'auto',
       callbacks: roundCallbacks,
       round: rounds + 1,
@@ -718,7 +701,7 @@ export async function executeStreamingTurn(
   clearVisibleDraft();
   await executeStreamCall(ctx, {
     messages: applyCacheBreakpoints(finalMessages),
-    tools: planningToolDefinition,
+    tools: gatedToolDefinitions,
     toolChoice: 'none',
     callbacks: createUiCallbacks(performance.now()),
     round: rounds + 1,

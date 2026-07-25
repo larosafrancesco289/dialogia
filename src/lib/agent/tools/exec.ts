@@ -1,4 +1,4 @@
-import { getToolHandler } from '@/lib/tools/registry';
+import { getToolHandler } from '@/lib/tools';
 import type { PlanningToolExecutionResult, ToolExecutionArgs } from '@/lib/tools/execution';
 
 export async function executePlanningToolCall(
@@ -29,7 +29,7 @@ export async function executePlanningToolCall(
       ],
       aggregatedResults,
       usedTool: false,
-      usedTutorContentTool: false,
+      usedContentTool: false,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

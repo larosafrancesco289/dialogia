@@ -134,6 +134,44 @@ module.exports = [
     },
   },
   {
+    // Core tool plumbing is module-agnostic: the registry, the scheduler, and the
+    // planning pipeline reach feature modules only through `@/lib/modules`.
+    files: [
+      'src/lib/tools/registry.ts',
+      'src/lib/tools/core/**/*.ts',
+      'src/lib/tools/definitions/webSearch.ts',
+      'src/lib/agent/tools/scheduler.ts',
+      'src/lib/agent/planning/**/*.ts',
+    ],
+    ignores: ['src/lib/agent/planning/**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@/lib/tutor',
+                '@/lib/tutor/**',
+                '@/lib/agent/tutor',
+                '@/lib/agent/tutor/**',
+                '@/lib/agent/tools/tutor',
+                '@/lib/agent/tools/tutor/**',
+                '@/lib/tools/definitions/tutor/**',
+                './tutor',
+                './tutor/**',
+                '../tutor/**',
+                '../../tutor/**',
+              ],
+              message:
+                'Core tool plumbing must not import feature modules; go through @/lib/modules.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: [
       'src/lib/transport/**/*.ts',
       'src/lib/transport/**/*.tsx',

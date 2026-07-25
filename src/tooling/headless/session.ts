@@ -228,7 +228,7 @@ export class HeadlessTutorSession {
           runArtifacts.plan ?? {
             finalSystem:
               runArtifacts.composition.system ?? chat.settings.system ?? DEFAULT_BASE_SYSTEM,
-            usedTutorContentTool: false,
+            usedContentTool: false,
             hasSearchResults: false,
           };
         return this.finishTurn(userMessage, finalMsg, {
@@ -272,7 +272,7 @@ export class HeadlessTutorSession {
       runArtifacts?.plan ?? {
         finalSystem:
           runArtifacts?.composition.system ?? chat.settings.system ?? DEFAULT_BASE_SYSTEM,
-        usedTutorContentTool: false,
+        usedContentTool: false,
         hasSearchResults: false,
       };
 
