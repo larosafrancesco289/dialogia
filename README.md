@@ -1,286 +1,195 @@
-### Dialogia
+# Dialogia
 
-Local-first, privacy-focused multi-model chat UI for OpenRouter and beyond.
-
-### Highlights
-
-- Local storage: Chats, messages, folders persisted in-browser via IndexedDB (Dexie).
-- ZDR-ready: Optional Zero Data Retention filtering and enforcement; toggleable.
-- Model control: Curated picker, favorites, hide-from-dropdown, custom IDs, and provider labels.
-- Rich I/O: Images (vision), audio input (mp3/wav), PDFs; image generation output supported.
-- Reasoning: Optional “thinking” stream for reasoning-capable models with effort control.
-- Streaming + metrics: TTFT, token counts, tokens/sec; provider-reported cost when available.
-- Compare drawer: Run one prompt across multiple models; copy, insert to chat, or switch model.
-- Web search: Optional Tavily search/fetch tool calling or OpenRouter web plugin augmentation for grounded answers.
-
-### Screenshots
+A local-first chat and tutoring workspace for whatever models you already pay for. Your keys stay
+in your browser, your conversations stay in your browser, and the whole thing is a static site you
+can host anywhere — or run entirely against a model on your own machine.
 
 ![Front page](assets/frontpage.png)
 
+## What it does
+
+- **Bring your own key.** Paste an OpenRouter or Anthropic key and start chatting. It is stored in
+  this browser's IndexedDB and is never included in an export.
+- **Or bring your own server.** Point it at Ollama, LM Studio, llama.cpp or vLLM and never talk to
+  a hosted provider at all.
+- **Everything stays local.** Chats, messages and folders live in IndexedDB. There is no account,
+  no sync, and no server in the default build.
+- **Tutor mode.** An optional structured-learning mode: a generated plan, mastery tracking, and
+  diagnostics that adapt as you go.
+- **Real model control.** Curated picker with favourites, per-model capability flags, reasoning
+  effort per turn, provider routing preference, and optional Zero-Data-Retention enforcement.
+- **Rich input and output.** Images, audio, and PDFs in; markdown with syntax highlighting, KaTeX
+  and Mermaid out.
+- **Grounded answers.** Provider-native web search with any model key, or tool-based search through
+  your own Tavily key.
+- **Streaming with the numbers.** Time to first token, tokens/sec, token counts, and
+  provider-reported cost.
+
 ![Chat](assets/chat.png)
 
-![Image generation](assets/image-gen.png)
+## Quickstart: your own key
+
+```bash
+bun install
+bun run dev
+```
+
+Open http://localhost:3000. The setup sheet appears; pick OpenRouter or Anthropic, paste a key,
+send a message. That is the whole setup — no `.env` file, no build flags.
+
+Get a key from [openrouter.ai/keys](https://openrouter.ai/keys) (one key, most models) or
+[console.anthropic.com](https://console.anthropic.com) (Claude, direct).
+
+## Quickstart: a local model
+
+With [Ollama](https://ollama.com) already running:
+
+```bash
+ollama pull qwen3:8b
+bun run dev
+```
+
+In the setup sheet choose **Local**, name it, and give it `http://localhost:11434/v1`. Then in
+**Settings › Providers** add the model ids you want and turn on the capabilities your server
+actually supports.
+
+Capabilities start off and stay off until you enable them. This is deliberate: a strict
+OpenAI-compatible server rejects an entire request over one field it does not recognise, so
+Dialogia sends the minimal body until you say otherwise. If tool calls or search are unavailable
+you get a visible notice, not silence.
 
 ![Model selection](assets/model-selection.png)
 
+## Deploying your own
+
+Two builds come out of the same source.
+
+**Static (default).** No server, no configuration, no keys anywhere near the deployment:
+
+```bash
+bun run build
+```
+
+`dist/` is a plain static site. Deploy it to Cloudflare Pages, Netlify, GitHub Pages, or your own
+nginx. `public/_redirects` provides the SPA fallback for hosts that read it; anywhere else, point
+unknown paths at `index.html`. Every visitor supplies their own key.
+
+**Hosted.** Adds an access gate and server-side key proxies, so you can share a deployment with
+people who should not each need a key:
+
+```bash
+bun run build:hosted
+```
+
+This emits the same `dist/` plus `dist/_worker.js`, a Cloudflare Pages advanced-mode worker that
+fronts the static assets. See [the hosted variant](#the-hosted-variant) below for the environment
+it needs.
+
+## Configuration
+
+The default build needs no configuration at all. Everything below is for the hosted variant or for
+changing defaults; `.env.example` is the authoritative list, and `.env.local` is where it goes.
+
+Client variables must start with `VITE_` and are **inlined into the bundle at build time**, so none
+of them may hold a secret. Server variables are read per request from the Cloudflare environment.
+
+### Client flags
+
+| Variable                           | Default    | Effect                                                                     |
+| ---------------------------------- | ---------- | -------------------------------------------------------------------------- |
+| `VITE_HOSTED_BUILD`                | `false`    | Ships the `/access` route and expects `dist/_worker.js` alongside.         |
+| `VITE_USE_OR_PROXY`                | `false`    | Route OpenRouter calls through this deployment's key proxy.                |
+| `VITE_USE_ANTHROPIC_PROXY`         | `false`    | Same, for Anthropic.                                                       |
+| `VITE_TAVILY_SEARCH_ENABLED`       | `false`    | Let the client reach this deployment's Tavily key via `/api/tavily`.       |
+| `VITE_OR_ZDR_ONLY_DEFAULT`         | `false`    | New sessions start with ZDR-only enforcement.                              |
+| `VITE_OR_ROUTE_PREFERENCE_DEFAULT` | `balanced` | `balanced` \| `speed` \| `cost`. Only the latter two send `provider.sort`. |
+| `VITE_APP_BASE_URL`                | —          | Absolute origin, when deploying behind a proxy.                            |
+| `VITE_LOG_LEVEL`                   | —          | Client log verbosity.                                                      |
+
+There is deliberately **no client-side provider key variable**. A user's own key always wins over
+the proxy: pasting your key should mean your key is the one spending.
+
+### Server variables (hosted only)
+
+| Variable                                                              | Purpose                                                                                                       |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `OPENROUTER_API_KEY`                                                  | Required when `VITE_USE_OR_PROXY` is on.                                                                      |
+| `OPENROUTER_FREE_API_KEY`                                             | Optional separate key for the free tier.                                                                      |
+| `ANTHROPIC_API_KEY`                                                   | Required when `VITE_USE_ANTHROPIC_PROXY` is on.                                                               |
+| `TAVILY_API_KEY`                                                      | Backs `/api/tavily`.                                                                                          |
+| `AUTH_COOKIE_SECRET`, `ACCESS_CODE_PEPPER`                            | Access gate secrets. Long random hex.                                                                         |
+| `ACCESS_CODES_INDIVIDUAL_HASHED`, `ACCESS_CODES_DEVELOPER_HASHED`     | HMAC-SHA256 hashes of the access codes.                                                                       |
+| `ACCESS_COOKIE_DOMAIN`                                                | Optional cookie domain for access sessions.                                                                   |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                  | Durable rate limiting. Without both, an in-memory per-instance limiter is used.                               |
+| `AUTH_DEBUG_ROUTE_ENABLED`, `AUTH_DEBUG_HEADERS`, `AUTH_TIMING_DEBUG` | Auth debugging toggles.                                                                                       |
+| `NODE_ENV`                                                            | The gate bypasses auth **only** when this is explicitly `development`. An absent value is read as production. |
+
+## The hosted variant
+
+`bun run build:hosted` produces a Cloudflare Pages project where `dist/_worker.js` sits in front of
+the static assets. It adds:
+
+- **An access gate.** Every request carries a signed, HttpOnly cookie; unauthenticated visitors are
+  redirected to `/access`, where they enter a code you distributed privately. Generate the hashes
+  with `crypto.createHmac('sha256', ACCESS_CODE_PEPPER).update(code).digest('hex')`.
+- **Key proxies.** `/api/openrouter/*`, `/api/anthropic/*` and `/api/tavily` inject the
+  deployment's server-side key. They build their auth from the server environment and never forward
+  an inbound `Authorization` or `x-api-key`, so the proxy cannot be used as an open relay.
+- **Tiers.** Access codes map to tiers that ration the deployment's own key. Tier gating applies
+  only to models actually spending that key — a user's own key or a local endpoint is never gated.
+
+Store server secrets as Pages environment variables. Set `NODE_ENV=development` explicitly if you
+want the gate bypassed locally under `wrangler`.
+
 ![Settings](assets/settings.png)
 
-### Setup
+## Using it
 
-Copy `.env.example` to `.env.local` and fill in the values you need. `.env.example` is the
-authoritative list of supported environment variables.
+- Pick a model in the header; favourite or hide models to shape the list.
+- Enter sends, Shift+Enter adds a newline.
+- Attach images (vision models), audio (mp3/wav), or PDFs — PDF text is extracted client-side and
+  sent as text, with small files optionally sent as file blocks.
+- Toggle reasoning effort in the composer for thinking models; expand the Thinking panel per
+  message.
+- Toggle web search in the composer. With a search-provider key stored, the same control becomes a
+  picker between provider-native and tool-based search.
+- Slash commands: `/model <id|name>`, `/search on|off|toggle`,
+  `/reasoning none|low|medium|high`, `/help`.
 
-Recommended proxy mode (keeps keys on the server):
+![Image generation](assets/image-gen.png)
 
-```
-VITE_HOSTED_BUILD=true
-VITE_USE_OR_PROXY=true
-OPENROUTER_API_KEY=sk-or-v1_your_server_key_here
-```
+### Tutor mode
 
-Private access gate (optional but recommended when sharing preview):
+Turn on **Tutor** in the header, then state a goal — "I want to learn Python basics", "teach me
+linear algebra fundamentals". The tutor generates a structured plan with prerequisites and
+objectives, tracks confidence per topic from what you actually demonstrate in conversation, and
+advances when you have shown mastery. Progress shows in the header and in the plan panel; you can
+edit the plan or move between topics yourself.
 
-```
-AUTH_COOKIE_SECRET=replace-with-strong-random-hex
-ACCESS_CODE_PEPPER=replace-with-strong-random-hex
-ACCESS_CODES_INDIVIDUAL_HASHED=
-ACCESS_CODES_DEVELOPER_HASHED=
-```
+It works best on focused, skill-shaped goals and needs a reasonably capable model. Mastery is
+inferred from conversation, not from formal assessment.
 
-Bring-your-own-key needs no configuration at all: start the app, paste an OpenRouter or Anthropic
-key into the setup sheet (or point it at a local OpenAI-compatible server), and it is stored in
-your browser.
+Tutor mode is a self-contained module under `src/modules/tutor`. A fork that does not want it can
+delete that directory and its entry in `src/lib/modules.ts`, and the rest of the app compiles and
+runs unchanged.
 
-Install dependencies:
+## Development
 
-```
+```bash
 bun install
+bun run dev          # http://localhost:3000
+bun run build        # static BYOK build
+bun run build:hosted # the same, plus dist/_worker.js
+bun start            # preview a production build
+scripts/ci.sh        # hygiene + types + tests + format + lint
 ```
 
-### Run
+See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions and [ARCHITECTURE.md](ARCHITECTURE.md) for
+how the app is put together. [DESIGN.md](DESIGN.md) is the visual system.
 
-- Dev server: `bun run dev` → http://localhost:3000
-- Build: `bun run build`
-- Start (prod): `bun start`
-- Lint: `bun run lint` (uses `eslint.config.js`)
-- Type check: `bun run lint:types`
-- Tests: `bun run test`
-- Format: `bun run format`
-- CI (type-check + tests + format check + lint): `bun run check`
+Built with Vite, TanStack Router, React 18, Zustand, Dexie and Tailwind v4. Bun is the package
+manager and script runner.
 
-Wrappers and helpers:
+## License
 
-- Shell wrappers: `scripts/dev.sh`, `scripts/build.sh`, `scripts/start.sh`
-- CI + hygiene: `scripts/install.sh`, `scripts/ci.sh`, `scripts/hygiene.sh`
-- Tutor simulation runner: `scripts/tutor-sim.ts`
-
-### Key concepts and entrypoints
-
-- Architecture boundaries: `ARCHITECTURE.md`
-
-### How to style
-
-See `DESIGN.md` for the design system and guidance on where styles live.
-
-### Local Artifacts
-
-The following are local-only (already in `.gitignore`) and should not be committed: `.next/`,
-`node_modules/`, `.eslintcache`, `.DS_Store`, `tmp/`, `tsconfig.tsbuildinfo`.
-
-The tutor simulation script writes local-only outputs to `tmp/tutor-sim-*.json` by default.
-
-### Usage
-
-- Pick a model in the top header. Favorites and hide actions personalize the list.
-- Compose and send with Enter; Shift+Enter inserts a newline.
-- Attachments:
-  - Images: shown inline when the model supports vision.
-  - Audio (mp3/wav): sent as input_audio content to audio-capable models.
-  - PDFs: text is extracted client-side and sent as text blocks; small files may fall back to file
-    blocks.
-- Reasoning: toggle effort in the composer for thinking models; view “Thinking” panel per message.
-- Web search: toggle the search icon to ground the next reply with sources. Tavily runs through the local `web_search` and `web_fetch` tools when selected; OpenRouter injects its web plugin when selected.
-- Compare: click the grid icon in the header to run a prompt across multiple models and review metrics.
-- Slash commands:
-  - `/model <id|name>` — set the model.
-  - `/search on|off|toggle` — toggle web search.
-  - `/reasoning none|low|medium|high` — set reasoning effort.
-  - `/help` — list supported commands.
-
-### Headless Tutor Simulation
-
-Run the complete tutoring pipeline (tutor agent, simulated learner, and LLM judge) without the UI:
-
-```
-bun run tutor:simulate -- --goal "Limits revision"
-```
-
-Key details:
-
-- **API keys**: The runner talks directly to model APIs. Set `OPENROUTER_API_KEY` for the simulated student/judge/tutor models. Override with `--openrouter-key` if needed. Proxy-only setups are not supported for the headless flow.
-- **Env loading**: The script now reads `.env.local` (and `.env`) on startup, so keys placed there are picked up automatically without passing CLI flags.
-- **Defaults**: Uses the curated defaults from `src/data/curatedModels.ts` (tutor = `DEFAULT_TUTOR_MODEL_ID`, student/judge = `DEFAULT_MODEL_ID`). Override via `--tutor-model`, `--student-model`, and `--judge-model`.
-- **Presets**: Run `bun run tutor:simulate -- --list-presets` to view canned scenarios (e.g. `--preset python_basics` runs a five-turn Python onboarding flow). You can still provide `--goal` manually to craft new scenarios.
-- **Output**: Shows a concise turn-by-turn summary in the terminal and writes the full JSON payload (transcripts, tool calls, tutor UI, learner model snapshots, judge verdict) to `tmp/tutor-sim-*.json`. Override the destination with `--json-out path/to/report.json`.
-- **Customizing**: Pass `--turns <n>` to limit the dialogue length, provide `--initial-user` to seed the first learner utterance, or supply different model IDs per role.
-- **Testing**: The orchestration layer is covered by `tests/headlessSession.test.ts`. Run with `bun run test` once your environment allows TSX to spawn its IPC socket (some sandboxes may block this by default).
-
-### Tutor Mode: Adaptive Learning Plans
-
-Dialogia includes an experimental **Tutor Mode** that provides personalized, structured learning experiences with automatic progress tracking.
-
-#### Features
-
-- **Automatic Plan Generation**: Start a chat with a learning goal (e.g., "I want to learn Python basics"), and the tutor automatically generates a structured learning plan with topics, prerequisites, and learning objectives.
-- **Mastery Tracking**: The system continuously monitors your understanding through conversation, tracking confidence levels (0-100%) for each topic based on your responses, questions, and demonstrated knowledge.
-- **Adaptive Progression**: The tutor automatically advances you to the next topic when you reach 70% mastery, have completed 5+ interactions, and show no unresolved misconceptions.
-- **Visual Progress**: View your learning plan and progress in real-time through the plan sidebar, with color-coded indicators showing completed, in-progress, and upcoming topics.
-
-#### How to Use
-
-1. **Enable Tutor Mode**: Click the "Tutor" button in the top header to activate tutor mode for the current chat (or for the next new chat if no chat is open).
-
-2. **Start Learning**: Begin a conversation with your learning goal, for example:
-   - "I want to learn React hooks"
-   - "Teach me linear algebra fundamentals"
-   - "Help me understand how Docker works"
-   - "I need to learn SQL for data analysis"
-
-3. **View Your Plan**: Once the plan is generated, you'll see:
-   - A **progress indicator** in the header showing your completion percentage
-   - The **current focus topic** highlighted in the header and composer
-   - A **"View Plan" button** to open the full learning plan sidebar
-
-4. **Track Your Progress**: As you learn:
-   - Your mastery level for each topic is displayed in **assistant messages** after key interactions
-   - **Status changes** (topic completion, transitions) appear as notifications in messages
-   - The **plan sidebar** updates in real-time with your current mastery levels
-   - Topics automatically unlock as you complete prerequisites
-
-5. **Navigate Your Plan**: Click "View Plan" to:
-   - See all topics in your learning path
-   - View prerequisites and dependencies
-   - Check your mastery level for each topic (with progress bars)
-   - Manually advance or revisit topics if needed
-   - See estimated completion time and difficulty
-
-#### Example Learning Goals
-
-Tutor mode works best with structured, skill-based learning goals:
-
-**Programming Languages:**
-
-- "I want to learn Python basics"
-- "Teach me JavaScript ES6+ features"
-- "Help me understand TypeScript type system"
-
-**Frameworks & Tools:**
-
-- "I need to learn React for web development"
-- "Teach me Docker containerization"
-- "Help me understand Git workflows"
-
-**Concepts & Theory:**
-
-- "I want to learn linear algebra"
-- "Teach me database normalization"
-- "Help me understand machine learning fundamentals"
-
-**Professional Skills:**
-
-- "I need to learn SQL for data analysis"
-- "Teach me REST API design principles"
-- "Help me understand system design concepts"
-
-#### Understanding the Learner Model
-
-The tutor tracks your mastery using a Bayesian confidence model:
-
-- **Starting confidence**: 30% (beginner level)
-- **Evidence weights**: -0.5 (misconception) to +0.5 (clear understanding)
-- **Completion threshold**: 70% confidence, 5+ interactions, no unresolved misconceptions
-- **Update frequency**: Learner model updates every 3 interactions by default
-
-Progress indicators use color coding:
-
-- 🟢 **Green (70-100%)**: Strong mastery, ready to advance
-- 🟡 **Yellow (40-69%)**: Developing understanding, keep practicing
-- 🔴 **Red (0-39%)**: Needs more work, concepts not yet clear
-
-#### Tips for Effective Learning
-
-- **Be specific** with your learning goals — the more focused, the better the plan
-- **Ask questions** when you don't understand — the tutor tracks misconceptions
-- **Demonstrate understanding** by explaining concepts back or solving problems
-- **Review the plan** regularly to see your overall progress and upcoming topics
-- **Take your time** — mastery is based on understanding, not speed
-
-#### Limitations & Known Issues
-
-- Plan generation requires a capable model (GPT-4, Claude, etc.)
-- Very broad goals (e.g., "teach me everything") may produce less structured plans
-- Mastery tracking is based on conversational evidence, not formal assessments
-- Manual topic advancement is available but may skip important prerequisites
-
-### Architecture
-
-- Framework: Vite + TanStack Router, SPA mode (React 18). No SSR.
-- State: Zustand with local persistence; Dexie for IndexedDB tables
-- API proxy: `/api/openrouter/*` and `/api/anthropic/*` for model traffic; `/api/tavily` for web search; `/api/xai/session` for X.AI voice
-- Markdown: `react-markdown` + GFM, Prism, KaTeX, Mermaid
-- Styles: Tailwind v4 base + `styles/foundations.css` tokens; `styles/globals.css` layout
-- Agent services: `src/lib/agent/request.ts` (request building), `src/lib/search/*` (search orchestration), and `src/lib/agent/tutorFlow.ts` (tutor memory composition) centralize turn logic.
-- Capabilities: Derived from OpenRouter model metadata (vision, audio input, image output, reasoning)
-- PDFs: Text is extracted client-side and preferred in prompts; small files may be sent as file blocks.
-
-Security notes:
-
-- Prefer proxy mode (`VITE_USE_OR_PROXY=true`) to keep provider keys server-side.
-- Avoid placing secrets in `VITE_*` env vars when possible: they are inlined into the client bundle.
-- Tavily Search runs only server-side and requires `TAVILY_API_KEY`.
-- ZDR-only: Opt-in via Settings or `VITE_OR_ZDR_ONLY_DEFAULT=true`; OpenRouter requests enforce it with `provider.zdr=true`.
-- Access gate: the hosted worker validates a signed, HttpOnly cookie on every request; unauthenticated users are redirected to `/access`. Add env vars above and distribute plaintext codes privately.
-
-### Deploying on Cloudflare Pages
-
-Two builds come out of the same source:
-
-- **BYOK (default)** — `bun run build` emits a pure static `dist/`. Deploy it as a Pages project
-  with no functions; `public/_redirects` provides the SPA fallback.
-- **Hosted** — `bun run build:hosted` also emits `dist/_worker.js`, which fronts the static assets
-  with the access gate and the key proxies. Add the env vars from Setup as Pages environment
-  variables; no client-side keys are required, since all model calls run through
-  `/api/openrouter/*` with the server-side key.
-
-### Project Structure
-
-```
-index.html              # SPA shell (theme-init script, meta tags)
-functions/              # Hosted variant: Cloudflare worker, access gate, API proxies
-src/main.tsx            # Client entry
-src/router.tsx          # TanStack Router route tree
-src/components/         # React components (PascalCase .tsx)
-src/components/message/ # Message subcomponents (meta, reasoning, sources)
-src/components/settings/# Settings drawer panels per tab (models/chat/tutor/etc.)
-src/lib/                # Utilities, API client, state slices
-src/data/               # Curated model metadata
-src/types/              # Type augmentations
-public/                 # Static assets copied verbatim into dist/
-assets/                 # Screenshots
-styles/                 # Global CSS entry (globals.css) and tokens (foundations.css)
-scripts/                # Helper scripts (dev/build/start)
-tests/                  # Legacy Node-based unit tests (`bun run test` also runs colocated *.test.ts)
-```
-
-### Development
-
-- Language: TypeScript + React 18; Vite SPA
-- Formatting: Prettier (`.prettierrc`) — single quotes, semicolons, trailing commas=all, width=100
-- Naming: PascalCase components in `src/components/`; named exports favored
-- Linting & types: run `bun run lint` and `bun run lint:types` before pushing
-- Testing: `bun run test` (Node test runner via `tsx`); add colocated `*.test.ts(x)` for unit coverage.
-- CI/local checklist: `scripts/ci.sh` (runs `lint:types`, `test`, `format`).
-
-### License
-
-MIT
+MIT. See [LICENSE](LICENSE).
