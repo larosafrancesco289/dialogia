@@ -52,7 +52,7 @@ are roughly ordered by dependency.
 
 ---
 
-## Stage 0 — Quick wins (DONE — branch `worktree-agent-aa5eadac3c21a5341`, awaiting review/merge)
+## Stage 0 — Quick wins (DONE — merged to main)
 
 **Outcome: First Load JS 511 kB → 334 kB gz (−35%); duplicate cold-start fetches eliminated;
 mid-stream errors surfaced; 2,908 dead lines deleted. CI green. Full report in
@@ -79,7 +79,7 @@ carries over to Vite.
 **Done when:** `scripts/ci.sh` passes; before/after build table captured; cold start no longer
 fetches duplicate ZDR payloads.
 
-## Stage 1 — Decouple
+## Stage 1 — Decouple (DONE — merged to main 2026-07-25, after independent review + fixes; see REFACTOR_LOG.md)
 
 Goal: the type surgery that makes tutor removable, kills the mirror farms, and gets research
 apparatus out of main. Pure TypeScript work, framework-independent, so it happens before the
