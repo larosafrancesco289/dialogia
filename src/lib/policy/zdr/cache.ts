@@ -63,6 +63,9 @@ export function hydrateZdrCache<S extends ZdrCacheState>(
   set(() => toZdrState(lists, fetchedAt ?? Date.now()) as Partial<S>);
 }
 
+// Concurrent callers share one endpoint fetch instead of each pulling the ~500 kB payload.
+let inflightRefresh: Promise<ZdrLists> | null = null;
+
 export async function refreshZdrListsIfNeeded<S extends ZdrCacheState>(
   set: StoreSetter<S>,
   get: StoreGetter<S>,
@@ -76,9 +79,16 @@ export async function refreshZdrListsIfNeeded<S extends ZdrCacheState>(
       providerIds: new Set(snapshot.providerIds ?? []),
     };
   }
-  const lists = await ensureZdrLists(undefined, fetchers);
-  hydrateZdrCache(set, lists, now);
-  return lists;
+  if (inflightRefresh) return inflightRefresh;
+  inflightRefresh = ensureZdrLists(undefined, fetchers)
+    .then((lists) => {
+      hydrateZdrCache(set, lists, now);
+      return lists;
+    })
+    .finally(() => {
+      inflightRefresh = null;
+    });
+  return inflightRefresh;
 }
 
 export async function computeZdrFilterCached<T extends { id?: string }, S extends ZdrCacheState>(

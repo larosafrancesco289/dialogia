@@ -43,6 +43,9 @@ export function buildPersistedState(state: StoreState): PersistedStoreState {
     selectedChatId: state.selectedChatId,
     favoriteModelIds: state.favoriteModelIds,
     hiddenModelIds: state.hiddenModelIds,
+    zdrModelIds: state.zdrModelIds,
+    zdrProviderIds: state.zdrProviderIds,
+    zdrFetchedAt: state.zdrFetchedAt,
     ui: {
       showSettings: state.ui.showSettings,
       sidebarCollapsed: state.ui.sidebarCollapsed,

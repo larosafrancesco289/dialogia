@@ -51,7 +51,22 @@ function prefetchRemainingChatMessages(get: StoreGetter) {
   scheduleIdle(runNext);
 }
 
-export async function bootstrapApp(set: StoreSetter, get: StoreGetter): Promise<void> {
+let inflightBootstrap: Promise<void> | null = null;
+
+/**
+ * Concurrent callers (e.g. desktop and mobile shells mounting together) share one
+ * run so startup fetches are not duplicated. A later call still re-hydrates, which
+ * the import flow relies on.
+ */
+export function bootstrapApp(set: StoreSetter, get: StoreGetter): Promise<void> {
+  if (inflightBootstrap) return inflightBootstrap;
+  inflightBootstrap = runBootstrap(set, get).finally(() => {
+    inflightBootstrap = null;
+  });
+  return inflightBootstrap;
+}
+
+async function runBootstrap(set: StoreSetter, get: StoreGetter): Promise<void> {
   const snapshot = await loadRepositorySnapshot(get().selectedChatId);
   const hydrated = hydrateRepositorySnapshot(snapshot);
 

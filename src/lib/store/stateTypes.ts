@@ -22,9 +22,9 @@ export type StoreDataState = {
   modelIndex: ModelIndex;
   favoriteModelIds: string[];
   hiddenModelIds: string[];
-  // Cached ZDR model ids (ephemeral; not persisted)
+  // Cached ZDR model ids (persisted so ZDR_CACHE_TTL_MS survives reloads)
   zdrModelIds?: string[];
-  // Cached ZDR provider ids (ephemeral; not persisted)
+  // Cached ZDR provider ids (persisted so ZDR_CACHE_TTL_MS survives reloads)
   zdrProviderIds?: string[];
   // Timestamp when ZDR lists were last fetched
   zdrFetchedAt?: number;
@@ -36,7 +36,12 @@ export type StoreState = StoreDataState & StoreActions;
 
 export type PersistedStoreState = Pick<
   StoreDataState,
-  'selectedChatId' | 'favoriteModelIds' | 'hiddenModelIds'
+  | 'selectedChatId'
+  | 'favoriteModelIds'
+  | 'hiddenModelIds'
+  | 'zdrModelIds'
+  | 'zdrProviderIds'
+  | 'zdrFetchedAt'
 > & {
   ui: PersistedUiState;
 };

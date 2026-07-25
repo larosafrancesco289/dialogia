@@ -1,11 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  clearOpenRouterCachesForTest,
-  fetchModels,
-  fetchZdrModelIds,
-  fetchZdrProviderIds,
-} from '@/lib/openrouter';
+import { clearOpenRouterCachesForTest, fetchModels, fetchZdrLists } from '@/lib/openrouter';
 import { buildTransportAuth } from '@/lib/auth/transport';
 
 const okResponse = (payload: unknown) =>
@@ -34,7 +29,7 @@ test('fetchModels caches repeated lookups for the same API key', async () => {
   assert.equal(second[0]?.id, 'test/model');
 });
 
-test('ZDR endpoint lookups do not share transport cache', async () => {
+test('fetchZdrLists derives both lists from a single endpoint fetch', async () => {
   clearOpenRouterCachesForTest();
   let calls = 0;
   const fakeFetcher = async () => {
@@ -47,10 +42,21 @@ test('ZDR endpoint lookups do not share transport cache', async () => {
     });
   };
 
-  const providers = await fetchZdrProviderIds(fakeFetcher);
-  const modelIds = await fetchZdrModelIds(fakeFetcher);
+  const { modelIds, providerIds } = await fetchZdrLists(fakeFetcher);
 
-  assert.equal(calls, 2);
-  assert.ok(providers.has('moonshotai'));
+  assert.equal(calls, 1);
+  assert.ok(providerIds.has('moonshotai'));
+  assert.ok(providerIds.has('mistralai'));
   assert.ok(modelIds.has('mistralai/mixtral-8x7b'));
+  assert.ok(modelIds.has('moonshotai/moon-1'));
+});
+
+test('fetchZdrLists returns empty lists when the endpoint fails', async () => {
+  clearOpenRouterCachesForTest();
+  const failingFetcher = async () => ({ ok: false, status: 502, json: async () => ({}) }) as any;
+
+  const { modelIds, providerIds } = await fetchZdrLists(failingFetcher);
+
+  assert.equal(modelIds.size, 0);
+  assert.equal(providerIds.size, 0);
 });
