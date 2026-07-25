@@ -60,6 +60,21 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
     changed = true;
   }
 
+  // Legacy deep-research messages can hold their only answer text in
+  // `deepResearch.answer` with an empty `content`; fold it in before the field
+  // is dropped so the text survives the strip.
+  const legacyDeepResearch = (next as Record<string, unknown>).deepResearch;
+  if (
+    (!next.content || !next.content.trim()) &&
+    legacyDeepResearch &&
+    typeof legacyDeepResearch === 'object' &&
+    typeof (legacyDeepResearch as { answer?: unknown }).answer === 'string' &&
+    (legacyDeepResearch as { answer: string }).answer.trim()
+  ) {
+    next.content = (legacyDeepResearch as { answer: string }).answer;
+    changed = true;
+  }
+
   // Removed features whose records may still sit in older IndexedDB rows.
   for (const key of REMOVED_MESSAGE_KEYS) {
     if (key in next) {

@@ -61,4 +61,37 @@ test('sanitizeMessageRecord drops the legacy deepResearch field', () => {
   const { next, changed } = sanitizeMessageRecord(original);
   assert.equal(changed, true);
   assert.equal('deepResearch' in next, false);
+  assert.equal(next.content, 'Final answer');
+});
+
+test('sanitizeMessageRecord folds a legacy deepResearch answer into empty content', () => {
+  const original = {
+    id: 'm4',
+    chatId: 'chat4',
+    role: 'assistant',
+    content: '',
+    createdAt: Date.now(),
+    deepResearch: { trace: [{ type: 'thought' }], answer: 'Legacy answer text' },
+  } as unknown as Message;
+
+  const { next, changed } = sanitizeMessageRecord(original);
+  assert.equal(changed, true);
+  assert.equal('deepResearch' in next, false);
+  assert.equal(next.content, 'Legacy answer text');
+});
+
+test('sanitizeMessageRecord drops an answerless deepResearch field without touching content', () => {
+  const original = {
+    id: 'm5',
+    chatId: 'chat5',
+    role: 'assistant',
+    content: '',
+    createdAt: Date.now(),
+    deepResearch: { trace: [{ type: 'thought' }] },
+  } as unknown as Message;
+
+  const { next, changed } = sanitizeMessageRecord(original);
+  assert.equal(changed, true);
+  assert.equal('deepResearch' in next, false);
+  assert.equal(next.content, '');
 });
