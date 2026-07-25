@@ -152,3 +152,32 @@ test('buildAnthropicBody keeps Opus 4.7 snapshots on adaptive thinking', () => {
   assert.deepEqual(body.thinking, { type: 'adaptive', display: 'summarized' });
   assert.deepEqual(body.output_config, { effort: 'xhigh' });
 });
+
+test('an id the alias map has not caught up with is still sent to the API', () => {
+  const body = buildAnthropicBody({
+    model: 'anthropic-direct/claude-brand-new-7',
+    messages: [{ role: 'user', content: 'hi' }],
+    stream: false,
+  });
+  assert.equal(body.model, 'claude-brand-new-7');
+});
+
+test('audio content is reported rather than dropped in silence', () => {
+  const dropped: string[][] = [];
+  const body = buildAnthropicBody({
+    model: 'claude-haiku-4-5',
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'transcribe this' },
+          { type: 'input_audio', input_audio: { data: 'AAAA', format: 'wav' } },
+        ],
+      },
+    ],
+    stream: false,
+    onUnsupportedContent: (kinds) => dropped.push(kinds),
+  });
+  assert.deepEqual(dropped, [['audio']]);
+  assert.equal(body.messages[0].content, 'transcribe this');
+});

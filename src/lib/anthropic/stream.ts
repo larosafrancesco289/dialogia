@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { consumeSse } from '@/lib/api/stream';
 import { mergeUsage, normalizeUsage, sumUsage, type Usage } from '@/lib/api/normalizers';
 import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
@@ -72,6 +73,8 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
     toolChoice: params.toolChoice,
     plugins: params.plugins,
     enableAutomaticCaching: true,
+    onUnsupportedContent: (kinds) =>
+      logger.warn(`[Anthropic] Dropped unsupported content: ${kinds.join(', ')}`),
   });
 
   let full = '';

@@ -14,6 +14,18 @@ export const NOTICE_CATALOG = {
 
 export type NoticeId = keyof typeof NOTICE_CATALOG;
 
+const ATTACHMENT_KIND_LABELS: Record<string, string> = {
+  image: 'Images',
+  audio: 'Audio',
+  pdf: 'PDFs',
+};
+
+/** Attachments the chosen model cannot read are removed; say so rather than silently sending less. */
+export function describeDroppedAttachments(kinds: string[]): string {
+  const labels = kinds.map((kind) => ATTACHMENT_KIND_LABELS[kind] ?? kind);
+  return `${labels.join(' and ')} were left out: this model does not accept them.`;
+}
+
 export function resolveNotice(notice?: NoticeId | string): string | undefined {
   if (!notice) return undefined;
   return NOTICE_CATALOG[notice as NoticeId] ?? notice;

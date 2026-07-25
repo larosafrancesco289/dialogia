@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { normalizeUsage, sumUsage } from '@/lib/api/normalizers';
 import { API_ERROR_CODES } from '@/lib/api/errors';
 import type { TransportChatParams } from '@/lib/transport/types';
@@ -203,6 +204,8 @@ export async function chatCompletion(params: TransportChatParams): Promise<ChatC
     toolChoice: params.toolChoice,
     plugins: params.plugins,
     enableAutomaticCaching: true,
+    onUnsupportedContent: (kinds) =>
+      logger.warn(`[Anthropic] Dropped unsupported content: ${kinds.join(', ')}`),
   });
   const data = await requestAnthropicMessageSequence({
     auth: params.auth,

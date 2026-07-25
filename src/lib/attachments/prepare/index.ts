@@ -11,21 +11,34 @@ function stripFile(attachment: DraftAttachment): PersistedAttachment {
   return rest;
 }
 
+export type PreparedAttachments = {
+  attachments: PersistedAttachment[];
+  /** Attachment kinds this model cannot accept, so the caller can say so. */
+  droppedKinds: string[];
+};
+
 export async function prepareAttachmentsForModel(opts: {
   attachments?: DraftAttachment[];
   modelId: string;
   models: ModelDescriptor[];
-}): Promise<PersistedAttachment[]> {
+}): Promise<PreparedAttachments> {
   const { attachments = [], modelId, models } = opts;
-  if (attachments.length === 0) return [];
+  if (attachments.length === 0) return { attachments: [], droppedKinds: [] };
 
   const modelMeta = findModelById(models, modelId);
   const allowVision = isVisionSupported(modelMeta);
   const allowAudio = isAudioInputSupported(modelMeta);
 
+  const dropped = new Set<string>();
   const filtered = attachments.filter((attachment) => {
-    if (attachment.kind === 'image') return allowVision;
-    if (attachment.kind === 'audio') return allowAudio;
+    if (attachment.kind === 'image' && !allowVision) {
+      dropped.add('image');
+      return false;
+    }
+    if (attachment.kind === 'audio' && !allowAudio) {
+      dropped.add('audio');
+      return false;
+    }
     return true;
   });
 
@@ -56,7 +69,7 @@ export async function prepareAttachmentsForModel(opts: {
     }),
   );
 
-  return processed;
+  return { attachments: processed, droppedKinds: Array.from(dropped) };
 }
 
 export const prepareAttachmentsByModel = async ({
@@ -67,8 +80,9 @@ export const prepareAttachmentsByModel = async ({
   attachments?: DraftAttachment[];
   modelIds: string[];
   models: ModelDescriptor[];
-}): Promise<Map<string, PersistedAttachment[]>> => {
-  const map = new Map<string, PersistedAttachment[]>();
+}): Promise<{ byModel: Map<string, PersistedAttachment[]>; droppedKinds: string[] }> => {
+  const byModel = new Map<string, PersistedAttachment[]>();
+  const dropped = new Set<string>();
   await Promise.all(
     modelIds.map(async (modelId) => {
       const prepared = await prepareAttachmentsForModel({
@@ -76,8 +90,9 @@ export const prepareAttachmentsByModel = async ({
         modelId,
         models,
       });
-      map.set(modelId, prepared);
+      byModel.set(modelId, prepared.attachments);
+      for (const kind of prepared.droppedKinds) dropped.add(kind);
     }),
   );
-  return map;
+  return { byModel, droppedKinds: Array.from(dropped) };
 };
