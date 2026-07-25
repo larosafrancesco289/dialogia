@@ -7,9 +7,20 @@ import { logger } from '@/lib/logger';
 import type { TransportStreamParams, ToolCallDelta, FinishReason } from '@/lib/transport/types';
 import type { ToolCall } from '@/lib/transport/contracts';
 import { isRecord } from '@/lib/utils/guards';
-import { buildOpenRouterError, wrapOpenRouterClientError } from '@/lib/openrouter/errors';
+import {
+  buildOpenRouterError,
+  buildOpenRouterStreamError,
+  wrapOpenRouterClientError,
+} from '@/lib/openrouter/errors';
 
 const VALID_FINISH_REASONS = new Set(['stop', 'tool_calls', 'length', 'content_filter']);
+
+function firstString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value) return value;
+  }
+  return undefined;
+}
 
 function buildToolCalls(accumulator: Map<number, Partial<ToolCall>>): ToolCall[] {
   const result: ToolCall[] = [];
@@ -100,9 +111,22 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   const handleMessage = (event: SseEvent) => {
     const payload = event?.data;
     if (!payload) return;
+    let json: unknown;
     try {
-      const json = JSON.parse(payload);
-      if (!isRecord(json)) return;
+      json = JSON.parse(payload);
+    } catch {
+      return; // malformed chunk
+    }
+    if (!isRecord(json)) return;
+
+    // Must escape the malformed-chunk guard below, otherwise a mid-stream error
+    // is swallowed and the answer silently truncates.
+    const streamError = json.error;
+    if (isRecord(streamError) || typeof streamError === 'string') {
+      throw buildOpenRouterStreamError(streamError);
+    }
+
+    try {
       const choices = Array.isArray(json.choices) ? json.choices : [];
       const choice = isRecord(choices[0]) ? choices[0] : undefined;
       const delta = choice && isRecord(choice.delta) ? choice.delta : undefined;
@@ -115,12 +139,14 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
             ? message.content
             : '';
 
+      // `reasoning_content` is the vLLM/Ollama/DeepSeek spelling of `reasoning`.
       const deltaReasoning =
-        typeof delta?.reasoning === 'string'
-          ? delta.reasoning
-          : typeof message?.reasoning === 'string'
-            ? message.reasoning
-            : '';
+        firstString(
+          delta?.reasoning,
+          delta?.reasoning_content,
+          message?.reasoning,
+          message?.reasoning_content,
+        ) ?? '';
 
       const deltaReasoningDetails = delta?.reasoning_details ?? message?.reasoning_details;
       if (deltaReasoningDetails !== undefined) reasoningDetails = deltaReasoningDetails;
@@ -200,7 +226,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
 
       if (isRecord(json.usage)) usage = normalizeUsage(json.usage as Record<string, number>);
     } catch {
-      // swallow malformed chunk
+      // swallow unexpected chunk shapes
     }
   };
 
