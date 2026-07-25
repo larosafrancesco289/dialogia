@@ -122,11 +122,18 @@ export function loadModuleRuntimes(): Promise<ModuleRuntime[]> {
   if (!loading) {
     loading = Promise.all(
       ENABLED_MODULES.map((m): Promise<ModuleRuntime> => m.load?.() ?? Promise.resolve({})),
-    ).then((runtimes) => {
-      for (const runtime of runtimes) runtime.registerTools?.();
-      loaded = runtimes;
-      return runtimes;
-    });
+    )
+      .then((runtimes) => {
+        for (const runtime of runtimes) runtime.registerTools?.();
+        loaded = runtimes;
+        return runtimes;
+      })
+      .catch((error) => {
+        // A failed chunk load must not poison every later turn; clear the cached
+        // promise so the next turn retries the import.
+        loading = undefined;
+        throw error;
+      });
   }
   return loading;
 }
