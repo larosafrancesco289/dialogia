@@ -64,12 +64,50 @@ const hostedApiDev = (mode: string) => ({
   },
 });
 
+/**
+ * `vite preview` and `vite dev` share port 3000, so a production preview leaves
+ * its service worker registered on the dev origin, where it keeps serving the
+ * stale precached bundle instead of dev modules. Serving a self-destroying
+ * `/sw.js` in dev makes the stale worker unregister itself, purge its caches,
+ * and reload the page on the next update check.
+ */
+const devSwSelfDestruct = () => ({
+  name: 'dialogia-dev-sw-self-destruct',
+  apply: 'serve' as const,
+  configureServer(server: ViteDevServer) {
+    server.middlewares.use((req, res, next) => {
+      const path = req.url?.split('?')[0];
+      if (path !== '/sw.js' && path !== '/registerSW.js') return next();
+      res.setHeader('content-type', 'text/javascript');
+      res.setHeader('cache-control', 'no-store');
+      res.end(
+        path === '/registerSW.js'
+          ? '// no service worker in dev\n'
+          : `self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+      await self.registration.unregister();
+      const clients = await self.clients.matchAll({ type: 'window' });
+      clients.forEach((client) => client.navigate(client.url));
+    })(),
+  );
+});
+`,
+      );
+    });
+  },
+});
+
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
     themeInit(),
     hostedApiDev(mode),
+    devSwSelfDestruct(),
     VitePWA({
       registerType: 'autoUpdate',
       // Oversized optional chunks are a deliberate skip, not a build failure.
