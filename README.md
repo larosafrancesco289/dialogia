@@ -33,7 +33,8 @@ authoritative list of supported environment variables.
 Recommended proxy mode (keeps keys on the server):
 
 ```
-NEXT_PUBLIC_USE_OR_PROXY=true
+VITE_HOSTED_BUILD=true
+VITE_USE_OR_PROXY=true
 OPENROUTER_API_KEY=sk-or-v1_your_server_key_here
 ```
 
@@ -49,7 +50,7 @@ ACCESS_CODES_DEVELOPER_HASHED=
 Client-side mode (not recommended):
 
 ```
-NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-v1_your_client_key_here
+VITE_OPENROUTER_API_KEY=sk-or-v1_your_client_key_here
 ```
 
 Install dependencies:
@@ -225,50 +226,57 @@ Progress indicators use color coding:
 
 ### Architecture
 
-- Framework: Next.js App Router (React 18)
+- Framework: Vite + TanStack Router, SPA mode (React 18). No SSR.
 - State: Zustand with local persistence; Dexie for IndexedDB tables
 - API proxy: `/api/openrouter/*` and `/api/anthropic/*` for model traffic; `/api/tavily` for web search; `/api/xai/session` for X.AI voice
 - Markdown: `react-markdown` + GFM, Prism, KaTeX, Mermaid
-- Styles: Tailwind v4 base + `styles/foundations.css` tokens; `app/globals.css` layout
+- Styles: Tailwind v4 base + `styles/foundations.css` tokens; `styles/globals.css` layout
 - Agent services: `src/lib/agent/request.ts` (request building), `src/lib/search/*` (search orchestration), and `src/lib/agent/tutorFlow.ts` (tutor memory composition) centralize turn logic.
 - Capabilities: Derived from OpenRouter model metadata (vision, audio input, image output, reasoning)
 - PDFs: Text is extracted client-side and preferred in prompts; small files may be sent as file blocks.
 
 Security notes:
 
-- Prefer proxy mode (`NEXT_PUBLIC_USE_OR_PROXY=true`) to keep provider keys server-side.
-- Avoid placing secrets in `NEXT_PUBLIC_*` env vars when possible.
+- Prefer proxy mode (`VITE_USE_OR_PROXY=true`) to keep provider keys server-side.
+- Avoid placing secrets in `VITE_*` env vars when possible: they are inlined into the client bundle.
 - Tavily Search runs only server-side and requires `TAVILY_API_KEY`.
-- ZDR-only: Opt-in via Settings or `NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT=true`; OpenRouter requests enforce it with `provider.zdr=true`.
-- Access gate: Middleware validates a signed, HttpOnly cookie on every request; unauthenticated users are redirected to `/access`. Add env vars above and distribute plaintext codes privately.
+- ZDR-only: Opt-in via Settings or `VITE_OR_ZDR_ONLY_DEFAULT=true`; OpenRouter requests enforce it with `provider.zdr=true`.
+- Access gate: the hosted worker validates a signed, HttpOnly cookie on every request; unauthenticated users are redirected to `/access`. Add env vars above and distribute plaintext codes privately.
 
-### Deploying on Vercel
+### Deploying on Cloudflare Pages
 
-- Create a release branch (e.g., `release`) and point your Vercel project’s Production Branch to it.
-- Add the env vars from Setup to the Vercel project (Production). Redeploy.
-- No client-side keys required; all model calls run through `/api/openrouter/*` with the server-side key.
+Two builds come out of the same source:
+
+- **BYOK (default)** — `bun run build` emits a pure static `dist/`. Deploy it as a Pages project
+  with no functions; `public/_redirects` provides the SPA fallback.
+- **Hosted** — `bun run build:hosted` also emits `dist/_worker.js`, which fronts the static assets
+  with the access gate and the key proxies. Add the env vars from Setup as Pages environment
+  variables; no client-side keys are required, since all model calls run through
+  `/api/openrouter/*` with the server-side key.
 
 ### Project Structure
 
 ```
-app/                    # Next.js App Router entry (layout, page, globals)
+index.html              # SPA shell (theme-init script, meta tags)
+functions/              # Hosted variant: Cloudflare worker, access gate, API proxies
+src/main.tsx            # Client entry
+src/router.tsx          # TanStack Router route tree
 src/components/         # React components (PascalCase .tsx)
 src/components/message/ # Message subcomponents (meta, reasoning, sources)
 src/components/settings/# Settings drawer panels per tab (models/chat/tutor/etc.)
 src/lib/                # Utilities, API client, state slices
-src/tooling/            # Headless and eval tooling (not for UI imports)
 src/data/               # Curated model metadata
 src/types/              # Type augmentations
-public/                 # Static assets served by Next
+public/                 # Static assets copied verbatim into dist/
 assets/                 # Screenshots
-styles/                 # Global CSS tokens (foundations.css)
+styles/                 # Global CSS entry (globals.css) and tokens (foundations.css)
 scripts/                # Helper scripts (dev/build/start)
 tests/                  # Legacy Node-based unit tests (`bun run test` also runs colocated *.test.ts)
 ```
 
 ### Development
 
-- Language: TypeScript + React 18; Next.js App Router
+- Language: TypeScript + React 18; Vite SPA
 - Formatting: Prettier (`.prettierrc`) — single quotes, semicolons, trailing commas=all, width=100
 - Naming: PascalCase components in `src/components/`; named exports favored
 - Linting & types: run `bun run lint` and `bun run lint:types` before pushing

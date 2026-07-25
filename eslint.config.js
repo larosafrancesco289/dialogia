@@ -1,13 +1,28 @@
-const nextCoreWebVitals = require('eslint-config-next/core-web-vitals');
+const tsParser = require('@typescript-eslint/parser');
+const tsPlugin = require('@typescript-eslint/eslint-plugin');
+const reactHooks = require('eslint-plugin-react-hooks');
 
 module.exports = [
   {
-    ignores: ['node_modules', '.next', 'out', 'dist', 'tmp'],
+    ignores: ['node_modules', 'out', 'dist', 'dev-dist', 'tmp'],
   },
-  ...nextCoreWebVitals,
   {
     files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+      'react-hooks': reactHooks,
+    },
     rules: {
+      ...reactHooks.configs.recommended.rules,
+      'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': [
@@ -17,16 +32,6 @@ module.exports = [
           varsIgnorePattern: '^_',
         },
       ],
-    },
-  },
-  {
-    files: ['**/*.{js,jsx,ts,tsx}'],
-    rules: {
-      'react-hooks/exhaustive-deps': 'warn',
-      'react-hooks/immutability': 'off',
-      'react-hooks/purity': 'off',
-      'react-hooks/refs': 'off',
-      'react-hooks/set-state-in-effect': 'off',
     },
   },
   {
@@ -124,7 +129,12 @@ module.exports = [
     // Feature modules are reached through `src/lib/modules.ts` and nowhere else, so
     // deleting one is a directory plus an entry in that file. Tests may import a
     // module directly to exercise it.
-    files: ['src/lib/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}', 'app/**/*.{ts,tsx}'],
+    files: [
+      'src/*.{ts,tsx}',
+      'src/lib/**/*.{ts,tsx}',
+      'src/components/**/*.{ts,tsx}',
+      'functions/**/*.{ts,tsx}',
+    ],
     ignores: ['src/lib/modules.ts', '**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'no-restricted-imports': [
