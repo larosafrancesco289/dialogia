@@ -5,6 +5,7 @@ import { loadRepositorySnapshot } from '@/lib/db';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import { hydrateRepositorySnapshot } from '@/lib/services/hydrate';
 import { mergeTutorMap } from '@/lib/ui/tutorState';
+import { ENABLED_MODULES } from '@/lib/modules';
 import { refreshZdrListsIfNeeded } from '@/lib/policy/zdr/cache';
 import { ZDR_CACHE_TTL_MS } from '@/lib/policy/zdr/constants';
 
@@ -91,12 +92,12 @@ async function runBootstrap(set: StoreSetter, get: StoreGetter): Promise<void> {
     ui: mergeTutorMap(s.ui, hydrated.tutorByMessageId),
   }));
 
-  try {
-    if (hydrated.selectedChatId) {
-      await get().loadTutorProfileIntoUI(hydrated.selectedChatId);
+  for (const appModule of ENABLED_MODULES) {
+    try {
+      await appModule.onBootstrap?.({ get, set });
+    } catch {
+      /* a module failing to warm must never block startup */
     }
-  } catch {
-    /* ignore tutor profile preload errors */
   }
 
   prefetchRemainingChatMessages(get);
