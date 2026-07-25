@@ -9,17 +9,9 @@ import {
   getAuthDebugConfig,
 } from '@/lib/auth/middlewareDebug.edge';
 import type { AccessTier } from '@/lib/auth/types';
-import { readServerEnvValue } from '@/lib/env/source';
+import { isServerProd, readServerEnvValue } from '@/lib/env/source';
 
 const TIER_COOKIE_MAX_AGE = 60 * 60 * 24 * 14;
-
-/**
- * Unlike a Node deploy, a missing NODE_ENV on Cloudflare must not be read as
- * "development" — that would silently disable the gate in production.
- */
-function isProduction(): boolean {
-  return (readServerEnvValue('NODE_ENV') ?? 'production').toLowerCase() === 'production';
-}
 
 /**
  * Static assets carry an extension and must stay reachable, or the /access page
@@ -71,7 +63,7 @@ export async function applyAccessGate(
 
   const { pathname } = new URL(req.url);
 
-  if (!isProduction()) {
+  if (!isServerProd()) {
     const res = withExtraHeaders(await serve(), timing());
     const currentTier = readRequestCookie(req, TIER_COOKIE_NAME);
     return currentTier === 'developer' ? res : withTierCookie(res, 'developer', false);

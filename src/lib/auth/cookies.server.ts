@@ -1,7 +1,7 @@
 import { AUTH_COOKIE_NAME, TIER_COOKIE_NAME } from '@/lib/auth/shared';
 import type { AccessTier } from '@/lib/auth/types';
 import { getAccessCookieDomain } from '@/lib/env/server';
-import { isProd } from '@/lib/env/runtime';
+import { isServerProd } from '@/lib/env/source';
 
 const DEFAULT_MAX_AGE = 60 * 60 * 24 * 14;
 
@@ -59,7 +59,7 @@ export function buildAuthCookies(options: {
 }): string[] {
   const shared: CookieOptions = {
     sameSite: 'lax',
-    secure: options.secure ?? isProd(),
+    secure: options.secure ?? isServerProd(),
     domain: options.domain ?? getAccessCookieDomain(),
     path: '/',
     maxAge: options.maxAge ?? DEFAULT_MAX_AGE,
