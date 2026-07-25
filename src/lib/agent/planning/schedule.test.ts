@@ -1,9 +1,13 @@
-import { test } from 'node:test';
+import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import '@/lib/tools';
+import { loadModuleRuntimes } from '@/lib/modules';
 import { createToolCall } from '@/lib/agent/parsers';
 import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
 import type { ToolGate } from '@/lib/agent/planning/types';
+
+before(async () => {
+  await loadModuleRuntimes();
+});
 
 const allowOnly = (allowed: string[], extra?: Partial<ToolGate>): ToolGate => ({
   isAllowed: (name) => allowed.includes(name),

@@ -3,7 +3,7 @@
 // state come from the enabled modules; core only knows the ToolGate interface.
 
 import type { PlanTurnOptions, ToolDefinition } from '@/lib/agent/types';
-import { ENABLED_MODULES } from '@/lib/modules';
+import { loadedModuleRuntimes } from '@/lib/modules';
 import type { LearningPlan, Message } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import type { PlanningContext, ToolGate } from '@/lib/agent/planning/types';
@@ -36,8 +36,8 @@ export function derivePlanningContext(args: {
 
   const gates: ToolGate[] = [];
   let moduleContext: Record<string, unknown> | undefined;
-  for (const appModule of ENABLED_MODULES) {
-    const contribution = appModule.planning?.({ chat, messagesForChat, ui, currentPlan });
+  for (const runtime of loadedModuleRuntimes()) {
+    const contribution = runtime.planning?.({ chat, messagesForChat, ui, currentPlan });
     if (!contribution) continue;
     gates.push(contribution.gate);
     if (contribution.moduleContext) {

@@ -1,12 +1,7 @@
 // Module: tools
-// Responsibility: Public surface of the tool layer. Importing this module guarantees
-// that every enabled feature module has registered its tools, so prefer it over
-// importing `@/lib/tools/registry` directly (module registration files are the
-// exception — they must import the registry to avoid a cycle).
-
-import { registerEnabledModules } from '@/lib/modules';
-
-registerEnabledModules();
+// Responsibility: Public surface of the tool layer. The registry is populated by
+// `loadModuleRuntimes()` at the start of a turn; importing this module has no side
+// effects, so it stays out of the boot bundle.
 
 export {
   getTool,
