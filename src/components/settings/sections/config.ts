@@ -1,6 +1,7 @@
 import type { TabId, SectionId } from '@/components/settings/types';
 
 export const TAB_LIST: ReadonlyArray<{ id: TabId; label: string }> = [
+  { id: 'providers', label: 'Providers' },
   { id: 'models-routing', label: 'Models' },
   { id: 'chat', label: 'Chat' },
   { id: 'tutor', label: 'Tutor' },
@@ -9,6 +10,7 @@ export const TAB_LIST: ReadonlyArray<{ id: TabId; label: string }> = [
 ];
 
 export const TAB_SECTIONS: Record<TabId, SectionId[]> = {
+  providers: ['providers', 'endpoints', 'web-search'],
   'models-routing': ['models'],
   chat: ['general', 'reasoning'],
   tutor: ['tutor'],
@@ -17,6 +19,9 @@ export const TAB_SECTIONS: Record<TabId, SectionId[]> = {
 };
 
 export const SECTION_TITLES: Record<SectionId, string> = {
+  providers: 'Providers',
+  endpoints: 'Endpoints',
+  'web-search': 'Web search',
   models: 'Models',
   general: 'General',
   reasoning: 'Reasoning',

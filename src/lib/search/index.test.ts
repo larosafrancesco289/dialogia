@@ -1,19 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  getSearchToolDefinition,
-  mergeSearchResults,
-  formatSourcesBlock,
-  runTavilyFetch,
-  runTavilySearch,
-} from './index';
+import { getSearchToolDefinition, mergeSearchResults, formatSourcesBlock } from './index';
+import { tavilySearchProvider } from '@/lib/search/providers';
 import type { SearchResult } from '@/lib/search/types';
-import { NOTICE_MISSING_TAVILY_KEY } from '@/lib/store/notices';
+import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
 import { buildTavilyExtractBody, buildTavilySearchBody } from '@/lib/search/api/tavily';
 
 test('getSearchToolDefinition exposes web search and fetch function schemas', () => {
-  const tools = getSearchToolDefinition();
+  const tools = getSearchToolDefinition('tavily');
   assert.equal(Array.isArray(tools), true);
   assert.equal(tools[0]?.function?.name, 'web_search');
   assert.equal(tools[1]?.function?.name, 'web_fetch');
@@ -49,6 +44,7 @@ test('formatSourcesBlock renders provider-specific heading', () => {
   assert.ok(block.includes('1. Alpha — https://a.example — A'));
   const generic = formatSourcesBlock(results, 'openrouter');
   assert.ok(generic.includes('Web search results:'));
+  assert.ok(!generic.includes('(Tavily)'));
 });
 
 test('buildTavilySearchBody keeps search payload lean', () => {
@@ -89,14 +85,17 @@ test('buildTavilyExtractBody keeps fetch payload focused', () => {
   assert.equal(body.chunks_per_source, 5);
 });
 
-test('runTavilySearch returns results and propagates errors', async () => {
+test('the Tavily provider returns results and propagates errors through the proxy', async () => {
   const restoreOk = mockFetch((async () => ({
     ok: true,
     json: async () => ({
       results: [{ title: 'Alpha', url: 'https://alpha.test', description: 'alpha desc' }],
     }),
   })) as any);
-  const okResult = await runTavilySearch({ query: 'alpha', count: 3 });
+  const okResult = await tavilySearchProvider.search(
+    { query: 'alpha', count: 3 },
+    { useProxy: true },
+  );
   restoreOk();
   assert.equal(okResult.ok, true);
   assert.equal(okResult.results.length, 1);
@@ -107,21 +106,27 @@ test('runTavilySearch returns results and propagates errors', async () => {
     status: 500,
     json: async () => ({ error: 'missing_env', detail: 'TAVILY_API_KEY' }),
   })) as any);
-  const missingKey = await runTavilySearch({ query: 'beta', count: 2 });
+  const missingKey = await tavilySearchProvider.search(
+    { query: 'beta', count: 2 },
+    { useProxy: true },
+  );
   restoreMissing();
   assert.equal(missingKey.ok, false);
-  assert.equal(missingKey.error, NOTICE_MISSING_TAVILY_KEY);
+  assert.equal(missingKey.error, NOTICE_MISSING_SEARCH_KEY);
 
   const restoreNetwork = mockFetch((async () => {
     throw new Error('network down');
   }) as any);
-  const network = await runTavilySearch({ query: 'gamma', count: 2 });
+  const network = await tavilySearchProvider.search(
+    { query: 'gamma', count: 2 },
+    { useProxy: true },
+  );
   restoreNetwork();
   assert.equal(network.ok, false);
   assert.equal(network.error, 'network down');
 });
 
-test('runTavilySearch forwards supported filters to proxy', async () => {
+test('the Tavily provider forwards supported filters to the proxy', async () => {
   let requestedUrl = '';
   const restore = mockFetch((async (input: RequestInfo | URL) => {
     requestedUrl = String(input);
@@ -132,14 +137,17 @@ test('runTavilySearch forwards supported filters to proxy', async () => {
   }) as any);
 
   try {
-    await runTavilySearch({
-      query: 'alpha',
-      count: 3,
-      freshness: 'd',
-      country: 'us',
-      include_domains: ['example.com'],
-      exclude_domains: ['spam.test'],
-    });
+    await tavilySearchProvider.search(
+      {
+        query: 'alpha',
+        count: 3,
+        freshness: 'd',
+        country: 'us',
+        include_domains: ['example.com'],
+        exclude_domains: ['spam.test'],
+      },
+      { useProxy: true },
+    );
   } finally {
     restore();
   }
@@ -151,7 +159,7 @@ test('runTavilySearch forwards supported filters to proxy', async () => {
   assert.equal(url.searchParams.get('exclude_domains'), 'spam.test');
 });
 
-test('runTavilyFetch returns extracted content and forwards options', async () => {
+test('the Tavily provider extracts page content and forwards options', async () => {
   let requestedUrl = '';
   const restore = mockFetch((async (input: RequestInfo | URL) => {
     requestedUrl = String(input);
@@ -170,14 +178,17 @@ test('runTavilyFetch returns extracted content and forwards options', async () =
   }) as any);
 
   try {
-    const result = await runTavilyFetch({
-      url: 'https://example.com/page',
-      extract_depth: 'basic',
-      format: 'markdown',
-      include_images: true,
-      query: 'alpha',
-      chunks_per_source: 2,
-    });
+    const result = await tavilySearchProvider.fetchPage!(
+      {
+        url: 'https://example.com/page',
+        extract_depth: 'basic',
+        format: 'markdown',
+        include_images: true,
+        query: 'alpha',
+        chunks_per_source: 2,
+      },
+      { useProxy: true },
+    );
     assert.equal(result.ok, true);
     assert.equal(result.results[0]?.raw_content, '# Page\n\nExtracted content');
   } finally {

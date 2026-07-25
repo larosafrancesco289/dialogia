@@ -13,7 +13,8 @@ export type UiFlagsSnapshot = {
 
 export type UiNextOverrides = {
   modelId?: string;
-  search?: { enabled?: boolean; provider?: 'tavily' | 'openrouter' };
+  /** `provider` is a SearchMode: NATIVE_SEARCH_MODE or a registered provider id. */
+  search?: { enabled?: boolean; provider?: string };
   tutorMode?: boolean;
   tutorNudge?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
   reasoning?: { effort?: ReasoningEffort; tokens?: number };
@@ -104,6 +105,8 @@ export type UiMobileSnapshot = {
 
 export type UiSnapshot = {
   showSettings: boolean;
+  /** First-run provider setup sheet; session-scoped, never persisted. */
+  setupOpen?: boolean;
   activeTurnByChatId: Record<string, number>;
   notice?: string;
   overrides?: UiNextOverrides;

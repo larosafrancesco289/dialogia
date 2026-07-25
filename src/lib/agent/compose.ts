@@ -5,6 +5,7 @@
 import { buildChatCompletionMessages } from '@/lib/agent/prompt-builder';
 import { composePlugins } from '@/lib/agent/request';
 import { getSearchToolDefinition } from '@/lib/search';
+import { isNativeSearchMode, NATIVE_SEARCH_MODE } from '@/lib/search/providers/types';
 import { type ComposeTurnArgs, type TurnComposition, type ToolDefinition } from '@/lib/agent/types';
 import { combineSystem } from '@/lib/agent/system';
 import { loadModuleRuntimes } from '@/lib/modules';
@@ -23,7 +24,10 @@ export async function composeTurn({
 }: ComposeTurnArgs): Promise<TurnComposition> {
   const searchEnabled = settings.searchEnabled;
 
-  const searchProvider = settings.searchProvider || 'openrouter';
+  const searchProvider = settings.searchProvider || NATIVE_SEARCH_MODE;
+  // Tool-based search means real web_search/web_fetch tool calls; native search
+  // is a request-body flag the provider handles on its own.
+  const toolSearch = searchEnabled && !isNativeSearchMode(searchProvider);
 
   const priorMessages = prior ?? [];
   const preparedAttachments = attachments ?? newUser?.attachments ?? [];
@@ -46,11 +50,10 @@ export async function composeTurn({
     // Stable within a day; grounds the model in the real date so it trusts
     // post-cutoff facts enough to search instead of denying them.
     stablePreambles.push(buildSearchDateNotice());
-    if (searchProvider === 'tavily') stablePreambles.push(buildToolPreamble());
+    if (toolSearch) stablePreambles.push(buildToolPreamble());
   }
 
-  const searchTools: ToolDefinition[] =
-    searchEnabled && searchProvider === 'tavily' ? getSearchToolDefinition() : [];
+  const searchTools: ToolDefinition[] = toolSearch ? getSearchToolDefinition(searchProvider) : [];
   const moduleTools: ToolDefinition[] = [];
   let modulesRequirePlanning = false;
   let modulesReplaceBaseSystem = false;
@@ -103,7 +106,7 @@ export async function composeTurn({
     timestamps: settings.timestampsEnabled,
   });
 
-  const shouldPlan = modulesRequirePlanning || (searchEnabled && searchProvider === 'tavily');
+  const shouldPlan = modulesRequirePlanning || toolSearch;
 
   return {
     system,

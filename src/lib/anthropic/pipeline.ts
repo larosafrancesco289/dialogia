@@ -1,4 +1,5 @@
 import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
+import { ANTHROPIC_ENDPOINT } from '@/lib/transport/endpoints';
 import type { AccessTier } from '@/lib/auth/types';
 
 export type AnthropicAccess = {
@@ -13,9 +14,8 @@ export function createAnthropicAccess(opts: {
 }): AnthropicAccess {
   return {
     auth: buildTransportAuth({
-      transport: 'anthropic',
+      endpoint: { ...ANTHROPIC_ENDPOINT, useProxy: opts.useProxy ?? false },
       apiKey: opts.apiKey,
-      useProxy: opts.useProxy ?? false,
     }),
     tier: opts.tier,
   };

@@ -8,7 +8,7 @@ import { readNextOverrides } from '@/lib/ui/next';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
-import { isTavilySearchConfigured } from '@/lib/env/public';
+import { NATIVE_SEARCH_MODE } from '@/lib/types/enums';
 
 export const selectCurrentChat = (state: StoreState) => {
   const chatId = state.selectedChatId;
@@ -107,8 +107,5 @@ export const selectSearchEnabled = (state: StoreState) => {
 export const selectSearchProvider = (state: StoreState) => {
   const resolved = selectResolvedTurnSettings(state);
   if (resolved) return resolved.searchProvider;
-  const next = selectNextOverrides(state);
-  const configured =
-    next.search?.provider ?? (isTavilySearchConfigured() ? 'tavily' : 'openrouter');
-  return configured === 'tavily' ? 'tavily' : 'openrouter';
+  return selectNextOverrides(state).search?.provider ?? NATIVE_SEARCH_MODE;
 };

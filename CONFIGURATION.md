@@ -28,10 +28,15 @@ worker routes under `/api/openrouter/*` forward requests using the server key.
   `dist/_worker.js` to be deployed alongside the static assets. Defaults to `false`.
 - `VITE_USE_OR_PROXY` — toggles proxy mode. Defaults to `false`. When `true`, all model calls
   use the server-side OpenRouter key.
-- `VITE_OPENROUTER_API_KEY` — client-side key (avoid in production). Only read when proxy is
-  disabled.
 - `OPENROUTER_API_KEY` — server-side key for OpenRouter. Required when proxy is enabled.
-- `TAVILY_API_KEY` — enables local Tavily web search. Used only on the server.
+- `TAVILY_API_KEY` — enables this deployment's Tavily web search. Used only on the server.
+- `VITE_TAVILY_SEARCH_ENABLED` — lets the client reach `TAVILY_API_KEY` through the gated
+  `/api/tavily` proxy. BYOK users add their own Tavily key in the app instead.
+
+There is deliberately **no client-side provider key variable**. Keys are entered by the user in
+Settings › Providers and stored in a browser-local IndexedDB database (`dialogia-keys`), which
+export/import never touches. A key the user supplies takes precedence over the proxy.
+
 - `XAI_API_KEY` — server-side key for X.AI (Grok) voice sessions via `/api/xai/session`.
 - `VITE_OR_ZDR_ONLY_DEFAULT` — if `true`, new sessions start with ZDR-only enforcement.
 - `VITE_OR_ROUTE_PREFERENCE_DEFAULT` — optional routing hint (`balanced` | `speed` |
@@ -65,7 +70,8 @@ The effective `RATE_LIMIT_STRATEGY` is:
 
 UI requires:
 
-- `VITE_USE_OR_PROXY=true` or `VITE_OPENROUTER_API_KEY`
+- Nothing. With no provider configured the app opens its setup sheet; `VITE_USE_OR_PROXY=true`
+  pre-configures the hosted deployment's key instead.
 - Optional defaults: `VITE_OR_ZDR_ONLY_DEFAULT`, `VITE_OR_ROUTE_PREFERENCE_DEFAULT`
 
 Worker API routes require:
@@ -77,15 +83,15 @@ Worker API routes require:
 
 Headless scripts require:
 
-- `OPENROUTER_API_KEY` (or `VITE_OPENROUTER_API_KEY`) for simulated student/judge models
+- `OPENROUTER_API_KEY` for simulated student/judge models
 
 ## Build and Deployment
 
 - Development: `bun run dev` (loads `.env.local`).
 - BYOK build: `bun run build` → a static `dist/`, deployable anywhere. `bun start` previews it.
 - Hosted build: `bun run build:hosted` → the same `dist/` plus `dist/_worker.js`.
-- Cloudflare Pages: store server-only secrets as project environment variables. Do **not** define
-  `VITE_OPENROUTER_API_KEY`; the proxy uses `OPENROUTER_API_KEY`.
+- Cloudflare Pages: store server-only secrets as project environment variables. Every `VITE_*`
+  value is baked into the client bundle, so none of them may hold a key.
 
 ## Security Notes
 

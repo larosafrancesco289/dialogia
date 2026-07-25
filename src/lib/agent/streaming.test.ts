@@ -1,3 +1,4 @@
+import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { streamFinal } from './streaming';
@@ -69,7 +70,7 @@ test('streamFinal rebuilds multipart system prompt when stable split is provided
     messages,
     controller: new AbortController(),
     turn: {
-      auth: buildTransportAuth({ transport: 'openrouter', apiKey: 'test-key', useProxy: false }),
+      auth: buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'test-key' }),
       set,
       get,
       models: [],

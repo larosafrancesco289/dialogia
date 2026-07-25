@@ -432,3 +432,254 @@ check. Verified end to end against a browser carrying the stale worker.
 - `styles/mobile.css` still has the orphaned `.swipe-action-reveal` rules Stage 0 and
   Stage 1 both noted. The CSS pass this stage was limited to moving the entry file.
 - The 5 pre-existing ESLint unused-var warnings are unchanged.
+
+## Stage 3 — BYOK and providers (2026-07-25)
+
+Branch: `stage-3-byok` (5 commits, not merged, not pushed). CI green
+(`scripts/ci.sh`: hygiene + lint:types + 470 tests + prettier + eslint, 0 errors, the
+same 5 pre-existing warnings). Both builds verified, and the BYOK first-run flow was
+driven in a browser with the proxies switched off.
+
+**Headline: keys stop being a build-time concern. 126 files changed, +2,993 / −755.**
+The closed `ModelTransport` union is gone; a call is described by a `ProviderEndpoint`
+the user configures, and the key it needs lives in the browser. Initial JS is **262 kB
+gz** (Stage 2 left it at 258 kB); the worker is unchanged at 25 kB gz. All six Stage 3
+tasks are complete.
+
+Commits:
+
+- `0f4c0fe` Replace the transport union with configurable provider endpoints — Design C.
+- `ae5bd19` Make Anthropic usable directly from the browser.
+- `d3f10e7` Add key management and a first-run setup flow.
+- `3772eb7` Stop tier gating from hiding BYOK models, and prefer the user's key.
+- `973d6e9` Offer a search mechanism choice in the composer — Design D's UI half.
+
+### The shape that came out
+
+- `src/lib/transport/endpoints.ts` holds `TransportKind`, `EndpointCapabilities` and
+  `ProviderEndpoint` exactly as Design C names them, plus the two frozen built-ins.
+- `src/lib/transport/endpointRegistry.ts` is the synchronous view the request path
+  reads. Endpoint _configuration_ is owned by a new persisted store slice
+  (`customEndpoints`), which republishes into the registry on every mutation and on
+  the persist merge. This split exists because auth resolution and body building are
+  synchronous all the way down and sit below the store.
+- `src/lib/keys/store.ts` is a **separate IndexedDB database** (`dialogia-keys`), not a
+  table in `dialogia`. `exportAll` walks the chat database, so "keys are never
+  exported" is structural rather than a rule someone has to remember. Reads are
+  synchronous against a cache warmed by `loadKeys()`, which `bootstrapApp` and
+  `loadModels` both await so a slow IndexedDB read can never look like an
+  unconfigured app.
+- `TransportAuth` is `{ endpoint, apiKey? }`. `TITLE_MODELS`, `TRANSPORT_LABELS` and
+  `TRANSPORT_AVAILABILITY` became functions over an endpoint, as the design asked.
+- `src/lib/search/providers/*` is Design D: `SearchProvider` with
+  `search`/optional `fetchPage`, a registry, and Tavily as the first implementation.
+  `web_fetch` is offered to the model only when the active provider has `fetchPage`.
+
+### Deviations from the baked designs
+
+- **`ProviderEndpoint` gained four fields** beyond Design C: `modelIds` (the free-text
+  model entry the task list asked for), `titleModelId` and `disableTitleGeneration`
+  (the "use chat model / disabled" path), and nothing else. `capabilities` behaves as
+  specified — unlisted means never emitted.
+- **`openai-compatible` is not a separate client.** Design C called it "a slimmed
+  OpenRouter client with capability-gated body building", and that is what it is, but
+  literally rather than by duplication: `src/lib/openaiCompat/` owns model handling
+  and re-exports OpenRouter's chat/stream, while `buildChatBody` gates on the
+  endpoint's capabilities and `orFetch` derives base URL and headers from it. Forking
+  ~250 lines of SSE and tool-call accumulation to own a second copy of the same wire
+  protocol would have been the larger risk.
+- **`SearchProvider` the union became `SearchMode = string`.** Design D reuses the name
+  `SearchProvider` for the new object type, but the old union
+  (`'tavily' | 'openrouter'`) was threaded through ~40 sites. The union is now
+  `SearchMode`, deliberately open like Design A's `ToolName`, with
+  `NATIVE_SEARCH_MODE = 'openrouter'` kept as a constant because that literal sits in
+  users' persisted chat settings. `ChatSearchSettings.provider` widened from a zod
+  enum to `z.string()`, which is a widening — old data still parses.
+- **The search-provider registry self-registers on import of
+  `@/lib/search/providers`**, the same safety net Stage 1 used for the tutor tool
+  accessors. The Tavily _descriptor_ is eager (the settings UI and `selectSearchMode`
+  read the registry synchronously) but its request code is behind a dynamic import,
+  so Tavily's payload builders stay out of the boot bundle. Read the registry through
+  the barrel, never through `registry.ts`.
+- **`resolveModelTransport` became `resolveModelEndpoint`.** The prefix heuristics
+  survive as the legacy fallback the design asked for (`anthropic/` and
+  `anthropic-direct/` → the built-in Anthropic endpoint) and are covered by
+  `src/lib/providers.test.ts`; user endpoints claim the `<endpointId>/` prefix, which
+  is how `(endpointId, transportModelId)` stays unique in one flat model list.
+
+### Two BYOK bugs the browser found
+
+Neither was on the task list; both made the BYOK build unusable, so they are fixed here.
+
+- **A static build read the missing tier cookie as `'free'`** and the model picker hid
+  nearly everything. Tiers ration the hosted deployment's own keys; a build with no
+  gate has no key to ration, so `getClientTier()` now returns `developer` when
+  `isHostedBuild()` is false.
+- **Tier gating applied to user-configured endpoints.** A local Ollama model would have
+  been free-tier-blocked despite costing the deployment nothing. Gating now applies
+  only to models whose endpoint is actually spending the deployment's key.
+
+Related, and a deliberate behaviour change: **a key the user pastes now wins over the
+deployment's proxy** (`usesProxy()` is false when an `apiKey` is present). Pasting your
+own key should mean your key is the one spending. The proxy remains the fallback and
+still carries no client credentials in either direction.
+
+### Hosted proxy hygiene
+
+Re-read rather than assumed. `functions/api/openrouter/chatCompletions.ts` and
+`functions/api/anthropic/messages.ts` build their auth from the _server_ environment
+(`resolveOpenRouterAccess(req)` / `resolveAnthropicAccess(req)`) and never read an
+inbound `Authorization` or `x-api-key`; `orFetch`/`anFetch` build headers from scratch,
+so nothing a client sends is forwarded upstream. The proxy therefore cannot become an
+open relay: it injects only the deployment's key, behind the gate and the rate limiter.
+The client half is now regression-tested — `src/lib/openrouter/http.test.ts` and
+`src/lib/anthropic/http.test.ts` assert that a proxied call carries no credentials at
+all, and that a BYOK call goes direct with the right headers.
+
+### The XSS review the plan required before shipping keys
+
+Model output is untrusted and the keys now live in the same origin, so the markdown
+pipeline was reviewed rather than assumed safe:
+
+- `rehype-raw` is **not** in the plugin list, so react-markdown v9 escapes raw HTML in
+  model output instead of rendering it. An ESLint `no-restricted-imports` rule now bans
+  importing it from `src/components/**` with that reason attached, so re-adding it is a
+  deliberate act.
+- `dangerouslySetInnerHTML` appears once, in the code-block renderer, fed by
+  `Prism.highlight` (which escapes text content) or by a local `escapeHtml` fallback.
+- Mermaid runs with `securityLevel: 'strict'`, which sanitizes the SVG it returns.
+- Link `href`s pass through react-markdown's default `urlTransform`, which strips
+  dangerous protocols; this matters because `linkCitationMarkers` injects
+  search-result URLs, which are attacker-influenced.
+
+The residual risk is inherent and worth stating plainly: any XSS in this origin can
+read the key store, because a browser-held key is readable by the page holding it. The
+mitigations above are what keeps that door closed, not the storage choice.
+
+### Verified, not assumed
+
+- **Tavily allows browser CORS.** The plan flagged this as unverified. A preflight to
+  `https://api.tavily.com/search` reflects the request origin and allows the
+  `authorization` header, so BYOK calls it directly; the hosted `/api/tavily` proxy
+  remains the path when the deployment holds the key.
+- With both proxy flags off and storage cleared, a fresh load opens the setup sheet;
+  dismissing it and pressing send reopens it instead of surfacing an
+  environment-variable toast.
+- The Providers tab renders all three sections, adds a custom endpoint (persisted as
+  `{id, kind, label, baseUrl, apiKeyRef}` — a key _reference_, never a value), and
+  edits its base URL, model ids and capabilities.
+- The composer's search picker shows Off / Built-in / Tavily once a Tavily key exists,
+  and selecting Tavily flips the chat to it. With no search key it stays a plain
+  toggle.
+- Both builds succeed: static `dist/` at 262 kB gz initial JS, hosted adds a 25 kB gz
+  `_worker.js`.
+
+### Not verified (and why)
+
+**An end-to-end BYOK chat with a real key was not run.** Entering an API key into a
+field is something I do not do on the owner's behalf. Everything up to that point is
+covered — the direct URL, the `Authorization` / `x-api-key` header and the
+browser-access opt-in are asserted in tests, and the key-store round trip is driven in
+the browser — but the last step (paste a key, watch models load, send a message) is a
+ten-second manual check worth doing before merge.
+
+### Persisted-data compatibility
+
+- One new persisted key, `customEndpoints`; no renames. `tests/persistedStoreCompat.test.ts`
+  still round-trips a pre-refactor localStorage blob and now asserts the widened key set.
+- No store persist version bump and no IndexedDB schema change to `dialogia`. The key
+  store is a brand-new database, so there is nothing to migrate.
+- `ChatSearchSettings.provider` widened from an enum to a string; a chat that names a
+  provider this machine has no key for degrades to provider-native search rather than
+  failing (`selectSearchMode`, tested).
+- A chat whose model belongs to a deleted endpoint stops being selectable rather than
+  erroring (`isModelEndpointAvailable`).
+- New tests: 38 across the key store, endpoint store, capability gating, model
+  discovery, HTTP targeting, search-mode selection and the Anthropic fixes
+  (432 → 470 since Stage 2's 440).
+
+### Things the owner must do
+
+- **`.env.local` still sets `VITE_USE_OR_PROXY=true` and `VITE_USE_ANTHROPIC_PROXY=true`.**
+  That is fine and keeps working, but it means the local dev app is _not_ exercising
+  the BYOK path by default. Turn both off to see what a fresh user sees. (They were
+  toggled off during verification and restored.)
+- `VITE_OPENROUTER_API_KEY` / `VITE_ANTHROPIC_API_KEY` **no longer do anything**. The
+  plan required that no env-var key path survive in the BYOK build. `.env.example`,
+  `CONFIGURATION.md` and `README.md` were corrected; if either name is set locally it
+  is now inert.
+- `.claude/launch.json` gained a second, gitignored dev-server entry on port 3100 so
+  this session could run alongside another. Delete it if you do not want it.
+
+### Follow-ups discovered (not done)
+
+- **`src/components/composer/ComposerMobileMenu.tsx` is dead** — nothing imports the
+  component, only its `Effort` type. It survived Stage 0's sweep for that reason. The
+  mobile composer therefore has no search-mode picker; the desktop one does.
+- The tutor's headless simulation resolves auth through `resolveAuthFactory`, which
+  still assumes an OpenRouter key for every endpoint. It works because the CLI only
+  ever uses OpenRouter models, but it would mis-key a custom endpoint.
+- `ChatSettings.features.search.provider` has no settings-drawer control; the composer
+  picker is the only way to change it. Fine today, worth a Settings row when a second
+  provider ships.
+- Endpoint capability toggles have no "test this connection" button. A one-shot
+  `/models` probe with a visible result would make configuring a local server much less
+  of a guessing game.
+- `src/lib/policy/providerAvailability.ts` shrank to two functions and now overlaps
+  `endpointRegistry`; it may want folding in during Stage 4's cleanup.
+- The 5 pre-existing ESLint unused-var warnings are unchanged.
+
+## Stage 3 fix pass (2026-07-25)
+
+Branch: `stage-3-byok`, four commits on top of the Stage 3 report. Prompted by a
+three-way review of the full branch diff (transport/keys/auth, provider clients +
+worker, search + UI), which found three blockers and two misrouting bugs the Stage 3
+suite did not cover. All five are fixed here; each fix landed with a test that fails
+without it, and every intermediate commit passes `lint:types` + the full suite
+(verified with `git rebase --exec`). CI green at the tip: 477 tests (470 before),
+0 ESLint errors, the same 5 pre-existing warnings.
+
+Commits, in dependency order rather than severity order:
+
+- `57811d8` Stop trusting apiKeyRef from persisted endpoint state — `sanitizeEndpoint`
+  now always derives `apiKeyRef` from the endpoint id and ignores the blob, closing an
+  import-a-backup exfiltration: a hostile endpoint could otherwise name
+  `apiKeyRef: 'openrouter'` and have the app send the real OpenRouter key (plus the
+  conversation) to its own base URL. The `addEndpoint`/`updateEndpoint` types no
+  longer accept a caller-supplied ref, so the convention is compiler-enforced.
+- `e35a04f` Resolve proxy paths only inside a real browser context — the frozen
+  import-time `apiDefaults.isBrowser` became a call-time `isBrowserContext()`, and
+  both clients gate the proxy decision on it. Without this the hosted worker's ZDR
+  route fetched its own relative proxy path from inside the worker (a throw), so
+  ZDR-only mode on a hosted build returned zero models.
+- `300f792` Namespace user endpoint model ids and fail closed when the endpoint is
+  gone — custom endpoint model ids are now `endpoint:<slug>/<model>`; no upstream id
+  has a colon-bearing first segment, so an endpoint slugged `openai` can no longer
+  shadow OpenRouter's `openai/gpt-4o` (previously: byte-identical id, custom merged
+  last, wins). The registry split into non-throwing `findModelEndpoint` (labels and
+  body-shape decisions, which must survive stale model lists) and throwing
+  `resolveModelEndpoint` (the request path): a chat scoped to a deleted endpoint now
+  surfaces a "re-add it or pick another model" notice instead of silently falling back
+  to OpenRouter and shipping a local-only history to a third party. No migration: the
+  old id form never shipped.
+- `f79283b` Let keyless OpenAI-compatible endpoints authenticate — `requireEndpointAuth`
+  threw `missing_provider_key` for every keyless, unproxied endpoint, which dead-ended
+  the headline local path: SetupSheet → "Local" → add Ollama → zero models → the sheet
+  re-opens. `allowsKeylessCalls` (openai-compatible **and** a base URL) now gates the
+  throw, and the ProvidersPanel status only claims "Ready (no key needed)" when it is
+  true. The dead `isEndpointReady` was deleted rather than fixed.
+
+Review findings deliberately **not** fixed here, still open for Stage 4: the
+`promptCaching` capability checkbox does nothing (`cache_control` rides inside
+messages, which `buildChatBody` copies verbatim — a strict server 400s the request);
+`removeEndpoint` orphans the endpoint's key, and slug reuse can re-bind it to a new
+host; a key pasted while `loadKeys()` is still warming is evicted by the stale
+snapshot; the composer search picker reads the key cache without subscribing (and the
+Tavily `ApiKeyField` lacks `onChanged`), so a new Tavily key is invisible until
+reload; regenerate computes plugins before the search-mode fallback and can drop
+search; the SetupSheet renders at `z-50` beneath the settings drawer's `z-[70+]` and
+bypasses the Dialog primitives; assorted `'tavily'`/`'openrouter'` literals survive in
+`followUp.ts`, `regenerate.ts`, `modes.ts`; `src/lib/anthropic/models.ts` hardcodes
+the built-in endpoint id; ARCHITECTURE.md still documents the deleted
+`ModelTransport` union. The end-to-end BYOK send with a real key also remains the
+owner's ten-second pre-merge check.

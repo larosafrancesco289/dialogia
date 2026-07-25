@@ -1,5 +1,5 @@
 import type { PersistedAttachment } from '@/lib/types/attachments';
-import type { GenerationSettings, SearchProvider } from '@/lib/types/chat';
+import type { GenerationSettings, SearchMode } from '@/lib/types/chat';
 import type { MessageMetrics } from '@/lib/types/metrics';
 import type { LearnerModel, MessageTutor } from '@/lib/types/tutor';
 import type { Usage } from '@/lib/api/normalizers';
@@ -24,7 +24,7 @@ export {
 
 export type GenSettingsSnapshot = GenerationSettings & {
   searchEnabled?: boolean;
-  searchProvider?: SearchProvider;
+  searchProvider?: SearchMode;
   tutorEnabled?: boolean;
 };
 

@@ -1,4 +1,4 @@
-import type { SearchProvider } from '@/lib/agent/types';
+import type { SearchMode } from '@/lib/agent/types';
 
 const FOLLOW_UP_WITH_SEARCH = 'Write the final answer. Cite sources inline as [n].';
 
@@ -7,7 +7,7 @@ const FOLLOW_UP_DEFAULT =
 
 export function followUpPrompt(args: {
   searchEnabled: boolean;
-  searchProvider: SearchProvider;
+  searchProvider: SearchMode;
 }): string {
   if (args.searchEnabled && args.searchProvider === 'tavily') return FOLLOW_UP_WITH_SEARCH;
   return FOLLOW_UP_DEFAULT;

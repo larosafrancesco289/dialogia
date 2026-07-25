@@ -6,7 +6,7 @@ import type {
   LearningPlan,
   LearnerModelDebugSnapshot,
   PersistedAttachment,
-  SearchProvider,
+  SearchMode,
 } from '@/lib/types';
 import type { SearchResult } from '@/lib/search/types';
 import type { Result } from '@/lib/utils/result';
@@ -49,7 +49,7 @@ export type { ResolvedTurnSettings };
 
 export type StoreAccess = { set: StoreSetter; get: StoreGetter };
 
-export type { SearchProvider };
+export type { SearchMode };
 
 export type TurnContext = {
   auth: TransportAuth;

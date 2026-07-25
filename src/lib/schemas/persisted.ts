@@ -4,7 +4,6 @@ import {
   MessageRoleEnum,
   MessageSourceEnum,
   ReasoningEffortEnum,
-  SearchProviderEnum,
   ToolCallCategoryEnum,
   ToolCallStatusEnum,
 } from '@/lib/types/enums';
@@ -25,7 +24,7 @@ export const GenerationSettingsSchema = z
 
 export const GenSettingsSnapshotSchema = GenerationSettingsSchema.extend({
   searchEnabled: z.boolean().optional(),
-  searchProvider: z.nativeEnum(SearchProviderEnum).optional(),
+  searchProvider: z.string().optional(),
   tutorEnabled: z.boolean().optional(),
 }).passthrough();
 
@@ -41,7 +40,8 @@ export const ChatUiSettingsSchema = z
 export const ChatSearchSettingsSchema = z
   .object({
     enabled: z.boolean(),
-    provider: z.nativeEnum(SearchProviderEnum),
+    // Open by design: any registered tool-based provider id, or NATIVE_SEARCH_MODE.
+    provider: z.string(),
   })
   .passthrough();
 

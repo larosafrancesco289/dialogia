@@ -1,3 +1,4 @@
+import { ANTHROPIC_ENDPOINT, OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { executeStreamingTurn } from '@/lib/agent/streaming/streamingTurn';
@@ -132,11 +133,7 @@ test('executeStreamingTurn keeps pre-tool tutor draft and skips final overwrite 
     ],
     controller: new AbortController(),
     turn: {
-      auth: buildTransportAuth({
-        transport: 'openrouter',
-        apiKey: 'test-key',
-        useProxy: false,
-      }),
+      auth: buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'test-key' }),
       set,
       get,
       models: [model],
@@ -311,11 +308,7 @@ test('executeStreamingTurn prefers complete fallback draft over incomplete curre
     ],
     controller: new AbortController(),
     turn: {
-      auth: buildTransportAuth({
-        transport: 'openrouter',
-        apiKey: 'test-key',
-        useProxy: false,
-      }),
+      auth: buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'test-key' }),
       set,
       get,
       models: [model],
@@ -469,11 +462,7 @@ test('executeStreamingTurn keeps draft when all tool calls fail to execute', asy
     ],
     controller: new AbortController(),
     turn: {
-      auth: buildTransportAuth({
-        transport: 'openrouter',
-        apiKey: 'test-key',
-        useProxy: false,
-      }),
+      auth: buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'test-key' }),
       set,
       get,
       models: [model],
@@ -628,11 +617,7 @@ test('executeStreamingTurn does not preserve incomplete draft when tools fail', 
     ],
     controller: new AbortController(),
     turn: {
-      auth: buildTransportAuth({
-        transport: 'openrouter',
-        apiKey: 'test-key',
-        useProxy: false,
-      }),
+      auth: buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'test-key' }),
       set,
       get,
       models: [model],
@@ -681,7 +666,7 @@ test('executeStreamingTurn omits follow-up user prompt after Anthropic tool resu
     context_length: 200000,
     pricing: undefined,
     raw: { supported_parameters: ['tools'] },
-    transport: 'anthropic',
+    endpointId: 'anthropic',
     transportModelId: 'claude-haiku-4-5-20251001',
     providerDisplay: 'Anthropic',
   };
@@ -788,11 +773,7 @@ test('executeStreamingTurn omits follow-up user prompt after Anthropic tool resu
     ],
     controller: new AbortController(),
     turn: {
-      auth: buildTransportAuth({
-        transport: 'anthropic',
-        apiKey: 'test-key',
-        useProxy: false,
-      }),
+      auth: buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' }),
       set,
       get,
       models: [model],

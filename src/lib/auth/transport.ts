@@ -1,19 +1,23 @@
-import type { ModelTransport } from '@/lib/types';
+import type { ProviderEndpoint } from '@/lib/transport/endpoints';
 
 export type TransportAuth = {
-  transport: ModelTransport;
+  endpoint: ProviderEndpoint;
+  /** Resolved from the key store at request time; absent when proxying. */
   apiKey?: string;
-  useProxy: boolean;
 };
 
 export function buildTransportAuth(opts: {
-  transport: ModelTransport;
+  endpoint: ProviderEndpoint;
   apiKey?: string;
-  useProxy?: boolean;
 }): TransportAuth {
-  return {
-    transport: opts.transport,
-    apiKey: opts.apiKey,
-    useProxy: opts.useProxy ?? false,
-  };
+  return { endpoint: opts.endpoint, apiKey: opts.apiKey };
+}
+
+/**
+ * A key the user supplied wins over the deployment's proxy. BYOK is the
+ * primary mode: someone who pastes their own key expects it to be the one
+ * spending, and the hosted proxy stays the fallback for everyone else.
+ */
+export function usesProxy(auth?: TransportAuth): boolean {
+  return auth?.endpoint.useProxy === true && !auth.apiKey;
 }

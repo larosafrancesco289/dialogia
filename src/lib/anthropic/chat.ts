@@ -1,9 +1,11 @@
+import { logger } from '@/lib/logger';
 import { normalizeUsage, sumUsage } from '@/lib/api/normalizers';
 import { API_ERROR_CODES } from '@/lib/api/errors';
 import type { TransportChatParams } from '@/lib/transport/types';
 import type { ModelMessage } from '@/lib/transport/contracts';
 import type { ChatCompletion } from '@/lib/transport/completions';
 import { buildTransportAuth } from '@/lib/auth/transport';
+import { ANTHROPIC_ENDPOINT } from '@/lib/transport/endpoints';
 import { anMessages } from '@/lib/anthropic/http';
 import {
   buildAnthropicBody,
@@ -202,6 +204,8 @@ export async function chatCompletion(params: TransportChatParams): Promise<ChatC
     toolChoice: params.toolChoice,
     plugins: params.plugins,
     enableAutomaticCaching: true,
+    onUnsupportedContent: (kinds) =>
+      logger.warn(`[Anthropic] Dropped unsupported content: ${kinds.join(', ')}`),
   });
   const data = await requestAnthropicMessageSequence({
     auth: params.auth,
@@ -231,11 +235,7 @@ export async function anthropicChatCompletion({
   maxTokens?: number;
   enableAutomaticCaching?: boolean;
 }): Promise<ChatCompletion> {
-  const auth = buildTransportAuth({
-    transport: 'anthropic',
-    apiKey,
-    useProxy: false,
-  });
+  const auth = buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey });
   const body = buildAnthropicBody({
     model,
     messages,

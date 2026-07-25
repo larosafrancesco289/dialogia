@@ -3,10 +3,18 @@
 
 import { getPublicAppBaseUrl } from '@/lib/env/public';
 
-const BROWSER =
-  typeof window !== 'undefined' &&
-  typeof window.document !== 'undefined' &&
-  window.document !== null;
+/**
+ * Evaluated per call rather than captured at import: the same modules run in the
+ * page and inside the Cloudflare worker, and only the page can resolve a
+ * relative proxy path.
+ */
+export function isBrowserContext(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.document !== 'undefined' &&
+    window.document !== null
+  );
+}
 
 const DEFAULT_ORIGIN = 'http://localhost:3000';
 
@@ -20,7 +28,7 @@ function resolveOrigin(explicit?: string): string {
   if (explicit && explicit.trim()) return explicit.trim();
   const envOrigin = readEnvOrigin();
   if (envOrigin) return envOrigin;
-  if (BROWSER && typeof window !== 'undefined' && window.location?.origin) {
+  if (isBrowserContext() && window.location?.origin) {
     return window.location.origin;
   }
   return DEFAULT_ORIGIN;
@@ -36,7 +44,6 @@ function buildHeaders(origin: string): Record<string, string> {
 export const apiDefaults = Object.freeze({
   baseUrl: 'https://openrouter.ai/api/v1',
   proxyPath: '/api/openrouter',
-  isBrowser: BROWSER,
   resolveOrigin,
   headers: buildHeaders,
   timeouts: Object.freeze({

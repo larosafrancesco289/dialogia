@@ -1,23 +1,28 @@
 import { anthropicTransport } from '@/lib/anthropic';
+import { openaiCompatTransport } from '@/lib/openaiCompat';
 import { openrouterTransport } from '@/lib/openrouter';
-import type { ModelTransport } from '@/lib/types';
+import type { TransportKind } from '@/lib/transport/endpoints';
 import type { TransportClient } from '@/lib/transport/types';
 
-const registry: Record<ModelTransport, TransportClient> = {
-  anthropic: anthropicTransport,
-  openrouter: openrouterTransport,
-};
-
-export function getTransportClient(transport?: ModelTransport): TransportClient {
-  if (!transport) return registry.openrouter;
-  return registry[transport] ?? registry.openrouter;
+function defaults(): Record<TransportKind, TransportClient> {
+  return {
+    anthropic: anthropicTransport,
+    openrouter: openrouterTransport,
+    'openai-compatible': openaiCompatTransport,
+  };
 }
 
-export function setTransportClient(transport: ModelTransport, client: TransportClient) {
-  registry[transport] = client;
+let registry: Record<TransportKind, TransportClient> = defaults();
+
+export function getTransportClient(kind?: TransportKind): TransportClient {
+  if (!kind) return registry.openrouter;
+  return registry[kind] ?? registry.openrouter;
+}
+
+export function setTransportClient(kind: TransportKind, client: TransportClient) {
+  registry[kind] = client;
 }
 
 export function resetTransportRegistry() {
-  registry.anthropic = anthropicTransport;
-  registry.openrouter = openrouterTransport;
+  registry = defaults();
 }

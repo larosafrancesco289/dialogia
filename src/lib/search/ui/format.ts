@@ -1,7 +1,8 @@
 import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
-import type { SearchProvider, SearchResult } from '@/lib/search/types';
+import { getSearchProvider } from '@/lib/search/providers';
+import type { SearchMode, SearchResult } from '@/lib/search/types';
 
-export function formatSourcesBlock(results: SearchResult[], provider: SearchProvider): string {
+export function formatSourcesBlock(results: SearchResult[], mode: SearchMode): string {
   const lines = results
     .slice(0, MAX_FALLBACK_RESULTS)
     .map(
@@ -10,8 +11,9 @@ export function formatSourcesBlock(results: SearchResult[], provider: SearchProv
     )
     .join('\n');
   if (!lines) return '';
-  if (provider === 'tavily') {
-    return `\n\nWeb search results (Tavily):\n${lines}\n\nInstructions: Use these results to answer and cite sources inline as [n].`;
+  const provider = getSearchProvider(mode);
+  if (provider) {
+    return `\n\nWeb search results (${provider.label}):\n${lines}\n\nInstructions: Use these results to answer and cite sources inline as [n].`;
   }
   return `\n\nWeb search results:\n${lines}`;
 }

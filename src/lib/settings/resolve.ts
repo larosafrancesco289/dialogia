@@ -4,7 +4,7 @@ import type {
   ChatSettings,
   GenerationSettings,
   ModelDescriptor,
-  SearchProvider,
+  SearchMode,
 } from '@/lib/types';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelIndex, ModelCapabilityFlags } from '@/lib/models';
@@ -13,7 +13,8 @@ import {
   getDefaultReasoningEffort,
   resolveDynamicModelId,
 } from '@/lib/models';
-import { selectSearchProvider } from '@/lib/policy/provider';
+import { selectSearchMode } from '@/lib/policy/provider';
+import { NATIVE_SEARCH_MODE } from '@/lib/types/enums';
 import { readNextOverrides } from '@/lib/ui/next';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
@@ -27,7 +28,7 @@ export type ResolvedTurnSettings = {
   caps: ModelCapabilityFlags;
   generation: GenerationSettings;
   searchEnabled: boolean;
-  searchProvider: SearchProvider;
+  searchProvider: SearchMode;
   tutorEnabled: boolean;
   timestampsEnabled: boolean;
   system?: string;
@@ -73,13 +74,8 @@ export function resolveNewChatSettings(opts: {
 
   const searchEnabled = next.search?.enabled ?? defaultSearch?.enabled ?? false;
   const nextProvider = next.search?.provider ?? defaultSearch?.provider;
-  const rawSearchProvider = nextProvider as unknown;
-  const searchProvider =
-    rawSearchProvider === 'tavily' || rawSearchProvider === 'brave'
-      ? 'tavily'
-      : rawSearchProvider === 'openrouter'
-        ? 'openrouter'
-        : 'tavily';
+  const searchProvider: SearchMode =
+    nextProvider === 'brave' ? 'tavily' : (nextProvider ?? NATIVE_SEARCH_MODE);
 
   const tutorEnabledSetting = forceTutorMode ? true : tutorEnabled ? !!next.tutorMode : false;
 
@@ -156,7 +152,7 @@ export function resolveTurnSettings(args: {
   const searchEnabled = overrides.search?.enabled ?? chat.settings.features.search.enabled;
   const searchProviderCandidate =
     overrides.search?.provider ?? chat.settings.features.search.provider;
-  const searchProvider: SearchProvider = selectSearchProvider(
+  const searchProvider: SearchMode = selectSearchMode(
     {
       ...chat.settings,
       features: {

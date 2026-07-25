@@ -1,3 +1,4 @@
+import { ANTHROPIC_ENDPOINT_ID } from '@/lib/transport/endpoints';
 import type { ModelDescriptor } from '@/lib/types';
 import type { Usage } from '@/lib/api/normalizers';
 
@@ -58,7 +59,7 @@ export function computeCost(opts: {
   const cacheWriteRate = model?.pricing?.inputCacheWrite;
   const hasCacheRates = cacheReadRate != null || cacheWriteRate != null;
   const directAnthropic =
-    model?.transport === 'anthropic' || model?.id?.startsWith('anthropic-direct/');
+    model?.endpointId === ANTHROPIC_ENDPOINT_ID || model?.id?.startsWith('anthropic-direct/');
   const billablePromptTokens =
     !directAnthropic && hasCacheRates
       ? Math.max(0, (promptTokens ?? 0) - (cacheReadTokens ?? 0) - (cacheWriteTokens ?? 0))

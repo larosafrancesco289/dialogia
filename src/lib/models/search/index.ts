@@ -1,4 +1,4 @@
-import type { ModelDescriptor, ModelTransport } from '@/lib/types';
+import type { ModelDescriptor } from '@/lib/types';
 import {
   formatModelLabel,
   isAudioInputSupported,
@@ -7,14 +7,14 @@ import {
   isVisionSupported,
 } from '@/lib/models';
 import { describeModelPricing } from '@/lib/cost';
-import { getModelTransport, getModelTransportLabel } from '@/lib/providers';
+import { getModelEndpoint, getModelProviderLabel } from '@/lib/providers';
 
 export type ModelSearchResult = {
   id: string;
   displayName: string;
   provider: string; // slug used for filtering/ZDR
   providerLabel: string;
-  transport: ModelTransport;
+  endpointId: string;
   shortId: string;
   fullId: string;
   price?: string;
@@ -49,9 +49,9 @@ export function buildModelSearchResult(
     zdrProviderIds?: string[];
   },
 ): ModelSearchResult {
-  const transport = getModelTransport(model);
+  const endpointId = getModelEndpoint(model).id;
   const provider = String(model.id).split('/')[0] || 'openrouter';
-  const providerLabel = getModelTransportLabel(model);
+  const providerLabel = getModelProviderLabel(model);
   const shortId = model.id.includes('/') ? model.id.split('/').slice(1).join('/') : model.id;
   const displayName = formatModelLabel({ model, fallbackId: model.id, fallbackName: model.name });
   const price = describeModelPricing(model);
@@ -69,7 +69,7 @@ export function buildModelSearchResult(
     displayName,
     provider,
     providerLabel,
-    transport,
+    endpointId,
     shortId,
     fullId: model.id,
     price,
@@ -91,7 +91,7 @@ export function buildModelSearchResults(
   if (!queryWords.length) return [];
   const maxResults = opts.maxResults ?? 60;
   const filtered = models.filter((model) => {
-    const providerLabel = getModelTransportLabel(model);
+    const providerLabel = getModelProviderLabel(model);
     const hay = `${model.id} ${model.name ?? ''} ${providerLabel}`.toLowerCase();
     return queryWords.every((word) => hay.includes(word));
   });

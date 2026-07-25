@@ -1,15 +1,9 @@
 import { readClientEnv } from '@/lib/env/importMeta';
 import { readBooleanValue, readEnvValue } from '@/lib/env/values';
 import { isProd } from '@/lib/env/runtime';
-import type { ModelTransport } from '@/lib/types';
 
-export function getPublicOpenRouterKey(): string | undefined {
-  return readEnvValue(readClientEnv('VITE_OPENROUTER_API_KEY'));
-}
-
-export function getPublicAnthropicKey(): string | undefined {
-  return readEnvValue(readClientEnv('VITE_ANTHROPIC_API_KEY'));
-}
+// BYOK deliberately has no client-side env key path: provider keys come from the
+// key store the user fills in, and a hosted deployment proxies instead.
 
 export function isOpenRouterProxyEnabled(): boolean {
   return readBooleanValue(readClientEnv('VITE_USE_OR_PROXY'), false);
@@ -27,11 +21,9 @@ export function isHostedBuild(): boolean {
   return readBooleanValue(readClientEnv('VITE_HOSTED_BUILD'), false);
 }
 
-export function isTavilySearchConfigured(): boolean {
-  return Boolean(
-    readEnvValue(readClientEnv('VITE_TAVILY_API_KEY')) ||
-      readBooleanValue(readClientEnv('VITE_TAVILY_SEARCH_ENABLED'), false),
-  );
+/** Hosted builds expose the server-side Tavily key through the gated proxy. */
+export function isTavilyProxyEnabled(): boolean {
+  return readBooleanValue(readClientEnv('VITE_TAVILY_SEARCH_ENABLED'), false);
 }
 
 export function getPublicAppBaseUrl(): string | undefined {
@@ -65,20 +57,4 @@ export function getLogLevelSetting(): string | undefined {
 
 export function getDefaultLogLevel(): string {
   return isProd() ? 'warn' : 'debug';
-}
-
-export function requireClientKeyOrProxy(transport: ModelTransport = 'openrouter'): {
-  key?: string;
-  useProxy: boolean;
-} {
-  const key = transport === 'anthropic' ? getPublicAnthropicKey() : getPublicOpenRouterKey();
-  const useProxy =
-    transport === 'anthropic' ? isAnthropicProxyEnabled() : isOpenRouterProxyEnabled();
-  if (!key && !useProxy) {
-    const error = new Error('missing_client_key_or_proxy');
-    (error as { code?: string }).code = 'missing_client_key_or_proxy';
-    (error as { transport?: ModelTransport }).transport = transport;
-    throw error;
-  }
-  return { key, useProxy };
 }
