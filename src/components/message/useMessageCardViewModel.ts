@@ -34,7 +34,7 @@ export function useMessageCardViewModel({
     const message =
       state.messagesById[messageId]?.chatId === chatId ? state.messagesById[messageId] : undefined;
     const chat = state.chats.find((entry) => entry.id === chatId);
-    const tutorEntry = state.ui.tutor.byMessageId?.[messageId] ?? message?.tutor;
+    const tutorEntry = state.ui.tutor?.byMessageId?.[messageId] ?? message?.tutor;
     const tutorGloballyEnabled = !!state.ui.flags.experimentalTutor;
     const tutorEnabled = selectIsTutorEnabledForChat(chatId)(state);
 

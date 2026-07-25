@@ -47,7 +47,7 @@ export async function prepareTutorWelcomeMessage({
         tutor: {
           ...s.ui.tutor,
           welcomeByChatId: {
-            ...(s.ui.tutor.welcomeByChatId || {}),
+            ...(s.ui.tutor?.welcomeByChatId || {}),
             [chatId]: { status: 'error', error: 'tutor_disabled' },
           },
         },
@@ -57,7 +57,7 @@ export async function prepareTutorWelcomeMessage({
   }
 
   const currentMessages = getMessagesForChat(state, chatId);
-  const planMessage = buildPlanWelcomeMessage(chat.settings.features.tutor.learningPlan);
+  const planMessage = buildPlanWelcomeMessage(chat.settings.features.tutor?.learningPlan);
 
   const findWelcomeIndex = (list: Message[]) => {
     const flaggedIdx = list.findIndex((m) => m.role === 'assistant' && m.tutorWelcome);
@@ -89,7 +89,7 @@ export async function prepareTutorWelcomeMessage({
       const existing = welcomeIndex >= 0 ? list[welcomeIndex] : undefined;
       const createdAt = existing?.createdAt ?? resolveInsertionTimestamp(list);
       const modelId =
-        chat.settings.features.tutor.defaultModelId ||
+        chat.settings.features.tutor?.defaultModelId ||
         chat.settings.modelId ||
         DEFAULT_TUTOR_MODEL_ID;
       welcomeMessage = existing
@@ -121,14 +121,14 @@ export async function prepareTutorWelcomeMessage({
           tutor: {
             ...s.ui.tutor,
             welcomeByChatId: {
-              ...(s.ui.tutor.welcomeByChatId || {}),
+              ...(s.ui.tutor?.welcomeByChatId || {}),
               [chatId]: {
                 status: 'ready',
                 message: trimmed,
                 generatedAt: Date.now(),
               },
             },
-            greetedByChatId: { ...(s.ui.tutor.greetedByChatId || {}), [chatId]: true },
+            greetedByChatId: { ...(s.ui.tutor?.greetedByChatId || {}), [chatId]: true },
           },
         },
       };

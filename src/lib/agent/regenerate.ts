@@ -119,7 +119,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   );
   const tutorModeForTurn = pickBoolean(
     snapshotSettings.tutorEnabled,
-    chat.settings.features.tutor.enabled,
+    chat.settings.features.tutor?.enabled,
     false,
   );
   const providerSortSnapshot = (snapshotSettings as Record<string, unknown>).providerSort;
@@ -186,7 +186,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     nextSettings.generation.reasoningTokens = reasoningTokens;
   nextSettings.features.search.enabled = !!searchEnabled;
   if (searchProvider) nextSettings.features.search.provider = searchProvider;
-  nextSettings.features.tutor.enabled = !!tutorModeForTurn;
+  nextSettings.features.tutor = { ...nextSettings.features.tutor, enabled: !!tutorModeForTurn };
 
   const chatForStream: Chat = { ...chat, settings: nextSettings };
 

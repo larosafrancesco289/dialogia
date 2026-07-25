@@ -7,7 +7,7 @@ import { safeKey } from '@/components/message/tutor/shared';
 export function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpdate[] }) {
   const plan = useChatStore((s) => {
     const chat = s.chats.find((c) => c.id === s.selectedChatId);
-    return chat?.settings?.features.tutor.learningPlan ?? null;
+    return chat?.settings?.features.tutor?.learningPlan ?? null;
   });
   const setUI = useChatStore((s) => s.setUI);
 

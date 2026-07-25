@@ -27,7 +27,7 @@ export class ChatService {
       let candidate: { modelId: string; updatedAt: number } | undefined;
       for (const c of chats) {
         const modelId = c.settings?.modelId;
-        if (!modelId || c.settings?.features.tutor.enabled) continue;
+        if (!modelId || c.settings?.features.tutor?.enabled) continue;
         if (!candidate || (c.updatedAt ?? 0) > candidate.updatedAt) {
           candidate = { modelId, updatedAt: c.updatedAt ?? 0 };
         }
@@ -35,12 +35,12 @@ export class ChatService {
       return candidate?.modelId;
     })();
 
-    const lastUsedModel = !selected?.settings?.features.tutor.enabled
+    const lastUsedModel = !selected?.settings?.features.tutor?.enabled
       ? selected?.settings?.modelId
       : lastNonTutorModel;
 
     const tutorEnabledGlobally = !!ui.flags.experimentalTutor;
-    const forceTutorMode = !!(ui.tutor.forceMode ?? false);
+    const forceTutorMode = !!(ui.tutor?.forceMode ?? false);
 
     const settings = resolveNewChatSettings({
       ui,
@@ -54,11 +54,12 @@ export class ChatService {
     // Chats persist concrete model ids; resolve any dynamic alias that
     // slipped through defaults (e.g. the tutor default model).
     settings.modelId = resolveDynamicModelId(settings.modelId, models);
-    if (settings.features.tutor.defaultModelId) {
-      settings.features.tutor.defaultModelId = resolveDynamicModelId(
-        settings.features.tutor.defaultModelId,
-        models,
-      );
+    const tutorDefaultModelId = settings.features.tutor?.defaultModelId;
+    if (tutorDefaultModelId) {
+      settings.features.tutor = {
+        ...settings.features.tutor,
+        defaultModelId: resolveDynamicModelId(tutorDefaultModelId, models),
+      };
     }
     return settings;
   }

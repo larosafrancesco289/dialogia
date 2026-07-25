@@ -45,13 +45,13 @@ export function usePlanCallbacks(): PlanCallbacks {
       updateChatSettings: s.updateChatSettings,
       sendUserMessage: s.sendUserMessage,
       applyLearnerModelFeedbackFromUser: s.applyLearnerModelFeedbackFromUser,
-      rightPanelOpen: s.ui.plan.rightPanelOpen ?? false,
-      rightPanelTab: s.ui.plan.rightPanelTab ?? 'plan',
+      rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
+      rightPanelTab: s.ui.plan?.rightPanelTab ?? 'plan',
     }),
     shallow,
   );
 
-  const learningPlan = chat?.settings?.features.tutor.learningPlan;
+  const learningPlan = chat?.settings?.features.tutor?.learningPlan;
   const hasPlan = !!learningPlan;
   const planProgress = useMemo(
     () => (learningPlan ? calculatePlanProgress(learningPlan) : null),
@@ -59,12 +59,12 @@ export function usePlanCallbacks(): PlanCallbacks {
   );
 
   const learnerModel = useMemo(() => {
-    const fromSettings = chat?.settings?.features.tutor.learnerModel;
+    const fromSettings = chat?.settings?.features.tutor?.learnerModel;
     const fromMessages = messages ? getLatestLearnerModel(messages) : undefined;
     if (!fromSettings) return fromMessages;
     if (!fromMessages) return fromSettings;
     return fromSettings.updatedAt >= fromMessages.updatedAt ? fromSettings : fromMessages;
-  }, [chat?.settings?.features.tutor.learnerModel, messages]);
+  }, [chat?.settings?.features.tutor?.learnerModel, messages]);
 
   const onPlanUpdate = useCallback(
     async (updatedPlan: LearningPlan) => {

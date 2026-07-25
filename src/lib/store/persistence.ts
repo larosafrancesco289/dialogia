@@ -58,13 +58,13 @@ export function buildPersistedState(state: StoreState): PersistedStoreState {
       },
       debug: { mode: state.ui.debug.mode },
       tutor: {
-        contextMode: state.ui.tutor.contextMode,
-        defaultModelId: state.ui.tutor.defaultModelId,
-        forceMode: state.ui.tutor.forceMode,
-        autoScroll: state.ui.tutor.autoScroll,
+        contextMode: state.ui.tutor?.contextMode,
+        defaultModelId: state.ui.tutor?.defaultModelId,
+        forceMode: state.ui.tutor?.forceMode,
+        autoScroll: state.ui.tutor?.autoScroll,
       },
       plan: {
-        rightPanelOpen: state.ui.plan.rightPanelOpen,
+        rightPanelOpen: state.ui.plan?.rightPanelOpen,
       },
     },
   };

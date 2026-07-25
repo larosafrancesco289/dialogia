@@ -18,7 +18,7 @@ export const advanceTopicHandler: TutorToolHandler<AdvanceTopicArgs> = {
   },
 
   async apply(ctx, args) {
-    const plan = ctx.getCurrentPlan?.() ?? ctx.chat.settings.features.tutor.learningPlan;
+    const plan = ctx.getCurrentPlan?.() ?? ctx.chat.settings.features.tutor?.learningPlan;
 
     if (!plan) {
       return { handled: true, usedContent: false };

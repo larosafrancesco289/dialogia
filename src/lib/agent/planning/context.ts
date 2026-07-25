@@ -4,7 +4,7 @@
 
 import type { PlanTurnOptions, ToolDefinition } from '@/lib/agent/types';
 import { ENABLED_MODULES } from '@/lib/modules';
-import type { Message } from '@/lib/types';
+import type { LearningPlan, Message } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import type { PlanningContext, ToolGate } from '@/lib/agent/planning/types';
 
@@ -30,7 +30,7 @@ export function derivePlanningContext(args: {
   messagesForChat: Message[];
   ui?: UiSnapshot;
   toolDefinition?: ToolDefinition[];
-  currentPlan?: PlanTurnOptions['chat']['settings']['features']['tutor']['learningPlan'];
+  currentPlan?: LearningPlan;
 }): PlanningContext {
   const { chat, messagesForChat, ui, toolDefinition, currentPlan } = args;
 

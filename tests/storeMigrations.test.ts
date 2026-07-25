@@ -52,10 +52,10 @@ test('migrate drops the research-study ui fields and keeps the rest', () => {
   assert.deepEqual(migrated.favoriteModelIds, ['a/b']);
   assert.equal(migrated.ui.sidebarCollapsed, true);
   assert.equal(migrated.ui.flags.experimentalTutor, true);
-  assert.equal(migrated.ui.plan.rightPanelOpen, true);
-  assert.equal(migrated.ui.tutor.contextMode, 'full');
-  assert.equal(migrated.ui.tutor.forceMode, true);
-  assert.equal(migrated.ui.tutor.autoScroll, true);
+  assert.equal(migrated.ui.plan?.rightPanelOpen, true);
+  assert.equal(migrated.ui.tutor?.contextMode, 'full');
+  assert.equal(migrated.ui.tutor?.forceMode, true);
+  assert.equal(migrated.ui.tutor?.autoScroll, true);
   assert.ok(!('researchMode' in migrated.ui.tutor));
   assert.ok(!('studyCondition' in migrated.ui.tutor));
 });

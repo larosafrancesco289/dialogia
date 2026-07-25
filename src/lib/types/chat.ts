@@ -27,7 +27,7 @@ export type ChatSearchSettings = {
 };
 
 export type TutorSettings = {
-  enabled: boolean;
+  enabled?: boolean;
   defaultModelId?: string;
   toolBudget?: TutorToolBudget;
   learningPlan?: LearningPlan;
@@ -42,7 +42,8 @@ export type TutorSettings = {
 
 export type ChatFeatures = {
   search: ChatSearchSettings;
-  tutor: TutorSettings;
+  /** Present only while the tutor module is installed. */
+  tutor?: TutorSettings;
 };
 
 export type ChatSettings = {

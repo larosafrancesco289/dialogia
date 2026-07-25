@@ -1,4 +1,4 @@
-import type { ChatSettings, TutorToolBudget } from '@/lib/types';
+import type { ChatSettings, TutorSettings, TutorToolBudget } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
@@ -95,7 +95,7 @@ export function normalizeChatSettings(
           typeof tutorRecord.defaultModelId === 'string' ? tutorRecord.defaultModelId : undefined,
         toolBudget: normalizeTutorToolBudget(tutorRecord.toolBudget),
         learningPlan: isRecord(tutorRecord.learningPlan)
-          ? (tutorRecord.learningPlan as ChatSettings['features']['tutor']['learningPlan'])
+          ? (tutorRecord.learningPlan as TutorSettings['learningPlan'])
           : undefined,
         planGenerated:
           typeof tutorRecord.planGenerated === 'boolean' ? tutorRecord.planGenerated : undefined,
@@ -117,7 +117,7 @@ export function normalizeChatSettings(
           typeof tutorRecord.learnerModelVisible === 'boolean'
             ? tutorRecord.learnerModelVisible
             : undefined,
-        learnerModel: tutorRecord.learnerModel as ChatSettings['features']['tutor']['learnerModel'],
+        learnerModel: tutorRecord.learnerModel as TutorSettings['learnerModel'],
       },
     },
   };
@@ -125,7 +125,7 @@ export function normalizeChatSettings(
   const parsed = ChatSettingsSchema.safeParse(settings);
   const base = parsed.success ? parsed.data : settings;
 
-  if (opts.applyTutorDefaults && base.features.tutor.enabled) {
+  if (opts.applyTutorDefaults && base.features.tutor?.enabled) {
     const ensured = applyTutorDefaults({
       ui: opts.ui,
       chat: { settings: base },
@@ -134,7 +134,7 @@ export function normalizeChatSettings(
     return ensured;
   }
 
-  if (base.features.tutor.enabled && !base.features.tutor.defaultModelId) {
+  if (base.features.tutor?.enabled && !base.features.tutor?.defaultModelId) {
     return {
       ...base,
       features: {

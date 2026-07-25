@@ -34,7 +34,7 @@ export function useSettingsFormState({ ui }: SettingsFormStateArgs) {
       : '',
   );
   const [tutorDefaultModel, setTutorDefaultModel] = useState<string>(
-    ui?.tutor.defaultModelId || DEFAULT_TUTOR_MODEL_ID,
+    ui?.tutor?.defaultModelId || DEFAULT_TUTOR_MODEL_ID,
   );
   const [showThinking, setShowThinking] = useState<boolean>(
     chatDefaults?.ui?.showThinkingByDefault ?? DEFAULT_CHAT_UI_SETTINGS.showThinkingByDefault,
@@ -71,7 +71,7 @@ export function useSettingsFormState({ ui }: SettingsFormStateArgs) {
     setShowDebugRawJson(
       chatDefaults?.ui?.showDebugRawJson ?? DEFAULT_CHAT_UI_SETTINGS.showDebugRawJson,
     );
-    setTutorDefaultModel(ui?.tutor.defaultModelId || DEFAULT_TUTOR_MODEL_ID);
+    setTutorDefaultModel(ui?.tutor?.defaultModelId || DEFAULT_TUTOR_MODEL_ID);
   }, [
     chatDefaults?.system,
     chatDefaults?.generation?.reasoningEffort,
@@ -80,7 +80,7 @@ export function useSettingsFormState({ ui }: SettingsFormStateArgs) {
     chatDefaults?.ui?.showStats,
     chatDefaults?.ui?.showToolCallLog,
     chatDefaults?.ui?.showDebugRawJson,
-    ui?.tutor.defaultModelId,
+    ui?.tutor?.defaultModelId,
   ]);
 
   // Load saved system prompt presets on mount

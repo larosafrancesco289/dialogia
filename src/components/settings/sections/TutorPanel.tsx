@@ -58,7 +58,7 @@ export function TutorPanel(props: TutorPanelProps) {
                   <label className="text-sm block">Force Tutor Mode</label>
                   <div className="segmented">
                     <button
-                      className={`segment ${ui?.tutor.forceMode ? 'is-active' : ''}`}
+                      className={`segment ${ui?.tutor?.forceMode ? 'is-active' : ''}`}
                       onClick={() => {
                         void onForceTutorModeChange(true);
                       }}
@@ -66,7 +66,7 @@ export function TutorPanel(props: TutorPanelProps) {
                       On
                     </button>
                     <button
-                      className={`segment ${!ui?.tutor.forceMode ? 'is-active' : ''}`}
+                      className={`segment ${!ui?.tutor?.forceMode ? 'is-active' : ''}`}
                       onClick={() => {
                         void onForceTutorModeChange(false);
                       }}
@@ -102,13 +102,13 @@ export function TutorPanel(props: TutorPanelProps) {
                   <label className="text-sm block">Auto-scroll during tutoring</label>
                   <div className="segmented">
                     <button
-                      className={`segment ${ui?.tutor.autoScroll ? 'is-active' : ''}`}
+                      className={`segment ${ui?.tutor?.autoScroll ? 'is-active' : ''}`}
                       onClick={() => setUI({ tutor: { autoScroll: true } })}
                     >
                       On
                     </button>
                     <button
-                      className={`segment ${!ui?.tutor.autoScroll ? 'is-active' : ''}`}
+                      className={`segment ${!ui?.tutor?.autoScroll ? 'is-active' : ''}`}
                       onClick={() => setUI({ tutor: { autoScroll: false } })}
                     >
                       Off

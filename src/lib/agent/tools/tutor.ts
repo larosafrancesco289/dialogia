@@ -33,7 +33,7 @@ export function recordTutorToolUsage(opts: {
 }) {
   const { set, chatId, assistantMessageId, plan, name } = opts;
   set((state) => {
-    const usageByChat = state.ui.tutor.toolUsageByChatId || {};
+    const usageByChat = state.ui.tutor?.toolUsageByChatId || {};
     const prev = usageByChat[chatId] || {};
     const sameTurn = prev.lastMessageId === assistantMessageId;
     const activeNodeId = plan ? (getNextNode(plan)?.id ?? '__global__') : '__global__';
@@ -106,10 +106,10 @@ export async function applyTutorToolCall(opts: {
     set((state) => {
       const list = getMessagesForChat(state, chatId);
       const prev =
-        ((state.ui.tutor.byMessageId || {})[assistantMessage.id] as Record<string, unknown>) || {};
+        ((state.ui.tutor?.byMessageId || {})[assistantMessage.id] as Record<string, unknown>) || {};
       const patch = buildPatch(prev);
       const result = attachTutorUiState({
-        currentUi: state.ui.tutor.byMessageId,
+        currentUi: state.ui.tutor?.byMessageId,
         currentMessages: list,
         messageId: assistantMessage.id,
         patch,

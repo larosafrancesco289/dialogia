@@ -170,9 +170,9 @@ export function resolveTurnSettings(args: {
     ui,
   );
 
-  const tutorModeSetting = overrides.tutorMode ?? chat.settings.features.tutor.enabled;
+  const tutorModeSetting = overrides.tutorMode ?? chat.settings.features.tutor?.enabled;
   const policyChat =
-    tutorModeSetting === chat.settings.features.tutor.enabled
+    tutorModeSetting === chat.settings.features.tutor?.enabled
       ? chat
       : {
           ...chat,

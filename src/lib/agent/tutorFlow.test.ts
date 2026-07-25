@@ -49,8 +49,8 @@ test('ensureTutorDefaults fills missing tutor defaults and enables learner model
   });
   assert.equal(result.changed, true);
   assert.equal(result.nextSettings.modelId, DEFAULT_TUTOR_MODEL_ID);
-  assert.equal(result.nextSettings.features.tutor.defaultModelId, DEFAULT_TUTOR_MODEL_ID);
-  assert.equal(result.nextSettings.features.tutor.enableLearnerModel, true);
+  assert.equal(result.nextSettings.features.tutor?.defaultModelId, DEFAULT_TUTOR_MODEL_ID);
+  assert.equal(result.nextSettings.features.tutor?.enableLearnerModel, true);
 });
 
 test('mergeTutorPayload merges patches and rebuilds hidden content', () => {

@@ -12,8 +12,8 @@ test('buildDefaultUIState applies overrides without mutating defaults', () => {
 
   assert.equal(base.debug.mode, false);
   assert.equal(overridden.debug.mode, true);
-  assert.equal(base.tutor.forceMode, false);
-  assert.equal(overridden.tutor.forceMode, true);
+  assert.equal(base.tutor?.forceMode, false);
+  assert.equal(overridden.tutor?.forceMode, true);
 });
 
 test('resetEphemeralUi clears staged next values', () => {
@@ -29,5 +29,5 @@ test('resetEphemeralUi clears staged next values', () => {
 
   const reset = resetEphemeralUi(state);
   assert.equal(reset.overrides, undefined);
-  assert.equal(reset.tutor.forceMode, true);
+  assert.equal(reset.tutor?.forceMode, true);
 });

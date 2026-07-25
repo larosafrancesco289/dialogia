@@ -129,7 +129,7 @@ test('ask_student_question tool stores questionnaire for the message', async () 
   assert.equal(outcome.usedContent, true);
   assert.ok(persisted, 'expected tutor state to be persisted');
 
-  const stored = state.ui.tutor.byMessageId?.['assistant-1']?.questionnaire;
+  const stored = state.ui.tutor?.byMessageId?.['assistant-1']?.questionnaire;
   assert.ok(stored, 'questionnaire should be stored on tutor state');
   assert.equal(stored.status, 'awaiting');
   assert.equal(stored.questions.length, 1);
@@ -182,7 +182,7 @@ test('content tools replace previous tutor widgets to enforce one active payload
     persistMessage: async () => Promise.resolve(),
   });
 
-  const tutorState = state.ui.tutor.byMessageId?.['assistant-1'];
+  const tutorState = state.ui.tutor?.byMessageId?.['assistant-1'];
   assert.ok(Array.isArray(tutorState?.mcq));
   assert.equal(tutorState?.mcq?.length, 1);
   assert.equal(tutorState?.mcq?.[0]?.question, 'Second?');
@@ -231,7 +231,7 @@ test('learning_plan tool persists a valid learning plan from tool payloads', asy
   });
 
   assert.equal(outcome.handled, true);
-  const plan = state.ui.tutor.byMessageId?.['assistant-1']?.planProposal?.plan;
+  const plan = state.ui.tutor?.byMessageId?.['assistant-1']?.planProposal?.plan;
   assert.ok(plan, 'expected plan proposal to be stored');
   const validation = validateLearningPlan(plan);
   assert.equal(validation.valid, true);
@@ -260,7 +260,7 @@ test('quiz tool accepts mcq with schema-aligned payloads', async () => {
     persistMessage: async () => Promise.resolve(),
   });
   assert.equal(outcome.handled, true, 'expected mcq quiz to be handled');
-  const tutorState = state.ui.tutor.byMessageId?.['assistant-1'];
+  const tutorState = state.ui.tutor?.byMessageId?.['assistant-1'];
   assert.ok(Array.isArray(tutorState?.mcq), 'expected mcq to be stored');
 });
 
@@ -283,7 +283,7 @@ test('quiz tool accepts legacy single-question argument shape', async () => {
   });
 
   assert.equal(outcome.handled, true);
-  const mcq = state.ui.tutor.byMessageId?.['assistant-1']?.mcq;
+  const mcq = state.ui.tutor?.byMessageId?.['assistant-1']?.mcq;
   assert.ok(Array.isArray(mcq), 'expected mcq quiz to be stored');
   assert.equal(mcq[0]?.question, '2 + 2 = ?');
 });
@@ -342,7 +342,7 @@ test('diagnostic tool stores items from schema-aligned payloads', async () => {
   });
 
   assert.equal(outcome.handled, true);
-  const diagnostic = state.ui.tutor.byMessageId?.['assistant-1']?.diagnostic;
+  const diagnostic = state.ui.tutor?.byMessageId?.['assistant-1']?.diagnostic;
   assert.ok(diagnostic);
   assert.equal(diagnostic.items.length, 3);
   assert.equal(diagnostic.status, 'pending');

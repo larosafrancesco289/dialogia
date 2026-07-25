@@ -14,14 +14,14 @@ function latestTutorPayload(messages: Message[], ui?: UiSnapshot): MessageTutor 
     const msg = messages[i];
     if (msg.role !== 'assistant') continue;
     if (msg.tutor) return msg.tutor;
-    const uiTutor = ui?.tutor.byMessageId?.[msg.id];
+    const uiTutor = ui?.tutor?.byMessageId?.[msg.id];
     if (uiTutor) return uiTutor;
   }
   return undefined;
 }
 
 export function getTutorPhase(chat: Chat, messages: Message[], ui?: UiSnapshot): TutorPhase {
-  const plan = chat.settings.features.tutor.learningPlan;
+  const plan = chat.settings.features.tutor?.learningPlan;
   const tutor = latestTutorPayload(messages, ui);
 
   if (!plan) {
@@ -128,19 +128,19 @@ export function deriveTutorToolPolicy(args: {
   const { chat, ui, activeNodeId } = args;
   const budget = {
     ...DEFAULT_TOOL_BUDGET,
-    ...(chat.settings.features.tutor.toolBudget || {}),
+    ...(chat.settings.features.tutor?.toolBudget || {}),
   };
-  const usage: TutorToolUsageSnapshot | undefined = ui?.tutor.toolUsageByChatId?.[chat.id];
+  const usage: TutorToolUsageSnapshot | undefined = ui?.tutor?.toolUsageByChatId?.[chat.id];
   const activeKey = activeNodeId || '__global__';
   const quizzesUsed = usage?.mcqByNode?.[activeKey] ?? 0;
   const diagnosticsUsed = usage?.diagnosticsUsed ?? 0;
-  const planExists = !!chat.settings.features.tutor.learningPlan;
+  const planExists = !!chat.settings.features.tutor?.learningPlan;
 
   return {
-    allowLearnerModel: chat.settings.features.tutor.enableLearnerModel !== false,
-    allowUpdatePlan: chat.settings.features.tutor.planEditable !== false,
+    allowLearnerModel: chat.settings.features.tutor?.enableLearnerModel !== false,
+    allowUpdatePlan: chat.settings.features.tutor?.planEditable !== false,
     planExists,
-    disablePlanGeneration: chat.settings.features.tutor.disablePlanGeneration === true,
+    disablePlanGeneration: chat.settings.features.tutor?.disablePlanGeneration === true,
     quizzesRemaining:
       budget.maxQuizzesPerNode == null
         ? undefined

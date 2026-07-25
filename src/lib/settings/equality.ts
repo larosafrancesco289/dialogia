@@ -13,6 +13,6 @@ export function settingsEqual(a: ChatSettings, b: ChatSettings): boolean {
   if (!shallowEqual(a.generation, b.generation)) return false;
   if (!shallowEqual(a.ui, b.ui)) return false;
   if (!shallowEqual(a.features.search, b.features.search)) return false;
-  if (!shallowEqual(a.features.tutor, b.features.tutor)) return false;
+  if (!shallowEqual(a.features.tutor ?? {}, b.features.tutor ?? {})) return false;
   return true;
 }

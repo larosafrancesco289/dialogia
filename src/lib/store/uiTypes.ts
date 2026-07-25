@@ -61,7 +61,7 @@ export type SessionUiState = Omit<
 > & {
   flags: UIFlags;
   debug: UIDebugState;
-  tutor: UITutorState;
+  tutor?: UITutorState;
   composerDraft?: string;
 };
 

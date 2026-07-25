@@ -18,7 +18,7 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
   const updateTutorEntry = (messageId: string, updater: (prev: MessageTutor) => MessageTutor) => {
     if (!messageId) return;
     set((state) => {
-      const current = state.ui.tutor.byMessageId || {};
+      const current = state.ui.tutor?.byMessageId || {};
       const prevEntry = (current[messageId] || {}) as MessageTutor;
       const nextEntry = updater(prevEntry);
       return {
@@ -43,7 +43,7 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
           ...s.ui,
           tutor: {
             ...s.ui.tutor,
-            profileByChatId: { ...(s.ui.tutor.profileByChatId || {}), [chatId]: prof },
+            profileByChatId: { ...(s.ui.tutor?.profileByChatId || {}), [chatId]: prof },
           },
         },
       }));
@@ -58,7 +58,7 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
             ...s.ui,
             tutor: {
               ...s.ui.tutor,
-              profileByChatId: { ...(s.ui.tutor.profileByChatId || {}), [id]: prof },
+              profileByChatId: { ...(s.ui.tutor?.profileByChatId || {}), [id]: prof },
             },
           },
         }));
@@ -67,7 +67,8 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
       const state = get();
       const nextOverrides = readNextOverrides(state.ui);
       const tutorActive =
-        !!state.ui.flags.experimentalTutor && (state.ui.tutor.forceMode || nextOverrides.tutorMode);
+        !!state.ui.flags.experimentalTutor &&
+        (state.ui.tutor?.forceMode || nextOverrides.tutorMode);
       if (!tutorActive) {
         set((s) => ({
           ui: {
@@ -83,7 +84,7 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
       const selectedChat = state.selectedChatId
         ? state.chats.find((c) => c.id === state.selectedChatId)
         : undefined;
-      const plan = selectedChat?.settings?.features.tutor.learningPlan;
+      const plan = selectedChat?.settings?.features.tutor?.learningPlan;
       const message = buildPlanWelcomeMessage(plan);
       set((s) => ({
         ui: {
