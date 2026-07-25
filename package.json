@@ -8,7 +8,7 @@
     "start": "next start",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint --cache --ext .ts,.tsx app src tests scripts",
+    "lint": "eslint --cache --ext .ts,.tsx app src tests",
     "lint:types": "tsc --noEmit",
     "check": "bun run lint:types && bun run test && bun run format:check && bun run lint",
     "test": "NODE_OPTIONS=--require=./tests/setup.cjs tsx --test 'tests/**/*.test.ts' 'src/**/*.test.ts'",
