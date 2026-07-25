@@ -31,8 +31,10 @@ async function anFetch(path: string, options: AnthropicFetchOptions = {}): Promi
       headers['x-api-key'] = options.auth.apiKey;
     }
     // BYOK calls the Claude API straight from the page; without this opt-in the
-    // API refuses the browser's CORS preflight.
-    if (apiDefaults.isBrowser) headers['anthropic-dangerous-direct-browser-access'] = 'true';
+    // API refuses the browser's CORS preflight. Sent on every direct call —
+    // server-side callers are unaffected by it, and gating on a captured
+    // isBrowser flag would make the browser path untestable.
+    headers['anthropic-dangerous-direct-browser-access'] = 'true';
   }
 
   const timeoutMs = options.timeoutMs ?? (options.stream ? undefined : apiDefaults.timeouts.chat);

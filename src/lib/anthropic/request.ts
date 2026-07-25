@@ -10,6 +10,7 @@ import {
   ANTHROPIC_DEFAULT_MAX_TOKENS,
   ANTHROPIC_MIN_THINKING_BUDGET,
   defaultAnthropicThinkingBudget,
+  normalizeAnthropicModelSlug,
   resolveAnthropicDirectModelId,
   supportsAnthropicAdaptiveThinking,
   supportsAnthropicPromptCaching,
@@ -192,8 +193,12 @@ function normalizeTextContent(content: string | ModelContentBlock[] | null | und
     .join('\n\n');
 }
 
+/** Content the Messages API has no block type for, reported so nothing vanishes quietly. */
+export type UnsupportedContentKind = 'audio';
+
 function convertUserContent(
   content: string | ModelContentBlock[],
+  unsupported: Set<UnsupportedContentKind>,
 ): string | AnthropicUserContentBlock[] {
   if (typeof content === 'string') return content;
   const blocks: AnthropicUserContentBlock[] = [];
@@ -214,6 +219,11 @@ function convertUserContent(
     if (block.type === 'file') {
       const documentBlock = convertFileBlock(block);
       if (documentBlock) blocks.push(documentBlock);
+      continue;
+    }
+    if (block.type === 'input_audio') {
+      // The Messages API has no audio input block; the caller surfaces this.
+      unsupported.add('audio');
       continue;
     }
   }
@@ -315,7 +325,10 @@ function collectSystemTextBlocks(messages: ModelMessage[]): AnthropicTextBlock[]
   return blocks;
 }
 
-function convertMessages(messages: ModelMessage[]): {
+function convertMessages(
+  messages: ModelMessage[],
+  unsupported: Set<UnsupportedContentKind>,
+): {
   system?: string | AnthropicTextBlock[];
   messages: AnthropicMessageParam[];
 } {
@@ -342,7 +355,7 @@ function convertMessages(messages: ModelMessage[]): {
     if (message.role === 'user') {
       converted.push({
         role: 'user',
-        content: convertUserContent(message.content),
+        content: convertUserContent(message.content, unsupported),
       });
       continue;
     }
@@ -479,14 +492,21 @@ export function buildAnthropicBody(
   > & {
     stream: boolean;
     enableAutomaticCaching?: boolean;
+    /** Called with content kinds this API cannot carry, instead of dropping them silently. */
+    onUnsupportedContent?: (kinds: UnsupportedContentKind[]) => void;
   },
 ): AnthropicMessagesRequest {
-  const resolvedModel = resolveAnthropicDirectModelId(params.model);
+  // An id the alias map has not caught up with is still worth trying: the API
+  // is the authority on what it serves, and refusing here means a newly
+  // released model is unusable until this table is edited.
+  const resolvedModel =
+    resolveAnthropicDirectModelId(params.model) ?? normalizeAnthropicModelSlug(params.model);
   if (!resolvedModel) {
     throw new Error(`Unsupported Anthropic model: ${params.model}`);
   }
 
-  const { system, messages } = convertMessages(params.messages);
+  const unsupported = new Set<UnsupportedContentKind>();
+  const { system, messages } = convertMessages(params.messages, unsupported);
   const body: AnthropicMessagesRequest = {
     model: resolvedModel,
     messages,
@@ -527,6 +547,8 @@ export function buildAnthropicBody(
   if ('output_config' in thinkingConfig && thinkingConfig.output_config) {
     body.output_config = thinkingConfig.output_config;
   }
+
+  if (unsupported.size > 0) params.onUnsupportedContent?.(Array.from(unsupported));
 
   return body;
 }
