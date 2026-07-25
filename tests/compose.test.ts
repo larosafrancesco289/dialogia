@@ -6,6 +6,7 @@ import type { Chat, Message, Attachment, TutorProfile } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import tutorProfileService from '@/modules/tutor/lib/profile';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
+import { deleteKey, setKey } from '@/lib/keys/store';
 
 const baseChat = (): Chat => ({
   id: 'chat-1',
@@ -92,6 +93,7 @@ const modelIndexStub: ModelIndex = {
 };
 
 test('composeTurn merges tutor and search context with plugins and tools', async () => {
+  await setKey('tavily', 'tvly-test');
   const profileStub: TutorProfile = {
     chatId: 'chat-1',
     updatedAt: Date.now(),
@@ -175,10 +177,12 @@ test('composeTurn merges tutor and search context with plugins and tools', async
   } finally {
     tutorProfileService.loadTutorProfile = originalLoadProfile;
     tutorProfileService.summarizeTutorProfile = originalSummarizeProfile;
+    await deleteKey('tavily');
   }
 });
 
-test('composeTurn uses Tavily search when configured', async () => {
+test('composeTurn uses tool-based search when the provider has a key', async () => {
+  await setKey('tavily', 'tvly-test');
   const chat = baseChat();
   chat.settings.features.search.provider = 'tavily';
   const ui = {
@@ -205,4 +209,35 @@ test('composeTurn uses Tavily search when configured', async () => {
   assert.equal(result.settings.searchProvider, 'tavily');
   assert.equal(result.tools?.[0]?.function.name, 'web_search');
   assert.equal(result.tools?.[1]?.function.name, 'web_fetch');
+  await deleteKey('tavily');
+});
+
+test('composeTurn degrades to native search when the provider has no key', async () => {
+  const chat = baseChat();
+  chat.settings.features.search.provider = 'tavily';
+  const ui = {
+    flags: { experimentalTutor: false },
+    tutor: { forceMode: false },
+    routePreference: 'speed',
+  } as any;
+  const settings = resolveTurnSettings({
+    chat,
+    ui,
+    modelIndex: modelIndexStub,
+    modelId: chat.settings.modelId,
+  });
+  const result = await composeTurn({
+    chat,
+    ui,
+    settings,
+    modelIndex: modelIndexStub,
+    prior: [],
+    newUser: { content: 'Hello' },
+    attachments: [],
+  });
+
+  assert.equal(result.settings.searchProvider, 'openrouter');
+  assert.ok(result.plugins?.some((plugin) => plugin.id === 'web'));
+  assert.ok(!(result.tools || []).some((tool) => tool.function.name === 'web_search'));
+  assert.equal(result.shouldPlan, false);
 });

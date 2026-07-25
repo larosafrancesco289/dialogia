@@ -1,4 +1,5 @@
 import { buildChatBody } from '@/lib/openrouter/request';
+import { endpointBodyOptions, endpointWireModelId } from '@/lib/openrouter/endpointBody';
 import { API_ERROR_CODES } from '@/lib/api/errors';
 import { orChatCompletions } from '@/lib/openrouter/http';
 import { logger } from '@/lib/logger';
@@ -9,7 +10,8 @@ import { buildOpenRouterError, wrapOpenRouterClientError } from '@/lib/openroute
 // OpenAI-compatible non-streaming chat completion with optional tool support
 export async function chatCompletion(params: TransportChatParams): Promise<ChatCompletion> {
   const body = buildChatBody({
-    model: params.model,
+    ...endpointBodyOptions(params.auth),
+    model: endpointWireModelId(params.auth, params.model),
     messages: params.messages,
     stream: false,
     modalities: params.modalities,

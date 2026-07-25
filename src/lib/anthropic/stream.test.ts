@@ -1,3 +1,4 @@
+import { ANTHROPIC_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { streamChatCompletion } from '@/lib/anthropic/stream';
@@ -137,11 +138,7 @@ test('streamChatCompletion continues pause_turn streams for Anthropic web search
 
   try {
     await streamChatCompletion({
-      auth: buildTransportAuth({
-        transport: 'anthropic',
-        apiKey: 'test-key',
-        useProxy: false,
-      }),
+      auth: buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' }),
       model: 'anthropic/claude-sonnet-4-6',
       messages: [{ role: 'user', content: 'What are the latest renewable energy developments?' }],
       plugins: [{ id: 'web' }],
@@ -200,11 +197,7 @@ test('streamChatCompletion maps refusal stop_reason to content_filter with stop_
 
   try {
     await streamChatCompletion({
-      auth: buildTransportAuth({
-        transport: 'anthropic',
-        apiKey: 'test-key',
-        useProxy: false,
-      }),
+      auth: buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' }),
       model: 'anthropic/claude-fable-5',
       messages: [{ role: 'user', content: 'Blocked prompt' }],
       callbacks: {

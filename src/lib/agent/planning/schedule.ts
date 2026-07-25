@@ -1,3 +1,4 @@
+import { isNativeSearchMode, type SearchMode } from '@/lib/search/providers/types';
 // Module: agent/planning/schedule
 // Responsibility: Apply the turn's ToolGate to a round of tool calls, then order
 // them with the core scheduler and cap them against the per-turn budget.
@@ -10,7 +11,7 @@ export function schedulePlanningRound(args: {
   toolCalls: ToolCall[];
   gate: ToolGate;
   searchEnabled: boolean;
-  searchProvider: 'tavily' | 'openrouter';
+  searchProvider: SearchMode;
   usedContentTool: boolean;
   toolsUsedThisTurn: number;
 }): ToolCall[] {
@@ -30,7 +31,7 @@ export function schedulePlanningRound(args: {
 
   const ordered = schedulePlanningToolCalls(allowed, {
     alreadyUsedContent: usedContentTool,
-    allowSearch: searchEnabled && searchProvider === 'tavily',
+    allowSearch: searchEnabled && !isNativeSearchMode(searchProvider),
     contentPriority: gate.contentPriority,
   });
 

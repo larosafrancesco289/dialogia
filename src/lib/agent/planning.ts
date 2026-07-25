@@ -22,7 +22,7 @@ import { createPlanningExecutionState } from '@/lib/agent/planning/types';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 import { readContentModuleResult } from '@/lib/agent/planning/moduleResult';
 import { getMessagesForChat } from '@/lib/messages/indexing';
-import { resolveModelTransport } from '@/lib/providers';
+import { resolveModelTransportKind } from '@/lib/providers';
 
 function buildPlanningMessages(
   baseMessages: ModelMessage[],
@@ -79,7 +79,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
   const searchEnabled = settings.searchEnabled;
   const searchProvider = settings.searchProvider || 'openrouter';
   const shouldAppendToolFollowUp =
-    resolveModelTransport(settings.modelId, settings.modelMeta) !== 'anthropic';
+    resolveModelTransportKind(settings.modelId, settings.modelMeta) !== 'anthropic';
 
   // Learner model updates are now handled by the tutor via tool calls at meaningful moments,
   // rather than automatically every turn. This reduces latency and API costs.

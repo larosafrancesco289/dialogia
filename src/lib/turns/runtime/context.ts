@@ -13,6 +13,8 @@ import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
 import { createModelAuthResolver, type ModelAuth } from '@/lib/services/auth';
 import { prepareAttachmentsByModel } from '@/lib/attachments/prepare';
+import { describeDroppedAttachments } from '@/lib/store/notices';
+import { notify } from '@/lib/store/notify';
 import { readNextOverrides } from '@/lib/ui/next';
 import { isTutorRuntimeEnabled, selectTutorDefaultModelId } from '@/lib/policy/runtime';
 import type { AccessTier } from '@/lib/auth/types';
@@ -155,11 +157,16 @@ export const prepareSendRuntime = async ({
     return null;
   }
 
-  const attachmentsByModel = await prepareAttachmentsByModel({
+  const prepared = await prepareAttachmentsByModel({
     attachments,
     modelIds: activeModelIds,
     models: get().models,
   });
+  // Dropping an attachment the model cannot read used to be silent, which read
+  // as the model ignoring the file.
+  if (prepared.droppedKinds.length > 0) {
+    notify(get, describeDroppedAttachments(prepared.droppedKinds));
+  }
 
   const persistMessage = createMessagePersister(repository);
   const baseTurnContext: Omit<TurnContext, 'auth'> = {
@@ -178,7 +185,7 @@ export const prepareSendRuntime = async ({
       modelId,
       auth,
       caps: get().modelIndex.caps(modelId),
-      attachments: attachmentsByModel.get(modelId) ?? [],
+      attachments: prepared.byModel.get(modelId) ?? [],
     });
   }
 

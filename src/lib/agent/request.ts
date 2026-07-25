@@ -5,6 +5,7 @@
 
 import type { PluginConfig } from '@/lib/agent/types';
 import { providerSortFromRoutePref } from '@/lib/policy/provider';
+import { isNativeSearchMode, type SearchMode } from '@/lib/search/providers/types';
 
 export { providerSortFromRoutePref };
 
@@ -17,11 +18,13 @@ export function pdfPlugins(hasPdf: boolean): PluginConfig[] | undefined {
 export function composePlugins(opts: {
   hasPdf: boolean;
   searchEnabled?: boolean;
-  searchProvider?: 'tavily' | 'openrouter';
+  searchProvider?: SearchMode;
 }): PluginConfig[] | undefined {
   const arr: PluginConfig[] = [];
   const base = pdfPlugins(opts.hasPdf);
   if (base && base.length) arr.push(...base);
-  if (opts.searchEnabled && opts.searchProvider === 'openrouter') arr.push({ id: 'web' });
+  // The `web` plugin is OpenRouter's native search; the Anthropic transport
+  // reinterprets it as that API's own `web_search` server tool.
+  if (opts.searchEnabled && isNativeSearchMode(opts.searchProvider)) arr.push({ id: 'web' });
   return arr.length > 0 ? arr : undefined;
 }

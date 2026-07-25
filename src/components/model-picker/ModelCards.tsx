@@ -13,7 +13,7 @@ import { describeModelPricing } from '@/lib/cost';
 import { evaluateZdrModel } from '@/lib/policy/zdr';
 import type { ZdrLists } from '@/lib/policy/zdr';
 import { findModelById, formatModelLabel, getModelCapabilities } from '@/lib/models';
-import { getModelTransportLabel } from '@/lib/providers';
+import { getModelProviderLabel } from '@/lib/providers';
 import type { CuratedModel } from '@/data/curatedModels';
 
 export function ModelCard({
@@ -107,7 +107,7 @@ export function FavoriteModelCard({
   const price = describeModelPricing(meta);
   const context = meta?.context_length;
   const label = formatModelLabel({ model: meta, fallbackId: modelId, fallbackName: modelId });
-  const providerLabel = getModelTransportLabel(meta);
+  const providerLabel = getModelProviderLabel(meta);
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
       event.preventDefault();

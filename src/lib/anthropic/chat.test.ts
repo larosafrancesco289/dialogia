@@ -1,3 +1,4 @@
+import { ANTHROPIC_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -236,11 +237,7 @@ test('chatCompletion continues Anthropic pause_turn responses', async () => {
 
   try {
     const response = await chatCompletion({
-      auth: buildTransportAuth({
-        transport: 'anthropic',
-        apiKey: 'test-key',
-        useProxy: false,
-      }),
+      auth: buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' }),
       model: 'anthropic/claude-sonnet-4-6',
       messages: [{ role: 'user', content: 'What are the latest renewable energy developments?' }],
       plugins: [{ id: 'web' }],

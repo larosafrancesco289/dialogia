@@ -8,7 +8,7 @@ import { isFreeModel } from '@/data/freeModels';
 import type { ZdrLists } from '@/lib/policy/zdr';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
-import { getModelTransportLabel } from '@/lib/providers';
+import { getModelProviderLabel } from '@/lib/providers';
 import { ModelSearch } from '@/components/ModelSearch';
 import type { ModelSearchResult } from '@/lib/models/search';
 import { PortalDropdown } from '@/components/PortalDropdown';
@@ -209,7 +209,7 @@ export function ModelPicker({
           id,
           name: meta?.name || id,
         }),
-        provider: getModelTransportLabel(meta),
+        provider: getModelProviderLabel(meta),
       };
     });
     const labels = entries.map((entry) => entry.label);

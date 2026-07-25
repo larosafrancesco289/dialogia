@@ -1,15 +1,14 @@
 // Module: services/auth
-// Responsibility: Resolve per-model auth for UI-driven turns and surface missing-key notices.
+// Responsibility: Resolve per-model auth for UI-driven turns and open the setup
+// flow when a provider is not configured yet.
 
 import { requireModelAuth } from '@/lib/auth/require';
 import type { ModelIndex } from '@/lib/models';
-import { resolveModelTransport } from '@/lib/providers';
-import type { ModelTransport } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
-import { NOTICE_MISSING_ANTHROPIC_KEY, NOTICE_MISSING_CLIENT_KEY } from '@/lib/store/notices';
-import { notify } from '@/lib/store/notify';
-import { isRecord } from '@/lib/utils/guards';
 import type { TransportAuth } from '@/lib/auth/transport';
+import { isUnknownEndpointError } from '@/lib/transport/endpointRegistry';
+import { NOTICE_UNKNOWN_ENDPOINT } from '@/lib/store/notices';
+import { notify } from '@/lib/store/notify';
 
 export type ModelAuth = TransportAuth;
 
@@ -18,17 +17,29 @@ export type ModelAuthResolver = {
   ensureAll: (modelIds: Iterable<string>) => boolean;
 };
 
-const noticeForTransport = (transport?: ModelTransport) =>
-  transport === 'anthropic' ? NOTICE_MISSING_ANTHROPIC_KEY : NOTICE_MISSING_CLIENT_KEY;
+/**
+ * A missing key is a setup problem, not an error to narrate: open the setup
+ * sheet rather than dropping a toast that names an environment variable.
+ */
+const promptForSetup = (set: StoreSetter) => {
+  set((state) => ({ ui: { ...state.ui, setupOpen: true } }));
+};
 
-const notifyMissingAuth = (getState: StoreGetter, transport?: ModelTransport) => {
-  const notice = noticeForTransport(transport);
-  notify(getState, notice);
+/**
+ * A deleted endpoint is not a setup problem the sheet can fix: say so instead of
+ * offering a key field for a provider that is gone.
+ */
+const reportAuthFailure = (error: unknown, set: StoreSetter, get: StoreGetter) => {
+  if (isUnknownEndpointError(error)) {
+    notify(get, NOTICE_UNKNOWN_ENDPOINT);
+    return;
+  }
+  promptForSetup(set);
 };
 
 export const createModelAuthResolver = ({
   modelIndex,
-  set: _set,
+  set,
   get: getState,
 }: {
   modelIndex: ModelIndex;
@@ -46,11 +57,7 @@ export const createModelAuthResolver = ({
       cache.set(modelId, auth);
       return auth;
     } catch (error) {
-      const transport =
-        isRecord(error) && typeof error.transport === 'string'
-          ? (error.transport as ModelTransport)
-          : undefined;
-      notifyMissingAuth(getState, transport);
+      reportAuthFailure(error, set, getState);
       throw error;
     }
   };
@@ -81,7 +88,7 @@ export const createModelAuthResolver = ({
 export const resolveSingleModelAuth = ({
   modelId,
   modelIndex,
-  set: _set,
+  set,
   get: getState,
 }: {
   modelId?: string;
@@ -93,12 +100,7 @@ export const resolveSingleModelAuth = ({
   try {
     return requireModelAuth(modelId, modelIndex);
   } catch (error) {
-    const meta = modelIndex.get(modelId);
-    const transport =
-      isRecord(error) && typeof error.transport === 'string'
-        ? (error.transport as ModelTransport)
-        : resolveModelTransport(modelId, meta);
-    notifyMissingAuth(getState, transport);
+    reportAuthFailure(error, set, getState);
     return null;
   }
 };

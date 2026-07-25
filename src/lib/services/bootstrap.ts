@@ -2,6 +2,7 @@
 // Responsibility: Hydrate store from persisted repository data and schedule background refreshes.
 
 import { loadRepositorySnapshot } from '@/lib/db';
+import { loadKeys } from '@/lib/keys/store';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import { hydrateRepositorySnapshot } from '@/lib/services/hydrate';
 import { mergeTutorMap } from '@/lib/ui/tutorState';
@@ -68,6 +69,9 @@ export function bootstrapApp(set: StoreSetter, get: StoreGetter): Promise<void> 
 }
 
 async function runBootstrap(set: StoreSetter, get: StoreGetter): Promise<void> {
+  // Keys gate every provider call, so they are warmed before anything can
+  // conclude that nothing is configured.
+  await loadKeys();
   const snapshot = await loadRepositorySnapshot(get().selectedChatId);
   const hydrated = hydrateRepositorySnapshot(snapshot);
 

@@ -1,3 +1,5 @@
+import { deleteKey, setKey } from '@/lib/keys/store';
+import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planTurn } from '@/lib/agent/planning';
@@ -36,6 +38,9 @@ const mergeState = (target: any, patch: any) => {
 };
 
 test('planTurn applies tutor tools and updates Tavily UI state', async () => {
+  // Tool-based search only runs when its provider is keyed; without one the
+  // turn would (correctly) fall back to provider-native search.
+  await setKey('tavily', 'tvly-test');
   const chat: Chat = {
     id: 'chat-1',
     title: 'Test Chat',
@@ -247,7 +252,7 @@ test('planTurn applies tutor tools and updates Tavily UI state', async () => {
     savedMessages.push(message);
   };
   const turnContext = {
-    auth: buildTransportAuth({ transport: 'openrouter', apiKey: 'test', useProxy: false }),
+    auth: buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'test' }),
     set,
     get,
     models: baseModels,
@@ -306,6 +311,7 @@ test('planTurn applies tutor tools and updates Tavily UI state', async () => {
   assert.equal(quizEntries[0]?.metadata?.usedContent, true);
 
   restoreFetch();
+  await deleteKey('tavily');
 });
 
 test('regenerate reuses snapshots and records debug payload', async () => {
@@ -425,7 +431,7 @@ test('regenerate reuses snapshots and records debug payload', async () => {
     saved.push(message);
   };
   const regenerateTurn = {
-    auth: buildTransportAuth({ transport: 'openrouter', apiKey: 'test', useProxy: false }),
+    auth: buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'test' }),
     set,
     get,
     models: baseModels,

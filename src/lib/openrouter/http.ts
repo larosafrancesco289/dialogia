@@ -1,8 +1,9 @@
-import { apiDefaults } from '@/lib/api/config';
+import { apiDefaults, isBrowserContext } from '@/lib/api/config';
 import { sendApiRequest } from '@/lib/api/http';
-import { isOpenRouterProxyEnabled } from '@/lib/env/public';
-import type { TransportAuth } from '@/lib/auth/transport';
+import { usesProxy, type TransportAuth } from '@/lib/auth/transport';
 import type { ChatCompletionMessage, Usage } from '@/lib/transport/completions';
+import { getDefaultEndpoint } from '@/lib/transport/endpointRegistry';
+import { normalizeBaseUrl } from '@/lib/transport/endpoints';
 import type { OpenRouterChatRequest } from '@/lib/openrouter/types';
 
 export type SseDelta = {
@@ -32,37 +33,56 @@ type OrFetchOptions = {
   headers?: Record<string, string>;
 };
 
-async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Response> {
-  const useProxy =
-    typeof options.auth?.useProxy === 'boolean'
-      ? options.auth.useProxy
-      : apiDefaults.isBrowser && isOpenRouterProxyEnabled();
-  const authRequired = options.authRequired ?? !useProxy;
-  const headers: Record<string, string> = { ...(options.headers || {}) };
-  let includeDefaults = !useProxy;
+/**
+ * Where the call goes and which courtesy headers it carries. OpenRouter wants
+ * `X-Title`/`HTTP-Referer`; a user-configured OpenAI-compatible server has no
+ * idea what those are, so it gets neither.
+ */
+function resolveTarget(auth?: TransportAuth): {
+  baseUrl: string;
+  useProxy: boolean;
+  includeDefaults: boolean;
+} {
+  const endpoint = auth?.endpoint ?? getDefaultEndpoint();
+  if (endpoint.kind === 'openai-compatible') {
+    return {
+      baseUrl: normalizeBaseUrl(endpoint.baseUrl ?? ''),
+      useProxy: false,
+      includeDefaults: false,
+    };
+  }
+  // The proxy path is relative, so it only resolves in a page. The worker runs
+  // this same module and must go straight upstream.
+  const useProxy = isBrowserContext() && usesProxy(auth ?? { endpoint });
+  return {
+    baseUrl: useProxy ? apiDefaults.proxyPath : (endpoint.baseUrl ?? apiDefaults.baseUrl),
+    useProxy,
+    includeDefaults: !useProxy,
+  };
+}
 
-  if (!useProxy) {
-    if (authRequired) {
-      if (!options.auth?.apiKey) throw new Error('missing_openrouter_api_key');
-      headers.Authorization = `Bearer ${options.auth.apiKey}`;
-    } else if (options.auth?.apiKey) {
-      headers.Authorization = `Bearer ${options.auth.apiKey}`;
-    }
-    includeDefaults = true;
+async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Response> {
+  const target = resolveTarget(options.auth);
+  // Local OpenAI-compatible servers commonly need no key at all.
+  const keyOptional = options.auth?.endpoint.kind === 'openai-compatible';
+  const authRequired = options.authRequired ?? (!target.useProxy && !keyOptional);
+  const headers: Record<string, string> = { ...(options.headers || {}) };
+
+  if (!target.useProxy) {
+    if (authRequired && !options.auth?.apiKey) throw new Error('missing_openrouter_api_key');
+    if (options.auth?.apiKey) headers.Authorization = `Bearer ${options.auth.apiKey}`;
   }
 
   const timeoutMs = options.timeoutMs ?? (options.stream ? undefined : apiDefaults.timeouts.chat);
 
-  const url = `${useProxy ? apiDefaults.proxyPath : apiDefaults.baseUrl}${path}`;
-
   return sendApiRequest({
-    url,
+    url: `${target.baseUrl}${path}`,
     method: options.method ?? 'GET',
     headers,
     body: options.body,
     signal: options.signal,
     timeoutMs,
-    includeDefaults,
+    includeDefaults: target.includeDefaults,
     origin: options.origin,
   });
 }
@@ -80,6 +100,7 @@ export async function orFetchModels(
   });
 }
 
+/** Unauthenticated: the ZDR list is public and always comes from OpenRouter itself. */
 export async function orFetchZdrEndpoints(
   options: { signal?: AbortSignal; origin?: string } = {},
 ): Promise<Response> {

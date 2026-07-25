@@ -1,3 +1,4 @@
+import { ANTHROPIC_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fetchModels } from '@/lib/anthropic/models';
@@ -15,11 +16,7 @@ test('fetchModels exposes Anthropic pricing in per-token units', async () => {
   };
 
   const models = await fetchModels(
-    {
-      transport: 'anthropic',
-      apiKey: 'test-key',
-      useProxy: false,
-    },
+    { endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' },
     {
       fetchFn: async () =>
         new Response(JSON.stringify(responseBody), {
@@ -69,7 +66,7 @@ test('fetchModels synthesizes reasoning metadata from effort capabilities', asyn
   const models = await fetchModels(
     // Distinct key so the module-level model cache from the previous test
     // does not serve its response here.
-    { transport: 'anthropic', apiKey: 'test-key-reasoning', useProxy: false },
+    { endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key-reasoning' },
     {
       fetchFn: async () =>
         new Response(JSON.stringify(responseBody), {

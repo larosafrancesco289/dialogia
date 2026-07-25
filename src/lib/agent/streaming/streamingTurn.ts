@@ -30,7 +30,7 @@ import { followUpPrompt } from '@/lib/agent/prompts/followUp';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { applyCacheBreakpoints, buildSystemMessage } from '@/lib/agent/cache';
-import { resolveModelTransport } from '@/lib/providers';
+import { resolveModelTransportKind } from '@/lib/providers';
 import type {
   ModelMessage,
   PlanTurnResult,
@@ -267,7 +267,7 @@ export async function executeStreamingTurn(
   const searchEnabled = settings.searchEnabled;
   const searchProvider = settings.searchProvider || 'openrouter';
   const shouldAppendToolFollowUp =
-    resolveModelTransport(settings.modelId, modelMeta) !== 'anthropic';
+    resolveModelTransportKind(settings.modelId, modelMeta) !== 'anthropic';
   const modalities = canImageOut ? (['image', 'text'] as Array<'image' | 'text'>) : undefined;
 
   // Streaming context for helper functions

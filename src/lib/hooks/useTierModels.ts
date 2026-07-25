@@ -13,7 +13,9 @@ import {
   getDefaultTutorModelIdForTier,
   isModelAllowedForTier,
 } from '@/lib/auth/tierFeatures';
-import { isModelTransportAvailable, isTransportAvailable } from '@/lib/policy/providerAvailability';
+import { hasAnyEndpoint, isModelEndpointAvailable } from '@/lib/policy/providerAvailability';
+import { getModelEndpoint } from '@/lib/providers';
+import { isEndpointProxied } from '@/lib/auth/require';
 
 /**
  * Hook that returns models filtered by the current access tier.
@@ -26,9 +28,16 @@ export function useTierModels() {
 
   const filteredModels = useMemo(() => {
     const effectiveTier = isLoading ? 'free' : tier;
-    const availableModels = allModels.filter((model) => isModelTransportAvailable(model));
+    const availableModels = allModels.filter((model) => isModelEndpointAvailable(model));
     if (canUseAllModelsForTier(effectiveTier)) return availableModels;
-    return availableModels.filter((model) => isModelAllowedForTier(effectiveTier, model.id));
+    // A tier rations the deployment's own keys. A model reached through a key
+    // or a server the user supplied costs the deployment nothing, so it is
+    // never rationed.
+    return availableModels.filter(
+      (model) =>
+        !isEndpointProxied(getModelEndpoint(model)) ||
+        isModelAllowedForTier(effectiveTier, model.id),
+    );
   }, [allModels, isLoading, tier]);
 
   return {
@@ -49,7 +58,7 @@ export function useTierCuratedModels() {
   return useMemo(() => {
     // Default to free models while loading to be safe
     const effectiveTier = isLoading ? 'free' : tier;
-    if (!isTransportAvailable('openrouter') && !isTransportAvailable('anthropic')) return [];
+    if (!hasAnyEndpoint()) return [];
     const curated = canUseAllModelsForTier(effectiveTier) ? CURATED_MODELS : FREE_CURATED_MODELS;
     const availableIds = new Set((allModels || []).map((model) => model.id));
     if (availableIds.size === 0) return [];

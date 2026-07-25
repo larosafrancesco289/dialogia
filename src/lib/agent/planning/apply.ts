@@ -1,3 +1,4 @@
+import type { SearchMode } from '@/lib/search/providers/types';
 import { parseToolArguments } from '@/lib/agent/parsers';
 import { executePlanningToolCall } from '@/lib/agent/tools/exec';
 import { createToolExecutionLogger } from '@/lib/agent/tools/executionLogger';
@@ -18,7 +19,7 @@ export async function applyToolExecutions(args: {
     chatId: string;
     assistantMessage: Message;
     userContent: string;
-    searchProvider: 'tavily' | 'openrouter';
+    searchProvider: SearchMode;
     controller: AbortController;
     set: PlanTurnOptions['turn']['set'];
     get: PlanTurnOptions['turn']['get'];

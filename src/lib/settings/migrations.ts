@@ -1,6 +1,6 @@
-import type { ReasoningEffort, SearchProvider } from '@/lib/types/enums';
+import type { ReasoningEffort, SearchMode } from '@/lib/types/enums';
 import { asNumber, isRecord } from '@/lib/utils/guards';
-import { ReasoningEffortEnum, SearchProviderEnum } from '@/lib/types/enums';
+import { NATIVE_SEARCH_MODE, ReasoningEffortEnum } from '@/lib/types/enums';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -15,12 +15,10 @@ const readString = (value: unknown): string | undefined =>
 const readRecord = (value: unknown): UnknownRecord | undefined =>
   isRecord(value) ? value : undefined;
 
-const readSearchProvider = (value: unknown): SearchProvider | undefined =>
-  value === 'brave'
-    ? 'tavily'
-    : Object.values(SearchProviderEnum).includes(value as SearchProvider)
-      ? (value as SearchProvider)
-      : undefined;
+// 'brave' was the pre-Tavily provider id; everything else is taken at face
+// value because the provider registry is open.
+const readSearchProvider = (value: unknown): SearchMode | undefined =>
+  value === 'brave' ? 'tavily' : typeof value === 'string' && value ? value : undefined;
 
 const readReasoningEffort = (value: unknown): ReasoningEffort | undefined =>
   Object.values(ReasoningEffortEnum).includes(value as ReasoningEffort)
@@ -147,7 +145,9 @@ export function migrateChatSettingsRecord(input: unknown): MigrationResult<unkno
     readSearchProvider(settings.searchProvider) ??
     readSearchProvider(settings.search_provider) ??
     (legacySearchWithBrave ? 'tavily' : undefined) ??
-    'tavily';
+    // Provider-native search needs no extra key, so it is the safe default for
+    // a chat that never named one.
+    NATIVE_SEARCH_MODE;
 
   const tutorEnabled =
     readBoolean(tutor?.enabled) ??
