@@ -435,11 +435,13 @@ The designs above plus these rules are what makes unattended execution safe.
 - Scope growth: work not in the stage's task list that exceeds roughly a day.
 - Any need to push, merge, publish, or deploy.
 
-**Per stage:** work on a fresh branch; enter plan mode first and self-review the approach against
-this document; `scripts/ci.sh` green before done; append a stage report (what changed, deviations
-from design, before/after numbers where relevant, follow-ups discovered) to `REFACTOR_LOG.md` at
-the repo root. The next stage's session reads REFACTOR_PLAN.md + REFACTOR_LOG.md and nothing
-else.
+**Per stage:** work on a fresh branch; run end-to-end without pausing for approval — do NOT enter
+plan mode and do not check in mid-stage (this document is the approved plan; the hard stops above
+are the only reasons to interrupt). Self-review the approach against this document before writing
+code, then execute; `scripts/ci.sh` green before done; append a stage report (what changed,
+deviations from design, before/after numbers where relevant, follow-ups discovered) to
+`REFACTOR_LOG.md` at the repo root. The next stage's session reads REFACTOR_PLAN.md +
+REFACTOR_LOG.md and nothing else.
 
 ## Working rules for executors (Opus sessions/subagents)
 
