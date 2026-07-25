@@ -1,7 +1,3 @@
-import 'server-only';
-
-import { NextResponse } from 'next/server';
-
 const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 export async function withTiming(
@@ -34,7 +30,10 @@ export function jsonError(
   if (!responseHeaders.has('Cache-Control')) {
     responseHeaders.set('Cache-Control', 'no-store');
   }
-  return NextResponse.json(payload, {
+  if (!responseHeaders.has('Content-Type')) {
+    responseHeaders.set('Content-Type', 'application/json');
+  }
+  return new Response(JSON.stringify(payload), {
     status,
     headers: responseHeaders,
   });

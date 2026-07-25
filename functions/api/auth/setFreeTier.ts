@@ -1,12 +1,15 @@
-import { NextResponse } from 'next/server';
-import { type AuthClaims, createAuthToken, getAuthCookieSecret } from '@/lib/auth/token.server';
-import { setAuthCookies } from '@/lib/auth/cookies.server';
-import { computeSecretFingerprintNode } from '@/lib/auth/fingerprint.node';
+import type { AuthClaims } from '@/lib/auth/types';
+import { createAuthToken } from '@/lib/auth/token.edge';
+import { buildAuthCookies, withSetCookies } from '@/lib/auth/cookies.server';
+import { computeSecretFingerprintEdge } from '@/lib/auth/fingerprint.edge';
+import { getAuthCookieSecret } from '@/lib/env/server';
 import { jsonError } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
 import { isProd } from '@/lib/env/runtime';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';
+
+const TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 14;
 
 /**
  * Sets the free tier for users who want to access without a code.
@@ -21,22 +24,21 @@ export const POST = route('auth-set-free-tier')
         sub: 'free:anonymous',
         tier: 'free',
         iat: now,
-        exp: now + 1000 * 60 * 60 * 24 * 14, // 14 days
+        exp: now + TOKEN_TTL_MS,
       };
 
       // Ensure secret is present (throws if missing)
       const secret = getAuthCookieSecret();
-      const token = createAuthToken(claims);
-      const secretFp = computeSecretFingerprintNode(secret);
+      const token = await createAuthToken(claims, secret);
       const inProd = isProd();
       const responseBody = inProd
         ? { ok: true, tier: 'free' }
-        : { ok: true, tier: 'free', secretFp };
+        : { ok: true, tier: 'free', secretFp: await computeSecretFingerprintEdge(secret) };
 
-      const res = NextResponse.json(responseBody);
-      setAuthCookies(res, { token, tier: 'free', secure: inProd });
-
-      return res;
+      const res = new Response(JSON.stringify(responseBody), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return withSetCookies(res, buildAuthCookies({ token, tier: 'free', secure: inProd }));
     } catch (e: unknown) {
       logger.error('[set-free-tier] Error:', e);
       const message = e instanceof Error ? e.message : 'internal_error';
