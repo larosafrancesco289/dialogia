@@ -12,7 +12,7 @@
     "lint:types": "tsc --noEmit",
     "check": "bun run lint:types && bun run test && bun run format:check && bun run lint",
     "test": "NODE_OPTIONS=--require=./tests/setup.cjs tsx --test 'tests/**/*.test.ts' 'src/**/*.test.ts'",
-    "tutor:simulate": "tsx scripts/tutor-sim.ts"
+    "tutor:simulate": "tsx src/modules/tutor/tooling/simulate.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.5",
