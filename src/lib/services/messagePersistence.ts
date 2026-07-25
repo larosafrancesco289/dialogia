@@ -3,27 +3,16 @@
 
 import type { Repository } from '@/lib/db/repository';
 import type { Message } from '@/lib/types';
-import { buildHiddenTutorContent } from '@/modules/tutor/lib/hiddenContent';
-
-export const ensureHiddenTutorContent = (message: Message): Message => {
-  if (!message?.tutor) return message;
-  try {
-    const hidden = buildHiddenTutorContent(message.tutor);
-    if (!hidden) return message;
-    return { ...message, hiddenContent: hidden };
-  } catch {
-    return message;
-  }
-};
+import { decorateMessage } from '@/lib/messages/decorate';
 
 export const createMessagePersister = (repository: Repository) => {
   return async (message: Message) => {
-    await repository.saveMessage(ensureHiddenTutorContent(message));
+    await repository.saveMessage(decorateMessage(message));
   };
 };
 
 export const persistMessages = async (repository: Repository, messages: Message[]) => {
   if (!messages.length) return;
-  const sanitized = messages.map((message) => ensureHiddenTutorContent(message));
+  const sanitized = messages.map((message) => decorateMessage(message));
   await repository.saveMessages(sanitized);
 };

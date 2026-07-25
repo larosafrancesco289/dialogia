@@ -10,7 +10,7 @@ import { resolveDynamicModelId } from '@/lib/models';
 import type { Repository } from '@/lib/db/repository';
 import { isFreeModel } from '@/data/freeModels';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
-import { ensureTutorDefaults } from '@/modules/tutor/agent/tutorFlow';
+import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
 import { createModelAuthResolver, type ModelAuth } from '@/lib/services/auth';
 import { prepareAttachmentsByModel } from '@/lib/attachments/prepare';
 import { readNextOverrides } from '@/lib/ui/next';
@@ -73,11 +73,7 @@ export const prepareSendRuntime = async ({
   );
 
   if (tutorEnabled) {
-    const ensured = ensureTutorDefaults({
-      ui,
-      chat,
-      fallbackDefaultModelId: DEFAULT_TUTOR_MODEL_ID,
-    });
+    const ensured = applyModuleSettingsDefaults({ chat, ui });
     if (ensured.changed) {
       const updatedChat: Chat = { ...chat, settings: ensured.nextSettings, updatedAt: Date.now() };
       set((state) => ({ chats: state.chats.map((c) => (c.id === chatId ? updatedChat : c)) }));
@@ -89,7 +85,7 @@ export const prepareSendRuntime = async ({
       }
     }
     const preferredTutorModelId =
-      ensured.defaultModelId ||
+      ensured.preferredModelId ||
       chat.settings.features.tutor?.defaultModelId ||
       tutorDefaultModelId ||
       DEFAULT_TUTOR_MODEL_ID;

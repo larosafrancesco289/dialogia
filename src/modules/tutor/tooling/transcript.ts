@@ -1,4 +1,4 @@
-import type { HeadlessTurnSnapshot } from '@/tooling/headless/types';
+import type { HeadlessTurnSnapshot } from '@/modules/tutor/tooling/types';
 import type { Message } from '@/lib/types';
 
 export type TranscriptRenderOptions = {

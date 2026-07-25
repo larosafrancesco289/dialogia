@@ -11,16 +11,22 @@ import type { ChatSliceActions, ChatSliceState } from '@/lib/store/chatSlice';
 import type { MessageSliceActions, MessageSliceState } from '@/lib/store/messageSlice';
 import type { ModelSliceActions, ModelSliceState } from '@/lib/store/modelSlice';
 import type { UiSliceActions, UiSliceState } from '@/lib/store/uiSlice';
-import type { TutorStoreActions } from '@/modules/tutor/store/tutorSlice';
 import type { PersistedUiState } from '@/lib/store/uiTypes';
 
 export type StoreDataState = ChatSliceState & MessageSliceState & ModelSliceState & UiSliceState;
+
+/**
+ * Actions contributed by feature modules. A module augments this interface from its
+ * own slice file, so core never names one. With no modules installed it is empty and
+ * `StoreActions` is just the core slices.
+ */
+export interface ModuleStoreActions {}
 
 export type StoreActions = ChatSliceActions &
   MessageSliceActions &
   ModelSliceActions &
   UiSliceActions &
-  TutorStoreActions;
+  ModuleStoreActions;
 
 export type StoreState = StoreDataState & StoreActions;
 

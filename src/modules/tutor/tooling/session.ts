@@ -1,5 +1,5 @@
 import type { StoreApi } from 'zustand/vanilla';
-import { createHeadlessStore, type HeadlessStoreOptions } from '@/tooling/headless/store';
+import { createHeadlessStore, type HeadlessStoreOptions } from '@/modules/tutor/tooling/store';
 import type { StoreState, UIState } from '@/lib/store/types';
 import type { Chat, Message, ModelTransport, ModelDescriptor } from '@/lib/types';
 import { type PlanTurnResult, type PersistMessage, type TurnContext } from '@/lib/agent/types';
@@ -17,7 +17,7 @@ import type { ModelIndex } from '@/lib/models';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
-import type { HeadlessTurnArtifacts, HeadlessTurnResult } from '@/tooling/headless/types';
+import type { HeadlessTurnArtifacts, HeadlessTurnResult } from '@/modules/tutor/tooling/types';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import { resolveTurnSettings } from '@/lib/settings/resolve';

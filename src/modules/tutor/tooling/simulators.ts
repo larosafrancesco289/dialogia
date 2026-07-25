@@ -1,6 +1,9 @@
-import { renderSnapshotTranscript, renderTutorTranscript } from '@/tooling/headless/transcript';
-import type { HeadlessTurnSnapshot } from '@/tooling/headless/types';
-import type { HeadlessRunResult } from '@/tooling/headless/runner';
+import {
+  renderSnapshotTranscript,
+  renderTutorTranscript,
+} from '@/modules/tutor/tooling/transcript';
+import type { HeadlessTurnSnapshot } from '@/modules/tutor/tooling/types';
+import type { HeadlessRunResult } from '@/modules/tutor/tooling/runner';
 import type { Message } from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
 import { normalizeToolCalls, parseToolArguments } from '@/lib/agent/parsers';

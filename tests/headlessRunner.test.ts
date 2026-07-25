@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createPipelineClient } from '@/lib/agent/pipelineClient';
-import { createHeadlessRunner } from '@/tooling/headless/runner';
-import { renderSnapshotTranscript } from '@/tooling/headless/transcript';
+import { createHeadlessRunner } from '@/modules/tutor/tooling/runner';
+import { renderSnapshotTranscript } from '@/modules/tutor/tooling/transcript';
 import { createModelIndex } from '@/lib/models';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import type { Chat, ModelDescriptor } from '@/lib/types';

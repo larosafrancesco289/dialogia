@@ -10,7 +10,7 @@ import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { resolveNewChatSettings } from '@/lib/settings/resolve';
 import type { AccessTier } from '@/lib/auth/types';
 import { getDefaultModelIdForTier } from '@/lib/auth/tierFeatures';
-import { ensureHiddenTutorContent } from '@/lib/services/messagePersistence';
+import { decorateMessage } from '@/lib/messages/decorate';
 
 export class ChatService {
   static buildSettingsForNewChat(params: {
@@ -119,7 +119,7 @@ export class ChatService {
     };
 
     const cloned = slice.map((m) =>
-      ensureHiddenTutorContent({
+      decorateMessage({
         ...m,
         id: uuidv4(),
         chatId: newChatId,

@@ -4,7 +4,7 @@ import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { migrateChatSettingsRecord } from '@/lib/settings/migrations';
 import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
-import { applyTutorDefaults } from '@/modules/tutor/lib/defaults';
+import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
 import { ChatSettingsSchema } from '@/lib/schemas/persisted';
 import { asNumber, isRecord } from '@/lib/utils/guards';
 import { ReasoningEffortEnum, type ReasoningEffort } from '@/lib/types/enums';
@@ -15,7 +15,7 @@ type NormalizeChatSettingsOptions = {
   fallbackSystem?: string;
   fallbackTutorModelId?: string;
   ui?: UiSnapshot;
-  applyTutorDefaults?: boolean;
+  applyModuleDefaults?: boolean;
 };
 
 const normalizeTutorToolBudget = (value: unknown): TutorToolBudget | undefined => {
@@ -125,13 +125,13 @@ export function normalizeChatSettings(
   const parsed = ChatSettingsSchema.safeParse(settings);
   const base = parsed.success ? parsed.data : settings;
 
-  if (opts.applyTutorDefaults && base.features.tutor?.enabled) {
-    const ensured = applyTutorDefaults({
-      ui: opts.ui,
+  if (opts.applyModuleDefaults) {
+    const ensured = applyModuleSettingsDefaults({
       chat: { settings: base },
-      fallbackDefaultModelId: fallbackTutorModelId,
-    }).nextSettings;
-    return ensured;
+      ui: opts.ui,
+      phase: 'write',
+    });
+    if (ensured.changed) return ensured.nextSettings;
   }
 
   if (base.features.tutor?.enabled && !base.features.tutor?.defaultModelId) {

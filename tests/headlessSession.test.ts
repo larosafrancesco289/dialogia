@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createPipelineClient } from '@/lib/agent/pipelineClient';
-import { HeadlessTutorSession } from '@/tooling/headless/session';
+import { HeadlessTutorSession } from '@/modules/tutor/tooling/session';
 import { createModelIndex } from '@/lib/models';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import type { Chat, Message, ModelDescriptor } from '@/lib/types';

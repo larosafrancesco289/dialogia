@@ -41,7 +41,7 @@ export function parseJsonAfter(
   return undefined;
 }
 
-export function extractTutorToolCalls(
+export function extractInlineToolCalls(
   text: string,
   toolNames: ReadonlyArray<TutorToolCall['name']>,
 ): TutorToolCall[] {

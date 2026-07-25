@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { initializeLearnerModel } from '@/modules/tutor/learner-model';
 import type { LearnerModel, LearningPlan } from '@/lib/types';
-import type { HeadlessTutorSession } from '@/tooling/headless/session';
+import type { HeadlessTutorSession } from '@/modules/tutor/tooling/session';
 import { executeStudentToolCalls, getStudentToolDefinitions } from './studentTools';
 
 type TutorPatch = {

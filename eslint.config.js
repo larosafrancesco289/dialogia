@@ -108,19 +108,6 @@ module.exports = [
               message: 'UI components must not import transport clients.',
             },
             {
-              group: [
-                '@/tooling/headless/**',
-                '@/tooling/eval/**',
-                '../tooling/headless/**',
-                '../../tooling/headless/**',
-                '../../../tooling/headless/**',
-                '../tooling/eval/**',
-                '../../tooling/eval/**',
-                '../../../tooling/eval/**',
-              ],
-              message: 'UI components must not import headless or eval modules.',
-            },
-            {
               group: ['@/lib/server/**', '@/lib/env/server', '**/*.server'],
               message: 'UI components must not import server-only modules.',
             },
@@ -150,17 +137,8 @@ module.exports = [
       'src/components/settings/hooks/useSettingsDrawerState.tsx',
       'src/components/top-header/TopHeaderView.tsx',
       'src/components/top-header/useTopHeaderState.ts',
-      // Turn/persistence paths awaiting module hooks
+      // Turn lifecycle awaiting a module hook
       'src/lib/agent/orchestrator/lifecycle.ts',
-      'src/lib/agent/tools/router.ts',
-      'src/lib/services/bootstrap.ts',
-      'src/lib/services/messagePersistence.ts',
-      'src/lib/services/turns.ts',
-      'src/lib/settings/normalize.ts',
-      'src/lib/store/chatSlice.ts',
-      'src/lib/store/normalize.ts',
-      'src/lib/store/stateTypes.ts',
-      'src/lib/turns/runtime/context.ts',
       '**/*.test.ts',
       '**/*.test.tsx',
     ],
