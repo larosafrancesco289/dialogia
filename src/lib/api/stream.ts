@@ -24,27 +24,46 @@ export async function consumeSse(response: Response, handlers: SseHandlers): Pro
   let buffer = '';
   let receivedDone = false;
   let pendingEvent: string | undefined;
+  let pendingData: string[] = [];
+  let pendingRaw: string[] = [];
 
   handlers.onStart?.();
 
-  const flushLine = (rawLine: string) => {
+  // Per the SSE spec an event ends at a blank line and its payload is the event's
+  // `data:` lines joined with a newline. Dispatching each line on its own would
+  // hand callers fragments of a multi-line payload.
+  const dispatchEvent = () => {
+    const data = pendingData.join('\n');
+    const raw = pendingRaw.join('\n');
+    const event = pendingEvent;
+    pendingData = [];
+    pendingRaw = [];
+    pendingEvent = undefined;
+    if (!data) return;
+    if (data === '[DONE]') {
+      receivedDone = true;
+      return;
+    }
+    handlers.onMessage({ data, event, raw });
+  };
+
+  const consumeLine = (rawLine: string) => {
     const trimmed = rawLine.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      dispatchEvent();
+      return;
+    }
     if (trimmed.startsWith('event:')) {
+      pendingRaw.push(rawLine);
       const name = trimmed.slice(6).trim();
       pendingEvent = name || undefined;
       return;
     }
     if (!trimmed.startsWith('data:')) return;
+    pendingRaw.push(rawLine);
     const data = trimmed.slice(5).trim();
     if (!data) return;
-    if (data === '[DONE]') {
-      receivedDone = true;
-      pendingEvent = undefined;
-      return;
-    }
-    handlers.onMessage({ data, event: pendingEvent, raw: rawLine });
-    pendingEvent = undefined;
+    pendingData.push(data);
   };
 
   while (true) {
@@ -54,15 +73,16 @@ export async function consumeSse(response: Response, handlers: SseHandlers): Pro
     const lines = buffer.split(/\r?\n/);
     buffer = lines.pop() ?? '';
     for (const raw of lines) {
-      flushLine(raw);
+      consumeLine(raw);
       if (receivedDone) break;
     }
     if (receivedDone) break;
   }
 
-  const trailing = buffer.trim();
-  if (!receivedDone && trailing) {
-    flushLine(trailing);
+  if (!receivedDone) {
+    // A stream that ends without a terminating blank line still has one event left.
+    if (buffer.trim()) consumeLine(buffer);
+    dispatchEvent();
   }
 
   handlers.onDone?.({ receivedDone });

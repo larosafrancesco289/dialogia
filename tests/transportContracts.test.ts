@@ -59,9 +59,9 @@ test('openrouter transport maps 429 to rate limited', async () => {
 
 test('openrouter stream emits tokens and normalized usage', async () => {
   const response = createSseResponse([
-    'data: {"choices":[{"delta":{"content":"Hello "}}]}\n',
-    'data: {"choices":[{"delta":{"reasoning":"Think "}}]}\n',
-    'data: {"choices":[{"delta":{"content":"world"}}],"usage":{"prompt_tokens":2,"completion_tokens":3}}\n',
+    'data: {"choices":[{"delta":{"content":"Hello "}}]}\n\n',
+    'data: {"choices":[{"delta":{"reasoning":"Think "}}]}\n\n',
+    'data: {"choices":[{"delta":{"content":"world"}}],"usage":{"prompt_tokens":2,"completion_tokens":3}}\n\n',
     'data: [DONE]\n\n',
   ]);
 
@@ -93,6 +93,100 @@ test('openrouter stream emits tokens and normalized usage', async () => {
         input_tokens: 2,
         output_tokens: 3,
       });
+    },
+  );
+});
+
+test('openrouter stream accepts the reasoning_content dialect', async () => {
+  const response = createSseResponse([
+    'data: {"choices":[{"delta":{"reasoning_content":"Think "}}]}\n\n',
+    'data: {"choices":[{"delta":{"reasoning_content":"harder"}}]}\n\n',
+    'data: {"choices":[{"delta":{"content":"Answer"}}]}\n\n',
+    'data: [DONE]\n\n',
+  ]);
+
+  await withMockFetch(
+    async () => response,
+    async () => {
+      const reasoning: string[] = [];
+      let full: string | undefined;
+
+      await openrouterTransport.streamChatCompletion({
+        ...baseChatParams,
+        callbacks: {
+          onReasoningToken: (delta) => reasoning.push(delta),
+          onDone: (text) => {
+            full = text;
+          },
+        },
+      });
+
+      assert.deepEqual(reasoning, ['Think ', 'harder']);
+      assert.equal(full, 'Answer');
+    },
+  );
+});
+
+test('openrouter stream surfaces a mid-stream error chunk instead of truncating', async () => {
+  const response = createSseResponse([
+    'data: {"choices":[{"delta":{"content":"Partial"}}]}\n\n',
+    'data: {"error":{"message":"Provider returned error","code":429}}\n\n',
+    'data: [DONE]\n\n',
+  ]);
+
+  await withMockFetch(
+    async () => response,
+    async () => {
+      const tokens: string[] = [];
+      const errors: unknown[] = [];
+      let doneCalled = false;
+
+      await assert.rejects(
+        () =>
+          openrouterTransport.streamChatCompletion({
+            ...baseChatParams,
+            callbacks: {
+              onToken: (delta) => tokens.push(delta),
+              onError: (error) => errors.push(error),
+              onDone: () => {
+                doneCalled = true;
+              },
+            },
+          }),
+        (err) =>
+          isApiError(err) &&
+          err.code === API_ERROR_CODES.RATE_LIMITED &&
+          err.message.includes('Provider returned error'),
+      );
+
+      assert.deepEqual(tokens, ['Partial']);
+      assert.equal(doneCalled, false);
+      assert.equal(errors.length, 1);
+      assert.equal(isApiError(errors[0]), true);
+    },
+  );
+});
+
+test('openrouter stream still ignores malformed chunks', async () => {
+  const response = createSseResponse([
+    'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n',
+    'data: not-json\n\n',
+    'data: [DONE]\n\n',
+  ]);
+
+  await withMockFetch(
+    async () => response,
+    async () => {
+      let full: string | undefined;
+      await openrouterTransport.streamChatCompletion({
+        ...baseChatParams,
+        callbacks: {
+          onDone: (text) => {
+            full = text;
+          },
+        },
+      });
+      assert.equal(full, 'Hi');
     },
   );
 });

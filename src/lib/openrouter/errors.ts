@@ -54,6 +54,31 @@ export async function buildOpenRouterError(
   });
 }
 
+/**
+ * OpenRouter can answer 200 and then emit `{"error": {...}}` as a stream chunk.
+ * The payload matches the non-streaming error body, so it maps onto the same
+ * codes; without this the stream would just stop and look like a short answer.
+ */
+export function buildOpenRouterStreamError(payload: unknown): ApiError {
+  const error = isRecord(payload) ? payload : undefined;
+  const status = typeof error?.code === 'number' ? error.code : undefined;
+  const code =
+    status === 401 || status === 403
+      ? API_ERROR_CODES.UNAUTHORIZED
+      : status === 429
+        ? API_ERROR_CODES.RATE_LIMITED
+        : API_ERROR_CODES.OPENROUTER_CHAT_FAILED;
+  const detailText = formatOpenRouterErrorDetail(payload);
+  const statusSuffix = status ? ` (${status})` : '';
+  const suffix = detailText ? `: ${detailText}` : '';
+  return new ApiError({
+    code,
+    status,
+    message: `${code}${statusSuffix}${suffix}`,
+    detail: payload,
+  });
+}
+
 export function wrapOpenRouterClientError(error: unknown, code: ApiErrorCode): ApiError {
   if (error instanceof ApiError) return error;
   if (error instanceof Error && error.message === 'missing_openrouter_api_key') {
