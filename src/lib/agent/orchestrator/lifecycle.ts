@@ -1,15 +1,9 @@
 import { resetEphemeralUi } from '@/lib/ui/defaults';
-import {
-  getLatestLearnerModel,
-  initializeLearnerModel,
-  persistLearnerModel,
-} from '@/modules/tutor/learner-model';
 import { snapshotGenSettings } from '@/lib/agent/generation';
 import type { RunTurnHooks } from './turn';
 import type { StoreGetter, StoreSetter, TurnComposition, PlanTurnResult } from '@/lib/agent/types';
-import type { Chat, LearnerModel, Message } from '@/lib/types';
-import type { LearnerModelDebugEntry } from '@/lib/contracts/ui';
-import { diffPlanUpdates, persistLearningPlan } from '@/modules/tutor/learning-plan/service';
+import type { Chat, Message } from '@/lib/types';
+import { createTurnEffects } from '@/lib/agent/orchestrator/turnEffects';
 
 export type TurnLifecycleOptions = {
   chatId: string;
@@ -32,30 +26,19 @@ export type TurnLifecycle = {
 };
 
 export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycle => {
-  const {
-    chatId,
-    assistantMessageId,
-    isPrimary,
-    priorMessages,
-    getChatForTurn,
-    set,
-    updateMessage,
-    updateChat,
-    persistChat,
-  } = options;
+  const { isPrimary, set, updateMessage } = options;
 
-  let pendingLearnerModel: LearnerModel | undefined;
-  let pendingPlanUpdates: Message['planUpdates'] | undefined;
-  let priorLearnerModel: LearnerModel | undefined;
   let latestComposition: TurnComposition | undefined;
   let latestPlan: PlanTurnResult | undefined;
 
-  const attachLearnerContextToAssistant = () => {
-    if (!pendingLearnerModel && !pendingPlanUpdates) return;
-    const patch: Partial<Message> = {};
-    if (pendingLearnerModel) patch.learnerModel = pendingLearnerModel;
-    if (pendingPlanUpdates) patch.planUpdates = pendingPlanUpdates;
-    updateMessage(patch);
+  const effects = createTurnEffects(options);
+
+  // Modules accumulate their message fields as the turn progresses. Applying the
+  // patch at both points means the module never has to care whether onPlanResult
+  // or beforeStream fires first.
+  const applyModuleMessagePatch = () => {
+    const patch = effects.messagePatch();
+    if (patch) updateMessage(patch);
   };
 
   const hooks: RunTurnHooks = {
@@ -64,68 +47,12 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
       if (isPrimary && composition.consumedTutorNudge) {
         set((state) => ({ ui: resetEphemeralUi(state.ui) }));
       }
-      const chat = getChatForTurn();
-      if (composition.settings.tutorEnabled && chat.settings.features.tutor?.learningPlan) {
-        priorLearnerModel =
-          getLatestLearnerModel(priorMessages) ??
-          initializeLearnerModel(chatId, chat.settings.features.tutor?.learningPlan);
-      }
+      effects.onComposition(composition);
     },
     onPlanResult: (plan) => {
       latestPlan = plan;
-      if (plan.learnerModel) pendingLearnerModel = plan.learnerModel;
-      if (plan.planUpdates) pendingPlanUpdates = plan.planUpdates;
-      const chat = getChatForTurn();
+      effects.onPlanResult(plan);
 
-      // Persist learner model to chat settings for reliable retrieval
-      if (plan.learnerModel) {
-        void persistLearnerModel({
-          chat,
-          chatId,
-          learnerModel: plan.learnerModel,
-          set,
-          updateChat,
-          persistChat,
-        });
-      }
-
-      if (plan.updatedPlan && plan.updatedPlan !== chat.settings.features.tutor?.learningPlan) {
-        const diff =
-          plan.planUpdates ??
-          diffPlanUpdates(chat.settings.features.tutor?.learningPlan, plan.updatedPlan);
-        if (diff) pendingPlanUpdates = diff;
-        // Re-read chat so persistLearningPlan spreads from a snapshot that
-        // already includes the learner-model update (its set() is synchronous).
-        const chatForPlan = plan.learnerModel ? getChatForTurn() : chat;
-        void persistLearningPlan({
-          chat: chatForPlan,
-          chatId,
-          plan: plan.updatedPlan,
-          set,
-          updateChat,
-          persistChat,
-        });
-      }
-      if (isPrimary && plan.learnerModel && plan.learnerModelDebug && priorLearnerModel) {
-        const entry: LearnerModelDebugEntry = {
-          before: priorLearnerModel,
-          after: plan.learnerModel,
-          debug: plan.learnerModelDebug,
-          planUpdates: plan.planUpdates,
-        };
-        set((state) => ({
-          ui: {
-            ...state.ui,
-            debug: {
-              ...state.ui.debug,
-              learnerModelDebugByMessageId: {
-                ...(state.ui.debug.learnerModelDebugByMessageId || {}),
-                [assistantMessageId]: entry,
-              },
-            },
-          },
-        }));
-      }
       if (latestComposition) {
         try {
           const gen = snapshotGenSettings(latestComposition.settings);
@@ -138,21 +65,16 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
         }
       }
 
-      // Attach learner model to the assistant message now that pendingLearnerModel
-      // is set.  In the unified streaming path, beforeStream fires *before*
-      // executeStreamingTurn so pendingLearnerModel is still undefined there.
-      // Calling here guarantees the message gets the model regardless of ordering.
-      attachLearnerContextToAssistant();
+      applyModuleMessagePatch();
     },
     beforeStream: () => {
-      attachLearnerContextToAssistant();
+      applyModuleMessagePatch();
     },
   };
 
   const buildShortCircuitMessage = (baseMessage: Message): Message => ({
     ...baseMessage,
-    learnerModel: pendingLearnerModel ?? baseMessage.learnerModel,
-    planUpdates: pendingPlanUpdates ?? baseMessage.planUpdates,
+    ...(effects.messagePatch() ?? {}),
   });
 
   return {

@@ -137,8 +137,6 @@ module.exports = [
       'src/components/settings/hooks/useSettingsDrawerState.tsx',
       'src/components/top-header/TopHeaderView.tsx',
       'src/components/top-header/useTopHeaderState.ts',
-      // Turn lifecycle awaiting a module hook
-      'src/lib/agent/orchestrator/lifecycle.ts',
       '**/*.test.ts',
       '**/*.test.tsx',
     ],
