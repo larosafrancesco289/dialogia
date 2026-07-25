@@ -8,19 +8,11 @@ import {
 import type { Message, TopicMastery } from '@/lib/types';
 import { useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import { logAction } from '@/lib/study';
 
 export function LearnerModelUpdates({ message }: { message: Message }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const setUI = useChatStore((s) => s.setUI);
-  const handleToggleDetails = () => {
-    const nextExpanded = !isExpanded;
-    setIsExpanded(nextExpanded);
-    logAction('learner_model_details_toggled', {
-      expanded: nextExpanded,
-      source: 'learner_model_updates',
-    });
-  };
+  const handleToggleDetails = () => setIsExpanded((prev) => !prev);
 
   const { planUpdates, learnerModel } = message;
   const masteryEntries: Array<[string, TopicMastery]> = learnerModel
@@ -51,14 +43,7 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
             <span>{planUpdates?.summary}</span>
             <button
               className="text-xs text-accent hover:underline flex items-center gap-1"
-              onClick={() => {
-                logAction('learner_model_viewed', {
-                  source: 'learner_model_updates',
-                  tab: 'progress',
-                  manual: true,
-                });
-                setUI({ plan: { rightPanelOpen: true, rightPanelTab: 'progress' } });
-              }}
+              onClick={() => setUI({ plan: { rightPanelOpen: true, rightPanelTab: 'progress' } })}
             >
               <SparklesIcon className="w-3 h-3" />
               Hub

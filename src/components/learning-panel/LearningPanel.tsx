@@ -1,16 +1,14 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { usePlanCallbacks } from '@/lib/hooks/usePlanCallbacks';
 import { useChatStore } from '@/lib/store';
-import { selectStudyCondition } from '@/lib/store/selectors';
 import { updateNodeStatus } from '@/lib/learning-plan/service';
 import { LearningPanelHeader } from './LearningPanelHeader';
 import { SummaryStrip } from './SummaryStrip';
 import { PlanEditingHint } from '@/components/plan/PlanEditingHint';
 import { PlanView } from '@/components/plan/PlanView';
 import { PlanFeedbackModal, type PlanFeedbackContext } from '@/components/plan/PlanFeedbackModal';
-import { logAction } from '@/lib/study';
 
 export function LearningPanel() {
   const {
@@ -32,29 +30,14 @@ export function LearningPanel() {
     }),
     shallow,
   );
-  const studyCondition = useChatStore(selectStudyCondition);
 
   const tutorFlags = chat?.settings?.features.tutor;
-  const isConditionA = studyCondition === 'A';
-  const planEditable = !isConditionA && tutorFlags?.planEditable !== false;
-  const learnerModelVisible = !isConditionA && tutorFlags?.learnerModelVisible !== false;
+  const planEditable = tutorFlags?.planEditable !== false;
+  const learnerModelVisible = tutorFlags?.learnerModelVisible !== false;
 
   const [feedbackContext, setFeedbackContext] = useState<PlanFeedbackContext | null>(null);
   const plan = planSheetOverride ?? learningPlan;
   const isPreviewingProposal = !!planSheetOverride && !learningPlan;
-  const exposureLogRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!plan || !chat?.id) return;
-    const exposureKey = `${chat.id}|${studyCondition}|${plan.updatedAt ?? 0}`;
-    if (exposureLogRef.current.has(exposureKey)) return;
-    exposureLogRef.current.add(exposureKey);
-    logAction('plan_exposed', {
-      chatId: chat.id,
-      planUpdatedAt: plan.updatedAt ?? null,
-      source: 'learning_panel',
-    });
-  }, [chat?.id, plan, studyCondition]);
 
   const handleNodeStatusChange = useCallback(
     (nodeId: string, status: 'not_started' | 'in_progress' | 'completed') => {

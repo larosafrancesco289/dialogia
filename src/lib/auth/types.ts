@@ -3,9 +3,8 @@
  * - free: No code required, limited to free models
  * - individual: One-time use codes, full models
  * - developer: Full access
- * - study: User study participants, forced tutor mode, restricted UI
  */
-export type AccessTier = 'free' | 'individual' | 'developer' | 'study';
+export type AccessTier = 'free' | 'individual' | 'developer';
 
 /**
  * Auth token claims with tier information.
@@ -20,4 +19,4 @@ export interface AuthClaims {
 /**
  * Code type determined during verification.
  */
-export type CodeType = 'individual' | 'developer' | 'study';
+export type CodeType = 'individual' | 'developer';

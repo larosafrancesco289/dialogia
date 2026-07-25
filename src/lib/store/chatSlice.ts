@@ -11,7 +11,6 @@ import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type * as TurnService from '@/lib/services/turns';
 import type { Chat, ChatSettingsPatch } from '@/lib/types';
 import { getClientTier } from '@/lib/auth/tier.client';
-import { isTutorForcedForTier } from '@/lib/auth/tierFeatures';
 import {
   appendMessagesToChat,
   getMessagesForChat,
@@ -251,8 +250,7 @@ export function createChatSlice(set: StoreSetter, get: () => StoreState, _store?
       if (!before) return;
 
       const uiState = get().ui;
-      const forceTutorMode =
-        isTutorForcedForTier(getClientTier()) || !!(uiState.tutor.forceMode ?? false);
+      const forceTutorMode = !!(uiState.tutor.forceMode ?? false);
       const fallbackUi = {
         showThinkingByDefault: false,
         showStats: false,

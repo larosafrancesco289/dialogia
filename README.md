@@ -73,7 +73,7 @@ Wrappers and helpers:
 
 - Shell wrappers: `scripts/dev.sh`, `scripts/build.sh`, `scripts/start.sh`
 - CI + hygiene: `scripts/install.sh`, `scripts/ci.sh`, `scripts/hygiene.sh`
-- Eval runners: `scripts/tutor-sim.ts`, `scripts/run-ablation.ts`, `scripts/eval-tutor.ts`
+- Tutor simulation runner: `scripts/tutor-sim.ts`
 
 ### Key concepts and entrypoints
 
@@ -88,8 +88,7 @@ See `DESIGN.md` for the design system and guidance on where styles live.
 The following are local-only (already in `.gitignore`) and should not be committed: `.next/`,
 `node_modules/`, `.eslintcache`, `.DS_Store`, `tmp/`, `tsconfig.tsbuildinfo`.
 
-Evaluation and simulation scripts write local-only outputs to `tmp/` by default, including
-`tmp/tutor_evals/`, `tmp/ablation/`, and `tmp/tutor-sim-*.json`.
+The tutor simulation script writes local-only outputs to `tmp/tutor-sim-*.json` by default.
 
 ### Usage
 

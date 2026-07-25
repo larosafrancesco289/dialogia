@@ -1,12 +1,11 @@
 // Module: store/selectors
 // Responsibility: Shared read-only selectors for Zustand store consumers.
 
-import type { Chat, StudyCondition } from '@/lib/types';
+import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import type { ModelCapabilityFlags } from '@/lib/models';
 import { readNextOverrides } from '@/lib/ui/next';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
-import { getClientTier } from '@/lib/auth/tier.client';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { isTavilySearchConfigured } from '@/lib/env/public';
@@ -49,9 +48,7 @@ export const selectIsStreamingForChat = (chatId?: string) => (state: StoreState)
 };
 
 const resolveTutorEnabled = (state: StoreState, chat?: Chat) => {
-  const tier = getClientTier();
-  if (chat) return isTutorRuntimeEnabled(state.ui, chat, tier);
-  if (tier === 'study') return true;
+  if (chat) return isTutorRuntimeEnabled(state.ui, chat);
   const overrides = readNextOverrides(state.ui);
   return (
     !!state.ui.flags.experimentalTutor && (!!state.ui.tutor.forceMode || !!overrides.tutorMode)
@@ -92,12 +89,7 @@ export const selectResolvedModelId =
 export const selectResolvedTurnSettings = (state: StoreState) => {
   const chat = selectCurrentChat(state);
   if (!chat) return undefined;
-  return resolveTurnSettings({
-    chat,
-    ui: state.ui,
-    modelIndex: state.modelIndex,
-    tier: getClientTier(),
-  });
+  return resolveTurnSettings({ chat, ui: state.ui, modelIndex: state.modelIndex });
 };
 
 export const selectActiveModelIds = (state: StoreState) => {
@@ -120,6 +112,3 @@ export const selectSearchProvider = (state: StoreState) => {
     next.search?.provider ?? (isTavilySearchConfigured() ? 'tavily' : 'openrouter');
   return configured === 'tavily' ? 'tavily' : 'openrouter';
 };
-
-export const selectStudyCondition = (state: StoreState): StudyCondition =>
-  state.ui.tutor.studyCondition ?? 'B';

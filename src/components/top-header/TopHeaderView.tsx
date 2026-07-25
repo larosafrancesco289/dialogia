@@ -25,8 +25,6 @@ export function TopHeaderView({
   tutorModelLabel,
   experimentalTutor,
   forceTutorMode,
-  isStudyTier,
-  studyCondition,
   hasPlan,
   learningPlan,
   planProgress,
@@ -88,8 +86,7 @@ export function TopHeaderView({
 
         <HeaderDivider />
 
-        {/* Tutor toggle (hidden for study tier - tutor is always forced) */}
-        {experimentalTutor && !isStudyTier && (
+        {experimentalTutor && (
           <>
             <TutorToggle
               active={tutorActive}
@@ -166,7 +163,6 @@ export function TopHeaderView({
         onMisconceptionResolve={onMisconceptionResolve}
         onSetConfidenceFloor={onSetConfidenceFloor}
         onFlagForReview={onFlagForReview}
-        studyCondition={studyCondition}
         onSendFeedback={onSendPlanFeedback}
       />
     </div>

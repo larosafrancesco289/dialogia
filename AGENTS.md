@@ -13,7 +13,7 @@ TypeScript, Zustand, Tailwind v4, Dexie/IndexedDB. Bun is the package manager an
   full suite; passing a file path does not filter. The suite is fast (~3s), run all of it.
 - `bun run format` — Prettier (single quotes, semicolons, trailing commas, width 100).
 - `scripts/ci.sh` — lint:types + test + format. Run all three before declaring work done.
-- `bun run tutor:simulate`, `bun run ablation` — headless tutor pipeline and evaluation.
+- `bun run tutor:simulate` — headless tutor pipeline.
 
 ## Layout and conventions
 

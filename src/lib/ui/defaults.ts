@@ -47,8 +47,6 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
       contextMode: 'full',
       defaultModelId: DEFAULT_TUTOR_MODEL_ID,
       forceMode: false,
-      researchMode: 'plan_plus_model',
-      studyCondition: 'B',
       autoScroll: false,
     },
     plan: {

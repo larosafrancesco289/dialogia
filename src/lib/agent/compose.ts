@@ -12,7 +12,6 @@ import tutorProfileService from '@/lib/tutor/profile';
 import { combineSystem } from '@/lib/agent/system';
 import { getNextNode } from '@/lib/learning-plan/service';
 import { isTutorToolName } from '@/lib/agent/tools';
-import { getSessionSummary, isStudyModeActive } from '@/lib/study';
 import type { Message } from '@/lib/types';
 import { buildSearchDateNotice, buildToolPreamble } from '@/lib/agent/prompts/toolPreamble';
 import { buildTimestampNotice } from '@/lib/agent/prompts/timestamps';
@@ -45,17 +44,10 @@ export async function composeTurn({
     tutorEnabled && chat.settings.features.tutor.learningPlan
       ? getNextNode(chat.settings.features.tutor.learningPlan)?.id
       : undefined;
-  const tutorEligibility =
+  const allowedTutorTools =
     tutorEnabled && tutorPhase
-      ? getTutorToolEligibility({
-          chat,
-          ui,
-          phase: tutorPhase,
-          activeNodeId,
-        })
+      ? getTutorToolEligibility({ chat, ui, phase: tutorPhase, activeNodeId }).allowedTutorTools
       : undefined;
-  const tutorToolPolicy = tutorEligibility?.toolPolicy;
-  const allowedTutorTools = tutorEligibility?.allowedTutorTools;
 
   const searchTools: ToolDefinition[] =
     searchEnabled && searchProvider === 'tavily' ? getSearchToolDefinition() : [];
@@ -87,23 +79,6 @@ export async function composeTurn({
     const tutorPreamble = getTutorPreamble();
     if (tutorPreamble) stablePreambles.push(tutorPreamble);
 
-    // Inject study-session preamble only during an active study session.
-    const studySession = getSessionSummary();
-    const hasActiveStudySession = isStudyModeActive() && !!studySession && !studySession.isEnded;
-    if (hasActiveStudySession) {
-      stablePreambles.push(
-        `## STUDY SESSION MODE\n\n` +
-          `This is a **15-minute timed** learning session.\n\n` +
-          `**Pacing rules (non-negotiable):**\n` +
-          `- Keep EVERY response under 3 sentences. Prefer asking one question over giving a paragraph.\n` +
-          `- One focused concept per turn. Break explanations into back-and-forth dialogue.\n` +
-          `- Move through the plan efficiently. When the student demonstrates mastery (2+ correct answers), call record_learning then advance_topic immediately.\n` +
-          `- Skip lengthy worked examples — give a hint, let them try, then correct.\n` +
-          `- Create a focused plan with 3–4 topics maximum. Depth over breadth.\n\n` +
-          `Brevity here is not rudeness — it respects the learner's time constraint.`,
-      );
-    }
-
     try {
       const profile = await tutorProfileService.loadTutorProfile(chat.id);
       const summary = tutorProfileService.summarizeTutorProfile(profile);
@@ -112,21 +87,15 @@ export async function composeTurn({
       // ignore profile load failures
     }
 
-    // Add learning plan context if plan exists
-    const allowPlanContext = tutorToolPolicy?.researchMode !== 'model_only';
     // Tutor always sees the numerical learner model (it's internal system state).
     // learnerModelVisible controls student-facing UI only, not tutor context.
-    const allowLearnerModelContext = tutorToolPolicy?.researchMode !== 'plan_only';
-    if (allowPlanContext && chat.settings.features.tutor.learningPlan) {
+    if (chat.settings.features.tutor.learningPlan) {
       const { generatePlanContextPreamble } = await import('@/lib/agent/tutor/planContext');
       const { getLatestLearnerModel } = await import('@/lib/agent/learner-model');
-      const learnerModel = allowLearnerModelContext
-        ? getLatestLearnerModel(priorMessages)
-        : undefined;
       const planContext = generatePlanContextPreamble(
         chat.settings.features.tutor.learningPlan,
-        learnerModel,
-        { includeLearnerModel: allowLearnerModelContext },
+        getLatestLearnerModel(priorMessages),
+        { includeLearnerModel: true },
       );
       if (planContext) dynamicPreambles.push(planContext);
     }

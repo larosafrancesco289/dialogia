@@ -3,15 +3,10 @@ import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { calculatePlanProgress, getNextNode, updateNodeStatus } from '@/lib/learning-plan/service';
 import { getLatestLearnerModel } from '@/lib/agent/learner-model';
-import {
-  selectCurrentChat,
-  selectMessagesForCurrentChat,
-  selectStudyCondition,
-} from '@/lib/store/selectors';
-import type { LearningPlan, LearnerModel, StudyCondition } from '@/lib/types';
+import { selectCurrentChat, selectMessagesForCurrentChat } from '@/lib/store/selectors';
+import type { LearningPlan, LearnerModel } from '@/lib/types';
 import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
 import type { LearnerModelEditCallbacks } from '@/components/plan/PlanSheet';
-import { logAction } from '@/lib/study';
 
 type PlanProgress = ReturnType<typeof calculatePlanProgress>;
 
@@ -20,7 +15,6 @@ export type PlanCallbacks = {
   learnerModel?: LearnerModel;
   hasPlan: boolean;
   planProgress: PlanProgress | null;
-  studyCondition: StudyCondition;
   rightPanelOpen: boolean;
   rightPanelTab: 'plan' | 'progress';
   onPlanUpdate: (plan: LearningPlan) => Promise<void>;
@@ -41,7 +35,6 @@ export function usePlanCallbacks(): PlanCallbacks {
     updateChatSettings,
     sendUserMessage,
     applyLearnerModelFeedbackFromUser,
-    studyCondition,
     rightPanelOpen,
     rightPanelTab,
   } = useChatStore(
@@ -52,7 +45,6 @@ export function usePlanCallbacks(): PlanCallbacks {
       updateChatSettings: s.updateChatSettings,
       sendUserMessage: s.sendUserMessage,
       applyLearnerModelFeedbackFromUser: s.applyLearnerModelFeedbackFromUser,
-      studyCondition: selectStudyCondition(s),
       rightPanelOpen: s.ui.plan.rightPanelOpen ?? false,
       rightPanelTab: s.ui.plan.rightPanelTab ?? 'plan',
     }),
@@ -77,7 +69,6 @@ export function usePlanCallbacks(): PlanCallbacks {
   const onPlanUpdate = useCallback(
     async (updatedPlan: LearningPlan) => {
       await updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
-      logAction('plan_edited');
     },
     [updateChatSettings],
   );
@@ -132,8 +123,6 @@ export function usePlanCallbacks(): PlanCallbacks {
         `I already know the topic "${node.name}". Please skip teaching this and move to the next topic.`,
         { metadata: { hiddenFromUser: true, kind: 'tutor_skip_topic' } },
       );
-
-      logAction('learner_model_edited', { editAction: 'mark_known' });
     },
     [learningPlan, sendUserMessage, updateChatSettings, applyLearnerModelFeedbackFromUser],
   );
@@ -150,7 +139,6 @@ export function usePlanCallbacks(): PlanCallbacks {
         estimatedConfidence: newConfidence,
         reason: reason ?? `Adjusted confidence to ${Math.round(newConfidence * 100)}%`,
       };
-      logAction('learner_model_edited', { editAction: 'confidence_adjust' });
       const pct = Math.round(newConfidence * 100);
       const nodeName = learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
       void onLearnerModelFeedback(feedback)
@@ -172,7 +160,6 @@ export function usePlanCallbacks(): PlanCallbacks {
         misconceptionId,
         reason: 'I believe I have resolved this misconception.',
       };
-      logAction('learner_model_edited', { editAction: 'misconception_resolve' });
       const nodeName = learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
       void onLearnerModelFeedback(feedback)
         .then(() =>
@@ -193,7 +180,6 @@ export function usePlanCallbacks(): PlanCallbacks {
         confidenceFloor: floor,
         reason: `Set confidence floor to ${Math.round(floor * 100)}%`,
       });
-      logAction('learner_model_edited', { editAction: 'confidence_floor_set' });
     },
     [onLearnerModelFeedback],
   );
@@ -205,7 +191,6 @@ export function usePlanCallbacks(): PlanCallbacks {
         direction: 'down' as const,
         reason: 'I flagged this topic for review.',
       };
-      logAction('learner_model_edited', { editAction: 'flag_for_review' });
       const nodeName = learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
       void onLearnerModelFeedback(feedback)
         .then(() =>
@@ -222,57 +207,28 @@ export function usePlanCallbacks(): PlanCallbacks {
   const onToggleRightPanel = useCallback(() => {
     if (rightPanelOpen) {
       setUI({ plan: { rightPanelOpen: false, sheetPlanOverride: null } });
-      logAction('plan_closed', {
-        source: 'plan_status_badge',
-        tab: rightPanelTab,
-        manual: true,
-      });
       return;
     }
     setUI({ plan: { rightPanelOpen: true } });
-    logAction('plan_viewed', {
-      source: 'plan_status_badge',
-      tab: rightPanelTab,
-      manual: true,
-    });
-  }, [rightPanelOpen, rightPanelTab, setUI]);
+  }, [rightPanelOpen, setUI]);
 
   const onOpenRightPanel = useCallback(
     (tab?: 'plan' | 'progress') => {
-      const nextTab = tab ?? rightPanelTab;
-      if (nextTab !== rightPanelTab) {
-        logAction('plan_tab_changed', {
-          from: rightPanelTab,
-          to: nextTab,
-          source: 'learning_hub_open',
-        });
-      }
       setUI({
         plan: tab ? { rightPanelOpen: true, rightPanelTab: tab } : { rightPanelOpen: true },
       });
-      logAction(tab === 'progress' ? 'learner_model_viewed' : 'plan_viewed', {
-        source: 'learning_hub_open',
-        tab: tab ?? 'plan',
-        manual: true,
-      });
     },
-    [rightPanelTab, setUI],
+    [setUI],
   );
 
   const onCloseRightPanel = useCallback(() => {
     setUI({ plan: { rightPanelOpen: false, sheetPlanOverride: null } });
-    logAction('plan_closed', {
-      source: 'learning_hub_close',
-      tab: rightPanelTab,
-      manual: true,
-    });
-  }, [rightPanelTab, setUI]);
+  }, [setUI]);
 
   const onSendPlanFeedback = useCallback(
     (message: string) => {
       void sendUserMessage(message);
       setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
-      logAction('plan_feedback_sent');
     },
     [sendUserMessage, setUI],
   );
@@ -282,7 +238,6 @@ export function usePlanCallbacks(): PlanCallbacks {
     learnerModel,
     hasPlan,
     planProgress,
-    studyCondition,
     rightPanelOpen,
     rightPanelTab,
     onPlanUpdate,

@@ -1,7 +1,7 @@
 import type { TutorToolName } from '@/lib/agent/types';
 import type { TutorPhase } from '@/lib/agent/tutor/types';
 import type { TutorToolUsageSnapshot, UiSnapshot } from '@/lib/contracts/ui';
-import type { Chat, Message, MessageTutor, TutorResearchMode } from '@/lib/types';
+import type { Chat, Message, MessageTutor } from '@/lib/types';
 import { getTutorToolsByPhase, getTutorToolsByTag } from '@/lib/tools/registry';
 
 export type { TutorPhase } from '@/lib/agent/tutor/types';
@@ -46,15 +46,10 @@ export function getTutorPhase(chat: Chat, messages: Message[], ui?: UiSnapshot):
 }
 
 const QUIZ_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('quiz'));
-const PLAN_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('plan'));
 const LEARNER_MODEL_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('learnerModel'));
-const BASELINE_TOOLS: TutorToolName[] = getTutorToolsByTag('baseline');
 const DIAGNOSTIC_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('diagnostic'));
 
 export type TutorToolFilters = {
-  researchMode?: TutorResearchMode;
-  allowPlanTools?: boolean;
-  allowAdvanceTopic?: boolean;
   allowLearnerModel?: boolean;
   allowUpdatePlan?: boolean;
   planExists?: boolean;
@@ -71,7 +66,7 @@ export function allowedTutorToolsForPhase(
   phase: TutorPhase,
   filters?: TutorToolFilters,
 ): TutorToolName[] {
-  return applyTutorFilters(getTutorToolsByPhase(phase), phase, filters);
+  return applyTutorFilters(getTutorToolsByPhase(phase), filters);
 }
 
 export function isTutorToolAllowedInPhase(
@@ -82,32 +77,12 @@ export function isTutorToolAllowedInPhase(
   return allowedTutorToolsForPhase(phase, filters).includes(name);
 }
 
-function applyTutorFilters(
-  base: TutorToolName[],
-  phase: TutorPhase,
-  filters?: TutorToolFilters,
-): TutorToolName[] {
+function applyTutorFilters(base: TutorToolName[], filters?: TutorToolFilters): TutorToolName[] {
   let tools = [...base];
-  const researchMode = filters?.researchMode;
   const planExists = filters?.planExists === true;
 
-  if (researchMode === 'baseline_chat') {
-    tools = BASELINE_TOOLS.slice();
-  }
-
-  if (researchMode === 'plan_only' || filters?.allowLearnerModel === false) {
+  if (filters?.allowLearnerModel === false) {
     tools = tools.filter((name) => !LEARNER_MODEL_TOOLS.has(name));
-  }
-
-  if (researchMode === 'model_only' || filters?.allowPlanTools === false) {
-    tools = tools.filter((name) => !PLAN_TOOLS.has(name));
-  }
-  if (
-    filters?.allowAdvanceTopic &&
-    researchMode !== 'model_only' &&
-    base.includes('advance_topic')
-  ) {
-    tools.push('advance_topic');
   }
 
   if (filters?.disablePlanGeneration) {
@@ -155,19 +130,10 @@ export function deriveTutorToolPolicy(args: {
   const activeKey = activeNodeId || '__global__';
   const quizzesUsed = usage?.mcqByNode?.[activeKey] ?? 0;
   const diagnosticsUsed = usage?.diagnosticsUsed ?? 0;
-  const researchMode =
-    chat.settings.features.tutor.researchMode || ui?.tutor.researchMode || 'plan_plus_model';
-  const studyCondition = ui?.tutor.studyCondition ?? 'B';
   const planExists = !!chat.settings.features.tutor.learningPlan;
-  // Condition A freezes plan tools once a plan exists; otherwise defer to research mode
-  const conditionAFrozen = studyCondition === 'A' && planExists;
 
   return {
-    researchMode,
-    allowPlanTools: !conditionAFrozen && researchMode !== 'model_only',
-    allowAdvanceTopic: conditionAFrozen && researchMode !== 'model_only',
-    allowLearnerModel:
-      chat.settings.features.tutor.enableLearnerModel !== false && researchMode !== 'plan_only',
+    allowLearnerModel: chat.settings.features.tutor.enableLearnerModel !== false,
     allowUpdatePlan: chat.settings.features.tutor.planEditable !== false,
     planExists,
     disablePlanGeneration: chat.settings.features.tutor.disablePlanGeneration === true,

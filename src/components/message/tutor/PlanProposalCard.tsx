@@ -3,13 +3,11 @@ import { useState } from 'react';
 import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import type { TutorPlanProposal, TutorPlanSuggestion } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
-import { selectStudyCondition } from '@/lib/store/selectors';
 import { getNextNode, updateNodeStatus } from '@/lib/learning-plan/service';
 import { initializeLearnerModel, syncLearnerModelWithPlan } from '@/lib/agent/learner-model';
 import { PlanSuggestionsCard } from '@/components/message/tutor/PlanSuggestionsCard';
 import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
 import { PlanFeedbackModal } from '@/components/plan/PlanFeedbackModal';
-import { logAction } from '@/lib/study';
 
 export function PlanProposalCard({
   messageId,
@@ -31,7 +29,6 @@ export function PlanProposalCard({
   const sendUserMessage = useChatStore((s) => s.sendUserMessage);
   const chats = useChatStore((s) => s.chats);
   const selectedChatId = useChatStore((s) => s.selectedChatId);
-  const studyCondition = useChatStore(selectStudyCondition);
   const chat = chats.find((c) => c.id === selectedChatId);
 
   const resolved = proposal.status === 'approved' || proposal.status === 'declined';
@@ -57,14 +54,12 @@ export function PlanProposalCard({
     setUI({
       plan: { rightPanelOpen: true, rightPanelTab: 'plan', sheetPlanOverride: proposal.plan },
     });
-    logAction('plan_viewed', { source: 'plan_proposal', tab: 'plan', manual: true });
   };
 
   const handleApprove = async () => {
     if (!chat) return;
     setApproving(true);
     try {
-      const hadExistingPlan = !!chat.settings.features.tutor.learningPlan;
       const now = Date.now();
       let adoptedPlan = { ...proposal.plan, updatedAt: now };
       const hasInProgress = adoptedPlan.nodes.some((n) => n.status === 'in_progress');
@@ -89,9 +84,6 @@ export function PlanProposalCard({
           },
         },
       });
-      if (hadExistingPlan) {
-        logAction('plan_edited', { source: 'plan_proposal' });
-      }
       await applyProposalStatus('approved', { plan: adoptedPlan });
       setUI({
         plan: {
@@ -127,7 +119,6 @@ export function PlanProposalCard({
     setDeclining(true);
     try {
       await applyProposalStatus('declined');
-      logAction('plan_feedback_sent', { source: 'plan_proposal' });
       await sendUserMessage(
         `Plan feedback:\n${feedback}\nPlease update the plan and confirm the changes.`,
       );
@@ -184,15 +175,13 @@ export function PlanProposalCard({
               >
                 {approving ? 'Applying…' : 'Approve plan'}
               </button>
-              {studyCondition !== 'A' && (
-                <button
-                  className="btn btn-outline btn-sm"
-                  onClick={handleRequestChanges}
-                  disabled={disableActions}
-                >
-                  {declining ? 'Recording…' : 'Suggest changes'}
-                </button>
-              )}
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={handleRequestChanges}
+                disabled={disableActions}
+              >
+                {declining ? 'Recording…' : 'Suggest changes'}
+              </button>
               {resolvedLabel && (
                 <span className="badge badge-outline uppercase tracking-wide text-[11px] ml-auto">
                   {resolvedLabel}

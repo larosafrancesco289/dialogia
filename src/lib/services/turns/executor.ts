@@ -17,7 +17,6 @@ import type { Chat, Message, PersistedAttachment } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
-import { logAction } from '@/lib/study';
 
 export type ExecuteModelTurnArgs = {
   modelId: string;
@@ -112,7 +111,6 @@ export const executeModelTurn = async ({
       ui: runtime.ui,
       modelIndex: baseTurnContext.modelIndex,
       modelId,
-      tier: runtime.tier,
     });
 
     const runResult = await runTurn({
@@ -147,26 +145,7 @@ export const executeModelTurn = async ({
         updateMessage,
         persistMessage,
       });
-      const finalAssistant = get().messagesById[assistantMessage.id];
-      if (finalAssistant) {
-        const content = finalAssistant.content || finalAssistant.deepResearch?.answer || '';
-        logAction('message_received', {
-          messageId: finalAssistant.id,
-          modelId,
-          contentLength: content.length,
-        });
-      }
       return;
-    }
-
-    const finalAssistant = get().messagesById[assistantMessage.id];
-    if (finalAssistant) {
-      const content = finalAssistant.content || finalAssistant.deepResearch?.answer || '';
-      logAction('message_received', {
-        messageId: finalAssistant.id,
-        modelId,
-        contentLength: content.length,
-      });
     }
   } catch (error: unknown) {
     handleTurnApiError(error, set, get, runtime.chatId);

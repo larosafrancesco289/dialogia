@@ -4,26 +4,12 @@ import { DEFAULT_FREE_MODEL_ID, DEFAULT_FREE_TUTOR_MODEL_ID, isFreeModel } from 
 
 export type TierFeatures = {
   canUseAllModels: boolean;
-  forceTutorMode: boolean;
 };
 
 const TIER_FEATURES: Record<AccessTier, TierFeatures> = {
-  free: {
-    canUseAllModels: false,
-    forceTutorMode: false,
-  },
-  individual: {
-    canUseAllModels: true,
-    forceTutorMode: false,
-  },
-  developer: {
-    canUseAllModels: true,
-    forceTutorMode: false,
-  },
-  study: {
-    canUseAllModels: true,
-    forceTutorMode: true,
-  },
+  free: { canUseAllModels: false },
+  individual: { canUseAllModels: true },
+  developer: { canUseAllModels: true },
 };
 
 export function getTierFeatures(tier: AccessTier): TierFeatures {
@@ -32,10 +18,6 @@ export function getTierFeatures(tier: AccessTier): TierFeatures {
 
 export function canUseAllModelsForTier(tier: AccessTier): boolean {
   return getTierFeatures(tier).canUseAllModels;
-}
-
-export function isTutorForcedForTier(tier: AccessTier): boolean {
-  return getTierFeatures(tier).forceTutorMode;
 }
 
 export function isModelAllowedForTier(tier: AccessTier, modelId: string): boolean {

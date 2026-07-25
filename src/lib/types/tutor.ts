@@ -1,7 +1,4 @@
 import type { LearningPlan } from '@/lib/types/learningPlan';
-export type { StudyCondition, TutorResearchMode } from '@/lib/types/enums';
-export { StudyConditionEnum, TutorResearchModeEnum } from '@/lib/types/enums';
-
 export type TutorToolBudget = {
   maxToolsPerTurn?: number;
   maxQuizzesPerNode?: number;

@@ -1,8 +1,6 @@
 'use client';
 import { motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
-import { useChatStore } from '@/lib/store';
-import { selectStudyCondition } from '@/lib/store/selectors';
 import type {
   TutorDiagnostic,
   TutorLearnerModelUpdate,
@@ -30,7 +28,6 @@ export function TutorPanel(props: {
   assessmentUpdates?: TutorLearnerModelUpdate[];
   isLatestAssistant?: boolean;
 }) {
-  const studyCondition = useChatStore(selectStudyCondition);
   const reduceMotion = useReducedMotion();
 
   const {
@@ -45,7 +42,6 @@ export function TutorPanel(props: {
     isLatestAssistant,
   } = props;
 
-  const canShowUpdates = studyCondition !== 'A';
   const shouldAnimate = !!isLatestAssistant && !reduceMotion;
 
   const hasAny =
@@ -53,7 +49,7 @@ export function TutorPanel(props: {
     planProposal ||
     (planSuggestions && planSuggestions.length > 0) ||
     (diagnostic && diagnostic.items && diagnostic.items.length > 0) ||
-    (canShowUpdates && assessmentUpdates && assessmentUpdates.length > 0) ||
+    (assessmentUpdates && assessmentUpdates.length > 0) ||
     (mcq && mcq.length > 0);
 
   if (!hasAny) return null;
@@ -93,7 +89,7 @@ export function TutorPanel(props: {
               <DiagnosticCard messageId={messageId} diagnostic={diagnostic} />
             ) : null}
             {mcq && mcq.length > 0 && <McqCard messageId={messageId} items={mcq} />}
-            {canShowUpdates && assessmentUpdates && assessmentUpdates.length > 0 && (
+            {assessmentUpdates && assessmentUpdates.length > 0 && (
               <LearnerUpdatesCard updates={assessmentUpdates} />
             )}
           </div>

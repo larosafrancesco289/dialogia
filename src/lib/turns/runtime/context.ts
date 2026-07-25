@@ -67,7 +67,7 @@ export const prepareSendRuntime = async ({
   const ui = get().ui;
   const modelIndex = get().modelIndex;
   const next = readNextOverrides(ui);
-  const tutorEnabled = isTutorRuntimeEnabled(ui, chat, tier);
+  const tutorEnabled = isTutorRuntimeEnabled(ui, chat);
   let tutorDefaultModelId = resolveDynamicModelId(
     selectTutorDefaultModelId(ui, chat, DEFAULT_TUTOR_MODEL_ID) ?? DEFAULT_TUTOR_MODEL_ID,
     modelIndex.all,

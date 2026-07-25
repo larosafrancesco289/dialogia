@@ -164,10 +164,6 @@ export function migrateChatSettingsRecord(input: unknown): MigrationResult<unkno
       readString(settings.tutorDefaultModelId) ??
       readString(settings.tutorDefaultModel) ??
       readString(settings.tutor_default_model),
-    researchMode:
-      readString(tutor?.researchMode) ??
-      readString(settings.tutorResearchMode) ??
-      readString(settings.tutor_research_mode),
     toolBudget:
       readRecord(tutor?.toolBudget) ??
       readRecord(settings.tutorToolBudget) ??

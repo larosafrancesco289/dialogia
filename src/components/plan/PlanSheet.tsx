@@ -1,6 +1,6 @@
 'use client';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import type { LearningPlan, LearnerModel, StudyCondition } from '@/lib/types';
+import type { LearningPlan, LearnerModel } from '@/lib/types';
 import { PlanView } from './PlanView';
 import { PlanEditingHint } from './PlanEditingHint';
 import { SummaryStrip } from '@/components/learning-panel/SummaryStrip';
@@ -29,7 +29,6 @@ export function PlanSheet({
   onMisconceptionResolve,
   onFlagForReview,
   onMarkKnown,
-  studyCondition,
   onSendFeedback,
 }: {
   plan: LearningPlan | null;
@@ -39,16 +38,11 @@ export function PlanSheet({
   onStartLesson?: (nodeId: string) => void;
   learnerModel?: LearnerModel;
   focusNodeId?: string;
-  studyCondition?: StudyCondition;
   onSendFeedback?: (message: string) => void;
 } & Partial<LearnerModelEditCallbacks>) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [closing, setClosing] = useState(false);
   const [feedbackContext, setFeedbackContext] = useState<PlanFeedbackContext | null>(null);
-
-  const isConditionA = studyCondition === 'A';
-  const learnerModelVisible = !isConditionA;
-  const planEditable = !isConditionA;
 
   const handleRequestClose = useCallback(() => {
     if (closing) return;
@@ -200,43 +194,36 @@ export function PlanSheet({
         </div>
 
         {/* Summary strip */}
-        <SummaryStrip
-          learnerModel={learnerModel}
-          plan={plan}
-          learnerModelVisible={learnerModelVisible}
-        />
+        <SummaryStrip learnerModel={learnerModel} plan={plan} learnerModelVisible />
 
         {/* Agency cue */}
-        {planEditable && <PlanEditingHint />}
+        <PlanEditingHint />
 
         {/* Scrollable content */}
         <div className="plan-sheet__body flex-1 overflow-y-auto px-4 pt-2 pb-4 sm:px-6">
           <PlanView
             plan={plan}
             focusNodeId={focusNodeId}
-            readOnly={isConditionA}
             learnerModel={learnerModel}
-            learnerModelVisible={learnerModelVisible}
-            onNodeStatusChange={isConditionA ? undefined : handleNodeStatusChange}
-            onStartLesson={isConditionA ? undefined : onStartLesson}
-            onMarkKnown={isConditionA ? undefined : onMarkKnown}
-            onConfidenceAdjust={isConditionA ? undefined : onConfidenceAdjust}
-            onMisconceptionResolve={isConditionA ? undefined : onMisconceptionResolve}
-            onFlagForReview={isConditionA ? undefined : onFlagForReview}
+            learnerModelVisible
+            onNodeStatusChange={handleNodeStatusChange}
+            onStartLesson={onStartLesson}
+            onMarkKnown={onMarkKnown}
+            onConfidenceAdjust={onConfidenceAdjust}
+            onMisconceptionResolve={onMisconceptionResolve}
+            onFlagForReview={onFlagForReview}
           />
         </div>
 
         {/* Bottom bar */}
-        {learnerModelVisible && (
-          <div className="learning-panel__bottom-bar" style={{ flexShrink: 0 }}>
-            <button
-              className="plan-bottom-btn plan-bottom-btn--pri"
-              onClick={() => setFeedbackContext({ type: 'general' })}
-            >
-              Suggest plan changes
-            </button>
-          </div>
-        )}
+        <div className="learning-panel__bottom-bar" style={{ flexShrink: 0 }}>
+          <button
+            className="plan-bottom-btn plan-bottom-btn--pri"
+            onClick={() => setFeedbackContext({ type: 'general' })}
+          >
+            Suggest plan changes
+          </button>
+        </div>
       </div>
 
       {feedbackContext && (

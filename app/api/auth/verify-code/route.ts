@@ -4,7 +4,6 @@ import {
   createAuthToken,
   getIndividualCodeHashes,
   getDeveloperCodeHashes,
-  getStudyCodeHashes,
   getAuthCookieSecret,
   getAccessCodePepper,
   hmacCode,
@@ -46,13 +45,6 @@ export const POST = route('auth-verify-code')
       const devIdx = devHashes.findIndex((h) => h === hashed);
       if (devIdx !== -1) {
         return createTokenResponse('developer', `dev:${devIdx}`);
-      }
-
-      // Check study codes (before individual to prioritize study tier)
-      const studyHashes = getStudyCodeHashes();
-      const studyIdx = studyHashes.findIndex((h) => h === hashed);
-      if (studyIdx !== -1) {
-        return createTokenResponse('study', `study:${studyIdx}`);
       }
 
       // Check individual codes

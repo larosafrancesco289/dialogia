@@ -9,7 +9,6 @@ import { createAssistantMessage, createUserMessage } from '@/lib/messages/create
 import { persistMessages } from '@/lib/services/messagePersistence';
 import { appendMessagesToChat } from '@/lib/messages/indexing';
 import { adjustActiveTurnCount, clearActiveTurnCount } from '@/lib/ui/streaming';
-import { logAction } from '@/lib/study';
 
 export type SpawnMessagesResult = {
   userMessage: Message;
@@ -92,13 +91,6 @@ export const spawnTurnMessages = async ({
   }));
 
   await persistMessages(repository, [userMessage, ...assistantPlaceholders]);
-
-  // Log message sent for study tracking
-  logAction('message_sent', {
-    messageId: userMessage.id,
-    contentLength: content.length,
-    isHiddenFromUser: !!metadata?.hiddenFromUser,
-  });
 
   return { userMessage, assistantByModel, masterController, markComplete, completeAll };
 };
