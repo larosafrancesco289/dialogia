@@ -5,4 +5,3 @@ export {
   type WebFetchToolArgs,
   type WebSearchToolArgs,
 } from '@/lib/tools/definitions/webSearch';
-export { getTutorToolDefinitions } from '@/lib/tools/registry';

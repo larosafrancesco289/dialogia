@@ -17,7 +17,9 @@ import { derivePlanningContext } from '@/lib/agent/planning/context';
 import { applyToolExecutions } from '@/lib/agent/planning/apply';
 import { runPlanningRound } from '@/lib/agent/planning/round';
 import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
+import { createPlanningExecutionState } from '@/lib/agent/planning/types';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
+import { readContentModuleResult } from '@/lib/agent/planning/moduleResult';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { resolveModelTransport } from '@/lib/providers';
 
@@ -53,9 +55,9 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
   const { set, get, persistMessage } = turn;
   const storeState = get?.();
   const messagesForChat = storeState ? getMessagesForChat(storeState, chatId) : [];
-  let currentPlan = chat.settings.features.tutor.learningPlan;
+  let currentPlan = chat.settings.features.tutor?.learningPlan;
   const sideEffects: PlanTurnSideEffect[] = [];
-  const { planningToolDefinition, allowedTutorTools, toolPolicy, phase } = derivePlanningContext({
+  const { toolDefinitions, gate } = derivePlanningContext({
     chat,
     messagesForChat,
     ui: storeState?.ui,
@@ -79,29 +81,15 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
 
   // Learner model updates are now handled by the tutor via tool calls at meaningful moments,
   // rather than automatically every turn. This reduces latency and API costs.
-  let state: PlanningExecutionState = {
-    aggregatedResults: [],
-    usedTutorContentTool: false,
-    learnerModel: undefined,
-    planUpdates: undefined,
-    updatedPlan: undefined,
-    learnerModelDebug: undefined,
-    currentPlan,
-    toolsUsedThisTurn: 0,
-    quizCallsThisTurn: 0,
-    successfulToolCallsThisTurn: 0,
-    failedToolCallsThisTurn: 0,
-  };
-  const maxToolsPerTurn =
-    toolPolicy.maxToolsPerTurn && Number.isFinite(toolPolicy.maxToolsPerTurn)
-      ? Math.max(1, toolPolicy.maxToolsPerTurn)
-      : Infinity;
+  let state: PlanningExecutionState = createPlanningExecutionState({
+    moduleState: currentPlan ? { contentModule: { currentPlan } } : {},
+  });
 
   while (rounds < MAX_PLANNING_ROUNDS) {
     const { message, toolCalls } = await runPlanningRound({
       convo,
       assistantMessage,
-      toolDefinition: planningToolDefinition,
+      toolDefinition: toolDefinitions.length > 0 ? toolDefinitions : undefined,
       controller,
       turn,
       settings,
@@ -110,15 +98,10 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
 
     const scheduled = schedulePlanningRound({
       toolCalls,
-      allowedTutorTools,
-      toolPolicy,
-      phase,
-      currentPlan: state.currentPlan ?? currentPlan,
-      usedTutorContentTool: state.usedTutorContentTool,
+      gate,
+      usedContentTool: state.usedContentTool,
       searchEnabled,
       searchProvider,
-      quizCallsThisTurn: state.quizCallsThisTurn,
-      maxToolsPerTurn,
       toolsUsedThisTurn: state.toolsUsedThisTurn,
     });
 
@@ -166,7 +149,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
       },
       state,
     });
-    currentPlan = state.currentPlan ?? currentPlan;
+    currentPlan = readContentModuleResult(state).currentPlan ?? currentPlan;
 
     if (shouldAppendToolFollowUp) {
       const followup = followUpPrompt({ searchEnabled, searchProvider });
@@ -187,15 +170,16 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
     : undefined;
   const finalSystem = combineSystem(baseSystem, [], sourcesAppendix) ?? baseSystem;
 
+  const moduleResult = readContentModuleResult(state);
   return {
     result: {
       finalSystem,
-      usedTutorContentTool: state.usedTutorContentTool,
+      usedContentTool: state.usedContentTool,
       hasSearchResults: hasResults,
-      learnerModel: state.learnerModel,
-      planUpdates: state.planUpdates,
-      updatedPlan: state.updatedPlan,
-      learnerModelDebug: state.learnerModelDebug,
+      learnerModel: moduleResult.learnerModel,
+      planUpdates: moduleResult.planUpdates,
+      updatedPlan: moduleResult.updatedPlan,
+      learnerModelDebug: moduleResult.learnerModelDebug,
     },
     sideEffects,
   };

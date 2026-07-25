@@ -8,5 +8,5 @@ export function shouldAppendSources(results: SearchResult[] | undefined): boolea
 }
 
 export function shouldShortCircuitTutor(result: PlanTurnResult): boolean {
-  return result.usedTutorContentTool && !result.hasSearchResults;
+  return result.usedContentTool && !result.hasSearchResults;
 }

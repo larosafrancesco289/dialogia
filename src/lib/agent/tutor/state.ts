@@ -1,8 +1,11 @@
-import type { TutorToolName } from '@/lib/agent/types';
 import type { TutorPhase } from '@/lib/agent/tutor/types';
 import type { TutorToolUsageSnapshot, UiSnapshot } from '@/lib/contracts/ui';
 import type { Chat, Message, MessageTutor } from '@/lib/types';
-import { getTutorToolsByPhase, getTutorToolsByTag } from '@/lib/tools/registry';
+import {
+  getTutorToolsByPhase,
+  getTutorToolsByTag,
+  type TutorToolName,
+} from '@/lib/agent/tools/tutor/register';
 
 export type { TutorPhase } from '@/lib/agent/tutor/types';
 
@@ -45,9 +48,10 @@ export function getTutorPhase(chat: Chat, messages: Message[], ui?: UiSnapshot):
   return 'teaching';
 }
 
-const QUIZ_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('quiz'));
-const LEARNER_MODEL_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('learnerModel'));
-const DIAGNOSTIC_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('diagnostic'));
+// Resolved lazily: the registry is populated by module registration, not at import time.
+const quizTools = () => new Set<TutorToolName>(getTutorToolsByTag('quiz'));
+const learnerModelTools = () => new Set<TutorToolName>(getTutorToolsByTag('learnerModel'));
+const diagnosticTools = () => new Set<TutorToolName>(getTutorToolsByTag('diagnostic'));
 
 export type TutorToolFilters = {
   allowLearnerModel?: boolean;
@@ -82,7 +86,7 @@ function applyTutorFilters(base: TutorToolName[], filters?: TutorToolFilters): T
   const planExists = filters?.planExists === true;
 
   if (filters?.allowLearnerModel === false) {
-    tools = tools.filter((name) => !LEARNER_MODEL_TOOLS.has(name));
+    tools = tools.filter((name) => !learnerModelTools().has(name));
   }
 
   if (filters?.disablePlanGeneration) {
@@ -99,12 +103,12 @@ function applyTutorFilters(base: TutorToolName[], filters?: TutorToolFilters): T
   }
 
   if (filters?.diagnosticsRemaining === 0) {
-    tools = tools.filter((name) => !DIAGNOSTIC_TOOLS.has(name));
+    tools = tools.filter((name) => !diagnosticTools().has(name));
   }
 
   const hasQuizAllowance = filters?.quizzesRemaining == null ? true : filters.quizzesRemaining > 0;
   if (!hasQuizAllowance) {
-    tools = tools.filter((name) => !QUIZ_TOOLS.has(name));
+    tools = tools.filter((name) => !quizTools().has(name));
   }
 
   return Array.from(new Set(tools));

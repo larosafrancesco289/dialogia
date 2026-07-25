@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import '@/lib/tools';
 import {
   TUTOR_TOOL_NAMES,
   getTutorToolDefinitions,
   getTutorToolsByPhase,
   getTutorToolsByTag,
   isTutorToolName,
-} from '@/lib/tools';
+} from '@/lib/agent/tools/tutor/register';
 
 test('tutor tool registry exposes one definition for every tutor tool name', () => {
   const definitions = getTutorToolDefinitions();

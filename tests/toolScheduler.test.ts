@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import '@/lib/tools';
 import { schedulePlanningToolCalls } from '@/lib/agent/tools/scheduler';
+import { buildTutorContentPriority } from '@/lib/agent/tools/tutor/contentPriority';
 import type { ToolCall } from '@/lib/agent/types';
 
 const buildCall = (name: string, args = '{}', id = `${name}-1`): ToolCall => ({
@@ -13,15 +15,30 @@ test('scheduler keeps meta, one search, and one prioritized content tool', () =>
   const calls = [buildCall('web_search'), buildCall('quiz'), buildCall('record_learning')];
 
   const scheduled = schedulePlanningToolCalls(calls, {
-    hasPlan: true,
-    hasActiveNode: true,
-    phase: 'practice',
+    contentPriority: buildTutorContentPriority({
+      phase: 'practice',
+      hasPlan: true,
+      hasActiveNode: true,
+    }),
   });
 
   assert.equal(scheduled.length, 3);
   assert.deepEqual(
     scheduled.map((c) => c.function.name),
     ['record_learning', 'web_search', 'quiz'],
+  );
+});
+
+test('scheduler asks the active module which content tool wins', () => {
+  const calls = [buildCall('quiz'), buildCall('learning_plan')];
+
+  const scheduled = schedulePlanningToolCalls(calls, {
+    contentPriority: (candidates) => [...candidates].sort(),
+  });
+
+  assert.deepEqual(
+    scheduled.map((c) => c.function.name),
+    ['learning_plan'],
   );
 });
 
@@ -52,9 +69,16 @@ test('scheduler drops content when already used and search disabled', () => {
   const scheduled = schedulePlanningToolCalls(calls, {
     allowSearch: false,
     alreadyUsedContent: true,
-    hasPlan: false,
   });
 
   assert.equal(scheduled.length, 1);
   assert.equal(scheduled[0].function.name, 'record_learning');
+});
+
+test('unregistered tools fall through as ordinary calls', () => {
+  const scheduled = schedulePlanningToolCalls([buildCall('some_future_tool')], {});
+  assert.deepEqual(
+    scheduled.map((c) => c.function.name),
+    ['some_future_tool'],
+  );
 });

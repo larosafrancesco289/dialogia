@@ -81,7 +81,7 @@ test('headless tutor session streams a response and captures artifacts', async (
   const turn = await session.runTurn('Can you help me understand limits?');
   assert.equal(turn.assistant.content, 'Hello student!');
   assert.equal(turn.user.content.includes('limits'), true);
-  assert.equal(turn.artifacts.plan.usedTutorContentTool, false);
+  assert.equal(turn.artifacts.plan.usedContentTool, false);
   assert.ok(Array.isArray(turn.artifacts.toolCalls));
 
   const messages: Message[] = session.getMessages();

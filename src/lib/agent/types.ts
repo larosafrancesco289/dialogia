@@ -21,7 +21,6 @@ import type {
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
 import type { WebSearchArgs as SearchArgs } from '@/lib/search/args';
-import type { ToolName, TutorToolName } from '@/lib/tools/registry';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
 
@@ -61,12 +60,10 @@ export type TurnContext = {
   persistMessage: PersistMessage;
 };
 
-export type { ToolName, TutorToolName };
-
 export type WebSearchArgs = SearchArgs;
 
 export type TutorToolCall = {
-  name: TutorToolName;
+  name: string;
   args: Record<string, unknown>;
 };
 
@@ -88,7 +85,7 @@ export type PlanTurnOptions = {
 
 export type PlanTurnResult = {
   finalSystem: string;
-  usedTutorContentTool: boolean;
+  usedContentTool: boolean;
   hasSearchResults: boolean;
   learnerModel?: LearnerModel;
   planUpdates?: Message['planUpdates'];

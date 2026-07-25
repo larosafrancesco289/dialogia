@@ -5,7 +5,7 @@
 import { createToolCall, normalizeToolCalls } from '@/lib/agent/parsers';
 import { extractTutorToolCalls } from '@/lib/tools/json';
 import { extractWebSearchArgs } from '@/lib/search';
-import { TUTOR_TOOL_NAMES } from '@/lib/tools/registry';
+import { TUTOR_TOOL_NAMES } from '@/lib/agent/tools/tutor/register';
 import type { AssistantModelMessage, ToolCall, ToolDefinition } from '@/lib/agent/types';
 
 export type DetectPlanningToolCallsParams = {

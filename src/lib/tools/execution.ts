@@ -31,7 +31,7 @@ export type PlanningToolExecutionResult = {
   convoMessages: ModelMessage[];
   aggregatedResults: SearchResult[];
   usedTool: boolean;
-  usedTutorContentTool: boolean;
+  usedContentTool: boolean;
   learnerModel?: LearnerModel;
   planUpdates?: Message['planUpdates'];
   updatedPlan?: LearningPlan;

@@ -151,7 +151,7 @@ export const runTurn = async ({
     // Convert streaming result to plan result format for compatibility
     planResult = {
       finalSystem: streamingResult.finalSystem,
-      usedTutorContentTool: streamingResult.usedTutorContentTool,
+      usedContentTool: streamingResult.usedContentTool,
       hasSearchResults: streamingResult.hasSearchResults,
       learnerModel: streamingResult.learnerModel,
       planUpdates: streamingResult.planUpdates,

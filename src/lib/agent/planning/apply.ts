@@ -1,9 +1,12 @@
 import { parseToolArguments } from '@/lib/agent/parsers';
 import { executePlanningToolCall } from '@/lib/agent/tools/exec';
 import { createToolExecutionLogger } from '@/lib/agent/tools/executionLogger';
-import { isQuizToolName } from '@/lib/agent/tools/schedulingPolicy';
 import type { ModelMessage, PlanTurnOptions, ToolCall } from '@/lib/agent/types';
 import type { LearningPlan, Message } from '@/lib/types';
+import {
+  readContentModuleResult,
+  withContentModuleResult,
+} from '@/lib/agent/planning/moduleResult';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 
 export async function applyToolExecutions(args: {
@@ -24,7 +27,7 @@ export async function applyToolExecutions(args: {
   state: PlanningExecutionState;
 }): Promise<PlanningExecutionState> {
   const { scheduled, round, convo, context, state } = args;
-  const next: PlanningExecutionState = { ...state };
+  let next: PlanningExecutionState = { ...state };
   const logger = createToolExecutionLogger({
     set: context.set,
     get: context.get,
@@ -32,13 +35,13 @@ export async function applyToolExecutions(args: {
     messageId: context.assistantMessage.id,
   });
   for (const tc of scheduled) {
-    const toolName = tc.function?.name ?? '';
     const parsedArgs = parseToolArguments(tc);
     const roundMeta = Number.isFinite(round) ? { round } : undefined;
     // Create getCurrentPlan that returns the most up-to-date plan from the execution state.
     // This ensures subsequent tool calls in the same turn see plan updates from earlier calls.
     const getCurrentPlan = (): LearningPlan | undefined =>
-      next.currentPlan ?? context.chat.settings.features.tutor.learningPlan;
+      readContentModuleResult(next).currentPlan ??
+      context.chat.settings.features.tutor?.learningPlan;
     const execution = await executePlanningToolCall({
       toolCall: tc,
       parsedArgs,
@@ -50,23 +53,21 @@ export async function applyToolExecutions(args: {
       convo.push(...execution.convoMessages);
     }
     next.aggregatedResults = execution.aggregatedResults;
-    if (execution.learnerModel) next.learnerModel = execution.learnerModel;
-    if (execution.planUpdates) next.planUpdates = execution.planUpdates;
-    if (execution.updatedPlan) {
-      next.updatedPlan = execution.updatedPlan;
-      next.currentPlan = execution.updatedPlan;
-    }
-    if (execution.learnerModelDebug) next.learnerModelDebug = execution.learnerModelDebug;
-    if (execution.usedTutorContentTool) {
-      next.usedTutorContentTool = true;
+    next = withContentModuleResult(next, {
+      ...(execution.learnerModel ? { learnerModel: execution.learnerModel } : {}),
+      ...(execution.planUpdates ? { planUpdates: execution.planUpdates } : {}),
+      ...(execution.updatedPlan
+        ? { updatedPlan: execution.updatedPlan, currentPlan: execution.updatedPlan }
+        : {}),
+      ...(execution.learnerModelDebug ? { learnerModelDebug: execution.learnerModelDebug } : {}),
+    });
+    if (execution.usedContentTool) {
+      next.usedContentTool = true;
     }
     if (execution.usedTool) {
       next.successfulToolCallsThisTurn += 1;
     } else {
       next.failedToolCallsThisTurn += 1;
-    }
-    if (isQuizToolName(toolName)) {
-      next.quizCallsThisTurn += 1;
     }
     next.toolsUsedThisTurn += 1;
   }

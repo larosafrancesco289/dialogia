@@ -1,9 +1,9 @@
 import type { Chat, LearningPlan, Message } from '@/lib/types';
 import type { TurnStoreState } from '@/lib/agent/contracts';
-import type { PersistMessage, StoreGetter, StoreSetter, TutorToolName } from '@/lib/agent/types';
+import type { PersistMessage, StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { attachTutorUiState } from '@/lib/agent/tutorFlow';
 import { getNextNode } from '@/lib/learning-plan/service';
-import { getTutorToolsByTag } from '@/lib/tools/registry';
+import { getTutorToolsByTag, type TutorToolName } from '@/lib/agent/tools/tutor/register';
 import { getMessagesForChat, setMessagesForChat } from '@/lib/messages/indexing';
 import type {
   TutorToolApplyResult,
@@ -20,9 +20,9 @@ import {
 } from '@/lib/agent/tools/tutor/handlers';
 
 export { normalizeTutorQuizPayload, type TutorQuizPayload } from '@/lib/agent/tools/tutor/shared';
-export { isTutorToolName } from '@/lib/tools/registry';
+export { isTutorToolName } from '@/lib/agent/tools/tutor/register';
 
-const QUIZ_TOOLS = new Set<TutorToolName>(getTutorToolsByTag('quiz'));
+const quizTools = () => new Set<TutorToolName>(getTutorToolsByTag('quiz'));
 
 export function recordTutorToolUsage(opts: {
   set: StoreSetter;
@@ -44,7 +44,7 @@ export function recordTutorToolUsage(opts: {
       mcqByNode: { ...(prev.mcqByNode || {}) },
     };
 
-    if (QUIZ_TOOLS.has(name)) {
+    if (quizTools().has(name)) {
       nextUsage.mcqByNode[activeNodeId] = (nextUsage.mcqByNode[activeNodeId] || 0) + 1;
     }
     if (name === 'create_diagnostic') {

@@ -1,57 +1,45 @@
-import type { ToolCall, TutorToolName } from '@/lib/agent/types';
-import { isTutorToolName } from '@/lib/agent/tools';
-import { schedulePlanningTools } from '@/lib/agent/tools/schedulingPolicy';
-import type { TutorPhase, TutorToolPolicy } from '@/lib/agent/tutor/state';
-import type { LearningPlan } from '@/lib/types';
+// Module: agent/planning/schedule
+// Responsibility: Apply the turn's ToolGate to a round of tool calls, then order
+// them with the core scheduler and cap them against the per-turn budget.
+
+import type { ToolCall } from '@/lib/agent/types';
+import { schedulePlanningToolCalls } from '@/lib/agent/tools/scheduler';
+import type { ToolGate } from '@/lib/agent/planning/types';
 
 export function schedulePlanningRound(args: {
   toolCalls: ToolCall[];
-  allowedTutorTools: Set<TutorToolName>;
-  toolPolicy: TutorToolPolicy;
-  phase: TutorPhase;
-  currentPlan?: LearningPlan;
+  gate: ToolGate;
   searchEnabled: boolean;
   searchProvider: 'tavily' | 'openrouter';
-  usedTutorContentTool: boolean;
-  quizCallsThisTurn: number;
-  maxToolsPerTurn: number;
+  usedContentTool: boolean;
   toolsUsedThisTurn: number;
 }): ToolCall[] {
-  const {
-    toolCalls,
-    allowedTutorTools,
-    toolPolicy,
-    phase,
-    currentPlan,
-    searchEnabled,
-    searchProvider,
-    usedTutorContentTool,
-    quizCallsThisTurn,
-    maxToolsPerTurn,
-    toolsUsedThisTurn,
-  } = args;
+  const { toolCalls, gate, searchEnabled, searchProvider, usedContentTool, toolsUsedThisTurn } =
+    args;
 
-  const filteredToolCalls =
-    toolCalls.length === 0
-      ? []
-      : toolCalls.filter((call) => {
-          const name = call.function?.name ?? '';
-          if (!name) return false;
-          if (isTutorToolName(name)) return allowedTutorTools.has(name);
-          return true;
-        });
+  const allowed: ToolCall[] = [];
+  for (const call of toolCalls) {
+    const name = call.function?.name ?? '';
+    if (!name) continue;
+    if (gate.isAllowed(name)) {
+      allowed.push(call);
+      continue;
+    }
+    if (gate.onBudgetExceeded?.(name) === 'stop') break;
+  }
 
-  return schedulePlanningTools({
-    toolCalls: filteredToolCalls,
-    toolPolicy,
-    phase,
-    hasPlan: Boolean(currentPlan),
-    hasActiveNode: Boolean(currentPlan?.nodes.some((node) => node.status === 'in_progress')),
-    usedTutorContentTool,
-    searchEnabled,
-    searchProvider,
-    quizCallsThisTurn,
-    maxToolsPerTurn,
-    toolsUsedThisTurn,
+  const ordered = schedulePlanningToolCalls(allowed, {
+    alreadyUsedContent: usedContentTool,
+    allowSearch: searchEnabled && searchProvider === 'tavily',
+    contentPriority: gate.contentPriority,
   });
+
+  const cap = gate.maxToolsPerTurn ?? Number.POSITIVE_INFINITY;
+  const remaining = Math.max(0, cap - toolsUsedThisTurn);
+  const scheduled = ordered.slice(0, remaining);
+  for (const call of scheduled) {
+    const name = call.function?.name;
+    if (name) gate.onScheduled?.(name);
+  }
+  return scheduled;
 }
