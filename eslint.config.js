@@ -122,24 +122,10 @@ module.exports = [
   },
   {
     // Feature modules are reached through `src/lib/modules.ts` and nowhere else, so
-    // deleting one is a directory plus an entry in that file.
-    //
-    // The `ignores` list is the remaining Stage 1 debt: every entry is a core file
-    // that still imports the tutor module directly and needs a module hook or a UI
-    // slot before it can be removed from this list. New violations fail the build.
+    // deleting one is a directory plus an entry in that file. Tests may import a
+    // module directly to exercise it.
     files: ['src/lib/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}', 'app/**/*.{ts,tsx}'],
-    ignores: [
-      'src/lib/modules.ts',
-      // UI mounts awaiting typed panel slots
-      'src/components/HomeClient.tsx',
-      'src/components/message/AssistantMessage.tsx',
-      'src/components/message/MessagePanels.tsx',
-      'src/components/settings/hooks/useSettingsDrawerState.tsx',
-      'src/components/top-header/TopHeaderView.tsx',
-      'src/components/top-header/useTopHeaderState.ts',
-      '**/*.test.ts',
-      '**/*.test.tsx',
-    ],
+    ignores: ['src/lib/modules.ts', '**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'no-restricted-imports': [
         'error',

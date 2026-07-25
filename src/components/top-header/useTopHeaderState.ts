@@ -1,125 +1,53 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { findModelById, formatModelLabel } from '@/lib/models';
-import { getNextNode } from '@/modules/tutor/learning-plan/service';
-import { getBreadcrumbPath, getMilestones } from '@/modules/tutor/learning-plan/breadcrumb';
-import {
-  selectCurrentChat,
-  selectIsTutorEnabled,
-  selectMessagesForCurrentChat,
-  selectNextOverrides,
-} from '@/lib/store/selectors';
+import { selectCurrentChat, selectIsTutorEnabled } from '@/lib/store/selectors';
 import { useTierTutorModelId } from '@/lib/hooks/useTierModels';
-import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
-import type { UiPlanSnapshot } from '@/lib/contracts/ui';
-import type { Chat, LearnerModel, LearningPlan, LearningPlanNode } from '@/lib/types';
-import type { LearnerModelFeedback } from '@/modules/tutor/learner-model';
-import type { LearnerModelEditCallbacks } from '@/modules/tutor/components/plan/PlanSheet';
-
-type PlanProgress = ReturnType<
-  typeof import('@/modules/tutor/learning-plan/service').calculatePlanProgress
->;
-type PlanNode = ReturnType<typeof getNextNode>;
-type PlanGeneration = NonNullable<UiPlanSnapshot['generationByChatId']>[string];
-
-export type Milestone = {
-  id: string;
-  status: LearningPlanNode['status'];
-  name: string;
-};
+import type { Chat } from '@/lib/types';
 
 export type TopHeaderState = {
   chat?: Chat;
   collapsed: boolean;
   isSettingsOpen: boolean;
-  planSheetOpen: boolean;
-  planSheetOverride: LearningPlan | null;
-  planGeneration?: PlanGeneration;
   tutorActive: boolean;
   tutorModelId?: string;
   tutorModelLabel: string;
-  experimentalTutor: boolean;
-  forceTutorMode: boolean;
-  nextTutorMode: boolean;
-  hasPlan: boolean;
-  learningPlan?: LearningPlan;
-  planProgress: PlanProgress | null;
-  currentNode: PlanNode;
-  learnerModel?: LearnerModel;
-  rightPanelOpen: boolean;
-  rightPanelTab: 'plan' | 'progress';
-  currentTopicName?: string;
-  topicProgress: number;
-  milestones: Milestone[];
-  breadcrumbPath: string[];
   onToggleSidebar: () => void;
   onToggleSettings: () => void;
   onOpenSettings: () => void;
   onNewChat: () => void;
   onRenameChat?: () => void;
-  onToggleTutor: () => Promise<void>;
-  onOpenPlanSheet: () => void;
-  onClosePlanSheet: () => void;
-  onToggleRightPanel: () => void;
-  onOpenRightPanel: (tab?: 'plan' | 'progress') => void;
-  onCloseRightPanel: () => void;
-  onPlanUpdate: (plan: LearningPlan) => Promise<void>;
-  onStartLesson: (nodeId: string) => Promise<void>;
-  onMarkKnown: (nodeId: string) => Promise<void>;
-  onLearnerModelFeedback: (feedback: LearnerModelFeedback) => Promise<void>;
-  onSendPlanFeedback: (message: string) => void;
-} & LearnerModelEditCallbacks;
+};
 
 export function useTopHeaderState(): TopHeaderState {
   const {
     chat,
-    ensureChatMessagesLoaded,
     renameChat,
     setUI,
     newChat,
-    updateChatSettings,
-    clearChatMessages,
     collapsed,
     isSettingsOpen,
-    planSheetOpen,
-    nextOverrides,
     tutorDefaultModelId,
-    experimentalTutor,
-    forceTutorMode,
     models,
-    planGeneration,
-    planSheetOverride,
     tutorActive,
   } = useChatStore(
     (s) => ({
       chat: selectCurrentChat(s),
-      ensureChatMessagesLoaded: s.ensureChatMessagesLoaded,
       renameChat: s.renameChat,
       setUI: s.setUI,
       newChat: s.newChat,
-      updateChatSettings: s.updateChatSettings,
-      clearChatMessages: s.clearChatMessages,
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
-      planSheetOpen: s.ui.plan?.sheetOpen ?? false,
-      nextOverrides: selectNextOverrides(s),
       tutorDefaultModelId: s.ui.tutor?.defaultModelId,
-      experimentalTutor: !!s.ui.flags.experimentalTutor,
-      forceTutorMode: !!s.ui.tutor?.forceMode,
       models: s.models,
-      planGeneration: s.selectedChatId
-        ? s.ui.plan?.generationByChatId?.[s.selectedChatId]
-        : undefined,
-      planSheetOverride: s.ui.plan?.sheetPlanOverride ?? null,
       tutorActive: selectIsTutorEnabled(s),
     }),
     shallow,
   );
 
-  const planCallbacks = usePlanCallbacks();
-
-  const nextTutorMode = !!nextOverrides.tutorMode;
+  // The model picker shows which model a tutor turn will use. Both fields it reads
+  // are core-declared settings, so the shell can resolve them without the module.
   const rawTutorModelId =
     chat?.settings?.features.tutor?.defaultModelId ||
     chat?.settings?.modelId ||
@@ -131,34 +59,6 @@ export function useTopHeaderState(): TopHeaderState {
       tutorModelId ? formatModelLabel({ model: tutorModelMeta, fallbackId: tutorModelId }) : '',
     [tutorModelMeta, tutorModelId],
   );
-
-  const { learningPlan, planProgress } = planCallbacks;
-  const currentNode = useMemo(
-    () => (learningPlan ? getNextNode(learningPlan) : null),
-    [learningPlan],
-  );
-  const hasPlanRef = useRef<boolean>(!!learningPlan);
-
-  const currentTopicName = currentNode?.name;
-  const topicProgress = planProgress?.percentComplete ?? 0;
-  const milestones = useMemo<Milestone[]>(
-    () => (learningPlan ? getMilestones(learningPlan) : []),
-    [learningPlan],
-  );
-  const breadcrumbPath = useMemo<string[]>(() => {
-    if (learningPlan && currentNode) return getBreadcrumbPath(learningPlan, currentNode.id);
-    if (learningPlan) return [learningPlan.goal];
-    return [];
-  }, [learningPlan, currentNode]);
-
-  // Track whether we've seen a plan
-  useEffect(() => {
-    if (!learningPlan) {
-      hasPlanRef.current = false;
-      return;
-    }
-    hasPlanRef.current = true;
-  }, [learningPlan]);
 
   const onToggleSidebar = useCallback(() => {
     setUI({ sidebarCollapsed: !collapsed });
@@ -184,88 +84,17 @@ export function useTopHeaderState(): TopHeaderState {
     void renameChat(chat.id, trimmed);
   }, [chat, renameChat]);
 
-  const onToggleTutor = useCallback(async () => {
-    if (forceTutorMode) return;
-
-    if (!chat) {
-      setUI({ overrides: { tutorMode: !nextTutorMode } });
-      return;
-    }
-
-    const chatId = chat.id;
-    await ensureChatMessagesLoaded(chatId);
-    const latestState = useChatStore.getState();
-    if (latestState.selectedChatId !== chatId) return;
-    const latestChat = latestState.chats.find((candidate) => candidate.id === chatId) ?? chat;
-    const latestMessages = selectMessagesForCurrentChat(latestState);
-
-    const isTutorChat = latestChat.settings.features.tutor?.enabled;
-    const hasUserMessages = latestMessages.some((m) => m.role === 'user');
-
-    if (isTutorChat) {
-      if (hasUserMessages) {
-        setUI({ overrides: { tutorMode: false } });
-        await newChat();
-      } else {
-        clearChatMessages();
-        await updateChatSettings({ features: { tutor: { enabled: false } } });
-      }
-    } else if (hasUserMessages) {
-      const confirmed = window.confirm(
-        'Starting a learning session will create a new chat. Continue?',
-      );
-      if (confirmed) {
-        setUI({ overrides: { tutorMode: true } });
-        await newChat();
-      }
-    } else {
-      await updateChatSettings({ features: { tutor: { enabled: true } } });
-    }
-  }, [
-    chat,
-    clearChatMessages,
-    ensureChatMessagesLoaded,
-    forceTutorMode,
-    newChat,
-    nextTutorMode,
-    setUI,
-    updateChatSettings,
-  ]);
-
-  const onOpenPlanSheet = useCallback(() => {
-    setUI({ plan: { sheetOpen: true, sheetPlanOverride: null } });
-  }, [setUI]);
-
-  const onClosePlanSheet = useCallback(() => {
-    setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
-  }, [setUI]);
-
   return {
     chat,
     collapsed,
     isSettingsOpen,
-    planSheetOpen,
-    planSheetOverride,
-    planGeneration,
     tutorActive,
     tutorModelId,
     tutorModelLabel,
-    experimentalTutor,
-    forceTutorMode,
-    nextTutorMode,
-    currentNode,
-    currentTopicName,
-    topicProgress,
-    milestones,
-    breadcrumbPath,
     onToggleSidebar,
     onToggleSettings,
     onOpenSettings,
     onNewChat,
     onRenameChat: chat ? onRenameChat : undefined,
-    onToggleTutor,
-    onOpenPlanSheet,
-    onClosePlanSheet,
-    ...planCallbacks,
   };
 }

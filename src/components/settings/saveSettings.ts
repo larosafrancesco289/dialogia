@@ -1,4 +1,3 @@
-import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import type { ChatSettings } from '@/lib/types';
 import type { StoreState, UIStatePartial } from '@/lib/store/types';
 
@@ -10,7 +9,6 @@ export type SettingsSaveInput = {
   showStats: boolean;
   showToolCallLog: boolean;
   showDebugRawJson: boolean;
-  tutorDefaultModel: string;
 };
 
 export type SettingsSavePatch = {
@@ -18,10 +16,8 @@ export type SettingsSavePatch = {
 };
 
 export function buildSettingsSavePatch(input: SettingsSaveInput): SettingsSavePatch {
-  const trimmedTutorModel = input.tutorDefaultModel.trim() || DEFAULT_TUTOR_MODEL_ID;
   return {
     uiPatch: {
-      tutor: { defaultModelId: trimmedTutorModel },
       chatDefaults: {
         system: input.system,
         generation: {

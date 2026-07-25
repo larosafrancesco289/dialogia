@@ -15,10 +15,12 @@ import type { ToolGate } from '@/lib/agent/planning/types';
 import type { ModuleTurnEffects, TurnEffectsContext } from '@/lib/agent/orchestrator/turnEffects';
 import type { PersistFragment, StoreGetter, StoreSetter } from '@/lib/store/stateTypes';
 import type { ModuleSettingsDefaults, ModuleSettingsPhase } from '@/lib/settings/moduleDefaults';
+import type { ModulePanels } from '@/lib/ui/panels';
 import type { Chat, LearningPlan, Message } from '@/lib/types';
 import { createTutorSlice } from '@/modules/tutor/store/tutorSlice';
 import { decorateTutorMessage } from '@/modules/tutor/lib/hiddenContent';
 import { tutorSettingsDefaults } from '@/modules/tutor/lib/defaults';
+import { tutorPanels } from '@/modules/tutor/panels';
 
 export type ModulePlanningArgs = {
   chat: Chat;
@@ -73,6 +75,8 @@ export type AppModule = {
   persistFragment?: PersistFragment;
   /** Derives fields on a message before it is stored or hydrated. Boot half. */
   decorateMessage?(message: Message): Message;
+  /** Components the shell mounts into its typed UI slots. Boot half. */
+  panels?: ModulePanels;
   /** Fills in the module's own chat-settings block. Boot half. */
   settingsDefaults?(args: {
     chat: Pick<Chat, 'settings'>;
@@ -96,6 +100,7 @@ const tutorModule: AppModule = {
   storeSlice: (set, get, store) => createTutorSlice(set, get, store),
   decorateMessage: decorateTutorMessage,
   settingsDefaults: tutorSettingsDefaults,
+  panels: tutorPanels,
   load: async () => (await import('@/modules/tutor/moduleEntry')).tutorRuntime,
 };
 
