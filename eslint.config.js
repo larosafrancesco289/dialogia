@@ -139,6 +139,21 @@ module.exports = [
           ],
         },
       ],
+      // `no-restricted-imports` sees neither dynamic imports nor relative
+      // specifiers, so close both escape hatches here.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportExpression > Literal[value=/(^|\\u002F)modules\\u002F/]',
+          message:
+            'Core must not dynamically import a feature module; go through @/lib/modules or a panel slot.',
+        },
+        {
+          selector: 'ImportDeclaration[source.value=/^\\.\\.?\\u002F.*modules\\u002F/]',
+          message:
+            'Core must not import a feature module via a relative path; go through @/lib/modules or a panel slot.',
+        },
+      ],
     },
   },
   {
