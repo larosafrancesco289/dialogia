@@ -11,7 +11,9 @@ import {
   ANTHROPIC_ENDPOINT,
   BUILT_IN_ENDPOINTS,
   OPENROUTER_ENDPOINT,
+  ENDPOINT_NAMESPACE,
   isBuiltInEndpointId,
+  parseEndpointModelId,
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
 
@@ -50,21 +52,44 @@ export function getDefaultEndpoint(): ProviderEndpoint {
   return withProxyFlags(OPENROUTER_ENDPOINT);
 }
 
+export const UNKNOWN_ENDPOINT = 'unknown_endpoint';
+
+export type UnknownEndpointError = Error & {
+  code: typeof UNKNOWN_ENDPOINT;
+  endpointId: string;
+  modelId: string;
+};
+
+export function isUnknownEndpointError(error: unknown): error is UnknownEndpointError {
+  return error instanceof Error && (error as UnknownEndpointError).code === UNKNOWN_ENDPOINT;
+}
+
+function unknownEndpoint(modelId: string, endpointId: string): UnknownEndpointError {
+  const error = new Error(UNKNOWN_ENDPOINT) as UnknownEndpointError;
+  error.code = UNKNOWN_ENDPOINT;
+  error.endpointId = endpointId;
+  error.modelId = modelId;
+  return error;
+}
+
 /**
- * Which endpoint serves a model id. `ModelDescriptor.endpointId` is authoritative;
- * the id-prefix rules below exist only for chats persisted before endpoints existed
- * (and for user endpoints, whose model ids are `<endpointId>/<model>` by construction).
+ * Which endpoint serves a model id, or undefined when the id names a user
+ * endpoint that is no longer configured. `ModelDescriptor.endpointId` is
+ * authoritative; the id rules below cover chats persisted before endpoints
+ * existed, plus the `endpoint:<id>/<model>` namespace user endpoints own.
  */
-export function resolveModelEndpoint(
+export function findModelEndpoint(
   modelId?: string,
   model?: ModelDescriptor | null,
-): ProviderEndpoint {
+): ProviderEndpoint | undefined {
   const byDescriptor = getEndpoint(model?.endpointId);
   if (byDescriptor) return byDescriptor;
 
   if (typeof modelId === 'string' && modelId) {
-    for (const endpoint of customEndpoints) {
-      if (modelId.startsWith(`${endpoint.id}/`)) return endpoint;
+    // The namespace is reserved: nothing in it may fall through to the default.
+    if (modelId.startsWith(ENDPOINT_NAMESPACE)) {
+      const scoped = parseEndpointModelId(modelId);
+      return scoped ? getEndpoint(scoped.endpointId) : undefined;
     }
     if (modelId.startsWith('anthropic-direct/') || modelId.startsWith('anthropic/')) {
       return withProxyFlags(ANTHROPIC_ENDPOINT);
@@ -72,6 +97,21 @@ export function resolveModelEndpoint(
   }
 
   return getDefaultEndpoint();
+}
+
+/**
+ * The request path's view: a model id scoped to a deleted endpoint must fail
+ * rather than fall back to OpenRouter, which would ship a local-only chat's
+ * history to a third party.
+ */
+export function resolveModelEndpoint(
+  modelId?: string,
+  model?: ModelDescriptor | null,
+): ProviderEndpoint {
+  const endpoint = findModelEndpoint(modelId, model);
+  if (endpoint) return endpoint;
+  const scoped = parseEndpointModelId(modelId ?? '');
+  throw unknownEndpoint(modelId ?? '', scoped?.endpointId ?? '');
 }
 
 export function resetEndpointRegistryForTest(): void {

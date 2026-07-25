@@ -18,7 +18,7 @@ test('configured model ids survive a server with no /models route', async () => 
   );
   assert.deepEqual(
     models.map((model) => model.id),
-    ['ollama/qwen3:8b'],
+    ['endpoint:ollama/qwen3:8b'],
   );
   assert.equal(models[0].transportModelId, 'qwen3:8b');
   assert.equal(models[0].endpointId, 'ollama');
@@ -37,7 +37,7 @@ test('discovered models are merged after the configured ones, without duplicates
   );
   assert.deepEqual(
     models.map((model) => model.id),
-    ['ollama/qwen3:8b', 'ollama/llama3.2'],
+    ['endpoint:ollama/qwen3:8b', 'endpoint:ollama/llama3.2'],
   );
 });
 

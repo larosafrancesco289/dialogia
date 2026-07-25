@@ -6,6 +6,9 @@ import { requireModelAuth } from '@/lib/auth/require';
 import type { ModelIndex } from '@/lib/models';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import type { TransportAuth } from '@/lib/auth/transport';
+import { isUnknownEndpointError } from '@/lib/transport/endpointRegistry';
+import { NOTICE_UNKNOWN_ENDPOINT } from '@/lib/store/notices';
+import { notify } from '@/lib/store/notify';
 
 export type ModelAuth = TransportAuth;
 
@@ -22,10 +25,22 @@ const promptForSetup = (set: StoreSetter) => {
   set((state) => ({ ui: { ...state.ui, setupOpen: true } }));
 };
 
+/**
+ * A deleted endpoint is not a setup problem the sheet can fix: say so instead of
+ * offering a key field for a provider that is gone.
+ */
+const reportAuthFailure = (error: unknown, set: StoreSetter, get: StoreGetter) => {
+  if (isUnknownEndpointError(error)) {
+    notify(get, NOTICE_UNKNOWN_ENDPOINT);
+    return;
+  }
+  promptForSetup(set);
+};
+
 export const createModelAuthResolver = ({
   modelIndex,
   set,
-  get: _getState,
+  get: getState,
 }: {
   modelIndex: ModelIndex;
   set: StoreSetter;
@@ -42,7 +57,7 @@ export const createModelAuthResolver = ({
       cache.set(modelId, auth);
       return auth;
     } catch (error) {
-      promptForSetup(set);
+      reportAuthFailure(error, set, getState);
       throw error;
     }
   };
@@ -74,7 +89,7 @@ export const resolveSingleModelAuth = ({
   modelId,
   modelIndex,
   set,
-  get: _getState,
+  get: getState,
 }: {
   modelId?: string;
   modelIndex: ModelIndex;
@@ -84,8 +99,8 @@ export const resolveSingleModelAuth = ({
   if (!modelId) return null;
   try {
     return requireModelAuth(modelId, modelIndex);
-  } catch {
-    promptForSetup(set);
+  } catch (error) {
+    reportAuthFailure(error, set, getState);
     return null;
   }
 };

@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { buildChatBody } from '@/lib/openrouter/request';
 import { endpointBodyOptions, endpointWireModelId } from '@/lib/openrouter/endpointBody';
 import { ProviderSort } from '@/lib/models/providerSort';
-import { OPENROUTER_ENDPOINT, type ProviderEndpoint } from '@/lib/transport/endpoints';
+import {
+  buildEndpointModelId,
+  OPENROUTER_ENDPOINT,
+  type ProviderEndpoint,
+} from '@/lib/transport/endpoints';
 
 const localEndpoint: ProviderEndpoint = {
   id: 'lm-studio',
@@ -35,7 +39,7 @@ test('a user endpoint emits only the minimal OpenAI fields by default', () => {
   const body = buildChatBody({
     ...endpointBodyOptions(auth),
     ...fullRequest,
-    model: endpointWireModelId(auth, 'lm-studio/qwen3-8b'),
+    model: endpointWireModelId(auth, 'endpoint:lm-studio/qwen3-8b'),
   });
 
   assert.deepEqual(Object.keys(body).sort(), [
@@ -56,7 +60,7 @@ test('capabilities the user turns on are emitted, and only those', () => {
   const body = buildChatBody({
     ...endpointBodyOptions(auth),
     ...fullRequest,
-    model: endpointWireModelId(auth, 'lm-studio/qwen3-8b'),
+    model: endpointWireModelId(auth, 'endpoint:lm-studio/qwen3-8b'),
   });
 
   assert.ok(body.tools);
@@ -83,4 +87,15 @@ test('the built-in endpoints stay ungated', () => {
   assert.deepEqual(body.provider, { sort: 'price', zdr: true });
   assert.deepEqual(body.plugins, [{ id: 'web' }]);
   assert.equal(body.parallel_tool_calls, true);
+});
+
+test('only the endpoint namespace is stripped, so a model id may carry its own slash', () => {
+  const auth = { endpoint: localEndpoint };
+  const scoped = buildEndpointModelId(localEndpoint.id, 'lmstudio-community/qwen3-8b');
+  assert.equal(endpointWireModelId(auth, scoped), 'lmstudio-community/qwen3-8b');
+  // Another endpoint's namespace is left alone rather than half-stripped.
+  assert.equal(
+    endpointWireModelId(auth, buildEndpointModelId('ollama', 'qwen3-8b')),
+    'endpoint:ollama/qwen3-8b',
+  );
 });
