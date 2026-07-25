@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 
 export function useMediaQuery(query: string): boolean {
-  // Always start with false to match server render and avoid hydration mismatch.
-  const [matches, setMatches] = useState<boolean>(false);
+  // No SSR: the query can be answered before the first paint, so the app never
+  // renders a layout it is about to replace.
+  const [matches, setMatches] = useState<boolean>(() => window.matchMedia(query).matches);
 
   useEffect(() => {
     const media = window.matchMedia(query);

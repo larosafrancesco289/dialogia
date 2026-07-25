@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
@@ -33,10 +32,6 @@ const GlobalNotice = lazyClient(() =>
  * - Keyboard-aware layout
  */
 export function MobileShell() {
-  // HomeClient owns app bootstrap; this shell only needs to know it is hydrated
-  // so the portaled sheets do not render during SSR.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const { chatsSheetOpen, settingsSheetOpen, composerFocused } = useChatStore(
     (s) => ({
       chatsSheetOpen: s.ui.mobile.chatsSheetOpen,
@@ -66,12 +61,10 @@ export function MobileShell() {
       {!composerFocused && <MobileBottomTabBar />}
 
       {/* Full-screen Sheets (portaled) */}
-      {mounted && (
-        <AnimatePresence>
-          {chatsSheetOpen && <MobileChatsSheet />}
-          {settingsSheetOpen && <MobileSettingsSheet />}
-        </AnimatePresence>
-      )}
+      <AnimatePresence>
+        {chatsSheetOpen && <MobileChatsSheet />}
+        {settingsSheetOpen && <MobileSettingsSheet />}
+      </AnimatePresence>
 
       {/* Global Notice */}
       <GlobalNotice />
