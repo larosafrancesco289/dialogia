@@ -10,7 +10,6 @@ import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { getMessagesForChat, setMessagesForChat } from '@/lib/messages/indexing';
 import { createTutorWelcomeMessage } from '@/lib/messages/createMessage';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
-import { getClientTier } from '@/lib/auth/tier.client';
 
 export const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
   if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {
@@ -40,7 +39,7 @@ export async function prepareTutorWelcomeMessage({
   if (!chatId) return undefined;
   const state = get();
   const chat = state.chats.find((entry) => entry.id === chatId);
-  const tutorEnabled = chat ? isTutorRuntimeEnabled(state.ui, chat, getClientTier()) : false;
+  const tutorEnabled = chat ? isTutorRuntimeEnabled(state.ui, chat) : false;
   if (!chat || !tutorEnabled) {
     set((s) => ({
       ui: {

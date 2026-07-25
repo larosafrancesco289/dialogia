@@ -49,11 +49,6 @@ export async function applyLearnerModelFeedbackFromUser({
     });
   }
 
-  // Condition A keeps learner-model operations opaque to the student.
-  if ((state.ui.tutor.studyCondition ?? 'B') === 'A') {
-    return;
-  }
-
   const nodeMeta = plan.nodes.find((n) => n.id === input.nodeId);
   const beforePct = feedback.from != null ? Math.round((feedback.from || 0) * 100) : undefined;
   const afterPct = feedback.to != null ? Math.round((feedback.to || 0) * 100) : undefined;

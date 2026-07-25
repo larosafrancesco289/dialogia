@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { OPENROUTER_FREE_MODEL_ID } from '@/data/freeModels';
-import { isModelAllowedForTier, isTutorForcedForTier } from '@/lib/auth/tierFeatures';
+import { isModelAllowedForTier } from '@/lib/auth/tierFeatures';
 
 test('free tier restricts models to free models', () => {
   // The openrouter/free endpoint should be allowed
@@ -14,9 +14,4 @@ test('free tier restricts models to free models', () => {
 
 test('paid tiers allow all models', () => {
   assert.equal(isModelAllowedForTier('developer', 'provider/paid-model'), true);
-});
-
-test('study tier forces tutor mode', () => {
-  assert.equal(isTutorForcedForTier('study'), true);
-  assert.equal(isTutorForcedForTier('free'), false);
 });

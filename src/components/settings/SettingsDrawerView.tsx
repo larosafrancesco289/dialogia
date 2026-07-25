@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { TAB_LIST, SECTION_TITLES } from '@/components/settings/sections/config';
 import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
 import { AutoSaveToast } from '@/components/settings/AutoSaveToast';
-import { StudySessionSettings } from '@/components/settings/StudySessionSettings';
 import type { SettingsDrawerState } from '@/components/settings/hooks/useSettingsDrawerState';
 
 const staggerContainer = {
@@ -16,7 +15,6 @@ const staggerContainer = {
 };
 
 export function SettingsDrawerView({
-  isStudyTier,
   closing,
   drawerRef,
   tabBarRef,
@@ -32,41 +30,7 @@ export function SettingsDrawerView({
   tabContent,
   closeWithAnim,
   saveStatus,
-  studyCondition,
-  onStudyConditionChange,
-  participantId,
-  setParticipantId,
-  studySessionInfo,
-  telemetryInspector,
-  onStartStudySession,
-  onCopyStudyLog,
-  copyStatus,
-  copyError,
-  onResetForNextParticipant,
-  isResetting,
 }: SettingsDrawerState) {
-  if (isStudyTier) {
-    return (
-      <StudySessionSettings
-        closing={closing}
-        drawerRef={drawerRef}
-        onClose={closeWithAnim}
-        studyCondition={studyCondition}
-        onStudyConditionChange={onStudyConditionChange}
-        participantId={participantId}
-        setParticipantId={setParticipantId}
-        studySessionInfo={studySessionInfo}
-        telemetryInspector={telemetryInspector}
-        onStartStudySession={onStartStudySession}
-        onCopyStudyLog={onCopyStudyLog}
-        copyStatus={copyStatus}
-        copyError={copyError}
-        onResetForNextParticipant={onResetForNextParticipant}
-        isResetting={isResetting}
-      />
-    );
-  }
-
   return (
     <>
       <SettingsDrawerShell

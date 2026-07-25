@@ -10,17 +10,10 @@ import {
   selectMessagesForCurrentChat,
   selectNextOverrides,
 } from '@/lib/store/selectors';
-import { useTier } from '@/lib/auth/tierContext';
 import { useTierTutorModelId } from '@/lib/hooks/useTierModels';
 import { usePlanCallbacks } from '@/lib/hooks/usePlanCallbacks';
 import type { UiPlanSnapshot } from '@/lib/contracts/ui';
-import type {
-  Chat,
-  LearnerModel,
-  LearningPlan,
-  LearningPlanNode,
-  StudyCondition,
-} from '@/lib/types';
+import type { Chat, LearnerModel, LearningPlan, LearningPlanNode } from '@/lib/types';
 import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
 import type { LearnerModelEditCallbacks } from '@/components/plan/PlanSheet';
 
@@ -47,8 +40,6 @@ export type TopHeaderState = {
   experimentalTutor: boolean;
   forceTutorMode: boolean;
   nextTutorMode: boolean;
-  isStudyTier: boolean;
-  studyCondition: StudyCondition;
   hasPlan: boolean;
   learningPlan?: LearningPlan;
   planProgress: PlanProgress | null;
@@ -79,8 +70,6 @@ export type TopHeaderState = {
 } & LearnerModelEditCallbacks;
 
 export function useTopHeaderState(): TopHeaderState {
-  const { isStudyTier } = useTier();
-
   const {
     chat,
     ensureChatMessagesLoaded,
@@ -260,7 +249,6 @@ export function useTopHeaderState(): TopHeaderState {
     experimentalTutor,
     forceTutorMode,
     nextTutorMode,
-    isStudyTier,
     currentNode,
     currentTopicName,
     topicProgress,

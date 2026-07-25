@@ -15,8 +15,6 @@ import { LearnerModelUpdates } from '@/components/message/LearnerModelUpdates';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
-import { useChatStore } from '@/lib/store';
-import { selectStudyCondition } from '@/lib/store/selectors';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import styles from './MessageCard.module.css';
 
@@ -118,8 +116,6 @@ export function AssistantMessage({
   tutorPanelNode,
   citationSources,
 }: AssistantMessageProps) {
-  const studyCondition = useChatStore(selectStudyCondition);
-
   const normalizeSummaryText = (value: string) => value.trim().replace(/\s+/g, ' ');
 
   const displayContent = useMemo(() => {
@@ -134,11 +130,10 @@ export function AssistantMessage({
   }, [citationSources, message.annotations]);
 
   const shouldHideDuplicateSummaryContent = useMemo(() => {
-    if (studyCondition === 'A') return false;
     const summary = message.planUpdates?.summary;
     if (!summary || !displayContent) return false;
     return normalizeSummaryText(displayContent) === normalizeSummaryText(summary);
-  }, [displayContent, message.planUpdates?.summary, studyCondition]);
+  }, [displayContent, message.planUpdates?.summary]);
 
   let messageBody: ReactNode = null;
   if (isEditing) {
@@ -297,9 +292,7 @@ export function AssistantMessage({
       {!isStreaming && tutorPanelNode}
 
       {/* Learner Model Updates */}
-      {!isEditing && !isStreaming && studyCondition !== 'A' && (
-        <LearnerModelUpdates message={message} />
-      )}
+      {!isEditing && !isStreaming && <LearnerModelUpdates message={message} />}
 
       <StatsToggle
         showStats={showStats}

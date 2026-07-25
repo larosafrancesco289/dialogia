@@ -49,19 +49,3 @@ export const MessageSourceEnum = {
 } as const;
 
 export type MessageSource = (typeof MessageSourceEnum)[keyof typeof MessageSourceEnum];
-
-export const TutorResearchModeEnum = {
-  BaselineChat: 'baseline_chat',
-  PlanOnly: 'plan_only',
-  ModelOnly: 'model_only',
-  PlanPlusModel: 'plan_plus_model',
-} as const;
-
-export type TutorResearchMode = (typeof TutorResearchModeEnum)[keyof typeof TutorResearchModeEnum];
-
-export const StudyConditionEnum = {
-  A: 'A',
-  B: 'B',
-} as const;
-
-export type StudyCondition = (typeof StudyConditionEnum)[keyof typeof StudyConditionEnum];

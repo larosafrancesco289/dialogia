@@ -14,17 +14,8 @@ import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { adjustActiveTurnCount } from '@/lib/ui/streaming';
 
 export async function regenerate(opts: RegenerateOptions): Promise<void> {
-  const {
-    chat,
-    chatId,
-    targetMessageId,
-    messages,
-    turn,
-    controller,
-    overrideModelId,
-    tier,
-    pipeline,
-  } = opts;
+  const { chat, chatId, targetMessageId, messages, turn, controller, overrideModelId, pipeline } =
+    opts;
   const { models, modelIndex, set } = turn;
 
   const index = messages.findIndex((msg) => msg.id === targetMessageId);
@@ -205,7 +196,6 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     ui: { ...uiSnapshot, overrides: undefined },
     modelIndex,
     modelId: modelIdForTurn,
-    tier,
   });
   settings.generation.providerSort = providerSort;
 

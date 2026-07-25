@@ -1,6 +1,6 @@
 import type { ProviderSort } from '@/lib/models/providerSort';
 import type { LearningPlan } from '@/lib/types/learningPlan';
-import type { LearnerModel, TutorResearchMode, TutorToolBudget } from '@/lib/types/tutor';
+import type { LearnerModel, TutorToolBudget } from '@/lib/types/tutor';
 import type { ReasoningEffort, SearchProvider } from '@/lib/types/enums';
 export type { ReasoningEffort, SearchProvider } from '@/lib/types/enums';
 export { ReasoningEffortEnum, SearchProviderEnum } from '@/lib/types/enums';
@@ -29,7 +29,6 @@ export type ChatSearchSettings = {
 export type TutorSettings = {
   enabled: boolean;
   defaultModelId?: string;
-  researchMode?: TutorResearchMode;
   toolBudget?: TutorToolBudget;
   learningPlan?: LearningPlan;
   planGenerated?: boolean;

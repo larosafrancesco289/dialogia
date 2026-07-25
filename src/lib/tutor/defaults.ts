@@ -47,11 +47,6 @@ export function applyTutorDefaults({ ui, chat, fallbackDefaultModelId }: ApplyTu
     changed = true;
   }
 
-  if (!next.features.tutor.researchMode) {
-    next.features.tutor.researchMode = 'plan_plus_model';
-    changed = true;
-  }
-
   if (next.features.tutor.enableLearnerModel !== true) {
     next.features.tutor.enableLearnerModel = true;
     changed = true;

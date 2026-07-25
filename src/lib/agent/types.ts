@@ -12,7 +12,6 @@ import type { SearchResult } from '@/lib/search/types';
 import type { Result } from '@/lib/utils/result';
 import type { ModelIndex } from '@/lib/models';
 import { ProviderSort } from '@/lib/models/providerSort';
-import type { AccessTier } from '@/lib/auth/types';
 import type { TransportAuth } from '@/lib/auth/transport';
 import type { TurnStoreState } from '@/lib/agent/contracts';
 import type {
@@ -161,7 +160,6 @@ export type RegenerateOptions = {
   turn: TurnContext;
   controller: AbortController;
   overrideModelId?: string;
-  tier: AccessTier;
   pipeline?: PipelineClient;
 };
 

@@ -45,7 +45,6 @@ const migrateUiToNested = (ui: Record<string, unknown>): Record<string, unknown>
   });
   const tutor = compactRecord({
     contextMode: readString(baseTutor?.contextMode) ?? readString(base.tutorContextMode),
-    researchMode: readString(baseTutor?.researchMode) ?? readString(base.tutorResearchMode),
     defaultModelId: readString(baseTutor?.defaultModelId) ?? readString(base.tutorDefaultModelId),
     forceMode: readBoolean(baseTutor?.forceMode) ?? readBoolean(base.forceTutorMode),
   });
@@ -85,11 +84,21 @@ export const migrateToV4 = (state: PersistedState): PersistedState => {
 // V5 and V6 are no-ops — the version bumps invalidate stale caches
 // (chatDefaults was introduced as a persisted field at v6).
 
+// V7 drops the research-study fields that left main with the dissertation apparatus.
+export const migrateToV7 = (state: PersistedState): PersistedState => {
+  if (!isRecord(state.ui) || !isRecord(state.ui.tutor)) return state;
+  const tutor = { ...state.ui.tutor };
+  delete tutor['researchMode'];
+  delete tutor['studyCondition'];
+  return { ...state, ui: { ...state.ui, tutor } };
+};
+
 export const migrate = (persistedState: unknown, version = 0): PersistedStoreState => {
   if (!isRecord(persistedState)) return {} as PersistedStoreState;
   let state: PersistedState = persistedState;
   if (version < 2) state = migrateToV2(state);
   if (version < 3) state = migrateToV3(state);
   if (version < 4) state = migrateToV4(state);
+  if (version < 7) state = migrateToV7(state);
   return state as PersistedStoreState;
 };

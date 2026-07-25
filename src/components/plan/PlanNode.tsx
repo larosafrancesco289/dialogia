@@ -31,7 +31,6 @@ export function PlanNode({
   onConfidenceAdjust,
   onMisconceptionResolve,
   onFlagForReview,
-  onInteraction,
   prerequisites,
 }: {
   node: LearningPlanNode;
@@ -47,10 +46,6 @@ export function PlanNode({
   onConfidenceAdjust?: (nodeId: string, newConfidence: number, reason?: string) => void;
   onMisconceptionResolve?: (nodeId: string, misconceptionId: string) => void;
   onFlagForReview?: (nodeId: string) => void;
-  onInteraction?: (
-    nodeId: string,
-    interaction: 'confidence_adjust' | 'mark_known' | 'misconception_resolve' | 'flag_for_review',
-  ) => void;
   prerequisites: LearningPlanNode[];
 }) {
   const [pendingAction, setPendingAction] = useState<EditConfirmAction | null>(null);
@@ -76,10 +71,9 @@ export function PlanNode({
   const handleMarkKnown = useCallback(() => {
     setPendingAction({ type: 'mark_known', nodeId: node.id, nodeName: node.name });
     setPendingCallback(() => () => {
-      onInteraction?.(node.id, 'mark_known');
       onMarkKnown?.(node.id);
     });
-  }, [node.id, node.name, onInteraction, onMarkKnown]);
+  }, [node.id, node.name, onMarkKnown]);
 
   const handleSliderCommit = useCallback(
     (value: number) => {
@@ -92,11 +86,10 @@ export function PlanNode({
         to: newConf,
       });
       setPendingCallback(() => () => {
-        onInteraction?.(node.id, 'confidence_adjust');
         onConfidenceAdjust?.(node.id, newConf, `Adjusted to ${value}%`);
       });
     },
-    [node.id, node.name, mastery?.confidence, onConfidenceAdjust, onInteraction],
+    [node.id, node.name, mastery?.confidence, onConfidenceAdjust],
   );
 
   const commitSliderIfChanged = useCallback(() => {
@@ -114,20 +107,18 @@ export function PlanNode({
         misconceptionDesc: miscDesc,
       });
       setPendingCallback(() => () => {
-        onInteraction?.(node.id, 'misconception_resolve');
         onMisconceptionResolve?.(node.id, miscId);
       });
     },
-    [node.id, node.name, onInteraction, onMisconceptionResolve],
+    [node.id, node.name, onMisconceptionResolve],
   );
 
   const handleFlagForReview = useCallback(() => {
     setPendingAction({ type: 'flag_review', nodeId: node.id, nodeName: node.name });
     setPendingCallback(() => () => {
-      onInteraction?.(node.id, 'flag_for_review');
       onFlagForReview?.(node.id);
     });
-  }, [node.id, node.name, onFlagForReview, onInteraction]);
+  }, [node.id, node.name, onFlagForReview]);
 
   function getDotClass(): string {
     if (node.status === 'in_progress') return 'plan-index-dot--act';

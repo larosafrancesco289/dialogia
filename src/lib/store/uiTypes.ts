@@ -51,15 +51,7 @@ export type PersistedUiState = {
   chatDefaults?: ChatDefaults;
   flags?: Pick<UIFlags, 'experimentalTutor'>;
   debug?: Pick<UIDebugState, 'mode'>;
-  tutor?: Pick<
-    UITutorState,
-    | 'contextMode'
-    | 'researchMode'
-    | 'defaultModelId'
-    | 'forceMode'
-    | 'studyCondition'
-    | 'autoScroll'
-  >;
+  tutor?: Pick<UITutorState, 'contextMode' | 'defaultModelId' | 'forceMode' | 'autoScroll'>;
   plan?: Pick<UIPlanState, 'rightPanelOpen'>;
 };
 

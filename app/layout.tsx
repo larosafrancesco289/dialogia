@@ -5,7 +5,6 @@ import type { Metadata } from 'next';
 import { injectThemeClass } from '@/lib/html';
 import { Newsreader, Plus_Jakarta_Sans } from 'next/font/google';
 import { TierProvider } from '@/lib/auth/tierContext';
-import { StudyProvider } from '@/lib/study/StudyProvider';
 import { Analytics } from '@vercel/analytics/next';
 
 const newsreader = Newsreader({
@@ -46,9 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       </head>
       <body>
-        <TierProvider>
-          <StudyProvider>{children}</StudyProvider>
-        </TierProvider>
+        <TierProvider>{children}</TierProvider>
         <Analytics />
       </body>
     </html>

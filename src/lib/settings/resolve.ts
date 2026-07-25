@@ -13,7 +13,6 @@ import {
   getDefaultReasoningEffort,
   resolveDynamicModelId,
 } from '@/lib/models';
-import type { AccessTier } from '@/lib/auth/types';
 import { selectSearchProvider } from '@/lib/policy/provider';
 import { readNextOverrides } from '@/lib/ui/next';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
@@ -119,9 +118,8 @@ export function resolveTurnSettings(args: {
   ui: UiSnapshot;
   modelIndex: ModelIndex;
   modelId?: string;
-  tier?: AccessTier;
 }): ResolvedTurnSettings {
-  const { chat, ui, modelIndex, modelId, tier } = args;
+  const { chat, ui, modelIndex, modelId } = args;
   const overrides = readNextOverrides(ui);
   // Safety net: dynamic default aliases must never reach the request layer.
   const resolvedModelId = resolveDynamicModelId(
@@ -190,7 +188,7 @@ export function resolveTurnSettings(args: {
             },
           },
         };
-  const tutorEnabled = isTutorRuntimeEnabled(ui, policyChat, tier);
+  const tutorEnabled = isTutorRuntimeEnabled(ui, policyChat);
 
   const generation: GenerationSettings = {
     maxTokens,

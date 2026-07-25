@@ -45,17 +45,16 @@ const baseChat = (tutorMode: boolean): Chat => ({
   },
 });
 
-test('study tier forces tutor mode even when globally disabled', () => {
-  const ui = baseUi({ flags: { experimentalTutor: false } });
-  const chat = baseChat(false);
-  assert.equal(isTutorRuntimeEnabled(ui, chat, 'study'), true);
-});
-
-test('non-study tiers respect global tutor flag', () => {
+test('tutor runtime respects the global tutor flag', () => {
   const uiDisabled = baseUi({ flags: { experimentalTutor: false } });
   const chatEnabled = baseChat(true);
-  assert.equal(isTutorRuntimeEnabled(uiDisabled, chatEnabled, 'free'), false);
+  assert.equal(isTutorRuntimeEnabled(uiDisabled, chatEnabled), false);
 
   const uiEnabled = baseUi({ flags: { experimentalTutor: true } });
-  assert.equal(isTutorRuntimeEnabled(uiEnabled, chatEnabled, 'free'), true);
+  assert.equal(isTutorRuntimeEnabled(uiEnabled, chatEnabled), true);
+});
+
+test('tutor runtime stays off when the chat has tutor disabled', () => {
+  const ui = baseUi({ flags: { experimentalTutor: true } });
+  assert.equal(isTutorRuntimeEnabled(ui, baseChat(false)), false);
 });

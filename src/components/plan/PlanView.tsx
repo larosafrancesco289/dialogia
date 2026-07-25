@@ -1,16 +1,12 @@
 'use client';
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { LearningPlan, LearnerModel, LearningPlanNode } from '@/lib/types';
 import { isNodeReady, getAllPrerequisites, getNextNode } from '@/lib/learning-plan/service';
 import { PlanNode } from './PlanNode';
-import { logAction } from '@/lib/study';
-import {
-  classifyPlanInspectionDepth,
-  shouldLogPlanInspection,
-  type PlanNodeSection,
-} from '@/lib/study/planTelemetry';
 
 type SortMode = 'plan' | 'attention';
+
+type PlanNodeSection = 'in_progress' | 'up_next' | 'completed' | 'locked';
 
 type Section = {
   key: PlanNodeSection;
@@ -46,13 +42,6 @@ export function PlanView({
   onMisconceptionResolve?: (nodeId: string, misconceptionId: string) => void;
   onFlagForReview?: (nodeId: string) => void;
 }) {
-  const expandedInspectionRef = useRef<{
-    nodeId: string;
-    nodeName: string;
-    section: PlanNodeSection;
-    openedAt: number;
-    interactionCount: number;
-  } | null>(null);
   const uiLearnerModel = learnerModelVisible ? learnerModel : undefined;
 
   // Auto-expand the current recommended topic (in-progress when available, otherwise next ready).
@@ -69,57 +58,6 @@ export function PlanView({
 
   const handleToggle = useCallback((nodeId: string) => {
     setExpandedId((prev) => (prev === nodeId ? null : nodeId));
-  }, []);
-
-  const nodeSectionById = useMemo(() => {
-    const map = new Map<string, PlanNodeSection>();
-    for (const node of plan.nodes) {
-      const section: PlanNodeSection =
-        node.status === 'in_progress'
-          ? 'in_progress'
-          : node.status === 'completed'
-            ? 'completed'
-            : isNodeReady(node.id, plan)
-              ? 'up_next'
-              : 'locked';
-      map.set(node.id, section);
-    }
-    return map;
-  }, [plan]);
-
-  const closeNodeInspection = useCallback(() => {
-    const current = expandedInspectionRef.current;
-    if (!current) return;
-    const dwellMs = Math.max(0, Date.now() - current.openedAt);
-    const interactionCount = current.interactionCount;
-    const depth = classifyPlanInspectionDepth({ dwellMs, interactionCount });
-
-    logAction('plan_node_closed', {
-      nodeId: current.nodeId,
-      nodeName: current.nodeName,
-      section: current.section,
-      dwellMs,
-      interactionCount,
-      depth,
-    });
-
-    if (shouldLogPlanInspection({ dwellMs, interactionCount })) {
-      logAction('plan_node_inspected', {
-        nodeId: current.nodeId,
-        nodeName: current.nodeName,
-        section: current.section,
-        dwellMs,
-        interactionCount,
-        depth,
-      });
-    }
-    expandedInspectionRef.current = null;
-  }, []);
-
-  const registerNodeInteraction = useCallback((nodeId: string) => {
-    const current = expandedInspectionRef.current;
-    if (!current || current.nodeId !== nodeId) return;
-    current.interactionCount += 1;
   }, []);
 
   // Classify nodes into sections
@@ -141,7 +79,6 @@ export function PlanView({
       }
     }
 
-    // Apply attention sort for non-locked nodes in Condition B
     if (sortMode === 'attention' && uiLearnerModel) {
       const byMastery = (a: LearningPlanNode, b: LearningPlanNode) => {
         const confA = uiLearnerModel.mastery?.[a.id]?.confidence ?? 0;
@@ -162,49 +99,9 @@ export function PlanView({
     return result;
   }, [plan, sortMode, uiLearnerModel]);
 
-  useEffect(() => {
-    const current = expandedInspectionRef.current;
-    if (current && current.nodeId !== expandedId) {
-      closeNodeInspection();
-    }
-
-    if (!expandedId) return;
-    if (expandedInspectionRef.current?.nodeId === expandedId) return;
-
-    const node = plan.nodes.find((entry) => entry.id === expandedId);
-    if (!node) return;
-    const section = nodeSectionById.get(node.id) ?? 'unknown';
-    expandedInspectionRef.current = {
-      nodeId: node.id,
-      nodeName: node.name,
-      section,
-      openedAt: Date.now(),
-      interactionCount: 0,
-    };
-    logAction('plan_node_opened', {
-      nodeId: node.id,
-      nodeName: node.name,
-      section,
-      interactionCount: 0,
-      depth: 'scan',
-    });
-  }, [closeNodeInspection, expandedId, nodeSectionById, plan.nodes]);
-
-  useEffect(
-    () => () => {
-      closeNodeInspection();
-    },
-    [closeNodeInspection],
-  );
-
   const handleSortModeChange = useCallback(
     (next: SortMode) => {
       if (next === sortMode) return;
-      logAction('plan_sort_changed', {
-        from: sortMode,
-        to: next,
-        source: 'plan_sort_toggle',
-      });
       setSortMode(next);
     },
     [sortMode],
@@ -212,7 +109,7 @@ export function PlanView({
 
   return (
     <div className="plan-index">
-      {/* Sort toggle (Condition B only) */}
+      {/* Sort toggle */}
       {learnerModelVisible && uiLearnerModel && (
         <div className="plan-sort-row">
           <span className="plan-sort-row__label">Sort</span>
@@ -260,7 +157,6 @@ export function PlanView({
                 onConfidenceAdjust={onConfidenceAdjust}
                 onMisconceptionResolve={onMisconceptionResolve}
                 onFlagForReview={onFlagForReview}
-                onInteraction={registerNodeInteraction}
                 prerequisites={prerequisites}
               />
             );

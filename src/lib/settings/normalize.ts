@@ -8,11 +8,7 @@ import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 import { applyTutorDefaults } from '@/lib/tutor/defaults';
 import { ChatSettingsSchema } from '@/lib/schemas/persisted';
 import { asNumber, asStringArray, isRecord } from '@/lib/utils/guards';
-import {
-  ReasoningEffortEnum,
-  TutorResearchModeEnum,
-  type ReasoningEffort,
-} from '@/lib/types/enums';
+import { ReasoningEffortEnum, type ReasoningEffort } from '@/lib/types/enums';
 import { ProviderSort } from '@/lib/models/providerSort';
 
 type NormalizeChatSettingsOptions = {
@@ -100,13 +96,6 @@ export function normalizeChatSettings(
         enabled: typeof tutorRecord.enabled === 'boolean' ? tutorRecord.enabled : false,
         defaultModelId:
           typeof tutorRecord.defaultModelId === 'string' ? tutorRecord.defaultModelId : undefined,
-        researchMode:
-          typeof tutorRecord.researchMode === 'string' &&
-          Object.values(TutorResearchModeEnum).includes(
-            tutorRecord.researchMode as (typeof TutorResearchModeEnum)[keyof typeof TutorResearchModeEnum],
-          )
-            ? (tutorRecord.researchMode as ChatSettings['features']['tutor']['researchMode'])
-            : undefined,
         toolBudget: normalizeTutorToolBudget(tutorRecord.toolBudget),
         learningPlan: isRecord(tutorRecord.learningPlan)
           ? (tutorRecord.learningPlan as ChatSettings['features']['tutor']['learningPlan'])

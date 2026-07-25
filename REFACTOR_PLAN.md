@@ -223,7 +223,7 @@ export type ToolKind = 'action' | 'content' | 'meta';
 // 'action': ordinary tool (web_search, web_fetch)
 
 export type ToolMetadata = {
-  module: string;               // 'core' | 'tutor' | future module ids
+  module: string; // 'core' | 'tutor' | future module ids
   kind: ToolKind;
   ext?: Record<string, unknown>; // module-private metadata (tutor: phases, priorityGroup, tags)
 };
@@ -268,11 +268,11 @@ moves there verbatim). `ScheduleContext.phase/hasPlan/hasActiveNode` disappear f
 
 ```ts
 export type ToolGate = {
-  isAllowed(name: string): boolean;     // per-turn allowlist
+  isAllowed(name: string): boolean; // per-turn allowlist
   onBudgetExceeded?(name: string): 'skip' | 'stop';
 };
 export type PlanningContext = {
-  toolDefinitions: ToolDefinition[];    // already-gated list sent to the model
+  toolDefinitions: ToolDefinition[]; // already-gated list sent to the model
   gate: ToolGate;
   moduleContext?: Record<string, unknown>; // opaque per-module turn state
 };
@@ -292,11 +292,13 @@ means deleting its directory and its line here:
 // src/lib/modules.ts (or src/modules/index.ts)
 export type AppModule = {
   id: string;
-  registerTools?(): void;                    // calls registerTool(...)
-  storeSlice?: SliceCreator;                 // see Design B
-  persistFragment?: PersistFragment;         // see Design B
+  registerTools?(): void; // calls registerTool(...)
+  storeSlice?: SliceCreator; // see Design B
+  persistFragment?: PersistFragment; // see Design B
   // UI mounts are typed slots resolved by the shell:
-  panels?: Partial<Record<'rightPanel' | 'messagePanel' | 'headerControls' | 'settingsSection', ComponentType>>;
+  panels?: Partial<
+    Record<'rightPanel' | 'messagePanel' | 'headerControls' | 'settingsSection', ComponentType>
+  >;
 };
 export const ENABLED_MODULES: AppModule[] = [coreModule, tutorModule];
 ```
@@ -310,7 +312,9 @@ tutor directory leaves the app compiling, chatting, and passing non-tutor tests.
 `src/lib/store/index.ts` moves to `src/lib/store/createStore.ts`:
 
 ```ts
-export function buildStoreInitializer(modules: AppModule[] = ENABLED_MODULES): StateCreator<StoreState>;
+export function buildStoreInitializer(
+  modules: AppModule[] = ENABLED_MODULES,
+): StateCreator<StoreState>;
 ```
 
 `index.ts` keeps only `createWithEqualityFn(persist(buildStoreInitializer(), {...}))`. The test
@@ -345,7 +349,7 @@ blob through the new merge.
 ### Design C — Provider endpoints (Stage 3)
 
 Replaces the closed `ModelTransport = 'openrouter' | 'anthropic'` union. Two-level split: a
-closed set of transport *implementations*, an open set of user-configured *endpoints*.
+closed set of transport _implementations_, an open set of user-configured _endpoints_.
 
 ```ts
 // src/lib/transport/endpoints.ts
@@ -354,19 +358,19 @@ export type TransportKind = 'openrouter' | 'anthropic' | 'openai-compatible';
 export type EndpointCapabilities = {
   tools?: boolean;
   vision?: boolean;
-  reasoning?: boolean;          // emit reasoning params
-  streamUsage?: boolean;        // stream_options.include_usage
+  reasoning?: boolean; // emit reasoning params
+  streamUsage?: boolean; // stream_options.include_usage
   parallelToolCalls?: boolean;
-  promptCaching?: boolean;      // emit cache_control blocks
+  promptCaching?: boolean; // emit cache_control blocks
 };
 
 export type ProviderEndpoint = {
-  id: string;                   // 'openrouter' | 'anthropic' | slug for user-added
+  id: string; // 'openrouter' | 'anthropic' | slug for user-added
   kind: TransportKind;
-  label: string;                // "OpenRouter", "LM Studio", ...
-  baseUrl?: string;             // required for openai-compatible; built-ins use defaults
-  apiKeyRef?: string;           // reference into the key store, never the key itself
-  useProxy?: boolean;           // hosted build only
+  label: string; // "OpenRouter", "LM Studio", ...
+  baseUrl?: string; // required for openai-compatible; built-ins use defaults
+  apiKeyRef?: string; // reference into the key store, never the key itself
+  useProxy?: boolean; // hosted build only
   capabilities?: EndpointCapabilities; // explicit, no regex inference, for user-added endpoints
 };
 ```
@@ -386,7 +390,7 @@ export type ProviderEndpoint = {
   present and non-deletable. Keys live in an IndexedDB-backed key store
   (`src/lib/keys/store.ts`: `getKey/setKey/deleteKey` by `apiKeyRef`), excluded from
   `exportAll`/`importAll`.
-- Capability gating is *authoritative* for user-added endpoints: no name-regex inference
+- Capability gating is _authoritative_ for user-added endpoints: no name-regex inference
   (`isVisionSupported`-style heuristics apply only to metadata-rich built-ins). Ungated fields
   are never emitted; degraded features surface a notice, never silence.
 
@@ -402,9 +406,9 @@ Two distinct mechanisms, kept distinct on purpose:
 ```ts
 // src/lib/search/providers/types.ts
 export type SearchProvider = {
-  id: string;                   // 'tavily', later 'exa', ...
+  id: string; // 'tavily', later 'exa', ...
   label: string;
-  requiresKey: boolean;         // key comes from the same key store as Design C
+  requiresKey: boolean; // key comes from the same key store as Design C
   search(args: NormalizedSearchArgs, ctx: SearchContext): Promise<SearchOutcome>;
   fetchPage?(args: NormalizedFetchArgs, ctx: SearchContext): Promise<FetchOutcome>; // optional
 };
@@ -422,13 +426,15 @@ always, and tool-based search when a configured provider has a key. The existing
 The designs above plus these rules are what makes unattended execution safe.
 
 **Defaults (apply without asking):**
+
 - Prefer deleting dead code over preserving it; prefer the smallest interface that satisfies the
   design; prefer optional fields over new required ones.
-- When a plan detail and code reality disagree, follow the design's *intent*, adapt, and log the
+- When a plan detail and code reality disagree, follow the design's _intent_, adapt, and log the
   deviation in the stage report.
 - When a library/tool choice is unspecified, pick the boring mainstream option.
 
 **Hard stops (halt the stage and ask the owner):**
+
 - Anything that could lose user data: IndexedDB schema changes without a migration, persisted-key
   renames, destructive git operations.
 - Changing a Baked Design's public interface (names/shapes above), not just its internals.

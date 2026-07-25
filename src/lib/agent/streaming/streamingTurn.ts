@@ -1,5 +1,5 @@
 // Module: agent/streaming/streamingTurn
-// Responsibility: Unified streaming with inline tool execution for tutor/study mode.
+// Responsibility: Unified streaming with inline tool execution for tutor mode.
 // Replaces the two-phase plan+stream approach with a single streaming call.
 
 import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';

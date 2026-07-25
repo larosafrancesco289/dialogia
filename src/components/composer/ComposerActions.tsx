@@ -13,7 +13,6 @@ import {
 } from '@heroicons/react/24/solid';
 import { Lightbulb as LucideLightbulb, LightbulbOff as LucideLightbulbOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useIsStudyTier } from '@/lib/auth/tierContext';
 import { springs } from '@/lib/mobile/springConfig';
 import type { Effort } from '@/components/composer/ComposerMobileMenu';
 
@@ -251,8 +250,6 @@ export function ComposerActions({
   const reasoningButtonRef = useRef<HTMLButtonElement | null>(null);
   const reasoningMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const isStudyTier = useIsStudyTier();
-
   useEffect(() => {
     if (!reasoningOpen) return;
     const handlePointerDown = (event: PointerEvent) => {
@@ -305,21 +302,17 @@ export function ComposerActions({
         <PaperClipIcon className="h-4 w-4" />
       </button>
 
-      {!isStudyTier && (
-        <button
-          className={`composer-btn-search ${searchEnabled ? 'is-active' : ''}`}
-          aria-pressed={searchEnabled}
-          aria-label="Web search"
-          title={
-            searchEnabled
-              ? `Web search: on (${providerLabel})`
-              : `Web search: off (${providerLabel})`
-          }
-          onClick={toggleSearch}
-        >
-          <SearchGlobeIcon enabled={searchEnabled} size={16} />
-        </button>
-      )}
+      <button
+        className={`composer-btn-search ${searchEnabled ? 'is-active' : ''}`}
+        aria-pressed={searchEnabled}
+        aria-label="Web search"
+        title={
+          searchEnabled ? `Web search: on (${providerLabel})` : `Web search: off (${providerLabel})`
+        }
+        onClick={toggleSearch}
+      >
+        <SearchGlobeIcon enabled={searchEnabled} size={16} />
+      </button>
 
       {showReasoningMenu && (
         <div className="relative">

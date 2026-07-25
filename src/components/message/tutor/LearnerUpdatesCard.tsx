@@ -3,7 +3,6 @@ import { SparklesIcon } from '@heroicons/react/24/outline';
 import type { TutorLearnerModelUpdate } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
 import { safeKey } from '@/components/message/tutor/shared';
-import { logAction } from '@/lib/study';
 
 export function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpdate[] }) {
   const plan = useChatStore((s) => {
@@ -24,14 +23,7 @@ export function LearnerUpdatesCard({ updates }: { updates: TutorLearnerModelUpda
         </div>
         <button
           className="text-xs text-accent hover:underline font-medium"
-          onClick={() => {
-            logAction('learner_model_viewed', {
-              source: 'tutor_learner_updates',
-              tab: 'progress',
-              manual: true,
-            });
-            setUI({ plan: { rightPanelOpen: true, rightPanelTab: 'progress' } });
-          }}
+          onClick={() => setUI({ plan: { rightPanelOpen: true, rightPanelTab: 'progress' } })}
         >
           View Learning Hub
         </button>

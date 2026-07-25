@@ -10,8 +10,6 @@ import {
 } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { useIsStudyTier } from '@/lib/auth/tierContext';
-import type { StudyCondition } from '@/lib/types';
 import type { ModelSearchHandle } from '@/components/ModelSearch';
 import type { SectionId, TabId } from '@/components/settings/types';
 import { useSettingsFormState } from '@/components/settings/hooks/useSettingsFormState';
@@ -20,12 +18,6 @@ import {
   useSettingsAutoSave,
   type SettingsAutoSaveState,
 } from '@/components/settings/hooks/useSettingsAutoSave';
-import {
-  useStudySessionControls,
-  type StudySessionInfo,
-  type StudyTelemetryInspector,
-  type CopyStatus,
-} from '@/components/settings/hooks/useStudySessionControls';
 import { ModelsPanel } from '@/components/settings/sections/ModelsPanel';
 import { ChatPanel } from '@/components/settings/sections/ChatPanel';
 import { TutorPanel } from '@/components/settings/sections/TutorPanel';
@@ -35,7 +27,6 @@ import { NOTICE_EXPORTED_CHATS, NOTICE_IMPORTED_DATA } from '@/lib/store/notices
 import { buildChatExport, importChatExport } from '@/lib/settings/transfer';
 
 export type SettingsDrawerState = {
-  isStudyTier: boolean;
   closing: boolean;
   drawerRef: RefObject<HTMLDivElement>;
   tabBarRef: RefObject<HTMLDivElement>;
@@ -51,24 +42,9 @@ export type SettingsDrawerState = {
   tabContent: ReactNode;
   closeWithAnim: () => void;
   saveStatus: SettingsAutoSaveState['saveStatus'];
-  studyCondition: StudyCondition;
-  onStudyConditionChange: (c: StudyCondition) => void;
-  participantId: string;
-  setParticipantId: (id: string) => void;
-  studySessionInfo: StudySessionInfo;
-  telemetryInspector: StudyTelemetryInspector;
-  onStartStudySession: () => void;
-  onCopyStudyLog: () => void;
-  copyStatus: CopyStatus;
-  copyError?: string;
-  onResetForNextParticipant: () => void;
-  isResetting: boolean;
 };
 
-export type { StudySessionInfo };
-
 export function useSettingsDrawerState(): SettingsDrawerState {
-  const isStudyTier = useIsStudyTier();
   const [closing, setClosing] = useState(false);
 
   const {
@@ -145,21 +121,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
   const modelSearchRef = useRef<ModelSearchHandle | null>(null);
 
   const experimentalTutor = useChatStore((s) => !!s.ui.flags.experimentalTutor);
-  const {
-    studyCondition,
-    onStudyConditionChange,
-    participantId,
-    setParticipantId,
-    studySessionInfo,
-    telemetryInspector,
-    onStartStudySession,
-    onCopyStudyLog,
-    copyStatus,
-    copyError,
-    onResetForNextParticipant,
-    isResetting,
-  } = useStudySessionControls();
-
   const { saveStatus, markDirty, createAutoSaveSetter, flushPendingSave } = useSettingsAutoSave({
     setUI,
     system,
@@ -323,7 +284,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
   })();
 
   return {
-    isStudyTier,
     closing,
     drawerRef,
     tabBarRef,
@@ -339,17 +299,5 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     tabContent,
     closeWithAnim,
     saveStatus,
-    studyCondition,
-    onStudyConditionChange,
-    participantId,
-    setParticipantId,
-    studySessionInfo,
-    telemetryInspector,
-    onStartStudySession,
-    onCopyStudyLog,
-    copyStatus,
-    copyError,
-    onResetForNextParticipant,
-    isResetting,
   };
 }

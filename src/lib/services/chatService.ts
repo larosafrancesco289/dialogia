@@ -9,7 +9,7 @@ import type { UIState } from '@/lib/store/types';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { resolveNewChatSettings } from '@/lib/settings/resolve';
 import type { AccessTier } from '@/lib/auth/types';
-import { getDefaultModelIdForTier, isTutorForcedForTier } from '@/lib/auth/tierFeatures';
+import { getDefaultModelIdForTier } from '@/lib/auth/tierFeatures';
 import { ensureHiddenTutorContent } from '@/lib/services/messagePersistence';
 
 export class ChatService {
@@ -40,7 +40,7 @@ export class ChatService {
       : lastNonTutorModel;
 
     const tutorEnabledGlobally = !!ui.flags.experimentalTutor;
-    const forceTutorMode = isTutorForcedForTier(tier) || !!(ui.tutor.forceMode ?? false);
+    const forceTutorMode = !!(ui.tutor.forceMode ?? false);
 
     const settings = resolveNewChatSettings({
       ui,

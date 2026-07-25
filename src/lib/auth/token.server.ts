@@ -8,7 +8,6 @@ import {
   getAuthCookieSecret,
   getDeveloperCodeHashes,
   getIndividualCodeHashes,
-  getStudyCodeHashes,
   hasTieredCodesConfigured,
 } from '@/lib/env/server';
 import type { AccessTier, AuthClaims, CodeType } from './types';
@@ -20,7 +19,6 @@ export {
   getAuthCookieSecret,
   getDeveloperCodeHashes,
   getIndividualCodeHashes,
-  getStudyCodeHashes,
   hasTieredCodesConfigured,
 };
 

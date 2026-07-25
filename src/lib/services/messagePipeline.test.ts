@@ -440,7 +440,6 @@ test('regenerate reuses snapshots and records debug payload', async () => {
     messages: [userMessage, assistantMessage],
     turn: regenerateTurn,
     controller: new AbortController(),
-    tier: 'free',
     pipeline,
   });
 

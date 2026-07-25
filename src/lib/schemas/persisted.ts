@@ -7,7 +7,6 @@ import {
   SearchProviderEnum,
   ToolCallCategoryEnum,
   ToolCallStatusEnum,
-  TutorResearchModeEnum,
 } from '@/lib/types/enums';
 import { LearningPlanSchema } from '@/lib/schemas/learningPlan';
 import type {
@@ -63,7 +62,6 @@ export const TutorSettingsSchema = z
   .object({
     enabled: z.boolean(),
     defaultModelId: z.string().optional(),
-    researchMode: z.nativeEnum(TutorResearchModeEnum).optional(),
     toolBudget: TutorToolBudgetSchema.optional(),
     learningPlan: LearningPlanSchema.optional(),
     planGenerated: z.boolean().optional(),

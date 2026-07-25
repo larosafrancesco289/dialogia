@@ -5,8 +5,6 @@ import type {
   Message,
   MessageTutor,
   ReasoningEffort,
-  StudyCondition,
-  TutorResearchMode,
 } from '@/lib/types';
 
 export type UiFlagsSnapshot = {
@@ -71,8 +69,6 @@ export type UiTutorSnapshot = {
   toolUsageByChatId?: Record<string, TutorToolUsageSnapshot>;
   defaultModelId?: string;
   forceMode?: boolean;
-  researchMode?: TutorResearchMode;
-  studyCondition?: StudyCondition;
   autoScroll?: boolean;
 };
 
