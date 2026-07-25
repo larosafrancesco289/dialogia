@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "functions/worker.ts",
+    "functions/devServer.ts",
+    "src/modules/tutor/tooling/simulate.ts",
+    "tests/**/*.test.ts",
+    "src/**/*.test.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "functions/**/*.ts", "*.{ts,js}"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": [
+    "@fontsource-variable/newsreader",
+    "@fontsource-variable/plus-jakarta-sans",
+    "tailwindcss"
+  ]
+}
