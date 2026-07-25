@@ -125,6 +125,11 @@ export function getEndpointLabel(endpoint?: ProviderEndpoint): string {
   return endpoint?.label || OPENROUTER_ENDPOINT.label;
 }
 
+/** A local OpenAI-compatible server (Ollama, LM Studio, llama.cpp) usually has no key. */
+export function allowsKeylessCalls(endpoint: ProviderEndpoint): boolean {
+  return endpoint.kind === 'openai-compatible' && !!endpoint.baseUrl;
+}
+
 /**
  * Reserved prefix for endpoint-scoped identifiers — key references and model
  * ids alike. A provider model id is `vendor/model`, so nothing upstream can
