@@ -1,12 +1,12 @@
 import { isAuthDebugHeadersEnabled, isAuthTimingDebugEnabled } from '@/lib/env/auth';
-import { isProd } from '@/lib/env/runtime';
+import { isServerProd } from '@/lib/env/source';
 
 export function getAuthDebugConfig(): {
   shouldLogTiming: boolean;
   shouldDebugHeaders: boolean;
   startedAt: number;
 } {
-  const shouldLogTiming = !isProd() && isAuthTimingDebugEnabled();
+  const shouldLogTiming = !isServerProd() && isAuthTimingDebugEnabled();
   const shouldDebugHeaders = isAuthDebugHeadersEnabled();
   const startedAt = shouldLogTiming && typeof performance !== 'undefined' ? performance.now() : 0;
   return { shouldLogTiming, shouldDebugHeaders, startedAt };

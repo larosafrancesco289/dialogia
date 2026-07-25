@@ -22,3 +22,13 @@ export function serverEnvSource(): ServerEnvSource {
 export function readServerEnvValue(name: string): string | undefined {
   return readEnvValue(serverEnvSource()[name]);
 }
+
+/**
+ * Server-side production check. Unlike the client's `isProd()`, which reflects
+ * the build mode, this reads `NODE_ENV` from the bound environment and reads an
+ * absent value as production: Cloudflare does not set it, and defaulting the
+ * other way would disable the access gate in a live deployment.
+ */
+export function isServerProd(): boolean {
+  return (readServerEnvValue('NODE_ENV') ?? 'production').toLowerCase() === 'production';
+}

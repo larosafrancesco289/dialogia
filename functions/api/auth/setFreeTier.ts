@@ -5,7 +5,7 @@ import { computeSecretFingerprintEdge } from '@/lib/auth/fingerprint.edge';
 import { getAuthCookieSecret } from '@/lib/env/server';
 import { jsonError } from '@/lib/server/route';
 import { logger } from '@/lib/logger';
-import { isProd } from '@/lib/env/runtime';
+import { isServerProd } from '@/lib/env/source';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
 import { route } from '@/lib/server/routeBuilder';
 
@@ -30,7 +30,7 @@ export const POST = route('auth-set-free-tier')
       // Ensure secret is present (throws if missing)
       const secret = getAuthCookieSecret();
       const token = await createAuthToken(claims, secret);
-      const inProd = isProd();
+      const inProd = isServerProd();
       const responseBody = inProd
         ? { ok: true, tier: 'free' }
         : { ok: true, tier: 'free', secretFp: await computeSecretFingerprintEdge(secret) };
