@@ -39,8 +39,6 @@ const migrateUiToNested = (ui: Record<string, unknown>): Record<string, unknown>
   const flags = compactRecord({
     experimentalTutor:
       readBoolean(baseFlags?.experimentalTutor) ?? readBoolean(base.experimentalTutor),
-    enableMultiModelChat:
-      readBoolean(baseFlags?.enableMultiModelChat) ?? readBoolean(base.enableMultiModelChat),
   });
   const debug = compactRecord({
     mode: readBoolean(baseDebug?.mode) ?? readBoolean(base.debugMode),
@@ -57,7 +55,6 @@ const migrateUiToNested = (ui: Record<string, unknown>): Record<string, unknown>
       showSettings: base.showSettings,
       sidebarCollapsed: base.sidebarCollapsed,
       zdrOnly: base.zdrOnly,
-      routePreference: base.routePreference,
     }) || {}),
     ...(flags ? { flags } : {}),
     ...(debug ? { debug } : {}),

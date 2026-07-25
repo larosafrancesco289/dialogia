@@ -16,7 +16,6 @@ export const TIER_COOKIE_NAME = 'dlg_tier';
 const BASE_PUBLIC_AUTH_PATHS = [
   '/access',
   '/api/auth/verify-code',
-  '/api/auth/logout',
   '/api/auth/set-free-tier',
   '/favicon.ico',
   '/robots.txt',
