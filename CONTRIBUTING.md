@@ -49,8 +49,9 @@ running someone else's build, that is why.
 - Prettier: single quotes, semicolons, trailing commas, width 100.
 - **Comments only for constraints the code cannot express.** Match the sparse density already
   there; do not narrate what the next line does.
-- Each `src/lib` module starts with a two-line `// Module:` / `// Responsibility:` header. Keep it
-  accurate when you change what a file is for.
+- Many `src/lib` modules open with a two-line `// Module:` / `// Responsibility:` header. Keep one
+  accurate when you change what that file is for, and add one when a new module's purpose is not
+  obvious from its name.
 - Make focused changes. No drive-by refactors, no broad renames — note the opportunity instead.
 
 ## Boundaries you cannot cross
