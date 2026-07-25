@@ -1,6 +1,6 @@
 import { sendApiRequest } from '@/lib/api/http';
 import { apiDefaults } from '@/lib/api/config';
-import type { TransportAuth } from '@/lib/auth/transport';
+import { usesProxy, type TransportAuth } from '@/lib/auth/transport';
 import { ANTHROPIC_API_VERSION } from '@/lib/anthropic/shared';
 
 type AnthropicFetchOptions = {
@@ -16,7 +16,7 @@ type AnthropicFetchOptions = {
 };
 
 async function anFetch(path: string, options: AnthropicFetchOptions = {}): Promise<Response> {
-  const useProxy = options.auth?.endpoint.useProxy === true;
+  const useProxy = usesProxy(options.auth);
   const authRequired = options.authRequired ?? !useProxy;
   const headers: Record<string, string> = {
     'anthropic-version': ANTHROPIC_API_VERSION,

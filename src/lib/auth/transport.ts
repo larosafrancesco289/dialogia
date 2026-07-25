@@ -13,6 +13,11 @@ export function buildTransportAuth(opts: {
   return { endpoint: opts.endpoint, apiKey: opts.apiKey };
 }
 
+/**
+ * A key the user supplied wins over the deployment's proxy. BYOK is the
+ * primary mode: someone who pastes their own key expects it to be the one
+ * spending, and the hosted proxy stays the fallback for everyone else.
+ */
 export function usesProxy(auth?: TransportAuth): boolean {
-  return auth?.endpoint.useProxy === true;
+  return auth?.endpoint.useProxy === true && !auth.apiKey;
 }

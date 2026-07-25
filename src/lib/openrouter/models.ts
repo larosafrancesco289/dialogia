@@ -1,4 +1,4 @@
-import type { TransportAuth } from '@/lib/auth/transport';
+import { usesProxy, type TransportAuth } from '@/lib/auth/transport';
 import type { ModelDescriptor } from '@/lib/types';
 import { API_ERROR_CODES } from '@/lib/api/errors';
 import { orFetchModels } from '@/lib/openrouter/http';
@@ -33,7 +33,7 @@ export async function fetchModels(
   opts: OpenRouterFetchModelsOptions = {},
 ): Promise<ModelDescriptor[]> {
   const fetchFn = opts.fetchFn ?? orFetchModels;
-  const fingerprint = auth.endpoint.useProxy
+  const fingerprint = usesProxy(auth)
     ? 'proxy'
     : fingerprintKey(typeof auth.apiKey === 'string' ? auth.apiKey : '');
   const cacheKey = `${opts.origin || 'default'}::${fingerprint}`;

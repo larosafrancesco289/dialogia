@@ -120,6 +120,13 @@ module.exports = [
               group: ['@/lib/auth/**/*.server', '@/lib/auth/**/*.server.*'],
               message: 'UI components must not import server-only auth modules.',
             },
+            {
+              // Model output is untrusted and BYOK keys live in the same origin,
+              // so the markdown pipeline must never render raw HTML.
+              group: ['rehype-raw'],
+              message:
+                'Rendering raw HTML from model output would expose the stored provider keys to any injected script.',
+            },
           ],
         },
       ],

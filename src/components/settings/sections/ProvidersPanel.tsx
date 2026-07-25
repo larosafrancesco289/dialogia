@@ -9,11 +9,12 @@ import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
 import { isTavilyProxyEnabled } from '@/lib/env/public';
 import { listSearchProviders, searchProviderKeyRef } from '@/lib/search/providers';
 import {
-  BUILT_IN_ENDPOINTS,
   endpointCapabilities,
+  isBuiltInEndpointId,
   type EndpointCapabilities,
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
+import { listEndpoints } from '@/lib/transport/endpointRegistry';
 import type { RenderSection } from '@/components/settings/types';
 
 const CAPABILITY_LABELS: Array<{ key: keyof EndpointCapabilities; label: string; hint: string }> = [
@@ -31,11 +32,11 @@ const CAPABILITY_LABELS: Array<{ key: keyof EndpointCapabilities; label: string;
 
 function EndpointStatus({ endpoint }: { endpoint: ProviderEndpoint }) {
   const { hasKey } = useProviderKeys();
+  if (hasKey(endpoint.apiKeyRef)) {
+    return <span className="text-xs text-muted-foreground">Using your key</span>;
+  }
   if (endpoint.useProxy) {
     return <span className="text-xs text-muted-foreground">Keyed by this deployment</span>;
-  }
-  if (hasKey(endpoint.apiKeyRef)) {
-    return <span className="text-xs text-muted-foreground">Ready</span>;
   }
   if (endpoint.kind === 'openai-compatible') {
     return <span className="text-xs text-muted-foreground">Ready (no key needed)</span>;
@@ -237,20 +238,29 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
         'providers',
         <SettingsSection title="Model providers">
           <div className="space-y-4">
-            {BUILT_IN_ENDPOINTS.map((endpoint) => (
-              <div key={endpoint.id} className="space-y-2">
-                <div className="flex items-baseline justify-between gap-2">
-                  <div className="text-sm font-medium">{endpoint.label}</div>
-                  <EndpointStatus endpoint={endpoint} />
+            {/* Read through the registry, not the raw constants: it is what
+                carries the deployment's proxy configuration. */}
+            {listEndpoints()
+              .filter((endpoint) => isBuiltInEndpointId(endpoint.id))
+              .map((endpoint) => (
+                <div key={endpoint.id} className="space-y-2">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="text-sm font-medium">{endpoint.label}</div>
+                    <EndpointStatus endpoint={endpoint} />
+                  </div>
+                  <ApiKeyField
+                    keyRef={endpoint.apiKeyRef ?? endpoint.id}
+                    label={`${endpoint.label} API key`}
+                    placeholder={endpoint.id === 'anthropic' ? 'sk-ant-…' : 'sk-or-…'}
+                    helpText={
+                      endpoint.useProxy
+                        ? 'This deployment supplies a key. Add your own to use it instead.'
+                        : undefined
+                    }
+                    onChanged={refresh}
+                  />
                 </div>
-                <ApiKeyField
-                  keyRef={endpoint.apiKeyRef ?? endpoint.id}
-                  label={`${endpoint.label} API key`}
-                  placeholder={endpoint.id === 'anthropic' ? 'sk-ant-…' : 'sk-or-…'}
-                  onChanged={refresh}
-                />
-              </div>
-            ))}
+              ))}
             <p className="text-xs text-muted-foreground">
               Keys are stored in this browser only. They are never included in an export and never
               leave the page except in a request to that provider.
