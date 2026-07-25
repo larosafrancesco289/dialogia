@@ -8,7 +8,9 @@ import {
   buildPlanWelcomeMessage,
   prepareTutorWelcomeMessage as prepareTutorWelcomeMessageService,
 } from '@/lib/services/tutorWelcome';
-import { applyLearnerModelFeedbackFromUser as applyLearnerModelFeedbackFromUserService } from '@/lib/services/learnerModelFeedback';
+
+// Pulls in the learner-model pipeline; only reachable from an explicit user action.
+const loadLearnerModelFeedback = () => import('@/lib/services/learnerModelFeedback');
 
 type McqAttempts = NonNullable<MessageTutor['attempts']>['mcq'];
 
@@ -105,7 +107,8 @@ export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store
     },
 
     async applyLearnerModelFeedbackFromUser(input: LearnerModelFeedback) {
-      await applyLearnerModelFeedbackFromUserService({ input, set, get, repository });
+      const { applyLearnerModelFeedbackFromUser: apply } = await loadLearnerModelFeedback();
+      await apply({ input, set, get, repository });
     },
 
     async patchTutorEntry(

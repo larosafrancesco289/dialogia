@@ -1,6 +1,5 @@
 import './globals.css';
 import '../styles/logo.css';
-import 'katex/dist/katex.min.css';
 import Script from 'next/script';
 import type { Metadata } from 'next';
 import { injectThemeClass } from '@/lib/html';

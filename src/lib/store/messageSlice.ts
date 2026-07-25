@@ -1,13 +1,7 @@
 import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
 import { repository } from '@/lib/db';
-import {
-  appendAssistantTurn,
-  persistTutorForMessage,
-  sendUserTurn,
-  regenerateTurn,
-} from '@/lib/services/turns';
-import { abortAllTurns, abortTurn } from '@/lib/turns/runtime';
+import { abortAllTurns, abortTurn } from '@/lib/turns/runtime/abortControllers';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
@@ -15,10 +9,15 @@ import { clearActiveTurnCount, isChatStreaming } from '@/lib/ui/streaming';
 
 // telemetry removed for commit cleanliness
 
+// The turn pipeline (agent orchestrator, planning, streaming, tools) is only
+// reachable from user actions, so it loads on first use instead of at boot.
+const loadTurnService = () => import('@/lib/services/turns');
+
 export function createMessageSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
   const persistMessage = createMessagePersister(repository);
   return {
     async appendAssistantMessage(content: string, opts?: { modelId?: string }) {
+      const { appendAssistantTurn } = await loadTurnService();
       await appendAssistantTurn({
         content,
         modelId: opts?.modelId,
@@ -29,6 +28,7 @@ export function createMessageSlice(set: StoreSetter, get: () => StoreState, _sto
     },
 
     async persistTutorStateForMessage(messageId) {
+      const { persistTutorForMessage } = await loadTurnService();
       await persistTutorForMessage({ messageId, store: { set, get }, repository });
     },
 
@@ -41,6 +41,7 @@ export function createMessageSlice(set: StoreSetter, get: () => StoreState, _sto
     ) {
       const chatId = get().selectedChatId;
       if (chatId) await get().ensureChatMessagesLoaded(chatId);
+      const { sendUserTurn } = await loadTurnService();
       await sendUserTurn({
         content,
         attachments: opts?.attachments,
@@ -120,6 +121,7 @@ export function createMessageSlice(set: StoreSetter, get: () => StoreState, _sto
     },
 
     async regenerateAssistantMessage(messageId, opts) {
+      const { regenerateTurn } = await loadTurnService();
       await regenerateTurn({ messageId, overrideModelId: opts?.modelId, set, get, repository });
     },
   } satisfies Partial<StoreState>;
