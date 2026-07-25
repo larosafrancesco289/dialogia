@@ -4,7 +4,7 @@
 import { loadRepositorySnapshot } from '@/lib/db';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import { hydrateRepositorySnapshot } from '@/lib/services/hydrate';
-import { mergeTutorMap } from '@/lib/ui/tutorSelectors';
+import { mergeTutorMap } from '@/modules/tutor/ui/tutorSelectors';
 import { refreshZdrListsIfNeeded } from '@/lib/policy/zdr/cache';
 import { ZDR_CACHE_TTL_MS } from '@/lib/policy/zdr/constants';
 

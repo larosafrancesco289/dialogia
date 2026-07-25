@@ -6,7 +6,7 @@ import { regenerate } from '@/lib/agent/regenerate';
 import { createPipelineClient } from '@/lib/agent/pipelineClient';
 import { createModelIndex } from '@/lib/models';
 import type { Message, Chat, ModelDescriptor } from '@/lib/types';
-import { getTutorToolDefinitions } from '@/lib/agent/tutor';
+import { getTutorToolDefinitions } from '@/modules/tutor/agent/preamble';
 import { getSearchToolDefinition } from '@/lib/search';
 import type { StoreSetter, TurnContext } from '@/lib/agent/types';
 import { mockFetch } from '../../../tests/helpers/mockFetch';

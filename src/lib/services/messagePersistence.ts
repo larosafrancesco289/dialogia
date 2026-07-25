@@ -3,7 +3,7 @@
 
 import type { Repository } from '@/lib/db/repository';
 import type { Message } from '@/lib/types';
-import { buildHiddenTutorContent } from '@/lib/tutor/hiddenContent';
+import { buildHiddenTutorContent } from '@/modules/tutor/lib/hiddenContent';
 
 export const ensureHiddenTutorContent = (message: Message): Message => {
   if (!message?.tutor) return message;

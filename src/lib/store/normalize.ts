@@ -1,1 +1,1 @@
-export { applyTutorDefaults } from '@/lib/tutor/defaults';
+export { applyTutorDefaults } from '@/modules/tutor/lib/defaults';

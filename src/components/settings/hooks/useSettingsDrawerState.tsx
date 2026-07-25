@@ -20,7 +20,7 @@ import {
 } from '@/components/settings/hooks/useSettingsAutoSave';
 import { ModelsPanel } from '@/components/settings/sections/ModelsPanel';
 import { ChatPanel } from '@/components/settings/sections/ChatPanel';
-import { TutorPanel } from '@/components/settings/sections/TutorPanel';
+import { TutorPanel } from '@/modules/tutor/components/settings/TutorPanel';
 import { AppearancePanel } from '@/components/settings/sections/AppearancePanel';
 import { AdvancedPanel } from '@/components/settings/sections/AdvancedPanel';
 import { NOTICE_EXPORTED_CHATS, NOTICE_IMPORTED_DATA } from '@/lib/store/notices';

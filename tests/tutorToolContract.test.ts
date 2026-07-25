@@ -7,7 +7,7 @@ import {
   getTutorToolsByPhase,
   getTutorToolsByTag,
   isTutorToolName,
-} from '@/lib/agent/tools/tutor/register';
+} from '@/modules/tutor/tools/register';
 
 test('tutor tool registry exposes one definition for every tutor tool name', () => {
   const definitions = getTutorToolDefinitions();

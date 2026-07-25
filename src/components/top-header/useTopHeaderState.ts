@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { findModelById, formatModelLabel } from '@/lib/models';
-import { getNextNode } from '@/lib/learning-plan/service';
-import { getBreadcrumbPath, getMilestones } from '@/lib/learning-plan/breadcrumb';
+import { getNextNode } from '@/modules/tutor/learning-plan/service';
+import { getBreadcrumbPath, getMilestones } from '@/modules/tutor/learning-plan/breadcrumb';
 import {
   selectCurrentChat,
   selectIsTutorEnabled,
@@ -11,13 +11,15 @@ import {
   selectNextOverrides,
 } from '@/lib/store/selectors';
 import { useTierTutorModelId } from '@/lib/hooks/useTierModels';
-import { usePlanCallbacks } from '@/lib/hooks/usePlanCallbacks';
+import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import type { UiPlanSnapshot } from '@/lib/contracts/ui';
 import type { Chat, LearnerModel, LearningPlan, LearningPlanNode } from '@/lib/types';
-import type { LearnerModelFeedback } from '@/lib/agent/learner-model';
-import type { LearnerModelEditCallbacks } from '@/components/plan/PlanSheet';
+import type { LearnerModelFeedback } from '@/modules/tutor/learner-model';
+import type { LearnerModelEditCallbacks } from '@/modules/tutor/components/plan/PlanSheet';
 
-type PlanProgress = ReturnType<typeof import('@/lib/learning-plan/service').calculatePlanProgress>;
+type PlanProgress = ReturnType<
+  typeof import('@/modules/tutor/learning-plan/service').calculatePlanProgress
+>;
 type PlanNode = ReturnType<typeof getNextNode>;
 type PlanGeneration = NonNullable<UiPlanSnapshot['generationByChatId']>[string];
 

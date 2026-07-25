@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { initializeLearnerModel } from '@/lib/agent/learner-model';
+import { initializeLearnerModel } from '@/modules/tutor/learner-model';
 import type { LearnerModel, LearningPlan } from '@/lib/types';
 import type { HeadlessTutorSession } from '@/tooling/headless/session';
 import { executeStudentToolCalls, getStudentToolDefinitions } from './studentTools';

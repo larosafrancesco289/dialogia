@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import '@/lib/tools';
 import { schedulePlanningToolCalls } from '@/lib/agent/tools/scheduler';
-import { buildTutorContentPriority } from '@/lib/agent/tools/tutor/contentPriority';
+import { buildTutorContentPriority } from '@/modules/tutor/tools/contentPriority';
 import type { ToolCall } from '@/lib/agent/types';
 
 const buildCall = (name: string, args = '{}', id = `${name}-1`): ToolCall => ({

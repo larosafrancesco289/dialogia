@@ -11,7 +11,7 @@ import type { ChatSliceActions, ChatSliceState } from '@/lib/store/chatSlice';
 import type { MessageSliceActions, MessageSliceState } from '@/lib/store/messageSlice';
 import type { ModelSliceActions, ModelSliceState } from '@/lib/store/modelSlice';
 import type { UiSliceActions, UiSliceState } from '@/lib/store/uiSlice';
-import type { TutorStoreActions } from '@/lib/store/tutorSlice';
+import type { TutorStoreActions } from '@/modules/tutor/store/tutorSlice';
 import type { PersistedUiState } from '@/lib/store/uiTypes';
 
 export type StoreDataState = ChatSliceState & MessageSliceState & ModelSliceState & UiSliceState;

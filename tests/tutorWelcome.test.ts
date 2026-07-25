@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Chat, Message } from '@/lib/types';
 import { buildMessageIndex } from '@/lib/messages/indexing';
-import { prepareTutorWelcomeMessage } from '@/lib/services/tutorWelcome';
+import { prepareTutorWelcomeMessage } from '@/modules/tutor/services/tutorWelcome';
 import { createTestStoreState } from './helpers/createTestStoreState';
 import type { Repository } from '@/lib/db/repository';
 

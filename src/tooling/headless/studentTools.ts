@@ -4,8 +4,12 @@ import {
   initializeLearnerModel,
   resolvePlanNodeId,
   type LearnerModelFeedback,
-} from '@/lib/agent/learner-model';
-import { getNextNode, processPlanProgress, updateNodeStatus } from '@/lib/learning-plan/service';
+} from '@/modules/tutor/learner-model';
+import {
+  getNextNode,
+  processPlanProgress,
+  updateNodeStatus,
+} from '@/modules/tutor/learning-plan/service';
 import type { ToolDefinition } from '@/lib/transport/contracts';
 import type { HeadlessTutorSession } from '@/tooling/headless/session';
 

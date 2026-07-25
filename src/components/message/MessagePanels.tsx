@@ -3,7 +3,7 @@ import type { Chat, Message, MessageTutor, ModelDescriptor, ToolCallLogEntry } f
 import type { UISearchState } from '@/lib/store/types';
 import { ResponseContextPanel } from '@/components/message/ResponseContextPanel';
 import { DebugPanel } from '@/components/message/DebugPanel';
-import { TutorPanel } from '@/components/message/tutor/TutorPanel';
+import { TutorPanel } from '@/modules/tutor/components/message/TutorPanel';
 
 export type MessagePanelsProps = {
   message: Message;

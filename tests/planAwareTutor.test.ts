@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generatePlanContextPreamble } from '@/lib/agent/tutor/planContext';
+import { generatePlanContextPreamble } from '@/modules/tutor/agent/planContext';
 import {
   shouldCompleteNode,
   processPlanProgress,
@@ -9,10 +9,10 @@ import {
   getEstimatedRemainingTime,
   getReadyTopics,
   generateProgressReport,
-} from '@/lib/learning-plan/service';
-import { initializeLearnerModel, updateLearnerModel } from '@/lib/agent/learner-model';
-import { advanceTopicHandler } from '@/lib/agent/tools/tutor/handlers/advanceTopic';
-import type { TutorToolContext } from '@/lib/agent/tools/tutor/types';
+} from '@/modules/tutor/learning-plan/service';
+import { initializeLearnerModel, updateLearnerModel } from '@/modules/tutor/learner-model';
+import { advanceTopicHandler } from '@/modules/tutor/tools/handlers/advanceTopic';
+import type { TutorToolContext } from '@/modules/tutor/tools/types';
 import type { LearningPlan, LearnerModel, Chat, Message } from '@/lib/types';
 
 // ============================================================================

@@ -17,7 +17,7 @@ import {
   setMessagesForChat,
 } from '@/lib/messages/indexing';
 import { hydrateMessageList } from '@/lib/services/hydrate';
-import { mergeTutorMap } from '@/lib/ui/tutorSelectors';
+import { mergeTutorMap } from '@/modules/tutor/ui/tutorSelectors';
 
 // Keeps the turn pipeline out of the boot bundle; welcome priming is user-triggered
 // and fire-and-forget, so the deferred load is invisible to callers.

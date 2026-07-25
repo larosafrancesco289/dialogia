@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getTutorPhase, allowedTutorToolsForPhase } from '@/lib/agent/tutor/state';
+import { getTutorPhase, allowedTutorToolsForPhase } from '@/modules/tutor/agent/state';
 import type { Chat, LearningPlan, Message } from '@/lib/types';
 
 const baseSettings = (): Chat['settings'] => ({

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectPlanningToolCalls, normalizeTutorQuizPayload } from '@/lib/agent/tools';
+import { detectPlanningToolCalls } from '@/lib/agent/tools';
+import { normalizeTutorQuizPayload } from '@/modules/tutor/tools/apply';
 import { extractWebSearchArgs } from '@/lib/search';
 import { parseJsonAfter } from '@/lib/tools/json';
 import type { AssistantModelMessage, ToolCall, ToolDefinition } from '@/lib/agent/types';

@@ -4,7 +4,7 @@ import { composeTurn } from '@/lib/agent/compose';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { Chat, Message, Attachment, TutorProfile } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
-import tutorProfileService from '@/lib/tutor/profile';
+import tutorProfileService from '@/modules/tutor/lib/profile';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 
 const baseChat = (): Chat => ({
