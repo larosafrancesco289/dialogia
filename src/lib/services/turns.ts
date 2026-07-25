@@ -138,8 +138,9 @@ export async function sendUserTurn({
       content,
       get().renameChat.bind(get()),
       tier,
-      primaryContext.auth.transport,
+      primaryContext.auth.endpoint,
       get().ui.zdrOnly === true,
+      primaryModelId,
     );
   }
 

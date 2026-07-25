@@ -1,4 +1,4 @@
-export type ModelTransport = 'openrouter' | 'anthropic';
+import type { TransportKind } from '@/lib/transport/endpoints';
 
 export type ModelDescriptor = {
   id: string;
@@ -16,8 +16,11 @@ export type ModelDescriptor = {
     currency?: string;
   };
   raw?: unknown;
-  // Transport/provider metadata for multi-provider routing.
-  transport?: ModelTransport;
+  /** Which configured endpoint serves this model; identity is (endpointId, transportModelId). */
+  endpointId?: string;
+  /** The id the endpoint's own API expects, when it differs from the app-side id. */
   transportModelId?: string;
   providerDisplay?: string;
 };
+
+export type { TransportKind };

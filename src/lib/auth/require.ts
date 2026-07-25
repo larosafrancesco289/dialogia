@@ -1,48 +1,37 @@
-import { requireClientKeyOrProxy } from '@/lib/env/public';
-import { resolveModelTransport } from '@/lib/providers';
+import { getKey } from '@/lib/keys/store';
 import type { ModelIndex } from '@/lib/models';
-import type { ModelTransport } from '@/lib/types';
 import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
+import type { ProviderEndpoint } from '@/lib/transport/endpoints';
+import { resolveModelEndpoint } from '@/lib/transport/endpointRegistry';
 
-export function requireTransportAuth(transport: ModelTransport): TransportAuth {
-  switch (transport) {
-    case 'openrouter': {
-      const status = requireClientKeyOrProxy('openrouter');
-      return buildTransportAuth({
-        transport,
-        apiKey: status.key,
-        useProxy: status.useProxy,
-      });
-    }
-    case 'anthropic': {
-      const status = requireClientKeyOrProxy('anthropic');
-      return buildTransportAuth({
-        transport,
-        apiKey: status.key,
-        useProxy: status.useProxy,
-      });
-    }
-    default: {
-      const status = requireClientKeyOrProxy(transport);
-      return buildTransportAuth({
-        transport,
-        apiKey: status.key,
-        useProxy: status.useProxy,
-      });
-    }
-  }
+export const MISSING_PROVIDER_KEY = 'missing_provider_key';
+
+export type MissingProviderKeyError = Error & {
+  code: typeof MISSING_PROVIDER_KEY;
+  endpointId: string;
+  endpointLabel: string;
+};
+
+function missingProviderKey(endpoint: ProviderEndpoint): MissingProviderKeyError {
+  const error = new Error(MISSING_PROVIDER_KEY) as MissingProviderKeyError;
+  error.code = MISSING_PROVIDER_KEY;
+  error.endpointId = endpoint.id;
+  error.endpointLabel = endpoint.label;
+  return error;
+}
+
+/** True when this endpoint can be called right now: key stored, or proxied. */
+export function isEndpointReady(endpoint: ProviderEndpoint): boolean {
+  return endpoint.useProxy === true || typeof getKey(endpoint.apiKeyRef) === 'string';
+}
+
+export function requireEndpointAuth(endpoint: ProviderEndpoint): TransportAuth {
+  const apiKey = getKey(endpoint.apiKeyRef);
+  if (!apiKey && endpoint.useProxy !== true) throw missingProviderKey(endpoint);
+  return buildTransportAuth({ endpoint, apiKey });
 }
 
 export function requireModelAuth(modelId: string, modelIndex: ModelIndex): TransportAuth {
   const meta = modelIndex.get(modelId);
-  const transport = resolveModelTransport(modelId, meta);
-  try {
-    const auth = requireTransportAuth(transport);
-    return { ...auth, transport };
-  } catch (error) {
-    if (error && typeof error === 'object') {
-      (error as Record<string, unknown>).transport = transport;
-    }
-    throw error;
-  }
+  return requireEndpointAuth(resolveModelEndpoint(modelId, meta));
 }

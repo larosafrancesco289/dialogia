@@ -1,6 +1,5 @@
 import { sendApiRequest } from '@/lib/api/http';
 import { apiDefaults } from '@/lib/api/config';
-import { isAnthropicProxyEnabled } from '@/lib/env/public';
 import type { TransportAuth } from '@/lib/auth/transport';
 import { ANTHROPIC_API_VERSION } from '@/lib/anthropic/shared';
 
@@ -17,10 +16,7 @@ type AnthropicFetchOptions = {
 };
 
 async function anFetch(path: string, options: AnthropicFetchOptions = {}): Promise<Response> {
-  const useProxy =
-    typeof options.auth?.useProxy === 'boolean'
-      ? options.auth.useProxy
-      : apiDefaults.isBrowser && isAnthropicProxyEnabled();
+  const useProxy = options.auth?.endpoint.useProxy === true;
   const authRequired = options.authRequired ?? !useProxy;
   const headers: Record<string, string> = {
     'anthropic-version': ANTHROPIC_API_VERSION,
@@ -34,10 +30,16 @@ async function anFetch(path: string, options: AnthropicFetchOptions = {}): Promi
     } else if (options.auth?.apiKey) {
       headers['x-api-key'] = options.auth.apiKey;
     }
+    // BYOK calls the Claude API straight from the page; without this opt-in the
+    // API refuses the browser's CORS preflight.
+    if (apiDefaults.isBrowser) headers['anthropic-dangerous-direct-browser-access'] = 'true';
   }
 
   const timeoutMs = options.timeoutMs ?? (options.stream ? undefined : apiDefaults.timeouts.chat);
-  const url = `${useProxy ? '/api/anthropic' : 'https://api.anthropic.com/v1'}${path}`;
+  const baseUrl = useProxy
+    ? '/api/anthropic'
+    : (options.auth?.endpoint.baseUrl ?? 'https://api.anthropic.com/v1');
+  const url = `${baseUrl}${path}`;
 
   return sendApiRequest({
     url,

@@ -1,9 +1,15 @@
-export const SearchProviderEnum = {
-  Tavily: 'tavily',
-  OpenRouter: 'openrouter',
-} as const;
+/**
+ * The persisted value meaning "use the model provider's own web search". It
+ * predates pluggable providers and reads oddly now, but it sits in users' chat
+ * settings and must never be renamed.
+ */
+export const NATIVE_SEARCH_MODE = 'openrouter';
 
-export type SearchProvider = (typeof SearchProviderEnum)[keyof typeof SearchProviderEnum];
+/**
+ * `'openrouter'` for provider-native search, otherwise a registered tool-based
+ * search provider id. Open by design: adding a provider must not touch core.
+ */
+export type SearchMode = string;
 
 export const ReasoningEffortEnum = {
   None: 'none',

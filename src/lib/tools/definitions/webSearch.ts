@@ -9,7 +9,7 @@ export const WEB_SEARCH_TOOL: ToolDefinition = {
   function: {
     name: 'web_search',
     description:
-      'Query the public web via Tavily to gather up-to-date, verifiable references with titles, URLs, and summary snippets. Use this when you need fresh facts, statistics, or citations that are not already in context. Craft a short, focused query (not the full user message); for multi-part questions, issue several parallel calls with one sub-question each (up to 3). Snippets are for discovery; to read a promising result in depth before citing it, follow up with web_fetch on its URL.',
+      'Query the public web to gather up-to-date, verifiable references with titles, URLs, and summary snippets. Use this when you need fresh facts, statistics, or citations that are not already in context. Craft a short, focused query (not the full user message); for multi-part questions, issue several parallel calls with one sub-question each (up to 3). Snippets are for discovery; to read a promising result in depth before citing it, follow up with web_fetch on its URL.',
     parameters: {
       type: 'object',
       properties: {
@@ -59,7 +59,7 @@ export const WEB_FETCH_TOOL: ToolDefinition = {
   function: {
     name: 'web_fetch',
     description:
-      'Fetch and extract clean content from a specific public URL via Tavily Extract. Use this when the user provides a URL, when search results need source inspection, or when you need page text for accurate citation. Prefer markdown unless plain text is specifically useful.',
+      'Fetch and extract clean content from a specific public URL. Use this when the user provides a URL, when search results need source inspection, or when you need page text for accurate citation. Prefer markdown unless plain text is specifically useful.',
     parameters: {
       type: 'object',
       properties: {
@@ -111,6 +111,9 @@ export const WEB_FETCH_TOOL: ToolDefinition = {
   },
 };
 
-export function getWebSearchToolDefinition(): ToolDefinition[] {
-  return [WEB_SEARCH_TOOL, WEB_FETCH_TOOL];
+/** `web_fetch` is offered only when the active provider can read a single page. */
+export function getWebSearchToolDefinition(
+  opts: { canFetchPage?: boolean } = {},
+): ToolDefinition[] {
+  return opts.canFetchPage === false ? [WEB_SEARCH_TOOL] : [WEB_SEARCH_TOOL, WEB_FETCH_TOOL];
 }

@@ -104,6 +104,8 @@ export type UiMobileSnapshot = {
 
 export type UiSnapshot = {
   showSettings: boolean;
+  /** First-run provider setup sheet; session-scoped, never persisted. */
+  setupOpen?: boolean;
   activeTurnByChatId: Record<string, number>;
   notice?: string;
   overrides?: UiNextOverrides;

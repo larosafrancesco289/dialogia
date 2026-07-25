@@ -6,10 +6,16 @@ import { LLMJudge, LLMUserSimulator } from '@/modules/tutor/tooling/simulators';
 import { renderSnapshotTranscript } from '@/modules/tutor/tooling/transcript';
 import type { HeadlessTurnSnapshot } from '@/modules/tutor/tooling/types';
 import { createModelIndex } from '@/lib/models';
-import type { Chat, Message, ModelDescriptor, ModelTransport, ToolCallLogEntry } from '@/lib/types';
+import type {
+  Chat,
+  Message,
+  ModelDescriptor,
+  ProviderEndpoint,
+  ToolCallLogEntry,
+} from '@/lib/types';
 import type { PlanTurnResult } from '@/lib/agent/types';
 import { fetchModels } from '@/lib/openrouter';
-import { resolveModelTransport } from '@/lib/providers';
+import { getModelEndpoint } from '@/lib/providers';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
@@ -86,17 +92,13 @@ async function safeFetchModels(auth: TransportAuth | null): Promise<ModelDescrip
   }
 }
 
-function createStubModel(
-  id: string,
-  transport: ModelTransport,
-  supportsTools: boolean,
-): ModelDescriptor {
+function createStubModel(id: string, endpointId: string, supportsTools: boolean): ModelDescriptor {
   const supported: string[] = supportsTools ? ['tools', 'reasoning'] : ['reasoning'];
   const curated = CURATED_MODELS.find((model) => model.id === id);
   return {
     id,
     name: curated?.name ?? id,
-    transport,
+    endpointId,
     context_length: 16000,
     raw: { supported_parameters: supported },
   };
@@ -104,21 +106,21 @@ function createStubModel(
 
 function resolveAuthFactory(keys: {
   openrouter?: string;
-}): (params: { modelId: string; transport: ModelTransport }) => TransportAuth {
-  return ({ modelId, transport }) => {
+}): (params: { modelId: string; endpoint: ProviderEndpoint }) => TransportAuth {
+  return ({ modelId, endpoint }) => {
     if (!keys.openrouter) {
       throw new Error(
         `OpenRouter transport requested for ${modelId}, but no OPENROUTER_API_KEY (or --openrouter-key) provided.`,
       );
     }
-    if (transport === 'openrouter') {
+    if (endpoint.kind === 'openrouter') {
       return createOpenRouterAccess({
         apiKey: keys.openrouter,
         tier: 'developer',
         useProxy: false,
       }).auth;
     }
-    return buildTransportAuth({ transport, apiKey: keys.openrouter, useProxy: false });
+    return buildTransportAuth({ endpoint, apiKey: keys.openrouter });
   };
 }
 
@@ -498,9 +500,9 @@ export async function runTutorSimulationCli(argv: string[]) {
   const models: ModelDescriptor[] = allModelIds.map((id) => {
     const fromRemote = remoteModels.find((m) => m.id === id);
     if (fromRemote) return fromRemote;
-    const transport = resolveModelTransport(id, fromRemote);
+    const endpoint = getModelEndpoint(fromRemote ?? { id });
     const supportsTools = id === tutorModel;
-    return createStubModel(id, transport, supportsTools);
+    return createStubModel(id, endpoint.id, supportsTools);
   });
 
   const chat: Chat = {
@@ -548,22 +550,16 @@ export async function runTutorSimulationCli(argv: string[]) {
     },
   });
 
-  const studentTransport = resolveModelTransport(
-    studentModel,
-    models.find((m) => m.id === studentModel),
-  );
+  const studentEndpoint = getModelEndpoint(models.find((m) => m.id === studentModel));
   const studentSim = new LLMUserSimulator({
     modelId: studentModel,
-    auth: resolveAuth({ modelId: studentModel, transport: studentTransport }),
+    auth: resolveAuth({ modelId: studentModel, endpoint: studentEndpoint }),
   });
 
-  const judgeTransport = resolveModelTransport(
-    judgeModel,
-    models.find((m) => m.id === judgeModel),
-  );
+  const judgeEndpoint = getModelEndpoint(models.find((m) => m.id === judgeModel));
   const judge = new LLMJudge({
     modelId: judgeModel,
-    auth: resolveAuth({ modelId: judgeModel, transport: judgeTransport }),
+    auth: resolveAuth({ modelId: judgeModel, endpoint: judgeEndpoint }),
   });
 
   let studentMessage =

@@ -20,10 +20,10 @@ export type PipelineClient = {
 };
 
 const defaultChatRouter: ChatHandler = (params) =>
-  getTransportClient(params.auth?.transport).chatCompletion(params);
+  getTransportClient(params.auth?.endpoint.kind).chatCompletion(params);
 
 const defaultStreamRouter: StreamHandler = (params) =>
-  getTransportClient(params.auth?.transport).streamChatCompletion(params);
+  getTransportClient(params.auth?.endpoint.kind).streamChatCompletion(params);
 
 export function createPipelineClient(overrides?: Partial<PipelineClient>): PipelineClient {
   return {

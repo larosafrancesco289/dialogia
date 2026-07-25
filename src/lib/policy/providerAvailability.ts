@@ -1,17 +1,17 @@
-import type { ModelDescriptor, ModelTransport } from '@/lib/types';
-import { getModelTransport } from '@/lib/providers';
+import type { ModelDescriptor } from '@/lib/types';
+import { getEndpoint, listEndpoints } from '@/lib/transport/endpointRegistry';
 
-export const TRANSPORT_AVAILABILITY: Record<ModelTransport, boolean> = {
-  openrouter: true,
-  anthropic: true,
-};
-
-export function isTransportAvailable(transport?: ModelTransport): boolean {
-  if (!transport) return true;
-  return TRANSPORT_AVAILABILITY[transport] ?? false;
+/** At least one endpoint is configured. Built-ins always are, so this is effectively always true. */
+export function hasAnyEndpoint(): boolean {
+  return listEndpoints().length > 0;
 }
 
-export function isModelTransportAvailable(model?: ModelDescriptor | null): boolean {
-  if (!model) return true;
-  return isTransportAvailable(getModelTransport(model));
+/**
+ * A model whose endpoint the user has since deleted must not stay selectable.
+ * Descriptors persisted before endpoints existed carry no `endpointId` and are
+ * resolved by the legacy id rules instead, so they stay available.
+ */
+export function isModelEndpointAvailable(model?: ModelDescriptor | null): boolean {
+  if (!model?.endpointId) return true;
+  return getEndpoint(model.endpointId) != null;
 }

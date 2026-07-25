@@ -4,6 +4,7 @@ import type { TransportFetchModelsOptions } from '@/lib/transport/types';
 import { API_ERROR_CODES } from '@/lib/api/errors';
 import { isRecord } from '@/lib/utils/guards';
 import { anFetchModels } from '@/lib/anthropic/http';
+import { ANTHROPIC_ENDPOINT_ID } from '@/lib/transport/endpoints';
 import { buildAnthropicError, wrapAnthropicClientError } from '@/lib/anthropic/errors';
 import {
   documentedAnthropicEffortLevels,
@@ -132,7 +133,7 @@ function normalizeAnthropicModel(entry: unknown): ModelDescriptor | null {
           : undefined,
     pricing: getAnthropicPricing(publicId),
     raw,
-    transport: 'anthropic',
+    endpointId: ANTHROPIC_ENDPOINT_ID,
     transportModelId: directId,
     providerDisplay: 'Anthropic',
   };
@@ -147,7 +148,7 @@ export async function fetchModels(
   opts: TransportFetchModelsOptions & { fetchFn?: typeof anFetchModels } = {},
 ): Promise<ModelDescriptor[]> {
   const fetchFn = opts.fetchFn ?? anFetchModels;
-  const fingerprint = auth.useProxy
+  const fingerprint = auth.endpoint.useProxy
     ? 'proxy'
     : fingerprintKey(typeof auth.apiKey === 'string' ? auth.apiKey : '');
   const cacheKey = `${opts.origin || 'default'}::${fingerprint}`;

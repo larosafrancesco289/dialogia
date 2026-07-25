@@ -1,16 +1,18 @@
-import { NOTICE_MISSING_TAVILY_KEY } from '@/lib/store/notices';
-import { runTavilySearch } from '@/lib/search/tool/runTavilySearch';
+import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
 import { withAbort } from '@/lib/utils/abort';
-import type { SearchProvider, SearchResult } from '@/lib/search/types';
+import { buildSearchContext, getSearchProvider } from '@/lib/search/providers';
+import type { SearchMode } from '@/lib/search/providers/types';
+import type { SearchResult } from '@/lib/search/types';
 import type { StoreGetter, StoreSetter, ToolExecutionResult } from '@/lib/agent/types';
 import type { WebSearchArgs } from '@/lib/search/args';
+import { isTavilyProxyEnabled } from '@/lib/env/public';
 import { setSearchUiStatus } from '@/lib/search/ui/state';
 import { notify } from '@/lib/store/notify';
 
 export async function performWebSearchTool(opts: {
   args: WebSearchArgs;
   fallbackQuery: string;
-  searchProvider: SearchProvider;
+  searchProvider: SearchMode;
   controller: AbortController;
   assistantMessageId: string;
   chatId: string;
@@ -20,7 +22,7 @@ export async function performWebSearchTool(opts: {
   const {
     args,
     fallbackQuery,
-    searchProvider,
+    searchProvider: mode,
     controller,
     assistantMessageId,
     chatId: _chatId,
@@ -33,9 +35,13 @@ export async function performWebSearchTool(opts: {
   if (!rawQuery) rawQuery = fallbackQuery.trim().slice(0, 256);
   const searchArgs: WebSearchArgs = { ...args, query: rawQuery, count };
 
-  if (searchProvider === 'tavily') {
-    setSearchUiStatus({ set, get }, assistantMessageId, { query: rawQuery, status: 'loading' });
+  const provider = getSearchProvider(mode);
+  if (!provider) {
+    // Native search never reaches here: it is a request-body flag, not a tool.
+    return { ok: false, results: [], error: 'unsupported_search_provider', query: rawQuery };
   }
+
+  setSearchUiStatus({ set, get }, assistantMessageId, { query: rawQuery, status: 'loading' });
 
   const hasNarrowingFilters =
     (searchArgs.freshness && searchArgs.freshness !== 'all') ||
@@ -46,19 +52,15 @@ export async function performWebSearchTool(opts: {
   return withAbort(controller.signal, async (fetchController) => {
     const timeout = setTimeout(() => fetchController.abort(), 20000);
     try {
-      let result =
-        searchProvider === 'tavily'
-          ? await runTavilySearch(searchArgs, { signal: fetchController.signal })
-          : { ok: false, results: [] as SearchResult[], error: undefined };
+      const context = buildSearchContext(provider, {
+        useProxy: isTavilyProxyEnabled(),
+        signal: fetchController.signal,
+      });
+      let result = await provider.search(searchArgs, context);
 
       // Narrow filters (especially tight freshness windows) routinely intersect
       // to an empty set; retry once unfiltered before reporting zero results.
-      if (
-        result.ok &&
-        result.results.length === 0 &&
-        hasNarrowingFilters &&
-        searchProvider === 'tavily'
-      ) {
+      if (result.ok && result.results.length === 0 && hasNarrowingFilters) {
         const {
           freshness: _f,
           country: _c,
@@ -66,42 +68,36 @@ export async function performWebSearchTool(opts: {
           exclude_domains: _e,
           ...rest
         } = searchArgs;
-        result = await runTavilySearch(rest, { signal: fetchController.signal });
+        result = await provider.search(rest, context);
       }
 
       if (result.ok) {
-        if (searchProvider === 'tavily') {
-          setSearchUiStatus({ set, get }, assistantMessageId, {
-            query: rawQuery,
-            status: 'done',
-            results: result.results,
-          });
-        }
-        return { ok: true, results: result.results, query: rawQuery };
-      }
-
-      if (searchProvider === 'tavily') {
         setSearchUiStatus({ set, get }, assistantMessageId, {
           query: rawQuery,
-          status: 'error',
-          results: [],
-          error: result.error || 'No results',
+          status: 'done',
+          results: result.results,
         });
+        return { ok: true, results: result.results as SearchResult[], query: rawQuery };
       }
-      if (result.error === NOTICE_MISSING_TAVILY_KEY) {
-        notify(get, NOTICE_MISSING_TAVILY_KEY);
+
+      setSearchUiStatus({ set, get }, assistantMessageId, {
+        query: rawQuery,
+        status: 'error',
+        results: [],
+        error: result.error || 'No results',
+      });
+      if (result.error === NOTICE_MISSING_SEARCH_KEY) {
+        notify(get, NOTICE_MISSING_SEARCH_KEY);
       }
       return { ok: false, results: [], error: result.error, query: rawQuery };
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : undefined;
-      if (searchProvider === 'tavily') {
-        setSearchUiStatus({ set, get }, assistantMessageId, {
-          query: rawQuery,
-          status: 'error',
-          results: [],
-          error: errorMessage || 'Network error',
-        });
-      }
+      setSearchUiStatus({ set, get }, assistantMessageId, {
+        query: rawQuery,
+        status: 'error',
+        results: [],
+        error: errorMessage || 'Network error',
+      });
       return { ok: false, results: [], error: errorMessage, query: rawQuery };
     } finally {
       clearTimeout(timeout);

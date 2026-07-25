@@ -4,6 +4,7 @@ import type { TransportChatParams } from '@/lib/transport/types';
 import type { ModelMessage } from '@/lib/transport/contracts';
 import type { ChatCompletion } from '@/lib/transport/completions';
 import { buildTransportAuth } from '@/lib/auth/transport';
+import { ANTHROPIC_ENDPOINT } from '@/lib/transport/endpoints';
 import { anMessages } from '@/lib/anthropic/http';
 import {
   buildAnthropicBody,
@@ -231,11 +232,7 @@ export async function anthropicChatCompletion({
   maxTokens?: number;
   enableAutomaticCaching?: boolean;
 }): Promise<ChatCompletion> {
-  const auth = buildTransportAuth({
-    transport: 'anthropic',
-    apiKey,
-    useProxy: false,
-  });
+  const auth = buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey });
   const body = buildAnthropicBody({
     model,
     messages,
