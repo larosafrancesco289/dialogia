@@ -14,7 +14,34 @@ const loadLearnerModelFeedback = () => import('@/lib/services/learnerModelFeedba
 
 type McqAttempts = NonNullable<MessageTutor['attempts']>['mcq'];
 
-export function createTutorSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
+export type TutorStoreActions = {
+  logTutorResult: (evt: TutorEvent) => Promise<void>;
+  loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
+  primeTutorWelcomePreview: () => Promise<string | undefined>;
+  prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
+  applyLearnerModelFeedbackFromUser: (input: LearnerModelFeedback) => Promise<void>;
+  patchTutorEntry: (
+    messageId: string,
+    patch: Partial<MessageTutor>,
+    opts?: { persist?: boolean },
+  ) => Promise<void>;
+  setTutorAttemptMcq: (
+    messageId: string,
+    itemId: string,
+    choiceIdx: number,
+    correct: boolean,
+  ) => void;
+  setTutorPlanProposalStatus: (
+    messageId: string,
+    status: 'pending' | 'approved' | 'declined',
+  ) => void;
+};
+
+export function createTutorSlice(
+  set: StoreSetter,
+  get: () => StoreState,
+  _store?: unknown,
+): TutorStoreActions {
   const updateTutorEntry = (messageId: string, updater: (prev: MessageTutor) => MessageTutor) => {
     if (!messageId) return;
     set((state) => {

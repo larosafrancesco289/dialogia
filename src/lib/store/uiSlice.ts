@@ -1,11 +1,36 @@
-import type { StoreState, UIState, UIStatePartial } from '@/lib/store/types';
+import type {
+  PersistFragment,
+  StoreState,
+  UISearchState,
+  UIState,
+  UIStatePartial,
+} from '@/lib/store/types';
+import { buildPersistedUiState, mergePersistedUiState } from '@/lib/store/uiPersistence';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
 import { applyNextOverrides } from '@/lib/ui/next';
 import { resolveNotice } from '@/lib/store/notices';
 import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
 
-export const createUiSlice = createStoreSlice((set) => {
+export type UiSliceState = { ui: UIState };
+
+export type UiSliceActions = {
+  setUI: (partial: UIStatePartial) => void;
+  setNotice: (notice?: string) => void;
+  setSearchStatus: (
+    messageId: string,
+    entry: NonNullable<UISearchState['tavilyByMessageId']>[string],
+  ) => void;
+};
+
+export const uiPersistFragment: PersistFragment = {
+  partialize: (state) => ({ ui: buildPersistedUiState(state.ui) }),
+  merge: (current, persisted) => ({
+    ui: mergePersistedUiState(current.ui, persisted.ui as never),
+  }),
+};
+
+export const createUiSlice = createStoreSlice<UiSliceState & UiSliceActions>((set) => {
   const initial: UIState = buildDefaultUIState();
 
   return {
@@ -42,7 +67,7 @@ export const createUiSlice = createStoreSlice((set) => {
         return { ui: nextUi };
       });
     },
-    setNotice(notice) {
+    setNotice(notice?: string) {
       const resolved = resolveNotice(notice);
       set((state) => ({
         ui: {
@@ -51,7 +76,10 @@ export const createUiSlice = createStoreSlice((set) => {
         },
       }));
     },
-    setSearchStatus(messageId, entry) {
+    setSearchStatus(
+      messageId: string,
+      entry: NonNullable<UISearchState['tavilyByMessageId']>[string],
+    ) {
       if (!messageId) return;
       set((state) => ({
         ui: {

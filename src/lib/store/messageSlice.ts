@@ -1,5 +1,5 @@
 import type { StoreSetter, StoreState } from '@/lib/store/types';
-import type { Message } from '@/lib/types';
+import type { DraftAttachment, Message } from '@/lib/types';
 import { repository } from '@/lib/db';
 import { abortAllTurns, abortTurn } from '@/lib/turns/runtime/abortControllers';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
@@ -13,9 +13,38 @@ import { clearActiveTurnCount, isChatStreaming } from '@/lib/ui/streaming';
 // reachable from user actions, so it loads on first use instead of at boot.
 const loadTurnService = () => import('@/lib/services/turns');
 
-export function createMessageSlice(set: StoreSetter, get: () => StoreState, _store?: unknown) {
+export type MessageSliceState = {
+  messagesById: Record<string, Message>;
+  messageIdsByChatId: Record<string, string[]>;
+};
+
+export type MessageSliceActions = {
+  appendAssistantMessage: (content: string, opts?: { modelId?: string }) => Promise<void>;
+  persistTutorStateForMessage: (messageId: string) => Promise<void>;
+  sendUserMessage: (
+    content: string,
+    opts?: { attachments?: DraftAttachment[]; metadata?: Message['metadata'] },
+  ) => Promise<void>;
+  stopStreaming: () => void;
+  editUserMessage: (
+    messageId: string,
+    newContent: string,
+    opts?: { rerun?: boolean },
+  ) => Promise<void>;
+  editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
+  regenerateAssistantMessage: (messageId: string, opts?: { modelId?: string }) => Promise<void>;
+};
+
+export function createMessageSlice(
+  set: StoreSetter,
+  get: () => StoreState,
+  _store?: unknown,
+): MessageSliceState & MessageSliceActions {
   const persistMessage = createMessagePersister(repository);
   return {
+    messagesById: {},
+    messageIdsByChatId: {},
+
     async appendAssistantMessage(content: string, opts?: { modelId?: string }) {
       const { appendAssistantTurn } = await loadTurnService();
       await appendAssistantTurn({

@@ -1,39 +1,33 @@
-import type { ModelIndex } from '@/lib/models';
-import type { Chat, Folder, Message, ModelDescriptor } from '@/lib/types';
+// Module: store/stateTypes
+// Responsibility: Compose the store's shape from the slices that own each part.
+// Adding a field or an action means editing exactly one slice file; nothing here
+// enumerates them a second time.
+
 import type {
   StoreGetter as ContractStoreGetter,
   StoreSetter as ContractStoreSetter,
 } from '@/lib/contracts/store';
-import type { PersistedUiState, UIState } from '@/lib/store/uiTypes';
-import type { StoreActions } from '@/lib/store/actionsTypes';
+import type { ChatSliceActions, ChatSliceState } from '@/lib/store/chatSlice';
+import type { MessageSliceActions, MessageSliceState } from '@/lib/store/messageSlice';
+import type { ModelSliceActions, ModelSliceState } from '@/lib/store/modelSlice';
+import type { UiSliceActions, UiSliceState } from '@/lib/store/uiSlice';
+import type { TutorStoreActions } from '@/lib/store/tutorSlice';
+import type { PersistedUiState } from '@/lib/store/uiTypes';
 
-export type StoreDataState = {
-  chats: Chat[];
-  folders: Folder[];
-  messagesById: Record<string, Message>;
-  messageIdsByChatId: Record<string, string[]>;
-  selectedChatId?: string;
-  // Lazy hydration bookkeeping (ephemeral): chats whose messages are in
-  // memory, and chats known to have persisted messages not yet loaded.
-  loadedMessageChatIds: Record<string, true>;
-  nonEmptyChatIds: Record<string, true>;
+export type StoreDataState = ChatSliceState & MessageSliceState & ModelSliceState & UiSliceState;
 
-  models: ModelDescriptor[];
-  modelIndex: ModelIndex;
-  favoriteModelIds: string[];
-  hiddenModelIds: string[];
-  // Cached ZDR model ids (persisted so ZDR_CACHE_TTL_MS survives reloads)
-  zdrModelIds?: string[];
-  // Cached ZDR provider ids (persisted so ZDR_CACHE_TTL_MS survives reloads)
-  zdrProviderIds?: string[];
-  // Timestamp when ZDR lists were last fetched
-  zdrFetchedAt?: number;
-
-  ui: UIState;
-};
+export type StoreActions = ChatSliceActions &
+  MessageSliceActions &
+  ModelSliceActions &
+  UiSliceActions &
+  TutorStoreActions;
 
 export type StoreState = StoreDataState & StoreActions;
 
+/**
+ * The persisted projection. Keys must never be renamed: users' localStorage has
+ * to survive. Each slice contributes its own fragment (see `persistence.ts`).
+ */
 export type PersistedStoreState = Pick<
   StoreDataState,
   | 'selectedChatId'
@@ -48,3 +42,9 @@ export type PersistedStoreState = Pick<
 
 export type StoreSetter = ContractStoreSetter<StoreState>;
 export type StoreGetter = ContractStoreGetter<StoreState>;
+
+/** A slice's contribution to the persisted blob. */
+export type PersistFragment = {
+  partialize(state: StoreState): Record<string, unknown>;
+  merge?(current: StoreState, persisted: Record<string, unknown>): Partial<StoreState>;
+};
