@@ -1,21 +1,20 @@
 /**
  * OpenRouter API key resolution utilities.
  *
- * Separated from server.ts so CLI scripts (ablation runner, tutor simulation, etc.)
- * can read API keys from process.env without triggering the 'server-only' guard
- * that server.ts enforces for Next.js Server Components.
+ * Separated from server.ts so CLI scripts (tutor simulation, etc.) can read API
+ * keys straight from process.env without pulling in the hosted server env layer.
  */
 
-import { readEnvValue } from '@/lib/env/values';
+import { readServerEnvValue } from '@/lib/env/source';
 
 export function getOpenRouterKeyFallback(): string | undefined {
   return (
-    readEnvValue(process.env.OPENROUTER_API_KEY) ||
-    readEnvValue(process.env.NEXT_PUBLIC_OPENROUTER_API_KEY) ||
-    readEnvValue(process.env.OPENROUTER_KEY)
+    readServerEnvValue('OPENROUTER_API_KEY') ||
+    readServerEnvValue('VITE_OPENROUTER_API_KEY') ||
+    readServerEnvValue('OPENROUTER_KEY')
   );
 }
 
 export function getAnthropicKeyFallback(): string | undefined {
-  return readEnvValue(process.env.ANTHROPIC_API_KEY);
+  return readServerEnvValue('ANTHROPIC_API_KEY');
 }

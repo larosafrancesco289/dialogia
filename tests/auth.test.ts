@@ -1,34 +1,31 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAuthToken, verifyAuthToken } from '@/lib/auth/token.server';
-import { verifyAuthTokenEdge } from '@/lib/auth/token.edge';
+import { installWebCryptoPolyfill } from './helpers/installWebCryptoPolyfill';
+import { createAuthToken, hmacHex, verifyAuthTokenEdge } from '@/lib/auth/token.edge';
 
-test('auth token verifies across node and edge helpers', async () => {
-  const previous = process.env.AUTH_COOKIE_SECRET;
-  process.env.AUTH_COOKIE_SECRET = 'test-secret';
+installWebCryptoPolyfill();
+
+test('auth tokens round-trip through the WebCrypto helpers', async () => {
   const now = Date.now();
   const claims = { iat: now, exp: now + 60_000, sub: 'user-123', tier: 'developer' as const };
-  const token = createAuthToken(claims);
-  const nodeClaims = verifyAuthToken(token);
-  assert.ok(nodeClaims);
-  assert.equal(nodeClaims?.sub, claims.sub);
-  assert.equal(nodeClaims?.exp, claims.exp);
+  const token = await createAuthToken(claims, 'test-secret');
   assert.equal(await verifyAuthTokenEdge(token, 'test-secret'), true);
-  if (previous === undefined) delete process.env.AUTH_COOKIE_SECRET;
-  else process.env.AUTH_COOKIE_SECRET = previous;
 });
 
-test('auth token edge verifier rejects invalid signature', async () => {
-  const previous = process.env.AUTH_COOKIE_SECRET;
-  process.env.AUTH_COOKIE_SECRET = 'test-secret';
+test('auth token verifier rejects a token signed with another secret', async () => {
   const claims = {
     iat: Date.now(),
     exp: Date.now() + 60_000,
     sub: 'user-abc',
     tier: 'individual' as const,
   };
-  const token = createAuthToken(claims);
+  const token = await createAuthToken(claims, 'test-secret');
   assert.equal(await verifyAuthTokenEdge(token, 'other-secret'), false);
-  if (previous === undefined) delete process.env.AUTH_COOKIE_SECRET;
-  else process.env.AUTH_COOKIE_SECRET = previous;
+});
+
+test('hmacHex is stable and key dependent', async () => {
+  const first = await hmacHex('code-123', 'pepper');
+  assert.equal(first, await hmacHex('code-123', 'pepper'));
+  assert.notEqual(first, await hmacHex('code-123', 'other-pepper'));
+  assert.match(first, /^[0-9a-f]{64}$/);
 });

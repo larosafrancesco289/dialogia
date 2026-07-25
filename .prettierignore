@@ -2,8 +2,9 @@
 node_modules
 package-lock.json
 
-# Next.js
-.next
+# Build output
+dist
+dev-dist
 out
 tsconfig.tsbuildinfo
 
@@ -27,6 +28,7 @@ yarn-error.log*
 .vscode/
 .idea/
 .vercel/
+.wrangler/
 .turbo/
 .eslintcache
 

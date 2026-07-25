@@ -1,8 +1,5 @@
-import 'server-only';
-
-import { NextRequest } from 'next/server';
 import { jsonError } from './route';
-import { readEnvValue } from '@/lib/env/values';
+import { readServerEnvValue } from '@/lib/env/source';
 
 export type RateLimitConfig = {
   /** Maximum number of requests allowed in the window */
@@ -118,38 +115,45 @@ export class UpstashRateLimiter implements RateLimiter {
 }
 
 /**
- * Get client IP from request headers.
- * Handles common proxy headers used by Vercel and other platforms.
+ * Client IP from request headers. Cloudflare sets CF-Connecting-IP and it
+ * cannot be spoofed by the client, so it wins over the forwarding chain.
  */
-function getClientIp(req: NextRequest): string {
-  // Vercel sets x-forwarded-for
+function getClientIp(req: Request): string {
+  const cfIp = req.headers.get('CF-Connecting-IP');
+  if (cfIp) return cfIp.trim();
+
   const forwarded = req.headers.get('x-forwarded-for');
   if (forwarded) {
     // Take the first IP in the chain (original client)
     return forwarded.split(',')[0].trim();
   }
 
-  // Fallback headers
   const realIp = req.headers.get('x-real-ip');
   if (realIp) return realIp;
 
-  // Default fallback
   return 'unknown';
 }
 
-const defaultRateLimiter: RateLimiter = (() => {
-  const url = readEnvValue(process.env.UPSTASH_REDIS_REST_URL);
-  const token = readEnvValue(process.env.UPSTASH_REDIS_REST_TOKEN);
-  if (url && token) return new UpstashRateLimiter({ url, token });
-  return new MemoryRateLimiter();
-})();
+let cachedLimiter: RateLimiter | undefined;
+
+/**
+ * Resolved lazily: the worker binds its environment per request, so the
+ * Upstash credentials are not readable at module-eval time.
+ */
+function defaultRateLimiter(): RateLimiter {
+  if (cachedLimiter) return cachedLimiter;
+  const url = readServerEnvValue('UPSTASH_REDIS_REST_URL');
+  const token = readServerEnvValue('UPSTASH_REDIS_REST_TOKEN');
+  cachedLimiter = url && token ? new UpstashRateLimiter({ url, token }) : new MemoryRateLimiter();
+  return cachedLimiter;
+}
 
 /**
  * Rate limit middleware for API routes.
  * Returns a Response if rate limited, or null if allowed.
  */
 export async function rateLimit(
-  req: NextRequest,
+  req: Request,
   prefix: string,
   config: RateLimitConfig,
 ): Promise<Response | null> {
@@ -157,7 +161,7 @@ export async function rateLimit(
   const key = `${prefix}:${ip}`;
   let result: RateLimitResult;
   try {
-    result = await defaultRateLimiter.check(key, config);
+    result = await defaultRateLimiter().check(key, config);
   } catch {
     return null;
   }

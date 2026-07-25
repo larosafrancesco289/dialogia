@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import type { PersistedAttachment } from '@/lib/types';
 
 export type MessageAttachmentsProps = {
@@ -25,11 +24,6 @@ const imageSizeByVariant: Record<'default' | 'compact', string> = {
 const imageDimsByVariant: Record<'default' | 'compact', { width: number; height: number }> = {
   default: { width: 144, height: 144 },
   compact: { width: 128, height: 128 },
-};
-
-const imageSizesByVariant: Record<'default' | 'compact', string> = {
-  default: '(min-width: 640px) 144px, 112px',
-  compact: '(min-width: 640px) 128px, 96px',
 };
 
 const audioSizeByVariant: Record<'default' | 'compact', string> = {
@@ -71,13 +65,11 @@ export function MessageAttachments({
           title="Click to enlarge"
           type="button"
         >
-          <Image
+          <img
             src={attachment.dataURL}
             alt={attachment.name || 'image'}
             width={imageDimsByVariant[variant].width}
             height={imageDimsByVariant[variant].height}
-            sizes={imageSizesByVariant[variant]}
-            unoptimized
             loading="lazy"
             decoding="async"
             className={`${imageSizeByVariant[variant]} object-cover rounded border border-border`}

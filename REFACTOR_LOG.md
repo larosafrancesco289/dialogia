@@ -261,3 +261,174 @@ An independent review pass after the initial report found and fixed on this bran
 - The tutor simulation CLI moved from `scripts/tutor-sim.ts` to
   `src/modules/tutor/tooling/simulate.ts`, so the delete experiment touches nothing
   outside the module directory and `src/lib/modules.ts`.
+
+## Stage 2 — Migrate to Vite + TanStack Router + Cloudflare (2026-07-25)
+
+Branch: `stage-2-migrate` (6 commits, not merged, not pushed). CI green
+(`scripts/ci.sh`: hygiene + lint:types + 440 tests + prettier + eslint, 0 errors, the
+same 5 pre-existing warnings). Both builds verified, and the app was driven in a
+browser at desktop and mobile widths.
+
+**Headline: Next is gone. 79 files changed, +2,058 / −1,205.** The app is a static
+SPA; the hosted machinery is a Cloudflare worker built from `functions/`. Initial JS
+is **258 kB gz, down from 313 kB** (Stage 1's figure), with 28 kB of CSS and three
+self-hosted font files. All six Stage 2 tasks are complete.
+
+Commits:
+
+- `0b356d1` Scaffold the Vite + TanStack Router SPA shell — `index.html`, `src/main.tsx`,
+  `src/router.tsx` (two routes: `/`, and `/access` in hosted builds only),
+  `styles/globals.css`, Tailwind v4 via `@tailwindcss/vite`. The theme-init IIFE is
+  injected into the HTML by a small plugin that calls `injectThemeClass()`, so the
+  inline script and the runtime theme logic still have one source.
+- `7cf3072` Replace the Next runtime primitives with plain web equivalents — `next/image`
+  → `<img>`, `lazyClient` → `React.lazy` + `Suspense`, `NEXT_PUBLIC_*` →
+  `import.meta.env.VITE_*`, and the matchMedia redesign of `initialIsMobile`.
+- `2531b5f` Port the hosted variant to Cloudflare.
+- `b709afd` Ship the app as an installable PWA.
+- `3564bc1` Drop the Next and Vercel dependencies.
+- `8c2b3f6` Read the server production flag from the bound environment.
+
+### Deviations from the plan (and why)
+
+- **The hosted variant is a `_worker.js` in Cloudflare Pages _advanced mode_, not
+  `functions/api/*` routed by Pages.** Pages compiles `functions/` with esbuild and does
+  not resolve `tsconfig` path aliases, so a Pages-routed function could only reach the
+  server modules through relative imports — and the whole `@/lib/**` graph behind those
+  routes uses aliases, which AGENTS.md requires. The source layout the plan asked for
+  survives (`functions/api/*` is one module per endpoint, `functions/middleware.ts` is
+  the gate); `functions/routes.ts` maps paths to handlers and `functions/worker.ts` is
+  the entry, all bundled by `vite.worker.config.ts` into `dist/_worker.js` (87 kB raw,
+  24 kB gz). Advanced mode also bypasses `_redirects`, so the worker performs the SPA
+  fallback itself; `public/_redirects` still covers the static BYOK deploy.
+- **Server config is read through a bindable env source** (`src/lib/env/source.ts`).
+  Cloudflare hands the environment to the worker per request rather than exposing
+  `process.env`, and threading an env argument through `env/server.ts`,
+  `tierApiKey.server.ts` and the provider pipelines would have been a far larger change
+  than the stage justified. `bindServerEnv(env)` runs once per request in
+  `worker.ts`; Node (tests, CLI) falls through to `process.env`. The built worker
+  contains no `process` reference at all.
+- **A missing `NODE_ENV` is now read as production.** The old middleware bypassed auth
+  whenever `NODE_ENV !== 'production'`, and Cloudflare simply does not set the variable —
+  the old default would have disabled the access gate on a live deployment.
+  `isServerProd()` reads the bound env and defaults the safe way; `bun run dev` and
+  `wrangler` runs need an explicit `NODE_ENV=development` for the bypass. Covered by
+  `tests/accessGate.test.ts`.
+- **Fonts are latin-only variable cuts, not the plan's per-weight `@fontsource` files.**
+  Three woff2 files (Newsreader roman + italic, Plus Jakarta Sans roman, 147 kB total)
+  replace the seven static weights `next/font` generated, and cover the full 200–800
+  range instead of the three or four weights the CSS actually names.
+- **`isProd()` vs `isServerProd()` is now a real distinction.** `isProd()` reflects the
+  build mode (`import.meta.env.MODE`) and is the client's notion; the worker bundle is
+  always built in production mode, so anything server-side that must react to a
+  deployment's `NODE_ENV` (cookie `Secure`, the auth timing switch, the debug route)
+  uses `isServerProd()`.
+
+### Auth crypto consolidated on WebCrypto
+
+`token.server.ts` and `fingerprint.node.ts` are deleted. `token.edge.ts` gained
+`createAuthToken(claims, secret)` and `hmacHex(value, key)`, so token minting and access
+code hashing are async and run anywhere. `cookies.server.ts` was rewritten around plain
+`Set-Cookie` serialisation plus a request cookie parser, and `getServerTier(req)` reads
+the tier from the request instead of `next/headers`. `getClientIp` prefers
+`CF-Connecting-IP`, which the client cannot spoof, over the forwarding chain.
+
+### Verified, not assumed
+
+- `bun run dev` and the production preview both boot: dark theme applied before paint,
+  self-hosted fonts resolved, no console errors, the lazily loaded settings drawer opens.
+- The mobile shell renders on first paint at 375px with no desktop flash — the
+  `mounted` dance and the UA-derived `initialIsMobile` prop are gone from
+  `useAppBootstrap`, `HomeClient` and `MobileShell`.
+- The built `dist/_worker.js` was driven directly with a stubbed `ASSETS` binding:
+  unauthenticated `/` and `/deep/route` redirect to `/access` (307), `/access` and
+  static assets pass, an unknown `/api/*` is a 404 JSON error, `POST
+/api/auth/set-free-tier` mints an HttpOnly token, `/api/tavily` refuses the free tier
+  (403), and a request carrying the minted cookies gets the app shell back through the
+  SPA fallback.
+- The production build registers and activates a service worker with 124 precached
+  entries including the app shell.
+- The module-boundary lint was probed empirically again after the ESLint rewrite: a
+  `@/modules/tutor/*` import from `src/lib/store/notices.ts` still errors.
+
+### Numbers
+
+|                  | Before (Next, Stage 1)          | After (Vite)             |
+| ---------------- | ------------------------------- | ------------------------ |
+| Initial JS (gz)  | 313 kB                          | 258 kB                   |
+| Initial CSS (gz) | not counted separately          | 28 kB                    |
+| Display fonts    | 7 static cuts via `next/font`   | 3 variable woff2, 147 kB |
+| Hosted server    | Next runtime + 35 kB middleware | 87 kB worker (24 kB gz)  |
+| Tests            | 432                             | 440                      |
+
+PWA precache is 126 entries / 3.7 MB. KaTeX's font set and the two outsized mermaid
+chunks are deliberately excluded and picked up by a runtime CacheFirst rule the first
+time a message needs them.
+
+### Things the owner must do
+
+- **`.env.local` still uses the `NEXT_PUBLIC_*` names**, which no longer reach the
+  client — the running app shows "Missing provider API key or proxy configuration"
+  until they are renamed. The mapping is in `.env.example`: `NEXT_PUBLIC_X` →
+  `VITE_X`, except `NEXT_PUBLIC_TAVILY_API_KEY`/`NEXT_PUBLIC_LOG_LEVEL`, which became
+  `VITE_TAVILY_SEARCH_ENABLED`/`VITE_LOG_LEVEL`. Server-side names are unchanged.
+- **Retiring the Vercel deployment is not done** — the protocol forbids deploying, so
+  nothing was pushed or deployed. `vercel.env` is a local, gitignored file and was left
+  alone; the plan schedules its deletion for Stage 4.
+- `dist/` was briefly tracked by the first four commits on this branch. History was
+  rewritten with `git filter-branch` to remove it, and the pre-rewrite commits are kept
+  on the local branch **`stage-2-migrate-with-dist`**, which can be deleted once the
+  rewritten branch has been reviewed.
+
+### Addendum — dev-server API parity (same day)
+
+Restoring `bun run dev` to a working state needed one more commit. `next dev` used
+to serve the API routes; after the migration `vite dev` had no `/api/*` at all, so in
+proxy mode the client's model and chat calls hit the SPA fallback and got HTML back.
+`vite.config.ts` now mounts the worker's own route table as dev middleware
+(`functions/devServer.ts` bridges Node's req/res to `Request`/`Response`, piping the
+body so streamed completions still stream), reads server keys with `loadEnv` since
+Vite only exposes `VITE_*`, and answers an unmatched `/api/*` with the same 404 JSON
+the worker returns. Verified: `/api/openrouter/models` and `/api/openrouter/endpoints/zdr`
+return JSON in dev, `/api/nope` is a 404, and non-API paths still fall through to the SPA.
+
+Left unresolved: a "Missing provider API key or proxy configuration" toast still
+flashes once at boot and auto-dismisses after 10s, on a dev server where the proxy is
+configured and the model list does load. It is not `modelSlice`'s
+`authEntries.length === 0` branch (instrumented, never fired) and not a persisted
+notice (the localStorage blob has none); `requireTransportAuth` resolves for both
+transports when called directly. The remaining candidate is a boot-time path through
+`services/auth.ts`. Cosmetic, but unexplained, and there is no pre-migration baseline
+left to compare against — worth a look during review.
+
+**Resolved during review.** The toast never came from the dev code at all. `bun start`
+(`vite preview --port 3000`) shares the dev origin, so running the production preview
+left the PWA service worker registered on `localhost:3000`; every later `bun run dev`
+visit was served the stale precached production shell instead of dev modules (hence
+instrumenting the source never fired). That shell had been built while `.env.local`
+still carried the `NEXT_PUBLIC_*` names — its baked `import.meta.env` contains no
+`VITE_*` keys, so both transports failed auth and `modelSlice`'s empty-`authEntries`
+branch fired, in the stale bundle. Meanwhile `/api/*` bypassed the worker
+(`navigateFallbackDenylist`), which is why the model list still loaded and made the
+toast look impossible. Fix: the dev server now serves a self-destroying `/sw.js`
+(`devSwSelfDestruct` in `vite.config.ts`) — a polluted browser unregisters the stale
+worker, purges its caches, and reloads into the real dev bundle on the next update
+check. Verified end to end against a browser carrying the stale worker.
+
+### Follow-ups discovered (not done)
+
+- The PWA precache (3.7 MB) is dominated by mermaid's per-diagram chunks. Trimming it to
+  a true app shell needs the entry's chunk graph, which the size ceiling only
+  approximates; a `injectManifest` service worker or a build-time read of `index.html`
+  would do it precisely.
+- `AccessPage` is code-split into its own chunk in the BYOK build even though the route
+  is never registered there. It is ~1 kB and never fetched, but a dead-export check
+  (Stage 4) will notice it.
+- `_worker.js` is a single inlined bundle because Cloudflare wants one file; the dynamic
+  imports inside `routeBuilder` (rate limiter, tier lookup) therefore no longer split.
+  Harmless at 24 kB gz, worth remembering if the worker grows.
+- No maskable PWA icon exists; the manifest declares `purpose: 'any'` only. Generating a
+  maskable variant is a small asset task.
+- `styles/mobile.css` still has the orphaned `.swipe-action-reveal` rules Stage 0 and
+  Stage 1 both noted. The CSS pass this stage was limited to moving the entry file.
+- The 5 pre-existing ESLint unused-var warnings are unchanged.

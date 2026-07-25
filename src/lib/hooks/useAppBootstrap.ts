@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { prefetchOnIdle } from '@/lib/ui/lazy';
 import { MEDIA_QUERIES, maxWidthQuery } from '@/lib/ui/breakpoints';
 
-export function useAppBootstrap(opts?: { mobileBreakpoint?: number; initialIsMobile?: boolean }) {
+export function useAppBootstrap(opts?: { mobileBreakpoint?: number }) {
   const { initializeApp, setUI, collapsed } = useChatStore(
     (s) => ({
       initializeApp: s.initializeApp,
@@ -17,16 +17,9 @@ export function useAppBootstrap(opts?: { mobileBreakpoint?: number; initialIsMob
     shallow,
   );
 
-  const [mounted, setMounted] = useState(false);
-  const mediaIsMobile = useMediaQuery(
+  const isMobile = useMediaQuery(
     opts?.mobileBreakpoint ? maxWidthQuery(opts.mobileBreakpoint) : MEDIA_QUERIES.tablet,
   );
-  // Until the media query resolves after mount, fall back to the server's UA
-  // hint so phones get the mobile shell on first paint instead of a desktop
-  // layout flash.
-  const isMobile = mounted ? mediaIsMobile : (opts?.initialIsMobile ?? mediaIsMobile);
-
-  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     initializeApp();
@@ -41,5 +34,13 @@ export function useAppBootstrap(opts?: { mobileBreakpoint?: number; initialIsMob
     [],
   );
 
-  return { mounted, isMobile };
+  // The markdown renderer is lazy, so a reload shows raw text until its chunk
+  // lands. Warming it on idle removes the flash without paying for it on boot.
+  useEffect(
+    () =>
+      prefetchOnIdle(() => import('@/components/markdown/MarkdownRenderer'), { timeoutMs: 1500 }),
+    [],
+  );
+
+  return { isMobile };
 }

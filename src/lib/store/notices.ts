@@ -3,7 +3,7 @@
 
 export const NOTICE_CATALOG = {
   missingClientKey: 'Missing provider API key or proxy configuration',
-  missingAnthropicKey: 'Missing NEXT_PUBLIC_ANTHROPIC_API_KEY',
+  missingAnthropicKey: 'Missing VITE_ANTHROPIC_API_KEY',
   invalidKey: 'Invalid API key',
   rateLimited: 'Rate limited. Retry later.',
   missingTavilyKey: 'Missing TAVILY_API_KEY',
