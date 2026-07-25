@@ -78,7 +78,8 @@ export const DYNAMIC_MODEL_ALIASES: DynamicModelAlias[] = [
   {
     id: '~x-ai/grok-latest',
     label: 'Grok Latest',
-    description: 'Newest mainline Grok model on OpenRouter (excludes code, image, and fast variants)',
+    description:
+      'Newest mainline Grok model on OpenRouter (excludes code, image, and fast variants)',
     fallbackId: 'x-ai/grok-4.3',
     matches: (model) => {
       const id = idOf(model);

@@ -8,6 +8,13 @@ export type ProxyResponseOptions = {
   headers?: HeadersInit;
 };
 
+/**
+ * Catalog list proxies (models, ZDR endpoints) return ~0.5 MB each and change rarely.
+ * `private` keeps them out of shared caches because the routes sit behind the access
+ * gate; only successful responses may use this. Never apply it to chat or auth routes.
+ */
+export const LIST_CACHE_CONTROL = 'private, max-age=300';
+
 export function getRequestOrigin(req: Request): string | undefined {
   return req.headers.get('origin') || undefined;
 }

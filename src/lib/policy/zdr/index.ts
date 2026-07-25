@@ -1,4 +1,4 @@
-import { fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter';
+import { fetchZdrLists } from '@/lib/openrouter';
 
 export type ZdrLists = {
   modelIds: Set<string>;
@@ -27,8 +27,7 @@ function getProviderFromModel(modelId: string): string {
 }
 
 export type ZdrFetchers = {
-  fetchModelIds?: () => Promise<Set<string>>;
-  fetchProviderIds?: () => Promise<Set<string>>;
+  fetchLists?: () => Promise<ZdrLists>;
 };
 
 export async function ensureZdrLists(
@@ -38,24 +37,23 @@ export async function ensureZdrLists(
   },
   fetchers?: ZdrFetchers,
 ): Promise<ZdrLists> {
-  let modelIds = toSet(existing?.modelIds);
-  let providerIds = toSet(existing?.providerIds);
+  const modelIds = toSet(existing?.modelIds);
+  const providerIds = toSet(existing?.providerIds);
 
   const needsModels = modelIds.size === 0;
   const needsProviders = providerIds.size === 0;
+  if (!needsModels && !needsProviders) return { modelIds, providerIds };
 
-  const fetchModels = fetchers?.fetchModelIds ?? fetchZdrModelIds;
-  const fetchProviders = fetchers?.fetchProviderIds ?? fetchZdrProviderIds;
+  const fetchLists = fetchers?.fetchLists ?? fetchZdrLists;
+  const fetched = await fetchLists().catch(() => ({
+    modelIds: new Set<string>(),
+    providerIds: new Set<string>(),
+  }));
 
-  const [fetchedModels, fetchedProviders] = await Promise.all([
-    needsModels ? fetchModels().catch(() => new Set<string>()) : Promise.resolve(modelIds),
-    needsProviders ? fetchProviders().catch(() => new Set<string>()) : Promise.resolve(providerIds),
-  ]);
-
-  modelIds = needsModels ? fetchedModels : modelIds;
-  providerIds = needsProviders ? fetchedProviders : providerIds;
-
-  return { modelIds, providerIds };
+  return {
+    modelIds: needsModels ? fetched.modelIds : modelIds,
+    providerIds: needsProviders ? fetched.providerIds : providerIds,
+  };
 }
 
 export function evaluateZdrModel(modelId: string, lists: ZdrLists): ZdrCheck {

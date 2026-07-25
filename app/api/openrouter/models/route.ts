@@ -1,6 +1,11 @@
 import { orFetchModels } from '@/lib/openrouter/http';
 import { jsonError } from '@/lib/server/route';
-import { getRequestOrigin, proxyJson, withProxyErrors } from '@/lib/server/proxy';
+import {
+  getRequestOrigin,
+  LIST_CACHE_CONTROL,
+  proxyJson,
+  withProxyErrors,
+} from '@/lib/server/proxy';
 import { resolveOpenRouterAccess } from '@/lib/openrouter/pipeline.server';
 import { route } from '@/lib/server/routeBuilder';
 import { RATE_LIMITS } from '@/lib/server/rateLimit';
@@ -16,6 +21,6 @@ export const GET = route('openrouter-models')
     }
     return withProxyErrors(async () => {
       const res = await orFetchModels(access.auth, { origin: getRequestOrigin(req) });
-      return proxyJson(res);
+      return proxyJson(res, { cacheControl: res.ok ? LIST_CACHE_CONTROL : undefined });
     }, 'proxy_error');
   });

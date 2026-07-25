@@ -6,7 +6,7 @@ import { streamChatCompletion } from '@/lib/openrouter/stream';
 export { chatCompletion } from '@/lib/openrouter/chat';
 export { fetchModels, clearOpenRouterCachesForTest } from '@/lib/openrouter/models';
 export { streamChatCompletion } from '@/lib/openrouter/stream';
-export { fetchZdrModelIds, fetchZdrProviderIds } from '@/lib/openrouter/zdr';
+export { fetchZdrLists } from '@/lib/openrouter/zdr';
 
 export const openrouterTransport: TransportClient = {
   fetchModels: (auth, opts) => fetchModels(auth, opts),

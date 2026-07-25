@@ -185,7 +185,9 @@ directly.
 Zustand persistence is reserved for stable UI preferences in `PersistedStoreState`
 (`src/lib/store/types.ts`), including the selected chat, favorite/hidden models, settings drawer
 state, collapsed sidebar state, ZDR-only mode, route preference, feature flags, debug mode, and
-tutor preferences. Ephemeral state such as streaming flags, per-message tutor attempts, search
+tutor preferences. The cached ZDR lists (`zdrModelIds`/`zdrProviderIds`/`zdrFetchedAt`) are also
+persisted so `ZDR_CACHE_TTL_MS` survives a reload instead of refetching the ~0.5 MB endpoint list
+on every cold start. Ephemeral state such as streaming flags, per-message tutor attempts, search
 results, and controllers is rebuilt or discarded on startup.
 
 Migrations are versioned in `src/lib/db/versions.ts`: `DB_SCHEMA_VERSION` for IndexedDB upgrades and
