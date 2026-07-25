@@ -1,6 +1,7 @@
 'use client';
 import type { PointerEventHandler } from 'react';
-import { MessagePanelsUpper, TutorPanelSection } from '@/components/message/MessagePanels';
+import { MessagePanelsUpper } from '@/components/message/MessagePanels';
+import { MessageModuleSlot } from '@/components/ModuleSlot';
 import { AssistantMessage } from '@/components/message/AssistantMessage';
 import { UserMessage } from '@/components/message/UserMessage';
 import type { MessageCardViewModel } from '@/components/message/useMessageCardViewModel';
@@ -50,8 +51,6 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     tavilyEntry,
     debugMode,
     debugEntry,
-    tutorGloballyEnabled,
-    tutorEntry,
     autoReasoningModelIds,
     showToolCallLog,
     showDebugRawJson,
@@ -125,12 +124,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
   ) : null;
 
   const tutorPanelNode = isAssistant ? (
-    <TutorPanelSection
-      messageId={message.id}
-      tutorGloballyEnabled={tutorGloballyEnabled}
-      tutorEntry={tutorEntry}
-      isLatestAssistant={isLatestAssistant}
-    />
+    <MessageModuleSlot slot="messagePanel" message={message} />
   ) : null;
 
   return (

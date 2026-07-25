@@ -11,7 +11,7 @@ import {
 import { Markdown, type MarkdownCitationSource } from '@/components/Markdown';
 import { RegenerateMenu } from '@/components/RegenerateMenu';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
-import { LearnerModelUpdates } from '@/modules/tutor/components/message/LearnerModelUpdates';
+import { MessageModuleSlot } from '@/components/ModuleSlot';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
 import { StatsToggle } from '@/components/message/StatsToggle';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
@@ -287,8 +287,7 @@ export function AssistantMessage({
 
       {!isStreaming && tutorPanelNode}
 
-      {/* Learner Model Updates */}
-      {!isEditing && !isStreaming && <LearnerModelUpdates message={message} />}
+      {!isEditing && !isStreaming && <MessageModuleSlot slot="messageFooter" message={message} />}
 
       <StatsToggle
         showStats={showStats}

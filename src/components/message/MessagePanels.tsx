@@ -1,9 +1,8 @@
 'use client';
-import type { Chat, Message, MessageTutor, ModelDescriptor, ToolCallLogEntry } from '@/lib/types';
+import type { Chat, Message, ModelDescriptor, ToolCallLogEntry } from '@/lib/types';
 import type { UISearchState } from '@/lib/store/types';
 import { ResponseContextPanel } from '@/components/message/ResponseContextPanel';
 import { DebugPanel } from '@/components/message/DebugPanel';
-import { TutorPanel } from '@/modules/tutor/components/message/TutorPanel';
 
 export type MessagePanelsProps = {
   message: Message;
@@ -16,8 +15,6 @@ export type MessagePanelsProps = {
   debugEntry?: { body: string; createdAt: number } | null;
   isDebugExpanded: boolean;
   onToggleDebug: () => void;
-  tutorGloballyEnabled: boolean;
-  tutorEntry?: MessageTutor;
   autoReasoningModelIds: Record<string, boolean>;
   isStreaming: boolean;
   lastMessageId?: string;
@@ -72,7 +69,7 @@ export function MessagePanelsUpper({
   showDebugRawJson,
   toolCalls,
   highlightToolCalls,
-}: Omit<MessagePanelsProps, 'tutorGloballyEnabled' | 'tutorEntry'>) {
+}: MessagePanelsProps) {
   const panels: React.ReactNode[] = [];
 
   const toolCallList = Array.isArray(toolCalls) ? toolCalls : undefined;
@@ -105,38 +102,6 @@ export function MessagePanelsUpper({
 
   if (panels.length === 0) return null;
   return <>{panels}</>;
-}
-
-/**
- * Renders the tutor panel that appears BELOW the message content.
- * This ensures the tutor's explanatory text is visible before the interactive tools.
- */
-export function TutorPanelSection({
-  messageId,
-  tutorGloballyEnabled,
-  tutorEntry,
-  isLatestAssistant,
-}: {
-  messageId: string;
-  tutorGloballyEnabled: boolean;
-  tutorEntry?: MessageTutor;
-  isLatestAssistant?: boolean;
-}) {
-  if (!tutorGloballyEnabled || !tutorEntry) return null;
-
-  return (
-    <TutorPanel
-      messageId={messageId}
-      title={tutorEntry.title}
-      mcq={tutorEntry.mcq}
-      questionnaire={tutorEntry.questionnaire}
-      diagnostic={tutorEntry.diagnostic}
-      planProposal={tutorEntry.planProposal}
-      planSuggestions={tutorEntry.planSuggestions}
-      assessmentUpdates={tutorEntry.assessmentUpdates}
-      isLatestAssistant={isLatestAssistant}
-    />
-  );
 }
 
 function buildResponseContextPanel({

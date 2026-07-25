@@ -432,14 +432,12 @@ test('settings drawer patch only touches UI defaults (never the active chat)', (
     showStats: false,
     showToolCallLog: true,
     showDebugRawJson: true,
-    tutorDefaultModel: 'anthropic/claude-haiku-4.5',
   });
 
   assert.ok(patch.uiPatch.chatDefaults, 'uiPatch.chatDefaults should be set');
   assert.equal(patch.uiPatch.chatDefaults?.system, 'Drawer system');
   assert.equal(patch.uiPatch.chatDefaults?.generation?.reasoningEffort, 'medium');
   assert.equal(patch.uiPatch.chatDefaults?.ui?.showThinkingByDefault, true);
-  assert.equal(patch.uiPatch.tutor?.defaultModelId, 'anthropic/claude-haiku-4.5');
   assert.equal(
     Object.prototype.hasOwnProperty.call(patch, 'chatSettingsPatch'),
     false,

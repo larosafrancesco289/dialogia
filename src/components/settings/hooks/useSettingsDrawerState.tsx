@@ -20,7 +20,7 @@ import {
 } from '@/components/settings/hooks/useSettingsAutoSave';
 import { ModelsPanel } from '@/components/settings/sections/ModelsPanel';
 import { ChatPanel } from '@/components/settings/sections/ChatPanel';
-import { TutorPanel } from '@/modules/tutor/components/settings/TutorPanel';
+import { SettingsModuleSlot } from '@/components/ModuleSlot';
 import { AppearancePanel } from '@/components/settings/sections/AppearancePanel';
 import { AdvancedPanel } from '@/components/settings/sections/AdvancedPanel';
 import { NOTICE_EXPORTED_CHATS, NOTICE_IMPORTED_DATA } from '@/lib/store/notices';
@@ -48,9 +48,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
   const [closing, setClosing] = useState(false);
 
   const {
-    chats,
-    selectedChatId,
-    updateChatSettings,
     setUI,
     setNotice,
     ui,
@@ -62,9 +59,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     initializeApp,
   } = useChatStore(
     (s) => ({
-      chats: s.chats,
-      selectedChatId: s.selectedChatId,
-      updateChatSettings: s.updateChatSettings,
       setUI: s.setUI,
       setNotice: s.setNotice,
       ui: s.ui,
@@ -77,7 +71,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     }),
     shallow,
   );
-  const chat = chats.find((entry) => entry.id === selectedChatId);
   const {
     system,
     setSystem,
@@ -87,8 +80,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     setReasoningTokens,
     reasoningTokensStr,
     setReasoningTokensStr,
-    tutorDefaultModel,
-    setTutorDefaultModel,
     showThinking,
     setShowThinking,
     showStats,
@@ -120,7 +111,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
 
   const modelSearchRef = useRef<ModelSearchHandle | null>(null);
 
-  const experimentalTutor = useChatStore((s) => !!s.ui.flags.experimentalTutor);
   const { saveStatus, markDirty, createAutoSaveSetter, flushPendingSave } = useSettingsAutoSave({
     setUI,
     system,
@@ -130,7 +120,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     showStats,
     showToolCallLog,
     showDebugRawJson,
-    tutorDefaultModel,
   });
 
   const closeWithAnim = useCallback(() => {
@@ -138,16 +127,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     setClosing(true);
     window.setTimeout(() => setUI({ showSettings: false }), 190);
   }, [flushPendingSave, setUI]);
-
-  const onForceTutorModeChange = useCallback(
-    async (enabled: boolean) => {
-      setUI({ tutor: { forceMode: enabled } });
-      if (enabled && chat && !chat.settings.features.tutor?.enabled) {
-        await updateChatSettings({ features: { tutor: { enabled: true } } });
-      }
-    },
-    [chat, setUI, updateChatSettings],
-  );
 
   // Prevent background scroll while drawer is open
   useEffect(() => {
@@ -244,14 +223,9 @@ export function useSettingsDrawerState(): SettingsDrawerState {
         );
       case 'tutor':
         return (
-          <TutorPanel
+          <SettingsModuleSlot
             renderSection={renderSection}
-            experimentalTutor={experimentalTutor}
-            ui={ui}
-            setUI={setUI}
-            onForceTutorModeChange={onForceTutorModeChange}
-            tutorDefaultModel={tutorDefaultModel}
-            setTutorDefaultModel={createAutoSaveSetter(setTutorDefaultModel)}
+            createAutoSaveSetter={createAutoSaveSetter}
           />
         );
       case 'appearance':

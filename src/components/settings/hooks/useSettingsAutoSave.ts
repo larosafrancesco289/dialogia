@@ -24,7 +24,6 @@ export function useSettingsAutoSave(args: {
   showStats: SettingsSaveInput['showStats'];
   showToolCallLog: SettingsSaveInput['showToolCallLog'];
   showDebugRawJson: SettingsSaveInput['showDebugRawJson'];
-  tutorDefaultModel: SettingsSaveInput['tutorDefaultModel'];
 }): SettingsAutoSaveState {
   const {
     setUI,
@@ -35,7 +34,6 @@ export function useSettingsAutoSave(args: {
     showStats,
     showToolCallLog,
     showDebugRawJson,
-    tutorDefaultModel,
   } = args;
 
   const performSave = useCallback(() => {
@@ -47,7 +45,6 @@ export function useSettingsAutoSave(args: {
       showStats,
       showToolCallLog,
       showDebugRawJson,
-      tutorDefaultModel,
     });
     applySettingsSavePatch({
       patch,
@@ -61,7 +58,6 @@ export function useSettingsAutoSave(args: {
     showStats,
     showToolCallLog,
     showDebugRawJson,
-    tutorDefaultModel,
     setUI,
   ]);
 

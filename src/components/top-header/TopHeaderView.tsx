@@ -6,9 +6,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
-import { PlanSheet } from '@/modules/tutor/components/plan/PlanSheet';
-import { PlanStatusBadge } from '@/components/top-header/PlanStatusBadge';
-import { TutorToggle } from '@/modules/tutor/components/header/TutorToggle';
+import { ModuleSlot } from '@/components/ModuleSlot';
 import { HeaderDivider } from '@/components/top-header/HeaderDivider';
 import { ModelPickerTrigger } from '@/components/top-header/ModelPickerTrigger';
 import type { TopHeaderState } from '@/components/top-header/useTopHeaderState';
@@ -17,42 +15,15 @@ export function TopHeaderView({
   chat,
   collapsed,
   isSettingsOpen,
-  planSheetOpen,
-  planSheetOverride,
-  planGeneration,
   tutorActive,
   tutorModelId,
   tutorModelLabel,
-  experimentalTutor,
-  forceTutorMode,
-  hasPlan,
-  learningPlan,
-  planProgress,
-  currentNode: _currentNode,
-  learnerModel,
-  milestones: _milestones,
-  breadcrumbPath: _breadcrumbPath,
   onToggleSidebar,
   onToggleSettings,
   onOpenSettings,
   onNewChat,
   onRenameChat,
-  onToggleTutor,
-  onOpenPlanSheet: _onOpenPlanSheet,
-  onClosePlanSheet,
-  rightPanelOpen,
-  onToggleRightPanel,
-  onPlanUpdate,
-  onStartLesson,
-  onMarkKnown,
-  onLearnerModelFeedback: _onLearnerModelFeedback,
-  onConfidenceAdjust,
-  onMisconceptionResolve,
-  onSetConfidenceFloor,
-  onFlagForReview,
-  onSendPlanFeedback,
 }: TopHeaderState) {
-  const plan = planSheetOverride ?? learningPlan ?? null;
   const headerClass = `app-header top-header ${tutorActive ? 'top-header--tutor-active' : ''}`;
 
   return (
@@ -86,31 +57,7 @@ export function TopHeaderView({
 
         <HeaderDivider />
 
-        {experimentalTutor && (
-          <>
-            <TutorToggle
-              active={tutorActive}
-              forceTutorMode={forceTutorMode}
-              onToggle={onToggleTutor}
-            />
-            <HeaderDivider />
-          </>
-        )}
-
-        {/* Plan status badge — toggles right panel instead of opening sheet */}
-        {tutorActive && hasPlan && (
-          <>
-            <PlanStatusBadge
-              planGeneration={planGeneration}
-              hasPlan={hasPlan}
-              planProgress={planProgress}
-              learningPlan={learningPlan}
-              panelOpen={rightPanelOpen}
-              onToggleRightPanel={onToggleRightPanel}
-            />
-            <HeaderDivider />
-          </>
-        )}
+        <ModuleSlot slot="headerControls" />
 
         {/* Subtle controls row */}
         <div className="header-controls">
@@ -149,22 +96,6 @@ export function TopHeaderView({
           />
         </div>
       </div>
-
-      {/* Plan sheet modal — kept for message card triggers that set sheetPlanOverride */}
-      <PlanSheet
-        plan={plan}
-        isOpen={planSheetOpen}
-        onClose={onClosePlanSheet}
-        onUpdate={onPlanUpdate}
-        onStartLesson={onStartLesson}
-        learnerModel={learnerModel}
-        onMarkKnown={onMarkKnown}
-        onConfidenceAdjust={onConfidenceAdjust}
-        onMisconceptionResolve={onMisconceptionResolve}
-        onSetConfidenceFloor={onSetConfidenceFloor}
-        onFlagForReview={onFlagForReview}
-        onSendFeedback={onSendPlanFeedback}
-      />
     </div>
   );
 }
