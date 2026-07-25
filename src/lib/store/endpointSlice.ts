@@ -6,6 +6,7 @@
 import { createStoreSlice } from '@/lib/store/createSlice';
 import type { PersistFragment, StoreState } from '@/lib/store/types';
 import {
+  endpointKeyRef,
   isBuiltInEndpointId,
   normalizeBaseUrl,
   slugifyEndpointId,
@@ -20,8 +21,10 @@ export type EndpointSliceState = {
 };
 
 export type EndpointSliceActions = {
-  addEndpoint: (draft: Omit<ProviderEndpoint, 'id'> & { id?: string }) => ProviderEndpoint;
-  updateEndpoint: (id: string, patch: Partial<Omit<ProviderEndpoint, 'id'>>) => void;
+  addEndpoint: (
+    draft: Omit<ProviderEndpoint, 'id' | 'apiKeyRef'> & { id?: string },
+  ) => ProviderEndpoint;
+  updateEndpoint: (id: string, patch: Partial<Omit<ProviderEndpoint, 'id' | 'apiKeyRef'>>) => void;
   removeEndpoint: (id: string) => void;
 };
 
@@ -39,7 +42,9 @@ function sanitizeEndpoint(value: unknown): ProviderEndpoint | null {
     kind,
     label,
     baseUrl: typeof value.baseUrl === 'string' ? normalizeBaseUrl(value.baseUrl) : undefined,
-    apiKeyRef: typeof value.apiKeyRef === 'string' ? value.apiKeyRef : undefined,
+    // Always derived, never read from the blob: an imported backup could
+    // otherwise point an attacker's URL at the key of a built-in endpoint.
+    apiKeyRef: endpointKeyRef(id),
     capabilities: isRecord(value.capabilities)
       ? (value.capabilities as ProviderEndpoint['capabilities'])
       : undefined,
@@ -93,9 +98,7 @@ export const createEndpointSlice = createStoreSlice<EndpointSliceState & Endpoin
           ...draft,
           id,
           baseUrl: draft.baseUrl ? normalizeBaseUrl(draft.baseUrl) : undefined,
-          // One key per endpoint, referenced by id so the value never travels
-          // with the configuration.
-          apiKeyRef: draft.apiKeyRef ?? `endpoint:${id}`,
+          apiKeyRef: endpointKeyRef(id),
         };
         publish([...existing.filter((e) => e.id !== id), endpoint]);
         return endpoint;

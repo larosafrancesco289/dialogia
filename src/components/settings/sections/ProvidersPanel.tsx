@@ -10,6 +10,7 @@ import { isTavilyProxyEnabled } from '@/lib/env/public';
 import { listSearchProviders, searchProviderKeyRef } from '@/lib/search/providers';
 import {
   endpointCapabilities,
+  endpointKeyRef,
   isBuiltInEndpointId,
   type EndpointCapabilities,
   type ProviderEndpoint,
@@ -104,7 +105,7 @@ function CustomEndpointEditor({
       </div>
 
       <ApiKeyField
-        keyRef={endpoint.apiKeyRef ?? `endpoint:${endpoint.id}`}
+        keyRef={endpoint.apiKeyRef ?? endpointKeyRef(endpoint.id)}
         label="API key (optional)"
         placeholder="Most local servers need none"
         onChanged={onChanged}
