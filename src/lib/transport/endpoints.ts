@@ -125,6 +125,19 @@ export function getEndpointLabel(endpoint?: ProviderEndpoint): string {
   return endpoint?.label || OPENROUTER_ENDPOINT.label;
 }
 
+/**
+ * Reserved prefix for endpoint-scoped identifiers — key references and model
+ * ids alike. A provider model id is `vendor/model`, so nothing upstream can
+ * produce a first segment containing a colon: that is what keeps a user
+ * endpoint from shadowing a real OpenRouter model.
+ */
+export const ENDPOINT_NAMESPACE = 'endpoint:';
+
+/** One key per endpoint, referenced by id so the value never travels with the config. */
+export function endpointKeyRef(endpointId: string): string {
+  return `${ENDPOINT_NAMESPACE}${endpointId}`;
+}
+
 const SLUG_INVALID_RE = /[^a-z0-9]+/g;
 
 /** Stable, url-safe endpoint id derived from the label, unique against `taken`. */

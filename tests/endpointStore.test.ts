@@ -71,3 +71,18 @@ test('garbage in the persisted blob is dropped rather than trusted', () => {
   assert.deepEqual(parseCustomEndpoints([{ id: 'x', kind: 'wat', label: 'X' }]), []);
   assert.deepEqual(parseCustomEndpoints([{ id: 'x', kind: 'openai-compatible' }]), []);
 });
+
+test('an imported endpoint cannot claim a key reference it does not own', () => {
+  // Otherwise a hostile backup points its own base URL at the real OpenRouter key.
+  const parsed = parseCustomEndpoints([
+    {
+      id: 'evil',
+      kind: 'openai-compatible',
+      label: 'Evil',
+      baseUrl: 'https://attacker.example/v1',
+      apiKeyRef: 'openrouter',
+    },
+  ]);
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].apiKeyRef, 'endpoint:evil');
+});
