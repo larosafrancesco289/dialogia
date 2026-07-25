@@ -1,4 +1,3 @@
-import 'server-only';
 import { jsonError } from '@/lib/server/route';
 import { isRecord } from '@/lib/utils/guards';
 

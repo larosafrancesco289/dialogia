@@ -1,17 +1,22 @@
-import dynamic from 'next/dynamic';
-import { createElement, type ComponentType } from 'react';
+import { Suspense, createElement, lazy, type ComponentProps, type ComponentType } from 'react';
 
 type DynamicImport<T> = () => Promise<{ default: T }>;
 
-export function lazyClient<T extends ComponentType<unknown>>(
+/**
+ * Code-split boundary for client components. The Suspense wrapper is part of
+ * the returned component so call sites stay a drop-in for a plain import.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the props are recovered by ComponentProps<T>
+export function lazyClient<T extends ComponentType<any>>(
   loader: DynamicImport<T>,
   opts?: { loading?: ComponentType<unknown> | null },
-) {
-  const loading = opts?.loading ?? null;
-  return dynamic(loader, {
-    ssr: false,
-    loading: loading ? () => createElement(loading) : undefined,
-  });
+): ComponentType<ComponentProps<T>> {
+  const Loading = opts?.loading ?? null;
+  const Lazy = lazy(loader);
+  const fallback = Loading ? createElement(Loading) : null;
+  return function LazyBoundary(props: ComponentProps<T>) {
+    return createElement(Suspense, { fallback }, createElement(Lazy, props));
+  };
 }
 
 type IdleCallbackHandle = number;

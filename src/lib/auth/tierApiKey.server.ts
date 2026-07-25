@@ -1,7 +1,5 @@
-import 'server-only';
-
-import { cookies } from 'next/headers';
 import { TIER_COOKIE_NAME } from './shared';
+import { readRequestCookie } from '@/lib/auth/cookies.server';
 import type { AccessTier } from './types';
 import { canUseAllModelsForTier, isModelAllowedForTier } from './tierFeatures';
 import { parseAccessTier } from './tier.shared';
@@ -9,17 +7,11 @@ import { logger } from '@/lib/logger';
 import { getServerOpenRouterFreeKey, requireServerOpenRouterKey } from '@/lib/env/server';
 
 /**
- * Get the current access tier from cookies (server-side).
+ * Get the current access tier from the request cookies.
  * Defaults to 'free' if no tier cookie is present.
  */
-export async function getServerTier(): Promise<AccessTier> {
-  try {
-    const cookieStore = await cookies();
-    const tierCookie = cookieStore.get(TIER_COOKIE_NAME);
-    return parseAccessTier(tierCookie?.value);
-  } catch {
-    return 'free';
-  }
+export function getServerTier(req: Request): AccessTier {
+  return parseAccessTier(readRequestCookie(req, TIER_COOKIE_NAME));
 }
 
 /**
@@ -29,8 +21,7 @@ export async function getServerTier(): Promise<AccessTier> {
  *
  * Falls back to OPENROUTER_API_KEY if free key is not configured.
  */
-export async function getOpenRouterApiKeyForTier(tierOverride?: AccessTier): Promise<string> {
-  const tier = tierOverride ?? (await getServerTier());
+export function getOpenRouterApiKeyForTier(tier: AccessTier): string {
   const allowAllModels = canUseAllModelsForTier(tier);
 
   if (!allowAllModels) {
@@ -49,12 +40,7 @@ export async function getOpenRouterApiKeyForTier(tierOverride?: AccessTier): Pro
  * Check if the current tier is allowed to use a specific model.
  * Free tier can only use models from the FREE_MODEL_IDS list.
  */
-export async function canUseTierModel(
-  modelId: string,
-  tierOverride?: AccessTier,
-): Promise<boolean> {
-  const tier = tierOverride ?? (await getServerTier());
-
+export function canUseTierModel(modelId: string, tier: AccessTier): boolean {
   // Paid tiers can use any model
   if (canUseAllModelsForTier(tier)) {
     return true;

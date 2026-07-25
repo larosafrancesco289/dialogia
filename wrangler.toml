@@ -1,0 +1,5 @@
+# Hosted variant. `bun run build:hosted` emits dist/ plus dist/_worker.js, which
+# Cloudflare Pages runs in front of the static assets (advanced mode).
+name = "dialogia"
+compatibility_date = "2026-07-25"
+pages_build_output_dir = "dist"

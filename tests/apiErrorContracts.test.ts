@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NextRequest } from 'next/server';
 import { jsonError } from '@/lib/server/route';
 import { jsonAuthError } from '@/lib/auth/errors';
 import { route } from '@/lib/server/routeBuilder';
@@ -17,7 +16,7 @@ test('routeBuilder returns missing_env detail for required env', async () => {
   const handler = route('test-missing-env')
     .requireEnv('MISSING_ENV_FOR_TEST')
     .handler(async () => new Response('ok'));
-  const res = await handler(new NextRequest('https://example.com/api/test'));
+  const res = await handler(new Request('https://example.com/api/test'));
   const parsed = await readApiErrorResponse(res);
   assert.equal(parsed?.error, 'missing_env');
   assert.equal(parsed?.detail, 'MISSING_ENV_FOR_TEST');

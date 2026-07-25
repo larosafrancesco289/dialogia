@@ -1,5 +1,4 @@
 'use client';
-import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { logger } from '@/lib/logger';
@@ -47,7 +46,6 @@ export function ImageLightbox({
   };
 
   if (!current) return null;
-  const isUnoptimized = current.src.startsWith('data:') || current.src.startsWith('blob:');
 
   return createPortal(
     <div
@@ -85,13 +83,10 @@ export function ImageLightbox({
           ‹
         </button>
         <div className="relative h-[85vh] w-[85vw]">
-          <Image
+          <img
             src={current.src}
             alt={current.name || 'image'}
-            fill
-            sizes="85vw"
-            unoptimized={isUnoptimized}
-            className="object-contain rounded border border-border bg-black"
+            className="absolute inset-0 h-full w-full object-contain rounded border border-border bg-black"
           />
         </div>
         <button

@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { jsonError } from '@/lib/server/route';
 
 const ACCESS_PATH = '/access';
 
-export function redirectToAccess(req: NextRequest): NextResponse {
-  const url = req.nextUrl.clone();
+export function redirectToAccess(req: Request): Response {
+  const url = new URL(req.url);
   url.pathname = ACCESS_PATH;
   url.search = '';
-  const res = NextResponse.redirect(url);
-  res.headers.set('Cache-Control', 'no-store');
-  return res;
+  return new Response(null, {
+    status: 307,
+    headers: { Location: url.toString(), 'Cache-Control': 'no-store' },
+  });
 }
 
 export function jsonAuthError(code: string, status = 400, detail?: string): Response {

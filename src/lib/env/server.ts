@@ -1,6 +1,4 @@
-import 'server-only';
-
-import { readEnvValue } from '@/lib/env/values';
+import { readServerEnvValue } from '@/lib/env/source';
 import { isProd } from '@/lib/env/runtime';
 
 export type MissingEnvError = Error & { code: 'missing_env'; env: string };
@@ -13,13 +11,13 @@ export function missingEnvError(name: string): MissingEnvError {
 }
 
 export function requireServerEnv(name: string): string {
-  const value = readEnvValue(process.env[name]);
+  const value = readServerEnvValue(name);
   if (!value) throw missingEnvError(name);
   return value;
 }
 
 export function getServerEnv(name: string): string | undefined {
-  return readEnvValue(process.env[name]);
+  return readServerEnvValue(name);
 }
 
 export function getAccessCodePepper(): string {
@@ -31,7 +29,7 @@ export function getAuthCookieSecret(): string {
 }
 
 export function getIndividualCodeHashes(): string[] {
-  const raw = readEnvValue(process.env.ACCESS_CODES_INDIVIDUAL_HASHED) || '';
+  const raw = readServerEnvValue('ACCESS_CODES_INDIVIDUAL_HASHED') || '';
   return raw
     .split(',')
     .map((segment) => segment.trim())
@@ -40,7 +38,7 @@ export function getIndividualCodeHashes(): string[] {
 }
 
 export function getDeveloperCodeHashes(): string[] {
-  const raw = readEnvValue(process.env.ACCESS_CODES_DEVELOPER_HASHED) || '';
+  const raw = readServerEnvValue('ACCESS_CODES_DEVELOPER_HASHED') || '';
   return raw
     .split(',')
     .map((segment) => segment.trim())
@@ -53,19 +51,19 @@ export function hasTieredCodesConfigured(): boolean {
 }
 
 export function getAccessCookieDomain(): string | undefined {
-  return readEnvValue(process.env.ACCESS_COOKIE_DOMAIN);
+  return readServerEnvValue('ACCESS_COOKIE_DOMAIN');
 }
 
 export function getServerOpenRouterKey(): string | undefined {
-  return readEnvValue(process.env.OPENROUTER_API_KEY);
+  return readServerEnvValue('OPENROUTER_API_KEY');
 }
 
 export function getServerOpenRouterFreeKey(): string | undefined {
-  return readEnvValue(process.env.OPENROUTER_FREE_API_KEY);
+  return readServerEnvValue('OPENROUTER_FREE_API_KEY');
 }
 
 export function getServerAnthropicKey(): string | undefined {
-  return readEnvValue(process.env.ANTHROPIC_API_KEY);
+  return readServerEnvValue('ANTHROPIC_API_KEY');
 }
 
 export function requireServerOpenRouterKey(): string {
@@ -77,7 +75,7 @@ export function requireServerAnthropicKey(): string {
 }
 
 export function getTavilyApiKey(): string | undefined {
-  return readEnvValue(process.env.TAVILY_API_KEY);
+  return readServerEnvValue('TAVILY_API_KEY');
 }
 
 export function requireTavilyApiKey(): string {
@@ -89,7 +87,7 @@ export function hasTavilyApiKey(): boolean {
 }
 
 export function getFalKey(): string | undefined {
-  return readEnvValue(process.env.FAL_KEY);
+  return readServerEnvValue('FAL_KEY');
 }
 
 export function requireFalKey(): string {
@@ -97,7 +95,7 @@ export function requireFalKey(): string {
 }
 
 export function getXaiApiKey(): string | undefined {
-  return readEnvValue(process.env.XAI_API_KEY);
+  return readServerEnvValue('XAI_API_KEY');
 }
 
 export function requireXaiApiKey(): string {

@@ -10,9 +10,9 @@ const originalEnv = { ...process.env };
 
 beforeEach(() => {
   process.env = { ...originalEnv };
-  delete process.env.NEXT_PUBLIC_USE_OR_PROXY;
-  delete process.env.NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT;
-  delete process.env.NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT;
+  delete process.env.VITE_USE_OR_PROXY;
+  delete process.env.VITE_OR_ZDR_ONLY_DEFAULT;
+  delete process.env.VITE_OR_ROUTE_PREFERENCE_DEFAULT;
 });
 
 afterEach(() => {
@@ -20,29 +20,29 @@ afterEach(() => {
 });
 
 test('isOpenRouterProxyEnabled defaults to false', () => {
-  delete process.env.NEXT_PUBLIC_USE_OR_PROXY;
+  delete process.env.VITE_USE_OR_PROXY;
   assert.equal(isOpenRouterProxyEnabled(), false);
 });
 
 test('isOpenRouterProxyEnabled parses true-like values', () => {
-  process.env.NEXT_PUBLIC_USE_OR_PROXY = 'TrUe';
+  process.env.VITE_USE_OR_PROXY = 'TrUe';
   assert.equal(isOpenRouterProxyEnabled(), true);
 });
 
 test('getDefaultZdrOnly respects env flag', () => {
-  delete process.env.NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT;
+  delete process.env.VITE_OR_ZDR_ONLY_DEFAULT;
   assert.equal(getDefaultZdrOnly(), false);
-  process.env.NEXT_PUBLIC_OR_ZDR_ONLY_DEFAULT = 'yes';
+  process.env.VITE_OR_ZDR_ONLY_DEFAULT = 'yes';
   assert.equal(getDefaultZdrOnly(), true);
 });
 
 test('getRoutePreferenceDefault falls back to balanced', () => {
-  delete process.env.NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT;
+  delete process.env.VITE_OR_ROUTE_PREFERENCE_DEFAULT;
   assert.equal(getRoutePreferenceDefault(), 'balanced');
-  process.env.NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT = 'balanced';
+  process.env.VITE_OR_ROUTE_PREFERENCE_DEFAULT = 'balanced';
   assert.equal(getRoutePreferenceDefault(), 'balanced');
-  process.env.NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT = 'cost';
+  process.env.VITE_OR_ROUTE_PREFERENCE_DEFAULT = 'cost';
   assert.equal(getRoutePreferenceDefault(), 'cost');
-  process.env.NEXT_PUBLIC_OR_ROUTE_PREFERENCE_DEFAULT = 'invalid';
+  process.env.VITE_OR_ROUTE_PREFERENCE_DEFAULT = 'invalid';
   assert.equal(getRoutePreferenceDefault(), 'balanced');
 });

@@ -24,7 +24,7 @@ const GlobalNotice = lazyClient(() =>
   import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
 );
 
-export function HomeClient({ initialIsMobile }: { initialIsMobile?: boolean }) {
+export function HomeClient() {
   const {
     collapsed,
     isSettingsOpen,
@@ -46,7 +46,7 @@ export function HomeClient({ initialIsMobile }: { initialIsMobile?: boolean }) {
     shallow,
   );
   const setUI = useChatStore((s) => s.setUI);
-  const { mounted, isMobile } = useAppBootstrap({ mobileBreakpoint: 768, initialIsMobile });
+  const { isMobile } = useAppBootstrap({ mobileBreakpoint: 768 });
   useAmbientMotionPause();
 
   // Track which chat has already auto-opened the panel (respect manual collapse)
@@ -71,7 +71,7 @@ export function HomeClient({ initialIsMobile }: { initialIsMobile?: boolean }) {
 
   // Mobile: attach swipe gestures for sidebar open/close
   useSidebarGestures({
-    isMobile: mounted && isMobile,
+    isMobile,
     collapsed,
     setCollapsed: (v) => setUI({ sidebarCollapsed: v }),
   });
@@ -120,7 +120,7 @@ export function HomeClient({ initialIsMobile }: { initialIsMobile?: boolean }) {
         </div>
 
         {/* Mobile sidebar overlay */}
-        {mounted && isMobile && !collapsed && (
+        {isMobile && !collapsed && (
           <>
             <button
               className="fixed inset-0 z-[75] settings-overlay"
