@@ -1,4 +1,4 @@
-import { apiDefaults } from '@/lib/api/config';
+import { apiDefaults, isBrowserContext } from '@/lib/api/config';
 import { sendApiRequest } from '@/lib/api/http';
 import { usesProxy, type TransportAuth } from '@/lib/auth/transport';
 import type { ChatCompletionMessage, Usage } from '@/lib/transport/completions';
@@ -51,7 +51,9 @@ function resolveTarget(auth?: TransportAuth): {
       includeDefaults: false,
     };
   }
-  const useProxy = usesProxy(auth ?? { endpoint });
+  // The proxy path is relative, so it only resolves in a page. The worker runs
+  // this same module and must go straight upstream.
+  const useProxy = isBrowserContext() && usesProxy(auth ?? { endpoint });
   return {
     baseUrl: useProxy ? apiDefaults.proxyPath : (endpoint.baseUrl ?? apiDefaults.baseUrl),
     useProxy,
