@@ -234,7 +234,7 @@ const readExt = (name: string): TutorToolExt | undefined =>
 
 /**
  * Accessors must not depend on import order: whoever asks first triggers registration.
- * `registerEnabledModules` remains the app-level entry point; this is the safety net.
+ * `loadModuleRuntimes` remains the app-level entry point; this is the safety net.
  */
 function registeredTutorToolNames(): TutorToolName[] {
   registerTutorTools();
