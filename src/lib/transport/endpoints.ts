@@ -158,7 +158,22 @@ export function slugifyEndpointId(label: string, taken: Iterable<string> = []): 
 
 /** Endpoint-scoped model ids keep `(endpointId, transportModelId)` unique in one flat list. */
 export function buildEndpointModelId(endpointId: string, modelId: string): string {
-  return `${endpointId}/${modelId}`;
+  return `${ENDPOINT_NAMESPACE}${endpointId}/${modelId}`;
+}
+
+/**
+ * Inverse of `buildEndpointModelId`; undefined for anything outside the
+ * namespace. The transport model id may itself contain slashes, so only the
+ * first one is a separator.
+ */
+export function parseEndpointModelId(
+  value: string,
+): { endpointId: string; modelId: string } | undefined {
+  if (!value.startsWith(ENDPOINT_NAMESPACE)) return undefined;
+  const rest = value.slice(ENDPOINT_NAMESPACE.length);
+  const separator = rest.indexOf('/');
+  if (separator <= 0 || separator === rest.length - 1) return undefined;
+  return { endpointId: rest.slice(0, separator), modelId: rest.slice(separator + 1) };
 }
 
 export function normalizeBaseUrl(value: string): string {

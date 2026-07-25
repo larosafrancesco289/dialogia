@@ -7,6 +7,8 @@ export const NOTICE_CATALOG = {
   missingSearchKey: 'Add a web search key in Settings › Providers to use tool-based search.',
   searchUnavailable: 'Web search is unavailable for this chat; answering without it.',
   modelsUnavailable: 'Unable to load models.',
+  unknownEndpoint:
+    'This chat uses a provider endpoint that no longer exists. Re-add it in Settings › Providers, or pick another model.',
   exportedChats: 'Exported chats to JSON',
   importedData: 'Imported data',
   planApplyFailed: 'Failed to apply learning plan. Please try again.',
@@ -80,6 +82,7 @@ export const NOTICE_RATE_LIMITED = NOTICE_CATALOG.rateLimited;
 export const NOTICE_MISSING_SEARCH_KEY = NOTICE_CATALOG.missingSearchKey;
 export const NOTICE_SEARCH_UNAVAILABLE = NOTICE_CATALOG.searchUnavailable;
 export const NOTICE_MODELS_UNAVAILABLE = NOTICE_CATALOG.modelsUnavailable;
+export const NOTICE_UNKNOWN_ENDPOINT = NOTICE_CATALOG.unknownEndpoint;
 export const NOTICE_EXPORTED_CHATS = NOTICE_CATALOG.exportedChats;
 export const NOTICE_IMPORTED_DATA = NOTICE_CATALOG.importedData;
 export const NOTICE_PLAN_APPLY_FAILED = NOTICE_CATALOG.planApplyFailed;
