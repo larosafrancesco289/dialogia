@@ -11,8 +11,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint --cache src tests functions",
+    "knip": "knip --include files,dependencies,unlisted,unresolved,binaries",
+    "knip:exports": "knip --include exports,types,nsExports,nsTypes",
     "lint:types": "tsc --noEmit",
-    "check": "bun run lint:types && bun run test && bun run format:check && bun run lint",
+    "check": "bun run lint:types && bun run test && bun run format:check && bun run lint && bun run knip",
     "test": "tsx --test 'tests/**/*.test.ts' 'src/**/*.test.ts'",
     "tutor:simulate": "tsx src/modules/tutor/tooling/simulate.ts"
   },
@@ -45,8 +47,6 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260724.1",
-    "@eslint/eslintrc": "^3.1.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^20.11.19",
     "@types/prismjs": "^1.26.5",
@@ -58,6 +58,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "eslint": "^9.12.0",
     "eslint-plugin-react-hooks": "^5.1.0",
+    "knip": "^6.29.0",
     "prettier": "^3.3.3",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",

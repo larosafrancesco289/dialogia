@@ -8,3 +8,4 @@ bun run lint:types
 bun run test
 bun run format:check
 bun run lint
+bun run knip
