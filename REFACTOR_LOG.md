@@ -56,15 +56,16 @@ Follow-ups discovered (not done):
 
 ## Stage 1 — Decouple (2026-07-25)
 
-Branch: `stage-1-decouple` (8 commits, not merged, not pushed). CI green
+Branch: `stage-1-decouple` (13 commits, not merged, not pushed). CI green
 (`scripts/ci.sh`: lint:types + 432 tests + prettier + eslint, 0 errors, the same 5
-pre-existing warnings). Production build succeeds; First Load JS for `/` is 333 kB gz,
-holding Stage 0's 334 kB.
+pre-existing warnings). Production build succeeds; First Load JS for `/` is 313 kB gz,
+down from Stage 0's 334 kB.
 
-**Headline: 226 files changed, +2,844 / −11,493 lines.** The research apparatus is off
+**Headline: 254 files changed, +3,939 / −12,178 lines.** The research apparatus is off
 main, the tool registry is open, tool gating carries no phase knowledge, the three store
-mirrors are gone, and the tutor lives under one root behind a lint-enforced boundary.
-The tutor-delete acceptance test does **not** pass yet — see "What is left" below.
+mirrors are gone, and the tutor is a genuinely removable module: deleting its directory
+and its one registration line leaves a compiling, building chat app. All seven Stage 1
+tasks are complete.
 
 Commits:
 
@@ -107,10 +108,13 @@ Commits:
   `onScheduled` — so one object carries everything the round scheduler needs from a
   module. `isAllowed` is stateful: the tutor's gate refuses a quiz once its budget is
   spent, and `onBudgetExceeded` says what core should do about a refusal.
-- **`AppModule` gained `compose()`, `planning()`, `storeSlice()`, `persistFragment` and
-  `load()`** beyond the shape in Design A4. Each exists to keep a core→tutor import out
-  of core; `load()` additionally splits the module into a boot half and a turn half (see
-  the bundle note below).
+- **`AppModule` grew well beyond the shape in Design A4.** Design A4 named `id`,
+  `registerTools`, `storeSlice`, `persistFragment` and `panels`. The final shape adds
+  `load()`, `compose()`, `planning()`, `turnEffects()`, `decorateMessage()`,
+  `settingsDefaults()` and `onBootstrap()`. Every one exists to replace a specific
+  hard-coded tutor call in a specific core file — the list is effectively the inventory of
+  ways a feature module touches a chat app. `load()` additionally splits the module into a
+  boot half and a turn half, which is what keeps it out of the first-load bundle.
 - **`ToolMetadata` gained `logCategory`**, replacing the tutor-aware category mapping in
   the tool-call ledger.
 - **`PlanTurnResult` keeps its tutor-shaped fields.** They are all core types
@@ -125,19 +129,12 @@ Commits:
 - **Tutor registry accessors self-register** as a safety net, so no import order can
   observe an empty registry.
 
-### Bundle regression, caught and fixed
+### Do not undo these two things
 
-The first build after the tutor move was 356 kB (up from 334 kB): `src/lib/modules.ts`
-statically imported the tutor's compose and tool-registration entry points, and
-`store/index.ts` imports `modules.ts`, so the tutor tool definitions, plan-context builder
-and profile summariser all landed in the boot chunk — undoing part of Stage 0's work.
-`AppModule.load()` now separates the turn half, awaited at the three turn entry points
-(`composeTurn`, `planTurn`, `runStreamingTurn`). Verified against the built chunk:
-`ask_student_question`, `generatePlanContextPreamble` and `runTavilyFetch` are absent from
-first load. `summarizeTutorProfile` remains, pulled in by the tutor store slice, which was
-eager before this stage too.
-
-**Do not turn `AppModule.load` into a static import** — that is the whole mechanism.
+- **`AppModule.load` must stay a dynamic import.** It is what keeps a module's turn half
+  out of the boot bundle; a static import there cost 22 kB.
+- **Module panels must stay `React.lazy`.** A static import is an initialisation cycle
+  through the store, not just a bundle regression.
 
 ### Bugs the new tests caught
 
@@ -172,46 +169,64 @@ to 249 and now build from `buildStoreInitializer()`.
 `src/tooling/headless` was kept: the test suite uses it, and Design B named its store
 mirror explicitly. It does import the tutor module.
 
-### What is left — the tutor-delete experiment fails
+### The tutor-delete experiment passes
 
-Deleting `src/modules/tutor` plus its `ENABLED_MODULES` entry leaves **164 type errors
-across 45 files**, so Stage 1's acceptance criterion for task 5 is **not met**. The
-blockers, in descending cost:
+Deleting `src/modules/tutor` plus its `ENABLED_MODULES` entry leaves the app source
+type-checking with **zero errors** and `bun run build` succeeding (First Load JS 306 kB
+without the module). The only remaining type errors are inside test files that assert on
+tutor behaviour, which a fork removing the feature would delete along with it. The ESLint
+boundary's `ignores` list is now just `src/lib/modules.ts` and tests.
 
-1. **The ~6 UI mounts are still direct imports, not slots.** `HomeClient` (LearningPanel),
-   `MessagePanels` + `AssistantMessage` (TutorPanel, LearnerModelUpdates),
-   `TopHeaderView` + `useTopHeaderState` (TutorToggle, PlanSheet),
-   `useSettingsDrawerState` (settings TutorPanel). `useTopHeaderState` is the hard one:
-   `TopHeaderState` carries ~20 tutor fields and composes `usePlanCallbacks`, so the
-   header needs a real refactor before `panels` slots can be prop-less.
-2. **`src/lib/agent/orchestrator/lifecycle.ts`** interleaves learner-model and plan
-   persistence with core lifecycle work (systemSnapshot, genSettings, ephemeral-UI reset),
-   including a documented ordering contract between `onPlanResult` and `beforeStream`.
-   This needs a `turnEffects` module hook with explicit ordering semantics. I stopped here
-   deliberately: it is the path that writes user learning data, and rushing it risks
-   silent data loss.
-3. Smaller, mechanical: `src/lib/services/turns.ts`, `src/lib/services/bootstrap.ts`,
-   `src/lib/services/messagePersistence.ts`, `src/lib/turns/runtime/context.ts`,
-   `src/lib/store/chatSlice.ts`, `src/lib/store/normalize.ts`,
-   `src/lib/store/stateTypes.ts` (`TutorStoreActions` in the composed `StoreActions`),
-   `src/lib/settings/normalize.ts` (still hard-codes the tutor block), and
-   `src/lib/agent/tools/router.ts` (`TUTOR_TOOL_NAMES` for inline tool-call detection).
+Getting there took four further commits after the initial report, once the owner confirmed
+tutor stays first-class and that persisted-data preservation was not a constraint:
 
-The ESLint rule added in `a43bfd1` enumerates exactly these files in its `ignores` list, so
-each is a visible to-do and **any new core→module import fails the build** (verified by
-adding one to `compose.ts` and watching it error). Working the list down to zero is the
-natural first task of a follow-up pass; it is a coherent chunk of work in its own right
-rather than a loose end of the moves.
+- `536da95` **Nine mechanical violations.** `tutorSelectors.ts` moved _to_ core as
+  `src/lib/ui/tutorState.ts` — it is plumbing over the optional `UiSnapshot.tutor` field
+  core itself declares, with no tutor logic. `persistTutorForMessage` and the
+  `persistTutorStateForMessage` store action moved _to_ the module. `src/tooling/headless`
+  (10 files) moved under `src/modules/tutor/tooling`; the `@/tooling/*` alias is gone.
+  `agent/tools/router.ts` asks the registry for content/meta tool names instead of
+  importing `TUTOR_TOOL_NAMES`. `StoreActions` composes a `ModuleStoreActions` interface
+  that modules augment by declaration merging.
+- `efe981a` **`orchestrator/lifecycle.ts`.** `ModuleRuntime.turnEffects()` returns optional
+  `onComposition` / `onPlanResult` / `messagePatch`. The ordering subtlety the old code
+  documented in a comment is now structural: modules accumulate their message fields and
+  core applies the combined patch at both `onPlanResult` and `beforeStream`, so a module
+  never has to care which fires first.
+- `d5e238a` **The six UI mounts.** All go through `ENABLED_MODULES[].panels` against five
+  typed slots. The header was the hard one: `TopHeaderState` carried ~25 tutor members and
+  `useTopHeaderState` composed `usePlanCallbacks`; the toggle, plan badge and plan sheet
+  became one store-driven `TutorHeaderSlot`. The settings drawer stopped threading
+  `tutorDefaultModel` through `useSettingsFormState`, `useSettingsAutoSave` and
+  `buildSettingsSavePatch`.
+- `3ae9e5f` **`services/bootstrap.ts`.** An `onBootstrap` hook replaces the direct
+  `loadTutorProfileIntoUI` call.
+
+New hooks added along the way, all optional, all replacing a hard-coded tutor call in a
+core file: `decorateMessage`, `settingsDefaults`, `turnEffects`, `panels`, `onBootstrap`,
+plus `compose` and `planning` from the earlier commits.
+
+**Panels must stay `React.lazy`.** The components import the store, which imports
+`@/lib/modules`, so a static import in `src/modules/tutor/panels.ts` is a cycle — the
+first version crashed every test with `Cannot access 'ENABLED_MODULES' before
+initialization`. It is also what keeps the tutor UI out of the boot bundle.
+
+### Bundle
+
+First Load JS for `/`: 334 kB after Stage 0 → 356 kB after the module move (regression,
+diagnosed and fixed) → 333 kB after splitting module turn-halves → **313 kB** after the
+panels became lazy. That is 21 kB below where Stage 0 left it, on top of Stage 0's own
+35% cut. Without the tutor module at all the build is 306 kB.
 
 ### Follow-ups discovered (not done)
 
-- `normalizeChatSettings` (core) still constructs the tutor settings block by hand; it
-  should become module-owned so a tutor-less build does not synthesise the field.
-- `src/tooling/headless` is a tutor simulation harness sitting outside the module. Moving
-  it under `src/modules/tutor/tooling/` would remove three more boundary violations and
-  make the delete experiment cleaner. `bun run tutor:simulate` and two tests depend on it.
-- `src/lib/agent/tools/router.ts` detects inline tutor tool calls from a static name list;
-  it should ask the registry instead.
+- Five tests mix core and tutor assertions in one file (`compose.test.ts`,
+  `toolScheduler.test.ts`, `streamingTurn.test.ts`, `messagePipeline.test.ts`,
+  `agent/tools.test.ts`). Splitting the tutor cases into the module would make the delete
+  experiment a clean `rm -rf` with no test edits at all.
+- `src/lib/types/tutor.ts` and `src/lib/types/learningPlan.ts` stay in core by design, so a
+  tutor-less build carries ~250 lines of unused type declarations. Harmless, but the
+  Stage 4 dead-export check should be told to expect them.
 - `styles/mobile.css` still has the orphaned `.swipe-action-reveal` rules Stage 0 noted.
   The CSS for the moved components was not touched; a pass to co-locate module CSS belongs
   with Stage 2's CSS work.
