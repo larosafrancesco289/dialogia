@@ -106,8 +106,8 @@ either in `tests/` or beside the code they cover.
 
 - Imperative, concise commit subjects. Explain _why_ in the body when it is not obvious.
 - Describe the change and the reasoning. Screenshots or a short GIF for anything visual.
-- Keep [ARCHITECTURE.md](ARCHITECTURE.md) in sync when a flow changes, and
-  [DESIGN.md](DESIGN.md) when the visual language does.
+- Keep [ARCHITECTURE.md](ARCHITECTURE.md) in sync when a flow changes. For visual work, colours
+  come from `styles/tokens.css` via `color-mix` — the CSS is the design's source of truth.
 
 ## Removing the tutor
 

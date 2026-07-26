@@ -32,6 +32,9 @@ yarn-error.log*
 .impeccable/
 .claude/
 
+# Private working notes
+NOTES.md
+
 # Temporary files
 tmp/
 *.log
