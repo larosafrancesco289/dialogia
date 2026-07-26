@@ -185,7 +185,7 @@ scripts/ci.sh        # hygiene + types + tests + format + lint
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions and [ARCHITECTURE.md](ARCHITECTURE.md) for
-how the app is put together. [DESIGN.md](DESIGN.md) is the visual system.
+how the app is put together.
 
 Built with Vite, TanStack Router, React 18, Zustand, Dexie and Tailwind v4. Bun is the package
 manager and script runner.
