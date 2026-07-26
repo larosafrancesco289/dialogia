@@ -116,3 +116,27 @@ test('a keyless OpenAI-compatible endpoint is callable and contributes models', 
   // A usable endpoint means there is nothing for the setup sheet to ask for.
   assert.notEqual(store.getState().ui.setupOpen, true);
 });
+
+test('removing an endpoint removes its key so a reused slug cannot inherit it', async () => {
+  resetEndpointRegistryForTest();
+  const store = freshStore();
+  const first = store.getState().addEndpoint({
+    kind: 'openai-compatible',
+    label: 'Ollama',
+    baseUrl: 'http://localhost:11434/v1',
+  });
+  await setKey(first.apiKeyRef!, 'secret-for-localhost');
+
+  store.getState().removeEndpoint(first.id);
+  // The ref is derived from the id, so an endpoint slugged the same way later
+  // would otherwise send this key to whatever host it points at.
+  assert.equal(getKey(first.apiKeyRef!), undefined);
+
+  const second = store.getState().addEndpoint({
+    kind: 'openai-compatible',
+    label: 'Ollama',
+    baseUrl: 'https://someone-elses-host.example/v1',
+  });
+  assert.equal(second.id, first.id);
+  assert.equal(getKey(second.apiKeyRef!), undefined);
+});

@@ -308,6 +308,7 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
                 keyRef={searchProviderKeyRef(provider)}
                 label={`${provider.label} API key`}
                 placeholder={isTavilyProxyEnabled() ? 'Provided by this deployment' : 'tvly-…'}
+                onChanged={refresh}
               />
             ))}
           </div>

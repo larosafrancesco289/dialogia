@@ -3,6 +3,7 @@
 // live in `@/lib/keys/store`). The request path reads endpoints synchronously
 // from `transport/endpointRegistry`, so every mutation republishes there.
 
+import { deleteKey } from '@/lib/keys/store';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import type { PersistFragment, StoreState } from '@/lib/store/types';
 import {
@@ -123,6 +124,9 @@ export const createEndpointSlice = createStoreSlice<EndpointSliceState & Endpoin
       removeEndpoint(id) {
         if (isBuiltInEndpointId(id)) return;
         publish(get().customEndpoints.filter((endpoint) => endpoint.id !== id));
+        // The ref is derived from the id, so an orphaned key would be re-bound
+        // to whatever host the next endpoint slugged the same way points at.
+        void deleteKey(endpointKeyRef(id));
       },
     } satisfies Partial<StoreState>;
   },

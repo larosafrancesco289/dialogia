@@ -683,3 +683,224 @@ bypasses the Dialog primitives; assorted `'tavily'`/`'openrouter'` literals surv
 the built-in endpoint id; ARCHITECTURE.md still documents the deleted
 `ModelTransport` union. The end-to-end BYOK send with a real key also remains the
 owner's ten-second pre-merge check.
+
+## Stage 4 — Docs and release (2026-07-25)
+
+Branch: `stage-4-docs-release` (4 commits, not merged, not pushed). CI green
+(`scripts/ci.sh`: hygiene + lint:types + 485 tests + prettier + eslint + knip,
+0 errors, the same 5 pre-existing warnings). Both builds verified; the
+tutor-delete experiment re-run and still passing.
+
+**Headline: the docs now describe the app that exists, and CI can tell when
+they stop. 41 files changed, +1,493 / −1,819.** Six markdown files became four:
+1,164 lines of documentation became 841, and none of it describes a file that
+is not there. All five Stage 4 tasks are complete, plus the Stage 3 review
+findings that the fix pass explicitly parked here.
+
+Commits:
+
+- `cfeafb1` Close the BYOK gaps the Stage 3 review deferred.
+- `c301231` Collapse the docs to README, ARCHITECTURE, CONTRIBUTING and DESIGN.
+- `0306315` Add a dead-code check to CI and delete what it found.
+- `587cd39` Prepare the repo for public contributors.
+
+### Scope call: the deferred Stage 3 findings were fixed here
+
+Stage 4's task list is docs and release, but the Stage 3 fix pass closed with a
+list of review findings marked "still open for Stage 4". Several of them break
+the stage's own acceptance criterion — a newcomer reaching a working BYOK app
+from the README — so they were treated as part of this stage rather than left
+for a stage that does not exist. Each landed with a test that fails without it;
+the three ordering/race fixes were probed empirically by reverting the fix and
+watching the new test go red.
+
+- **A key pasted during warm-up was evicted.** `loadKeys()` builds a fresh map
+  from IndexedDB and assigned it wholesale, so a `setKey` that landed while the
+  read was in flight vanished when it resolved — the app would insist it had no
+  key seconds after being given one. Mutations during a read are now tracked and
+  win over the snapshot, deletes included.
+- **`removeEndpoint` orphaned its key.** The ref is derived from the endpoint id,
+  so re-adding an endpoint with the same label re-slugged to the same id and
+  silently inherited the old key — pointed at whatever host the new endpoint
+  named. Removal now deletes the key.
+- **The `promptCaching` capability did nothing.** `cache_control` is injected in
+  `agent/cache` at eight call sites that know nothing about endpoints, and
+  `buildChatBody` copied the messages verbatim; a strict server 400s on the
+  unknown key. The gate now lives where every other capability gate lives — in
+  `buildChatBody`, which strips the markers and collapses text-only block arrays
+  back to plain strings for endpoints that did not declare caching. Built-ins are
+  untouched.
+- **Regenerate could silently drop search.** Plugins were composed from the raw
+  chat setting before `resolveTurnSettings` ran, so a chat configured for Tavily
+  on a machine with no Tavily key degraded to provider-native search and then
+  never got the `web` plugin that delivers it. Plugins are now built from the
+  resolved settings.
+- **`SearchMode` was still being treated as a closed set** in `followUp.ts` (a
+  literal `=== 'tavily'`) and in regenerate's provider normalization (an
+  allowlist of two). Both now go through `isNativeSearchMode` / accept any
+  registered id. `search/ui/modes.ts`, also named in the review, was already
+  clean.
+- **The composer's search picker did not subscribe to the key store**, so a new
+  Tavily key was invisible until reload. It now calls `useProviderKeys`, and the
+  search-provider `ApiKeyField` gained the `onChanged` it was missing.
+- **The setup sheet rendered at `z-50`, beneath the settings drawer's `z-[80]`.**
+  It now portals to `document.body` through the `Dialog` primitives at
+  `z-[90]`/`z-[95]` and closes on Escape. Verified in a browser: with the drawer
+  open, the sheet hit-tests above it across the overlap, and Escape closes it.
+- **`anthropic/models.ts` hardcoded the built-in endpoint id** into every
+  descriptor; it now takes it from the call's endpoint, matching `openaiCompat`.
+
+### The doc set
+
+`PRODUCT.md` and `CONFIGURATION.md` are gone. `CONTRIBUTING.md` is new.
+
+- **ARCHITECTURE.md** was the worst offender and is rewritten from the tree
+  rather than edited. The old one documented `app/api/*` routes, the deleted
+  `ModelTransport` union, `src/lib/tutor/index.ts`, `src/lib/agent/streaming.ts`
+  as the streaming home, and a "Public Module Surfaces" table whose entries had
+  zero importers — three of which this stage deleted as dead files. The new one
+  covers what Stages 1–3 actually built: the module system, the endpoint/key
+  split, the search-provider interface, the worker, and the reasons behind each
+  boundary rather than a restatement of the lint config.
+- **README.md** leads with the two quickstarts the plan asked for (own key,
+  local model), then deploy-your-own, then a configuration reference absorbed
+  from CONFIGURATION.md, then the hosted appendix. Cut: the Next-era project
+  tree, `scripts/tutor-sim.ts` (moved inside the module in Stage 1), the
+  `styles/foundations.css` and `/api/xai/session` references, `.next/` in the
+  local-artifacts list, and ~90 lines of tutor-mode manual that read as product
+  copy.
+- **CONTRIBUTING.md** carries commands, conventions, the boundary list, testing
+  practice and PR expectations — plus a "things that will bite you" section, and
+  the `bun start` service-worker trap that cost Stage 2 a debugging session.
+- **DESIGN.md** dropped its 107-line YAML token dump. It was also _wrong_: it
+  named the dark accents `#c9a227`/`#8b5a9e` where `styles/tokens.css` says
+  `#cda85f`/`#b48ad0`, and called the system "The Tutor's Desk" where the CSS
+  and AGENTS.md say "Imperial Archive"/"Candlelit Study". The CSS is now stated
+  as the source, the naming matches it, and PRODUCT.md's brand and principles
+  are absorbed.
+- **AGENTS.md** went from a summary of the codebase to the eight invariants a
+  model cannot infer by reading the code once, plus pointers. Everything
+  derivable from the tree was deleted.
+
+### The dead-code check
+
+`knip` runs in `scripts/ci.sh` over **files, dependencies, unlisted, unresolved
+and binaries** — the classes that can be held at zero today, so the gate is
+green and a newly orphaned file or dependency fails the build.
+
+It immediately found nine zero-importer files, now deleted: `src/lib/agent/index.ts`,
+`src/lib/agent/streaming/index.ts`, `src/lib/auth/index.ts` (three of the old
+"public module surfaces"), `src/lib/hooks/useSwipeGesture.ts` and its
+`src/lib/mobile/gestureConfig.ts`, `src/lib/store/chatSettings.ts`,
+`src/modules/tutor/learning-plan/breadcrumb.ts`,
+`src/modules/tutor/tooling/index.ts`,
+`src/modules/tutor/tools/definitions/index.ts` — plus the `@cloudflare/workers-types`
+and `@eslint/eslintrc` dependencies. Deleting the auth barrel retired one case in
+`tests/boundaries.test.ts`; the ESLint rule banning `@/lib/auth/**/*.server` from
+components is what guards that boundary now (485 tests, from 486).
+
+**The unused-_export_ backlog is not in the gate**: ~119 exports and ~56 types,
+overwhelmingly re-exports in barrel files. Clearing it is a mechanical pass over
+~40 files that would have doubled this stage. `bun run knip:exports` reports it.
+
+False positives configured out, with reasons: the two `@fontsource-variable`
+packages and `tailwindcss` are reached from CSS, which knip does not follow.
+`duplicates` is excluded from the gate because the four hits are deliberate
+aliases (`DEFAULT_ENDPOINT_ID = OPENROUTER_ENDPOINT_ID` and similar).
+
+### Release hygiene
+
+- **History is clean.** Every file ever added was enumerated and every commit
+  diff scanned for provider-key patterns; the only matches are the placeholder
+  strings in `.env.example`. `dist/` blobs exist in exactly one ref, the local
+  backup branch `stage-2-migrate-with-dist` — `main` and every other branch are
+  clean.
+- **`scripts/ci.sh` was never executable** (mode 644), despite being the script
+  every document tells contributors to run. Fixed, and the mode is staged.
+- **CI is now real.** `.github/workflows/ci.yml` runs `./scripts/ci.sh` plus both
+  builds on push and PR. Previously "CI" meant a script someone had to remember
+  to run.
+- `.env.example` still advertised `FAL_KEY` and `XAI_API_KEY` for routes deleted
+  before this refactor began, and legacy `OPENROUTER_KEY`/`ANTHROPIC_KEY`
+  fallbacks. Rewritten BYOK-first; the four dead accessors in `env/server.ts`
+  went with it.
+- Issue templates (bug, feature) and a PR template added. The PR checklist names
+  the persisted-data compatibility requirement explicitly.
+- Empty `app/` and `docs/` directories left over from the Next era removed.
+- LICENSE already existed and is MIT — no decision was needed.
+
+### Verified, not assumed
+
+- **The tutor-delete experiment still passes.** Re-run in a throwaway worktree at
+  this branch's tip: deleting `src/modules/tutor` plus its block in
+  `src/lib/modules.ts` leaves **zero non-test type errors** (39 remaining errors
+  are all inside tests that assert tutor behaviour) and `bun run build` succeeds
+  at 251.8 kB gz. CONTRIBUTING.md makes this promise, so it was checked rather
+  than inherited from the Stage 1 report.
+- The setup-sheet layering was driven in a browser, not reasoned about: with the
+  settings drawer open, `elementFromPoint` inside the overlap returns the sheet,
+  the portal is the last child of `<body>`, and Escape closes it. (The framer
+  entrance animation stalls at partial opacity in the headless tab because
+  `document.hidden` is true and rAF is throttled — a harness artifact, not a
+  regression; the animation predates this change.)
+- Every file path written in backticks across the five docs was checked to exist.
+  The only "misses" are relative shorthands inside a section that has already
+  named the directory, and build outputs.
+- The `// Module:` header convention was measured before being written down:
+  70 of 255 non-test `src/lib` files have one, so CONTRIBUTING.md describes it as
+  a common pattern to maintain rather than a rule that holds.
+
+### Numbers
+
+|                  | Stage 3              | Stage 4            |
+| ---------------- | -------------------- | ------------------ |
+| Initial JS (gz)  | 262 kB               | 262 kB             |
+| Initial CSS (gz) | 28 kB                | 28 kB              |
+| Worker (gz)      | 25 kB                | 25 kB              |
+| Tests            | 477                  | 485                |
+| Markdown docs    | 6 files, 1,164 lines | 4 files, 841 lines |
+| CI stages        | 5                    | 6                  |
+
+Initial JS without the tutor module is 252 kB gz.
+
+### Things the owner must do
+
+- **Nothing has been pushed, merged or deployed** — the protocol forbids it. Four
+  stage branches now sit unmerged: `stage-2-migrate`, `stage-3-byok` (already in
+  `main` via the merge commit), and `stage-4-docs-release`.
+- **The end-to-end BYOK send with a real key is still the owner's check.** Stage 3
+  flagged it and it remains true: entering an API key is not something I do on
+  the owner's behalf. Everything up to the keystroke is tested; the ten seconds
+  after it are not.
+- **`stage-2-migrate-with-dist` can be deleted** — it is the only ref carrying
+  `dist/` blobs. Deleting a branch is a destructive git operation, so it was left
+  alone.
+- **`vercel.env` was left in place.** The plan schedules its deletion for this
+  stage, but it is a gitignored local file that may still hold keys the owner
+  wants; deleting it is theirs to do (`rm vercel.env`).
+- `.claude/launch.json` gained a third dev-server entry (port 3200) so this
+  session could run beside another; it was reverted before committing.
+
+### Follow-ups discovered (not done)
+
+- **The unused-export backlog** described above. Worth a dedicated pass, ideally
+  by deleting the barrels rather than pruning them line by line — the three that
+  were entirely dead are already gone, and the survivors mostly re-export things
+  their consumers import directly anyway.
+- `src/components/composer/ComposerMobileMenu.tsx` is still dead except for its
+  `Effort` type, so the mobile composer still has no search-mode picker. Stage 3
+  noted it; knip confirms it.
+- `src/lib/policy/providerAvailability.ts` still overlaps `endpointRegistry`, as
+  Stage 3 noted. Left alone: folding it in is a refactor, not a doc task.
+- The tutor's headless simulation still resolves auth through
+  `resolveAuthFactory`, which assumes an OpenRouter key for every endpoint.
+- Endpoint capability toggles still have no "test this connection" probe. This is
+  the single biggest remaining rough edge in the local-model path, and the README
+  has to explain the guessing rather than the app removing it.
+- The PWA precache is still 3.7 MB, dominated by mermaid's per-diagram chunks.
+- No maskable PWA icon exists.
+- `styles/mobile.css` still carries the orphaned `.swipe-action-reveal` rules
+  that Stages 0, 1 and 2 each noted. Deleting `useSwipeGesture.ts` this stage
+  removed the last JS that could ever have used them.
+- The 5 pre-existing ESLint unused-var warnings are unchanged. Four of the five
+  are now also reported by knip, which is a reasonable prompt to just fix them.
