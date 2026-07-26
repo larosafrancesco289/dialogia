@@ -56,6 +56,12 @@ let table: KeyTable = hasIndexedDb
 /** Synchronous mirror of the store; the request path cannot await. */
 let cache = new Map<string, string>();
 let loaded: Promise<void> | null = null;
+/**
+ * Refs written or deleted since `loadKeys()` started reading. The read builds a
+ * fresh map from the database, so without this a key pasted during the warm-up
+ * would be evicted by the older snapshot the moment it resolved.
+ */
+let inFlightWrites = new Set<string>();
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -79,6 +85,14 @@ export function loadKeys(): Promise<void> {
             next.set(record.ref, record.value);
           }
         }
+        // A mutation that happened while the read was in flight is newer than
+        // anything the read can report, including a delete.
+        for (const ref of inFlightWrites) {
+          const pending = cache.get(ref);
+          if (pending === undefined) next.delete(ref);
+          else next.set(ref, pending);
+        }
+        inFlightWrites = new Set();
         cache = next;
         emit();
       })
@@ -109,6 +123,7 @@ export async function setKey(ref: string, value: string): Promise<void> {
   if (!ref) return;
   if (!trimmed) return deleteKey(ref);
   cache.set(ref, trimmed);
+  inFlightWrites.add(ref);
   emit();
   await table.put({ ref, value: trimmed, updatedAt: Date.now() });
 }
@@ -116,6 +131,7 @@ export async function setKey(ref: string, value: string): Promise<void> {
 export async function deleteKey(ref: string): Promise<void> {
   if (!ref) return;
   cache.delete(ref);
+  inFlightWrites.add(ref);
   emit();
   await table.delete(ref);
 }
@@ -131,5 +147,6 @@ export function describeKey(ref?: string): string | undefined {
 export function resetKeyStoreForTest(next?: KeyTable) {
   table = next ?? createMemoryKeyTable();
   cache = new Map();
+  inFlightWrites = new Set();
   loaded = null;
 }

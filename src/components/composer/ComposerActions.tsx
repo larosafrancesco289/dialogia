@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { searchModeLabel } from '@/lib/search/ui/labels';
 import { listSearchModeOptions } from '@/lib/search/ui/modes';
+import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
 import type { SearchMode } from '@/lib/search/providers/types';
 import type { RefObject } from 'react';
 import {
@@ -285,6 +286,10 @@ export function ComposerActions({
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
   const searchButtonRef = useRef<HTMLButtonElement | null>(null);
   const searchMenuRef = useRef<HTMLDivElement | null>(null);
+  // `listSearchModeOptions` reads the key store, which lives outside React:
+  // without this subscription a search key pasted in Settings stays invisible
+  // here until a reload.
+  useProviderKeys();
 
   useDismissOnOutside(reasoningOpen, setReasoningOpen, reasoningMenuRef, reasoningButtonRef);
   useDismissOnOutside(searchMenuOpen, setSearchMenuOpen, searchMenuRef, searchButtonRef);

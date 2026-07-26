@@ -1,108 +1,62 @@
 # AGENTS.md
 
-Dialogia is a local-first, multi-model chat and tutoring UI. Vite + TanStack Router (SPA, no SSR),
-React 18, TypeScript, Zustand, Tailwind v4, Dexie/IndexedDB. Bun is the package manager and script
-runner; Cloudflare Pages is the deploy target.
+Dialogia is a local-first, BYOK chat and tutoring SPA. Vite + TanStack Router (no SSR), React 18,
+TypeScript, Zustand, Tailwind v4, Dexie/IndexedDB, Bun, Cloudflare Pages.
 
-## Commands
+Read [ARCHITECTURE.md](ARCHITECTURE.md) before structural work and
+[CONTRIBUTING.md](CONTRIBUTING.md) for commands, conventions and testing. This file carries only
+what neither of those can teach you by being read once — the things that look safe and are not.
 
-- `bun install` — install dependencies (packageManager `bun@1.3.2`).
-- `bun run dev` — dev server at http://localhost:3000.
-- `bun run build` / `bun start` — static BYOK build / preview it.
-- `bun run build:hosted` — the same build plus `dist/_worker.js` (access gate + key proxies).
-- `bun run lint:types` — TypeScript check (`tsc --noEmit`). No emit step; this is the lint.
-- `bun run test` — tsx runner over `tests/**/*.test.ts` and `src/**/*.test.ts`. It always runs the
-  full suite; passing a file path does not filter. The suite is fast (~3s), run all of it.
-- `bun run format` — Prettier (single quotes, semicolons, trailing commas, width 100).
-- `scripts/ci.sh` — lint:types + test + format. Run all three before declaring work done.
-- `bun run tutor:simulate` — headless tutor pipeline.
+## Before you declare done
 
-## Layout and conventions
+`scripts/ci.sh` must pass: hygiene, `tsc --noEmit`, the full test suite, Prettier, ESLint.
+`bun run test` ignores any path you pass it and always runs everything; it takes a few seconds.
 
-- `index.html` is the SPA shell; the theme-init script is injected from `injectThemeClass()` by a
-  plugin in `vite.config.ts`, so there is one source for it. `src/main.tsx` mounts
-  `src/router.tsx`, which has exactly two routes: `/` and, in hosted builds only, `/access`.
-- `functions/` — the hosted variant: `worker.ts` (entry), `middleware.ts` (access gate),
-  `routes.ts` (path table) and `api/*` (one module per endpoint). It is built separately by
-  `vite.worker.config.ts` and is absent from the BYOK build.
-- Client build config comes from `import.meta.env.VITE_*` and is **inlined at build time**; server
-  config is read per request through `@/lib/env/source`, which the worker binds from the
-  Cloudflare environment.
-- `src/components/` — PascalCase files, named exports. `src/lib/` — state, services, agent,
-  transport. `styles/` — global CSS. Tests live in `tests/` or colocated as `*.test.ts`.
-- Path aliases: `@/components/*`, `@/lib/*`, `@/modules/*`, `@/data/*` (see `tsconfig.json`).
-  Always prefer them.
-- `camelCase` functions/variables, `SCREAMING_SNAKE_CASE` module-level constants.
-- Comments only for constraints the code cannot express; match the sparse existing density.
+## Invariants
 
-## Architecture: layers and import boundaries
+Breaking one of these produces a regression the type checker will not catch.
 
-Read ARCHITECTURE.md before structural work. ESLint enforces layer boundaries
-(`no-restricted-imports` in `eslint.config.js`); violating them fails review even if types pass:
+**Message hydration is lazy.** Startup loads only the selected chat's messages; the rest arrive via
+`ensureChatMessagesLoaded` or idle prefetch. Anything needing every message in memory must call
+`ensureAllChatMessagesLoaded` first. Export/import read the database directly and are exempt.
 
-- `src/lib/db/**` must not import agent, store, or components.
-- `src/lib/agent/**` must not import UI components or `src/lib/services/**`.
-- `src/components/**` must not import transport clients (`src/lib/api/*`, `src/lib/openrouter`) or
-  server-only modules.
+**The stream batches flushes and checkpoints.** Tokens coalesce on a ~32 ms cadence
+(`agent/streaming/accumulator.ts`), and the partial assistant message is written to IndexedDB as it
+grows (`streamHandlers.ts`). Keep both. Never re-render the whole markdown document per flush —
+`StreamingMarkdown` memoizes completed blocks and re-parses only the tail.
 
-Practical consequence: shared helpers needed by both agent and services belong in a layer both may
-import (e.g., user-facing notice text lives in `src/lib/store/notices.ts`, not in services).
+**Layer boundaries are lint-enforced**, including dynamic and relative imports of `@/modules/*`.
+See `eslint.config.js`. A helper both sides need belongs in a layer both may import.
 
-## State and persistence (the part most likely to bite)
+**`AppModule.load` must stay a dynamic import; module panels must stay `React.lazy`.** A static
+`load` costs 22 kB in the boot bundle; a static panel import is an initialisation cycle through the
+store, not merely a regression.
 
-- Zustand store composed in `src/lib/store/index.ts` from slices. Messages are indexed as
-  `messagesById` + `messageIdsByChatId`; always go through `src/lib/messages/indexing.ts` helpers
-  rather than touching the maps directly.
-- **Message hydration is lazy.** Startup loads only the selected chat's messages; other chats load
-  via `ensureChatMessagesLoaded` (selection) or idle prefetch, tracked in `loadedMessageChatIds`
-  and `nonEmptyChatIds`. Code needing every message in memory must call
-  `ensureAllChatMessagesLoaded` first. Export/import read the DB directly and are unaffected.
-- Zustand `persist` stores preferences only (see `buildPersistedState`); chat data lives in
-  IndexedDB via the repository in `src/lib/db/repository.ts`.
-- The store initializer is composed from the real slices by `buildStoreInitializer()`
-  (`src/lib/store/createStore.ts`); test helpers and the tutor headless store build from it, so
-  adding a field or action touches only its slice file — there are no mirrors to update.
+**Persisted data must survive.** `localStorage['dialogia-ui']`, IndexedDB `dialogia`, and IndexedDB
+`dialogia-keys` all belong to real users. No key renames without a migration;
+`tests/persistedStoreCompat.test.ts` guards the persisted key set.
 
-## Streaming path
+**Never emit an ungated field for a user-configured endpoint.** An unlisted capability is never
+sent — a strict OpenAI-compatible server rejects the entire request over one unknown key.
 
-- Token flushes are batched (`src/lib/agent/streaming/accumulator.ts`, ~32ms) and the partial
-  assistant message is checkpointed to IndexedDB during the stream (`streamHandlers.ts`). Preserve
-  both properties when touching the stream pipeline.
-- During streaming, markdown renders through `StreamingMarkdown`, which memoizes completed blocks
-  (`src/lib/markdown/blocks.ts`) and re-parses only the tail. Never render the full document per
-  flush. The `streaming` prop on `Markdown` gates Prism caching, Mermaid rendering, and image
-  zoom; thread it through if you add embedded renderers.
+**Never add `rehype-raw`.** Model output is untrusted and BYOK keys live in the same origin. The
+import is lint-banned with that reason attached.
 
-## UI, styling, and motion
+**Tokens, not hex.** Colours come from `styles/tokens.css` via `color-mix`. Theme state has one
+source of truth, `useThemeMode`; never touch `localStorage.theme` from a component.
 
-- Design language is documented in DESIGN.md ("Imperial Archive" light, "Candlelit Study" dark).
-  Tokens in `styles/tokens.css`; use tokens and `color-mix`, never hard-coded hex in components.
-- Theme state has a single source of truth: `useThemeMode` (`src/lib/hooks/useThemeMode.ts`).
-  Never read or write `localStorage.theme` directly in components.
-- Motion: respect the global reduced-motion kill switch in `styles/layout.css` (covers
-  pseudo-elements). Framer-motion trees must sit under `MotionConfig reducedMotion="user"`
-  (already wrapped in HomeClient/MobileShell). Infinite ambient animations should be pausable via
-  the `.tab-hidden` class (`useAmbientMotionPause`). Collapsible panel bodies use the
-  `panel-reveal` grid animation, not max-height hacks.
-- Desktop side panels collapse via CSS width transitions on `.sidebar-slot` /
-  `.right-panel-slot`; do not reintroduce framer `layout` animations on the app shell.
+## Non-obvious mechanics
 
-## Testing
-
-- Plain `node:test` + `assert/strict`, executed by tsx. Name files `*.test.ts(x)`.
-- No network calls in tests; stub `fetch` (see `tests/helpers/mockFetch.ts`). Pure logic in
-  `src/lib/*` is the preferred test surface.
-- Good targets: selectors, request builders, stream handling, store mutations.
-
-## Security and configuration
-
-- Prefer proxy mode (`VITE_USE_OR_PROXY=true`); provider keys stay server-side in `.env.local`.
-  Never commit secrets or expose sensitive values as `VITE_*` — those land in the client bundle.
-- See CONFIGURATION.md for env vars and the access-gate setup.
-
-## Working agreements
-
-- Make minimal, focused changes; avoid broad renames and drive-by refactors.
-- Keep ARCHITECTURE.md in sync when flows change, DESIGN.md when the visual language changes.
-- Before requesting review: `bun run lint:types && bun run test && bun run format`.
-- Commits: imperative, concise subjects. PRs: description, rationale, screenshots/GIFs for UI.
+- The store initializer is composed from the real slices by `buildStoreInitializer()`. Adding a
+  field or an action touches one slice file. Do not create a second copy of store state for tests.
+- Endpoint _config_ lives in the store; the request path reads `transport/endpointRegistry`, which
+  the slice republishes into on every mutation. Read endpoints from the registry — it is what
+  carries the deployment's proxy flags.
+- Keys are read synchronously from a cache warmed by `loadKeys()`. A key the user pasted beats the
+  deployment's proxy.
+- `SearchMode` is an open string, and "provider-native search" (a request field) is a different
+  mechanism from a `SearchProvider` (a tool call). Do not collapse them.
+- Client config is `import.meta.env.VITE_*`, inlined at build time. Server config is read per
+  request through `@/lib/env/source`, which the worker binds from the Cloudflare environment.
+  `isProd()` is the build mode; `isServerProd()` is the deployment's `NODE_ENV`, and an absent
+  value is read as production on purpose.

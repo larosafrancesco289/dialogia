@@ -1,321 +1,157 @@
----
-name: Dialogia
-description: AI that makes you better: a local-first tutoring and multi-model chat workspace.
-colors:
-  canvas-parchment: "#f4f1ec"
-  surface-paper: "#fdfbf8"
-  muted-vellum: "#f1ede7"
-  ink-brown: "#1e1c18"
-  marginalia-brown: "#5b534b"
-  tutor-gold: "#b9975b"
-  scholar-plum: "#6d2a8a"
-  warm-rule: "#d5cfc4"
-  success-sage: "#4a8c5a"
-  correction-clay: "#b35a4a"
-  candle-canvas: "#0a0908"
-  candle-surface: "#14120f"
-  candle-muted: "#1c1814"
-  candle-ink: "#f4f1ec"
-  candle-marginalia: "#b8b0a4"
-  candle-gold: "#c9a227"
-  candle-plum: "#8b5a9e"
-  candle-rule: "#2a2420"
-typography:
-  display:
-    fontFamily: "Newsreader, Source Serif 4, Literata, Georgia, serif"
-    fontSize: "1.65rem"
-    fontWeight: 500
-    lineHeight: 1.3
-    letterSpacing: "normal"
-  headline:
-    fontFamily: "Newsreader, Source Serif 4, Literata, Georgia, serif"
-    fontSize: "1.5rem"
-    fontWeight: 500
-    lineHeight: 1.35
-    letterSpacing: "normal"
-  title:
-    fontFamily: "Plus Jakarta Sans, -apple-system, BlinkMacSystemFont, SF Pro Text, sans-serif"
-    fontSize: "1.05rem"
-    fontWeight: 600
-    lineHeight: 1.4
-    letterSpacing: "normal"
-  body:
-    fontFamily: "Plus Jakarta Sans, -apple-system, BlinkMacSystemFont, SF Pro Text, sans-serif"
-    fontSize: "1rem"
-    fontWeight: 400
-    lineHeight: 1.6
-    letterSpacing: "normal"
-  assistant:
-    fontFamily: "Newsreader, Source Serif 4, Literata, Georgia, serif"
-    fontSize: "1.25rem"
-    fontWeight: 400
-    lineHeight: 1.72
-    letterSpacing: "normal"
-  label:
-    fontFamily: "Plus Jakarta Sans, -apple-system, BlinkMacSystemFont, SF Pro Text, sans-serif"
-    fontSize: "0.75rem"
-    fontWeight: 600
-    lineHeight: 1.2
-    letterSpacing: "0.05em"
-rounded:
-  editorial: "6px"
-  editorial-mobile: "10px"
-  xs: "8px"
-  sm: "10px"
-  md: "12px"
-  lg: "14px"
-  xl: "18px"
-spacing:
-  one: "4px"
-  two: "8px"
-  three: "12px"
-  four: "16px"
-  five: "20px"
-  six: "24px"
-  seven: "28px"
-  eight: "32px"
-components:
-  button-primary:
-    backgroundColor: "{colors.tutor-gold}"
-    textColor: "{colors.ink-brown}"
-    rounded: "{rounded.editorial}"
-    padding: "0 16px"
-    height: "44px"
-  button-outline:
-    backgroundColor: "{colors.muted-vellum}"
-    textColor: "{colors.ink-brown}"
-    rounded: "{rounded.editorial}"
-    padding: "0 16px"
-    height: "44px"
-  button-ghost:
-    backgroundColor: "{colors.surface-paper}"
-    textColor: "{colors.marginalia-brown}"
-    rounded: "{rounded.editorial}"
-    padding: "0 16px"
-    height: "44px"
-  card-editorial:
-    backgroundColor: "{colors.surface-paper}"
-    textColor: "{colors.ink-brown}"
-    rounded: "{rounded.editorial}"
-    padding: "16px"
-  input-editorial:
-    backgroundColor: "{colors.muted-vellum}"
-    textColor: "{colors.ink-brown}"
-    rounded: "{rounded.editorial}"
-    padding: "0 12px"
-    height: "40px"
----
+# Design
 
-# Design System: Dialogia
+## What Dialogia is trying to be
 
-## 1. Overview
+Dialogia exists so that using a model makes the person better at something: a clearer thinker, a
+stronger learner, a better asker of questions. Tutor mode is the centre of gravity. The flexible
+chat surface matters too — models, routing, search, attachments, reasoning controls — but it serves
+the same end.
 
-**Creative North Star: "The Tutor's Desk"**
+Three words: **learned, unobtrusive, encouraging.** It should feel like a well-kept study desk, not
+a SaaS dashboard: warm paper, clear annotations, quiet tools, and a tutor who knows when to step
+forward.
 
-Dialogia is a product surface for private learning, model exploration, and careful thought. Its
-visual system should feel like sitting at a well-kept study desk: warm paper, clear annotations,
-quiet tools, and a tutor who knows when to step forward. The interface is learned without being
-ornate, capable without becoming a cockpit, and pleasant enough to use every day.
+**Anti-references.** Not a generic AI chat wrapper. Not purple-gradient startup UI, neon or
+cyberpunk cues, or decorative glassmorphism. Not gamified learning noise or dashboards that make
+learning feel like analytics theatre. Not a cockpit: if every control has equal weight, the screen
+has failed.
 
-The tutor experience is the center of gravity. Chat, search, model selection, attachments,
-reasoning controls, and metrics are all valuable, but they support the deeper promise: AI that makes
-the user better. Every screen should help users read, ask, reflect, compare, and continue with less
-friction.
+### Principles
 
-Dialogia rejects generic AI chat wrappers, purple-gradient startup UI, neon or cyberpunk cues,
-decorative glassmorphism, gamified learning noise, and dashboards that make learning feel like
-analytics theater.
+1. **Make the learner better, not merely answered.** Tutor interactions should reveal progress,
+   misconceptions and next steps without becoming bureaucratic.
+2. **Keep power close but quiet.** Model choice, search, reasoning, privacy and metrics should be
+   discoverable and reversible, and visually secondary until needed.
+3. **Preserve intellectual calm.** Long reading and revision sessions without visual fatigue.
+4. **Prefer guidance over spectacle.** Motion, colour and components clarify state and attention;
+   they do not perform intelligence.
+5. **Be local-first and trust-preserving.** Privacy posture is visible where it matters and calm
+   everywhere else.
 
-**Key Characteristics:**
+## Tokens are the source of truth
 
-- Editorial surfaces that privilege reading and sustained attention.
-- Quiet power: advanced controls remain discoverable but visually secondary.
-- Tutor-first hierarchy: progress, feedback, and next steps are clearer than provider machinery.
-- Warm restraint: gold and plum accents are used as signals, not decoration.
-- Trust-preserving states for privacy, ZDR, local storage, and provider routing.
+`styles/tokens.css` holds every colour, radius, shadow, spacing step and easing curve. **Use tokens
+and `color-mix`; never a hard-coded hex in a component.** The values below are described, not
+listed — the CSS is authoritative and this document is not a second copy of it.
 
-## 2. Colors
+Two themes, one vocabulary. Light is **Imperial Archive**: parchment canvas, paper surfaces, ink
+brown text, warm rules. Dark is **Candlelit Study**, a warm charcoal sibling built on three rules:
 
-The palette is warm, restrained, and archival: paper neutrals carry the interface while gold marks
-primary tutor action and plum appears only for secondary emphasis or model intelligence.
+1. No pure black. The canvas is a warm dark grey so surfaces can lift by lightness, and gold glows
+   instead of glaring.
+2. Accents are lifted and slightly desaturated so they sit calmly on the dark ground.
+3. Gold stays the rationed metal accent; purple stays the soft secondary.
 
-### Primary
+`design/palette-explorer.html` is the scratchpad those decisions came out of.
 
-- **Tutor Gold**: The primary action and tutor-progress color. Use it for active tutor state, main
-  calls to action, selected learning affordances, and rare highlights that deserve confidence.
-- **Candle Gold**: The dark-mode equivalent of Tutor Gold. It should glow softly, never glare.
+### Colour
 
-### Secondary
+- **Accent (gold)** — primary action, tutor progress, active tutor state, selected learning
+  affordances.
+- **Accent 2 (plum)** — model intelligence, reasoning, comparison, advanced capability. Rarer than
+  gold.
+- **Success (sage)** — correctness, confirmed mastery, positive learning evidence.
+- **Danger (clay)** — errors, misconceptions, failed validation, destructive actions. Corrective,
+  not punitive.
+- **Neutrals** — canvas, surface, muted, foreground, muted foreground, border.
 
-- **Scholar Plum**: A secondary accent for model intelligence, reasoning, comparisons, and advanced
-  capability. Keep it rarer than gold.
-- **Candle Plum**: The dark-mode equivalent of Scholar Plum.
+**The Accent Rarity Rule.** Gold and plum must not compete. Gold means tutor, action, progress;
+plum means model capability or secondary intelligence. Where both appear, one clearly leads.
 
-### Tertiary
+**The No Neon Rule.** Saturated colour is forbidden as atmosphere. Colour should read printed,
+lamplit, or annotated — never electric.
 
-- **Success Sage**: Correctness, confirmed mastery, safe completion, and positive learning
-  evidence.
-- **Correction Clay**: Errors, misconceptions, failed validation, and destructive actions. It should
-  feel corrective, not punitive.
+### Typography
 
-### Neutral
+Display serif (Newsreader) for assistant and tutor prose and for major headings. Sans (Plus Jakarta
+Sans) for controls, settings, labels and navigation. JetBrains Mono for code and technical ids.
 
-- **Canvas Parchment**: The light-mode app background. It creates the reading-room atmosphere.
-- **Surface Paper**: Primary panels, message surfaces, cards, popovers, and composer surfaces.
-- **Muted Vellum**: Secondary fills, hover states, inset fields, and quiet grouping.
-- **Ink Brown**: Primary light-mode text.
-- **Marginalia Brown**: Secondary text, helper labels, timestamps, and muted controls.
-- **Warm Rule**: Borders, dividers, and ornamental rules.
-- **Candle Canvas**: The dark-mode app background.
-- **Candle Surface**: Dark-mode panels and cards.
-- **Candle Muted**: Dark-mode inset surfaces and hover fills.
-- **Candle Ink**: Primary dark-mode text.
-- **Candle Marginalia**: Secondary dark-mode text.
-- **Candle Rule**: Dark-mode borders and dividers.
+Roughly: display 1.65rem/500 for page openings, headline 1.5rem/500 for panel headings, title
+1.05rem/600 for rows and cards, assistant 1.25rem/400 at 1.72 line-height for model prose, body
+1rem/400 for UI copy, label 0.75rem/600 with 0.05em tracking for badges and metadata. Keep
+assistant prose near 65–75 characters per line.
 
-### Named Rules
+**The Voice Split Rule.** Tutor and assistant prose is serif; controls and user-authored surfaces
+are sans. Do not blur the distinction unless a component genuinely mixes prose and controls.
 
-**The Accent Rarity Rule.** Gold and plum should not compete. Gold means tutor/action/progress; plum
-means model capability or secondary intelligence. If both appear in the same area, one must clearly
-lead.
+**The No Default Font Rule.** Inter, Roboto and bare system defaults are never the visual voice of
+this product.
 
-**The No Neon Rule.** Saturated color is forbidden for atmosphere. Color should feel printed,
-lamplit, or annotated, never electric.
+### Elevation
 
-## 3. Typography
+Tonal layering, fine borders, and warm ambient shadows. Depth should feel like paper stacked on a
+desk, not floating glass. Four shadow steps live in the tokens: a low rule shadow for resting
+controls, a panel shadow for popovers and drawers, a high shadow reserved for dialogs, and a warm
+layered message shadow.
 
-**Display Font:** Newsreader, Source Serif 4, Literata, Georgia, serif  
-**Body Font:** Plus Jakarta Sans, SF Pro Text, system sans-serif  
-**Label/Mono Font:** Plus Jakarta Sans for labels; JetBrains Mono for code and technical IDs
+**The Paper Stack Rule.** Reach for borders and tonal change first. Add shadow only when a surface
+has a reason to sit above another surface.
 
-**Character:** The type pairing separates thought from control. Assistant and tutor content uses a
-scholarly serif; user controls, settings, labels, and navigation use a clear sans.
+**The No Decorative Glass Rule.** No blur, translucency or frosted panels as default decoration.
+The existing `glass` class names mean solid editorial surfaces.
 
-### Hierarchy
+## Components
 
-- **Display** (500, 1.65rem, 1.3): Main page openings, welcome states, and major tutor moments.
-- **Headline** (500, 1.5rem, 1.35): Panel headings, plan section titles, and high-importance
-  educational surfaces.
-- **Title** (600, 1.05rem, 1.4): Sidebar rows, settings groups, cards, tool summaries, and compact
-  headers.
-- **Assistant** (400, 1.25rem, 1.72): Main assistant and tutor prose. Keep line length near 65 to
-  75 characters for reading comfort.
-- **Body** (400, 1rem, 1.6): User text, settings copy, field descriptions, and general UI prose.
-- **Label** (600, 0.75rem, 0.05em): Small labels, badges, section metadata, and low-volume
-  annotations. Uppercase is allowed only when the label is short.
+A component earns visual weight by helping the reader act, understand state, or recover from
+uncertainty.
 
-### Named Rules
+**Buttons.** Print-like corners on desktop (`--radius-editorial`, 6px), softer on mobile (10px).
+Primary is gold on ink at 44px. One dominant action per local surface. Hover warms the fill; focus
+shows a visible gold ring; active may move 1px. Outline buttons use muted fills and warm borders;
+ghost buttons stay transparent until hover.
 
-**The Voice Split Rule.** Tutor and assistant prose is serif. Controls and user-authored interactive
-surfaces are sans. Do not blur the distinction unless a component is explicitly mixing prose and
-controls.
+**Chips.** Compact, warm, medium-weight sans labels. Selected uses a tinted gold fill or full-border
+emphasis — never a thick side stripe.
 
-**The No Default Font Rule.** Never introduce Inter, Roboto, or bare system defaults as the visual
-voice of the product.
+**Cards and containers.** Surface for primary, muted for inset grouping. 1px warm border, full
+borders rather than one-sided accent bars. Resting cards take the low shadow or none; panels and
+overlays take the panel shadow. Padding starts at 16px and grows to 20–24px when the surface carries
+prose.
 
-## 4. Elevation
+**Inputs.** Muted fill, warm border, editorial radius, sans text. Gold focus ring plus a stronger
+border; never colour alone. Errors use clay for border and helper text; disabled reduces opacity but
+keeps text readable.
 
-Dialogia uses a hybrid of tonal layering, fine borders, and warm ambient shadows. Depth should feel
-like paper stacked on a desk, not floating glass. Shadows are structural: they clarify active
-surfaces, overlays, and hovered controls.
+**Navigation.** Quiet and compact. Muted text at rest, full-border or background tint on hover, a
+clear selected state. On mobile, 44px targets and labels that do not wrap awkwardly.
 
-### Shadow Vocabulary
+**Tutor surfaces.** The signature pattern. Plans, diagnostics, quizzes, confidence indicators and
+learner updates should read as annotations from a thoughtful tutor: structured, brief, supportive.
+Numbered markers, labels, icons, full borders, soft background tints. Thick side-stripe accents are
+forbidden.
 
-- **Low Rule Shadow** (`0 1px 2px rgba(0, 0, 0, 0.06)`): Small controls, compact cards, and resting
-  surfaces that need separation.
-- **Panel Shadow** (`0 8px 24px rgba(0, 0, 0, 0.08)`): Popovers, drawers, and elevated panels.
-- **High Shadow** (`0 24px 48px rgba(0, 0, 0, 0.12)`): Rare use for dialogs and major overlays.
-- **Message Shadow** (`0 1px 2px rgba(120, 90, 50, 0.04), 0 4px 8px rgba(100, 80, 40, 0.03), 0 8px 24px rgba(80, 60, 30, 0.04)`):
-  Warm message and tutor surfaces in light mode.
+**Composer.** The writing surface. Comfortable for multiline thought, speech-to-text cleanup,
+attachments, search and tutor toggles — without making every control equally loud. The input leads;
+tools gather around it.
 
-### Named Rules
+## Motion
 
-**The Paper Stack Rule.** Use borders and tonal changes first. Add shadow only when a surface has a
-reason to sit above another surface.
+Motion clarifies state; it never performs.
 
-**The No Decorative Glass Rule.** Do not use blur, translucency, or frosted panels as default
-decoration. Existing `glass` class names mean solid editorial surfaces, not glassmorphism.
+- Respect the global reduced-motion kill switch in `styles/layout.css`, which covers
+  pseudo-elements too. Framer-motion trees must sit under `MotionConfig reducedMotion="user"`
+  (already wrapped in `HomeClient` and `MobileShell`).
+- Infinite ambient animations must be pausable via the `.tab-hidden` class
+  (`useAmbientMotionPause`).
+- Collapsible panel bodies use the `panel-reveal` grid animation, not max-height hacks.
+- Desktop side panels collapse via CSS width transitions on `.sidebar-slot` and
+  `.right-panel-slot`. Do not reintroduce framer `layout` animations on the app shell.
+- Theme state has one source of truth, `useThemeMode` (`src/lib/hooks/useThemeMode.ts`). Never read
+  or write `localStorage.theme` from a component.
 
-## 5. Components
+## Accessibility
 
-Components should feel tactile, editorial, and calm. A component earns visual weight by helping the
-learner act, understand state, or recover from uncertainty.
+Target WCAG AA: contrast, keyboard access, visible focus, readable type. Every core chat and tutor
+workflow must remain usable with reduced motion, without relying on colour alone, and with touch
+targets near 44px.
 
-### Buttons
+Copy should interpret user input generously. Speech-to-text messiness is normal input, not user
+failure, and tutor feedback should be supportive and precise rather than punishing spelling,
+phrasing or uncertainty.
 
-- **Shape:** Print-like corners on desktop (6px), slightly softer on mobile (10px).
-- **Primary:** Tutor Gold background with Ink Brown text, 44px height, horizontal padding from the
-  spacing scale. Use for one dominant action per local surface.
-- **Hover / Focus:** Hover brightens or warms the fill subtly. Focus uses a visible gold ring. Active
-  states may move by 1px or scale very slightly.
-- **Secondary / Ghost / Tertiary:** Outline buttons use muted fills and warm borders. Ghost buttons
-  are transparent until hover and should remain visually quieter than primary actions.
+## Don't
 
-### Chips
-
-- **Style:** Compact, warm, and legible. Use muted fills, fine borders, and medium-weight sans labels.
-- **State:** Selected chips should use a tinted gold fill or full-border emphasis. Do not use a thick
-  side stripe to indicate state.
-
-### Cards / Containers
-
-- **Corner Style:** Editorial radius (6px) for desktop, mobile editorial radius (10px) for touch-heavy
-  surfaces.
-- **Background:** Surface Paper for primary surfaces, Muted Vellum for inset and secondary grouping.
-- **Shadow Strategy:** Resting cards can use Low Rule Shadow or no shadow. Panels and overlays can
-  use Panel Shadow.
-- **Border:** Warm Rule at 1px. Use full borders, not one-sided accent bars.
-- **Internal Padding:** Start at 16px, increase to 20px or 24px when the surface carries prose.
-
-### Inputs / Fields
-
-- **Style:** Muted Vellum fill, Warm Rule border, editorial radius, and sans text.
-- **Focus:** Gold focus ring plus a slightly stronger border. Do not rely on color alone; preserve
-  outline visibility.
-- **Error / Disabled:** Correction Clay for error borders and helper text. Disabled states reduce
-  opacity but keep text readable.
-
-### Navigation
-
-- **Style:** Navigation is quiet and compact. Sidebar rows, top-header controls, and mobile tabs
-  should use muted text at rest, a full-border or background tint on hover, and clear selected state.
-- **Mobile treatment:** Prioritize 44px targets, stable hit areas, and labels that do not wrap
-  awkwardly.
-
-### Tutor Surfaces
-
-Tutor components are Dialogia's signature pattern. Learning plans, diagnostics, quizzes, confidence
-sliders, and learner updates should read as annotations from a thoughtful tutor: structured, brief,
-and supportive. Use numbered markers, labels, icons, full borders, and soft background tints. Thick
-side-stripe accents are forbidden.
-
-### Composer
-
-The composer is the writing surface. It should be comfortable for speech-to-text cleanup, multiline
-thought, attachments, search toggles, and tutor mode without making all controls equally loud. The
-input area leads; tools gather around it.
-
-## 6. Do's and Don'ts
-
-### Do:
-
-- **Do** make tutor mode feel central. Plan progress, diagnostics, misconceptions, and next steps
-  should be clearer than provider machinery.
-- **Do** keep advanced controls close but quiet. Model choice, search, reasoning, and privacy states
-  should be visible when relevant and secondary otherwise.
-- **Do** use Surface Paper, Muted Vellum, Warm Rule, and warm shadows to create reading comfort.
-- **Do** maintain strong focus states, keyboard access, reduced-motion fallbacks, and mobile touch
-  targets near 44px.
-- **Do** interpret user text generously in UX copy. Speech-to-text messiness is normal input, not user
-  failure.
-
-### Don't:
-
-- **Don't** make Dialogia feel like a generic AI chat wrapper.
-- **Don't** use purple-gradient startup UI, neon/cyberpunk cues, or decorative glassmorphism.
-- **Don't** make tutor mode feel like gamified noise or analytics theater.
-- **Don't** use a `border-left` or `border-right` thicker than 1px as a colored accent on cards,
-  callouts, tutor panels, or alerts.
-- **Don't** use gradient text, decorative metric blocks, identical card grids, or modal-first flows.
-- **Don't** let power-user controls become a cockpit. If every control has equal weight, the screen
-  has failed.
+- Use a `border-left` or `border-right` thicker than 1px as a coloured accent on cards, callouts,
+  tutor panels or alerts.
+- Use gradient text, decorative metric blocks, identical card grids, or modal-first flows.
+- Make provider machinery louder than learning progress.

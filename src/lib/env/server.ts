@@ -86,22 +86,6 @@ export function hasTavilyApiKey(): boolean {
   return Boolean(getTavilyApiKey());
 }
 
-export function getFalKey(): string | undefined {
-  return readServerEnvValue('FAL_KEY');
-}
-
-export function requireFalKey(): string {
-  return requireServerEnv('FAL_KEY');
-}
-
-export function getXaiApiKey(): string | undefined {
-  return readServerEnvValue('XAI_API_KEY');
-}
-
-export function requireXaiApiKey(): string {
-  return requireServerEnv('XAI_API_KEY');
-}
-
 export { getOpenRouterKeyFallback } from '@/lib/env/keys';
 
 export { isProd };
