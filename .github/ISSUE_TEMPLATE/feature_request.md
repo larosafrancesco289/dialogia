@@ -6,7 +6,7 @@ labels: enhancement
 
 **The problem you are hitting**
 
-<!-- What you were trying to do, not the solution you have in mind. -->
+<!-- Describe what you were trying to do. Leave out the solution you have in mind. -->
 
 **What you would like instead**
 
