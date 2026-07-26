@@ -9,6 +9,7 @@ export function buildPersistedUiState(ui: UIState): PersistedUiState {
   return {
     showSettings: ui.showSettings,
     sidebarCollapsed: ui.sidebarCollapsed,
+    introSeen: ui.introSeen,
     zdrOnly: ui.zdrOnly,
     messageTimestamps: ui.messageTimestamps,
     dynamicDefaultResolutions: ui.dynamicDefaultResolutions,

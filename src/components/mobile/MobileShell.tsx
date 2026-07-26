@@ -25,6 +25,9 @@ const GlobalNotice = lazyClient(() =>
 const SetupSheet = lazyClient(() =>
   import('@/components/SetupSheet').then((mod) => ({ default: mod.SetupSheet })),
 );
+const IntroTour = lazyClient(() =>
+  import('@/components/intro/IntroTour').then((mod) => ({ default: mod.IntroTour })),
+);
 
 /**
  * MobileShell - Root layout component for mobile devices.
@@ -35,12 +38,13 @@ const SetupSheet = lazyClient(() =>
  * - Keyboard-aware layout
  */
 export function MobileShell() {
-  const { chatsSheetOpen, settingsSheetOpen, composerFocused, setupOpen } = useChatStore(
+  const { chatsSheetOpen, settingsSheetOpen, composerFocused, setupOpen, introOpen } = useChatStore(
     (s) => ({
       chatsSheetOpen: s.ui.mobile.chatsSheetOpen,
       settingsSheetOpen: s.ui.mobile.settingsSheetOpen,
       composerFocused: s.ui.mobile.composerFocused,
       setupOpen: s.ui.setupOpen === true,
+      introOpen: s.ui.introSeen !== true,
     }),
     shallow,
   );
@@ -70,7 +74,9 @@ export function MobileShell() {
         {settingsSheetOpen && <MobileSettingsSheet />}
       </AnimatePresence>
 
-      {setupOpen && <SetupSheet />}
+      {/* The tour defers the setup sheet rather than stacking on it. */}
+      {setupOpen && !introOpen && <SetupSheet />}
+      {introOpen && <IntroTour />}
 
       {/* Global Notice */}
       <GlobalNotice />

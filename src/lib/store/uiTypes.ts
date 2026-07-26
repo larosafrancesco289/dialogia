@@ -45,6 +45,8 @@ export type UITutorState = UiTutorSnapshot & {
 export type PersistedUiState = {
   showSettings: UiSnapshot['showSettings'];
   sidebarCollapsed?: boolean;
+  /** First-run tour: true once the visitor has closed, skipped or finished it. */
+  introSeen?: boolean;
   zdrOnly?: UiSnapshot['zdrOnly'];
   messageTimestamps?: UiSnapshot['messageTimestamps'];
   dynamicDefaultResolutions?: UiSnapshot['dynamicDefaultResolutions'];
