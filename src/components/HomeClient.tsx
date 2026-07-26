@@ -26,12 +26,16 @@ const GlobalNotice = lazyClient(() =>
 const SetupSheet = lazyClient(() =>
   import('@/components/SetupSheet').then((mod) => ({ default: mod.SetupSheet })),
 );
+const IntroTour = lazyClient(() =>
+  import('@/components/intro/IntroTour').then((mod) => ({ default: mod.IntroTour })),
+);
 
 export function HomeClient() {
   const {
     collapsed,
     isSettingsOpen,
     isSetupOpen,
+    isIntroOpen,
     tutorActive,
     rightPanelOpen,
     hasPlan,
@@ -42,6 +46,7 @@ export function HomeClient() {
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
       isSetupOpen: s.ui.setupOpen === true,
+      isIntroOpen: s.ui.introSeen !== true,
       tutorActive: selectIsTutorEnabled(s),
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
       hasPlan: !!selectCurrentChat(s)?.settings?.features.tutor?.learningPlan,
@@ -109,7 +114,10 @@ export function HomeClient() {
             <ChatPane />
           </div>
           {isSettingsOpen && <SettingsDrawer />}
-          {isSetupOpen && <SetupSheet />}
+          {/* The tour defers the setup sheet rather than stacking on it: a
+              first-time visitor should meet one dialog, then the next. */}
+          {isSetupOpen && !isIntroOpen && <SetupSheet />}
+          {isIntroOpen && <IntroTour />}
           <GlobalNotice />
         </main>
 

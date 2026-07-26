@@ -85,6 +85,9 @@
 
   /* Effects */
   --focus-ring: color-mix(in oklab, var(--color-accent) 50%, transparent);
+  /* Modal scrim. Stays dark in both themes: a light veil over the parchment
+     would not read as a layer above the app. */
+  --overlay-scrim: rgba(30, 27, 22, 0.44);
   --glass-surface-bg: color-mix(in oklab, var(--color-surface) 72%, transparent);
   --glass-panel-bg: color-mix(in oklab, var(--color-surface) 78%, transparent);
   --glass-strong-bg: color-mix(in oklab, var(--color-surface) 85%, transparent);
@@ -150,6 +153,7 @@
   --color-success: #7cb87a;
   --color-danger: #d4645a;
   --focus-ring: color-mix(in oklab, var(--color-accent) 50%, transparent);
+  --overlay-scrim: rgba(6, 5, 3, 0.62);
 
   /* Warm shadows with a faint amber lift; depth comes mostly from elevation */
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
