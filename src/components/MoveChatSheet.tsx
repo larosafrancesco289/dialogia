@@ -1,5 +1,3 @@
-'use client';
-
 import { useMemo } from 'react';
 import type { Folder } from '@/lib/types';
 import { DialogOverlay, DialogPortal, DialogSurface } from '@/components/ui/Dialog';

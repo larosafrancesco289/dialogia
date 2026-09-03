@@ -1,4 +1,3 @@
-'use client';
 import {
   useCallback,
   useEffect,
@@ -86,9 +85,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     showStats,
     setShowStats,
     showToolCallLog,
-    setShowToolCallLog,
     showDebugRawJson,
-    setShowDebugRawJson,
     presets,
     setPresets,
     selectedPresetId,

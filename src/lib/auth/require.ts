@@ -1,6 +1,6 @@
 import { getKey } from '@/lib/keys/store';
 import type { ModelIndex } from '@/lib/models';
-import { buildTransportAuth, usesProxy, type TransportAuth } from '@/lib/auth/transport';
+import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
 import { allowsKeylessCalls, type ProviderEndpoint } from '@/lib/transport/endpoints';
 import { resolveModelEndpoint } from '@/lib/transport/endpointRegistry';
 
@@ -20,14 +20,9 @@ function missingProviderKey(endpoint: ProviderEndpoint): MissingProviderKeyError
   return error;
 }
 
-/** True when calls to this endpoint spend the deployment's key rather than the user's. */
-export function isEndpointProxied(endpoint: ProviderEndpoint): boolean {
-  return usesProxy({ endpoint, apiKey: getKey(endpoint.apiKeyRef) });
-}
-
 export function requireEndpointAuth(endpoint: ProviderEndpoint): TransportAuth {
   const apiKey = getKey(endpoint.apiKeyRef);
-  if (!apiKey && endpoint.useProxy !== true && !allowsKeylessCalls(endpoint)) {
+  if (!apiKey && !allowsKeylessCalls(endpoint)) {
     throw missingProviderKey(endpoint);
   }
   return buildTransportAuth({ endpoint, apiKey });

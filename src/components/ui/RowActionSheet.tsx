@@ -1,5 +1,3 @@
-'use client';
-
 import type { ReactNode } from 'react';
 import { DialogOverlay, DialogPortal, DialogSurface } from '@/components/ui/Dialog';
 

@@ -1,4 +1,3 @@
-'use client';
 import { useState, useCallback } from 'react';
 import type { LearningPlanNode, TopicMastery } from '@/lib/types';
 import { EditConfirmDialog, EditConfirmAction } from './EditConfirmDialog';

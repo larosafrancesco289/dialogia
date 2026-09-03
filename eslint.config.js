@@ -113,14 +113,6 @@ module.exports = [
               message: 'UI components must not import transport clients.',
             },
             {
-              group: ['@/lib/server/**', '@/lib/env/server', '**/*.server'],
-              message: 'UI components must not import server-only modules.',
-            },
-            {
-              group: ['@/lib/auth/**/*.server', '@/lib/auth/**/*.server.*'],
-              message: 'UI components must not import server-only auth modules.',
-            },
-            {
               // Model output is untrusted and BYOK keys live in the same origin,
               // so the markdown pipeline must never render raw HTML.
               group: ['rehype-raw'],
@@ -136,12 +128,7 @@ module.exports = [
     // Feature modules are reached through `src/lib/modules.ts` and nowhere else, so
     // deleting one is a directory plus an entry in that file. Tests may import a
     // module directly to exercise it.
-    files: [
-      'src/*.{ts,tsx}',
-      'src/lib/**/*.{ts,tsx}',
-      'src/components/**/*.{ts,tsx}',
-      'functions/**/*.{ts,tsx}',
-    ],
+    files: ['src/*.{ts,tsx}', 'src/lib/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}'],
     ignores: ['src/lib/modules.ts', '**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'no-restricted-imports': [

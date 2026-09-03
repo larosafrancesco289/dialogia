@@ -1,4 +1,3 @@
-'use client';
 import { useEffect, useRef } from 'react';
 import { DialogOverlay, DialogPortal, DialogSurface } from '@/components/ui/Dialog';
 

@@ -1,4 +1,3 @@
-'use client';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
 import { useMessageCardController } from '@/components/message/useMessageCardController';

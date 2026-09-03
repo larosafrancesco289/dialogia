@@ -1,4 +1,3 @@
-'use client';
 import { useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { SettingsSection } from '@/components/settings/SettingsSection';
@@ -6,7 +5,6 @@ import { ApiKeyField } from '@/components/settings/ApiKeyField';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import { useChatStore } from '@/lib/store';
 import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
-import { isTavilyProxyEnabled } from '@/lib/env/public';
 import { listSearchProviders, searchProviderKeyRef } from '@/lib/search/providers';
 import {
   allowsKeylessCalls,
@@ -36,9 +34,6 @@ function EndpointStatus({ endpoint }: { endpoint: ProviderEndpoint }) {
   const { hasKey } = useProviderKeys();
   if (hasKey(endpoint.apiKeyRef)) {
     return <span className="text-xs text-muted-foreground">Using your key</span>;
-  }
-  if (endpoint.useProxy) {
-    return <span className="text-xs text-muted-foreground">Keyed by this deployment</span>;
   }
   if (endpoint.kind === 'openai-compatible') {
     return (
@@ -245,7 +240,7 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
         <SettingsSection title="Model providers">
           <div className="space-y-4">
             {/* Read through the registry, not the raw constants: it is what
-                carries the deployment's proxy configuration. */}
+                carries the user's own endpoints. */}
             {listEndpoints()
               .filter((endpoint) => isBuiltInEndpointId(endpoint.id))
               .map((endpoint) => (
@@ -258,11 +253,6 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
                     keyRef={endpoint.apiKeyRef ?? endpoint.id}
                     label={`${endpoint.label} API key`}
                     placeholder={endpoint.id === 'anthropic' ? 'sk-ant-…' : 'sk-or-…'}
-                    helpText={
-                      endpoint.useProxy
-                        ? 'This deployment supplies a key. Add your own to use it instead.'
-                        : undefined
-                    }
                     onChanged={refresh}
                   />
                 </div>
@@ -307,7 +297,7 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
                 key={provider.id}
                 keyRef={searchProviderKeyRef(provider)}
                 label={`${provider.label} API key`}
-                placeholder={isTavilyProxyEnabled() ? 'Provided by this deployment' : 'tvly-…'}
+                placeholder="tvly-…"
                 onChanged={refresh}
               />
             ))}

@@ -1,20 +1,19 @@
-/**
- * OpenRouter API key resolution utilities.
- *
- * Separated from server.ts so CLI scripts (tutor simulation, etc.) can read API
- * keys straight from process.env without pulling in the hosted server env layer.
- */
+// Module: env/keys
+// Responsibility: Provider keys for the Node CLI (the tutor simulation). The
+// app itself never reads a key from the environment; users paste theirs into
+// the key store.
 
-import { readServerEnvValue } from '@/lib/env/source';
+import { readEnvValue } from '@/lib/env/values';
+
+function readProcessEnv(name: string): string | undefined {
+  if (typeof process === 'undefined' || !process.env) return undefined;
+  return readEnvValue(process.env[name]);
+}
 
 export function getOpenRouterKeyFallback(): string | undefined {
   return (
-    readServerEnvValue('OPENROUTER_API_KEY') ||
-    readServerEnvValue('VITE_OPENROUTER_API_KEY') ||
-    readServerEnvValue('OPENROUTER_KEY')
+    readProcessEnv('OPENROUTER_API_KEY') ||
+    readProcessEnv('VITE_OPENROUTER_API_KEY') ||
+    readProcessEnv('OPENROUTER_KEY')
   );
-}
-
-export function getAnthropicKeyFallback(): string | undefined {
-  return readServerEnvValue('ANTHROPIC_API_KEY');
 }

@@ -1,5 +1,3 @@
-'use client';
-
 import { useMemo } from 'react';
 import { Markdown, type MarkdownCitationSource } from '@/components/Markdown';
 import { splitMarkdownBlocks } from '@/lib/markdown/blocks';

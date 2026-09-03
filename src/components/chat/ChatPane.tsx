@@ -1,4 +1,3 @@
-'use client';
 import { useChatStore } from '@/lib/store';
 import { MessageList } from '@/components/chat/MessageList';
 import { WelcomeHero } from '@/components/WelcomeHero';

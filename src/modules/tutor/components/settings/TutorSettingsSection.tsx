@@ -1,4 +1,3 @@
-'use client';
 import { useCallback, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';

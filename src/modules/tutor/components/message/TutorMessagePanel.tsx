@@ -1,4 +1,3 @@
-'use client';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import type { MessagePanelProps } from '@/lib/ui/panels';

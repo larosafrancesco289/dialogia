@@ -1,4 +1,3 @@
-'use client';
 import { useCallback } from 'react';
 import type { DragEvent as ReactDragEvent } from 'react';
 import { useChatStore } from '@/lib/store';

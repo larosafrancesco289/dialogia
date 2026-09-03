@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useChatStore } from '@/lib/store';

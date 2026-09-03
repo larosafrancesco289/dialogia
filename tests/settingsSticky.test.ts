@@ -46,7 +46,6 @@ test('createChat uses sticky chat defaults for future chats', async () => {
     chats: [],
     selectedChatId: undefined,
     repository: repository as any,
-    tier: 'free',
   });
 
   assert.equal(saved.length, 1);
@@ -279,7 +278,6 @@ test('in-chat reasoning changes become sticky for future chats', async () => {
     ui: state.ui,
     chats: state.chats,
     selectedChatId: state.selectedChatId,
-    tier: 'developer',
   });
 
   assert.equal(nextSettings.modelId, 'openai/gpt-5.4');
@@ -416,7 +414,6 @@ test('in-chat model changes become sticky for future chats; search does not', as
     ui: state.ui,
     chats: state.chats,
     selectedChatId: state.selectedChatId,
-    tier: 'developer',
   });
 
   assert.equal(nextSettings.modelId, 'x-ai/grok-4');

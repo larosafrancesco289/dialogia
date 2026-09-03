@@ -3,7 +3,6 @@ import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { selectCurrentChat, selectIsTutorEnabled } from '@/lib/store/selectors';
-import { useTierTutorModelId } from '@/lib/hooks/useTierModels';
 import type { Chat } from '@/lib/types';
 
 export type TopHeaderState = {
@@ -48,11 +47,10 @@ export function useTopHeaderState(): TopHeaderState {
 
   // The model picker shows which model a tutor turn will use. Both fields it reads
   // are core-declared settings, so the shell can resolve them without the module.
-  const rawTutorModelId =
+  const tutorModelId =
     chat?.settings?.features.tutor?.defaultModelId ||
     chat?.settings?.modelId ||
     tutorDefaultModelId;
-  const tutorModelId = useTierTutorModelId(rawTutorModelId);
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(
     () =>

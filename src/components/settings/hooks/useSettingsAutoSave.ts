@@ -1,4 +1,3 @@
-'use client';
 import { useCallback } from 'react';
 import { useAutoSave } from '@/components/settings/hooks/useAutoSave';
 import {

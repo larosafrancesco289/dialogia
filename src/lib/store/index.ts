@@ -1,4 +1,3 @@
-'use client';
 import { createWithEqualityFn } from 'zustand/traditional';
 import { persist } from 'zustand/middleware';
 import type { PersistedStoreState, StoreState } from '@/lib/store/types';

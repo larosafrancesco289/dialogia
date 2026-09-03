@@ -1,4 +1,3 @@
-'use client';
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { logger } from '@/lib/logger';

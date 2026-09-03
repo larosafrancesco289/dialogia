@@ -1,10 +1,9 @@
 // Module: search/providers/tavily
 // Responsibility: The Tavily implementation of the tool-based search interface.
 //
-// BYOK calls api.tavily.com straight from the page — verified July 2026 that it
-// answers the CORS preflight by reflecting the request origin and allowing the
-// `authorization` header. The hosted deployment keeps its own key server-side
-// and routes through the gated `/api/tavily` proxy instead.
+// Calls api.tavily.com straight from the page with the user's own key. Verified
+// July 2026 that it answers the CORS preflight by reflecting the request origin
+// and allowing the `authorization` header.
 //
 // The descriptor is eager (the registry must be complete before any settings UI
 // or turn reads it) but the request code is behind a dynamic import, so Tavily's
@@ -27,47 +26,34 @@ export const TAVILY_PROVIDER_ID = 'tavily';
 function describeFailure(error: unknown): string {
   if (isApiError(error)) {
     const detail = typeof error.detail === 'string' && error.detail.trim() ? error.detail : '';
-    // The proxy reports a missing server key this way; either side leaves the
-    // user with the same next step.
-    if (error.code === 'missing_env') return NOTICE_MISSING_SEARCH_KEY;
     return detail || error.code;
   }
   return error instanceof Error ? error.message : 'Network error';
 }
 
 async function search(args: NormalizedSearchArgs, ctx: SearchContext): Promise<SearchOutcome> {
+  if (!ctx.apiKey) return err(NOTICE_MISSING_SEARCH_KEY, { results: [] });
   const api = await import('@/lib/search/api/tavily');
   try {
-    if (ctx.apiKey) {
-      const results = await api.runTavilySearchDirect(args, {
-        apiKey: ctx.apiKey,
-        signal: ctx.signal,
-      });
-      return ok({ results });
-    }
-    if (ctx.useProxy) {
-      return ok({ results: await api.runTavilySearchProxy(args, { signal: ctx.signal }) });
-    }
-    return err(NOTICE_MISSING_SEARCH_KEY, { results: [] });
+    const results = await api.runTavilySearchDirect(args, {
+      apiKey: ctx.apiKey,
+      signal: ctx.signal,
+    });
+    return ok({ results });
   } catch (error: unknown) {
     return err(describeFailure(error), { results: [] });
   }
 }
 
 async function fetchPage(args: NormalizedFetchArgs, ctx: SearchContext): Promise<FetchOutcome> {
+  if (!ctx.apiKey) return err(NOTICE_MISSING_SEARCH_KEY, { results: [] });
   const api = await import('@/lib/search/api/tavily');
   try {
-    if (ctx.apiKey) {
-      const results = await api.runTavilyExtractDirect(args, {
-        apiKey: ctx.apiKey,
-        signal: ctx.signal,
-      });
-      return ok({ results });
-    }
-    if (ctx.useProxy) {
-      return ok({ results: await api.runTavilyExtractProxy(args, { signal: ctx.signal }) });
-    }
-    return err(NOTICE_MISSING_SEARCH_KEY, { results: [] });
+    const results = await api.runTavilyExtractDirect(args, {
+      apiKey: ctx.apiKey,
+      signal: ctx.signal,
+    });
+    return ok({ results });
   } catch (error: unknown) {
     return err(describeFailure(error), { results: [] });
   }

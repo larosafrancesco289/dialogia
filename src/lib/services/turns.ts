@@ -19,7 +19,6 @@ import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { triggerAsyncTitleGeneration } from '@/lib/services/titleGenerator';
-import { getClientTier } from '@/lib/auth/tier.client';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 
 export type SendTurnOptions = {
@@ -82,14 +81,7 @@ export async function sendUserTurn({
   get,
   repository,
 }: SendTurnOptions) {
-  const tier = getClientTier();
-  const runtime = await prepareSendRuntime({
-    attachments,
-    set,
-    get,
-    repository,
-    tier,
-  });
+  const runtime = await prepareSendRuntime({ attachments, set, get, repository });
   if (!runtime) return;
   let currentChat = runtime.chat;
   const { chatId, ui, tutorEnabled, activeModelIds, primaryModelId, priorMessages, modelContexts } =
@@ -137,7 +129,6 @@ export async function sendUserTurn({
       currentChat.id,
       content,
       get().renameChat.bind(get()),
-      tier,
       primaryContext.auth.endpoint,
       get().ui.zdrOnly === true,
       primaryModelId,

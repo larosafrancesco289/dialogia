@@ -1,4 +1,3 @@
-'use client';
 import { PencilSquareIcon, CheckIcon, ClipboardIcon } from '@heroicons/react/24/outline';
 import { Markdown } from '@/components/Markdown';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';

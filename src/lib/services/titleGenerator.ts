@@ -5,8 +5,6 @@ import type { ModelMessage } from '@/lib/agent/types';
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { requireEndpointAuth } from '@/lib/auth/require';
 import type { TransportAuth } from '@/lib/auth/transport';
-import { getClientTier } from '@/lib/auth/tier.client';
-import type { AccessTier } from '@/lib/auth/types';
 import { logger } from '@/lib/logger';
 import {
   ANTHROPIC_ENDPOINT_ID,
@@ -109,17 +107,10 @@ export function triggerAsyncTitleGeneration(
   chatId: string,
   userMessage: string,
   renameChat: (id: string, title: string) => Promise<void>,
-  tier?: AccessTier,
   endpoint?: ProviderEndpoint,
   zdrOnly = false,
   chatModelId?: string,
 ) {
-  // Skip title generation for free tier - feature only available for paid tiers
-  const resolvedTier = tier ?? getClientTier();
-  if (resolvedTier === 'free') {
-    return;
-  }
-
   generateChatTitle(userMessage, endpoint ?? getDefaultEndpoint(), chatModelId, zdrOnly)
     .then((title) => {
       if (title) {

@@ -1,4 +1,3 @@
-'use client';
 import { useEffect, type DependencyList } from 'react';
 
 export function useAutogrowTextarea(

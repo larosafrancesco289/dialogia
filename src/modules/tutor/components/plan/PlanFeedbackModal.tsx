@@ -1,4 +1,3 @@
-'use client';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';

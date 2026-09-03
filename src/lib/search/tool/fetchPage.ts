@@ -2,7 +2,6 @@ import { withAbort } from '@/lib/utils/abort';
 import { buildSearchContext, getSearchProvider } from '@/lib/search/providers';
 import type { FetchOutcome, SearchMode } from '@/lib/search/providers/types';
 import type { WebFetchArgs } from '@/lib/search/args';
-import { isTavilyProxyEnabled } from '@/lib/env/public';
 import { err } from '@/lib/utils/result';
 
 export async function performWebFetchTool(opts: {
@@ -21,10 +20,7 @@ export async function performWebFetchTool(opts: {
     try {
       return await fetchPage(
         opts.args,
-        buildSearchContext(provider, {
-          useProxy: isTavilyProxyEnabled(),
-          signal: fetchController.signal,
-        }),
+        buildSearchContext(provider, { signal: fetchController.signal }),
       );
     } finally {
       clearTimeout(timeout);

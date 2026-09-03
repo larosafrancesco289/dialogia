@@ -1,4 +1,3 @@
-'use client';
 import { createPortal } from 'react-dom';
 import type { ComponentPropsWithoutRef, ElementType, MouseEvent, ReactNode } from 'react';
 

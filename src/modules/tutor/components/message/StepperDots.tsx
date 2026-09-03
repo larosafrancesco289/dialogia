@@ -1,4 +1,3 @@
-'use client';
 import type { StepStatus } from '@/modules/tutor/components/message/shared';
 
 export function StepperDots<T>({

@@ -13,7 +13,7 @@ and it will run entirely against a model on your own machine if you want it to.
 - **Or bring your own server.** Point it at Ollama, LM Studio, llama.cpp or vLLM and never talk to
   a hosted provider at all.
 - **Everything stays local.** Chats, messages and folders live in IndexedDB. There is no account,
-  no sync, and no server in the default build.
+  no sync, and no server at all.
 - **Tutor mode.** An optional structured-learning mode. It generates a plan, tracks mastery, and
   runs diagnostics that adapt as you go.
 - **Real model control.** A curated picker with favourites, per-model capability flags, reasoning
@@ -61,86 +61,35 @@ say otherwise. If tool calls or search are unavailable you get a visible notice 
 
 ## Deploying your own
 
-Two builds come out of the same source.
-
-**Static (default).** No server, no configuration, and no keys anywhere near the deployment.
-
 ```bash
 bun run build
 ```
 
-`dist/` is a plain static site. Deploy it to Cloudflare Pages, Netlify, GitHub Pages, or your own
-nginx. Dialogia is a single-page app (SPA), so a host has to serve `index.html` for unknown paths.
-`public/_redirects` sets that up on hosts that read it. Anywhere else, point unknown paths at
-`index.html` yourself. Every visitor supplies their own key.
+`dist/` is a plain static site with no server behind it and no keys anywhere near it. Deploy it to
+Cloudflare Pages, Netlify, GitHub Pages, or your own nginx. Dialogia is a single-page app (SPA), so
+a host has to serve `index.html` for unknown paths. `public/_redirects` sets that up on hosts that
+read it. Anywhere else, point unknown paths at `index.html` yourself.
 
-**Hosted.** This variant adds an access gate and server-side key proxies, so you can share a
-deployment with people who should not each need a key.
-
-```bash
-bun run build:hosted
-```
-
-It emits the same `dist/` plus `dist/_worker.js`, a Cloudflare Pages advanced-mode worker that
-fronts the static assets. See [the hosted variant](#the-hosted-variant) below for the environment
-it needs.
+Every visitor supplies their own key. The first visit opens the setup sheet, which explains where to
+get one and stores it in that browser only. A deployment therefore pays for nothing and can be
+shared with anyone by link. On Cloudflare Pages the whole setup is build command `bun run build`,
+output directory `dist`, and no environment variables.
 
 ## Configuration
 
-The default build needs no configuration at all. Everything below is for the hosted variant or for
-changing defaults. `.env.example` is the authoritative list, and `.env.local` is where your copy
-goes.
-
-Client variables must start with `VITE_` and are **inlined into the bundle at build time**, so none
-of them may hold a secret. Server variables are read per request from the Cloudflare environment.
-
-### Client flags
+Nothing is required. The variables below change client defaults, must start with `VITE_`, and are
+**inlined into the bundle at build time**, so none of them may hold a secret. `.env.example` is the
+authoritative list, and `.env.local` is where your copy goes.
 
 | Variable                           | Default    | Effect                                                                     |
 | ---------------------------------- | ---------- | -------------------------------------------------------------------------- |
-| `VITE_HOSTED_BUILD`                | `false`    | Ships the `/access` route and expects `dist/_worker.js` alongside.         |
-| `VITE_USE_OR_PROXY`                | `false`    | Route OpenRouter calls through this deployment's key proxy.                |
-| `VITE_USE_ANTHROPIC_PROXY`         | `false`    | Same, for Anthropic.                                                       |
-| `VITE_TAVILY_SEARCH_ENABLED`       | `false`    | Let the client reach this deployment's Tavily key via `/api/tavily`.       |
 | `VITE_OR_ZDR_ONLY_DEFAULT`         | `false`    | New sessions start with ZDR-only enforcement.                              |
 | `VITE_OR_ROUTE_PREFERENCE_DEFAULT` | `balanced` | `balanced` \| `speed` \| `cost`. Only the latter two send `provider.sort`. |
-| `VITE_APP_BASE_URL`                | none       | Absolute origin, when deploying behind a proxy.                            |
+| `VITE_APP_BASE_URL`                | none       | Absolute origin, sent to OpenRouter as the `HTTP-Referer` courtesy header. |
 | `VITE_LOG_LEVEL`                   | none       | Client log verbosity.                                                      |
 
-There is deliberately **no client-side provider key variable**. A user's own key always wins over
-the proxy. Pasting your key should mean your key is the one spending.
-
-### Server variables (hosted only)
-
-| Variable                                                              | Purpose                                                                                                       |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `OPENROUTER_API_KEY`                                                  | Required when `VITE_USE_OR_PROXY` is on.                                                                      |
-| `OPENROUTER_FREE_API_KEY`                                             | Optional separate key for the free tier.                                                                      |
-| `ANTHROPIC_API_KEY`                                                   | Required when `VITE_USE_ANTHROPIC_PROXY` is on.                                                               |
-| `TAVILY_API_KEY`                                                      | Backs `/api/tavily`.                                                                                          |
-| `AUTH_COOKIE_SECRET`, `ACCESS_CODE_PEPPER`                            | Access gate secrets. Long random hex.                                                                         |
-| `ACCESS_CODES_INDIVIDUAL_HASHED`, `ACCESS_CODES_DEVELOPER_HASHED`     | HMAC-SHA256 hashes of the access codes.                                                                       |
-| `ACCESS_COOKIE_DOMAIN`                                                | Optional cookie domain for access sessions.                                                                   |
-| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                  | Durable rate limiting. Without both, an in-memory per-instance limiter is used.                               |
-| `AUTH_DEBUG_ROUTE_ENABLED`, `AUTH_DEBUG_HEADERS`, `AUTH_TIMING_DEBUG` | Auth debugging toggles.                                                                                       |
-| `NODE_ENV`                                                            | The gate bypasses auth **only** when this is explicitly `development`. An absent value is read as production. |
-
-## The hosted variant
-
-`bun run build:hosted` produces a Cloudflare Pages project where `dist/_worker.js` sits in front of
-the static assets. It adds three things.
-
-- **An access gate.** Every request carries a signed, HttpOnly cookie. Unauthenticated visitors are
-  redirected to `/access`, where they enter a code you distributed privately. Generate the hashes
-  with `crypto.createHmac('sha256', ACCESS_CODE_PEPPER).update(code).digest('hex')`.
-- **Key proxies.** `/api/openrouter/*`, `/api/anthropic/*` and `/api/tavily` inject the
-  deployment's server-side key. They build their auth from the server environment and never forward
-  an inbound `Authorization` or `x-api-key`, so the proxy cannot be used as an open relay.
-- **Tiers.** Access codes map to tiers that ration the deployment's own key. Tier gating applies
-  only to models actually spending that key. A user's own key or a local endpoint is never gated.
-
-Store server secrets as Pages environment variables. Set `NODE_ENV=development` explicitly if you
-want the gate bypassed locally under `wrangler`.
+There is deliberately **no provider key variable**, client-side or otherwise. Keys are pasted into
+the app and live in the browser that pasted them.
 
 ![Settings](assets/settings.png)
 
@@ -179,8 +128,7 @@ runs unchanged.
 ```bash
 bun install
 bun run dev          # http://localhost:3000
-bun run build        # static BYOK build
-bun run build:hosted # the same, plus dist/_worker.js
+bun run build        # static build into dist/
 bun start            # preview a production build
 scripts/ci.sh        # hygiene + types + tests + format + lint
 ```

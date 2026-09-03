@@ -1,8 +1,8 @@
 # Architecture
 
-Dialogia is a static single-page app (SPA). There is no server in the default build. The browser
-holds the chat history, the provider keys, and every decision about where a request goes. A second,
-optional build puts a Cloudflare worker in front of the same assets for a hosted deployment.
+Dialogia is a static single-page app (SPA). There is no server. The browser holds the chat
+history, the provider keys, and every decision about where a request goes, and every model call
+goes from the page to the provider the user holds a key for.
 
 This document describes how the client is put together and which boundaries are load-bearing. For
 setup and deployment see [README.md](README.md). For how to work in the repo see
@@ -27,15 +27,12 @@ index.html ──▶ src/main.tsx ──▶ src/router.tsx ──▶ HomeClient 
      └─────────────────────────────────────────────────────────────┘
                     │                              │
                     ▼                              ▼
-        src/lib/db/**  (IndexedDB)      provider API, or /api/* proxy
+        src/lib/db/**  (IndexedDB)      provider API
         src/lib/keys/** (IndexedDB)
 ```
 
-Two things sit beside that stack rather than inside it.
-
-- `src/modules/` holds removable feature modules. Today there is one, `tutor`. Core reaches a module
-  only through `src/lib/modules.ts`.
-- `functions/` is the hosted variant's Cloudflare worker. It is absent from the default build.
+One thing sits beside that stack rather than inside it. `src/modules/` holds removable feature
+modules. Today there is one, `tutor`. Core reaches a module only through `src/lib/modules.ts`.
 
 ## Enforced boundaries
 
@@ -47,7 +44,7 @@ specification, and this list is the summary. A violation fails `bun run lint` ev
 | `src/lib/db/**`                                 | agent, store, components                              |
 | `src/lib/agent/**`                              | UI components, `src/lib/services/**`                  |
 | `src/lib/transport/**`, `src/lib/openrouter/**` | `src/lib/agent/**`                                    |
-| `src/components/**`                             | transport clients, server-only modules, `rehype-raw`  |
+| `src/components/**`                             | transport clients, `rehype-raw`                       |
 | core tool plumbing                              | any feature module                                    |
 | everything outside `src/lib/modules.ts`         | `@/modules/*`, statically, dynamically, or relatively |
 
@@ -156,7 +153,6 @@ type ProviderEndpoint = {
   label: string;
   baseUrl?: string; // required for openai-compatible
   apiKeyRef?: string; // a reference into the key store, never a key
-  useProxy?: boolean; // hosted build only
   capabilities?: EndpointCapabilities;
   modelIds?: string[];
   titleModelId?: string;
@@ -173,7 +169,7 @@ Endpoint configuration is owned by `endpointSlice`, but auth resolution and body
 synchronous and sit below the store. So the slice republishes into
 `src/lib/transport/endpointRegistry.ts` on every mutation and on the persist merge. Read endpoints
 from the registry rather than from the raw constants, because the registry is what carries the
-deployment's proxy configuration.
+user's own endpoints.
 
 This design exists to enforce three rules.
 
@@ -189,7 +185,7 @@ This design exists to enforce three rules.
 
 Keys are read synchronously from a cache in `src/lib/keys/store.ts` warmed by `loadKeys()`, which
 both `bootstrapApp` and `loadModels` await so a slow IndexedDB read can never look like an
-unconfigured app. **A key the user has pasted wins over the deployment's proxy.**
+unconfigured app.
 
 ## Tools and search
 
@@ -248,36 +244,16 @@ first.
 the shapes it persists through the optional `Message.tutor` and `ChatSettings.features.tutor`
 fields, and the module owns all behaviour.
 
-## The hosted variant
+## Deployment
 
-`functions/` builds separately, through `vite.worker.config.ts`, into `dist/_worker.js`. It exists
-only in `bun run build:hosted`.
+`bun run build` emits `dist/`, a static site. There is no worker, no API route and no environment
+the deployment has to carry, because every provider call leaves the visitor's browser with the
+visitor's own key. `public/_redirects` gives Cloudflare Pages and Netlify the SPA fallback; other
+hosts need the equivalent rule. `wrangler.toml` only names the output directory.
 
-- `worker.ts` is the entry. It binds the Cloudflare environment into `@/lib/env/source` once per
-  request, then dispatches.
-- `middleware.ts` is the access gate. It validates a signed HttpOnly cookie and redirects to
-  `/access`.
-- `routes.ts` is the path table.
-- `api/*` is one module per endpoint, covering the OpenRouter and Anthropic proxies, the ZDR
-  endpoint list, the Tavily proxy, and the auth routes.
-
-It is a Cloudflare Pages **advanced-mode** worker rather than Pages-routed functions, because Pages
-compiles `functions/` with esbuild and does not resolve the `tsconfig` path aliases the whole
-`@/lib/**` graph behind those routes uses. Advanced mode also bypasses `_redirects`, so the worker
-performs the SPA fallback itself. `public/_redirects` still covers the static build.
-
-**The proxies build their auth from the server environment and never read an inbound `Authorization`
-or `x-api-key`.** They inject only the deployment's own key, behind the gate and the rate limiter,
-which is what keeps the proxy from becoming an open relay. `src/lib/openrouter/http.test.ts` and
-`src/lib/anthropic/http.test.ts` assert that a proxied call carries no client credentials in either
-direction.
-
-Server config is read per request through `src/lib/env/source.ts`, because Cloudflare hands the
-environment to the worker rather than exposing `process.env`. Node (tests, CLI) falls through to
-`process.env`. Two similar names mean different things. `isProd()` is the client's notion, read from
-`import.meta.env.MODE`. `isServerProd()` reads the bound environment. **An absent `NODE_ENV` is read
-as production**, because Cloudflare does not set it and the old default would have disabled the
-access gate on a live deployment.
+Client config is `import.meta.env.VITE_*`, inlined at build time, and none of it may be a secret.
+`isProd()` reads the build mode. The tutor simulation CLI is the one place a key comes from the
+environment, and it runs in Node, never in the page.
 
 ## Threat model, briefly
 
@@ -309,5 +285,4 @@ A browser-held key is readable by the page holding it. That is inherent to bring
 | Keys                     | `src/lib/keys/store.ts`                                                                     |
 | Chat persistence         | `src/lib/db/**`                                                                             |
 | Feature modules          | `src/modules/**`, listed in `src/lib/modules.ts`                                            |
-| Hosted worker            | `functions/**`                                                                              |
 | Styles and tokens        | `styles/**`                                                                                 |

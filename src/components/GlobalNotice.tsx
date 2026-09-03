@@ -1,4 +1,3 @@
-'use client';
 import { useChatStore } from '@/lib/store';
 import { useEffect, useState } from 'react';
 import { InlineNotice } from '@/components/ui/InlineNotice';

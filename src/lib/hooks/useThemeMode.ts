@@ -1,5 +1,3 @@
-'use client';
-
 import { useSyncExternalStore } from 'react';
 
 export type ThemeMode = 'auto' | 'light' | 'dark';

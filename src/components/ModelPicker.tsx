@@ -1,10 +1,7 @@
-'use client';
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { formatModelLabel } from '@/lib/models';
-import { useTierCuratedModels } from '@/lib/hooks/useTierModels';
-import { useTier } from '@/lib/auth/tierContext';
-import { isFreeModel } from '@/data/freeModels';
+import { useCuratedModels } from '@/lib/hooks/useModelCatalog';
 import type { ZdrLists } from '@/lib/policy/zdr';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
@@ -68,7 +65,6 @@ export type ModelPickerTriggerProps = {
   tooltip: string;
   isOpen: boolean;
   onClick: () => void;
-  limitPulse: boolean;
 };
 
 export function ModelPicker({
@@ -91,8 +87,7 @@ export function ModelPicker({
     zdrProviderIds,
   } = useModelPickerController();
 
-  const curatedModels = useTierCuratedModels();
-  const { isFreeTier, isLoading: tierLoading } = useTier();
+  const curatedModels = useCuratedModels();
 
   const zdrLists = useMemo<ZdrLists>(
     () => ({
@@ -104,17 +99,10 @@ export function ModelPicker({
 
   const curatedIds = useMemo(() => curatedModels.map((m) => m.id), [curatedModels]);
 
-  // Filter out favorites that are already in curated list
-  // Also filter out paid models for free tier users
   const uniqueFavorites = useMemo(() => {
     const curatedSet = new Set(curatedIds);
-    return favoriteModelIds.filter((id) => {
-      if (curatedSet.has(id)) return false;
-      // For free tier, only show favorites that are free models
-      if (!tierLoading && isFreeTier && !isFreeModel(id)) return false;
-      return true;
-    });
-  }, [favoriteModelIds, curatedIds, isFreeTier, tierLoading]);
+    return favoriteModelIds.filter((id) => !curatedSet.has(id));
+  }, [favoriteModelIds, curatedIds]);
 
   const [open, setOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
@@ -122,8 +110,6 @@ export function ModelPicker({
   const favoritesEndRef = useRef<HTMLDivElement | null>(null);
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const maxSelectable = 1;
-  const limitTimeoutRef = useRef<number | null>(null);
-  const [limitPulse, setLimitPulse] = useState(false);
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
   const deriveLabel = useCallback(
@@ -145,15 +131,6 @@ export function ModelPicker({
       setModels(selectedIds.slice(0, maxSelectable));
     }
   }, [selectedIds, maxSelectable, setModels]);
-
-  useEffect(
-    () => () => {
-      if (limitTimeoutRef.current != null) {
-        window.clearTimeout(limitTimeoutRef.current);
-      }
-    },
-    [],
-  );
 
   const toggleModel = useCallback(
     (id: string) => {
@@ -232,7 +209,6 @@ export function ModelPicker({
     tooltip: selectionSummary.tooltip,
     isOpen: open,
     onClick: () => setOpen((v) => !v),
-    limitPulse,
   };
 
   return (
@@ -241,7 +217,7 @@ export function ModelPicker({
         renderTrigger(triggerProps)
       ) : (
         <button
-          className={`btn btn-outline min-w-0 w-full whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-between gap-2${limitPulse ? ' ring-2 ring-primary/50 border-primary/40' : ''}`}
+          className="btn btn-outline min-w-0 w-full whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-between gap-2"
           aria-haspopup="dialog"
           aria-expanded={open}
           title={selectionSummary.tooltip}

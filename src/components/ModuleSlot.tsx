@@ -1,4 +1,3 @@
-'use client';
 import { Suspense, type ComponentType } from 'react';
 import type {
   MessagePanelProps,

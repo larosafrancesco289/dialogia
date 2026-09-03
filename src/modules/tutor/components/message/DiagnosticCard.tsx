@@ -1,4 +1,3 @@
-'use client';
 import { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ChartBarIcon } from '@heroicons/react/24/outline';

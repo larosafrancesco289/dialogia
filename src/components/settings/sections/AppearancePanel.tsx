@@ -1,4 +1,3 @@
-'use client';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline';
 import { useThemeMode, type ThemeMode } from '@/lib/hooks/useThemeMode';

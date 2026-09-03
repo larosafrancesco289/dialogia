@@ -1,4 +1,3 @@
-'use client';
 import { useEffect, useRef, useState } from 'react';
 import { searchModeLabel } from '@/lib/search/ui/labels';
 import { listSearchModeOptions } from '@/lib/search/ui/modes';
@@ -18,7 +17,7 @@ import {
 import { Lightbulb as LucideLightbulb, LightbulbOff as LucideLightbulbOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { springs } from '@/lib/mobile/springConfig';
-import type { Effort } from '@/components/composer/ComposerMobileMenu';
+import type { ReasoningEffort } from '@/lib/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reasoning effort — "Lightbulb, off to radiant"
@@ -57,12 +56,12 @@ function useDismissOnOutside(
   }, [open, setOpen, menuRef, triggerRef]);
 }
 
-const effortLabel = (e: Effort) =>
+const effortLabel = (e: ReasoningEffort) =>
   e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra High' : e.charAt(0).toUpperCase() + e.slice(1);
 
 type BulbKind = 'off' | 'outline' | 'outline-bold' | 'solid' | 'solid-plus';
 
-const EFFORT_KIND: Record<Effort, BulbKind> = {
+const EFFORT_KIND: Record<ReasoningEffort, BulbKind> = {
   none: 'off',
   minimal: 'outline',
   low: 'outline',
@@ -72,9 +71,9 @@ const EFFORT_KIND: Record<Effort, BulbKind> = {
   max: 'solid-plus',
 };
 
-const DEFAULT_EFFORTS: Effort[] = ['none', 'low', 'medium', 'high'];
+const DEFAULT_EFFORTS: ReasoningEffort[] = ['none', 'low', 'medium', 'high'];
 
-function ReasoningBulbIcon({ effort, size = 16 }: { effort: Effort; size?: number }) {
+function ReasoningBulbIcon({ effort, size = 16 }: { effort: ReasoningEffort; size?: number }) {
   const kind = EFFORT_KIND[effort];
   let node: React.ReactNode;
   switch (kind) {
@@ -124,10 +123,10 @@ const FAN = {
 };
 
 type ReasoningFanProps = {
-  availableEfforts?: Effort[];
-  defaultEffort?: Effort;
-  currentEffort?: Effort;
-  onSelect: (e: Effort) => void;
+  availableEfforts?: ReasoningEffort[];
+  defaultEffort?: ReasoningEffort;
+  currentEffort?: ReasoningEffort;
+  onSelect: (e: ReasoningEffort) => void;
   onClose: () => void;
   menuRef: RefObject<HTMLDivElement>;
 };
@@ -140,8 +139,8 @@ function ReasoningFan({
   onClose,
   menuRef,
 }: ReasoningFanProps) {
-  const [hover, setHover] = useState<Effort | null>(null);
-  const efforts: Effort[] = availableEfforts?.length ? availableEfforts : DEFAULT_EFFORTS;
+  const [hover, setHover] = useState<ReasoningEffort | null>(null);
+  const efforts: ReasoningEffort[] = availableEfforts?.length ? availableEfforts : DEFAULT_EFFORTS;
   const { spread, radius, tickSizeStart, tickSizeEnd } = FAN;
   // Give crowded fans (6-7 levels) a little more arc and reach.
   const fanSpread = efforts.length > 5 ? 190 : spread;
@@ -256,10 +255,10 @@ export type ComposerActionsProps = {
   /** Turns search on with a specific mechanism; only shown when there is a choice. */
   selectSearchMode: (mode: SearchMode) => void;
   showReasoningMenu: boolean;
-  availableEfforts?: Effort[];
-  defaultEffort?: Effort;
-  currentEffort?: Effort;
-  onSelectEffort: (effort: Effort) => Promise<void> | void;
+  availableEfforts?: ReasoningEffort[];
+  defaultEffort?: ReasoningEffort;
+  currentEffort?: ReasoningEffort;
+  onSelectEffort: (effort: ReasoningEffort) => Promise<void> | void;
   hasContent?: boolean;
 };
 
@@ -309,7 +308,7 @@ export function ComposerActions({
     );
   }
 
-  const effort: Effort = currentEffort ?? 'none';
+  const effort: ReasoningEffort = currentEffort ?? 'none';
   const reasoningActive = effort !== 'none';
 
   const providerLabel = searchModeLabel(searchProvider);

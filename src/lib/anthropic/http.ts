@@ -1,6 +1,6 @@
 import { sendApiRequest } from '@/lib/api/http';
-import { apiDefaults, isBrowserContext } from '@/lib/api/config';
-import { usesProxy, type TransportAuth } from '@/lib/auth/transport';
+import { apiDefaults } from '@/lib/api/config';
+import type { TransportAuth } from '@/lib/auth/transport';
 import { ANTHROPIC_API_VERSION } from '@/lib/anthropic/shared';
 
 type AnthropicFetchOptions = {
@@ -10,42 +10,26 @@ type AnthropicFetchOptions = {
   signal?: AbortSignal;
   timeoutMs?: number;
   stream?: boolean;
-  authRequired?: boolean;
   origin?: string;
   headers?: Record<string, string>;
 };
 
 async function anFetch(path: string, options: AnthropicFetchOptions = {}): Promise<Response> {
-  // `/api/anthropic` is relative, so it only resolves in a page; the worker runs
-  // this same module and must go straight upstream.
-  const useProxy = isBrowserContext() && usesProxy(options.auth);
-  const authRequired = options.authRequired ?? !useProxy;
+  if (!options.auth?.apiKey) throw new Error('missing_anthropic_api_key');
   const headers: Record<string, string> = {
     'anthropic-version': ANTHROPIC_API_VERSION,
+    'x-api-key': options.auth.apiKey,
+    // The page calls the Claude API directly; without this opt-in the API
+    // refuses the browser's CORS preflight.
+    'anthropic-dangerous-direct-browser-access': 'true',
     ...(options.headers || {}),
   };
 
-  if (!useProxy) {
-    if (authRequired) {
-      if (!options.auth?.apiKey) throw new Error('missing_anthropic_api_key');
-      headers['x-api-key'] = options.auth.apiKey;
-    } else if (options.auth?.apiKey) {
-      headers['x-api-key'] = options.auth.apiKey;
-    }
-    // BYOK calls the Claude API straight from the page; without this opt-in the
-    // API refuses the browser's CORS preflight. Sent on every direct call;
-    // server-side callers are unaffected by it.
-    headers['anthropic-dangerous-direct-browser-access'] = 'true';
-  }
-
   const timeoutMs = options.timeoutMs ?? (options.stream ? undefined : apiDefaults.timeouts.chat);
-  const baseUrl = useProxy
-    ? '/api/anthropic'
-    : (options.auth?.endpoint.baseUrl ?? 'https://api.anthropic.com/v1');
-  const url = `${baseUrl}${path}`;
+  const baseUrl = options.auth.endpoint.baseUrl ?? 'https://api.anthropic.com/v1';
 
   return sendApiRequest({
-    url,
+    url: `${baseUrl}${path}`,
     method: options.method ?? 'GET',
     headers,
     body: options.body,

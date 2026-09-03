@@ -85,55 +85,57 @@ test('buildTavilyExtractBody keeps fetch payload focused', () => {
   assert.equal(body.chunks_per_source, 5);
 });
 
-test('the Tavily provider returns results and propagates errors through the proxy', async () => {
+test('the Tavily provider returns results and reports failures', async () => {
   const restoreOk = mockFetch((async () => ({
     ok: true,
     json: async () => ({
-      results: [{ title: 'Alpha', url: 'https://alpha.test', description: 'alpha desc' }],
+      results: [{ title: 'Alpha', url: 'https://alpha.test', content: 'alpha desc' }],
     }),
   })) as any);
   const okResult = await tavilySearchProvider.search(
     { query: 'alpha', count: 3 },
-    { useProxy: true },
+    { apiKey: 'tvly-test' },
   );
   restoreOk();
   assert.equal(okResult.ok, true);
   assert.equal(okResult.results.length, 1);
   assert.equal(okResult.results[0]?.url, 'https://alpha.test');
+  assert.equal(okResult.results[0]?.description, 'alpha desc');
 
-  const restoreMissing = mockFetch((async () => ({
-    ok: false,
-    status: 500,
-    json: async () => ({ error: 'missing_env', detail: 'TAVILY_API_KEY' }),
-  })) as any);
-  const missingKey = await tavilySearchProvider.search(
-    { query: 'beta', count: 2 },
-    { useProxy: true },
-  );
-  restoreMissing();
+  const missingKey = await tavilySearchProvider.search({ query: 'beta', count: 2 }, {});
   assert.equal(missingKey.ok, false);
   assert.equal(missingKey.error, NOTICE_MISSING_SEARCH_KEY);
+
+  const restoreUpstream = mockFetch((async () => ({ ok: false, status: 500 })) as any);
+  const upstream = await tavilySearchProvider.search(
+    { query: 'beta', count: 2 },
+    { apiKey: 'tvly-test' },
+  );
+  restoreUpstream();
+  assert.equal(upstream.ok, false);
+  assert.equal(upstream.error, 'tavily_error_500');
 
   const restoreNetwork = mockFetch((async () => {
     throw new Error('network down');
   }) as any);
   const network = await tavilySearchProvider.search(
     { query: 'gamma', count: 2 },
-    { useProxy: true },
+    { apiKey: 'tvly-test' },
   );
   restoreNetwork();
   assert.equal(network.ok, false);
   assert.equal(network.error, 'network down');
 });
 
-test('the Tavily provider forwards supported filters to the proxy', async () => {
+test('the Tavily provider sends the user key and the supported filters', async () => {
   let requestedUrl = '';
-  const restore = mockFetch((async (input: RequestInfo | URL) => {
+  let headers: Record<string, string> = {};
+  let body: Record<string, unknown> = {};
+  const restore = mockFetch((async (input: RequestInfo | URL, init?: RequestInit) => {
     requestedUrl = String(input);
-    return {
-      ok: true,
-      json: async () => ({ results: [] }),
-    };
+    headers = (init?.headers ?? {}) as Record<string, string>;
+    body = JSON.parse(String(init?.body));
+    return { ok: true, json: async () => ({ results: [] }) };
   }) as any);
 
   try {
@@ -146,23 +148,26 @@ test('the Tavily provider forwards supported filters to the proxy', async () => 
         include_domains: ['example.com'],
         exclude_domains: ['spam.test'],
       },
-      { useProxy: true },
+      { apiKey: 'tvly-test' },
     );
   } finally {
     restore();
   }
 
-  const url = new URL(requestedUrl, 'https://dialogia.test');
-  assert.equal(url.searchParams.get('freshness'), 'd');
-  assert.equal(url.searchParams.get('country'), 'us');
-  assert.equal(url.searchParams.get('include_domains'), 'example.com');
-  assert.equal(url.searchParams.get('exclude_domains'), 'spam.test');
+  assert.equal(requestedUrl, 'https://api.tavily.com/search');
+  assert.equal(headers.Authorization, 'Bearer tvly-test');
+  assert.equal(body.time_range, 'day');
+  assert.equal(body.country, 'united states');
+  assert.deepEqual(body.include_domains, ['example.com']);
+  assert.deepEqual(body.exclude_domains, ['spam.test']);
 });
 
 test('the Tavily provider extracts page content and forwards options', async () => {
   let requestedUrl = '';
-  const restore = mockFetch((async (input: RequestInfo | URL) => {
+  let body: Record<string, unknown> = {};
+  const restore = mockFetch((async (input: RequestInfo | URL, init?: RequestInit) => {
     requestedUrl = String(input);
+    body = JSON.parse(String(init?.body));
     return {
       ok: true,
       json: async () => ({
@@ -187,7 +192,7 @@ test('the Tavily provider extracts page content and forwards options', async () 
         query: 'alpha',
         chunks_per_source: 2,
       },
-      { useProxy: true },
+      { apiKey: 'tvly-test' },
     );
     assert.equal(result.ok, true);
     assert.equal(result.results[0]?.raw_content, '# Page\n\nExtracted content');
@@ -195,9 +200,9 @@ test('the Tavily provider extracts page content and forwards options', async () 
     restore();
   }
 
-  const url = new URL(requestedUrl, 'https://dialogia.test');
-  assert.equal(url.searchParams.get('url'), 'https://example.com/page');
-  assert.equal(url.searchParams.get('include_images'), 'true');
-  assert.equal(url.searchParams.get('query'), 'alpha');
-  assert.equal(url.searchParams.get('chunks_per_source'), '2');
+  assert.equal(requestedUrl, 'https://api.tavily.com/extract');
+  assert.equal(body.urls, 'https://example.com/page');
+  assert.equal(body.include_images, true);
+  assert.equal(body.query, 'alpha');
+  assert.equal(body.chunks_per_source, 2);
 });

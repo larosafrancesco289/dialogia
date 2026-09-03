@@ -1,4 +1,3 @@
-'use client';
 import { motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import type {

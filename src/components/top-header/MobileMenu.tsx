@@ -1,4 +1,3 @@
-'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import { ThemeToggle } from '@/components/ThemeToggle';

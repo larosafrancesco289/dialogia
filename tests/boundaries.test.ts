@@ -9,8 +9,7 @@ const assertClientSafe = (relativePath: string) => {
   assert.equal(source.includes('.server'), false);
 };
 
-// `src/lib/auth/index.ts` had no importers and is gone; the ESLint rule banning
-// `@/lib/auth/**/*.server` from `src/components/**` is what guards that boundary now.
+// The app is a static bundle. Nothing the browser imports may be marked server-only.
 
 test('tools index stays client-safe', () => {
   assertClientSafe('src/lib/tools/index.ts');

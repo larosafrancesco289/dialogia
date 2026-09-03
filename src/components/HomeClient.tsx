@@ -1,10 +1,8 @@
-'use client';
 import { useEffect, useRef } from 'react';
 import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { ChatPane } from '@/components/chat/ChatPane';
 import { TopHeader } from '@/components/TopHeader';
 import { MobileShell } from '@/components/mobile/MobileShell';
-import { FreeTierBanner } from '@/components/FreeTierBanner';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import { lazyClient } from '@/lib/ui/lazy';
 import { useChatStore } from '@/lib/store';
@@ -109,7 +107,6 @@ export function HomeClient() {
         </div>
         <main className="content">
           <TopHeader />
-          <FreeTierBanner />
           <div className="flex-1 min-h-0">
             <ChatPane />
           </div>

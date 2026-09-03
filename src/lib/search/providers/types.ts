@@ -24,10 +24,8 @@ export type FetchedPage = {
 };
 
 export type SearchContext = {
-  /** Resolved from the key store; absent when the hosted proxy holds it. */
+  /** Resolved from the key store; absent when the user has not added one. */
   apiKey?: string;
-  /** Route through the deployment's gated proxy instead of calling directly. */
-  useProxy?: boolean;
   signal?: AbortSignal;
 };
 

@@ -1,4 +1,3 @@
-'use client';
 // Hook: useSidebarGestures
 // Responsibility: Encapsulate mobile sidebar open/close swipe gestures.
 

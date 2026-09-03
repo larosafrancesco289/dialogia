@@ -1,4 +1,3 @@
-'use client';
 import type { Message, Chat, ModelDescriptor } from '@/lib/types';
 import { computeCost } from '@/lib/cost';
 import { formatMetricsForDisplay } from '@/lib/turns/runtime';

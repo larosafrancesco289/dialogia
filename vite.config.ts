@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { defineConfig, loadEnv, type ViteDevServer } from 'vite';
+import { defineConfig, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -19,48 +19,6 @@ const themeInit = () => ({
   name: 'dialogia-theme-init',
   transformIndexHtml() {
     return [{ tag: 'script', children: injectThemeClass(), injectTo: 'head' as const }];
-  },
-});
-
-/**
- * Serves the worker's `/api/*` routes from the dev server. Cloudflare runs
- * `functions/worker.ts` in production; without this, `bun run dev` would have no
- * API at all and proxy mode would have nowhere to send model traffic.
- */
-const hostedApiDev = (mode: string) => ({
-  name: 'dialogia-hosted-api-dev',
-  apply: 'serve' as const,
-  configureServer(server: ViteDevServer) {
-    // Vite only exposes VITE_* to the client; server keys have to be read here.
-    const env = { ...loadEnv(mode, process.cwd(), ''), ...process.env };
-
-    server.middlewares.use((req, res, next) => {
-      if (!req.url?.startsWith('/api/')) return next();
-
-      void (async () => {
-        try {
-          const [{ resolveApiRoute }, { bindServerEnv }, { handleDevApiRequest }] =
-            await Promise.all([
-              server.ssrLoadModule('/functions/routes.ts'),
-              server.ssrLoadModule('/src/lib/env/source.ts'),
-              server.ssrLoadModule('/functions/devServer.ts'),
-            ]);
-          bindServerEnv(env);
-          const handled = await handleDevApiRequest(req, res, resolveApiRoute);
-          if (!handled) {
-            // Match the worker: an unmatched /api path is a 404, not the app shell.
-            res.statusCode = 404;
-            res.setHeader('content-type', 'application/json');
-            res.end(JSON.stringify({ error: 'not_found' }));
-          }
-        } catch (error) {
-          server.config.logger.error(`[dev-api] ${String(error)}`);
-          res.statusCode = 500;
-          res.setHeader('content-type', 'application/json');
-          res.end(JSON.stringify({ error: 'dev_api_error', detail: String(error) }));
-        }
-      })();
-    });
   },
 });
 
@@ -101,12 +59,11 @@ self.addEventListener('activate', (event) => {
   },
 });
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     themeInit(),
-    hostedApiDev(mode),
     devSwSelfDestruct(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -170,4 +127,4 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 3000,
   },
-}));
+});
