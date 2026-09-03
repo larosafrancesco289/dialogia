@@ -1,4 +1,3 @@
-'use client';
 import type { SearchMode } from '@/lib/search/providers/types';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
@@ -14,14 +13,13 @@ import {
   isVisionSupported,
   isAudioInputSupported,
 } from '@/lib/models';
-import { useTierDefaultModelId } from '@/lib/hooks/useTierModels';
+import { useDefaultModelId } from '@/lib/hooks/useModelCatalog';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 import type { UiNextOverrides } from '@/lib/contracts/ui';
-import type { DraftAttachment } from '@/lib/types';
+import type { DraftAttachment, ReasoningEffort } from '@/lib/types';
 import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
 import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
-import type { Effort } from '@/components/composer/ComposerMobileMenu';
 import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
@@ -97,9 +95,9 @@ export function Composer({
   const searchEnabled = useChatStore(selectSearchEnabled);
   const searchProvider = useChatStore(selectSearchProvider);
   const resolvedTurnSettings = useChatStore(selectResolvedTurnSettings);
-  const tierDefaultModelId = useTierDefaultModelId();
+  const defaultModelId = useDefaultModelId();
   const modelId = useChatStore(
-    useMemo(() => selectResolvedModelId(tierDefaultModelId), [tierDefaultModelId]),
+    useMemo(() => selectResolvedModelId(defaultModelId), [defaultModelId]),
   );
   const modelMeta = findModelById(models, modelId);
   const canVision = isVisionSupported(modelMeta);
@@ -171,7 +169,7 @@ export function Composer({
     setNotice,
     newChat,
     sendMessage: (value, options) => send(value, options),
-    defaultModelId: tierDefaultModelId,
+    defaultModelId: defaultModelId,
   });
 
   const clearActiveDraft = () => {
@@ -254,8 +252,10 @@ export function Composer({
   useAutogrowTextarea(taRef, [text], maxTextareaHeight);
 
   const currentEffort = (resolvedTurnSettings?.generation.reasoningEffort ??
-    (uiNext.reasoning?.effort as Effort | undefined) ??
-    (uiNext.reasoning?.tokens === undefined ? defaultEffort : undefined)) as Effort | undefined;
+    (uiNext.reasoning?.effort as ReasoningEffort | undefined) ??
+    (uiNext.reasoning?.tokens === undefined ? defaultEffort : undefined)) as
+    | ReasoningEffort
+    | undefined;
 
   const showReasoningMenu = supportsReasoning && !tutorEnabled;
   const toggleSearch = () => {
@@ -278,7 +278,7 @@ export function Composer({
     }
   };
 
-  const handleSelectEffort = async (effort: Effort) => {
+  const handleSelectEffort = async (effort: ReasoningEffort) => {
     if (chat) {
       await updateSettings({
         generation: {

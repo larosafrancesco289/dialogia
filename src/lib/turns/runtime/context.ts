@@ -8,7 +8,6 @@ import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelCapabilityFlags } from '@/lib/models';
 import { resolveDynamicModelId } from '@/lib/models';
 import type { Repository } from '@/lib/db/repository';
-import { isFreeModel } from '@/data/freeModels';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
 import { createModelAuthResolver, type ModelAuth } from '@/lib/services/auth';
@@ -17,12 +16,6 @@ import { describeDroppedAttachments } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import { readNextOverrides } from '@/lib/ui/next';
 import { isTutorRuntimeEnabled, selectTutorDefaultModelId } from '@/lib/policy/runtime';
-import type { AccessTier } from '@/lib/auth/types';
-import {
-  canUseAllModelsForTier,
-  getDefaultTutorModelIdForTier,
-  isModelAllowedForTier,
-} from '@/lib/auth/tierFeatures';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 
 export type TurnModelContext = {
@@ -38,7 +31,6 @@ export type TurnRuntimeContext = {
   ui: UiSnapshot;
   next: UiNextOverrides;
   tutorEnabled: boolean;
-  tier: AccessTier;
   activeModelIds: string[];
   primaryModelId?: string;
   priorMessages: Message[];
@@ -51,13 +43,11 @@ export const prepareSendRuntime = async ({
   set,
   get,
   repository,
-  tier,
 }: {
   attachments?: DraftAttachment[];
   set: StoreSetter;
   get: StoreGetter;
   repository: Repository;
-  tier: AccessTier;
 }): Promise<TurnRuntimeContext | null> => {
   const chatId = get().selectedChatId;
   if (!chatId) return null;
@@ -91,25 +81,15 @@ export const prepareSendRuntime = async ({
       chat.settings.features.tutor?.defaultModelId ||
       tutorDefaultModelId ||
       DEFAULT_TUTOR_MODEL_ID;
-    const allowAllModels = canUseAllModelsForTier(tier);
-    const freeFallbackFromIndex = modelIndex.all.find((model) => isFreeModel(model.id))?.id;
     let resolvedTutorModelId = preferredTutorModelId;
-    if (
-      !allowAllModels &&
-      resolvedTutorModelId &&
-      !isModelAllowedForTier(tier, resolvedTutorModelId)
-    ) {
-      resolvedTutorModelId = freeFallbackFromIndex ?? getDefaultTutorModelIdForTier(tier);
-    }
+    // A tutor model that is no longer in the catalogue falls back to whatever
+    // loaded first rather than sending a request that cannot succeed.
     if (
       modelIndex.all.length > 0 &&
       resolvedTutorModelId &&
       !modelIndex.get(resolvedTutorModelId)
     ) {
-      resolvedTutorModelId =
-        (!allowAllModels ? freeFallbackFromIndex : undefined) ??
-        modelIndex.all[0]?.id ??
-        resolvedTutorModelId;
+      resolvedTutorModelId = modelIndex.all[0]?.id ?? resolvedTutorModelId;
     }
     tutorDefaultModelId = resolvedTutorModelId;
     if (
@@ -195,7 +175,6 @@ export const prepareSendRuntime = async ({
     ui,
     next,
     tutorEnabled,
-    tier,
     activeModelIds,
     primaryModelId: activeModelIds[0],
     priorMessages: getMessagesForChat(get(), chatId),

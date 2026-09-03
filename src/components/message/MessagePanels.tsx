@@ -1,4 +1,3 @@
-'use client';
 import type { Chat, Message, ModelDescriptor, ToolCallLogEntry } from '@/lib/types';
 import type { UISearchState } from '@/lib/store/types';
 import { ResponseContextPanel } from '@/components/message/ResponseContextPanel';

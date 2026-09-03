@@ -5,9 +5,7 @@ import { PINNED_MODEL_ID } from '@/lib/constants';
 import { findModelById, resolveDynamicModelId } from '@/lib/models';
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
-import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
-import { useTier } from '@/lib/auth/tierContext';
-import { isFreeModel } from '@/data/freeModels';
+import { useCuratedModels, useDefaultModelId } from '@/lib/hooks/useModelCatalog';
 import { isModelEndpointAvailable } from '@/lib/policy/providerAvailability';
 import { selectNextOverrides } from '@/lib/store/selectors';
 
@@ -71,9 +69,8 @@ export function useModelPickerController(): ModelPickerController {
   );
 
   const chat = chats.find((c) => c.id === selectedChatId);
-  const curated = useTierCuratedModels();
-  const tierDefaultModelId = useTierDefaultModelId();
-  const { isFreeTier, isLoading: tierLoading } = useTier();
+  const curated = useCuratedModels();
+  const defaultModelId = useDefaultModelId();
   const allowedIds = useMemo(() => {
     const ids = (models || [])
       .filter((model) => isModelEndpointAvailable(model))
@@ -88,11 +85,9 @@ export function useModelPickerController(): ModelPickerController {
   }, [favoriteModelIds, allowedIds]);
 
   const allOptions = useMemo(() => {
-    // Use tier-aware default model, get the display name from curated models
-    const defaultCurated = curated.find((m) => m.id === tierDefaultModelId);
-    const defaultName =
-      defaultCurated?.name || tierDefaultModelId.split('/').pop() || tierDefaultModelId;
-    const injectedDefault = [{ id: tierDefaultModelId, name: defaultName }];
+    const defaultCurated = curated.find((m) => m.id === defaultModelId);
+    const defaultName = defaultCurated?.name || defaultModelId.split('/').pop() || defaultModelId;
+    const injectedDefault = [{ id: defaultModelId, name: defaultName }];
     return [...injectedDefault, ...curated, ...customOptions].reduce(
       (acc: ModelPickerOption[], m: ModelPickerOption) => {
         if (!acc.find((x) => x.id === m.id)) acc.push(m);
@@ -100,7 +95,7 @@ export function useModelPickerController(): ModelPickerController {
       },
       [],
     );
-  }, [customOptions, curated, tierDefaultModelId]);
+  }, [customOptions, curated, defaultModelId]);
 
   const pinnedModelId = useMemo(
     () => resolveDynamicModelId(PINNED_MODEL_ID, models || []),
@@ -131,21 +126,17 @@ export function useModelPickerController(): ModelPickerController {
 
   const selectedIds = useMemo(() => {
     const fromChat = chat
-      ? [chat.settings.modelId || tierDefaultModelId]
-      : [nextOverrides.modelId || tierDefaultModelId];
+      ? [chat.settings.modelId || defaultModelId]
+      : [nextOverrides.modelId || defaultModelId];
     const cleaned = fromChat.filter((id): id is string => typeof id === 'string' && id.length > 0);
 
-    // Validate models for free tier - filter out paid models
-    const shouldFilterPaidModels = !tierLoading && isFreeTier;
-    const validated = shouldFilterPaidModels ? cleaned.filter((id) => isFreeModel(id)) : cleaned;
-
     const deduped: string[] = [];
-    for (const id of validated) {
+    for (const id of cleaned) {
       if (!deduped.includes(id)) deduped.push(id);
     }
-    if (deduped.length === 0) deduped.push(tierDefaultModelId);
+    if (deduped.length === 0) deduped.push(defaultModelId);
     return deduped;
-  }, [chat, nextOverrides.modelId, tierDefaultModelId, isFreeTier, tierLoading]);
+  }, [chat, nextOverrides.modelId, defaultModelId]);
 
   const selectedId = selectedIds[0];
   const effectiveSelectedId =
@@ -161,7 +152,7 @@ export function useModelPickerController(): ModelPickerController {
     for (const id of cleaned) {
       if (!deduped.includes(id)) deduped.push(id);
     }
-    const final = deduped.length ? deduped : [tierDefaultModelId];
+    const final = deduped.length ? deduped : [defaultModelId];
     const primary = final[0];
     if (chat) {
       updateChatSettings({ modelId: primary });

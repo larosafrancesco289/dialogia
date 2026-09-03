@@ -8,7 +8,6 @@ import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
 import type { PersistFragment, StoreSetter, StoreState } from '@/lib/store/types';
 import type * as TurnService from '@/lib/services/turns';
 import type { Chat, ChatSettingsPatch, Folder } from '@/lib/types';
-import { getClientTier } from '@/lib/auth/tier.client';
 import {
   appendMessagesToChat,
   getMessagesForChat,
@@ -105,7 +104,6 @@ export function createChatSlice(
           ui: snapshot.ui,
           chats: snapshot.chats,
           selectedChatId: snapshot.selectedChatId,
-          tier: getClientTier(),
           models: snapshot.models,
         });
         const nextDraft = settingsEqual(reusableDraft.settings, refreshedSettings)
@@ -137,7 +135,6 @@ export function createChatSlice(
         chats: snapshot.chats,
         selectedChatId: snapshot.selectedChatId,
         repository,
-        tier: getClientTier(),
         models: snapshot.models,
       });
 

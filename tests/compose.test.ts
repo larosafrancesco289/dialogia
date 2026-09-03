@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { composeTurn } from '@/lib/agent/compose';
-import { ProviderSort } from '@/lib/models/providerSort';
 import type { Chat, Message, Attachment, TutorProfile } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import tutorProfileService from '@/modules/tutor/lib/profile';

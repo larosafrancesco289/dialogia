@@ -1,5 +1,3 @@
-'use client';
-
 import { useCallback, useRef, useState } from 'react';
 import type { SectionId, TabId } from '@/components/settings/types';
 

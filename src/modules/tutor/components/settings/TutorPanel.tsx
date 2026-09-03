@@ -1,4 +1,3 @@
-'use client';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ModelSearch } from '@/components/ModelSearch';
 import type { StoreState } from '@/lib/store/types';

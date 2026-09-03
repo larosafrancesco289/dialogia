@@ -1,6 +1,6 @@
-import { apiDefaults, isBrowserContext } from '@/lib/api/config';
+import { apiDefaults } from '@/lib/api/config';
 import { sendApiRequest } from '@/lib/api/http';
-import { usesProxy, type TransportAuth } from '@/lib/auth/transport';
+import type { TransportAuth } from '@/lib/auth/transport';
 import type { ChatCompletionMessage, Usage } from '@/lib/transport/completions';
 import { getDefaultEndpoint } from '@/lib/transport/endpointRegistry';
 import { normalizeBaseUrl } from '@/lib/transport/endpoints';
@@ -38,40 +38,23 @@ type OrFetchOptions = {
  * `X-Title`/`HTTP-Referer`; a user-configured OpenAI-compatible server has no
  * idea what those are, so it gets neither.
  */
-function resolveTarget(auth?: TransportAuth): {
-  baseUrl: string;
-  useProxy: boolean;
-  includeDefaults: boolean;
-} {
+function resolveTarget(auth?: TransportAuth): { baseUrl: string; includeDefaults: boolean } {
   const endpoint = auth?.endpoint ?? getDefaultEndpoint();
   if (endpoint.kind === 'openai-compatible') {
-    return {
-      baseUrl: normalizeBaseUrl(endpoint.baseUrl ?? ''),
-      useProxy: false,
-      includeDefaults: false,
-    };
+    return { baseUrl: normalizeBaseUrl(endpoint.baseUrl ?? ''), includeDefaults: false };
   }
-  // The proxy path is relative, so it only resolves in a page. The worker runs
-  // this same module and must go straight upstream.
-  const useProxy = isBrowserContext() && usesProxy(auth ?? { endpoint });
-  return {
-    baseUrl: useProxy ? apiDefaults.proxyPath : (endpoint.baseUrl ?? apiDefaults.baseUrl),
-    useProxy,
-    includeDefaults: !useProxy,
-  };
+  return { baseUrl: endpoint.baseUrl ?? apiDefaults.baseUrl, includeDefaults: true };
 }
 
 async function orFetch(path: string, options: OrFetchOptions = {}): Promise<Response> {
   const target = resolveTarget(options.auth);
   // Local OpenAI-compatible servers commonly need no key at all.
   const keyOptional = options.auth?.endpoint.kind === 'openai-compatible';
-  const authRequired = options.authRequired ?? (!target.useProxy && !keyOptional);
+  const authRequired = options.authRequired ?? !keyOptional;
   const headers: Record<string, string> = { ...(options.headers || {}) };
 
-  if (!target.useProxy) {
-    if (authRequired && !options.auth?.apiKey) throw new Error('missing_openrouter_api_key');
-    if (options.auth?.apiKey) headers.Authorization = `Bearer ${options.auth.apiKey}`;
-  }
+  if (authRequired && !options.auth?.apiKey) throw new Error('missing_openrouter_api_key');
+  if (options.auth?.apiKey) headers.Authorization = `Bearer ${options.auth.apiKey}`;
 
   const timeoutMs = options.timeoutMs ?? (options.stream ? undefined : apiDefaults.timeouts.chat);
 

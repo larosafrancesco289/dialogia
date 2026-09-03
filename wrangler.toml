@@ -1,5 +1,6 @@
-# Hosted variant. `bun run build:hosted` emits dist/ plus dist/_worker.js, which
-# Cloudflare Pages runs in front of the static assets (advanced mode).
+# Cloudflare Pages serves `dist/` as a static site. There is no worker: every
+# request for a model goes from the visitor's browser to the provider they hold
+# a key for, so the deployment carries no keys and no server code.
 name = "dialogia"
 compatibility_date = "2026-07-25"
 pages_build_output_dir = "dist"

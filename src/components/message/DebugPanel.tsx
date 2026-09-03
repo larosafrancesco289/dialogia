@@ -1,5 +1,3 @@
-'use client';
-
 import { useMemo } from 'react';
 import { ChevronDownIcon, ChevronUpIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import type { ToolCallLogEntry } from '@/lib/types';

@@ -1,7 +1,6 @@
 // Module: search/ui/modes
 // Responsibility: The search choices to offer in the composer.
 
-import { isTavilyProxyEnabled } from '@/lib/env/public';
 import { listReadySearchProviders, NATIVE_SEARCH_MODE } from '@/lib/search/providers';
 import type { SearchMode } from '@/lib/search/providers/types';
 
@@ -20,7 +19,7 @@ export function listSearchModeOptions(): SearchModeOption[] {
       description: "The model provider's own search",
     },
   ];
-  for (const provider of listReadySearchProviders(isTavilyProxyEnabled())) {
+  for (const provider of listReadySearchProviders()) {
     options.push({
       mode: provider.id,
       label: provider.label,

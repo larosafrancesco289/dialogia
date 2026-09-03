@@ -1,4 +1,3 @@
-'use client';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { LearningPlan, LearnerModel, LearningPlanNode } from '@/lib/types';
 import {

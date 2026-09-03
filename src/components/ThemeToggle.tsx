@@ -1,4 +1,3 @@
-'use client';
 import { useMemo } from 'react';
 import { SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline';
 import { applyThemeClass, useThemeMode, type ThemeMode } from '@/lib/hooks/useThemeMode';

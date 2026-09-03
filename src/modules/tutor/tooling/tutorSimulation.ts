@@ -16,6 +16,7 @@ import type {
 import type { PlanTurnResult } from '@/lib/agent/types';
 import { fetchModels } from '@/lib/openrouter';
 import { getModelEndpoint } from '@/lib/providers';
+import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
@@ -24,7 +25,6 @@ import { parseArgs } from '@/lib/cli/args';
 import { loadEnvDefaults } from '@/lib/cli/env.node';
 import { getOpenRouterKeyFallback } from '@/lib/env/keys';
 import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
-import { createOpenRouterAccess } from '@/lib/openrouter/pipeline';
 
 type PresetDefinition = {
   goal: string;
@@ -112,13 +112,6 @@ function resolveAuthFactory(keys: {
       throw new Error(
         `OpenRouter transport requested for ${modelId}, but no OPENROUTER_API_KEY (or --openrouter-key) provided.`,
       );
-    }
-    if (endpoint.kind === 'openrouter') {
-      return createOpenRouterAccess({
-        apiKey: keys.openrouter,
-        tier: 'developer',
-        useProxy: false,
-      }).auth;
     }
     return buildTransportAuth({ endpoint, apiKey: keys.openrouter });
   };
@@ -489,11 +482,7 @@ export async function runTutorSimulationCli(argv: string[]) {
     getOpenRouterKeyFallback();
 
   const openrouterAuth = openrouterKey
-    ? createOpenRouterAccess({
-        apiKey: openrouterKey,
-        tier: 'developer',
-        useProxy: false,
-      }).auth
+    ? buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: openrouterKey })
     : null;
   const remoteModels = await safeFetchModels(openrouterAuth);
   const allModelIds = Array.from(new Set([tutorModel, studentModel, judgeModel]));

@@ -1,4 +1,3 @@
-'use client';
 import { useCallback, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import type { RenderSection, SectionId, TabId } from '@/components/settings/types';

@@ -1,4 +1,3 @@
-'use client';
 import styles from './IntroTour.module.css';
 
 // Component: IntroArt

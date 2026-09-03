@@ -1,4 +1,3 @@
-'use client';
 import { useState } from 'react';
 import { deleteKey, setKey } from '@/lib/keys/store';
 import { useProviderKeys } from '@/lib/hooks/useProviderKeys';

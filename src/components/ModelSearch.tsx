@@ -1,5 +1,3 @@
-'use client';
-
 import {
   forwardRef,
   useEffect,
@@ -17,7 +15,7 @@ import {
 import { createPortal } from 'react-dom';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { useTierModels } from '@/lib/hooks/useTierModels';
+import { useAvailableModels } from '@/lib/hooks/useModelCatalog';
 import {
   buildModelSearchResults,
   getHighlightSegments,
@@ -87,8 +85,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
       shallow,
     );
 
-    // Use tier-filtered models - free tier only sees free models
-    const { models } = useTierModels();
+    const models = useAvailableModels();
 
     const [query, setQuery] = useState('');
     const normalizedQuery = useMemo(() => normalizeModelQuery(query), [query]);

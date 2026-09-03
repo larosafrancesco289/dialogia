@@ -1,4 +1,3 @@
-import { ApiError, readApiErrorResponse } from '@/lib/api/errors';
 import type { WebFetchArgs, WebSearchArgs } from '@/lib/search/args';
 
 export type TavilySearchResult = {
@@ -234,72 +233,4 @@ export async function runTavilyExtractDirect(
     images: Array.isArray(entry?.images) ? entry.images : undefined,
     favicon: entry?.favicon,
   }));
-}
-
-export async function runTavilySearchProxy(
-  args: WebSearchArgs,
-  opts?: { endpoint?: string; signal?: AbortSignal },
-): Promise<TavilySearchResult[]> {
-  const params = buildTavilySearchParams(args);
-  const endpoint = opts?.endpoint ?? '/api/tavily';
-  const separator = endpoint.includes('?') ? '&' : '?';
-  const res = await fetch(`${endpoint}${separator}${params.toString()}`, {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-    cache: 'no-store',
-    signal: opts?.signal,
-  });
-
-  if (!res.ok) {
-    const apiError = await readApiErrorResponse(res);
-    if (apiError?.error) {
-      throw new ApiError({
-        code: apiError.error,
-        status: res.status,
-        detail: apiError.detail,
-      });
-    }
-    throw new ApiError({
-      code: 'tavily_proxy_failed',
-      status: res.status,
-      detail: res.statusText,
-    });
-  }
-  const data = (await res.json()) as { results?: TavilySearchResult[] };
-  const results = Array.isArray(data?.results) ? data.results : [];
-  return results;
-}
-
-export async function runTavilyExtractProxy(
-  args: WebFetchArgs,
-  opts?: { endpoint?: string; signal?: AbortSignal },
-): Promise<TavilyFetchResult[]> {
-  const params = buildTavilyExtractParams(args);
-  const endpoint = opts?.endpoint ?? '/api/tavily';
-  const separator = endpoint.includes('?') ? '&' : '?';
-  const res = await fetch(`${endpoint}${separator}${params.toString()}`, {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-    cache: 'no-store',
-    signal: opts?.signal,
-  });
-
-  if (!res.ok) {
-    const apiError = await readApiErrorResponse(res);
-    if (apiError?.error) {
-      throw new ApiError({
-        code: apiError.error,
-        status: res.status,
-        detail: apiError.detail,
-      });
-    }
-    throw new ApiError({
-      code: 'tavily_proxy_failed',
-      status: res.status,
-      detail: res.statusText,
-    });
-  }
-  const data = (await res.json()) as { results?: TavilyFetchResult[] };
-  const results = Array.isArray(data?.results) ? data.results : [];
-  return results;
 }

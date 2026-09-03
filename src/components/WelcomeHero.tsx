@@ -1,4 +1,3 @@
-'use client';
 import { useCallback } from 'react';
 import { useChatStore } from '@/lib/store';
 import { Composer } from '@/components/chat/Composer';

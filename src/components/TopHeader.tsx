@@ -1,4 +1,3 @@
-'use client';
 import { TopHeaderView } from '@/components/top-header/TopHeaderView';
 import { useTopHeaderState } from '@/components/top-header/useTopHeaderState';
 

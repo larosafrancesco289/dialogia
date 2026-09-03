@@ -1,4 +1,3 @@
-'use client';
 import { lazy, memo, Suspense } from 'react';
 import type { MarkdownCitationSource } from '@/lib/markdown/citations';
 

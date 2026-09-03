@@ -1,4 +1,3 @@
-'use client';
 import { useSyncExternalStore } from 'react';
 import { describeKey, hasKey, listKeyRefs, subscribeToKeys } from '@/lib/keys/store';
 

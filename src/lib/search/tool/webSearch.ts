@@ -5,7 +5,6 @@ import type { SearchMode } from '@/lib/search/providers/types';
 import type { SearchResult } from '@/lib/search/types';
 import type { StoreGetter, StoreSetter, ToolExecutionResult } from '@/lib/agent/types';
 import type { WebSearchArgs } from '@/lib/search/args';
-import { isTavilyProxyEnabled } from '@/lib/env/public';
 import { setSearchUiStatus } from '@/lib/search/ui/state';
 import { notify } from '@/lib/store/notify';
 
@@ -52,10 +51,7 @@ export async function performWebSearchTool(opts: {
   return withAbort(controller.signal, async (fetchController) => {
     const timeout = setTimeout(() => fetchController.abort(), 20000);
     try {
-      const context = buildSearchContext(provider, {
-        useProxy: isTavilyProxyEnabled(),
-        signal: fetchController.signal,
-      });
+      const context = buildSearchContext(provider, { signal: fetchController.signal });
       let result = await provider.search(searchArgs, context);
 
       // Narrow filters (especially tight freshness windows) routinely intersect

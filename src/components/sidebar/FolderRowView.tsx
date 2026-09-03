@@ -1,5 +1,3 @@
-'use client';
-
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { IconButton } from '@/components/ui/IconButton';
 import {

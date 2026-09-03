@@ -1,5 +1,3 @@
-'use client';
-
 type SidebarSearchProps = {
   value: string;
   onChange: (value: string) => void;

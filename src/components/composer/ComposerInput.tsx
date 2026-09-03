@@ -1,4 +1,3 @@
-'use client';
 import { useEffect, useMemo, useState } from 'react';
 import type { ModelDescriptor } from '@/lib/types';
 import { getSlashSuggestions, type SlashSuggestion } from '@/lib/slash';

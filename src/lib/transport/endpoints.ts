@@ -26,8 +26,6 @@ export type ProviderEndpoint = {
   baseUrl?: string;
   /** Reference into the key store — never the key itself. */
   apiKeyRef?: string;
-  /** Hosted build only: route through the server-side key proxy. */
-  useProxy?: boolean;
   /**
    * Explicit for user-added endpoints: an unlisted capability is never emitted.
    * The built-ins carry metadata-rich model lists instead and leave this unset.

@@ -13,7 +13,6 @@ import {
   type AnthropicMessagesRequest,
 } from '@/lib/anthropic/request';
 import { buildAnthropicError, wrapAnthropicClientError } from '@/lib/anthropic/errors';
-import { resolveAnthropicDirectModelId } from '@/lib/anthropic/shared';
 import { isRecord } from '@/lib/utils/guards';
 
 const MAX_PAUSE_TURN_CONTINUATIONS = 5;

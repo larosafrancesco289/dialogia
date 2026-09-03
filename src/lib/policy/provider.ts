@@ -6,7 +6,6 @@ import type { ChatSettings, SearchMode } from '@/lib/types';
 import { NATIVE_SEARCH_MODE } from '@/lib/types/enums';
 import { ProviderSort } from '@/lib/models/providerSort';
 import { getSearchProvider, isSearchProviderReady } from '@/lib/search/providers';
-import { isTavilyProxyEnabled } from '@/lib/env/public';
 
 export function providerSortFromRoutePref(
   pref?: 'balanced' | 'speed' | 'cost' | null,
@@ -27,7 +26,7 @@ export function selectSearchMode(settings: ChatSettings, _ui?: unknown): SearchM
   if (!configured || configured === NATIVE_SEARCH_MODE) return NATIVE_SEARCH_MODE;
   const provider = getSearchProvider(configured);
   if (!provider) return NATIVE_SEARCH_MODE;
-  return isSearchProviderReady(provider, isTavilyProxyEnabled()) ? provider.id : NATIVE_SEARCH_MODE;
+  return isSearchProviderReady(provider) ? provider.id : NATIVE_SEARCH_MODE;
 }
 
 export function buildProviderPolicy(opts: { settings: ChatSettings; ui?: unknown }): {

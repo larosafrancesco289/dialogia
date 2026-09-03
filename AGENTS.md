@@ -54,12 +54,10 @@ state has one source of truth, `useThemeMode`. Never touch `localStorage.theme` 
   field or an action touches one slice file. Do not duplicate store state in tests.
 - Endpoint _config_ lives in the store. The request path reads
   `src/lib/transport/endpointRegistry.ts`, which the slice republishes into on every mutation. Read
-  endpoints from the registry. It carries the deployment's proxy flags.
-- Keys are read synchronously from a cache warmed by `loadKeys()`. A key the user pasted beats the
-  deployment's proxy.
+  endpoints from the registry.
+- Keys are read synchronously from a cache warmed by `loadKeys()`. The app never reads a key from
+  the environment; only the tutor simulation CLI does, in Node.
 - `SearchMode` is an open string, and "provider-native search" (a request field) is a different
   mechanism from a `SearchProvider` (a tool call). Do not collapse them.
-- Client config is `import.meta.env.VITE_*`, inlined at build time. Server config is read per
-  request through `@/lib/env/source`, which the worker binds from the Cloudflare environment.
-  `isProd()` is the build mode. `isServerProd()` is the deployment's `NODE_ENV`, and an absent
-  value is read as production on purpose.
+- Client config is `import.meta.env.VITE_*`, inlined at build time. There is no server config,
+  because there is no server.

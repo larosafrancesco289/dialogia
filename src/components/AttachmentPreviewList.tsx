@@ -1,4 +1,3 @@
-'use client';
 import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import type { DraftAttachment } from '@/lib/types';
 

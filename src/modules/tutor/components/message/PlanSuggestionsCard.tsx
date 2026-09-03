@@ -1,4 +1,3 @@
-'use client';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import type { TutorPlanSuggestion } from '@/lib/types';
 import { safeKey } from '@/modules/tutor/components/message/shared';

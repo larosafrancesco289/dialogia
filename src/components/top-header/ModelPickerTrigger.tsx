@@ -1,4 +1,3 @@
-'use client';
 import { useMemo } from 'react';
 import {
   ChevronDownIcon,
@@ -92,12 +91,10 @@ export function ModelPickerTrigger({
   }
 
   const renderTrigger = (props: ModelPickerTriggerProps) => {
-    const pulseClass = props.limitPulse ? ' ring-2 ring-primary/50 border-primary/40' : '';
-
     return (
       <button
         type="button"
-        className={`model-picker-trigger${pulseClass}`}
+        className="model-picker-trigger"
         aria-haspopup="dialog"
         aria-expanded={props.isOpen}
         onClick={props.onClick}

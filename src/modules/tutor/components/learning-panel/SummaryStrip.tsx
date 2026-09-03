@@ -1,4 +1,3 @@
-'use client';
 import { useMemo } from 'react';
 import type { LearnerModel, LearningPlan } from '@/lib/types';
 import { isNodeReady } from '@/modules/tutor/learning-plan/service';

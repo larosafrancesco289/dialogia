@@ -1,5 +1,3 @@
-'use client';
-
 export type InlineNoticeProps = {
   message: string;
   onDismiss?: () => void;

@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';

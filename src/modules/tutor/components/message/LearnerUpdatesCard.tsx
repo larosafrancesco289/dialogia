@@ -1,4 +1,3 @@
-'use client';
 import { SparklesIcon } from '@heroicons/react/24/outline';
 import type { TutorLearnerModelUpdate } from '@/lib/types';
 import { useChatStore } from '@/lib/store';

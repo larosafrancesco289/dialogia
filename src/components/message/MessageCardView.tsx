@@ -1,4 +1,3 @@
-'use client';
 import type { PointerEventHandler } from 'react';
 import { MessagePanelsUpper } from '@/components/message/MessagePanels';
 import { MessageModuleSlot } from '@/components/ModuleSlot';

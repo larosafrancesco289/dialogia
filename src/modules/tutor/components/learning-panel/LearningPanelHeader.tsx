@@ -1,5 +1,3 @@
-'use client';
-
 export function LearningPanelHeader() {
   return (
     <div className="learning-panel__header">

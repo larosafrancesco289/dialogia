@@ -1,5 +1,3 @@
-'use client';
-
 import { AnimatePresence } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
@@ -8,7 +6,6 @@ import { MobileBottomTabBar } from '@/components/mobile/MobileBottomTabBar';
 import { MobileCollapsingHeader } from '@/components/mobile/MobileCollapsingHeader';
 import { MobileChatsSheet } from '@/components/mobile/MobileChatsSheet';
 import { MobileWarningBanner } from '@/components/mobile/MobileWarningBanner';
-import { MobileFreeTierBanner } from '@/components/mobile/MobileFreeTierBanner';
 import { lazyClient } from '@/lib/ui/lazy';
 import styles from './MobileShell.module.css';
 
@@ -53,9 +50,6 @@ export function MobileShell() {
     <div className={styles.shell}>
       {/* Mobile Warning Banner */}
       <MobileWarningBanner />
-
-      {/* Free Tier Access Code Banner */}
-      <MobileFreeTierBanner />
 
       {/* Collapsing Header */}
       <MobileCollapsingHeader />

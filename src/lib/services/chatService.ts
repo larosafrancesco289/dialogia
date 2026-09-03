@@ -8,8 +8,7 @@ import { resolveDynamicModelId } from '@/lib/models';
 import type { UIState } from '@/lib/store/types';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { resolveNewChatSettings } from '@/lib/settings/resolve';
-import type { AccessTier } from '@/lib/auth/types';
-import { getDefaultModelIdForTier } from '@/lib/auth/tierFeatures';
+import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { decorateMessage } from '@/lib/messages/decorate';
 
 export class ChatService {
@@ -17,10 +16,9 @@ export class ChatService {
     ui: UIState;
     chats: Chat[];
     selectedChatId?: string;
-    tier: AccessTier;
     models?: ModelDescriptor[];
   }): Chat['settings'] {
-    const { ui, chats, selectedChatId, tier, models = [] } = params;
+    const { ui, chats, selectedChatId, models = [] } = params;
     const selected = selectedChatId ? chats.find((c) => c.id === selectedChatId) : undefined;
 
     const lastNonTutorModel = (() => {
@@ -44,7 +42,7 @@ export class ChatService {
 
     const settings = resolveNewChatSettings({
       ui,
-      fallbackModelId: resolveDynamicModelId(getDefaultModelIdForTier(tier), models),
+      fallbackModelId: resolveDynamicModelId(DEFAULT_MODEL_ID, models),
       fallbackSystem: DEFAULT_BASE_SYSTEM,
       lastUsedModelId: lastUsedModel,
       defaults: ui.chatDefaults,
@@ -69,17 +67,15 @@ export class ChatService {
     chats: Chat[];
     selectedChatId?: string;
     repository: Repository;
-    tier: AccessTier;
     models?: ModelDescriptor[];
   }): Promise<Chat> {
-    const { ui, chats, selectedChatId, repository, tier, models } = params;
+    const { ui, chats, selectedChatId, repository, models } = params;
     const id = uuidv4();
     const now = Date.now();
     const baseSettings = ChatService.buildSettingsForNewChat({
       ui,
       chats,
       selectedChatId,
-      tier,
       models,
     });
 

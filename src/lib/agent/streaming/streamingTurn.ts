@@ -1,9 +1,9 @@
 // Module: agent/streaming/streamingTurn
-// Responsibility: Unified streaming with inline tool execution for tutor mode.
-// Replaces the two-phase plan+stream approach with a single streaming call.
+// Responsibility: A turn that streams and calls tools in one loop. The first
+// round paints the UI as it streams; when the model asks for tools, the draft is
+// cleared, the tools run, and the model streams again, up to MAX_PLANNING_ROUNDS,
+// before a final tool-free stream produces the visible answer.
 
-import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
-import { captureRequestDebug } from '@/lib/agent/debug';
 import {
   createMessageStreamCallbacks,
   type MessageStreamCallbacks,
@@ -16,8 +16,6 @@ import {
   startToolCallLogEntry,
 } from '@/lib/turns/runtime';
 import { getToolLogCategory } from '@/lib/tools';
-import { isReasoningRequested } from '@/lib/settings/generation';
-import { shouldIncludeUsage } from '@/lib/api/normalizers';
 import { formatSourcesBlock } from '@/lib/search';
 import { combineSystem } from '@/lib/agent/system';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
@@ -39,28 +37,20 @@ import type {
   ToolCall,
   ToolDefinition,
 } from '@/lib/agent/types';
+import type { ToolGate } from '@/lib/agent/planning/types';
 import { createPlanningExecutionState } from '@/lib/agent/planning/types';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 import { readContentModuleResult } from '@/lib/agent/planning/moduleResult';
-import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
-
-/** Returns true if the model response looks truncated or empty. */
-function looksIncomplete(
-  content: string,
-  finishReason?: StreamDoneExtras['finishReason'],
-): boolean {
-  const trimmed = content.trim();
-  // A classifier refusal is final, not truncated — retrying the same prompt
-  // would only get blocked again.
-  if (finishReason === 'content_filter') return false;
-  if (!trimmed) return true;
-  if (finishReason === 'length') return true;
-  const fencedCodeBlocks = trimmed.match(/```/g);
-  if (fencedCodeBlocks && fencedCodeBlocks.length % 2 === 1) return true;
-  if (/[([{]$/.test(trimmed)) return true;
-  if (/[,:;-]$/.test(trimmed)) return true;
-  return false;
-}
+import type { ToolCallDelta } from '@/lib/transport/types';
+import { chooseFinalDraft, looksIncomplete } from '@/lib/agent/streaming/draft';
+import {
+  captureRound,
+  createStreamCallContext,
+  executeStreamCall,
+  roundWantsTools,
+  type RoundCapture,
+  type StreamCallContext,
+} from '@/lib/agent/streaming/streamCall';
 
 export type StreamingTurnOptions = StreamFinalOptions & {
   userContent: string;
@@ -70,644 +60,502 @@ export type StreamingTurnOptions = StreamFinalOptions & {
   shouldShortCircuit?: (plan: PlanTurnResult) => boolean;
 };
 
-export type StreamingTurnResult = {
-  finalSystem: string;
-  usedContentTool: boolean;
-  hasSearchResults: boolean;
-  learnerModel?: PlanTurnResult['learnerModel'];
-  planUpdates?: PlanTurnResult['planUpdates'];
-  updatedPlan?: PlanTurnResult['updatedPlan'];
-  learnerModelDebug?: PlanTurnResult['learnerModelDebug'];
+export type StreamingTurnResult = PlanTurnResult & {
   sideEffects: PlanTurnSideEffect[];
   shortCircuited?: boolean;
 };
 
-type StreamingContext = {
+/** Everything a turn accumulates between rounds. */
+type TurnSession = {
   opts: StreamingTurnOptions;
-  generation: StreamingTurnOptions['settings']['generation'];
-  modalities: Array<'image' | 'text'> | undefined;
-  disableReasoning: boolean;
-  canImageOut: boolean;
-  combinedPlugins: StreamingTurnOptions['plugins'];
+  call: StreamCallContext;
+  /** Tools the model may call this turn; undefined when it cannot call any. */
+  tools?: ToolDefinition[];
+  gate: ToolGate;
+  convo: ModelMessage[];
+  state: PlanningExecutionState;
+  sideEffects: PlanTurnSideEffect[];
+  /** Text the model wrote before tool rounds, kept as a candidate final answer. */
+  draft: string;
+  searchEnabled: boolean;
+  searchProvider: string;
+  /** Anthropic reads tool results without a nudge; other transports need one. */
+  appendToolFollowUp: boolean;
+  preLoggedToolIndices: Set<number>;
 };
 
-type StreamCallParams = {
-  messages: ModelMessage[];
-  tools: ToolDefinition[] | undefined;
-  toolChoice: 'auto' | 'none' | undefined;
-  callbacks: StreamCallbacks;
-  round?: number;
-};
-
-/**
- * Helper to execute a streaming call with debug capture.
- * Consolidates the repeated captureRequestDebug + getStreamChatCompletion pattern.
- */
-async function executeStreamCall(ctx: StreamingContext, params: StreamCallParams): Promise<void> {
-  const { opts, generation, modalities, disableReasoning, canImageOut, combinedPlugins } = ctx;
-  const { turn, settings, controller } = opts;
-  const zdrOnly = turn.get()?.ui?.zdrOnly === true;
-
-  captureRequestDebug({
-    turn,
-    messageId: opts.assistantMessage.id,
-    round: params.round,
-    modelId: settings.modelId,
-    messages: params.messages,
-    stream: true,
-    includeUsage: shouldIncludeUsage(true),
-    canImageOut,
-    temperature: generation.temperature,
-    topP: generation.topP,
-    maxTokens: generation.maxTokens,
-    reasoningEffort: generation.reasoningEffort,
-    reasoningTokens: generation.reasoningTokens,
-    tools: params.tools,
-    toolChoice: params.toolChoice,
-    providerSort: generation.providerSort,
-    zdrOnly,
-    plugins: combinedPlugins,
-  });
-
-  await getStreamChatCompletion(opts.pipeline)({
-    auth: turn.auth,
-    model: settings.modelId,
-    messages: params.messages,
-    modalities,
-    temperature: generation.temperature,
-    topP: generation.topP,
-    maxTokens: generation.maxTokens,
-    reasoningEffort: generation.reasoningEffort,
-    reasoningTokens: generation.reasoningTokens,
-    disableReasoning,
-    providerSort: generation.providerSort,
-    zdrOnly,
-    signal: controller.signal,
-    tools: params.tools,
-    toolChoice: params.toolChoice,
-    plugins: combinedPlugins,
-    callbacks: params.callbacks,
-  });
-}
-
-function buildResult(
-  state: PlanningExecutionState,
-  finalSystem: string,
-  sideEffects: PlanTurnSideEffect[],
-  shortCircuited = false,
-): StreamingTurnResult {
-  const moduleResult = readContentModuleResult(state);
-  return {
-    finalSystem,
-    usedContentTool: state.usedContentTool,
-    hasSearchResults: shouldAppendSources(state.aggregatedResults),
-    learnerModel: moduleResult.learnerModel,
-    planUpdates: moduleResult.planUpdates,
-    updatedPlan: moduleResult.updatedPlan,
-    learnerModelDebug: moduleResult.learnerModelDebug,
-    sideEffects,
-    shortCircuited,
-  };
-}
-
-function buildPlanResult(state: PlanningExecutionState, finalSystem: string): PlanTurnResult {
-  const moduleResult = readContentModuleResult(state);
-  return {
-    finalSystem,
-    usedContentTool: state.usedContentTool,
-    hasSearchResults: shouldAppendSources(state.aggregatedResults),
-    learnerModel: moduleResult.learnerModel,
-    planUpdates: moduleResult.planUpdates,
-    updatedPlan: moduleResult.updatedPlan,
-    learnerModelDebug: moduleResult.learnerModelDebug,
-  };
-}
-
-/**
- * Execute a streaming turn with inline tool calling.
- * This replaces the two-phase plan+stream approach by:
- * 1. Streaming with toolChoice='auto' and UI callbacks connected
- * 2. If tool calls detected (finish_reason='tool_calls'), execute them without showing content
- * 3. Continue until no more tool calls, then final streaming shows the response
- *
- * When no tools are called, this is a SINGLE LLM call (vs 2 in the old approach).
- * When tools are called, this is N+1 streaming calls where N is the number of tool rounds.
- */
 export async function executeStreamingTurn(
   opts: StreamingTurnOptions,
 ): Promise<StreamingTurnResult> {
-  const {
-    chat,
-    chatId,
-    assistantMessage,
-    messages: baseMessages,
-    controller,
-    turn,
-    settings,
-    plugins,
-    toolDefinition,
-    startBuffered,
-    userContent,
-    combinedSystem,
-    systemStable,
-    systemDynamic,
-    onPlanResult,
-    onPlanSideEffects,
-    shouldShortCircuit,
-  } = opts;
-  await loadModuleRuntimes();
-  const { set, get, modelIndex, persistMessage } = turn;
-  const storeState = get?.();
-  const messagesForChat = storeState ? getMessagesForChat(storeState, chatId) : [];
-  let currentPlan = chat.settings.features.tutor?.learningPlan;
-  const sideEffects: PlanTurnSideEffect[] = [];
+  const session = await openSession(opts);
+  if (!session.tools) return streamWithoutTools(session);
 
-  // Derive planning context for tool filtering
-  const { toolDefinitions: gatedToolDefinitions, gate } = derivePlanningContext({
+  const ui = createUiCallbacks(session);
+  let round = await streamFirstRound(session, ui);
+  if (!roundWantsTools(round) && shouldRetryFirstRound(session, round)) {
+    round = await streamFirstRound(session, ui);
+  }
+  if (!roundWantsTools(round)) {
+    completeVisibleRound(session, ui, round);
+    return buildResult(session, finalSystemFor(session));
+  }
+
+  let scheduled = scheduleTools(session, round.toolCalls);
+  if (scheduled.length === 0) {
+    const finalSystem = finalSystemFor(session);
+    const plan = emitPlanResult(session, finalSystem);
+    if (opts.shouldShortCircuit?.(plan)) {
+      finalizeShortCircuit(session, ui, round.content);
+      return buildResult(session, finalSystem, true);
+    }
+    ui.onDone?.(round.content, { finishReason: round.finishReason });
+    return buildResult(session, finalSystem);
+  }
+
+  clearVisibleDraft(session, ui);
+  await runToolRound(session, {
+    round: 1,
+    content: round.content,
+    scheduled,
+    reasoningDetails: round.reasoningDetails,
+    reasoningText: '',
+    applySideEffect: false,
+  });
+
+  let rounds = 1;
+  while (rounds < MAX_PLANNING_ROUNDS) {
+    const next = await streamSilentRound(session, rounds + 1);
+    if (!roundWantsTools(next)) {
+      appendActivityReasoning(session, next.reasoningText, rounds + 1);
+      break;
+    }
+    scheduled = scheduleTools(session, next.toolCalls);
+    if (scheduled.length === 0) break;
+    await runToolRound(session, {
+      round: rounds + 1,
+      content: next.content,
+      scheduled,
+      reasoningDetails: next.reasoningDetails,
+      reasoningText: next.reasoningText,
+    });
+    rounds += 1;
+  }
+
+  return streamFinalAnswer(session, ui, rounds);
+}
+
+async function openSession(opts: StreamingTurnOptions): Promise<TurnSession> {
+  await loadModuleRuntimes();
+  const { chat, chatId, turn, settings, toolDefinition, combinedSystem } = opts;
+  const storeState = turn.get?.();
+  const currentPlan = chat.settings.features.tutor?.learningPlan;
+
+  const { toolDefinitions, gate } = derivePlanningContext({
     chat,
-    messagesForChat,
+    messagesForChat: storeState ? getMessagesForChat(storeState, chatId) : [],
     ui: storeState?.ui,
     toolDefinition,
     currentPlan,
   });
 
-  // Setup model capabilities
-  const modelMeta = settings.modelMeta ?? modelIndex.get(settings.modelId);
-  const caps = settings.caps ?? modelIndex.caps(settings.modelId);
-  const canImageOut = caps.canImageOut;
-  let supportsTools = isToolCallingSupported(modelMeta);
-  // Defensive fallback: when modelMeta is missing but we have tool definitions, assume support
-  if (
-    !supportsTools &&
-    !modelMeta &&
-    Array.isArray(gatedToolDefinitions) &&
-    gatedToolDefinitions.length > 0
-  ) {
-    logger.warn(
-      `Tool calling check failed for ${settings.modelId} (no modelMeta). ` +
-        `Assuming tool support since ${gatedToolDefinitions.length} tools are defined.`,
-    );
-    supportsTools = true;
-  } else if (
-    !supportsTools &&
-    Array.isArray(gatedToolDefinitions) &&
-    gatedToolDefinitions.length > 0
-  ) {
-    logger.warn(
-      `Tool calling not supported for ${settings.modelId} per metadata. ` +
-        `${gatedToolDefinitions.length} tool definitions will be dropped.`,
-    );
-  }
-  const hasTools =
-    supportsTools && Array.isArray(gatedToolDefinitions) && gatedToolDefinitions.length > 0;
-
-  const combinedPlugins = Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined;
-  const generation = settings.generation;
-  const disableReasoning = caps.canReason && !isReasoningRequested(generation);
-  const searchEnabled = settings.searchEnabled;
-  const searchProvider = settings.searchProvider || 'openrouter';
-  const shouldAppendToolFollowUp =
-    resolveModelTransportKind(settings.modelId, modelMeta) !== 'anthropic';
-  const modalities = canImageOut ? (['image', 'text'] as Array<'image' | 'text'>) : undefined;
-
-  // Streaming context for helper functions
-  const ctx: StreamingContext = {
-    opts,
-    generation,
-    modalities,
-    disableReasoning,
-    canImageOut,
-    combinedPlugins,
-  };
-
-  // Initialize execution state
-  let state: PlanningExecutionState = createPlanningExecutionState({
-    moduleState: currentPlan ? { contentModule: { currentPlan } } : {},
+  const modelMeta = settings.modelMeta ?? turn.modelIndex.get(settings.modelId);
+  const caps = settings.caps ?? turn.modelIndex.caps(settings.modelId);
+  const planningSystem = buildSystemMessage({
+    combinedSystem,
+    systemStable: opts.systemStable,
+    systemDynamic: opts.systemDynamic,
   });
 
-  // Build initial messages with system prompt (multipart when stable/dynamic split available)
-  const planningSystem = buildSystemMessage({ combinedSystem, systemStable, systemDynamic });
-  const convo: ModelMessage[] = planningSystem
-    ? [planningSystem, ...baseMessages.filter((m) => m.role !== 'system')]
-    : baseMessages.slice();
-
-  // Helper to build final system with search results
-  const buildFinalSystem = (): string => {
-    const baseSystem =
-      combinedSystem && combinedSystem.trim()
-        ? combinedSystem
-        : settings.system && settings.system.trim()
-          ? settings.system
-          : DEFAULT_BASE_SYSTEM;
-    const hasResults = shouldAppendSources(state.aggregatedResults);
-    const sourcesAppendix = hasResults
-      ? formatSourcesBlock(state.aggregatedResults, searchProvider)
-      : undefined;
-    return combineSystem(baseSystem, [], sourcesAppendix) ?? baseSystem;
+  return {
+    opts,
+    call: createStreamCallContext(opts, caps),
+    tools: usableTools(settings.modelId, modelMeta, toolDefinitions),
+    gate,
+    convo: planningSystem
+      ? [planningSystem, ...opts.messages.filter((m) => m.role !== 'system')]
+      : opts.messages.slice(),
+    state: createPlanningExecutionState({
+      moduleState: currentPlan ? { contentModule: { currentPlan } } : {},
+    }),
+    sideEffects: [],
+    draft: '',
+    searchEnabled: settings.searchEnabled,
+    searchProvider: settings.searchProvider || 'openrouter',
+    appendToolFollowUp: resolveModelTransportKind(settings.modelId, modelMeta) !== 'anthropic',
+    preLoggedToolIndices: new Set(),
   };
+}
 
-  const emitPlanResult = (finalSystem: string): PlanTurnResult => {
-    const planResult = buildPlanResult(state, finalSystem);
-    onPlanResult?.(planResult);
-    return planResult;
-  };
-
-  const emitPlanSideEffect = (effect: PlanTurnSideEffect, applyNow = true) => {
-    sideEffects.push(effect);
-    if (applyNow) {
-      onPlanSideEffects?.([effect]);
-    }
-  };
-
-  // Create UI-connected callbacks
-  const createUiCallbacks = (startedAt: number): MessageStreamCallbacks =>
-    createMessageStreamCallbacks(
-      {
-        chatId,
-        assistantMessage,
-        set,
-        get,
-        startBuffered,
-        autoReasoningEligible: disableReasoning,
-        modelIdUsed: settings.modelId,
-        clearController: () => clearTurnController(chatId, controller),
-        persistMessage,
-      },
-      { startedAt },
+/**
+ * The gated tool list, or undefined when this model cannot call tools. A model
+ * with no metadata at all is assumed capable: dropping the tools silently would
+ * hide the tutor from every user-configured endpoint.
+ */
+function usableTools(
+  modelId: string,
+  modelMeta: ReturnType<StreamFinalOptions['turn']['modelIndex']['get']>,
+  tools: ToolDefinition[] | undefined,
+): ToolDefinition[] | undefined {
+  if (!Array.isArray(tools) || tools.length === 0) return undefined;
+  if (isToolCallingSupported(modelMeta)) return tools;
+  if (!modelMeta) {
+    logger.warn(
+      `Tool calling check failed for ${modelId} (no modelMeta). ` +
+        `Assuming tool support since ${tools.length} tools are defined.`,
     );
+    return tools;
+  }
+  logger.warn(
+    `Tool calling not supported for ${modelId} per metadata. ` +
+      `${tools.length} tool definitions will be dropped.`,
+  );
+  return undefined;
+}
 
-  const appendActivityReasoning = (text: string, round?: number) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    set((store) => {
-      const result = updateMessageById(store, chatId, assistantMessage.id, (msg) => {
-        const activity = Array.isArray(msg.activity) ? msg.activity : [];
-        return {
-          ...msg,
-          activity: [
-            ...activity,
-            {
-              id: `${assistantMessage.id}-reasoning-${round ?? activity.length}-${Date.now()}`,
-              type: 'reasoning' as const,
-              text: trimmed,
-              timestamp: Date.now(),
-              status: 'done' as const,
-              round,
-            },
-          ],
-        };
-      });
-      return result ?? store;
+// ── Rounds ──────────────────────────────────────────────────────────────────
+
+/** A single visible stream; the whole turn when no tools are available. */
+async function streamWithoutTools(session: TurnSession): Promise<StreamingTurnResult> {
+  const finalSystem = finalSystemFor(session);
+  emitPlanResult(session, finalSystem);
+  await executeStreamCall(session.call, {
+    messages: applyCacheBreakpoints(finalMessagesFor(session, finalSystem)),
+    tools: undefined,
+    toolChoice: undefined,
+    callbacks: createUiCallbacks(session),
+  });
+  return buildResult(session, finalSystem);
+}
+
+/** Streams to the UI with tools offered. Runs again, once, for a retry. */
+async function streamFirstRound(
+  session: TurnSession,
+  ui: MessageStreamCallbacks,
+): Promise<RoundCapture> {
+  const { callbacks, round } = captureRound({
+    forward: ui,
+    onToolCallDelta: (deltas) => preLogToolCalls(session, deltas),
+  });
+  await executeStreamCall(session.call, {
+    messages: applyCacheBreakpoints(session.convo),
+    tools: session.tools,
+    toolChoice: 'auto',
+    callbacks,
+    round: 0,
+  });
+  return round;
+}
+
+/**
+ * A tool-capable model that answered without a tool and stopped mid-thought
+ * gets one more chance. Retrying an aborted turn would stream into a message
+ * the user has already walked away from.
+ */
+function shouldRetryFirstRound(session: TurnSession, round: RoundCapture): boolean {
+  return (
+    looksIncomplete(round.full || round.content, round.finishReason) &&
+    !session.opts.controller.signal.aborted
+  );
+}
+
+/** Ends a first round that produced an answer rather than tool calls. */
+function completeVisibleRound(
+  session: TurnSession,
+  ui: MessageStreamCallbacks,
+  round: RoundCapture,
+): void {
+  emitPlanResult(session, finalSystemFor(session));
+  ui.onDone?.(round.full, round.extras);
+}
+
+/** Streams with tools offered and nothing painted; used between tool rounds. */
+async function streamSilentRound(session: TurnSession, round: number): Promise<RoundCapture> {
+  const capture = captureRound({
+    onToolCallDelta: (deltas) => preLogToolCalls(session, deltas),
+  });
+  await executeStreamCall(session.call, {
+    messages: applyCacheBreakpoints(session.convo),
+    tools: session.tools,
+    toolChoice: 'auto',
+    callbacks: capture.callbacks,
+    round,
+  });
+  return capture.round;
+}
+
+/**
+ * The closing stream, with tools withheld, unless the draft written before the
+ * tool rounds already reads as the answer. A finished draft is kept when the
+ * tools added nothing the model has to rewrite for (no search results, or
+ * every tool failed), which spares the user a second visible rewrite.
+ */
+async function streamFinalAnswer(
+  session: TurnSession,
+  ui: MessageStreamCallbacks,
+  rounds: number,
+): Promise<StreamingTurnResult> {
+  const finalSystem = finalSystemFor(session);
+  const plan = emitPlanResult(session, finalSystem);
+  const { state, draft } = session;
+  const draftStands = draft.trim().length > 0 && !looksIncomplete(draft);
+  const toolsAddedNothing = !plan.hasSearchResults;
+  const everyToolFailed =
+    state.failedToolCallsThisTurn > 0 && state.successfulToolCallsThisTurn === 0;
+
+  if (
+    session.opts.shouldShortCircuit?.(plan) ||
+    (draftStands && (toolsAddedNothing || everyToolFailed))
+  ) {
+    finalizeShortCircuit(session, ui, draft);
+    return buildResult(session, finalSystem, true);
+  }
+
+  clearVisibleDraft(session);
+  await executeStreamCall(session.call, {
+    messages: applyCacheBreakpoints(finalMessagesFor(session, finalSystem)),
+    tools: session.tools,
+    toolChoice: 'none',
+    callbacks: createUiCallbacks(session),
+    round: rounds + 1,
+  });
+  return buildResult(session, finalSystem);
+}
+
+// ── Tool rounds ─────────────────────────────────────────────────────────────
+
+function scheduleTools(session: TurnSession, toolCalls: ToolCall[]): ToolCall[] {
+  return schedulePlanningRound({
+    toolCalls,
+    gate: session.gate,
+    usedContentTool: session.state.usedContentTool,
+    searchEnabled: session.searchEnabled,
+    searchProvider: session.searchProvider,
+    toolsUsedThisTurn: session.state.toolsUsedThisTurn,
+  });
+}
+
+/** Records the model's tool request in the conversation, runs the tools, and appends their results. */
+async function runToolRound(
+  session: TurnSession,
+  args: {
+    round: number;
+    content: string;
+    scheduled: ToolCall[];
+    reasoningDetails?: unknown;
+    reasoningText: string;
+    applySideEffect?: boolean;
+  },
+): Promise<void> {
+  const { opts, convo } = session;
+  const { chat, chatId, assistantMessage, userContent, controller, turn } = opts;
+  const content = args.content.trim();
+
+  if (content) session.draft = session.draft.trim() ? `${session.draft}\n\n${content}` : content;
+
+  convo.push({
+    role: 'assistant',
+    content: args.content || '',
+    tool_calls: args.scheduled,
+    ...(args.reasoningDetails !== undefined ? { reasoning_details: args.reasoningDetails } : {}),
+  });
+  appendActivityReasoning(session, args.reasoningText, args.round);
+
+  if (content) {
+    emitSideEffect(
+      session,
+      {
+        type: 'append_planning_content',
+        chatId,
+        messageId: assistantMessage.id,
+        content: args.content,
+      },
+      args.applySideEffect ?? true,
+    );
+  }
+
+  session.state = await applyToolExecutions({
+    scheduled: args.scheduled,
+    round: args.round,
+    convo,
+    context: {
+      chat,
+      chatId,
+      assistantMessage,
+      userContent,
+      searchProvider: session.searchProvider,
+      controller,
+      set: turn.set,
+      get: turn.get,
+      persistMessage: turn.persistMessage,
+    },
+    state: session.state,
+  });
+
+  // Pre-logged entries for calls the scheduler dropped would stay "pending"
+  // in the ledger forever; executed calls have resolved by now.
+  removeOrphanPendingToolCalls({ set: turn.set, chatId, messageId: assistantMessage.id });
+
+  if (session.appendToolFollowUp) {
+    convo.push({
+      role: 'user',
+      content: followUpPrompt({
+        searchEnabled: session.searchEnabled,
+        searchProvider: session.searchProvider,
+      }),
     });
-  };
+  }
+}
 
-  const clearVisibleDraft = (callbacks?: MessageStreamCallbacks) => {
-    callbacks?.discardPendingText();
-    set((store) => {
-      const result = updateMessageById(store, chatId, assistantMessage.id, (msg) => {
-        if (!msg.content) return msg;
-        return { ...msg, content: '' };
-      });
-      return result ?? {};
-    });
-  };
-
-  // Track which tool call indices we've already pre-logged
-  const preLoggedToolIndices = new Set<number>();
-
-  // Pre-log a tool call as pending for immediate UI feedback
-  const preLogToolCall = (name: string) => {
+/** Shows a tool call as pending the moment its name arrives, before its arguments finish streaming. */
+function preLogToolCalls(session: TurnSession, deltas: ToolCallDelta[]): void {
+  const { turn, chatId, assistantMessage } = session.opts;
+  for (const delta of deltas) {
+    if (session.preLoggedToolIndices.has(delta.index)) continue;
+    const name = delta.function?.name;
+    if (!name) continue;
+    session.preLoggedToolIndices.add(delta.index);
     startToolCallLogEntry({
-      set,
+      set: turn.set,
       chatId,
       messageId: assistantMessage.id,
       name,
       input: {},
       category: getToolLogCategory(name),
     });
-  };
-
-  // Handle tool call deltas as they stream in - pre-log immediately on first delta
-  const handleToolCallDelta = (deltas: Array<{ index: number; function?: { name?: string } }>) => {
-    for (const delta of deltas) {
-      if (preLoggedToolIndices.has(delta.index)) continue;
-      const name = delta.function?.name;
-      if (name && name.length > 0) {
-        preLoggedToolIndices.add(delta.index);
-        preLogToolCall(name);
-      }
-    }
-  };
-
-  // If no tools available, just do a single streaming call with UI callbacks
-  if (!hasTools) {
-    const finalSystem = buildFinalSystem();
-    const finalMessages: ModelMessage[] = [
-      // buildSystemMessage always returns a value when combinedSystem is defined
-      buildSystemMessage({ combinedSystem: finalSystem, systemStable, systemDynamic })!,
-      ...convo.filter((m) => m.role !== 'system'),
-    ];
-
-    emitPlanResult(finalSystem);
-    await executeStreamCall(ctx, {
-      messages: applyCacheBreakpoints(finalMessages),
-      tools: undefined,
-      toolChoice: undefined,
-      callbacks: createUiCallbacks(performance.now()),
-    });
-
-    return buildResult(state, finalSystem, sideEffects);
   }
+}
 
-  // Helper to schedule and filter tool calls
-  const scheduleTools = (toolCalls: ToolCall[]): ToolCall[] =>
-    schedulePlanningRound({
-      toolCalls,
-      gate,
-      usedContentTool: state.usedContentTool,
-      searchEnabled,
-      searchProvider,
-      toolsUsedThisTurn: state.toolsUsedThisTurn,
-    });
+// ── Message shaping ─────────────────────────────────────────────────────────
 
-  // Helper to process a tool round: add messages, execute tools, add follow-up
-  const processToolRound = async (
-    roundContent: string,
-    scheduled: ToolCall[],
-    round: number,
-    options?: { reasoningDetails?: unknown; reasoningText?: string; applySideEffect?: boolean },
-  ): Promise<void> => {
-    const applySideEffect = options?.applySideEffect ?? true;
-    if (roundContent.trim()) {
-      toolRoundDraftContent = toolRoundDraftContent.trim()
-        ? `${toolRoundDraftContent}\n\n${roundContent.trim()}`
-        : roundContent.trim();
-    }
-    // Add assistant message with tool calls to conversation
-    const assistantMsg: ModelMessage = {
-      role: 'assistant',
-      content: roundContent || '',
-      tool_calls: scheduled,
-      ...(options?.reasoningDetails !== undefined
-        ? { reasoning_details: options.reasoningDetails }
-        : {}),
-    };
-    convo.push(assistantMsg);
-    appendActivityReasoning(options?.reasoningText ?? '', round);
+/** The system prompt for the closing stream: the turn's system plus any search sources. */
+function finalSystemFor(session: TurnSession): string {
+  const { combinedSystem, settings } = session.opts;
+  const baseSystem = combinedSystem?.trim()
+    ? combinedSystem
+    : settings.system?.trim()
+      ? settings.system
+      : DEFAULT_BASE_SYSTEM;
+  const results = session.state.aggregatedResults;
+  const sources = shouldAppendSources(results)
+    ? formatSourcesBlock(results, session.searchProvider)
+    : undefined;
+  return combineSystem(baseSystem, [], sources) ?? baseSystem;
+}
 
-    // Record planning content as side effect for UI
-    if (roundContent.trim()) {
-      emitPlanSideEffect(
-        {
-          type: 'append_planning_content',
-          chatId,
-          messageId: assistantMessage.id,
-          content: roundContent,
-        },
-        applySideEffect,
-      );
-    }
-
-    // Execute tools
-    state = await applyToolExecutions({
-      scheduled,
-      round,
-      convo,
-      context: {
-        chat,
-        chatId,
-        assistantMessage,
-        userContent,
-        searchProvider,
-        controller,
-        set,
-        get,
-        persistMessage,
-      },
-      state,
-    });
-    currentPlan = readContentModuleResult(state).currentPlan ?? currentPlan;
-
-    // Pre-logged entries for calls the scheduler dropped would stay "pending"
-    // in the ledger forever; executed calls have resolved by now.
-    removeOrphanPendingToolCalls({ set, chatId, messageId: assistantMessage.id });
-
-    // Add follow-up prompt for next round
-    if (shouldAppendToolFollowUp) {
-      convo.push({ role: 'user', content: followUpPrompt({ searchEnabled, searchProvider }) });
-    }
-  };
-
-  // First round: stream with UI callbacks connected
-  // If no tool calls, this is our only LLM call
-  let roundContent = '';
-  let roundToolCalls: ToolCall[] = [];
-  let roundFinishReason: StreamDoneExtras['finishReason'];
-  let roundReasoningDetails: StreamDoneExtras['reasoningDetails'];
-  let shouldRetryFirstRound = false;
-  let toolRoundDraftContent = '';
-
-  const uiCallbacks = createUiCallbacks(performance.now());
-  const finalizeShortCircuit = (fallbackContent?: string) => {
-    const snapshot = get?.();
-    const current = snapshot?.messagesById?.[assistantMessage.id];
-    const currentContent = typeof current?.content === 'string' ? current.content : '';
-    const fallback = fallbackContent || '';
-    const preferFallback =
-      !!fallback &&
-      (!currentContent || looksIncomplete(currentContent)) &&
-      !looksIncomplete(fallback);
-    const content = preferFallback ? fallback : currentContent || fallback;
-    uiCallbacks.onDone?.(content, { finishReason: 'tool_calls' });
-  };
-  const firstRoundCallbacks: StreamCallbacks = {
-    ...uiCallbacks,
-    onToken: (delta) => {
-      roundContent += delta;
-      uiCallbacks.onToken?.(delta);
-    },
-    onToolCallDelta: handleToolCallDelta,
-    onDone: (full, extras) => {
-      roundFinishReason = extras?.finishReason;
-      roundReasoningDetails = extras?.reasoningDetails;
-      if (extras?.toolCalls) {
-        roundToolCalls = extras.toolCalls;
-      }
-      // Only call uiCallbacks.onDone if we're NOT going to execute tools
-      if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
-        shouldRetryFirstRound = Boolean(
-          gatedToolDefinitions?.length &&
-            looksIncomplete(full || roundContent, roundFinishReason) &&
-            !controller.signal.aborted,
-        );
-        if (!shouldRetryFirstRound) {
-          const finalSystem = buildFinalSystem();
-          emitPlanResult(finalSystem);
-          uiCallbacks.onDone?.(full, extras);
-        }
-      }
-    },
-  };
-
-  await executeStreamCall(ctx, {
-    messages: applyCacheBreakpoints(convo),
-    tools: gatedToolDefinitions,
-    toolChoice: 'auto',
-    callbacks: firstRoundCallbacks,
-    round: 0,
+function finalMessagesFor(session: TurnSession, finalSystem: string): ModelMessage[] {
+  const system = buildSystemMessage({
+    combinedSystem: finalSystem,
+    systemStable: session.opts.systemStable,
+    systemDynamic: session.opts.systemDynamic,
   });
+  // buildSystemMessage always returns a message when combinedSystem is set.
+  return [system!, ...session.convo.filter((m) => m.role !== 'system')];
+}
 
-  // No tool calls — retry once if the response looks incomplete and tools were available
-  if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
-    if (shouldRetryFirstRound) {
-      roundContent = '';
-      roundToolCalls = [];
-      roundFinishReason = undefined;
-      roundReasoningDetails = undefined;
+// ── UI and store effects ────────────────────────────────────────────────────
 
-      const retryCallbacks: StreamCallbacks = {
-        ...uiCallbacks,
-        onToken: (delta) => {
-          roundContent += delta;
-          uiCallbacks.onToken?.(delta);
-        },
-        onToolCallDelta: handleToolCallDelta,
-        onDone: (full, extras) => {
-          roundFinishReason = extras?.finishReason;
-          roundReasoningDetails = extras?.reasoningDetails;
-          if (extras?.toolCalls) roundToolCalls = extras.toolCalls;
-          if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
-            emitPlanResult(buildFinalSystem());
-            uiCallbacks.onDone?.(full, extras);
-          }
-        },
+function createUiCallbacks(session: TurnSession): MessageStreamCallbacks {
+  const { chatId, assistantMessage, turn, startBuffered, settings, controller } = session.opts;
+  return createMessageStreamCallbacks(
+    {
+      chatId,
+      assistantMessage,
+      set: turn.set,
+      get: turn.get,
+      startBuffered,
+      autoReasoningEligible: session.call.disableReasoning,
+      modelIdUsed: settings.modelId,
+      clearController: () => clearTurnController(chatId, controller),
+      persistMessage: turn.persistMessage,
+    },
+    { startedAt: performance.now() },
+  );
+}
+
+/** Ends the turn without a closing stream, keeping the best of the visible text and the draft. */
+function finalizeShortCircuit(
+  session: TurnSession,
+  ui: MessageStreamCallbacks,
+  fallback: string,
+): void {
+  const { turn, assistantMessage } = session.opts;
+  const current = turn.get?.()?.messagesById?.[assistantMessage.id];
+  const visible = typeof current?.content === 'string' ? current.content : '';
+  ui.onDone?.(chooseFinalDraft(visible, fallback), { finishReason: 'tool_calls' });
+}
+
+function clearVisibleDraft(session: TurnSession, ui?: MessageStreamCallbacks): void {
+  const { turn, chatId, assistantMessage } = session.opts;
+  ui?.discardPendingText();
+  turn.set((store) => {
+    const result = updateMessageById(store, chatId, assistantMessage.id, (msg) =>
+      msg.content ? { ...msg, content: '' } : msg,
+    );
+    return result ?? {};
+  });
+}
+
+function appendActivityReasoning(session: TurnSession, text: string, round?: number): void {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  const { turn, chatId, assistantMessage } = session.opts;
+  turn.set((store) => {
+    const result = updateMessageById(store, chatId, assistantMessage.id, (msg) => {
+      const activity = Array.isArray(msg.activity) ? msg.activity : [];
+      return {
+        ...msg,
+        activity: [
+          ...activity,
+          {
+            id: `${assistantMessage.id}-reasoning-${round ?? activity.length}-${Date.now()}`,
+            type: 'reasoning' as const,
+            text: trimmed,
+            timestamp: Date.now(),
+            status: 'done' as const,
+            round,
+          },
+        ],
       };
-
-      await executeStreamCall(ctx, {
-        messages: applyCacheBreakpoints(convo),
-        tools: gatedToolDefinitions,
-        toolChoice: 'auto',
-        callbacks: retryCallbacks,
-        round: 0,
-      });
-
-      if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
-        return buildResult(state, buildFinalSystem(), sideEffects);
-      }
-      // Fall through to tool scheduling
-    } else {
-      return buildResult(state, buildFinalSystem(), sideEffects);
-    }
-  }
-
-  // Schedule first round of tools
-  let scheduled = scheduleTools(roundToolCalls);
-  if (scheduled.length === 0) {
-    const finalSystem = buildFinalSystem();
-    const planResult = emitPlanResult(finalSystem);
-    if (shouldShortCircuit?.(planResult)) {
-      finalizeShortCircuit(roundContent);
-      return buildResult(state, finalSystem, sideEffects, true);
-    }
-    uiCallbacks.onDone?.(roundContent, { finishReason: roundFinishReason });
-    return buildResult(state, finalSystem, sideEffects);
-  }
-
-  clearVisibleDraft(uiCallbacks);
-  await processToolRound(roundContent, scheduled, 1, {
-    reasoningDetails: roundReasoningDetails,
-    reasoningText: '',
-    applySideEffect: false,
-  });
-  let rounds = 1;
-
-  // Continue tool execution loop for subsequent rounds (without UI callbacks)
-  while (rounds < MAX_PLANNING_ROUNDS) {
-    roundContent = '';
-    roundToolCalls = [];
-    roundFinishReason = undefined;
-    roundReasoningDetails = undefined;
-    let roundReasoningText = '';
-
-    const roundCallbacks: StreamCallbacks = {
-      onToken: (delta) => {
-        roundContent += delta;
-      },
-      onReasoningToken: (delta) => {
-        roundReasoningText += delta;
-      },
-      onToolCallDelta: handleToolCallDelta,
-      onDone: (_full, extras) => {
-        roundFinishReason = extras?.finishReason;
-        roundReasoningDetails = extras?.reasoningDetails;
-        if (extras?.toolCalls) {
-          roundToolCalls = extras.toolCalls;
-        }
-      },
-    };
-
-    await executeStreamCall(ctx, {
-      messages: applyCacheBreakpoints(convo),
-      tools: gatedToolDefinitions,
-      toolChoice: 'auto',
-      callbacks: roundCallbacks,
-      round: rounds + 1,
     });
-
-    // No tool calls - break out
-    if (roundFinishReason !== 'tool_calls' || roundToolCalls.length === 0) {
-      appendActivityReasoning(roundReasoningText, rounds + 1);
-      break;
-    }
-
-    scheduled = scheduleTools(roundToolCalls);
-    if (scheduled.length === 0) {
-      break;
-    }
-
-    await processToolRound(roundContent, scheduled, rounds + 1, {
-      reasoningDetails: roundReasoningDetails,
-      reasoningText: roundReasoningText,
-    });
-    rounds += 1;
-  }
-
-  // Final streaming call with updated system and toolChoice='none'
-  const finalSystem = buildFinalSystem();
-  const planResult = emitPlanResult(finalSystem);
-  const preserveDraftWithoutFinalOverwrite =
-    !planResult.hasSearchResults &&
-    toolRoundDraftContent.trim().length > 0 &&
-    !looksIncomplete(toolRoundDraftContent);
-  const preserveDraftAfterFailedTools =
-    state.failedToolCallsThisTurn > 0 &&
-    state.successfulToolCallsThisTurn === 0 &&
-    toolRoundDraftContent.trim().length > 0 &&
-    !looksIncomplete(toolRoundDraftContent);
-
-  // If the model already drafted a coherent answer before non-search tool updates,
-  // keep that text and avoid a second user-visible rewrite.
-  if (
-    shouldShortCircuit?.(planResult) ||
-    preserveDraftWithoutFinalOverwrite ||
-    preserveDraftAfterFailedTools
-  ) {
-    finalizeShortCircuit(toolRoundDraftContent);
-    return buildResult(state, finalSystem, sideEffects, true);
-  }
-  const finalMessages: ModelMessage[] = [
-    buildSystemMessage({ combinedSystem: finalSystem, systemStable, systemDynamic })!,
-    ...convo.filter((m) => m.role !== 'system'),
-  ];
-
-  clearVisibleDraft();
-  await executeStreamCall(ctx, {
-    messages: applyCacheBreakpoints(finalMessages),
-    tools: gatedToolDefinitions,
-    toolChoice: 'none',
-    callbacks: createUiCallbacks(performance.now()),
-    round: rounds + 1,
+    return result ?? store;
   });
+}
 
-  return buildResult(state, finalSystem, sideEffects);
+function emitSideEffect(session: TurnSession, effect: PlanTurnSideEffect, applyNow: boolean) {
+  session.sideEffects.push(effect);
+  if (applyNow) session.opts.onPlanSideEffects?.([effect]);
+}
+
+// ── Results ─────────────────────────────────────────────────────────────────
+
+function buildPlanResult(session: TurnSession, finalSystem: string): PlanTurnResult {
+  const { state } = session;
+  const moduleResult = readContentModuleResult(state);
+  return {
+    finalSystem,
+    usedContentTool: state.usedContentTool,
+    hasSearchResults: shouldAppendSources(state.aggregatedResults),
+    learnerModel: moduleResult.learnerModel,
+    planUpdates: moduleResult.planUpdates,
+    updatedPlan: moduleResult.updatedPlan,
+    learnerModelDebug: moduleResult.learnerModelDebug,
+  };
+}
+
+function emitPlanResult(session: TurnSession, finalSystem: string): PlanTurnResult {
+  const plan = buildPlanResult(session, finalSystem);
+  session.opts.onPlanResult?.(plan);
+  return plan;
+}
+
+function buildResult(
+  session: TurnSession,
+  finalSystem: string,
+  shortCircuited = false,
+): StreamingTurnResult {
+  return {
+    ...buildPlanResult(session, finalSystem),
+    sideEffects: session.sideEffects,
+    shortCircuited,
+  };
 }

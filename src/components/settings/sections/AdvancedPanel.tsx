@@ -1,4 +1,3 @@
-'use client';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import type { RenderSection } from '@/components/settings/types';
 

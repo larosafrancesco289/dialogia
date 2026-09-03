@@ -21,7 +21,4 @@ jobs:
       # knip dead-code check — the same script contributors run locally.
       - run: ./scripts/ci.sh
 
-      - name: Build both variants
-        run: |
-          bun run build
-          bun run build:hosted
+      - run: bun run build

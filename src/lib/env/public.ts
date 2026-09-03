@@ -2,29 +2,8 @@ import { readClientEnv } from '@/lib/env/importMeta';
 import { readBooleanValue, readEnvValue } from '@/lib/env/values';
 import { isProd } from '@/lib/env/runtime';
 
-// BYOK deliberately has no client-side env key path: provider keys come from the
-// key store the user fills in, and a hosted deployment proxies instead.
-
-export function isOpenRouterProxyEnabled(): boolean {
-  return readBooleanValue(readClientEnv('VITE_USE_OR_PROXY'), false);
-}
-
-export function isAnthropicProxyEnabled(): boolean {
-  return readBooleanValue(readClientEnv('VITE_USE_ANTHROPIC_PROXY'), false);
-}
-
-/**
- * The hosted variant ships the access gate and the key-proxy functions; the
- * default BYOK build is a static bundle with neither.
- */
-export function isHostedBuild(): boolean {
-  return readBooleanValue(readClientEnv('VITE_HOSTED_BUILD'), false);
-}
-
-/** Hosted builds expose the server-side Tavily key through the gated proxy. */
-export function isTavilyProxyEnabled(): boolean {
-  return readBooleanValue(readClientEnv('VITE_TAVILY_SEARCH_ENABLED'), false);
-}
+// There is deliberately no client-side provider key variable. Every key comes
+// from the key store the user fills in, and the bundle carries no secrets.
 
 export function getPublicAppBaseUrl(): string | undefined {
   return readEnvValue(readClientEnv('VITE_APP_BASE_URL'));

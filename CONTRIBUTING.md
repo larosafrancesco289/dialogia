@@ -11,23 +11,22 @@ bun run dev     # http://localhost:3000
 ```
 
 No configuration is needed. The app opens its setup sheet, you paste a provider key or point it at
-a local server, and you are running. See [README.md](README.md) for the environment variables the
-hosted variant uses.
+a local server, and you are running. See [README.md](README.md) for the optional build-time
+defaults.
 
 ## Commands
 
-| Command                | What it does                                                               |
-| ---------------------- | -------------------------------------------------------------------------- |
-| `bun run dev`          | Vite dev server. Also mounts the worker's API routes, so proxy mode works. |
-| `bun run build`        | Static bring-your-own-key (BYOK) build into `dist/`.                       |
-| `bun run build:hosted` | The same, plus `dist/_worker.js`.                                          |
-| `bun start`            | Preview a production build.                                                |
-| `bun run lint:types`   | `tsc --noEmit`. There is no emit step, so this is the whole type check.    |
-| `bun run test`         | Node's test runner over `tests/**/*.test.ts` and `src/**/*.test.ts`.       |
-| `bun run lint`         | ESLint, including the layer boundaries.                                    |
-| `bun run format`       | Prettier.                                                                  |
-| `bun run knip`         | Dead-code gate. A file or dependency with no importers fails it.           |
-| `scripts/ci.sh`        | All of the above, in the order CI runs them.                               |
+| Command              | What it does                                                            |
+| -------------------- | ----------------------------------------------------------------------- |
+| `bun run dev`        | Vite dev server.                                                        |
+| `bun run build`      | Static bring-your-own-key (BYOK) build into `dist/`.                    |
+| `bun start`          | Preview a production build.                                             |
+| `bun run lint:types` | `tsc --noEmit`. There is no emit step, so this is the whole type check. |
+| `bun run test`       | Node's test runner over `tests/**/*.test.ts` and `src/**/*.test.ts`.    |
+| `bun run lint`       | ESLint, including the layer boundaries.                                 |
+| `bun run format`     | Prettier.                                                               |
+| `bun run knip`       | Dead-code gate. A file or dependency with no importers fails it.        |
+| `scripts/ci.sh`      | All of the above, in the order CI runs them.                            |
 
 **`bun run test` always runs the whole suite.** Passing a file path does not filter it. The suite
 takes a few seconds, so run all of it.

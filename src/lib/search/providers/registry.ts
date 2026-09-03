@@ -24,27 +24,22 @@ export function searchProviderKeyRef(provider: SearchProvider): string {
   return provider.keyRef ?? provider.id;
 }
 
-/** Usable right now: no key needed, a key is stored, or the deployment proxies it. */
-export function isSearchProviderReady(provider: SearchProvider, useProxy = false): boolean {
+/** Usable right now: no key needed, or a key is stored. */
+export function isSearchProviderReady(provider: SearchProvider): boolean {
   if (!provider.requiresKey) return true;
-  if (useProxy) return true;
   return typeof getKey(searchProviderKeyRef(provider)) === 'string';
 }
 
 export function buildSearchContext(
   provider: SearchProvider,
-  opts: { useProxy?: boolean; signal?: AbortSignal } = {},
+  opts: { signal?: AbortSignal } = {},
 ): SearchContext {
-  return {
-    apiKey: getKey(searchProviderKeyRef(provider)),
-    useProxy: opts.useProxy,
-    signal: opts.signal,
-  };
+  return { apiKey: getKey(searchProviderKeyRef(provider)), signal: opts.signal };
 }
 
 /** Providers the user could switch to right now, for the composer's picker. */
-export function listReadySearchProviders(useProxy = false): SearchProvider[] {
-  return listSearchProviders().filter((provider) => isSearchProviderReady(provider, useProxy));
+export function listReadySearchProviders(): SearchProvider[] {
+  return listSearchProviders().filter(isSearchProviderReady);
 }
 
 export function resetSearchProvidersForTest(): void {

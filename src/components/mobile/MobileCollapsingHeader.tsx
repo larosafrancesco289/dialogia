@@ -1,5 +1,3 @@
-'use client';
-
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
@@ -8,7 +6,6 @@ import { springs } from '@/lib/mobile/springConfig';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { ModelPicker } from '@/components/ModelPicker';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
-import { useTierTutorModelId } from '@/lib/hooks/useTierModels';
 import { selectIsStreaming, selectIsTutorEnabled } from '@/lib/store/selectors';
 import styles from './MobileCollapsingHeader.module.css';
 
@@ -37,12 +34,10 @@ export function MobileCollapsingHeader() {
 
   const chat = chats.find((c) => c.id === selectedChatId);
 
-  // Resolve tutor model with tier awareness
-  const rawTutorModelId =
+  const tutorModelId =
     chat?.settings?.features.tutor?.defaultModelId ||
     chat?.settings?.modelId ||
     tutorDefaultModelId;
-  const tutorModelId = useTierTutorModelId(rawTutorModelId);
   const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
   const tutorModelLabel = useMemo(
     () =>

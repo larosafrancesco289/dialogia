@@ -1,4 +1,3 @@
-'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export function useStepper<T>(items: T[], isPending: (item: T, index: number) => boolean) {

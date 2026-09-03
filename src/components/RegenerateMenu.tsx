@@ -1,11 +1,10 @@
-'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { formatModelLabel } from '@/lib/models';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
-import { useTierCuratedModels, useTierDefaultModelId } from '@/lib/hooks/useTierModels';
+import { useCuratedModels, useDefaultModelId } from '@/lib/hooks/useModelCatalog';
 import type { ModelDescriptor } from '@/lib/types';
 
 export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => void }) {
@@ -20,8 +19,8 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const curatedModels = useTierCuratedModels();
-  const tierDefaultModelId = useTierDefaultModelId();
+  const curatedModels = useCuratedModels();
+  const defaultModelId = useDefaultModelId();
   const modelMap = useMemo(() => {
     const map = new Map<string, ModelDescriptor>();
     for (const model of models || []) {
@@ -31,7 +30,7 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
   }, [models]);
   const curated = [
     {
-      id: chat?.settings.modelId || curatedModels[0]?.id || tierDefaultModelId,
+      id: chat?.settings.modelId || curatedModels[0]?.id || defaultModelId,
       name: 'Current',
     },
     ...curatedModels,

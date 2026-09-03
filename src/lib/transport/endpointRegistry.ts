@@ -5,7 +5,6 @@
 // (auth resolution, body building) is synchronous and sits below the store, so
 // the slice pushes its list here and everything else reads from here.
 
-import { isAnthropicProxyEnabled, isOpenRouterProxyEnabled } from '@/lib/env/public';
 import type { ModelDescriptor } from '@/lib/transport/models';
 import {
   ANTHROPIC_ENDPOINT,
@@ -19,24 +18,13 @@ import {
 
 let customEndpoints: ProviderEndpoint[] = [];
 
-/** Built-ins carry the deployment's proxy configuration, which is not user-editable. */
-function withProxyFlags(endpoint: ProviderEndpoint): ProviderEndpoint {
-  if (endpoint.id === OPENROUTER_ENDPOINT.id) {
-    return { ...endpoint, useProxy: isOpenRouterProxyEnabled() };
-  }
-  if (endpoint.id === ANTHROPIC_ENDPOINT.id) {
-    return { ...endpoint, useProxy: isAnthropicProxyEnabled() };
-  }
-  return endpoint;
-}
-
 /** Called by the endpoint slice whenever the user's configuration changes. */
 export function setCustomEndpoints(endpoints: ProviderEndpoint[]): void {
   customEndpoints = endpoints.filter((endpoint) => !isBuiltInEndpointId(endpoint.id));
 }
 
 export function listEndpoints(): ProviderEndpoint[] {
-  return [...BUILT_IN_ENDPOINTS.map(withProxyFlags), ...customEndpoints];
+  return [...BUILT_IN_ENDPOINTS, ...customEndpoints];
 }
 
 export function listCustomEndpoints(): ProviderEndpoint[] {
@@ -49,7 +37,7 @@ export function getEndpoint(id?: string): ProviderEndpoint | undefined {
 }
 
 export function getDefaultEndpoint(): ProviderEndpoint {
-  return withProxyFlags(OPENROUTER_ENDPOINT);
+  return OPENROUTER_ENDPOINT;
 }
 
 export const UNKNOWN_ENDPOINT = 'unknown_endpoint';
@@ -92,7 +80,7 @@ export function findModelEndpoint(
       return scoped ? getEndpoint(scoped.endpointId) : undefined;
     }
     if (modelId.startsWith('anthropic-direct/') || modelId.startsWith('anthropic/')) {
-      return withProxyFlags(ANTHROPIC_ENDPOINT);
+      return ANTHROPIC_ENDPOINT;
     }
   }
 

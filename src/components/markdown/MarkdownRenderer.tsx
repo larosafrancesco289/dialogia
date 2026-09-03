@@ -1,4 +1,3 @@
-'use client';
 import React, { Children, useEffect, useId, useMemo, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';

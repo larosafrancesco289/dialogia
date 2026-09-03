@@ -1,32 +1,17 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  getDefaultZdrOnly,
-  getRoutePreferenceDefault,
-  isOpenRouterProxyEnabled,
-} from '@/lib/env/public';
+import { getDefaultZdrOnly, getRoutePreferenceDefault } from '@/lib/env/public';
 
 const originalEnv = { ...process.env };
 
 beforeEach(() => {
   process.env = { ...originalEnv };
-  delete process.env.VITE_USE_OR_PROXY;
   delete process.env.VITE_OR_ZDR_ONLY_DEFAULT;
   delete process.env.VITE_OR_ROUTE_PREFERENCE_DEFAULT;
 });
 
 afterEach(() => {
   process.env = { ...originalEnv };
-});
-
-test('isOpenRouterProxyEnabled defaults to false', () => {
-  delete process.env.VITE_USE_OR_PROXY;
-  assert.equal(isOpenRouterProxyEnabled(), false);
-});
-
-test('isOpenRouterProxyEnabled parses true-like values', () => {
-  process.env.VITE_USE_OR_PROXY = 'TrUe';
-  assert.equal(isOpenRouterProxyEnabled(), true);
 });
 
 test('getDefaultZdrOnly respects env flag', () => {

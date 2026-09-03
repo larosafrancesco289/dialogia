@@ -1,4 +1,3 @@
-'use client';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { IconButton } from '@/components/ui/IconButton';

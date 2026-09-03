@@ -1,4 +1,3 @@
-'use client';
 import type { Ref } from 'react';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ModelSearch, type ModelSearchHandle } from '@/components/ModelSearch';
@@ -51,7 +50,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
               Selecting a model adds it to your favorites.{' '}
               {selectedModelId
                 ? `New chats start with ${selectedModelId}, following the model you last used.`
-                : 'New chats use the tier default until you pick a model in a chat.'}
+                : 'New chats use the default model until you pick a model in a chat.'}
             </div>
             {selectedModelId && (
               <div>
@@ -65,7 +64,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
                     })
                   }
                 >
-                  Use tier default
+                  Use the default model
                 </button>
               </div>
             )}
