@@ -111,6 +111,20 @@ either in `tests/` or beside the code they cover.
 - Keep [ARCHITECTURE.md](ARCHITECTURE.md) in sync when a flow changes. For visual work, colours
   come from `styles/tokens.css` via `color-mix`, and that CSS is the design's source of truth.
 
+## Releasing
+
+`main` is where work happens and is never deployed directly. `release` is a pointer to what is live
+on dialogia.dev: Cloudflare Pages builds it on every push, and a push to `main` only gets a preview
+URL. Ship by fast-forwarding `release` to `main` once the changes queued there are worth a deploy.
+
+```bash
+git log --oneline release..main   # what is queued
+git push origin main:release      # ship it
+```
+
+Never commit to `release` directly and never let it diverge from `main`. If a push is refused as a
+non-fast-forward, `release` has drifted, and the fix is to reconcile it with `main`, not to force it.
+
 ## Removing the tutor
 
 Tutor mode is a module, and that is meant to stay true. Deleting `src/modules/tutor` plus its entry
