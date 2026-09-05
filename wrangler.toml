@@ -12,3 +12,7 @@ not_found_handling = "single-page-application"
 [[routes]]
 pattern = "dialogia.dev"
 custom_domain = true
+
+[[routes]]
+pattern = "www.dialogia.dev"
+custom_domain = true
