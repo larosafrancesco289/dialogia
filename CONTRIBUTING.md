@@ -114,8 +114,8 @@ either in `tests/` or beside the code they cover.
 ## Releasing
 
 `main` is where work happens and is never deployed directly. `release` is a pointer to what is live
-on dialogia.dev: Cloudflare Pages builds it on every push, and a push to `main` only gets a preview
-URL. Ship by fast-forwarding `release` to `main` once the changes queued there are worth a deploy.
+on dialogia.dev: Cloudflare builds and deploys it on every push, and a push to `main` only gets a
+preview URL. Ship by fast-forwarding `release` to `main` once the changes queued there are worth a deploy.
 
 ```bash
 git log --oneline release..main   # what is queued
