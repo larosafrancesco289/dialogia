@@ -175,7 +175,10 @@ This design exists to enforce three rules.
 
 - **A user endpoint's capabilities are authoritative.** An unlisted capability is never emitted.
   Name-regex capability inference applies only to the metadata-rich built-ins. A strict server
-  rejects a whole request over one unknown key, so silence beats optimism.
+  rejects a whole request over one unknown key, so silence beats optimism. The user does not have
+  to guess, though: `src/lib/openaiCompat/probe.ts` sends one tiny request per capability, each
+  carrying exactly the field that capability gates, and the Providers panel offers to copy the
+  verdicts into the toggles.
 - **Model identity is `(endpointId, transportModelId)`.** User endpoint model ids are namespaced
   `endpoint:<slug>/<model>`. No upstream id has a colon in its first segment, which is what stops an
   endpoint slugged `openai` from shadowing OpenRouter's `openai/gpt-4o`.
