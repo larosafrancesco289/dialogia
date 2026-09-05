@@ -1,6 +1,10 @@
-# Cloudflare Pages serves `dist/` as a static site. There is no worker: every
-# request for a model goes from the visitor's browser to the provider they hold
-# a key for, so the deployment carries no keys and no server code.
+# Cloudflare serves `dist/` as static assets from a Worker with no code of its
+# own. There is no server: every request for a model goes from the visitor's
+# browser to the provider they hold a key for, so the deployment carries no
+# keys and no server code.
 name = "dialogia"
 compatibility_date = "2026-07-25"
-pages_build_output_dir = "dist"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"

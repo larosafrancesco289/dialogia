@@ -74,8 +74,8 @@ read it. Anywhere else, point unknown paths at `index.html` yourself.
 
 Every visitor supplies their own key. The first visit opens the setup sheet, which explains where to
 get one and stores it in that browser only. A deployment therefore pays for nothing and can be
-shared with anyone by link. On Cloudflare Pages the whole setup is build command `bun run build`,
-output directory `dist`, and no environment variables.
+shared with anyone by link. On Cloudflare the whole setup is build command `bun run build`, deploy
+command `npx wrangler deploy`, and no environment variables; `wrangler.toml` does the rest.
 
 ## Configuration
 

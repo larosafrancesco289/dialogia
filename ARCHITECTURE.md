@@ -252,7 +252,8 @@ fields, and the module owns all behaviour.
 `bun run build` emits `dist/`, a static site. There is no worker, no API route and no environment
 the deployment has to carry, because every provider call leaves the visitor's browser with the
 visitor's own key. `public/_redirects` gives Cloudflare Pages and Netlify the SPA fallback; other
-hosts need the equivalent rule. `wrangler.toml` only names the output directory.
+hosts need the equivalent rule. `wrangler.toml` describes a Cloudflare Worker with no code of its
+own that serves `dist/` as static assets, with the SPA fallback set there too.
 
 Client config is `import.meta.env.VITE_*`, inlined at build time, and none of it may be a secret.
 `isProd()` reads the build mode. The tutor simulation CLI is the one place a key comes from the
