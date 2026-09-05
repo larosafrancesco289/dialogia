@@ -69,8 +69,8 @@ bun run build
 
 `dist/` is a plain static site with no server behind it and no keys anywhere near it. Deploy it to
 Cloudflare Pages, Netlify, GitHub Pages, or your own nginx. Dialogia is a single-page app (SPA), so
-a host has to serve `index.html` for unknown paths. `public/_redirects` sets that up on hosts that
-read it. Anywhere else, point unknown paths at `index.html` yourself.
+a host has to serve `index.html` for unknown paths. `wrangler.toml` sets that up for Cloudflare.
+Anywhere else, point unknown paths at `index.html` yourself.
 
 Every visitor supplies their own key. The first visit opens the setup sheet, which explains where to
 get one and stores it in that browser only. A deployment therefore pays for nothing and can be
