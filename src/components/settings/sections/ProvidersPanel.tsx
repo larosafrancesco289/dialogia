@@ -3,6 +3,8 @@ import { shallow } from 'zustand/shallow';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ApiKeyField } from '@/components/settings/ApiKeyField';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
+import { EndpointProbe } from '@/components/settings/EndpointProbe';
+import { CAPABILITY_LABELS } from '@/components/settings/endpointCapabilityLabels';
 import { useChatStore } from '@/lib/store';
 import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
 import { listSearchProviders, searchProviderKeyRef } from '@/lib/search/providers';
@@ -11,24 +13,10 @@ import {
   endpointCapabilities,
   endpointKeyRef,
   isBuiltInEndpointId,
-  type EndpointCapabilities,
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
 import { listEndpoints } from '@/lib/transport/endpointRegistry';
 import type { RenderSection } from '@/components/settings/types';
-
-const CAPABILITY_LABELS: Array<{ key: keyof EndpointCapabilities; label: string; hint: string }> = [
-  { key: 'tools', label: 'Tool calls', hint: 'Send tool definitions and accept tool calls.' },
-  { key: 'vision', label: 'Images', hint: 'Accept image content blocks.' },
-  { key: 'reasoning', label: 'Reasoning effort', hint: 'Send reasoning/effort parameters.' },
-  { key: 'streamUsage', label: 'Usage in stream', hint: 'Ask for token usage on the last chunk.' },
-  {
-    key: 'parallelToolCalls',
-    label: 'Parallel tool calls',
-    hint: 'Allow more than one per round.',
-  },
-  { key: 'promptCaching', label: 'Prompt caching', hint: 'Send cache_control markers.' },
-];
 
 function EndpointStatus({ endpoint }: { endpoint: ProviderEndpoint }) {
   const { hasKey } = useProviderKeys();
@@ -109,6 +97,14 @@ function CustomEndpointEditor({
         label="API key (optional)"
         placeholder="Most local servers need none"
         onChanged={onChanged}
+      />
+
+      <EndpointProbe
+        endpoint={endpoint}
+        onApply={(capabilities) => {
+          updateEndpoint(endpoint.id, { capabilities });
+          onChanged();
+        }}
       />
 
       <fieldset className="space-y-2">

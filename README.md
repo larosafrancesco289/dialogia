@@ -55,7 +55,9 @@ actually supports.
 
 Capabilities start off and stay off until you enable them. A strict OpenAI-compatible server rejects
 an entire request over one field it does not recognise, so Dialogia sends the minimal body until you
-say otherwise. If tool calls or search are unavailable you get a visible notice rather than silence.
+say otherwise. You do not have to guess: **Test connection** in the endpoint's settings sends a few
+one-token requests, reports which fields the server accepted, and can set the checkboxes from the
+answer. If tool calls or search are unavailable you get a visible notice rather than silence.
 
 ![Model selection](assets/model-selection.png)
 
