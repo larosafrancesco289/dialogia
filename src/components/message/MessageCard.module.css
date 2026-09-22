@@ -49,6 +49,26 @@
   color: var(--color-fg);
 }
 
+/* Prose figures: old-style numerals sit in the line like lowercase. Tables
+   switch back to lining tabular figures in markdown.css. */
+.assistant :global(.markdown) {
+  font-variant-numeric: oldstyle-nums proportional-nums;
+}
+
+.assistant :global(.markdown li::marker) {
+  font-variant-numeric: oldstyle-nums;
+}
+
+/* Light type on a dark ground reads heavier than the same weight on paper;
+   thin it slightly to compensate. */
+:global(.dark) .assistant {
+  font-weight: 370;
+}
+
+:global(.dark) .assistant :global(.markdown strong) {
+  font-weight: 560;
+}
+
 /* Remove any decorative elements */
 .assistant::before {
   display: none;
