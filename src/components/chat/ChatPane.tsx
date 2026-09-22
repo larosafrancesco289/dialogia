@@ -8,11 +8,17 @@ import { selectCurrentChat } from '@/lib/store/selectors';
 
 export function ChatPane() {
   const chat = useChatStore(selectCurrentChat);
+  // An empty chat opens on the welcome page too. A chat whose saved messages
+  // simply haven't loaded yet is not empty.
+  const isEmpty = useChatStore(
+    (s) =>
+      !!chat && !s.nonEmptyChatIds[chat.id] && (s.messageIdsByChatId[chat.id]?.length ?? 0) === 0,
+  );
   const keyboardMetrics = useKeyboardInsets();
   const keyboardVars = {
     '--keyboard-offset': `${Math.max(0, Math.round(keyboardMetrics.offset))}px`,
   } as CSSProperties;
-  if (!chat) return <WelcomeHero keyboardMetrics={keyboardMetrics} />;
+  if (!chat || isEmpty) return <WelcomeHero keyboardMetrics={keyboardMetrics} />;
   return (
     <div className="chat-pane relative h-full min-w-0 flex flex-col" style={keyboardVars}>
       <div className="chat-pane__scroll flex-1 min-h-0 min-w-0">

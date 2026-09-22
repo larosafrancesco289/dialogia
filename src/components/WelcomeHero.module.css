@@ -1,6 +1,8 @@
-/* WelcomeHero: "The Blank Page" design
-   Evokes the feeling of sitting at a writing desk with fresh paper and ink.
-   Asymmetric layout, typographic confidence, restrained elegance.
+/* WelcomeHero: the opening page of a dialogue.
+   One centred column: the mark, a chapter-style count, the headline, the
+   composer, a few quiet suggestions, and a colophon at the foot. The only
+   motion is the opening: the two voices of the mark glide together while the
+   rest of the page settles in.
 */
 
 .hero {
@@ -11,173 +13,184 @@
   overflow: hidden;
 }
 
-/* Desktop: Asymmetric two-column layout */
+/* ===== Desktop ===== */
 .heroDesktop {
   display: none;
   position: relative;
-  z-index: 10;
   flex: 1;
-  padding: var(--space-7) var(--space-8);
-  max-width: 1280px;
-  margin: 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  /* Sit slightly above the optical centre, like a title page. */
+  padding: var(--space-8) var(--space-8) 14vh;
   width: 100%;
 }
 
 @media (min-width: 640px) {
   .heroDesktop {
-    display: grid;
-    grid-template-columns: minmax(260px, 0.82fr) minmax(420px, 1.18fr);
-    gap: calc(var(--space-8) * 1.35);
-    align-items: center;
+    display: flex;
   }
 }
 
-@media (min-width: 1024px) {
-  .heroDesktop {
-    padding: var(--space-8) calc(var(--space-8) * 2);
-    gap: calc(var(--space-8) * 1.5);
-  }
-}
-
-/* Left column: Title and marginalia */
-.heroLeft {
+.opening {
   display: flex;
   flex-direction: column;
-  gap: var(--space-7);
-  min-width: 0;
+  align-items: center;
 }
 
-/* The chapter opening title block */
-.titleBlock {
-  position: relative;
-  max-width: 520px;
-}
-
-/* Decorative rule for the chapter opening. */
-.decorativeRule {
-  position: absolute;
-  top: -20px;
-  left: 0;
-  width: 72px;
-  height: 2px;
-  background: var(--rule-accent);
-  transform-origin: left center;
-}
-
-/* Main headline, chapter opening style */
-.headline {
-  font-family: var(--font-serif-assistant);
-  font-size: 3rem;
-  font-weight: 400;
-  line-height: 1.12;
-  letter-spacing: 0;
+.mark {
+  width: 3.25rem;
+  height: 3.25rem;
+  margin-bottom: var(--space-6);
   color: var(--color-fg);
+}
+
+.kicker {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-serif-assistant);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+
+.headline {
   margin: 0;
+  font-family: var(--font-serif-assistant);
+  font-size: clamp(2.75rem, 5.2vw, 4.25rem);
+  font-weight: 360;
+  line-height: 1.02;
+  letter-spacing: -0.022em;
+  color: var(--color-fg);
+  text-wrap: balance;
 }
 
 .headlineEmphasis {
   font-style: italic;
-  color: color-mix(in oklab, var(--color-accent) 86%, var(--color-fg));
 }
 
-/* Marginalia: quick starts styled as manuscript annotations */
-.marginalia {
+.composer {
+  width: min(100%, 40rem);
+  margin-top: 2.75rem;
+  text-align: left;
+}
+
+.composer :global(.composer-hero) {
+  width: 100%;
+}
+
+.prompts {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding-left: var(--space-4);
-  border-left: 1px solid var(--rule-light);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--space-5);
 }
 
-.marginaliaLabel {
-  font-family: var(--font-sans);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  color: var(--color-fg-muted);
-  opacity: 0.7;
-}
-
-.marginaliaList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.marginaliaItem {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--control-lg);
-  padding: var(--space-2) var(--space-3);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-editorial);
-  font-family: var(--font-sans);
-  font-size: 0.875rem;
+.prompt {
+  padding: var(--space-1) 0;
+  background: none;
+  border: 0;
+  font-family: var(--font-serif-assistant);
+  font-style: italic;
+  font-size: 1.02rem;
   color: var(--color-fg-muted);
   cursor: pointer;
-  text-align: left;
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-spring);
+  transition: color var(--duration-fast) var(--ease-standard);
 }
 
-.marginaliaItem:hover {
-  background: color-mix(in oklab, var(--color-accent) 8%, var(--marginalia-bg));
-  border-color: color-mix(in oklab, var(--color-accent) 22%, var(--color-border));
+.prompt:hover {
   color: var(--color-fg);
 }
 
-.marginaliaItem:focus-visible {
+.prompt:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-.marginaliaItem:active {
-  transform: translateX(2px);
+.prompt + .prompt::before {
+  content: '\00B7';
+  display: inline-block;
+  margin: 0 0.9rem;
+  font-style: normal;
+  color: var(--color-fg-muted);
 }
 
-.marginaliaNumber {
-  font-family: var(--font-serif);
-  font-size: 0.75rem;
-  font-style: italic;
-  color: var(--color-accent);
-  opacity: 0.7;
-  min-width: 18px;
-}
-
-/* Right column: The writing surface */
-.heroRight {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}
-
-/* The manuscript surface where the composer lives */
-.manuscriptSurface {
-  position: relative;
-  padding: var(--space-5);
-  background: var(--surface-paper);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow:
-    var(--shadow-message),
-    0 0 0 1px color-mix(in oklab, var(--color-accent) 5%, transparent) inset;
-}
-
-/* Gold accent rule at top of manuscript */
-.manuscriptRule {
+.colophon {
   position: absolute;
-  top: 0;
-  left: var(--space-5);
-  right: var(--space-5);
-  height: 1px;
-  background: var(--rule-accent);
-  opacity: 0.72;
-  border-radius: 1px;
+  bottom: var(--space-6);
+  left: 0;
+  right: 0;
+  margin: 0;
+  font-family: var(--font-serif-assistant);
+  font-size: 0.64rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+  opacity: 0.8;
+}
+
+/* ===== Opening motion ===== */
+.mark :global(.logo-mark__voice) {
+  animation: voice-meet 1100ms var(--ease-out-expo) both;
+}
+.mark :global(.logo-mark__voice--open) {
+  --voice-from: -7px;
+}
+.mark :global(.logo-mark__voice--close) {
+  --voice-from: 7px;
+}
+.kicker,
+.headline,
+.composer,
+.prompts {
+  animation: settle 700ms var(--ease-out-quint) both;
+}
+.kicker {
+  animation-delay: 160ms;
+}
+.headline {
+  animation-delay: 220ms;
+}
+.composer {
+  animation-delay: 320ms;
+}
+.prompts {
+  animation-delay: 420ms;
+}
+
+@keyframes voice-meet {
+  from {
+    opacity: 0;
+    transform: translateX(var(--voice-from));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark :global(.logo-mark__voice),
+  .kicker,
+  .headline,
+  .composer,
+  .prompts {
+    animation: none;
+  }
 }
 
 /* ===== Mobile Layout ===== */
@@ -211,6 +224,12 @@
   text-align: center;
 }
 
+.heroMobileMark {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: 0 auto var(--space-4);
+}
+
 .heroMobileHeadline {
   font-family: var(--font-serif-assistant);
   font-size: 1.75rem;
@@ -235,10 +254,12 @@
   gap: 6px;
   min-height: var(--control-lg);
   padding: var(--space-2) var(--space-3);
-  background: color-mix(in oklab, var(--color-muted) 60%, transparent);
-  border: 1px solid var(--color-border);
+  background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  border: 0;
   border-radius: 999px;
-  font-size: 0.8125rem;
+  font-family: var(--font-serif-assistant);
+  font-style: italic;
+  font-size: 0.95rem;
   color: var(--color-fg-muted);
   cursor: pointer;
   transition:
@@ -247,7 +268,8 @@
 }
 
 .heroMobileChip:hover {
-  background: color-mix(in oklab, var(--color-muted) 80%, transparent);
+  background: color-mix(in oklab, var(--color-fg) 8%, transparent);
+  color: var(--color-fg);
 }
 
 .heroMobileChip:focus-visible {
@@ -257,36 +279,4 @@
 
 .heroMobileChip:active {
   transform: scale(0.97);
-}
-
-@media (max-width: 900px) and (min-width: 640px) {
-  .heroDesktop {
-    grid-template-columns: 1fr;
-    align-content: center;
-    gap: var(--space-7);
-    padding: var(--space-7) var(--space-6);
-  }
-
-  .titleBlock {
-    max-width: 680px;
-  }
-
-  .headline {
-    font-size: 2.55rem;
-  }
-
-  .heroRight {
-    max-width: 720px;
-  }
-}
-
-@media (min-width: 1180px) {
-  .headline {
-    font-size: 3.35rem;
-  }
-}
-
-/* Mobile composer container */
-.heroMobileComposer {
-  /* Sticky composer handled by Composer component */
 }
