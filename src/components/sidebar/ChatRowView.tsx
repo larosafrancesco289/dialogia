@@ -1,11 +1,6 @@
 import type { PointerEvent } from 'react';
 import { IconButton } from '@/components/ui/IconButton';
-import {
-  ChatBubbleLeftRightIcon,
-  PencilSquareIcon,
-  TrashIcon,
-  FolderOpenIcon,
-} from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon, FolderOpenIcon } from '@heroicons/react/24/outline';
 
 export type ChatRowViewProps = {
   chatId: string;
@@ -79,10 +74,6 @@ export function ChatRowView({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
-      <div className="w-4 h-4 flex items-center justify-center text-muted-foreground shrink-0">
-        <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />
-      </div>
-
       {isEditing ? (
         <div className="flex items-center gap-2 flex-1">
           <input
@@ -104,7 +95,7 @@ export function ChatRowView({
       ) : null}
 
       {allowActions && (
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <div className="chat-item__actions">
           <IconButton
             size="sm"
             onClick={(e) => {

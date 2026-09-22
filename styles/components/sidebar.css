@@ -13,52 +13,61 @@
     background: color-mix(in oklab, var(--color-muted) 50%, transparent);
   }
 
-  /* Chat list item */
+  /* Chat list item: a plain row of text, not a card. */
   .chat-item {
     cursor: pointer;
-    background: color-mix(in oklab, var(--color-surface) 96%, transparent);
+    position: relative;
+    margin: 1px 0;
+    border-radius: var(--radius-editorial);
+    color: color-mix(in oklab, var(--color-fg) 80%, var(--color-canvas));
     transition:
       background-color var(--duration-fast) var(--ease-standard),
-      border-color var(--duration-fast) var(--ease-standard),
-      box-shadow var(--duration-fast) var(--ease-standard),
-      transform var(--duration-fast) var(--ease-standard);
-    border-radius: 12px;
-    margin: 2px 0;
-    position: relative;
-    border: 1px solid color-mix(in oklab, var(--color-border) 65%, transparent);
+      color var(--duration-fast) var(--ease-standard);
   }
   @supports (content-visibility: auto) {
     .chat-item,
     .folder-row {
       content-visibility: auto;
-      contain-intrinsic-size: 1px 44px;
+      contain-intrinsic-size: 1px 36px;
     }
   }
-  .chat-item:hover:not(.selected) {
-    background: color-mix(in oklab, var(--color-muted) 60%, transparent);
-    border-color: color-mix(in oklab, var(--color-border) 85%, transparent);
-    transform: translateY(-1px);
+  .chat-item:hover {
+    --chat-item-bg: color-mix(in oklab, var(--color-fg) 4%, var(--color-surface));
+    color: var(--color-fg);
+    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
   }
   .chat-item.selected {
-    position: relative;
-    overflow: hidden; /* clip accent bar to rounded corners */
-    background: var(--message-assistant-bg);
-    border: 1px solid var(--message-assistant-border);
-    box-shadow: inset 0 0 0 1px var(--message-assistant-border);
-    font-weight: 600;
-  }
-  .chat-item.selected::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--color-accent);
-    opacity: 0.6;
-  }
-  .chat-item.selected .truncate {
+    --chat-item-bg: color-mix(in oklab, var(--color-fg) 7%, var(--color-surface));
     color: var(--color-fg);
+    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+    font-weight: 500;
+  }
+
+  /* Row actions overlay the end of the title on hover instead of reserving
+     space, so titles use the full width of the sidebar. */
+  .chat-item__actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px 0 28px;
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--chat-item-bg, var(--color-surface)) 24px
+    );
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+  .chat-item:hover .chat-item__actions,
+  .chat-item:focus-within .chat-item__actions {
+    opacity: 1;
+    pointer-events: auto;
   }
   .chat-item.is-drag-over {
     outline: 2px dashed color-mix(in oklab, var(--color-accent) 60%, var(--color-border));
