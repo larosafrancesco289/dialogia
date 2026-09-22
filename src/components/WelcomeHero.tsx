@@ -3,11 +3,43 @@ import { useChatStore } from '@/lib/store';
 import { Composer } from '@/components/chat/Composer';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 import { readNextOverrides } from '@/lib/ui/next';
+import { LogoMark } from '@/components/ui/LogoMark';
 import styles from './WelcomeHero.module.css';
+
+const ORDINALS = [
+  'first',
+  'second',
+  'third',
+  'fourth',
+  'fifth',
+  'sixth',
+  'seventh',
+  'eighth',
+  'ninth',
+  'tenth',
+  'eleventh',
+  'twelfth',
+  'thirteenth',
+  'fourteenth',
+  'fifteenth',
+  'sixteenth',
+  'seventeenth',
+  'eighteenth',
+  'nineteenth',
+  'twentieth',
+];
+
+/** "The seventh dialogue": each new chat is numbered like a chapter. */
+function dialogueLabel(n: number) {
+  return n <= ORDINALS.length ? `The ${ORDINALS[n - 1]} dialogue` : `Dialogue no. ${n}`;
+}
 
 export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetrics }) {
   const setUI = useChatStore((s) => s.setUI);
   const ui = useChatStore((s) => s.ui);
+  // An empty selected chat is itself the dialogue being opened; with no chat
+  // selected, the next one will be created on send.
+  const dialogueNumber = useChatStore((s) => s.chats.length + (s.selectedChatId ? 0 : 1));
   const experimentalTutor = !!ui.flags.experimentalTutor;
   const forceTutorMode = !!ui.tutor?.forceMode;
   const nextTutorMode = !!readNextOverrides(ui).tutorMode;
@@ -38,47 +70,39 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
   );
   return (
     <div className={styles.hero}>
-      {/* Desktop: Asymmetric two-column layout */}
+      {/* Desktop: a centred opening page */}
       <div className={styles.heroDesktop}>
-        {/* Left column: Title and marginalia */}
-        <div className={styles.heroLeft}>
-          <div className={styles.titleBlock}>
-            <div className={styles.decorativeRule} aria-hidden="true" />
-            <h1 className={styles.headline}>{heroTitle}</h1>
-          </div>
-
-          {/* Quick starts as marginalia */}
-          <nav className={styles.marginalia} aria-label="Quick start suggestions">
-            <span className={styles.marginaliaLabel}>Quick starts</span>
-            <div className={styles.marginaliaList}>
-              {quickStartPhrases.map((phrase, idx) => (
-                <button
-                  key={phrase}
-                  className={styles.marginaliaItem}
-                  onClick={() => fillComposer(phrase)}
-                  title={`Start with: ${phrase}`}
-                >
-                  <span className={styles.marginaliaNumber}>{idx + 1}.</span>
-                  <span>{phrase}</span>
-                </button>
-              ))}
-            </div>
-          </nav>
+        <div className={styles.opening}>
+          <LogoMark className={styles.mark} />
+          <p className={styles.kicker}>{dialogueLabel(Math.max(1, dialogueNumber))}</p>
+          <h1 className={styles.headline}>{heroTitle}</h1>
         </div>
 
-        {/* Right column: The writing surface */}
-        <div className={styles.heroRight}>
-          <div className={styles.manuscriptSurface}>
-            <div className={styles.manuscriptRule} aria-hidden="true" />
-            <Composer variant="hero" keyboardMetrics={keyboardMetrics} />
-          </div>
+        <div className={styles.composer}>
+          <Composer variant="hero" keyboardMetrics={keyboardMetrics} />
         </div>
+
+        <nav className={styles.prompts} aria-label="Quick start suggestions">
+          {quickStartPhrases.map((phrase) => (
+            <button
+              key={phrase}
+              className={styles.prompt}
+              onClick={() => fillComposer(phrase)}
+              title={`Start with: ${phrase}`}
+            >
+              {phrase.replace(/\.{3}$/, '…')}
+            </button>
+          ))}
+        </nav>
+
+        <p className={styles.colophon}>Your keys never leave this browser</p>
       </div>
 
       {/* Mobile: Vertical centered layout */}
       <div className={styles.heroMobile}>
         <div className={styles.heroMobileContent}>
           <div className={styles.heroMobileTitleBlock}>
+            <LogoMark className={styles.heroMobileMark} />
             <h1 className={styles.heroMobileHeadline}>{heroTitle}</h1>
           </div>
 
@@ -90,7 +114,7 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
                 onClick={() => fillComposer(phrase)}
                 title={`Start with: ${phrase}`}
               >
-                {phrase}
+                {phrase.replace(/\.{3}$/, '…')}
               </button>
             ))}
           </div>
