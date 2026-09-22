@@ -38,8 +38,6 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
   );
   return (
     <div className={styles.hero}>
-      <div className={`${styles.heroGradient} hero-gradient`} />
-
       {/* Desktop: Asymmetric two-column layout */}
       <div className={styles.heroDesktop}>
         {/* Left column: Title and marginalia */}

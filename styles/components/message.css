@@ -170,35 +170,6 @@
     transition: height 120ms ease;
   }
 
-  /* Landing gradient — warm archival glow, like sunlight through old windows */
-  .hero-gradient::before {
-    content: '';
-    position: absolute;
-    inset: -20%;
-    background:
-      radial-gradient(ellipse 70% 50% at 50% 35%, rgba(185, 151, 91, 0.2), transparent 65%),
-      radial-gradient(ellipse 50% 40% at 65% 55%, rgba(160, 130, 80, 0.15), transparent 60%),
-      radial-gradient(ellipse 45% 45% at 35% 60%, rgba(140, 110, 70, 0.12), transparent 55%);
-    filter: blur(60px);
-    animation: hero-gradient-drift 20s ease-in-out infinite;
-  }
-  /* Dimmed, gold+purple glow for the dark study */
-  .dark .hero-gradient::before {
-    background:
-      radial-gradient(ellipse 70% 50% at 50% 35%, rgba(205, 168, 95, 0.12), transparent 65%),
-      radial-gradient(ellipse 50% 40% at 65% 55%, rgba(180, 138, 208, 0.1), transparent 60%),
-      radial-gradient(ellipse 45% 45% at 35% 60%, rgba(180, 140, 80, 0.08), transparent 55%);
-  }
-  @keyframes hero-gradient-drift {
-    0%,
-    100% {
-      transform: translate(0, 0) scale(1);
-    }
-    50% {
-      transform: translate(2%, -2%) scale(1.02);
-    }
-  }
-
   /* Tutor UI: Flashcard flip */
   .flashcard {
     perspective: 1000px;

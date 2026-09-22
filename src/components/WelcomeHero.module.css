@@ -11,12 +11,6 @@
   overflow: hidden;
 }
 
-.heroGradient {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
 /* Desktop: Asymmetric two-column layout */
 .heroDesktop {
   display: none;

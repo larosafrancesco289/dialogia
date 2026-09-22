@@ -1,7 +1,9 @@
 /*
  * Self-hosted display faces. Latin-only variable cuts: one file per family
  * (plus a Newsreader italic for assistant prose) instead of the seven static
- * weights the hosted-font pipeline used to ship.
+ * weights the hosted-font pipeline used to ship. Newsreader loads the
+ * "standard" cut, which carries the optical-size axis as well as weight, so
+ * headings get the fine display drawing and body text the sturdier text one.
  */
 
 @font-face {
@@ -21,7 +23,7 @@
   font-style: normal;
   font-display: swap;
   font-weight: 200 800;
-  src: url('@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2')
+  src: url('@fontsource-variable/newsreader/files/newsreader-latin-standard-normal.woff2')
     format('woff2-variations');
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
@@ -33,7 +35,7 @@
   font-style: italic;
   font-display: swap;
   font-weight: 200 800;
-  src: url('@fontsource-variable/newsreader/files/newsreader-latin-wght-italic.woff2')
+  src: url('@fontsource-variable/newsreader/files/newsreader-latin-standard-italic.woff2')
     format('woff2-variations');
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
