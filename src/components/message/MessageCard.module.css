@@ -76,8 +76,9 @@
 
 /* User: Right-positioned with warm box styling — like a note or query */
 .user {
-  background: color-mix(in oklab, var(--surface-paper-warm) 92%, var(--color-muted));
-  border: 1px solid color-mix(in oklab, var(--color-border) 82%, transparent);
+  /* A soft tint, no frame: set apart by position and typeface already. */
+  background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  border: 0;
   margin-left: auto;
   margin-right: 0;
   padding: 0.625rem 0.875rem;
@@ -85,8 +86,7 @@
   width: fit-content;
   max-width: min(72%, 38rem);
   text-align: left;
-  box-shadow: 0 1px 2px rgba(80, 60, 40, 0.08);
-  transition: box-shadow var(--duration-med) var(--ease-standard);
+  box-shadow: none;
 
   /* Contemporary sans for user — clear and direct */
   font-family: var(--font-sans);
@@ -94,10 +94,6 @@
   line-height: 1.5;
   letter-spacing: 0;
   color: var(--color-fg);
-}
-
-.user:hover {
-  box-shadow: 0 2px 8px rgba(80, 60, 40, 0.1);
 }
 
 .actions {
