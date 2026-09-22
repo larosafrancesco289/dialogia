@@ -99,24 +99,35 @@
   .markdown li {
     margin: 0.2rem 0;
   }
+  /* Quotations: italic book face against a thin rule, no box. */
   .markdown blockquote {
-    margin: 0.9rem 0;
-    padding: 0.35rem 0.9rem;
-    border-left: 3px solid var(--color-border);
-    color: var(--color-fg-muted);
-    background: color-mix(in oklab, var(--color-muted) 60%, transparent);
-    border-radius: 8px;
+    margin: 1.1em 0;
+    padding: 0 0 0 1.1em;
+    border-left: 2px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    color: color-mix(in oklab, var(--color-fg) 78%, var(--color-canvas));
   }
+  /* Section break: a centred asterism instead of a rule. */
   .markdown hr {
-    border: none;
-    border-top: 1px solid var(--color-border);
-    margin: 1rem 0;
+    border: 0;
+    height: auto;
+    margin: 1.6em 0;
+    text-align: center;
+    overflow: visible;
   }
+  .markdown hr::after {
+    content: '\2042';
+    font-family: var(--font-serif-assistant);
+    color: var(--color-fg-muted);
+  }
+  /* Inline code: a soft tint sized to sit in the line. */
   .markdown code {
-    background: var(--color-muted);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 0.1rem 0.35rem;
+    font-size: 0.82em;
+    background: color-mix(in oklab, var(--color-fg) 6%, transparent);
+    border: 0;
+    border-radius: 4px;
+    padding: 0.1em 0.35em;
   }
   .markdown kbd {
     font-family: var(--font-mono);
@@ -127,10 +138,68 @@
     padding: 0 0.3rem;
     font-size: 0.85em;
   }
+  /* Code blocks: a quiet tinted panel with a thin header row. The header
+     sits outside the scrolling <pre> so it stays put while long lines
+     scroll sideways. */
+  .code-block {
+    --code-bg: color-mix(in oklab, var(--color-fg) 4%, var(--color-canvas));
+    margin: 1.1em 0;
+    border-radius: var(--radius-editorial);
+    background: var(--code-bg);
+    overflow: hidden;
+  }
+  .code-block__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: 0.3rem 0.5rem 0.3rem 1.1rem;
+    border-bottom: 1px solid color-mix(in oklab, var(--color-fg) 6%, transparent);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--color-fg-muted);
+  }
+  .code-block__lang {
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+  }
+  .code-block__actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .code-block__action {
+    padding: 0.2rem 0.5rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+  .code-block__action:hover {
+    background: color-mix(in oklab, var(--color-fg) 6%, transparent);
+    color: var(--color-fg);
+  }
+  .code-block__bar .icon-button {
+    width: 26px;
+    height: 26px;
+    border-color: transparent;
+    opacity: 1;
+  }
+  .code-block__bar .icon-button:hover {
+    background: color-mix(in oklab, var(--color-fg) 6%, transparent);
+    box-shadow: none;
+  }
   .markdown pre {
     position: relative;
   }
   .markdown pre code {
+    font-size: inherit;
     background: transparent;
     border: none;
     padding: 0;
@@ -183,14 +252,6 @@
     color: var(--color-fg-muted);
   }
 
-  /* Pre toolbar container gets a subtle backdrop to separate from code */
-  .pre-toolbar {
-    pointer-events: none; /* let buttons be clickable only */
-  }
-  .pre-toolbar > * {
-    pointer-events: auto;
-  }
-
   /* Fading mask when content is clipped */
   .pre-fade {
     position: sticky;
@@ -198,7 +259,7 @@
     left: 0;
     right: 0;
     height: 48px;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--color-muted));
+    background: linear-gradient(to bottom, transparent, var(--code-bg, var(--color-muted)));
   }
 
   /* Mermaid diagram container */
@@ -303,4 +364,15 @@
 .markdown .heading-anchor:hover {
   text-decoration: underline;
   text-decoration-style: dotted;
+}
+
+/* The <pre> inside a code block. Unlayered because the base pre rule in
+   foundations.css is unlayered and would otherwise repaint its background. */
+.code-block pre {
+  margin: 0;
+  padding: 0.9rem 1.1rem 1rem;
+  background: transparent;
+  border-radius: 0;
+  font-size: 0.78em;
+  line-height: 1.6;
 }

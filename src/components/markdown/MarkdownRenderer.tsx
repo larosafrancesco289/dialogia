@@ -80,7 +80,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       type="button"
-      className="icon-button opacity-70 hover:opacity-100"
+      className="icon-button"
       aria-label="Copy to clipboard"
       title={copied ? 'Copied' : 'Copy'}
       onClick={onCopy}
@@ -170,18 +170,13 @@ function PreWithTools(
   }, []);
 
   return (
-    <pre
-      ref={preRef}
-      className={`rounded-2xl bg-muted p-4 pt-12 overflow-auto relative ${props.className ?? ''}`}
-      style={{ maxHeight: expanded ? 'none' : 480 }}
-      data-expanded={expanded ? 'true' : 'false'}
-      data-wrap={wrap ? 'true' : 'false'}
-    >
-      <div className="pre-toolbar absolute left-3 top-2 right-3 flex items-center justify-end gap-2">
-        <div className="flex items-center gap-2">
+    <div className="code-block">
+      <div className="code-block__bar">
+        <span className="code-block__lang">{language ?? 'text'}</span>
+        <div className="code-block__actions">
           <button
             type="button"
-            className="btn-outline btn-sm"
+            className="code-block__action"
             onClick={() => {
               setWrap((v) => {
                 const next = !v;
@@ -196,7 +191,7 @@ function PreWithTools(
           {isOverflowing && (
             <button
               type="button"
-              className="btn-outline btn-sm"
+              className="code-block__action"
               onClick={() => setExpanded((v) => !v)}
               title={expanded ? 'Collapse' : 'Expand'}
             >
@@ -204,12 +199,19 @@ function PreWithTools(
             </button>
           )}
           <CopyButton text={codeText} />
-          {language && <span className="badge text-xs">{language}</span>}
         </div>
       </div>
-      {props.children}
-      {!expanded && isOverflowing && <div className="pre-fade" aria-hidden />}
-    </pre>
+      <pre
+        ref={preRef}
+        className={`overflow-auto relative ${props.className ?? ''}`}
+        style={{ maxHeight: expanded ? 'none' : 480 }}
+        data-expanded={expanded ? 'true' : 'false'}
+        data-wrap={wrap ? 'true' : 'false'}
+      >
+        {props.children}
+        {!expanded && isOverflowing && <div className="pre-fade" aria-hidden />}
+      </pre>
+    </div>
   );
 }
 
