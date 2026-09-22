@@ -101,7 +101,7 @@ export function HomeClient() {
       <div className="app-shell">
         {/* Sidebar column */}
         <div className={`sidebar-slot${collapsed ? ' is-collapsed' : ''}`} aria-hidden={collapsed}>
-          <aside className="sidebar glass-panel border border-border rounded-2xl p-2">
+          <aside className="sidebar sidebar-panel">
             <ChatSidebar />
           </aside>
         </div>

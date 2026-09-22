@@ -57,7 +57,7 @@
     padding: 0 var(--space-3);
     border-radius: var(--radius-editorial);
     background: transparent;
-    border: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+    border: 1px solid transparent;
     box-shadow: none;
     color: var(--color-fg-muted);
     transition:
@@ -67,18 +67,15 @@
       box-shadow var(--duration-fast) var(--ease-standard);
   }
   .app-header .btn-ghost:hover {
-    background: var(--surface-paper-warm);
-    border-color: var(--color-border);
+    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
     color: var(--color-fg);
-    box-shadow: var(--shadow-1);
   }
   .app-header .btn-ghost:focus-visible {
     box-shadow: 0 0 0 2px var(--focus-ring);
   }
   /* Active state — when settings is open, etc. */
   .app-header .btn-ghost[aria-pressed='true'] {
-    background: color-mix(in oklab, var(--color-accent) 12%, var(--surface-paper));
-    border-color: color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
+    background: color-mix(in oklab, var(--color-fg) 8%, transparent);
     color: var(--color-fg);
   }
 

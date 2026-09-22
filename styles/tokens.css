@@ -17,6 +17,11 @@
   --control-md: 40px;
   --control-lg: 44px; /* min recommended tap target */
 
+  /* App chrome: the top bar and the sidebar header share one height and
+     one hairline so they line up across the window. */
+  --chrome-height: 64px;
+  --chrome-rule: color-mix(in oklab, var(--color-fg) 8%, transparent);
+
   /* Typography — Distinctive fonts for Imperial Archive aesthetic */
   --font-sans:
     var(--font-sans-display), 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Text',

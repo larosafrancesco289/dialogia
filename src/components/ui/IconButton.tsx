@@ -20,7 +20,7 @@ export function IconButton({
   disabled = false,
 }: IconButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center border-none cursor-pointer transition-all duration-200 rounded-full shadow-sm';
+    'inline-flex items-center justify-center border-none cursor-pointer transition-all duration-200 rounded-full';
 
   const variantClasses = {
     ghost: 'bg-transparent hover:bg-muted active:bg-border text-muted-foreground hover:text-fg',
