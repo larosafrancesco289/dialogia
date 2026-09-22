@@ -69,7 +69,13 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // Oversized optional chunks are a deliberate skip, not a build failure.
       showMaximumFileSizeToCacheInBytesWarning: true,
-      includeAssets: ['favicon.ico', 'favicon-32x32.png', 'apple-touch-icon.png', 'robots.txt'],
+      includeAssets: [
+        'favicon.ico',
+        'favicon.svg',
+        'favicon-32x32.png',
+        'apple-touch-icon.png',
+        'robots.txt',
+      ],
       manifest: {
         name: 'Dialogia — Private Multi-Model Chat',
         short_name: 'Dialogia',

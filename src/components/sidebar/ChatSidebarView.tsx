@@ -1,6 +1,7 @@
 import { FolderRowContainer } from '@/components/sidebar/FolderRowContainer';
 import { ChatRowContainer } from '@/components/sidebar/ChatRowContainer';
 import { SidebarSearch } from '@/components/sidebar/SidebarSearch';
+import { LogoMark } from '@/components/ui/LogoMark';
 import { IconButton } from '@/components/ui/IconButton';
 import {
   PlusIcon,
@@ -47,15 +48,9 @@ export function ChatSidebarView({
   return (
     <div className={'h-full flex flex-col w-full'}>
       <div className="app-header justify-between">
-        <div className="flex items-center gap-2 font-semibold text-fg">
-          <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-border/50 shadow-sm">
-            <img
-              src="/logo.jpg"
-              alt="App Logo"
-              className="absolute inset-0 h-full w-full object-cover logo-enhanced"
-            />
-          </div>
-          {!collapsed && <span className="tracking-tight">Dialogia</span>}
+        <div className="brand">
+          <LogoMark className="brand__mark" />
+          {!collapsed && <span className="brand__name">Dialogia</span>}
         </div>
         <div className="flex items-center gap-2">
           <IconButton
