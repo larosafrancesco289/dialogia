@@ -21,11 +21,14 @@
     left: 0;
     right: 0;
     margin: 0;
-    background: var(--surface-paper);
+    /* Same paper as the page, divided by one hairline: the bar is part of
+       the page, not a band above it. */
+    min-height: var(--chrome-height);
+    background: var(--color-canvas);
     border: 0;
-    border-bottom: 1px solid color-mix(in oklab, var(--color-border) 62%, transparent);
+    border-bottom: 1px solid var(--chrome-rule);
     border-radius: 0;
-    box-shadow: 0 1px 0 color-mix(in oklab, var(--surface-paper) 72%, transparent);
+    box-shadow: none;
   }
 
   .top-header.app-header::after {
@@ -47,11 +50,9 @@
    * HEADER DIVIDER
    * ============================================ */
 
+  /* Spacing separates the groups; no drawn divider. */
   .header-divider {
-    width: 1px;
-    height: 24px;
-    border-left: 1px dashed var(--color-border);
-    opacity: 0.5;
+    width: var(--space-2);
     flex-shrink: 0;
   }
 
@@ -69,10 +70,11 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    width: 100%;
+    width: auto;
+    max-width: 100%;
     padding: var(--space-2) var(--space-3);
-    background: color-mix(in oklab, var(--color-muted) 40%, transparent);
-    border: 1px solid color-mix(in oklab, var(--color-border) 65%, transparent);
+    background: transparent;
+    border: 0;
     border-radius: var(--radius-editorial);
     cursor: pointer;
     transition:
@@ -82,9 +84,7 @@
   }
 
   .model-picker-trigger:hover {
-    background: var(--surface-paper-warm);
-    border-color: var(--color-border);
-    box-shadow: var(--shadow-1);
+    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
   }
 
   .model-picker-trigger:focus-visible {
@@ -133,14 +133,10 @@
   /* Tutor mode: read-only display, no hover effects */
   .model-picker-trigger--tutor {
     cursor: default;
-    background: color-mix(in oklab, var(--color-accent) 8%, var(--color-muted) 30%);
-    border-color: color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
   }
 
   .model-picker-trigger--tutor:hover {
-    background: color-mix(in oklab, var(--color-accent) 8%, var(--color-muted) 30%);
-    border-color: color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
-    box-shadow: none;
+    background: transparent;
   }
 
   .model-picker-trigger__icon--tutor {
@@ -158,7 +154,7 @@
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
     background: transparent;
-    border: 1px dashed color-mix(in oklab, var(--color-accent) 50%, var(--color-border));
+    border: 0;
     border-radius: var(--radius-editorial);
     color: var(--color-fg-muted);
     font-size: 0.875rem;
@@ -172,8 +168,7 @@
   }
 
   .tutor-invite:hover {
-    background: color-mix(in oklab, var(--color-accent) 8%, transparent);
-    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
     color: var(--color-fg);
   }
 

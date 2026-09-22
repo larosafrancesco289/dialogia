@@ -160,9 +160,10 @@ a:hover {
 .btn-ghost:focus-visible {
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent);
 }
-/* Ghost buttons should not render visible borders */
+/* Ghost buttons render no border and none of the primary button's shadow */
 .btn-ghost {
   border: 1px solid transparent;
+  box-shadow: none;
 }
 
 /* Small button variant to reduce visual weight in dense UIs */

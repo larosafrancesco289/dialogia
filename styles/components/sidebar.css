@@ -74,6 +74,31 @@
     outline-offset: 2px;
   }
 
+  /* The sidebar is a flush panel: full height, square, divided from the page
+     by one hairline, the same rule the top bar sits on. */
+  .sidebar-panel {
+    background: var(--surface-paper);
+    border-right: 1px solid var(--chrome-rule);
+    padding: 0 var(--space-2) var(--space-2);
+  }
+
+  /* Sidebar header: flush with the panel edges and exactly as tall as the
+     top bar, so the two hairlines read as one line across the window. */
+  .sidebar .app-header {
+    height: var(--chrome-height);
+    min-height: 0;
+    margin: 0 calc(-1 * var(--space-2)) var(--space-3);
+    padding: 0 var(--space-3) 0 var(--space-4);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--chrome-rule);
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .sidebar .app-header::after {
+    content: none;
+  }
+
   .sidebar-section {
     padding: 0 10px;
   }
@@ -143,4 +168,12 @@
   .sidebar.bg-surface {
     background: var(--surface-paper);
   }
+}
+
+/* Sidebar search: a light tint instead of a boxed field. Unlayered because
+   the base .input rule in foundations.css is unlayered too. Focus keeps the
+   standard ring. */
+.sidebar-section .input {
+  background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+  border-color: transparent;
 }
