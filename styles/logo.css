@@ -1,5 +1,20 @@
-/* Enhance logo rendering */
-.logo-enhanced {
-  image-rendering: -webkit-optimize-contrast; /* Try to crisp up edges */
-  object-fit: cover;
+/* Brand lockup in the sidebar header: the Two voices mark beside a serif
+   wordmark set in the assistant's book face. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--color-fg);
+}
+.brand__mark {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+}
+.brand__name {
+  font-family: var(--font-serif-assistant);
+  font-size: 1.35rem;
+  font-weight: 450;
+  letter-spacing: -0.012em;
+  line-height: 1;
 }
