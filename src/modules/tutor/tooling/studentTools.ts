@@ -1,6 +1,6 @@
 import {
   applyLearnerModelFeedback,
-  getLatestLearnerModel,
+  resolveLearnerModel,
   initializeLearnerModel,
   resolvePlanNodeId,
   type LearnerModelFeedback,
@@ -149,9 +149,10 @@ function resolveChatState(session: HeadlessTutorSession, chatId: string) {
 
 function getBaseLearnerModel(session: HeadlessTutorSession, chatId: string) {
   const { chat, plan } = resolveChatState(session, chatId);
-  const fromMessages = getLatestLearnerModel(session.getMessages());
-  const fromSettings = chat.settings.features.tutor?.learnerModel;
-  return fromMessages ?? fromSettings ?? initializeLearnerModel(chatId, plan);
+  return (
+    resolveLearnerModel(session.getMessages(), chat.settings.features.tutor?.learnerModel) ??
+    initializeLearnerModel(chatId, plan)
+  );
 }
 
 async function applyFeedbackInSession(opts: {

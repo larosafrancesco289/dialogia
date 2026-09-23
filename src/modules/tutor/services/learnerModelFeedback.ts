@@ -8,7 +8,7 @@ import type { LearnerModelFeedback } from '@/modules/tutor/learner-model';
 import type { Message } from '@/lib/types';
 import {
   applyLearnerModelFeedback,
-  getLatestLearnerModel,
+  resolveLearnerModel,
   initializeLearnerModel,
 } from '@/modules/tutor/learner-model';
 import { processPlanProgress } from '@/modules/tutor/learning-plan/service';
@@ -36,8 +36,7 @@ export async function applyLearnerModelFeedbackFromUser({
   const plan = chat.settings.features.tutor?.learningPlan;
   const messages = getMessagesForChat(state, chatId);
   const baseModel =
-    getLatestLearnerModel(messages) ??
-    chat.settings.features.tutor?.learnerModel ??
+    resolveLearnerModel(messages, chat.settings.features.tutor?.learnerModel) ??
     initializeLearnerModel(chatId, plan);
   const feedback = applyLearnerModelFeedback(baseModel, input);
   const planResult = await processPlanProgress(plan, feedback.model);

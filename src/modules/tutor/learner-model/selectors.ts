@@ -12,3 +12,19 @@ export function getLatestLearnerModel(messages: Message[]): LearnerModel | undef
   }
   return undefined;
 }
+
+/**
+ * The learner model the tutor and the learner should both see: the newer of
+ * the latest message snapshot and the model saved on the chat. A learner's
+ * correction is saved on the chat, so reading snapshots alone would let the
+ * next turn quietly undo it.
+ */
+export function resolveLearnerModel(
+  messages: Message[],
+  saved: LearnerModel | undefined,
+): LearnerModel | undefined {
+  const fromMessages = getLatestLearnerModel(messages);
+  if (!saved) return fromMessages;
+  if (!fromMessages) return saved;
+  return saved.updatedAt >= fromMessages.updatedAt ? saved : fromMessages;
+}
