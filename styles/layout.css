@@ -366,11 +366,12 @@
     }
   }
 
-  /* Right panel — Learning Hub */
+  /* Right panel — Learning Hub. A flush panel, the mirror of the sidebar:
+     full height, square, one hairline towards the page, and a header exactly
+     as tall as the top bar so its rule runs straight across the window. */
   .learning-panel {
     background: var(--surface-paper);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-editorial);
+    border-left: 1px solid var(--chrome-rule);
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -378,27 +379,12 @@
     overflow: hidden;
   }
 
-  /* Gold accent rule at top */
-  .learning-panel::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 12px;
-    right: 12px;
-    height: 2px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      var(--rule-accent) 15%,
-      var(--rule-accent) 85%,
-      transparent
-    );
-    opacity: 0.6;
-    z-index: 2;
-  }
-
   .learning-panel__header {
-    padding: var(--space-3) var(--space-3) 0;
+    height: var(--chrome-height);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--space-4);
+    border-bottom: 1px solid var(--chrome-rule);
     flex-shrink: 0;
   }
 
@@ -406,21 +392,20 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-2);
   }
 
   .learning-panel__title {
     font-family: var(--font-serif-assistant);
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-size: 1.2rem;
+    font-weight: 450;
+    letter-spacing: -0.012em;
+    line-height: 1;
     color: var(--color-fg);
   }
 
   /* ── Summary strip ── */
   .plan-summary {
     padding: 12px 20px;
-    border-top: 1px solid var(--rule-light);
     border-bottom: 1px solid var(--rule-light);
     flex-shrink: 0;
   }
