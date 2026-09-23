@@ -35,7 +35,7 @@ const getServerMode = (): ThemeMode => 'auto';
  * theme-color tags only know the system's scheme, so a dark app under a
  * light system got a light bar.
  */
-export function syncThemeColor() {
+function syncThemeColor() {
   if (typeof document === 'undefined') return;
   const canvas = getComputedStyle(document.documentElement)
     .getPropertyValue('--color-canvas')
@@ -122,6 +122,17 @@ function ensureGlobalListeners() {
   mql.addEventListener?.('change', () => {
     if (getMode() === 'auto') applyThemeClass('auto', { smooth: true });
   });
+}
+
+/**
+ * At startup: the browser's bars take the chosen theme, and Auto follows the
+ * system from the first moment. The listeners used to wait for something to
+ * subscribe, which only Settings > Appearance does, so a phone switching to
+ * dark at sunset left the app light until Settings had been opened.
+ */
+export function initThemeMode() {
+  ensureGlobalListeners();
+  syncThemeColor();
 }
 
 function subscribe(listener: () => void) {

@@ -16,11 +16,13 @@ export function MobileDrawer({
   width,
   offset,
   onOpenSettings,
+  onClose,
 }: {
   open: boolean;
   width: number;
   offset: MotionValue<number>;
   onOpenSettings: () => void;
+  onClose: () => void;
 }) {
   const ref = useRef<HTMLElement | null>(null);
   const x = useTransform(offset, (v) => v - width);
@@ -46,6 +48,14 @@ export function MobileDrawer({
       aria-label="Chats"
       aria-hidden={!open}
       tabIndex={-1}
+      onClick={(event) => {
+        // A tap on a chat opens it; on the chat already open, that simply
+        // means back to it. (A long press opens its sheet instead.)
+        const row = (event.target as Element).closest('.chat-item');
+        if (!row || row.matches('.folder-row, .is-editing')) return;
+        if (document.querySelector('[aria-modal="true"]')) return;
+        onClose();
+      }}
     >
       <div className={styles.head}>
         <div className="brand">

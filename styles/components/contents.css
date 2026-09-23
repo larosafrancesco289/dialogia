@@ -7,7 +7,13 @@
     flex: 1;
     gap: var(--space-2);
   }
+  .learning-panel__close {
+    flex-shrink: 0;
+    margin-right: calc(-1 * var(--space-2));
+    color: var(--color-fg-muted);
+  }
   .learning-panel__revise {
+    margin-left: auto;
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;

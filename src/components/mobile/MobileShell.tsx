@@ -103,6 +103,8 @@ export function MobileShell() {
     if (!drawerOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
+      // A sheet or dialog over the drawer takes this Escape, not the drawer.
+      if (document.querySelector('[aria-modal="true"]')) return;
       closeDrawer();
       menuButtonRef.current?.focus?.();
     };
@@ -154,6 +156,7 @@ export function MobileShell() {
         width={drawer.width}
         offset={drawer.offset}
         onOpenSettings={openSettings}
+        onClose={closeDrawer}
       />
 
       <BottomSheet

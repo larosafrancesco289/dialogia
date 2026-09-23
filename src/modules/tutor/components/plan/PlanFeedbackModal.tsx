@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
@@ -22,6 +23,7 @@ export function PlanFeedbackModal({
   const [feedback, setFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useBackToClose(isOpen, onClose);
 
   // Reset feedback when modal opens
   useEffect(() => {
@@ -52,6 +54,7 @@ export function PlanFeedbackModal({
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.preventDefault();
         onClose();
       }
       // Cmd/Ctrl + Enter to submit

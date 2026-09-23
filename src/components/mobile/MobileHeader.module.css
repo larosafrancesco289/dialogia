@@ -65,10 +65,26 @@
   max-width: 100%;
 }
 
-.modelPicker :global(.model-picker-trigger) {
+.modelPicker {
+  width: 100%;
+}
+
+/* The line is short, but the target is the whole middle of the header,
+   title included, as in phone chat apps: a tap anywhere there opens it. */
+.modelPicker :global(.model-picker-trigger),
+.center :global(.tutor-header-line) {
+  position: relative;
+  justify-content: center;
+  width: 100%;
   min-height: 22px;
   padding: 0 var(--space-2);
   gap: 4px;
+}
+.modelPicker :global(.model-picker-trigger)::after,
+.center :global(.tutor-header-line:enabled)::after {
+  content: '';
+  position: absolute;
+  inset: -26px 0 -8px;
 }
 
 .modelPicker :global(.model-picker-trigger__name) {
