@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { IconButton } from '@/components/ui/IconButton';
 import { SettingsSearch } from '@/components/settings/SettingsSearch';
 import { springs, variants } from '@/lib/mobile/springConfig';
@@ -13,6 +13,10 @@ type SettingsDrawerShellProps = {
   children: ReactNode;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
+  /** The page's own title, when it is a page inside Settings (phones). */
+  title?: string;
+  /** Back to the list of Settings pages (phones). */
+  onBack?: () => void;
 };
 
 export function SettingsDrawerShell({
@@ -22,6 +26,8 @@ export function SettingsDrawerShell({
   children,
   searchQuery = '',
   onSearchChange,
+  title = 'Settings',
+  onBack,
 }: SettingsDrawerShellProps) {
   return (
     <AnimatePresence>
@@ -65,8 +71,18 @@ export function SettingsDrawerShell({
             >
               {/* Minimal Header */}
               <header data-settings-header className="settings-panel__header">
+                {onBack && (
+                  <button
+                    type="button"
+                    className="settings-panel__back"
+                    onClick={onBack}
+                    aria-label="Back to Settings"
+                  >
+                    <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                )}
                 <h2 id="settings-title" className="settings-panel__title">
-                  Settings
+                  {title}
                 </h2>
 
                 {onSearchChange && (

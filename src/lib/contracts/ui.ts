@@ -93,15 +93,10 @@ export type UiPlanSnapshot = {
   >;
 };
 
-export type MobileTab = 'chats' | 'new' | 'settings';
-
 export type UiMobileSnapshot = {
-  activeTab: MobileTab;
-  chatsSheetOpen: boolean;
+  /** The chat list, drawn in from the left edge. */
+  drawerOpen: boolean;
   settingsSheetOpen: boolean;
-  headerVisible: boolean;
-  swipeRevealedMessageId: string | null;
-  lastScrollY: number;
   composerFocused: boolean;
 };
 

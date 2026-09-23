@@ -7,7 +7,6 @@ import { ModuleSlot } from '@/components/ModuleSlot';
 import { lazyClient } from '@/lib/ui/lazy';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
-import { useSidebarGestures } from '@/lib/hooks/useSidebarGestures';
 import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
 import { useAmbientMotionPause } from '@/lib/hooks/useAmbientMotionPause';
 import { selectCurrentChat, selectIsTutorEnabled } from '@/lib/store/selectors';
@@ -56,7 +55,7 @@ export function HomeClient() {
     shallow,
   );
   const setUI = useChatStore((s) => s.setUI);
-  const { isMobile } = useAppBootstrap({ mobileBreakpoint: 768 });
+  const { isMobile } = useAppBootstrap();
   const sidePanelsCrowded = useMediaQuery(MEDIA_QUERIES.sidePanels);
   useAmbientMotionPause();
 
@@ -92,13 +91,6 @@ export function HomeClient() {
     if (prev.collapsed && prev.showRightPanel) setUI({ plan: { rightPanelOpen: false } });
     else setUI({ sidebarCollapsed: true });
   }, [collapsed, showRightPanel, sidePanelsCrowded, isMobile, setUI]);
-
-  // Mobile: attach swipe gestures for sidebar open/close
-  useSidebarGestures({
-    isMobile,
-    collapsed,
-    setCollapsed: (v) => setUI({ sidebarCollapsed: v }),
-  });
 
   // Render mobile shell for small screens
   if (isMobile) {

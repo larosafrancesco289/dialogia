@@ -13,13 +13,17 @@
     overflow: hidden;
     transform-origin: top left;
   }
+  /* On a phone the picker is the body of a BottomSheet, which brings the
+     paper, the handle and the safe area. */
   .model-picker--sheet {
     position: relative;
-    width: 100%;
     max-width: none;
-    max-height: min(78vh, 620px);
-    border-radius: var(--radius-editorial-mobile);
-    padding-bottom: env(safe-area-inset-bottom);
+    max-height: min(72dvh, 620px);
+    margin: 0 calc(-1 * var(--space-2));
+    width: calc(100% + 2 * var(--space-2));
+  }
+  .model-picker--sheet .model-row {
+    min-height: 56px;
   }
 
   .model-picker__search {

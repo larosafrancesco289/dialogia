@@ -1,4 +1,6 @@
-import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import {
   TAB_LIST,
   TAB_SECTIONS,
@@ -6,6 +8,10 @@ import {
   sectionMatches,
 } from '@/components/settings/sections/config';
 import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
+import { SettingsSearch } from '@/components/settings/SettingsSearch';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import type { TabId } from '@/components/settings/types';
 import { AutoSaveToast } from '@/components/settings/AutoSaveToast';
 import type { SettingsDrawerState } from '@/components/settings/hooks/useSettingsDrawerState';
 
@@ -19,7 +25,125 @@ const staggerContainer = {
   },
 };
 
-export function SettingsDrawerView({
+/** "Providers · Your servers · Web search": what a Settings page holds. */
+function tabSummary(tabId: TabId, label: string): string | null {
+  const titles = TAB_SECTIONS[tabId].map((id) => SECTION_TITLES[id]);
+  if (titles.length === 1 && titles[0] === label) return null;
+  return titles.join(' · ');
+}
+
+export function SettingsDrawerView(props: SettingsDrawerState) {
+  const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
+  return isMobile ? <SettingsPhoneView {...props} /> : <SettingsWideView {...props} />;
+}
+
+/**
+ * Settings on a phone: a list of pages, each opening on its own like the
+ * Settings app, with search at the top of the list. The two rows of tabs
+ * the wide layout needs don't fit a phone's width.
+ */
+function SettingsPhoneView({
+  closing,
+  drawerRef,
+  searchQuery,
+  setSearchQuery,
+  activeTab,
+  setActiveTab,
+  tabContent,
+  closeWithAnim,
+  saveStatus,
+}: SettingsDrawerState) {
+  const [page, setPage] = useState<'list' | 'tab'>('list');
+  const reducedMotion = useReducedMotion();
+  const searching = searchQuery.trim().length > 0;
+  const hasResults =
+    !searching ||
+    Object.values(TAB_SECTIONS).some((sections) =>
+      sections.some((sectionId) => sectionMatches(sectionId, searchQuery)),
+    );
+  const onPage = page === 'tab' && !searching;
+  const tabLabel = TAB_LIST.find((tab) => tab.id === activeTab)?.label ?? 'Settings';
+
+  // Each page opens at its top.
+  useEffect(() => {
+    drawerRef.current?.scrollTo({ top: 0 });
+  }, [page, activeTab, drawerRef]);
+
+  const pageMotion = reducedMotion
+    ? {}
+    : {
+        initial: { opacity: 0, x: onPage ? 24 : -24 },
+        animate: { opacity: 1, x: 0 },
+        transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const },
+      };
+
+  return (
+    <>
+      <SettingsDrawerShell
+        closing={closing}
+        onClose={closeWithAnim}
+        drawerRef={drawerRef}
+        title={onPage ? tabLabel : 'Settings'}
+        onBack={onPage ? () => setPage('list') : undefined}
+      >
+        {onPage ? (
+          <motion.div key={`tab-${activeTab}`} className="settings-phone-page" {...pageMotion}>
+            <motion.div variants={staggerContainer} initial="hidden" animate="show">
+              {tabContent}
+            </motion.div>
+          </motion.div>
+        ) : (
+          <motion.div key="list" className="settings-phone-page" {...pageMotion}>
+            <div className="settings-phone-search">
+              <SettingsSearch
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search settings"
+              />
+            </div>
+            {searching ? (
+              <motion.div variants={staggerContainer} initial="hidden" animate="show">
+                {tabContent}
+                {!hasResults && (
+                  <p className="settings-empty py-6">
+                    Nothing in settings matches “{searchQuery}”.
+                  </p>
+                )}
+              </motion.div>
+            ) : (
+              <nav className="settings-phone-list" aria-label="Settings pages">
+                {TAB_LIST.map((tab) => {
+                  const summary = tabSummary(tab.id, tab.label);
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      className="settings-phone-row"
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setPage('tab');
+                      }}
+                    >
+                      <span className="settings-phone-row__text">
+                        <span className="settings-phone-row__label">{tab.label}</span>
+                        {summary && <span className="settings-phone-row__summary">{summary}</span>}
+                      </span>
+                      <ChevronRightIcon className="settings-phone-row__chevron" aria-hidden />
+                    </button>
+                  );
+                })}
+              </nav>
+            )}
+          </motion.div>
+        )}
+      </SettingsDrawerShell>
+
+      <AutoSaveToast status={saveStatus} />
+    </>
+  );
+}
+
+function SettingsWideView({
   closing,
   drawerRef,
   tabBarRef,
@@ -28,9 +152,6 @@ export function SettingsDrawerView({
   setSearchQuery,
   activeTab,
   setActiveTab,
-  activeSection,
-  navSections,
-  scrollToSection,
   handleSidebarKeyNav,
   tabContent,
   closeWithAnim,
@@ -85,28 +206,6 @@ export function SettingsDrawerView({
 
           {/* Main Content Area */}
           <div className="flex-1 overflow-y-auto" ref={tabBarRef}>
-            {/* Mobile Tab Pills */}
-            <div
-              className="settings-tabs md:hidden"
-              role="tablist"
-              aria-label="Settings categories"
-            >
-              {TAB_LIST.map((tab) => (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={activeTab === tab.id}
-                  className={`settings-tab${!searching && activeTab === tab.id ? ' is-active' : ''}`}
-                  onClick={() => {
-                    setSearchQuery('');
-                    setActiveTab(tab.id);
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
             {/* Tab Panel Content */}
             <div
               role="tabpanel"
@@ -114,22 +213,6 @@ export function SettingsDrawerView({
               aria-labelledby={`settings-tab-${activeTab}`}
               className="px-5 pb-10 md:px-8"
             >
-              {/* Sub-section navigation for tabs with multiple sections */}
-              {!searching && navSections.length > 1 && (
-                <div className="settings-subnav md:hidden">
-                  {navSections.map((sectionId) => (
-                    <button
-                      key={sectionId}
-                      type="button"
-                      className={`settings-subnav__item${activeSection === sectionId ? ' is-active' : ''}`}
-                      onClick={() => scrollToSection(sectionId)}
-                    >
-                      {SECTION_TITLES[sectionId] ?? sectionId}
-                    </button>
-                  ))}
-                </div>
-              )}
-
               {/* Staggered Content */}
               <motion.div
                 key={activeTab}

@@ -7,7 +7,7 @@ import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { getFolderChildren, type FolderTreeIndex } from '@/lib/ui/sidebar/folderTree';
-import { RowActionSheet } from '@/components/ui/RowActionSheet';
+import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ChatRowContainer } from '@/components/sidebar/ChatRowContainer';
 import { FolderRowView } from '@/components/sidebar/FolderRowView';
@@ -140,34 +140,33 @@ export function FolderRowContainer({
         onPointerCancel={longPress.onPointerCancel}
       />
 
-      <RowActionSheet
+      <BottomSheet
         open={isMobile && showActions}
         label={`Folder actions for ${folder.name}`}
+        title={folder.name}
         onClose={() => setShowActions(false)}
       >
-        <button
-          className="mobile-menu-item"
+        <SheetItem
+          icon={<PencilSquareIcon />}
           onClick={() => {
             setShowActions(false);
             setIsEditing(true);
           }}
-          title="Rename folder"
         >
-          <PencilSquareIcon className="h-4 w-4" />
-          <span>Rename folder</span>
-        </button>
-        <button
-          className="mobile-menu-item is-danger"
+          Rename folder
+        </SheetItem>
+        <div className="sheet-rule" aria-hidden="true" />
+        <SheetItem
+          icon={<TrashIcon />}
+          danger
           onClick={() => {
             setShowActions(false);
             setShowDeleteConfirm(true);
           }}
-          title="Delete folder"
         >
-          <TrashIcon className="h-4 w-4" />
-          <span>Delete folder</span>
-        </button>
-      </RowActionSheet>
+          Delete folder
+        </SheetItem>
+      </BottomSheet>
 
       <ConfirmDialog
         open={showDeleteConfirm}

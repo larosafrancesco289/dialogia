@@ -1,10 +1,26 @@
+/* The shell fills exactly what is visible: with the keyboard up it is the
+   space above the keyboard, so the composer at its foot sits on the keys. */
 .shell {
-  display: flex;
-  flex-direction: column;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--viewport-offset-top, 0px);
   height: 100dvh;
   height: var(--viewport-height, 100dvh);
-  position: relative;
   overflow: hidden;
+  background: var(--color-chrome);
+  /* Sideways swipes belong to the drawer; vertical ones scroll, and pinch
+     still zooms. */
+  touch-action: pan-y pinch-zoom;
+}
+
+/* The page: header over the conversation. It slides aside as a whole when
+   the drawer comes in. */
+.stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--color-canvas);
 }
 
@@ -14,11 +30,14 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Account for bottom tab bar */
-  padding-bottom: calc(57px + env(safe-area-inset-bottom));
 }
 
-/* When keyboard is active, remove bottom padding */
-:global(html.keyboard-active) .main {
-  padding-bottom: 0;
+/* Over the pushed page, the scrim dims it and takes the tap that closes
+   the drawer. It rides with the page. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 69;
+  background: color-mix(in oklab, var(--overlay-scrim) 55%, transparent);
+  -webkit-tap-highlight-color: transparent;
 }

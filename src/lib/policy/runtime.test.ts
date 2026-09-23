@@ -13,12 +13,8 @@ const baseUi = (overrides?: Partial<UiSnapshot>): UiSnapshot => ({
   tutor: {},
   plan: {},
   mobile: {
-    activeTab: 'chats',
-    chatsSheetOpen: false,
+    drawerOpen: false,
     settingsSheetOpen: false,
-    headerVisible: true,
-    swipeRevealedMessageId: null,
-    lastScrollY: 0,
     composerFocused: false,
   },
   ...overrides,

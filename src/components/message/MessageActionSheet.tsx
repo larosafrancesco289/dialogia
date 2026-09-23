@@ -1,18 +1,18 @@
+import { useEffect, useState } from 'react';
 import {
   ArrowPathIcon,
   ArrowUturnRightIcon,
   ClipboardIcon,
+  CursorArrowRaysIcon,
   PencilSquareIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import type { Message } from '@/lib/types';
-import { DialogOverlay, DialogPortal, DialogSurface } from '@/components/ui/Dialog';
+import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 
 export type MessageActionSheetProps = {
   isMobile: boolean;
   mobileSheet: { id: string; role: 'assistant' | 'user' } | null;
   mobileActionMessage: Message | null;
-  mobileActionPreview: string | null;
   editingId: string | null;
   isStreaming: boolean;
   onClose: () => void;
@@ -22,11 +22,15 @@ export type MessageActionSheetProps = {
   onRegenerate: (messageId: string) => void;
 };
 
+/**
+ * What a long press on a message offers on a phone. A long press there is
+ * the sheet's, not the browser's, so "Select text" opens the words on a
+ * page of their own where they can be selected like any text.
+ */
 export function MessageActionSheet({
   isMobile,
   mobileSheet,
   mobileActionMessage,
-  mobileActionPreview,
   editingId,
   isStreaming,
   onClose,
@@ -35,121 +39,91 @@ export function MessageActionSheet({
   onBranch,
   onRegenerate,
 }: MessageActionSheetProps) {
-  if (!isMobile || !mobileSheet) return null;
+  const [selecting, setSelecting] = useState<Message | null>(null);
+
+  // A new long press starts on the actions, never on an old selection page.
+  useEffect(() => {
+    if (mobileSheet) setSelecting(null);
+  }, [mobileSheet]);
+
+  if (!isMobile) return null;
+
+  const message = mobileActionMessage;
+  const isAssistant = mobileSheet?.role === 'assistant';
+  const isEditingThis = !!message && editingId === message.id;
 
   return (
-    <DialogPortal>
-      <DialogOverlay
-        className="mobile-sheet-overlay mobile-message-sheet-overlay"
-        role="presentation"
+    <>
+      <BottomSheet
+        open={!!mobileSheet && !selecting}
+        label={isAssistant ? 'Reply actions' : 'Message actions'}
         onClose={onClose}
       >
-        <DialogSurface
-          className="mobile-sheet card mobile-message-sheet"
-          role="menu"
-          ariaLabel="Message actions"
-          ariaModal={false}
+        <SheetItem
+          icon={<ClipboardIcon />}
+          onClick={async () => {
+            if (!mobileSheet) return;
+            await onCopy(mobileSheet.id);
+            onClose();
+          }}
         >
-          <div className="mobile-sheet-handle" aria-hidden="true" />
-          <div className="mobile-message-sheet__header">
-            <div className="mobile-message-sheet__title">
-              <span className="mobile-message-sheet__heading">Message actions</span>
-              {mobileActionPreview && (
-                <p className="mobile-message-sheet__preview">{mobileActionPreview}</p>
-              )}
-            </div>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Close actions"
-              onClick={onClose}
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="mobile-message-sheet__actions">
-            <button
-              type="button"
-              className="mobile-message-action"
-              onClick={async () => {
-                await onCopy(mobileSheet.id);
+          Copy
+        </SheetItem>
+        {message?.content && (
+          <SheetItem icon={<CursorArrowRaysIcon />} onClick={() => setSelecting(message)}>
+            Select text
+          </SheetItem>
+        )}
+        {message && (
+          <SheetItem
+            icon={<PencilSquareIcon />}
+            disabled={isEditingThis}
+            onClick={() => {
+              onStartEditing(message.id);
+              onClose();
+            }}
+          >
+            {isEditingThis ? 'Editing…' : 'Edit'}
+          </SheetItem>
+        )}
+        {isAssistant && mobileSheet && (
+          <>
+            <SheetItem
+              icon={<ArrowPathIcon />}
+              onClick={() => {
+                onRegenerate(mobileSheet.id);
                 onClose();
               }}
             >
-              <span className="mobile-message-action__icon">
-                <ClipboardIcon className="h-5 w-5" />
-              </span>
-              <span className="mobile-message-action__meta">
-                <span className="mobile-message-action__label">Copy</span>
-                <span className="mobile-message-action__hint">Copy message text</span>
-              </span>
-            </button>
-            {mobileActionMessage && (
-              <button
-                type="button"
-                className="mobile-message-action"
-                disabled={editingId === mobileActionMessage.id}
-                onClick={() => {
-                  if (editingId === mobileActionMessage.id) return;
-                  onStartEditing(mobileActionMessage.id);
-                  onClose();
-                }}
-              >
-                <span className="mobile-message-action__icon">
-                  <PencilSquareIcon className="h-5 w-5" />
-                </span>
-                <span className="mobile-message-action__meta">
-                  <span className="mobile-message-action__label">
-                    {editingId === mobileActionMessage.id ? 'Editing…' : 'Edit'}
-                  </span>
-                  <span className="mobile-message-action__hint">Modify this message</span>
-                </span>
-              </button>
-            )}
-            {mobileSheet.role === 'assistant' && (
-              <>
-                <button
-                  type="button"
-                  className="mobile-message-action"
-                  disabled={isStreaming}
-                  onClick={() => {
-                    if (isStreaming) return;
-                    onBranch(mobileSheet.id);
-                    onClose();
-                  }}
-                >
-                  <span className="mobile-message-action__icon">
-                    <ArrowUturnRightIcon className="h-5 w-5" />
-                  </span>
-                  <span className="mobile-message-action__meta">
-                    <span className="mobile-message-action__label">Branch</span>
-                    <span className="mobile-message-action__hint">Start a new chat from here</span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="mobile-message-action"
-                  onClick={() => {
-                    onRegenerate(mobileSheet.id);
-                    onClose();
-                  }}
-                >
-                  <span className="mobile-message-action__icon">
-                    <ArrowPathIcon className="h-5 w-5" />
-                  </span>
-                  <span className="mobile-message-action__meta">
-                    <span className="mobile-message-action__label">Regenerate</span>
-                    <span className="mobile-message-action__hint">Ask the assistant again</span>
-                  </span>
-                </button>
-              </>
-            )}
-          </div>
-          <button type="button" className="btn-ghost w-full h-11" onClick={onClose}>
-            Cancel
-          </button>
-        </DialogSurface>
-      </DialogOverlay>
-    </DialogPortal>
+              Regenerate
+            </SheetItem>
+            <SheetItem
+              icon={<ArrowUturnRightIcon />}
+              disabled={isStreaming}
+              onClick={() => {
+                onBranch(mobileSheet.id);
+                onClose();
+              }}
+            >
+              Branch to a new chat
+            </SheetItem>
+          </>
+        )}
+      </BottomSheet>
+
+      <BottomSheet
+        open={!!selecting}
+        label="Select text"
+        title="Select text"
+        onClose={() => {
+          setSelecting(null);
+          onClose();
+        }}
+      >
+        <div className={`select-text${selecting?.role === 'assistant' ? ' is-reply' : ''}`}>
+          {selecting?.content}
+        </div>
+      </BottomSheet>
+    </>
   );
 }

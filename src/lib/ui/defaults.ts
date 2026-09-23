@@ -7,12 +7,8 @@ const EPHEMERAL_DEFAULTS: Partial<UIState> = {
 };
 
 export const DEFAULT_MOBILE_STATE: UIMobileState = {
-  activeTab: 'new',
-  chatsSheetOpen: false,
+  drawerOpen: false,
   settingsSheetOpen: false,
-  headerVisible: true,
-  swipeRevealedMessageId: null,
-  lastScrollY: 0,
   composerFocused: false,
 };
 

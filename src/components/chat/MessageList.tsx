@@ -82,7 +82,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     openMobileSheet,
     closeMobileSheet,
     mobileActionMessage,
-    mobileActionPreview,
     activeMessageId,
     setActiveMessageId,
   } = useMessageListController({
@@ -279,7 +278,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         isMobile={isMobile}
         mobileSheet={mobileSheet}
         mobileActionMessage={mobileActionMessage}
-        mobileActionPreview={mobileActionPreview}
         editingId={editingId}
         isStreaming={isStreaming}
         onClose={closeMobileSheet}

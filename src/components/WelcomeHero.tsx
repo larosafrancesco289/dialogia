@@ -4,6 +4,8 @@ import { Composer } from '@/components/chat/Composer';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 import { readNextOverrides } from '@/lib/ui/next';
 import { LogoMark } from '@/components/ui/LogoMark';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import styles from './WelcomeHero.module.css';
 
 const ORDINALS = [
@@ -37,6 +39,9 @@ function dialogueLabel(n: number) {
 export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetrics }) {
   const setUI = useChatStore((s) => s.setUI);
   const ui = useChatStore((s) => s.ui);
+  // One layout at a time: two mounted composers fought over the shared
+  // composer height and the phone's focus state.
+  const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   // An empty selected chat is itself the dialogue being opened; with no chat
   // selected, the next one will be created on send.
   const dialogueNumber = useChatStore((s) => s.chats.length + (s.selectedChatId ? 0 : 1));
@@ -71,62 +76,65 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
   return (
     <div className={styles.hero}>
       {/* Desktop: a centred opening page */}
-      <div className={styles.heroDesktop}>
-        <div className={styles.opening}>
-          <LogoMark className={styles.mark} />
-          <p className={styles.kicker}>{dialogueLabel(Math.max(1, dialogueNumber))}</p>
-          <h1 className={styles.headline}>{heroTitle}</h1>
-        </div>
-
-        <div className={styles.composer}>
-          <Composer variant="hero" keyboardMetrics={keyboardMetrics} />
-        </div>
-
-        <nav className={styles.prompts} aria-label="Quick start suggestions">
-          {quickStartPhrases.map((phrase) => (
-            <button
-              key={phrase}
-              className={styles.prompt}
-              onClick={() => fillComposer(phrase)}
-              title={`Start with: ${phrase}`}
-            >
-              {phrase.replace(/\.{3}$/, '…')}
-            </button>
-          ))}
-        </nav>
-
-        <p className={styles.colophon}>Your keys never leave this browser</p>
-      </div>
-
-      {/* Mobile: Vertical centered layout */}
-      <div className={styles.heroMobile}>
-        <div className={styles.heroMobileContent}>
-          <div className={styles.heroMobileTitleBlock}>
-            <LogoMark className={styles.heroMobileMark} />
-            <h1 className={styles.heroMobileHeadline}>{heroTitle}</h1>
+      {!isMobile && (
+        <div className={styles.heroDesktop}>
+          <div className={styles.opening}>
+            <LogoMark className={styles.mark} />
+            <p className={styles.kicker}>{dialogueLabel(Math.max(1, dialogueNumber))}</p>
+            <h1 className={styles.headline}>{heroTitle}</h1>
           </div>
 
-          <div className={styles.heroMobileQuickStarts}>
+          <div className={styles.composer}>
+            <Composer variant="hero" keyboardMetrics={keyboardMetrics} />
+          </div>
+
+          <nav className={styles.prompts} aria-label="Quick start suggestions">
             {quickStartPhrases.map((phrase) => (
               <button
                 key={phrase}
-                className={styles.heroMobileChip}
+                className={styles.prompt}
                 onClick={() => fillComposer(phrase)}
                 title={`Start with: ${phrase}`}
               >
                 {phrase.replace(/\.{3}$/, '…')}
               </button>
             ))}
-          </div>
-        </div>
-      </div>
+          </nav>
 
-      {/* Mobile sticky composer */}
-      <div className={styles.heroMobileComposer}>
-        <div className="sm:hidden">
-          <Composer variant="sticky" keyboardMetrics={keyboardMetrics} />
+          <p className={styles.colophon}>Your keys never leave this browser</p>
         </div>
-      </div>
+      )}
+
+      {/* Phone: the opening centred above the composer at the foot */}
+      {isMobile && (
+        <>
+          <div className={styles.heroMobile}>
+            <div className={styles.heroMobileContent}>
+              <div className={styles.heroMobileTitleBlock}>
+                <LogoMark className={styles.heroMobileMark} />
+                <h1 className={styles.heroMobileHeadline}>{heroTitle}</h1>
+              </div>
+
+              <div className={styles.heroMobileQuickStarts}>
+                {quickStartPhrases.map((phrase) => (
+                  <button
+                    key={phrase}
+                    className={styles.heroMobileChip}
+                    onClick={() => fillComposer(phrase)}
+                    title={`Start with: ${phrase}`}
+                  >
+                    {phrase.replace(/\.{3}$/, '…')}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.heroMobileComposer}>
+            <Composer variant="sticky" keyboardMetrics={keyboardMetrics} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

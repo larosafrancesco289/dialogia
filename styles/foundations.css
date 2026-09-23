@@ -217,7 +217,7 @@ html {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 /* On small screens, ensure inputs meet 44px minimum tap target */
-@media (max-width: 640px) {
+@media (max-width: 767px) {
   .btn,
   .btn-outline,
   .btn-ghost {

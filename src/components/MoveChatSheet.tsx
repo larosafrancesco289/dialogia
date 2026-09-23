@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Folder } from '@/lib/types';
-import { DialogOverlay, DialogPortal, DialogSurface } from '@/components/ui/Dialog';
+import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 
 export type MoveChatSheetProps = {
   open: boolean;
@@ -44,46 +44,30 @@ export function MoveChatSheet({
 }: MoveChatSheetProps) {
   const options = useMemo(() => buildFolderOptions(folders), [folders]);
 
-  if (!open) return null;
-
   return (
-    <DialogPortal>
-      <DialogOverlay className="mobile-sheet-overlay" role="presentation" onClose={onClose}>
-        <DialogSurface
-          className="mobile-sheet card mobile-sheet-compact"
-          role="menu"
-          ariaLabel={`Move ${chatTitle} to folder`}
-          ariaModal={false}
-        >
-          <div className="mobile-sheet-handle" aria-hidden="true" />
-          <h2 className="dialog__title px-1 pb-1 text-lg">Move “{chatTitle}”</h2>
-          <button
-            type="button"
-            className={`mobile-menu-item ${currentFolderId ? '' : 'is-active'}`.trim()}
-            onClick={() => onMove(undefined)}
+    <BottomSheet
+      open={open}
+      label={`Move ${chatTitle} to folder`}
+      title={`Move “${chatTitle}”`}
+      onClose={onClose}
+    >
+      <SheetItem selected={!currentFolderId} onClick={() => onMove(undefined)}>
+        No folder
+      </SheetItem>
+      {options.length === 0 ? (
+        <p className="sheet-hint">Create a folder to organize chats.</p>
+      ) : (
+        options.map((option) => (
+          <SheetItem
+            key={option.id}
+            selected={option.id === currentFolderId}
+            indent={option.depth}
+            onClick={() => onMove(option.id)}
           >
-            <span>No folder</span>
-          </button>
-          {options.length === 0 ? (
-            <div className="field__hint px-1 py-2">Create a folder to organize chats.</div>
-          ) : (
-            options.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={`mobile-menu-item ${option.id === currentFolderId ? 'is-active' : ''}`.trim()}
-                style={{ paddingLeft: `calc(${option.depth} * 1.25rem + var(--space-3))` }}
-                onClick={() => onMove(option.id)}
-              >
-                <span>{option.label}</span>
-              </button>
-            ))
-          )}
-          <button type="button" className="btn-ghost w-full h-11" onClick={onClose}>
-            Cancel
-          </button>
-        </DialogSurface>
-      </DialogOverlay>
-    </DialogPortal>
+            {option.label}
+          </SheetItem>
+        ))
+      )}
+    </BottomSheet>
   );
 }

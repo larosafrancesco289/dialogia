@@ -89,7 +89,6 @@ export function Composer({
   const recoveredAttachmentsByScopeRef = useRef<Record<string, DraftAttachment[]>>({});
   const uiNext = useMemo(() => overrides ?? EMPTY_OVERRIDES, [overrides]);
   const [focused, setFocused] = useState(false);
-  const isTablet = useMediaQuery(MEDIA_QUERIES.tablet);
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const tutorEnabled = useChatStore(selectIsTutorEnabled);
   const searchEnabled = useChatStore(selectSearchEnabled);
@@ -193,7 +192,7 @@ export function Composer({
         draftsByScopeRef.current[snapshot.scope] = '';
         clearActiveDraft();
         resetAttachments();
-        if (isTablet) taRef.current?.blur();
+        if (isMobile) taRef.current?.blur();
         else taRef.current?.focus();
       },
       onAfterSend: () => {
@@ -228,7 +227,7 @@ export function Composer({
     }
   };
 
-  const canAutoFocus = !isTablet;
+  const canAutoFocus = !isMobile;
 
   useEffect(() => {
     const target = taRef.current;
@@ -300,16 +299,11 @@ export function Composer({
 
   const handleStop = () => {
     stop();
-    if (!isTablet) setTimeout(() => taRef.current?.focus({ preventScroll: true }), 0);
+    if (!isMobile) setTimeout(() => taRef.current?.focus({ preventScroll: true }), 0);
   };
 
   return (
-    <ComposerLayout
-      variant={variant}
-      keyboardMetrics={keyboardMetrics}
-      focused={focused}
-      onDrop={handleDrop}
-    >
+    <ComposerLayout variant={variant} onDrop={handleDrop}>
       <AttachmentPreviewList attachments={attachments} onRemove={removeAttachment} />
 
       <input

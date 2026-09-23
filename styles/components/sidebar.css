@@ -138,6 +138,44 @@
     text-transform: uppercase;
     color: var(--color-rubric);
   }
+  /* On a phone the list is touched, not hovered: rows are a thumb tall and a
+     size larger, and their actions live in the long-press sheet instead of
+     an overlay a tap would half-reveal. */
+  @media (max-width: 767px) {
+    .chat-item {
+      min-height: 44px;
+      margin: 0;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+    }
+    /* Safari won't focus a field whose row refuses selection. */
+    .chat-item.is-editing {
+      user-select: auto;
+    }
+    .chat-item .text-sm {
+      font-size: 0.9375rem;
+    }
+    .chat-item:hover {
+      background: transparent;
+    }
+    .chat-item:active,
+    .chat-item.selected {
+      background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+    }
+    .chat-item__actions {
+      display: none;
+    }
+    .sidebar-group__label {
+      padding-top: var(--space-2);
+    }
+    @supports (content-visibility: auto) {
+      .chat-item,
+      .folder-row {
+        contain-intrinsic-size: 1px 44px;
+      }
+    }
+  }
   /* A drop target: a rubric hairline, the mark of a place in the book. */
   .folder-row.is-drag-over {
     outline: 1px solid var(--color-rubric);

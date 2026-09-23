@@ -7,5 +7,11 @@
 @import './mobile.css';
 @import './logo.css';
 
+/* `sm:` starts where the phone app ends, at the shell's own breakpoint
+   (BREAKPOINTS.mobile), so no phone layout gets a desktop size. */
+@theme {
+  --breakpoint-sm: 48rem;
+}
+
 @source '../index.html';
 @source '../src';

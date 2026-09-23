@@ -4,7 +4,7 @@ import { useChatStore } from '@/lib/store';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
-import { RowActionSheet } from '@/components/ui/RowActionSheet';
+import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { MoveChatSheet } from '@/components/MoveChatSheet';
 import { PencilSquareIcon, TrashIcon, FolderOpenIcon } from '@heroicons/react/24/outline';
@@ -116,45 +116,42 @@ export function ChatRowContainer({
         onPointerCancel={longPress.onPointerCancel}
       />
 
-      <RowActionSheet
+      <BottomSheet
         open={isMobile && showActions}
         label={`Actions for ${chat.title}`}
+        title={chat.title}
         onClose={() => setShowActions(false)}
       >
-        <button
-          className="mobile-menu-item"
+        <SheetItem
+          icon={<PencilSquareIcon />}
           onClick={() => {
             setShowActions(false);
             setEditing(true);
           }}
-          title="Rename chat"
         >
-          <PencilSquareIcon className="h-4 w-4" />
-          <span>Rename chat</span>
-        </button>
-        <button
-          className="mobile-menu-item"
+          Rename
+        </SheetItem>
+        <SheetItem
+          icon={<FolderOpenIcon />}
           onClick={() => {
             setShowActions(false);
             setShowMoveSheet(true);
           }}
-          title="Move chat to folder"
         >
-          <FolderOpenIcon className="h-4 w-4" />
-          <span>Move to folder</span>
-        </button>
-        <button
-          className="mobile-menu-item is-danger"
+          Move to folder
+        </SheetItem>
+        <div className="sheet-rule" aria-hidden="true" />
+        <SheetItem
+          icon={<TrashIcon />}
+          danger
           onClick={() => {
             setShowActions(false);
             setShowConfirm(true);
           }}
-          title="Delete chat"
         >
-          <TrashIcon className="h-4 w-4" />
-          <span>Delete chat</span>
-        </button>
-      </RowActionSheet>
+          Delete
+        </SheetItem>
+      </BottomSheet>
 
       <ConfirmDialog
         open={showConfirm}

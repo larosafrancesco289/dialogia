@@ -1,5 +1,5 @@
 @layer components {
-  @media (max-width: 640px) {
+  @media (max-width: 767px) {
     .app-shell {
       grid-template-columns: 1fr; /* collapse grid to one column */
     }
@@ -16,7 +16,7 @@
   .hide-on-mobile {
     display: none !important;
   }
-  @media (min-width: 640px) {
+  @media (min-width: 768px) {
     .hide-on-mobile {
       display: inline-flex !important;
     }

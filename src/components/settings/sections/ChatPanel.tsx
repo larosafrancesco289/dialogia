@@ -145,7 +145,7 @@ export function ChatPanel(props: ChatPanelProps) {
             ) : (
               <div className="flex flex-wrap items-center gap-2">
                 <select
-                  className="input flex-1 min-w-0"
+                  className="input flex-1 basis-full sm:basis-0 min-w-0"
                   value={selectedPresetId}
                   aria-label="Preset"
                   onChange={(e) => setSelectedPresetId(e.target.value)}
