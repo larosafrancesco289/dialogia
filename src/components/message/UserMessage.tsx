@@ -1,6 +1,6 @@
 import { PencilSquareIcon, CheckIcon, ClipboardIcon } from '@heroicons/react/24/outline';
 import { Markdown } from '@/components/Markdown';
-import { MessageActions, ActionButton } from '@/components/message/MessageActions';
+import { MessageActions, ActionButton, MessageEditBar } from '@/components/message/MessageActions';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
 import type { Message, PersistedAttachment } from '@/lib/types';
 
@@ -43,33 +43,25 @@ export function UserMessage({
   return (
     <div>
       {showInlineActions && (
-        <MessageActions
-          isEditing={isEditing}
-          isMobile={isMobile}
-          onSave={saveEdit}
-          onCancel={() => {
-            setEditingId(null);
-            setDraft('');
-          }}
-        >
-          <ActionButton
-            icon={<PencilSquareIcon className="h-5 w-5 sm:h-4 sm:w-4" />}
-            title="Edit message"
-            ariaLabel="Edit message"
-            onClick={startEditingMessage}
-          />
+        <MessageActions isEditing={isEditing} isMobile={isMobile}>
           <ActionButton
             icon={
               copiedId === message.id ? (
                 <CheckIcon className="h-4 w-4" />
               ) : (
-                <ClipboardIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                <ClipboardIcon className="h-4 w-4" />
               )
             }
-            title={copiedId === message.id ? 'Copied!' : 'Copy message'}
+            title={copiedId === message.id ? 'Copied' : 'Copy'}
             ariaLabel="Copy message"
             onClick={copyMessage}
             showFeedback={copiedId === message.id}
+          />
+          <ActionButton
+            icon={<PencilSquareIcon className="h-4 w-4" />}
+            title="Edit"
+            ariaLabel="Edit message"
+            onClick={startEditingMessage}
           />
         </MessageActions>
       )}
@@ -89,13 +81,22 @@ export function UserMessage({
                 saveEdit();
               }
             }}
-            placeholder="Edit your message..."
+            placeholder="Edit your message…"
             autoFocus
           />
         ) : (
           <Markdown content={message.content} />
         )}
       </div>
+      {isEditing && (
+        <MessageEditBar
+          onSave={saveEdit}
+          onCancel={() => {
+            setEditingId(null);
+            setDraft('');
+          }}
+        />
+      )}
     </div>
   );
 }

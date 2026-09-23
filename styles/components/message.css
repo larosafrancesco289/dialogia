@@ -95,10 +95,39 @@
     color: var(--color-success);
   }
 
+  /* A reply's footer: its actions, then the colophon, on one line. */
+  .message-foot {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+    min-height: 30px;
+    margin-top: calc(-1 * var(--space-2));
+    padding-bottom: var(--space-1);
+    font-family: var(--font-sans);
+  }
+  .message-foot .message-actions__group {
+    margin-left: -6px;
+  }
+
+  /* Save and cancel under a message being edited. */
+  .message-edit-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    font-family: var(--font-sans);
+  }
+  .message-edit-bar__hint {
+    margin-right: auto;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+
   /* The colophon: a line of record under a reply, in the book face. */
   .message-colophon {
     margin: 0;
-    padding-bottom: var(--space-2);
     font-family: var(--font-serif-assistant);
     font-style: italic;
     font-size: 0.8125rem;
@@ -229,4 +258,10 @@
     padding: 0;
     font-size: 1.25rem;
   }
+}
+
+/* Unlayered, like the global :focus-visible outline it overrides: the edit
+   field's own gold border is its focus mark. */
+.message-edit-textarea:focus-visible {
+  outline: none;
 }
