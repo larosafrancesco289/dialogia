@@ -10,7 +10,6 @@ import { applyLearnerModelFeedback, resolveLearnerModel } from '@/modules/tutor/
 import { selectCurrentChat, selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import type { LearningPlan, LearnerModel } from '@/lib/types';
 import type { LearnerModelFeedback } from '@/modules/tutor/learner-model';
-import type { LearnerModelEditCallbacks } from '@/modules/tutor/components/plan/PlanSheet';
 
 type PlanProgress = ReturnType<typeof calculatePlanProgress>;
 
@@ -29,9 +28,15 @@ export type PlanCallbacks = {
   onOpenRightPanel: (tab?: 'plan' | 'progress') => void;
   onCloseRightPanel: () => void;
   onSendPlanFeedback: (message: string) => void;
-  onRequestMorePractice: (completedNodeId: string, startedNodeId?: string) => Promise<void>;
+  onRequestMorePractice: (
+    completedNodeId: string,
+    startedNodeId?: string,
+    opts?: { adjustMastery?: boolean },
+  ) => Promise<void>;
   onContestMastery: (nodeId: string, direction: 'up' | 'down') => Promise<number | undefined>;
-} & LearnerModelEditCallbacks;
+  onResolveMisconceptionQuietly: (nodeId: string, misconceptionId: string) => Promise<void>;
+  onReopenTopic: (nodeId: string) => Promise<void>;
+};
 
 export function usePlanCallbacks(): PlanCallbacks {
   const {
@@ -84,7 +89,15 @@ export function usePlanCallbacks(): PlanCallbacks {
       const isStartingLesson = node.status === 'not_started';
 
       if (isStartingLesson) {
-        const updatedPlan = updateNodeStatus(learningPlan, nodeId, 'in_progress');
+        // One topic is live at a time: the one being set aside goes back to
+        // waiting, keeping its estimate and evidence.
+        let updatedPlan = learningPlan;
+        for (const other of learningPlan.nodes) {
+          if (other.status === 'in_progress') {
+            updatedPlan = updateNodeStatus(updatedPlan, other.id, 'not_started');
+          }
+        }
+        updatedPlan = updateNodeStatus(updatedPlan, nodeId, 'in_progress');
         await updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
         const prompt = `I am ready to start the topic '${node.name}'. Please introduce this concept and guide me through it.`;
         await sendUserMessage(prompt, {
@@ -135,84 +148,12 @@ export function usePlanCallbacks(): PlanCallbacks {
     [applyLearnerModelFeedbackFromUser],
   );
 
-  const onConfidenceAdjust = useCallback(
-    (nodeId: string, newConfidence: number, reason?: string) => {
-      const feedback = {
-        nodeId,
-        estimatedConfidence: newConfidence,
-        reason: reason ?? `Adjusted confidence to ${Math.round(newConfidence * 100)}%`,
-      };
-      const pct = Math.round(newConfidence * 100);
-      const nodeName = learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
-      void onLearnerModelFeedback(feedback)
-        .then(() =>
-          sendUserMessage(
-            `I adjusted my confidence for "${nodeName}" to ${pct}%. Please acknowledge and adapt your teaching accordingly.`,
-            { metadata: { hiddenFromUser: true, kind: 'tutor_confidence_adjust' } },
-          ),
-        )
-        .catch(() => undefined);
-    },
-    [onLearnerModelFeedback, sendUserMessage, learningPlan],
-  );
-
-  const onMisconceptionResolve = useCallback(
-    (nodeId: string, misconceptionId: string) => {
-      const feedback = {
-        nodeId,
-        misconceptionId,
-        reason: 'I believe I have resolved this misconception.',
-      };
-      const nodeName = learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
-      void onLearnerModelFeedback(feedback)
-        .then(() =>
-          sendUserMessage(
-            `I marked a misconception as resolved for "${nodeName}". Please acknowledge this update.`,
-            { metadata: { hiddenFromUser: true, kind: 'tutor_misconception_resolve' } },
-          ),
-        )
-        .catch(() => undefined);
-    },
-    [onLearnerModelFeedback, sendUserMessage, learningPlan],
-  );
-
-  const onSetConfidenceFloor = useCallback(
-    (nodeId: string, floor: number) => {
-      void onLearnerModelFeedback({
-        nodeId,
-        confidenceFloor: floor,
-        reason: `Set confidence floor to ${Math.round(floor * 100)}%`,
-      });
-    },
-    [onLearnerModelFeedback],
-  );
-
-  const onFlagForReview = useCallback(
-    (nodeId: string) => {
-      const feedback = {
-        nodeId,
-        direction: 'down' as const,
-        reason: 'I flagged this topic for review.',
-      };
-      const nodeName = learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
-      void onLearnerModelFeedback(feedback)
-        .then(() =>
-          sendUserMessage(
-            `I flagged "${nodeName}" for review — I need more practice on this topic.`,
-            { metadata: { hiddenFromUser: true, kind: 'tutor_flag_for_review' } },
-          ),
-        )
-        .catch(() => undefined);
-    },
-    [onLearnerModelFeedback, sendUserMessage, learningPlan],
-  );
-
   // The learner's answer at a chapter end: "not yet". Reopens the finished
   // topic, puts back the one the tutor had moved on to, and records the
   // learner's own estimate below the advance threshold, as evidence, so the
   // next turn neither re-advances nor forgets it.
   const onRequestMorePractice = useCallback(
-    async (completedNodeId: string, startedNodeId?: string) => {
+    async (completedNodeId: string, startedNodeId?: string, opts?: { adjustMastery?: boolean }) => {
       if (!learningPlan) return;
       const node = learningPlan.nodes.find((n) => n.id === completedNodeId);
       if (!node) return;
@@ -226,14 +167,17 @@ export function usePlanCallbacks(): PlanCallbacks {
       }
 
       const current = learnerModel?.mastery?.[completedNodeId]?.confidence;
-      const updatedModel = learnerModel
-        ? applyLearnerModelFeedback(learnerModel, {
-            nodeId: completedNodeId,
-            direction: 'down',
-            estimatedConfidence: Math.min(current ?? 0.6, 0.6),
-            reason: `Learner asked for more practice on "${node.name}" at the end of the topic.`,
-          }).model
-        : undefined;
+      // Only where the learner may correct the model; a plan-only arm reopens
+      // the topic without touching the estimate.
+      const updatedModel =
+        learnerModel && opts?.adjustMastery !== false
+          ? applyLearnerModelFeedback(learnerModel, {
+              nodeId: completedNodeId,
+              direction: 'down',
+              estimatedConfidence: Math.min(current ?? 0.6, 0.6),
+              reason: `Learner asked for more practice on "${node.name}" at the end of the topic.`,
+            }).model
+          : undefined;
 
       await updateChatSettings({
         features: {
@@ -268,6 +212,40 @@ export function usePlanCallbacks(): PlanCallbacks {
       return to ?? model.mastery[nodeId]?.confidence;
     },
     [learnerModel, learningPlan, updateChatSettings],
+  );
+
+  // Resolving a misconception from the Learning Hub: saved on the chat as
+  // the learner's own correction, read by the tutor next turn; no turn spent.
+  const onResolveMisconceptionQuietly = useCallback(
+    async (nodeId: string, misconceptionId: string) => {
+      if (!learnerModel) return;
+      const { model } = applyLearnerModelFeedback(learnerModel, {
+        nodeId,
+        misconceptionId,
+        reason: 'Learner marked this misconception as resolved.',
+      });
+      await updateChatSettings({ features: { tutor: { learnerModel: model } } });
+    },
+    [learnerModel, updateChatSettings],
+  );
+
+  // Revise plan: take a finished topic up again. A plan change only; the
+  // estimate stays as it is, and the tutor is told so it can pick it up.
+  const onReopenTopic = useCallback(
+    async (nodeId: string) => {
+      if (!learningPlan) return;
+      const node = learningPlan.nodes.find((n) => n.id === nodeId);
+      if (!node || node.status !== 'completed') return;
+      await updateChatSettings({
+        features: {
+          tutor: { learningPlan: updateNodeStatus(learningPlan, nodeId, 'in_progress') },
+        },
+      });
+      await sendUserMessage(`I'd like to revisit "${node.name}".`, {
+        metadata: { hiddenFromUser: true, kind: 'tutor_reopen_topic' },
+      });
+    },
+    [learningPlan, sendUserMessage, updateChatSettings],
   );
 
   const onToggleRightPanel = useCallback(() => {
@@ -310,15 +288,13 @@ export function usePlanCallbacks(): PlanCallbacks {
     onStartLesson,
     onMarkKnown,
     onLearnerModelFeedback,
-    onConfidenceAdjust,
-    onMisconceptionResolve,
-    onSetConfidenceFloor,
-    onFlagForReview,
     onToggleRightPanel,
     onOpenRightPanel,
     onCloseRightPanel,
     onSendPlanFeedback,
     onRequestMorePractice,
     onContestMastery,
+    onResolveMisconceptionQuietly,
+    onReopenTopic,
   };
 }

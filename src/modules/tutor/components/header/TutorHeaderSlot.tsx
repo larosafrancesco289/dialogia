@@ -8,13 +8,12 @@ import {
   selectNextOverrides,
 } from '@/lib/store/selectors';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
-import { PlanSheet } from '@/modules/tutor/components/plan/PlanSheet';
 import { PlanStatusBadge } from '@/modules/tutor/components/header/PlanStatusBadge';
 import { TutorToggle } from '@/modules/tutor/components/header/TutorToggle';
 
 /**
- * The tutor module's `headerControls` slot: the mode toggle, the plan badge, and the
- * plan sheet. Reads everything it needs from the store, so the shell mounts it
+ * The tutor module's `headerControls` slot: the mode toggle and the plan badge.
+ * Reads everything it needs from the store, so the shell mounts it
  * without passing props and knows nothing about learning plans.
  */
 export function TutorHeaderSlot() {
@@ -29,8 +28,6 @@ export function TutorHeaderSlot() {
     forceTutorMode,
     nextTutorMode,
     tutorActive,
-    planSheetOpen,
-    planSheetOverride,
     planGeneration,
   } = useChatStore(
     (s) => ({
@@ -44,8 +41,6 @@ export function TutorHeaderSlot() {
       forceTutorMode: !!s.ui.tutor?.forceMode,
       nextTutorMode: !!selectNextOverrides(s).tutorMode,
       tutorActive: selectIsTutorEnabled(s),
-      planSheetOpen: s.ui.plan?.sheetOpen ?? false,
-      planSheetOverride: s.ui.plan?.sheetPlanOverride ?? null,
       planGeneration: s.selectedChatId
         ? s.ui.plan?.generationByChatId?.[s.selectedChatId]
         : undefined,
@@ -53,26 +48,8 @@ export function TutorHeaderSlot() {
     shallow,
   );
 
-  const {
-    learningPlan,
-    learnerModel,
-    hasPlan,
-    planProgress,
-    rightPanelOpen,
-    onPlanUpdate,
-    onStartLesson,
-    onMarkKnown,
-    onConfidenceAdjust,
-    onMisconceptionResolve,
-    onSetConfidenceFloor,
-    onFlagForReview,
-    onToggleRightPanel,
-    onSendPlanFeedback,
-  } = usePlanCallbacks();
-
-  const onClosePlanSheet = useCallback(() => {
-    setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
-  }, [setUI]);
+  const { learningPlan, hasPlan, planProgress, rightPanelOpen, onToggleRightPanel } =
+    usePlanCallbacks();
 
   const onToggleTutor = useCallback(async () => {
     if (forceTutorMode) return;
@@ -122,8 +99,6 @@ export function TutorHeaderSlot() {
     updateChatSettings,
   ]);
 
-  const plan = planSheetOverride ?? learningPlan ?? null;
-
   return (
     <>
       {experimentalTutor && (
@@ -150,22 +125,6 @@ export function TutorHeaderSlot() {
           <HeaderDivider />
         </>
       )}
-
-      {/* Kept for message-card triggers that set sheetPlanOverride */}
-      <PlanSheet
-        plan={plan}
-        isOpen={planSheetOpen}
-        onClose={onClosePlanSheet}
-        onUpdate={onPlanUpdate}
-        onStartLesson={onStartLesson}
-        learnerModel={learnerModel}
-        onMarkKnown={onMarkKnown}
-        onConfidenceAdjust={onConfidenceAdjust}
-        onMisconceptionResolve={onMisconceptionResolve}
-        onSetConfidenceFloor={onSetConfidenceFloor}
-        onFlagForReview={onFlagForReview}
-        onSendFeedback={onSendPlanFeedback}
-      />
     </>
   );
 }

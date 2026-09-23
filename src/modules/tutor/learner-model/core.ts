@@ -100,6 +100,9 @@ export function resolvePlanNodeId(plan: LearningPlan, rawId: string): string | u
   return undefined;
 }
 
+/** Every topic's estimate starts here, before any evidence. */
+export const MASTERY_PRIOR = 0.3;
+
 /**
  * Initialize an empty learner model for a learning plan
  */
@@ -110,7 +113,7 @@ export function initializeLearnerModel(chatId: string, plan: LearningPlan): Lear
   for (const node of plan.nodes) {
     mastery[node.id] = {
       nodeId: node.id,
-      confidence: 0.3, // Starting prior (low confidence)
+      confidence: MASTERY_PRIOR,
       interactions: 0,
       lastInteraction: Date.now(),
       evidence: [],
@@ -127,7 +130,7 @@ export function initializeLearnerModel(chatId: string, plan: LearningPlan): Lear
     globalMetrics: {
       totalInteractions: 0,
       accuracyRate: 0,
-      averageConfidence: 0.3,
+      averageConfidence: MASTERY_PRIOR,
     },
   };
 }
@@ -157,7 +160,7 @@ export function syncLearnerModelWithPlan(
     if (!mastery[node.id]) {
       mastery[node.id] = {
         nodeId: node.id,
-        confidence: 0.3, // Starting prior
+        confidence: MASTERY_PRIOR,
         interactions: 0,
         lastInteraction: Date.now(),
         evidence: [],
@@ -300,7 +303,7 @@ export function applyLearnerModelFeedback(
     const weight = feedback.direction === 'down' ? -magnitude : magnitude;
     const evidence: Evidence = {
       timestamp: Date.now(),
-      type: 'insight_demonstrated',
+      type: 'self_report',
       weight,
       details:
         feedback.reason ||

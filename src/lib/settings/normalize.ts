@@ -117,6 +117,10 @@ export function normalizeChatSettings(
           typeof tutorRecord.learnerModelVisible === 'boolean'
             ? tutorRecord.learnerModelVisible
             : undefined,
+        learnerModelEditable:
+          typeof tutorRecord.learnerModelEditable === 'boolean'
+            ? tutorRecord.learnerModelEditable
+            : undefined,
         learnerModel: tutorRecord.learnerModel as TutorSettings['learnerModel'],
       },
     },

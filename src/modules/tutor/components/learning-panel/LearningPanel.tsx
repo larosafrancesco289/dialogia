@@ -1,54 +1,48 @@
 import { useCallback, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
+import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { useChatStore } from '@/lib/store';
-import { updateNodeStatus } from '@/modules/tutor/learning-plan/service';
 import { LearningPanelHeader } from './LearningPanelHeader';
-import { SummaryStrip } from './SummaryStrip';
-import { PlanEditingHint } from '@/modules/tutor/components/plan/PlanEditingHint';
-import { PlanView } from '@/modules/tutor/components/plan/PlanView';
+import { ContentsView } from './ContentsView';
+import { ReviseView } from './ReviseView';
 import {
   PlanFeedbackModal,
   type PlanFeedbackContext,
 } from '@/modules/tutor/components/plan/PlanFeedbackModal';
 
+/**
+ * The Learning Hub. At rest it is the contents: the plan to read and the
+ * learner model to read and, where allowed, correct in place. Revise plan
+ * switches to the plan's own negotiation. Each part appears only under the
+ * study flags that allow it.
+ */
 export function LearningPanel() {
   const {
     learningPlan,
     learnerModel,
-    onPlanUpdate,
     onStartLesson,
     onMarkKnown,
-    onConfidenceAdjust,
-    onMisconceptionResolve,
-    onFlagForReview,
+    onReopenTopic,
+    onContestMastery,
+    onResolveMisconceptionQuietly,
     onSendPlanFeedback,
   } = usePlanCallbacks();
+  const affordances = useTutorAffordances();
 
-  const { chat, planSheetOverride } = useChatStore(
+  const { planSheetOverride, revisingState, setUI } = useChatStore(
     (s) => ({
-      chat: s.chats.find((c) => c.id === s.selectedChatId),
       planSheetOverride: s.ui.plan?.sheetPlanOverride ?? null,
+      revisingState: s.ui.plan?.revising ?? false,
+      setUI: s.setUI,
     }),
     shallow,
   );
 
-  const tutorFlags = chat?.settings?.features.tutor;
-  const planEditable = tutorFlags?.planEditable !== false;
-  const learnerModelVisible = tutorFlags?.learnerModelVisible !== false;
-
   const [feedbackContext, setFeedbackContext] = useState<PlanFeedbackContext | null>(null);
   const plan = planSheetOverride ?? learningPlan;
+  // A proposal is previewed, not lived in: nothing on it can be changed yet.
   const isPreviewingProposal = !!planSheetOverride && !learningPlan;
-
-  const handleNodeStatusChange = useCallback(
-    (nodeId: string, status: 'not_started' | 'in_progress' | 'completed') => {
-      if (!plan || isPreviewingProposal) return;
-      const updatedPlan = updateNodeStatus(plan, nodeId, status);
-      void onPlanUpdate(updatedPlan);
-    },
-    [isPreviewingProposal, onPlanUpdate, plan],
-  );
 
   const handleFeedbackSubmit = useCallback(
     (feedback: string, context: PlanFeedbackContext) => {
@@ -61,46 +55,42 @@ export function LearningPanel() {
 
   if (!plan) return null;
 
-  const isReadOnly = !planEditable || isPreviewingProposal;
+  const canRevise = affordances.revisePlan && !isPreviewingProposal;
+  const revising = canRevise && revisingState;
+  const setRevising = (next: boolean) => setUI({ plan: { revising: next } });
 
   return (
     <div className="learning-panel">
-      <LearningPanelHeader />
-
-      <SummaryStrip
-        learnerModel={learnerModel}
-        plan={plan}
-        learnerModelVisible={learnerModelVisible}
+      <LearningPanelHeader
+        revising={revising}
+        canRevise={canRevise}
+        onToggleRevise={() => setRevising(!revising)}
       />
-
-      {planEditable && !isPreviewingProposal && <PlanEditingHint />}
-
       <div className="learning-panel__content">
-        <PlanView
-          plan={plan}
-          readOnly={isReadOnly}
-          learnerModel={learnerModel}
-          learnerModelVisible={learnerModelVisible}
-          onNodeStatusChange={isReadOnly ? undefined : handleNodeStatusChange}
-          onStartLesson={isReadOnly ? undefined : onStartLesson}
-          onMarkKnown={isReadOnly ? undefined : onMarkKnown}
-          onConfidenceAdjust={isReadOnly ? undefined : onConfidenceAdjust}
-          onMisconceptionResolve={isReadOnly ? undefined : onMisconceptionResolve}
-          onFlagForReview={isReadOnly ? undefined : onFlagForReview}
-        />
+        {revising ? (
+          <ReviseView
+            plan={plan}
+            revisions={{
+              onSkip: onMarkKnown,
+              onStartNext: onStartLesson,
+              onReopen: onReopenTopic,
+              onDiscuss: () => setFeedbackContext({ type: 'general' }),
+            }}
+          />
+        ) : (
+          <ContentsView
+            plan={plan}
+            learnerModel={learnerModel}
+            affordances={
+              isPreviewingProposal ? { ...affordances, correctMastery: false } : affordances
+            }
+            corrections={{
+              onContestMastery,
+              onResolveMisconception: onResolveMisconceptionQuietly,
+            }}
+          />
+        )}
       </div>
-
-      {/* Bottom agency bar */}
-      {learnerModelVisible && (
-        <div className="learning-panel__bottom-bar">
-          <button
-            className="plan-bottom-btn plan-bottom-btn--pri"
-            onClick={() => setFeedbackContext({ type: 'general' })}
-          >
-            Suggest plan changes
-          </button>
-        </div>
-      )}
 
       {feedbackContext && (
         <PlanFeedbackModal
