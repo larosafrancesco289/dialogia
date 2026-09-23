@@ -71,7 +71,7 @@ export function PlanStatusBadge({
   return (
     <button
       type="button"
-      className={`plan-button${panelOpen ? ' plan-button--active' : ''}`}
+      className="plan-button"
       onClick={onToggleRightPanel}
       title={panelOpen ? 'Close Learning Hub' : 'Open Learning Hub'}
       aria-label={panelOpen ? 'Close Learning Hub' : 'Open Learning Hub'}
@@ -79,7 +79,14 @@ export function PlanStatusBadge({
     >
       <ClipboardDocumentListIcon className="plan-button__icon h-5 w-5" />
       <span className="plan-button__text">Plan</span>
-      <span className="plan-button__progress">{planProgress.percentComplete}%</span>
+      {/* Topics done, in the panel's own words; a bare percentage here read as
+          mastery and disagreed with the Learning Hub. */}
+      <span
+        className="plan-button__progress"
+        aria-label={`${planProgress.completed} of ${learningPlan.nodes.length} topics done`}
+      >
+        {planProgress.completed}/{learningPlan.nodes.length}
+      </span>
     </button>
   );
 }

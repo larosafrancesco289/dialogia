@@ -5,7 +5,6 @@ import {
   EyeIcon,
   PhotoIcon,
   SpeakerWaveIcon,
-  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { getModelCapabilities } from '@/lib/models';
 import { useModelPickerController } from '@/components/model-picker/useModelPickerController';
@@ -75,9 +74,8 @@ export function ModelPickerTrigger({
     return (
       <div
         className="model-picker-trigger model-picker-trigger--tutor"
-        title={`Tutor model: ${tutorModelLabel}`}
+        title={`Tutor model: ${tutorModelLabel}. Set it in Settings.`}
       >
-        <AcademicCapIcon className="model-picker-trigger__icon model-picker-trigger__icon--tutor h-5 w-5 shrink-0" />
         <span className="model-picker-trigger__name truncate">{tutorModelLabel}</span>
         {badges.length > 0 && (
           <span className="model-picker-trigger__badges hide-on-mobile">
