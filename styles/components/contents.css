@@ -89,7 +89,7 @@
     font-family: var(--font-serif-assistant);
     font-variant-numeric: oldstyle-nums;
     font-size: 0.95rem;
-    color: var(--color-fg-muted);
+    color: var(--color-rubric);
   }
   /* Gold as text needs ink mixed in to stay legible on paper. */
   .hub-contents__item.is-current .hub-contents__num {
@@ -189,7 +189,7 @@
     padding-left: 1.1em;
   }
   .hub-contents__objectives li::marker {
-    color: var(--rule-light);
+    color: var(--color-rubric);
   }
   .hub-contents__why {
     margin-top: var(--space-3);
@@ -200,7 +200,7 @@
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--color-fg-muted);
+    color: var(--color-rubric);
   }
   .hub-contents__why ul {
     margin: 0;

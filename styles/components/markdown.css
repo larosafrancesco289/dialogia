@@ -33,6 +33,13 @@
   }
   /* Sizes in em so headings scale with the message they sit in: the
      assistant's 20px serif and the user's smaller sans alike. */
+  /* Rubrication: the top three heading levels are set in red ink, as a
+     scribe would. Deeper levels stay in ink so long answers do not turn red. */
+  .markdown h1,
+  .markdown h2,
+  .markdown h3 {
+    color: var(--color-rubric);
+  }
   .markdown h1 {
     font-size: 1.6em;
     font-weight: 450;
@@ -63,7 +70,7 @@
     list-style: decimal;
   }
   .markdown li::marker {
-    color: var(--color-fg-muted);
+    color: var(--color-rubric);
   }
   .markdown ul ul {
     list-style: circle;
@@ -103,7 +110,7 @@
   .markdown blockquote {
     margin: 1.1em 0;
     padding: 0 0 0 1.1em;
-    border-left: 2px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
+    border-left: 2px solid var(--color-rubric);
     font-family: var(--font-serif-assistant);
     font-style: italic;
     color: color-mix(in oklab, var(--color-fg) 78%, var(--color-canvas));
@@ -119,7 +126,7 @@
   .markdown hr::after {
     content: '\2042';
     font-family: var(--font-serif-assistant);
-    color: var(--color-fg-muted);
+    color: var(--color-rubric);
   }
   /* Inline code: a soft tint sized to sit in the line. */
   .markdown code {
@@ -230,7 +237,7 @@
     font-weight: 550;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--color-fg-muted);
+    color: var(--color-rubric);
     border-bottom: 0.75px solid var(--table-rule);
     padding: 0.7em 1em 0.55em 0;
   }
@@ -364,6 +371,20 @@
 .markdown .heading-anchor:hover {
   text-decoration: underline;
   text-decoration-style: dotted;
+}
+
+/* Links in prose: ink, underlined in rubric. Unlayered for the same reason
+   as the heading anchors; gold would be both hard to read on the page and
+   a claim that the link is live. */
+.markdown a:not(.heading-anchor) {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in oklab, var(--color-rubric) 65%, transparent);
+  transition: text-decoration-color var(--duration-fast) var(--ease-standard);
+}
+.markdown a:not(.heading-anchor):hover {
+  text-decoration-color: var(--color-rubric);
 }
 
 /* The <pre> inside a code block. Unlayered because the base pre rule in

@@ -375,7 +375,7 @@
      full height, square, one hairline towards the page, and a header exactly
      as tall as the top bar so its rule runs straight across the window. */
   .learning-panel {
-    background: var(--surface-paper);
+    background: var(--color-chrome);
     border-left: 1px solid var(--chrome-rule);
     display: flex;
     flex-direction: column;

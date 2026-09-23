@@ -35,7 +35,7 @@
     box-shadow: 0 0 0 2px var(--focus-ring);
   }
   .response-ledger__toggle:hover .response-ledger__title {
-    color: var(--color-fg);
+    color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
   }
   .response-ledger__toggle:hover .response-ledger__rule {
     border-color: var(--rule-accent);
@@ -45,11 +45,16 @@
     width: 15px;
     height: 15px;
     flex: none;
+    color: var(--color-rubric);
+  }
+  /* Gold only while the model is still thinking. */
+  .response-ledger__toggle:has(.is-live) .response-ledger__glyph {
     color: var(--color-accent);
   }
 
   .response-ledger__title {
     flex: none;
+    color: var(--color-rubric);
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.08em;
