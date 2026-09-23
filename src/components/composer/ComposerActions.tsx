@@ -54,9 +54,6 @@ function useDismissOnOutside(
 const effortLabel = (e: ReasoningEffort) =>
   e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra high' : e.charAt(0).toUpperCase() + e.slice(1);
 
-/** The scale names its stops in a word each. */
-const stopLabel = (e: ReasoningEffort) => (e === 'xhigh' ? 'Extra' : effortLabel(e));
-
 type BulbKind = 'off' | 'outline' | 'outline-bold' | 'solid' | 'solid-plus';
 
 const EFFORT_KIND: Record<ReasoningEffort, BulbKind> = {
@@ -109,10 +106,11 @@ function ReasoningBulbIcon({ effort, size = 16 }: { effort: ReasoningEffort; siz
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Reasoning effort: a scale in a popover. Stops sit on a hairline rail filled
-// in ink up to the level in use; each is named beneath, the model's default
-// marked in rubric; one italic line says what the pointed-at level does.
-// Arrow keys walk the scale.
+// Reasoning effort: an upright scale in a popover, rising from the button:
+// Off at the foot, the most thought at the head. Stops sit on a hairline rail
+// filled in ink up to the level in use; each is named beside its stop, the
+// model's default marked in rubric; one italic line says what the pointed-at
+// level does. Arrow keys walk the scale.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EFFORT_HINT: Record<ReasoningEffort, string> = {
@@ -169,8 +167,10 @@ function ReasoningMenu({
     stopsRef.current[next]?.focus();
   };
 
-  // The filled part of the rail runs from the first stop to the chosen one.
+  // The filled part of the rail rises from the lowest stop to the chosen one.
   const fill = efforts.length > 1 ? (currentIndex / (efforts.length - 1)) * 100 : 0;
+  // Drawn top-down, so the list runs from the most thought to none.
+  const rows = efforts.map((e, index) => ({ e, index })).reverse();
 
   return (
     <motion.div
@@ -218,9 +218,9 @@ function ReasoningMenu({
       </div>
       <div className="reasoning-scale__stops">
         <span className="reasoning-scale__rail" aria-hidden="true">
-          <span className="reasoning-scale__fill" style={{ width: `${fill}%` }} />
+          <span className="reasoning-scale__fill" style={{ height: `${fill}%` }} />
         </span>
-        {efforts.map((e, index) => (
+        {rows.map(({ e, index }) => (
           <button
             key={e}
             ref={(node) => {
@@ -242,7 +242,7 @@ function ReasoningMenu({
             }}
           >
             <span className="reasoning-scale__dot" aria-hidden="true" />
-            <span className="reasoning-scale__label">{stopLabel(e)}</span>
+            <span className="reasoning-scale__label">{effortLabel(e)}</span>
             {defaultEffort === e && (
               <span className="reasoning-scale__default" title="The model's default">
                 default
