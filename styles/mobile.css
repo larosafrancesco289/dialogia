@@ -11,8 +11,9 @@
   }
 
   @media (max-width: 768px) {
-    /* Larger touch targets */
-    button,
+    /* Larger touch targets. A switch keeps its drawn size: its label row
+       is the target, and a 44px floor turned its track into a disc. */
+    button:not(.toggle-switch),
     [role='button'],
     a {
       min-height: var(--touch-target-min);

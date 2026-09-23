@@ -1,5 +1,10 @@
 import { motion } from 'framer-motion';
-import { TAB_LIST, SECTION_TITLES } from '@/components/settings/sections/config';
+import {
+  TAB_LIST,
+  TAB_SECTIONS,
+  SECTION_TITLES,
+  sectionMatches,
+} from '@/components/settings/sections/config';
 import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
 import { AutoSaveToast } from '@/components/settings/AutoSaveToast';
 import type { SettingsDrawerState } from '@/components/settings/hooks/useSettingsDrawerState';
@@ -31,6 +36,13 @@ export function SettingsDrawerView({
   closeWithAnim,
   saveStatus,
 }: SettingsDrawerState) {
+  const searching = searchQuery.trim().length > 0;
+  const hasResults =
+    !searching ||
+    Object.values(TAB_SECTIONS).some((sections) =>
+      sections.some((sectionId) => sectionMatches(sectionId, searchQuery)),
+    );
+
   return (
     <>
       <SettingsDrawerShell
@@ -55,11 +67,14 @@ export function SettingsDrawerView({
                   key={tab.id}
                   id={`settings-tab-${tab.id}`}
                   role="tab"
-                  aria-selected={activeTab === tab.id}
+                  aria-selected={!searching && activeTab === tab.id}
                   aria-controls={`settings-panel-${tab.id}`}
                   tabIndex={activeTab === tab.id ? 0 : -1}
-                  className={`settings-sidebar-item ${activeTab === tab.id ? 'is-active' : ''}`}
-                  onClick={() => setActiveTab(tab.id)}
+                  className={`settings-sidebar-item ${!searching && activeTab === tab.id ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setSearchQuery('');
+                    setActiveTab(tab.id);
+                  }}
                   onKeyDown={(e) => handleSidebarKeyNav(e, index)}
                 >
                   {tab.label}
@@ -81,8 +96,11 @@ export function SettingsDrawerView({
                   key={tab.id}
                   role="tab"
                   aria-selected={activeTab === tab.id}
-                  className={`settings-tab${activeTab === tab.id ? ' is-active' : ''}`}
-                  onClick={() => setActiveTab(tab.id)}
+                  className={`settings-tab${!searching && activeTab === tab.id ? ' is-active' : ''}`}
+                  onClick={() => {
+                    setSearchQuery('');
+                    setActiveTab(tab.id);
+                  }}
                 >
                   {tab.label}
                 </button>
@@ -97,7 +115,7 @@ export function SettingsDrawerView({
               className="px-5 pb-10 md:px-8"
             >
               {/* Sub-section navigation for tabs with multiple sections */}
-              {navSections.length > 1 && (
+              {!searching && navSections.length > 1 && (
                 <div className="settings-subnav md:hidden">
                   {navSections.map((sectionId) => (
                     <button
@@ -120,6 +138,11 @@ export function SettingsDrawerView({
                 animate="show"
               >
                 {tabContent}
+                {!hasResults && (
+                  <p className="settings-empty py-6">
+                    Nothing in settings matches “{searchQuery}”.
+                  </p>
+                )}
               </motion.div>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import type { RenderSection, SectionId, TabId } from '@/components/settings/types';
 import { useSettingsTabs } from '@/components/settings/hooks/useSettingsTabs';
 import { useSettingsScrollSync } from '@/components/settings/hooks/useSettingsScrollSync';
-import { TAB_LIST, TAB_SECTIONS, SECTION_TITLES } from '@/components/settings/sections/config';
+import { TAB_LIST, TAB_SECTIONS, sectionMatches } from '@/components/settings/sections/config';
 import { springs } from '@/lib/mobile/springConfig';
 
 const staggerItem = {
@@ -54,14 +54,12 @@ export function useSettingsNavigation(): SettingsNavigationState {
 
   const renderSection: RenderSection = useCallback(
     (tabId: TabId, sectionId: SectionId, content: ReactNode) => {
-      if (activeTab !== tabId) return null;
-
-      // Filter by search query
-      if (searchQuery) {
-        const title = SECTION_TITLES[sectionId] ?? sectionId;
-        if (!title.toLowerCase().includes(searchQuery.toLowerCase())) {
-          return null;
-        }
+      // A search looks through every tab, by title and by what a section
+      // holds; without one, only the chosen tab shows.
+      if (searchQuery.trim()) {
+        if (!sectionMatches(sectionId, searchQuery)) return null;
+      } else if (activeTab !== tabId) {
+        return null;
       }
 
       return (

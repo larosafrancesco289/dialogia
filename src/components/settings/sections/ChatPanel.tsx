@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { IconButton } from '@/components/ui/IconButton';
-import { CheckIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { SystemPreset } from '@/lib/presets';
 import {
   loadSystemPresets,
@@ -47,41 +48,40 @@ export function ChatPanel(props: ChatPanelProps) {
     setMessageTimestamps,
   } = props;
 
-  const applyPreset = () => {
-    const preset = presets.find((p) => p.id === selectedPresetId);
-    if (!preset) return;
-    setSystem(preset.system);
-  };
+  // Presets are edited in place: a name field appears for saving or renaming,
+  // and deleting asks once, inline, instead of through browser prompts.
+  const [presetMode, setPresetMode] = useState<'idle' | 'save' | 'rename' | 'delete'>('idle');
+  const [presetName, setPresetName] = useState('');
+  const selectedPreset = presets.find((p) => p.id === selectedPresetId);
 
   const refreshPresets = async () => {
     setPresets(await loadSystemPresets());
   };
 
-  const savePreset = async () => {
-    const name = window.prompt('Preset name?');
-    if (name == null) return;
-    const preset = await saveSystemPreset(name, system);
-    setSelectedPresetId(preset.id);
-    await refreshPresets();
+  const finish = () => {
+    setPresetMode('idle');
+    setPresetName('');
   };
 
-  const renamePreset = async () => {
-    const preset = presets.find((p) => p.id === selectedPresetId);
-    if (!preset) return;
-    const next = window.prompt('Rename preset', preset.name);
-    if (next == null) return;
-    await renameSystemPreset(preset.id, next.trim() || preset.name);
+  const commitPresetName = async () => {
+    const name = presetName.trim();
+    if (!name) return;
+    if (presetMode === 'save') {
+      const preset = await saveSystemPreset(name, system);
+      setSelectedPresetId(preset.id);
+    } else if (presetMode === 'rename' && selectedPreset) {
+      await renameSystemPreset(selectedPreset.id, name);
+    }
     await refreshPresets();
+    finish();
   };
 
-  const deletePreset = async () => {
-    const preset = presets.find((p) => p.id === selectedPresetId);
-    if (!preset) return;
-    const ok = window.confirm(`Delete preset "${preset.name}"?`);
-    if (!ok) return;
-    await removeSystemPreset(preset.id);
+  const confirmDelete = async () => {
+    if (!selectedPreset) return;
+    await removeSystemPreset(selectedPreset.id);
     await refreshPresets();
     setSelectedPresetId('');
+    finish();
   };
 
   return (
@@ -89,72 +89,110 @@ export function ChatPanel(props: ChatPanelProps) {
       {renderSection(
         'chat',
         'general',
-        <SettingsSection title="General">
-          <div className="space-y-2">
-            <label className="field__label">System prompt</label>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                className="input"
-                value={selectedPresetId}
-                onChange={(e) => setSelectedPresetId(e.target.value)}
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                <option value="">Select a preset…</option>
-                {presets.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.name}
-                  </option>
-                ))}
-              </select>
-              <div className="flex items-center gap-1">
-                <IconButton title="Apply preset" onClick={applyPreset} disabled={!selectedPresetId}>
-                  <CheckIcon className="h-5 w-5" />
-                </IconButton>
-                <IconButton
-                  title="Save as preset"
-                  onClick={() => {
-                    void savePreset();
-                  }}
-                >
-                  <PlusIcon className="h-5 w-5" />
-                </IconButton>
-                <IconButton
-                  title="Rename preset"
-                  onClick={() => {
-                    void renamePreset();
-                  }}
-                  disabled={!selectedPresetId}
-                >
-                  <PencilSquareIcon className="h-5 w-5" />
-                </IconButton>
-                <IconButton
-                  title="Delete preset"
-                  onClick={() => {
-                    void deletePreset();
-                  }}
-                  disabled={!selectedPresetId}
-                >
-                  <TrashIcon className="h-5 w-5" />
-                </IconButton>
-              </div>
-            </div>
+        <SettingsSection title="System prompt">
+          <div className="field">
             <textarea
               className="textarea w-full"
-              rows={4}
+              rows={5}
               value={system}
+              aria-label="System prompt"
               onChange={(e) => setSystem(e.target.value)}
               onKeyDown={(e) => e.stopPropagation()}
             />
-            <div className="field__hint">
-              Customize the default system prompt for future chats. Tutor Mode remains a separate
-              overlay.
-            </div>
+            <p className="field__hint">
+              What every new chat is told before your first message. A tutoring session adds its own
+              instructions on top.
+            </p>
           </div>
+
+          <div className="field">
+            <span className="field__label">Presets</span>
+            {presetMode === 'save' || presetMode === 'rename' ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  className="input flex-1 min-w-0"
+                  value={presetName}
+                  placeholder={presetMode === 'save' ? 'Name this prompt' : 'New name'}
+                  autoFocus
+                  onChange={(e) => setPresetName(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') void commitPresetName();
+                    if (e.key === 'Escape') finish();
+                  }}
+                />
+                <button className="btn-ghost btn-sm" onClick={finish}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-sm"
+                  disabled={!presetName.trim()}
+                  onClick={() => void commitPresetName()}
+                >
+                  {presetMode === 'save' ? 'Save' : 'Rename'}
+                </button>
+              </div>
+            ) : presetMode === 'delete' && selectedPreset ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="flex-1 text-sm">Delete “{selectedPreset.name}”?</span>
+                <button className="btn-ghost btn-sm" onClick={finish}>
+                  Cancel
+                </button>
+                <button className="btn btn-danger btn-sm" onClick={() => void confirmDelete()}>
+                  Delete
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  className="input flex-1 min-w-0"
+                  value={selectedPresetId}
+                  aria-label="Preset"
+                  onChange={(e) => setSelectedPresetId(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <option value="">Choose a preset…</option>
+                  {presets.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn-outline btn-sm"
+                  disabled={!selectedPreset}
+                  onClick={() => selectedPreset && setSystem(selectedPreset.system)}
+                >
+                  Use
+                </button>
+                <button className="btn-ghost btn-sm" onClick={() => setPresetMode('save')}>
+                  Save current
+                </button>
+                {selectedPreset && (
+                  <>
+                    <IconButton
+                      title="Rename preset"
+                      onClick={() => {
+                        setPresetName(selectedPreset.name);
+                        setPresetMode('rename');
+                      }}
+                    >
+                      <PencilSquareIcon className="h-4 w-4" />
+                    </IconButton>
+                    <IconButton title="Delete preset" onClick={() => setPresetMode('delete')}>
+                      <TrashIcon className="h-4 w-4" />
+                    </IconButton>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
           <ToggleSwitch
             checked={messageTimestamps === true}
             onChange={setMessageTimestamps}
             label="Message timestamps"
-            description="Prefix each message sent to the model with its date and time, so it knows when the conversation happened. Adds a few tokens per message."
+            description="Tell the model when each message was sent, so it knows the date. Adds a few tokens per message."
           />
         </SettingsSection>,
       )}
@@ -207,10 +245,8 @@ export function ChatPanel(props: ChatPanelProps) {
                 <option value="max">max</option>
               </select>
               <div className="field__hint">
-                Reasoning depth new chats start with. &ldquo;Model default&rdquo; follows each
-                model&rsquo;s own provider default (e.g. high for Claude reasoning models); levels a
-                model doesn&rsquo;t support are clamped to the nearest one it does. Adjustable per
-                chat from the composer.
+                How hard new chats think by default. Change it per chat from the composer; a model
+                that lacks a level uses the nearest one it has.
               </div>
             </div>
             <div className="space-y-1">
@@ -244,7 +280,7 @@ export function ChatPanel(props: ChatPanelProps) {
                 onKeyDown={(e) => e.stopPropagation()}
               />
               <div className="field__hint">
-                Budget for chain‑of‑thought tokens (supported models only).
+                A cap on thinking tokens, for models that accept one.
               </div>
             </div>
           </div>

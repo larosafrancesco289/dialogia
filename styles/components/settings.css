@@ -198,7 +198,7 @@
   /* Settings Row (label + control) */
   .settings-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: var(--space-4);
   }
@@ -224,6 +224,46 @@
 
   .settings-row-control {
     flex-shrink: 0;
+  }
+  @media (max-width: 520px) {
+    .settings-row {
+      flex-wrap: wrap;
+    }
+  }
+
+  /* A ruled list (favorites): name, a muted provider, a remove button. */
+  .settings-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--chrome-rule);
+  }
+  .settings-list__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--chrome-rule);
+  }
+  .settings-list__name {
+    display: block;
+    font-size: 0.9375rem;
+    color: var(--color-fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .settings-list__meta {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+  .settings-empty {
+    margin: 0;
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    color: var(--color-fg-muted);
   }
 
   /* Settings Search */
