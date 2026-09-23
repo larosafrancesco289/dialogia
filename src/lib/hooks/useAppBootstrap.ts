@@ -6,9 +6,10 @@ import { prefetchOnIdle } from '@/lib/ui/lazy';
 import { MEDIA_QUERIES, maxWidthQuery } from '@/lib/ui/breakpoints';
 
 export function useAppBootstrap(opts?: { mobileBreakpoint?: number }) {
-  const { initializeApp, setUI, collapsed } = useChatStore(
+  const { initializeApp, loadModels, setUI, collapsed } = useChatStore(
     (s) => ({
       initializeApp: s.initializeApp,
+      loadModels: s.loadModels,
       setUI: s.setUI,
       collapsed: s.ui.sidebarCollapsed ?? false,
     }),
@@ -22,6 +23,13 @@ export function useAppBootstrap(opts?: { mobileBreakpoint?: number }) {
   useEffect(() => {
     initializeApp();
   }, [initializeApp]);
+
+  // The model list (and, with nothing configured, the Connect a model sheet)
+  // comes up with the app on every layout. It used to ride on the desktop
+  // sidebar, so phones only loaded models once Chats or Settings opened.
+  useEffect(() => {
+    void loadModels();
+  }, [loadModels]);
 
   useEffect(() => {
     if (isMobile && !collapsed) setUI({ sidebarCollapsed: true });

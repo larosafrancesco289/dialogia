@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { searchModeLabel } from '@/lib/search/ui/labels';
 import { listSearchModeOptions } from '@/lib/search/ui/modes';
 import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
@@ -52,7 +52,10 @@ function useDismissOnOutside(
 }
 
 const effortLabel = (e: ReasoningEffort) =>
-  e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra High' : e.charAt(0).toUpperCase() + e.slice(1);
+  e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra high' : e.charAt(0).toUpperCase() + e.slice(1);
+
+/** The scale names its stops in a word each. */
+const stopLabel = (e: ReasoningEffort) => (e === 'xhigh' ? 'Extra' : effortLabel(e));
 
 type BulbKind = 'off' | 'outline' | 'outline-bold' | 'solid' | 'solid-plus';
 
@@ -106,9 +109,10 @@ function ReasoningBulbIcon({ effort, size = 16 }: { effort: ReasoningEffort; siz
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Reasoning effort menu: the same popover and rows as the search menu. Each
-// level says in plain words what it does; the model's own default is marked,
-// and the level in use carries the rubric tick. Arrow keys move between rows.
+// Reasoning effort: a scale in a popover. Stops sit on a hairline rail filled
+// in ink up to the level in use; each is named beneath, the model's default
+// marked in rubric; one italic line says what the pointed-at level does.
+// Arrow keys walk the scale.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EFFORT_HINT: Record<ReasoningEffort, string> = {
@@ -139,56 +143,114 @@ function ReasoningMenu({
   menuRef,
 }: ReasoningMenuProps) {
   const efforts: ReasoningEffort[] = availableEfforts?.length ? availableEfforts : DEFAULT_EFFORTS;
+  const currentIndex = Math.max(0, efforts.indexOf(currentEffort ?? 'none'));
+  const [focusIndex, setFocusIndex] = useState(currentIndex);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [shift, setShift] = useState(0);
+  const shown = efforts[previewIndex ?? currentIndex];
+  const stopsRef = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
-    const current = menuRef.current?.querySelector<HTMLButtonElement>('[aria-checked="true"]');
-    (current ?? menuRef.current?.querySelector<HTMLButtonElement>('button'))?.focus();
+    stopsRef.current[currentIndex]?.focus();
+  }, [currentIndex]);
+
+  // Keep the scale on screen: the button may sit anywhere along the row.
+  useLayoutEffect(() => {
+    const rect = menuRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const overflow = rect.right - (window.innerWidth - 12);
+    if (overflow > 0) setShift(-Math.min(overflow, rect.left - 12));
   }, [menuRef]);
 
-  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-    event.preventDefault();
-    const rows = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? []);
-    const at = rows.indexOf(document.activeElement as HTMLButtonElement);
-    const next = event.key === 'ArrowDown' ? at + 1 : at - 1;
-    rows[(next + rows.length) % rows.length]?.focus();
+  const move = (to: number) => {
+    const next = Math.max(0, Math.min(efforts.length - 1, to));
+    setFocusIndex(next);
+    setPreviewIndex(next);
+    stopsRef.current[next]?.focus();
   };
+
+  // The filled part of the rail runs from the first stop to the chosen one.
+  const fill = efforts.length > 1 ? (currentIndex / (efforts.length - 1)) * 100 : 0;
 
   return (
     <motion.div
       ref={menuRef}
-      role="menu"
+      role="radiogroup"
       aria-label="Reasoning effort"
-      className="popover absolute bottom-full left-0 z-30 mb-2 w-64 p-1"
+      className="popover reasoning-scale absolute bottom-full left-0 z-30 mb-2"
+      style={{ ['--stops' as string]: efforts.length, translate: `${shift}px 0` }}
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 4 }}
       transition={springs.snappy}
-      onKeyDown={onKeyDown}
-    >
-      <div className="menu-heading">Reasoning</div>
-      {efforts.map((e) => (
-        <button
-          key={e}
-          type="button"
-          role="menuitemradio"
-          aria-checked={currentEffort === e}
-          className="menu-item reasoning-row w-full text-left text-sm"
-          onClick={() => {
-            onSelect(e);
+      onKeyDown={(event) => {
+        // Read the position from focus, not state, so quick presses add up.
+        const at = stopsRef.current.indexOf(document.activeElement as HTMLButtonElement);
+        const from = at >= 0 ? at : focusIndex;
+        if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          move(from + 1);
+        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+          event.preventDefault();
+          move(from - 1);
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          const chosen = efforts[from];
+          if (chosen) {
+            onSelect(chosen);
             onClose();
-          }}
-        >
-          <ReasoningBulbIcon effort={e} size={16} />
-          <span className="reasoning-row__text">
-            <span>
-              {effortLabel(e)}
-              {defaultEffort === e && <span className="reasoning-row__default"> · default</span>}
-            </span>
-            <span className="reasoning-row__hint">{EFFORT_HINT[e]}</span>
-          </span>
-        </button>
-      ))}
+          }
+        } else if (event.key === 'Home') {
+          event.preventDefault();
+          move(0);
+        } else if (event.key === 'End') {
+          event.preventDefault();
+          move(efforts.length - 1);
+        }
+      }}
+      onMouseLeave={() => setPreviewIndex(null)}
+    >
+      <div className="reasoning-scale__head">
+        <span className="menu-heading p-0">Reasoning</span>
+        <span className="reasoning-scale__hint" aria-live="polite">
+          {EFFORT_HINT[shown]}
+        </span>
+      </div>
+      <div className="reasoning-scale__stops">
+        <span className="reasoning-scale__rail" aria-hidden="true">
+          <span className="reasoning-scale__fill" style={{ width: `${fill}%` }} />
+        </span>
+        {efforts.map((e, index) => (
+          <button
+            key={e}
+            ref={(node) => {
+              stopsRef.current[index] = node;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={index === currentIndex}
+            tabIndex={index === focusIndex ? 0 : -1}
+            className={`reasoning-scale__stop${index <= currentIndex ? ' is-filled' : ''}${
+              index === currentIndex ? ' is-current' : ''
+            }`}
+            aria-label={defaultEffort === e ? `${effortLabel(e)} (model default)` : effortLabel(e)}
+            onMouseEnter={() => setPreviewIndex(index)}
+            onFocus={() => setPreviewIndex(index)}
+            onClick={() => {
+              onSelect(e);
+              onClose();
+            }}
+          >
+            <span className="reasoning-scale__dot" aria-hidden="true" />
+            <span className="reasoning-scale__label">{stopLabel(e)}</span>
+            {defaultEffort === e && (
+              <span className="reasoning-scale__default" title="The model's default">
+                default
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
     </motion.div>
   );
 }

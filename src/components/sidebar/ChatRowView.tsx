@@ -19,6 +19,10 @@ export type ChatRowViewProps = {
   onMove: (anchor: DOMRect) => void;
   onDragStart: (chatId: string) => void;
   onDragEnd: () => void;
+  isDragOver?: boolean;
+  onDragOver?: (event: React.DragEvent<HTMLDivElement>) => void;
+  onDragLeave?: () => void;
+  onDrop?: (event: React.DragEvent<HTMLDivElement>) => void;
   onPointerDown: (event: PointerEvent) => void;
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;
@@ -44,6 +48,10 @@ export function ChatRowView({
   onMove,
   onDragStart,
   onDragEnd,
+  isDragOver = false,
+  onDragOver,
+  onDragLeave,
+  onDrop,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -56,7 +64,7 @@ export function ChatRowView({
     <div
       className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item ${
         isSelected ? 'selected' : ''
-      }${isEditing ? ' is-editing' : ''}`}
+      }${isEditing ? ' is-editing' : ''}${isDragOver ? ' is-drag-over' : ''}`}
       title={collapsed ? title : undefined}
       style={depth ? { marginLeft: `${depth * ROW_INDENT}px` } : undefined}
       draggable={!isMobile && !isEditing}
@@ -65,6 +73,9 @@ export function ChatRowView({
         onDragStart(chatId);
       }}
       onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
       onClick={!isEditing && !isMobile ? onSelect : undefined}
       onDoubleClick={!isMobile && !isEditing ? onStartEdit : undefined}
       onPointerDown={onPointerDown}

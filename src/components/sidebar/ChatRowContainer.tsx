@@ -10,6 +10,8 @@ import { MoveChatSheet } from '@/components/MoveChatSheet';
 import { PencilSquareIcon, TrashIcon, FolderOpenIcon } from '@heroicons/react/24/outline';
 import type { Chat } from '@/lib/types';
 import { MoveChatMenu } from '@/components/sidebar/MoveChatMenu';
+import { requestFolderRename } from '@/components/sidebar/pendingRename';
+import { useDragAndDrop } from '@/lib/dragDrop';
 import { ChatRowView } from '@/components/sidebar/ChatRowView';
 
 export interface ChatRowContainerProps {
@@ -48,6 +50,8 @@ export function ChatRowContainer({
   const [showActions, setShowActions] = useState(false);
   const [showMoveSheet, setShowMoveSheet] = useState(false);
   const [moveAnchor, setMoveAnchor] = useState<DOMRect | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const { getDragData, dropChatOnChat } = useDragAndDrop();
   const detectedMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const isMobile = isMobileProp ?? detectedMobile;
 
@@ -86,6 +90,26 @@ export function ChatRowContainer({
         onMove={(anchor) => (isMobile ? setShowMoveSheet(true) : setMoveAnchor(anchor))}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
+        isDragOver={isDragOver}
+        onDragOver={(event) => {
+          const data = getDragData();
+          // Only another chat can be dropped here; a folder falls through.
+          if (!data || data.type !== 'chat' || data.id === chat.id) return;
+          event.preventDefault();
+          event.stopPropagation();
+          event.dataTransfer.dropEffect = 'move';
+          setIsDragOver(true);
+        }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={async (event) => {
+          const data = getDragData();
+          if (!data || data.type !== 'chat' || data.id === chat.id) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setIsDragOver(false);
+          const folderId = await dropChatOnChat({ id: chat.id, folderId: chat.folderId });
+          if (folderId) requestFolderRename(folderId);
+        }}
         onPointerDown={longPress.onPointerDown}
         onPointerMove={longPress.onPointerMove}
         onPointerUp={longPress.onPointerUp}

@@ -169,32 +169,104 @@
     line-height: 0;
   }
 
-  /* Reasoning menu rows: the bulb at its level, the name, a plain hint. */
-  .reasoning-row {
+  /* Reasoning scale: stops on a hairline rail, filled in ink up to the
+     level in use. Choosing is a setting, so ink, never gold. */
+  .reasoning-scale {
+    width: max(18rem, calc(var(--stops) * 4.25rem));
+    max-width: calc(100vw - 24px);
+    padding: var(--space-3) var(--space-3) var(--space-2);
+  }
+  .reasoning-scale__head {
     display: flex;
-    align-items: flex-start;
+    align-items: baseline;
+    justify-content: space-between;
     gap: var(--space-3);
+    padding: 0 var(--space-1) var(--space-3);
   }
-  .reasoning-row .composer-reasoning-icon {
-    margin-top: 2px;
-    color: var(--color-fg-muted);
-  }
-  .reasoning-row[aria-checked='true'] .composer-reasoning-icon {
+  .reasoning-scale__hint {
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 0.9375rem;
     color: var(--color-fg);
+    text-align: right;
   }
-  .reasoning-row__text {
+  .reasoning-scale__stops {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(var(--stops), minmax(0, 1fr));
+  }
+  /* The rail runs from the centre of the first stop to that of the last. */
+  .reasoning-scale__rail {
+    position: absolute;
+    top: 13px;
+    left: calc(50% / var(--stops));
+    right: calc(50% / var(--stops));
+    height: 1px;
+    background: color-mix(in oklab, var(--color-fg) 18%, transparent);
+  }
+  .reasoning-scale__fill {
+    display: block;
+    height: 100%;
+    background: var(--color-fg);
+    transition: width var(--duration-fast) var(--ease-standard);
+  }
+  .reasoning-scale__stop {
+    position: relative;
     display: flex;
     flex-direction: column;
-    min-width: 0;
-  }
-  .reasoning-row__default {
+    align-items: center;
+    gap: 6px;
+    padding: 6px 2px 4px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
     color: var(--color-fg-muted);
-    font-weight: 400;
+    cursor: pointer;
   }
-  .reasoning-row__hint {
-    font-size: 0.75rem;
-    font-weight: 400;
-    color: var(--color-fg-muted);
+  .reasoning-scale__stop:hover,
+  .reasoning-scale__stop:focus-visible {
+    color: var(--color-fg);
+    outline: none;
+  }
+  .reasoning-scale__stop:focus-visible .reasoning-scale__dot {
+    box-shadow: 0 0 0 3px var(--focus-ring);
+  }
+  .reasoning-scale__dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 999px;
+    border: 1.5px solid color-mix(in oklab, var(--color-fg) 35%, transparent);
+    background: var(--color-surface);
+    transition:
+      transform var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard);
+  }
+  .reasoning-scale__stop:hover .reasoning-scale__dot {
+    border-color: var(--color-fg);
+  }
+  .reasoning-scale__stop.is-filled .reasoning-scale__dot {
+    border-color: var(--color-fg);
+    background: var(--color-fg);
+  }
+  .reasoning-scale__stop.is-current .reasoning-scale__dot {
+    transform: scale(1.35);
+    background: var(--color-surface);
+    border-width: 3px;
+  }
+  .reasoning-scale__label {
+    font-size: 0.8125rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .reasoning-scale__stop.is-current .reasoning-scale__label {
+    color: var(--color-fg);
+    font-weight: 600;
+  }
+  .reasoning-scale__default {
+    font-size: 0.625rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-rubric);
   }
 
   /* Primary send button */
@@ -318,4 +390,10 @@
       height: 44px;
     }
   }
+}
+
+/* Unlayered, like the global :focus-visible outline it replaces: a focused
+   stop shows a ring around its dot, not a box around the whole stop. */
+.reasoning-scale__stop:focus-visible {
+  outline: none;
 }
