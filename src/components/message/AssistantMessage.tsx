@@ -290,6 +290,8 @@ export function AssistantMessage({
           {showStats && chat && <MessageColophon message={message} chat={chat} models={models} />}
         </div>
       )}
+
+      {!isEditing && !isStreaming && <MessageModuleSlot slot="messageAfter" message={message} />}
     </div>
   );
 }

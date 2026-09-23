@@ -3,6 +3,7 @@ import { shallow } from 'zustand/shallow';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ApiKeyField } from '@/components/settings/ApiKeyField';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EndpointProbe } from '@/components/settings/EndpointProbe';
 import { CAPABILITY_LABELS } from '@/components/settings/endpointCapabilityLabels';
 import { useChatStore } from '@/lib/store';
@@ -45,9 +46,22 @@ function CustomEndpointEditor({
     shallow,
   );
   const caps = endpointCapabilities(endpoint);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   return (
     <div className="space-y-3">
+      <ConfirmDialog
+        open={confirmRemove}
+        title={`Remove ${endpoint.label}?`}
+        description="Its address, key and capability settings go. Chats that used its models keep their messages."
+        confirmLabel="Remove"
+        onCancel={() => setConfirmRemove(false)}
+        onConfirm={() => {
+          setConfirmRemove(false);
+          removeEndpoint(endpoint.id);
+          onChanged();
+        }}
+      />
       <div className="space-y-2">
         <label className="field__label" htmlFor={`base-${endpoint.id}`}>
           Base URL
@@ -154,13 +168,7 @@ function CustomEndpointEditor({
         </select>
       </div>
 
-      <button
-        className="btn-ghost btn-sm"
-        onClick={() => {
-          removeEndpoint(endpoint.id);
-          onChanged();
-        }}
-      >
+      <button className="btn-ghost btn-sm" onClick={() => setConfirmRemove(true)}>
         Remove this endpoint
       </button>
     </div>

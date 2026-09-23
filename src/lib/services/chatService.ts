@@ -11,6 +11,12 @@ import { resolveNewChatSettings } from '@/lib/settings/resolve';
 import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { decorateMessage } from '@/lib/messages/decorate';
 
+export const DEFAULT_CHAT_TITLE = 'New chat';
+
+/** Still wearing the default title (chats made before it was sentence case too). */
+export const isUntitledChat = (title: string | undefined) =>
+  title === DEFAULT_CHAT_TITLE || title === 'New Chat';
+
 export class ChatService {
   static buildSettingsForNewChat(params: {
     ui: UIState;
@@ -81,7 +87,7 @@ export class ChatService {
 
     const chat: Chat = {
       id,
-      title: 'New Chat',
+      title: DEFAULT_CHAT_TITLE,
       createdAt: now,
       updatedAt: now,
       settings: baseSettings,

@@ -108,11 +108,22 @@
   .model-picker-trigger__chevron {
     color: var(--color-fg-muted);
     opacity: 0.5;
-    transition: opacity var(--duration-fast) var(--ease-standard);
+    transition:
+      opacity var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
   }
 
   .model-picker-trigger:hover .model-picker-trigger__chevron {
     opacity: 0.8;
+  }
+
+  /* Open: the chevron turns and the name sits on a pressed ground, in ink. */
+  .model-picker-trigger[aria-expanded='true'] {
+    background: color-mix(in oklab, var(--color-fg) 6%, transparent);
+  }
+  .model-picker-trigger[aria-expanded='true'] .model-picker-trigger__chevron {
+    opacity: 0.8;
+    transform: rotate(180deg);
   }
 
   /* Tutor mode: read-only display, no hover effects */

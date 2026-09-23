@@ -35,4 +35,9 @@ export const tutorPanels: ModulePanels = {
       default: m.LearnerModelUpdates,
     })),
   ),
+  messageAfter: lazy(() =>
+    import('@/modules/tutor/components/message/LearnerModelUpdates').then((m) => ({
+      default: m.TopicCompleted,
+    })),
+  ),
 };
