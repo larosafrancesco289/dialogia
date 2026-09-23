@@ -6,11 +6,8 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { logger } from '@/lib/logger';
-import {
-  escapeCurrency,
-  linkCitationMarkers,
-  type MarkdownCitationSource,
-} from '@/lib/markdown/citations';
+import type { MarkdownCitationSource } from '@/lib/markdown/citations';
+import { preprocessMarkdown } from '@/lib/markdown/preprocess';
 
 const WRAP_STORAGE_KEY = 'dialogia:code-wrap';
 const WRAP_EVENT = 'dialogia:code-wrap-change';
@@ -18,7 +15,7 @@ const WRAP_EVENT = 'dialogia:code-wrap-change';
 type RehypePlugins = NonNullable<React.ComponentProps<typeof ReactMarkdown>['rehypePlugins']>;
 type RehypePlugin = RehypePlugins[number];
 
-// An unescaped `$` after escapeCurrency() ran is the only delimiter remark-math
+// An unescaped `$` after preprocessMarkdown() ran is the only delimiter remark-math
 // recognizes, so it is a sufficient signal that KaTeX is needed.
 const MATH_DELIMITER_RE = /(?<!\\)\$/;
 
@@ -426,10 +423,7 @@ export function MarkdownRenderer({
   /** True while this block's content may still change on the next flush. */
   streaming?: boolean;
 }) {
-  const processedContent = useMemo(
-    () => linkCitationMarkers(escapeCurrency(content), sources),
-    [content, sources],
-  );
+  const processedContent = useMemo(() => preprocessMarkdown(content, sources), [content, sources]);
   const rootRef = useRef<HTMLDivElement>(null);
   // Every reply names its headings the same way, so each renderer prefixes
   // its ids: a link to a heading must reach the one in its own reply.
