@@ -14,6 +14,7 @@
 
   /* Override app-header flex-wrap for top-header */
   .top-header.app-header {
+    container-type: inline-size;
     flex-direction: column;
     align-items: stretch;
     position: absolute;
@@ -35,10 +36,30 @@
     content: none;
   }
 
-  /* Center section (model picker or tutor card) */
+  /* Center section (model picker or tutor card). Everything else in the row
+     keeps its size; only the model name truncates. */
   .top-header__center {
     flex: 1;
     min-width: 0;
+  }
+  .top-header__main > :not(.top-header__center) {
+    flex-shrink: 0;
+  }
+
+  /* A narrow bar (both side panels open, or a small window) keeps the tutor
+     controls as icons so the model name stays readable. */
+  @container (max-width: 720px) {
+    .top-header .tutor-toggle__text,
+    .top-header .tutor-invite__text,
+    .top-header .plan-button__text {
+      display: none;
+    }
+  }
+  /* Narrower still, the theme switch steps out; it also lives in Settings. */
+  @container (max-width: 560px) {
+    .top-header .top-header__theme {
+      display: none;
+    }
   }
 
   /* Gold accent when tutor mode is active */
@@ -408,20 +429,28 @@
     margin-left: auto;
   }
 
-  .header-controls .btn-ghost {
-    height: 32px;
-    min-width: 32px;
-    padding: 0 var(--space-2);
+  /* Bare icon buttons: no frame until hovered, and never gold, since a
+     pressed theme or settings button is a setting, not something live. */
+  .top-header .icon-button,
+  .top-header .icon-button[aria-pressed='true'] {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-fg-muted);
+    box-shadow: none;
   }
-
-  .header-controls .btn-ghost svg {
+  .top-header .icon-button:hover {
+    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+    color: var(--color-fg);
+  }
+  .top-header .icon-button:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .top-header .icon-button svg {
     width: 20px;
     height: 20px;
-    opacity: 0.7;
-  }
-
-  .header-controls .btn-ghost:hover svg {
-    opacity: 1;
   }
 
   /* ============================================

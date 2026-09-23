@@ -32,7 +32,7 @@ export function TopHeaderView({
       <div className="top-header__main">
         {/* Sidebar toggle */}
         <button
-          className="btn btn-ghost shrink-0"
+          className="icon-button"
           aria-label="Toggle sidebar"
           onClick={onToggleSidebar}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -62,7 +62,7 @@ export function TopHeaderView({
         {/* Subtle controls row */}
         <div className="header-controls">
           <button
-            className="btn btn-ghost shrink-0 hide-on-mobile"
+            className="icon-button hide-on-mobile"
             aria-label="New chat"
             title="New chat"
             onClick={onNewChat}
@@ -70,10 +70,10 @@ export function TopHeaderView({
             <PlusIcon className="h-5 w-5" />
           </button>
           <div className="hide-on-mobile">
-            <ThemeToggle />
+            <ThemeToggle variant="icon" className="top-header__theme" />
           </div>
           <button
-            className="btn btn-ghost hide-on-mobile"
+            className="icon-button hide-on-mobile"
             aria-label="Open settings"
             aria-pressed={isSettingsOpen}
             onClick={onToggleSettings}

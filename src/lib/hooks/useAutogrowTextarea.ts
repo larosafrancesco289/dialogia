@@ -8,9 +8,24 @@ export function useAutogrowTextarea(
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = 'auto';
     const limit = Number.isFinite(maxHeight) ? Math.max(120, maxHeight) : 200;
-    el.style.height = Math.min(el.scrollHeight, limit) + 'px';
+    const fit = () => {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, limit) + 'px';
+    };
+    fit();
+    // Text rewraps when the column changes width (a side panel opening, the
+    // window resizing), so refit then too. Only width matters: fitting sets
+    // the height, which must not retrigger the observer.
+    if (typeof ResizeObserver === 'undefined') return;
+    let width = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      fit();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, maxHeight]);
 }

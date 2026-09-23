@@ -127,18 +127,23 @@ export function PlanNode({
   }
   const dotClass = getDotClass();
 
+  // What still stands between the learner and this topic; finished topics
+  // no longer count.
+  const pending = prerequisites.filter((p) => p.status !== 'completed');
+
+  // The list is grouped under status headings, so a row only names what its
+  // heading does not: what a locked topic waits on, or how long one takes.
   function getStatusText(): string {
-    if (node.status === 'in_progress') return 'In progress';
-    if (node.status === 'completed') return 'Completed';
+    if (node.status !== 'not_started') return '';
     if (isLocked) {
-      if (!prerequisites.length) return 'Locked';
-      return `Requires ${prerequisites.length} prerequisite${prerequisites.length === 1 ? '' : 's'}`;
+      if (!pending.length) return 'Locked';
+      return `Requires ${pending.length} prerequisite${pending.length === 1 ? '' : 's'}`;
     }
     if (node.estimatedMinutes) return `~${node.estimatedMinutes} min`;
     return '';
   }
   const statusText = getStatusText();
-  const lockedPrerequisites = prerequisites.map((p) => p.name).join(' & ');
+  const lockedPrerequisites = pending.map((p) => p.name).join(' & ');
 
   const rowClasses = [
     'plan-index-row',
@@ -166,9 +171,21 @@ export function PlanNode({
         }}
       >
         <div className={`plan-index-dot ${dotClass}`} />
-        <span className="plan-index-row__name">{node.name}</span>
+        <span className="plan-index-row__label">
+          <span className="plan-index-row__name">{node.name}</span>
+          {!(learnerModelVisible && mastery) && statusText && (
+            <span
+              className="plan-index-status"
+              title={
+                isLocked && lockedPrerequisites ? `Requires ${lockedPrerequisites}` : undefined
+              }
+            >
+              {statusText}
+            </span>
+          )}
+        </span>
 
-        {learnerModelVisible && mastery ? (
+        {learnerModelVisible && mastery && (
           <>
             {unresolved.length > 0 && (
               <svg
@@ -185,13 +202,6 @@ export function PlanNode({
               {confidence}%
             </span>
           </>
-        ) : (
-          <span
-            className={`plan-index-status ${node.status === 'in_progress' ? 'plan-index-status--ip' : ''}`}
-            title={isLocked && lockedPrerequisites ? `Requires ${lockedPrerequisites}` : undefined}
-          >
-            {statusText}
-          </span>
         )}
 
         <span className="plan-index-chevron">&#x25B8;</span>
