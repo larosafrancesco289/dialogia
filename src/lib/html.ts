@@ -72,8 +72,8 @@ export function extractMainText(html: string): HtmlContentSummary {
 
 /**
  * Inline script used before hydration to ensure the correct theme class is
- * present on the root element. The logic mirrors the runtime applyTheme in
- * ThemeToggle but lives here so it can run before paint (no theme flash).
+ * present on the root element. The logic mirrors useThemeMode's runtime apply,
+ * but lives here so it can run before paint (no theme flash).
  */
 export function injectThemeClass(): string {
   return `(() => {

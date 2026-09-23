@@ -4,24 +4,19 @@ import {
   Cog6ToothIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { TopHeaderMobileMenu } from '@/components/top-header/MobileMenu';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import { HeaderDivider } from '@/components/top-header/HeaderDivider';
 import { ModelPickerTrigger } from '@/components/top-header/ModelPickerTrigger';
 import type { TopHeaderState } from '@/components/top-header/useTopHeaderState';
 
 export function TopHeaderView({
-  chat,
   collapsed,
   isSettingsOpen,
   tutorActive,
   tutorModelLabel,
   onToggleSidebar,
   onToggleSettings,
-  onOpenSettings,
   onNewChat,
-  onRenameChat,
 }: TopHeaderState) {
   const headerClass = 'app-header top-header';
 
@@ -68,9 +63,6 @@ export function TopHeaderView({
               <PlusIcon className="h-5 w-5" />
             </button>
           )}
-          <div className="hide-on-mobile">
-            <ThemeToggle variant="icon" className="top-header__theme" />
-          </div>
           <button
             className="icon-button hide-on-mobile"
             aria-label="Open settings"
@@ -85,14 +77,6 @@ export function TopHeaderView({
           >
             <Cog6ToothIcon className="h-5 w-5" />
           </button>
-          <TopHeaderMobileMenu
-            hasChat={!!chat}
-            collapsed={collapsed}
-            onNewChat={onNewChat}
-            onRenameChat={chat ? onRenameChat : undefined}
-            onOpenSettings={onOpenSettings}
-            onToggleSidebar={onToggleSidebar}
-          />
         </div>
       </div>
     </div>
