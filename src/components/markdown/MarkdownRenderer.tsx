@@ -431,6 +431,9 @@ export function MarkdownRenderer({
     [content, sources],
   );
   const rootRef = useRef<HTMLDivElement>(null);
+  // Every reply names its headings the same way, so each renderer prefixes
+  // its ids: a link to a heading must reach the one in its own reply.
+  const slugPrefix = `${useId().replace(/[^a-zA-Z0-9]/g, '')}-`;
   // Prism highlighting is handled per-block to avoid React clobbering DOM
 
   // KaTeX (plus its stylesheet) is ~110 kB, so it loads only for content that
@@ -453,12 +456,12 @@ export function MarkdownRenderer({
   const rehypePlugins = useMemo<RehypePlugins>(() => {
     const plugins: RehypePlugins = [];
     if (mathPlugin) plugins.push(mathPlugin.plugin);
-    plugins.push(rehypeSlug, [
-      rehypeAutolinkHeadings,
-      { behavior: 'wrap', properties: { className: ['heading-anchor'] } },
-    ]);
+    plugins.push(
+      [rehypeSlug, { prefix: slugPrefix }],
+      [rehypeAutolinkHeadings, { behavior: 'wrap', properties: { className: ['heading-anchor'] } }],
+    );
     return plugins;
-  }, [mathPlugin]);
+  }, [mathPlugin, slugPrefix]);
 
   // Attach medium-zoom to images inside markdown for a better reading experience
   useEffect(() => {
@@ -499,7 +502,7 @@ export function MarkdownRenderer({
 
   const components: Components = useMemo(
     () => ({
-      pre: ({ children, ...preProps }) => {
+      pre: ({ children, node: _node, ...preProps }) => {
         // Detect Mermaid blocks and render as diagrams instead of <pre>
         const lang = detectLanguageFromPreChildren(children);
         if (lang === 'mermaid') {
@@ -514,7 +517,13 @@ export function MarkdownRenderer({
         );
       },
       code: (props) => {
-        const { inline, className, children, ...codeProps } = props as typeof props & {
+        const {
+          inline,
+          className,
+          children,
+          node: _node,
+          ...codeProps
+        } = props as typeof props & {
           inline?: boolean;
         };
         // Only style inline code; block code is handled by the <pre> wrapper above
@@ -531,7 +540,9 @@ export function MarkdownRenderer({
           </code>
         );
       },
-      a: ({ href, children, ...props }) => {
+      // `node` is react-markdown's syntax tree; spread onto the DOM it
+      // becomes node="[object Object]".
+      a: ({ href, children, node: _node, ...props }) => {
         const isExternal = href && /^https?:\/\//.test(href);
         return (
           <a

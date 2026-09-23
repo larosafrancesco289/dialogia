@@ -43,13 +43,22 @@ export function applyThemeClass(mode: ThemeMode, options?: { smooth?: boolean })
   if (root.classList.contains('dark') === isDark) return;
   const toggle = () => root.classList.toggle('dark', isDark);
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!options?.smooth || reduceMotion) {
+  // A hidden tab (another tab changed the theme) has nothing to animate, and
+  // the browser aborts its transition with an unhandled rejection.
+  if (!options?.smooth || reduceMotion || document.hidden) {
     toggle();
     return;
   }
-  const doc = document as Document & { startViewTransition?: (callback: () => void) => unknown };
+  type Transition = { ready: Promise<void>; finished: Promise<void> };
+  const doc = document as Document & {
+    startViewTransition?: (callback: () => void) => Transition;
+  };
   if (typeof doc.startViewTransition === 'function') {
-    doc.startViewTransition(toggle);
+    const transition = doc.startViewTransition(toggle);
+    // An interrupted transition still applies the change; only the fade is
+    // lost, so its rejection is not an error.
+    transition.ready.catch(() => undefined);
+    transition.finished.catch(() => undefined);
     return;
   }
   root.classList.add(TRANSITION_CLASS);

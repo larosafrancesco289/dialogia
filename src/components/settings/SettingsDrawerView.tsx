@@ -56,7 +56,7 @@ export function SettingsDrawerView({
           {/* Persistent Sidebar Navigation (Desktop) */}
           <nav
             ref={sidebarRef}
-            className="settings-nav hidden md:flex flex-col w-48 shrink-0 p-3 sticky top-[var(--chrome-height)] h-fit"
+            className="settings-nav hidden md:flex flex-col w-48 shrink-0 p-3 sticky top-[var(--chrome-height)] h-[calc(100dvh-var(--chrome-height))] overflow-y-auto"
             aria-label="Settings navigation"
             role="tablist"
             aria-orientation="vertical"

@@ -152,13 +152,12 @@
     border-color: var(--color-fg);
     background: color-mix(in oklab, var(--color-fg) 6%, transparent);
   }
+  /* Graded: the choice's own hairline takes the colour; no fill. */
   .choice.is-correct {
-    border-color: color-mix(in oklab, var(--color-success) 60%, transparent);
-    background: color-mix(in oklab, var(--color-success) 8%, transparent);
+    border-color: var(--color-success);
   }
   .choice.is-wrong {
-    border-color: color-mix(in oklab, var(--color-danger) 60%, transparent);
-    background: color-mix(in oklab, var(--color-danger) 8%, transparent);
+    border-color: var(--color-danger);
   }
   .choice.is-muted {
     opacity: 0.5;
@@ -183,13 +182,11 @@
   }
   .choice.is-correct .choice__mark {
     border-color: var(--color-success);
-    background: var(--color-success);
-    color: var(--color-canvas);
+    color: var(--color-success);
   }
   .choice.is-wrong .choice__mark {
     border-color: var(--color-danger);
-    background: var(--color-danger);
-    color: var(--color-canvas);
+    color: var(--color-danger);
   }
   .choice__body {
     flex: 1;

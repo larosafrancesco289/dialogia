@@ -40,7 +40,11 @@ function useDismissOnOutside(
       if (!inMenu && !inTrigger) setOpen(false);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') {
+        setOpen(false);
+        // Focus goes back to the button that opened it, not to the page.
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener('pointerdown', handlePointerDown, true);
     document.addEventListener('keydown', handleKeyDown, true);
@@ -370,7 +374,9 @@ export function ComposerActions({
           <PaperClipIcon className="h-4 w-4" />
         </button>
 
-        <div className="relative">
+        {/* Not positioned: the menus anchor to the composer itself, so they
+            open above the whole composer instead of over the words. */}
+        <div>
           <button
             ref={searchButtonRef}
             className={`composer-btn-search ${searchEnabled ? 'is-active' : ''}`}
@@ -436,12 +442,12 @@ export function ComposerActions({
         </div>
 
         {showReasoningMenu && (
-          <div className="relative">
+          <div>
             <button
               ref={reasoningButtonRef}
               className={`composer-btn-reasoning ${reasoningActive ? 'is-active' : ''} ${reasoningOpen ? 'is-open' : ''}`}
               data-effort={effort}
-              aria-haspopup="listbox"
+              aria-haspopup="true"
               aria-expanded={reasoningOpen}
               aria-label="Reasoning effort"
               title={reasoningActive ? `Reasoning: ${effortLabel(effort)}` : 'Reasoning effort'}
@@ -459,7 +465,10 @@ export function ComposerActions({
                   defaultEffort={defaultEffort}
                   currentEffort={effort}
                   onSelect={(e) => void onSelectEffort(e)}
-                  onClose={() => setReasoningOpen(false)}
+                  onClose={() => {
+                    setReasoningOpen(false);
+                    reasoningButtonRef.current?.focus();
+                  }}
                   menuRef={reasoningMenuRef}
                 />
               )}

@@ -82,7 +82,7 @@ const summarizeArgKeys = (args: Record<string, unknown>): string => {
 const invalidArgsError = (name: TutorToolName, args: Record<string, unknown>): string => {
   const keySummary = summarizeArgKeys(args);
   if (name === 'quiz') {
-    return `Invalid arguments for quiz. Required shape: { type: "mcq"|"fill_blank"|"open_ended", items: [...] }. Received keys: ${keySummary}.`;
+    return `Invalid arguments for quiz. Required shape: { type: "mcq", items: [...] }. Received keys: ${keySummary}.`;
   }
   return `Invalid arguments for ${name}. Received keys: ${keySummary}.`;
 };
