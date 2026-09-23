@@ -33,6 +33,9 @@ export type ChatSliceState = {
   // memory, and chats known to have persisted messages not yet loaded.
   loadedMessageChatIds: Record<string, true>;
   nonEmptyChatIds: Record<string, true>;
+  /** The saved chats have been read from the database (ephemeral). Before
+   *  that there is no chat to show, which is not the same as an empty one. */
+  hydrated: boolean;
 };
 
 export type ChatSliceActions = {
@@ -105,6 +108,7 @@ export function createChatSlice(
     selectedChatId: undefined,
     loadedMessageChatIds: {},
     nonEmptyChatIds: {},
+    hydrated: false,
 
     async initializeApp() {
       await bootstrapApp(set, get);

@@ -13,6 +13,7 @@ import { selectCurrentChat, selectIsTutorEnabled } from '@/lib/store/selectors';
 import { MotionConfig } from 'framer-motion';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import { preloadMarkdown } from '@/components/Markdown';
 
 const SettingsDrawer = lazyClient(() =>
   import(/* webpackPrefetch: true */ '@/components/settings/SettingsDrawer').then((mod) => ({
@@ -56,6 +57,9 @@ export function HomeClient() {
   );
   const setUI = useChatStore((s) => s.setUI);
   const { isMobile } = useAppBootstrap();
+  // In parallel with reading the saved chats, so the one you left renders
+  // as soon as it arrives.
+  useEffect(() => preloadMarkdown(), []);
   const sidePanelsCrowded = useMediaQuery(MEDIA_QUERIES.sidePanels);
   useAmbientMotionPause();
 

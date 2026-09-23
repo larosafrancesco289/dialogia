@@ -93,6 +93,7 @@ async function runBootstrap(set: StoreSetter, get: StoreGetter): Promise<void> {
     selectedChatId: hydrated.selectedChatId,
     loadedMessageChatIds,
     nonEmptyChatIds,
+    hydrated: true,
     ui: mergeTutorMap(s.ui, hydrated.tutorByMessageId),
   }));
 

@@ -10,6 +10,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { selectCurrentChat } from '@/lib/store/selectors';
 import { useMobileDrawer } from '@/components/mobile/useMobileDrawer';
 import { useHaptics } from '@/lib/hooks/useHaptics';
+import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { lazyClient } from '@/lib/ui/lazy';
 import styles from './MobileShell.module.css';
 
@@ -83,6 +84,7 @@ export function MobileShell() {
   }, [light, setDrawerOpen]);
 
   const closeDrawer = useCallback(() => setDrawerOpen(false), [setDrawerOpen]);
+  useBackToClose(drawerOpen, closeDrawer);
 
   const startNewChat = useCallback(async () => {
     light();

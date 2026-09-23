@@ -5,8 +5,10 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { injectThemeClass } from './src/lib/html';
 
-const THEME_LIGHT = '#f4f1ec';
-const THEME_DARK = '#16140f';
+// The page's paper (--color-canvas in styles/tokens.css), so the browser's
+// bars and a home-screen app's splash meet the page without a seam.
+const THEME_LIGHT = '#fbf8f1';
+const THEME_DARK = '#1a1510';
 
 const resolvePath = (relative: string) => fileURLToPath(new URL(relative, import.meta.url));
 

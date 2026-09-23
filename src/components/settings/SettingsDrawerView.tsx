@@ -10,6 +10,7 @@ import {
 import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
 import { SettingsSearch } from '@/components/settings/SettingsSearch';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import type { TabId } from '@/components/settings/types';
 import { AutoSaveToast } from '@/components/settings/AutoSaveToast';
@@ -62,6 +63,9 @@ function SettingsPhoneView({
       sections.some((sectionId) => sectionMatches(sectionId, searchQuery)),
     );
   const onPage = page === 'tab' && !searching;
+  // Back leaves a page for the list, and the list for the chat.
+  useBackToClose(!closing, closeWithAnim);
+  useBackToClose(onPage, () => setPage('list'));
   const tabLabel = TAB_LIST.find((tab) => tab.id === activeTab)?.label ?? 'Settings';
 
   // Each page opens at its top.
