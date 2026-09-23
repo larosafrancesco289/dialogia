@@ -12,8 +12,10 @@
 
   @media (max-width: 767px) {
     /* Larger touch targets. A switch keeps its drawn size: its label row
-       is the target, and a 44px floor turned its track into a disc. */
-    button:not(.toggle-switch),
+       is the target, and a 44px floor turned its track into a disc. A
+       sheet's handle and the header's second line sit inside targets that
+       are already tall enough (the sheet's head, the header row). */
+    button:not(.toggle-switch):not(.bottom-sheet__handle):not(.tutor-header-line):not(.step-dot),
     [role='button'],
     a {
       min-height: var(--touch-target-min);

@@ -11,6 +11,8 @@ type BottomSheetProps = {
   title?: ReactNode;
   onClose: () => void;
   children: ReactNode;
+  /** A panel that needs the height (the Learning Hub) rather than a menu. */
+  tall?: boolean;
 };
 
 /**
@@ -18,7 +20,14 @@ type BottomSheetProps = {
  * with a handle you can pull down to put it away. Row menus, message
  * actions and pickers all use it, so they all look and move alike.
  */
-export function BottomSheet({ open, label, title, onClose, children }: BottomSheetProps) {
+export function BottomSheet({
+  open,
+  label,
+  title,
+  onClose,
+  children,
+  tall = false,
+}: BottomSheetProps) {
   const reducedMotion = useReducedMotion();
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -65,7 +74,7 @@ export function BottomSheet({ open, label, title, onClose, children }: BottomShe
             />
             <motion.div
               ref={sheetRef}
-              className="bottom-sheet"
+              className={`bottom-sheet${tall ? ' bottom-sheet--tall' : ''}`}
               role="dialog"
               aria-modal="true"
               aria-label={label}

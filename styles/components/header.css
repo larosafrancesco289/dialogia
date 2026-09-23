@@ -185,6 +185,107 @@
     background: var(--color-accent);
   }
 
+  /* ===== The tutor on a phone =====
+     A row in the chat drawer to start or leave a session, and the line
+     under the title that opens the Learning Hub. Ink, with the one gold dot
+     for the live session. */
+  .tutor-drawer-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex: none;
+    min-height: 52px;
+    margin: 0 var(--space-2) var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 0;
+    border-radius: var(--radius-editorial);
+    background: transparent;
+    color: var(--color-fg);
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tutor-drawer-row:active,
+  .tutor-drawer-row[aria-pressed='true'] {
+    background: color-mix(in oklab, var(--color-fg) 6%, transparent);
+  }
+  .tutor-drawer-row:disabled {
+    cursor: default;
+  }
+  .tutor-drawer-row__icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    color: var(--color-fg-muted);
+  }
+  .tutor-drawer-row__text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .tutor-drawer-row__label {
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+  .tutor-drawer-row__hint {
+    font-size: 0.8125rem;
+    color: var(--color-fg-muted);
+  }
+  .tutor-drawer-row__live,
+  .tutor-header-line__live {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-accent);
+  }
+  .tutor-header-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    min-height: 22px;
+    padding: 0 var(--space-2);
+    border: 0;
+    border-radius: var(--radius-editorial);
+    background: transparent;
+    color: var(--color-fg-muted);
+    font-size: 0.8125rem;
+    cursor: pointer;
+  }
+  .tutor-header-line:disabled {
+    cursor: default;
+  }
+  .tutor-header-line__label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-rubric);
+  }
+  .tutor-header-line__detail {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .tutor-header-line__chevron {
+    flex: none;
+    width: 14px;
+    height: 14px;
+  }
+  @media (max-width: 767px) {
+    /* The header's line is a line, not a 44px button; the header row is
+       the target's height. */
+    .tutor-header-line {
+      min-width: 0;
+      min-height: 22px;
+    }
+  }
+
   /* An open panel is a setting, not something live: ink, never a fill. */
   .plan-button[aria-pressed='true'] {
     color: var(--color-fg);

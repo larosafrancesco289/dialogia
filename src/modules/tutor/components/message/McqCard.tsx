@@ -11,6 +11,7 @@ import { useChatStore } from '@/lib/store';
 import { contentVariants } from '@/modules/tutor/components/message/shared';
 import { StepperDots } from '@/modules/tutor/components/message/StepperDots';
 import { useStepper } from '@/modules/tutor/components/message/hooks/useStepper';
+import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
 
 export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId: string }) {
   const log = useChatStore((s) => s.logTutorResult);
@@ -142,7 +143,9 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
             exit="exit"
             className="flex flex-col gap-4"
           >
-            <p className="exercise__question">{activeItem.question}</p>
+            <p className="exercise__question">
+              <InlineEmphasis text={activeItem.question} />
+            </p>
             <div className="exercise__choices">
               {activeItem.choices.map((choice, idx) => {
                 const isPicked = picked === idx;
@@ -165,7 +168,9 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
                     disabled={answered}
                   >
                     <span className="choice__mark">{String.fromCharCode(65 + idx)}</span>
-                    <span className="choice__body">{choice}</span>
+                    <span className="choice__body">
+                      <InlineEmphasis text={choice} />
+                    </span>
                     {answered && (isCorrect || isPicked) && (
                       <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}>
                         {isCorrect ? (

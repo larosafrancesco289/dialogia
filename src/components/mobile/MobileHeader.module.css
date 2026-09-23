@@ -57,36 +57,6 @@
   color: var(--color-fg);
 }
 
-.tutorLine {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 22px;
-  font-size: 0.8125rem;
-  color: var(--color-fg-muted);
-}
-
-.tutorLabel {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-rubric);
-}
-
-.liveDot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--color-accent);
-}
-
-.tutorModel {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* The model sits under the title as a quiet line with a chevron. */
 .modelPicker {
   max-width: 100%;

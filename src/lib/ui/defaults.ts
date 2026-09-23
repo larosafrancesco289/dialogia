@@ -8,7 +8,6 @@ const EPHEMERAL_DEFAULTS: Partial<UIState> = {
 
 export const DEFAULT_MOBILE_STATE: UIMobileState = {
   drawerOpen: false,
-  settingsSheetOpen: false,
   composerFocused: false,
 };
 
