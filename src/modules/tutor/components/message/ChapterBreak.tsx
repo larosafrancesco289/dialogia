@@ -3,6 +3,8 @@ import { useChatStore } from '@/lib/store';
 import { selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import type { Evidence, Message } from '@/lib/types';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
+import { inSentence } from '@/modules/tutor/ui/text';
+import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 
 const ORDINALS = [
   'one',
@@ -37,9 +39,6 @@ const DEMONSTRATIONS = new Set<Evidence['type']>([
 
 const countWord = (n: number) => (n <= ORDINALS.length ? ORDINALS[n - 1] : String(n));
 
-// Topic names are title-like; mid-sentence, a leading article reads lower.
-const inSentence = (name: string) => name.replace(/^(The|A|An) /, (a) => a.toLowerCase());
-
 /**
  * The seam at the end of a topic. Negotiating the plan here, rather than in
  * the middle of instruction, is what keeps agency from displacing teaching:
@@ -64,6 +63,7 @@ export function ChapterBreak({
   });
   const setUI = useChatStore((s) => s.setUI);
   const { learningPlan, onRequestMorePractice } = usePlanCallbacks();
+  const affordances = useTutorAffordances();
 
   const index = learningPlan?.nodes.findIndex((n) => n.id === completedNodeId) ?? -1;
   const node = index >= 0 ? learningPlan!.nodes[index] : undefined;
@@ -71,17 +71,21 @@ export function ChapterBreak({
   const next = startedNodeId ? learningPlan!.nodes.find((n) => n.id === startedNodeId) : undefined;
 
   const mastery = message.learnerModel?.mastery?.[completedNodeId];
-  const percent = mastery ? Math.round(mastery.confidence * 100) : undefined;
+  const percent =
+    affordances.showMastery && mastery ? Math.round(mastery.confidence * 100) : undefined;
   const answers = mastery?.evidence.filter((e) => DEMONSTRATIONS.has(e.type)).length ?? 0;
   const reopened = node.status !== 'completed';
-  const live = isLatest && !dismissed && !reopened;
+  // The choices are about the plan, so a read-only plan has no live seam.
+  const live = affordances.revisePlan && isLatest && !dismissed && !reopened;
 
+  // The interface speaks here, not the tutor, so it reports the tutor's
+  // estimate rather than voicing it; the question is the plan's.
   const estimate =
     percent == null
-      ? 'Does moving on feel right?'
+      ? null
       : answers > 0
-        ? `I'd put you at ${percent}%, from ${countWord(answers)} answer${answers === 1 ? '' : 's'}. Does that sound right?`
-        : `I'd put you at ${percent}%. Does that sound right?`;
+        ? `The tutor puts you at ${percent}%, from ${countWord(answers)} answer${answers === 1 ? '' : 's'}.`
+        : `The tutor puts you at ${percent}%.`;
 
   return (
     <section
@@ -93,7 +97,9 @@ export function ChapterBreak({
 
       {live ? (
         <>
-          <p className="chapter-break__estimate">{estimate}</p>
+          <p className="chapter-break__estimate">
+            {estimate ? `${estimate} Ready to move on?` : 'Ready to move on?'}
+          </p>
           <div className="chapter-break__actions">
             <button
               type="button"
@@ -108,7 +114,9 @@ export function ChapterBreak({
               disabled={busy}
               onClick={() => {
                 setBusy(true);
-                void onRequestMorePractice(completedNodeId, next?.id).finally(() => setBusy(false));
+                void onRequestMorePractice(completedNodeId, next?.id, {
+                  adjustMastery: affordances.correctMastery,
+                }).finally(() => setBusy(false));
               }}
             >
               Not yet, more practice
@@ -116,7 +124,7 @@ export function ChapterBreak({
             <button
               type="button"
               className="chapter-break__action"
-              onClick={() => setUI({ plan: { rightPanelOpen: true } })}
+              onClick={() => setUI({ plan: { rightPanelOpen: true, revising: true } })}
             >
               Change the path
             </button>

@@ -37,6 +37,8 @@ export type TutorSettings = {
   planEditable?: boolean;
   enableLearnerModel?: boolean;
   learnerModelVisible?: boolean;
+  /** Whether the learner may correct the learner model (only meaningful while it is visible). */
+  learnerModelEditable?: boolean;
   learnerModel?: LearnerModel;
 };
 

@@ -208,7 +208,9 @@ export type Evidence = {
     | 'hint_needed'
     | 'explanation_requested'
     | 'misconception_detected'
-    | 'insight_demonstrated';
+    | 'insight_demonstrated'
+    // The learner's own correction, not something the tutor observed.
+    | 'self_report';
   details: string; // Description of what happened
   weight: number; // -0.5 to 0.7 — positive for correct/insight, negative for incorrect/misconception
   skill?: string;

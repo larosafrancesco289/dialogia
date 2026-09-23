@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { Message } from '@/lib/types';
+import { useChatStore } from '@/lib/store';
+import { selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
+import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 
 type MasteryChange = { nodeId: string; from: number; to: number };
 
@@ -26,6 +29,14 @@ export function MarginNotes({
   summary?: string;
 }) {
   const { learningPlan, onContestMastery } = usePlanCallbacks();
+  const { correctMastery } = useTutorAffordances();
+  // Only the newest turn's notes can be answered: an older note's numbers are
+  // history, and correcting from them would move today's estimate.
+  const isLatest = useChatStore((s) => {
+    const messages = selectMessagesForCurrentChat(s);
+    return messages[messages.length - 1]?.id === message.id;
+  });
+  const answerable = correctMastery && isLatest;
   const [adjusted, setAdjusted] = useState<Record<string, number>>({});
   const [contesting, setContesting] = useState<string | null>(null);
 
@@ -76,7 +87,7 @@ export function MarginNotes({
             {reason && <p className="margin-note__reason">{reason}.</p>}
             {corrected != null ? (
               <p className="margin-note__answer">Now {pct(corrected)}%, from your correction</p>
-            ) : (
+            ) : answerable ? (
               <p className="margin-note__answer">
                 <span>Not how it feels?</span>
                 <button
@@ -97,7 +108,7 @@ export function MarginNotes({
                   Too low
                 </button>
               </p>
-            )}
+            ) : null}
           </div>
         );
       })}

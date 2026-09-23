@@ -1,0 +1,337 @@
+@layer components {
+  /* ===== Learning Hub contents — the plan as a table of contents =====
+     Numbered topics in plan order, each with a hairline ink meter. Gold
+     marks only the topic in progress. Opening a topic shows the evidence
+     behind its estimate. Nothing here asks for action; Revise does. */
+  .learning-panel__title-row {
+    flex: 1;
+    gap: var(--space-2);
+  }
+  .learning-panel__revise {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
+    border-radius: var(--radius-editorial);
+    background: transparent;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-fg);
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+  .learning-panel__revise:hover {
+    border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
+    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  }
+  .learning-panel__revise:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .learning-panel__revise[aria-pressed='true'] {
+    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+  }
+
+  .hub-contents {
+    padding: var(--space-4) var(--space-4) var(--space-6);
+  }
+  .hub-contents__intro {
+    margin-bottom: var(--space-4);
+  }
+  .hub-contents__goal {
+    margin: 0;
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 1.05rem;
+    line-height: 1.4;
+    text-wrap: balance;
+    color: var(--color-fg);
+  }
+  .hub-contents__meta {
+    margin: var(--space-1) 0 0;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+
+  .hub-contents__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--chrome-rule);
+  }
+  .hub-contents__item {
+    border-bottom: 1px solid var(--chrome-rule);
+  }
+  .hub-contents__row {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: var(--space-2);
+    width: 100%;
+    padding: 0.7rem 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    color: var(--color-fg);
+    cursor: pointer;
+  }
+  .hub-contents__row:focus-visible {
+    outline: none;
+    border-radius: var(--radius-editorial);
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .hub-contents__num {
+    font-family: var(--font-serif-assistant);
+    font-variant-numeric: oldstyle-nums;
+    font-size: 0.95rem;
+    color: var(--color-fg-muted);
+  }
+  /* Gold as text needs ink mixed in to stay legible on paper. */
+  .hub-contents__item.is-current .hub-contents__num {
+    color: color-mix(in oklab, var(--color-accent) 70%, var(--color-fg));
+  }
+  .hub-contents__num.is-done {
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: var(--color-fg-muted);
+  }
+  .hub-contents__label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+  .hub-contents__name {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.3;
+    text-wrap: pretty;
+  }
+  .hub-contents__row:hover .hub-contents__name {
+    text-decoration: underline;
+    text-decoration-color: var(--rule-light);
+    text-underline-offset: 3px;
+  }
+  .hub-contents__item.is-locked .hub-contents__name,
+  .hub-contents__item.is-untouched .hub-contents__name {
+    font-weight: 400;
+    color: var(--color-fg-muted);
+  }
+  .hub-contents__flag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    margin-left: 0.4rem;
+    border: 1px solid color-mix(in oklab, var(--color-danger) 55%, transparent);
+    border-radius: 50%;
+    vertical-align: 0.1em;
+    font-size: 0.625rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--color-danger);
+  }
+  .hub-contents__after {
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+  .hub-contents__meter {
+    display: block;
+    height: 2px;
+    margin-top: 0.1rem;
+    background: color-mix(in oklab, var(--color-fg) 10%, transparent);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .hub-contents__meter > span {
+    display: block;
+    height: 100%;
+    background: color-mix(in oklab, var(--color-fg) 55%, transparent);
+    transform-origin: left center;
+    transition: transform var(--duration-slow) var(--ease-out-expo);
+  }
+  .hub-contents__item.is-current .hub-contents__meter > span {
+    background: var(--color-accent);
+  }
+  .hub-contents__meter.is-weak > span {
+    background: var(--color-danger);
+  }
+  .hub-contents__pct {
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+  .hub-contents__pct.is-weak {
+    color: var(--color-danger);
+  }
+
+  .hub-contents__detail {
+    padding: 0 0 var(--space-4) calc(1.5rem + var(--space-2));
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--color-fg-muted);
+  }
+  .hub-contents__desc {
+    margin: 0 0 var(--space-2);
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 0.9rem;
+    color: color-mix(in oklab, var(--color-fg) 72%, var(--color-canvas));
+  }
+  .hub-contents__objectives {
+    margin: 0 0 var(--space-3);
+    padding-left: 1.1em;
+  }
+  .hub-contents__objectives li::marker {
+    color: var(--rule-light);
+  }
+  .hub-contents__why {
+    margin-top: var(--space-3);
+  }
+  .hub-contents__why-head {
+    margin: 0 0 var(--space-1);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+  }
+  .hub-contents__why ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .hub-contents__why li {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    color: var(--color-fg);
+  }
+  .hub-contents__sign {
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+  .hub-contents__why li.hub-contents__start,
+  .hub-contents__why li.hub-contents__more {
+    display: block;
+    padding-left: 2rem;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+  .hub-contents__why li.is-against .hub-contents__sign {
+    color: var(--color-danger);
+  }
+
+  /* Correcting the learner model in place: quiet, always the same words
+     as the margin notes, so it reads as one gesture wherever it appears. */
+  .hub-contents__correct {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4em;
+    margin: var(--space-2) 0 0;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+  .hub-contents__correct button,
+  .hub-contents__resolve,
+  .hub-revise__link {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    color: var(--color-fg-muted);
+    text-decoration: underline;
+    text-decoration-color: var(--rule-light);
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .hub-contents__correct button:hover,
+  .hub-contents__resolve:hover,
+  .hub-revise__link:hover {
+    color: var(--color-fg);
+    text-decoration-color: currentColor;
+  }
+  .hub-contents__correct button:focus-visible,
+  .hub-contents__resolve:focus-visible,
+  .hub-revise__link:focus-visible {
+    outline: none;
+    border-radius: 2px;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .hub-contents__correct button:disabled,
+  .hub-contents__resolve:disabled,
+  .hub-revise__link:disabled {
+    cursor: progress;
+    opacity: 0.6;
+  }
+  .hub-contents__resolve {
+    margin-left: 0.5em;
+    font-size: 0.75rem;
+  }
+
+  /* ===== Revise plan — the plan's own negotiation ===== */
+  .hub-revise__lead {
+    margin: 0 0 var(--space-4);
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: color-mix(in oklab, var(--color-fg) 78%, var(--color-canvas));
+  }
+  .hub-revise__row {
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    cursor: default;
+    padding-bottom: 0.3rem;
+  }
+  .hub-revise__actions,
+  .hub-revise__confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 1rem;
+    padding: 0 0 0.7rem calc(1.5rem + var(--space-2));
+    font-size: 0.8125rem;
+  }
+  .hub-revise__actions:empty {
+    display: none;
+  }
+  .hub-revise__confirm {
+    gap: 0.5rem 0.75rem;
+    color: var(--color-fg);
+  }
+  .hub-revise__action {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
+    border-radius: var(--radius-editorial);
+    background: transparent;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-fg);
+    cursor: pointer;
+  }
+  .hub-revise__action:hover {
+    border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
+    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  }
+  .hub-revise__action:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .hub-revise__discuss {
+    margin-top: var(--space-6);
+    font-size: 0.8125rem;
+    color: var(--color-fg-muted);
+  }
+  .hub-revise__discuss p {
+    margin: 0 0 var(--space-2);
+  }
+}

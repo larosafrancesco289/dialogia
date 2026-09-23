@@ -78,6 +78,8 @@ export type UiPlanSnapshot = {
   sheetPlanOverride?: LearningPlan | null;
   rightPanelOpen?: boolean;
   rightPanelTab?: 'plan' | 'progress';
+  /** The Learning Hub shows its editing controls (Revise) instead of the contents. */
+  revising?: boolean;
   generationByChatId?: Record<
     string,
     {

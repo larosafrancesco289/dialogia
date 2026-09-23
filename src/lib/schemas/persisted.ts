@@ -65,6 +65,7 @@ export const TutorSettingsSchema = z
     planEditable: z.boolean().optional(),
     enableLearnerModel: z.boolean().optional(),
     learnerModelVisible: z.boolean().optional(),
+    learnerModelEditable: z.boolean().optional(),
     learnerModel: z.custom<LearnerModel>().optional(),
   })
   .passthrough();
