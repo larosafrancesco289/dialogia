@@ -160,18 +160,23 @@
     opacity: 0;
   }
 
+  /* The right panel gives ground on smaller windows so the chat column keeps
+     a readable measure. */
+  .app-shell {
+    --right-panel-width: clamp(320px, 28vw, 400px);
+  }
   .right-panel-slot {
     overflow: hidden;
     position: relative;
     z-index: 10;
-    width: 400px;
+    width: var(--right-panel-width);
     min-width: 0;
     transition:
       width var(--duration-slow) var(--ease-emphasized),
       visibility 0s;
   }
   .right-panel-body {
-    width: 400px;
+    width: var(--right-panel-width);
     height: 100%;
     transition:
       transform var(--duration-slow) var(--ease-emphasized),
@@ -498,7 +503,7 @@
 
   /* ── Agency cue ── */
   .plan-agency-cue {
-    margin: 10px 16px 0;
+    margin: 10px 16px;
     padding: 7px 10px;
     display: flex;
     align-items: flex-start;
@@ -652,14 +657,18 @@
     background: var(--rule-light);
   }
 
-  /* Row name */
-  .plan-index-row__name {
+  /* Row name, with any status set beneath it as a quiet second line */
+  .plan-index-row__label {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .plan-index-row__name {
     font-size: 15px;
     font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    text-wrap: pretty;
     min-width: 0;
     line-height: 1.3;
   }
@@ -671,16 +680,6 @@
   .plan-index-status {
     font-size: 12.5px;
     color: var(--color-fg-muted);
-    flex-shrink: 0;
-    white-space: nowrap;
-    text-align: right;
-  }
-  .plan-index-status:empty {
-    display: none;
-  }
-  .plan-index-status--ip {
-    color: var(--color-accent);
-    font-weight: 500;
   }
 
   /* Mastery badge pill (Condition B) */

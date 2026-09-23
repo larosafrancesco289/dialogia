@@ -12,6 +12,8 @@ import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
 import { useAmbientMotionPause } from '@/lib/hooks/useAmbientMotionPause';
 import { selectCurrentChat, selectIsTutorEnabled } from '@/lib/store/selectors';
 import { MotionConfig } from 'framer-motion';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 
 const SettingsDrawer = lazyClient(() =>
   import(/* webpackPrefetch: true */ '@/components/settings/SettingsDrawer').then((mod) => ({
@@ -55,6 +57,7 @@ export function HomeClient() {
   );
   const setUI = useChatStore((s) => s.setUI);
   const { isMobile } = useAppBootstrap({ mobileBreakpoint: 768 });
+  const sidePanelsCrowded = useMediaQuery(MEDIA_QUERIES.sidePanels);
   useAmbientMotionPause();
 
   // Track which chat has already auto-opened the panel (respect manual collapse)
@@ -77,6 +80,19 @@ export function HomeClient() {
     }
   }, [chatId, tutorActive, hasPlan, isMobile, setUI]);
 
+  // When the window is too narrow for both side panels, the one opened last
+  // wins: opening the sidebar closes the right panel, and anything else (the
+  // panel opening, the window shrinking) collapses the sidebar.
+  const showRightPanel = rightPanelOpen && (hasPlan || !!planSheetOverride);
+  const prevPanelsRef = useRef({ collapsed, showRightPanel });
+  useEffect(() => {
+    const prev = prevPanelsRef.current;
+    prevPanelsRef.current = { collapsed, showRightPanel };
+    if (isMobile || !sidePanelsCrowded || collapsed || !showRightPanel) return;
+    if (prev.collapsed && prev.showRightPanel) setUI({ plan: { rightPanelOpen: false } });
+    else setUI({ sidebarCollapsed: true });
+  }, [collapsed, showRightPanel, sidePanelsCrowded, isMobile, setUI]);
+
   // Mobile: attach swipe gestures for sidebar open/close
   useSidebarGestures({
     isMobile,
@@ -92,9 +108,6 @@ export function HomeClient() {
       </MotionConfig>
     );
   }
-
-  const hasRightPanelContent = hasPlan || !!planSheetOverride;
-  const showRightPanel = rightPanelOpen && hasRightPanelContent;
 
   return (
     <MotionConfig reducedMotion="user">
