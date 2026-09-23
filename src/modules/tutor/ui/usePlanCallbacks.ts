@@ -6,7 +6,7 @@ import {
   getNextNode,
   updateNodeStatus,
 } from '@/modules/tutor/learning-plan/service';
-import { resolveLearnerModel } from '@/modules/tutor/learner-model';
+import { applyLearnerModelFeedback, resolveLearnerModel } from '@/modules/tutor/learner-model';
 import { selectCurrentChat, selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import type { LearningPlan, LearnerModel } from '@/lib/types';
 import type { LearnerModelFeedback } from '@/modules/tutor/learner-model';
@@ -29,6 +29,7 @@ export type PlanCallbacks = {
   onOpenRightPanel: (tab?: 'plan' | 'progress') => void;
   onCloseRightPanel: () => void;
   onSendPlanFeedback: (message: string) => void;
+  onRequestMorePractice: (completedNodeId: string, startedNodeId?: string) => Promise<void>;
 } & LearnerModelEditCallbacks;
 
 export function usePlanCallbacks(): PlanCallbacks {
@@ -205,6 +206,50 @@ export function usePlanCallbacks(): PlanCallbacks {
     [onLearnerModelFeedback, sendUserMessage, learningPlan],
   );
 
+  // The learner's answer at a chapter end: "not yet". Reopens the finished
+  // topic, puts back the one the tutor had moved on to, and records the
+  // learner's own estimate below the advance threshold, as evidence, so the
+  // next turn neither re-advances nor forgets it.
+  const onRequestMorePractice = useCallback(
+    async (completedNodeId: string, startedNodeId?: string) => {
+      if (!learningPlan) return;
+      const node = learningPlan.nodes.find((n) => n.id === completedNodeId);
+      if (!node) return;
+
+      let updatedPlan = updateNodeStatus(learningPlan, completedNodeId, 'in_progress');
+      const started = startedNodeId
+        ? learningPlan.nodes.find((n) => n.id === startedNodeId)
+        : undefined;
+      if (started?.status === 'in_progress') {
+        updatedPlan = updateNodeStatus(updatedPlan, started.id, 'not_started');
+      }
+
+      const current = learnerModel?.mastery?.[completedNodeId]?.confidence;
+      const updatedModel = learnerModel
+        ? applyLearnerModelFeedback(learnerModel, {
+            nodeId: completedNodeId,
+            direction: 'down',
+            estimatedConfidence: Math.min(current ?? 0.6, 0.6),
+            reason: `Learner asked for more practice on "${node.name}" at the end of the topic.`,
+          }).model
+        : undefined;
+
+      await updateChatSettings({
+        features: {
+          tutor: {
+            learningPlan: updatedPlan,
+            ...(updatedModel ? { learnerModel: updatedModel } : {}),
+          },
+        },
+      });
+      await sendUserMessage(
+        `I'm not ready to move on from "${node.name}" yet. Please give me more practice on it before we continue.`,
+        { metadata: { hiddenFromUser: true, kind: 'tutor_more_practice' } },
+      );
+    },
+    [learningPlan, learnerModel, sendUserMessage, updateChatSettings],
+  );
+
   const onToggleRightPanel = useCallback(() => {
     if (rightPanelOpen) {
       setUI({ plan: { rightPanelOpen: false, sheetPlanOverride: null } });
@@ -253,5 +298,6 @@ export function usePlanCallbacks(): PlanCallbacks {
     onOpenRightPanel,
     onCloseRightPanel,
     onSendPlanFeedback,
+    onRequestMorePractice,
   };
 }

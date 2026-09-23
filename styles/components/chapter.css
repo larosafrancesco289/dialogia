@@ -1,0 +1,95 @@
+@layer components {
+  /* ===== Chapter break — the seam at the end of a tutor topic =====
+     Set like a chapter ending in a book: an asterism, a small-caps kicker,
+     the topic's name in the book face. While it waits for the learner it
+     carries the tutor's estimate and three quiet choices; once answered it
+     settles into a single line of record. Gold only on the live choice. */
+  .chapter-break {
+    margin: var(--space-4) 0 var(--space-3);
+    padding: var(--space-3) 0 var(--space-4);
+    text-align: center;
+  }
+  .chapter-break::before {
+    content: '\2042';
+    display: block;
+    margin-bottom: var(--space-2);
+    font-family: var(--font-serif-assistant);
+    color: var(--color-fg-muted);
+  }
+  .chapter-break__kicker {
+    margin: 0;
+    font-family: var(--font-serif-assistant);
+    font-variant: small-caps;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: lowercase;
+    color: var(--color-fg-muted);
+  }
+  .chapter-break__title {
+    margin: 0.15em 0 0;
+    font-family: var(--font-serif-assistant);
+    font-size: 1.5rem;
+    font-weight: 450;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    text-wrap: balance;
+    color: var(--color-fg);
+  }
+  .chapter-break__estimate {
+    margin: var(--space-2) auto 0;
+    max-width: 34ch;
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 1.05rem;
+    line-height: 1.5;
+    text-wrap: pretty;
+    color: color-mix(in oklab, var(--color-fg) 78%, var(--color-canvas));
+  }
+  .chapter-break__settled {
+    margin: var(--space-1) 0 0;
+    font-size: 0.8125rem;
+    color: var(--color-fg-muted);
+  }
+  .chapter-break__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+  .chapter-break__action {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--chrome-rule);
+    border-radius: var(--radius-editorial);
+    background: transparent;
+    color: var(--color-fg-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+  .chapter-break__action:hover {
+    color: var(--color-fg);
+    border-color: color-mix(in oklab, var(--color-fg) 22%, transparent);
+    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+  }
+  .chapter-break__action:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .chapter-break__action:disabled {
+    opacity: 0.5;
+    cursor: progress;
+  }
+  .chapter-break__action--primary {
+    color: var(--color-fg);
+    border-color: color-mix(in oklab, var(--color-accent) 55%, transparent);
+  }
+  .chapter-break__action--primary:hover {
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 8%, transparent);
+  }
+}
