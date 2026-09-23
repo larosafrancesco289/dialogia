@@ -70,6 +70,14 @@
     height: 0;
     overflow: visible;
   }
+  /* On a phone the composer floats 12px up from the edge, which the list's
+     scroll padding does not know about: lift the button clear of it. */
+  @media (max-width: 767px) {
+    .jump-to-latest {
+      bottom: calc(var(--space-5) + var(--space-6));
+    }
+  }
+
   .chat-pane__fade {
     position: absolute;
     left: 0;

@@ -18,6 +18,7 @@ import { Lightbulb as LucideLightbulb, LightbulbOff as LucideLightbulbOff } from
 import { motion, AnimatePresence } from 'framer-motion';
 import { springs } from '@/lib/mobile/springConfig';
 import type { ReasoningEffort } from '@/lib/types';
+import { useBackToClose } from '@/lib/hooks/useBackToClose';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reasoning effort: "Lightbulb, off to radiant". The icon fills in along the
@@ -151,6 +152,8 @@ function ReasoningMenu({
   const [shift, setShift] = useState(0);
   const shown = efforts[previewIndex ?? currentIndex];
   const stopsRef = useRef<Array<HTMLButtonElement | null>>([]);
+  // Mounted only while open, so Back puts it away.
+  useBackToClose(true, onClose);
 
   useEffect(() => {
     stopsRef.current[currentIndex]?.focus();

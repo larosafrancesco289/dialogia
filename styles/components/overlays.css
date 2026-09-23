@@ -116,7 +116,7 @@
     justify-content: center;
     width: 100%;
     min-height: 0;
-    height: 24px;
+    height: 32px;
     padding: 0;
     border: 0;
     background: transparent;
@@ -228,6 +228,7 @@
     -webkit-touch-callout: default;
   }
   .select-text.is-reply {
+    white-space: normal;
     font-family: var(--font-serif-assistant);
     font-size: 1.0625rem;
   }

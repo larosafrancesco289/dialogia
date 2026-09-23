@@ -27,6 +27,7 @@ export function LearningPanel() {
     onContestMastery,
     onResolveMisconceptionQuietly,
     onSendPlanFeedback,
+    onCloseRightPanel,
   } = usePlanCallbacks();
   const affordances = useTutorAffordances();
 
@@ -65,6 +66,7 @@ export function LearningPanel() {
         revising={revising}
         canRevise={canRevise}
         onToggleRevise={() => setRevising(!revising)}
+        onClose={onCloseRightPanel}
       />
       <div className="learning-panel__content">
         {revising ? (

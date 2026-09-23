@@ -26,10 +26,15 @@ const staggerContainer = {
   },
 };
 
+// A page with one section named like the page says what it holds instead.
+const TAB_SUMMARY_FALLBACK: Partial<Record<TabId, string>> = {
+  tutor: 'Tutor mode and its model',
+};
+
 /** "Providers · Your servers · Web search": what a Settings page holds. */
 function tabSummary(tabId: TabId, label: string): string | null {
   const titles = TAB_SECTIONS[tabId].map((id) => SECTION_TITLES[id]);
-  if (titles.length === 1 && titles[0] === label) return null;
+  if (titles.length === 1 && titles[0] === label) return TAB_SUMMARY_FALLBACK[tabId] ?? null;
   return titles.join(' · ');
 }
 
@@ -66,6 +71,7 @@ function SettingsPhoneView({
   // Back leaves a page for the list, and the list for the chat.
   useBackToClose(!closing, closeWithAnim);
   useBackToClose(onPage, () => setPage('list'));
+  useBackToClose(searching, () => setSearchQuery(''));
   const tabLabel = TAB_LIST.find((tab) => tab.id === activeTab)?.label ?? 'Settings';
 
   // Each page opens at its top.

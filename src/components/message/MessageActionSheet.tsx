@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import type { Message } from '@/lib/types';
 import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
+import { Markdown } from '@/components/Markdown';
 
 export type MessageActionSheetProps = {
   isMobile: boolean;
@@ -120,9 +121,14 @@ export function MessageActionSheet({
           onClose();
         }}
       >
-        <div className={`select-text${selecting?.role === 'assistant' ? ' is-reply' : ''}`}>
-          {selecting?.content}
-        </div>
+        {/* A reply as it reads, set in its own type; your words as typed. */}
+        {selecting?.role === 'assistant' ? (
+          <div className="select-text is-reply">
+            <Markdown content={selecting.content} />
+          </div>
+        ) : (
+          <div className="select-text">{selecting?.content}</div>
+        )}
       </BottomSheet>
     </>
   );

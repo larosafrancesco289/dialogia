@@ -493,6 +493,13 @@ export function MarkdownRenderer({
 
   const components: Components = useMemo(
     () => ({
+      // A wide table scrolls sideways in its own frame instead of squeezing
+      // its columns until words break mid-letter.
+      table: ({ node: _node, ...tableProps }) => (
+        <div className="table-scroll">
+          <table {...tableProps} />
+        </div>
+      ),
       pre: ({ children, node: _node, ...preProps }) => {
         // Detect Mermaid blocks and render as diagrams instead of <pre>
         const lang = detectLanguageFromPreChildren(children);

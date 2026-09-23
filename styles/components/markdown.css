@@ -239,6 +239,22 @@
   .markdown pre[data-wrap='false'] {
     white-space: pre;
   }
+  /* A table too wide for the column scrolls in its own frame; its cells
+     wrap only between words, never inside one. */
+  .markdown .table-scroll {
+    margin: 1.2em 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .markdown .table-scroll > table {
+    margin: 0;
+  }
+  .markdown th,
+  .markdown td {
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: manual;
+  }
   /* Booktabs: a heavy rule above and below, a light one under the header,
      and nothing between rows. */
   .markdown table {

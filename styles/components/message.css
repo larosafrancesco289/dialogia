@@ -131,6 +131,20 @@
     font-size: 0.75rem;
     color: var(--color-fg-muted);
   }
+  /* An on-screen keyboard has no such shortcut. */
+  @media (hover: none) and (pointer: coarse) {
+    .message-edit-bar__hint {
+      display: none;
+    }
+  }
+  /* On a phone, editing a message is the one thing being written: the main
+     composer steps aside so it doesn't ride the keyboard over the editor. */
+  @media (max-width: 767px) {
+    .chat-pane:has(.message-edit-bar) .composer-chrome,
+    .chat-pane:has(.message-edit-bar) .chat-pane__fade {
+      display: none;
+    }
+  }
 
   /* The colophon: a line of record under a reply, in the book face. */
   .message-colophon {

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ModelDescriptor } from '@/lib/types';
 import { getSlashSuggestions, type SlashSuggestion } from '@/lib/slash';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 
 export type ComposerInputProps = {
   value: string;
@@ -27,6 +29,7 @@ export function ComposerInput({
 }: ComposerInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const touchKeyboard = useMediaQuery(MEDIA_QUERIES.touch);
 
   const suggestions = useMemo<SlashSuggestion[]>(
     () => getSlashSuggestions(value, models),
@@ -43,6 +46,7 @@ export function ComposerInput({
     <>
       <textarea
         ref={textareaRef}
+        enterKeyHint={touchKeyboard ? 'enter' : 'send'}
         className="composer-field focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none"
         rows={1}
         placeholder="Your turn…"
@@ -93,7 +97,9 @@ export function ComposerInput({
             onSend();
             return;
           }
-          if (event.key === 'Enter' && !event.shiftKey) {
+          // An on-screen keyboard has no Shift+Return: there Return starts a
+          // new line, as in every phone chat app, and the button sends.
+          if (event.key === 'Enter' && !event.shiftKey && !touchKeyboard) {
             event.preventDefault();
             onSend();
           }

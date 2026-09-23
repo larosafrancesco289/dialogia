@@ -46,4 +46,16 @@
   html body select {
     font-size: 16px;
   }
+  /* A field is a thumb tall, and a label that acts as a button (Import) is
+     as tall as the buttons beside it. */
+  html body .input {
+    min-height: var(--touch-target-min);
+  }
+  html body label.btn,
+  html body label.btn-outline,
+  html body label.btn-ghost {
+    min-height: var(--touch-target-min);
+    display: inline-flex;
+    align-items: center;
+  }
 }

@@ -15,4 +15,7 @@ export const MEDIA_QUERIES = {
   mobile: maxWidthQuery(BREAKPOINTS.mobile),
   desktop: maxWidthQuery(BREAKPOINTS.desktop),
   sidePanels: maxWidthQuery(BREAKPOINTS.sidePanels),
+  // A touch screen with no hovering pointer: a phone or tablet typing on its
+  // on-screen keyboard, whatever its width.
+  touch: '(hover: none) and (pointer: coarse)',
 } as const;

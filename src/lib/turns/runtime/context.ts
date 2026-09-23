@@ -76,11 +76,17 @@ export const prepareSendRuntime = async ({
         /* best effort */
       }
     }
-    const preferredTutorModelId =
+    // The tutor default is often a dynamic alias ('~anthropic/frontier'),
+    // which is never in the catalogue itself: resolve it first, or the
+    // check below mistook it for a missing model and fell back to whatever
+    // loaded first, so sessions silently ran on an unrelated model.
+    const preferredTutorModelId = resolveDynamicModelId(
       ensured.preferredModelId ||
-      chat.settings.features.tutor?.defaultModelId ||
-      tutorDefaultModelId ||
-      DEFAULT_TUTOR_MODEL_ID;
+        chat.settings.features.tutor?.defaultModelId ||
+        tutorDefaultModelId ||
+        DEFAULT_TUTOR_MODEL_ID,
+      modelIndex.all,
+    );
     let resolvedTutorModelId = preferredTutorModelId;
     // A tutor model that is no longer in the catalogue falls back to whatever
     // loaded first rather than sending a request that cannot succeed.

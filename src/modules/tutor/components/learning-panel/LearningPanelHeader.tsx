@@ -1,13 +1,15 @@
-import { PencilSquareIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 export function LearningPanelHeader({
   revising,
   canRevise,
   onToggleRevise,
+  onClose,
 }: {
   revising: boolean;
   canRevise: boolean;
   onToggleRevise: () => void;
+  onClose: () => void;
 }) {
   return (
     <div className="learning-panel__header">
@@ -28,6 +30,17 @@ export function LearningPanelHeader({
             {revising ? 'Done' : 'Revise plan'}
           </button>
         )}
+        {/* Opened from a proposal's "View full plan", the Hub has no badge
+            in the header to close it by, so it carries its own way out. */}
+        <button
+          type="button"
+          className="icon-button learning-panel__close"
+          onClick={onClose}
+          aria-label="Close Learning Hub"
+          title="Close"
+        >
+          <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+        </button>
       </div>
     </div>
   );

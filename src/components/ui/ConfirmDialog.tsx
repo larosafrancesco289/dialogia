@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { DialogOverlay, DialogPortal, DialogSurface } from '@/components/ui/Dialog';
+import { useBackToClose } from '@/lib/hooks/useBackToClose';
 
 type Props = {
   open: boolean;
@@ -24,13 +25,18 @@ export function ConfirmDialog({
   tone = 'danger',
 }: Props) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  // Back cancels, as Escape does, instead of closing what is behind it.
+  useBackToClose(open, onCancel);
 
   // Enter is left to the focused button, so it answers what is focused:
   // Cancel, where focus starts, until the reader moves to the other one.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
+      if (e.key !== 'Escape') return;
+      // Handled here: nothing behind the dialog closes on the same key.
+      e.preventDefault();
+      onCancel();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
