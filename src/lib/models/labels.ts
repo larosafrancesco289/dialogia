@@ -38,7 +38,7 @@ export function deriveNameFromId(id?: string): string {
   return name || segment;
 }
 
-const looksLikeId = (value: string) => /^[~\w.-]+\/[\w.:-]+$/.test(value);
+const looksLikeId = (value: string) => /^[~\w.:-]+\/[\w.:-]+$/.test(value);
 
 export function formatModelLabel(params: {
   model?: ModelDescriptor | null;

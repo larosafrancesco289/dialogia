@@ -261,8 +261,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
     padding: 0;
     border: none;
     border-radius: 999px;
@@ -301,8 +301,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
     padding: 0;
     border: 0;
     border-radius: 999px;
@@ -321,12 +321,49 @@
     color: var(--color-danger);
   }
 
-  /* Main composer row layout */
+  /* Two rows: the text across the full width, the tools beneath it (attach,
+     search, reasoning on the left; send on the right), so icons never
+     crowd the words and the send button stays put as the text grows. */
   .composer-row {
     display: flex;
-    align-items: flex-end;
-    gap: var(--space-2);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
     min-width: 0;
+  }
+  .composer-row .composer-field {
+    padding: 0.35rem 0.25rem 0.15rem;
+  }
+  .composer-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+  .composer-tools__left {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: -4px;
+  }
+  .composer-tools__status {
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 0.875rem;
+    color: var(--color-fg-muted);
+    padding-left: 0.25rem;
+  }
+  /* A tool that is on says so in a word beside its icon. */
+  .composer-tool-label {
+    margin-left: 5px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+  .composer-btn-search:has(.composer-tool-label),
+  .composer-btn-reasoning:has(.composer-tool-label) {
+    width: auto;
+    padding: 0 10px 0 8px;
   }
 
   /* Mobile adjustments */
