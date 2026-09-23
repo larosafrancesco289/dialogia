@@ -1,9 +1,8 @@
-import { useMemo } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { Bars2Icon, PencilSquareIcon } from '@heroicons/react/24/outline';
-import { findModelById, formatModelLabel } from '@/lib/models';
 import { ModelPicker } from '@/components/ModelPicker';
+import { ModuleSlot } from '@/components/ModuleSlot';
 import { selectIsStreaming, selectIsTutorEnabled } from '@/lib/store/selectors';
 import styles from './MobileHeader.module.css';
 
@@ -21,30 +20,13 @@ export function MobileHeader({
   onOpenDrawer: () => void;
   onNewChat: () => void;
 }) {
-  const { chats, selectedChatId, models, isStreaming, tutorActive, tutorDefaultModelId } =
-    useChatStore(
-      (s) => ({
-        chats: s.chats,
-        selectedChatId: s.selectedChatId,
-        models: s.models,
-        isStreaming: selectIsStreaming(s),
-        tutorActive: selectIsTutorEnabled(s),
-        tutorDefaultModelId: s.ui.tutor?.defaultModelId,
-      }),
-      shallow,
-    );
-
-  const chat = chats.find((c) => c.id === selectedChatId);
-
-  const tutorModelId =
-    chat?.settings?.features.tutor?.defaultModelId ||
-    chat?.settings?.modelId ||
-    tutorDefaultModelId;
-  const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
-  const tutorModelLabel = useMemo(
-    () =>
-      tutorModelId ? formatModelLabel({ model: tutorModelMeta, fallbackId: tutorModelId }) : '',
-    [tutorModelMeta, tutorModelId],
+  const { title, isStreaming, tutorActive } = useChatStore(
+    (s) => ({
+      title: s.chats.find((c) => c.id === s.selectedChatId)?.title,
+      isStreaming: selectIsStreaming(s),
+      tutorActive: selectIsTutorEnabled(s),
+    }),
+    shallow,
   );
 
   return (
@@ -63,15 +45,11 @@ export function MobileHeader({
       </button>
 
       <div className={styles.center}>
-        <h1 className={styles.title}>{chat?.title || 'New chat'}</h1>
+        <h1 className={styles.title}>{title || 'New chat'}</h1>
 
+        {/* While a session is on, the module says what drives the chat. */}
         {tutorActive ? (
-          <div className={styles.tutorLine}>
-            <span className={styles.tutorLabel}>Tutor</span>
-            {/* The session is live, so its dot is gold, as on desktop. */}
-            <span className={styles.liveDot} aria-hidden="true" />
-            {tutorModelLabel && <span className={styles.tutorModel}>{tutorModelLabel}</span>}
-          </div>
+          <ModuleSlot slot="phoneHeaderLine" />
         ) : (
           <ModelPicker variant="sheet" className={styles.modelPicker} />
         )}

@@ -14,7 +14,6 @@ const baseUi = (overrides?: Partial<UiSnapshot>): UiSnapshot => ({
   plan: {},
   mobile: {
     drawerOpen: false,
-    settingsSheetOpen: false,
     composerFocused: false,
   },
   ...overrides,

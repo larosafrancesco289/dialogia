@@ -20,6 +20,16 @@ export const tutorPanels: ModulePanels = {
       default: m.TutorHeaderSlot,
     })),
   ),
+  phoneDrawer: lazy(() =>
+    import('@/modules/tutor/components/phone/TutorDrawerRow').then((m) => ({
+      default: m.TutorDrawerRow,
+    })),
+  ),
+  phoneHeaderLine: lazy(() =>
+    import('@/modules/tutor/components/phone/TutorHeaderLine').then((m) => ({
+      default: m.TutorHeaderLine,
+    })),
+  ),
   settingsSection: lazy(() =>
     import('@/modules/tutor/components/settings/TutorSettingsSection').then((m) => ({
       default: m.TutorSettingsSection,

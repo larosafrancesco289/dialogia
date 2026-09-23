@@ -3,6 +3,7 @@ import { motion, useTransform, type MotionValue } from 'framer-motion';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { LogoMark } from '@/components/ui/LogoMark';
+import { ModuleSlot } from '@/components/ModuleSlot';
 import styles from './MobileDrawer.module.css';
 
 /**
@@ -52,6 +53,8 @@ export function MobileDrawer({
           <span className="brand__name">Dialogia</span>
         </div>
       </div>
+
+      <ModuleSlot slot="phoneDrawer" />
 
       <div className={styles.list}>
         <ChatSidebar collapsed={false} embedded />

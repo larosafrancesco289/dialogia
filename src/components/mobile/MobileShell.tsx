@@ -5,15 +5,18 @@ import { shallow } from 'zustand/shallow';
 import { ChatPane } from '@/components/chat/ChatPane';
 import { MobileHeader } from '@/components/mobile/MobileHeader';
 import { MobileDrawer } from '@/components/mobile/MobileDrawer';
+import { ModuleSlot } from '@/components/ModuleSlot';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { selectCurrentChat } from '@/lib/store/selectors';
 import { useMobileDrawer } from '@/components/mobile/useMobileDrawer';
 import { useHaptics } from '@/lib/hooks/useHaptics';
 import { lazyClient } from '@/lib/ui/lazy';
 import styles from './MobileShell.module.css';
 
-// Lazy load settings sheet (it's heavy)
-const MobileSettingsSheet = lazyClient(() =>
-  import(/* webpackPrefetch: true */ '@/components/mobile/MobileSettingsSheet').then((mod) => ({
-    default: mod.MobileSettingsSheet,
+// The settings page is heavy and opened rarely; the same one as the desktop's.
+const SettingsDrawer = lazyClient(() =>
+  import(/* webpackPrefetch: true */ '@/components/settings/SettingsDrawer').then((mod) => ({
+    default: mod.SettingsDrawer,
   })),
 );
 
@@ -33,12 +36,25 @@ const IntroTour = lazyClient(() =>
  * the finger, with Settings at its foot.
  */
 export function MobileShell() {
-  const { settingsSheetOpen, setupOpen, introOpen, selectedChatId, setUI, newChat } = useChatStore(
+  const {
+    settingsOpen,
+    setupOpen,
+    introOpen,
+    selectedChatId,
+    rightPanelOpen,
+    hasPanelContent,
+    setUI,
+    newChat,
+  } = useChatStore(
     (s) => ({
-      settingsSheetOpen: s.ui.mobile.settingsSheetOpen,
+      settingsOpen: s.ui.showSettings,
       setupOpen: s.ui.setupOpen === true,
       introOpen: s.ui.introSeen !== true,
       selectedChatId: s.selectedChatId,
+      rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
+      hasPanelContent:
+        !!selectCurrentChat(s)?.settings?.features.tutor?.learningPlan ||
+        !!s.ui.plan?.sheetPlanOverride,
       setUI: s.setUI,
       newChat: s.newChat,
     }),
@@ -92,8 +108,21 @@ export function MobileShell() {
     return () => document.removeEventListener('keydown', onKey);
   }, [drawerOpen, closeDrawer]);
 
+  // The desktop's side panel (the Learning Hub) is a tall sheet here. The
+  // open flag persists for the desktop, where the panel sits beside the
+  // chat; a phone opening on a sheet nobody asked for would be rude, so the
+  // phone starts with it shut and opens it only when asked.
+  useEffect(() => {
+    if (useChatStore.getState().ui.plan?.rightPanelOpen) {
+      setUI({ plan: { rightPanelOpen: false } });
+    }
+  }, [setUI]);
+  const closePanel = useCallback(() => {
+    setUI({ plan: { rightPanelOpen: false, sheetPlanOverride: null } });
+  }, [setUI]);
+
   const openSettings = useCallback(() => {
-    setUI({ mobile: { drawerOpen: false, settingsSheetOpen: true } });
+    setUI({ mobile: { drawerOpen: false }, showSettings: true });
   }, [setUI]);
 
   return (
@@ -125,7 +154,16 @@ export function MobileShell() {
         onOpenSettings={openSettings}
       />
 
-      {settingsSheetOpen && <MobileSettingsSheet />}
+      <BottomSheet
+        open={rightPanelOpen && hasPanelContent}
+        label="Learning Hub"
+        onClose={closePanel}
+        tall
+      >
+        <ModuleSlot slot="rightPanel" />
+      </BottomSheet>
+
+      {settingsOpen && <SettingsDrawer />}
 
       {/* The tour defers the setup sheet rather than stacking on it. */}
       {setupOpen && !introOpen && <SetupSheet />}

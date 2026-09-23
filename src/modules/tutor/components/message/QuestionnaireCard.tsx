@@ -6,6 +6,7 @@ import { useChatStore } from '@/lib/store';
 import { contentVariants, safeKey } from '@/modules/tutor/components/message/shared';
 import { StepperDots } from '@/modules/tutor/components/message/StepperDots';
 import { useStepper } from '@/modules/tutor/components/message/hooks/useStepper';
+import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
 
 type QuestionnaireItem = TutorQuestionnaire['questions'][number];
 
@@ -170,7 +171,9 @@ export function QuestionnaireCard({
                     .join(' · ')}
                 </p>
               )}
-              <p className="exercise__question">{activeItem.question}</p>
+              <p className="exercise__question">
+                <InlineEmphasis text={activeItem.question} />
+              </p>
             </div>
 
             <div className="exercise__choices">
@@ -187,9 +190,13 @@ export function QuestionnaireCard({
                     aria-pressed={isSelected}
                   >
                     <span className="choice__body">
-                      <span>{option.label}</span>
+                      <span>
+                        <InlineEmphasis text={option.label} />
+                      </span>
                       {option.description && (
-                        <span className="choice__desc">{option.description}</span>
+                        <span className="choice__desc">
+                          <InlineEmphasis text={option.description} />
+                        </span>
                       )}
                     </span>
                     {isSelected && <CheckIcon className="choice__end" />}

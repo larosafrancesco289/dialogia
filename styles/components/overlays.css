@@ -82,6 +82,28 @@
     padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
     outline: none;
   }
+  /* A panel rather than a menu: nearly the whole screen, its body a column
+     the panel fills and scrolls itself. */
+  .bottom-sheet--tall {
+    height: calc(100% - env(safe-area-inset-top) - var(--space-6));
+    padding-bottom: 0;
+    /* The Learning Hub keeps its recessed tone, as beside the chat. */
+    background: var(--color-chrome);
+  }
+  .bottom-sheet--tall .learning-panel {
+    flex: 1;
+    min-height: 0;
+    border-left: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bottom-sheet--tall .bottom-sheet__body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
   /* Its head is what you pull it down by. */
   .bottom-sheet__head {
     flex: none;

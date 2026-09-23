@@ -96,7 +96,6 @@ export type UiPlanSnapshot = {
 export type UiMobileSnapshot = {
   /** The chat list, drawn in from the left edge. */
   drawerOpen: boolean;
-  settingsSheetOpen: boolean;
   composerFocused: boolean;
 };
 
