@@ -158,8 +158,6 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
           models={models}
           chat={chat}
           showStats={showStats}
-          statsExpanded={panels.stats.expanded}
-          onToggleStats={panels.stats.onToggle}
           branchFromMessage={onBranch}
           onChooseRegenerateModel={onChooseRegenerateModel}
           setLightbox={setLightbox}

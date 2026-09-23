@@ -9,6 +9,8 @@ type Props = {
   cancelLabel?: string;
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
+  /** A destructive confirmation reads in crimson, not gold. */
+  tone?: 'default' | 'danger';
 };
 
 export function ConfirmDialog({
@@ -19,6 +21,7 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
+  tone = 'danger',
 }: Props) {
   const cancelRef = useRef<HTMLButtonElement>(null);
 
@@ -50,7 +53,10 @@ export function ConfirmDialog({
               <button ref={cancelRef} className="btn-outline btn-sm" onClick={onCancel}>
                 {cancelLabel}
               </button>
-              <button className="btn btn-sm" onClick={onConfirm}>
+              <button
+                className={`btn btn-sm${tone === 'danger' ? ' btn-danger' : ''}`}
+                onClick={onConfirm}
+              >
                 {confirmLabel}
               </button>
             </div>

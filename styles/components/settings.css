@@ -5,7 +5,7 @@
   .settings-panel {
     background: var(--color-canvas);
     border-left: 1px solid var(--chrome-rule);
-    box-shadow: var(--shadow-3);
+    box-shadow: var(--shadow-2);
   }
   .settings-panel__header {
     position: sticky;

@@ -21,7 +21,7 @@ export function AttachmentPreviewList({
           {renderPreview(attachment)}
           <button
             type="button"
-            className="absolute -top-2 -right-2 bg-surface rounded-full border border-border p-1 shadow"
+            className="attachment-remove"
             aria-label="Remove attachment"
             title="Remove"
             onClick={() => onRemove(attachment.id)}
@@ -44,33 +44,33 @@ function renderPreview(attachment: DraftAttachment) {
         height={64}
         loading="lazy"
         decoding="async"
-        className="h-16 w-16 object-cover rounded border border-border"
+        className="attachment-thumb h-16 w-16 object-cover"
       />
     );
   }
 
   if (attachment.kind === 'audio' && attachment.dataURL) {
     return (
-      <div className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2">
+      <div className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 attachment-chip flex items-center gap-2">
         <audio controls preload="none" src={attachment.dataURL} className="h-10" />
         <div className="min-w-0">
           <div className="text-xs font-medium truncate" title={attachment.name || 'Audio'}>
             {attachment.name || 'Audio'}
           </div>
-          <div className="text-[11px] text-muted-foreground">Attached (mp3/wav)</div>
+          <div className="text-[11px] text-fg-muted">Attached (mp3/wav)</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-16 min-w-40 max-w-64 px-3 py-2 rounded border border-border bg-muted/50 flex items-center gap-2">
+    <div className="h-16 min-w-40 max-w-64 px-3 py-2 attachment-chip flex items-center gap-2">
       <DocumentTextIcon className="h-5 w-5" />
       <div className="min-w-0">
         <div className="text-xs font-medium truncate" title={attachment.name || 'PDF'}>
           {attachment.name || 'PDF'}
         </div>
-        <div className="text-[11px] text-muted-foreground">Attached (parsed locally)</div>
+        <div className="text-[11px] text-fg-muted">Attached (parsed locally)</div>
       </div>
     </div>
   );

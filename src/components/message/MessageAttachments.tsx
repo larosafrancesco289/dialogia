@@ -72,14 +72,14 @@ export function MessageAttachments({
             height={imageDimsByVariant[variant].height}
             loading="lazy"
             decoding="async"
-            className={`${imageSizeByVariant[variant]} object-cover rounded border border-border`}
+            className={`${imageSizeByVariant[variant]} object-cover attachment-thumb`}
           />
         </button>
       ))}
       {audioAttachments.map((attachment) => (
         <div
           key={attachment.id}
-          className={`${audioSizeByVariant[variant]} rounded border border-border bg-muted/50 flex items-center gap-2`}
+          className={`${audioSizeByVariant[variant]} attachment-chip flex items-center gap-2`}
         >
           {attachment.dataURL ? (
             <audio controls preload="none" src={attachment.dataURL} className="h-10" />

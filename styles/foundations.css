@@ -47,12 +47,19 @@ html {
 }
 
 /* Links */
-a {
-  color: var(--color-accent);
-  text-underline-offset: 4px;
-}
-a:hover {
-  text-decoration: underline;
+/* Links: ink, underlined in rubric; gold would claim they are live. In the
+   base layer so any component can restyle its own links. */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: color-mix(in oklab, var(--color-rubric) 60%, transparent);
+    text-underline-offset: 3px;
+  }
+  a:hover {
+    text-decoration-color: var(--color-rubric);
+  }
 }
 
 /* Small text helpers */
@@ -147,6 +154,15 @@ a:hover {
   background: transparent;
   border-color: color-mix(in oklab, var(--color-fg) 14%, transparent);
   color: color-mix(in oklab, var(--color-fg) 45%, transparent);
+}
+/* Danger: a destructive go-ahead (Delete). Crimson, never gold. */
+.btn-danger {
+  background: var(--color-danger);
+  border-color: transparent;
+  color: var(--color-canvas);
+}
+.btn-danger:hover {
+  background: color-mix(in oklab, var(--color-danger) 88%, var(--color-fg));
 }
 /* Small variant for dense UIs */
 .btn-sm {

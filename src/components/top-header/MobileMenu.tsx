@@ -98,7 +98,7 @@ export function TopHeaderMobileMenu({
           />
           <div
             ref={menuRef}
-            className="fixed right-3 z-[95] card p-1 popover min-w-[220px]"
+            className="fixed right-3 z-[95] p-1 popover min-w-[220px]"
             style={{ top: resolvedMenuTop }}
             role="menu"
           >

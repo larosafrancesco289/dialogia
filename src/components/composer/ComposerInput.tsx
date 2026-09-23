@@ -103,7 +103,7 @@ export function ComposerInput({
         <div
           id="slash-suggestions"
           role="listbox"
-          className="absolute right-3 bottom-full mb-2 z-40 card p-1 popover max-w-sm"
+          className="absolute right-3 bottom-full mb-2 z-40 p-1 popover max-w-sm"
           aria-label="Slash command suggestions"
         >
           <div className="max-h-60 overflow-auto">

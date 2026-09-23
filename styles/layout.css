@@ -31,11 +31,6 @@
     html.keyboard-active body {
       overflow: hidden;
     }
-
-    /* Mobile: use slightly larger radii for better touch comfort */
-    :root {
-      --radius-editorial: var(--radius-editorial-mobile, 10px);
-    }
   }
 
   /* Calm motion defaults for native controls and common UI primitives */

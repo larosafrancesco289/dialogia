@@ -224,7 +224,7 @@ export function ToolCallLog({
   const toggleCall = (id: string) => setExpandedCalls((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const containerClassName = [
-    'border border-[var(--color-border)] rounded-[var(--radius-editorial)] overflow-hidden bg-[var(--color-muted)]/30 my-2',
+    'border border-[var(--color-border)] rounded-[var(--radius-editorial)] overflow-hidden my-2',
     className,
   ]
     .filter(Boolean)
@@ -233,7 +233,7 @@ export function ToolCallLog({
   return (
     <div className={containerClassName}>
       <div
-        className={`flex items-center justify-between px-3 py-2 bg-[var(--color-muted)]/50 ${
+        className={`flex items-center justify-between px-3 py-2 border-b border-[var(--chrome-rule)] ${
           collapsible ? 'cursor-pointer' : ''
         }`}
         onClick={() => {
@@ -260,7 +260,7 @@ export function ToolCallLog({
             const isExpanded = mode === 'full' || !!expandedCalls[call.id];
             const recentHighlight =
               highlightRecent && Date.now() - call.timestamp < 10_000
-                ? 'bg-[var(--color-accent)]/5'
+                ? 'bg-[var(--color-fg)]/[0.04]'
                 : '';
             const durationLabel = formatDuration(call.duration);
             const badges = collectBadges(call);
@@ -298,7 +298,7 @@ export function ToolCallLog({
                         {badges.map((badge) => (
                           <span
                             key={badge.id}
-                            className="inline-flex items-center rounded-full bg-[var(--color-muted)] border border-[var(--color-border)]/50 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-fg-muted)] uppercase tracking-wider"
+                            className="badge text-[10px] uppercase tracking-wider"
                           >
                             {badge.label}
                           </span>
@@ -325,7 +325,7 @@ export function ToolCallLog({
                   <div className="px-3 pb-3 space-y-3">
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-semibold text-[var(--color-accent)] uppercase tracking-wider">
+                        <span className="text-[11px] font-semibold text-[var(--color-rubric)] uppercase tracking-wider">
                           Input
                         </span>
                         <button
@@ -345,7 +345,7 @@ export function ToolCallLog({
                     {call.output && (
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-semibold text-[var(--color-accent)] uppercase tracking-wider">
+                          <span className="text-[11px] font-semibold text-[var(--color-rubric)] uppercase tracking-wider">
                             Output
                           </span>
                           <button
@@ -372,7 +372,7 @@ export function ToolCallLog({
                     {metadataPairs.length > 0 && (
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-semibold text-[var(--color-accent)] uppercase tracking-wider">
+                          <span className="text-[11px] font-semibold text-[var(--color-rubric)] uppercase tracking-wider">
                             Metadata
                           </span>
                         </div>

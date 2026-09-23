@@ -63,7 +63,6 @@ function MessageCardComponent({
   const reasoningExpanded = reasoningOverride ?? showReasoningByDefault;
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [debugExpanded, setDebugExpanded] = useState(false);
-  const [statsExpanded, setStatsExpanded] = useState(false);
 
   useEffect(() => {
     const wasEditing = prevEditingRef.current;
@@ -136,10 +135,6 @@ function MessageCardComponent({
       reasoning: {
         expanded: reasoningExpanded,
         onToggle: () => setReasoningOverride((prev) => !(prev ?? showReasoningByDefault)),
-      },
-      stats: {
-        expanded: statsExpanded,
-        onToggle: () => setStatsExpanded((prev) => !prev),
       },
     },
     onBranch: handleBranch,

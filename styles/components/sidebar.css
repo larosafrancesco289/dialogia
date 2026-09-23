@@ -1,18 +1,4 @@
 @layer components {
-  /* Folder and chat item visual enhancements - Apple-like */
-  .folder-item {
-    transition:
-      background-color var(--duration-fast) var(--ease-standard),
-      border-color var(--duration-fast) var(--ease-standard),
-      box-shadow var(--duration-fast) var(--ease-standard),
-      transform var(--duration-fast) var(--ease-standard);
-    border-radius: 10px;
-    margin: 2px 0;
-  }
-  .folder-item:hover {
-    background: color-mix(in oklab, var(--color-muted) 50%, transparent);
-  }
-
   /* Chat list item: a plain row of text, not a card. */
   .chat-item {
     cursor: pointer;
@@ -72,8 +58,8 @@
     pointer-events: auto;
   }
   .chat-item.is-drag-over {
-    outline: 2px dashed color-mix(in oklab, var(--color-accent) 60%, var(--color-border));
-    outline-offset: 2px;
+    outline: 1px solid var(--color-rubric);
+    outline-offset: 1px;
   }
 
   /* The sidebar is a flush panel: full height, square, divided from the page
@@ -107,68 +93,13 @@
   .sidebar-section + .sidebar-section {
     margin-top: 8px;
   }
-  .sidebar-section-label {
-    padding: 0 10px;
-    padding-bottom: var(--space-2);
-    font-family: var(--font-serif);
-    font-size: 0.75rem;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    color: var(--color-fg-muted);
-  }
-
   .folder-row {
-    border-radius: 18px;
     margin-bottom: var(--space-2);
   }
+  /* A drop target: a rubric hairline, the mark of a place in the book. */
   .folder-row.is-drag-over {
-    outline: 2px dashed color-mix(in oklab, var(--color-accent) 55%, var(--color-border));
-    outline-offset: 2px;
-  }
-
-  /* Subtle lift for cards and pressable buttons */
-  .card {
-    transform: translateY(0);
-  }
-  .card:hover {
-    transform: translateY(-1px);
-  }
-  .pressable {
-    transform: translateY(0);
-  }
-  .pressable:hover {
-    transform: translateY(-1px);
-  }
-  .pressable:active {
-    transform: translateY(0);
-  }
-
-  /* Traffic lights */
-  .traffic-lights {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-right: 8px;
-  }
-  .traffic-lights .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-  }
-  .traffic-lights .close {
-    background: #ff5f57;
-  }
-  .traffic-lights .min {
-    background: #febc2e;
-  }
-  .traffic-lights .max {
-    background: #28c940;
-  }
-
-  /* Sidebar: solid surface */
-  .sidebar.bg-surface {
-    background: var(--surface-paper);
+    outline: 1px solid var(--color-rubric);
+    outline-offset: 1px;
   }
 }
 

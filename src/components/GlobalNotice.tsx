@@ -30,7 +30,7 @@ export function GlobalNotice() {
 
   if (!notice || !visible) return null;
   return (
-    <div className="fixed inset-x-0 bottom-4 flex justify-center z-[100]">
+    <div className="fixed inset-x-0 top-[calc(var(--chrome-height)+12px)] flex justify-center z-[100] px-4 pointer-events-none">
       <InlineNotice
         message={notice}
         role={isSuccess ? 'status' : 'alert'}
