@@ -11,12 +11,18 @@ export type MarkdownCitationSource = {
 /**
  * Escape dollar signs that look like currency (e.g. $5, $100, $1.5M)
  * so they don't get interpreted as LaTeX math delimiters.
- * Preserves actual math like $x^2$ or $\frac{a}{b}$.
+ * Preserves actual math like $x^2$, $\frac{a}{b}$, $2^n$ or $2$: a number
+ * followed by a math operator or a closing `$` is not a price.
  */
 export function escapeCurrency(text: string): string {
   // Match $ followed by digit, optional decimals/commas, optional K/M/B suffix
   // This catches: $5, $100, $1,000, $99.99, $5M, $1.5B, etc.
-  return text.replace(/\$(\d[\d,]*(?:\.\d+)?[KMBkmb]?)\b/g, '\\$$1');
+  // A function, not a '\\$$1' pattern: in a replacement string `$$` is a
+  // literal dollar, which turned every price into "$1".
+  return text.replace(
+    /\$(\d[\d,]*(?:\.\d+)?[KMBkmb]?)(?![\w^_{}\\$=])/g,
+    (_match, amount: string) => `\\$${amount}`,
+  );
 }
 
 function markdownUrl(url: string) {

@@ -54,7 +54,8 @@ export function splitMarkdownBlocks(content: string): MarkdownBlockSplit {
       continue;
     }
 
-    if (/^ {0,3}\$\$\s*$/.test(line)) {
+    // `\[` and `\]` alone on a line fence display math too (see preprocess).
+    if (/^ {0,3}(?:\$\$|\\\[|\\\])\s*$/.test(line)) {
       current += withNewline;
       inMathFence = !inMathFence;
       continue;

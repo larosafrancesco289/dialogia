@@ -55,3 +55,9 @@ test('splitMarkdownBlocks treats blockquote continuations as one block', () => {
   const { stable } = roundtrip(content);
   assert.equal(stable.length, 1);
 });
+
+test('splitMarkdownBlocks keeps \\[ \\] display math with blank lines in one block', () => {
+  const content = 'Intro\n\n\\[\na = b\n\nc = d\n\\]\n\nAfter\n';
+  const { stable } = roundtrip(content);
+  assert.equal(stable[1], '\\[\na = b\n\nc = d\n\\]\n\n');
+});
