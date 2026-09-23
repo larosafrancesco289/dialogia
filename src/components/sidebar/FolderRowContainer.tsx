@@ -40,7 +40,6 @@ export function FolderRowContainer({
     useDragAndDrop();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState(folder.name);
   const [isDragOver, setIsDragOver] = useState(false);
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -50,13 +49,6 @@ export function FolderRowContainer({
 
   const handleToggleExpanded = () => {
     toggleFolderExpanded(folder.id);
-  };
-
-  const handleRename = async () => {
-    if (editName.trim() && editName !== folder.name) {
-      await renameFolder(folder.id, editName.trim());
-    }
-    setIsEditing(false);
   };
 
   const handleDelete = async () => {
@@ -78,23 +70,19 @@ export function FolderRowContainer({
       <FolderRowView
         folderId={folder.id}
         name={folder.name}
+        count={folderChats.length}
         depth={depth}
         isExpanded={folder.isExpanded}
         isEditing={isEditing}
-        editName={editName}
         isDragOver={isDragOver}
         isMobile={isMobile}
         onToggleExpanded={handleToggleExpanded}
-        onEditNameChange={setEditName}
-        onSaveEdit={handleRename}
-        onCancelEdit={() => {
+        onCommitEdit={async (name) => {
           setIsEditing(false);
-          setEditName(folder.name);
+          await renameFolder(folder.id, name);
         }}
-        onStartEdit={() => {
-          setIsEditing(true);
-          setEditName(folder.name);
-        }}
+        onCancelEdit={() => setIsEditing(false)}
+        onStartEdit={() => setIsEditing(true)}
         onDelete={() => setShowDeleteConfirm(true)}
         onDragStart={() => handleDragStart(folder.id, 'folder')}
         onDragEnd={handleDragEnd}
@@ -128,7 +116,6 @@ export function FolderRowContainer({
           onClick={() => {
             setShowActions(false);
             setIsEditing(true);
-            setEditName(folder.name);
           }}
           title="Rename folder"
         >
@@ -150,8 +137,8 @@ export function FolderRowContainer({
 
       <ConfirmDialog
         open={showDeleteConfirm}
-        title="Delete folder?"
-        description={`Chats inside "${folder.name}" will move to the root.`}
+        title="Delete this folder?"
+        description={`The chats in “${folder.name}” stay; they move out of the folder.`}
         confirmLabel="Delete"
         cancelLabel="Cancel"
         onCancel={() => setShowDeleteConfirm(false)}

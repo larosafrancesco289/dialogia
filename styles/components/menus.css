@@ -64,6 +64,13 @@
     color: var(--color-rubric);
   }
 
+  /* A hairline between groups of menu items. */
+  .menu-rule {
+    height: 1px;
+    margin: var(--space-1) 0;
+    background: var(--chrome-rule);
+  }
+
   /* Menu item: a row of text; a tint on hover; the checked one in ink. */
   .menu-item {
     padding: 8px 10px;

@@ -1,26 +1,20 @@
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { IconButton } from '@/components/ui/IconButton';
-import {
-  FolderIcon,
-  FolderOpenIcon,
-  ChevronRightIcon,
-  ChevronDownIcon,
-  PencilSquareIcon,
-  TrashIcon,
-} from '@heroicons/react/24/outline';
+import { ChevronRightIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
+import { ROW_INDENT } from '@/components/sidebar/ChatRowView';
 
 export type FolderRowViewProps = {
   folderId: string;
   name: string;
+  count: number;
   depth: number;
   isExpanded: boolean;
   isEditing: boolean;
-  editName: string;
   isDragOver: boolean;
   isMobile: boolean;
   onToggleExpanded: () => void;
-  onEditNameChange: (value: string) => void;
-  onSaveEdit: () => void;
+  onCommitEdit: (name: string) => void | Promise<void>;
   onCancelEdit: () => void;
   onStartEdit: () => void;
   onDelete: () => void;
@@ -35,18 +29,21 @@ export type FolderRowViewProps = {
   onPointerCancel: () => void;
 };
 
+/**
+ * A folder is a row like a chat: a chevron that turns as it opens, the name,
+ * how many chats it holds, and the same actions on hover or focus.
+ */
 export function FolderRowView({
   folderId,
   name,
+  count,
   depth,
   isExpanded,
   isEditing,
-  editName,
   isDragOver,
   isMobile,
   onToggleExpanded,
-  onEditNameChange,
-  onSaveEdit,
+  onCommitEdit,
   onCancelEdit,
   onStartEdit,
   onDelete,
@@ -60,83 +57,76 @@ export function FolderRowView({
   onPointerUp,
   onPointerCancel,
 }: FolderRowViewProps) {
-  const indentStep = 24;
-  const paddingLeft = 16;
-  const marginLeft = depth * indentStep;
-
   return (
-    <div className="relative" style={{ paddingLeft: `${paddingLeft}px` }}>
-      <div
-        className={`flex items-center gap-2 px-4 py-3 sm:py-2 cursor-pointer group chat-item folder-row ${
-          isDragOver ? 'is-drag-over' : ''
-        }`}
-        draggable
-        data-folder-id={folderId}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onClick={() => {
-          if (isEditing) return;
-          if (!isMobile) onToggleExpanded();
-        }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        style={{ marginLeft: `${marginLeft}px`, paddingLeft: `${paddingLeft}px` }}
-      >
-        <IconButton
-          size="sm"
-          onClick={(e) => {
-            e?.stopPropagation();
-            onToggleExpanded();
-          }}
-          className="w-6 h-6 shrink-0"
-        >
-          {isExpanded ? (
-            <ChevronDownIcon className="h-4 w-4" />
-          ) : (
-            <ChevronRightIcon className="h-4 w-4" />
-          )}
-        </IconButton>
+    <div
+      className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item folder-row${
+        isDragOver ? ' is-drag-over' : ''
+      }${isEditing ? ' is-editing' : ''}`}
+      style={depth ? { marginLeft: `${depth * ROW_INDENT}px` } : undefined}
+      role="treeitem"
+      aria-expanded={isExpanded}
+      draggable={!isEditing}
+      data-folder-id={folderId}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={() => {
+        if (isEditing) return;
+        if (!isMobile) onToggleExpanded();
+      }}
+      onDoubleClick={!isMobile && !isEditing ? onStartEdit : undefined}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      <ChevronRightIcon
+        className={`folder-row__chevron${isExpanded ? ' is-open' : ''}`}
+        aria-hidden="true"
+      />
 
-        <div className="w-6 h-6 flex items-center justify-center text-muted-foreground shrink-0">
-          {isExpanded ? <FolderOpenIcon className="h-5 w-5" /> : <FolderIcon className="h-5 w-5" />}
+      {isEditing ? (
+        <InlineTitleEdit
+          value={name}
+          ariaLabel="Folder name"
+          onCommit={onCommitEdit}
+          onCancel={onCancelEdit}
+        />
+      ) : (
+        <>
+          <span className="flex-1 min-w-0 text-sm truncate folder-row__name">{name}</span>
+          <span className="folder-row__count" aria-label={`${count} chats`}>
+            {count}
+          </span>
+        </>
+      )}
+
+      {!isEditing && (
+        <div className="chat-item__actions">
+          <IconButton
+            size="sm"
+            onClick={(e) => {
+              e?.stopPropagation();
+              onStartEdit();
+            }}
+            title="Rename folder"
+          >
+            <PencilSquareIcon />
+          </IconButton>
+          <IconButton
+            size="sm"
+            onClick={(e) => {
+              e?.stopPropagation();
+              onDelete();
+            }}
+            title="Delete folder"
+          >
+            <TrashIcon />
+          </IconButton>
         </div>
-
-        {isEditing ? (
-          <div className="flex items-center gap-2 flex-1">
-            <input
-              className="input flex-1 text-base sm:text-sm"
-              value={editName}
-              onChange={(e) => onEditNameChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') onSaveEdit();
-                if (e.key === 'Escape') {
-                  onCancelEdit();
-                }
-              }}
-              onBlur={onSaveEdit}
-              autoFocus
-            />
-          </div>
-        ) : (
-          <div className="flex-1 text-sm truncate font-semibold">{name}</div>
-        )}
-
-        {!isEditing && (
-          <div className="hidden sm:flex opacity-0 sm:group-hover:opacity-100 transition-opacity gap-1">
-            <IconButton size="sm" onClick={onStartEdit} title="Rename folder">
-              <PencilSquareIcon className="h-3 w-3" />
-            </IconButton>
-            <IconButton size="sm" onClick={onDelete} title="Delete folder">
-              <TrashIcon className="h-3 w-3" />
-            </IconButton>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

@@ -20,13 +20,8 @@ import { springs } from '@/lib/mobile/springConfig';
 import type { ReasoningEffort } from '@/lib/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Reasoning effort — "Lightbulb, off to radiant"
-// The physical icon morphs along the effort scale:
-//   none  → Lucide LightbulbOff  (muted, thin)
-//   low   → Lucide Lightbulb     (accent-soft, thin)
-//   medium→ Lucide Lightbulb     (accent, bold)
-//   high  → Heroicons solid bulb (accent)
-//   xhigh → Heroicons solid bulb (accent, scaled)
+// Reasoning effort: "Lightbulb, off to radiant". The icon fills in along the
+// effort scale (off, outline, bold outline, solid, larger solid), in ink.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Close a composer popover on an outside pointer press or Escape. */
@@ -111,18 +106,22 @@ function ReasoningBulbIcon({ effort, size = 16 }: { effort: ReasoningEffort; siz
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 160° size-graded radial picker. Each tick renders the icon at its own effort
-// level, so the fan itself reads as the progression.
+// Reasoning effort menu: the same popover and rows as the search menu. Each
+// level says in plain words what it does; the model's own default is marked,
+// and the level in use carries the rubric tick. Arrow keys move between rows.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FAN = {
-  spread: 160,
-  radius: 54,
-  tickSizeStart: 28,
-  tickSizeEnd: 44,
+const EFFORT_HINT: Record<ReasoningEffort, string> = {
+  none: 'Answer straight away',
+  minimal: 'The lightest thought',
+  low: 'A quick think first',
+  medium: 'Think it through',
+  high: 'Think hard',
+  xhigh: 'Think very hard',
+  max: 'Take all the time it needs',
 };
 
-type ReasoningFanProps = {
+type ReasoningMenuProps = {
   availableEfforts?: ReasoningEffort[];
   defaultEffort?: ReasoningEffort;
   currentEffort?: ReasoningEffort;
@@ -131,88 +130,65 @@ type ReasoningFanProps = {
   menuRef: RefObject<HTMLDivElement>;
 };
 
-function ReasoningFan({
+function ReasoningMenu({
   availableEfforts,
   defaultEffort,
   currentEffort,
   onSelect,
   onClose,
   menuRef,
-}: ReasoningFanProps) {
-  const [hover, setHover] = useState<ReasoningEffort | null>(null);
+}: ReasoningMenuProps) {
   const efforts: ReasoningEffort[] = availableEfforts?.length ? availableEfforts : DEFAULT_EFFORTS;
-  const { spread, radius, tickSizeStart, tickSizeEnd } = FAN;
-  // Give crowded fans (6-7 levels) a little more arc and reach.
-  const fanSpread = efforts.length > 5 ? 190 : spread;
-  const fanRadius = efforts.length > 5 ? 66 : radius;
+
+  useEffect(() => {
+    const current = menuRef.current?.querySelector<HTMLButtonElement>('[aria-checked="true"]');
+    (current ?? menuRef.current?.querySelector<HTMLButtonElement>('button'))?.focus();
+  }, [menuRef]);
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    const rows = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? []);
+    const at = rows.indexOf(document.activeElement as HTMLButtonElement);
+    const next = event.key === 'ArrowDown' ? at + 1 : at - 1;
+    rows[(next + rows.length) % rows.length]?.focus();
+  };
 
   return (
     <motion.div
       ref={menuRef}
-      role="radiogroup"
+      role="menu"
       aria-label="Reasoning effort"
-      className="composer-reasoning-fan"
-      initial={{ opacity: 0, y: 4, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 4, scale: 0.96 }}
+      className="popover absolute bottom-full left-0 z-30 mb-2 w-64 p-1"
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 4 }}
       transition={springs.snappy}
+      onKeyDown={onKeyDown}
     >
-      {efforts.map((e, i) => {
-        const t = efforts.length > 1 ? i / (efforts.length - 1) : 0.5;
-        const clockDeg = -fanSpread / 2 + fanSpread * t;
-        const rad = ((clockDeg - 90) * Math.PI) / 180;
-        const tickSize = tickSizeStart + (tickSizeEnd - tickSizeStart) * t;
-        const tx = fanRadius * Math.cos(rad);
-        const ty = fanRadius * Math.sin(rad);
-        const iconSize = Math.max(14, Math.round(tickSize * 0.52));
-        const current = currentEffort === e;
-        const isDefault = defaultEffort === e;
-        return (
-          <button
-            key={e}
-            type="button"
-            role="radio"
-            aria-checked={current}
-            aria-label={isDefault ? `${effortLabel(e)} (model default)` : effortLabel(e)}
-            className="composer-reasoning-tick"
-            data-current={current ? 'true' : 'false'}
-            data-default={isDefault ? 'true' : 'false'}
-            data-effort={e}
-            style={{
-              width: tickSize,
-              height: tickSize,
-              margin: `-${tickSize / 2}px`,
-              transform: `translate(${tx}px, ${ty}px)`,
-            }}
-            onMouseEnter={() => setHover(e)}
-            onMouseLeave={() => setHover((v) => (v === e ? null : v))}
-            onFocus={() => setHover(e)}
-            onBlur={() => setHover((v) => (v === e ? null : v))}
-            onClick={() => {
-              onSelect(e);
-              onClose();
-            }}
-          >
-            <ReasoningBulbIcon effort={e} size={iconSize} />
-          </button>
-        );
-      })}
-      <AnimatePresence>
-        {hover !== null && (
-          <motion.span
-            key={hover}
-            className="composer-reasoning-caption"
-            style={{ top: -(fanRadius + tickSizeEnd + 12) }}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.12 }}
-          >
-            {effortLabel(hover)}
-            {hover === defaultEffort ? ' · default' : ''}
-          </motion.span>
-        )}
-      </AnimatePresence>
+      <div className="menu-heading">Reasoning</div>
+      {efforts.map((e) => (
+        <button
+          key={e}
+          type="button"
+          role="menuitemradio"
+          aria-checked={currentEffort === e}
+          className="menu-item reasoning-row w-full text-left text-sm"
+          onClick={() => {
+            onSelect(e);
+            onClose();
+          }}
+        >
+          <ReasoningBulbIcon effort={e} size={16} />
+          <span className="reasoning-row__text">
+            <span>
+              {effortLabel(e)}
+              {defaultEffort === e && <span className="reasoning-row__default"> · default</span>}
+            </span>
+            <span className="reasoning-row__hint">{EFFORT_HINT[e]}</span>
+          </span>
+        </button>
+      ))}
     </motion.div>
   );
 }
@@ -416,7 +392,7 @@ export function ComposerActions({
             </button>
             <AnimatePresence>
               {reasoningOpen && (
-                <ReasoningFan
+                <ReasoningMenu
                   availableEfforts={availableEfforts}
                   defaultEffort={defaultEffort}
                   currentEffort={effort}

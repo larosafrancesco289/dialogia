@@ -19,9 +19,6 @@ export type ChatSidebarState = {
   collapsed: boolean;
   query: string;
   showCreateFolder: boolean;
-  newFolderName: string;
-  editTitle: string;
-  editingId: string | null;
   filteredRootFolders: Folder[];
   filteredRootChats: Chat[];
   folderTreeIndex: FolderTreeIndex;
@@ -29,18 +26,11 @@ export type ChatSidebarState = {
   selectedChatId?: string;
   isMobile: boolean;
   onQueryChange: (value: string) => void;
-  onNewFolderNameChange: (value: string) => void;
   onStartCreateFolder: () => void;
   onCancelCreateFolder: () => void;
-  onCreateFolder: () => Promise<void>;
+  onCreateFolder: (name: string) => Promise<void>;
   onNewChat: () => void;
   onSelectChat: (chatId: string) => void;
-  onStartEditChat: (chatId: string, title: string) => void;
-  onSaveEditChat: (chatId: string, fallbackTitle: string) => Promise<void>;
-  onCancelEditChat: () => void;
-  onDeleteChat: (chatId: string) => Promise<void>;
-  onEditTitleChange: (value: string) => void;
-  moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
   handleDragStart: (id: string, type: 'folder' | 'chat') => void;
   handleDragEnd: () => void;
   handleDragOver: (event: DragEvent) => void;
@@ -56,11 +46,8 @@ export function useChatSidebarState({
     selectedChatId,
     selectChat,
     newChat,
-    renameChat,
-    deleteChat,
     loadModels,
     createFolder,
-    moveChatToFolder,
     collapsedFromStore,
   } = useChatStore(
     (s) => ({
@@ -69,11 +56,8 @@ export function useChatSidebarState({
       selectedChatId: s.selectedChatId,
       selectChat: s.selectChat,
       newChat: s.newChat,
-      renameChat: s.renameChat,
-      deleteChat: s.deleteChat,
       loadModels: s.loadModels,
       createFolder: s.createFolder,
-      moveChatToFolder: s.moveChatToFolder,
       collapsedFromStore: s.ui.sidebarCollapsed ?? false,
     }),
     shallow,
@@ -82,10 +66,7 @@ export function useChatSidebarState({
   const collapsed = collapsedProp ?? collapsedFromStore;
   const { handleDragOver, handleDrop, handleDragStart, handleDragEnd, getDragData } =
     useDragAndDrop();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState('');
   const [showCreateFolder, setShowCreateFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
   const [query, setQuery] = useState('');
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
 
@@ -137,17 +118,16 @@ export function useChatSidebarState({
     return rootChats.filter((chat) => matchText(chat.title));
   }, [query, rootChats]);
 
-  const onCreateFolder = useCallback(async () => {
-    const trimmed = newFolderName.trim();
-    if (!trimmed) return;
-    await createFolder(trimmed);
-    setNewFolderName('');
-    setShowCreateFolder(false);
-  }, [createFolder, newFolderName]);
+  const onCreateFolder = useCallback(
+    async (name: string) => {
+      setShowCreateFolder(false);
+      await createFolder(name);
+    },
+    [createFolder],
+  );
 
   const onCancelCreateFolder = useCallback(() => {
     setShowCreateFolder(false);
-    setNewFolderName('');
   }, []);
 
   const onStartCreateFolder = useCallback(() => {
@@ -165,30 +145,6 @@ export function useChatSidebarState({
     [selectChat],
   );
 
-  const onStartEditChat = useCallback((chatId: string, title: string) => {
-    setEditingId(chatId);
-    setEditTitle(title);
-  }, []);
-
-  const onSaveEditChat = useCallback(
-    async (chatId: string, fallbackTitle: string) => {
-      await renameChat(chatId, editTitle || fallbackTitle);
-      setEditingId(null);
-    },
-    [renameChat, editTitle],
-  );
-
-  const onCancelEditChat = useCallback(() => {
-    setEditingId(null);
-  }, []);
-
-  const onDeleteChat = useCallback(
-    async (chatId: string) => {
-      await deleteChat(chatId);
-    },
-    [deleteChat],
-  );
-
   const handleRootDrop = useCallback(
     async (event: DragEvent) => {
       event.preventDefault();
@@ -204,9 +160,6 @@ export function useChatSidebarState({
     collapsed,
     query,
     showCreateFolder,
-    newFolderName,
-    editTitle,
-    editingId,
     filteredRootFolders,
     filteredRootChats,
     folderTreeIndex,
@@ -214,18 +167,11 @@ export function useChatSidebarState({
     selectedChatId,
     isMobile,
     onQueryChange: setQuery,
-    onNewFolderNameChange: setNewFolderName,
     onStartCreateFolder,
     onCancelCreateFolder,
     onCreateFolder,
     onNewChat,
     onSelectChat,
-    onStartEditChat,
-    onSaveEditChat,
-    onCancelEditChat,
-    onDeleteChat,
-    onEditTitleChange: setEditTitle,
-    moveChatToFolder,
     handleDragStart,
     handleDragEnd,
     handleDragOver,
