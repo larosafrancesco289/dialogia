@@ -17,6 +17,13 @@ export function SidebarSearch({ value, onChange, collapsed, action }: SidebarSea
         placeholder="Search chats"
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        aria-label="Search chats"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && value) {
+            event.preventDefault();
+            onChange('');
+          }
+        }}
       />
       {action}
     </div>

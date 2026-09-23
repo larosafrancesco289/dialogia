@@ -92,6 +92,7 @@ export function ChatSidebarView({
                 key={folder.id}
                 folder={folder}
                 folderTreeIndex={folderTreeIndex}
+                query={query.trim().toLowerCase()}
               />
             ))}
           </section>
@@ -114,6 +115,13 @@ export function ChatSidebarView({
             ))}
           </section>
         ))}
+
+        {!collapsed &&
+          query.trim() &&
+          filteredRootFolders.length === 0 &&
+          filteredRootChats.length === 0 && (
+            <p className="sidebar-empty">No chats match “{query.trim()}”.</p>
+          )}
       </div>
     </div>
   );

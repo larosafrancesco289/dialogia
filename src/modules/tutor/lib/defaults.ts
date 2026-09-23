@@ -41,6 +41,10 @@ export function applyTutorDefaults({ ui, chat, fallbackDefaultModelId }: ApplyTu
   let changed = false;
 
   if (next.modelId !== tutorDefaultModelId) {
+    // Remember the chat's own model, so leaving tutor mode gives it back.
+    if (next.modelId && !next.features.tutor?.modelIdBeforeTutor) {
+      next.features.tutor = { ...next.features.tutor, modelIdBeforeTutor: next.modelId };
+    }
     next.modelId = tutorDefaultModelId;
     changed = true;
   }

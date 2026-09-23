@@ -255,7 +255,7 @@ function ContentsItem({
 
 /** Where the estimate started and what each piece of evidence did to it. */
 function Why({ mastery }: { mastery: TopicMastery }) {
-  const { start, steps, setDirectlyTo } = explainMastery(mastery);
+  const { start, steps } = explainMastery(mastery);
   const newest = [...steps].reverse();
   const shown = newest.slice(0, EVIDENCE_SHOWN);
   const hidden = newest.length - shown.length;
@@ -264,13 +264,18 @@ function Why({ mastery }: { mastery: TopicMastery }) {
     <div className="hub-contents__why">
       <p className="hub-contents__why-head">Why {pct(mastery.confidence)}%</p>
       <ul>
-        {setDirectlyTo != null && (
-          <li>
-            <span className="hub-contents__sign">=</span>
-            <span>Set to {pct(setDirectlyTo)}% directly</span>
-          </li>
-        )}
         {shown.map(({ evidence, before, after }, i) => {
+          if (!evidence || typeof evidence.setTo === 'number') {
+            return (
+              <li key={i}>
+                <span className="hub-contents__sign">=</span>
+                <span>
+                  Set to {pct(after)}% directly
+                  {evidence && evidence.details ? `: ${toLearner(evidence.details)}` : ''}
+                </span>
+              </li>
+            );
+          }
           const delta = pct(after) - pct(before);
           return (
             <li key={i} className={delta < 0 ? 'is-against' : undefined}>

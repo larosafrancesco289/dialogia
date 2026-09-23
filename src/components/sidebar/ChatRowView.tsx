@@ -78,6 +78,19 @@ export function ChatRowView({
       onDrop={onDrop}
       onClick={!isEditing && !isMobile ? onSelect : undefined}
       onDoubleClick={!isMobile && !isEditing ? onStartEdit : undefined}
+      // Reachable by keyboard: Enter or Space opens the chat, F2 renames it.
+      tabIndex={isEditing ? -1 : 0}
+      aria-current={isSelected ? 'page' : undefined}
+      onKeyDown={(event) => {
+        if (isEditing || event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect();
+        } else if (event.key === 'F2') {
+          event.preventDefault();
+          onStartEdit();
+        }
+      }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

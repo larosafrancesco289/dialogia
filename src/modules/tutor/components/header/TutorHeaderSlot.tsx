@@ -75,7 +75,12 @@ export function TutorHeaderSlot() {
         await newChat();
       } else {
         clearChatMessages();
-        await updateChatSettings({ features: { tutor: { enabled: false } } });
+        // Back to the model the chat had before the lesson took it over.
+        const previousModelId = latestChat.settings.features.tutor?.modelIdBeforeTutor;
+        await updateChatSettings({
+          ...(previousModelId ? { modelId: previousModelId } : {}),
+          features: { tutor: { enabled: false, modelIdBeforeTutor: undefined } },
+        });
       }
     } else if (hasUserMessages) {
       // A lesson starts on a fresh page; this chat stays where it is, so
