@@ -231,9 +231,9 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
   return (
     <>
       {renderSection(
+        'connections',
         'providers',
-        'providers',
-        <SettingsSection title="Model providers">
+        <SettingsSection title="Providers">
           <div className="space-y-4">
             {/* Read through the registry, not the raw constants: it is what
                 carries the user's own endpoints. */}
@@ -262,9 +262,9 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
       )}
 
       {renderSection(
-        'providers',
+        'connections',
         'endpoints',
-        <SettingsSection title="Local and custom endpoints">
+        <SettingsSection title="Your servers">
           <div className="space-y-3">
             {customEndpoints.map((endpoint) => (
               <CollapsibleSection
@@ -280,7 +280,7 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
       )}
 
       {renderSection(
-        'providers',
+        'connections',
         'web-search',
         <SettingsSection title="Web search">
           <div className="space-y-3">

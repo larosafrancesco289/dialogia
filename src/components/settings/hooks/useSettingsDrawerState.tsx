@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
   useRef,
@@ -22,7 +23,8 @@ import { ProvidersPanel } from '@/components/settings/sections/ProvidersPanel';
 import { ChatPanel } from '@/components/settings/sections/ChatPanel';
 import { SettingsModuleSlot } from '@/components/ModuleSlot';
 import { AppearancePanel } from '@/components/settings/sections/AppearancePanel';
-import { AdvancedPanel } from '@/components/settings/sections/AdvancedPanel';
+import { DataPanel } from '@/components/settings/sections/DataPanel';
+import { TAB_LIST } from '@/components/settings/sections/config';
 import { NOTICE_EXPORTED_CHATS, NOTICE_IMPORTED_DATA } from '@/lib/store/notices';
 import { buildChatExport, importChatExport } from '@/lib/settings/transfer';
 
@@ -181,81 +183,82 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     }
   };
 
-  const tabContent = (() => {
-    switch (activeTab) {
-      case 'providers':
-        return <ProvidersPanel renderSection={renderSection} loadModels={loadModels} />;
-      case 'models-routing':
-        return (
-          <ModelsPanel
-            favoriteModelIds={favoriteModelIds}
-            toggleFavoriteModel={toggleFavoriteModel}
-            setUI={setUI}
-            loadModels={loadModels}
-            hiddenModelIds={hiddenModelIds}
-            resetHiddenModels={resetHiddenModels}
-            renderSection={renderSection}
-            modelSearchRef={modelSearchRef}
-            ui={ui}
-          />
-        );
-      case 'chat':
-        return (
-          <ChatPanel
-            system={system}
-            setSystem={createAutoSaveSetter(setSystem)}
-            presets={presets}
-            setPresets={setPresets}
-            selectedPresetId={selectedPresetId}
-            setSelectedPresetId={setSelectedPresetId}
-            renderSection={renderSection}
-            reasoningEffort={reasoningEffort}
-            setReasoningEffort={createAutoSaveSetter(setReasoningEffort)}
-            reasoningTokensStr={reasoningTokensStr}
-            setReasoningTokensStr={setReasoningTokensStr}
-            setReasoningTokens={createAutoSaveSetter(setReasoningTokens)}
-            messageTimestamps={ui?.messageTimestamps}
-            setMessageTimestamps={(value: boolean) => {
-              setUI({ messageTimestamps: value });
-              markDirty();
-            }}
-          />
-        );
-      case 'tutor':
-        return (
-          <SettingsModuleSlot
-            renderSection={renderSection}
-            createAutoSaveSetter={createAutoSaveSetter}
-          />
-        );
-      case 'appearance':
-        return (
-          <AppearancePanel
-            renderSection={renderSection}
-            showThinking={showThinking}
-            showStats={showStats}
-            setShowThinking={createAutoSaveSetter(setShowThinking)}
-            setShowStats={createAutoSaveSetter(setShowStats)}
-            zdrOnly={ui?.zdrOnly}
-            setZdrOnly={(value: boolean) => {
-              setUI({ zdrOnly: value });
-              markDirty();
-            }}
-            reloadModels={loadModels}
-          />
-        );
-      case 'advanced':
-        return (
-          <AdvancedPanel
-            renderSection={renderSection}
-            onExport={onExport}
-            onImportPicked={onImportPicked}
-          />
-        );
-      default:
-        return null;
-    }
-  })();
+  const panels: Record<TabId, ReactNode> = {
+    connections: <ProvidersPanel renderSection={renderSection} loadModels={loadModels} />,
+    models: (
+      <ModelsPanel
+        favoriteModelIds={favoriteModelIds}
+        toggleFavoriteModel={toggleFavoriteModel}
+        setUI={setUI}
+        loadModels={loadModels}
+        hiddenModelIds={hiddenModelIds}
+        resetHiddenModels={resetHiddenModels}
+        renderSection={renderSection}
+        modelSearchRef={modelSearchRef}
+        ui={ui}
+        zdrOnly={ui?.zdrOnly}
+        setZdrOnly={(value: boolean) => {
+          setUI({ zdrOnly: value });
+          markDirty();
+        }}
+      />
+    ),
+    chat: (
+      <ChatPanel
+        system={system}
+        setSystem={createAutoSaveSetter(setSystem)}
+        presets={presets}
+        setPresets={setPresets}
+        selectedPresetId={selectedPresetId}
+        setSelectedPresetId={setSelectedPresetId}
+        renderSection={renderSection}
+        reasoningEffort={reasoningEffort}
+        setReasoningEffort={createAutoSaveSetter(setReasoningEffort)}
+        reasoningTokensStr={reasoningTokensStr}
+        setReasoningTokensStr={setReasoningTokensStr}
+        setReasoningTokens={createAutoSaveSetter(setReasoningTokens)}
+        messageTimestamps={ui?.messageTimestamps}
+        setMessageTimestamps={(value: boolean) => {
+          setUI({ messageTimestamps: value });
+          markDirty();
+        }}
+      />
+    ),
+    tutor: (
+      <SettingsModuleSlot
+        renderSection={renderSection}
+        createAutoSaveSetter={createAutoSaveSetter}
+      />
+    ),
+    appearance: (
+      <AppearancePanel
+        renderSection={renderSection}
+        showThinking={showThinking}
+        showStats={showStats}
+        setShowThinking={createAutoSaveSetter(setShowThinking)}
+        setShowStats={createAutoSaveSetter(setShowStats)}
+      />
+    ),
+    data: (
+      <DataPanel
+        renderSection={renderSection}
+        onExport={onExport}
+        onImportPicked={onImportPicked}
+      />
+    ),
+  };
+
+  // A search runs through every tab (renderSection filters the sections), so
+  // every panel mounts; otherwise only the chosen one.
+  const tabContent = searchQuery.trim() ? (
+    <>
+      {TAB_LIST.map((tab) => (
+        <Fragment key={tab.id}>{panels[tab.id]}</Fragment>
+      ))}
+    </>
+  ) : (
+    panels[activeTab]
+  );
 
   return {
     closing,
