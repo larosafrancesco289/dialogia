@@ -10,17 +10,15 @@ export function TutorToggle({
   onToggle: () => void | Promise<void>;
 }) {
   const title = forceTutorMode
-    ? 'Tutor Mode is enforced in settings'
+    ? 'Tutor mode is enforced in Settings'
     : active
-      ? 'Start a new chat'
-      : 'Start learning session';
-
-  const baseClass = active ? 'tutor-toggle tutor-toggle--active' : 'tutor-invite';
+      ? 'Leave tutor mode. Opens a new chat; this session stays in your history.'
+      : 'Start a learning session';
 
   return (
     <button
       type="button"
-      className={baseClass}
+      className={`tutor-toggle${active ? ' tutor-toggle--active' : ''}`}
       aria-pressed={active}
       onClick={() => {
         void onToggle();
@@ -28,12 +26,10 @@ export function TutorToggle({
       disabled={forceTutorMode}
       title={title}
     >
-      <AcademicCapIcon
-        className={active ? 'tutor-toggle__icon h-5 w-5' : 'tutor-invite__icon h-5 w-5'}
-      />
-      <span className={active ? 'tutor-toggle__text' : 'tutor-invite__text'}>
-        {active ? 'Tutor On' : 'Start learning session'}
-      </span>
+      <AcademicCapIcon className="tutor-toggle__icon h-5 w-5" />
+      <span className="tutor-toggle__text">{active ? 'Tutor' : 'Start learning session'}</span>
+      {/* The session is the live thing on this bar, so it alone is gold. */}
+      {active && <span className="tutor-toggle__live" aria-hidden="true" />}
     </button>
   );
 }

@@ -24,7 +24,7 @@ export function TopHeaderView({
   onNewChat,
   onRenameChat,
 }: TopHeaderState) {
-  const headerClass = `app-header top-header ${tutorActive ? 'top-header--tutor-active' : ''}`;
+  const headerClass = 'app-header top-header';
 
   return (
     <div className={headerClass}>
