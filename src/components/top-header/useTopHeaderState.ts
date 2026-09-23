@@ -10,7 +10,6 @@ export type TopHeaderState = {
   collapsed: boolean;
   isSettingsOpen: boolean;
   tutorActive: boolean;
-  tutorModelId?: string;
   tutorModelLabel: string;
   onToggleSidebar: () => void;
   onToggleSettings: () => void;
@@ -87,7 +86,6 @@ export function useTopHeaderState(): TopHeaderState {
     collapsed,
     isSettingsOpen,
     tutorActive,
-    tutorModelId,
     tutorModelLabel,
     onToggleSidebar,
     onToggleSettings,
