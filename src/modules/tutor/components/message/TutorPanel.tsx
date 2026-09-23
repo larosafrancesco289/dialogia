@@ -52,22 +52,18 @@ export function TutorPanel(props: {
 
   return (
     <MotionConfig reducedMotion={shouldAnimate ? 'never' : 'always'}>
-      <div className="mt-4 mb-2">
+      <div className="px-4">
         <motion.div
           initial={shouldAnimate ? 'hidden' : false}
           animate={shouldAnimate ? 'visible' : false}
           variants={cardVariants}
-          className="marginalia overflow-hidden"
+          className="exercise-sheet"
         >
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--rule-light)] bg-[var(--color-muted)]/20">
-            <div className="flex items-center gap-2 min-w-0 text-[var(--color-accent)]">
-              <AcademicCapIcon className="h-4 w-4" />
-              <div className="text-xs font-bold uppercase tracking-wider truncate">
-                {title || 'Tutor Tools'}
-              </div>
-            </div>
+          <div className="exercise-sheet__head">
+            <AcademicCapIcon aria-hidden="true" />
+            <span className="truncate">{title || 'Exercises'}</span>
           </div>
-          <div className="p-4 space-y-6">
+          <div className="exercise-sheet__body">
             {questionnaire && questionnaire.questions?.length ? (
               <QuestionnaireCard messageId={messageId} questionnaire={questionnaire} />
             ) : null}

@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ChartBarIcon } from '@heroicons/react/24/outline';
 import type { TutorDiagnostic, TutorMCQItem } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
 import { McqCard } from '@/modules/tutor/components/message/McqCard';
@@ -119,55 +118,38 @@ export function DiagnosticCard({
   }, [diagnostic.interpretation, answered, total, scorePercent]);
 
   return (
-    <div className="marginalia">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="rounded-full bg-[var(--color-accent)]/10 p-2">
-          <ChartBarIcon className="h-5 w-5 text-[var(--color-accent)]" />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold leading-tight text-[var(--color-fg)]">
-            Diagnostic · {diagnostic.topic}
-          </span>
-          <span className="text-xs text-[var(--color-fg-muted)]">
-            {diagnostic.depth === 'comprehensive'
-              ? 'Comprehensive check'
-              : diagnostic.depth === 'moderate'
-                ? 'Moderate check'
-                : 'Quick check'}
-            {' · '}
-            {answered}/{total} answered
-          </span>
-        </div>
+    <div className="exercise">
+      <div>
+        <h4 className="exercise__title">A quick check on {diagnostic.topic}</h4>
+        <p className="exercise__meta">
+          {diagnostic.depth === 'comprehensive'
+            ? 'A thorough check'
+            : diagnostic.depth === 'moderate'
+              ? 'A moderate check'
+              : 'A few questions'}
+          {' · '}
+          {answered} of {total} answered
+        </p>
       </div>
-      <div className="flex items-center gap-2 mb-4">
-        <div className="h-2 flex-1 rounded-full bg-[var(--color-muted)] overflow-hidden">
+      <div className="exercise-meter">
+        <div className="exercise-meter__track">
           <motion.div
-            className="h-full bg-[var(--color-accent)]/60"
+            className="exercise-meter__fill"
             initial={{ scaleX: 0 }}
             animate={{ scaleX: percentComplete / 100 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             style={{ originX: 0 }}
           />
         </div>
-        <span className="text-xs text-[var(--color-fg-muted)] font-medium w-8 text-right">
-          {percentComplete}%
-        </span>
+        <span className="exercise-meter__pct">{percentComplete}%</span>
       </div>
 
-      <div className="mt-4">
-        <McqCard messageId={messageId} items={mcqItems} />
-      </div>
+      <McqCard messageId={messageId} items={mcqItems} />
 
       {answered === total && total > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 rounded-[var(--radius-editorial)] border border-[var(--color-border)]/60 bg-[var(--color-muted)]/20 p-4 text-xs text-[var(--color-fg-muted)]"
-        >
-          <div className="font-bold text-[var(--color-fg)] text-sm mb-1">
-            Score: {scorePercent}%
-          </div>
-          {interpretation && <div className="leading-relaxed">{interpretation}</div>}
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+          <p className="exercise__kicker">Score {scorePercent}%</p>
+          {interpretation && <p className="exercise__aside mt-2">{interpretation}</p>}
         </motion.div>
       )}
     </div>

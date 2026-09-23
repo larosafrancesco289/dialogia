@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import type { TutorPlanProposal, TutorPlanSuggestion } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
 import { getNextNode, updateNodeStatus } from '@/modules/tutor/learning-plan/service';
@@ -136,58 +135,35 @@ export function PlanProposalCard({
 
   return (
     <>
-      <div className="marginalia">
-        <div className="flex items-start gap-3">
-          <div className="rounded-full bg-accent/10 p-2">
-            <ClipboardDocumentCheckIcon className="h-5 w-5 text-accent" />
-          </div>
-          <div className="flex-1">
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-semibold leading-tight">
-                Personalized learning plan ready
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {nodesCount} topics{estimatedHours ? ` · ~${estimatedHours}h commitment` : ''}
-              </span>
-            </div>
-            <div className="mt-3 space-y-3 text-sm text-muted-foreground">
-              <div className="font-medium text-foreground">{proposal.plan.goal}</div>
-              {confirmationNeeded && !resolved && proposal.confirmationMessage && (
-                <div className="rounded-md border border-border/80 bg-muted/20 p-3 text-xs leading-relaxed">
-                  {proposal.confirmationMessage}
-                </div>
-              )}
-            </div>
-            {suggestions && suggestions.length > 0 && (
-              <div className="mt-4">
-                <PlanSuggestionsCard suggestions={suggestions} compact />
-              </div>
-            )}
-            <div className="mt-5 flex flex-wrap items-center gap-2">
-              <button className="btn btn-outline btn-sm" onClick={handleOpenFullPlan}>
-                View full plan
-              </button>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={handleApprove}
-                disabled={disableActions}
-              >
-                {approving ? 'Applying…' : 'Approve plan'}
-              </button>
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={handleRequestChanges}
-                disabled={disableActions}
-              >
-                {declining ? 'Recording…' : 'Suggest changes'}
-              </button>
-              {resolvedLabel && (
-                <span className="badge badge-outline uppercase tracking-wide text-[11px] ml-auto">
-                  {resolvedLabel}
-                </span>
-              )}
-            </div>
-          </div>
+      <div className="exercise">
+        <div>
+          <h4 className="exercise__title">Your learning plan is ready</h4>
+          <p className="exercise__meta">
+            {nodesCount} topics{estimatedHours ? ` · about ${estimatedHours} hours` : ''}
+          </p>
+        </div>
+        <p className="exercise__question">{proposal.plan.goal}</p>
+        {confirmationNeeded && !resolved && proposal.confirmationMessage && (
+          <p className="exercise__aside">{proposal.confirmationMessage}</p>
+        )}
+        {suggestions && suggestions.length > 0 && (
+          <PlanSuggestionsCard suggestions={suggestions} compact />
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="btn btn-sm" onClick={handleApprove} disabled={disableActions}>
+            {approving ? 'Applying…' : 'Approve plan'}
+          </button>
+          <button
+            className="btn-outline btn-sm"
+            onClick={handleRequestChanges}
+            disabled={disableActions}
+          >
+            {declining ? 'Recording…' : 'Suggest changes'}
+          </button>
+          <button className="btn-ghost btn-sm" onClick={handleOpenFullPlan}>
+            View full plan
+          </button>
+          {resolvedLabel && <span className="exercise__kicker ml-auto">{resolvedLabel}</span>}
         </div>
       </div>
 

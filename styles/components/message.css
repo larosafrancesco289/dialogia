@@ -132,78 +132,9 @@
     }
   }
 
-  /* ===== Editorial: Marginalia styling for tutor content ===== */
-  .marginalia {
-    background: var(--marginalia-bg);
-    border: 1px solid var(--rule-light);
-    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--rule-accent) 8%, transparent);
-    border-radius: var(--radius-editorial);
-    padding: var(--space-4);
-    font-size: 1rem; /* 16px base */
-    line-height: 1.65;
-  }
-  /* Override small text utilities inside marginalia for better readability */
-  .marginalia .text-xs {
-    font-size: 0.875rem; /* 14px */
-  }
-  .marginalia .text-sm {
-    font-size: 1rem; /* 16px */
-  }
-  .marginalia .text-base {
-    font-size: 1.0625rem; /* 17px */
-  }
-
-  .marginalia-header {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--color-fg-muted);
-    border-bottom: 1px solid var(--rule-light);
-    padding-bottom: var(--space-2);
-    margin-bottom: var(--space-3);
-  }
-
-  .marginalia-item {
-    border: 1px solid var(--rule-light);
-    border-radius: var(--radius-editorial);
-    padding: var(--space-3);
-    margin: var(--space-2) 0;
-  }
-
-  .marginalia-correct {
-    background: color-mix(in oklab, var(--color-success) 8%, var(--marginalia-bg));
-    border-color: color-mix(in oklab, var(--color-success) 32%, var(--rule-light));
-  }
-
-  .marginalia-incorrect {
-    background: color-mix(in oklab, var(--color-danger) 8%, var(--marginalia-bg));
-    border-color: color-mix(in oklab, var(--color-danger) 32%, var(--rule-light));
-  }
-
   /* Smoother auto-resize for message textarea */
   .textarea {
     transition: height 120ms ease;
-  }
-
-  /* Tutor UI: Flashcard flip */
-  .flashcard {
-    perspective: 1000px;
-  }
-  .flashcard-inner {
-    position: relative;
-    transition: transform 400ms var(--ease-standard);
-    transform-style: preserve-3d;
-  }
-  .flashcard.is-flipped .flashcard-inner {
-    transform: rotateY(180deg);
-  }
-  .flashcard-face {
-    position: relative;
-    backface-visibility: hidden;
-  }
-  .flashcard-back {
-    transform: rotateY(180deg);
   }
 
   /* ===== Attachments ===== */

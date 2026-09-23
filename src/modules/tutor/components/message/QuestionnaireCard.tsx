@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckIcon, HandThumbUpIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
+import { CheckIcon } from '@heroicons/react/24/outline';
 import type { TutorQuestionnaire } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
 import { contentVariants, safeKey } from '@/modules/tutor/components/message/shared';
@@ -126,125 +126,99 @@ export function QuestionnaireCard({
       : null;
 
   return (
-    <div className="marginalia">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="rounded-full bg-[var(--color-accent)]/10 p-2">
-          <QuestionMarkCircleIcon className="h-5 w-5 text-[var(--color-accent)]" />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold leading-tight text-[var(--color-fg)]">
-            Tell me about your goals
-          </span>
-          <span className="text-xs text-[var(--color-fg-muted)]">
-            {isSubmitted
-              ? 'Thanks! I will tailor the plan with this in mind.'
-              : 'Choose the options that best fit you.'}
-          </span>
-        </div>
+    <div className="exercise">
+      <div>
+        <h4 className="exercise__title">Tell me about your goals</h4>
+        <p className="exercise__meta">
+          {isSubmitted
+            ? 'Thank you. The plan will be shaped around this.'
+            : 'Choose the options that fit you best.'}
+        </p>
       </div>
 
-      <div className="rounded-[var(--radius-editorial)] border border-[var(--color-border)]/50 bg-[var(--color-muted)]/20 p-4">
-        <div className="flex items-center justify-between text-xs text-[var(--color-fg-muted)] mb-4">
-          <span>
-            Question {activeIndex + 1} / {questionCount}
-          </span>
-          <StepperDots
-            items={questionnaire.questions}
-            activeIndex={activeIndex}
-            resolveStatus={(question) => {
-              if (isSubmitted) return 'correct';
-              const selected = selections[question.id] ?? [];
-              return selected.length > 0 ? 'answered' : 'pending';
-            }}
-            onSelect={goToIndex}
-          />
-        </div>
+      <div className="exercise__bar">
+        <span className="exercise__kicker">
+          Question {activeIndex + 1} of {questionCount}
+        </span>
+        <StepperDots
+          items={questionnaire.questions}
+          activeIndex={activeIndex}
+          resolveStatus={(question) => {
+            if (isSubmitted) return 'answered';
+            const selected = selections[question.id] ?? [];
+            return selected.length > 0 ? 'answered' : 'pending';
+          }}
+          onSelect={goToIndex}
+        />
+      </div>
 
-        <div className="relative min-h-[200px]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeItem.id}
-              variants={contentVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="space-y-4"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  {activeItem.category && (
-                    <span className="badge badge-sm mr-2 uppercase tracking-wider bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-[var(--color-accent)]/20">
-                      {activeItem.category}
+      <div className="relative min-h-[200px]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeItem.id}
+            variants={contentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="flex flex-col gap-4"
+          >
+            <div>
+              {(activeItem.category || allowMultiple) && (
+                <p className="exercise__tag mb-1">
+                  {[activeItem.category, allowMultiple ? 'choose any' : null]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              )}
+              <p className="exercise__question">{activeItem.question}</p>
+            </div>
+
+            <div className="exercise__choices">
+              {activeItem.options.map((option, idx) => {
+                const isSelected = activeSelected.includes(option.label);
+                const state = isSelected ? 'is-picked' : isSubmitted ? 'is-muted' : '';
+                return (
+                  <button
+                    key={safeKey(option.label, idx, activeItem.id)}
+                    type="button"
+                    className={`choice ${state}`.trim()}
+                    onClick={() => handleToggle(activeItem.id, option.label, allowMultiple)}
+                    disabled={isSubmitted}
+                    aria-pressed={isSelected}
+                  >
+                    <span className="choice__body">
+                      <span>{option.label}</span>
+                      {option.description && (
+                        <span className="choice__desc">{option.description}</span>
+                      )}
                     </span>
-                  )}
-                  <div className="text-base font-medium leading-relaxed mt-1 text-[var(--color-fg)]">
-                    {activeItem.question}
-                  </div>
-                </div>
-                {allowMultiple && (
-                  <span className="text-xs text-[var(--color-fg-muted)] uppercase tracking-wider bg-[var(--color-muted)] px-1.5 py-0.5 rounded-[var(--radius-editorial)]">
-                    Multi-select
-                  </span>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                {activeItem.options.map((option, idx) => {
-                  const isSelected = activeSelected.includes(option.label);
-                  return (
-                    <button
-                      key={safeKey(option.label, idx, activeItem.id)}
-                      className={`btn justify-start h-auto py-2.5 px-3 transition-all duration-200 ${
-                        isSubmitted
-                          ? isSelected
-                            ? 'btn-primary opacity-90'
-                            : 'btn-outline opacity-50'
-                          : isSelected
-                            ? 'btn-primary ring-2 ring-[var(--color-accent)]/20 ring-offset-1'
-                            : 'btn-outline hover:bg-[var(--color-muted)]/50'
-                      }`}
-                      onClick={() => handleToggle(activeItem.id, option.label, allowMultiple)}
-                      disabled={isSubmitted}
-                    >
-                      <div className="flex flex-col items-start text-left w-full">
-                        <span className="font-medium text-sm">{option.label}</span>
-                        {option.description && (
-                          <span className="text-sm opacity-80 mt-0.5 font-normal">
-                            {option.description}
-                          </span>
-                        )}
-                      </div>
-                      {isSelected && <CheckIcon className="h-4 w-4 ml-auto shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
+                    {isSelected && <CheckIcon className="choice__end" />}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {isSubmitted ? (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 flex items-center gap-2 text-xs bg-[var(--color-success)]/10 text-[var(--color-success)] p-2 rounded-[var(--radius-editorial)] border border-[var(--color-success)]/20"
+          className="exercise__done"
         >
-          <HandThumbUpIcon className="h-4 w-4" />
-          <span>
-            Responses submitted{submittedTimestamp ? ` · ${submittedTimestamp}` : ''}. Let me
-            incorporate this into your learning journey!
-          </span>
-        </motion.div>
+          <CheckIcon />
+          Answers sent{submittedTimestamp ? ` · ${submittedTimestamp}` : ''}
+        </motion.p>
       ) : (
-        <div className="mt-4 flex items-center justify-between pt-2">
-          <span className="text-xs text-[var(--color-fg-muted)] font-medium">
-            {answeredCount}/{questionCount} answered
+        <div className="exercise__nav">
+          <span className="exercise__count">
+            {answeredCount} of {questionCount} answered
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="btn btn-ghost btn-sm"
+              className="btn-ghost btn-sm"
               onClick={goPrevious}
               disabled={activeIndex === 0}
             >
@@ -253,16 +227,16 @@ export function QuestionnaireCard({
             {activeIndex === questionCount - 1 ? (
               <button
                 type="button"
-                className="btn btn-primary btn-sm"
+                className="btn btn-sm"
                 onClick={handleSubmit}
                 disabled={!allAnswered || submitting}
               >
-                {submitting ? 'Submitting…' : 'Submit answers'}
+                {submitting ? 'Sending…' : 'Send answers'}
               </button>
             ) : (
               <button
                 type="button"
-                className="btn btn-ghost btn-sm"
+                className="btn-outline btn-sm"
                 onClick={goNext}
                 disabled={!isCurrentAnswered}
               >

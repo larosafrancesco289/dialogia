@@ -2,7 +2,7 @@ import styles from './IntroTour.module.css';
 
 // Component: IntroArt
 // Responsibility: The four line-art plates of the first-run tour. Strokes are
-// tokenised through the CSS module; gold is one accent per plate and no more.
+// tokenised through the CSS module; rubric is one accent per plate and no more.
 
 export type IntroPlate = 'flourish' | 'key' | 'machine' | 'ledger';
 

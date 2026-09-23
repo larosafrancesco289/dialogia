@@ -241,7 +241,7 @@ export function IntroTour() {
               </button>
               <button
                 type="button"
-                className="btn btn-outline btn-sm"
+                className="btn-outline btn-sm"
                 onClick={() => goTo(index - 1)}
                 disabled={index === 0}
               >
