@@ -19,7 +19,7 @@ const BUILT_IN_TITLE_MODELS: Record<string, string> = {
   [ANTHROPIC_ENDPOINT_ID]: 'anthropic-direct/claude-haiku-4-5',
 };
 
-const TITLE_MAX_TOKENS = 150; // Needs extra tokens for reasoning models
+const TITLE_MAX_TOKENS = 150;
 const TITLE_TIMEOUT_MS = 15_000;
 
 const TITLE_SYSTEM_PROMPT = `You write titles for chats. Given the user's first message, reply with a short title of 3-6 words. Use sentence case: capitalize only the first word and proper nouns, as in "Planning a week in Lisbon" or "How vaccines train the immune system". Reply with the title only: no quotes, no final punctuation.`;
@@ -56,6 +56,11 @@ export async function generateChatTitle(
   const model = resolveTitleModelId(endpoint, chatModelId);
   if (!model) return null;
 
+  // A built-in title model is known to title well without thinking, which is
+  // twice as fast and cannot spend the whole budget before writing a word. A
+  // user's own model may require reasoning, so it keeps its default.
+  const disableReasoning = model === BUILT_IN_TITLE_MODELS[endpoint.id];
+
   const messages: ModelMessage[] = [
     { role: 'system', content: TITLE_SYSTEM_PROMPT },
     { role: 'user', content: userMessage.slice(0, 500) },
@@ -77,7 +82,7 @@ export async function generateChatTitle(
       model,
       messages,
       maxTokens: TITLE_MAX_TOKENS,
-      temperature: 0.7,
+      disableReasoning,
       zdrOnly,
       signal: controller.signal,
     });
