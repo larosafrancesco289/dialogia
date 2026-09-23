@@ -47,7 +47,7 @@ export type ChatSliceActions = {
   branchChatFromMessage: (messageId: string) => Promise<void>;
   updateChatSettings: (partial: ChatSettingsPatch) => Promise<void>;
   moveChatToFolder: (chatId: string, folderId?: string) => Promise<void>;
-  createFolder: (name: string, parentId?: string) => Promise<void>;
+  createFolder: (name: string, parentId?: string) => Promise<Folder>;
   renameFolder: (id: string, name: string) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
   toggleFolderExpanded: (id: string) => Promise<void>;
@@ -418,6 +418,7 @@ export function createChatSlice(
     async createFolder(name: string, parentId?: string) {
       const folder = await ChatService.createFolder(name, parentId, repository);
       set((s) => ({ folders: [...s.folders, folder] }));
+      return folder;
     },
 
     async renameFolder(id: string, name: string) {

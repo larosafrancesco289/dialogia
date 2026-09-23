@@ -169,91 +169,32 @@
     line-height: 0;
   }
 
-  /* Reasoning effort — 160° size-graded radial picker.
-     Origin is pinned to the trigger button's horizontal centre, just above it.
-     Each tick is a circular button; ticks sit on a 160° arc and grow toward
-     the high-effort end so the fan itself reads as the progression. */
-  .composer-reasoning-fan {
-    position: absolute;
-    left: 50%;
-    bottom: 100%;
-    width: 0;
-    height: 0;
-    z-index: 50;
-    pointer-events: none;
-    transform-origin: 50% 100%;
+  /* Reasoning menu rows: the bulb at its level, the name, a plain hint. */
+  .reasoning-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
   }
-  .composer-reasoning-tick {
-    position: absolute;
-    left: 0;
-    top: 0;
-    padding: 0;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    background: var(--color-surface);
-    color: var(--color-fg-muted);
-    cursor: pointer;
-    pointer-events: auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition:
-      background var(--duration-fast) var(--ease-standard),
-      color var(--duration-fast) var(--ease-standard),
-      border-color var(--duration-fast) var(--ease-standard),
-      box-shadow var(--duration-fast) var(--ease-standard),
-      transform var(--duration-fast) var(--ease-standard);
-  }
-  .composer-reasoning-tick[data-effort='none'] {
+  .reasoning-row .composer-reasoning-icon {
+    margin-top: 2px;
     color: var(--color-fg-muted);
   }
-  .composer-reasoning-tick[data-effort='minimal'],
-  .composer-reasoning-tick[data-effort='low'],
-  .composer-reasoning-tick[data-effort='medium'],
-  .composer-reasoning-tick[data-effort='high'],
-  .composer-reasoning-tick[data-effort='xhigh'],
-  .composer-reasoning-tick[data-effort='max'] {
+  .reasoning-row[aria-checked='true'] .composer-reasoning-icon {
     color: var(--color-fg);
   }
-  /* Quiet marker under the model's default effort so the fan reads
-     "this is where it rests" without shouting. */
-  .composer-reasoning-tick[data-default='true']::after {
-    content: '';
-    position: absolute;
-    bottom: -7px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 4px;
-    height: 4px;
-    border-radius: 999px;
-    background: var(--color-rubric);
+  .reasoning-row__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
-  .composer-reasoning-tick:hover,
-  .composer-reasoning-tick:focus-visible {
-    background: color-mix(in oklab, var(--color-fg) 6%, var(--color-surface));
-    outline: none;
+  .reasoning-row__default {
+    color: var(--color-fg-muted);
+    font-weight: 400;
   }
-  .composer-reasoning-tick:focus-visible {
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-  /* The effort in use: an ink ring, like any chosen setting. */
-  .composer-reasoning-tick[data-current='true'] {
-    background: color-mix(in oklab, var(--color-fg) 8%, var(--color-surface));
-    border-color: var(--color-fg);
-  }
-  .composer-reasoning-caption {
-    position: absolute;
-    left: 0;
-    transform: translateX(-50%);
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--color-fg);
-    color: var(--color-canvas);
-    font-size: 11px;
-    line-height: 1;
-    letter-spacing: 0.01em;
-    white-space: nowrap;
-    pointer-events: none;
+  .reasoning-row__hint {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--color-fg-muted);
   }
 
   /* Primary send button */

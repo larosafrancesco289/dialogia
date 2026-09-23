@@ -1,6 +1,7 @@
 import type { PointerEvent } from 'react';
 import { IconButton } from '@/components/ui/IconButton';
-import { PencilSquareIcon, TrashIcon, FolderOpenIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon, FolderArrowDownIcon } from '@heroicons/react/24/outline';
+import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
 
 export type ChatRowViewProps = {
   chatId: string;
@@ -10,14 +11,12 @@ export type ChatRowViewProps = {
   isMobile: boolean;
   isSelected: boolean;
   isEditing: boolean;
-  editTitle: string;
   onSelect: () => void;
   onStartEdit: () => void;
-  onSaveEdit: () => void;
+  onCommitEdit: (title: string) => void | Promise<void>;
   onCancelEdit: () => void;
   onDelete: () => void;
-  onMove: () => void;
-  onEditTitleChange: (value: string) => void;
+  onMove: (anchor: DOMRect) => void;
   onDragStart: (chatId: string) => void;
   onDragEnd: () => void;
   onPointerDown: (event: PointerEvent) => void;
@@ -25,6 +24,9 @@ export type ChatRowViewProps = {
   onPointerUp: (event: PointerEvent) => void;
   onPointerCancel: () => void;
 };
+
+/** Rows inside a folder start where the folder's name starts. */
+export const ROW_INDENT = 24;
 
 export function ChatRowView({
   chatId,
@@ -34,14 +36,12 @@ export function ChatRowView({
   isMobile,
   isSelected,
   isEditing,
-  editTitle,
   onSelect,
   onStartEdit,
-  onSaveEdit,
+  onCommitEdit,
   onCancelEdit,
   onDelete,
   onMove,
-  onEditTitleChange,
   onDragStart,
   onDragEnd,
   onPointerDown,
@@ -49,9 +49,6 @@ export function ChatRowView({
   onPointerUp,
   onPointerCancel,
 }: ChatRowViewProps) {
-  const indentStep = 24;
-  const paddingLeft = 16;
-  const marginLeft = depth * indentStep;
   const showTitle = !collapsed || isEditing;
   const allowActions = !collapsed && !isEditing;
 
@@ -59,37 +56,29 @@ export function ChatRowView({
     <div
       className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item ${
         isSelected ? 'selected' : ''
-      }`}
+      }${isEditing ? ' is-editing' : ''}`}
       title={collapsed ? title : undefined}
-      style={{ marginLeft: `${marginLeft}px`, paddingLeft: `${paddingLeft}px` }}
-      draggable={!isMobile}
+      style={depth ? { marginLeft: `${depth * ROW_INDENT}px` } : undefined}
+      draggable={!isMobile && !isEditing}
       onDragStart={() => {
         if (isMobile) return;
         onDragStart(chatId);
       }}
       onDragEnd={onDragEnd}
       onClick={!isEditing && !isMobile ? onSelect : undefined}
+      onDoubleClick={!isMobile && !isEditing ? onStartEdit : undefined}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
       {isEditing ? (
-        <div className="flex items-center gap-2 flex-1">
-          <input
-            className="input flex-1 text-base sm:text-sm"
-            value={editTitle}
-            onChange={(e) => onEditTitleChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') onSaveEdit();
-              if (e.key === 'Escape') {
-                onCancelEdit();
-              }
-            }}
-            onBlur={onSaveEdit}
-            autoFocus
-          />
-        </div>
+        <InlineTitleEdit
+          value={title}
+          ariaLabel="Chat name"
+          onCommit={onCommitEdit}
+          onCancel={onCancelEdit}
+        />
       ) : showTitle ? (
         <div className="flex-1 text-sm truncate">{title}</div>
       ) : null}
@@ -102,19 +91,20 @@ export function ChatRowView({
               e?.stopPropagation();
               onStartEdit();
             }}
-            title="Rename chat"
+            title="Rename"
           >
-            <PencilSquareIcon className="h-3 w-3" />
+            <PencilSquareIcon />
           </IconButton>
           <IconButton
             size="sm"
             onClick={(e) => {
               e?.stopPropagation();
-              onMove();
+              const target = e?.currentTarget as HTMLElement | undefined;
+              if (target) onMove(target.getBoundingClientRect());
             }}
             title="Move to folder"
           >
-            <FolderOpenIcon className="h-3 w-3" />
+            <FolderArrowDownIcon />
           </IconButton>
           <IconButton
             size="sm"
@@ -122,9 +112,9 @@ export function ChatRowView({
               e?.stopPropagation();
               onDelete();
             }}
-            title="Delete chat"
+            title="Delete"
           >
-            <TrashIcon className="h-3 w-3" />
+            <TrashIcon />
           </IconButton>
         </div>
       )}

@@ -17,7 +17,11 @@ type FolderOption = {
   depth: number;
 };
 
-function buildFolderOptions(folders: Folder[], parentId?: string, depth = 0): FolderOption[] {
+export function buildFolderOptions(
+  folders: Folder[],
+  parentId?: string,
+  depth = 0,
+): FolderOption[] {
   const sorted = folders
     .filter((folder) => folder.parentId === parentId)
     .slice()
@@ -52,18 +56,16 @@ export function MoveChatSheet({
           ariaModal={false}
         >
           <div className="mobile-sheet-handle" aria-hidden="true" />
-          <div className="text-sm font-semibold px-1 pb-1">Move &quot;{chatTitle}&quot;</div>
+          <h2 className="dialog__title px-1 pb-1 text-lg">Move “{chatTitle}”</h2>
           <button
             type="button"
             className={`mobile-menu-item ${currentFolderId ? '' : 'is-active'}`.trim()}
             onClick={() => onMove(undefined)}
           >
-            <span>Unfiled</span>
+            <span>No folder</span>
           </button>
           {options.length === 0 ? (
-            <div className="text-xs text-muted-foreground px-1 py-2">
-              Create a folder to organize chats.
-            </div>
+            <div className="field__hint px-1 py-2">Create a folder to organize chats.</div>
           ) : (
             options.map((option) => (
               <button

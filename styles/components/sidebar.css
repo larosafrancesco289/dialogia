@@ -85,8 +85,32 @@
   .sidebar-section + .sidebar-section {
     margin-top: 8px;
   }
-  .folder-row {
-    margin-bottom: var(--space-2);
+  /* Folders read as rows among the chats: a chevron that turns as the
+     folder opens, the name, and a quiet count. */
+  .folder-row__chevron {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--color-fg-muted);
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+  .folder-row__chevron.is-open {
+    transform: rotate(90deg);
+  }
+  .folder-row__name {
+    font-weight: 500;
+  }
+  .folder-row__count {
+    flex: none;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+  /* A row being renamed keeps still: no hover tint under the field. */
+  .chat-item.is-editing,
+  .chat-item.is-editing:hover {
+    background: transparent;
+    cursor: text;
   }
 
   /* Chats grouped by when they were last touched, like a table of contents:
@@ -116,4 +140,25 @@
 .sidebar-section .input {
   background: color-mix(in oklab, var(--color-fg) 4%, transparent);
   border-color: transparent;
+}
+
+/* Rename in place: the row's own type on a faint tint, the focus ring as its
+   only edge. Unlayered, like the global :focus-visible it replaces. */
+.row-edit {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  margin: -3px -6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  color: var(--color-fg);
+  font: inherit;
+  font-size: 0.875rem;
+  outline: none;
+  box-shadow: 0 0 0 1.5px var(--focus-ring);
+}
+.row-edit::placeholder {
+  color: var(--color-fg-muted);
 }

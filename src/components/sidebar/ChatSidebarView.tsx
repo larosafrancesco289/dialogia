@@ -4,7 +4,8 @@ import { SidebarSearch } from '@/components/sidebar/SidebarSearch';
 import { groupByRecency } from '@/components/sidebar/groupByRecency';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { IconButton } from '@/components/ui/IconButton';
-import { PlusIcon, FolderPlusIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, FolderPlusIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
 import type { ChatSidebarState } from '@/components/sidebar/useChatSidebarState';
 
 export function ChatSidebarView({
@@ -12,28 +13,17 @@ export function ChatSidebarView({
   collapsed,
   query,
   showCreateFolder,
-  newFolderName,
-  editTitle,
-  editingId,
   filteredRootFolders,
   filteredRootChats,
   folderTreeIndex,
-  folders,
   selectedChatId,
   isMobile,
   onQueryChange,
-  onNewFolderNameChange,
   onStartCreateFolder,
   onCancelCreateFolder,
   onCreateFolder,
   onNewChat,
   onSelectChat,
-  onStartEditChat,
-  onSaveEditChat,
-  onCancelEditChat,
-  onDeleteChat,
-  onEditTitleChange,
-  moveChatToFolder,
   handleDragStart,
   handleDragEnd,
   handleDragOver,
@@ -64,30 +54,6 @@ export function ChatSidebarView({
         </div>
       )}
 
-      {showCreateFolder && !collapsed && (
-        <div className="sidebar-section pb-3">
-          <div className="flex gap-2">
-            <input
-              className="input flex-1 text-base sm:text-sm"
-              placeholder="Folder name"
-              value={newFolderName}
-              onChange={(e) => onNewFolderNameChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void onCreateFolder();
-                if (e.key === 'Escape') onCancelCreateFolder();
-              }}
-              autoFocus
-            />
-            <IconButton size="sm" onClick={onCreateFolder} title="Create folder">
-              <CheckIcon className="h-3.5 w-3.5" />
-            </IconButton>
-            <IconButton size="sm" onClick={onCancelCreateFolder} title="Cancel">
-              <XMarkIcon className="h-3.5 w-3.5" />
-            </IconButton>
-          </div>
-        </div>
-      )}
-
       <SidebarSearch
         value={query}
         onChange={onQueryChange}
@@ -106,9 +72,30 @@ export function ChatSidebarView({
         onDragOver={handleDragOver}
         onDrop={handleRootDrop}
       >
-        {filteredRootFolders.map((folder) => (
-          <FolderRowContainer key={folder.id} folder={folder} folderTreeIndex={folderTreeIndex} />
-        ))}
+        {(filteredRootFolders.length > 0 || (showCreateFolder && !collapsed)) && (
+          <section className="sidebar-group" aria-label="Folders">
+            {!collapsed && <h3 className="sidebar-group__label">Folders</h3>}
+            {showCreateFolder && !collapsed && (
+              <div className="chat-item folder-row is-editing flex items-center gap-2 px-4 py-2">
+                <ChevronRightIcon className="folder-row__chevron" aria-hidden="true" />
+                <InlineTitleEdit
+                  value=""
+                  placeholder="Folder name"
+                  ariaLabel="New folder name"
+                  onCommit={onCreateFolder}
+                  onCancel={onCancelCreateFolder}
+                />
+              </div>
+            )}
+            {filteredRootFolders.map((folder) => (
+              <FolderRowContainer
+                key={folder.id}
+                folder={folder}
+                folderTreeIndex={folderTreeIndex}
+              />
+            ))}
+          </section>
+        )}
 
         {groupByRecency(filteredRootChats).map((group) => (
           <section key={group.label} className="sidebar-group" aria-label={group.label}>
@@ -120,18 +107,7 @@ export function ChatSidebarView({
                 collapsed={collapsed}
                 isMobile={isMobile}
                 isSelected={selectedChatId === chat.id}
-                isEditing={editingId === chat.id}
-                editTitle={editTitle}
                 onSelect={() => onSelectChat(chat.id)}
-                onStartEdit={() => onStartEditChat(chat.id, chat.title)}
-                onSaveEdit={async () => {
-                  await onSaveEditChat(chat.id, chat.title);
-                }}
-                onCancelEdit={onCancelEditChat}
-                onDelete={() => onDeleteChat(chat.id)}
-                onEditTitleChange={onEditTitleChange}
-                folders={folders}
-                moveChatToFolder={moveChatToFolder}
                 onDragStart={(id) => handleDragStart(id, 'chat')}
                 onDragEnd={handleDragEnd}
               />
