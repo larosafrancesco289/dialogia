@@ -14,6 +14,9 @@
     max(var(--space-2), env(safe-area-inset-left));
   background: var(--color-canvas);
   border-bottom: 1px solid var(--chrome-rule);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .iconButton {

@@ -16,6 +16,8 @@
   padding-left: env(safe-area-inset-left);
   outline: none;
   touch-action: pan-y pinch-zoom;
+  -webkit-user-select: none;
+  user-select: none;
   will-change: transform;
 }
 
@@ -66,4 +68,11 @@
 
 .footItem:active {
   background: color-mix(in oklab, var(--color-fg) 6%, transparent);
+}
+
+/* Safari won't let you type into a field whose ancestor refuses selection. */
+.drawer :global(input),
+.drawer :global(textarea) {
+  -webkit-user-select: text;
+  user-select: text;
 }

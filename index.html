@@ -12,12 +12,18 @@
       content="Local-first, bring-your-own-key chat and tutoring with any model provider."
     />
     <link rel="canonical" href="https://dialogia.dev/" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f1ec" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16140f" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fbf8f1" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1510" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Added to a home screen, it opens as an app of its own, without the
+         browser's bars; the header already clears the status bar. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Dialogia" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   </head>
   <body>
     <div id="root"></div>

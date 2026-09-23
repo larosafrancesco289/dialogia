@@ -1,4 +1,23 @@
 @layer components {
+  /* The raw text shown while the renderer loads: held back for a moment so a
+     quick load never shows markdown source, shown after that so a slow one
+     still has words to read. */
+  .markdown-fallback {
+    opacity: 0;
+    animation: markdown-fallback-reveal 160ms var(--ease-standard) 700ms forwards;
+  }
+  @keyframes markdown-fallback-reveal {
+    to {
+      opacity: 1;
+    }
+  }
+  /* Reduced motion turns every animation off, which would leave it hidden. */
+  @media (prefers-reduced-motion: reduce) {
+    .markdown-fallback {
+      opacity: 1;
+    }
+  }
+
   /* Markdown typography */
   .markdown {
     line-height: 1.65;

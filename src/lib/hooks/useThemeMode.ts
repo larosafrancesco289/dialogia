@@ -30,6 +30,24 @@ function getMode(): ThemeMode {
 const getServerMode = (): ThemeMode => 'auto';
 
 /**
+ * The browser's own chrome (Safari's toolbar, a home-screen app's status
+ * bar) takes the page's paper, in the theme actually chosen: the static
+ * theme-color tags only know the system's scheme, so a dark app under a
+ * light system got a light bar.
+ */
+export function syncThemeColor() {
+  if (typeof document === 'undefined') return;
+  const canvas = getComputedStyle(document.documentElement)
+    .getPropertyValue('--color-canvas')
+    .trim();
+  if (!canvas) return;
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.removeAttribute('media');
+    meta.setAttribute('content', canvas);
+  });
+}
+
+/**
  * Apply the resolved theme class to the root element. When `smooth` is true
  * the palette cross-fades instead of hard-cutting: preferably via the View
  * Transitions API (one composited fade of the whole viewport), falling back
@@ -40,8 +58,14 @@ export function applyThemeClass(mode: ThemeMode, options?: { smooth?: boolean })
   const root = document.documentElement;
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const isDark = mode === 'dark' || (mode === 'auto' && prefersDark);
-  if (root.classList.contains('dark') === isDark) return;
-  const toggle = () => root.classList.toggle('dark', isDark);
+  if (root.classList.contains('dark') === isDark) {
+    syncThemeColor();
+    return;
+  }
+  const toggle = () => {
+    root.classList.toggle('dark', isDark);
+    syncThemeColor();
+  };
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   // A hidden tab (another tab changed the theme) has nothing to animate, and
   // the browser aborts its transition with an unhandled rejection.

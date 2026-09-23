@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'framer-motion';
 import { DialogPortal } from '@/components/ui/Dialog';
 import { springs } from '@/lib/mobile/springConfig';
+import { useBackToClose } from '@/lib/hooks/useBackToClose';
 
 type BottomSheetProps = {
   open: boolean;
@@ -37,6 +38,7 @@ export function BottomSheet({
   // re-run for that, or focus would bounce back and forth.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  useBackToClose(open, onClose);
 
   useEffect(() => {
     if (!open) return;

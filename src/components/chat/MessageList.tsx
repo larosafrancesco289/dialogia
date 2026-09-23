@@ -124,6 +124,13 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     autoScrollPreference: autoScrollPref,
   });
 
+  const latestAssistantId = useMemo(() => {
+    for (let i = visibleMessages.length - 1; i >= 0; i -= 1) {
+      if (visibleMessages[i].role === 'assistant') return visibleMessages[i].id;
+    }
+    return undefined;
+  }, [visibleMessages]);
+
   // Track previous composerFocused state to detect when keyboard opens
   const prevComposerFocusedRef = useRef(composerFocused);
 
@@ -208,7 +215,10 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
 
         {visibleMessages.map((message) => {
           const isEditingThisMessage = editingId === message.id;
-          const showInlineActions = !isMobile || isEditingThisMessage;
+          // A phone has no hover: the latest reply keeps its actions in view,
+          // as phone chat apps do, and older ones answer a long press.
+          const showInlineActions =
+            !isMobile || isEditingThisMessage || message.id === latestAssistantId;
           const scopedCopiedId = copiedId === message.id ? copiedId : null;
 
           return (
