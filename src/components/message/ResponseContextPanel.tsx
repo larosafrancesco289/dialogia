@@ -41,8 +41,84 @@ function compactText(value: string, max = 140) {
   return `${slice.slice(0, lastSpace > 90 ? lastSpace : max)}...`;
 }
 
-function countActivity(activity: MessageActivityItem[], type: MessageActivityItem['type']) {
-  return activity.filter((item) => item.type === type).length;
+/** Markdown emphasis and code marks, which the one-line summary shows bare. */
+function plainText(value: string) {
+  return value.replace(/\*\*|__|`/g, '').replace(/^#+\s*/gm, '');
+}
+
+/**
+ * The line the model is on while it thinks: its latest heading, when its
+ * reasoning arrives in titled sections, or else its latest finished sentence.
+ * A sentence counts once whitespace follows it, so the line changes once per
+ * sentence instead of once per token. Empty until there is a whole one.
+ */
+export function currentThoughtLine(text: string): string {
+  const headings = [...text.matchAll(/^[ \t]*\*\*([^*\n]+)\*\*[ \t]*$/gm)];
+  const heading = headings[headings.length - 1]?.[1]?.trim();
+  if (heading) return compactText(plainText(heading), 110);
+  const sentences = plainText(text).match(/[^.!?\n]+[.!?]+(?=\s)/g);
+  const last = sentences?.[sentences.length - 1]?.trim();
+  return last ? compactText(last, 110) : '';
+}
+
+/** How long the model thought, in words: "9 seconds", "1 minute 12 seconds". */
+export function formatThinkingTime(ms: number): string {
+  const total = Math.max(1, Math.round(ms / 1000));
+  const unit = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  if (total < 60) return unit(total, 'second');
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return seconds
+    ? `${unit(minutes, 'minute')} ${unit(seconds, 'second')}`
+    : unit(minutes, 'minute');
+}
+
+/**
+ * What the model's thinking came to, at rest: how long it took when that was
+ * timed, otherwise how many words it ran to.
+ */
+function thinkingMeasure(activity: MessageActivityItem[], reasoning: string): string {
+  const thoughts = activity.filter(
+    (item): item is Extract<MessageActivityItem, { type: 'reasoning' }> =>
+      item.type === 'reasoning',
+  );
+  const timed = thoughts.filter((item) => typeof item.duration === 'number');
+  if (timed.length > 0) {
+    return formatThinkingTime(timed.reduce((sum, item) => sum + (item.duration ?? 0), 0));
+  }
+  const text = thoughts.length > 0 ? thoughts.map((item) => item.text).join(' ') : reasoning;
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  return words ? `${words} word${words === 1 ? '' : 's'}` : '';
+}
+
+/** Reasoning set as prose: paragraphs, titled sections, bold kept as bold. */
+function ThoughtText({ text }: { text: string }) {
+  const blocks = text
+    .trim()
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  return (
+    <div className="response-ledger__thought">
+      {blocks.map((block, index) => {
+        const heading = block.match(/^\*\*([^*\n]+)\*\*$/);
+        if (heading) {
+          return (
+            <p key={index} className="response-ledger__thought-head">
+              {heading[1]}
+            </p>
+          );
+        }
+        return (
+          <p key={index}>
+            {block
+              .split(/\*\*([^*]+)\*\*/)
+              .map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part))}
+          </p>
+        );
+      })}
+    </div>
+  );
 }
 
 function hostname(url?: string) {
@@ -232,35 +308,46 @@ export function ResponseContextPanel({
   const hasToolCalls = visibleToolCount > 0;
   const hasActivity = orderedActivity.length > 0;
 
+  const latestActivity = orderedActivity[orderedActivity.length - 1];
+  const toolRunning =
+    isSearching ||
+    sortedToolCalls.some((call) => call.status === 'pending') ||
+    toolItems.some((item) => item.status === 'pending');
+  // Live only while the model is still at work: thinking, or waiting on a
+  // tool. Once the answer begins below, the line comes to rest.
+  const isLive =
+    isStreaming &&
+    (toolRunning ||
+      !latestActivity ||
+      (latestActivity.type === 'reasoning' && latestActivity.status !== 'done'));
+
   const summary = (() => {
     const runningTool = sortedToolCalls.find((call) => call.status === 'pending');
     if (runningTool) return labelForTool(runningTool);
-    const latestActivity = orderedActivity[orderedActivity.length - 1];
     if (latestActivity?.type === 'tool_call' && latestActivity.status === 'pending') {
       const object = toolObject(latestActivity);
       return `${toolDisplayName(latestActivity.name)}${object ? ` — ${object}` : ''}`;
     }
     if (isSearching) return sources?.query ? `Searching: ${sources.query}` : 'Searching sources';
     if (hasSearchError) return sources?.error || 'Search failed';
-    if (isStreaming && latestActivity?.type === 'reasoning') {
-      return compactText(latestActivity.text, 90);
+    if (isLive) {
+      const thought = latestActivity?.type === 'reasoning' ? latestActivity.text : reasoning;
+      return currentThoughtLine(thought) || 'Thinking…';
     }
     if (hasActivity) {
-      const thoughtCount = countActivity(orderedActivity, 'reasoning');
       const searchCount = toolItems.filter((item) => item.name === 'web_search').length;
       const toolNoun =
         visibleToolCount > 0 && searchCount === visibleToolCount
           ? `search${visibleToolCount === 1 ? '' : 'es'}`
           : `tool${visibleToolCount === 1 ? '' : 's'}`;
       const parts = [
-        thoughtCount ? `${thoughtCount} thought${thoughtCount === 1 ? '' : 's'}` : '',
+        thinkingMeasure(orderedActivity, reasoning),
         visibleToolCount ? `${visibleToolCount} ${toolNoun}` : '',
       ].filter(Boolean);
       return parts.join(', ');
     }
     if (hasToolCalls) return visibleToolCount === 1 ? '1 tool' : `${visibleToolCount} tools`;
-    if (hasReasoning) return compactText(reasoning);
-    if (isStreaming) return 'Thinking...';
+    if (hasReasoning) return thinkingMeasure([], reasoning);
     return '';
   })();
 
@@ -289,7 +376,7 @@ export function ResponseContextPanel({
   const showSourcesEntry = hasSources || isSearching || hasSearchError;
 
   return (
-    <section className="response-ledger">
+    <section className={`response-ledger${isLive ? ' is-live' : ''}`}>
       <div className="response-ledger__head">
         <button
           type="button"
@@ -298,14 +385,15 @@ export function ResponseContextPanel({
           aria-controls={bodyId}
           onClick={onToggle}
         >
-          {isSearching || toolItems.some((item) => item.status === 'pending') ? (
+          {toolRunning ? (
             <MagnifyingGlassIcon className="response-ledger__glyph" />
           ) : (
             <LightBulbIcon className="response-ledger__glyph" />
           )}
           <span className="response-ledger__title">Reasoning</span>
           {summary && (
-            <span className={`response-ledger__summary${isStreaming ? ' is-live' : ''}`}>
+            // Keyed while live so each new line of thought fades in.
+            <span key={isLive ? summary : 'rest'} className="response-ledger__summary">
               {summary}
             </span>
           )}
@@ -343,17 +431,15 @@ export function ResponseContextPanel({
                 if (item.type === 'reasoning') {
                   return (
                     <div key={item.id} className="response-ledger__entry">
-                      <span className="response-ledger__entry-glyph" aria-hidden="true">
-                        <LightBulbIcon className="h-full w-full" />
-                      </span>
-                      <p className="response-ledger__thought">{item.text.trim()}</p>
+                      <span className="response-ledger__entry-bead" aria-hidden="true" />
+                      <ThoughtText text={item.text} />
                     </div>
                   );
                 }
                 if (item.type === 'text') {
                   return (
                     <div key={item.id} className="response-ledger__entry">
-                      <span className="response-ledger__entry-glyph" aria-hidden="true" />
+                      <span className="response-ledger__entry-bead" aria-hidden="true" />
                       <p className="response-ledger__thought">{compactText(item.text, 180)}</p>
                     </div>
                   );
@@ -388,11 +474,9 @@ export function ResponseContextPanel({
 
               {!hasActivity && isStreaming && (
                 <div className="response-ledger__entry">
-                  <span className="response-ledger__entry-glyph" aria-hidden="true">
-                    <LightBulbIcon className="h-full w-full" />
-                  </span>
+                  <span className="response-ledger__entry-bead" aria-hidden="true" />
                   <p className="response-ledger__thought">
-                    <span className="response-ledger__pulse" aria-hidden="true" /> Thinking...
+                    <span className="response-ledger__pulse" aria-hidden="true" /> Thinking…
                   </p>
                 </div>
               )}

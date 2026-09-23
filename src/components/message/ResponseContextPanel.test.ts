@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildOrderedResponseActivity } from './ResponseContextPanel';
+import {
+  buildOrderedResponseActivity,
+  currentThoughtLine,
+  formatThinkingTime,
+} from './ResponseContextPanel';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
 
 test('keeps persisted tool calls visible when reasoning activity already exists', () => {
@@ -70,4 +74,29 @@ test('represents Tavily source state as a web search tool when no tool log is pr
   assert.equal(sourceTool.status, 'success');
   assert.equal(sourceTool.metadata?.provider, 'tavily');
   assert.equal(sourceTool.metadata?.results, 1);
+});
+
+test('the live line is the latest finished sentence, not the one being written', () => {
+  assert.equal(currentThoughtLine('The user asks about memory'), '');
+  assert.equal(
+    currentThoughtLine('The user asks about memory. I should cover recall and'),
+    'The user asks about memory.',
+  );
+  assert.equal(
+    currentThoughtLine('First point. Second **point** here.\n\nThird'),
+    'Second point here.',
+  );
+});
+
+test('the live line prefers the latest titled section when reasoning has them', () => {
+  const text =
+    '**Weighing the question**\n\nSome thought. More.\n\n**Planning the answer**\n\nA list';
+  assert.equal(currentThoughtLine(text), 'Planning the answer');
+});
+
+test('thinking time reads in words', () => {
+  assert.equal(formatThinkingTime(300), '1 second');
+  assert.equal(formatThinkingTime(8_400), '8 seconds');
+  assert.equal(formatThinkingTime(60_000), '1 minute');
+  assert.equal(formatThinkingTime(72_000), '1 minute 12 seconds');
 });

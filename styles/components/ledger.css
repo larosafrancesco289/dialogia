@@ -20,7 +20,8 @@
     display: flex;
     flex: 1;
     min-width: 0;
-    align-items: center;
+    /* Label and summary share a baseline; the marks centre on the line. */
+    align-items: baseline;
     gap: var(--space-2);
     padding: var(--space-1) 0;
     border: none;
@@ -42,14 +43,16 @@
   }
 
   .response-ledger__glyph {
+    align-self: center;
     width: 15px;
     height: 15px;
     flex: none;
     color: var(--color-rubric);
   }
-  /* Gold only while the model is still thinking. */
-  .response-ledger__toggle:has(.is-live) .response-ledger__glyph {
+  /* Gold only while the model is still at work, breathing slowly. */
+  .response-ledger.is-live .response-ledger__glyph {
     color: var(--color-accent);
+    animation: ledger-breathe 2.4s var(--ease-standard) infinite;
   }
 
   .response-ledger__title {
@@ -72,8 +75,10 @@
     font-size: 0.9rem;
     color: color-mix(in oklab, var(--color-fg-muted) 85%, transparent);
   }
-  .response-ledger__summary.is-live {
-    animation: ledger-breathe 2.4s var(--ease-standard) infinite;
+  /* While live, the line the model is on; each new one fades in. */
+  .response-ledger.is-live .response-ledger__summary {
+    color: var(--color-fg-muted);
+    animation: ledger-line-in 420ms var(--ease-standard) both;
   }
 
   .response-ledger__error {
@@ -88,6 +93,7 @@
   }
 
   .response-ledger__rule {
+    align-self: center;
     flex: 1;
     min-width: var(--space-4);
     border-top: 1px solid var(--rule-light);
@@ -95,6 +101,7 @@
   }
 
   .response-ledger__chevron {
+    align-self: center;
     width: 14px;
     height: 14px;
     flex: none;
@@ -141,11 +148,12 @@
     gap: var(--space-2);
     padding: var(--space-2) 0 var(--space-1);
   }
+  /* The rail hangs from the bulb in the head. */
   .response-ledger__timeline::before {
     content: '';
     position: absolute;
     left: 7px;
-    top: var(--space-1);
+    top: 0;
     bottom: 0;
     width: 1px;
     background: linear-gradient(
@@ -160,8 +168,21 @@
     position: relative;
     display: grid;
     grid-template-columns: 15px minmax(0, 1fr) auto;
-    column-gap: var(--space-3);
+    /* The same gap as the head, so the thought starts under the label. */
+    column-gap: var(--space-2);
     align-items: baseline;
+  }
+
+  /* A thought is a bead on the rail; the bulb above already names it. */
+  .response-ledger__entry-bead {
+    align-self: start;
+    justify-self: center;
+    width: 5px;
+    height: 5px;
+    margin-top: 9px;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--color-fg-muted) 70%, transparent);
+    box-shadow: 0 0 0 3px var(--color-canvas);
   }
 
   /* Glyphs sit on the rail; the canvas halo interrupts the line so each
@@ -190,6 +211,21 @@
     color: var(--color-fg-muted);
     white-space: pre-wrap;
     overflow-wrap: break-word;
+  }
+  .response-ledger__thought > p + p {
+    margin-top: 0.55em;
+  }
+  .response-ledger__thought strong {
+    font-weight: 600;
+  }
+  /* A titled section of the model's thinking: set upright, in ink. */
+  .response-ledger__thought > .response-ledger__thought-head {
+    font-style: normal;
+    font-weight: 500;
+    color: var(--color-fg);
+  }
+  .response-ledger__thought > p + .response-ledger__thought-head {
+    margin-top: 0.9em;
   }
 
   .response-ledger__tool-line {
@@ -232,6 +268,13 @@
     border-radius: 9999px;
     background: var(--color-accent);
     animation: ledger-breathe 1.6s var(--ease-standard) infinite;
+  }
+
+  @keyframes ledger-line-in {
+    from {
+      opacity: 0;
+      transform: translateY(3px);
+    }
   }
 
   @keyframes ledger-breathe {

@@ -43,6 +43,9 @@
     max-width: min(100%, calc(68ch + var(--space-8)));
   }
 
+  /* The reasoning line is ruled to the full measure, so a reply that carries
+     one takes it too: the line keeps still while the answer is still empty. */
+  .message-content-anchor--assistant:has(> .response-ledger),
   .message-content-anchor--editing {
     width: min(100%, calc(68ch + var(--space-8)));
   }

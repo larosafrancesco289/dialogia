@@ -104,8 +104,31 @@ export function createMessageStreamCallbacks(
     }, CHECKPOINT_INTERVAL_MS);
   };
 
+  // Thinking ends where the answer begins: close the reasoning entry and
+  // note how long it took, so the ledger stops reading as live.
+  let reasoningOpen = false;
+  const settleReasoning = () => {
+    if (!reasoningOpen || !reasoningActivityId) return;
+    reasoningOpen = false;
+    const id = reasoningActivityId;
+    const now = Date.now();
+    applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => {
+      const activity = Array.isArray(msg.activity) ? msg.activity : [];
+      if (!activity.some((item) => item.id === id && item.status !== 'done')) return msg;
+      return {
+        ...msg,
+        activity: activity.map((item) =>
+          item.type === 'reasoning' && item.id === id && item.status !== 'done'
+            ? { ...item, status: 'done', duration: Math.max(0, now - item.timestamp) }
+            : item,
+        ),
+      };
+    });
+  };
+
   const flushDelta = (delta: string) => {
     if (!delta) return;
+    settleReasoning();
     applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({
       ...msg,
       content: msg.content + delta,
@@ -148,6 +171,7 @@ export function createMessageStreamCallbacks(
 
   const updateReasoning = (delta: string) => {
     if (!delta) return;
+    reasoningOpen = true;
     set((state) => {
       const result = updateMessageById(state, chatId, assistantMessage.id, (msg) => {
         const activity = Array.isArray(msg.activity) ? msg.activity : [];
@@ -257,8 +281,9 @@ export function createMessageStreamCallbacks(
       reasoningAccumulator.push(delta);
     },
     onDone: async (full: string, extras?: StreamDoneExtras) => {
-      contentAccumulator.flush();
       reasoningAccumulator.flush();
+      contentAccumulator.flush();
+      settleReasoning();
       turnFinished = true;
       clearCheckpointTimer();
 
@@ -279,11 +304,7 @@ export function createMessageStreamCallbacks(
         ...assistantMessage,
         content,
         reasoning: current?.reasoning,
-        activity: (current?.activity ?? assistantMessage.activity)?.map((item) =>
-          item.type === 'reasoning' && item.id === reasoningActivityId
-            ? { ...item, status: 'done' }
-            : item,
-        ),
+        activity: current?.activity ?? assistantMessage.activity,
         attachments: current?.attachments,
         systemSnapshot: current?.systemSnapshot,
         genSettings: current?.genSettings,

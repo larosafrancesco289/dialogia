@@ -65,7 +65,7 @@
      battery; the .tab-hidden class is toggled from useAmbientMotionPause. */
   .tab-hidden .plan-loading-bar,
   .tab-hidden .response-ledger__pulse,
-  .tab-hidden .response-ledger__summary.is-live {
+  .tab-hidden .response-ledger.is-live .response-ledger__glyph {
     animation-play-state: paused !important;
   }
 
