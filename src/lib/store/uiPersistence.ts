@@ -3,7 +3,7 @@
 // Persisted key names are load-bearing: renaming one breaks users' localStorage.
 
 import type { PersistedUiState, UIState } from '@/lib/store/uiTypes';
-import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
+import { mergeChatDefaults, upgradeChatDefaults } from '@/lib/settings/chatDefaults';
 
 export function buildPersistedUiState(ui: UIState): PersistedUiState {
   return {
@@ -34,7 +34,10 @@ export function mergePersistedUiState(
   return {
     ...current,
     ...persisted,
-    chatDefaults: mergeChatDefaults(current.chatDefaults, persisted.chatDefaults),
+    chatDefaults: mergeChatDefaults(
+      current.chatDefaults,
+      upgradeChatDefaults(persisted.chatDefaults),
+    ),
     flags: { ...current.flags, ...(persisted.flags ?? {}) },
     debug: { ...current.debug, ...(persisted.debug ?? {}) },
     tutor: { ...current.tutor, ...(persisted.tutor ?? {}) },

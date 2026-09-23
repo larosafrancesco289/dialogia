@@ -1,4 +1,12 @@
 import type { ChatDefaults } from '@/lib/types';
+import { upgradeLegacyBaseSystem } from '@/lib/agent/prompts/baseSystem';
+
+/** Saved defaults still wearing an old built-in prompt move to the current one. */
+export function upgradeChatDefaults(defaults?: ChatDefaults): ChatDefaults | undefined {
+  if (defaults?.system === undefined) return defaults;
+  const system = upgradeLegacyBaseSystem(defaults.system);
+  return system === defaults.system ? defaults : { ...defaults, system };
+}
 
 export function mergeChatDefaults(
   base?: ChatDefaults,

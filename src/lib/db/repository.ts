@@ -7,6 +7,16 @@ import { ChatSchema, MessageSchema } from '@/lib/schemas/persisted';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 import { isRecord } from '@/lib/utils/guards';
+import { upgradeLegacyBaseSystem } from '@/lib/agent/prompts/baseSystem';
+
+// Chats store their prompt text, so one still wearing an old built-in default
+// picks up the current one on load; the next save writes it back.
+const upgradeChatSystem = (chat: Chat): Chat => {
+  const system = upgradeLegacyBaseSystem(chat.settings?.system);
+  return system === chat.settings?.system
+    ? chat
+    : { ...chat, settings: { ...chat.settings, system } };
+};
 
 type DbCollection<T> = {
   toArray?: () => Promise<T[]>;
@@ -133,7 +143,8 @@ export function createRepository(db: DialogiaDbLike) {
   };
 
   const getChatWithMessages = async (chatId: string) => {
-    const chat = await db.chats.get(chatId);
+    const stored = await db.chats.get(chatId);
+    const chat = stored && upgradeChatSystem(stored);
     const messages = await getMessagesForChat(db, chatId);
     return { chat, messages } as { chat?: Chat; messages: Message[] };
   };
@@ -212,11 +223,12 @@ export function createRepository(db: DialogiaDbLike) {
   // whole messages table up front made startup cost scale with total history
   // (including image attachments stored as data URLs).
   const loadRepositorySnapshot = async (selectedChatId?: string): Promise<RepositorySnapshot> => {
-    const [chats, folders, chatIdsWithMessages] = await Promise.all([
+    const [storedChats, folders, chatIdsWithMessages] = await Promise.all([
       db.chats.toArray(),
       db.folders.toArray(),
       listChatIdsWithMessages(),
     ]);
+    const chats = storedChats.map(upgradeChatSystem);
 
     const resolvedSelected = selectedChatId || chats[0]?.id;
     const messages: Record<string, Message[]> = {};

@@ -1,5 +1,6 @@
 import type { ReasoningEffort, SearchMode } from '@/lib/types/enums';
 import { asNumber, isRecord } from '@/lib/utils/guards';
+import { upgradeLegacyBaseSystem } from '@/lib/agent/prompts/baseSystem';
 import { NATIVE_SEARCH_MODE, ReasoningEffortEnum } from '@/lib/types/enums';
 
 type UnknownRecord = Record<string, unknown>;
@@ -92,7 +93,7 @@ export function migrateChatSettingsRecord(input: unknown): MigrationResult<unkno
 
   const modelId =
     readString(settings.modelId) ?? readString(settings.model) ?? readString(settings.model_id);
-  const system = readString(settings.system);
+  const system = upgradeLegacyBaseSystem(readString(settings.system));
 
   const temperature = asNumber(generation?.temperature) ?? asNumber(settings.temperature);
   const topP =
