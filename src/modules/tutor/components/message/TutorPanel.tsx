@@ -2,7 +2,6 @@ import { motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import type {
   TutorDiagnostic,
-  TutorLearnerModelUpdate,
   TutorMCQItem,
   TutorPlanProposal,
   TutorPlanSuggestion,
@@ -14,8 +13,9 @@ import { PlanProposalCard } from '@/modules/tutor/components/message/PlanProposa
 import { PlanSuggestionsCard } from '@/modules/tutor/components/message/PlanSuggestionsCard';
 import { DiagnosticCard } from '@/modules/tutor/components/message/DiagnosticCard';
 import { McqCard } from '@/modules/tutor/components/message/McqCard';
-import { LearnerUpdatesCard } from '@/modules/tutor/components/message/LearnerUpdatesCard';
 
+// Mastery changes from assessments are not shown here: the margin notes
+// under the message state them once, with their reasons.
 export function TutorPanel(props: {
   messageId: string;
   title?: string;
@@ -24,7 +24,6 @@ export function TutorPanel(props: {
   diagnostic?: TutorDiagnostic;
   planProposal?: TutorPlanProposal;
   planSuggestions?: TutorPlanSuggestion[];
-  assessmentUpdates?: TutorLearnerModelUpdate[];
   isLatestAssistant?: boolean;
 }) {
   const reduceMotion = useReducedMotion();
@@ -37,7 +36,6 @@ export function TutorPanel(props: {
     diagnostic,
     planProposal,
     planSuggestions,
-    assessmentUpdates,
     isLatestAssistant,
   } = props;
 
@@ -48,7 +46,6 @@ export function TutorPanel(props: {
     planProposal ||
     (planSuggestions && planSuggestions.length > 0) ||
     (diagnostic && diagnostic.items && diagnostic.items.length > 0) ||
-    (assessmentUpdates && assessmentUpdates.length > 0) ||
     (mcq && mcq.length > 0);
 
   if (!hasAny) return null;
@@ -88,9 +85,6 @@ export function TutorPanel(props: {
               <DiagnosticCard messageId={messageId} diagnostic={diagnostic} />
             ) : null}
             {mcq && mcq.length > 0 && <McqCard messageId={messageId} items={mcq} />}
-            {assessmentUpdates && assessmentUpdates.length > 0 && (
-              <LearnerUpdatesCard updates={assessmentUpdates} />
-            )}
           </div>
         </motion.div>
       </div>
