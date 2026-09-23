@@ -7,7 +7,7 @@
       opacity: 1;
     }
   }
-  @media (max-width: 640px) {
+  @media (max-width: 767px) {
     /* Make small utility icon buttons larger for touch */
     .icon-button {
       height: 36px;
@@ -50,173 +50,163 @@
     }
   }
 
-  .mobile-sheet-overlay {
+  /* The phone's one sheet (BottomSheet): paper rising from the bottom edge
+     over the scrim, square to the edge with the 10px top corners every
+     phone sheet has, one hairline along its top. */
+  .bottom-sheet-layer {
     position: fixed;
     inset: 0;
-    background: var(--overlay-scrim);
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding: var(--space-2);
-    padding-top: calc(env(safe-area-inset-top) + var(--space-6));
-    padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-3));
-    /* Over the tab bar (85) and the chats sheet (88) whose rows open it. */
+    /* Over the drawer (70), the settings page (80) and the composer. */
     z-index: 90;
-  }
-  .mobile-sheet {
-    width: min(100%, 520px);
-    border-radius: var(--radius-editorial-mobile);
-    padding: var(--space-3);
-    padding-bottom: var(--space-3);
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    justify-content: flex-end;
+  }
+  .bottom-sheet-scrim {
+    position: absolute;
+    inset: 0;
+    background: var(--overlay-scrim);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottom-sheet {
+    position: relative;
+    width: min(100%, 520px);
+    max-height: calc(100% - env(safe-area-inset-top) - var(--space-8));
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
     background: var(--surface-paper);
-    border: 1px solid var(--color-border);
+    border-top: 1px solid var(--chrome-rule);
+    border-radius: var(--radius-editorial-mobile) var(--radius-editorial-mobile) 0 0;
     box-shadow: var(--shadow-2);
+    padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
+    outline: none;
   }
-  .mobile-sheet-compact {
-    padding: var(--space-2) var(--space-2) var(--space-3);
-    gap: var(--space-1);
+  /* Its head is what you pull it down by. */
+  .bottom-sheet__head {
+    flex: none;
+    touch-action: none;
+    cursor: grab;
   }
-  .mobile-sheet .icon-button {
-    height: 32px;
-    width: 32px;
+  .bottom-sheet__handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 0;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: inherit;
   }
-  /* One sheet handle everywhere (the module sheets use the same values). */
-  .mobile-sheet-handle {
-    align-self: center;
+  .bottom-sheet__handle span {
     width: 36px;
     height: 4px;
     border-radius: 2px;
     background: color-mix(in oklab, var(--color-fg) 20%, transparent);
-    margin-bottom: var(--space-2);
   }
-  .mobile-message-sheet-overlay {
-    z-index: 110;
-    padding: var(--space-3);
-    padding-top: calc(env(safe-area-inset-top) + var(--space-6));
-    padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-3));
-  }
-  .mobile-message-sheet {
-    gap: var(--space-3);
-    padding: var(--space-3);
-    padding-bottom: calc(var(--space-3) + max(0px, env(safe-area-inset-bottom)));
-  }
-  .mobile-message-sheet__header {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-  }
-  .mobile-message-sheet__title {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .mobile-message-sheet__heading {
-    font-size: 0.95rem;
-    font-weight: 600;
-  }
-  .mobile-message-sheet__preview {
-    margin: 0;
-    font-size: 0.8rem;
-    color: var(--color-fg-muted);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+  /* What the actions act on: a chat's title, in the book face. */
+  .bottom-sheet__title {
+    padding: 0 var(--space-5) var(--space-3);
+    margin-bottom: var(--space-1);
+    border-bottom: 1px solid var(--chrome-rule);
+    font-family: var(--font-serif-assistant);
+    font-size: 1.0625rem;
+    line-height: 1.3;
+    color: var(--color-fg);
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .mobile-message-sheet__actions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
+  .bottom-sheet__body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 var(--space-2);
   }
-  .mobile-message-action {
-    width: 100%;
+  .sheet-item {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    border-radius: 4px;
-    border: 0;
-    background: transparent;
-    color: var(--color-fg);
-    text-align: left;
+    gap: var(--space-3);
+    width: 100%;
     min-height: 52px;
-    transition:
-      background-color var(--duration-fast) var(--ease-standard),
-      border-color var(--duration-fast) var(--ease-standard),
-      transform var(--duration-fast) var(--ease-standard);
-  }
-  .mobile-message-action:hover,
-  .mobile-message-action:active {
-    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
-  }
-  .mobile-message-action:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-  .mobile-message-action:disabled:hover,
-  .mobile-message-action:disabled:active {
-    background: transparent;
-  }
-  .mobile-message-action__icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    color: var(--color-fg-muted);
-    flex-shrink: 0;
-  }
-  .mobile-message-action__meta {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .mobile-message-action__label {
-    font-weight: 500;
-    font-size: 0.95rem;
-  }
-  .mobile-message-action__hint {
-    font-size: 0.75rem;
-    color: var(--color-fg-muted);
-  }
-  .mobile-message-sheet .btn {
-    margin-top: var(--space-1);
-  }
-  @media (max-width: 640px) {
-    .mobile-message-sheet-overlay {
-      padding: var(--space-2);
-      padding-top: calc(env(safe-area-inset-top) + var(--space-5));
-      padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-3));
-    }
-  }
-  /* Row menu item (chat and folder actions, move-to sheets): the same row
-     of text as .menu-item, sized for touch. */
-  .mobile-menu-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    min-height: 40px;
-    border-radius: 4px;
-    padding: var(--space-2) var(--space-3);
-    background: transparent;
+    padding: 0 var(--space-4);
     border: 0;
+    border-radius: var(--radius-editorial);
+    background: transparent;
     color: var(--color-fg);
-    font-weight: 500;
+    font-size: 1rem;
     text-align: left;
-    transition: background-color var(--duration-fast) var(--ease-standard);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
-  .mobile-menu-item:hover {
-    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  .sheet-item:active {
+    background: color-mix(in oklab, var(--color-fg) 6%, transparent);
   }
-  .mobile-menu-item.is-active {
-    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+  .sheet-item:disabled {
+    opacity: 0.45;
+    cursor: default;
   }
-  .mobile-menu-item.is-danger {
+  .sheet-item:disabled:active {
+    background: transparent;
+  }
+  .sheet-item__icon {
+    display: inline-flex;
+    flex: none;
+    width: 20px;
+    height: 20px;
+    color: var(--color-fg-muted);
+  }
+  .sheet-item__icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .sheet-item__label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* The one you are on: the rubric tick, as in the chat list. */
+  .sheet-item.is-selected {
+    box-shadow: inset 2px 0 0 var(--color-rubric);
+    font-weight: 500;
+  }
+  .sheet-item.is-danger,
+  .sheet-item.is-danger .sheet-item__icon {
     color: var(--color-danger);
+  }
+  /* A hairline sets the destructive action apart from the others. */
+  .sheet-rule {
+    height: 1px;
+    margin: var(--space-1) var(--space-4);
+    background: var(--chrome-rule);
+  }
+  .sheet-hint {
+    margin: 0;
+    padding: var(--space-2) var(--space-4) var(--space-3);
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 0.9375rem;
+    color: var(--color-fg-muted);
+  }
+  /* "Select text": the message's words on a page of their own, the one
+     place on a phone where they can be selected. */
+  .select-text {
+    padding: var(--space-3) var(--space-3) var(--space-4);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.55;
+    color: var(--color-fg);
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+  .select-text.is-reply {
+    font-family: var(--font-serif-assistant);
+    font-size: 1.0625rem;
   }
 }

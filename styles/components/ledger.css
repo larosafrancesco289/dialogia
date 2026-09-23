@@ -362,7 +362,7 @@
     color: var(--color-fg-muted);
   }
 
-  @media (max-width: 640px) {
+  @media (max-width: 767px) {
     .response-ledger {
       margin-inline: var(--space-2);
     }

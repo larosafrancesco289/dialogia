@@ -19,7 +19,6 @@ export type UIDebugState = UiDebugSnapshot;
 export type UISearchState = UiSearchSnapshot;
 export type UIPlanState = UiPlanSnapshot;
 export type UIMobileState = UiMobileSnapshot;
-export type { MobileTab } from '@/lib/contracts/ui';
 
 export type UITutorState = UiTutorSnapshot & {
   profileByChatId?: Record<string, TutorProfile>;

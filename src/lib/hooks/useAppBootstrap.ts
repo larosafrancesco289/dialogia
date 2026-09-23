@@ -3,9 +3,9 @@ import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { prefetchOnIdle } from '@/lib/ui/lazy';
-import { MEDIA_QUERIES, maxWidthQuery } from '@/lib/ui/breakpoints';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 
-export function useAppBootstrap(opts?: { mobileBreakpoint?: number }) {
+export function useAppBootstrap() {
   const { initializeApp, loadModels, setUI, collapsed } = useChatStore(
     (s) => ({
       initializeApp: s.initializeApp,
@@ -16,9 +16,7 @@ export function useAppBootstrap(opts?: { mobileBreakpoint?: number }) {
     shallow,
   );
 
-  const isMobile = useMediaQuery(
-    opts?.mobileBreakpoint ? maxWidthQuery(opts.mobileBreakpoint) : MEDIA_QUERIES.tablet,
-  );
+  const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
 
   useEffect(() => {
     initializeApp();

@@ -50,7 +50,8 @@ export function ApiKeyField(props: {
         <input
           id={`key-${keyRef}`}
           type="password"
-          className="input flex-1 min-w-0 text-base sm:text-sm"
+          // A phone gives the field its own line and its buttons the next.
+          className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
           autoComplete="off"
           spellCheck={false}
           placeholder={stored ? `Stored ${describeKey(keyRef)} — paste to replace` : placeholder}

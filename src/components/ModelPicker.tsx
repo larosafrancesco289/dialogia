@@ -23,6 +23,7 @@ import {
   type ModelSearchResult,
 } from '@/lib/models/search';
 import { PortalDropdown } from '@/components/PortalDropdown';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useModelPickerController } from '@/components/model-picker/useModelPickerController';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
@@ -212,6 +213,9 @@ export function ModelPicker({
         flatRows.findIndex((row) => row.id === selectedId),
       ),
     );
+    // On a phone the keyboard would cover half the list before you have seen
+    // it; the search is a tap away instead.
+    if (isMobile) return;
     const tid = window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 30);
     return () => window.clearTimeout(tid);
     // Only when opening: typing moves the highlight to the first result below.
@@ -261,10 +265,10 @@ export function ModelPicker({
   const panel = (
     <div
       ref={panelRef}
-      className={`model-picker popover${isMobile ? ' model-picker--sheet' : ''}`}
+      className={isMobile ? 'model-picker model-picker--sheet' : 'model-picker popover'}
       style={isMobile || !anchor ? undefined : { left: anchor.left, top: anchor.top }}
-      role="dialog"
-      aria-label="Choose a model"
+      role={isMobile ? undefined : 'dialog'}
+      aria-label={isMobile ? undefined : 'Choose a model'}
       onKeyDown={onKeyDown}
     >
       <div className="model-picker__search">
@@ -370,22 +374,22 @@ export function ModelPicker({
         </button>
       )}
 
-      <PortalDropdown
-        open={open}
-        onClose={close}
-        contentRef={panelRef}
-        ignoreOutsideRefs={[wrapRef]}
-      >
-        {isMobile ? (
-          <div className="scrim z-[90]">
-            <div className="fixed inset-x-0 bottom-0 z-[95] p-2">{panel}</div>
-          </div>
-        ) : (
+      {isMobile ? (
+        <BottomSheet open={open} label="Choose a model" onClose={close}>
+          {panel}
+        </BottomSheet>
+      ) : (
+        <PortalDropdown
+          open={open}
+          onClose={close}
+          contentRef={panelRef}
+          ignoreOutsideRefs={[wrapRef]}
+        >
           <div className="fixed inset-0 z-[90] pointer-events-none">
             <div className="pointer-events-auto">{panel}</div>
           </div>
-        )}
-      </PortalDropdown>
+        </PortalDropdown>
+      )}
     </div>
   );
 }

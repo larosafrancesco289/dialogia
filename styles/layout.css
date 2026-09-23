@@ -21,15 +21,14 @@
     --viewport-offset-bottom: 0px;
   }
 
-  @media (max-width: 640px) {
+  /* The phone app is one fixed screen that scrolls inside itself: the
+     document never scrolls, never rubber-bands and never pans under the
+     keyboard. */
+  @media (max-width: 767px) {
     html,
     body {
-      overflow: auto;
-    }
-
-    html.keyboard-active,
-    html.keyboard-active body {
       overflow: hidden;
+      overscroll-behavior: none;
     }
   }
 
@@ -281,7 +280,7 @@
     border-radius: 3px;
   }
 
-  @media (max-width: 640px) {
+  @media (max-width: 767px) {
     .app-shell {
       grid-template-columns: 1fr; /* collapse grid to one column */
     }

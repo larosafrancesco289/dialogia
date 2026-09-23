@@ -27,45 +27,23 @@
   .composer-hero:focus-within {
     border-color: color-mix(in oklab, var(--color-accent) 55%, transparent);
   }
-  @media (max-width: 640px) {
+  /* On a phone the composer floats over the foot of the conversation, inset
+     so its words start where the reply's words start. The shell shrinks to
+     the space above the keyboard, so the composer simply rides on top of
+     it: nothing re-pins, nothing jumps. */
+  @media (max-width: 767px) {
     .composer-chrome {
-      position: sticky;
-      left: auto;
+      left: var(--space-3);
+      right: var(--space-3);
+      bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
       width: auto;
-      margin: 0 var(--space-1);
-      bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)));
-      padding: var(--space-2);
-      padding-bottom: calc(var(--space-2) + max(0px, env(safe-area-inset-bottom)));
-      border-radius: var(--radius-editorial);
-      box-shadow: none;
-      /* Remove transform on mobile - causes jank */
+      padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
       transform: none;
       transition: none;
     }
-
-    /* When keyboard is active, pin to bottom of visual viewport */
-    .composer-chrome.is-mobile-pinned,
+    /* Over the keyboard, the home indicator's inset is gone. */
     html.keyboard-active .composer-chrome {
-      position: fixed;
-      left: var(--space-1);
-      right: var(--space-1);
-      /* On iOS, fixed bottom: 0 positions at bottom of visual viewport (above keyboard) */
-      bottom: var(--space-1);
-      padding-bottom: var(--space-2);
-      transform: none;
-      z-index: 90;
-    }
-
-    .composer-placeholder {
-      margin: 0 var(--space-1);
-      pointer-events: none;
-    }
-
-    html.keyboard-active .composer-hero {
-      position: sticky;
-      bottom: var(--space-1);
-      margin: 0 var(--space-1);
-      z-index: 70;
+      bottom: var(--space-2);
     }
   }
 
@@ -276,7 +254,7 @@
     color: var(--color-rubric);
   }
   /* Phones give every button a touch-sized floor; the rail must know it. */
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     .reasoning-scale {
       --stop-height: var(--touch-target-min);
     }
@@ -396,7 +374,7 @@
   }
 
   /* Mobile adjustments */
-  @media (max-width: 640px) {
+  @media (max-width: 767px) {
     .composer-btn-reasoning,
     .composer-btn-search,
     .composer-btn-attach,

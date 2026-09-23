@@ -20,6 +20,9 @@
   /* App chrome: the top bar and the sidebar header share one height and
      one hairline so they line up across the window. */
   --chrome-height: 64px;
+  /* The phone's header row, shorter than the desktop bar; the drawer's head
+     matches it so their hairlines meet. */
+  --mobile-header-height: 56px;
   --chrome-rule: color-mix(in oklab, var(--color-fg) 8%, transparent);
 
   /* Typography — Distinctive fonts for Imperial Archive aesthetic */

@@ -31,6 +31,8 @@ export function useLongPressSheet(opts: UseLongPressSheetOptions) {
     if (event.pointerType === 'mouse') return;
     timerId.current = window.setTimeout(() => {
       fired.current = true;
+      // A tick under the finger where the platform allows it (not iOS).
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(12);
       onLongPress();
     }, delayMs);
   };

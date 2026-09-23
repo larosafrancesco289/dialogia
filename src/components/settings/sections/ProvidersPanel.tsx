@@ -186,14 +186,14 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         <input
-          className="input flex-1 min-w-0 text-base sm:text-sm"
+          className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
           placeholder="Name, e.g. Ollama"
           value={label}
           onChange={(event) => setLabel(event.target.value)}
           aria-label="Endpoint name"
         />
         <input
-          className="input flex-1 min-w-0 text-base sm:text-sm"
+          className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
           placeholder="http://localhost:11434/v1"
           value={baseUrl}
           spellCheck={false}

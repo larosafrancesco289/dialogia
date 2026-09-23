@@ -111,23 +111,6 @@ export function useMessageListController(args: {
     return messages.find((msg) => msg.id === mobileSheet.id) ?? null;
   }, [mobileSheet, messages]);
 
-  const mobileActionPreview = useMemo(() => {
-    if (!mobileActionMessage) return null;
-    const text = (mobileActionMessage.content || '').trim();
-    if (text) {
-      const normalized = text.replace(/\s+/g, ' ');
-      return normalized.length > 160 ? `${normalized.slice(0, 160)}…` : normalized;
-    }
-    if (
-      Array.isArray(mobileActionMessage.attachments) &&
-      mobileActionMessage.attachments.length > 0
-    ) {
-      const first = mobileActionMessage.attachments[0];
-      return first?.name || first?.kind || 'Attachment';
-    }
-    return null;
-  }, [mobileActionMessage]);
-
   useEffect(() => {
     if (!isMobile || !mobileSheet) return;
     if (typeof document === 'undefined') return;
@@ -180,7 +163,6 @@ export function useMessageListController(args: {
     openMobileSheet,
     closeMobileSheet,
     mobileActionMessage,
-    mobileActionPreview,
     activeMessageId,
     setActiveMessageId,
   };

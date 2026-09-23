@@ -247,7 +247,7 @@
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-@media (min-width: 641px) {
+@media (min-width: 768px) {
   /* Keeps the footer from walking up and down between pages. */
   .page {
     min-height: 336px;
@@ -255,7 +255,7 @@
 }
 
 /* Mobile: a bottom sheet, matching the other mobile surfaces. */
-@media (max-width: 640px) {
+@media (max-width: 767px) {
   .overlay {
     align-items: flex-end;
     padding: 0;

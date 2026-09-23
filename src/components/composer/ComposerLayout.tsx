@@ -1,54 +1,25 @@
-import { useEffect, useRef, useState, type ReactNode, type DragEventHandler } from 'react';
-import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
-import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
-import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
+import { useEffect, useRef, type ReactNode, type DragEventHandler } from 'react';
 
 export function ComposerLayout({
   children,
   variant,
-  keyboardMetrics,
-  focused,
   onDrop,
 }: {
   children: ReactNode;
   variant: 'sticky' | 'hero';
-  keyboardMetrics: KeyboardMetrics;
-  focused: boolean;
   onDrop?: DragEventHandler<HTMLDivElement>;
 }) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const [composerHeight, setComposerHeight] = useState(0);
-  const isCompact = useMediaQuery(MEDIA_QUERIES.mobile);
 
-  const shouldPinToViewport =
-    isCompact && variant !== 'hero' && (focused || keyboardMetrics.offset > 0);
-
-  const wrapperClass =
-    variant === 'hero'
-      ? 'composer-hero'
-      : `composer-chrome${shouldPinToViewport ? ' is-mobile-pinned' : ''}`;
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const root = document.documentElement;
-    if (!isCompact) {
-      root.classList.remove('keyboard-active');
-      return () => {
-        root.classList.remove('keyboard-active');
-      };
-    }
-    if (shouldPinToViewport) root.classList.add('keyboard-active');
-    else root.classList.remove('keyboard-active');
-    return () => {
-      root.classList.remove('keyboard-active');
-    };
-  }, [isCompact, shouldPinToViewport]);
-
+  // The composer floats over the end of the conversation; the list pads its
+  // foot by this much so the last line can scroll clear of it. On a phone
+  // the shell itself shrinks to the space above the keyboard, so the
+  // composer never has to be re-pinned when the keyboard opens.
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    const root = document.documentElement;
     if (variant === 'hero') {
-      document.documentElement.style.setProperty('--composer-height', '0px');
-      setComposerHeight(0);
+      root.style.setProperty('--composer-height', '0px');
       return;
     }
     if (typeof ResizeObserver === 'undefined') return;
@@ -56,39 +27,25 @@ export function ComposerLayout({
     if (!el) return;
 
     const applyHeight = () => {
-      const h = Math.round(el.offsetHeight);
-      document.documentElement.style.setProperty('--composer-height', `${h}px`);
-      setComposerHeight(h);
+      root.style.setProperty('--composer-height', `${Math.round(el.offsetHeight)}px`);
     };
     applyHeight();
     const ro = new ResizeObserver(applyHeight);
     ro.observe(el);
     return () => {
       ro.disconnect();
-      document.documentElement.style.setProperty('--composer-height', '0px');
-      setComposerHeight(0);
+      root.style.setProperty('--composer-height', '0px');
     };
   }, [variant]);
 
-  const isHeroVariant = variant === 'hero';
-
   return (
-    <>
-      {shouldPinToViewport && composerHeight > 0 && !isHeroVariant && (
-        <div
-          className="composer-placeholder"
-          aria-hidden="true"
-          style={{ height: `${composerHeight}px` }}
-        />
-      )}
-      <div
-        ref={wrapperRef}
-        className={wrapperClass}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={onDrop}
-      >
-        {children}
-      </div>
-    </>
+    <div
+      ref={wrapperRef}
+      className={variant === 'hero' ? 'composer-hero' : 'composer-chrome'}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={onDrop}
+    >
+      {children}
+    </div>
   );
 }
