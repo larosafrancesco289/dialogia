@@ -93,3 +93,76 @@
     background: color-mix(in oklab, var(--color-accent) 8%, transparent);
   }
 }
+
+@layer components {
+  /* ===== Margin notes — mastery changes, annotated where they happened =====
+     Hung on the same hairline rail as the response ledger: the topic and
+     its movement in small sans, the tutor's reason in the book face, and a
+     quiet way to answer back. Never louder than the message above it. */
+  .margin-notes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: var(--space-1) 0 var(--space-2);
+    padding-left: var(--space-3);
+    border-left: 1px solid var(--rule-light);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+  }
+  .margin-note__head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin: 0;
+  }
+  .margin-note__topic {
+    font-weight: 500;
+    color: var(--color-fg);
+  }
+  .margin-note__delta {
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+  .margin-note__reason {
+    margin: 0.15em 0 0;
+    max-width: 52ch;
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 0.9rem;
+    color: color-mix(in oklab, var(--color-fg) 72%, var(--color-canvas));
+  }
+  .margin-note__answer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4em;
+    margin: 0.3em 0 0;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+  .margin-note__contest {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    color: var(--color-fg-muted);
+    text-decoration: underline;
+    text-decoration-color: var(--rule-light);
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .margin-note__contest:hover {
+    color: var(--color-fg);
+    text-decoration-color: currentColor;
+  }
+  .margin-note__contest:focus-visible {
+    outline: none;
+    border-radius: 2px;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .margin-note__contest:disabled {
+    cursor: progress;
+    opacity: 0.6;
+  }
+}

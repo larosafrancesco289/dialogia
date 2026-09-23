@@ -30,6 +30,7 @@ export type PlanCallbacks = {
   onCloseRightPanel: () => void;
   onSendPlanFeedback: (message: string) => void;
   onRequestMorePractice: (completedNodeId: string, startedNodeId?: string) => Promise<void>;
+  onContestMastery: (nodeId: string, direction: 'up' | 'down') => Promise<number | undefined>;
 } & LearnerModelEditCallbacks;
 
 export function usePlanCallbacks(): PlanCallbacks {
@@ -250,6 +251,25 @@ export function usePlanCallbacks(): PlanCallbacks {
     [learningPlan, learnerModel, sendUserMessage, updateChatSettings],
   );
 
+  // A margin-note correction: the learner says an estimate is too high or
+  // too low. It is saved on the chat as self-reported evidence and reaches
+  // the tutor through its next turn's context, so it costs no turn of its
+  // own. Returns the new confidence.
+  const onContestMastery = useCallback(
+    async (nodeId: string, direction: 'up' | 'down') => {
+      if (!learnerModel) return undefined;
+      const name = learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
+      const { model, to } = applyLearnerModelFeedback(learnerModel, {
+        nodeId,
+        direction,
+        reason: `Learner said the estimate for "${name}" was too ${direction === 'down' ? 'high' : 'low'}.`,
+      });
+      await updateChatSettings({ features: { tutor: { learnerModel: model } } });
+      return to ?? model.mastery[nodeId]?.confidence;
+    },
+    [learnerModel, learningPlan, updateChatSettings],
+  );
+
   const onToggleRightPanel = useCallback(() => {
     if (rightPanelOpen) {
       setUI({ plan: { rightPanelOpen: false, sheetPlanOverride: null } });
@@ -299,5 +319,6 @@ export function usePlanCallbacks(): PlanCallbacks {
     onCloseRightPanel,
     onSendPlanFeedback,
     onRequestMorePractice,
+    onContestMastery,
   };
 }
