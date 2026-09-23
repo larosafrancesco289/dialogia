@@ -66,19 +66,26 @@
   --duration-med: 280ms;
   --duration-slow: 340ms;
 
-  /* Surface palette — Imperial Archive (light) */
-  --color-canvas: #f4f1ec;
-  --color-surface: #fdfbf8;
+  /* Surface palette — Imperial Archive (light). The page you read is the
+     brightest thing on screen; the chrome around it (sidebar, Learning Hub)
+     sits one step back, like a book's binding. */
+  --color-canvas: #fbf8f1;
+  --color-surface: #fffdf8;
+  --color-chrome: #f0e9dc;
   --color-muted: #f1ede7;
-  --color-fg: #1e1c18;
+  --color-fg: #1f1912;
   --color-fg-muted: #5b534b;
   --color-accent: #b9975b;
   --color-accent-2: #6d2a8a;
   --color-border: #d5cfc4;
+  /* Rubric: the scribe's red ink. The book's own structural marks at rest
+     (headings, numerals, rules, labels). Gold stays for what is live. */
+  --color-rubric: #b23a26;
 
   /* Status palette — muted, scholarly tones */
   --color-success: #4a8c5a;
-  --color-danger: #b35a4a;
+  /* Crimson, cooler than the rubric so an error never reads as a heading. */
+  --color-danger: #9c2a44;
 
   /* Interactive feedback — correct/incorrect states */
   --feedback-correct-bg: color-mix(in oklab, var(--color-success) 10%, var(--marginalia-bg));
@@ -143,20 +150,23 @@
 .dark {
   color-scheme: dark;
 
-  /* Surfaces — warm charcoal, three elevation steps */
-  --color-canvas: #16140f;
-  --color-surface: #1e1b16;
-  --color-muted: #262119;
-  --color-fg: #ece6db;
+  /* Surfaces — warm brown-black, three elevation steps; the chrome sits
+     darker than the page, as in light mode. */
+  --color-canvas: #1a1510;
+  --color-surface: #221c15;
+  --color-chrome: #120f0b;
+  --color-muted: #2a2219;
+  --color-fg: #f0e6d4;
   --color-fg-muted: #a89e8e;
   /* Lifted, softened gold + lavender — glow, don't glare */
   --color-accent: #cda85f;
   --color-accent-2: #b48ad0;
-  --color-border: #332c22;
+  --color-border: #3a3024;
+  --color-rubric: #e3805d;
 
   /* Status — slightly brightened for the dark ground */
   --color-success: #7cb87a;
-  --color-danger: #d4645a;
+  --color-danger: #e56c7f;
   --focus-ring: color-mix(in oklab, var(--color-accent) 50%, transparent);
   --overlay-scrim: rgba(6, 5, 3, 0.62);
 

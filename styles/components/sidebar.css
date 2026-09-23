@@ -32,15 +32,17 @@
     }
   }
   .chat-item:hover {
-    --chat-item-bg: color-mix(in oklab, var(--color-fg) 4%, var(--color-surface));
+    --chat-item-bg: color-mix(in oklab, var(--color-fg) 4%, var(--color-chrome));
     color: var(--color-fg);
     background: color-mix(in oklab, var(--color-fg) 4%, transparent);
   }
   .chat-item.selected {
-    --chat-item-bg: color-mix(in oklab, var(--color-fg) 7%, var(--color-surface));
+    --chat-item-bg: color-mix(in oklab, var(--color-fg) 7%, var(--color-chrome));
     color: var(--color-fg);
     background: color-mix(in oklab, var(--color-fg) 7%, transparent);
     font-weight: 500;
+    /* A rubric tick in the margin marks the chat you are reading. */
+    box-shadow: inset 2px 0 0 var(--color-rubric);
   }
 
   /* Row actions overlay the end of the title on hover instead of reserving
@@ -60,7 +62,7 @@
     background: linear-gradient(
       to right,
       transparent,
-      var(--chat-item-bg, var(--color-surface)) 24px
+      var(--chat-item-bg, var(--color-chrome)) 24px
     );
     transition: opacity var(--duration-fast) var(--ease-standard);
   }
@@ -77,7 +79,7 @@
   /* The sidebar is a flush panel: full height, square, divided from the page
      by one hairline, the same rule the top bar sits on. */
   .sidebar-panel {
-    background: var(--surface-paper);
+    background: var(--color-chrome);
     border-right: 1px solid var(--chrome-rule);
     padding: 0 var(--space-2) var(--space-2);
   }

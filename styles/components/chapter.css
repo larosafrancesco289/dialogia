@@ -3,7 +3,7 @@
      Set like a chapter ending in a book: an asterism, a small-caps kicker,
      the topic's name in the book face. While it waits for the learner it
      carries the tutor's estimate and three quiet choices; once answered it
-     settles into a single line of record. Gold only on the live choice. */
+     settles into a single line of record. Rubric for the marks, gold only on the live choice. */
   .chapter-break {
     margin: var(--space-4) 0 var(--space-3);
     padding: var(--space-3) 0 var(--space-4);
@@ -14,7 +14,7 @@
     display: block;
     margin-bottom: var(--space-2);
     font-family: var(--font-serif-assistant);
-    color: var(--color-fg-muted);
+    color: var(--color-rubric);
   }
   .chapter-break__kicker {
     margin: 0;
@@ -23,7 +23,7 @@
     font-size: 0.95rem;
     letter-spacing: 0.08em;
     text-transform: lowercase;
-    color: var(--color-fg-muted);
+    color: var(--color-rubric);
   }
   .chapter-break__title {
     margin: 0.15em 0 0;
@@ -105,7 +105,7 @@
     gap: var(--space-3);
     margin: var(--space-1) 0 var(--space-2);
     padding-left: var(--space-3);
-    border-left: 1px solid var(--rule-light);
+    border-left: 1px solid color-mix(in oklab, var(--color-rubric) 50%, transparent);
     font-family: var(--font-sans);
     font-size: 0.8125rem;
     line-height: 1.45;
