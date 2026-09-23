@@ -46,12 +46,6 @@
       display: none;
     }
   }
-  /* Narrower still, the theme switch steps out; it also lives in Settings. */
-  @container (max-width: 560px) {
-    .top-header .top-header__theme {
-      display: none;
-    }
-  }
 
   /* ============================================
    * HEADER DIVIDER

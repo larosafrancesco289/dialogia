@@ -34,8 +34,6 @@ export type ChatSidebarState = {
   onCancelCreateFolder: () => void;
   onCreateFolder: () => Promise<void>;
   onNewChat: () => void;
-  onOpenSettings: () => void;
-  onCloseSidebar: () => void;
   onSelectChat: (chatId: string) => void;
   onStartEditChat: (chatId: string, title: string) => void;
   onSaveEditChat: (chatId: string, fallbackTitle: string) => Promise<void>;
@@ -64,7 +62,6 @@ export function useChatSidebarState({
     createFolder,
     moveChatToFolder,
     collapsedFromStore,
-    setUI,
   } = useChatStore(
     (s) => ({
       chats: s.chats,
@@ -78,7 +75,6 @@ export function useChatSidebarState({
       createFolder: s.createFolder,
       moveChatToFolder: s.moveChatToFolder,
       collapsedFromStore: s.ui.sidebarCollapsed ?? false,
-      setUI: s.setUI,
     }),
     shallow,
   );
@@ -92,7 +88,6 @@ export function useChatSidebarState({
   const [newFolderName, setNewFolderName] = useState('');
   const [query, setQuery] = useState('');
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
-  const isTablet = useMediaQuery(MEDIA_QUERIES.tablet);
 
   useEffect(() => {
     loadModels();
@@ -163,14 +158,6 @@ export function useChatSidebarState({
     void newChat();
   }, [newChat]);
 
-  const onOpenSettings = useCallback(() => {
-    setUI({ showSettings: true, ...(isTablet ? { sidebarCollapsed: true } : {}) });
-  }, [setUI, isTablet]);
-
-  const onCloseSidebar = useCallback(() => {
-    setUI({ sidebarCollapsed: true });
-  }, [setUI]);
-
   const onSelectChat = useCallback(
     (chatId: string) => {
       selectChat(chatId);
@@ -232,8 +219,6 @@ export function useChatSidebarState({
     onCancelCreateFolder,
     onCreateFolder,
     onNewChat,
-    onOpenSettings,
-    onCloseSidebar,
     onSelectChat,
     onStartEditChat,
     onSaveEditChat,

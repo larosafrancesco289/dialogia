@@ -3,13 +3,7 @@ import { ChatRowContainer } from '@/components/sidebar/ChatRowContainer';
 import { SidebarSearch } from '@/components/sidebar/SidebarSearch';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { IconButton } from '@/components/ui/IconButton';
-import {
-  PlusIcon,
-  FolderPlusIcon,
-  CheckIcon,
-  XMarkIcon,
-  Cog6ToothIcon,
-} from '@heroicons/react/24/outline';
+import { PlusIcon, FolderPlusIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { ChatSidebarState } from '@/components/sidebar/useChatSidebarState';
 
 export function ChatSidebarView({
@@ -32,8 +26,6 @@ export function ChatSidebarView({
   onCancelCreateFolder,
   onCreateFolder,
   onNewChat,
-  onOpenSettings,
-  onCloseSidebar,
   onSelectChat,
   onStartEditChat,
   onSaveEditChat,
@@ -67,14 +59,6 @@ export function ChatSidebarView({
                 <FolderPlusIcon className="h-5 w-5 sm:h-4 sm:w-4" />
               </IconButton>
             )}
-            <span className="sm:hidden flex items-center gap-2">
-              <IconButton onClick={onOpenSettings} title="Settings" className="w-11 h-11">
-                <Cog6ToothIcon className="h-5 w-5" />
-              </IconButton>
-              <IconButton onClick={onCloseSidebar} title="Close sidebar" className="w-11 h-11">
-                <XMarkIcon className="h-5 w-5" />
-              </IconButton>
-            </span>
           </div>
         </div>
       )}

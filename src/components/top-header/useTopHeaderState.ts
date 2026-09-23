@@ -13,15 +13,12 @@ export type TopHeaderState = {
   tutorModelLabel: string;
   onToggleSidebar: () => void;
   onToggleSettings: () => void;
-  onOpenSettings: () => void;
   onNewChat: () => void;
-  onRenameChat?: () => void;
 };
 
 export function useTopHeaderState(): TopHeaderState {
   const {
     chat,
-    renameChat,
     setUI,
     newChat,
     collapsed,
@@ -32,7 +29,6 @@ export function useTopHeaderState(): TopHeaderState {
   } = useChatStore(
     (s) => ({
       chat: selectCurrentChat(s),
-      renameChat: s.renameChat,
       setUI: s.setUI,
       newChat: s.newChat,
       collapsed: s.ui.sidebarCollapsed ?? false,
@@ -65,21 +61,9 @@ export function useTopHeaderState(): TopHeaderState {
     setUI({ showSettings: !isSettingsOpen });
   }, [isSettingsOpen, setUI]);
 
-  const onOpenSettings = useCallback(() => {
-    setUI({ showSettings: true });
-  }, [setUI]);
-
   const onNewChat = useCallback(() => {
     void newChat();
   }, [newChat]);
-
-  const onRenameChat = useCallback(() => {
-    if (!chat) return;
-    const next = window.prompt('Rename chat', chat.title || 'Untitled chat');
-    const trimmed = (next || '').trim();
-    if (!trimmed || trimmed === chat.title) return;
-    void renameChat(chat.id, trimmed);
-  }, [chat, renameChat]);
 
   return {
     chat,
@@ -89,8 +73,6 @@ export function useTopHeaderState(): TopHeaderState {
     tutorModelLabel,
     onToggleSidebar,
     onToggleSettings,
-    onOpenSettings,
     onNewChat,
-    onRenameChat: chat ? onRenameChat : undefined,
   };
 }
