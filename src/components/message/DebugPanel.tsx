@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { ChevronDownIcon, ChevronUpIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import type { ToolCallLogEntry } from '@/lib/types';
 import { ToolCallLog } from '@/components/message/ToolCallLog';
-import { logger } from '@/lib/logger';
 import { parseDebugBody } from '@/lib/agent/debug/parseDebugBody';
+import { copyText } from '@/lib/clipboard';
 
 export function DebugPanel({
   body,
@@ -53,13 +53,7 @@ export function DebugPanel({
                 className="icon-button"
                 aria-label="Copy request"
                 title="Copy request"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(rawJson);
-                  } catch (error) {
-                    logger.error('Unable to copy raw request', error);
-                  }
-                }}
+                onClick={() => void copyText(rawJson)}
               >
                 <DocumentDuplicateIcon className="h-4 w-4" />
               </button>

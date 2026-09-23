@@ -129,7 +129,11 @@ export async function sendUserTurn({
     triggerAsyncTitleGeneration(
       currentChat.id,
       content,
-      get().renameChat.bind(get()),
+      // The person may have named the chat while the title was in flight.
+      async (id, title) => {
+        const chat = get().chats.find((c) => c.id === id);
+        if (chat && isUntitledChat(chat.title)) await get().renameChat(id, title);
+      },
       primaryContext.auth.endpoint,
       get().ui.zdrOnly === true,
       primaryModelId,

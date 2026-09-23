@@ -8,6 +8,7 @@ import { ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { logger } from '@/lib/logger';
 import type { MarkdownCitationSource } from '@/lib/markdown/citations';
 import { preprocessMarkdown } from '@/lib/markdown/preprocess';
+import { copyText } from '@/lib/clipboard';
 
 const WRAP_STORAGE_KEY = 'dialogia:code-wrap';
 const WRAP_EVENT = 'dialogia:code-wrap-change';
@@ -66,13 +67,9 @@ function persistWrapPreference(next: boolean) {
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore
-    }
+    if (!(await copyText(text))) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
   return (
     <button

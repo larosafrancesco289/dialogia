@@ -57,6 +57,21 @@ export const chatPersistFragment: PersistFragment = {
   partialize: (state) => ({ selectedChatId: state.selectedChatId }),
 };
 
+/**
+ * The chat that takes a deleted one's place: the next one down in the same
+ * folder (or the root list), else the one above, else the nearest anywhere.
+ * Jumping to the top of the whole list loses the person's place.
+ */
+export function neighbourChatId(chats: Chat[], id: string): string | undefined {
+  const deleted = chats.find((c) => c.id === id);
+  const pick = (list: Chat[]) => {
+    const index = list.findIndex((c) => c.id === id);
+    return (list[index + 1] ?? list[index - 1])?.id;
+  };
+  const siblings = chats.filter((c) => c.id === id || c.folderId === deleted?.folderId);
+  return (siblings.length > 1 ? pick(siblings) : undefined) ?? pick(chats);
+}
+
 export function createChatSlice(
   set: StoreSetter,
   get: () => StoreState,
@@ -212,7 +227,9 @@ export function createChatSlice(
       set((s) => {
         const chats = s.chats.filter((c) => c.id !== id);
         const deletingSelectedChat = s.selectedChatId === id;
-        const selectedChatId = deletingSelectedChat ? chats[0]?.id : s.selectedChatId;
+        const selectedChatId = deletingSelectedChat
+          ? neighbourChatId(s.chats, id)
+          : s.selectedChatId;
         const loadedMessageChatIds = { ...(s.loadedMessageChatIds ?? {}) };
         delete loadedMessageChatIds[id];
         const nonEmptyChatIds = { ...(s.nonEmptyChatIds ?? {}) };
