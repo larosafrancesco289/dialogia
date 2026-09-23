@@ -15,14 +15,14 @@ import { getDefaultEndpoint } from '@/lib/transport/endpointRegistry';
 
 /** Cheap, fast models the built-in endpoints are known to serve. */
 const BUILT_IN_TITLE_MODELS: Record<string, string> = {
-  [OPENROUTER_ENDPOINT_ID]: 'openai/gpt-oss-20b',
+  [OPENROUTER_ENDPOINT_ID]: 'openai/gpt-6-luna',
   [ANTHROPIC_ENDPOINT_ID]: 'anthropic-direct/claude-haiku-4-5',
 };
 
 const TITLE_MAX_TOKENS = 150; // Needs extra tokens for reasoning models
 const TITLE_TIMEOUT_MS = 15_000;
 
-const TITLE_SYSTEM_PROMPT = `You are a chat title generator. Given the user's first message, generate a short, descriptive title (3-6 words max). Return ONLY the title text, no quotes, no punctuation at the end, no explanation.`;
+const TITLE_SYSTEM_PROMPT = `You write titles for chats. Given the user's first message, reply with a short title of 3-6 words. Use sentence case: capitalize only the first word and proper nouns, as in "Planning a week in Lisbon" or "How vaccines train the immune system". Reply with the title only: no quotes, no final punctuation.`;
 
 /**
  * Which model titles this chat. A user-configured endpoint has no known cheap
