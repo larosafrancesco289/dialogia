@@ -1,64 +1,31 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  EyeIcon,
+  LightBulbIcon,
+  MagnifyingGlassIcon,
+  PhotoIcon,
+  ShieldCheckIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import { formatModelLabel } from '@/lib/models';
-import { useCuratedModels } from '@/lib/hooks/useModelCatalog';
-import type { ZdrLists } from '@/lib/policy/zdr';
+import { useAvailableModels, useCuratedModels } from '@/lib/hooks/useModelCatalog';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
-import { getModelProviderLabel } from '@/lib/providers';
-import { ModelSearch } from '@/components/ModelSearch';
-import type { ModelSearchResult } from '@/lib/models/search';
-import { PortalDropdown } from '@/components/PortalDropdown';
-import { FavoriteModelCard, ModelCard } from '@/components/model-picker/ModelCards';
+import { isBuiltInEndpointId } from '@/lib/transport/endpoints';
 import {
-  useModelPickerController,
-  type ModelPickerOption,
-} from '@/components/model-picker/useModelPickerController';
+  buildModelSearchResult,
+  buildModelSearchResults,
+  getHighlightSegments,
+  normalizeModelQuery,
+  splitModelQuery,
+  type ModelSearchResult,
+} from '@/lib/models/search';
+import { PortalDropdown } from '@/components/PortalDropdown';
+import { useModelPickerController } from '@/components/model-picker/useModelPickerController';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
-
-function AddModelSearch({
-  onAddFavorite,
-  favoriteIds,
-  curatedIds,
-  dropdownRef,
-}: {
-  onAddFavorite: (result: ModelSearchResult) => void;
-  favoriteIds: string[];
-  curatedIds: string[];
-  dropdownRef?: RefObject<HTMLDivElement>;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const alreadyAddedIds = useMemo(() => [...favoriteIds, ...curatedIds], [favoriteIds, curatedIds]);
-
-  return (
-    <div className="border-t border-border/50 pt-5 mt-2">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground w-full transition-colors"
-      >
-        {expanded ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
-        <span>Add more models to favorites</span>
-        <span className="text-xs text-muted-foreground/60 ml-1">(200+ available)</span>
-      </button>
-
-      {expanded && (
-        <div className="mt-4">
-          <ModelSearch
-            onSelect={onAddFavorite}
-            selectedIds={alreadyAddedIds}
-            clearOnSelect
-            placeholder="Search models to add..."
-            actionLabel="Add"
-            selectedLabel="Added"
-            dropdownRef={dropdownRef}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
 
 export type ModelPickerTriggerProps = {
   label: string;
@@ -67,6 +34,55 @@ export type ModelPickerTriggerProps = {
   onClick: () => void;
 };
 
+/** One row of the picker: what it shows, and whether it can be removed from favorites. */
+type PickerRow = {
+  id: string;
+  name: string;
+  note?: string;
+  result?: ModelSearchResult;
+  removable?: boolean;
+};
+
+type PickerSection = { title: string; rows: PickerRow[] };
+
+const POPOVER_WIDTH = 440;
+
+function Capabilities({ result }: { result?: ModelSearchResult }) {
+  if (!result) return null;
+  const { reasoning, vision, image, zdr } = result.capabilities;
+  if (!reasoning && !vision && !image && !zdr) return null;
+  return (
+    <span className="model-row__caps">
+      {reasoning && <LightBulbIcon title="Reasoning" />}
+      {vision && <EyeIcon title="Vision" />}
+      {image && <PhotoIcon title="Image output" />}
+      {zdr && <ShieldCheckIcon title="Zero data retention" />}
+    </span>
+  );
+}
+
+function Highlighted({ text, words }: { text: string; words: string[] }) {
+  return (
+    <>
+      {getHighlightSegments(text, words).map((segment, index) =>
+        segment.highlight ? (
+          <mark key={index} className="model-row__match">
+            {segment.text}
+          </mark>
+        ) : (
+          <span key={index}>{segment.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+/**
+ * The model picker: a popover under the model's name (a sheet on phones).
+ * Recommended picks and favorites sit as quiet rows; typing searches the
+ * whole catalogue in place. Choosing a model the list does not hold yet also
+ * adds it to the favorites, so it is there next time.
+ */
 export function ModelPicker({
   className = '',
   renderTrigger,
@@ -86,231 +102,287 @@ export function ModelPicker({
     zdrModelIds,
     zdrProviderIds,
   } = useModelPickerController();
-
   const curatedModels = useCuratedModels();
-
-  const zdrLists = useMemo<ZdrLists>(
-    () => ({
-      modelIds: new Set(zdrModelIds || []),
-      providerIds: new Set(zdrProviderIds || []),
-    }),
-    [zdrModelIds, zdrProviderIds],
-  );
-
-  const curatedIds = useMemo(() => curatedModels.map((m) => m.id), [curatedModels]);
-
-  const uniqueFavorites = useMemo(() => {
-    const curatedSet = new Set(curatedIds);
-    return favoriteModelIds.filter((id) => !curatedSet.has(id));
-  }, [favoriteModelIds, curatedIds]);
+  const availableModels = useAvailableModels();
+  const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
 
   const [open, setOpen] = useState(false);
-  const modalRef = useRef<HTMLDivElement | null>(null);
-  const searchDropdownRef = useRef<HTMLDivElement | null>(null);
-  const favoritesEndRef = useRef<HTMLDivElement | null>(null);
-  const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
-  const maxSelectable = 1;
-  const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
+  const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
-  const deriveLabel = useCallback(
-    (opt?: ModelPickerOption) => {
-      if (!opt) return 'Pick model';
-      return (
-        formatModelLabel({
-          model: modelMap.get(opt.id),
-          fallbackId: opt.id,
-          fallbackName: opt.name,
-        }) || 'Pick model'
-      );
-    },
-    [modelMap],
-  );
+  const zdrOpts = useMemo(() => ({ zdrModelIds, zdrProviderIds }), [zdrModelIds, zdrProviderIds]);
+  const selectedId = selectedIds[0];
 
-  useEffect(() => {
-    if (selectedIds.length > maxSelectable) {
-      setModels(selectedIds.slice(0, maxSelectable));
-    }
-  }, [selectedIds, maxSelectable, setModels]);
-
-  const toggleModel = useCallback(
-    (id: string) => {
-      const isSelected = selectedIds.includes(id);
-      if (isSelected) {
-        if (selectedIds.length === 1) return;
-        const next = selectedIds.filter((value) => value !== id);
-        setModels(next);
-        return;
-      }
-      if (selectedIds.length >= maxSelectable) {
-        setModels([id]);
-        setOpen(false);
-        return;
-      }
-      setModels([...selectedIds, id]);
-      setOpen(false);
-    },
-    [selectedIds, maxSelectable, setModels],
-  );
-
-  const handleAddFavorite = useCallback(
-    (result: ModelSearchResult) => {
-      // Add to favorites if not already there
-      const isFavorite = favoriteModelIds.includes(result.id) || curatedIds.includes(result.id);
-      if (!isFavorite) {
-        toggleFavoriteModel(result.id);
-        // Scroll to show the new favorite after a short delay
-        setTimeout(() => {
-          favoritesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }, 100);
-      }
-      // Also select the model
-      if (!selectedIds.includes(result.id)) {
-        toggleModel(result.id);
-      }
-    },
-    [favoriteModelIds, curatedIds, selectedIds, toggleFavoriteModel, toggleModel],
-  );
-
-  const handleRemoveFavorite = useCallback(
-    (id: string) => {
-      toggleFavoriteModel(id);
-    },
-    [toggleFavoriteModel],
-  );
-
-  const selectionSummary = useMemo(() => {
-    const entries = selectedIds.map((id) => {
+  const describe = useCallback(
+    (id: string, name?: string): PickerRow => {
       const meta = modelMap.get(id);
       return {
-        label: deriveLabel({
-          id,
-          name: meta?.name || id,
-        }),
-        provider: getModelProviderLabel(meta),
+        id,
+        name: formatModelLabel({ model: meta, fallbackId: id, fallbackName: name }),
+        result: meta ? buildModelSearchResult(meta, zdrOpts) : undefined,
       };
-    });
-    const labels = entries.map((entry) => entry.label);
-    if (!labels.length) {
-      const fallback = deriveLabel(current);
-      return { button: fallback, tooltip: fallback };
-    }
-    if (labels.length === 1) {
-      // Clean display: just the model name, no provider
-      return { button: labels[0], tooltip: labels[0] };
-    }
-    // Multiple models: show first + count
-    const button = `${labels[0]} +${labels.length - 1}`;
-    const tooltip = labels.join(', ');
-    return { button, tooltip };
-  }, [selectedIds, deriveLabel, modelMap, current]);
+    },
+    [modelMap, zdrOpts],
+  );
 
-  const triggerProps: ModelPickerTriggerProps = {
-    label: selectionSummary.button,
-    tooltip: selectionSummary.tooltip,
-    isOpen: open,
-    onClick: () => setOpen((v) => !v),
+  const queryWords = useMemo(() => splitModelQuery(normalizeModelQuery(query)), [query]);
+
+  const sections = useMemo<PickerSection[]>(() => {
+    if (queryWords.length) {
+      const results = buildModelSearchResults(availableModels, queryWords, {
+        maxResults: 60,
+        ...zdrOpts,
+      });
+      return [
+        {
+          title: 'Results',
+          rows: results.map((result) => ({ id: result.id, name: result.displayName, result })),
+        },
+      ];
+    }
+    const curatedIds = new Set(curatedModels.map((m) => m.id));
+    const recommended = curatedModels.map((model) => ({
+      ...describe(model.id, model.name),
+      name: model.name,
+      note: model.description,
+    }));
+    const favorites = favoriteModelIds
+      .filter((id) => !curatedIds.has(id))
+      .map((id) => ({ ...describe(id), removable: true }));
+    const shown = new Set([...curatedIds, ...favoriteModelIds]);
+    // Models from the user's own servers are few and chosen on purpose: list
+    // them outright instead of making the user search for them.
+    const ownServer = availableModels
+      .filter((model) => model.endpointId && !isBuiltInEndpointId(model.endpointId))
+      .filter((model) => !shown.has(model.id))
+      .map((model) => ({
+        id: model.id,
+        name: formatModelLabel({ model, fallbackId: model.id }),
+        note: model.providerDisplay,
+        result: buildModelSearchResult(model, zdrOpts),
+      }));
+    return [
+      { title: 'Recommended', rows: recommended },
+      { title: 'Your favorites', rows: favorites },
+      { title: 'Your servers', rows: ownServer },
+    ].filter((section) => section.rows.length > 0);
+  }, [queryWords, availableModels, zdrOpts, curatedModels, favoriteModelIds, describe]);
+
+  const flatRows = useMemo(() => sections.flatMap((section) => section.rows), [sections]);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    setQuery('');
+  }, []);
+
+  const choose = useCallback(
+    (row: PickerRow) => {
+      const known = favoriteModelIds.includes(row.id) || curatedModels.some((m) => m.id === row.id);
+      if (!known) toggleFavoriteModel(row.id);
+      setModels([row.id]);
+      close();
+    },
+    [favoriteModelIds, curatedModels, toggleFavoriteModel, setModels, close],
+  );
+
+  // Anchor the popover under the trigger; phones get a bottom sheet instead.
+  useLayoutEffect(() => {
+    if (!open || isMobile) return;
+    const place = () => {
+      const rect = wrapRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const left = Math.max(12, Math.min(rect.left, window.innerWidth - POPOVER_WIDTH - 12));
+      setAnchor({ left, top: rect.bottom + 6 });
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [open, isMobile]);
+
+  useEffect(() => {
+    if (!open) return;
+    setActiveIndex(
+      Math.max(
+        0,
+        flatRows.findIndex((row) => row.id === selectedId),
+      ),
+    );
+    const tid = window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 30);
+    return () => window.clearTimeout(tid);
+    // Only when opening: typing moves the highlight to the first result below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
+  useEffect(() => {
+    const node = listRef.current?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`);
+    node?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex]);
+
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    if (!flatRows.length) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setActiveIndex((i) => (i + 1) % flatRows.length);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setActiveIndex((i) => (i - 1 + flatRows.length) % flatRows.length);
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      const row = flatRows[activeIndex];
+      if (row) choose(row);
+    }
   };
 
+  const label = current
+    ? formatModelLabel({
+        model: modelMap.get(current.id),
+        fallbackId: current.id,
+        fallbackName: current.name,
+      })
+    : 'Pick model';
+
+  const triggerProps: ModelPickerTriggerProps = {
+    label,
+    tooltip: label,
+    isOpen: open,
+    onClick: () => (open ? close() : setOpen(true)),
+  };
+
+  let index = -1;
+  const panel = (
+    <div
+      ref={panelRef}
+      className={`model-picker popover${isMobile ? ' model-picker--sheet' : ''}`}
+      style={isMobile || !anchor ? undefined : { left: anchor.left, top: anchor.top }}
+      role="dialog"
+      aria-label="Choose a model"
+      onKeyDown={onKeyDown}
+    >
+      <div className="model-picker__search">
+        <MagnifyingGlassIcon className="model-picker__search-icon" />
+        <input
+          ref={inputRef}
+          className="model-picker__input"
+          placeholder="Search every model"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          aria-label="Search models"
+          aria-controls="model-picker-list"
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </div>
+      <div ref={listRef} id="model-picker-list" className="model-picker__list" role="listbox">
+        {sections.length === 0 && (
+          <p className="model-picker__empty">
+            {queryWords.length ? 'No model matches that.' : 'No models loaded yet.'}
+          </p>
+        )}
+        {sections.map((section) => (
+          <div key={section.title} className="model-picker__section">
+            <div className="model-picker__heading">{section.title}</div>
+            {section.rows.map((row) => {
+              index += 1;
+              const rowIndex = index;
+              const isSelected = row.id === selectedId;
+              return (
+                <div
+                  key={row.id}
+                  data-index={rowIndex}
+                  role="option"
+                  aria-selected={isSelected}
+                  className={`model-row${rowIndex === activeIndex ? ' is-active' : ''}${isSelected ? ' is-selected' : ''}`}
+                  onClick={() => choose(row)}
+                  onMouseMove={() => setActiveIndex(rowIndex)}
+                >
+                  <span className="model-row__main">
+                    <span className="model-row__name">
+                      <Highlighted text={row.name} words={queryWords} />
+                    </span>
+                    <span className="model-row__meta">
+                      {row.note ? (
+                        <span className="model-row__note">{row.note}</span>
+                      ) : (
+                        <>
+                          {row.result?.providerLabel && <span>{row.result.providerLabel}</span>}
+                          {row.result?.contextLength && (
+                            <span>
+                              {Intl.NumberFormat().format(row.result.contextLength)} tokens
+                            </span>
+                          )}
+                          {row.result?.price && <span>{row.result.price}</span>}
+                        </>
+                      )}
+                    </span>
+                  </span>
+                  <Capabilities result={row.result} />
+                  {isSelected ? (
+                    <CheckIcon className="model-row__check" aria-label="Selected" />
+                  ) : row.removable ? (
+                    <button
+                      type="button"
+                      className="icon-button icon-button--sm model-row__remove"
+                      title="Remove from favorites"
+                      aria-label={`Remove ${row.name} from favorites`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleFavoriteModel(row.id);
+                      }}
+                    >
+                      <XMarkIcon />
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
-    <div className={`relative min-w-0 ${className}`.trim()}>
+    <div ref={wrapRef} className={`relative min-w-0 ${className}`.trim()}>
       {renderTrigger ? (
         renderTrigger(triggerProps)
       ) : (
         <button
-          className="btn btn-outline min-w-0 w-full whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-between gap-2"
+          type="button"
+          className="model-picker-trigger"
           aria-haspopup="dialog"
           aria-expanded={open}
-          title={selectionSummary.tooltip}
-          onClick={() => setOpen((v) => !v)}
+          title={label}
+          onClick={triggerProps.onClick}
         >
-          <span className="truncate">{selectionSummary.button}</span>
-          <ChevronDownIcon className="h-4 w-4" />
+          <span className="model-picker-trigger__name truncate">{label}</span>
+          <ChevronDownIcon className="model-picker-trigger__chevron h-4 w-4 shrink-0" />
         </button>
       )}
 
       <PortalDropdown
         open={open}
-        onClose={() => setOpen(false)}
-        contentRef={modalRef}
-        ignoreOutsideRefs={[searchDropdownRef]}
+        onClose={close}
+        contentRef={panelRef}
+        ignoreOutsideRefs={[wrapRef]}
       >
-        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
-          {/* Overlay */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-
-          {/* Modal */}
-          <div
-            ref={modalRef}
-            className="relative card p-6 w-full max-w-4xl max-h-[85vh] overflow-auto"
-            role="dialog"
-            aria-label="Choose a model"
-          >
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold">Choose a Model</h2>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="p-1.5 rounded-full hover:bg-muted transition-colors"
-                aria-label="Close"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Recommended Section */}
-            <div className="mb-6">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Recommended
-              </h3>
-              <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                {curatedModels.map((model) => (
-                  <ModelCard
-                    key={model.id}
-                    model={model}
-                    isSelected={selectedIds.includes(model.id)}
-                    onSelect={toggleModel}
-                    modelMap={modelMap}
-                    zdrLists={zdrLists}
-                    numberFormatter={numberFormatter}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Favorites Section */}
-            {uniqueFavorites.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                  Your Favorites
-                </h3>
-                <div className={`grid gap-2 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                  {uniqueFavorites.map((modelId) => (
-                    <FavoriteModelCard
-                      key={modelId}
-                      modelId={modelId}
-                      isSelected={selectedIds.includes(modelId)}
-                      onSelect={toggleModel}
-                      onRemove={handleRemoveFavorite}
-                      modelMap={modelMap}
-                      zdrLists={zdrLists}
-                      numberFormatter={numberFormatter}
-                    />
-                  ))}
-                </div>
-                <div ref={favoritesEndRef} />
-              </div>
-            )}
-
-            {/* Add more models section */}
-            <AddModelSearch
-              onAddFavorite={handleAddFavorite}
-              favoriteIds={favoriteModelIds}
-              curatedIds={curatedIds}
-              dropdownRef={searchDropdownRef}
-            />
+        {isMobile ? (
+          <div className="scrim z-[90]">
+            <div className="fixed inset-x-0 bottom-0 z-[95] p-2">{panel}</div>
           </div>
-        </div>
+        ) : (
+          <div className="fixed inset-0 z-[90] pointer-events-none">
+            <div className="pointer-events-auto">{panel}</div>
+          </div>
+        )}
       </PortalDropdown>
     </div>
   );

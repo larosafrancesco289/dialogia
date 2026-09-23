@@ -60,161 +60,102 @@ a:hover {
   color: var(--color-fg-muted);
 }
 
-/* ===== Primitive components (utility-first, tokenized) ===== */
+/* ===== Primitive components (utility-first, tokenized) =====
+   One language for every control: flat, hairline, ink. Gold fills only the
+   single primary action of a view (it is the live, go-ahead thing); a pressed
+   or selected control darkens in ink and never turns gold. */
 
-/* Card — editorial */
+/* Card: a raised sheet of paper with a hairline, no drop shadow. */
 .card {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-editorial);
-  box-shadow: var(--shadow-1);
 }
 
-/* Buttons — editorial radius */
-.btn {
-  height: var(--control-lg);
+/* Buttons */
+.btn,
+.btn-outline,
+.btn-ghost {
+  height: var(--control-md);
   padding: 0 var(--space-4);
   border-radius: var(--radius-editorial);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-2);
   font-weight: 500;
   outline: none;
-  background: var(--color-accent);
-  color: #0b0b0b;
-  border: 0.5px solid color-mix(in oklab, #ffffff 30%, var(--color-accent));
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.5) inset,
-    0 8px 16px rgba(0, 0, 0, 0.08),
-    var(--shadow-1);
+  box-shadow: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
+/* Primary: the one go-ahead action (Save, Send, Start). */
+.btn,
 .btn-primary {
-  /* Explicit primary intent to pair with `.btn` base */
   background: var(--color-accent);
-  color: #0b0b0b;
-  border: 0.5px solid color-mix(in oklab, #ffffff 30%, var(--color-accent));
+  color: var(--color-on-accent);
+  border: 1px solid transparent;
 }
-.btn:hover {
-  filter: brightness(1.06);
+.btn:hover,
+.btn-primary:hover {
+  background: color-mix(in oklab, var(--color-accent) 88%, var(--color-fg));
 }
 .btn:active {
-  transform: translateY(1px);
+  transform: translateY(0.5px);
+}
+/* Outline: every secondary action. */
+.btn-outline {
+  border: 1px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
+  background: transparent;
+  color: var(--color-fg);
+}
+.btn-outline:hover {
+  border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
+  background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+}
+.btn-outline[aria-pressed='true'] {
+  border-color: color-mix(in oklab, var(--color-fg) 40%, transparent);
+  background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+}
+/* Ghost: bare text, a tint on hover. */
+.btn-ghost {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-fg);
+}
+.btn-ghost:hover {
+  background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+}
+.btn:focus-visible,
+.btn-outline:focus-visible,
+.btn-ghost:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 .btn[disabled],
 .btn-outline[disabled],
 .btn-ghost[disabled] {
   opacity: 0.5;
   cursor: not-allowed;
-  filter: none;
   transform: none;
 }
-.btn:focus-visible {
-  box-shadow: 0 0 0 2px var(--focus-ring);
-}
-
-.btn-outline {
-  height: var(--control-lg);
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-editorial);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 500;
-  border: 1px solid var(--color-border);
-  background: color-mix(in oklab, var(--color-muted) 40%, transparent);
-  color: var(--color-fg);
-  box-shadow: var(--shadow-1);
-}
-.btn-outline:hover {
-  background: var(--color-muted);
-}
-.btn-outline:focus-visible {
-  box-shadow: 0 0 0 2px var(--focus-ring);
-}
-/* Destructive intent for error/incorrect states */
-.btn-destructive {
-  background: var(--color-danger);
-  color: #0b0b0b;
-  border: 0.5px solid color-mix(in oklab, #ffffff 30%, var(--color-danger));
-}
-/* Outline toggle pressed state */
-.btn-outline[aria-pressed='true'] {
-  background: color-mix(in oklab, var(--color-accent) 92%, var(--color-muted));
-  color: #0b0b0b;
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, #ffffff 25%, var(--color-accent));
-}
-
-.btn-ghost {
-  height: var(--control-lg);
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-editorial);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-fg);
+/* A primary action that cannot run yet is not live: it waits in ink, and
+   turns gold the moment it can go (like the send button). */
+.btn[disabled]:not(.btn-outline):not(.btn-ghost) {
+  opacity: 1;
   background: transparent;
+  border-color: color-mix(in oklab, var(--color-fg) 14%, transparent);
+  color: color-mix(in oklab, var(--color-fg) 45%, transparent);
 }
-.btn-ghost:hover {
-  background: var(--color-muted);
-}
-.btn-ghost:focus-visible {
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 100%, transparent);
-}
-/* Ghost buttons render no border and none of the primary button's shadow */
-.btn-ghost {
-  border: 1px solid transparent;
-  box-shadow: none;
-}
-
-/* Small button variant to reduce visual weight in dense UIs */
+/* Small variant for dense UIs */
 .btn-sm {
   height: var(--control-sm);
   padding: 0 var(--space-3);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
-.btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-fg-muted);
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-standard);
-  font-size: 0.8rem;
-}
-
-.btn-icon:hover {
-  background: var(--color-muted);
-  color: var(--color-fg);
-}
-
-/* Improved button styling */
-.btn.pressable {
-  background: var(--color-accent);
-  color: var(--color-surface);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-
-.btn.pressable:hover {
-  background: color-mix(in oklab, var(--color-accent) 90%, black);
-  transform: none;
-}
-
-.btn.pressable:active {
-  transform: scale(0.98);
-}
-
-/* Inputs — editorial, solid surfaces */
+/* Inputs: an inset field with a hairline; focus draws the gold ring. */
 .input {
   height: var(--control-md);
   width: 100%;
@@ -225,7 +166,6 @@ a:hover {
   border: 1px solid var(--color-border);
   color: var(--color-fg);
 }
-
 /* When input is inside a search wrapper with icon, remove default padding, border and shadow */
 .input.bg-transparent,
 .input.bg-transparent:focus {
@@ -241,8 +181,7 @@ a:hover {
   outline: none;
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
-
-/* Multiline text input — editorial, solid */
+/* Multiline text input */
 .textarea {
   min-height: 48px;
   max-height: 200px;
@@ -261,9 +200,16 @@ a:hover {
   outline: none;
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
-
 /* On small screens, ensure inputs meet 44px minimum tap target */
 @media (max-width: 640px) {
+  .btn,
+  .btn-outline,
+  .btn-ghost {
+    height: var(--control-lg);
+  }
+  .btn-sm {
+    height: var(--control-md);
+  }
   .input {
     height: var(--control-lg);
     font-size: 16px;
@@ -275,82 +221,33 @@ a:hover {
   }
 }
 
-/* Badges / Chips */
+/* Badge: a small hairline tag. */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: color-mix(in oklab, var(--color-muted) 60%, transparent);
-  padding: 4px 12px;
-  font-size: 13px;
+  gap: 6px;
+  border-radius: var(--radius-editorial);
+  border: 1px solid color-mix(in oklab, var(--color-fg) 14%, transparent);
+  background: transparent;
+  padding: 2px 8px;
+  font-size: 0.75rem;
   color: var(--color-fg-muted);
-  min-height: 32px;
+  min-height: 24px;
   transition:
     background-color var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-standard);
-}
-.badge:hover {
-  background: color-mix(in oklab, var(--color-muted) 70%, transparent);
-}
-.badge:active {
-  transform: scale(0.97);
+    color var(--duration-fast) var(--ease-standard);
 }
 button.badge,
 a.badge {
   cursor: pointer;
 }
-.badge-accent {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 13px;
-  background: var(--color-accent);
-  color: #0b0b0b;
-  min-height: 32px;
-}
-/* Mobile: larger touch targets for badges */
-@media (max-width: 640px) {
-  .badge,
-  .badge-accent {
-    min-height: 36px;
-    padding: 6px 14px;
-    font-size: 14px;
-  }
+button.badge:hover,
+a.badge:hover {
+  background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  color: var(--color-fg);
 }
 
-/* Table */
-.table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 8px;
-  font-size: 14px;
-}
-.table thead th {
-  text-align: left;
-  color: var(--color-fg-muted);
-  padding: 8px 12px;
-}
-.table tbody tr {
-  background: var(--color-muted);
-  border: 1px solid var(--color-border);
-}
-.table tbody td {
-  padding: 8px 12px;
-}
-.table tbody tr td:first-child {
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
-}
-.table tbody tr td:last-child {
-  border-top-right-radius: 12px;
-  border-bottom-right-radius: 12px;
-}
-
-/* FAB - Floating Action Button (editorial, solid) */
+/* Round floating button (scroll to latest). */
 .btn-fab {
   height: var(--control-lg);
   padding: 0 var(--space-4);
@@ -358,27 +255,23 @@ a.badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  background: var(--surface-paper);
-  border: 1px solid color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
-  color: var(--color-accent);
-  box-shadow: var(--shadow-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-fg-muted);
+  box-shadow: var(--shadow-1);
   transition:
-    background-color var(--duration-med) var(--ease-standard),
-    border-color var(--duration-med) var(--ease-standard),
-    box-shadow var(--duration-med) var(--ease-standard),
-    transform var(--duration-med) var(--ease-standard);
+    color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
 }
-
 .btn-fab:hover {
-  transform: translateY(-2px);
-  background: var(--surface-paper-warm);
-  border-color: var(--color-accent);
-  box-shadow: var(--shadow-3);
+  color: var(--color-fg);
+  border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
 }
 
-.btn-fab:active {
-  transform: scale(0.96);
+/* Native checkboxes and radios in ink, like the switches. */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-fg);
 }
 
 /* Code / Pre */
@@ -394,46 +287,10 @@ pre {
   overflow: auto;
 }
 
-/* Chart container (use tokens in your chart lib) */
-.chart-surface {
-  background: var(--color-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-}
-/* Example CSS variables you can read in charts */
-.chart-surface {
-  --chart-grid: var(--color-border);
-  --chart-series: var(--color-accent);
-  --chart-fill: color-mix(in oklab, var(--color-accent) 28%, transparent);
-}
-
 /* Focus ring fallbacks for non-TW elements */
 :focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-}
-
-/* ===== Layout helpers (optional) ===== */
-.container-std {
-  max-width: 64rem;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: var(--space-5);
-  padding-right: var(--space-5);
-}
-.section-gap {
-  margin-top: calc(var(--space-6) + var(--space-2));
-  margin-bottom: calc(var(--space-6) + var(--space-2));
-}
-
-/* Glass tokens for reuse */
-:root {
-  --glass-surface-bg: color-mix(in oklab, var(--color-surface) 72%, transparent);
-  --glass-panel-bg: color-mix(in oklab, var(--color-surface) 78%, transparent);
-  --glass-strong-bg: color-mix(in oklab, var(--color-surface) 85%, transparent);
-  --glass-saturate: saturate(180%);
-  --glass-blur-surface: blur(18px);
-  --glass-blur-panel: blur(22px);
 }
 
 /* Feedback states for interactive tutor elements */

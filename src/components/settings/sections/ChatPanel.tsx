@@ -91,7 +91,7 @@ export function ChatPanel(props: ChatPanelProps) {
         'general',
         <SettingsSection title="General">
           <div className="space-y-2">
-            <label className="text-sm">System prompt</label>
+            <label className="field__label">System prompt</label>
             <div className="flex flex-wrap items-center gap-2">
               <select
                 className="input"
@@ -145,7 +145,7 @@ export function ChatPanel(props: ChatPanelProps) {
               onChange={(e) => setSystem(e.target.value)}
               onKeyDown={(e) => e.stopPropagation()}
             />
-            <div className="text-xs text-muted-foreground">
+            <div className="field__hint">
               Customize the default system prompt for future chats. Tutor Mode remains a separate
               overlay.
             </div>
@@ -165,7 +165,7 @@ export function ChatPanel(props: ChatPanelProps) {
         <SettingsSection title="Reasoning">
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-sm flex items-center justify-between">
+              <label className="field__label flex items-center justify-between">
                 <span>Reasoning effort</span>
                 <button
                   className="btn btn-ghost btn-sm"
@@ -209,7 +209,7 @@ export function ChatPanel(props: ChatPanelProps) {
                 <option value="xhigh">extra high</option>
                 <option value="max">max</option>
               </select>
-              <div className="text-xs text-muted-foreground">
+              <div className="field__hint">
                 Reasoning depth new chats start with. &ldquo;Model default&rdquo; follows each
                 model&rsquo;s own provider default (e.g. high for Claude reasoning models); levels a
                 model doesn&rsquo;t support are clamped to the nearest one it does. Adjustable per
@@ -217,7 +217,7 @@ export function ChatPanel(props: ChatPanelProps) {
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-sm flex items-center justify-between">
+              <label className="field__label flex items-center justify-between">
                 <span>Reasoning tokens</span>
                 <button
                   className="btn btn-ghost btn-sm"
@@ -246,7 +246,7 @@ export function ChatPanel(props: ChatPanelProps) {
                 }}
                 onKeyDown={(e) => e.stopPropagation()}
               />
-              <div className="text-xs text-muted-foreground">
+              <div className="field__hint">
                 Budget for chain‑of‑thought tokens (supported models only).
               </div>
             </div>

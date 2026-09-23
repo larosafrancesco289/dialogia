@@ -31,7 +31,7 @@ export function SettingsDrawerShell({
             {/* Backdrop */}
             <DialogOverlay
               as={motion.div}
-              className="fixed inset-0 bg-black/30 z-[70]"
+              className="scrim z-[70]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -46,7 +46,7 @@ export function SettingsDrawerShell({
                   (drawerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
                 }
               }}
-              className="fixed inset-y-0 right-0 w-full sm:w-[720px] bg-surface border-l border-border shadow-[var(--shadow-card)] z-[80] overflow-y-auto will-change-transform"
+              className="settings-panel fixed inset-y-0 right-0 w-full sm:w-[720px] z-[80] overflow-y-auto will-change-transform"
               style={{ overscrollBehavior: 'contain' }}
               role="dialog"
               aria-modal="true"
@@ -62,12 +62,8 @@ export function SettingsDrawerShell({
               }}
             >
               {/* Minimal Header */}
-              <header
-                data-settings-header
-                className="flex items-center gap-3 border-b border-border sticky top-0 bg-surface z-10 px-4"
-                style={{ height: 'var(--header-height)' }}
-              >
-                <h2 id="settings-title" className="text-lg font-semibold shrink-0">
+              <header data-settings-header className="settings-panel__header">
+                <h2 id="settings-title" className="settings-panel__title">
                   Settings
                 </h2>
 
@@ -80,7 +76,7 @@ export function SettingsDrawerShell({
                 )}
 
                 <div className="ml-auto">
-                  <IconButton title="Close settings" onClick={onClose} className="w-9 h-9">
+                  <IconButton title="Close settings" onClick={onClose}>
                     <XMarkIcon className="h-5 w-5" />
                   </IconButton>
                 </div>

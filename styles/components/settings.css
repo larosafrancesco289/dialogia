@@ -1,48 +1,75 @@
 @layer components {
-  /* Prevent nested scroll chaining inside drawers/overlays */
-  .settings-drawer .scroll-area,
-  .settings-drawer [data-scrollable] {
-    overscroll-behavior: contain;
+  /* ===== Settings page =====
+     A page of the same book: paper, a serif title, ruled sections headed in
+     rubric, and the sidebar's own row style for navigation. */
+  .settings-panel {
+    background: var(--color-canvas);
+    border-left: 1px solid var(--chrome-rule);
+    box-shadow: var(--shadow-3);
   }
-
-  .settings-card {
-    width: 100%;
-    max-width: 720px;
-    margin: 0 auto;
-  }
-  .settings-card > * + * {
-    margin-top: var(--space-4);
-  }
-  .settings-card .segmented {
-    margin-top: var(--space-2);
-  }
-
-  .settings-actions-stack {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    align-items: center;
-    justify-content: center;
-  }
-
-  .settings-footer {
+  .settings-panel__header {
     position: sticky;
-    bottom: 0;
-    border-top: 1px solid var(--color-border);
-    padding: var(--space-3) var(--space-6);
-    padding-bottom: calc(var(--space-3) + max(12px, env(safe-area-inset-bottom)));
-    min-height: 72px;
+    top: 0;
+    z-index: 10;
     display: flex;
-    justify-content: center;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-4);
+    height: var(--chrome-height);
+    padding: 0 var(--space-4) 0 var(--space-5);
+    background: var(--color-canvas);
+    border-bottom: 1px solid var(--chrome-rule);
+  }
+  .settings-panel__title {
+    flex-shrink: 0;
+    margin: 0;
+    font-family: var(--font-serif-assistant);
+    font-size: 1.3rem;
+    font-weight: 500;
+    letter-spacing: -0.012em;
+    color: var(--color-fg);
+  }
+  .settings-nav {
+    border-right: 1px solid var(--chrome-rule);
   }
 
-  .settings-save-button {
-    min-width: 240px;
-    height: calc(var(--control-lg) + 6px);
-    font-size: 1.08rem;
-    padding: 0 var(--space-6);
+  /* Mobile: section tabs as a row of words, the chosen one underlined. */
+  .settings-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    gap: var(--space-4);
+    overflow-x: auto;
+    padding: 0 var(--space-5);
+    background: var(--color-canvas);
+    border-bottom: 1px solid var(--chrome-rule);
+    scrollbar-width: none;
+  }
+  .settings-tab {
+    flex-shrink: 0;
+    padding: var(--space-3) 0;
+    border-bottom: 2px solid transparent;
+    font-size: 0.9375rem;
+    color: var(--color-fg-muted);
+  }
+  .settings-tab.is-active {
+    color: var(--color-fg);
+    border-bottom-color: var(--color-rubric);
+  }
+  .settings-subnav {
+    display: flex;
+    gap: var(--space-4);
+    overflow-x: auto;
+    padding: var(--space-3) 0 0;
+    scrollbar-width: none;
+  }
+  .settings-subnav__item {
+    flex-shrink: 0;
+    font-size: 0.8125rem;
+    color: var(--color-fg-muted);
+  }
+  .settings-subnav__item.is-active {
+    color: var(--color-rubric);
   }
 
   /* Collapsible Section */
@@ -67,22 +94,20 @@
     color: var(--color-fg);
   }
 
-  .collapsible-section-trigger:hover {
-    color: var(--color-accent);
+  .collapsible-section-trigger:hover .collapsible-section-title {
+    color: var(--color-fg);
   }
 
   .collapsible-section-trigger:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px var(--focus-ring);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-editorial);
   }
 
   .collapsible-section-title {
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     font-weight: 500;
-    color: var(--color-fg-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    color: var(--color-fg);
   }
 
   .collapsible-section-icon {
@@ -108,65 +133,54 @@
   }
 
   .settings-sidebar-item {
+    position: relative;
     display: block;
     width: 100%;
     padding: var(--space-2) var(--space-3);
     background: transparent;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-editorial);
     text-align: left;
     font-size: 0.9375rem;
-    color: var(--color-fg-muted);
+    color: color-mix(in oklab, var(--color-fg) 80%, var(--color-canvas));
     cursor: pointer;
     transition:
       background-color var(--duration-fast) var(--ease-standard),
       color var(--duration-fast) var(--ease-standard);
   }
-
   .settings-sidebar-item:hover {
-    background: var(--color-muted);
+    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
     color: var(--color-fg);
   }
-
   .settings-sidebar-item:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px var(--focus-ring);
   }
-
+  /* The same rubric tick that marks the chat you are reading. */
   .settings-sidebar-item.is-active {
-    background: color-mix(in oklab, var(--color-accent) 12%, var(--color-muted));
+    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+    box-shadow: inset 2px 0 0 var(--color-rubric);
     color: var(--color-fg);
     font-weight: 500;
   }
 
-  .settings-sidebar-item.is-active::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 60%;
-    background: var(--color-accent);
-    border-radius: 0 2px 2px 0;
-  }
-
   /* Settings Section (divider-based, not card-based) */
   .settings-section {
-    padding: var(--space-4) 0;
+    padding: var(--space-6) 0;
   }
 
   .settings-section + .settings-section {
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid var(--chrome-rule);
   }
 
+  /* Rubric small caps, like the Learning Hub's labels and table heads. */
   .settings-section-header {
-    font-size: 0.8125rem;
+    margin: 0 0 var(--space-4);
+    font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-fg-muted);
-    margin-bottom: var(--space-3);
+    letter-spacing: 0.1em;
+    color: var(--color-rubric);
   }
 
   .settings-section-content {
@@ -206,27 +220,6 @@
     flex-shrink: 0;
   }
 
-  /* Minimal Input variant */
-  .input-minimal {
-    border: none;
-    border-bottom: 1px solid var(--color-border);
-    border-radius: 0;
-    background: transparent;
-    padding-left: 0;
-    padding-right: 0;
-    transition: border-color var(--duration-fast) var(--ease-standard);
-  }
-
-  .input-minimal:focus {
-    border-bottom-color: var(--color-accent);
-    box-shadow: none;
-    outline: none;
-  }
-
-  .input-minimal::placeholder {
-    color: var(--color-fg-muted);
-  }
-
   /* Settings Search */
   .settings-search {
     position: relative;
@@ -243,12 +236,13 @@
     pointer-events: none;
   }
 
+  /* Search: the sidebar's tinted field. */
   .settings-search-input {
     width: 100%;
     height: var(--control-md);
     padding-left: calc(var(--space-3) + 20px + var(--space-2));
     padding-right: var(--space-3);
-    background: var(--color-muted);
+    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
     border: 1px solid transparent;
     border-radius: var(--radius-editorial);
     font-size: 0.875rem;
@@ -260,8 +254,7 @@
 
   .settings-search-input:focus {
     outline: none;
-    background: var(--color-surface);
-    border-color: var(--color-border);
+    box-shadow: 0 0 0 2px var(--focus-ring);
   }
 
   .settings-search-input::placeholder {
@@ -284,7 +277,7 @@
   }
 
   .settings-search-clear:hover {
-    background: var(--color-muted);
+    background: color-mix(in oklab, var(--color-fg) 6%, transparent);
     color: var(--color-fg);
   }
 
@@ -301,7 +294,7 @@
     padding: var(--space-2) var(--space-4);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 9999px;
+    border-radius: var(--radius-editorial);
     box-shadow: var(--shadow-2);
     font-size: 0.8125rem;
     font-weight: 500;

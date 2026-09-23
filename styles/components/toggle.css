@@ -19,8 +19,9 @@
     box-shadow: 0 0 0 2px var(--focus-ring);
   }
 
+  /* On is a setting, not something live: ink, not gold. */
   .toggle-switch[data-checked='true'] {
-    --toggle-track-bg: var(--color-accent);
+    --toggle-track-bg: var(--color-fg);
   }
 
   .toggle-switch[aria-disabled='true'],
@@ -34,17 +35,8 @@
     position: absolute;
     display: block;
     border-radius: 9999px;
-    background-color: #ffffff;
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.12),
-      0 1px 2px rgba(0, 0, 0, 0.08);
-  }
-
-  /* Dark mode thumb shadow adjustment */
-  .dark .toggle-switch-thumb {
-    box-shadow:
-      0 1px 4px rgba(0, 0, 0, 0.3),
-      0 1px 2px rgba(0, 0, 0, 0.2);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-1);
   }
   /* Wrapper with label */
   .toggle-switch-wrapper {
@@ -82,7 +74,7 @@
   }
 
   .toggle-switch[data-checked='true']:not(:disabled):hover {
-    --toggle-track-bg: color-mix(in oklab, var(--color-accent) 90%, var(--color-fg));
+    --toggle-track-bg: color-mix(in oklab, var(--color-fg) 85%, var(--color-canvas));
   }
 
   /* Active press state */

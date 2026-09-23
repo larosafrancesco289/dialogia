@@ -1,10 +1,4 @@
 @layer components {
-  /* Settings drawer + overlay animations */
-  .settings-overlay {
-    animation: fade-in 180ms var(--ease-out-quart);
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
-  }
   @keyframes fade-in {
     from {
       opacity: 0;
@@ -13,53 +7,7 @@
       opacity: 1;
     }
   }
-  .settings-overlay.is-closing {
-    animation: fade-out 140ms var(--ease-out-quart) forwards;
-  }
-  @keyframes fade-out {
-    from {
-      opacity: 1;
-    }
-    to {
-      opacity: 0;
-    }
-  }
-  .settings-drawer {
-    animation: drawer-in var(--duration-slow) var(--ease-out-expo);
-    border-top-left-radius: 22px;
-    border-bottom-left-radius: 22px;
-    overflow-x: hidden; /* allow vertical scrolling while clipping rounded corners */
-  }
-  @keyframes drawer-in {
-    0% {
-      transform: translateX(8%);
-      opacity: 0;
-    }
-    100% {
-      transform: translateX(0%);
-      opacity: 1;
-    }
-  }
-  .settings-drawer.is-closing {
-    animation: drawer-out 160ms var(--ease-out-quart) forwards;
-  }
-  @keyframes drawer-out {
-    0% {
-      transform: translateX(0%);
-      opacity: 1;
-    }
-    100% {
-      transform: translateX(8%);
-      opacity: 0;
-    }
-  }
   @media (max-width: 640px) {
-    /* Mobile settings: occupy full screen, no rounded edge */
-    .settings-drawer {
-      border-top-left-radius: 0 !important;
-      border-bottom-left-radius: 0 !important;
-      border-radius: 0 !important;
-    }
     /* Make small utility icon buttons larger for touch */
     .icon-button {
       height: 36px;
@@ -77,28 +25,6 @@
       -webkit-user-select: text;
       user-select: text;
       -webkit-touch-callout: default;
-    }
-  }
-
-  .plan-sheet {
-    animation: drawer-in var(--duration-slow) var(--ease-out-expo);
-    border-top-left-radius: 16px;
-    border-bottom-left-radius: 16px;
-    overscroll-behavior: contain;
-    background: var(--surface-paper);
-    border-left: 1px solid var(--color-border);
-  }
-  .plan-sheet.is-closing {
-    animation: drawer-out 160ms var(--ease-out-quart) forwards;
-  }
-  .plan-sheet__body {
-    padding-bottom: calc(var(--space-8) + max(18px, env(safe-area-inset-bottom)));
-  }
-  @media (max-width: 640px) {
-    .plan-sheet {
-      border-radius: 0 !important;
-      border-top-left-radius: 0 !important;
-      border-bottom-left-radius: 0 !important;
     }
   }
 
@@ -127,7 +53,7 @@
   .mobile-sheet-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(8, 7, 10, 0.42);
+    background: var(--overlay-scrim);
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -138,7 +64,7 @@
   }
   .mobile-sheet {
     width: min(100%, 520px);
-    border-radius: 16px;
+    border-radius: var(--radius-editorial-mobile);
     padding: var(--space-3);
     padding-bottom: var(--space-3);
     display: flex;
@@ -223,23 +149,21 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-2);
-    border-radius: 16px;
-    border: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
-    background: color-mix(in oklab, var(--color-muted) 55%, transparent);
+    padding: var(--space-2) var(--space-3);
+    border-radius: 4px;
+    border: 0;
+    background: transparent;
+    color: var(--color-fg);
     text-align: left;
-    min-height: 56px;
+    min-height: 52px;
     transition:
       background-color var(--duration-fast) var(--ease-standard),
       border-color var(--duration-fast) var(--ease-standard),
       transform var(--duration-fast) var(--ease-standard);
   }
-  .mobile-message-action:hover {
-    background: color-mix(in oklab, var(--color-muted) 75%, transparent);
-  }
+  .mobile-message-action:hover,
   .mobile-message-action:active {
-    transform: translateY(0.5px);
-    background: color-mix(in oklab, var(--color-muted) 82%, transparent);
+    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
   }
   .mobile-message-action:disabled {
     opacity: 0.55;
@@ -247,18 +171,15 @@
   }
   .mobile-message-action:disabled:hover,
   .mobile-message-action:disabled:active {
-    transform: none;
-    background: color-mix(in oklab, var(--color-muted) 55%, transparent);
+    background: transparent;
   }
   .mobile-message-action__icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    background: color-mix(in oklab, var(--color-accent) 20%, var(--color-muted));
-    color: var(--color-accent);
+    width: 28px;
+    height: 28px;
+    color: var(--color-fg-muted);
     flex-shrink: 0;
   }
   .mobile-message-action__meta {
@@ -267,7 +188,7 @@
     gap: 2px;
   }
   .mobile-message-action__label {
-    font-weight: 600;
+    font-weight: 500;
     font-size: 0.95rem;
   }
   .mobile-message-action__hint {
@@ -283,62 +204,35 @@
       padding-top: calc(env(safe-area-inset-top) + var(--space-5));
       padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-3));
     }
-    .mobile-message-action {
-      min-height: 52px;
-    }
-    .mobile-message-action__icon {
-      width: 36px;
-      height: 36px;
-    }
   }
-  .mobile-model-option {
-    width: 100%;
-    text-align: left;
-    border-radius: 16px;
-    padding: var(--space-2) var(--space-3);
-    background: color-mix(in oklab, var(--color-surface) 92%, transparent);
-    border: 1px solid color-mix(in oklab, var(--color-border) 90%, transparent);
-    transition: background-color var(--duration-fast) var(--ease-standard);
-  }
-  .mobile-model-option:hover {
-    background: color-mix(in oklab, var(--color-muted) 85%, transparent);
-  }
-  .mobile-model-option.is-selected {
-    border-color: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
-    background: color-mix(in oklab, var(--color-accent) 15%, var(--color-surface));
-  }
+  /* Row menu item (chat and folder actions, move-to sheets): the same row
+     of text as .menu-item, sized for touch. */
   .mobile-menu-item {
     display: flex;
     align-items: center;
     gap: var(--space-2);
     width: 100%;
-    border-radius: 14px;
+    min-height: 40px;
+    border-radius: 4px;
     padding: var(--space-2) var(--space-3);
-    background: color-mix(in oklab, var(--color-surface) 95%, transparent);
-    border: 1px solid color-mix(in oklab, var(--color-border) 90%, transparent);
+    background: transparent;
+    border: 0;
+    color: var(--color-fg);
     font-weight: 500;
     text-align: left;
     transition: background-color var(--duration-fast) var(--ease-standard);
   }
-  .mobile-menu-item.is-active {
-    border-color: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
-    background: color-mix(in oklab, var(--color-accent) 12%, var(--color-surface));
-  }
   .mobile-menu-item:hover {
-    background: color-mix(in oklab, var(--color-muted) 80%, transparent);
+    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
   }
-  .mobile-menu-item:active {
-    transform: translateY(1px);
+  .mobile-menu-item.is-active {
+    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
   }
   .mobile-menu-item.is-danger {
-    border-color: color-mix(in oklab, var(--color-danger) 50%, var(--color-border));
-    background: color-mix(in oklab, var(--color-danger) 15%, var(--color-surface));
-    color: color-mix(in oklab, var(--color-danger) 70%, var(--color-fg));
+    color: var(--color-danger);
   }
   .mobile-menu-popover {
     max-height: min(70vh, 380px);
     overflow-y: auto;
-    border-radius: 18px;
-    backdrop-filter: var(--glass-saturate) blur(14px);
   }
 }

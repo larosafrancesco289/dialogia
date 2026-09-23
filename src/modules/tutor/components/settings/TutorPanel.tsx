@@ -1,5 +1,6 @@
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ModelSearch } from '@/components/ModelSearch';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
 
@@ -30,109 +31,59 @@ export function TutorPanel(props: TutorPanelProps) {
         'tutor',
         'tutor',
         <SettingsSection title="Tutor">
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-sm block">Tutor Mode</label>
-              <div className="segmented">
-                <button
-                  className={`segment ${experimentalTutor ? 'is-active' : ''}`}
-                  onClick={() => setUI({ flags: { experimentalTutor: true } })}
-                >
-                  On
-                </button>
-                <button
-                  className={`segment ${!experimentalTutor ? 'is-active' : ''}`}
-                  onClick={() => setUI({ flags: { experimentalTutor: false } })}
-                >
-                  Off
-                </button>
+          <ToggleSwitch
+            checked={experimentalTutor}
+            onChange={(checked) => setUI({ flags: { experimentalTutor: checked } })}
+            label="Tutor mode"
+            description="Show the Tutor controls and enable practice tools (multiple choice, fill in the blank, flashcards)."
+          />
+          {experimentalTutor && (
+            <>
+              <ToggleSwitch
+                checked={!!ui?.tutor?.forceMode}
+                onChange={(checked) => {
+                  void onForceTutorModeChange(checked);
+                }}
+                label="Always tutor"
+                description="Every chat runs as a tutoring session, with the settings below."
+              />
+              <ToggleSwitch
+                checked={!!ui?.tutor?.autoScroll}
+                onChange={(checked) => setUI({ tutor: { autoScroll: checked } })}
+                label="Follow the tutor"
+                description="Scroll to the latest message while the tutor responds."
+              />
+              <div className="field">
+                <label className="field__label" htmlFor="tutor-model-id">
+                  Tutor model
+                </label>
+                <ModelSearch
+                  placeholder="Search models"
+                  selectedIds={tutorDefaultModel ? [tutorDefaultModel] : []}
+                  actionLabel="Use"
+                  selectedLabel="Selected"
+                  clearOnSelect
+                  onSelect={(result) => setTutorDefaultModel(result.id)}
+                />
+                <input
+                  id="tutor-model-id"
+                  className="input w-full font-mono text-sm"
+                  value={tutorDefaultModel}
+                  onChange={(e) => setTutorDefaultModel(e.target.value)}
+                  placeholder="provider/model"
+                  spellCheck={false}
+                />
+                <p className="field__hint">
+                  Every tutoring session uses this model. Search to change it, or type an id; an id
+                  starting with ~ follows the newest release.
+                </p>
               </div>
-              <div className="text-xs text-muted-foreground">
-                Show Tutor controls and enable practice tools (MCQ, fill‑blank, flashcards).
-              </div>
-            </div>
-            {experimentalTutor && (
-              <>
-                <div className="space-y-1">
-                  <label className="text-sm block">Force Tutor Mode</label>
-                  <div className="segmented">
-                    <button
-                      className={`segment ${ui?.tutor?.forceMode ? 'is-active' : ''}`}
-                      onClick={() => {
-                        void onForceTutorModeChange(true);
-                      }}
-                    >
-                      On
-                    </button>
-                    <button
-                      className={`segment ${!ui?.tutor?.forceMode ? 'is-active' : ''}`}
-                      onClick={() => {
-                        void onForceTutorModeChange(false);
-                      }}
-                    >
-                      Off
-                    </button>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    When enabled, all chats run in Tutor Mode and use the settings below.
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm block">Tutor default model</label>
-                  <ModelSearch
-                    placeholder="Search tutor models"
-                    selectedIds={tutorDefaultModel ? [tutorDefaultModel] : []}
-                    actionLabel="Use"
-                    selectedLabel="Selected"
-                    clearOnSelect
-                    onSelect={(result) => setTutorDefaultModel(result.id)}
-                  />
-                  <input
-                    className="input w-full"
-                    value={tutorDefaultModel}
-                    onChange={(e) => setTutorDefaultModel(e.target.value)}
-                    placeholder="provider/model"
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    Each Tutor Mode chat automatically uses this model.
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm block">Auto-scroll during tutoring</label>
-                  <div className="segmented">
-                    <button
-                      className={`segment ${ui?.tutor?.autoScroll ? 'is-active' : ''}`}
-                      onClick={() => setUI({ tutor: { autoScroll: true } })}
-                    >
-                      On
-                    </button>
-                    <button
-                      className={`segment ${!ui?.tutor?.autoScroll ? 'is-active' : ''}`}
-                      onClick={() => setUI({ tutor: { autoScroll: false } })}
-                    >
-                      Off
-                    </button>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Automatically scroll to the latest message as the tutor responds.
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm block">Adaptive learning plan</label>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p>
-                      Tutor chats now auto-generate a structured learning plan from the first
-                      message and keep mastery in sync every few turns.
-                    </p>
-                    <p>
-                      The learner model updates automatically—focus on teaching and the system will
-                      advance topics when the student is ready.
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+              <p className="field__hint">
+                Each session drafts a learning plan from your first message and keeps the learner
+                model in step as you go. The tutor moves on to the next topic when you are ready.
+              </p>
+            </>
+          )}
         </SettingsSection>,
       )}
     </>

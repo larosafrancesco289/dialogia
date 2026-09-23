@@ -41,22 +41,16 @@ export function ConfirmDialog({
 
   return (
     <DialogPortal>
-      <DialogOverlay
-        className="fixed inset-0 z-[90] settings-overlay bg-black/40"
-        onClose={onCancel}
-      >
+      <DialogOverlay className="scrim z-[90]" onClose={onCancel}>
         <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
-          <DialogSurface className="card p-4 w-full max-w-sm glass-panel" ariaLabel={title}>
-            <div className="text-base font-medium mb-1">{title}</div>
-            {description && <div className="text-sm text-muted-foreground mb-4">{description}</div>}
-            <div className="flex items-center justify-end gap-2">
+          <DialogSurface className="dialog max-w-sm" ariaLabel={title}>
+            <h2 className="dialog__title">{title}</h2>
+            {description && <p className="dialog__lead">{description}</p>}
+            <div className="dialog__actions">
               <button ref={cancelRef} className="btn-outline btn-sm" onClick={onCancel}>
                 {cancelLabel}
               </button>
-              <button
-                className="btn btn-sm bg-accent text-surface hover:bg-accent/90"
-                onClick={onConfirm}
-              >
+              <button className="btn btn-sm" onClick={onConfirm}>
                 {confirmLabel}
               </button>
             </div>

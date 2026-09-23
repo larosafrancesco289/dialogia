@@ -36,7 +36,7 @@ export function useCuratedModels() {
       return {
         ...entry,
         id: concreteId,
-        description: `${entry.description}. Currently: ${currentName}`,
+        description: `${entry.description} · now ${currentName}`,
       };
     });
     return filterCuratedModelsByAvailability(resolved, availableIds);

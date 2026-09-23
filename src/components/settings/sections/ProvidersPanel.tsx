@@ -49,7 +49,7 @@ function CustomEndpointEditor({
   return (
     <div className="space-y-3">
       <div className="space-y-2">
-        <label className="text-sm" htmlFor={`base-${endpoint.id}`}>
+        <label className="field__label" htmlFor={`base-${endpoint.id}`}>
           Base URL
         </label>
         <input
@@ -62,13 +62,13 @@ function CustomEndpointEditor({
             onChanged();
           }}
         />
-        <p className="text-xs text-muted-foreground">
+        <p className="field__hint">
           The OpenAI-compatible root, e.g. http://localhost:11434/v1 for Ollama.
         </p>
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm" htmlFor={`models-${endpoint.id}`}>
+        <label className="field__label" htmlFor={`models-${endpoint.id}`}>
           Model ids
         </label>
         <input
@@ -87,7 +87,7 @@ function CustomEndpointEditor({
             onChanged();
           }}
         />
-        <p className="text-xs text-muted-foreground">
+        <p className="field__hint">
           Comma-separated. Whatever this server lists at /models is added automatically.
         </p>
       </div>
@@ -108,8 +108,8 @@ function CustomEndpointEditor({
       />
 
       <fieldset className="space-y-2">
-        <legend className="text-sm">What this server supports</legend>
-        <p className="text-xs text-muted-foreground">
+        <legend className="field__label">What this server supports</legend>
+        <p className="field__hint">
           Nothing unchecked is ever sent. A strict server rejects the whole request over one field
           it does not know.
         </p>
@@ -135,7 +135,7 @@ function CustomEndpointEditor({
       </fieldset>
 
       <div className="space-y-2">
-        <label className="text-sm" htmlFor={`title-${endpoint.id}`}>
+        <label className="field__label" htmlFor={`title-${endpoint.id}`}>
           Chat titles
         </label>
         <select
@@ -209,7 +209,7 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
           Add
         </button>
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="field__hint">
         Works with Ollama, LM Studio, llama.cpp and vLLM. Capabilities start off and are yours to
         turn on.
       </p>
@@ -253,7 +253,7 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
                   />
                 </div>
               ))}
-            <p className="text-xs text-muted-foreground">
+            <p className="field__hint">
               Keys are stored in this browser only. They are never included in an export and never
               leave the page except in a request to that provider.
             </p>
@@ -269,7 +269,7 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
             {customEndpoints.map((endpoint) => (
               <CollapsibleSection
                 key={endpoint.id}
-                title={`${endpoint.label} — ${endpoint.baseUrl ?? 'no base URL'}`}
+                title={`${endpoint.label} · ${endpoint.baseUrl ?? 'no base URL'}`}
               >
                 <CustomEndpointEditor endpoint={endpoint} onChanged={refresh} />
               </CollapsibleSection>
@@ -284,7 +284,7 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
         'web-search',
         <SettingsSection title="Web search">
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">
+            <p className="field__hint">
               Search built into the model provider needs no extra key and is the default. Add a key
               below to use a dedicated search provider as a tool instead.
             </p>

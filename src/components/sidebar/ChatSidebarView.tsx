@@ -53,39 +53,23 @@ export function ChatSidebarView({
           {!collapsed && <span className="brand__name">Dialogia</span>}
         </div>
         <div className="flex items-center gap-2">
-          <IconButton
-            onClick={onNewChat}
-            title="New Chat"
-            variant="ghost"
-            className="w-11 h-11 sm:w-9 sm:h-9"
-          >
-            <PlusIcon className="h-5 w-5 sm:h-3.5 sm:w-3.5" />
+          <IconButton onClick={onNewChat} title="New Chat" className="w-11 h-11 sm:w-9 sm:h-9">
+            <PlusIcon className="h-5 w-5 sm:h-4 sm:w-4" />
           </IconButton>
           {!collapsed && (
             <IconButton
               onClick={onStartCreateFolder}
               title="Create folder"
-              variant="ghost"
               className="w-11 h-11 sm:w-9 sm:h-9"
             >
-              <FolderPlusIcon className="h-5 w-5 sm:h-3.5 sm:w-3.5" />
+              <FolderPlusIcon className="h-5 w-5 sm:h-4 sm:w-4" />
             </IconButton>
           )}
           <span className="sm:hidden flex items-center gap-2">
-            <IconButton
-              onClick={onOpenSettings}
-              title="Settings"
-              variant="ghost"
-              className="w-11 h-11"
-            >
+            <IconButton onClick={onOpenSettings} title="Settings" className="w-11 h-11">
               <Cog6ToothIcon className="h-5 w-5" />
             </IconButton>
-            <IconButton
-              onClick={onCloseSidebar}
-              title="Close sidebar"
-              variant="ghost"
-              className="w-11 h-11"
-            >
+            <IconButton onClick={onCloseSidebar} title="Close sidebar" className="w-11 h-11">
               <XMarkIcon className="h-5 w-5" />
             </IconButton>
           </span>

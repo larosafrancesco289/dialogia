@@ -43,7 +43,7 @@ export function ApiKeyField(props: {
 
   return (
     <div className="space-y-2">
-      <label className="text-sm" htmlFor={`key-${keyRef}`}>
+      <label className="field__label" htmlFor={`key-${keyRef}`}>
         {label}
       </label>
       <div className="flex flex-wrap items-center gap-2">
@@ -74,7 +74,7 @@ export function ApiKeyField(props: {
           </button>
         )}
       </div>
-      {helpText && <p className="text-xs text-muted-foreground">{helpText}</p>}
+      {helpText && <p className="field__hint">{helpText}</p>}
     </div>
   );
 }

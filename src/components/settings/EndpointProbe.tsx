@@ -191,7 +191,7 @@ function ProbeReport({
             </span>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">
+          <p className="field__hint">
             The checkboxes below already match what this server accepted.
           </p>
         )
@@ -257,7 +257,7 @@ export function EndpointProbe({
           </span>
         ) : null}
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="field__hint">
         Sends a handful of one-token requests
         {modelId ? ` to ${modelId}` : ''} to see which fields this server accepts, so the checkboxes
         below can be set from an answer instead of a guess.

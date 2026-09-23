@@ -4,41 +4,27 @@ interface IconButtonProps {
   children: React.ReactNode;
   onClick?: (e?: React.MouseEvent) => void;
   title?: string;
-  variant?: 'ghost' | 'subtle';
   size?: 'sm' | 'md';
   className?: string;
   disabled?: boolean;
 }
 
+/** The shared bare icon button (styles/components/buttons.css). */
 export function IconButton({
   children,
   onClick,
   title,
-  variant = 'ghost',
   size = 'md',
   className = '',
   disabled = false,
 }: IconButtonProps) {
-  const baseClasses =
-    'inline-flex items-center justify-center border-none cursor-pointer transition-all duration-200 rounded-full';
-
-  const variantClasses = {
-    ghost: 'bg-transparent hover:bg-muted active:bg-border text-muted-foreground hover:text-fg',
-    subtle: 'bg-muted/50 hover:bg-muted active:bg-border text-muted-foreground hover:text-fg',
-  };
-
-  const sizeClasses = {
-    sm: 'w-7 h-7 text-sm',
-    md: 'w-9 h-9',
-  };
-
-  const disabledClasses = disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : '';
-
   return (
     <button
-      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${disabledClasses} ${className}`}
+      type="button"
+      className={`icon-button${size === 'sm' ? ' icon-button--sm' : ''} ${className}`.trim()}
       onClick={(e) => onClick?.(e)}
       title={title}
+      aria-label={title}
       disabled={disabled}
     >
       {children}
