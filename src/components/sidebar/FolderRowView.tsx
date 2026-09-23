@@ -63,9 +63,21 @@ export function FolderRowView({
         isDragOver ? ' is-drag-over' : ''
       }${isEditing ? ' is-editing' : ''}`}
       style={depth ? { marginLeft: `${depth * ROW_INDENT}px` } : undefined}
-      role="treeitem"
       aria-expanded={isExpanded}
-      draggable={!isEditing}
+      // Folders do not nest or reorder, so a folder is not something to drag.
+      draggable={false}
+      // Reachable by keyboard: Enter or Space folds it, F2 renames it.
+      tabIndex={isEditing ? -1 : 0}
+      onKeyDown={(event) => {
+        if (isEditing || event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onToggleExpanded();
+        } else if (event.key === 'F2') {
+          event.preventDefault();
+          onStartEdit();
+        }
+      }}
       data-folder-id={folderId}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

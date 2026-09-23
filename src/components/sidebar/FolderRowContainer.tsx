@@ -18,12 +18,25 @@ interface FolderRowContainerProps {
   folder: Folder;
   folderTreeIndex: FolderTreeIndex;
   depth?: number;
+  /** The sidebar search, lower-cased and trimmed; empty when not searching. */
+  query?: string;
+}
+
+/** Whether a folder, or anything inside it, matches the search. */
+function folderHasMatch(index: FolderTreeIndex, folder: Folder, q: string): boolean {
+  if (folder.name.toLowerCase().includes(q)) return true;
+  const { chats, folders } = getFolderChildren(index, folder.id);
+  return (
+    chats.some((chat) => chat.title.toLowerCase().includes(q)) ||
+    folders.some((sub) => folderHasMatch(index, sub, q))
+  );
 }
 
 export function FolderRowContainer({
   folder,
   folderTreeIndex,
   depth = 0,
+  query = '',
 }: FolderRowContainerProps) {
   const { selectedChatId, selectChat, renameFolder, deleteFolder, toggleFolderExpanded } =
     useChatStore(
@@ -54,7 +67,19 @@ export function FolderRowContainer({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
-  const { chats: folderChats, folders: subFolders } = getFolderChildren(folderTreeIndex, folder.id);
+  const children = getFolderChildren(folderTreeIndex, folder.id);
+  // While searching, a folder opens onto its matches and hides the rest;
+  // when its own name matched, everything in it counts.
+  const nameMatches = !!query && folder.name.toLowerCase().includes(query);
+  const narrowed = !!query && !nameMatches;
+  const folderChats = narrowed
+    ? children.chats.filter((chat) => chat.title.toLowerCase().includes(query))
+    : children.chats;
+  const subFolders = narrowed
+    ? children.folders.filter((sub) => folderHasMatch(folderTreeIndex, sub, query))
+    : children.folders;
+  const isOpen = folder.isExpanded || !!query;
+  const childQuery = nameMatches ? '' : query;
 
   const handleToggleExpanded = () => {
     toggleFolderExpanded(folder.id);
@@ -79,9 +104,9 @@ export function FolderRowContainer({
       <FolderRowView
         folderId={folder.id}
         name={folder.name}
-        count={folderChats.length}
+        count={children.chats.length}
         depth={depth}
-        isExpanded={folder.isExpanded}
+        isExpanded={isOpen}
         isEditing={isEditing}
         isDragOver={isDragOver}
         isMobile={isMobile}
@@ -157,7 +182,7 @@ export function FolderRowContainer({
         }}
       />
 
-      {folder.isExpanded && (
+      {isOpen && (
         <div>
           {subFolders.map((subFolder) => (
             <FolderRowContainer
@@ -165,6 +190,7 @@ export function FolderRowContainer({
               folder={subFolder}
               folderTreeIndex={folderTreeIndex}
               depth={depth + 1}
+              query={childQuery}
             />
           ))}
 

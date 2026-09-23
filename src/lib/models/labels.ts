@@ -1,5 +1,6 @@
 import type { ModelDescriptor } from '@/lib/types';
 import { isRecord } from '@/lib/utils/guards';
+import { getDynamicModelAlias } from '@/lib/models/dynamicDefaults';
 
 export function stripProviderPrefix(label?: string): string {
   return String(label ?? '')
@@ -61,6 +62,10 @@ export function formatModelLabel(params: {
     return stripProviderPrefix(trimmed);
   }
   const idSource = fallbackId || model?.id;
+  // An alias nothing on the list answers to keeps its own name ("Claude
+  // Frontier"), not one guessed from its id ("Frontier").
+  const alias = idSource ? getDynamicModelAlias(idSource) : undefined;
+  if (alias) return alias.label;
   const derived = deriveNameFromId(idSource);
   return derived || 'Pick model';
 }

@@ -328,6 +328,8 @@ export function applyLearnerModelFeedback(
   const desiredFloor =
     feedback.confidenceFloor != null ? clamp(feedback.confidenceFloor, 0, 1) : undefined;
 
+  const confidenceBeforeSet = target.confidence;
+
   if (desiredFloor != null && target.confidence < desiredFloor) {
     target.confidence = desiredFloor;
     appliedFloor = desiredFloor;
@@ -346,6 +348,21 @@ export function applyLearnerModelFeedback(
     if (desiredFloor != null && targetConfidence === desiredFloor) {
       appliedFloor = desiredFloor;
     }
+  }
+
+  // A direct placement is written into the history, so "Why N%" can replay
+  // to the value the learner set instead of guessing where it happened.
+  if (target.confidence !== confidenceBeforeSet) {
+    target.evidence = [
+      ...target.evidence,
+      {
+        timestamp: Date.now(),
+        type: 'self_report',
+        weight: 0,
+        setTo: target.confidence,
+        details: feedback.reason || '',
+      },
+    ];
   }
 
   if (feedback.misconceptionId || feedback.misconceptionDescription) {
@@ -391,6 +408,7 @@ export function applyLearnerModelFeedback(
  * - Confidence bounded to [0, 1]
  */
 export function calculateMastery(currentConfidence: number, evidence: Evidence): number {
+  if (typeof evidence.setTo === 'number') return clamp(evidence.setTo, 0, 1);
   const weight = evidence.weight;
 
   // Bayesian update with diminishing returns

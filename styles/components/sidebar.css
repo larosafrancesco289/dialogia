@@ -10,6 +10,17 @@
       background-color var(--duration-fast) var(--ease-standard),
       color var(--duration-fast) var(--ease-standard);
   }
+  .sidebar-empty {
+    margin: var(--space-3) var(--space-4);
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 0.9375rem;
+    color: var(--color-fg-muted);
+  }
+  .chat-item:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--focus-ring);
+  }
   @supports (content-visibility: auto) {
     .chat-item,
     .folder-row {

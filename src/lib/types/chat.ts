@@ -29,6 +29,8 @@ export type ChatSearchSettings = {
 export type TutorSettings = {
   enabled?: boolean;
   defaultModelId?: string;
+  /** The chat's model before tutor mode swapped in its own; restored when it ends. */
+  modelIdBeforeTutor?: string;
   toolBudget?: TutorToolBudget;
   learningPlan?: LearningPlan;
   planGenerated?: boolean;

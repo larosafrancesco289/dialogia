@@ -5,6 +5,7 @@ import {
   type ModelCapabilityFlags,
 } from '@/lib/models/capabilities';
 import { formatModelLabel } from '@/lib/models/labels';
+import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 
 export type ModelIndex = {
   all: ModelDescriptor[];
@@ -19,7 +20,9 @@ export function findModelById(
   id?: string,
 ): ModelDescriptor | undefined {
   if (!models || !id) return undefined;
-  return models.find((m) => m.id === id);
+  // A "latest" alias names whichever model it resolves to right now.
+  const resolved = resolveDynamicModelId(id, models);
+  return models.find((m) => m.id === resolved) ?? models.find((m) => m.id === id);
 }
 
 export function createModelIndex(models: ModelDescriptor[] | undefined): ModelIndex {

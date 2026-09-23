@@ -214,6 +214,11 @@ export type Evidence = {
   details: string; // Description of what happened
   weight: number; // -0.5 to 0.7 — positive for correct/insight, negative for incorrect/misconception
   skill?: string;
+  /**
+   * The estimate was placed here directly (a slider, a floor) rather than
+   * moved by `weight`. Recorded so the history replays to the real value.
+   */
+  setTo?: number;
 };
 
 export type Misconception = {

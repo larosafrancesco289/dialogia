@@ -57,6 +57,7 @@ export const TutorSettingsSchema = z
   .object({
     enabled: z.boolean().optional(),
     defaultModelId: z.string().optional(),
+    modelIdBeforeTutor: z.string().optional(),
     toolBudget: TutorToolBudgetSchema.optional(),
     learningPlan: LearningPlanSchema.optional(),
     planGenerated: z.boolean().optional(),
