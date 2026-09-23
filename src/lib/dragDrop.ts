@@ -17,6 +17,7 @@ const getSharedDragData = () => sharedDragData;
 
 export function useDragAndDrop() {
   const moveChatToFolder = useChatStore((s) => s.moveChatToFolder);
+  const createFolder = useChatStore((s) => s.createFolder);
 
   const handleDragStart = useCallback((id: string, type: DragData['type']) => {
     setSharedDragData({ id, type });
@@ -43,6 +44,28 @@ export function useDragAndDrop() {
     [moveChatToFolder],
   );
 
+  /**
+   * A chat dropped on another chat: beside it if that one is in a folder,
+   * otherwise into a new folder holding both. Resolves to the new folder's
+   * id, so the caller can open it for naming.
+   */
+  const dropChatOnChat = useCallback(
+    async (target: { id: string; folderId?: string }): Promise<string | undefined> => {
+      const data = getSharedDragData();
+      setSharedDragData(null);
+      if (!data || data.type !== 'chat' || data.id === target.id) return undefined;
+      if (target.folderId) {
+        await moveChatToFolder(data.id, target.folderId);
+        return undefined;
+      }
+      const folder = await createFolder('New folder');
+      await moveChatToFolder(target.id, folder.id);
+      await moveChatToFolder(data.id, folder.id);
+      return folder.id;
+    },
+    [createFolder, moveChatToFolder],
+  );
+
   const getDragData = useCallback(() => getSharedDragData(), []);
 
   return {
@@ -50,6 +73,7 @@ export function useDragAndDrop() {
     handleDragEnd,
     handleDragOver,
     handleDrop,
+    dropChatOnChat,
     getDragData,
   };
 }

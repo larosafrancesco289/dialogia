@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop } from '@/lib/dragDrop';
+import { onFolderRenameRequest, takeFolderRename } from '@/components/sidebar/pendingRename';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
@@ -39,7 +40,15 @@ export function FolderRowContainer({
   const { handleDragOver, handleDrop, handleDragStart, handleDragEnd, getDragData } =
     useDragAndDrop();
 
-  const [isEditing, setIsEditing] = useState(false);
+  // A folder just made by dropping one chat on another opens for naming.
+  const [isEditing, setIsEditing] = useState(() => takeFolderRename(folder.id));
+  useEffect(
+    () =>
+      onFolderRenameRequest((id) => {
+        if (id === folder.id && takeFolderRename(id)) setIsEditing(true);
+      }),
+    [folder.id],
+  );
   const [isDragOver, setIsDragOver] = useState(false);
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);

@@ -21,10 +21,12 @@ export function InlineTitleEdit({
   const [draft, setDraft] = useState(value);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const settled = useRef(false);
+  const openedAt = useRef(0);
 
   useEffect(() => {
     const input = inputRef.current;
     if (!input) return;
+    openedAt.current = performance.now();
     input.focus();
     input.select();
   }, []);
@@ -59,7 +61,18 @@ export function InlineTitleEdit({
           finish(false);
         }
       }}
-      onBlur={() => finish(true)}
+      onBlur={() => {
+        // A blur in the first moments is the gesture that opened the field
+        // settling (a drop, a double-click), not the user leaving: stay.
+        if (performance.now() - openedAt.current < 400) {
+          requestAnimationFrame(() => {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+          });
+          return;
+        }
+        finish(true);
+      }}
     />
   );
 }

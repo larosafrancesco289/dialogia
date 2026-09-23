@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
+import { useCallback, useMemo, useState, type DragEvent } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop } from '@/lib/dragDrop';
@@ -40,28 +40,19 @@ export type ChatSidebarState = {
 export function useChatSidebarState({
   collapsed: collapsedProp,
 }: ChatSidebarStateInput = {}): ChatSidebarState {
-  const {
-    chats,
-    folders,
-    selectedChatId,
-    selectChat,
-    newChat,
-    loadModels,
-    createFolder,
-    collapsedFromStore,
-  } = useChatStore(
-    (s) => ({
-      chats: s.chats,
-      folders: s.folders,
-      selectedChatId: s.selectedChatId,
-      selectChat: s.selectChat,
-      newChat: s.newChat,
-      loadModels: s.loadModels,
-      createFolder: s.createFolder,
-      collapsedFromStore: s.ui.sidebarCollapsed ?? false,
-    }),
-    shallow,
-  );
+  const { chats, folders, selectedChatId, selectChat, newChat, createFolder, collapsedFromStore } =
+    useChatStore(
+      (s) => ({
+        chats: s.chats,
+        folders: s.folders,
+        selectedChatId: s.selectedChatId,
+        selectChat: s.selectChat,
+        newChat: s.newChat,
+        createFolder: s.createFolder,
+        collapsedFromStore: s.ui.sidebarCollapsed ?? false,
+      }),
+      shallow,
+    );
 
   const collapsed = collapsedProp ?? collapsedFromStore;
   const { handleDragOver, handleDrop, handleDragStart, handleDragEnd, getDragData } =
@@ -69,10 +60,6 @@ export function useChatSidebarState({
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [query, setQuery] = useState('');
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
-
-  useEffect(() => {
-    loadModels();
-  }, [loadModels]);
 
   const folderTreeIndex = useMemo(() => buildFolderTreeIndex(folders, chats), [folders, chats]);
   const rootChildren = useMemo(() => getFolderChildren(folderTreeIndex), [folderTreeIndex]);
