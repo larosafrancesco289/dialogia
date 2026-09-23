@@ -12,7 +12,7 @@
     line-height: 1.72;
     letter-spacing: -0.006em;
     color: var(--color-fg);
-    resize: vertical;
+    resize: none;
     transition: border-color var(--duration-fast) var(--ease-standard);
   }
   .message-edit-textarea:focus {
@@ -25,7 +25,9 @@
   }
 
   /* User message variant — sans-serif to match user message styling */
+  /* Inside the tinted bubble the field is the bubble: no second tint. */
   .message-edit-textarea--user {
+    background: transparent;
     font-family: var(--font-sans);
     font-size: 1.05rem;
     line-height: 1.55;
@@ -120,6 +122,8 @@
     justify-content: flex-end;
     gap: var(--space-2);
     margin-top: var(--space-2);
+    /* Scrolled into view above the composer, which floats over the list. */
+    scroll-margin-bottom: calc(var(--composer-height, 0px) + var(--space-6));
     font-family: var(--font-sans);
   }
   .message-edit-bar__hint {

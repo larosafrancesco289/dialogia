@@ -406,21 +406,6 @@ export function ResponseContextPanel({
           <span className="response-ledger__rule" aria-hidden="true" />
           <ChevronDownIcon className={`response-ledger__chevron${expanded ? ' is-open' : ''}`} />
         </button>
-        {expanded && hasReasoning && (
-          <button
-            type="button"
-            className={`response-ledger__copy${copied ? ' is-success' : ''}`}
-            aria-label={copied ? 'Copied' : 'Copy reasoning'}
-            title={copied ? 'Copied' : 'Copy reasoning'}
-            onClick={copyReasoning}
-          >
-            {copied ? (
-              <CheckIcon className="h-3.5 w-3.5" />
-            ) : (
-              <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-            )}
-          </button>
-        )}
       </div>
 
       {expanded && (
@@ -535,6 +520,25 @@ export function ResponseContextPanel({
                 </div>
               )}
             </div>
+            {/* Copy sits at the foot of the opened reasoning, not in the head,
+                so opening the line never moves its chevron from under the pointer. */}
+            {hasReasoning && (
+              <div className="response-ledger__foot">
+                <button
+                  type="button"
+                  className={`response-ledger__copy${copied ? ' is-success' : ''}`}
+                  aria-label={copied ? 'Copied' : 'Copy reasoning'}
+                  title={copied ? 'Copied' : 'Copy reasoning'}
+                  onClick={copyReasoning}
+                >
+                  {copied ? (
+                    <CheckIcon className="h-3.5 w-3.5" />
+                  ) : (
+                    <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

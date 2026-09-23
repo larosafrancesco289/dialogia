@@ -58,6 +58,13 @@
   font-variant-numeric: oldstyle-nums;
 }
 
+/* Editing your message: the bubble opens to a full writing width instead of
+   keeping the width of the words it held. */
+.user:has(:global(.message-edit-textarea--user)) {
+  width: min(100%, 38rem);
+  max-width: min(100%, 38rem);
+}
+
 /* Light type on a dark ground reads heavier than the same weight on paper;
    thin it slightly to compensate. */
 :global(.dark) .assistant {

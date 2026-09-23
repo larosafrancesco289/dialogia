@@ -138,9 +138,13 @@ export function AssistantMessage({
           if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
             event.preventDefault();
             saveEdit();
+          } else if (event.key === 'Escape') {
+            event.preventDefault();
+            setEditingId(null);
+            setDraft('');
           }
         }}
-        placeholder="Edit message..."
+        placeholder="Edit the reply…"
         autoFocus
       />
     );

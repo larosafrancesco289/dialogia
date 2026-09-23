@@ -35,7 +35,7 @@ export function TutorPanel(props: TutorPanelProps) {
             checked={experimentalTutor}
             onChange={(checked) => setUI({ flags: { experimentalTutor: checked } })}
             label="Tutor mode"
-            description="Show the Tutor controls and enable practice tools (multiple choice, fill in the blank, flashcards)."
+            description="Show the Tutor button and its practice tools: a learning plan and multiple-choice questions."
           />
           {experimentalTutor && (
             <>

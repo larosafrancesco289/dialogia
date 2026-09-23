@@ -277,7 +277,8 @@ export function createMessageStreamCallbacks(
       }
     },
     onReasoningToken: (delta: string) => {
-      if (firstTokenAt == null) firstTokenAt = performance.now();
+      // Thinking is timed on the reasoning line; the colophon's "first word"
+      // is the first word of the answer.
       reasoningAccumulator.push(delta);
     },
     onDone: async (full: string, extras?: StreamDoneExtras) => {

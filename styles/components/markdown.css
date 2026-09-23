@@ -30,6 +30,8 @@
     margin: 1.4em 0 0.5em;
     letter-spacing: -0.012em;
     text-wrap: balance;
+    /* A heading jumped to lands below the top bar, not under it. */
+    scroll-margin-top: calc(var(--chrome-height) + var(--space-4));
   }
   /* Sizes in em so headings scale with the message they sit in: the
      assistant's 20px serif and the user's smaller sans alike. */

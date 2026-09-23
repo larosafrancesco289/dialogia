@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import styles from './MessageCard.module.css';
 
 /**
@@ -25,11 +25,27 @@ export function MessageActions({
   );
 }
 
+const SAVE_SHORTCUT =
+  typeof navigator !== 'undefined' &&
+  /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+    ? '⌘ Enter to save'
+    : 'Ctrl Enter to save';
+
 /** Save and cancel under a message being edited, with the shortcut named. */
 export function MessageEditBar({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
+  // Brought into view when editing starts: under the latest reply it would
+  // otherwise sit behind the composer.
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // A frame later, so the field's autofocus has finished its own scroll.
+    const frame = requestAnimationFrame(() =>
+      barRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, []);
   return (
-    <div className="message-edit-bar">
-      <span className="message-edit-bar__hint">⌘ Enter to save</span>
+    <div ref={barRef} className="message-edit-bar">
+      <span className="message-edit-bar__hint">{SAVE_SHORTCUT}</span>
       <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>
         Cancel
       </button>
