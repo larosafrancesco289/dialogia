@@ -115,148 +115,119 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
   if (!total || !activeItem) return null;
 
   return (
-    <div className="space-y-4">
-      <div className="marginalia">
-        <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-          <span className="font-medium uppercase tracking-wider">
-            Question {activeIndex + 1} of {total}
-          </span>
-          <StepperDots
-            items={items}
-            activeIndex={activeIndex}
-            resolveStatus={(item) => {
-              const attempt = mcq[item.id];
-              if (!attempt?.done) return 'pending';
-              return attempt.correct ? 'correct' : 'incorrect';
-            }}
-            onSelect={goToIndex}
-          />
-        </div>
+    <div className="exercise">
+      <div className="exercise__bar">
+        <span className="exercise__kicker">
+          Question {activeIndex + 1} of {total}
+        </span>
+        <StepperDots
+          items={items}
+          activeIndex={activeIndex}
+          resolveStatus={(item) => {
+            const attempt = mcq[item.id];
+            if (!attempt?.done) return 'pending';
+            return attempt.correct ? 'correct' : 'incorrect';
+          }}
+          onSelect={goToIndex}
+        />
+      </div>
 
-        <div className="relative min-h-[200px]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeItem.id}
-              variants={contentVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="space-y-4"
-            >
-              <div className="text-base font-medium leading-relaxed mb-2">
-                {activeItem.question}
-              </div>
-              <div className="grid gap-3">
-                {activeItem.choices.map((choice, idx) => {
-                  const isPicked = picked === idx;
-                  const isCorrect = correctIdx === idx;
-                  let btnClass = 'btn-outline hover:bg-muted/50';
+      <div className="relative min-h-[200px]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeItem.id}
+            variants={contentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="flex flex-col gap-4"
+          >
+            <p className="exercise__question">{activeItem.question}</p>
+            <div className="exercise__choices">
+              {activeItem.choices.map((choice, idx) => {
+                const isPicked = picked === idx;
+                const isCorrect = correctIdx === idx;
+                let state = '';
+                if (answered) {
+                  if (isCorrect) state = 'is-correct';
+                  else if (isPicked) state = 'is-wrong';
+                  else state = 'is-muted';
+                } else if (isPicked) {
+                  state = 'is-picked';
+                }
 
-                  if (answered) {
-                    if (isCorrect) btnClass = 'feedback-correct border';
-                    else if (isPicked) btnClass = 'feedback-incorrect border';
-                    else btnClass = 'btn-outline opacity-50';
-                  } else if (isPicked) {
-                    btnClass = 'btn-primary';
-                  }
-
-                  return (
-                    <button
-                      type="button"
-                      key={idx}
-                      className={`btn justify-start relative overflow-hidden transition-all duration-200 py-3 ${btnClass} ${answered ? 'cursor-default' : ''}`}
-                      onClick={() => handleSelect(idx)}
-                      disabled={answered}
-                    >
-                      <span
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold mr-3 ${
-                          answered && isCorrect
-                            ? 'feedback-correct-icon'
-                            : answered && isPicked
-                              ? 'feedback-incorrect-icon'
-                              : 'border-current opacity-60'
-                        }`}
-                      >
-                        {String.fromCharCode(65 + idx)}
-                      </span>
-                      <span className="text-left">{choice}</span>
-                      {answered && (isCorrect || isPicked) && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2"
-                        >
-                          {isCorrect ? (
-                            <CheckIcon
-                              className="h-4 w-4"
-                              style={{ color: 'var(--color-success)' }}
-                            />
-                          ) : (
-                            <XMarkIcon
-                              className="h-4 w-4"
-                              style={{ color: 'var(--color-danger)' }}
-                            />
-                          )}
-                        </motion.div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <AnimatePresence>
-                {answered && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
+                return (
+                  <button
+                    type="button"
+                    key={idx}
+                    className={`choice ${state}`.trim()}
+                    onClick={() => handleSelect(idx)}
+                    disabled={answered}
                   >
-                    <div
-                      className={`rounded-lg p-4 border ${
-                        picked === correctIdx ? 'feedback-correct' : 'feedback-incorrect'
-                      }`}
-                    >
-                      <div className="font-bold mb-1.5 flex items-center gap-2 text-base">
-                        {picked === correctIdx ? (
-                          <>
-                            <CheckIcon className="h-4 w-4" /> Correct
-                          </>
+                    <span className="choice__mark">{String.fromCharCode(65 + idx)}</span>
+                    <span className="choice__body">{choice}</span>
+                    {answered && (isCorrect || isPicked) && (
+                      <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                        {isCorrect ? (
+                          <CheckIcon className="choice__end" />
                         ) : (
-                          <>
-                            <XMarkIcon className="h-4 w-4" /> Incorrect
-                          </>
+                          <XMarkIcon className="choice__end" />
                         )}
-                      </div>
-                      {activeItem.explanation && (
-                        <div className="opacity-90 leading-relaxed">{activeItem.explanation}</div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          </AnimatePresence>
-        </div>
+                      </motion.span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-        <div className="mt-6 flex items-center justify-between border-t border-border/40 pt-4">
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm gap-1 pl-0 text-muted-foreground hover:text-foreground"
-            onClick={goPrevious}
-            disabled={activeIndex === 0}
-          >
-            <ChevronLeftIcon className="h-3 w-3" /> Previous
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm gap-1 pr-0 text-muted-foreground hover:text-foreground"
-            onClick={goNext}
-            disabled={activeIndex >= total - 1}
-          >
-            Next <ChevronRightIcon className="h-3 w-3" />
-          </button>
-        </div>
+            <AnimatePresence>
+              {answered && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className={`exercise-feedback${picked === correctIdx ? '' : ' is-wrong'}`}>
+                    <p className="exercise-feedback__verdict">
+                      {picked === correctIdx ? (
+                        <>
+                          <CheckIcon /> Correct
+                        </>
+                      ) : (
+                        <>
+                          <XMarkIcon /> Not quite
+                        </>
+                      )}
+                    </p>
+                    {activeItem.explanation && (
+                      <p className="exercise-feedback__text">{activeItem.explanation}</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <div className="exercise__nav">
+        <button
+          type="button"
+          className="btn-ghost btn-sm"
+          onClick={goPrevious}
+          disabled={activeIndex === 0}
+        >
+          <ChevronLeftIcon className="h-3.5 w-3.5" /> Previous
+        </button>
+        <button
+          type="button"
+          className="btn-ghost btn-sm"
+          onClick={goNext}
+          disabled={activeIndex >= total - 1}
+        >
+          Next <ChevronRightIcon className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 /* IntroTour: the first-run tour.
-   A single plate of manuscript laid over the app. Gold is rationed to one
-   accent per page: the rule, the active dot, and one line in each drawing.
+   A single plate of manuscript laid over the app, in the dialog's paper and
+   the book's rubric: the head rule, the step, and one line in each drawing.
+   Gold appears only on the button that moves on.
 */
 
 .overlay {
@@ -12,8 +13,6 @@
   justify-content: center;
   padding: var(--space-4);
   background: var(--overlay-scrim);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
 }
 
 .card {
@@ -25,21 +24,21 @@
   flex-direction: column;
   gap: var(--space-5);
   padding: var(--space-6);
-  background: var(--surface-paper);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-3);
+  border-radius: var(--radius-editorial);
+  box-shadow: var(--shadow-2);
   outline: none;
 }
 
-/* Gold hairline across the head of the plate */
+/* Rubric rule across the head of the plate */
 .rule {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--rule-accent);
+  background: var(--color-rubric);
 }
 
 .topBar {
@@ -53,10 +52,9 @@
   font-family: var(--font-sans);
   font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-fg-muted);
-  opacity: 0.75;
+  color: var(--color-rubric);
 }
 
 .close {
@@ -77,7 +75,7 @@
 }
 
 .close:hover {
-  background: var(--color-muted);
+  background: color-mix(in oklab, var(--color-fg) 5%, transparent);
   color: var(--color-fg);
 }
 
@@ -115,7 +113,7 @@
 
 .strokeAccent {
   fill: none;
-  stroke: var(--color-accent);
+  stroke: var(--color-rubric);
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -150,7 +148,7 @@
   font-size: 0.82rem;
   color: var(--color-fg-muted);
   text-decoration: none;
-  border-bottom: 1px solid var(--rule-accent);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-rubric) 60%, transparent);
   padding-bottom: 1px;
   transition: color var(--duration-fast) var(--ease-standard);
 }
@@ -205,11 +203,12 @@
 }
 
 .dot:hover::after {
-  background: color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
+  background: var(--color-fg-muted);
 }
 
+/* The page you are on, in ink. */
 .dotActive::after {
-  background: var(--color-accent);
+  background: var(--color-fg);
   transform: scale(1.25);
 }
 
@@ -268,7 +267,7 @@
     gap: var(--space-4);
     padding: var(--space-5) var(--space-4);
     padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
-    border-radius: 20px 20px 0 0;
+    border-radius: var(--radius-editorial-mobile) var(--radius-editorial-mobile) 0 0;
     border-bottom: none;
   }
 
