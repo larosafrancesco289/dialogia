@@ -13,6 +13,7 @@ import {
 import type { ChatSidebarState } from '@/components/sidebar/useChatSidebarState';
 
 export function ChatSidebarView({
+  embedded = false,
   collapsed,
   query,
   showCreateFolder,
@@ -44,37 +45,39 @@ export function ChatSidebarView({
   handleDragEnd,
   handleDragOver,
   handleRootDrop,
-}: ChatSidebarState) {
+}: ChatSidebarState & { embedded?: boolean }) {
   return (
     <div className={'h-full flex flex-col w-full'}>
-      <div className="app-header justify-between">
-        <div className="brand">
-          <LogoMark className="brand__mark" />
-          {!collapsed && <span className="brand__name">Dialogia</span>}
+      {!embedded && (
+        <div className="app-header justify-between">
+          <div className="brand">
+            <LogoMark className="brand__mark" />
+            {!collapsed && <span className="brand__name">Dialogia</span>}
+          </div>
+          <div className="flex items-center gap-2">
+            <IconButton onClick={onNewChat} title="New Chat" className="w-11 h-11 sm:w-9 sm:h-9">
+              <PlusIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+            </IconButton>
+            {!collapsed && (
+              <IconButton
+                onClick={onStartCreateFolder}
+                title="Create folder"
+                className="w-11 h-11 sm:w-9 sm:h-9"
+              >
+                <FolderPlusIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+              </IconButton>
+            )}
+            <span className="sm:hidden flex items-center gap-2">
+              <IconButton onClick={onOpenSettings} title="Settings" className="w-11 h-11">
+                <Cog6ToothIcon className="h-5 w-5" />
+              </IconButton>
+              <IconButton onClick={onCloseSidebar} title="Close sidebar" className="w-11 h-11">
+                <XMarkIcon className="h-5 w-5" />
+              </IconButton>
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <IconButton onClick={onNewChat} title="New Chat" className="w-11 h-11 sm:w-9 sm:h-9">
-            <PlusIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-          </IconButton>
-          {!collapsed && (
-            <IconButton
-              onClick={onStartCreateFolder}
-              title="Create folder"
-              className="w-11 h-11 sm:w-9 sm:h-9"
-            >
-              <FolderPlusIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-            </IconButton>
-          )}
-          <span className="sm:hidden flex items-center gap-2">
-            <IconButton onClick={onOpenSettings} title="Settings" className="w-11 h-11">
-              <Cog6ToothIcon className="h-5 w-5" />
-            </IconButton>
-            <IconButton onClick={onCloseSidebar} title="Close sidebar" className="w-11 h-11">
-              <XMarkIcon className="h-5 w-5" />
-            </IconButton>
-          </span>
-        </div>
-      </div>
+      )}
 
       {showCreateFolder && !collapsed && (
         <div className="sidebar-section pb-3">
@@ -100,7 +103,18 @@ export function ChatSidebarView({
         </div>
       )}
 
-      <SidebarSearch value={query} onChange={onQueryChange} collapsed={collapsed} />
+      <SidebarSearch
+        value={query}
+        onChange={onQueryChange}
+        collapsed={collapsed}
+        action={
+          embedded ? (
+            <IconButton onClick={onStartCreateFolder} title="Create folder">
+              <FolderPlusIcon className="h-5 w-5" />
+            </IconButton>
+          ) : undefined
+        }
+      />
 
       <div
         className="scroll-area flex-1 sidebar-section"

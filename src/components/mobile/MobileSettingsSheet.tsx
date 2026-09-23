@@ -1,10 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { motion } from 'framer-motion';
 import { lazyClient } from '@/lib/ui/lazy';
 import { useChatStore } from '@/lib/store';
-import { springs } from '@/lib/mobile/springConfig';
-import styles from './MobileSettingsSheet.module.css';
-import { DialogPortal, DialogSurface } from '@/components/ui/Dialog';
 
 // Dynamically load settings drawer
 const SettingsDrawer = lazyClient(() =>
@@ -14,10 +10,8 @@ const SettingsDrawer = lazyClient(() =>
 );
 
 /**
- * MobileSettingsSheet - Full-screen settings overlay.
- *
- * Opens the SettingsDrawer in a mobile-friendly sheet format.
- * The SettingsDrawer handles its own content and state.
+ * MobileSettingsSheet: opens the settings page on phones and keeps the tab
+ * bar's state in step with it. The SettingsDrawer draws the page itself.
  */
 export function MobileSettingsSheet() {
   const setUI = useChatStore((s) => s.setUI);
@@ -68,53 +62,7 @@ export function MobileSettingsSheet() {
     };
   }, []);
 
-  const content = (
-    <>
-      {/* Backdrop */}
-      <motion.div
-        className={styles.backdrop}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-        onClick={close}
-        aria-label="Close settings"
-      />
-
-      {/* Sheet */}
-      <motion.div
-        className={styles.sheet}
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={springs.smooth}
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0, bottom: 0.5 }}
-        onDragEnd={(_, info) => {
-          if (info.offset.y > 100 || info.velocity.y > 500) {
-            close();
-          }
-        }}
-      >
-        {/* Handle */}
-        <div className={styles.handleArea}>
-          <div className={styles.handle} />
-        </div>
-
-        {/* Content - SettingsDrawer handles its own layout */}
-        <div className={styles.content}>
-          <SettingsDrawer />
-        </div>
-      </motion.div>
-    </>
-  );
-
-  return (
-    <DialogPortal>
-      <DialogSurface className={styles.overlay} role="dialog" ariaLabel="Settings">
-        {content}
-      </DialogSurface>
-    </DialogPortal>
-  );
+  // The drawer is already a full-screen page on phones, with its own header
+  // and close button; wrapping it in a second sheet hid it behind that sheet.
+  return <SettingsDrawer />;
 }

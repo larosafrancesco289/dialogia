@@ -25,7 +25,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
                   <button className="btn" onClick={() => onExport()}>
                     Export all
                   </button>
-                  <label className="btn btn-outline cursor-pointer">
+                  <label className="btn-outline cursor-pointer">
                     Import JSON
                     <input
                       type="file"

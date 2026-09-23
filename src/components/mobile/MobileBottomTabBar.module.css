@@ -1,26 +1,19 @@
+/* The phone's bottom bar: flush along the edge on the chrome's tone with
+   one hairline above it, like the sidebar it stands in for. The tab you are
+   on is ink; nothing here is gold. */
 .tabBar {
   position: fixed;
-  bottom: calc(10px + env(safe-area-inset-bottom));
-  left: 50%;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 100;
-
-  /* Layout */
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-
-  width: min(320px, calc(100% - 32px));
-  height: 52px;
-  padding: 4px;
-  transform: translateX(-50%);
-
-  background: color-mix(in oklab, var(--surface-paper) 92%, transparent);
-  border: 1px solid color-mix(in oklab, var(--color-border) 88%, transparent);
-  border-radius: 16px;
-  backdrop-filter: blur(18px);
-
-  box-shadow: 0 10px 28px rgba(80, 60, 40, 0.14);
+  align-items: stretch;
+  justify-content: space-around;
+  height: calc(56px + env(safe-area-inset-bottom));
+  padding: 0 var(--space-4) env(safe-area-inset-bottom);
+  background: var(--color-chrome);
+  border-top: 1px solid var(--chrome-rule);
 }
 
 .tab {
@@ -29,32 +22,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   padding: 0;
   min-width: 0;
   min-height: 44px;
-
-  /* Reset button styles */
   background: transparent;
   border: none;
-  border-radius: 12px;
   cursor: pointer;
-
-  /* Default state */
   color: var(--color-fg-muted);
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-standard);
+  transition: color var(--duration-fast) var(--ease-standard);
 }
 
-.tab:hover {
-  color: var(--color-fg);
-  background: color-mix(in oklab, var(--color-muted) 65%, transparent);
-}
-
+.tab:hover,
 .tab.active {
-  color: var(--color-accent);
-  background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+  color: var(--color-fg);
 }
 
 .tabIcon {
@@ -66,41 +47,21 @@
 }
 
 .tabLabel {
-  display: none;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
-/* Primary (New Chat) tab */
-.tab.primary {
-  flex: 1;
-  padding: 0;
-}
-
-.primaryButton {
+/* New chat: an ink ring around the plus, the one mark that starts things. */
+.primaryMark {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-
-  background: var(--color-fg);
-  border-radius: 13px;
-
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 2px 8px rgba(80, 60, 40, 0.14);
-
-  color: var(--color-canvas);
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-standard);
-}
-
-.primaryButton:hover {
-  background: color-mix(in oklab, var(--color-fg) 88%, var(--color-accent));
-}
-
-.primaryButton:active {
-  transform: scale(0.96);
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  color: var(--color-fg);
 }
 
 /* Hide when keyboard is active */

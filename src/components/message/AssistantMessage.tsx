@@ -247,7 +247,7 @@ export function AssistantMessage({
                   <PencilSquareIcon className="h-3.5 w-3.5" />
                   Edit message
                 </button>
-                <button className="btn btn-ghost btn-sm" onClick={() => onChooseRegenerateModel()}>
+                <button className="btn-ghost btn-sm" onClick={() => onChooseRegenerateModel()}>
                   <ArrowPathIcon className="h-3.5 w-3.5" />
                   Retry as-is
                 </button>

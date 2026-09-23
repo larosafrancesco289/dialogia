@@ -1,23 +1,12 @@
+/* The phone's running head: flush, on the page's paper, one hairline under
+   it, like the desktop top bar. */
 .header {
   position: sticky;
   top: 0;
   z-index: 50;
-
-  /* Safe area for notch */
-  padding-top: calc(env(safe-area-inset-top) + var(--space-2));
-  padding-bottom: var(--space-2);
-  padding-left: var(--space-3);
-  padding-right: var(--space-3);
-  margin: var(--space-1);
-  margin-bottom: var(--space-2);
-
-  /* Imperial Archive styling */
-  background: var(--surface-paper);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-message);
-
-  /* Transform origin for collapse animation */
+  padding: calc(env(safe-area-inset-top) + var(--space-2)) var(--space-4) var(--space-2);
+  background: var(--color-canvas);
+  border-bottom: 1px solid var(--chrome-rule);
   transform-origin: top center;
   will-change: transform, opacity;
 }
@@ -32,8 +21,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   min-width: 0;
+  max-width: 100%;
 }
 
 .title {
@@ -41,9 +31,9 @@
   margin: 0;
   text-align: center;
   font-family: var(--font-serif-assistant);
-  font-size: 1.05rem;
-  font-weight: 600;
-  line-height: 1.2;
+  font-size: 1.08rem;
+  font-weight: 500;
+  line-height: 1.25;
   letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
@@ -51,82 +41,62 @@
   color: var(--color-fg);
 }
 
-.tutorBadge {
+.tutorLine {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  gap: 6px;
+  min-height: 24px;
+  font-size: 0.8125rem;
+  color: var(--color-fg-muted);
+}
 
+.tutorLabel {
   font-size: 0.6875rem;
   font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  color: var(--color-rubric);
+}
 
-  background: color-mix(in oklab, var(--color-accent) 15%, var(--surface-paper));
-  border: 1px solid color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
-  color: var(--color-accent);
+.liveDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-accent);
 }
 
 .tutorModel {
-  font-weight: 400;
-  color: var(--color-fg-muted);
-  text-transform: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* The model sits under the title as a quiet line with a chevron. */
 .modelPicker {
-  width: 100%;
+  max-width: 100%;
 }
 
-.modelPicker > button {
-  width: 100%;
-  height: 36px;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-editorial);
-
-  background: color-mix(in oklab, var(--color-muted) 45%, transparent);
-  border: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
-  box-shadow: none;
-
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard);
+.modelPicker :global(.model-picker-trigger) {
+  padding: 2px var(--space-2);
+  gap: 4px;
 }
 
-.modelPicker > button:hover {
-  background: var(--surface-paper-warm);
-  border-color: var(--color-border);
+.modelPicker :global(.model-picker-trigger__name) {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--color-fg-muted);
 }
 
-.accentRule {
-  position: absolute;
-  left: var(--space-3);
-  right: var(--space-3);
-  bottom: 0;
-  height: 3px;
-
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--rule-accent) 15%,
-    var(--rule-accent) 85%,
-    transparent
-  );
-  border-radius: 3px;
-  opacity: 0.7;
-}
-
-/* Activity bar (streaming indicator) */
+/* Activity bar (streaming indicator): the live gold thread under the head. */
 .activityBar {
   position: absolute;
-  left: 10px;
-  right: 10px;
-  top: calc(env(safe-area-inset-top) + 6px);
-  height: 2px;
-  border-radius: 2px;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
   overflow: hidden;
-
-  background: color-mix(in oklab, var(--color-border) 70%, transparent);
 }
 
 .activityBar::before {
@@ -136,11 +106,10 @@
   top: 0;
   bottom: 0;
   width: 30%;
-
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in oklab, var(--color-accent) 65%, transparent),
+    color-mix(in oklab, var(--color-accent) 80%, transparent),
     transparent
   );
   animation: headerShimmer 1.2s linear infinite;

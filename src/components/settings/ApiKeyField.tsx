@@ -65,7 +65,7 @@ export function ApiKeyField(props: {
         </button>
         {stored && (
           <button
-            className="btn btn-ghost btn-sm"
+            className="btn-ghost btn-sm"
             disabled={busy}
             onClick={() => void remove()}
             aria-label={`Remove the ${label}`}

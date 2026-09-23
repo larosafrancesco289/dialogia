@@ -5,16 +5,13 @@ import { shallow } from 'zustand/shallow';
 import { springs } from '@/lib/mobile/springConfig';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { ModelPicker } from '@/components/ModelPicker';
-import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import { selectIsStreaming, selectIsTutorEnabled } from '@/lib/store/selectors';
 import styles from './MobileCollapsingHeader.module.css';
 
 /**
- * MobileCollapsingHeader - Minimal header that collapses on scroll.
- *
- * Shows:
- * - Chat title or "New chat"
- * - Model picker or Tutor badge
+ * MobileCollapsingHeader: the phone's running head, which collapses on
+ * scroll. The chat title in the book face; beneath it the model picker, or
+ * the tutor label while a session is on.
  */
 export function MobileCollapsingHeader() {
   const { chats, selectedChatId, models, headerVisible, isStreaming, tutorActive } = useChatStore(
@@ -64,19 +61,17 @@ export function MobileCollapsingHeader() {
           <h1 className={styles.title}>{chat?.title || 'New chat'}</h1>
 
           {tutorActive ? (
-            <div className={styles.tutorBadge}>
-              <AcademicCapIcon className="h-3.5 w-3.5" />
-              <span>Tutor</span>
-              {tutorModelLabel && <span className={styles.tutorModel}>({tutorModelLabel})</span>}
+            <div className={styles.tutorLine}>
+              <span className={styles.tutorLabel}>Tutor</span>
+              {/* The session is live, so its dot is gold, as on desktop. */}
+              <span className={styles.liveDot} aria-hidden="true" />
+              {tutorModelLabel && <span className={styles.tutorModel}>{tutorModelLabel}</span>}
             </div>
           ) : (
             <ModelPicker variant="sheet" className={styles.modelPicker} />
           )}
         </div>
       </div>
-
-      {/* Gold accent rule */}
-      <div className={styles.accentRule} />
     </motion.header>
   );
 }

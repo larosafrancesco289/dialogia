@@ -82,27 +82,14 @@
     height: 32px;
     width: 32px;
   }
+  /* One sheet handle everywhere (the module sheets use the same values). */
   .mobile-sheet-handle {
     align-self: center;
-    width: 44px;
+    width: 36px;
     height: 4px;
-    border-radius: 999px;
-    background: color-mix(in oklab, var(--color-border) 70%, transparent);
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--color-fg) 20%, transparent);
     margin-bottom: var(--space-2);
-  }
-  .mobile-sheet-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-  }
-  .mobile-sheet-body {
-    max-height: min(70vh, 520px);
-    overflow: auto;
-    padding-right: 2px;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
   }
   .mobile-message-sheet-overlay {
     z-index: 110;
@@ -230,9 +217,5 @@
   }
   .mobile-menu-item.is-danger {
     color: var(--color-danger);
-  }
-  .mobile-menu-popover {
-    max-height: min(70vh, 380px);
-    overflow-y: auto;
   }
 }

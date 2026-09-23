@@ -240,7 +240,7 @@
   margin: 0;
 }
 
-/* Mobile quick starts, horizontal chips */
+/* Mobile quick starts: the desktop's italic prompts, sized for a thumb. */
 .heroMobileQuickStarts {
   display: flex;
   flex-wrap: wrap;
@@ -253,10 +253,10 @@
   align-items: center;
   gap: 6px;
   min-height: var(--control-lg);
-  padding: var(--space-2) var(--space-3);
-  background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  padding: var(--space-2) var(--space-2);
+  background: transparent;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-editorial);
   font-family: var(--font-serif-assistant);
   font-style: italic;
   font-size: 0.95rem;
@@ -268,7 +268,7 @@
 }
 
 .heroMobileChip:hover {
-  background: color-mix(in oklab, var(--color-fg) 8%, transparent);
+  background: color-mix(in oklab, var(--color-fg) 5%, transparent);
   color: var(--color-fg);
 }
 

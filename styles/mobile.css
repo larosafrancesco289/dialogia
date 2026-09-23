@@ -18,27 +18,5 @@
       min-height: var(--touch-target-min);
       min-width: var(--touch-target-min);
     }
-
-    /* Adjust message padding for mobile */
-    .message-card {
-      padding: var(--space-3);
-    }
-  }
-
-  /* ========================================
-   * Bottom Sheet Shared Styles
-   * ======================================== */
-
-  .sheet-handle {
-    width: 36px;
-    height: 4px;
-    margin: 12px auto 8px;
-    border-radius: 2px;
-    background: color-mix(in oklab, var(--color-border) 80%, transparent);
-    cursor: grab;
-  }
-
-  .sheet-handle:active {
-    cursor: grabbing;
   }
 }

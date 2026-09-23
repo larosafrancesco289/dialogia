@@ -26,14 +26,6 @@
        the page, not a band above it. */
     min-height: var(--chrome-height);
     background: var(--color-canvas);
-    border: 0;
-    border-bottom: 1px solid var(--chrome-rule);
-    border-radius: 0;
-    box-shadow: none;
-  }
-
-  .top-header.app-header::after {
-    content: none;
   }
 
   /* Center section (model picker or tutor card). Everything else in the row

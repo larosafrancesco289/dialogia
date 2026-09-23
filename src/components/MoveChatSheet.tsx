@@ -77,7 +77,7 @@ export function MoveChatSheet({
               </button>
             ))
           )}
-          <button type="button" className="btn btn-ghost w-full h-11" onClick={onClose}>
+          <button type="button" className="btn-ghost w-full h-11" onClick={onClose}>
             Cancel
           </button>
         </DialogSurface>
