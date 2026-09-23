@@ -30,7 +30,6 @@ export function TutorMessagePanel({ message }: MessagePanelProps) {
       diagnostic={tutorEntry.diagnostic}
       planProposal={tutorEntry.planProposal}
       planSuggestions={tutorEntry.planSuggestions}
-      assessmentUpdates={tutorEntry.assessmentUpdates}
       isLatestAssistant={isLatestAssistant}
     />
   );
