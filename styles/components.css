@@ -10,5 +10,6 @@
 @import './components/composer.css';
 @import './components/message.css';
 @import './components/ledger.css';
+@import './components/chapter.css';
 @import './components/markdown.css';
 @import './components/toggle.css';

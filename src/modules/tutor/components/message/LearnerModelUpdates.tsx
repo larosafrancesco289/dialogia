@@ -7,10 +7,16 @@ import {
 import type { Message, TopicMastery } from '@/lib/types';
 import { useState } from 'react';
 import { useChatStore } from '@/lib/store';
+import { selectCurrentChat } from '@/lib/store/selectors';
+import { ChapterBreak } from './ChapterBreak';
 
 export function LearnerModelUpdates({ message }: { message: Message }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const setUI = useChatStore((s) => s.setUI);
+  const planNodes = useChatStore(
+    (s) => selectCurrentChat(s)?.settings.features.tutor?.learningPlan?.nodes,
+  );
+  const nameOf = (nodeId: string) => planNodes?.find((n) => n.id === nodeId)?.name ?? nodeId;
   const handleToggleDetails = () => setIsExpanded((prev) => !prev);
 
   const { planUpdates, learnerModel } = message;
@@ -22,14 +28,43 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
   // Only show if there are updates or learner model data
   if (!planUpdates && !learnerModel) return null;
 
-  const hasStatusChanges = planUpdates?.statusChanges && planUpdates.statusChanges.length > 0;
-  const hasMasteryChanges = planUpdates?.masteryChanges && planUpdates.masteryChanges.length > 0;
+  // A completed topic is a chapter end: it gets its own seam, and the topic
+  // the tutor moved on to is named there rather than listed here.
+  const completed = planUpdates?.statusChanges?.find((c) => c.to === 'completed');
+  const started = planUpdates?.statusChanges?.find(
+    (c) => c.to === 'in_progress' && c.from === 'not_started',
+  );
+  const statusChanges = completed ? [] : (planUpdates?.statusChanges ?? []);
+  const hasStatusChanges = statusChanges.length > 0;
+  // The chapter break states the finished topic's estimate itself.
+  const masteryChanges = (planUpdates?.masteryChanges ?? []).filter(
+    (c) => c.nodeId !== completed?.nodeId,
+  );
+  const hasMasteryChanges = masteryChanges.length > 0;
   const hasAnyUpdates = hasStatusChanges || hasMasteryChanges || hasSummary;
 
-  if (!hasAnyUpdates && !learnerModel) return null;
+  if (!hasAnyUpdates && !learnerModel && !completed) return null;
+  if (completed && !hasAnyUpdates) {
+    return (
+      <div className="px-4 pb-3">
+        <ChapterBreak
+          message={message}
+          completedNodeId={completed.nodeId}
+          startedNodeId={started?.nodeId}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 pb-3">
+      {completed && (
+        <ChapterBreak
+          message={message}
+          completedNodeId={completed.nodeId}
+          startedNodeId={started?.nodeId}
+        />
+      )}
       <div
         className="rounded-lg border"
         style={{
@@ -52,7 +87,7 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
         {/* Status Changes (Node completions/transitions) */}
         {hasStatusChanges && (
           <div className="px-3 py-2 space-y-1">
-            {planUpdates.statusChanges!.map((change, idx) => (
+            {statusChanges.map((change, idx) => (
               <div key={idx} className="flex items-center gap-2 text-sm">
                 {change.to === 'completed' && (
                   <>
@@ -61,7 +96,7 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
                       style={{ color: 'var(--color-success)' }}
                     />
                     <span className="font-medium" style={{ color: 'var(--color-success)' }}>
-                      Completed: {change.nodeId}
+                      Completed: {nameOf(change.nodeId)}
                     </span>
                   </>
                 )}
@@ -81,7 +116,7 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
                           'color-mix(in oklab, var(--color-accent-2) 80%, var(--color-fg) 20%)',
                       }}
                     >
-                      Started: {change.nodeId}
+                      Started: {nameOf(change.nodeId)}
                     </span>
                   </>
                 )}
@@ -104,7 +139,7 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
                 : {}
             }
           >
-            {planUpdates.masteryChanges!.map((change, idx) => {
+            {masteryChanges.map((change, idx) => {
               const increase = change.to > change.from;
               const delta = Math.abs(change.to - change.from);
               const percentFrom = Math.round(change.from * 100);
@@ -117,8 +152,8 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
                     style={{ color: increase ? 'var(--color-success)' : 'var(--color-accent)' }}
                   />
                   <span className="text-muted-foreground">
-                    <span className="font-medium text-foreground">{change.nodeId}</span> mastery:{' '}
-                    {percentFrom}% → {percentTo}%
+                    <span className="font-medium text-foreground">{nameOf(change.nodeId)}</span>{' '}
+                    mastery: {percentFrom}% → {percentTo}%
                     {increase && (
                       <span className="ml-1" style={{ color: 'var(--color-success)' }}>
                         (+{Math.round(delta * 100)}%)
@@ -164,7 +199,7 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
 
                 {masteryEntries.map(([topicId, mastery]) => {
                   const confidence = Math.round((mastery.confidence ?? 0) * 100);
-                  const label = mastery.nodeId || topicId;
+                  const label = nameOf(mastery.nodeId || topicId);
                   const interactions = mastery.interactions ?? 0;
                   const confidenceColor =
                     confidence >= 70
