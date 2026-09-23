@@ -201,7 +201,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         )}
         {hiddenCount > 0 && (
           <div className="flex justify-center py-2">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={showMore}>
+            <button type="button" className="btn-ghost btn-sm" onClick={showMore}>
               Show earlier messages ({hiddenCount})
             </button>
           </div>

@@ -73,20 +73,20 @@ export function MobileBottomTabBar() {
         <span className={styles.tabLabel}>Chats</span>
       </button>
 
-      {/* New Chat Tab (Center, Primary) */}
+      {/* New Chat Tab (Center) */}
       <button
         className={`${styles.tab} ${styles.primary}`}
         onClick={() => handleTabPress('new')}
         aria-label="Start new chat"
       >
         <motion.div
-          className={styles.primaryButton}
+          className={styles.primaryMark}
           whileTap={{ scale: 0.92 }}
-          whileHover={{ scale: 1.02 }}
-          transition={springs.bouncy}
+          transition={springs.snappy}
         >
-          <PlusIcon className="h-7 w-7" strokeWidth={2.5} />
+          <PlusIcon className="h-5 w-5" strokeWidth={2} />
         </motion.div>
+        <span className={styles.tabLabel}>New</span>
       </button>
 
       {/* Settings Tab */}

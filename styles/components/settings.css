@@ -31,6 +31,12 @@
   .settings-nav {
     border-right: 1px solid var(--chrome-rule);
   }
+  /* Phones: the page runs under the tab bar, so its end clears it. */
+  @media (max-width: 767px) {
+    .settings-panel {
+      padding-bottom: calc(57px + env(safe-area-inset-bottom));
+    }
+  }
 
   /* Mobile: section tabs as a row of words, the chosen one underlined. */
   .settings-tabs {

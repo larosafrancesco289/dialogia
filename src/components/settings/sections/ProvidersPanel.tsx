@@ -155,7 +155,7 @@ function CustomEndpointEditor({
       </div>
 
       <button
-        className="btn btn-ghost btn-sm"
+        className="btn-ghost btn-sm"
         onClick={() => {
           removeEndpoint(endpoint.id);
           onChanged();

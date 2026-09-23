@@ -108,7 +108,7 @@ export function MobileChatsSheet() {
 
         {/* Content - ChatSidebar */}
         <div className={styles.content}>
-          <ChatSidebar collapsed={false} />
+          <ChatSidebar collapsed={false} embedded />
         </div>
       </motion.div>
     </>

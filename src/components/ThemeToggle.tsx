@@ -69,7 +69,7 @@ export function ThemeToggle({ variant = 'ghost', className = '', onToggle }: The
   return (
     <button
       type="button"
-      className={`btn btn-ghost ${className}`.trim()}
+      className={`btn-ghost ${className}`.trim()}
       onClick={cycle}
       aria-label={label}
       aria-pressed={mode !== 'auto'}

@@ -1,6 +1,6 @@
 /* MobileWarningBanner.module.css
- * Styling for the mobile warning banner using the Imperial Archive design system.
- * Follows the marginalia pattern with a warning accent.
+ * A quiet note at the head of the page: a rubric label, muted text, one
+ * hairline under it. No tint and no gold: nothing here is live.
  */
 
 .banner {
@@ -14,53 +14,48 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-
-  /* Marginalia-style background with warning tint */
-  background: color-mix(in oklab, var(--color-muted) 85%, var(--color-accent));
-  border-bottom: 1px solid var(--rule-accent);
-
-  /* Subtle shadow for depth */
-  box-shadow: 0 1px 3px rgba(120, 90, 50, 0.08);
+  padding: calc(env(safe-area-inset-top) + var(--space-3)) var(--space-4) var(--space-3);
+  background: var(--color-canvas);
+  border-bottom: 1px solid var(--chrome-rule);
 }
+
 .iconWrapper {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-editorial);
-  background: color-mix(in oklab, var(--color-accent) 20%, transparent);
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
 }
 
 .icon {
-  width: 18px;
-  height: 18px;
-  color: var(--color-accent);
+  width: 16px;
+  height: 16px;
+  color: var(--color-rubric);
 }
 
 .text {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
   min-width: 0;
 }
 
 .title {
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-accent);
+  color: var(--color-rubric);
 }
 
 .message {
   font-family: var(--font-sans);
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: 0.8125rem;
+  line-height: 1.45;
   color: var(--color-fg-muted);
 }
 
@@ -79,7 +74,7 @@
 }
 
 .dismissButton:hover {
-  background: color-mix(in oklab, var(--color-accent) 15%, transparent);
+  background: color-mix(in oklab, var(--color-fg) 5%, transparent);
 }
 
 .dismissButton:focus-visible {

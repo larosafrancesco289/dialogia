@@ -40,19 +40,9 @@
   --radius-sm: 10px;
   --radius-md: 12px;
   --radius-lg: 14px;
-  --radius-xl: 18px;
-  --radius-2xl: 16px; /* legacy alias */
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.08);
   --shadow-3: 0 24px 48px rgba(0, 0, 0, 0.12);
-  --shadow-card: var(--shadow-2);
-  /* Warm layered shadows for depth — like cards resting on a surface */
-  --shadow-message:
-    0 1px 2px rgba(120, 90, 50, 0.04), 0 4px 8px rgba(100, 80, 40, 0.03),
-    0 8px 24px rgba(80, 60, 30, 0.04);
-  --shadow-message-hover:
-    0 2px 4px rgba(120, 90, 50, 0.05), 0 8px 16px rgba(100, 80, 40, 0.04),
-    0 16px 32px rgba(80, 60, 30, 0.05);
 
   /* Motion */
   --ease-standard: cubic-bezier(0.25, 1, 0.5, 1);
@@ -102,21 +92,13 @@
   /* Modal scrim. Stays dark in both themes: a light veil over the parchment
      would not read as a layer above the app. */
   --overlay-scrim: rgba(30, 27, 22, 0.44);
-  --glass-surface-bg: color-mix(in oklab, var(--color-surface) 72%, transparent);
-  --glass-panel-bg: color-mix(in oklab, var(--color-surface) 78%, transparent);
-  --glass-strong-bg: color-mix(in oklab, var(--color-surface) 85%, transparent);
-  --glass-saturate: saturate(180%);
-  --glass-blur-surface: blur(18px);
-  --glass-blur-panel: blur(22px);
 
   /* Editorial: Solid paper-like surfaces */
   --surface-paper: var(--color-surface);
-  --surface-paper-warm: color-mix(in oklab, var(--color-surface) 96%, var(--color-accent));
   --surface-inset: color-mix(in oklab, var(--color-muted) 70%, var(--color-canvas));
 
   /* Editorial: Ornamental rules */
   --rule-light: color-mix(in oklab, var(--color-border) 50%, transparent);
-  --rule-accent: color-mix(in oklab, var(--color-accent) 40%, var(--color-border));
 
   /* Editorial: Tighter radius for print feel */
   --radius-editorial: 6px;
@@ -125,12 +107,6 @@
 
   /* Editorial: Marginalia styling */
   --marginalia-bg: color-mix(in oklab, var(--color-muted) 50%, transparent);
-
-  /* Message role styling */
-  --message-assistant-bg: color-mix(in oklab, var(--color-surface) 90%, var(--color-accent));
-  --message-assistant-border: color-mix(in oklab, var(--color-border) 86%, var(--color-accent));
-  --message-user-bg: color-mix(in oklab, var(--color-surface) 97%, var(--color-accent));
-  --message-user-border: color-mix(in oklab, var(--color-border) 90%, var(--color-accent));
 }
 
 :root {
@@ -173,28 +149,9 @@
   --focus-ring: color-mix(in oklab, var(--color-accent) 50%, transparent);
   --overlay-scrim: rgba(6, 5, 3, 0.62);
 
-  /* Warm shadows with a faint amber lift; depth comes mostly from elevation */
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
   --shadow-3: 0 24px 48px rgba(0, 0, 0, 0.6);
-  --shadow-card: var(--shadow-2);
-  --shadow-message:
-    0 1px 3px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.3),
-    0 8px 24px rgba(205, 168, 95, 0.05);
-  --shadow-message-hover:
-    0 2px 6px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.35),
-    0 16px 40px rgba(205, 168, 95, 0.08);
-
-  /* Glass — slightly more opaque so blur reads against the dark canvas */
-  --glass-surface-bg: color-mix(in oklab, var(--color-surface) 80%, transparent);
-  --glass-panel-bg: color-mix(in oklab, var(--color-surface) 85%, transparent);
-  --glass-strong-bg: color-mix(in oklab, var(--color-surface) 90%, transparent);
-
-  /* Message role styling — purple-leaning assistant, gold-leaning user */
-  --message-assistant-bg: color-mix(in oklab, var(--color-surface) 93%, var(--color-accent-2));
-  --message-assistant-border: color-mix(in oklab, var(--color-border) 86%, var(--color-accent-2));
-  --message-user-bg: color-mix(in oklab, var(--color-surface) 94%, var(--color-accent));
-  --message-user-border: color-mix(in oklab, var(--color-border) 88%, var(--color-accent));
 
   /* Interactive feedback — readable correct/incorrect on dark */
   --feedback-correct-bg: color-mix(in oklab, var(--color-success) 12%, var(--color-muted));

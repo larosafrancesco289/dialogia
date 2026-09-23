@@ -3,6 +3,8 @@ import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ModelSearch, type ModelSearchHandle } from '@/components/ModelSearch';
 import type { StoreState, UIStatePartial } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
+import { findModelById, formatModelLabel } from '@/lib/models';
+import { useChatStore } from '@/lib/store';
 
 type ModelsPanelProps = {
   favoriteModelIds?: string[];
@@ -29,6 +31,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
     ui,
   } = props;
   const selectedModelId = ui.chatDefaults?.modelId;
+  const models = useChatStore((s) => s.models);
 
   return (
     <>
@@ -49,13 +52,13 @@ export function ModelsPanel(props: ModelsPanelProps) {
             <div className="field__hint">
               Selecting a model adds it to your favorites.{' '}
               {selectedModelId
-                ? `New chats start with ${selectedModelId}, following the model you last used.`
+                ? `New chats start with ${formatModelLabel({ model: findModelById(models, selectedModelId), fallbackId: selectedModelId })}, following the model you last used.`
                 : 'New chats use the default model until you pick a model in a chat.'}
             </div>
             {selectedModelId && (
               <div>
                 <button
-                  className="btn btn-ghost btn-sm"
+                  className="btn-outline btn-sm"
                   onClick={() =>
                     setUI({
                       chatDefaults: {
@@ -68,8 +71,8 @@ export function ModelsPanel(props: ModelsPanelProps) {
                 </button>
               </div>
             )}
-            <div>
-              <button className="btn btn-ghost" onClick={() => loadModels()}>
+            <div className="flex flex-wrap gap-2">
+              <button className="btn-outline btn-sm" onClick={() => loadModels()}>
                 Refresh model list
               </button>
             </div>
@@ -78,7 +81,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
                 <div className="text-muted-foreground">
                   {hiddenModelIds.length} hidden {hiddenModelIds.length === 1 ? 'model' : 'models'}
                 </div>
-                <button className="btn btn-outline btn-sm" onClick={() => resetHiddenModels()}>
+                <button className="btn-outline btn-sm" onClick={() => resetHiddenModels()}>
                   Reset hidden
                 </button>
               </div>

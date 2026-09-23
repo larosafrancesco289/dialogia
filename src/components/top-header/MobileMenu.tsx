@@ -80,7 +80,7 @@ export function TopHeaderMobileMenu({
     <div className="sm:hidden">
       <button
         ref={buttonRef}
-        className="btn btn-ghost"
+        className="btn-ghost"
         aria-label="More actions"
         aria-expanded={isOpen}
         onClick={toggleMenu}

@@ -151,7 +151,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
           // release, so the moving default is never silent.
           if (mergedModels.length > 0) {
             const previous = get().ui.dynamicDefaultResolutions ?? {};
-            const next: Record<string, string> = {};
+            const next: Record<string, string> = { ...previous };
             for (const alias of DYNAMIC_MODEL_ALIASES) {
               const resolved = resolveDynamicModelId(alias.id, mergedModels);
               next[alias.id] = resolved;
@@ -175,10 +175,25 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
           if (!defaultModelAvailable && mergedModels.length > 0 && !fallbackModelId) {
             const fallback = mergedModels[0];
             fallbackModelId = fallback.id;
-            const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
-            noticeSegments.push(
-              `${DEFAULT_MODEL_NAME} is not offered by your providers, so new chats start with ${fallbackLabel}.`,
-            );
+            // Say so once per fallback, not on every load: the record keeps
+            // the last one announced beside the alias resolutions.
+            const announcedKey = `fallback:${DEFAULT_MODEL_ID}`;
+            const resolutions = get().ui.dynamicDefaultResolutions ?? {};
+            if (resolutions[announcedKey] !== fallback.id) {
+              const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
+              noticeSegments.push(
+                `${DEFAULT_MODEL_NAME} is not offered by your providers, so new chats start with ${fallbackLabel}.`,
+              );
+              set((s) => ({
+                ui: {
+                  ...s.ui,
+                  dynamicDefaultResolutions: {
+                    ...(s.ui.dynamicDefaultResolutions ?? {}),
+                    [announcedKey]: fallback.id,
+                  },
+                },
+              }));
+            }
           }
 
           if (mergedModels.length === 0) {

@@ -142,22 +142,6 @@ export function HomeClient() {
             </div>
           )}
         </div>
-
-        {/* Mobile sidebar overlay */}
-        {isMobile && !collapsed && (
-          <>
-            <button
-              className="scrim z-[75]"
-              aria-label="Close sidebar"
-              onClick={() => setUI({ sidebarCollapsed: true })}
-            />
-            <div className="fixed inset-y-0 left-0 z-[80] w-[96%] max-w-[420px] p-2">
-              <div className="glass-panel border border-border rounded-2xl p-3 h-full overflow-hidden">
-                <ChatSidebar />
-              </div>
-            </div>
-          </>
-        )}
       </div>
     </MotionConfig>
   );

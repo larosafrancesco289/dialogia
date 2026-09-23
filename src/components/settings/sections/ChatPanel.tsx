@@ -167,10 +167,7 @@ export function ChatPanel(props: ChatPanelProps) {
             <div className="space-y-1">
               <label className="field__label flex items-center justify-between">
                 <span>Reasoning effort</span>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => setReasoningEffort(undefined)}
-                >
+                <button className="btn-ghost btn-sm" onClick={() => setReasoningEffort(undefined)}>
                   Default
                 </button>
               </label>
@@ -220,7 +217,7 @@ export function ChatPanel(props: ChatPanelProps) {
               <label className="field__label flex items-center justify-between">
                 <span>Reasoning tokens</span>
                 <button
-                  className="btn btn-ghost btn-sm"
+                  className="btn-ghost btn-sm"
                   onClick={() => {
                     setReasoningTokens(undefined);
                     setReasoningTokensStr('');
