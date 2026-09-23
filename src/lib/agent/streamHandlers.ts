@@ -328,8 +328,10 @@ export function createMessageStreamCallbacks(
     },
     onError: (error: Error) => {
       releaseTimestampHold();
-      contentAccumulator.flush();
       reasoningAccumulator.flush();
+      contentAccumulator.flush();
+      // Stopped or failed mid-thought: the thinking still ends here.
+      settleReasoning();
       clearCheckpointTimer();
       // Persist whatever partial content made it into the store so the user
       // does not lose it on reload after a failed stream.

@@ -236,7 +236,7 @@ export function AssistantMessage({
           <div className="px-4 pb-2">
             <button className="btn-outline btn-sm" onClick={() => onChooseRegenerateModel()}>
               <ArrowPathIcon className="h-3.5 w-3.5" />
-              The reply stopped early. Try again
+              No answer yet. Ask again
             </button>
           </div>
         )}

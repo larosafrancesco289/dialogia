@@ -78,13 +78,10 @@ export function TutorHeaderSlot() {
         await updateChatSettings({ features: { tutor: { enabled: false } } });
       }
     } else if (hasUserMessages) {
-      const confirmed = window.confirm(
-        'Starting a learning session will create a new chat. Continue?',
-      );
-      if (confirmed) {
-        setUI({ overrides: { tutorMode: true } });
-        await newChat();
-      }
+      // A lesson starts on a fresh page; this chat stays where it is, so
+      // there is nothing to confirm.
+      setUI({ overrides: { tutorMode: true } });
+      await newChat();
     } else {
       await updateChatSettings({ features: { tutor: { enabled: true } } });
     }

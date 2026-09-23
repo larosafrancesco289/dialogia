@@ -58,7 +58,9 @@ export function SettingsDrawerShell({
               variants={variants.slideFromRight}
               transition={springs.smooth}
               onKeyDown={(e) => {
-                if (e.key === 'Escape') onClose();
+                // A field that used Escape (clearing a search, closing its
+                // list) marks it handled; only a free Escape closes Settings.
+                if (e.key === 'Escape' && !e.defaultPrevented) onClose();
               }}
             >
               {/* Minimal Header */}
@@ -71,7 +73,7 @@ export function SettingsDrawerShell({
                   <SettingsSearch
                     value={searchQuery}
                     onChange={onSearchChange}
-                    placeholder="Search settings..."
+                    placeholder="Search settings…"
                   />
                 )}
 

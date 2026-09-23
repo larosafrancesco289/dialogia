@@ -332,8 +332,8 @@
     position: fixed;
     bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
     left: 50%;
-    transform: translateX(-50%);
     z-index: 100;
+    /* The same slip of paper as .toast: ink text, only the mark coloured. */
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -342,8 +342,8 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-editorial);
     box-shadow: var(--shadow-2);
-    font-size: 0.8125rem;
-    font-weight: 500;
+    font-size: 0.875rem;
+    line-height: 1.45;
     color: var(--color-fg);
   }
 
@@ -351,11 +351,11 @@
     color: var(--color-fg-muted);
   }
 
-  .auto-save-toast--saved {
+  .auto-save-toast--saved svg {
     color: var(--color-success);
   }
 
-  .auto-save-toast--error {
+  .auto-save-toast--error svg {
     color: var(--color-danger);
   }
 

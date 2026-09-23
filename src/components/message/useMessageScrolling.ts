@@ -92,15 +92,21 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   }, [onScrollAway]);
 
   useEffect(() => {
+    // Clear the refs as well as the frames: a remount (StrictMode, a fast
+    // refresh) keeps the refs, and a stale frame id would make every later
+    // follow bail out as if one were still pending.
     return () => {
       if (followFrameRef.current !== null) {
         cancelAnimationFrame(followFrameRef.current);
+        followFrameRef.current = null;
       }
       if (programmaticClearFrameRef.current !== null) {
         cancelAnimationFrame(programmaticClearFrameRef.current);
+        programmaticClearFrameRef.current = null;
       }
       if (programmaticClearTimerRef.current) {
         clearTimeout(programmaticClearTimerRef.current);
+        programmaticClearTimerRef.current = null;
       }
     };
   }, []);

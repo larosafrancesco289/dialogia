@@ -100,7 +100,7 @@ export function MessageActionSheet({
                 </span>
                 <span className="mobile-message-action__meta">
                   <span className="mobile-message-action__label">
-                    {editingId === mobileActionMessage.id ? 'Editing...' : 'Edit'}
+                    {editingId === mobileActionMessage.id ? 'Editing…' : 'Edit'}
                   </span>
                   <span className="mobile-message-action__hint">Modify this message</span>
                 </span>

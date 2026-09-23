@@ -37,7 +37,7 @@ export function AutoSaveToast({ status, message, autoDismissDelay = 2000 }: Auto
         return (
           <>
             <span className="auto-save-toast-spinner" />
-            <span>{message || 'Saving...'}</span>
+            <span>{message || 'Saving…'}</span>
           </>
         );
       case 'saved':
@@ -64,9 +64,11 @@ export function AutoSaveToast({ status, message, autoDismissDelay = 2000 }: Auto
       {visible && (
         <motion.div
           className={`auto-save-toast auto-save-toast--${status}`}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 8 }}
+          // Centred through framer's own x: its y animation writes the whole
+          // transform, which would drop a translate set in CSS.
+          initial={{ opacity: 0, x: '-50%', y: 8 }}
+          animate={{ opacity: 1, x: '-50%', y: 0 }}
+          exit={{ opacity: 0, x: '-50%', y: 8 }}
           transition={springs.gentle}
         >
           {getContent()}

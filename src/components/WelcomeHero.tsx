@@ -46,13 +46,13 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
   const tutorActive = experimentalTutor && (forceTutorMode || nextTutorMode);
 
   const quickStartPhrases = tutorActive
-    ? ['Quiz me on...', 'Help me understand...', 'Walk me through...']
-    : ['Help me think through...', "I'm curious about...", 'Explain to me...'];
+    ? ['Quiz me on…', 'Help me understand…', 'Walk me through…']
+    : ['Help me think through…', "I'm curious about…", 'Explain to me…'];
 
   const fillComposer = useCallback(
     (text: string) => {
-      // Replace trailing "..." with a space so user can continue typing
-      const draft = text.replace(/\.{3}$/, ' ');
+      // Replace the trailing ellipsis with a space so the user can go on typing
+      const draft = text.replace(/(\.{3}|…)$/, ' ');
       setUI({ composerDraft: draft });
     },
     [setUI],

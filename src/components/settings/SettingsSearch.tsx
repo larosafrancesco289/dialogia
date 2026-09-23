@@ -10,7 +10,7 @@ export type SettingsSearchProps = {
 export function SettingsSearch({
   value,
   onChange,
-  placeholder = 'Search settings...',
+  placeholder = 'Search settings…',
 }: SettingsSearchProps) {
   const [localValue, setLocalValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);

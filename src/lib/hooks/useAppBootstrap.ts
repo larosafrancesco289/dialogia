@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -31,8 +31,17 @@ export function useAppBootstrap(opts?: { mobileBreakpoint?: number }) {
     void loadModels();
   }, [loadModels]);
 
+  // A narrow window folds the sidebar away; widening it again brings back
+  // the sidebar the reader had, instead of leaving it folded for good.
+  const reopenSidebarRef = useRef(false);
   useEffect(() => {
-    if (isMobile && !collapsed) setUI({ sidebarCollapsed: true });
+    if (isMobile && !collapsed) {
+      reopenSidebarRef.current = true;
+      setUI({ sidebarCollapsed: true });
+    } else if (!isMobile && reopenSidebarRef.current) {
+      reopenSidebarRef.current = false;
+      if (collapsed) setUI({ sidebarCollapsed: false });
+    }
   }, [isMobile, collapsed, setUI]);
 
   useEffect(
