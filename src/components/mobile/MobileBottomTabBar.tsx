@@ -24,9 +24,15 @@ import styles from './MobileBottomTabBar.module.css';
 export function MobileBottomTabBar() {
   const { light, medium } = useHaptics();
 
+  // The tab you are on is the sheet that is open; with none, you are on the
+  // page itself and no tab is marked.
   const { activeTab, setUI, newChat } = useChatStore(
     (s) => ({
-      activeTab: s.ui.mobile.activeTab,
+      activeTab: s.ui.mobile.chatsSheetOpen
+        ? 'chats'
+        : s.ui.mobile.settingsSheetOpen
+          ? 'settings'
+          : undefined,
       setUI: s.setUI,
       newChat: s.newChat,
     }),

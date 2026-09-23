@@ -7,6 +7,7 @@ import type { StoreAccess, StoreGetter, StoreSetter, TurnContext } from '@/lib/a
 import type { Repository } from '@/lib/db/repository';
 import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
 import { regenerate } from '@/lib/agent/regenerate';
+import { isUntitledChat } from '@/lib/services/chatService';
 import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
 import { clearTurnController, setTurnController } from '@/lib/turns/runtime';
 import { prepareSendRuntime } from '@/lib/turns/runtime';
@@ -124,7 +125,7 @@ export async function sendUserTurn({
     return;
   }
 
-  if (currentChat.title === 'New Chat') {
+  if (isUntitledChat(currentChat.title)) {
     triggerAsyncTitleGeneration(
       currentChat.id,
       content,

@@ -1,4 +1,4 @@
-import { ChatService } from '@/lib/services/chatService';
+import { ChatService, isUntitledChat } from '@/lib/services/chatService';
 import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { repository } from '@/lib/db';
@@ -67,7 +67,7 @@ export function createChatSlice(
   const findLatestEmptyDraft = (state: StoreState): Chat | undefined => {
     let candidate: Chat | undefined;
     for (const chat of state.chats) {
-      if (chat.title !== 'New Chat') continue;
+      if (!isUntitledChat(chat.title)) continue;
       // A chat whose messages have not been loaded yet may still have
       // persisted history; never treat it as a reusable empty draft.
       if (!state.loadedMessageChatIds?.[chat.id] && state.nonEmptyChatIds?.[chat.id]) continue;

@@ -19,7 +19,9 @@ export type MessagePanelSlot =
   // Below the message content, above the footer.
   | 'messagePanel'
   // After the message content and any panels.
-  | 'messageFooter';
+  | 'messageFooter'
+  // Below the reply's own footer (its actions): a seam that closes the exchange.
+  | 'messageAfter';
 
 export type MessagePanelProps = { message: Message };
 

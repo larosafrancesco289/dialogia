@@ -172,7 +172,11 @@ export function FolderRowContainer({
       <ConfirmDialog
         open={showDeleteConfirm}
         title="Delete this folder?"
-        description={`The chats in “${folder.name}” stay; they move out of the folder.`}
+        description={
+          children.chats.length > 0
+            ? `The chats in “${folder.name}” stay; they move out of the folder.`
+            : `“${folder.name}” is empty.`
+        }
         confirmLabel="Delete"
         cancelLabel="Cancel"
         onCancel={() => setShowDeleteConfirm(false)}
@@ -183,28 +187,31 @@ export function FolderRowContainer({
       />
 
       {isOpen && (
-        <div>
-          {subFolders.map((subFolder) => (
-            <FolderRowContainer
-              key={subFolder.id}
-              folder={subFolder}
-              folderTreeIndex={folderTreeIndex}
-              depth={depth + 1}
-              query={childQuery}
-            />
-          ))}
+        // Eases open like the reasoning line, instead of snapping.
+        <div className="panel-reveal">
+          <div>
+            {subFolders.map((subFolder) => (
+              <FolderRowContainer
+                key={subFolder.id}
+                folder={subFolder}
+                folderTreeIndex={folderTreeIndex}
+                depth={depth + 1}
+                query={childQuery}
+              />
+            ))}
 
-          {folderChats.map((chat) => (
-            <ChatRowContainer
-              key={chat.id}
-              chat={chat}
-              depth={depth + 1}
-              isSelected={selectedChatId === chat.id}
-              onSelect={() => selectChat(chat.id)}
-              onDragStart={(id) => handleDragStart(id, 'chat')}
-              onDragEnd={handleDragEnd}
-            />
-          ))}
+            {folderChats.map((chat) => (
+              <ChatRowContainer
+                key={chat.id}
+                chat={chat}
+                depth={depth + 1}
+                isSelected={selectedChatId === chat.id}
+                onSelect={() => selectChat(chat.id)}
+                onDragStart={(id) => handleDragStart(id, 'chat')}
+                onDragEnd={handleDragEnd}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
