@@ -39,7 +39,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
                     />
                   </label>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="field__hint">
                   Export or import your chats and settings as a JSON file.
                 </p>
               </div>

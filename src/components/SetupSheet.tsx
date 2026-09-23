@@ -76,10 +76,10 @@ export function SetupSheet() {
     // Above the settings drawer (z-[80]): the sheet is reachable from inside it,
     // and a first-run modal rendered underneath is a dead end.
     <DialogPortal>
-      <DialogOverlay className="fixed inset-0 z-[90] bg-black/40" onClose={close}>
+      <DialogOverlay className="scrim z-[90]" onClose={close}>
         <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
           <motion.div
-            className="card relative w-full max-w-md p-5 space-y-4"
+            className="dialog max-w-md"
             role="dialog"
             aria-modal="true"
             aria-labelledby="setup-title"
@@ -87,23 +87,21 @@ export function SetupSheet() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18 }}
           >
-            <div className="space-y-1">
-              <h2 id="setup-title" className="text-base font-medium">
-                Connect a model
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Dialogia talks to providers straight from this browser. Your key is stored here and
-                nowhere else.
-              </p>
-            </div>
+            <h2 id="setup-title" className="dialog__title">
+              Connect a model
+            </h2>
+            <p className="dialog__lead">
+              Dialogia talks to providers straight from this browser. Your key is stored here and
+              nowhere else.
+            </p>
 
-            <div className="flex gap-2" role="tablist" aria-label="Provider">
+            <div className="segmented mt-5" role="tablist" aria-label="Provider">
               {(['openrouter', 'anthropic', 'local'] as Choice[]).map((option) => (
                 <button
                   key={option}
                   role="tab"
                   aria-selected={choice === option}
-                  className={`btn btn-sm ${choice === option ? '' : 'btn-outline'}`}
+                  className={`segment${choice === option ? ' is-active' : ''}`}
                   onClick={() => {
                     setChoice(option);
                     setValue('');
@@ -119,38 +117,42 @@ export function SetupSheet() {
             </div>
 
             {choice === 'local' ? (
-              <div className="space-y-2">
-                <label className="text-sm" htmlFor="setup-label">
-                  Name
-                </label>
-                <input
-                  id="setup-label"
-                  className="input w-full text-base sm:text-sm"
-                  value={label}
-                  onChange={(event) => setLabel(event.target.value)}
-                />
-                <label className="text-sm" htmlFor="setup-value">
-                  Base URL
-                </label>
-                <input
-                  id="setup-value"
-                  className="input w-full text-base sm:text-sm"
-                  placeholder="http://localhost:11434/v1"
-                  spellCheck={false}
-                  value={value}
-                  onChange={(event) => setValue(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') void submit();
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Any OpenAI-compatible server: Ollama, LM Studio, llama.cpp, vLLM. Tools and search
-                  stay off until you turn them on in Settings › Providers.
-                </p>
+              <div className="mt-4 space-y-3">
+                <div className="field">
+                  <label className="field__label" htmlFor="setup-label">
+                    Name
+                  </label>
+                  <input
+                    id="setup-label"
+                    className="input w-full text-base sm:text-sm"
+                    value={label}
+                    onChange={(event) => setLabel(event.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label className="field__label" htmlFor="setup-value">
+                    Base URL
+                  </label>
+                  <input
+                    id="setup-value"
+                    className="input w-full text-base sm:text-sm"
+                    placeholder="http://localhost:11434/v1"
+                    spellCheck={false}
+                    value={value}
+                    onChange={(event) => setValue(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') void submit();
+                    }}
+                  />
+                  <p className="field__hint">
+                    Any OpenAI-compatible server: Ollama, LM Studio, llama.cpp, vLLM. Tools and
+                    search stay off until you turn them on in Settings › Providers.
+                  </p>
+                </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <label className="text-sm" htmlFor="setup-value">
+              <div className="field mt-4">
+                <label className="field__label" htmlFor="setup-value">
                   API key
                 </label>
                 <input
@@ -166,12 +168,12 @@ export function SetupSheet() {
                     if (event.key === 'Enter') void submit();
                   }}
                 />
-                <p className="text-xs text-muted-foreground">{KEY_HINTS[choice].hint}</p>
+                <p className="field__hint">{KEY_HINTS[choice].hint}</p>
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-2">
-              <button className="btn btn-ghost btn-sm" onClick={close}>
+            <div className="dialog__actions">
+              <button className="btn-ghost btn-sm" onClick={close}>
                 Not now
               </button>
               <button

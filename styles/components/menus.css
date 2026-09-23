@@ -1,78 +1,67 @@
 @layer components {
-  /* Segmented control */
+  /* Segmented control: a hairline track; the chosen segment is a raised
+     sheet of paper in ink. Choosing is a setting, so never gold. */
   .segmented {
     display: inline-flex;
     align-items: stretch;
-    gap: 0;
+    gap: 2px;
     border: 1px solid var(--color-border);
-    background: color-mix(in oklab, var(--color-muted) 60%, transparent);
-    border-radius: 9999px;
+    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+    border-radius: var(--radius-editorial);
     padding: 2px;
   }
-  .segmented .segment:first-child {
-    margin-left: 0;
-  }
-  .segmented .segment:last-child {
-    margin-right: 0;
-  }
   .segment {
-    height: 32px;
+    height: 30px;
     min-width: 56px;
     padding: 0 12px;
-    border-radius: 9999px;
+    border-radius: 4px;
     background: transparent;
-    color: var(--color-fg);
+    color: var(--color-fg-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
   }
   .segment:hover {
-    background: color-mix(in oklab, var(--color-muted) 70%, transparent);
+    color: var(--color-fg);
   }
   .segment.is-active {
-    background: color-mix(in oklab, var(--color-accent) 92%, var(--color-muted));
-    color: #0b0b0b;
-    box-shadow: inset 0 0 0 1px color-mix(in oklab, #ffffff 25%, var(--color-accent));
+    background: var(--color-surface);
+    color: var(--color-fg);
+    box-shadow:
+      0 0 0 1px var(--color-border),
+      var(--shadow-1);
   }
 
-  /* Micro-interactions for segmented control */
-  .segment {
-    transition:
-      background-color var(--duration-med) var(--ease-standard),
-      color var(--duration-med) var(--ease-standard),
-      transform var(--duration-fast) var(--ease-standard);
-  }
-  .segment:active {
-    transform: translateY(0.5px);
-  }
-
-  /* Popover */
+  /* Popover: every floating menu shares one sheet. */
   .popover {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-editorial);
+    box-shadow: var(--shadow-2);
     transform-origin: top right;
     animation: popover-enter 160ms var(--ease-out-quint);
   }
   @keyframes popover-enter {
     from {
       opacity: 0;
-      transform: translateY(-6px) scale(0.98);
+      transform: translateY(-4px);
     }
     to {
       opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translateY(0);
     }
   }
 
-  /* Menu item */
+  /* Menu item: a row of text; a tint on hover. */
   .menu-item {
     padding: 8px 10px;
-    border-radius: 10px;
+    border-radius: 4px;
     cursor: pointer;
+    color: var(--color-fg);
   }
   .menu-item:hover {
-    background: var(--color-muted);
-  }
-
-  /* Soft divider for sheet sections */
-  .soft-divider {
-    height: 1px;
-    background: color-mix(in oklab, var(--color-border) 85%, transparent);
-    margin: var(--space-3) 0;
+    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
   }
 }

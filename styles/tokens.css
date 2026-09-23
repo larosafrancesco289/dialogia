@@ -77,6 +77,8 @@
   --color-fg-muted: #5b534b;
   --color-accent: #b9975b;
   --color-accent-2: #6d2a8a;
+  /* Ink printed on a gold fill: dark in both themes. */
+  --color-on-accent: #1f1912;
   --color-border: #d5cfc4;
   /* Rubric: the scribe's red ink. The book's own structural marks at rest
      (headings, numerals, rules, labels). Gold stays for what is live. */
@@ -161,6 +163,7 @@
   /* Lifted, softened gold + lavender — glow, don't glare */
   --color-accent: #cda85f;
   --color-accent-2: #b48ad0;
+  --color-on-accent: #1a1510;
   --color-border: #3a3024;
   --color-rubric: #e3805d;
 

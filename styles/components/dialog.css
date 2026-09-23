@@ -1,0 +1,61 @@
+@layer components {
+  /* ===== Dialogs =====
+     Every modal shares one shell: the scrim, a sheet of paper with a
+     hairline, a title in the book face, a lead in muted ink, and the actions
+     at the foot with the one primary action in gold on the right. */
+  .scrim {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-scrim);
+    animation: fade-in 160ms var(--ease-out-quart);
+  }
+  .dialog {
+    position: relative;
+    width: 100%;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-editorial);
+    box-shadow: var(--shadow-3);
+    padding: var(--space-5);
+  }
+  .dialog__title {
+    margin: 0;
+    font-family: var(--font-serif-assistant);
+    font-size: 1.3rem;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--color-fg);
+  }
+  .dialog__lead {
+    margin: var(--space-1) 0 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--color-fg-muted);
+  }
+  .dialog__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-5);
+  }
+
+  /* Form fields inside dialogs and settings */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field__label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-fg);
+  }
+  .field__hint {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--color-fg-muted);
+  }
+}

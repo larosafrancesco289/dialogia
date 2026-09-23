@@ -147,7 +147,7 @@ export function HomeClient() {
         {isMobile && !collapsed && (
           <>
             <button
-              className="fixed inset-0 z-[75] settings-overlay"
+              className="scrim z-[75]"
               aria-label="Close sidebar"
               onClick={() => setUI({ sidebarCollapsed: true })}
             />

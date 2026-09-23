@@ -46,7 +46,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
                 if (!favoriteModelIds?.includes(result.id)) toggleFavoriteModel(result.id);
               }}
             />
-            <div className="text-xs text-muted-foreground">
+            <div className="field__hint">
               Selecting a model adds it to your favorites.{' '}
               {selectedModelId
                 ? `New chats start with ${selectedModelId}, following the model you last used.`

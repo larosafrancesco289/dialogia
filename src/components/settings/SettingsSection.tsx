@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react';
 
 // Component: SettingsSection
-// Responsibility: Standard card shell for grouped settings sections.
+// Responsibility: One ruled section of the settings page, headed by a rubric
+// label. Sections are divided by hairlines, never boxed.
 export function SettingsSection(props: { title: string; children: ReactNode }) {
   const { title, children } = props;
   return (
-    <div className="card p-4 space-y-3">
-      <div className="text-sm font-medium text-muted-foreground">{title}</div>
-      {children}
-    </div>
+    <section className="settings-section">
+      <h3 className="settings-section-header">{title}</h3>
+      <div className="settings-section-content">{children}</div>
+    </section>
   );
 }

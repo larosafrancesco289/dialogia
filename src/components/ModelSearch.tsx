@@ -25,7 +25,6 @@ import {
 } from '@/lib/models/search';
 import {
   CheckIcon,
-  ChevronRightIcon,
   LightBulbIcon,
   PhotoIcon,
   MicrophoneIcon,
@@ -293,18 +292,13 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
         });
       if (!items.length) return null;
       return (
-        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-2">
+        <span className="model-row__caps">
           {items.map((item, idx) => (
-            <span
-              key={`${item.label}-${idx}`}
-              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1"
-              title={item.label}
-            >
+            <span key={`${item.label}-${idx}`} title={item.label} aria-label={item.label}>
               {item.icon}
-              <span className="leading-none">{item.label}</span>
             </span>
           ))}
-        </div>
+        </span>
       );
     };
 
@@ -314,7 +308,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
       return segments.map((segment) => {
         const key = `${keyPrefix}-${counter++}`;
         return segment.highlight ? (
-          <mark key={key} className="rounded bg-primary/15 px-1 py-0 text-primary">
+          <mark key={key} className="model-row__match">
             {segment.text}
           </mark>
         ) : (
@@ -329,17 +323,15 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
     const formatId = (result: ModelSearchResult) =>
       renderHighlightedText(result.fullId, `${result.id}-id`);
 
-    const inputWrapperClasses =
-      `relative rounded-xl border border-border bg-background focus-within:ring-2 focus-within:ring-primary/70 transition-shadow ${inputClassName}`.trim();
-    const inputClasses = 'input w-full bg-transparent focus:ring-0 focus:outline-none';
+    const inputWrapperClasses = `model-search ${inputClassName}`.trim();
 
     return (
       <div className={`space-y-2 ${className}`.trim()}>
         <div className={inputWrapperClasses}>
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <MagnifyingGlassIcon className="model-search__icon" />
           <input
             ref={inputRef}
-            className={`${inputClasses} !pl-11 !pr-3 !py-3 h-auto`}
+            className="model-search__input"
             placeholder={placeholder}
             value={query}
             onChange={(event) => {
@@ -363,7 +355,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
               ref={dropdownRef}
               id={listboxId}
               role="listbox"
-              className="fixed z-[95] card p-2 overflow-auto shadow-[var(--shadow-card)]"
+              className="popover fixed z-[95] p-1 overflow-auto"
               style={{
                 left: position.left,
                 top: position.top,
@@ -373,7 +365,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
               }}
             >
               {results.length === 0 && (
-                <div className="p-3 text-sm text-muted-foreground">{emptyMessage}</div>
+                <div className="p-3 text-sm text-fg-muted">{emptyMessage}</div>
               )}
               {results.map((result, index) => {
                 const isSelected = selectedSet.has(result.id);
@@ -384,9 +376,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
                     type="button"
                     role="option"
                     aria-selected={isSelected}
-                    className={`w-full text-left px-3 py-3 rounded-lg transition-colors border border-transparent ${
-                      isActive ? 'bg-muted/70 border-border' : 'hover:bg-muted'
-                    } ${isSelected ? 'ring-1 ring-primary/40' : ''}`}
+                    className={`model-row${isActive ? ' is-active' : ''}`}
                     onClick={() => handleSelect(result)}
                     onMouseEnter={() => setHighlightedIndex(index)}
                     onMouseDown={(event: MouseEvent<HTMLButtonElement>) => {
@@ -394,46 +384,33 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
                       event.preventDefault();
                     }}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-semibold text-foreground leading-tight">
-                          {formatDisplay(result)}
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          <span className="font-mono text-[11px] tracking-tight whitespace-nowrap">
-                            {formatId(result)}
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <ChevronRightIcon className="h-3.5 w-3.5" />
-                            <span className="text-[11px] uppercase tracking-wide">
-                              {result.providerLabel || result.provider}
-                            </span>
-                          </span>
-                          {result.contextLength && (
-                            <span title="Context length" className="whitespace-nowrap">
-                              {Intl.NumberFormat().format(result.contextLength)} tokens
-                            </span>
-                          )}
-                          {result.price && (
-                            <span className="whitespace-nowrap">{result.price}</span>
-                          )}
-                        </div>
-                        {renderCapabilities(result)}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 text-xs font-medium text-muted-foreground">
-                        {isSelected ? (
-                          <span className="inline-flex items-center gap-1 text-primary">
-                            <CheckIcon className={ICON_SIZE} />
-                            {selectedLabel}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1">
-                            <PlusSymbol />
-                            {actionLabel}
+                    <span className="model-row__main">
+                      <span className="model-row__name">{formatDisplay(result)}</span>
+                      <span className="model-row__meta">
+                        <span>{result.providerLabel || result.provider}</span>
+                        <span className="model-row__id">{formatId(result)}</span>
+                        {result.contextLength && (
+                          <span title="Context length">
+                            {Intl.NumberFormat().format(result.contextLength)} tokens
                           </span>
                         )}
-                      </div>
-                    </div>
+                        {result.price && <span>{result.price}</span>}
+                      </span>
+                    </span>
+                    {renderCapabilities(result)}
+                    <span className={`model-row__action${isSelected ? ' is-selected' : ''}`}>
+                      {isSelected ? (
+                        <>
+                          <CheckIcon className={ICON_SIZE} />
+                          {selectedLabel}
+                        </>
+                      ) : (
+                        <>
+                          <PlusSymbol />
+                          {actionLabel}
+                        </>
+                      )}
+                    </span>
                   </button>
                 );
               })}

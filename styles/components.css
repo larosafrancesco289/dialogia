@@ -5,6 +5,8 @@
 @import './components/settings.css';
 @import './components/panels.css';
 @import './components/overlays.css';
+@import './components/dialog.css';
+@import './components/picker.css';
 @import './components/menus.css';
 @import './components/sidebar.css';
 @import './components/composer.css';

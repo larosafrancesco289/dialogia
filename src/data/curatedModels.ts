@@ -1,17 +1,7 @@
-import type { ComponentType } from 'react';
-import {
-  ChatBubbleLeftRightIcon,
-  BoltIcon,
-  CodeBracketIcon,
-  PhotoIcon,
-  RocketLaunchIcon,
-} from '@heroicons/react/24/outline';
-
 type CuratedModel = {
   id: string;
   name: string;
   description: string;
-  Icon: ComponentType<{ className?: string }>;
 };
 
 // Ids starting with '~' are dynamic aliases resolved against the live model
@@ -19,15 +9,13 @@ type CuratedModel = {
 export const DEFAULT_CHAT_MODEL: CuratedModel = {
   id: '~openai/gpt-latest',
   name: 'GPT Latest',
-  description: 'Newest flagship GPT — frontier default for reasoning, writing, tools, and polish',
-  Icon: ChatBubbleLeftRightIcon,
+  description: 'The newest flagship GPT, for reasoning, writing and tools',
 };
 
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
   id: '~anthropic/frontier',
   name: 'Claude Frontier',
-  description: 'Most capable Anthropic model — premium tutor for high-stakes explanations',
-  Icon: BoltIcon,
+  description: 'The most capable Claude, and the tutor by default',
 };
 
 export const DEFAULT_MODEL_ID = DEFAULT_CHAT_MODEL.id;
@@ -40,26 +28,22 @@ export const CURATED_MODELS: CuratedModel[] = [
   {
     id: 'google/gemini-3.1-pro-preview',
     name: 'Gemini 3.1 Pro',
-    description: 'Best multimodal research pick with a massive context window',
-    Icon: RocketLaunchIcon,
+    description: 'Research across images and very long documents',
   },
   {
     id: 'moonshotai/kimi-k2.6',
     name: 'Kimi K2.6',
-    description: 'Top open-weight option for coding, agents, and value',
-    Icon: CodeBracketIcon,
+    description: 'Open weights, strong at code, good value',
   },
   {
     id: 'openai/gpt-5.4-image-2',
     name: 'GPT-5.4 Image 2',
-    description: 'Best creative option for image-capable multimodal work',
-    Icon: PhotoIcon,
+    description: 'Makes and edits images',
   },
   {
     id: '~x-ai/grok-latest',
     name: 'Grok Latest',
-    description: 'Latest long-context Grok for agentic and bulk tasks',
-    Icon: RocketLaunchIcon,
+    description: 'The newest Grok, for long agentic runs',
   },
 ];
 

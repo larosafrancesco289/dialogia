@@ -69,47 +69,32 @@ export function AppearancePanel(props: AppearancePanelProps) {
               <div className="settings-row-label">
                 <div className="settings-row-label-text">Color scheme</div>
                 <div className="settings-row-label-description">
-                  Choose between light, dark, or automatic based on system preference.
+                  Light, dark, or following your system.
                 </div>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-colors ${
-                  themeMode === 'light'
-                    ? 'bg-muted border-accent text-foreground'
-                    : 'border-border text-muted-foreground hover:bg-muted/50'
-                }`}
-                onClick={() => handleThemeChange('light')}
-              >
-                <SunIcon className="h-5 w-5" />
-                <span className="text-sm font-medium">Light</span>
-              </button>
-              <button
-                type="button"
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-colors ${
-                  themeMode === 'dark'
-                    ? 'bg-muted border-accent text-foreground'
-                    : 'border-border text-muted-foreground hover:bg-muted/50'
-                }`}
-                onClick={() => handleThemeChange('dark')}
-              >
-                <MoonIcon className="h-5 w-5" />
-                <span className="text-sm font-medium">Dark</span>
-              </button>
-              <button
-                type="button"
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-colors ${
-                  themeMode === 'auto'
-                    ? 'bg-muted border-accent text-foreground'
-                    : 'border-border text-muted-foreground hover:bg-muted/50'
-                }`}
-                onClick={() => handleThemeChange('auto')}
-              >
-                <ComputerDesktopIcon className="h-5 w-5" />
-                <span className="text-sm font-medium">Auto</span>
-              </button>
+              <div className="settings-row-control">
+                <div className="segmented" role="radiogroup" aria-label="Color scheme">
+                  {(
+                    [
+                      { mode: 'light', label: 'Light', Icon: SunIcon },
+                      { mode: 'dark', label: 'Dark', Icon: MoonIcon },
+                      { mode: 'auto', label: 'Auto', Icon: ComputerDesktopIcon },
+                    ] as const
+                  ).map(({ mode, label, Icon }) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      role="radio"
+                      aria-checked={themeMode === mode}
+                      className={`segment inline-flex items-center gap-1.5${themeMode === mode ? ' is-active' : ''}`}
+                      onClick={() => handleThemeChange(mode)}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>,
