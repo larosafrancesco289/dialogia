@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 
@@ -74,7 +75,9 @@ export function PlanFeedbackModal({
     : `What would you like to adjust?\n\nExamples:\n• "Could we add more practice for the fundamentals?"\n• "I already know X, can we skip or accelerate it?"\n• "Can we reorganize to focus more on Y?"`;
   const canSubmit = feedback.trim().length > 0 && !isSubmitting;
 
-  return (
+  // Portalled to the body: inside the side panel's stacking context the
+  // scrim could not cover the top bar or the composer.
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -140,6 +143,7 @@ export function PlanFeedbackModal({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

@@ -69,3 +69,19 @@ test('shouldTrackVirtualKeyboard enables tracking for touch devices', () => {
 
   assert.equal(shouldTrackVirtualKeyboard(win), true);
 });
+
+test('computeKeyboardMetrics reads a shorter window as a resize, not a keyboard', () => {
+  const win = createWindow(800) as unknown as Window;
+  const viewport = createViewport(800, 0) as unknown as VisualViewport;
+  const state = createKeyboardTrackerState(win, viewport);
+
+  Reflect.set(win, 'innerHeight', 600);
+  Reflect.set(viewport, 'height', 600);
+  const metrics = computeKeyboardMetrics(state, { window: win, viewport });
+  assert.equal(metrics.offset, 0);
+  assert.equal(state.viewportKeyboardVisible, false);
+
+  // A keyboard afterwards is still seen against the new height.
+  Reflect.set(viewport, 'height', 350);
+  assert.equal(computeKeyboardMetrics(state, { window: win, viewport }).offset, 250);
+});

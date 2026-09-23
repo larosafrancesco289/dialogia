@@ -7,7 +7,10 @@ type AbortConfig = {
 
 type AbortCleanup = {
   signal: AbortSignal;
+  /** Stops the timeout and unlinks the caller's signal. */
   cleanup: () => void;
+  /** Stops only the timeout; the caller's signal still aborts the request. */
+  clearTimer: () => void;
 };
 
 function hasContentType(headers: Record<string, string>): boolean {
@@ -37,8 +40,13 @@ export function withAbortTimeout({ signal, timeoutMs }: AbortConfig = {}): Abort
   let timeout: ReturnType<typeof setTimeout> | undefined;
   let abortListenerAttached = false;
 
-  const cleanup = () => {
+  const clearTimer = () => {
     if (timeout) clearTimeout(timeout);
+    timeout = undefined;
+  };
+
+  const cleanup = () => {
+    clearTimer();
     if (abortListenerAttached && signal) {
       signal.removeEventListener('abort', onAbort);
     }
@@ -59,7 +67,7 @@ export function withAbortTimeout({ signal, timeoutMs }: AbortConfig = {}): Abort
     }
   }
 
-  return { signal: controller.signal, cleanup };
+  return { signal: controller.signal, cleanup, clearTimer };
 }
 
 type HeaderOptions = {
@@ -117,20 +125,26 @@ export async function sendApiRequest(options: SendApiRequestOptions): Promise<Re
     defaultContentType: options.defaultContentType,
   });
 
-  const { signal, cleanup } = withAbortTimeout({
+  const { signal, cleanup, clearTimer } = withAbortTimeout({
     signal: options.signal,
     timeoutMs: options.timeoutMs,
   });
 
   try {
-    return await fetch(options.url, {
+    const response = await fetch(options.url, {
       method: options.method ?? 'GET',
       headers,
       body,
       signal,
       cache: options.cache ?? 'no-store',
     });
-  } finally {
+    // The timeout guards the wait for a response. The caller's signal must
+    // stay linked while the body is read: a streamed reply is still being
+    // read long after this returns, and Stop has to reach it.
+    clearTimer();
+    return response;
+  } catch (error) {
     cleanup();
+    throw error;
   }
 }

@@ -22,11 +22,13 @@ export function useLongPressSheet(opts: UseLongPressSheetOptions) {
 
   const onPointerDown = (event: React.PointerEvent) => {
     if (!enabled) return;
-    if (event.pointerType === 'mouse') return;
+    // Every press is measured, so a mouse click in a narrow window still
+    // counts as a tap; only a touch can become a long press.
     startX.current = event.clientX;
     startY.current = event.clientY;
     fired.current = false;
     clearTimer();
+    if (event.pointerType === 'mouse') return;
     timerId.current = window.setTimeout(() => {
       fired.current = true;
       onLongPress();

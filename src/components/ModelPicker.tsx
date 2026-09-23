@@ -282,70 +282,72 @@ export function ModelPicker({
         />
       </div>
       <div ref={listRef} id="model-picker-list" className="model-picker__list" role="listbox">
-        {sections.length === 0 && (
+        {!sections.some((section) => section.rows.length > 0) && (
           <p className="model-picker__empty">
             {queryWords.length ? 'No model matches that.' : 'No models loaded yet.'}
           </p>
         )}
-        {sections.map((section) => (
-          <div key={section.title} className="model-picker__section">
-            <div className="model-picker__heading">{section.title}</div>
-            {section.rows.map((row) => {
-              index += 1;
-              const rowIndex = index;
-              const isSelected = row.id === selectedId;
-              return (
-                <div
-                  key={row.id}
-                  data-index={rowIndex}
-                  role="option"
-                  aria-selected={isSelected}
-                  className={`model-row${rowIndex === activeIndex ? ' is-active' : ''}${isSelected ? ' is-selected' : ''}`}
-                  onClick={() => choose(row)}
-                  onMouseMove={() => setActiveIndex(rowIndex)}
-                >
-                  <span className="model-row__main">
-                    <span className="model-row__name">
-                      <Highlighted text={row.name} words={queryWords} />
+        {sections
+          .filter((section) => section.rows.length > 0)
+          .map((section) => (
+            <div key={section.title} className="model-picker__section">
+              <div className="model-picker__heading">{section.title}</div>
+              {section.rows.map((row) => {
+                index += 1;
+                const rowIndex = index;
+                const isSelected = row.id === selectedId;
+                return (
+                  <div
+                    key={row.id}
+                    data-index={rowIndex}
+                    role="option"
+                    aria-selected={isSelected}
+                    className={`model-row${rowIndex === activeIndex ? ' is-active' : ''}${isSelected ? ' is-selected' : ''}`}
+                    onClick={() => choose(row)}
+                    onMouseMove={() => setActiveIndex(rowIndex)}
+                  >
+                    <span className="model-row__main">
+                      <span className="model-row__name">
+                        <Highlighted text={row.name} words={queryWords} />
+                      </span>
+                      <span className="model-row__meta">
+                        {row.note ? (
+                          <span className="model-row__note">{row.note}</span>
+                        ) : (
+                          <>
+                            {row.result?.providerLabel && <span>{row.result.providerLabel}</span>}
+                            {row.result?.contextLength && (
+                              <span>
+                                {Intl.NumberFormat().format(row.result.contextLength)} tokens
+                              </span>
+                            )}
+                            {row.result?.price && <span>{row.result.price}</span>}
+                          </>
+                        )}
+                      </span>
                     </span>
-                    <span className="model-row__meta">
-                      {row.note ? (
-                        <span className="model-row__note">{row.note}</span>
-                      ) : (
-                        <>
-                          {row.result?.providerLabel && <span>{row.result.providerLabel}</span>}
-                          {row.result?.contextLength && (
-                            <span>
-                              {Intl.NumberFormat().format(row.result.contextLength)} tokens
-                            </span>
-                          )}
-                          {row.result?.price && <span>{row.result.price}</span>}
-                        </>
-                      )}
-                    </span>
-                  </span>
-                  <Capabilities result={row.result} />
-                  {isSelected ? (
-                    <CheckIcon className="model-row__check" aria-label="Selected" />
-                  ) : row.removable ? (
-                    <button
-                      type="button"
-                      className="icon-button icon-button--sm model-row__remove"
-                      title="Remove from favorites"
-                      aria-label={`Remove ${row.name} from favorites`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        toggleFavoriteModel(row.id);
-                      }}
-                    >
-                      <XMarkIcon />
-                    </button>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+                    <Capabilities result={row.result} />
+                    {isSelected ? (
+                      <CheckIcon className="model-row__check" aria-label="Selected" />
+                    ) : row.removable ? (
+                      <button
+                        type="button"
+                        className="icon-button icon-button--sm model-row__remove"
+                        title="Remove from favorites"
+                        aria-label={`Remove ${row.name} from favorites`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleFavoriteModel(row.id);
+                        }}
+                      >
+                        <XMarkIcon />
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
       </div>
     </div>
   );

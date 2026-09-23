@@ -357,7 +357,10 @@
     gap: 2px;
     min-width: 0;
   }
+  /* In the column the field keeps the height the resize hook gives it;
+     flex: 1 would pin it to one line. */
   .composer-row .composer-field {
+    flex: none;
     padding: 0.35rem 0.25rem 0.15rem;
   }
   .composer-tools {

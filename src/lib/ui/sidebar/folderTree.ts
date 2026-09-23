@@ -29,6 +29,10 @@ const compareByRecency = (
   return a.id.localeCompare(b.id);
 };
 
+const compareByName = (a: Folder, b: Folder) =>
+  a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) ||
+  a.createdAt - b.createdAt;
+
 export function buildFolderTreeIndex(folders: Folder[], chats: Chat[]): FolderTreeIndex {
   const chatsByFolderId = new Map<string, Chat[]>();
   for (const chat of chats) {
@@ -47,6 +51,11 @@ export function buildFolderTreeIndex(folders: Folder[], chats: Chat[]): FolderTr
     const list = foldersByParentId.get(key);
     if (list) list.push(folder);
     else foldersByParentId.set(key, [folder]);
+  }
+  // Folders read like an index: by name, the same order as the move menu, and
+  // the same after a reload (storage returns them in random-id order).
+  for (const [key, list] of foldersByParentId.entries()) {
+    foldersByParentId.set(key, [...list].sort(compareByName));
   }
 
   return {

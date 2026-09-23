@@ -203,13 +203,11 @@ export function ChatPanel(props: ChatPanelProps) {
         <SettingsSection title="Reasoning">
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="field__label flex items-center justify-between">
-                <span>Reasoning effort</span>
-                <button className="btn-ghost btn-sm" onClick={() => setReasoningEffort(undefined)}>
-                  Default
-                </button>
+              <label className="field__label" htmlFor="settings-reasoning-effort">
+                Reasoning effort
               </label>
               <select
+                id="settings-reasoning-effort"
                 className="input w-full"
                 value={reasoningEffort ?? ''}
                 onChange={(e) => {
@@ -235,14 +233,14 @@ export function ChatPanel(props: ChatPanelProps) {
                   }
                 }}
               >
-                <option value="">model default</option>
-                <option value="none">none</option>
-                <option value="minimal">minimal</option>
-                <option value="low">low</option>
-                <option value="medium">medium</option>
-                <option value="high">high</option>
-                <option value="xhigh">extra high</option>
-                <option value="max">max</option>
+                <option value="">Model default</option>
+                <option value="none">Off</option>
+                <option value="minimal">Minimal</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="xhigh">Extra high</option>
+                <option value="max">Max</option>
               </select>
               <div className="field__hint">
                 How hard new chats think by default. Change it per chat from the composer; a model
@@ -250,22 +248,14 @@ export function ChatPanel(props: ChatPanelProps) {
               </div>
             </div>
             <div className="space-y-1">
-              <label className="field__label flex items-center justify-between">
-                <span>Reasoning tokens</span>
-                <button
-                  className="btn-ghost btn-sm"
-                  onClick={() => {
-                    setReasoningTokens(undefined);
-                    setReasoningTokensStr('');
-                  }}
-                >
-                  Auto
-                </button>
+              <label className="field__label" htmlFor="settings-reasoning-tokens">
+                Reasoning tokens
               </label>
               <input
+                id="settings-reasoning-tokens"
                 className="input w-full"
                 inputMode="numeric"
-                placeholder="auto"
+                placeholder="Automatic"
                 value={reasoningTokensStr}
                 onChange={(e) => setReasoningTokensStr(e.target.value)}
                 onBlur={() => {
@@ -280,7 +270,8 @@ export function ChatPanel(props: ChatPanelProps) {
                 onKeyDown={(e) => e.stopPropagation()}
               />
               <div className="field__hint">
-                A cap on thinking tokens, for models that accept one.
+                A cap on thinking tokens, for models that accept one. Leave it empty to let the
+                model decide.
               </div>
             </div>
           </div>

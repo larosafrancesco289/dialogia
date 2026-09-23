@@ -13,6 +13,8 @@ export type KeyboardTrackerState = {
   viewportKeyboardVisible: boolean;
   fallbackBaseline: number;
   fallbackKeyboardVisible: boolean;
+  /** The window height last seen; a change means the window was resized. */
+  lastInnerHeight?: number;
 };
 
 export function shouldTrackVirtualKeyboard(win: Window): boolean {
@@ -37,6 +39,7 @@ export function createKeyboardTrackerState(
     viewportKeyboardVisible: false,
     fallbackBaseline: baseline,
     fallbackKeyboardVisible: false,
+    lastInnerHeight: baseline,
   };
 }
 
@@ -51,6 +54,16 @@ export function computeKeyboardMetrics(
     const height = viewport.height ?? win.innerHeight;
     const total = height + top;
     const candidate = Math.max(total, win.innerHeight);
+
+    // A keyboard shrinks the visual viewport and leaves the window alone.
+    // When the window itself changes height it was resized (or the layout
+    // already made room), so start again from the new height rather than
+    // reading the lost space as a keyboard.
+    if (state.lastInnerHeight !== undefined && win.innerHeight !== state.lastInnerHeight) {
+      state.viewportBaseline = candidate;
+      state.viewportKeyboardVisible = false;
+    }
+    state.lastInnerHeight = win.innerHeight;
 
     if (!state.viewportKeyboardVisible) {
       state.viewportBaseline = Math.max(state.viewportBaseline, candidate);

@@ -38,7 +38,7 @@ function compactText(value: string, max = 140) {
   if (text.length <= max) return text;
   const slice = text.slice(0, max);
   const lastSpace = slice.lastIndexOf(' ');
-  return `${slice.slice(0, lastSpace > 90 ? lastSpace : max)}...`;
+  return `${slice.slice(0, lastSpace > 90 ? lastSpace : max)}…`;
 }
 
 /** Markdown emphasis and code marks, which the one-line summary shows bare. */
@@ -493,7 +493,7 @@ export function ResponseContextPanel({
                     onClick={() => setSourcesOpen((value) => !value)}
                   >
                     {isSearching
-                      ? `Looking for sources${sources?.query ? `: ${sources.query}` : ''}...`
+                      ? `Looking for sources${sources?.query ? `: ${sources.query}` : ''}…`
                       : hasSearchError
                         ? sources?.error || 'Search could not return sources.'
                         : `Consulted ${sourceItems.length} source${sourceItems.length === 1 ? '' : 's'}`}

@@ -25,20 +25,20 @@ export function ConfirmDialog({
 }: Props) {
   const cancelRef = useRef<HTMLButtonElement>(null);
 
+  // Enter is left to the focused button, so it answers what is focused:
+  // Cancel, where focus starts, until the reader moves to the other one.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel();
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        onConfirm();
-      }
     };
     document.addEventListener('keydown', onKey);
-    // Focus the cancel button first for safety
-    cancelRef.current?.focus();
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onCancel, onConfirm]);
+  }, [open, onCancel]);
+
+  useEffect(() => {
+    if (open) cancelRef.current?.focus();
+  }, [open]);
 
   if (!open) return null;
 

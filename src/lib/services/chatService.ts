@@ -131,12 +131,17 @@ export class ChatService {
     await repository.deleteChatAndMessages(chatId);
   }
 
+  /**
+   * `updatedAt` orders the sidebar by last activity, so tidying a chat
+   * (renaming, filing it) passes `touch: false` and leaves it where it is.
+   */
   static async updateChat(
     chat: Chat,
     changes: Partial<Chat>,
     repository: Repository,
+    { touch = true }: { touch?: boolean } = {},
   ): Promise<Chat> {
-    const updated = { ...chat, ...changes, updatedAt: Date.now() };
+    const updated = { ...chat, ...changes, updatedAt: touch ? Date.now() : chat.updatedAt };
     await repository.saveChat(updated);
     return updated;
   }
@@ -146,7 +151,7 @@ export class ChatService {
     folderId: string | undefined,
     repository: Repository,
   ): Promise<Chat> {
-    const updated = { ...chat, folderId, updatedAt: Date.now() };
+    const updated = { ...chat, folderId };
     await repository.saveChat(updated);
     return updated;
   }
@@ -189,7 +194,7 @@ export class ChatService {
     const chatsInFolder = allChats.filter((c) => c.folderId === folderId);
     const updatedChats: Chat[] = [];
     for (const chat of chatsInFolder) {
-      const u = { ...chat, folderId: undefined, updatedAt: Date.now() };
+      const u = { ...chat, folderId: undefined };
       await repository.saveChat(u);
       updatedChats.push(u);
     }

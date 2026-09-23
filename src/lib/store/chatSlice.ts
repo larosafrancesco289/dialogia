@@ -201,7 +201,7 @@ export function createChatSlice(
     async renameChat(id: string, title: string) {
       const chat = get().chats.find((c) => c.id === id);
       if (!chat) return;
-      const updated = await ChatService.updateChat(chat, { title }, repository);
+      const updated = await ChatService.updateChat(chat, { title }, repository, { touch: false });
       set((s) => ({
         chats: s.chats.map((c) => (c.id === id ? updated : c)),
       }));
