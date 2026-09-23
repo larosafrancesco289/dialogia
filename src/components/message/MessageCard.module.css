@@ -33,9 +33,8 @@
 .assistant {
   background: transparent;
   border: none;
-  /* Bottom margin + padding clears the ~36px hover action menu that hangs
-     below the content anchor, so it never overlaps the next message. */
-  margin: 0 0 var(--space-6);
+  /* The footer (actions, colophon) sits in the flow under the text. */
+  margin: 0 0 var(--space-4);
   padding: var(--space-3) 0;
   border-radius: 0;
   width: 100%;
@@ -106,11 +105,6 @@
 .messageCard:hover,
 .messageCard:focus-within {
   z-index: 1;
-}
-
-.assistant .actions {
-  right: 0;
-  left: auto;
 }
 
 .messageCard :global(.markdown) {
@@ -185,13 +179,13 @@
   }
 }
 
-/* Older replies keep their colophon out of the way until hovered. */
-.colophonOnHover {
+/* Older replies keep their footer out of the way until hovered. */
+.footOnHover {
   opacity: 0;
   transition: opacity var(--duration-fast) var(--ease-standard);
 }
-.messageCard:hover .colophonOnHover,
-.messageCard:focus-within .colophonOnHover {
+.messageCard:hover .footOnHover,
+.messageCard:focus-within .footOnHover {
   opacity: 1;
 }
 

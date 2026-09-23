@@ -1,49 +1,41 @@
 import type { ReactNode } from 'react';
-import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import styles from './MessageCard.module.css';
 
-type MessageActionsProps = {
-  isEditing: boolean;
-  isMobile: boolean;
-  onSave: () => void;
-  onCancel: () => void;
-  children: ReactNode;
-};
-
+/**
+ * Your message's actions: copy and edit, under the bubble on the right,
+ * shown on hover. Hidden while editing; the edit bar takes over.
+ */
 export function MessageActions({
   isEditing,
   isMobile,
-  onSave,
-  onCancel,
   children,
-}: MessageActionsProps) {
+}: {
+  isEditing: boolean;
+  isMobile: boolean;
+  children: ReactNode;
+}) {
+  if (isEditing) return null;
   return (
     <div
       className={`${styles.actions} message-actions`}
       style={isMobile ? { opacity: 1, pointerEvents: 'auto' } : undefined}
     >
-      {isEditing ? (
-        <div className="message-actions__group">
-          <button
-            className="message-action-btn"
-            aria-label="Save edit"
-            title="Save edit"
-            onClick={onSave}
-          >
-            <CheckIcon className="h-4 w-4" />
-          </button>
-          <button
-            className="message-action-btn"
-            aria-label="Cancel edit"
-            title="Cancel edit"
-            onClick={onCancel}
-          >
-            <XMarkIcon className="h-4 w-4" />
-          </button>
-        </div>
-      ) : (
-        <div className="message-actions__group">{children}</div>
-      )}
+      <div className="message-actions__group">{children}</div>
+    </div>
+  );
+}
+
+/** Save and cancel under a message being edited, with the shortcut named. */
+export function MessageEditBar({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
+  return (
+    <div className="message-edit-bar">
+      <span className="message-edit-bar__hint">⌘ Enter to save</span>
+      <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>
+        Cancel
+      </button>
+      <button type="button" className="btn btn-sm" onClick={onSave}>
+        Save
+      </button>
     </div>
   );
 }
@@ -69,6 +61,7 @@ export function ActionButton({
 }: ActionButtonProps) {
   return (
     <button
+      type="button"
       className={`message-action-btn ${showFeedback ? 'is-success' : ''} ${className ?? ''}`.trim()}
       aria-label={ariaLabel ?? title}
       title={title}

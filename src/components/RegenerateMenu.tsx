@@ -7,7 +7,13 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useCuratedModels, useDefaultModelId } from '@/lib/hooks/useModelCatalog';
 import type { ModelDescriptor } from '@/lib/types';
 
-export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => void }) {
+export function RegenerateMenu({
+  onChoose,
+  disabled = false,
+}: {
+  onChoose: (modelId?: string) => void;
+  disabled?: boolean;
+}) {
   const { chat, favoriteModelIds, models } = useChatStore(
     (s) => ({
       chat: s.selectedChatId ? s.chats.find((c) => c.id === s.selectedChatId) : undefined,
@@ -28,13 +34,8 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
     }
     return map;
   }, [models]);
-  const curated = [
-    {
-      id: chat?.settings.modelId || curatedModels[0]?.id || defaultModelId,
-      name: 'Current',
-    },
-    ...curatedModels,
-  ];
+  const currentId = chat?.settings.modelId || curatedModels[0]?.id || defaultModelId;
+  const curated = [{ id: currentId, name: currentId }, ...curatedModels];
   const customOptions = (favoriteModelIds || []).map((id) => ({ id, name: id }));
   type ModelOption = { id: string; name: string };
   const options = [...curated, ...customOptions].reduce<ModelOption[]>((acc, m) => {
@@ -70,7 +71,7 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
     top: 0,
     placement: 'down',
   });
-  const widthPx = 14 * 16; // Tailwind w-56 = 14rem (assuming 16px root)
+  const widthPx = 15 * 16; // w-60 = 15rem (assuming 16px root)
   const margin = 8;
   const updateCoords = useCallback(() => {
     const root = rootRef.current;
@@ -78,8 +79,10 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
     const rect = root.getBoundingClientRect();
     const measuredHeight = menuRef.current?.offsetHeight ?? 0;
     const estimatedHeight = measuredHeight || 224; // fallback height before first measurement
+    // The button sits at the start of the reply's footer: open from its left
+    // edge, clamped to the viewport.
     const left = Math.min(
-      Math.max(margin, Math.round(rect.right - widthPx)),
+      Math.max(margin, Math.round(rect.left)),
       Math.max(margin, window.innerWidth - widthPx - margin),
     );
     const spaceAbove = rect.top - margin;
@@ -143,11 +146,13 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
   return (
     <div className="inline-flex" ref={rootRef}>
       <button
+        type="button"
         className="message-action-btn"
-        aria-label="Regenerate with different model"
-        title="Regenerate with different model"
+        aria-label="Try again"
+        title="Try again"
         aria-haspopup="menu"
         aria-expanded={open}
+        disabled={disabled}
         onClick={() =>
           setOpen((v) => {
             if (!v) updateCoords();
@@ -171,7 +176,7 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
             aria-label="Regenerate options"
             ref={menuRef}
           >
-            <div className="menu-heading">Regenerate with</div>
+            <div className="menu-heading">Try again with</div>
             {options.map((o) => {
               const label = formatModelLabel({
                 model: modelMap.get(o.id),
@@ -189,7 +194,12 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
                     setOpen(false);
                   }}
                 >
-                  {label}
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="truncate">{label}</span>
+                    {o.id === currentId && (
+                      <span className="text-xs text-fg-muted">same model</span>
+                    )}
+                  </span>
                 </button>
               );
             })}

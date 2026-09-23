@@ -11,7 +11,7 @@ import { Markdown, type MarkdownCitationSource } from '@/components/Markdown';
 import { RegenerateMenu } from '@/components/RegenerateMenu';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { MessageModuleSlot } from '@/components/ModuleSlot';
-import { MessageActions, ActionButton } from '@/components/message/MessageActions';
+import { ActionButton, MessageEditBar } from '@/components/message/MessageActions';
 import { MessageColophon } from '@/components/message/MessageColophon';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
@@ -168,53 +168,23 @@ export function AssistantMessage({
         isEditing ? ' message-content-anchor--editing' : ''
       }`}
     >
-      {showInlineActions && (
-        <MessageActions
-          isEditing={isEditing}
-          isMobile={isMobile}
-          onSave={saveEdit}
-          onCancel={() => {
-            setEditingId(null);
-            setDraft('');
-          }}
-        >
-          <ActionButton
-            icon={
-              copiedId === message.id ? (
-                <CheckIcon className="h-4 w-4" />
-              ) : (
-                <ClipboardIcon className="h-4 w-4" />
-              )
-            }
-            title={copiedId === message.id ? 'Copied!' : 'Copy message'}
-            ariaLabel="Copy message"
-            onClick={copyMessage}
-            showFeedback={copiedId === message.id}
-          />
-          {!isChatStreaming && (
-            <ActionButton
-              icon={<PencilSquareIcon className="h-4 w-4" />}
-              title="Edit message"
-              ariaLabel="Edit message"
-              onClick={startEditingMessage}
-            />
-          )}
-          <ActionButton
-            icon={<ArrowUturnRightIcon className="h-4 w-4" />}
-            title="Create a new chat starting from this reply"
-            ariaLabel="Branch chat from here"
-            onClick={branchFromMessage}
-            disabled={isChatStreaming}
-          />
-          <RegenerateMenu onChoose={onChooseRegenerateModel} />
-        </MessageActions>
-      )}
-
       {upperPanelsNode}
 
       <MessageAttachments attachments={attachments} onOpenLightbox={setLightbox} />
 
       {messageBody && <div className="px-4 py-3">{messageBody}</div>}
+
+      {isEditing && (
+        <div className="px-4 pb-3">
+          <MessageEditBar
+            onSave={saveEdit}
+            onCancel={() => {
+              setEditingId(null);
+              setDraft('');
+            }}
+          />
+        </div>
+      )}
 
       {!isStreaming && !isEditing && message.finishReason === 'content_filter' && (
         <div className="px-4 pb-3 pt-1">
@@ -275,9 +245,45 @@ export function AssistantMessage({
 
       {!isEditing && !isStreaming && <MessageModuleSlot slot="messageFooter" message={message} />}
 
-      {showStats && chat && !isStreaming && !isEditing && displayContent.trim() && (
-        <div className={`px-4 ${isLatestAssistant ? '' : styles.colophonOnHover}`.trim()}>
-          <MessageColophon message={message} chat={chat} models={models} />
+      {/* The reply's footer: its actions where the eye finishes reading, then
+          the colophon. Always there under the latest reply; older replies
+          show it on hover. */}
+      {!isStreaming && !isEditing && displayContent.trim() && (showInlineActions || showStats) && (
+        <div className={`message-foot px-4 ${isLatestAssistant ? '' : styles.footOnHover}`.trim()}>
+          {showInlineActions && (
+            <div className="message-actions__group">
+              <ActionButton
+                icon={
+                  copiedId === message.id ? (
+                    <CheckIcon className="h-4 w-4" />
+                  ) : (
+                    <ClipboardIcon className="h-4 w-4" />
+                  )
+                }
+                title={copiedId === message.id ? 'Copied' : 'Copy'}
+                ariaLabel="Copy message"
+                onClick={copyMessage}
+                showFeedback={copiedId === message.id}
+              />
+              <RegenerateMenu onChoose={onChooseRegenerateModel} disabled={isChatStreaming} />
+              <ActionButton
+                icon={<ArrowUturnRightIcon className="h-4 w-4" />}
+                title="Continue in a new chat from here"
+                ariaLabel="Branch chat from here"
+                onClick={branchFromMessage}
+                disabled={isChatStreaming}
+              />
+              {!isChatStreaming && (
+                <ActionButton
+                  icon={<PencilSquareIcon className="h-4 w-4" />}
+                  title="Edit"
+                  ariaLabel="Edit message"
+                  onClick={startEditingMessage}
+                />
+              )}
+            </div>
+          )}
+          {showStats && chat && <MessageColophon message={message} chat={chat} models={models} />}
         </div>
       )}
     </div>
