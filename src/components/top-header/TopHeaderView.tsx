@@ -16,7 +16,6 @@ export function TopHeaderView({
   collapsed,
   isSettingsOpen,
   tutorActive,
-  tutorModelId,
   tutorModelLabel,
   onToggleSidebar,
   onToggleSettings,
@@ -48,11 +47,7 @@ export function TopHeaderView({
 
         {/* Center content: Model picker (read-only when tutor active) */}
         <div className="top-header__center">
-          <ModelPickerTrigger
-            tutorActive={tutorActive}
-            tutorModelId={tutorModelId}
-            tutorModelLabel={tutorModelLabel}
-          />
+          <ModelPickerTrigger tutorActive={tutorActive} tutorModelLabel={tutorModelLabel} />
         </div>
 
         <HeaderDivider />
@@ -61,14 +56,18 @@ export function TopHeaderView({
 
         {/* Subtle controls row */}
         <div className="header-controls">
-          <button
-            className="icon-button hide-on-mobile"
-            aria-label="New chat"
-            title="New chat"
-            onClick={onNewChat}
-          >
-            <PlusIcon className="h-5 w-5" />
-          </button>
+          {/* The sidebar owns chat navigation; its new-chat button steps into
+              the bar only while the sidebar is hidden. */}
+          {collapsed && (
+            <button
+              className="icon-button hide-on-mobile"
+              aria-label="New chat"
+              title="New chat"
+              onClick={onNewChat}
+            >
+              <PlusIcon className="h-5 w-5" />
+            </button>
+          )}
           <div className="hide-on-mobile">
             <ThemeToggle variant="icon" className="top-header__theme" />
           </div>

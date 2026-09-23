@@ -50,7 +50,7 @@
      controls as icons so the model name stays readable. */
   @container (max-width: 720px) {
     .top-header .tutor-toggle__text,
-    .top-header .plan-button__text {
+    .top-header .plan-status__text {
       display: none;
     }
   }
@@ -78,7 +78,9 @@
   }
 
   /* ============================================
-   * MODEL PICKER TRIGGER (Rich card style)
+   * MODEL PICKER TRIGGER
+   * The model's name set like a running head, in the book face that also
+   * carries the wordmark across the rule and the Learning Hub's title.
    * ============================================ */
 
   .model-picker-trigger {
@@ -106,33 +108,15 @@
     box-shadow: 0 0 0 2px var(--focus-ring);
   }
 
-  .model-picker-trigger__icon {
-    color: var(--color-fg-muted);
-    opacity: 0.8;
-  }
-
   .model-picker-trigger__name {
     flex: 1;
     min-width: 0;
-    font-weight: 600;
-    font-size: 0.9375rem;
-    letter-spacing: -0.005em;
+    font-family: var(--font-serif-assistant);
+    font-weight: 500;
+    font-size: 1.125rem;
+    letter-spacing: -0.01em;
     color: var(--color-fg);
     text-align: left;
-  }
-
-  .model-picker-trigger__badges {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-left: var(--space-2);
-  }
-
-  .model-picker-trigger__badge {
-    width: 16px;
-    height: 16px;
-    color: var(--color-fg-muted);
-    opacity: 0.6;
   }
 
   .model-picker-trigger__chevron {
@@ -204,84 +188,40 @@
     background: var(--color-accent);
   }
 
+  /* An open panel is a setting, not something live: ink, never a fill. */
   .plan-button[aria-pressed='true'] {
-    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
     color: var(--color-fg);
   }
   .plan-button__progress {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Plan drafting and failure: a quiet line of status in the bar's own
+     voice, not a pill. */
+  .plan-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 36px;
+    padding: 0 var(--space-2);
     color: var(--color-fg-muted);
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+  .plan-status__icon {
+    width: 18px;
+    height: 18px;
+    flex: none;
+  }
+  .plan-status--error {
+    color: var(--color-danger);
   }
 
   @media (max-width: 480px) {
     .tutor-toggle__text,
-    .plan-button__text {
+    .plan-status__text {
       display: none;
     }
-  }
-
-  /* ============================================
-   * TUTOR MODE CARD
-   * ============================================ */
-
-  .tutor-mode-card {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    width: 100%;
-    padding: var(--space-2) var(--space-4);
-    background: color-mix(in oklab, var(--color-accent) 12%, var(--surface-paper));
-    border: 1px solid color-mix(in oklab, var(--color-accent) 30%, var(--color-border));
-    border-radius: var(--radius-editorial);
-    cursor: pointer;
-    transition:
-      background-color var(--duration-fast) var(--ease-standard),
-      box-shadow var(--duration-fast) var(--ease-standard);
-  }
-
-  .tutor-mode-card:hover {
-    background: color-mix(in oklab, var(--color-accent) 18%, var(--surface-paper));
-    box-shadow: var(--shadow-1);
-  }
-
-  .tutor-mode-card:focus-visible {
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-
-  .tutor-mode-card__icon {
-    color: var(--color-accent);
-    flex-shrink: 0;
-  }
-
-  .tutor-mode-card__content {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .tutor-mode-card__topic {
-    font-weight: 600;
-    font-size: 0.9375rem;
-    letter-spacing: -0.005em;
-    color: var(--color-fg);
-    text-align: left;
-  }
-
-  .tutor-mode-card__progress {
-    height: 4px;
-    background: color-mix(in oklab, var(--color-muted) 60%, transparent);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .tutor-mode-card__progress-fill {
-    height: 100%;
-    background: var(--color-accent);
-    border-radius: 2px;
-    transition: transform var(--duration-med) var(--ease-out-expo);
-    transform-origin: left center;
   }
 
   /* ============================================
@@ -318,50 +258,5 @@
   .top-header .icon-button svg {
     width: 20px;
     height: 20px;
-  }
-
-  /* ============================================
-   * EXISTING STYLES
-   * ============================================ */
-
-  /* Slim shimmer bar shown only while waiting for first token */
-  .header-activity {
-    position: absolute;
-    left: 10px;
-    right: 10px;
-    top: 6px;
-    height: 2px;
-    border-radius: 2px;
-    overflow: hidden;
-    background: color-mix(in oklab, var(--color-border) 70%, transparent);
-    opacity: 0;
-    transition: opacity var(--duration-fast) var(--ease-standard);
-  }
-  .header-activity.is-active {
-    opacity: 1;
-  }
-  .header-activity.is-active::before {
-    content: '';
-    position: absolute;
-    left: -30%;
-    top: 0;
-    bottom: 0;
-    width: 30%;
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0),
-      color-mix(in oklab, var(--color-accent) 65%, transparent),
-      rgba(255, 255, 255, 0)
-    );
-    animation: header-shimmer 1.2s linear infinite;
-  }
-
-  @keyframes header-shimmer {
-    0% {
-      transform: translateX(0%);
-    }
-    100% {
-      transform: translateX(330%);
-    }
   }
 }

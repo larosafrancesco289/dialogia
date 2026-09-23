@@ -27,7 +27,7 @@ export function TutorToggle({
       title={title}
     >
       <AcademicCapIcon className="tutor-toggle__icon h-5 w-5" />
-      <span className="tutor-toggle__text">{active ? 'Tutor' : 'Start learning session'}</span>
+      <span className="tutor-toggle__text">Tutor</span>
       {/* The session is the live thing on this bar, so it alone is gold. */}
       {active && <span className="tutor-toggle__live" aria-hidden="true" />}
     </button>
