@@ -55,8 +55,8 @@ export function ModelsPanel(props: ModelsPanelProps) {
                 ? `New chats start with ${formatModelLabel({ model: findModelById(models, selectedModelId), fallbackId: selectedModelId })}, following the model you last used.`
                 : 'New chats use the default model until you pick a model in a chat.'}
             </div>
-            {selectedModelId && (
-              <div>
+            <div className="flex flex-wrap gap-2">
+              {selectedModelId && (
                 <button
                   className="btn-outline btn-sm"
                   onClick={() =>
@@ -69,9 +69,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
                 >
                   Use the default model
                 </button>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
+              )}
               <button className="btn-outline btn-sm" onClick={() => loadModels()}>
                 Refresh model list
               </button>
