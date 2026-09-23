@@ -1,6 +1,7 @@
 import { FolderRowContainer } from '@/components/sidebar/FolderRowContainer';
 import { ChatRowContainer } from '@/components/sidebar/ChatRowContainer';
 import { SidebarSearch } from '@/components/sidebar/SidebarSearch';
+import { groupByRecency } from '@/components/sidebar/groupByRecency';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { IconButton } from '@/components/ui/IconButton';
 import { PlusIcon, FolderPlusIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
@@ -109,28 +110,33 @@ export function ChatSidebarView({
           <FolderRowContainer key={folder.id} folder={folder} folderTreeIndex={folderTreeIndex} />
         ))}
 
-        {filteredRootChats.map((chat) => (
-          <ChatRowContainer
-            key={chat.id}
-            chat={chat}
-            collapsed={collapsed}
-            isMobile={isMobile}
-            isSelected={selectedChatId === chat.id}
-            isEditing={editingId === chat.id}
-            editTitle={editTitle}
-            onSelect={() => onSelectChat(chat.id)}
-            onStartEdit={() => onStartEditChat(chat.id, chat.title)}
-            onSaveEdit={async () => {
-              await onSaveEditChat(chat.id, chat.title);
-            }}
-            onCancelEdit={onCancelEditChat}
-            onDelete={() => onDeleteChat(chat.id)}
-            onEditTitleChange={onEditTitleChange}
-            folders={folders}
-            moveChatToFolder={moveChatToFolder}
-            onDragStart={(id) => handleDragStart(id, 'chat')}
-            onDragEnd={handleDragEnd}
-          />
+        {groupByRecency(filteredRootChats).map((group) => (
+          <section key={group.label} className="sidebar-group" aria-label={group.label}>
+            {!collapsed && <h3 className="sidebar-group__label">{group.label}</h3>}
+            {group.chats.map((chat) => (
+              <ChatRowContainer
+                key={chat.id}
+                chat={chat}
+                collapsed={collapsed}
+                isMobile={isMobile}
+                isSelected={selectedChatId === chat.id}
+                isEditing={editingId === chat.id}
+                editTitle={editTitle}
+                onSelect={() => onSelectChat(chat.id)}
+                onStartEdit={() => onStartEditChat(chat.id, chat.title)}
+                onSaveEdit={async () => {
+                  await onSaveEditChat(chat.id, chat.title);
+                }}
+                onCancelEdit={onCancelEditChat}
+                onDelete={() => onDeleteChat(chat.id)}
+                onEditTitleChange={onEditTitleChange}
+                folders={folders}
+                moveChatToFolder={moveChatToFolder}
+                onDragStart={(id) => handleDragStart(id, 'chat')}
+                onDragEnd={handleDragEnd}
+              />
+            ))}
+          </section>
         ))}
       </div>
     </div>
