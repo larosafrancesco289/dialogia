@@ -6,6 +6,7 @@ import {
   calculateMastery,
   generateModelSummary,
   getLatestLearnerModel,
+  resolveLearnerModel,
 } from '@/modules/tutor/learner-model';
 import type { LearningPlan, Evidence, Misconception, Message } from '@/lib/types';
 
@@ -612,4 +613,17 @@ test('getLatestLearnerModel searches backwards from end', () => {
   const model = getLatestLearnerModel(messages);
   assert.ok(model);
   assert.equal(model.chatId, 'chat_1');
+});
+
+test('resolveLearnerModel prefers a newer saved model over an older message snapshot', () => {
+  const plan = createMockPlan();
+  const snapshot = { ...initializeLearnerModel('chat_1', plan), updatedAt: 1000 };
+  const saved = { ...initializeLearnerModel('chat_1', plan), updatedAt: 2000 };
+  const messages: Message[] = [{ ...createMockMessage('assistant', 'A1'), learnerModel: snapshot }];
+
+  // A learner's correction lives on the chat; the next turn must not undo it.
+  assert.equal(resolveLearnerModel(messages, saved), saved);
+  assert.equal(resolveLearnerModel(messages, { ...saved, updatedAt: 500 })?.updatedAt, 1000);
+  assert.equal(resolveLearnerModel([], saved), saved);
+  assert.equal(resolveLearnerModel(messages, undefined), snapshot);
 });

@@ -6,7 +6,7 @@ import {
   getNextNode,
   updateNodeStatus,
 } from '@/modules/tutor/learning-plan/service';
-import { getLatestLearnerModel } from '@/modules/tutor/learner-model';
+import { resolveLearnerModel } from '@/modules/tutor/learner-model';
 import { selectCurrentChat, selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import type { LearningPlan, LearnerModel } from '@/lib/types';
 import type { LearnerModelFeedback } from '@/modules/tutor/learner-model';
@@ -62,13 +62,10 @@ export function usePlanCallbacks(): PlanCallbacks {
     [learningPlan],
   );
 
-  const learnerModel = useMemo(() => {
-    const fromSettings = chat?.settings?.features.tutor?.learnerModel;
-    const fromMessages = messages ? getLatestLearnerModel(messages) : undefined;
-    if (!fromSettings) return fromMessages;
-    if (!fromMessages) return fromSettings;
-    return fromSettings.updatedAt >= fromMessages.updatedAt ? fromSettings : fromMessages;
-  }, [chat?.settings?.features.tutor?.learnerModel, messages]);
+  const learnerModel = useMemo(
+    () => resolveLearnerModel(messages ?? [], chat?.settings?.features.tutor?.learnerModel),
+    [chat?.settings?.features.tutor?.learnerModel, messages],
+  );
 
   const onPlanUpdate = useCallback(
     async (updatedPlan: LearningPlan) => {

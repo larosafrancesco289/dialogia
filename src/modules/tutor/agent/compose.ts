@@ -46,10 +46,10 @@ export async function buildTutorComposeContribution({
   // learnerModelVisible controls student-facing UI only, not tutor context.
   if (learningPlan) {
     const { generatePlanContextPreamble } = await import('@/modules/tutor/agent/planContext');
-    const { getLatestLearnerModel } = await import('@/modules/tutor/learner-model');
+    const { resolveLearnerModel } = await import('@/modules/tutor/learner-model');
     const planContext = generatePlanContextPreamble(
       learningPlan,
-      getLatestLearnerModel(priorMessages),
+      resolveLearnerModel(priorMessages, chat.settings.features.tutor?.learnerModel),
       { includeLearnerModel: true },
     );
     if (planContext) dynamicPreambles.push(planContext);

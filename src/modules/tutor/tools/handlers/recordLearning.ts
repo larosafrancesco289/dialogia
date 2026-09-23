@@ -2,7 +2,7 @@ import type { Evidence, Message, MessageTutor, Misconception } from '@/lib/types
 import type { TutorToolHandler } from '@/modules/tutor/tools/types';
 import {
   applyLearnerModelFeedback,
-  getLatestLearnerModel,
+  resolveLearnerModel,
   initializeLearnerModel,
   resolvePlanNodeId,
   resolveNodeId,
@@ -243,8 +243,7 @@ export const recordLearningHandler: TutorToolHandler<RecordLearningArgs> = {
     const state = ctx.get();
     const messagesForChat = getMessagesForChat(state, ctx.chatId);
     let currentModel =
-      getLatestLearnerModel(messagesForChat) ??
-      ctx.chat.settings.features.tutor?.learnerModel ??
+      resolveLearnerModel(messagesForChat, ctx.chat.settings.features.tutor?.learnerModel) ??
       initializeLearnerModel(ctx.chatId, plan);
 
     const effectiveNodeId =

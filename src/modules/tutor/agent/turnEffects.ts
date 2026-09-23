@@ -7,7 +7,7 @@ import type { ModuleTurnEffects, TurnEffectsContext } from '@/lib/agent/orchestr
 import type { LearnerModelDebugEntry } from '@/lib/contracts/ui';
 import type { LearnerModel, Message } from '@/lib/types';
 import {
-  getLatestLearnerModel,
+  resolveLearnerModel,
   initializeLearnerModel,
   persistLearnerModel,
 } from '@/modules/tutor/learner-model';
@@ -27,7 +27,8 @@ export function createTutorTurnEffects(context: TurnEffectsContext): ModuleTurnE
       const plan = chat.settings.features.tutor?.learningPlan;
       if (!composition.settings.tutorEnabled || !plan) return;
       priorLearnerModel =
-        getLatestLearnerModel(priorMessages) ?? initializeLearnerModel(chatId, plan);
+        resolveLearnerModel(priorMessages, chat.settings.features.tutor?.learnerModel) ??
+        initializeLearnerModel(chatId, plan);
     },
 
     onPlanResult: (plan) => {
