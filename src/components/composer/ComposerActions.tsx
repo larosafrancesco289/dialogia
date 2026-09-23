@@ -295,8 +295,10 @@ export function ComposerActions({
 
   if (isStreaming) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="composer-tools">
+        <span className="composer-tools__status">Writing…</span>
         <button
+          type="button"
           className="composer-btn-stop"
           onClick={onStop}
           aria-label="Stop generating"
@@ -318,108 +320,118 @@ export function ComposerActions({
   const hasSearchChoice = searchModes.length > 1;
 
   return (
-    <div className="flex shrink-0 items-center gap-1.5">
-      <button
-        className="composer-btn-attach"
-        aria-label="Attach files"
-        title={attachmentsHint || 'Attach files'}
-        onClick={openFilePicker}
-      >
-        <PaperClipIcon className="h-4 w-4" />
-      </button>
-
-      <div className="relative">
+    <div className="composer-tools">
+      <div className="composer-tools__left">
         <button
-          ref={searchButtonRef}
-          className={`composer-btn-search ${searchEnabled ? 'is-active' : ''}`}
-          aria-pressed={hasSearchChoice ? undefined : searchEnabled}
-          aria-haspopup={hasSearchChoice ? 'menu' : undefined}
-          aria-expanded={hasSearchChoice ? searchMenuOpen : undefined}
-          aria-label="Web search"
-          title={
-            searchEnabled
-              ? `Web search: on (${providerLabel})`
-              : `Web search: off (${providerLabel})`
-          }
-          onClick={() => (hasSearchChoice ? setSearchMenuOpen((open) => !open) : toggleSearch())}
+          type="button"
+          className="composer-btn-attach"
+          aria-label="Attach files"
+          title={attachmentsHint || 'Attach files'}
+          onClick={openFilePicker}
         >
-          <SearchGlobeIcon enabled={searchEnabled} size={16} />
+          <PaperClipIcon className="h-4 w-4" />
         </button>
-        <AnimatePresence>
-          {hasSearchChoice && searchMenuOpen && (
-            <motion.div
-              ref={searchMenuRef}
-              role="menu"
-              aria-label="Web search"
-              className="popover absolute bottom-full right-0 z-30 mb-2 w-56 p-1"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={springs.snappy}
-            >
-              <button
-                type="button"
-                role="menuitemradio"
-                aria-checked={!searchEnabled}
-                className="menu-item w-full text-left text-sm"
-                onClick={() => {
-                  if (searchEnabled) toggleSearch();
-                  setSearchMenuOpen(false);
-                }}
+
+        <div className="relative">
+          <button
+            ref={searchButtonRef}
+            className={`composer-btn-search ${searchEnabled ? 'is-active' : ''}`}
+            aria-pressed={hasSearchChoice ? undefined : searchEnabled}
+            aria-haspopup={hasSearchChoice ? 'menu' : undefined}
+            aria-expanded={hasSearchChoice ? searchMenuOpen : undefined}
+            aria-label="Web search"
+            title={
+              searchEnabled
+                ? `Web search: on (${providerLabel})`
+                : `Web search: off (${providerLabel})`
+            }
+            onClick={() => (hasSearchChoice ? setSearchMenuOpen((open) => !open) : toggleSearch())}
+          >
+            <SearchGlobeIcon enabled={searchEnabled} size={16} />
+            {searchEnabled && <span className="composer-tool-label">Search</span>}
+          </button>
+          <AnimatePresence>
+            {hasSearchChoice && searchMenuOpen && (
+              <motion.div
+                ref={searchMenuRef}
+                role="menu"
+                aria-label="Web search"
+                className="popover absolute bottom-full left-0 z-30 mb-2 w-56 p-1"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={springs.snappy}
               >
-                Off
-              </button>
-              {searchModes.map((option) => (
                 <button
-                  key={option.mode}
                   type="button"
                   role="menuitemradio"
-                  aria-checked={searchEnabled && searchProvider === option.mode}
+                  aria-checked={!searchEnabled}
                   className="menu-item w-full text-left text-sm"
                   onClick={() => {
-                    selectSearchMode(option.mode);
+                    if (searchEnabled) toggleSearch();
                     setSearchMenuOpen(false);
                   }}
                 >
-                  {option.label}
-                  <span className="block text-xs text-muted-foreground">{option.description}</span>
+                  Off
                 </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {showReasoningMenu && (
-        <div className="relative">
-          <button
-            ref={reasoningButtonRef}
-            className={`composer-btn-reasoning ${reasoningActive ? 'is-active' : ''} ${reasoningOpen ? 'is-open' : ''}`}
-            data-effort={effort}
-            aria-haspopup="listbox"
-            aria-expanded={reasoningOpen}
-            aria-label="Reasoning effort"
-            title={reasoningActive ? `Reasoning: ${effortLabel(effort)}` : 'Reasoning effort'}
-            onClick={() => setReasoningOpen((v) => !v)}
-          >
-            <ReasoningBulbIcon effort={effort} size={16} />
-          </button>
-          <AnimatePresence>
-            {reasoningOpen && (
-              <ReasoningFan
-                availableEfforts={availableEfforts}
-                defaultEffort={defaultEffort}
-                currentEffort={effort}
-                onSelect={(e) => void onSelectEffort(e)}
-                onClose={() => setReasoningOpen(false)}
-                menuRef={reasoningMenuRef}
-              />
+                {searchModes.map((option) => (
+                  <button
+                    key={option.mode}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={searchEnabled && searchProvider === option.mode}
+                    className="menu-item w-full text-left text-sm"
+                    onClick={() => {
+                      selectSearchMode(option.mode);
+                      setSearchMenuOpen(false);
+                    }}
+                  >
+                    {option.label}
+                    <span className="block text-xs text-muted-foreground">
+                      {option.description}
+                    </span>
+                  </button>
+                ))}
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
-      )}
+
+        {showReasoningMenu && (
+          <div className="relative">
+            <button
+              ref={reasoningButtonRef}
+              className={`composer-btn-reasoning ${reasoningActive ? 'is-active' : ''} ${reasoningOpen ? 'is-open' : ''}`}
+              data-effort={effort}
+              aria-haspopup="listbox"
+              aria-expanded={reasoningOpen}
+              aria-label="Reasoning effort"
+              title={reasoningActive ? `Reasoning: ${effortLabel(effort)}` : 'Reasoning effort'}
+              onClick={() => setReasoningOpen((v) => !v)}
+            >
+              <ReasoningBulbIcon effort={effort} size={16} />
+              {reasoningActive && (
+                <span className="composer-tool-label">{effortLabel(effort)}</span>
+              )}
+            </button>
+            <AnimatePresence>
+              {reasoningOpen && (
+                <ReasoningFan
+                  availableEfforts={availableEfforts}
+                  defaultEffort={defaultEffort}
+                  currentEffort={effort}
+                  onSelect={(e) => void onSelectEffort(e)}
+                  onClose={() => setReasoningOpen(false)}
+                  menuRef={reasoningMenuRef}
+                />
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
 
       <button
+        type="button"
         className={`composer-btn-send ${hasContent ? 'has-content' : ''}`}
         onMouseDown={(e) => e.preventDefault()}
         onClick={onSend}
