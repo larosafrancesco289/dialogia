@@ -8,6 +8,7 @@ import {
   DocumentDuplicateIcon,
 } from '@heroicons/react/20/solid';
 import type { LearnerModelDebugSnapshot, ToolCallLogEntry } from '@/lib/types';
+import { copyText } from '@/lib/clipboard';
 
 type ToolCallLogMode = 'compact' | 'full';
 type ToolCallBadge = { id: string; label: string };
@@ -191,17 +192,6 @@ function metadataEntries(metadata: ToolCallLogEntry['metadata']): Array<[string,
   return entries;
 }
 
-function copyToClipboard(text: string) {
-  if (typeof navigator === 'undefined') return;
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      void navigator.clipboard.writeText(text);
-    }
-  } catch {
-    // ignore copy failures
-  }
-}
-
 export function ToolCallLog({
   toolCalls,
   mode = 'compact',
@@ -331,7 +321,7 @@ export function ToolCallLog({
                         <button
                           type="button"
                           className="p-1 rounded-[var(--radius-editorial)] hover:bg-[var(--color-muted)]"
-                          onClick={() => copyToClipboard(stringify(call.input))}
+                          onClick={() => void copyText(stringify(call.input))}
                           aria-label="Copy input JSON"
                         >
                           <DocumentDuplicateIcon className="h-3.5 w-3.5 text-[var(--color-fg-muted)]" />
@@ -351,7 +341,7 @@ export function ToolCallLog({
                           <button
                             type="button"
                             className="p-1 rounded-[var(--radius-editorial)] hover:bg-[var(--color-muted)]"
-                            onClick={() => copyToClipboard(stringify(call.output))}
+                            onClick={() => void copyText(stringify(call.output))}
                             aria-label="Copy output JSON"
                           >
                             <DocumentDuplicateIcon className="h-3.5 w-3.5 text-[var(--color-fg-muted)]" />

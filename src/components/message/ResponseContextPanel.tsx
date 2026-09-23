@@ -10,8 +10,8 @@ import {
   MagnifyingGlassIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
-import { logger } from '@/lib/logger';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
+import { copyText } from '@/lib/clipboard';
 
 export type SearchSourcesData = {
   query: string;
@@ -364,13 +364,9 @@ export function ResponseContextPanel({
 
   const copyReasoning = async () => {
     if (!hasReasoning) return;
-    try {
-      await navigator.clipboard.writeText(reasoning);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
-    } catch (error) {
-      logger.error('Failed to copy reasoning', error);
-    }
+    if (!(await copyText(reasoning))) return;
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
   };
 
   const showSourcesEntry = hasSources || isSearching || hasSearchError;

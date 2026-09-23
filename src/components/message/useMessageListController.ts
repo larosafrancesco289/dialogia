@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Message } from '@/lib/types';
-import { logger } from '@/lib/logger';
+import { copyText } from '@/lib/clipboard';
 
 type MobileSheetState = { id: string; role: 'assistant' | 'user' };
 
@@ -61,13 +61,9 @@ export function useMessageListController(args: {
     async (messageId: string) => {
       const msg = messages.find((x) => x.id === messageId);
       if (!msg) return;
-      try {
-        await navigator.clipboard.writeText(msg.content || '');
-        setCopiedId(messageId);
-        setTimeout(() => setCopiedId((id) => (id === messageId ? null : id)), 1200);
-      } catch (error) {
-        logger.error('Copy message failed', error);
-      }
+      if (!(await copyText(msg.content || ''))) return;
+      setCopiedId(messageId);
+      setTimeout(() => setCopiedId((id) => (id === messageId ? null : id)), 1200);
     },
     [messages],
   );

@@ -146,7 +146,7 @@ export function SetupSheet() {
                   />
                   <p className="field__hint">
                     Any OpenAI-compatible server: Ollama, LM Studio, llama.cpp, vLLM. Tools and
-                    search stay off until you turn them on in Settings › Providers.
+                    search stay off until you turn them on in Settings › Connections.
                   </p>
                 </div>
               </div>

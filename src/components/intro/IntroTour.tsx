@@ -57,7 +57,7 @@ const PAGES: IntroPage[] = [
     title: 'Private by design',
     paragraphs: [
       'Your conversations live in this browser. There is no server behind this site, no database, and no analytics. Messages go only to the provider you chose.',
-      'Providers have their own retention policies. With OpenRouter you can restrict Dialogia to providers that keep nothing after the reply. That option is called zero data retention. It is off by default. You can turn it on in Settings under Appearance, in the Privacy section.',
+      'Providers have their own retention policies. With OpenRouter you can restrict Dialogia to providers that keep nothing after the reply. That option is called zero data retention. It is off by default. You can turn it on in Settings, under Models › Privacy.',
     ],
   },
 ];
