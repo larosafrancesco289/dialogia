@@ -6,8 +6,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  /* Above the page and the settings drawer (80), under every sheet, menu
-     and dialog (90+), which must cover it. */
+  /* Above the page and the settings drawer (80), under the chats sheet (88)
+     and every menu and dialog (90+), which must cover it. */
   z-index: 85;
   display: flex;
   align-items: stretch;

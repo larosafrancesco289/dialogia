@@ -1,7 +1,9 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  /* Over the tab bar (85), under the menus and dialogs its rows open (90+):
+     at 200 the delete confirmation and the move menu rendered beneath it. */
+  z-index: 88;
   display: flex;
   flex-direction: column;
 }
