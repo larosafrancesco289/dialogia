@@ -83,7 +83,7 @@ function annotationSources(value: unknown): MarkdownCitationSource[] {
 
 export function AssistantMessage({
   message,
-  isMobile,
+  isMobile: _isMobile,
   showInlineActions,
   isStreaming,
   isChatStreaming,
