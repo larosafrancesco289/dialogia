@@ -4,7 +4,6 @@ import { loadKeys } from '@/lib/keys/store';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
 import { computeZdrFilterCached } from '@/lib/policy/zdr/cache';
 import { PINNED_MODEL_ID, DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
-import { CURATED_MODELS } from '@/data/curatedModels';
 import type { ModelIndex } from '@/lib/models';
 import {
   createModelIndex,
@@ -148,17 +147,6 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
             ([endpoint]) => modelsByEndpoint.get(endpoint.id) ?? [],
           );
           const availableIds = new Set(mergedModels.map((model) => model.id));
-          const missingCurated = CURATED_MODELS.filter(
-            (entry) => !availableIds.has(resolveDynamicModelId(entry.id, mergedModels)),
-          );
-          if (missingCurated.length > 0) {
-            noticeSegments.push(
-              `Unavailable curated models: ${missingCurated
-                .map((entry) => entry.name || entry.id)
-                .join(', ')}`,
-            );
-          }
-
           // Tell the user when a "latest" alias starts resolving to a new
           // release, so the moving default is never silent.
           if (mergedModels.length > 0) {
@@ -189,7 +177,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
             fallbackModelId = fallback.id;
             const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
             noticeSegments.push(
-              `Default model ${DEFAULT_MODEL_NAME} unavailable. Using ${fallbackLabel}.`,
+              `${DEFAULT_MODEL_NAME} is not offered by your providers, so new chats start with ${fallbackLabel}.`,
             );
           }
 

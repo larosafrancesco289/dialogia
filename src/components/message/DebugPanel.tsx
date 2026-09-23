@@ -82,7 +82,7 @@ export function DebugPanel({
           <div className="space-y-4 text-xs leading-relaxed pt-2 border-t border-[var(--rule-light)]">
             {summaryItems.length > 0 && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-rubric)] mb-2">
                   Overview
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -103,15 +103,12 @@ export function DebugPanel({
 
             {toolNames.length > 0 && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-rubric)] mb-2">
                   Tool definitions
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {toolNames.map((name) => (
-                    <span
-                      key={name}
-                      className="rounded-full bg-[var(--color-muted)] border border-[var(--color-border)]/50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]"
-                    >
+                    <span key={name} className="badge text-[10px] uppercase tracking-wider">
                       {name}
                     </span>
                   ))}
@@ -121,15 +118,12 @@ export function DebugPanel({
 
             {pluginNames.length > 0 && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-rubric)] mb-2">
                   Plugins
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {pluginNames.map((name) => (
-                    <span
-                      key={name}
-                      className="rounded-full bg-[var(--color-muted)] border border-[var(--color-border)]/50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]"
-                    >
+                    <span key={name} className="badge text-[10px] uppercase tracking-wider">
                       {name}
                     </span>
                   ))}
@@ -139,7 +133,7 @@ export function DebugPanel({
 
             {messageItems.length > 0 && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-rubric)] mb-2">
                   Messages
                 </div>
                 <ol className="space-y-2">
@@ -174,7 +168,7 @@ export function DebugPanel({
 
             {hasToolCalls && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-rubric)] mb-2">
                   Tool calls
                 </div>
                 <ToolCallLog
@@ -190,7 +184,7 @@ export function DebugPanel({
 
             {showRawJson && hasBody && rawJson && (
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)] mb-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-rubric)] mb-2">
                   Raw request JSON
                 </div>
                 <pre className="whitespace-pre-wrap text-xs opacity-90 leading-relaxed bg-[var(--color-muted)]/30 rounded-[var(--radius-editorial)] p-3 overflow-x-auto border border-[var(--color-border)]/30 font-mono">

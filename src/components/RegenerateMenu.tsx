@@ -160,7 +160,7 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
       {open &&
         createPortal(
           <div
-            className="fixed card p-2 w-56"
+            className="popover fixed p-1 w-60"
             style={{
               zIndex: 80,
               left: coords.left,
@@ -171,7 +171,7 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
             aria-label="Regenerate options"
             ref={menuRef}
           >
-            <div className="text-xs text-muted-foreground px-1 pb-1">Choose model</div>
+            <div className="menu-heading">Regenerate with</div>
             {options.map((o) => {
               const label = formatModelLabel({
                 model: modelMap.get(o.id),
@@ -179,16 +179,18 @@ export function RegenerateMenu({ onChoose }: { onChoose: (modelId?: string) => v
                 fallbackName: o.name,
               });
               return (
-                <div
+                <button
                   key={o.id}
-                  className="menu-item text-sm"
+                  type="button"
+                  role="menuitem"
+                  className="menu-item w-full text-left text-sm"
                   onClick={() => {
                     onChoose(o.id);
                     setOpen(false);
                   }}
                 >
                   {label}
-                </div>
+                </button>
               );
             })}
           </div>,

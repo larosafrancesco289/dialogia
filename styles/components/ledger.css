@@ -38,7 +38,7 @@
     color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
   }
   .response-ledger__toggle:hover .response-ledger__rule {
-    border-color: var(--rule-accent);
+    border-color: color-mix(in oklab, var(--color-fg) 20%, transparent);
   }
 
   .response-ledger__glyph {
@@ -133,7 +133,7 @@
     color: var(--color-success);
   }
 
-  /* The rail: gold at the head, fading out past the last entry. */
+  /* The rail: rubric at the head, fading out past the last entry. */
   .response-ledger__timeline {
     position: relative;
     display: flex;
@@ -150,7 +150,7 @@
     width: 1px;
     background: linear-gradient(
       to bottom,
-      color-mix(in oklab, var(--color-accent) 45%, var(--rule-light)),
+      color-mix(in oklab, var(--color-rubric) 45%, var(--rule-light)),
       var(--rule-light) 55%,
       transparent
     );
@@ -178,7 +178,7 @@
     color: var(--color-fg-muted);
   }
   .response-ledger__entry--tool .response-ledger__entry-glyph {
-    color: color-mix(in oklab, var(--color-accent) 75%, var(--color-fg-muted));
+    color: color-mix(in oklab, var(--color-rubric) 75%, var(--color-fg-muted));
   }
 
   .response-ledger__thought {
@@ -304,10 +304,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--color-fg);
-    transition: color var(--duration-fast) var(--ease-standard);
-  }
-  .response-ledger__source-link:hover {
-    color: var(--color-accent);
   }
   .response-ledger__source-host {
     flex: none;

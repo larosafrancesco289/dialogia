@@ -351,7 +351,7 @@ export function ComposerActions({
               ref={searchMenuRef}
               role="menu"
               aria-label="Web search"
-              className="popover card absolute bottom-full right-0 z-30 mb-2 w-56 p-1"
+              className="popover absolute bottom-full right-0 z-30 mb-2 w-56 p-1"
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}

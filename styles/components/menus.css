@@ -54,7 +54,17 @@
     }
   }
 
-  /* Menu item: a row of text; a tint on hover. */
+  /* Menu heading: the rubric label that names a menu's choices. */
+  .menu-heading {
+    padding: var(--space-2) 10px var(--space-1);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-rubric);
+  }
+
+  /* Menu item: a row of text; a tint on hover; the checked one in ink. */
   .menu-item {
     padding: 8px 10px;
     border-radius: 4px;
@@ -63,5 +73,10 @@
   }
   .menu-item:hover {
     background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  }
+  .menu-item[aria-checked='true'] {
+    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+    box-shadow: inset 2px 0 0 var(--color-rubric);
+    font-weight: 500;
   }
 }

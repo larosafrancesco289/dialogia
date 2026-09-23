@@ -48,20 +48,20 @@ export function ImageLightbox({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] bg-black/80 flex flex-col"
+      className="lightbox fixed inset-0 z-[100] flex flex-col"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="flex items-center justify-between p-3 text-white">
+      <div className="lightbox__bar flex items-center justify-between p-3">
         <div className="text-sm opacity-90">
           {index + 1} / {images.length} {current?.name ? `· ${current.name}` : ''}
         </div>
         <div className="flex items-center gap-2">
-          <button className="btn btn-outline btn-sm" onClick={download} title="Download">
+          <button className="lightbox__btn" onClick={download} title="Download">
             Download
           </button>
-          <button className="btn btn-outline btn-sm" onClick={onClose} title="Close">
+          <button className="lightbox__btn" onClick={onClose} title="Close">
             Close
           </button>
         </div>
@@ -74,7 +74,7 @@ export function ImageLightbox({
         }}
       >
         <button
-          className="btn btn-outline mr-3"
+          className="lightbox__btn lightbox__nav mr-3"
           onClick={() => setIndex((i) => Math.max(0, i - 1))}
           disabled={index <= 0}
           aria-label="Previous"
@@ -85,11 +85,11 @@ export function ImageLightbox({
           <img
             src={current.src}
             alt={current.name || 'image'}
-            className="absolute inset-0 h-full w-full object-contain rounded border border-border bg-black"
+            className="absolute inset-0 h-full w-full object-contain"
           />
         </div>
         <button
-          className="btn btn-outline ml-3"
+          className="lightbox__btn lightbox__nav ml-3"
           onClick={() => setIndex((i) => Math.min(images.length - 1, i + 1))}
           disabled={index >= images.length - 1}
           aria-label="Next"

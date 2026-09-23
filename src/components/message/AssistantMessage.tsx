@@ -12,7 +12,7 @@ import { RegenerateMenu } from '@/components/RegenerateMenu';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { MessageModuleSlot } from '@/components/ModuleSlot';
 import { MessageActions, ActionButton } from '@/components/message/MessageActions';
-import { StatsToggle } from '@/components/message/StatsToggle';
+import { MessageColophon } from '@/components/message/MessageColophon';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import styles from './MessageCard.module.css';
@@ -39,8 +39,6 @@ export type AssistantMessageProps = {
   models: ModelDescriptor[];
   chat?: Chat | null;
   showStats: boolean;
-  statsExpanded: boolean;
-  onToggleStats: () => void;
   branchFromMessage: () => void;
   onChooseRegenerateModel: (modelId?: string) => void;
   setLightbox: (
@@ -104,8 +102,6 @@ export function AssistantMessage({
   models,
   chat,
   showStats,
-  statsExpanded,
-  onToggleStats,
   branchFromMessage,
   onChooseRegenerateModel,
   setLightbox,
@@ -222,13 +218,7 @@ export function AssistantMessage({
 
       {!isStreaming && !isEditing && message.finishReason === 'content_filter' && (
         <div className="px-4 pb-3 pt-1">
-          <div
-            className="rounded-2xl border px-4 py-3"
-            style={{
-              background: 'var(--feedback-incorrect-bg)',
-              borderColor: 'var(--feedback-incorrect-border)',
-            }}
-          >
+          <div className="message-notice">
             <div className="flex items-start gap-2.5">
               <ShieldExclamationIcon
                 className="mt-0.5 h-4 w-4 shrink-0"
@@ -242,7 +232,7 @@ export function AssistantMessage({
                 >
                   Declined by the model&rsquo;s safety filter
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-fg-muted">
                   {displayContent.trim()
                     ? 'The reply was cut short by a safety classifier.'
                     : 'A safety classifier blocked this request before the model could answer.'}
@@ -253,7 +243,7 @@ export function AssistantMessage({
             </div>
             {!isChatStreaming && (
               <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-6">
-                <button className="btn btn-primary btn-sm" onClick={onEditPreviousUserMessage}>
+                <button className="btn btn-sm" onClick={onEditPreviousUserMessage}>
                   <PencilSquareIcon className="h-3.5 w-3.5" />
                   Edit message
                 </button>
@@ -274,12 +264,9 @@ export function AssistantMessage({
         !displayContent.trim() &&
         message.finishReason !== 'content_filter' && (
           <div className="px-4 pb-2">
-            <button
-              className="btn btn-ghost btn-sm text-xs text-warning gap-1.5"
-              onClick={() => onChooseRegenerateModel()}
-            >
+            <button className="btn-outline btn-sm" onClick={() => onChooseRegenerateModel()}>
               <ArrowPathIcon className="h-3.5 w-3.5" />
-              Response incomplete — tap to retry
+              The reply stopped early. Try again
             </button>
           </div>
         )}
@@ -288,16 +275,11 @@ export function AssistantMessage({
 
       {!isEditing && !isStreaming && <MessageModuleSlot slot="messageFooter" message={message} />}
 
-      <StatsToggle
-        showStats={showStats}
-        waitingForFirstToken={waitingForFirstToken}
-        isLatestAssistant={isLatestAssistant}
-        isExpanded={statsExpanded}
-        onToggle={onToggleStats}
-        message={message}
-        chat={chat}
-        models={models}
-      />
+      {showStats && chat && !isStreaming && !isEditing && displayContent.trim() && (
+        <div className={`px-4 ${isLatestAssistant ? '' : styles.colophonOnHover}`.trim()}>
+          <MessageColophon message={message} chat={chat} models={models} />
+        </div>
+      )}
     </div>
   );
 }

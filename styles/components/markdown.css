@@ -252,7 +252,7 @@
   }
   .markdown img {
     max-width: 100%;
-    border-radius: 10px;
+    border-radius: var(--radius-editorial);
   }
   .markdown .footnotes {
     font-size: 0.9em;
@@ -270,21 +270,21 @@
   }
 
   /* Mermaid diagram container */
+  /* Diagrams sit on the same inset as code blocks. */
   .mermaid-diagram {
-    background: var(--color-muted);
-    border: 1px solid var(--color-border);
-    border-radius: 14px;
-    padding: 12px;
+    background: color-mix(in oklab, var(--color-fg) 4%, var(--color-canvas));
+    border-radius: var(--radius-editorial);
+    padding: var(--space-4);
     overflow: auto;
   }
 
   /* PrismJS syntax highlighting (colors only; layout handled by components).
      Letterpress palette built from theme tokens, so it follows light and
-     dark: ink for structure, a warm brown for literals, a faded violet for
+     dark: ink for structure, rubric-brown for literals, a faded violet for
      names. Comments recede into italic. */
   :root {
     --syntax-ink: var(--color-fg);
-    --syntax-literal: color-mix(in oklab, var(--color-accent) 62%, var(--color-fg));
+    --syntax-literal: color-mix(in oklab, var(--color-rubric) 68%, var(--color-fg));
     --syntax-name: color-mix(in oklab, var(--color-accent-2) 55%, var(--color-fg));
     --syntax-comment: var(--color-fg-muted);
     --syntax-punctuation: var(--color-fg-muted);
@@ -361,9 +361,8 @@
   }
 }
 
-/* Heading anchors (rehype-slug + autolink). Unlayered on purpose: the global
-   link colour in foundations.css is unlayered too, and would otherwise turn
-   every heading gold. */
+/* Heading anchors (rehype-slug + autolink): a heading keeps its rubric and
+   loses the link underline until hovered. */
 .markdown .heading-anchor {
   color: inherit;
   text-decoration: none;
@@ -371,20 +370,6 @@
 .markdown .heading-anchor:hover {
   text-decoration: underline;
   text-decoration-style: dotted;
-}
-
-/* Links in prose: ink, underlined in rubric. Unlayered for the same reason
-   as the heading anchors; gold would be both hard to read on the page and
-   a claim that the link is live. */
-.markdown a:not(.heading-anchor) {
-  color: inherit;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-decoration-color: color-mix(in oklab, var(--color-rubric) 65%, transparent);
-  transition: text-decoration-color var(--duration-fast) var(--ease-standard);
-}
-.markdown a:not(.heading-anchor):hover {
-  text-decoration-color: var(--color-rubric);
 }
 
 /* The <pre> inside a code block. Unlayered because the base pre rule in

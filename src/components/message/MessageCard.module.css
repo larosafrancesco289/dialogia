@@ -138,15 +138,12 @@
   margin-top: 0.65rem;
 }
 
-/* Typing Indicator - simplified, inline feel */
+/* Typing indicator: three gold strokes, since waiting is live. No frame. */
 .typingIndicator {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 10px;
-  border-radius: 4px;
-  background: var(--marginalia-bg);
-  border: 1px solid var(--rule-light);
+  padding: 6px 0;
 }
 
 .typingBar {
@@ -186,6 +183,16 @@
   .typingBar {
     animation: none;
   }
+}
+
+/* Older replies keep their colophon out of the way until hovered. */
+.colophonOnHover {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.messageCard:hover .colophonOnHover,
+.messageCard:focus-within .colophonOnHover {
+  opacity: 1;
 }
 
 .active {

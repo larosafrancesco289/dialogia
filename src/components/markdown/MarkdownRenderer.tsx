@@ -266,7 +266,7 @@ function MermaidBlock({ code, streaming }: { code: string; streaming?: boolean }
   }, [code, id, isVisible, streaming]);
   if (streaming) {
     return (
-      <pre className="rounded-2xl bg-muted p-4 overflow-auto">
+      <pre className="mermaid-diagram">
         <code>{code}</code>
       </pre>
     );
@@ -474,7 +474,8 @@ export function MarkdownRenderer({
         if (images.length === 0) return;
         const mediumZoom = (await import('medium-zoom')).default as MediumZoomFactory;
         if (!cancelled) {
-          zoom = mediumZoom(images, { background: 'rgba(0,0,0,0.7)', margin: 24 });
+          // The same darkroom as the attachment lightbox.
+          zoom = mediumZoom(images, { background: 'rgb(0 0 0 / 0.86)', margin: 24 });
         }
       } catch (error) {
         logger.error('Failed to initialize image zoom', error);
@@ -525,7 +526,7 @@ export function MarkdownRenderer({
           );
         }
         return (
-          <code className={`bg-muted rounded px-1 py-0.5 ${className || ''}`} {...codeProps}>
+          <code className={className || undefined} {...codeProps}>
             {children}
           </code>
         );

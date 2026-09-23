@@ -15,7 +15,7 @@
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-editorial);
-    box-shadow: var(--shadow-3);
+    box-shadow: var(--shadow-2);
     padding: var(--space-5);
   }
   .dialog__title {
@@ -57,5 +57,36 @@
     font-size: 0.75rem;
     line-height: 1.45;
     color: var(--color-fg-muted);
+  }
+
+  /* ===== Toasts =====
+     One slip of paper for every passing message (notices, autosave). */
+  .toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    max-width: 560px;
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-editorial);
+    box-shadow: var(--shadow-2);
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--color-fg);
+  }
+  .toast__icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--color-fg-muted);
+  }
+  .toast--error .toast__icon {
+    color: var(--color-danger);
+  }
+  .toast__message {
+    flex: 1;
+    min-width: 0;
   }
 }
