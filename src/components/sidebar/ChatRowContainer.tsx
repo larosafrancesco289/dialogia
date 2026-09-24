@@ -58,7 +58,16 @@ export function ChatRowContainer({
   const moveTo = async (folderId?: string) => {
     setShowMoveSheet(false);
     setMoveAnchor(null);
-    if (folderId !== chat.folderId) await moveChatToFolder(chat.id, folderId);
+    if (folderId === chat.folderId) return;
+    await moveChatToFolder(chat.id, folderId);
+    // Filed elsewhere, the row is drawn anew and the focus it had is dropped:
+    // pick it up on the new row, if its folder is open.
+    requestAnimationFrame(() => {
+      if (document.activeElement !== document.body) return;
+      document
+        .querySelector<HTMLElement>(`.chat-item[data-chat-id="${CSS.escape(chat.id)}"]`)
+        ?.focus({ preventScroll: true });
+    });
   };
 
   const longPress = useLongPressSheet({

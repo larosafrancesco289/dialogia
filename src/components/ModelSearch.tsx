@@ -45,6 +45,8 @@ export type ModelSearchProps = {
   onSelect: (result: ModelSearchResult) => void;
   selectedIds?: string[] | readonly string[];
   placeholder?: string;
+  /** The field's accessible name; the placeholder when left out. */
+  ariaLabel?: string;
   className?: string;
   inputClassName?: string;
   emptyMessage?: string;
@@ -63,6 +65,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
       onSelect,
       selectedIds,
       placeholder = 'Search models',
+      ariaLabel,
       className = '',
       inputClassName = '',
       emptyMessage = 'No models found',
@@ -333,6 +336,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
             ref={inputRef}
             className="model-search__input"
             placeholder={placeholder}
+            aria-label={ariaLabel ?? placeholder}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);

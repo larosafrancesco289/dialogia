@@ -74,8 +74,17 @@ function MessageCardComponent({
       setDraft(message?.content || '');
     } else if (!isEditing && wasEditing) {
       setDraft('');
+      // The field or button that had focus went with the editor: give it to
+      // this message's Edit button rather than leaving it on the page.
+      const active = document.activeElement;
+      if (!active || active === document.body) {
+        document
+          .querySelector(`[data-mid="${CSS.escape(messageId)}"]`)
+          ?.querySelector<HTMLElement>('button[aria-label="Edit message"]')
+          ?.focus({ preventScroll: true });
+      }
     }
-  }, [isEditing, message?.content]);
+  }, [isEditing, message?.content, messageId]);
 
   const handleCopy = useCallback(() => copyMessage(messageId), [copyMessage, messageId]);
   const handleStartEdit = useCallback(

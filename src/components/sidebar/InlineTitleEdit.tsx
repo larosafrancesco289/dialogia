@@ -31,9 +31,14 @@ export function InlineTitleEdit({
     input.select();
   }, []);
 
-  const finish = (keep: boolean) => {
+  const finish = (keep: boolean, fromKeyboard = false) => {
     if (settled.current) return;
     settled.current = true;
+    // Enter or Escape leaves focus on the row the field sits in (it takes
+    // tabIndex -1 while editing), not dropped on the page with the field.
+    if (fromKeyboard) {
+      inputRef.current?.parentElement?.closest<HTMLElement>('[tabindex]')?.focus();
+    }
     const next = draft.trim();
     if (keep && next && next !== value) void onCommit(next);
     else onCancel();
@@ -54,14 +59,15 @@ export function InlineTitleEdit({
         event.stopPropagation();
         if (event.key === 'Enter') {
           event.preventDefault();
-          finish(true);
+          finish(true, true);
         }
         if (event.key === 'Escape') {
           event.preventDefault();
-          finish(false);
+          finish(false, true);
         }
       }}
       onBlur={() => {
+        if (settled.current) return;
         // A blur in the first moments is the gesture that opened the field
         // settling (a drop, a double-click), not the user leaving: stay.
         if (performance.now() - openedAt.current < 400) {

@@ -65,6 +65,7 @@ export function ChatRowView({
       className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item ${
         isSelected ? 'selected' : ''
       }${isEditing ? ' is-editing' : ''}${isDragOver ? ' is-drag-over' : ''}`}
+      data-chat-id={chatId}
       // The row truncates a long title; hovering reads it whole.
       title={isEditing ? undefined : title}
       style={depth ? { marginLeft: `${depth * ROW_INDENT}px` } : undefined}

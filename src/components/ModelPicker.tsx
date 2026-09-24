@@ -25,6 +25,8 @@ import {
 import { PortalDropdown } from '@/components/PortalDropdown';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useModelPickerController } from '@/components/model-picker/useModelPickerController';
+import { useReturnFocus } from '@/lib/hooks/useModalFocus';
+import { tabbableIn, trapTarget } from '@/lib/ui/focus';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -181,6 +183,13 @@ export function ModelPicker({
     setQuery('');
   }, []);
 
+  // Closing (Escape, a pick, a click away) hands focus back to the trigger
+  // when it was in the popover. On phones the sheet does this itself.
+  const returnFocus = useReturnFocus(open && !isMobile, {
+    containerRef: panelRef,
+    fallback: () => wrapRef.current?.querySelector('button'),
+  });
+
   const choose = useCallback(
     (row: PickerRow) => {
       const known = favoriteModelIds.includes(row.id) || curatedModels.some((m) => m.id === row.id);
@@ -232,6 +241,17 @@ export function ModelPicker({
   }, [activeIndex]);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
+    // Tabbing out of the popover closes it, as it would leave it stranded
+    // over the page; from the trigger, the browser's Tab carries on.
+    if (event.key === 'Tab' && !isMobile && panelRef.current) {
+      const panel = panelRef.current;
+      const active = document.activeElement as HTMLElement | null;
+      if (trapTarget(tabbableIn(panel), active, event.shiftKey, true) !== null) {
+        returnFocus();
+        close();
+      }
+      return;
+    }
     if (!flatRows.length) return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -341,6 +361,11 @@ export function ModelPicker({
                         aria-label={`Remove ${row.name} from favorites`}
                         onClick={(event) => {
                           event.stopPropagation();
+                          // The button goes with its row; keep focus in the picker.
+                          const surface = isMobile
+                            ? panelRef.current?.closest<HTMLElement>('[role="dialog"]')
+                            : inputRef.current;
+                          surface?.focus({ preventScroll: true });
                           toggleFavoriteModel(row.id);
                         }}
                       >

@@ -1,5 +1,12 @@
 import { createPortal } from 'react-dom';
-import type { ComponentPropsWithoutRef, ElementType, MouseEvent, ReactNode } from 'react';
+import type {
+  ComponentPropsWithoutRef,
+  ElementType,
+  KeyboardEventHandler,
+  MouseEvent,
+  ReactNode,
+  Ref,
+} from 'react';
 
 export function DialogPortal({ children }: { children: ReactNode }) {
   if (typeof document === 'undefined') return null;
@@ -46,6 +53,8 @@ type DialogSurfaceProps = {
   role?: string;
   ariaLabel?: string;
   ariaModal?: boolean;
+  surfaceRef?: Ref<HTMLDivElement>;
+  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
   children: ReactNode;
 };
 
@@ -54,10 +63,21 @@ export function DialogSurface({
   role = 'dialog',
   ariaLabel,
   ariaModal = true,
+  surfaceRef,
+  onKeyDown,
   children,
 }: DialogSurfaceProps) {
   return (
-    <div className={className} role={role} aria-modal={ariaModal} aria-label={ariaLabel}>
+    <div
+      ref={surfaceRef}
+      className={className}
+      role={role}
+      aria-modal={ariaModal}
+      aria-label={ariaLabel}
+      // A click on its text keeps focus in the dialog instead of dropping it.
+      tabIndex={-1}
+      onKeyDown={onKeyDown}
+    >
       {children}
     </div>
   );
