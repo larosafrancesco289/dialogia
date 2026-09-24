@@ -38,7 +38,6 @@ import {
   clampWeight,
   diagnosticWeight,
   markKnownTarget,
-  morePracticeTarget,
   observationWeight,
   percent,
   quizWeight,
@@ -1020,7 +1019,13 @@ function decideLearner(
       return null;
     }
 
-    case 'reopen_topic': {
+    // "Not yet, more practice" at a chapter break and "Take it up again" in
+    // Revise are one choice: the topic comes back with its estimate as it
+    // stands (asking to practise is not evidence; "Too high" is the learner's
+    // way to disagree with a number), and completing it again as mastered
+    // needs fresh work, counted from the reopening.
+    case 'reopen_topic':
+    case 'more_practice': {
       if (!flags.planEditable) return notEditable('Reopening a topic');
       const found = resolveNode(state, cmd.nodeId, false);
       if (found.error) return found.error;
@@ -1032,39 +1037,6 @@ function decideLearner(
         );
       }
       out.push({ type: 'topic_reopened', nodeId: found.node.id });
-      return null;
-    }
-
-    case 'more_practice': {
-      const found = resolveNode(state, cmd.nodeId, false);
-      if (found.error) return found.error;
-      const node = found.node;
-      const confidence = confidenceOf(state, node.id);
-      const cap = morePracticeTarget(confidence);
-      const lowers = flags.learnerModelEditable && cap !== confidence;
-      if (node.status === 'completed') {
-        if (!flags.planEditable) return notEditable('Reopening a topic');
-        out.push({ type: 'topic_reopened', nodeId: node.id });
-      } else {
-        if (!flags.learnerModelEditable) return notEditable('Correcting the learner model');
-        if (!lowers) {
-          return err(
-            'nothing_to_change',
-            `${node.name} is already at ${percent(confidence)}%, below the practice cap.`,
-            'Nothing to do.',
-          );
-        }
-      }
-      if (lowers) {
-        out.push({
-          type: 'evidence_recorded',
-          nodeId: node.id,
-          source: 'learner',
-          kind: 'more_practice',
-          setTo: cap,
-          note: 'Asked for more practice.',
-        });
-      }
       return null;
     }
 

@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   MASTERY_PRIOR,
-  MORE_PRACTICE_CAP,
   READY,
   applyEvidence,
   clampWeight,
@@ -10,14 +9,12 @@ import {
   diagnosticWeight,
   markKnownTarget,
   masteryBand,
-  morePracticeTarget,
   quizWeight,
 } from '@/modules/tutor/engine';
 
 test('the numbers the spec fixes', () => {
   assert.equal(MASTERY_PRIOR, 0.3);
   assert.equal(READY, 0.8);
-  assert.equal(MORE_PRACTICE_CAP, 0.6);
   assert.equal(quizWeight(true), 0.4);
   assert.equal(quizWeight(false), -0.3);
   assert.equal(diagnosticWeight(true), 0.3);
@@ -44,11 +41,9 @@ test('setTo overrides the weight and is clamped to [0, 1]', () => {
   assert.equal(applyEvidence(0.5, { setTo: -1 }), 0);
 });
 
-test('mark known is a floor and more practice is a cap', () => {
+test('mark known is a floor', () => {
   assert.equal(markKnownTarget(0.3), READY);
   assert.equal(markKnownTarget(0.95), 0.95);
-  assert.equal(morePracticeTarget(0.9), MORE_PRACTICE_CAP);
-  assert.equal(morePracticeTarget(0.4), 0.4);
 });
 
 test('bands: building below 50%, practising to 80%, ready from 80%', () => {
