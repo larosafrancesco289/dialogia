@@ -13,8 +13,9 @@ import { buildMessageIndex } from '@/lib/messages/indexing';
 import { registerTool, type PlanningToolHandler } from '@/lib/tools';
 import type { ModelMessage, ToolCall, ToolDefinition } from '@/lib/agent/types';
 import type { StreamCallbacks, TransportStreamParams } from '@/lib/transport/types';
-import type { Chat, Message, ModelDescriptor } from '@/lib/types';
+import type { Message, ModelDescriptor } from '@/lib/types';
 import { createTestStoreState } from '../../../../tests/helpers/createTestStoreState';
+import { makeChat } from '../../../../tests/helpers/makeChat';
 
 const definition = (name: string): ToolDefinition => ({
   type: 'function',
@@ -136,23 +137,7 @@ async function runAgentTurn(
     pricing: undefined,
     raw: { supported_parameters: ['tools'] },
   };
-  const chat: Chat = {
-    id: chatId,
-    title: 'Agent chat',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    settings: {
-      modelId: model.id,
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: false,
-      },
-      features: { search: { enabled: false, provider: 'openrouter' } },
-    },
-  };
+  const chat = makeChat({ id: chatId, title: 'Agent chat', settings: { modelId: model.id } });
   const assistantMessage = createAssistantMessage({
     id: `${chatId}-assistant`,
     chatId,

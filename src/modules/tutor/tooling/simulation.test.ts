@@ -12,7 +12,7 @@ import { buildTransportAuth } from '@/lib/auth/transport';
 import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import type { ModelMessage, ToolCall } from '@/lib/transport/contracts';
 import type { TransportStreamParams } from '@/lib/transport/types';
-import type { Chat, ModelDescriptor } from '@/lib/types';
+import type { ModelDescriptor } from '@/lib/types';
 import { DEFAULT_TUTOR_FLAGS, type TutorEvent, type TutorEventOf } from '@/modules/tutor/engine';
 import { checkRun } from '@/modules/tutor/tooling/check';
 import { runTutorSimulationCli } from '@/modules/tutor/tooling/cli';
@@ -20,6 +20,7 @@ import type { Scenario } from '@/modules/tutor/tooling/scenarios';
 import { HeadlessTutorSession } from '@/modules/tutor/tooling/session';
 import { runSimulation, type SimulationRun } from '@/modules/tutor/tooling/simulation';
 import { SimulatedStudent, type StudentLLM } from '@/modules/tutor/tooling/student';
+import { makeChat } from '../../../../tests/helpers/makeChat';
 
 const TUTOR = 'provider/tutor';
 
@@ -186,28 +187,17 @@ function tutorPipeline(requests: TransportStreamParams[], script = scriptedTutor
   });
 }
 
-function chat(): Chat {
-  return {
+function chat() {
+  return makeChat({
     id: `sim-test-${Math.random().toString(36).slice(2)}`,
     title: 'Simulated',
-    createdAt: 1,
-    updatedAt: 1,
     settings: {
       modelId: TUTOR,
       system: '',
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: true,
-        showDebugRawJson: false,
-      },
-      features: {
-        search: { enabled: false, provider: 'openrouter' },
-        tutor: { enabled: true, defaultModelId: TUTOR },
-      },
+      ui: { showToolCallLog: true },
+      features: { tutor: { enabled: true, defaultModelId: TUTOR } },
     },
-  };
+  });
 }
 
 async function simulate({ script = scriptedTutor, exchanges = 6 } = {}): Promise<{
