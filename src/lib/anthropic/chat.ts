@@ -4,11 +4,11 @@ import { API_ERROR_CODES } from '@/lib/api/errors';
 import type { TransportChatParams } from '@/lib/transport/types';
 import type { ChatCompletion } from '@/lib/transport/completions';
 import { anMessages } from '@/lib/anthropic/http';
-import {
-  buildAnthropicBody,
-  type AnthropicAssistantMessageContent,
-  type AnthropicMessagesRequest,
-} from '@/lib/anthropic/request';
+import { buildAnthropicBody } from '@/lib/anthropic/request';
+import type {
+  AnthropicAssistantMessageContent,
+  AnthropicMessagesRequest,
+} from '@/lib/anthropic/wire';
 import { buildAnthropicError, wrapAnthropicClientError } from '@/lib/anthropic/errors';
 import { isRecord } from '@/lib/utils/guards';
 
