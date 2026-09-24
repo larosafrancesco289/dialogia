@@ -118,17 +118,21 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* One line, always: what does not fit ends in an ellipsis rather than
+     wrapping the row onto a second line. Inline runs, not flex items, so the
+     ellipsis falls on the text itself. */
   .model-row__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 var(--space-2);
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 0.75rem;
     line-height: 1.4;
     color: var(--color-fg-muted);
   }
   .model-row__meta > * + *::before {
     content: '·';
-    margin-right: var(--space-2);
+    margin: 0 var(--space-2);
   }
   .model-row__note {
     overflow: hidden;
