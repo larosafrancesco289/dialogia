@@ -133,6 +133,9 @@
 
 .user :global(.markdown p) {
   margin: 0;
+  /* A person's Shift+Return is a line break they meant; markdown would fold it
+     into the paragraph. */
+  white-space: pre-wrap;
 }
 
 .user :global(.markdown p + p) {

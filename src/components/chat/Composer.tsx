@@ -23,6 +23,7 @@ import { ComposerActions } from '@/components/composer/ComposerActions';
 import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
+import { readDraft, writeDraft } from '@/lib/ui/composerDrafts';
 import { ComposerLayout } from '@/components/composer/ComposerLayout';
 import {
   selectIsStreaming,
@@ -76,11 +77,10 @@ export function Composer({
     shallow,
   );
   const chat = chats.find((c) => c.id === selectedChatId);
-  const [text, setText] = useState('');
-  const taRef = useRef<HTMLTextAreaElement>(null);
   const draftScopeKey = useMemo(() => resolveDraftScopeKey(selectedChatId), [selectedChatId]);
+  const [text, setText] = useState(() => readDraft(draftScopeKey));
+  const taRef = useRef<HTMLTextAreaElement>(null);
   const activeDraftScopeRef = useRef(draftScopeKey);
-  const draftsByScopeRef = useRef<Record<string, string>>({});
   const pendingSendSnapshotRef = useRef<{
     text: string;
     attachments: DraftAttachment[];
@@ -132,15 +132,15 @@ export function Composer({
   }, [focused, isMobile, setUI]);
 
   useEffect(() => {
-    draftsByScopeRef.current[activeDraftScopeRef.current] = text;
+    writeDraft(activeDraftScopeRef.current, text);
   }, [text]);
 
   useEffect(() => {
     const previousScope = activeDraftScopeRef.current;
     if (previousScope === draftScopeKey) return;
-    draftsByScopeRef.current[previousScope] = text;
+    writeDraft(previousScope, text);
     activeDraftScopeRef.current = draftScopeKey;
-    setText(draftsByScopeRef.current[draftScopeKey] ?? '');
+    setText(readDraft(draftScopeKey));
     if (
       Object.prototype.hasOwnProperty.call(recoveredAttachmentsByScopeRef.current, draftScopeKey)
     ) {
@@ -153,7 +153,7 @@ export function Composer({
   useEffect(() => {
     if (composerDraft == null) return;
     setText(composerDraft);
-    draftsByScopeRef.current[activeDraftScopeRef.current] = composerDraft;
+    writeDraft(activeDraftScopeRef.current, composerDraft);
     setUI({ composerDraft: undefined });
     // Focus the textarea after filling
     setTimeout(() => taRef.current?.focus(), 0);
@@ -173,7 +173,7 @@ export function Composer({
 
   const clearActiveDraft = () => {
     const scope = activeDraftScopeRef.current;
-    draftsByScopeRef.current[scope] = '';
+    writeDraft(scope, '');
     setText('');
   };
 
@@ -189,7 +189,7 @@ export function Composer({
       onBeforeSend: () => {
         pendingSendSnapshotRef.current = snapshot;
         delete recoveredAttachmentsByScopeRef.current[snapshot.scope];
-        draftsByScopeRef.current[snapshot.scope] = '';
+        writeDraft(snapshot.scope, '');
         clearActiveDraft();
         resetAttachments();
         if (isMobile) taRef.current?.blur();
@@ -214,7 +214,7 @@ export function Composer({
       const snapshot = pendingSendSnapshotRef.current;
       pendingSendSnapshotRef.current = null;
       if (!snapshot) return;
-      draftsByScopeRef.current[snapshot.scope] = snapshot.text;
+      writeDraft(snapshot.scope, snapshot.text);
       if (snapshot.scope === activeDraftScopeRef.current) {
         setText(snapshot.text);
         replaceAttachments(snapshot.attachments);
@@ -232,11 +232,10 @@ export function Composer({
   useEffect(() => {
     const target = taRef.current;
     if (!target) return;
-    if (canAutoFocus && !isStreaming) {
-      target.focus({ preventScroll: true });
-    } else {
-      target.blur();
-    }
+    // A desktop keeps focus through a reply, so the next message can be typed
+    // ahead; a phone drops its keyboard so the reply has the screen.
+    if (!canAutoFocus) target.blur();
+    else if (!isStreaming) target.focus({ preventScroll: true });
   }, [canAutoFocus, isStreaming, selectedChatId]);
 
   const maxTextareaHeight = useMemo(() => {
