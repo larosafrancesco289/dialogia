@@ -147,6 +147,13 @@ const PAYLOADS: Record<TutorEventType, z.ZodTypeAny> = {
   }),
   review_flagged: z.object({ nodeId: id, flagged: z.boolean() }),
   card_dismissed: z.object({ card: z.enum(['intake', 'diagnostic', 'quiz']), cardId: id }),
+  reply_retracted: z.object({ replyId: id }),
+  proposal_imported: z.object({
+    proposalId: id,
+    plan,
+    rationale: z.string().optional(),
+    status: z.enum(['approved', 'declined', 'replaced']),
+  }),
 };
 
 const envelope = z.object({

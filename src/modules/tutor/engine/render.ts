@@ -4,7 +4,7 @@
 import type { LearningPlanNode } from '@/lib/types';
 import type { TutorEvent } from '@/modules/tutor/engine/events';
 import type { TutorFlags } from '@/modules/tutor/engine/flags';
-import { apply, fold } from '@/modules/tutor/engine/fold';
+import { apply, effectiveEvents, fold } from '@/modules/tutor/engine/fold';
 import { nextReadyNode, unmetPrerequisites } from '@/modules/tutor/engine/plan';
 import { PRACTISING, READY, masteryBand, percent } from '@/modules/tutor/engine/rules';
 import {
@@ -200,7 +200,7 @@ export function learnerChangesSince(
   events: readonly TutorEvent[],
   seq: number,
 ): string[] {
-  const sorted = [...events].sort((a, b) => a.seq - b.seq);
+  const sorted = effectiveEvents(events);
   let rolling = fold(sorted.filter((e) => e.seq <= seq));
   const name = (id: string) =>
     state.plan?.nodes.find((n) => n.id === id)?.name ??
