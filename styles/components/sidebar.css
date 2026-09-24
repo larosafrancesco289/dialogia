@@ -211,3 +211,9 @@
 .row-edit::placeholder {
   color: var(--color-fg-muted);
 }
+/* iOS zooms into a field under 16px when it takes focus. */
+@media (max-width: 767px) {
+  .row-edit {
+    font-size: 1rem;
+  }
+}

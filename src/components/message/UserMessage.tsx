@@ -145,7 +145,19 @@ export function UserMessage({
           className="message-user-toggle"
           aria-expanded={clamp.expanded}
           aria-controls={bodyId}
-          onClick={() => clamp.setExpanded((value) => !value)}
+          onClick={() => {
+            const collapsing = clamp.expanded;
+            clamp.setExpanded((value) => !value);
+            if (!collapsing) return;
+            // Folding a long message pulls its end up past the reader; bring
+            // its start back into view if it has scrolled off.
+            requestAnimationFrame(() => {
+              const body = clamp.bodyRef.current;
+              if (body && body.getBoundingClientRect().top < 0) {
+                body.scrollIntoView({ block: 'start', behavior: 'smooth' });
+              }
+            });
+          }}
         >
           {clamp.expanded ? 'Show less' : 'Show all'}
         </button>
