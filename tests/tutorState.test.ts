@@ -11,6 +11,7 @@ import {
   canRedoReply,
   messageHasModuleContent,
   notifyChatDeleted,
+  notifyEventsChangedElsewhere,
   notifyReplyRetracted,
 } from '@/lib/modules';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
@@ -997,6 +998,37 @@ test('an append at a position another tab took reloads the log and decides again
     stored.map((e) => e.id),
     'tab B now holds what is on disk',
   );
+});
+
+test('another tab’s append is read into a loaded session when that tab announces it', async () => {
+  const { id, store: tabA } = await teachingChat();
+  const tabB = newStore();
+  tabB.setState({ chats: tabA.getState().chats });
+  const before = await tabB.getState().ensureTutorSession(id);
+
+  await tabA
+    .getState()
+    .dispatchTutor(
+      id,
+      { by: 'learner', type: 'flag_review', nodeId: 'limits', flagged: true },
+      { by: 'learner' },
+    );
+  assert.equal(tabB.getState().tutorSessions[id].events.length, before.events.length);
+
+  await notifyEventsChangedElsewhere({ get: tabB.getState }, id);
+  assert.deepEqual(
+    tabB.getState().tutorSessions[id].events.map((e) => e.id),
+    tabA.getState().tutorSessions[id].events.map((e) => e.id),
+  );
+  assert.deepEqual(
+    tabB.getState().tutorSessions[id].state,
+    tabA.getState().tutorSessions[id].state,
+  );
+
+  // A chat this tab never opened is left to load on demand.
+  const unseen = newStore();
+  await notifyEventsChangedElsewhere({ get: unseen.getState }, id);
+  assert.equal(unseen.getState().tutorSessions[id], undefined);
 });
 
 test('deleting a chat mid-dispatch leaves no events behind and refuses what was queued', async () => {
