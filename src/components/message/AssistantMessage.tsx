@@ -157,11 +157,13 @@ export function AssistantMessage({
       />
     );
   } else if (waitingForFirstToken && message.id === lastMessageId && !displayContent) {
+    // The pen, poised: a gold caret where the first word will land, set in the
+    // reply's own paragraph so the text arrives exactly where it waited.
     messageBody = (
-      <div className={styles.typingIndicator} aria-live="polite" aria-label="Generating">
-        <span className={styles.typingBar} />
-        <span className={styles.typingBar} />
-        <span className={styles.typingBar} />
+      <div className="markdown" role="status" aria-label="Writing a reply">
+        <p>
+          <span className={styles.pen} aria-hidden="true" />
+        </p>
       </div>
     );
   } else if (isStreaming && isLatestAssistant) {
