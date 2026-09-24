@@ -1,5 +1,5 @@
-import type { Chat, Folder, Message } from '@/lib/types';
-import { sanitizeMessageRecord } from '@/lib/db/sanitize';
+import type { Chat, Folder, Message, TutorEventRecord } from '@/lib/types';
+import { sanitizeMessageRecord, sanitizeTutorEventRecord } from '@/lib/db/sanitize';
 import { sortMessages } from '@/lib/messages/ordering';
 import { normalizeChatSettings } from '@/lib/settings/normalize';
 import { migrateGenSettingsRecord } from '@/lib/settings/migrations';
@@ -46,6 +46,7 @@ export type DialogiaDbLike = {
   chats: DbTable<Chat>;
   messages: DbTable<Message>;
   folders: DbTable<Folder>;
+  tutorEvents: DbTable<TutorEventRecord>;
 };
 
 export type RepositorySnapshot = {
@@ -58,13 +59,13 @@ export type RepositorySnapshot = {
   selectedChatId?: string;
 };
 
-function pickMessageCollection(
-  table: DbTable<Message>,
+function pickChatCollection<T extends { chatId: string }>(
+  table: DbTable<T>,
   chatId: string,
-): DbCollection<Message> | null {
+): DbCollection<T> | null {
   if (!table.where) return null;
   try {
-    const byField = table.where('chatId') as DbWhereClause<Message> | undefined;
+    const byField = table.where('chatId') as DbWhereClause<T> | undefined;
     if (byField && typeof byField.equals === 'function') {
       return byField.equals(chatId);
     }
@@ -72,14 +73,14 @@ function pickMessageCollection(
     // ignore and fall back to object query
   }
   try {
-    return (table.where({ chatId }) as DbCollection<Message>) ?? null;
+    return (table.where({ chatId }) as DbCollection<T>) ?? null;
   } catch {
     return null;
   }
 }
 
 async function getMessagesForChat(db: DialogiaDbLike, chatId: string): Promise<Message[]> {
-  const collection = pickMessageCollection(db.messages, chatId);
+  const collection = pickChatCollection(db.messages, chatId);
   let list: Message[] | undefined;
   if (collection) {
     if (collection.sortBy) list = await collection.sortBy('createdAt');
@@ -92,7 +93,7 @@ async function getMessagesForChat(db: DialogiaDbLike, chatId: string): Promise<M
 }
 
 async function deleteMessagesForChat(db: DialogiaDbLike, chatId: string): Promise<void> {
-  const collection = pickMessageCollection(db.messages, chatId);
+  const collection = pickChatCollection(db.messages, chatId);
   if (collection?.delete) {
     await collection.delete();
     return;
@@ -103,7 +104,37 @@ async function deleteMessagesForChat(db: DialogiaDbLike, chatId: string): Promis
   );
 }
 
-type TransactionTable = DbTable<Chat> | DbTable<Message> | DbTable<Folder>;
+async function getTutorEventsForChat(
+  db: DialogiaDbLike,
+  chatId: string,
+): Promise<TutorEventRecord[]> {
+  const collection = pickChatCollection(db.tutorEvents, chatId);
+  let list: TutorEventRecord[] | undefined;
+  if (collection?.toArray) list = await collection.toArray();
+  if (!list) list = (await db.tutorEvents.toArray()).filter((entry) => entry.chatId === chatId);
+  return list
+    .map(sanitizeTutorEventRecord)
+    .filter((entry): entry is TutorEventRecord => !!entry && entry.chatId === chatId)
+    .sort((a, b) => a.seq - b.seq);
+}
+
+async function deleteTutorEventsForChat(db: DialogiaDbLike, chatId: string): Promise<void> {
+  const collection = pickChatCollection(db.tutorEvents, chatId);
+  if (collection?.delete) {
+    await collection.delete();
+    return;
+  }
+  const all = await db.tutorEvents.toArray();
+  await Promise.all(
+    all.filter((event) => event.chatId === chatId).map((event) => db.tutorEvents.delete(event.id)),
+  );
+}
+
+type TransactionTable =
+  | DbTable<Chat>
+  | DbTable<Message>
+  | DbTable<Folder>
+  | DbTable<TutorEventRecord>;
 type DbTransaction = (mode: 'r' | 'rw', ...args: unknown[]) => PromiseLike<unknown>;
 
 async function runTransaction(
@@ -150,18 +181,33 @@ export function createRepository(db: DialogiaDbLike) {
   };
 
   const exportAll = async () => {
-    const [chats, messages, folders] = await Promise.all([
+    const [chats, messages, folders, tutorEvents] = await Promise.all([
       db.chats.toArray(),
       db.messages.toArray(),
       db.folders.toArray(),
+      db.tutorEvents.toArray(),
     ]);
-    return { chats, messages: sortMessages(messages), folders };
+    return {
+      chats,
+      messages: sortMessages(messages),
+      folders,
+      tutorEvents: tutorEvents.sort((a, b) =>
+        a.chatId === b.chatId ? a.seq - b.seq : a.chatId.localeCompare(b.chatId),
+      ),
+    };
   };
 
-  const importAll = async (data: { chats?: unknown; messages?: unknown; folders?: unknown }) => {
+  const importAll = async (data: {
+    chats?: unknown;
+    messages?: unknown;
+    folders?: unknown;
+    tutorEvents?: unknown;
+  }) => {
     const rawChats = Array.isArray(data?.chats) ? data.chats : [];
     const rawMessages = Array.isArray(data?.messages) ? data.messages : [];
     const rawFolders = Array.isArray(data?.folders) ? data.folders : [];
+    // Exports from before the tutor's event log have no `tutorEvents`.
+    const rawTutorEvents = Array.isArray(data?.tutorEvents) ? data.tutorEvents : [];
 
     const chats: Chat[] = [];
     const chatIds = new Set<string>();
@@ -199,10 +245,24 @@ export function createRepository(db: DialogiaDbLike) {
       return typeof entry.createdAt === 'number' && typeof entry.updatedAt === 'number';
     });
 
-    await runTransaction(db, [db.chats, db.messages, db.folders], async () => {
+    const tutorEvents: TutorEventRecord[] = [];
+    const seenEventIds = new Set<string>();
+    for (const entry of rawTutorEvents) {
+      const event = sanitizeTutorEventRecord(entry);
+      if (!event || !chatIds.has(event.chatId) || seenEventIds.has(event.id)) continue;
+      seenEventIds.add(event.id);
+      tutorEvents.push(event);
+    }
+    // A chat's log is one sequence: an imported log replaces the local one
+    // rather than interleaving two sets of positions.
+    const chatsWithEvents = new Set(tutorEvents.map((event) => event.chatId));
+
+    await runTransaction(db, [db.chats, db.messages, db.folders, db.tutorEvents], async () => {
       for (const c of chats) await db.chats.put(c);
       for (const m of messages) await db.messages.put(m);
       for (const f of folders) await db.folders.put(f);
+      for (const chatId of chatsWithEvents) await deleteTutorEventsForChat(db, chatId);
+      for (const e of tutorEvents) await db.tutorEvents.put(e);
     });
   };
 
@@ -250,9 +310,22 @@ export function createRepository(db: DialogiaDbLike) {
   };
 
   const deleteChatAndMessages = async (chatId: string) => {
-    await runTransaction(db, [db.chats, db.messages], async () => {
+    await runTransaction(db, [db.chats, db.messages, db.tutorEvents], async () => {
       await db.chats.delete(chatId);
       await deleteMessagesForChat(db, chatId);
+      await deleteTutorEventsForChat(db, chatId);
+    });
+  };
+
+  /** A chat's tutor events in log order; rows with a malformed envelope are skipped. */
+  const loadTutorEvents = async (chatId: string): Promise<TutorEventRecord[]> =>
+    getTutorEventsForChat(db, chatId);
+
+  /** Appends to a chat's log. Events are immutable, so a repeated id is a no-op rewrite. */
+  const appendTutorEvents = async (events: TutorEventRecord[]) => {
+    if (!events.length) return;
+    await runTransaction(db, [db.tutorEvents], async () => {
+      for (const event of events) await db.tutorEvents.put(event);
     });
   };
 
@@ -273,6 +346,8 @@ export function createRepository(db: DialogiaDbLike) {
     saveChatWithMessages,
     deleteChatAndMessages,
     deleteFolder,
+    loadTutorEvents,
+    appendTutorEvents,
   };
 }
 

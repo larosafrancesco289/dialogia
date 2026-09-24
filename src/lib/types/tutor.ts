@@ -165,6 +165,23 @@ export type TutorEvent = {
   difficulty?: 'easy' | 'medium' | 'hard';
 };
 
+/**
+ * A tutor event as the `tutorEvents` table stores it. The tutor module owns the
+ * payload of each event type; core knows only the envelope, which is what it
+ * validates on import and orders by.
+ */
+export type TutorEventRecord = {
+  id: string;
+  chatId: string;
+  /** Position in the chat's log, from 1. */
+  seq: number;
+  at: number;
+  by: 'tutor' | 'learner' | 'system';
+  type: string;
+  messageId?: string;
+  [field: string]: unknown;
+};
+
 // Learner Model Types
 export type LearnerModel = {
   studentId?: string; // Optional user ID (currently unused)
