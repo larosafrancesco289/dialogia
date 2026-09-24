@@ -46,7 +46,9 @@ function clampTitle(text: string): string {
   if (text.length <= TITLE_MAX_CHARS) return text;
   const cut = text.slice(0, TITLE_MAX_CHARS + 1);
   const boundary = cut.lastIndexOf(' ');
-  return `${(boundary > 20 ? cut.slice(0, boundary) : cut.slice(0, TITLE_MAX_CHARS)).replace(/[\s,.;:!?-]+$/, '')}…`;
+  // A hard cut must not split a surrogate pair, which would render as a broken glyph.
+  const hard = cut.slice(0, TITLE_MAX_CHARS).replace(/[\uD800-\uDBFF]$/, '');
+  return `${(boundary > 20 ? cut.slice(0, boundary) : hard).replace(/[\s,.;:!?-]+$/, '')}…`;
 }
 
 /**
