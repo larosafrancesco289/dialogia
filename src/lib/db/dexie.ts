@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import type { Chat, Folder, KVRecord, Message } from '@/lib/types';
+import type { Chat, Folder, KVRecord, Message, TutorEventRecord } from '@/lib/types';
 import { sanitizeMessageRecord } from '@/lib/db/sanitize';
 import { DB_SCHEMA_VERSION } from '@/lib/db/versions';
 import { migrateGenSettingsRecord } from '@/lib/settings/migrations';
@@ -12,6 +12,7 @@ export class DialogiaDB extends Dexie {
   messages!: Table<Message, string>;
   folders!: Table<Folder, string>;
   kv!: Table<KVRecord, string>;
+  tutorEvents!: Table<TutorEventRecord, string>;
 
   constructor(name = 'dialogia') {
     super(name);
@@ -26,7 +27,7 @@ export class DialogiaDB extends Dexie {
       folders: 'id, updatedAt, createdAt, parentId',
       kv: 'key',
     });
-    this.version(DB_SCHEMA_VERSION)
+    this.version(5)
       .stores({
         chats: 'id, updatedAt, createdAt, folderId',
         messages: 'id, chatId, createdAt',
@@ -84,6 +85,14 @@ export class DialogiaDB extends Dexie {
           }
         }
       });
+    // The tutor's append-only event log. New table only; nothing to transform.
+    this.version(DB_SCHEMA_VERSION).stores({
+      chats: 'id, updatedAt, createdAt, folderId',
+      messages: 'id, chatId, createdAt',
+      folders: 'id, updatedAt, createdAt, parentId',
+      kv: 'key',
+      tutorEvents: 'id, chatId, [chatId+seq]',
+    });
   }
 }
 

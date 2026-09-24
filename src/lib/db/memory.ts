@@ -1,4 +1,4 @@
-import type { Chat, Folder, KVRecord, Message } from '@/lib/types';
+import type { Chat, Folder, KVRecord, Message, TutorEventRecord } from '@/lib/types';
 
 function cloneValue<T>(value: T): T {
   try {
@@ -108,6 +108,7 @@ export class InMemoryDialogiaDB {
   messages = new InMemoryTable<Message>((message) => message.id);
   folders = new InMemoryTable<Folder>((folder) => folder.id);
   kv = new InMemoryTable<KVRecord>((record) => record.key);
+  tutorEvents = new InMemoryTable<TutorEventRecord>((event) => event.id);
 
   async transaction(_mode: 'r' | 'rw', ...args: unknown[]) {
     const callback = args[args.length - 1];
@@ -126,6 +127,8 @@ export class InMemoryDialogiaDB {
             return this.folders as unknown as InMemoryTable<U>;
           case 'kv':
             return this.kv as unknown as InMemoryTable<U>;
+          case 'tutorEvents':
+            return this.tutorEvents as unknown as InMemoryTable<U>;
           default:
             throw new Error(`Unknown table: ${name}`);
         }

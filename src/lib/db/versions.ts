@@ -1,1 +1,1 @@
-export const DB_SCHEMA_VERSION = 5;
+export const DB_SCHEMA_VERSION = 6;

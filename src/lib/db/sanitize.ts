@@ -1,4 +1,9 @@
-import type { Message, MessageToolRound, MessageToolRoundCall } from '@/lib/types';
+import type {
+  Message,
+  MessageToolRound,
+  MessageToolRoundCall,
+  TutorEventRecord,
+} from '@/lib/types';
 
 const REMOVED_MESSAGE_KEYS = ['deepResearch'] as const;
 
@@ -134,4 +139,24 @@ function normalizeToolRounds(
     rounds.push({ text, calls });
   }
   return rounds.length > 0 ? { value: rounds, changed } : undefined;
+}
+
+const EVENT_ACTORS = new Set<unknown>(['tutor', 'learner', 'system']);
+
+/**
+ * The envelope of a stored tutor event, or undefined when it is malformed. The
+ * payload is the tutor module's to check; a row without a usable id, chat,
+ * position, time, actor and type cannot be ordered or folded by anyone.
+ */
+export function sanitizeTutorEventRecord(value: unknown): TutorEventRecord | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const { id, chatId, seq, at, by, type, messageId } = record;
+  if (!isString(id) || !id || !isString(chatId) || !chatId) return undefined;
+  if (typeof seq !== 'number' || !Number.isInteger(seq) || seq < 1) return undefined;
+  if (typeof at !== 'number' || !Number.isFinite(at)) return undefined;
+  if (!EVENT_ACTORS.has(by) || !isString(type) || !type) return undefined;
+  const next = { ...record } as TutorEventRecord;
+  if (messageId !== undefined && (!isString(messageId) || !messageId)) delete next.messageId;
+  return next;
 }
