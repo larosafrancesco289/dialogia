@@ -117,6 +117,29 @@ function askedOnTopic(state: TutorState, nodeId: string): string[] {
     .map((entry) => entry.line);
 }
 
+/** How many of the learner's recorded answers on the current topic the tutor is reminded of. */
+const ANSWERS_SHOWN = 4;
+
+/**
+ * What the tutor last recorded of the learner's own answers on a topic since
+ * it was (re)opened, most recent last: the conversation's memory of practice,
+ * as `askedOnTopic` is the cards', so a question they have answered is not put
+ * to them again in new words.
+ */
+function shownOnTopic(state: TutorState, nodeId: string): string[] {
+  const since = state.counts.evidenceAtReopen[nodeId] ?? 0;
+  return (state.mastery[nodeId]?.evidence ?? [])
+    .slice(since)
+    .filter(
+      (entry) =>
+        !!entry.eventId &&
+        entry.kind !== 'misconception' &&
+        (entry.source === 'observation' || entry.source === 'learner_said'),
+    )
+    .slice(-ANSWERS_SHOWN)
+    .map((entry) => `- ${entry.kind ?? 'observed'}: ${quote(entry.details, 100)}`);
+}
+
 function awaitingLine(state: TutorState): string | undefined {
   const open = state.awaiting;
   if (!open) return undefined;
@@ -172,6 +195,13 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
       lines.push(
         "Already asked on this topic (don't repeat them or reuse their numbers; build on them):",
         ...asked,
+      );
+    }
+    const shown = shownOnTopic(state, current.id);
+    if (shown.length) {
+      lines.push(
+        "Their recent answers you recorded on this topic (don't ask for these again, reworded or not; build past them):",
+        ...shown,
       );
     }
   } else if (state.phase === 'interlude') {
