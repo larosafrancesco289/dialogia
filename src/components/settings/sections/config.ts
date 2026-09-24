@@ -37,7 +37,8 @@ export const SECTION_TITLES: Record<SectionId, string> = {
 /** What each section is about, so search finds it by its contents too. */
 export const SECTION_KEYWORDS: Record<SectionId, string> = {
   providers: 'openrouter anthropic api key provider connect',
-  endpoints: 'local server ollama lm studio llama.cpp vllm base url custom endpoint',
+  endpoints:
+    'local server ollama lm studio llama.cpp vllm base url custom endpoint openai compatible api key model self-hosted',
   'web-search': 'tavily search key browse web',
   'default-model': 'new chat default model refresh list',
   favorites: 'favorite favourite star models add remove hidden picker',
@@ -50,6 +51,18 @@ export const SECTION_KEYWORDS: Record<SectionId, string> = {
   developer: 'developer debug request raw json tool call log calls inspect',
   data: 'export import json backup data',
 };
+
+// Settings reopens on the tab last used in this page's life; a reload starts
+// over on the first tab.
+let lastTab: TabId | null = null;
+
+export function initialSettingsTab(): TabId {
+  return lastTab ?? TAB_LIST[0].id;
+}
+
+export function rememberSettingsTab(tab: TabId) {
+  lastTab = tab;
+}
 
 /** Whether a section answers a settings search (title or contents, every word). */
 export function sectionMatches(sectionId: SectionId, query: string): boolean {
