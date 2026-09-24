@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { DialogPortal } from '@/components/ui/Dialog';
 import { useChatStore } from '@/lib/store';
+import { useModalFocus } from '@/lib/hooks/useModalFocus';
 import { IntroArt, type IntroPlate } from '@/components/intro/IntroArt';
 import styles from './IntroTour.module.css';
 
@@ -62,14 +63,11 @@ const PAGES: IntroPage[] = [
   },
 ];
 
-const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 export function IntroTour() {
   const setUI = useChatStore((s) => s.setUI);
   const [index, setIndex] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   const page = PAGES[index];
   const isLast = index === PAGES.length - 1;
@@ -94,59 +92,29 @@ export function IntroTour() {
 
   // The tour owns the whole screen while it is up: no background scroll, and no
   // tabbing out of it.
+  useModalFocus(true, cardRef, { onEscape: dismiss });
+
   useEffect(() => {
-    restoreFocusRef.current = (document.activeElement as HTMLElement) ?? null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    cardRef.current?.focus();
     return () => {
       document.body.style.overflow = previousOverflow;
-      restoreFocusRef.current?.focus?.();
     };
   }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        dismiss();
-        return;
-      }
       if (event.key === 'ArrowRight') {
         event.preventDefault();
         setIndex((current) => Math.min(PAGES.length - 1, current + 1));
-        return;
-      }
-      if (event.key === 'ArrowLeft') {
+      } else if (event.key === 'ArrowLeft') {
         event.preventDefault();
         setIndex((current) => Math.max(0, current - 1));
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const card = cardRef.current;
-      if (!card) return;
-      const targets = Array.from(card.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-        (el) => el.offsetParent !== null || el === card,
-      );
-      if (targets.length === 0) {
-        event.preventDefault();
-        card.focus();
-        return;
-      }
-      const first = targets[0];
-      const last = targets[targets.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      if (event.shiftKey && (active === first || active === card || !card.contains(active))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (active === last || !card.contains(active))) {
-        event.preventDefault();
-        first.focus();
       }
     };
     document.addEventListener('keydown', onKeyDown, true);
     return () => document.removeEventListener('keydown', onKeyDown, true);
-  }, [dismiss]);
+  }, []);
 
   return (
     <DialogPortal>

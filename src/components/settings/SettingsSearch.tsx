@@ -48,12 +48,13 @@ export function SettingsSearch({
 
   return (
     <div className="settings-search">
-      <MagnifyingGlassIcon className="settings-search-icon h-4 w-4" />
+      <MagnifyingGlassIcon className="settings-search-icon h-4 w-4" aria-hidden="true" />
       <input
         ref={inputRef}
         type="text"
         className="settings-search-input"
         placeholder={placeholder}
+        aria-label="Search settings"
         value={localValue}
         onChange={(e) => handleChange(e.target.value)}
         onKeyDown={(e) => {
