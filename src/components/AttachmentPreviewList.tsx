@@ -22,7 +22,7 @@ export function AttachmentPreviewList({
           <button
             type="button"
             className="attachment-remove"
-            aria-label="Remove attachment"
+            aria-label={`Remove ${attachment.name || 'attachment'}`}
             title="Remove"
             onClick={() => onRemove(attachment.id)}
           >
