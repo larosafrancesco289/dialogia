@@ -11,6 +11,7 @@ export function setTurnController(chatId: string, controller: AbortController) {
   turnControllers.set(chatId, controller);
 }
 
+/** @internal Only the controller tests read a turn's controller back. */
 export function getTurnController(chatId: string): AbortController | undefined {
   if (!chatId) return undefined;
   return turnControllers.get(chatId);

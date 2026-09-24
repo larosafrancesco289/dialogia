@@ -5,10 +5,6 @@ import { createRepository } from '@/lib/db/repository';
 import { announceWrites } from '@/lib/db/announce';
 import { tabChannel } from '@/lib/sync/tabChannel';
 
-export { sanitizeMessageRecord } from '@/lib/db/sanitize';
-export { DialogiaDB } from '@/lib/db/dexie';
-export { InMemoryDialogiaDB } from '@/lib/db/memory';
-export type { Repository, RepositorySnapshot } from '@/lib/db/repository';
 export { TutorLogConflictError } from '@/lib/db/repository';
 
 const hasIndexedDb =

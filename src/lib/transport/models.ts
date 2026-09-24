@@ -1,5 +1,3 @@
-import type { TransportKind } from '@/lib/transport/endpoints';
-
 export type ModelDescriptor = {
   id: string;
   name?: string;
@@ -22,5 +20,3 @@ export type ModelDescriptor = {
   transportModelId?: string;
   providerDisplay?: string;
 };
-
-export type { TransportKind };

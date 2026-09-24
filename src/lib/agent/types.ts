@@ -2,7 +2,6 @@ import type { Chat, Message, ModelDescriptor, PersistedAttachment, SearchMode } 
 import type { SearchResult } from '@/lib/search/types';
 import type { Result } from '@/lib/utils/result';
 import type { ModelIndex } from '@/lib/models';
-import { ProviderSort } from '@/lib/models/providerSort';
 import type { TransportAuth } from '@/lib/auth/transport';
 import type { TurnStore, TurnStoreState } from '@/lib/agent/contracts';
 import type {
@@ -11,31 +10,22 @@ import type {
 } from '@/lib/contracts/store';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
-import type { WebSearchArgs as SearchArgs } from '@/lib/search/args';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
 
 export type {
-  AssistantModelMessage,
-  CacheControl,
   ModelContentBlock,
   ModelMessage,
-  PdfPluginConfig,
   PluginConfig,
-  SystemModelMessage,
   ToolCall,
   ToolDefinition,
-  ToolFunctionDefinition,
   ToolModelMessage,
-  UserModelMessage,
-  WebPluginConfig,
 } from '@/lib/transport/contracts';
 
 export type StoreSetter = ContractStoreSetter<TurnStoreState>;
 export type StoreGetter = ContractStoreGetter<TurnStoreState>;
 export type PersistMessage = (message: Message) => Promise<void>;
 
-export { ProviderSort };
 export type { ResolvedTurnSettings };
 
 export type StoreAccess = { set: StoreSetter; get: StoreGetter };
@@ -50,8 +40,6 @@ export type TurnContext = {
   modelIndex: ModelIndex;
   persistMessage: PersistMessage;
 };
-
-export type WebSearchArgs = SearchArgs;
 
 export type PlanTurnResult = {
   finalSystem: string;

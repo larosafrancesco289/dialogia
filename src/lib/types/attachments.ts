@@ -26,5 +26,3 @@ export type DraftAttachment = AttachmentBase & {
 export type PersistedAttachment = AttachmentBase & {
   file?: never;
 };
-
-export type Attachment = PersistedAttachment;

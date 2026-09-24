@@ -19,19 +19,7 @@ export {
   isSearchProviderReady,
   listReadySearchProviders,
   listSearchProviders,
-  registerSearchProvider,
-  resetSearchProvidersForTest,
   searchProviderKeyRef,
 } from '@/lib/search/providers/registry';
-export { isNativeSearchMode, NATIVE_SEARCH_MODE } from '@/lib/search/providers/types';
-export type {
-  FetchOutcome,
-  FetchedPage,
-  NormalizedFetchArgs,
-  NormalizedSearchArgs,
-  SearchContext,
-  SearchMode,
-  SearchOutcome,
-  SearchProvider,
-} from '@/lib/search/providers/types';
-export { TAVILY_PROVIDER_ID, tavilySearchProvider } from '@/lib/search/providers/tavily';
+export { NATIVE_SEARCH_MODE } from '@/lib/search/providers/types';
+export { TAVILY_PROVIDER_ID } from '@/lib/search/providers/tavily';

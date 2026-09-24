@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { composeTurn } from '@/lib/agent/compose';
 import { createStore } from 'zustand/vanilla';
 import type { StateCreator } from 'zustand';
-import type { Chat, Message, Attachment } from '@/lib/types';
+import type { Chat, Message, PersistedAttachment } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
 import { buildStoreInitializer } from '@/lib/store/createStore';
 import type { StoreState } from '@/lib/store/types';
@@ -116,7 +116,7 @@ test('composeTurn merges tutor and search context with plugins and tools', async
       createdAt: Date.now() - 200,
     },
   ];
-  const attachments: Attachment[] = [
+  const attachments: PersistedAttachment[] = [
     {
       id: 'att-1',
       kind: 'pdf',

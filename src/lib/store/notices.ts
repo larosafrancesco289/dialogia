@@ -97,7 +97,6 @@ function readable(message: string): string {
 export const NOTICE_INVALID_KEY = NOTICE_CATALOG.invalidKey;
 export const NOTICE_RATE_LIMITED = NOTICE_CATALOG.rateLimited;
 export const NOTICE_MISSING_SEARCH_KEY = NOTICE_CATALOG.missingSearchKey;
-export const NOTICE_SEARCH_UNAVAILABLE = NOTICE_CATALOG.searchUnavailable;
 export const NOTICE_MODELS_UNAVAILABLE = NOTICE_CATALOG.modelsUnavailable;
 export const NOTICE_UNKNOWN_ENDPOINT = NOTICE_CATALOG.unknownEndpoint;
 export const NOTICE_EXPORTED_CHATS = NOTICE_CATALOG.exportedChats;

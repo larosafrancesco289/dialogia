@@ -12,6 +12,7 @@ export type TutorFlags = {
   learnerModelEditable: boolean;
 };
 
+/** @internal The engine's tests and harnesses start from these. */
 export const DEFAULT_TUTOR_FLAGS: TutorFlags = {
   planEditable: true,
   learnerModelVisible: true,

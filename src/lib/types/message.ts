@@ -15,12 +15,6 @@ export type {
   ToolCallCategory,
   ToolCallStatus,
 } from '@/lib/types/enums';
-export {
-  MessageRoleEnum,
-  MessageSourceEnum,
-  ToolCallCategoryEnum,
-  ToolCallStatusEnum,
-} from '@/lib/types/enums';
 
 export type GenSettingsSnapshot = GenerationSettings & {
   searchEnabled?: boolean;

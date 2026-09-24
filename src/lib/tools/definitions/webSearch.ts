@@ -1,8 +1,4 @@
 import type { ToolDefinition } from '@/lib/transport/contracts';
-import type { WebFetchArgs, WebSearchArgs } from '@/lib/search/args';
-
-export type WebSearchToolArgs = WebSearchArgs;
-export type WebFetchToolArgs = WebFetchArgs;
 
 export const WEB_SEARCH_TOOL: ToolDefinition = {
   type: 'function',
