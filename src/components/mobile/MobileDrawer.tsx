@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { motion, useTransform, type MotionValue } from 'framer-motion';
+import { useEffect, useRef, type RefObject } from 'react';
+import { cancelFrame, frame, motion, useTransform, type MotionValue } from 'framer-motion';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { LogoMark } from '@/components/ui/LogoMark';
@@ -17,28 +17,55 @@ export function MobileDrawer({
   offset,
   onOpenSettings,
   onClose,
+  returnFocusRef,
 }: {
   open: boolean;
   width: number;
   offset: MotionValue<number>;
   onOpenSettings: () => void;
   onClose: () => void;
+  /** The button that opens the drawer, where focus goes when it is put away. */
+  returnFocusRef: RefObject<HTMLElement | null>;
 }) {
   const ref = useRef<HTMLElement | null>(null);
   const x = useTransform(offset, (v) => v - width);
   // Fully shut, it is gone: nothing to tab into, nothing peeking at the edge.
   const visibility = useTransform(offset, (v) => (v > 0 ? 'visible' : 'hidden'));
 
+  const wasOpenRef = useRef(open);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const wasOpen = wasOpenRef.current;
+    wasOpenRef.current = open;
     if (open) {
       el.removeAttribute('inert');
-      el.focus({ preventScroll: true });
-    } else {
-      el.setAttribute('inert', '');
+      // Shut, it is hidden until the slide has moved it, and a hidden element
+      // cannot take focus: focus it once it shows.
+      const focusIn = () => el.focus({ preventScroll: true });
+      if (visibility.get() === 'visible') {
+        focusIn();
+        return;
+      }
+      const stop = visibility.on('change', (value) => {
+        if (value !== 'visible') return;
+        stop();
+        frame.postRender(focusIn);
+      });
+      return () => {
+        stop();
+        cancelFrame(focusIn);
+      };
     }
-  }, [open]);
+    // However it was put away (Escape, a tap on the page, a chat picked),
+    // focus inside goes back to the button that opens it.
+    const active = document.activeElement;
+    if (wasOpen && (active === document.body || el.contains(active))) {
+      returnFocusRef.current?.focus({ preventScroll: true });
+    }
+    el.setAttribute('inert', '');
+  }, [open, visibility, returnFocusRef]);
 
   return (
     <motion.nav

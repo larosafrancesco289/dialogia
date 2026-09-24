@@ -62,7 +62,7 @@ export function MobileShell() {
   const { light } = useHaptics();
   const drawer = useMobileDrawer();
   const { open: drawerOpen, setOpen: setDrawerOpen } = drawer;
-  const menuButtonRef = useRef<HTMLElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // The page moves with the drawer and dims under it. At rest it carries no
   // transform at all, so anything fixed inside it keeps the viewport as its
@@ -75,7 +75,6 @@ export function MobileShell() {
 
   const openDrawer = useCallback(() => {
     light();
-    menuButtonRef.current = document.activeElement as HTMLElement | null;
     const active = document.activeElement;
     if (active instanceof HTMLElement && active.matches('input, textarea')) active.blur();
     setDrawerOpen(true);
@@ -96,7 +95,7 @@ export function MobileShell() {
     previousChatId.current = selectedChatId;
   }, [selectedChatId, drawerOpen, closeDrawer]);
 
-  // Escape closes the drawer and hands focus back to the button that opened it.
+  // Escape closes the drawer (the drawer hands focus back to the chats button).
   useEffect(() => {
     if (!drawerOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -104,7 +103,6 @@ export function MobileShell() {
       // A sheet or dialog over the drawer takes this Escape, not the drawer.
       if (document.querySelector('[aria-modal="true"]')) return;
       closeDrawer();
-      menuButtonRef.current?.focus?.();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -135,7 +133,12 @@ export function MobileShell() {
         // While the list is out, the page is only something to tap back to.
         {...(drawerOpen ? { inert: '' } : {})}
       >
-        <MobileHeader drawerOpen={drawerOpen} onOpenDrawer={openDrawer} onNewChat={startNewChat} />
+        <MobileHeader
+          drawerOpen={drawerOpen}
+          onOpenDrawer={openDrawer}
+          onNewChat={startNewChat}
+          menuButtonRef={menuButtonRef}
+        />
 
         <main className={styles.main}>
           <ChatPane />
@@ -155,6 +158,7 @@ export function MobileShell() {
         offset={drawer.offset}
         onOpenSettings={openSettings}
         onClose={closeDrawer}
+        returnFocusRef={menuButtonRef}
       />
 
       <BottomSheet
