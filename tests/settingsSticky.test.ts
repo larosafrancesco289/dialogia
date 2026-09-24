@@ -1,54 +1,76 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { db } from '@/lib/db';
 import { ChatService } from '@/lib/services/chatService';
-import { createChatSlice } from '@/lib/store/chatSlice';
 import { useChatStore } from '@/lib/store';
-import { buildDefaultUIState } from '@/lib/ui/defaults';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/settings/baseSystem';
+import { buildMessageIndex } from '@/lib/messages/indexing';
+import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
 import { buildChatExport, importChatExport } from '@/lib/settings/transfer';
 import { buildSettingsSavePatch } from '@/components/settings/saveSettings';
 import { settingsEqual } from '@/lib/settings/equality';
-import type { Chat } from '@/lib/types';
+import type { Chat, ChatDefaults, Message } from '@/lib/types';
+import { createTestStore } from './helpers/createTestStoreState';
+import { makeChat } from './helpers/makeChat';
 
-test('createChat uses sticky chat defaults for future chats', async () => {
-  const ui = buildDefaultUIState();
-  ui.chatDefaults = {
+/** A store over the in-memory database, holding these chats with the first one open. */
+function storeWith(chats: Chat[], messages: Message[] = [], chatDefaults?: ChatDefaults) {
+  const store = createTestStore();
+  const byChat: Record<string, Message[]> = {};
+  for (const chat of chats) byChat[chat.id] = messages.filter((m) => m.chatId === chat.id);
+  store.setState((s) => ({
+    chats,
+    selectedChatId: chats[0]?.id,
+    ...buildMessageIndex(byChat),
+    loadedMessageChatIds: Object.fromEntries(chats.map((c) => [c.id, true as const])),
+    ui: { ...s.ui, chatDefaults },
+  }));
+  return store;
+}
+
+const activeChat = (id: string, generation: Chat['settings']['generation'] = {}) =>
+  makeChat({
+    id,
+    title: 'Started Chat',
+    createdAt: 5,
+    updatedAt: 20,
+    settings: { modelId: 'openai/gpt-5.4', system: 'Sticky system', generation },
+  });
+
+const draft = (id: string) =>
+  makeChat({
+    id,
+    title: 'New Chat',
+    createdAt: 10,
+    updatedAt: 10,
+    settings: { modelId: 'openai/gpt-4.1-mini', system: 'Sticky system' },
+  });
+
+const newChatSettings = (store: ReturnType<typeof createTestStore>) => {
+  const { ui, chats, selectedChatId } = store.getState();
+  return ChatService.buildSettingsForNewChat({ ui, chats, selectedChatId });
+};
+
+test('newChat uses sticky chat defaults and saves the chat', async () => {
+  const store = storeWith([], [], {
     modelId: 'openai/gpt-4.1-mini',
     system: 'Be terse and direct.',
-    generation: {
-      maxTokens: 512,
-      reasoningEffort: 'low',
-      reasoningTokens: 128,
-    },
+    generation: { maxTokens: 512, reasoningEffort: 'low', reasoningTokens: 128 },
     ui: {
       showThinkingByDefault: true,
       showStats: true,
       showToolCallLog: true,
       showDebugRawJson: false,
     },
-    features: {
-      search: {
-        enabled: true,
-        provider: 'openrouter',
-      },
-    },
-  };
-
-  const saved: Chat[] = [];
-  const repository = {
-    saveChat: async (chat: Chat) => {
-      saved.push(chat);
-    },
-  };
-
-  const chat = await ChatService.createChat({
-    ui,
-    chats: [],
-    selectedChatId: undefined,
-    repository: repository as any,
+    features: { search: { enabled: true, provider: 'openrouter' } },
   });
 
-  assert.equal(saved.length, 1);
+  await store.getState().newChat();
+
+  const { chats, selectedChatId } = store.getState();
+  assert.equal(chats.length, 1);
+  const chat = chats[0];
+  assert.equal(selectedChatId, chat.id);
+  assert.deepEqual(await db.chats.get(chat.id), chat);
   assert.equal(chat.settings.modelId, 'openai/gpt-4.1-mini');
   assert.equal(chat.settings.system, 'Be terse and direct.');
   assert.equal(chat.settings.generation.temperature, undefined);
@@ -59,288 +81,79 @@ test('createChat uses sticky chat defaults for future chats', async () => {
   assert.equal(chat.settings.ui.showDebugRawJson, false);
   assert.equal(chat.settings.features.search.enabled, true);
   assert.equal(chat.settings.features.search.provider, 'openrouter');
-  assert.notEqual(chat.settings.system, DEFAULT_BASE_SYSTEM);
 });
 
 test('newChat reuses the latest empty draft chat instead of creating another blank chat', async () => {
-  const draftChat: Chat = {
-    id: 'draft-chat',
-    title: 'New Chat',
-    createdAt: 10,
-    updatedAt: 10,
-    settings: {
-      modelId: 'openai/gpt-4.1-mini',
-      system: 'Sticky system',
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: true,
-      },
-      features: {
-        search: { enabled: false, provider: 'openrouter' },
-        tutor: { enabled: false },
-      },
-    },
-  };
+  const started = activeChat('reuse-active');
+  const store = storeWith(
+    [draft('reuse-draft'), started],
+    [createUserMessage({ id: 'reuse-user', chatId: started.id, content: 'Hello', createdAt: 20 })],
+    { system: 'Fresh sticky system' },
+  );
+  store.setState({ selectedChatId: started.id });
 
-  const activeChat: Chat = {
-    ...draftChat,
-    id: 'active-chat',
-    title: 'Started Chat',
-    createdAt: 5,
-    updatedAt: 20,
-  };
+  await store.getState().newChat();
 
-  const state: any = {
-    chats: [draftChat, activeChat],
-    folders: [],
-    messagesById: {
-      'user-1': {
-        id: 'user-1',
-        chatId: 'active-chat',
-        role: 'user',
-        content: 'Hello',
-        createdAt: 20,
-      },
-    },
-    messageIdsByChatId: {
-      'active-chat': ['user-1'],
-    },
-    selectedChatId: 'active-chat',
-    ui: buildDefaultUIState({
-      chatDefaults: {
-        system: 'Fresh sticky system',
-      },
-    }),
-  };
-
-  const set = (partial: any) => {
-    const next = typeof partial === 'function' ? partial(state) : partial;
-    Object.assign(state, next);
-  };
-  const get = () => state;
-
-  const originalCreateChat = ChatService.createChat;
-  const originalUpdateChat = ChatService.updateChat;
-  ChatService.createChat = (async () => {
-    throw new Error('should not create a second blank draft');
-  }) as typeof ChatService.createChat;
-  ChatService.updateChat = (async (chat, changes) => ({
-    ...chat,
-    ...changes,
-    updatedAt: 99,
-  })) as typeof ChatService.updateChat;
-
-  try {
-    const slice = createChatSlice(set as any, get as any);
-    await slice.newChat();
-  } finally {
-    ChatService.createChat = originalCreateChat;
-    ChatService.updateChat = originalUpdateChat;
-  }
-
-  assert.equal(state.chats.length, 2);
-  assert.equal(state.selectedChatId, 'draft-chat');
-  assert.equal(state.chats[0].settings.system, 'Fresh sticky system');
+  const { chats, selectedChatId } = store.getState();
+  assert.deepEqual(
+    chats.map((c) => c.id),
+    ['reuse-draft', 'reuse-active'],
+  );
+  assert.equal(selectedChatId, 'reuse-draft');
+  // The draft took the current defaults, in the store and in the database.
+  assert.equal(chats[0].settings.system, 'Fresh sticky system');
+  assert.equal((await db.chats.get('reuse-draft'))?.settings.system, 'Fresh sticky system');
 });
 
 test('newChat does not reuse a draft that already has messages', async () => {
-  const draftChat: Chat = {
-    id: 'draft-chat',
-    title: 'New Chat',
-    createdAt: 10,
-    updatedAt: 10,
-    settings: {
-      modelId: 'openai/gpt-4.1-mini',
-      system: 'Sticky system',
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: true,
-      },
-      features: {
-        search: { enabled: false, provider: 'openrouter' },
-        tutor: { enabled: false },
-      },
-    },
-  };
-
-  const state: any = {
-    chats: [draftChat],
-    folders: [],
-    messagesById: {
-      'assistant-1': {
-        id: 'assistant-1',
-        chatId: 'draft-chat',
-        role: 'assistant',
+  const store = storeWith(
+    [draft('welcomed-draft')],
+    [
+      createAssistantMessage({
+        id: 'welcome',
+        chatId: 'welcomed-draft',
         content: 'Tutor welcome',
         createdAt: 11,
-      },
-    },
-    messageIdsByChatId: {
-      'draft-chat': ['assistant-1'],
-    },
-    selectedChatId: 'draft-chat',
-    ui: buildDefaultUIState(),
-  };
+      }),
+    ],
+  );
 
-  const set = (partial: any) => {
-    const next = typeof partial === 'function' ? partial(state) : partial;
-    Object.assign(state, next);
-  };
-  const get = () => state;
+  await store.getState().newChat();
 
-  const originalCreateChat = ChatService.createChat;
-  ChatService.createChat = (async () => ({
-    ...draftChat,
-    id: 'created-chat',
-    createdAt: 20,
-    updatedAt: 20,
-  })) as typeof ChatService.createChat;
-
-  try {
-    const slice = createChatSlice(set as any, get as any);
-    await slice.newChat();
-  } finally {
-    ChatService.createChat = originalCreateChat;
-  }
-
-  assert.equal(state.selectedChatId, 'created-chat');
-  assert.equal(state.chats.length, 2);
+  const { chats, selectedChatId } = store.getState();
+  assert.equal(chats.length, 2);
+  assert.notEqual(selectedChatId, 'welcomed-draft');
+  assert.equal(chats[0].id, selectedChatId);
 });
 
 test('in-chat reasoning changes become sticky for future chats', async () => {
-  const activeChat: Chat = {
-    id: 'active-chat',
-    title: 'Started Chat',
-    createdAt: 5,
-    updatedAt: 20,
-    settings: {
-      modelId: 'openai/gpt-5.4',
-      system: 'Sticky system',
-      generation: {
-        reasoningEffort: 'high',
-      },
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: true,
-      },
-      features: {
-        search: { enabled: false, provider: 'openrouter' },
-        tutor: { enabled: false },
-      },
-    },
-  };
+  const store = storeWith([activeChat('reasoning-chat', { reasoningEffort: 'high' })]);
 
-  const state: any = {
-    chats: [activeChat],
-    folders: [],
-    messagesById: {},
-    messageIdsByChatId: {},
-    selectedChatId: 'active-chat',
-    ui: buildDefaultUIState(),
-  };
+  await store.getState().updateChatSettings({ generation: { reasoningEffort: 'xhigh' } });
 
-  const set = (partial: any) => {
-    const next = typeof partial === 'function' ? partial(state) : partial;
-    Object.assign(state, next);
-  };
-  const get = () => state;
-
-  const originalUpdateChat = ChatService.updateChat;
-  ChatService.updateChat = (async (chat, changes) => ({
-    ...chat,
-    ...changes,
-    updatedAt: 99,
-  })) as typeof ChatService.updateChat;
-
-  try {
-    const slice = createChatSlice(set as any, get as any);
-    await slice.updateChatSettings({
-      generation: {
-        reasoningEffort: 'xhigh',
-      },
-    });
-  } finally {
-    ChatService.updateChat = originalUpdateChat;
-  }
-
+  const state = store.getState();
   assert.equal(state.chats[0].settings.generation.reasoningEffort, 'xhigh');
+  assert.equal(
+    (await db.chats.get('reasoning-chat'))?.settings.generation.reasoningEffort,
+    'xhigh',
+  );
   assert.equal(state.ui.chatDefaults?.generation?.reasoningEffort, 'xhigh');
 
-  const nextSettings = ChatService.buildSettingsForNewChat({
-    ui: state.ui,
-    chats: state.chats,
-    selectedChatId: state.selectedChatId,
-  });
-
-  assert.equal(nextSettings.modelId, 'openai/gpt-5.4');
-  assert.equal(nextSettings.generation.reasoningEffort, 'xhigh');
+  const next = newChatSettings(store);
+  assert.equal(next.modelId, 'openai/gpt-5.4');
+  assert.equal(next.generation.reasoningEffort, 'xhigh');
 });
 
 test('switching model resets reasoning to the new model default', async () => {
-  const activeChat: Chat = {
-    id: 'active-chat',
-    title: 'Started Chat',
-    createdAt: 5,
-    updatedAt: 20,
-    settings: {
-      modelId: 'openai/gpt-5.4',
-      system: 'Sticky system',
-      generation: {
-        reasoningEffort: 'xhigh',
-        reasoningTokens: 4096,
-      },
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: true,
-      },
-      features: {
-        search: { enabled: false, provider: 'openrouter' },
-        tutor: { enabled: false },
-      },
-    },
-  };
+  const store = storeWith(
+    [activeChat('switch-chat', { reasoningEffort: 'xhigh', reasoningTokens: 4096 })],
+    [],
+    { generation: { reasoningEffort: 'xhigh', reasoningTokens: 4096 } },
+  );
 
-  const baseUi = buildDefaultUIState();
-  baseUi.chatDefaults = { generation: { reasoningEffort: 'xhigh', reasoningTokens: 4096 } };
-  const state: any = {
-    chats: [activeChat],
-    folders: [],
-    messagesById: {},
-    messageIdsByChatId: {},
-    selectedChatId: 'active-chat',
-    ui: baseUi,
-  };
+  await store.getState().updateChatSettings({ modelId: 'anthropic/claude-fable-5' });
 
-  const set = (partial: any) => {
-    const next = typeof partial === 'function' ? partial(state) : partial;
-    Object.assign(state, next);
-  };
-  const get = () => state;
-
-  const originalUpdateChat = ChatService.updateChat;
-  ChatService.updateChat = (async (chat, changes) => ({
-    ...chat,
-    ...changes,
-    updatedAt: 99,
-  })) as typeof ChatService.updateChat;
-
-  try {
-    const slice = createChatSlice(set as any, get as any);
-    await slice.updateChatSettings({ modelId: 'anthropic/claude-fable-5' });
-  } finally {
-    ChatService.updateChat = originalUpdateChat;
-  }
-
+  const state = store.getState();
   assert.equal(state.chats[0].settings.modelId, 'anthropic/claude-fable-5');
   assert.equal(state.chats[0].settings.generation.reasoningEffort, undefined);
   assert.equal(state.chats[0].settings.generation.reasoningTokens, undefined);
@@ -350,74 +163,23 @@ test('switching model resets reasoning to the new model default', async () => {
 });
 
 test('in-chat model changes become sticky for future chats; search does not', async () => {
-  const activeChat: Chat = {
-    id: 'active-chat',
-    title: 'Started Chat',
-    createdAt: 5,
-    updatedAt: 20,
-    settings: {
-      modelId: 'openai/gpt-5.4',
-      system: 'Sticky system',
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: true,
-      },
-      features: {
-        search: { enabled: false, provider: 'openrouter' },
-        tutor: { enabled: false },
-      },
-    },
-  };
+  const store = storeWith([activeChat('model-chat')], [], {
+    modelId: 'anthropic/claude-opus-4.7',
+  });
 
-  const state: any = {
-    chats: [activeChat],
-    folders: [],
-    messagesById: {},
-    messageIdsByChatId: {},
-    selectedChatId: 'active-chat',
-    ui: buildDefaultUIState({
-      chatDefaults: {
-        modelId: 'anthropic/claude-opus-4.7',
-      },
-    }),
-  };
+  await store.getState().updateChatSettings({ modelId: 'x-ai/grok-4' });
+  await store.getState().updateChatSettings({ features: { search: { enabled: true } } });
 
-  const set = (partial: any) => {
-    const next = typeof partial === 'function' ? partial(state) : partial;
-    Object.assign(state, next);
-  };
-  const get = () => state;
-
-  const originalUpdateChat = ChatService.updateChat;
-  ChatService.updateChat = (async (chat, changes) => ({
-    ...chat,
-    ...changes,
-    updatedAt: 99,
-  })) as typeof ChatService.updateChat;
-
-  try {
-    const slice = createChatSlice(set as any, get as any);
-    await slice.updateChatSettings({ modelId: 'x-ai/grok-4' });
-    await slice.updateChatSettings({ features: { search: { enabled: true } } });
-  } finally {
-    ChatService.updateChat = originalUpdateChat;
-  }
-
+  const state = store.getState();
   assert.equal(state.ui.chatDefaults?.modelId, 'x-ai/grok-4');
   assert.equal(state.ui.chatDefaults?.features?.search?.enabled, undefined);
   assert.equal(state.chats[0].settings.features.search.enabled, true);
+  // A settings change is not activity: the chat keeps its place in the list.
+  assert.equal(state.chats[0].updatedAt, 20);
 
-  const nextSettings = ChatService.buildSettingsForNewChat({
-    ui: state.ui,
-    chats: state.chats,
-    selectedChatId: state.selectedChatId,
-  });
-
-  assert.equal(nextSettings.modelId, 'x-ai/grok-4');
-  assert.equal(nextSettings.features.search.enabled, false);
+  const next = newChatSettings(store);
+  assert.equal(next.modelId, 'x-ai/grok-4');
+  assert.equal(next.features.search.enabled, false);
 });
 
 test('settings drawer patch only touches UI defaults (never the active chat)', () => {
@@ -443,21 +205,13 @@ test('settings drawer patch only touches UI defaults (never the active chat)', (
 });
 
 test('settingsEqual distinguishes meaningful field changes', () => {
-  const base: Chat['settings'] = {
-    modelId: 'openai/gpt-4.1-mini',
-    system: 'A',
-    generation: { temperature: 0.5 },
-    ui: {
-      showThinkingByDefault: false,
-      showStats: false,
-      showToolCallLog: false,
-      showDebugRawJson: true,
+  const base = makeChat({
+    settings: {
+      system: 'A',
+      generation: { temperature: 0.5 },
+      features: { tutor: { enabled: false } },
     },
-    features: {
-      search: { enabled: false, provider: 'openrouter' },
-      tutor: { enabled: false },
-    },
-  };
+  }).settings;
 
   assert.equal(settingsEqual(base, { ...base }), true);
   assert.equal(
