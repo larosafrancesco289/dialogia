@@ -359,6 +359,35 @@ test('agent loop hands a structured error back and lets the model retry', async 
   assert.equal(turn.message()?.content, 'Fixed it.\n\nAll set.');
 });
 
+test('agent loop says so when a failed call is repeated verbatim in a later round', async () => {
+  const turn = await runAgentTurn((round, callbacks) => {
+    if (round === 1) return reply(callbacks, '', [call(TOOL_STRICT, { node: 'x' }, 'strict-1')]);
+    // The same failing call, keys reordered, then a different failing one.
+    if (round === 2) {
+      return reply(callbacks, '', [
+        {
+          id: 'strict-2',
+          type: 'function',
+          function: { name: TOOL_STRICT, arguments: '{ "node" : "x" }' },
+        },
+        call(TOOL_STRICT, { node: 'y' }, 'strict-3'),
+      ]);
+    }
+    return reply(callbacks, 'Giving up on that.');
+  });
+  await turn.run;
+
+  const results = toolMessages(turn.requests[2].messages).map((m) => JSON.parse(m.content));
+  assert.equal(results.length, 3);
+  assert.equal(results[0].repeated, undefined, 'a first failure is not a repeat');
+  assert.match(String(results[1].repeated), /identical to one that already failed/);
+  assert.match(String(results[1].repeated), new RegExp(TOOL_STRICT));
+  assert.equal(results[1].hint, 'Use one of: a', 'the original hint stays');
+  assert.equal(results[2].repeated, undefined, 'different arguments are not a repeat');
+  const stored = turn.persisted.at(-1)?.toolRounds?.[1]?.calls[0];
+  assert.match(String(stored?.result), /repeated/);
+});
+
 test('agent loop answers calls the scheduler dropped instead of leaving them unanswered', async () => {
   const turn = await runAgentTurn((round, callbacks) => {
     if (round === 1) return reply(callbacks, 'Hmm.', [call('agent_test_unknown', {}, 'nope-1')]);
