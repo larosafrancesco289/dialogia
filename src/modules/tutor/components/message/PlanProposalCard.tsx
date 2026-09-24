@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
 import { PlanFeedbackModal } from '@/modules/tutor/components/plan/PlanFeedbackModal';
 import type { ProposalView } from '@/modules/tutor/ui/messageViews';
@@ -57,9 +58,13 @@ export function PlanProposalCard({
         setNotice(NOTICE_PLAN_APPLY_FAILED);
         return;
       }
+      // Beside the chat on a desktop the Hub opens with the plan; on a phone it
+      // is a tall sheet that would cover the tutor's first question, so it
+      // waits to be asked for from the header.
+      const phone = window.matchMedia(MEDIA_QUERIES.mobile).matches;
       setUI({
         plan: {
-          rightPanelOpen: true,
+          rightPanelOpen: !phone,
           rightPanelTab: 'plan',
           sheetPlanOverride: null,
           sheetOpen: false,

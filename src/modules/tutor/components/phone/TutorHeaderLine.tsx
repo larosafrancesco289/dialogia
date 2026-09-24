@@ -26,7 +26,8 @@ export function TutorHeaderLine() {
         : undefined,
     };
   }, shallow);
-  const { learningPlan, hasPlan, planProgress, onOpenRightPanel } = usePlanCallbacks();
+  const { learningPlan, hasPlan, planProgress, onOpenRightPanel, rightPanelOpen } =
+    usePlanCallbacks();
 
   const modelLabel = useMemo(
     () =>
@@ -51,6 +52,8 @@ export function TutorHeaderLine() {
       onClick={canOpen ? () => onOpenRightPanel() : undefined}
       disabled={!canOpen}
       aria-label={canOpen ? `Learning Hub: ${detail}` : undefined}
+      aria-haspopup={canOpen ? 'dialog' : undefined}
+      aria-expanded={canOpen ? rightPanelOpen : undefined}
     >
       <span className="tutor-header-line__label">Tutor</span>
       {/* The session is live, so its dot is gold, as on desktop. */}

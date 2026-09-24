@@ -182,6 +182,10 @@ export function ChatRowContainer({
         folders={folders}
         onClose={() => setShowMoveSheet(false)}
         onMove={moveTo}
+        onCreateAndMove={async (name) => {
+          const folder = await createFolder(name);
+          await moveTo(folder.id);
+        }}
       />
 
       {moveAnchor && (
