@@ -91,7 +91,8 @@ export class DialogiaDB extends Dexie {
       messages: 'id, chatId, createdAt',
       folders: 'id, updatedAt, createdAt, parentId',
       kv: 'key',
-      tutorEvents: 'id, chatId, [chatId+seq]',
+      // One event per log position: a second tab's append at a taken position fails.
+      tutorEvents: 'id, chatId, &[chatId+seq]',
     });
   }
 }

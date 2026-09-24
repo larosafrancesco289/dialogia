@@ -7,6 +7,7 @@ export { sanitizeMessageRecord } from '@/lib/db/sanitize';
 export { DialogiaDB } from '@/lib/db/dexie';
 export { InMemoryDialogiaDB } from '@/lib/db/memory';
 export type { Repository, RepositorySnapshot } from '@/lib/db/repository';
+export { TutorLogConflictError } from '@/lib/db/repository';
 
 const hasIndexedDb =
   typeof globalThis !== 'undefined' && 'indexedDB' in globalThis && globalThis.indexedDB != null;

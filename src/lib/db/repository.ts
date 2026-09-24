@@ -130,6 +130,39 @@ async function deleteTutorEventsForChat(db: DialogiaDbLike, chatId: string): Pro
   );
 }
 
+/**
+ * An append met a row at one of its positions that is not the same event:
+ * another tab wrote to the chat's log first. Nothing of the append was
+ * written; the caller should reload the log and decide again.
+ */
+export class TutorLogConflictError extends Error {
+  constructor(chatId: string, seq: number) {
+    super(`Tutor log position ${seq} of chat ${chatId} is already taken`);
+    this.name = 'TutorLogConflictError';
+  }
+}
+
+function isConstraintError(error: unknown): boolean {
+  const named = (value: unknown) =>
+    !!value &&
+    typeof value === 'object' &&
+    (value as { name?: unknown }).name === 'ConstraintError';
+  return named(error) || named((error as { inner?: unknown } | undefined)?.inner);
+}
+
+/** The row at a chat's log position, if any. */
+async function tutorEventAt(
+  db: DialogiaDbLike,
+  chatId: string,
+  seq: number,
+): Promise<TutorEventRecord | undefined> {
+  const collection = db.tutorEvents.where?.({ chatId, seq });
+  if (collection?.toArray) return (await collection.toArray())[0];
+  return (await db.tutorEvents.toArray()).find(
+    (entry) => entry.chatId === chatId && entry.seq === seq,
+  );
+}
+
 type TransactionTable =
   | DbTable<Chat>
   | DbTable<Message>
@@ -187,13 +220,15 @@ export function createRepository(db: DialogiaDbLike) {
       db.folders.toArray(),
       db.tutorEvents.toArray(),
     ]);
+    // A log whose chat is gone (a write that raced its deletion) is not exported.
+    const chatIds = new Set(chats.map((chat) => chat.id));
     return {
       chats,
       messages: sortMessages(messages),
       folders,
-      tutorEvents: tutorEvents.sort((a, b) =>
-        a.chatId === b.chatId ? a.seq - b.seq : a.chatId.localeCompare(b.chatId),
-      ),
+      tutorEvents: tutorEvents
+        .filter((event) => chatIds.has(event.chatId))
+        .sort((a, b) => (a.chatId === b.chatId ? a.seq - b.seq : a.chatId.localeCompare(b.chatId))),
     };
   };
 
@@ -247,10 +282,15 @@ export function createRepository(db: DialogiaDbLike) {
 
     const tutorEvents: TutorEventRecord[] = [];
     const seenEventIds = new Set<string>();
+    // A position holds one event; a backup with two at one keeps the first.
+    const seenPositions = new Set<string>();
     for (const entry of rawTutorEvents) {
       const event = sanitizeTutorEventRecord(entry);
       if (!event || !chatIds.has(event.chatId) || seenEventIds.has(event.id)) continue;
+      const position = `${event.chatId}\u0000${event.seq}`;
+      if (seenPositions.has(position)) continue;
       seenEventIds.add(event.id);
+      seenPositions.add(position);
       tutorEvents.push(event);
     }
     // A chat's log is one sequence: an imported log replaces the local one
@@ -321,12 +361,50 @@ export function createRepository(db: DialogiaDbLike) {
   const loadTutorEvents = async (chatId: string): Promise<TutorEventRecord[]> =>
     getTutorEventsForChat(db, chatId);
 
-  /** Appends to a chat's log. Events are immutable, so a repeated id is a no-op rewrite. */
+  /**
+   * Appends to a chat's log. Events are immutable, so a repeated id is a
+   * no-op rewrite; a position already holding a different event rejects the
+   * whole append with `TutorLogConflictError` and writes nothing.
+   */
   const appendTutorEvents = async (events: TutorEventRecord[]) => {
     if (!events.length) return;
+    try {
+      await runTransaction(db, [db.tutorEvents], async () => {
+        // Every position is checked before anything is written.
+        for (const event of events) {
+          const existing = await tutorEventAt(db, event.chatId, event.seq);
+          if (existing && existing.id !== event.id) {
+            throw new TutorLogConflictError(event.chatId, event.seq);
+          }
+        }
+        for (const event of events) await db.tutorEvents.put(event);
+      });
+    } catch (error) {
+      // The unique [chatId+seq] index is the backstop for the check above.
+      const first = events[0];
+      if (isConstraintError(error)) throw new TutorLogConflictError(first.chatId, first.seq);
+      throw error;
+    }
+  };
+
+  /**
+   * Writes a chat's first events only if its log is still empty, in one
+   * transaction, so two tabs importing the same chat cannot both write.
+   * Resolves false (writing nothing) when the log already had events.
+   */
+  const seedTutorEvents = async (chatId: string, events: TutorEventRecord[]) => {
+    let seeded = false;
     await runTransaction(db, [db.tutorEvents], async () => {
+      if ((await getTutorEventsForChat(db, chatId)).length) return;
       for (const event of events) await db.tutorEvents.put(event);
+      seeded = true;
     });
+    return seeded;
+  };
+
+  /** Deletes a chat's log alone (the chat itself is already gone). */
+  const deleteTutorEvents = async (chatId: string) => {
+    await runTransaction(db, [db.tutorEvents], () => deleteTutorEventsForChat(db, chatId));
   };
 
   const deleteFolder = async (folderId: string) => {
@@ -348,6 +426,8 @@ export function createRepository(db: DialogiaDbLike) {
     deleteFolder,
     loadTutorEvents,
     appendTutorEvents,
+    seedTutorEvents,
+    deleteTutorEvents,
   };
 }
 
