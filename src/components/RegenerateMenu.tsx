@@ -6,6 +6,7 @@ import { formatModelLabel } from '@/lib/models';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useCuratedModels, useDefaultModelId } from '@/lib/hooks/useModelCatalog';
 import type { ModelDescriptor } from '@/lib/types';
+import { useMenuKeyboard } from '@/lib/hooks/useMenuKeyboard';
 
 export function RegenerateMenu({
   onChoose,
@@ -25,6 +26,10 @@ export function RegenerateMenu({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeMenu = useCallback(() => setOpen(false), []);
+  // Focus on the first model, arrows between them, Escape back to the button.
+  const onMenuKeyDown = useMenuKeyboard({ open, menuRef, onClose: closeMenu, triggerRef });
   const curatedModels = useCuratedModels();
   const defaultModelId = useDefaultModelId();
   const modelMap = useMemo(() => {
@@ -54,14 +59,8 @@ export function RegenerateMenu({
       setOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown, true);
-    // Close on Escape while menu/input is focused
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('keydown', onKeyDown, true);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown, true);
-      document.removeEventListener('keydown', onKeyDown, true);
     };
   }, [open]);
 
@@ -146,6 +145,7 @@ export function RegenerateMenu({
   return (
     <div className="inline-flex" ref={rootRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="message-action-btn"
         aria-label="Try again"
@@ -175,6 +175,7 @@ export function RegenerateMenu({
             role="menu"
             aria-label="Regenerate options"
             ref={menuRef}
+            onKeyDown={onMenuKeyDown}
           >
             <div className="menu-heading">Try again with</div>
             {options.map((o) => {
