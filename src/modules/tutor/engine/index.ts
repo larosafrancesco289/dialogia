@@ -1,6 +1,7 @@
 // Module: tutor engine
 // Responsibility: the pure tutor core. State is `fold(events)`; every change goes through `decide`.
 
+export * from '@/modules/tutor/engine/branch';
 export * from '@/modules/tutor/engine/commands';
 export * from '@/modules/tutor/engine/events';
 export * from '@/modules/tutor/engine/explain';

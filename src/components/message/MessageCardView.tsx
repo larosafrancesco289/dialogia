@@ -36,6 +36,7 @@ export type MessageCardViewData = MessageCardViewModel & {
   isChatStreaming: boolean;
   onBranch: () => void;
   onChooseRegenerateModel: (modelId?: string) => void;
+  canRedo: boolean;
   onPointerDown?: PointerEventHandler<HTMLDivElement>;
   onPointerMove?: PointerEventHandler<HTMLDivElement>;
   onPointerUp?: PointerEventHandler<HTMLDivElement>;
@@ -75,6 +76,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     isChatStreaming,
     onBranch,
     onChooseRegenerateModel,
+    canRedo,
     onPointerDown,
     onPointerMove,
     onPointerUp,
@@ -173,6 +175,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
           showStats={showStats}
           branchFromMessage={onBranch}
           onChooseRegenerateModel={onChooseRegenerateModel}
+          canRedo={canRedo}
           setLightbox={setLightbox}
           attachments={attachments}
           tutorEnabled={tutorEnabled}
@@ -189,6 +192,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
           copyMessage={onCopy}
           copiedId={copiedId}
           startEditingMessage={onStartEdit}
+          canEdit={canRedo}
           saveEdit={onSaveEdit}
           setEditingId={setEditingId}
           setDraft={setDraft}

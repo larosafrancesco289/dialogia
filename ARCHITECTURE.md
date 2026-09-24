@@ -251,9 +251,12 @@ one. Removing a feature is deleting its directory and its entry in that file.
 A module has two halves.
 
 - **The boot half** is `storeSlice`, `persistFragment`, `decorateMessage`, `settingsDefaults`,
-  `panels`, `hasRightPanelContent`, `onBootstrap`, and two lifecycle hooks core calls through
-  `src/lib/modules.ts`: `onChatDeleted` (after a chat is deleted) and `onReplyRetracted` (awaited
-  before a reply is regenerated, including an edit that reruns it). It is statically imported.
+  `panels`, `hasRightPanelContent`, `onBootstrap`, and the hooks core calls through
+  `src/lib/modules.ts`: `onChatDeleted` (after a chat is deleted), `onReplyRetracted` (awaited
+  before a reply is regenerated, including an edit that reruns it), `onChatBranched` (awaited
+  before a branch opens, with the source-to-copy message id map) and `latestExchangeOnly` (the
+  module's record follows this chat's transcript, so regenerate and edit-and-rerun are offered
+  and accepted only in the latest exchange; see `canRedoReply`). It is statically imported.
 - **The turn half** is `load()`, returning a `ModuleRuntime` with `registerTools`, `compose`,
   `planning` and `turnEffects`. It is loaded on demand with the turn pipeline. `compose` receives
   the turn's store, so a module can read (and first load) its own slice, and may return a
@@ -293,12 +296,31 @@ margin notes from a message's `evidence_recorded` events, a chapter break from i
 `topic_completed` event, "Why N%" from `explainTopic`. A learner action that needs the tutor's
 answer (a finished card, approving the plan, Go on) dispatches its command and then sends a
 visible user message with `Message.ledger` set, which the transcript shows as a quiet line and the
-model reads as an ordinary message; quiet corrections only dispatch. Regenerating a reply appends
-a `reply_retracted` event, and `fold` drops every earlier event carrying that message id.
+model reads as an ordinary message; quiet corrections only dispatch. The lines' words live in
+`src/modules/tutor/lib/ledger.ts`, shared with the simulator.
+
+The log follows the transcript, and one rule keeps the two agreeing: **in a tutor chat only the
+latest exchange can be redone.** Core regenerate and edit-and-rerun replace a reply in place and
+keep every later message, so redoing an earlier reply would take back its cards and evidence while
+later replies and ledger lines still described them. Regenerate and Edit are therefore offered
+(and accepted, in the store and the turn service) only for the last user message and its replies.
+Regenerating that reply appends a `reply_retracted` event, and `fold` drops every earlier event
+carrying its message id: the turn's own events and the learner's answers to its cards. Nothing
+later can refer to them, because nothing comes later. The reply is then rerun as a whole turn
+(fresh state block, tools, agent loop), so a card comes back as a card. Branching copies the
+log's share of the copied messages to the branch (`branchEvents`): events of copied messages under
+the copies' ids, none of later messages, and unattached events (quiet corrections) up to the
+latest position a copied message accounts for; positions keep their numbers so `tutorSeq` holds.
+
 Cards (quiz, intake, diagnostic, plan proposal) are `content` tools that end the turn; state tools
-are `action` tools. Every tutor turn runs the agent loop, reads a state block rendered from the log,
-and records on its reply (`Message.tutorSeq`) the log position it saw, so the next turn can tell the
-tutor what the learner changed since.
+are `action` tools. Tool arguments are parsed leniently (`engine/tools.ts`): placeholders in
+optional fields and fields that do not apply are dropped and named back in the result as
+`adjusted`; only what changes a call's meaning is refused, with a hint naming the field and its
+valid values. A plan's topics may carry a `startingEstimate` (capped below `READY`) from intake or
+a diagnostic, recorded as evidence when the learner approves the plan. Every tutor turn runs the
+agent loop, reads a state block rendered from the log, and records on its reply
+(`Message.tutorSeq`) the log position it saw, so the next turn can tell the tutor what the learner
+changed since.
 
 ## Deployment
 

@@ -21,6 +21,8 @@ export type MessageActionSheetProps = {
   onStartEditing: (messageId: string) => void;
   onBranch: (messageId: string) => void;
   onRegenerate: (messageId: string) => void;
+  /** Whether the message can be regenerated, or (a user message) edited and rerun. */
+  canRedo: boolean;
 };
 
 /**
@@ -39,6 +41,7 @@ export function MessageActionSheet({
   onStartEditing,
   onBranch,
   onRegenerate,
+  canRedo,
 }: MessageActionSheetProps) {
   const [selecting, setSelecting] = useState<Message | null>(null);
 
@@ -75,7 +78,8 @@ export function MessageActionSheet({
             Select text
           </SheetItem>
         )}
-        {message && (
+        {/* Editing a reply's text reruns nothing; editing a user message reruns its reply. */}
+        {message && (isAssistant || canRedo) && (
           <SheetItem
             icon={<PencilSquareIcon />}
             disabled={isEditingThis}
@@ -89,15 +93,17 @@ export function MessageActionSheet({
         )}
         {isAssistant && mobileSheet && (
           <>
-            <SheetItem
-              icon={<ArrowPathIcon />}
-              onClick={() => {
-                onRegenerate(mobileSheet.id);
-                onClose();
-              }}
-            >
-              Regenerate
-            </SheetItem>
+            {canRedo && (
+              <SheetItem
+                icon={<ArrowPathIcon />}
+                onClick={() => {
+                  onRegenerate(mobileSheet.id);
+                  onClose();
+                }}
+              >
+                Regenerate
+              </SheetItem>
+            )}
             <SheetItem
               icon={<ArrowUturnRightIcon />}
               disabled={isStreaming}

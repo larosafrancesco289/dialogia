@@ -30,6 +30,8 @@ export type MessageCardProps = {
   onOpenMobileSheet: (value: { id: string; role: 'assistant' | 'user' }) => void;
   onBranch: (messageId: string) => void;
   onRegenerate: (messageId: string, modelId?: string) => void;
+  /** Whether this reply can be regenerated, or this message edited and rerun. */
+  canRedo: boolean;
 };
 
 function MessageCardComponent({
@@ -54,6 +56,7 @@ function MessageCardComponent({
   onOpenMobileSheet,
   onBranch,
   onRegenerate,
+  canRedo,
 }: MessageCardProps) {
   const viewModel = useMessageCardController({ chatId, messageId });
   const { message } = viewModel;
@@ -140,6 +143,7 @@ function MessageCardComponent({
     },
     onBranch: handleBranch,
     onChooseRegenerateModel: handleRegenerate,
+    canRedo,
     onPointerDown: longPress.onPointerDown,
     onPointerMove: longPress.onPointerMove,
     onPointerUp: longPress.onPointerUp,

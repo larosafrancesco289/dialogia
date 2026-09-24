@@ -12,6 +12,8 @@ export type UserMessageProps = {
   copyMessage: () => void;
   copiedId: string | null;
   startEditingMessage: () => void;
+  /** Editing reruns the reply; some chats allow that only in the latest exchange. */
+  canEdit: boolean;
   saveEdit: () => void;
   setEditingId: (id: string | null) => void;
   setDraft: (value: string) => void;
@@ -33,6 +35,7 @@ export function UserMessage({
   copyMessage,
   copiedId,
   startEditingMessage,
+  canEdit,
   saveEdit,
   setEditingId,
   setDraft,
@@ -57,12 +60,14 @@ export function UserMessage({
             onClick={copyMessage}
             showFeedback={copiedId === message.id}
           />
-          <ActionButton
-            icon={<PencilSquareIcon className="h-4 w-4" />}
-            title="Edit"
-            ariaLabel="Edit message"
-            onClick={startEditingMessage}
-          />
+          {canEdit && (
+            <ActionButton
+              icon={<PencilSquareIcon className="h-4 w-4" />}
+              title="Edit"
+              ariaLabel="Edit message"
+              onClick={startEditingMessage}
+            />
+          )}
         </MessageActions>
       )}
 

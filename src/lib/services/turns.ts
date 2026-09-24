@@ -22,7 +22,7 @@ import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { triggerAsyncTitleGeneration } from '@/lib/services/titleGenerator';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
-import { notifyReplyRetracted } from '@/lib/modules';
+import { canRedoReply, notifyReplyRetracted } from '@/lib/modules';
 
 export type SendTurnOptions = {
   content: string;
@@ -192,6 +192,9 @@ export async function regenerateTurn({
 
   const uiState = get().ui;
   const tutorEnabled = isTutorRuntimeEnabled(uiState, chat);
+  // Turn code sees a core-typed getter; the store behind it is the composed one.
+  const getState = get as unknown as StoreStateGetter;
+  if (!canRedoReply(getState(), chatId, messageId)) return;
 
   if (tutorEnabled) {
     const ensured = applyModuleSettingsDefaults({ chat, ui: uiState });
@@ -232,8 +235,7 @@ export async function regenerateTurn({
 
   if (!getMessagesForChat(get(), chatId).some((m) => m.id === messageId)) return;
   // The old reply's cards and what its turn recorded go before the new one is composed.
-  // Turn code sees a core-typed getter; the store behind it is the composed one.
-  await notifyReplyRetracted({ get: get as unknown as StoreStateGetter }, { chatId, messageId });
+  await notifyReplyRetracted({ get: getState }, { chatId, messageId });
   const messages = getMessagesForChat(get(), chatId);
 
   const controller = new AbortController();

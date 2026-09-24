@@ -6,6 +6,7 @@ import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { clearActiveTurnCount, isChatStreaming } from '@/lib/ui/streaming';
+import { canRedoReply } from '@/lib/modules';
 
 // telemetry removed for commit cleanliness
 
@@ -94,6 +95,7 @@ export function createMessageSlice(
       if (idx === -1) return;
       const target = list[idx];
       if (target.role !== 'user') return;
+      if (opts?.rerun && !canRedoReply(get(), chatId, messageId)) return;
       const updated = { ...target, content: newContent };
       set((s) => ({
         messagesById: {

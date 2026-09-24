@@ -41,6 +41,8 @@ export type AssistantMessageProps = {
   showStats: boolean;
   branchFromMessage: () => void;
   onChooseRegenerateModel: (modelId?: string) => void;
+  /** Whether this reply can be regenerated (or the message before it rerun). */
+  canRedo: boolean;
   setLightbox: (
     value: {
       images: { src: string; name?: string }[];
@@ -104,6 +106,7 @@ export function AssistantMessage({
   showStats,
   branchFromMessage,
   onChooseRegenerateModel,
+  canRedo,
   setLightbox,
   attachments,
   tutorEnabled: _tutorEnabled,
@@ -203,7 +206,7 @@ export function AssistantMessage({
                 </p>
               </div>
             </div>
-            {!isChatStreaming && (
+            {!isChatStreaming && canRedo && (
               <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-6">
                 <button className="btn btn-sm" onClick={onEditPreviousUserMessage}>
                   <PencilSquareIcon className="h-3.5 w-3.5" />
@@ -257,7 +260,9 @@ export function AssistantMessage({
                 onClick={copyMessage}
                 showFeedback={copiedId === message.id}
               />
-              <RegenerateMenu onChoose={onChooseRegenerateModel} disabled={isChatStreaming} />
+              {canRedo && (
+                <RegenerateMenu onChoose={onChooseRegenerateModel} disabled={isChatStreaming} />
+              )}
               <ActionButton
                 icon={<ArrowUturnRightIcon className="h-4 w-4" />}
                 title="Continue in a new chat from here"

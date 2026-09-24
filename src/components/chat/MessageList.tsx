@@ -10,6 +10,7 @@ import { useMessageListWindow } from '@/components/message/hooks/useMessageListW
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { useMessageListController } from '@/components/message/useMessageListController';
+import { latestExchangeOnly } from '@/lib/modules';
 import {
   selectChatMessagesLoaded,
   selectIsStreamingForChat,
@@ -41,13 +42,25 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     }),
     shallow,
   );
-  const { regenerate, branchFrom } = useChatStore(
+  const { regenerate, branchFrom, latestOnly } = useChatStore(
     (state) => ({
       regenerate: state.regenerateAssistantMessage,
       branchFrom: state.branchChatFromMessage,
+      latestOnly: latestExchangeOnly(state, chatId),
     }),
     shallow,
   );
+  // Where a module's record follows the transcript, only the latest exchange
+  // (the last user message and its replies) can be regenerated or rerun.
+  const redoable = useMemo(() => {
+    if (!latestOnly) return undefined;
+    let lastUser = -1;
+    allMessages.forEach((message, index) => {
+      if (message.role === 'user') lastUser = index;
+    });
+    return new Set(allMessages.slice(Math.max(0, lastUser)).map((message) => message.id));
+  }, [latestOnly, allMessages]);
+  const canRedo = useCallback((id: string) => !redoable || redoable.has(id), [redoable]);
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const messages = useMemo(() => {
@@ -245,6 +258,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
               onOpenMobileSheet={openMobileSheet}
               onBranch={branchFromMessage}
               onRegenerate={regenerateMessage}
+              canRedo={canRedo(message.id)}
             />
           );
         })}
@@ -295,6 +309,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         onStartEditing={startEditingMessage}
         onBranch={branchFromMessage}
         onRegenerate={regenerateMessage}
+        canRedo={mobileSheet ? canRedo(mobileSheet.id) : true}
       />
       {lightbox && (
         <ImageLightbox
