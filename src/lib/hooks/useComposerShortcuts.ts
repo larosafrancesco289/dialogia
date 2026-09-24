@@ -30,6 +30,11 @@ type SlashCommandContext = {
   setUI: (partial: Partial<UIState>) => void;
   setNotice: (notice?: string) => void;
   defaultModelId: string;
+  /**
+   * The input is a command: called once, before anything is awaited, so the
+   * composer clears at once and text typed while a setting saves is kept.
+   */
+  accept: () => void;
 };
 
 async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise<boolean> {
@@ -49,6 +54,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     else if (arg === 'off') enabled = false;
     else if (arg === 'toggle' || arg === '') enabled = undefined;
     else return false;
+    ctx.accept();
     if (applyToChat && ctx.chat) {
       const next = enabled == null ? !ctx.chat.settings.features.search.enabled : enabled;
       await ctx.updateChatSettings({ features: { search: { enabled: next } } });
@@ -66,6 +72,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     const allowed = Object.values(ReasoningEffortEnum) as Effort[];
     const effort = arg.toLowerCase() as Effort;
     if (!allowed.includes(effort)) return false;
+    ctx.accept();
     if (!isReasoningSupported(currentModel)) {
       ctx.setNotice('Reasoning not supported by current model');
       return true;
@@ -99,6 +106,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
   if (command === 'model' || command === 'm') {
     const id = arg.trim();
     if (!id) return false;
+    ctx.accept();
     const byId = findModelById(ctx.models, id);
     const byName = ctx.models.find((model) => model.name?.toLowerCase() === id.toLowerCase());
     const chosen = byId || byName;
@@ -116,6 +124,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
   }
 
   if (command === 'help') {
+    ctx.accept();
     ctx.setNotice(
       'Slash: /model <id>, /search on|off|toggle, /reasoning none|minimal|low|medium|high|xhigh|max',
     );
@@ -169,15 +178,13 @@ export function useComposerShortcuts(options: {
         updateChatSettings: options.updateChatSettings,
         setUI: options.setUI,
         setNotice: options.setNotice,
+        accept: () => onCommandHandled?.(),
         defaultModelId: resolveDynamicModelId(
           options.defaultModelId || DEFAULT_MODEL_ID,
           options.models,
         ),
       });
-      if (commandHandled) {
-        onCommandHandled?.();
-        return 'command';
-      }
+      if (commandHandled) return 'command';
       if (!options.chat) {
         await options.newChat();
       }

@@ -115,7 +115,8 @@ export function PlanProposalCard({
                 : 'Your learning plan is ready'}
           </h4>
           <p className="exercise__meta">
-            {nodesCount} topics{estimatedHours ? ` · about ${estimatedHours} hours` : ''}
+            {nodesCount} {nodesCount === 1 ? 'topic' : 'topics'}
+            {estimatedHours ? ` · about ${estimatedHours} hours` : ''}
           </p>
         </div>
         <p className="exercise__question">{proposal.plan.goal}</p>
