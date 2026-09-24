@@ -419,3 +419,26 @@
   font-size: 0.78em;
   line-height: 1.6;
 }
+
+/* Display maths too wide for the column scrolls in its own frame, like a
+   table, instead of pushing the page sideways. The padding leaves room for
+   the scrollbar under descenders and for tall fractions and radicals.
+   Unlayered, because KaTeX's own stylesheet is unlayered and would win over
+   any layer. */
+.markdown .katex-display {
+  max-width: 100%;
+  margin: 1em 0;
+  padding: 0.35em 0 0.6em;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  overflow-wrap: normal;
+  text-align: left;
+}
+/* Centred when it fits; when it scrolls it starts at the left edge, so its
+   beginning is never out of reach. */
+.markdown .katex-display > .katex {
+  display: inline-block;
+  min-width: 100%;
+  text-align: center;
+}
