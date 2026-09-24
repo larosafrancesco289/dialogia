@@ -292,7 +292,11 @@ test('a pending legacy proposal comes back as the pending proposal on its messag
   store.setState({ chats: [chat] });
 
   const { state, events } = await store.getState().ensureTutorSession(id);
-  assert.equal(events.length, 1);
+  // The proposal on its message; the import marker, on none, after it.
+  assert.deepEqual(
+    events.map((e) => `${e.type}:${e.messageId ?? '-'}`),
+    ['plan_proposed:p1', 'legacy_imported:-'],
+  );
   assert.equal(state.phase, 'proposal');
   assert.equal(state.proposal?.messageId, 'p1');
   assert.equal(state.proposal?.rationale, 'Starts from limits.');
@@ -307,6 +311,92 @@ test('a pending legacy proposal comes back as the pending proposal on its messag
     );
   assert.equal(approved.ok, true);
   assert.equal(store.getState().tutorSessions[id].state.currentNodeId, 'limits');
+});
+
+test('regenerating the reply with a pending legacy revision takes back only the revision', async () => {
+  const id = chatId('legacy-retract');
+  const chat = makeChat(id, { learningPlan: legacyPlan(), learnerModel: model(1_000, 0.6) });
+  const revised = legacyPlan();
+  revised.nodes.push({
+    id: 'integrals',
+    name: 'Integrals',
+    objectives: ['Integrate'],
+    prerequisites: [],
+    status: 'not_started',
+  });
+  await repository.saveMessage({
+    ...assistant('r1', 1, {
+      tutor: { planProposal: { plan: revised, status: 'pending', requestedAt: 1 } },
+    }),
+    chatId: id,
+  });
+  const store = newStore();
+  store.setState({ chats: [chat] });
+  const before = await store.getState().ensureTutorSession(id);
+  assert.equal(before.state.proposal?.messageId, 'r1');
+  assert.equal(before.state.proposal?.revision, true);
+
+  await notifyReplyRetracted({ get: store.getState }, { chatId: id, messageId: 'r1' });
+  const { state } = store.getState().tutorSessions[id];
+  assert.equal(state.proposal, undefined, 'the revision went with its reply');
+  assert.equal(state.plan?.goal, legacyPlan().goal, 'the imported plan stays');
+  assert.equal(state.mastery.derivatives.confidence, 0.6, 'and so does the imported mastery');
+  assert.equal(state.phase, 'teaching');
+});
+
+test('branching an imported legacy chat keeps the imported plan and mastery', async () => {
+  const id = chatId('legacy-branch');
+  const { store, messages } = await seedLegacy(id);
+  store.setState((s) => appendMessagesToChat(s, id, messages));
+  const source = await store.getState().ensureTutorSession(id);
+  assert.ok(source.state.plan);
+
+  // From a1, whose events come long before the import marker.
+  await store.getState().branchChatFromMessage('a1');
+  const branchId = store.getState().selectedChatId!;
+  assert.notEqual(branchId, id);
+  const branch = await store.getState().ensureTutorSession(branchId);
+  assert.equal(branch.state.plan?.goal, legacyPlan().goal);
+  assert.equal(branch.state.mastery.derivatives.confidence, 0.55);
+  assert.ok(branch.events.some((e) => e.type === 'legacy_imported'));
+  assert.ok(!branch.events.some((e) => e.type === 'quiz_given'), 'later cards stay behind');
+});
+
+test('a branch whose share of the log is empty never imports the settings it copied', async () => {
+  const id = chatId('stale-branch');
+  // Legacy fields still on the chat, but its log already exists (it was imported long ago).
+  const chat = makeChat(id, { learningPlan: legacyPlan(), learnerModel: model(1_000, 0.6) });
+  const store = newStore();
+  store.setState({ chats: [chat] });
+  const early = [
+    createUserMessage({ id: `${id}-u1`, chatId: id, content: 'Hi', createdAt: 1 }),
+    createAssistantMessage({ id: `${id}-m1`, chatId: id, content: 'Hello', createdAt: 2 }),
+    createUserMessage({ id: `${id}-u2`, chatId: id, content: 'Teach me', createdAt: 3 }),
+    createAssistantMessage({ id: `${id}-m2`, chatId: id, content: 'Plan', createdAt: 4 }),
+  ];
+  for (const message of early) await repository.saveMessage(message);
+  store.setState((s) => appendMessagesToChat(s, id, early));
+  await repository.appendTutorEvents([
+    {
+      id: `${id}-e1`,
+      chatId: id,
+      seq: 1,
+      at: 5,
+      by: 'tutor',
+      messageId: `${id}-m2`,
+      type: 'plan_proposed',
+      proposalId: 'p1',
+      revision: false,
+      plan: { ...legacyPlan(), goal: 'A new goal' },
+    },
+  ]);
+
+  await store.getState().branchChatFromMessage(`${id}-m1`);
+  const branchId = store.getState().selectedChatId!;
+  const branch = await store.getState().ensureTutorSession(branchId);
+  assert.deepEqual(branch.events, []);
+  assert.equal(branch.state.plan, undefined);
+  assert.deepEqual(await repository.loadTutorEvents(branchId), []);
 });
 
 test('a chat with no tutor history gets an empty log and no import', async () => {

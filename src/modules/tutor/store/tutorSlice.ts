@@ -254,7 +254,6 @@ export function createTutorSlice(
     async branchTutorSession(sourceChatId, chatId, messageIds) {
       // Behind the source's queued changes, so a tool call still landing is included or not, never half.
       const source = await serialize(sourceChatId, () => ensureTutorSession(sourceChatId));
-      if (!source.events.length) return;
       const messages = getMessagesForChat(get(), sourceChatId);
       const copiedAt = messages.findIndex((m) => !(m.id in messageIds));
       const later = copiedAt < 0 ? [] : messages.slice(copiedAt);
@@ -268,11 +267,14 @@ export function createTutorSlice(
         seenSeq,
         newId: uuidv4,
       });
-      if (!events.length) return;
-      try {
-        await repository.appendTutorEvents(events);
-      } catch (error) {
-        logger.error('Tutor events could not be saved', error);
+      // Even an empty share is the branch's whole log: it must never import
+      // legacy data from the chat settings and messages it copied.
+      if (events.length) {
+        try {
+          await repository.appendTutorEvents(events);
+        } catch (error) {
+          logger.error('Tutor events could not be saved', error);
+        }
       }
       publish(chatId, { events, state: fold(events), loaded: true });
     },

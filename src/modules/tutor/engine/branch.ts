@@ -21,17 +21,24 @@ export type BranchSpec = {
  * it), nothing that belongs to a message after the branch point, and events
  * that belong to no message (quiet corrections, the legacy import) up to the
  * branch point. That point is the latest log position a copied message
- * accounts for. Positions keep their numbers, so the copies' `tutorSeq`
- * still means what it meant.
+ * accounts for, and never earlier than the legacy import: imported history
+ * (the plan, the learner model, the cards it closed) is what every message of
+ * an imported chat stands on, and no copied reply records having seen it.
+ * Positions keep their numbers, so the copies' `tutorSeq` still means what it
+ * meant.
  */
 export function branchEvents(events: readonly TutorEvent[], spec: BranchSpec): TutorEvent[] {
   const owner = (event: TutorEvent) =>
     event.type === 'reply_retracted' ? event.replyId : event.messageId;
   const sorted = [...events].sort((a, b) => a.seq - b.seq);
-  const cut = sorted.reduce((max, event) => {
-    const id = owner(event);
-    return id && id in spec.copied ? Math.max(max, event.seq) : max;
-  }, spec.seenSeq ?? 0);
+  const imported = sorted.find((event) => event.type === 'legacy_imported')?.seq ?? 0;
+  const cut = sorted.reduce(
+    (max, event) => {
+      const id = owner(event);
+      return id && id in spec.copied ? Math.max(max, event.seq) : max;
+    },
+    Math.max(spec.seenSeq ?? 0, imported),
+  );
 
   const out: TutorEvent[] = [];
   for (const event of sorted) {

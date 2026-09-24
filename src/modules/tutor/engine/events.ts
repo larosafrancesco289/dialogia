@@ -49,12 +49,12 @@ export type EvidenceRef = { quizId?: string; diagnosticId?: string; itemId?: str
 export type StartingEstimate = { value: number; reason: string };
 
 type Payloads = {
-  /** One-time import of pre-rebuild state. */
-  legacy_imported: {
-    plan?: LearningPlan;
-    learnerModel?: LearnerModel;
-    proposal?: { proposalId: string; plan: LearningPlan; rationale?: string };
-  };
+  /**
+   * One-time import of pre-rebuild state. It belongs to no reply, so no
+   * retraction reaches it; a proposal still pending at import comes back as a
+   * `plan_proposed` on its own message.
+   */
+  legacy_imported: { plan?: LearningPlan; learnerModel?: LearnerModel };
   intake_asked: { intakeId: string; title?: string; questions: IntakeQuestion[] };
   /** Keyed by question id; each value holds chosen labels and any typed answer. */
   intake_answered: { intakeId: string; responses: Record<string, string[]> };

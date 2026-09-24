@@ -417,19 +417,5 @@ function importLegacy(state: TutorState, event: TutorEventOf<'legacy_imported'>)
     next = { ...next, plan, mastery };
   }
   // Quizzes from before the log are history: they do not spend today's budget.
-  next = { ...next, counts: { ...next.counts, quizzesByNode: {} } };
-  if (event.proposal) {
-    next = {
-      ...next,
-      proposal: {
-        proposalId: event.proposal.proposalId,
-        plan: event.proposal.plan,
-        rationale: event.proposal.rationale,
-        revision: !!event.plan,
-        seq: event.seq,
-        messageId: event.messageId,
-      },
-    };
-  }
-  return next;
+  return { ...next, counts: { ...next.counts, quizzesByNode: {} } };
 }

@@ -7,6 +7,8 @@ import {
   emptyTutorState,
   explainTopic,
   fold,
+  MASTERY_PRIOR,
+  parseTutorEvent,
   remainingBudgets,
   retractReply,
   type TutorEvent,
@@ -137,10 +139,21 @@ test('legacy import seeds plan, mastery baseline and a pending proposal', () => 
       seq: 1,
       at: 50,
       by: 'system',
+      messageId: 'm-old',
+      type: 'plan_proposed',
+      proposalId: 'p-old',
+      plan,
+      revision: true,
+    },
+    {
+      id: 'e2',
+      chatId: 'chat-1',
+      seq: 2,
+      at: 50,
+      by: 'system',
       type: 'legacy_imported',
       plan,
       learnerModel,
-      proposal: { proposalId: 'p-old', plan },
     },
   ]);
   assert.equal(state.currentNodeId, 'b', 'only one topic stays in progress');
@@ -159,6 +172,71 @@ test('legacy import seeds plan, mastery baseline and a pending proposal', () => 
     'pre-log evidence is summarized by the baseline, not replayed',
   );
   assert.equal(why?.confidence, state.mastery.b.confidence);
+});
+
+test('one malformed legacy topic costs only itself, even after a JSON backup', () => {
+  const plan: LearningPlan = {
+    goal: 'Old goal',
+    generatedAt: 1,
+    updatedAt: 1,
+    version: 1,
+    nodes: ['a', 'b', 'c', 'd'].map((id, i) => ({
+      id,
+      name: id.toUpperCase(),
+      objectives: ['x'],
+      prerequisites: [],
+      status: i === 0 ? ('in_progress' as const) : ('not_started' as const),
+    })),
+  };
+  const topic = (confidence: unknown, weight: unknown = 0.2) => ({
+    nodeId: 'x',
+    confidence,
+    interactions: 1,
+    lastInteraction: 1,
+    evidence: [
+      { timestamp: 1, type: 'correct_answer', details: 'kept', weight: 0.3 },
+      { timestamp: 2, type: 'correct_answer', details: 'bad weight', weight },
+    ],
+    misconceptions: [
+      { id: 'm1', description: 'Kept', firstObserved: 1, occurrences: 1, resolved: false },
+      { description: 'No id' },
+    ],
+  });
+  // A backup writes NaN as null; that is what an imported chat carries.
+  const learnerModel = JSON.parse(
+    JSON.stringify({
+      chatId: 'chat-1',
+      updatedAt: 1,
+      version: 1,
+      mastery: { a: topic(0.8), b: topic(Number.NaN), c: topic(0.5, null), d: 'not a topic' },
+    }),
+  );
+  const event = parseTutorEvent({
+    id: 'e1',
+    chatId: 'chat-1',
+    seq: 1,
+    at: 50,
+    by: 'system',
+    type: 'legacy_imported',
+    plan,
+    learnerModel,
+  });
+  assert.ok(event, 'the import survives its worst topic');
+  const state = fold([event]);
+  assert.equal(state.mastery.a.confidence, 0.8);
+  assert.equal(state.mastery.b.confidence, MASTERY_PRIOR, 'null confidence starts at the prior');
+  assert.equal(state.mastery.c.confidence, 0.5);
+  assert.deepEqual(
+    state.mastery.c.evidence.map((e) => e.details),
+    ['kept'],
+    'an entry with no usable weight is dropped, the rest kept',
+  );
+  assert.deepEqual(
+    state.mastery.a.misconceptions.map((m) => m.id),
+    ['m1'],
+  );
+  assert.equal(state.mastery.d.confidence, MASTERY_PRIOR, 'an unsalvageable topic starts fresh');
+  assert.equal(state.mastery.d.evidence.length, 0);
 });
 
 test('legacy import clamps an out-of-range or missing confidence, not just the baseline', () => {

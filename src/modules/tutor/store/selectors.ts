@@ -35,8 +35,7 @@ function messagesWithCards(events: readonly TutorEvent[]): Set<string> {
       event.type === 'diagnostic_given' ||
       event.type === 'quiz_given' ||
       event.type === 'plan_proposed' ||
-      event.type === 'proposal_imported' ||
-      (event.type === 'legacy_imported' && !!event.proposal)
+      event.type === 'proposal_imported'
     ) {
       ids.add(event.messageId);
     }
