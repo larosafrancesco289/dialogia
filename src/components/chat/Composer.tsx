@@ -28,6 +28,7 @@ import { ComposerLayout } from '@/components/composer/ComposerLayout';
 import {
   selectIsStreaming,
   selectIsTutorEnabled,
+  selectIsWritingInOtherTab,
   selectResolvedModelId,
   selectResolvedTurnSettings,
   selectSearchEnabled,
@@ -53,6 +54,7 @@ export function Composer({
     selectedChatId,
     models,
     isStreaming,
+    writingInOtherTab,
     stop,
     updateSettings,
     setUI,
@@ -67,6 +69,7 @@ export function Composer({
       selectedChatId: s.selectedChatId,
       models: s.models,
       isStreaming: selectIsStreaming(s),
+      writingInOtherTab: selectIsWritingInOtherTab(s),
       stop: s.stopStreaming,
       updateSettings: s.updateChatSettings,
       setUI: s.setUI,
@@ -320,7 +323,7 @@ export function Composer({
           value={text}
           onChange={setText}
           onSend={onSendWithRecovery}
-          isStreaming={isStreaming}
+          isStreaming={isStreaming || writingInOtherTab}
           textareaRef={taRef}
           maxHeight={maxTextareaHeight}
           models={models}
@@ -329,6 +332,7 @@ export function Composer({
         />
         <ComposerActions
           isStreaming={isStreaming}
+          writingInOtherTab={writingInOtherTab}
           onStop={handleStop}
           onSend={onSendWithRecovery}
           openFilePicker={openFilePicker}

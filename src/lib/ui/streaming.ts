@@ -29,3 +29,20 @@ export function clearActiveTurnCount(ui: UIState, chatId?: string): UIState {
   if (!chatId) return { ...ui, activeTurnByChatId: {} };
   return setActiveTurnCount(ui, chatId, 0);
 }
+
+/**
+ * Whether a chat has a reply in progress, and which message it is. This tab's
+ * own turn writes the latest message; another tab names the replies it is
+ * writing, whose checkpoints on disk read as cut off until it finishes.
+ */
+export function replyInProgress(
+  streamingHere: boolean,
+  latestMessageId: string | undefined,
+  repliesInOtherTab: string[],
+): { busy: boolean; isWriting: (messageId: string) => boolean } {
+  return {
+    busy: streamingHere || repliesInOtherTab.length > 0,
+    isWriting: (messageId) =>
+      streamingHere ? messageId === latestMessageId : repliesInOtherTab.includes(messageId),
+  };
+}

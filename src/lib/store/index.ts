@@ -10,6 +10,8 @@ import {
   mergePersistedState,
   readPersistedSnapshot,
 } from '@/lib/store/persistence';
+import { connectTabSync } from '@/lib/store/tabSync';
+import { tabChannel } from '@/lib/sync/tabChannel';
 
 export const PERSISTED_STORE_KEY = 'dialogia-ui';
 
@@ -48,4 +50,9 @@ if (typeof window !== 'undefined') {
       adoptingAnotherTab = false;
     }
   });
+
+  // Chats, folders, messages and tutor logs travel separately: another tab
+  // announces what it wrote to IndexedDB, and this one reads it back.
+  const tabSync = connectTabSync(useChatStore, tabChannel);
+  window.addEventListener('pagehide', tabSync.pageHidden);
 }

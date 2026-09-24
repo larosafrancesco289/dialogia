@@ -7,6 +7,8 @@ import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexin
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { clearActiveTurnCount, isChatStreaming } from '@/lib/ui/streaming';
 import { canRedoReply } from '@/lib/modules';
+import { notify } from '@/lib/store/notify';
+import { NOTICE_REPLY_IN_OTHER_TAB } from '@/lib/store/notices';
 
 // telemetry removed for commit cleanliness
 
@@ -46,6 +48,14 @@ export function createMessageSlice(
   _store?: unknown,
 ): MessageSliceState & MessageSliceActions {
   const persistMessage = createMessagePersister(repository);
+  // A turn started while another tab is writing in the same chat would build
+  // its request without that reply, and the stored transcript would then
+  // interleave two turns neither model saw together.
+  const busyInOtherTab = (chatId?: string) => {
+    if (!chatId || !get().repliesInOtherTabs[chatId]?.length) return false;
+    notify(get, NOTICE_REPLY_IN_OTHER_TAB);
+    return true;
+  };
   return {
     messagesById: {},
     messageIdsByChatId: {},
@@ -63,6 +73,7 @@ export function createMessageSlice(
 
     async sendUserMessage(content, opts) {
       const chatId = get().selectedChatId;
+      if (busyInOtherTab(chatId)) return;
       if (chatId) await get().ensureChatMessagesLoaded(chatId);
       const { sendUserTurn } = await loadTurnService();
       await sendUserTurn({
@@ -96,6 +107,7 @@ export function createMessageSlice(
       const target = list[idx];
       if (target.role !== 'user') return;
       if (opts?.rerun && !canRedoReply(get(), chatId, messageId)) return;
+      if (opts?.rerun && busyInOtherTab(chatId)) return;
       const updated = { ...target, content: newContent };
       set((s) => ({
         messagesById: {
@@ -146,6 +158,7 @@ export function createMessageSlice(
     },
 
     async regenerateAssistantMessage(messageId, opts) {
+      if (busyInOtherTab(get().messagesById[messageId]?.chatId)) return;
       const { regenerateTurn } = await loadTurnService();
       await regenerateTurn({ messageId, overrideModelId: opts?.modelId, set, get, repository });
     },
