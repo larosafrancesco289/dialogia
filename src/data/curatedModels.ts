@@ -13,9 +13,9 @@ export const DEFAULT_CHAT_MODEL: CuratedModel = {
 };
 
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
-  id: '~anthropic/frontier',
-  name: 'Claude Frontier',
-  description: 'The most capable Claude, and the tutor by default',
+  id: 'openai/gpt-6-luna',
+  name: 'GPT-6 Luna',
+  description: 'Fast, inexpensive and reliable with tools; the tutor by default',
 };
 
 export const DEFAULT_MODEL_ID = DEFAULT_CHAT_MODEL.id;
@@ -25,6 +25,11 @@ export const DEFAULT_TUTOR_MODEL_ID = DEFAULT_TUTOR_MODEL.id;
 export const CURATED_MODELS: CuratedModel[] = [
   DEFAULT_CHAT_MODEL,
   DEFAULT_TUTOR_MODEL,
+  {
+    id: '~anthropic/frontier',
+    name: 'Claude Frontier',
+    description: 'The most capable Claude available',
+  },
   {
     id: 'google/gemini-3.1-pro-preview',
     name: 'Gemini 3.1 Pro',
