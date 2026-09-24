@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
+import { useModalFocus } from '@/lib/hooks/useModalFocus';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
@@ -23,18 +24,15 @@ export function PlanFeedbackModal({
   const [feedback, setFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const surfaceRef = useRef<HTMLDivElement>(null);
   useBackToClose(isOpen, onClose);
+  useModalFocus(isOpen, surfaceRef, { initialFocus: textareaRef, onEscape: onClose });
 
   // Reset feedback when modal opens
   useEffect(() => {
     if (isOpen) {
       setFeedback('');
       setIsSubmitting(false);
-      // Focus textarea after animation
-      const timer = setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
@@ -48,25 +46,6 @@ export function PlanFeedbackModal({
       setIsSubmitting(false);
     }
   };
-
-  // Keyboard handling
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-      // Cmd/Ctrl + Enter to submit
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && feedback.trim() && !isSubmitting) {
-        e.preventDefault();
-        handleSubmit();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, feedback, isSubmitting, onClose]);
 
   const isPhaseContext = context.type === 'phase';
   const title = 'Share feedback with your tutor';
@@ -102,6 +81,22 @@ export function PlanFeedbackModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="feedback-dialog-title"
+            ref={surfaceRef}
+            tabIndex={-1}
+            onKeyDown={(e) => {
+              // Portalled, but React bubbles its keys through the panel or card
+              // that rendered it: its Escape must not reach them too.
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+                return;
+              }
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canSubmit) {
+                e.preventDefault();
+                void handleSubmit();
+              }
+            }}
           >
             <div className="flex items-start justify-between gap-3">
               <div>

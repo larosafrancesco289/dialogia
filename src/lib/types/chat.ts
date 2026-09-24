@@ -14,6 +14,10 @@ export type GenerationSettings = {
   providerSort?: ProviderSort;
 };
 
+/**
+ * Display preferences. Global: they are read from `ChatDefaults.ui` through
+ * `resolveDisplayPreferences`; the copy each chat carries is legacy.
+ */
 export type ChatUiSettings = {
   showThinkingByDefault: boolean;
   showStats: boolean;

@@ -25,6 +25,20 @@ export function canFocus(el: Element | null | undefined): el is HTMLElement {
   return getComputedStyle(el).visibility !== 'hidden';
 }
 
+/** The composer's field (ComposerInput's class). */
+export const COMPOSER_FIELD_SELECTOR = 'textarea.composer-field';
+
+/**
+ * Sends focus to the composer: where the reader goes next when what held
+ * focus (a reply's footer) goes away as a new reply starts.
+ */
+export function focusComposer(root: ParentNode = document): boolean {
+  const field = root.querySelector(COMPOSER_FIELD_SELECTOR);
+  if (!canFocus(field)) return false;
+  field.focus({ preventScroll: true });
+  return true;
+}
+
 /** The elements Tab visits inside `container`, in order. */
 export function tabbableIn(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(TABBABLE)).filter((el) => {

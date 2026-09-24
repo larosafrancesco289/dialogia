@@ -7,6 +7,9 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useCuratedModels, useDefaultModelId } from '@/lib/hooks/useModelCatalog';
 import type { ModelDescriptor } from '@/lib/types';
 import { useMenuKeyboard } from '@/lib/hooks/useMenuKeyboard';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import { focusComposer } from '@/lib/ui/focus';
 
 export function RegenerateMenu({
   onChoose,
@@ -30,6 +33,7 @@ export function RegenerateMenu({
   const closeMenu = useCallback(() => setOpen(false), []);
   // Focus on the first model, arrows between them, Escape back to the button.
   const onMenuKeyDown = useMenuKeyboard({ open, menuRef, onClose: closeMenu, triggerRef });
+  const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const curatedModels = useCuratedModels();
   const defaultModelId = useDefaultModelId();
   const modelMap = useMemo(() => {
@@ -194,6 +198,10 @@ export function RegenerateMenu({
                   onClick={() => {
                     onChoose(o.id);
                     setOpen(false);
+                    // The new reply takes this footer, and the button focus
+                    // would return to, off the page: go to the composer, as
+                    // after sending. A phone keeps its keyboard down.
+                    if (!isMobile) focusComposer();
                   }}
                 >
                   <span className="flex items-baseline justify-between gap-3">
