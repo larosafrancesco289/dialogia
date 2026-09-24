@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { explainTopic } from '@/modules/tutor/engine';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
@@ -27,7 +27,7 @@ export function LearningPanel() {
     onReopenTopic,
     onContestMastery,
     onResolveMisconceptionQuietly,
-    onSendPlanFeedback,
+    onRequestPlanChanges,
     onCloseRightPanel,
   } = usePlanCallbacks();
   const affordances = useTutorAffordances();
@@ -45,15 +45,6 @@ export function LearningPanel() {
   const plan = planSheetOverride ?? learningPlan;
   // A proposal is previewed, not lived in: nothing on it can be changed yet.
   const isPreviewingProposal = !!planSheetOverride && !learningPlan;
-
-  const handleFeedbackSubmit = useCallback(
-    (feedback: string, context: PlanFeedbackContext) => {
-      const prefix =
-        context.type === 'phase' ? `Plan feedback for ${context.phaseName}:\n` : 'Plan feedback:\n';
-      onSendPlanFeedback(`${prefix}${feedback}\nPlease update the plan and confirm the changes.`);
-    },
-    [onSendPlanFeedback],
-  );
 
   if (!plan) return null;
 
@@ -100,7 +91,7 @@ export function LearningPanel() {
         <PlanFeedbackModal
           isOpen
           context={feedbackContext}
-          onSubmit={handleFeedbackSubmit}
+          onSubmit={(feedback) => onRequestPlanChanges(feedback)}
           onClose={() => setFeedbackContext(null)}
         />
       )}
