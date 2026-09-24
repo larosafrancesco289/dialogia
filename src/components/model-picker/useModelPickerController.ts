@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { findModelById, resolveDefaultModelId } from '@/lib/models';
+import { findModelById, formatModelLabel, resolveDefaultModelId } from '@/lib/models';
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import { useCuratedModels, useDefaultModelId } from '@/lib/hooks/useModelCatalog';
@@ -85,7 +85,8 @@ export function useModelPickerController(): ModelPickerController {
 
   const allOptions = useMemo(() => {
     const defaultCurated = curated.find((m) => m.id === defaultModelId);
-    const defaultName = defaultCurated?.name || defaultModelId.split('/').pop() || defaultModelId;
+    // With no model list yet (no key), "GPT-6 Luna", not the bare id.
+    const defaultName = defaultCurated?.name || formatModelLabel({ fallbackId: defaultModelId });
     const injectedDefault = [{ id: defaultModelId, name: defaultName }];
     return [...injectedDefault, ...curated, ...customOptions].reduce(
       (acc: ModelPickerOption[], m: ModelPickerOption) => {
