@@ -181,3 +181,22 @@ test('audio content is reported rather than dropped in silence', () => {
   assert.deepEqual(dropped, [['audio']]);
   assert.equal(body.messages[0].content, 'transcribe this');
 });
+
+test('Claude models released after the capability rules still get the right request', () => {
+  for (const model of ['claude-opus-5-5', 'claude-fable-5-1', 'claude-opus-6']) {
+    const body = buildAnthropicBody({
+      model: `anthropic-direct/${model}`,
+      messages: [{ role: 'user', content: 'Think.' }],
+      stream: false,
+      reasoningEffort: 'high',
+    });
+    assert.deepEqual(body.thinking, { type: 'adaptive', display: 'summarized' }, model);
+  }
+  const haiku = buildAnthropicBody({
+    model: 'anthropic-direct/claude-haiku-4-5-20251001',
+    messages: [{ role: 'user', content: 'Think.' }],
+    stream: false,
+    reasoningEffort: 'high',
+  });
+  assert.equal((haiku.thinking as { type?: string } | undefined)?.type, 'enabled');
+});

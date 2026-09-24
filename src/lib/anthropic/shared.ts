@@ -33,54 +33,41 @@ const DIRECT_TO_PUBLIC_MODEL_MAP = new Map<string, string>(
 );
 
 const SNAPSHOT_MODEL_ID_RE = /^claude-[a-z0-9-]+-\d{8}$/;
-const PROMPT_CACHING_MODEL_ID_RE_LIST = [
-  /^claude-fable-5(?:-\d{8})?$/,
-  /^claude-mythos-preview$/,
-  /^claude-opus-4(?:-\d{8}|-[0-9](?:-\d{8})?)?$/,
-  /^claude-sonnet-4(?:-\d{8}|-[0-9](?:-\d{8})?)?$/,
-  /^claude-sonnet-3-7(?:-\d{8}|-latest)?$/,
-  /^claude-3-7-sonnet(?:-\d{8}|-latest)?$/,
-  /^claude-haiku-4-5(?:-\d{8})?$/,
-  /^claude-haiku-3-5(?:-\d{8}|-latest)?$/,
-  /^claude-3-5-haiku(?:-\d{8}|-latest)?$/,
-  /^claude-haiku-3(?:-\d{8}|-latest)?$/,
-  /^claude-3-haiku(?:-\d{8}|-latest)?$/,
-  /^claude-opus-3(?:-\d{8}|-latest)?$/,
-  /^claude-3-opus(?:-\d{8}|-latest)?$/,
-] as const;
-const ADAPTIVE_THINKING_MODEL_ID_RE_LIST = [
-  /^claude-fable-5(?:-\d{8})?$/,
-  /^claude-opus-4-8(?:-\d{8})?$/,
-  /^claude-opus-4-6(?:-\d{8})?$/,
-  /^claude-opus-4-7(?:-\d{8})?$/,
-  /^claude-sonnet-4-6(?:-\d{8})?$/,
-  /^claude-sonnet-5(?:-\d{8})?$/,
-  /^claude-mythos-preview$/,
-] as const;
 
-// Thinking cannot be disabled on these models: the API rejects
-// `thinking: {type: "disabled"}` (see the effort docs).
-const MANDATORY_THINKING_MODEL_ID_RE_LIST = [
-  /^claude-fable-5(?:-\d{8})?$/,
-  /^claude-mythos-5(?:-\d{8})?$/,
-  /^claude-mythos-preview$/,
-] as const;
+/**
+ * What a Claude id says about its model, read from Anthropic's documented
+ * scheme (claude-{name}-{major}[-{minor}], a -{YYYYMMDD} snapshot date before
+ * the 4.6 generation, claude-{major}-{minor}-{name} before Claude 4). Rules on
+ * the generation keep working for models released after this was written; a
+ * list of ids did not (Opus 5.5 got the retired budget-thinking request).
+ */
+type ClaudeGeneration = { name: string; version: number };
 
-// Documented effort support per family, used only when the models API
-// response lacks `capabilities.effort` flags.
-const XHIGH_EFFORT_MODEL_ID_RE_LIST = [
-  /^claude-fable-5(?:-\d{8})?$/,
-  /^claude-mythos-5(?:-\d{8})?$/,
-  /^claude-opus-4-8(?:-\d{8})?$/,
-  /^claude-opus-4-7(?:-\d{8})?$/,
-  /^claude-sonnet-5(?:-\d{8})?$/,
-] as const;
-const MAX_EFFORT_MODEL_ID_RE_LIST = [
-  ...XHIGH_EFFORT_MODEL_ID_RE_LIST,
-  /^claude-mythos-preview$/,
-  /^claude-opus-4-6(?:-\d{8})?$/,
-  /^claude-sonnet-4-6(?:-\d{8})?$/,
-] as const;
+function claudeGeneration(slug: string): ClaudeGeneration | undefined {
+  const id = slug.replace(/\./g, '-');
+  const modern = /^claude-([a-z]+)-(\d+)(?:-(\d))?(?:-(\d{8}))?$/.exec(id);
+  if (modern) {
+    const [, name, major, minor] = modern;
+    return { name, version: Number(major) + (minor ? Number(minor) / 10 : 0) };
+  }
+  const legacy = /^claude-(\d+)(?:-(\d))?-([a-z]+)(?:-(?:\d{8}|latest))?$/.exec(id);
+  if (legacy) {
+    const [, major, minor, name] = legacy;
+    return { name, version: Number(major) + (minor ? Number(minor) / 10 : 0) };
+  }
+  return undefined;
+}
+
+// The 4.6 generation on takes adaptive thinking; manual budget thinking is
+// "not accepted on later models" (Anthropic's model table).
+const isAdaptiveGeneration = (gen: ClaudeGeneration | undefined): boolean =>
+  !!gen && gen.version >= 4.6;
+
+// Thinking cannot be turned off on the Mythos class, nor on Opus from 5.5,
+// which the model table lists as "Adaptive (always on)".
+const isThinkingAlwaysOn = (gen: ClaudeGeneration | undefined): boolean =>
+  !!gen &&
+  (gen.name === 'fable' || gen.name === 'mythos' || (gen.name === 'opus' && gen.version >= 5.5));
 
 const KNOWN_ANTHROPIC_PRICING: Record<
   string,
@@ -92,6 +79,34 @@ const KNOWN_ANTHROPIC_PRICING: Record<
     currency: string;
   }
 > = {
+  'claude-fable-5-1': {
+    prompt: 0.00001,
+    completion: 0.00005,
+    inputCacheRead: 0.00000025,
+    inputCacheWrite: 0.0000125,
+    currency: 'usd',
+  },
+  'claude-opus-5-5': {
+    prompt: 0.000004,
+    completion: 0.00002,
+    inputCacheRead: 0.0000002,
+    inputCacheWrite: 0.000005,
+    currency: 'usd',
+  },
+  'claude-opus-5': {
+    prompt: 0.000005,
+    completion: 0.000025,
+    inputCacheRead: 0.0000005,
+    inputCacheWrite: 0.00000625,
+    currency: 'usd',
+  },
+  'claude-sonnet-5': {
+    prompt: 0.000002,
+    completion: 0.00001,
+    inputCacheRead: 0.0000002,
+    inputCacheWrite: 0.0000025,
+    currency: 'usd',
+  },
   'claude-fable-5': {
     prompt: 0.00001,
     completion: 0.00005,
@@ -173,27 +188,34 @@ export function getAnthropicPricing(model: string) {
   return KNOWN_ANTHROPIC_PRICING[normalized];
 }
 
+const isMythosPreview = (model: string) => normalizeSlug(model) === 'claude-mythos-preview';
+
+/** Every Claude 3 or later caches prompts. */
 export function supportsAnthropicPromptCaching(model: string): boolean {
-  const normalized = normalizeSlug(model).replace(/\./g, '-');
-  return PROMPT_CACHING_MODEL_ID_RE_LIST.some((re) => re.test(normalized));
+  const gen = claudeGeneration(normalizeSlug(model));
+  return isMythosPreview(model) || (!!gen && gen.version >= 3);
 }
 
 export function supportsAnthropicAdaptiveThinking(model: string): boolean {
-  const normalized = normalizeSlug(model).replace(/\./g, '-');
-  return ADAPTIVE_THINKING_MODEL_ID_RE_LIST.some((re) => re.test(normalized));
+  return isMythosPreview(model) || isAdaptiveGeneration(claudeGeneration(normalizeSlug(model)));
 }
 
 export function isAnthropicThinkingMandatory(model: string): boolean {
-  const normalized = normalizeSlug(model).replace(/\./g, '-');
-  return MANDATORY_THINKING_MODEL_ID_RE_LIST.some((re) => re.test(normalized));
+  return isMythosPreview(model) || isThinkingAlwaysOn(claudeGeneration(normalizeSlug(model)));
 }
 
-/** Documented effort levels for a model, weakest first (docs-based fallback). */
+/**
+ * Documented effort levels for a model, weakest first: the fallback when the
+ * models API response lacks `capabilities.effort`. `max` came with the 4.6
+ * generation, `xhigh` with 4.7.
+ */
 export function documentedAnthropicEffortLevels(model: string): string[] {
-  const normalized = normalizeSlug(model).replace(/\./g, '-');
   const levels = ['low', 'medium', 'high'];
-  if (XHIGH_EFFORT_MODEL_ID_RE_LIST.some((re) => re.test(normalized))) levels.push('xhigh');
-  if (MAX_EFFORT_MODEL_ID_RE_LIST.some((re) => re.test(normalized))) levels.push('max');
+  if (isMythosPreview(model)) return [...levels, 'max'];
+  const gen = claudeGeneration(normalizeSlug(model));
+  if (!isAdaptiveGeneration(gen)) return levels;
+  if (gen && gen.version >= 4.7) levels.push('xhigh');
+  levels.push('max');
   return levels;
 }
 
