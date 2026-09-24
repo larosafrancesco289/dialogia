@@ -9,6 +9,7 @@ import { MessageCard } from '@/components/message/MessageCard';
 import { useMessageListWindow } from '@/components/message/hooks/useMessageListWindow';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import { resolveDisplayPreferences } from '@/lib/settings/chatDefaults';
 import { useMessageListController } from '@/components/message/useMessageListController';
 import { latestExchangeOnly, messageHasModuleContent } from '@/lib/modules';
 import {
@@ -22,16 +23,15 @@ const EMPTY_MESSAGES: Message[] = [];
 export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
   const {
     allMessages,
-    chat,
     isStreaming,
     planGeneration,
     composerFocused,
     autoScrollPref,
     messagesLoaded,
+    showByDefault,
   } = useChatStore(
     (state) => ({
       allMessages: selectMessagesForChat(chatId)(state) ?? EMPTY_MESSAGES,
-      chat: state.chats.find((c) => c.id === chatId),
       isStreaming: selectIsStreamingForChat(chatId)(state),
       planGeneration: state.ui.plan?.generationByChatId?.[chatId],
       composerFocused: state.ui.mobile.composerFocused,
@@ -39,6 +39,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         ? (state.ui.tutor?.autoScroll ?? false)
         : true,
       messagesLoaded: selectChatMessagesLoaded(chatId)(state),
+      showByDefault: resolveDisplayPreferences(state.ui.chatDefaults).showThinkingByDefault,
     }),
     shallow,
   );
@@ -199,7 +200,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
 
   // Composer is now rendered outside this scroll container in ChatPane.
 
-  const showByDefault = chat?.settings.ui.showThinkingByDefault ?? false;
   // Subtle indicator for long time-to-first-token
   const waitingForFirstToken = useMemo(() => {
     if (!isStreaming) return false;

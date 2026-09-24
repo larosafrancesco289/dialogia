@@ -5,17 +5,11 @@ import type { SystemPreset } from '@/lib/presets';
 import type { ChatSettings } from '@/lib/types';
 import type { UIState } from '@/lib/store/types';
 import { loadSystemPresets } from '@/lib/settings/systemPresets';
+import { DEFAULT_DISPLAY_PREFERENCES } from '@/lib/settings/chatDefaults';
 
 type SettingsFormStateArgs = {
   ui: UIState;
 };
-
-const DEFAULT_CHAT_UI_SETTINGS = {
-  showThinkingByDefault: false,
-  showStats: false,
-  showToolCallLog: false,
-  showDebugRawJson: true,
-} as const;
 
 export function useSettingsFormState({ ui }: SettingsFormStateArgs) {
   const chatDefaults = ui.chatDefaults;
@@ -35,16 +29,16 @@ export function useSettingsFormState({ ui }: SettingsFormStateArgs) {
     ui?.tutor?.defaultModelId || DEFAULT_TUTOR_MODEL_ID,
   );
   const [showThinking, setShowThinking] = useState<boolean>(
-    chatDefaults?.ui?.showThinkingByDefault ?? DEFAULT_CHAT_UI_SETTINGS.showThinkingByDefault,
+    chatDefaults?.ui?.showThinkingByDefault ?? DEFAULT_DISPLAY_PREFERENCES.showThinkingByDefault,
   );
   const [showStats, setShowStats] = useState<boolean>(
-    chatDefaults?.ui?.showStats ?? DEFAULT_CHAT_UI_SETTINGS.showStats,
+    chatDefaults?.ui?.showStats ?? DEFAULT_DISPLAY_PREFERENCES.showStats,
   );
   const [showToolCallLog, setShowToolCallLog] = useState<boolean>(
-    chatDefaults?.ui?.showToolCallLog ?? DEFAULT_CHAT_UI_SETTINGS.showToolCallLog,
+    chatDefaults?.ui?.showToolCallLog ?? DEFAULT_DISPLAY_PREFERENCES.showToolCallLog,
   );
   const [showDebugRawJson, setShowDebugRawJson] = useState<boolean>(
-    chatDefaults?.ui?.showDebugRawJson ?? DEFAULT_CHAT_UI_SETTINGS.showDebugRawJson,
+    chatDefaults?.ui?.showDebugRawJson ?? DEFAULT_DISPLAY_PREFERENCES.showDebugRawJson,
   );
   const [presets, setPresets] = useState<SystemPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
@@ -60,14 +54,14 @@ export function useSettingsFormState({ ui }: SettingsFormStateArgs) {
         : '',
     );
     setShowThinking(
-      chatDefaults?.ui?.showThinkingByDefault ?? DEFAULT_CHAT_UI_SETTINGS.showThinkingByDefault,
+      chatDefaults?.ui?.showThinkingByDefault ?? DEFAULT_DISPLAY_PREFERENCES.showThinkingByDefault,
     );
-    setShowStats(chatDefaults?.ui?.showStats ?? DEFAULT_CHAT_UI_SETTINGS.showStats);
+    setShowStats(chatDefaults?.ui?.showStats ?? DEFAULT_DISPLAY_PREFERENCES.showStats);
     setShowToolCallLog(
-      chatDefaults?.ui?.showToolCallLog ?? DEFAULT_CHAT_UI_SETTINGS.showToolCallLog,
+      chatDefaults?.ui?.showToolCallLog ?? DEFAULT_DISPLAY_PREFERENCES.showToolCallLog,
     );
     setShowDebugRawJson(
-      chatDefaults?.ui?.showDebugRawJson ?? DEFAULT_CHAT_UI_SETTINGS.showDebugRawJson,
+      chatDefaults?.ui?.showDebugRawJson ?? DEFAULT_DISPLAY_PREFERENCES.showDebugRawJson,
     );
     setTutorDefaultModel(ui?.tutor?.defaultModelId || DEFAULT_TUTOR_MODEL_ID);
   }, [
