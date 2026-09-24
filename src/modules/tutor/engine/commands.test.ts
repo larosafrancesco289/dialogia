@@ -7,6 +7,7 @@ import {
   decide,
   explainTopic,
   openMisconceptions,
+  readyToComplete,
   step,
   type TutorError,
   type TutorEvent,
@@ -1015,6 +1016,7 @@ describe('topics and phases', () => {
     const h = teaching();
     const low = h.refuse({ by: 'tutor', type: 'complete_topic', how: 'mastered' });
     assertError(low, 'not_ready', /30%.*80%/);
+    assert.equal(readyToComplete(h.state, 'limits'), false);
     assert.match(low.hint, /skipped/);
     assert.doesNotMatch(
       teaching({ planEditable: false }).refuse({
@@ -1026,12 +1028,15 @@ describe('topics and phases', () => {
     );
     master(h);
     assert.ok(h.state.mastery.limits.confidence >= READY);
+    assert.equal(readyToComplete(h.state, 'limits'), true);
+    assert.ok(h.decide({ by: 'tutor', type: 'complete_topic', how: 'mastered' }).ok);
     h.tutor({ type: 'note_misconception', description: 'Confuses left and right limits' });
     assertError(
       h.refuse({ by: 'tutor', type: 'complete_topic', how: 'mastered' }),
       'open_misconceptions',
       /confuses-left-and-right-limits/,
     );
+    assert.equal(readyToComplete(h.state, 'limits'), false);
     assertError(
       h.refuse({ by: 'tutor', type: 'complete_topic', nodeId: 'derivatives', how: 'mastered' }),
       'topic_not_current',

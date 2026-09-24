@@ -43,7 +43,7 @@ with an LLM playing the student. Needs OPENROUTER_API_KEY (read from .env.local 
   --seed <n>               Seed for the student's answers (default 1)
   --check                  Exit 1 when a protocol health check fails
   --plan-within <n>        Check: plan approved within n exchanges (default ${DEFAULT_CHECK_OPTIONS.planWithin})
-  --topic-within <n>       Check: a topic completed within n exchanges (default ${DEFAULT_CHECK_OPTIONS.topicWithin})
+  --close-within <n>       Check: a topic ready to complete is closed within n tutor turns (default ${DEFAULT_CHECK_OPTIONS.closeWithin})
   --judge [model]          Also rate the teaching with one LLM call (default: the student model)
   --out <dir>              Where the JSON transcript and report go (default tmp/tutor-sim)
   --env-file <path>        Another env file to read the key from
@@ -231,7 +231,7 @@ export async function runTutorSimulationCli(argv: string[], deps: CliDeps = {}):
 
   const checks = checkRun(run, {
     planWithin: int(args, 'plan-within', DEFAULT_CHECK_OPTIONS.planWithin),
-    topicWithin: int(args, 'topic-within', DEFAULT_CHECK_OPTIONS.topicWithin),
+    closeWithin: int(args, 'close-within', DEFAULT_CHECK_OPTIONS.closeWithin),
   });
   let judgement: Judgement | undefined;
   if (judgeModel) {

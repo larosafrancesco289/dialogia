@@ -10,7 +10,9 @@ import type {
 } from '@/modules/tutor/engine/events';
 import {
   BUDGETS,
+  MASTERY_EVIDENCE_MIN,
   MASTERY_PRIOR,
+  READY,
   STARTING_ESTIMATE_MAX,
   STARTING_ESTIMATE_SAID_MAX,
 } from '@/modules/tutor/engine/rules';
@@ -211,4 +213,18 @@ export function demonstratedEvidence(state: TutorState, nodeId: string): number 
           entry.source === 'diagnostic' ||
           entry.source === 'observation'),
     ).length;
+}
+
+/**
+ * Whether the topic may be completed as mastered: at READY, on enough of the
+ * learner's own work since it was opened, with no open misconception. The
+ * engine's one readiness rule; `complete_topic` refuses with a reason for
+ * whichever part is missing.
+ */
+export function readyToComplete(state: TutorState, nodeId: string): boolean {
+  return (
+    confidenceOf(state, nodeId) >= READY &&
+    demonstratedEvidence(state, nodeId) >= MASTERY_EVIDENCE_MIN &&
+    openMisconceptions(state, nodeId).length === 0
+  );
 }

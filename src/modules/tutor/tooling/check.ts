@@ -2,7 +2,20 @@
 // Responsibility: protocol health of a simulated session, asserted from its transcript and
 // event log alone. `--check` fails the run when any of these fails.
 
-import { apply, emptyTutorState, type TutorEvent } from '@/modules/tutor/engine';
+import {
+  MASTERY_EVIDENCE_MIN,
+  READY,
+  apply,
+  confidenceOf,
+  demonstratedEvidence,
+  emptyTutorState,
+  fold,
+  openMisconceptions,
+  percent,
+  readyToComplete,
+  type TutorEvent,
+  type TutorState,
+} from '@/modules/tutor/engine';
 import type { ExchangeRecord, SimulationRun } from '@/modules/tutor/tooling/simulation';
 
 export type CheckResult = {
@@ -17,11 +30,14 @@ export type CheckResult = {
 export type CheckOptions = {
   /** The plan must be approved within this many exchanges. */
   planWithin: number;
-  /** At least one topic must be completed within this many exchanges. */
-  topicWithin: number;
+  /**
+   * A topic the engine would let the tutor complete as mastered must be
+   * closed within this many tutor turns of becoming so.
+   */
+  closeWithin: number;
 };
 
-export const DEFAULT_CHECK_OPTIONS: CheckOptions = { planWithin: 4, topicWithin: 10 };
+export const DEFAULT_CHECK_OPTIONS: CheckOptions = { planWithin: 4, closeWithin: 3 };
 
 /**
  * Refusals whose hint tells the tutor to do something else rather than retry:
@@ -290,19 +306,83 @@ function planApprovedWithin(run: SimulationRun, within: number): CheckResult {
   );
 }
 
-function topicCompletedWithin(run: SimulationRun, within: number): CheckResult {
-  const id = 'topic_completed_within';
-  const at = exchangeOf(run, (e) => e.type === 'topic_completed');
-  if (at !== undefined && at <= within) {
-    return result(id, [], `A topic was completed in exchange ${at} (limit ${within}).`);
+/** The topic in progress, when the engine would accept completing it as mastered. */
+function readyTopic(state: TutorState): string | undefined {
+  const id = state.currentNodeId;
+  return id && state.phase === 'teaching' && readyToComplete(state, id) ? id : undefined;
+}
+
+function standing(state: TutorState, nodeId: string): string {
+  const open = openMisconceptions(state, nodeId).length;
+  return `${nodeId} at ${percent(confidenceOf(state, nodeId))}% on ${demonstratedEvidence(state, nodeId)} of the learner's own answers${open ? `, ${open} open misconception(s)` : ''}`;
+}
+
+/**
+ * Judges the tutor, not the student. A tutor turn that ends with the topic in
+ * progress ready to complete as mastered (the engine's own rule) and leaves it
+ * open is a chance passed up; `within` of them in a row on one topic is a
+ * stall. Judged at the end of the turn, after the tutor recorded what the
+ * learner's latest message showed, so a slip that keeps the topic open is not
+ * held against it. A student who keeps erring never gets a topic there, which
+ * says nothing about the tutor, so that run is not judged.
+ */
+function topicClosedWhenReady(run: SimulationRun, within: number): CheckResult {
+  const id = 'topic_closed_when_ready';
+  const problems: string[] = [];
+  const closed: string[] = [];
+  let streak: { nodeId: string; from: number; turns: number } | undefined;
+  let state: TutorState | undefined;
+  for (const x of run.exchanges) {
+    state = fold(run.events.filter((e) => e.seq <= x.after.lastSeq));
+    for (const e of run.events) {
+      if (
+        e.type === 'topic_completed' &&
+        e.how === 'mastered' &&
+        e.messageId === x.tutor.messageId
+      ) {
+        closed.push(`${e.nodeId} in #${x.index}`);
+      }
+    }
+    const nodeId = readyTopic(state);
+    if (!nodeId) {
+      streak = undefined;
+      continue;
+    }
+    streak =
+      streak?.nodeId === nodeId
+        ? { ...streak, turns: streak.turns + 1 }
+        : { nodeId, from: x.index, turns: 1 };
+    if (streak.turns === within) {
+      problems.push(
+        `${nodeId} could be completed from #${streak.from} (${standing(state, nodeId)}), and was still open after #${x.index}`,
+      );
+    }
   }
-  if (run.exchanges.length < within && at === undefined) {
-    return skipped(id, `Too short to judge: a topic gets ${within} exchanges.`);
+  const done = closed.length ? ` Closed: ${closed.join(', ')}.` : '';
+  if (problems.length) {
+    return result(
+      id,
+      problems,
+      `A topic ready to complete must be closed within ${within} tutor turns.${done}`,
+    );
   }
-  return result(
+  if (streak) {
+    return skipped(
+      id,
+      `Too short to judge: ${streak.nodeId} could be completed from #${streak.from}; the tutor gets ${within} turns to close it.${done}`,
+    );
+  }
+  if (closed.length) {
+    return result(
+      id,
+      [],
+      `Every topic ready to complete was closed within ${within} turns.${done}`,
+    );
+  }
+  const current = state?.currentNodeId;
+  return skipped(
     id,
-    [at === undefined ? 'no topic was completed' : `first completed only in exchange ${at}`],
-    `At least one topic must be completed within ${within} exchanges.`,
+    `Not judged: no topic reached ${percent(READY)}% on ${MASTERY_EVIDENCE_MIN} of the learner's own answers with no open misconception (the student is still learning, or the run is short)${state && current ? `; at the end, ${standing(state, current)}` : ''}.`,
   );
 }
 
@@ -339,6 +419,6 @@ export function checkRun(
     noGainWithMisconception(run),
     noAnswerKeysReplayed(run),
     planApprovedWithin(run, options.planWithin),
-    topicCompletedWithin(run, options.topicWithin),
+    topicClosedWhenReady(run, options.closeWithin),
   ];
 }
