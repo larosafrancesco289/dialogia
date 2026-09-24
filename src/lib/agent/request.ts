@@ -1,13 +1,8 @@
 // Module: agent/request
-// Responsibility: Centralize agent-side request prep for OpenRouter flows.
-// - Map UI route preference to provider sort
-// - Compose plugins for PDF parsing and OpenRouter web plugin
+// Responsibility: Compose request plugins for PDF parsing and OpenRouter's web plugin.
 
 import type { PluginConfig } from '@/lib/agent/types';
-import { providerSortFromRoutePref } from '@/lib/policy/provider';
 import { isNativeSearchMode, type SearchMode } from '@/lib/search/providers/types';
-
-export { providerSortFromRoutePref };
 
 export function pdfPlugins(hasPdf: boolean): PluginConfig[] | undefined {
   if (!hasPdf) return undefined;
