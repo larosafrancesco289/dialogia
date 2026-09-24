@@ -76,7 +76,7 @@ export const prepareSendRuntime = async ({
         /* best effort */
       }
     }
-    // The tutor default is often a dynamic alias ('~anthropic/frontier'),
+    // The tutor default may be a dynamic alias ('~anthropic/frontier'),
     // which is never in the catalogue itself: resolve it first, or the
     // check below mistook it for a missing model and fell back to whatever
     // loaded first, so sessions silently ran on an unrelated model.
