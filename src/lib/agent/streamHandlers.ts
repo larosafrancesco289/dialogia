@@ -320,6 +320,11 @@ export function createMessageStreamCallbacks(
 
       const state = get();
       const current = state.messagesById[assistantMessage.id];
+      // Its chat was deleted while it streamed: saving it would leave an orphan row.
+      if (!current) {
+        clearController?.();
+        return;
+      }
       const finishedAt = performance.now();
       const metrics = computeMetrics({
         startedAt: timing.startedAt,
