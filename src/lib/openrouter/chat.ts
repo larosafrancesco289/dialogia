@@ -1,6 +1,6 @@
 import { buildChatBody } from '@/lib/openrouter/request';
 import { endpointBodyOptions, endpointWireModelId } from '@/lib/openrouter/endpointBody';
-import { API_ERROR_CODES } from '@/lib/api/errors';
+import { API_ERROR_CODES, throwForStatus } from '@/lib/api/errors';
 import { orChatCompletions } from '@/lib/openrouter/http';
 import { logger } from '@/lib/logger';
 import type { ChatCompletion } from '@/lib/transport/completions';
@@ -40,16 +40,8 @@ export async function chatCompletion(params: TransportChatParams): Promise<ChatC
   } catch (error) {
     throw wrapOpenRouterClientError(error, API_ERROR_CODES.OPENROUTER_CHAT_FAILED);
   }
-  if (res.status === 401 || res.status === 403) {
-    throw await buildOpenRouterError(res, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key');
-  }
-  if (res.status === 429) {
-    throw await buildOpenRouterError(res, API_ERROR_CODES.RATE_LIMITED, 'Rate limited');
-  }
-  if (!res.ok) {
-    const error = await buildOpenRouterError(res, API_ERROR_CODES.OPENROUTER_CHAT_FAILED);
-    logger.error('[OpenRouter] Chat completion failed:', error.message);
-    throw error;
-  }
+  await throwForStatus(res, buildOpenRouterError, API_ERROR_CODES.OPENROUTER_CHAT_FAILED, {
+    onFailure: (error) => logger.error('[OpenRouter] Chat completion failed:', error.message),
+  });
   return (await res.json()) as ChatCompletion;
 }

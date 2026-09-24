@@ -1,7 +1,7 @@
 import type { TransportAuth } from '@/lib/auth/transport';
 import type { ModelDescriptor } from '@/lib/types';
 import type { TransportFetchModelsOptions } from '@/lib/transport/types';
-import { API_ERROR_CODES } from '@/lib/api/errors';
+import { API_ERROR_CODES, throwForStatus } from '@/lib/api/errors';
 import { isRecord } from '@/lib/utils/guards';
 import { anFetchModels } from '@/lib/anthropic/http';
 import { ANTHROPIC_ENDPOINT_ID } from '@/lib/transport/endpoints';
@@ -159,15 +159,7 @@ export async function fetchModels(
     throw wrapAnthropicClientError(error, API_ERROR_CODES.PROVIDER_MODELS_FAILED);
   }
 
-  if (res.status === 401 || res.status === 403) {
-    throw await buildAnthropicError(res, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key');
-  }
-  if (res.status === 429) {
-    throw await buildAnthropicError(res, API_ERROR_CODES.RATE_LIMITED, 'Rate limited');
-  }
-  if (!res.ok) {
-    throw await buildAnthropicError(res, API_ERROR_CODES.PROVIDER_MODELS_FAILED);
-  }
+  await throwForStatus(res, buildAnthropicError, API_ERROR_CODES.PROVIDER_MODELS_FAILED);
 
   const data = await res.json().catch(() => null);
   const models = extractEntries(data)
