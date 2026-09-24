@@ -160,7 +160,8 @@ export function useComposerShortcuts(options: {
       onCommandHandled,
     }: SubmitArgs): Promise<ComposerSubmitResult> => {
       const trimmed = text.trim();
-      if (!trimmed) return 'noop';
+      // An attachment on its own is a message; the model is asked about it.
+      if (!trimmed && attachments.length === 0) return 'noop';
       const commandHandled = await runSlashCommand(trimmed, {
         chat: options.chat,
         models: options.models,
