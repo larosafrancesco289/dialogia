@@ -1,17 +1,20 @@
-import React, { Children, useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
-import { ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { logger } from '@/lib/logger';
 import type { MarkdownCitationSource } from '@/lib/markdown/citations';
 import { preprocessMarkdown } from '@/lib/markdown/preprocess';
-import { copyText } from '@/lib/clipboard';
-
-const WRAP_STORAGE_KEY = 'dialogia:code-wrap';
-const WRAP_EVENT = 'dialogia:code-wrap-change';
+import { CodeBlock } from '@/components/markdown/CodeBlock';
+import {
+  CodeFrame,
+  detectLanguageFromPreChildren,
+  extractCodeText,
+} from '@/components/markdown/CodeFrame';
+import { MermaidBlock } from '@/components/markdown/MermaidBlock';
+import { useImageZoom } from '@/components/markdown/useImageZoom';
 
 type RehypePlugins = NonNullable<React.ComponentProps<typeof ReactMarkdown>['rehypePlugins']>;
 type RehypePlugin = RehypePlugins[number];
@@ -31,383 +34,6 @@ function loadKatexPlugin(): Promise<{ plugin: RehypePlugin }> {
     });
   }
   return katexPluginPromise;
-}
-
-type WindowWithIdleCallback = Window & {
-  requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
-};
-
-type MediumZoomFactory = typeof import('medium-zoom').default;
-type MediumZoomInstance = ReturnType<MediumZoomFactory>;
-
-function readWrapPreference(): boolean {
-  if (typeof window === 'undefined') return true;
-  try {
-    const stored = window.localStorage.getItem(WRAP_STORAGE_KEY);
-    if (stored === 'off') return false;
-    if (stored === 'on') return true;
-  } catch {
-    // ignore storage access failures
-  }
-  return true;
-}
-
-function persistWrapPreference(next: boolean) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(WRAP_STORAGE_KEY, next ? 'on' : 'off');
-  } catch {
-    // ignore storage access failures
-  }
-  window.setTimeout(() => {
-    window.dispatchEvent(new CustomEvent<boolean>(WRAP_EVENT, { detail: next }));
-  }, 0);
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const onCopy = async () => {
-    if (!(await copyText(text))) return;
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-  return (
-    <button
-      type="button"
-      className="icon-button"
-      aria-label="Copy to clipboard"
-      title={copied ? 'Copied' : 'Copy'}
-      onClick={onCopy}
-    >
-      {copied ? <CheckIcon className="h-4 w-4" /> : <ClipboardIcon className="h-4 w-4" />}
-    </button>
-  );
-}
-
-function detectLanguageFromPreChildren(children: React.ReactNode): string | undefined {
-  const first = Children.toArray(children)[0];
-  if (!React.isValidElement(first)) return undefined;
-  const className =
-    typeof first.props?.className === 'string' ? (first.props.className as string) : undefined;
-  if (!className) return undefined;
-  const m = className.match(/language-([\w-]+)/);
-  return m?.[1];
-}
-
-function extractCodeText(children: React.ReactNode): string {
-  const first = Children.toArray(children)[0];
-  if (!React.isValidElement(first)) return '';
-  const raw = first.props?.children ?? first.props?.value ?? first.props?.code ?? null;
-  if (raw == null) return '';
-  if (Array.isArray(raw)) return raw.join('');
-  return typeof raw === 'string' ? raw : String(raw);
-}
-
-function PreWithTools(
-  props: React.HTMLAttributes<HTMLPreElement> & {
-    children?: React.ReactNode;
-    language?: string;
-    rawText?: string;
-  },
-) {
-  const preRef = useRef<HTMLPreElement>(null);
-  // Expand by default; allow optional line wrapping toggle
-  const [expanded, setExpanded] = useState(true);
-  const [wrap, setWrap] = useState<boolean>(() => readWrapPreference());
-  const [isOverflowing, setIsOverflowing] = useState(false);
-  const language = useMemo(
-    () => props.language ?? detectLanguageFromPreChildren(props.children),
-    [props.language, props.children],
-  );
-  const codeText = useMemo(
-    () => props.rawText ?? extractCodeText(props.children),
-    [props.rawText, props.children],
-  );
-
-  useEffect(() => {
-    const el = preRef.current;
-    if (!el) return;
-    const compute = () => {
-      const over = el.scrollHeight > el.clientHeight + 1; // tolerate sub-pixel
-      setIsOverflowing(over);
-    };
-    compute();
-    let ro: ResizeObserver | null = null;
-    if (!expanded && typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(() => compute());
-      ro.observe(el);
-    }
-    const tid = setTimeout(compute, 0);
-    return () => {
-      ro?.disconnect();
-      clearTimeout(tid);
-    };
-  }, [expanded, wrap, props.children]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const onPreferenceChange = (event: CustomEvent<boolean>) => {
-      if (typeof event.detail !== 'boolean') return;
-      setWrap(event.detail);
-    };
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== WRAP_STORAGE_KEY) return;
-      const next = event.newValue === null ? true : event.newValue !== 'off';
-      setWrap(next);
-    };
-    window.addEventListener(WRAP_EVENT, onPreferenceChange as EventListener);
-    window.addEventListener('storage', onStorage);
-    return () => {
-      window.removeEventListener(WRAP_EVENT, onPreferenceChange as EventListener);
-      window.removeEventListener('storage', onStorage);
-    };
-  }, []);
-
-  return (
-    <div className="code-block">
-      <div className="code-block__bar">
-        <span className="code-block__lang">{language ?? 'text'}</span>
-        <div className="code-block__actions">
-          <button
-            type="button"
-            className="code-block__action"
-            onClick={() => {
-              setWrap((v) => {
-                const next = !v;
-                persistWrapPreference(next);
-                return next;
-              });
-            }}
-            title={wrap ? 'Disable wrap' : 'Enable wrap'}
-          >
-            {wrap ? 'Unwrap' : 'Wrap'}
-          </button>
-          {isOverflowing && (
-            <button
-              type="button"
-              className="code-block__action"
-              onClick={() => setExpanded((v) => !v)}
-              title={expanded ? 'Collapse' : 'Expand'}
-            >
-              {expanded ? 'Collapse' : 'Expand'}
-            </button>
-          )}
-          <CopyButton text={codeText} />
-        </div>
-      </div>
-      <pre
-        ref={preRef}
-        className={`overflow-auto relative ${props.className ?? ''}`}
-        style={{ maxHeight: expanded ? 'none' : 480 }}
-        data-expanded={expanded ? 'true' : 'false'}
-        data-wrap={wrap ? 'true' : 'false'}
-      >
-        {props.children}
-        {!expanded && isOverflowing && <div className="pre-fade" aria-hidden />}
-      </pre>
-    </div>
-  );
-}
-
-function MermaidBlock({ code, streaming }: { code: string; streaming?: boolean }) {
-  const id = useId().replace(/[:]/g, '_');
-  const ref = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === 'undefined') {
-      setIsVisible(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '200px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    // While streaming, the diagram source is still growing; rendering partial
-    // definitions just produces parse errors, so wait for the final pass.
-    if (!isVisible || streaming) return;
-    let cancelled = false;
-    const tid = setTimeout(async () => {
-      try {
-        const mermaid = (await import('mermaid')).default;
-        // Use strict security level to reduce risk from untrusted diagram content
-        mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict' });
-        const { svg } = await mermaid.render(`m_${id}`, code);
-        if (!cancelled && ref.current) ref.current.innerHTML = svg;
-      } catch {
-        // ignore
-        if (!cancelled && ref.current) {
-          ref.current.innerText = 'Mermaid diagram failed to render.';
-        }
-      }
-    }, 300);
-    return () => {
-      cancelled = true;
-      clearTimeout(tid);
-    };
-  }, [code, id, isVisible, streaming]);
-  if (streaming) {
-    return (
-      <pre className="mermaid-diagram">
-        <code>{code}</code>
-      </pre>
-    );
-  }
-  return <div className="mermaid-diagram" ref={ref} />;
-}
-
-// Escapes raw text to safe HTML when highlighting is not yet ready
-function escapeHtml(str: string) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function normalizeLanguage(lang?: string): string | undefined {
-  if (!lang) return undefined;
-  const l = lang.toLowerCase();
-  if (l === 'js') return 'javascript';
-  if (l === 'ts') return 'typescript';
-  if (l === 'sh' || l === 'shell') return 'bash';
-  if (l === 'yml') return 'yaml';
-  if (l === 'md') return 'markdown';
-  if (l === 'html' || l === 'xml' || l === 'svg') return 'markup';
-  return l;
-}
-
-const PRISM_CACHE = new Map<string, string>();
-const PRISM_CACHE_MAX = 200;
-
-async function ensurePrismLanguage(lang?: string) {
-  const PrismLib = (await import('prismjs')).default;
-  if (typeof window !== 'undefined') {
-    (window as Window & { Prism?: typeof PrismLib }).Prism = PrismLib;
-  }
-  const l = normalizeLanguage(lang);
-  // Always have a baseline markup grammar for safety
-  await import('prismjs/components/prism-markup');
-  if (!l) return PrismLib;
-  try {
-    switch (l) {
-      case 'javascript':
-        await import('prismjs/components/prism-javascript');
-        break;
-      case 'jsx':
-        await import('prismjs/components/prism-jsx');
-        break;
-      case 'typescript':
-        await import('prismjs/components/prism-typescript');
-        break;
-      case 'tsx':
-        await import('prismjs/components/prism-tsx');
-        break;
-      case 'json':
-        await import('prismjs/components/prism-json');
-        break;
-      case 'markdown':
-        await import('prismjs/components/prism-markdown');
-        break;
-      case 'bash':
-        await import('prismjs/components/prism-bash');
-        break;
-      case 'python':
-        await import('prismjs/components/prism-python');
-        break;
-      case 'go':
-        await import('prismjs/components/prism-go');
-        break;
-      case 'rust':
-        await import('prismjs/components/prism-rust');
-        break;
-      case 'java':
-        await import('prismjs/components/prism-java');
-        break;
-      case 'sql':
-        await import('prismjs/components/prism-sql');
-        break;
-      case 'yaml':
-        await import('prismjs/components/prism-yaml');
-        break;
-      case 'toml':
-        await import('prismjs/components/prism-toml');
-        break;
-      case 'diff':
-        await import('prismjs/components/prism-diff');
-        break;
-      default:
-        // Best-effort: no extra import
-        break;
-    }
-  } catch {
-    // ignore missing language modules
-  }
-  return PrismLib;
-}
-
-function CodeBlock({
-  code,
-  language,
-  streaming,
-}: {
-  code: string;
-  language?: string;
-  streaming?: boolean;
-}) {
-  const [html, setHtml] = useState<string | null>(null);
-  const lang = normalizeLanguage(language);
-  useEffect(() => {
-    let cancelled = false;
-    const cacheKey = `${lang ?? 'markup'}::${code}`;
-    const cached = PRISM_CACHE.get(cacheKey);
-    if (cached) {
-      setHtml((prev) => (prev === cached ? prev : cached));
-      return () => {
-        cancelled = true;
-      };
-    }
-    (async () => {
-      try {
-        const Prism = await ensurePrismLanguage(lang);
-        const grammar = (lang && Prism.languages[lang]) || Prism.languages.markup;
-        const h = Prism.highlight(code, grammar, (lang as string) || 'markup');
-        if (cancelled) return;
-        setHtml((prev) => (prev === h ? prev : h));
-        // Streaming snapshots are dead keys after the next flush; caching them
-        // would just evict useful entries.
-        if (!streaming) {
-          PRISM_CACHE.set(cacheKey, h);
-          if (PRISM_CACHE.size > PRISM_CACHE_MAX) {
-            const oldestKey = PRISM_CACHE.keys().next().value;
-            if (oldestKey) PRISM_CACHE.delete(oldestKey);
-          }
-        }
-      } catch {
-        if (!cancelled) {
-          setHtml((prev) => (prev === null ? prev : null));
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [code, lang, streaming]);
-  const cls = `language-${lang ?? 'markup'}`;
-  return <code className={cls} dangerouslySetInnerHTML={{ __html: html ?? escapeHtml(code) }} />;
 }
 
 export function MarkdownRenderer({
@@ -454,42 +80,7 @@ export function MarkdownRenderer({
     return plugins;
   }, [mathPlugin, slugPrefix]);
 
-  // Attach medium-zoom to images inside markdown for a better reading experience
-  useEffect(() => {
-    if (streaming) return;
-    let zoom: MediumZoomInstance | undefined;
-    let cancelled = false;
-    const run = async () => {
-      if (typeof window === 'undefined' || cancelled) return;
-      try {
-        const root = rootRef.current;
-        if (!root) return;
-        const images = root.querySelectorAll('img');
-        if (images.length === 0) return;
-        const mediumZoom = (await import('medium-zoom')).default as MediumZoomFactory;
-        if (!cancelled) {
-          // The same darkroom as the attachment lightbox.
-          zoom = mediumZoom(images, { background: 'rgb(0 0 0 / 0.86)', margin: 24 });
-        }
-      } catch (error) {
-        logger.error('Failed to initialize image zoom', error);
-      }
-    };
-    const idle = (window as WindowWithIdleCallback).requestIdleCallback;
-    if (typeof idle === 'function') {
-      idle(run, { timeout: 2000 });
-    } else {
-      setTimeout(run, 0);
-    }
-    return () => {
-      cancelled = true;
-      try {
-        zoom?.detach?.();
-      } catch (error) {
-        logger.error('Failed to detach zoom', error);
-      }
-    };
-  }, [processedContent, streaming]);
+  useImageZoom(rootRef, processedContent, streaming);
 
   const components: Components = useMemo(
     () => ({
@@ -509,35 +100,18 @@ export function MarkdownRenderer({
         }
         const code = extractCodeText(children);
         return (
-          <PreWithTools {...preProps} language={lang} rawText={code}>
+          <CodeFrame {...preProps} language={lang} rawText={code}>
             <CodeBlock code={code} language={lang} streaming={streaming} />
-          </PreWithTools>
+          </CodeFrame>
         );
       },
-      code: (props) => {
-        const {
-          inline,
-          className,
-          children,
-          node: _node,
-          ...codeProps
-        } = props as typeof props & {
-          inline?: boolean;
-        };
-        // Only style inline code; block code is handled by the <pre> wrapper above
-        if (!inline) {
-          return (
-            <code className={className || ''} {...codeProps}>
-              {children}
-            </code>
-          );
-        }
-        return (
-          <code className={className || undefined} {...codeProps}>
-            {children}
-          </code>
-        );
-      },
+      // react-markdown 9 passes no `inline` flag; a fenced block's <code> is
+      // read and replaced by the <pre> override above.
+      code: ({ className, children, node: _node, ...codeProps }) => (
+        <code className={className || ''} {...codeProps}>
+          {children}
+        </code>
+      ),
       // `node` is react-markdown's syntax tree; spread onto the DOM it
       // becomes node="[object Object]".
       a: ({ href, children, node: _node, ...props }) => {
