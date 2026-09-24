@@ -131,6 +131,36 @@
   line-height: 1.5;
 }
 
+/* A long message folds to its first lines (the count comes from
+   USER_MESSAGE_MAX_LINES), fading out rather than cut mid-line. */
+.user :global(.message-user-body.is-clamped) {
+  max-height: calc(var(--user-clamp-lines) * 1.5em);
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black calc(100% - 3em), transparent);
+}
+
+/* Show all / Show less: a quiet line in the bubble's own ink, not a button. */
+.user :global(.message-user-toggle) {
+  display: block;
+  margin-top: 0.375rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-fg);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-light);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.user :global(.message-user-toggle:hover) {
+  text-decoration-color: currentColor;
+}
+
 .user :global(.markdown p) {
   margin: 0;
   /* A person's Shift+Return is a line break they meant; markdown would fold it
