@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CALCULUS, QUIZ_ITEMS, harness, teaching } from '@/modules/tutor/engine/testSupport';
+import {
+  CALCULUS,
+  QUIZ_ITEMS,
+  harness,
+  master,
+  teaching,
+} from '@/modules/tutor/engine/testSupport';
 import {
   cardsForMessage,
   effectsByMessage,
@@ -84,4 +90,36 @@ test('a proposal card settles for good: approved, changes requested, revised bel
   h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId }, 'plan-2');
   assert.equal(cardsForMessage(session(h), 'plan-1').proposal?.status, 'replaced');
   assert.equal(cardsForMessage(session(h), 'plan-2').proposal?.status, 'approved');
+});
+
+test('a chapter break keeps what happened at its seam, even once the topic is done again', () => {
+  const h = teaching();
+  master(h);
+  h.tutor({ type: 'complete_topic', how: 'mastered' }, 'reply-1');
+  const first = h.state.mastery.limits.confidence;
+  h.learner({ type: 'more_practice', nodeId: 'limits' });
+  master(h);
+  h.tutor({ type: 'complete_topic', how: 'mastered' }, 'reply-3');
+  h.learner({ type: 'start_topic', nodeId: 'derivatives' });
+
+  const effects = effectsByMessage(h.events);
+  const old = effects.get('reply-1')!.completed!;
+  assert.equal(old.reopened, true, 'still back for more practice');
+  assert.equal(old.nextNodeId, undefined, 'the later Go on belongs to the later break');
+  assert.equal(old.mastery?.confidence, first);
+  const again = effects.get('reply-3')!.completed!;
+  assert.equal(again.reopened, undefined);
+  assert.equal(again.nextNodeId, 'derivatives');
+});
+
+test('a topic taken up again from Revise settles its break before any later choice', () => {
+  const h = teaching();
+  master(h);
+  h.tutor({ type: 'complete_topic', how: 'mastered' }, 'reply-1');
+  h.learner({ type: 'reopen_topic', nodeId: 'limits' });
+  h.learner({ type: 'mark_known', nodeId: 'derivatives' });
+  h.learner({ type: 'start_topic', nodeId: 'chain-rule' });
+  const completed = effectsByMessage(h.events).get('reply-1')!.completed!;
+  assert.equal(completed.reopened, true);
+  assert.equal(completed.nextNodeId, undefined);
 });
