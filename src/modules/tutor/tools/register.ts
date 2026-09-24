@@ -9,6 +9,7 @@ import {
   parseTutorToolCall,
   tutorToolError,
   tutorToolResult,
+  withAdjustments,
   type TutorError,
   type TutorToolName,
 } from '@/modules/tutor/engine';
@@ -83,11 +84,9 @@ function createHandler(name: TutorToolName): PlanningToolHandler {
     });
     if (!outcome.ok) return refuse(outcome.error);
 
-    const result = tutorToolResult(
-      name,
-      outcome.before,
-      outcome.state,
-      outcome.events,
+    const result = withAdjustments(
+      tutorToolResult(name, outcome.before, outcome.state, outcome.events),
+      parsed.adjusted,
     ) as ToolResult;
     log.success(result, roundMeta ? { ...roundMeta } : undefined);
     return {

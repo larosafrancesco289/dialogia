@@ -188,3 +188,26 @@ test('learnerChangesSince covers approvals, declines and closed cards', () => {
   ]);
   assert.equal(DEFAULT_TUTOR_FLAGS.planEditable, true);
 });
+
+test('once intake is answered, the block tells the tutor it may give starting estimates', () => {
+  const h = harness();
+  assert.doesNotMatch(render(h), /startingEstimate/);
+  h.tutor({
+    type: 'ask_intake',
+    questions: [
+      { question: 'Goal?', options: [{ label: 'Exam' }, { label: 'Fun' }] },
+      { question: 'Background?', options: [{ label: 'Complete beginner' }, { label: 'Some' }] },
+    ],
+  });
+  h.learner({
+    type: 'answer_intake',
+    intakeId: h.state.awaiting!.id,
+    responses: { q1: ['Exam'], q2: ['Some'] },
+  });
+  assert.match(
+    render(h),
+    /Starting estimates: in propose_plan, give .* startingEstimate \(up to 75%\)/,
+  );
+  h.tutor({ type: 'propose_plan', ...CALCULUS });
+  assert.doesNotMatch(render(h), /Starting estimates/, 'not while a proposal waits');
+});

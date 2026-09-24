@@ -12,6 +12,8 @@ export type PlanNodeInput = {
   /** Ids (or names) of other topics in the same proposal. */
   prerequisites?: string[];
   estimatedMinutes?: number;
+  /** Where the topic's estimate starts once the plan is approved; see `STARTING_ESTIMATE_MAX`. */
+  startingEstimate?: { value: number; reason?: string };
 };
 
 export type PlanInput = {

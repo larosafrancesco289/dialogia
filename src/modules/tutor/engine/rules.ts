@@ -12,6 +12,13 @@ export const READY = 0.8;
 /** Below this a topic is still being built; between it and READY it is being practised. */
 export const PRACTISING = 0.5;
 
+/**
+ * The highest starting estimate a plan may give a topic from intake or
+ * diagnostic evidence: below READY, so the tutor still checks the topic before
+ * it counts as ready. A learner who knows a topic can mark it known.
+ */
+export const STARTING_ESTIMATE_MAX = Math.round((READY - 0.05) * 100) / 100;
+
 /** "More practice" pulls an estimate down to at most this. */
 export const MORE_PRACTICE_CAP = Math.round((READY - 0.2) * 100) / 100;
 
@@ -76,7 +83,8 @@ export type EvidenceKind =
   | ObservationKind
   | 'marked_known'
   | 'more_practice'
-  | 'adjusted';
+  | 'adjusted'
+  | 'placement';
 
 const LEGACY_TYPE: Record<EvidenceKind, Evidence['type']> = {
   correct_answer: 'correct_answer',
@@ -89,6 +97,7 @@ const LEGACY_TYPE: Record<EvidenceKind, Evidence['type']> = {
   marked_known: 'self_report',
   more_practice: 'self_report',
   adjusted: 'self_report',
+  placement: 'placement',
 };
 
 /** The persisted `Evidence.type` that older surfaces understand. */

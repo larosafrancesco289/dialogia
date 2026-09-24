@@ -180,6 +180,8 @@ export function createTutorSlice(
       ...(meta.messageId ? { messageId: meta.messageId } : {}),
     });
     if (!result.ok) return result;
+    // Accepted, and nothing to change (the tutor started a topic already in progress).
+    if (!result.events.length) return { ...result, before: session.state };
 
     publish(chatId, {
       events: [...session.events, ...result.events],

@@ -5,6 +5,7 @@ import type { LearningPlan, LearningPlanNode } from '@/lib/types';
 import type {
   CardKind,
   DiagnosticItem,
+  StartingEstimate,
   IntakeOption,
   IntakeQuestion,
   QuizItem,
@@ -29,6 +30,10 @@ import {
   OBSERVATION_SIGN,
   OBSERVATION_WEIGHTS,
   READY,
+  STARTING_ESTIMATE_MAX,
+  WEIGHT_MAX,
+  WEIGHT_MIN,
+  clamp01,
   clampWeight,
   diagnosticWeight,
   markKnownTarget,
@@ -294,7 +299,7 @@ export function gateTutorTool(
 // ---------------------------------------------------------------- helpers
 
 function validIds(plan: LearningPlan): string {
-  return `Valid topic ids: ${plan.nodes.map((n) => n.id).join(', ')}.`;
+  return `Set topicId to one of the valid topic ids: ${plan.nodes.map((n) => n.id).join(', ')}.`;
 }
 
 type NodeLookup =
@@ -462,12 +467,23 @@ function decideTutor(
           `Fix these and call propose_plan again.${keep}`,
         );
       }
+      const startingEstimates: Record<string, StartingEstimate> = {};
+      cmd.nodes.forEach((node, i) => {
+        const estimate = node.startingEstimate;
+        const id = built.plan.nodes[i]?.id;
+        if (!id || !estimate || !Number.isFinite(estimate.value) || estimate.value <= 0) return;
+        startingEstimates[id] = {
+          value: Math.min(STARTING_ESTIMATE_MAX, clamp01(estimate.value)),
+          reason: text(estimate.reason),
+        };
+      });
       out.push({
         type: 'plan_proposed',
         proposalId: ctx.idFactory(),
         plan: built.plan,
         ...(text(cmd.rationale) ? { rationale: text(cmd.rationale) } : {}),
         revision: !!state.plan,
+        ...(Object.keys(startingEstimates).length ? { startingEstimates } : {}),
       });
       return null;
     }
@@ -505,23 +521,26 @@ function decideTutor(
         );
       }
       const note = text(cmd.note);
-      if (!note) return invalid('Evidence needs a note saying what you observed.');
-      if (typeof cmd.setTo === 'number') {
-        if (cmd.source !== 'learner_said') {
-          return invalid(
-            'Only learner_said evidence may set the estimate directly.',
-            'For your own observations, give a weight instead of setTo.',
-          );
-        }
+      if (!note) {
+        return invalid(
+          'Evidence needs a note saying what you observed.',
+          'Set note to one short sentence about what the learner did, and call record_evidence again.',
+        );
+      }
+      // setTo means "the learner says it is here"; on any other source it does not apply.
+      if (typeof cmd.setTo === 'number' && cmd.source === 'learner_said') {
         if (!ctx.flags.learnerModelEditable) {
           return err(
             'not_editable',
             'The learner cannot correct the learner model in this session.',
-            'Record what they said with a weight instead, or leave the estimate as it is.',
+            'Call record_evidence again without setTo (a weight moves the estimate instead), or leave the estimate as it is.',
           );
         }
         if (!Number.isFinite(cmd.setTo) || cmd.setTo < 0 || cmd.setTo > 1) {
-          return invalid('setTo must be between 0 and 1.');
+          return invalid(
+            'setTo must be between 0 and 1.',
+            'Set setTo to a fraction between 0 and 1 (0.6 for 60%), or leave it out.',
+          );
         }
         out.push({
           type: 'evidence_recorded',
@@ -534,18 +553,23 @@ function decideTutor(
         return null;
       }
       const weight = cmd.weight ?? OBSERVATION_WEIGHTS[cmd.kind];
-      if (!Number.isFinite(weight)) return invalid('weight must be a number.');
+      if (!Number.isFinite(weight)) {
+        return invalid('weight must be a number.', 'Leave weight out to use the default.');
+      }
       const sign = OBSERVATION_SIGN[cmd.kind];
       if ((sign > 0 && weight < 0) || (sign < 0 && weight > 0)) {
+        const upward = OBSERVATION_KINDS.filter((k) => OBSERVATION_SIGN[k] >= 0).join(', ');
         return invalid(
-          `${cmd.kind} evidence must have a ${sign > 0 ? 'positive' : 'negative'} weight.`,
-          'Pick the kind that matches the direction, or omit weight to use the default.',
+          `${cmd.kind} evidence must have a ${sign > 0 ? 'positive' : 'negative'} weight; got ${weight}.`,
+          sign > 0
+            ? `Change weight to a number from 0 to ${WEIGHT_MAX} (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to struggled or partial if the learner went backwards.`
+            : `Change weight to a number from ${WEIGHT_MIN} to 0 (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to one of ${upward} if the learner did well.`,
         );
       }
       out.push({
         type: 'evidence_recorded',
         nodeId: found.node.id,
-        source: cmd.source,
+        source: cmd.source === 'learner_said' ? 'learner_said' : 'observation',
         kind: cmd.kind,
         weight: clampWeight(weight),
         note,
@@ -574,7 +598,7 @@ function decideTutor(
     }
 
     case 'resolve_misconception':
-      return resolveMisconception(state, cmd, out);
+      return resolveMisconception(state, cmd, 'tutor', out);
 
     case 'complete_topic': {
       const found = resolveNode(state, cmd.nodeId, true);
@@ -651,6 +675,8 @@ function startTopic(
     );
   }
   if (node.id === state.currentNodeId) {
+    // The tutor wants the topic in progress, and it is: nothing to refuse.
+    if (by === 'tutor') return null;
     return err('already_current', `${node.name} is already in progress.`, 'Carry on teaching it.');
   }
   const unmet = unmetPrerequisites(plan, node);
@@ -669,20 +695,22 @@ function startTopic(
 function resolveMisconception(
   state: TutorState,
   cmd: { nodeId?: string; misconceptionId: string; note?: string },
+  by: 'tutor' | 'learner',
   out: Emitter,
 ): TutorError | null {
   if (!state.plan) return resolveNode(state, cmd.nodeId, false).error ?? null;
-  let nodeIds = state.plan.nodes.map((n) => n.id);
-  if (text(cmd.nodeId)) {
-    const found = resolveNode(state, cmd.nodeId, false);
-    if (found.error) return found.error;
-    nodeIds = [found.node.id];
-  }
   const wanted = text(cmd.misconceptionId);
+  const everywhere = state.plan.nodes.map((n) => n.id);
+  // The misconception id is the key; a topic id only narrows the search, and
+  // one that does not hold the misconception is ignored rather than refused.
+  const named = text(cmd.nodeId) ? resolveNode(state, cmd.nodeId, false).node?.id : undefined;
+  const holds = (id: string) => !!state.mastery[id]?.misconceptions.some((m) => m.id === wanted);
+  const nodeIds = named && holds(named) ? [named] : everywhere;
   for (const nodeId of nodeIds) {
     const hit = state.mastery[nodeId]?.misconceptions.find((m) => m.id === wanted);
     if (!hit) continue;
     if (hit.resolved) {
+      if (by === 'tutor') return null;
       return err(
         'already_resolved',
         `Misconception "${wanted}" is already resolved.`,
@@ -700,8 +728,10 @@ function resolveMisconception(
   const open = nodeIds.flatMap((id) => openMisconceptions(state, id).map((m) => `${m.id} (${id})`));
   return err(
     'unknown_misconception',
-    `There is no misconception "${wanted}"${nodeIds.length === 1 ? ` on ${nodeIds[0]}` : ''}.`,
-    open.length ? `Open misconceptions: ${open.join(', ')}.` : 'There are no open misconceptions.',
+    `There is no misconception "${wanted}".`,
+    open.length
+      ? `Set misconceptionId to one of the open misconceptions: ${open.join(', ')}.`
+      : 'There are no open misconceptions; stop calling resolve_misconception.',
   );
 }
 
@@ -875,6 +905,7 @@ function decideLearner(
       if (stale) return stale;
       const approved = out.push({ type: 'plan_approved', proposalId: cmd.proposalId });
       const after = apply(state, approved);
+      placeStartingEstimates(state, after, out);
       if (!after.currentNodeId) {
         const next = nextReadyNode(after.plan);
         if (next) out.push({ type: 'topic_started', nodeId: next.id }, 'system');
@@ -1021,7 +1052,7 @@ function decideLearner(
 
     case 'resolve_misconception':
       if (!flags.learnerModelEditable) return notEditable('Correcting the learner model');
-      return resolveMisconception(state, cmd, out);
+      return resolveMisconception(state, cmd, 'learner', out);
 
     case 'flag_review': {
       if (!flags.learnerModelEditable) return notEditable('Flagging a topic for review');
@@ -1064,6 +1095,35 @@ function decideLearner(
       out.push({ type: 'card_dismissed', card: cmd.card, cardId: cmd.cardId });
       return null;
     }
+  }
+}
+
+/**
+ * A proposal's starting estimates, as evidence the learner can see, question
+ * and contest like any other. Only a topic with no evidence of its own takes
+ * one: what the learner has already shown outranks a guess made before.
+ */
+function placeStartingEstimates(before: TutorState, after: TutorState, out: Emitter): void {
+  const estimates = before.proposal?.startingEstimates;
+  if (!estimates) return;
+  const fromDiagnostic = Object.values(before.diagnostics).some((d) => !!d.answers);
+  for (const [nodeId, estimate] of Object.entries(estimates)) {
+    const topic = after.mastery[nodeId];
+    if (!topic || topic.evidence.length > 0) continue;
+    const setTo = Math.min(STARTING_ESTIMATE_MAX, clamp01(estimate.value));
+    if (setTo === topic.confidence) continue;
+    const reason = estimate.reason || 'From what the learner said before the plan';
+    out.push(
+      {
+        type: 'evidence_recorded',
+        nodeId,
+        source: fromDiagnostic ? 'diagnostic' : 'placement',
+        kind: 'placement',
+        setTo,
+        note: fromDiagnostic ? `Starting estimate from the diagnostic: ${reason}` : reason,
+      },
+      'system',
+    );
   }
 }
 

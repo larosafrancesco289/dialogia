@@ -161,6 +161,52 @@ test('legacy import seeds plan, mastery baseline and a pending proposal', () => 
   assert.equal(why?.confidence, state.mastery.b.confidence);
 });
 
+test('legacy import clamps an out-of-range or missing confidence, not just the baseline', () => {
+  const plan: LearningPlan = {
+    goal: 'Old goal',
+    generatedAt: 1,
+    updatedAt: 1,
+    version: 1,
+    nodes: [
+      { id: 'a', name: 'A', objectives: ['x'], prerequisites: [], status: 'in_progress' },
+      { id: 'b', name: 'B', objectives: ['x'], prerequisites: [], status: 'not_started' },
+      { id: 'c', name: 'C', objectives: ['x'], prerequisites: [], status: 'not_started' },
+    ],
+  };
+  const topic = (nodeId: string, confidence: number) => ({
+    nodeId,
+    confidence,
+    interactions: 1,
+    lastInteraction: 1,
+    evidence: [],
+    misconceptions: [],
+  });
+  const learnerModel: LearnerModel = {
+    chatId: 'chat-1',
+    updatedAt: 1,
+    version: 1,
+    mastery: { a: topic('a', 1.4), b: topic('b', -0.2), c: topic('c', Number.NaN) },
+  };
+  const state = fold([
+    {
+      id: 'e1',
+      chatId: 'chat-1',
+      seq: 1,
+      at: 50,
+      by: 'system',
+      type: 'legacy_imported',
+      plan,
+      learnerModel,
+    },
+  ]);
+  assert.equal(state.mastery.a.confidence, 1);
+  assert.equal(state.mastery.a.baseline, 1);
+  assert.equal(state.mastery.b.confidence, 0);
+  assert.equal(state.mastery.c.confidence, 0.3);
+  assert.equal(state.mastery.c.baseline, 0.3);
+  assert.equal(explainTopic(state, 'a')?.confidence, state.mastery.a.confidence);
+});
+
 // ---------------------------------------------------------------- retraction
 
 const retract = (events: TutorEvent[], replyId: string) =>

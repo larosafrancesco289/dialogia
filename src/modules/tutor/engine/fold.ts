@@ -5,6 +5,7 @@ import type { Evidence, LearningPlan, LearningPlanNode, TopicMastery } from '@/l
 import type { TutorEvent, TutorEventOf } from '@/modules/tutor/engine/events';
 import { deriveAwaiting, derivePhase } from '@/modules/tutor/engine/phase';
 import {
+  MASTERY_PRIOR,
   applyEvidence,
   clamp01,
   clampWeight,
@@ -140,6 +141,7 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
           plan: event.plan,
           rationale: event.rationale,
           revision: event.revision,
+          ...(event.startingEstimates ? { startingEstimates: event.startingEstimates } : {}),
           seq: event.seq,
           messageId: event.messageId,
         },
@@ -399,9 +401,16 @@ function importLegacy(state: TutorState, event: TutorEventOf<'legacy_imported'>)
     const mastery: Record<string, TopicMastery> = {};
     for (const node of nodes) {
       const legacy = event.learnerModel?.mastery[node.id];
-      mastery[node.id] = legacy
-        ? { ...legacy, nodeId: node.id, baseline: clamp01(legacy.confidence) }
-        : freshMastery(node.id, event.at);
+      if (!legacy) {
+        mastery[node.id] = freshMastery(node.id, event.at);
+        continue;
+      }
+      // Pre-rebuild data was never range-checked: a stored 1.4 or NaN starts
+      // the topic somewhere the update rule can actually move from.
+      const confidence = Number.isFinite(legacy.confidence)
+        ? clamp01(legacy.confidence)
+        : MASTERY_PRIOR;
+      mastery[node.id] = { ...legacy, nodeId: node.id, confidence, baseline: confidence };
     }
     next = { ...next, plan, mastery };
   }

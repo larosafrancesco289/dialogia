@@ -4,6 +4,7 @@ import {
   MASTERY_PRIOR,
   MORE_PRACTICE_CAP,
   READY,
+  explainTopic,
   step,
   type TutorError,
   type TutorEvent,
@@ -234,6 +235,90 @@ describe('plans', () => {
     assert.equal(h.state.currentNodeId, 'limits');
     assert.deepEqual(Object.keys(h.state.mastery), ['limits', 'derivatives', 'chain-rule']);
     assert.ok(Object.values(h.state.mastery).every((m) => m.confidence === MASTERY_PRIOR));
+  });
+
+  test('starting estimates become visible, contestable evidence when the plan is approved', () => {
+    const h = harness();
+    h.tutor({
+      type: 'propose_plan',
+      goal: CALCULUS.goal,
+      nodes: [
+        {
+          ...CALCULUS.nodes[0],
+          startingEstimate: { value: 0.6, reason: 'Said they evaluate limits at work' },
+        },
+        { ...CALCULUS.nodes[1], startingEstimate: { value: 0.95, reason: 'Claims mastery' } },
+        CALCULUS.nodes[2],
+      ],
+    });
+    assert.ok(!('limits' in h.state.mastery), 'nothing moves before approval');
+    const events = h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId });
+    assert.deepEqual(types(events), [
+      'plan_approved:learner',
+      'evidence_recorded:system',
+      'evidence_recorded:system',
+      'topic_started:system',
+    ]);
+    const limits = h.state.mastery.limits;
+    assert.equal(limits.confidence, 0.6);
+    assert.equal(limits.evidence[0].source, 'placement');
+    assert.equal(limits.evidence[0].kind, 'placement');
+    assert.equal(limits.evidence[0].details, 'Said they evaluate limits at work');
+    assert.equal(
+      h.state.mastery.derivatives.confidence,
+      READY - 0.05,
+      'capped below READY, so the tutor still checks it',
+    );
+    assert.equal(h.state.mastery['chain-rule'].confidence, MASTERY_PRIOR);
+    const why = explainTopic(h.state, 'limits')!;
+    assert.equal(why.confidence, 0.6);
+    assert.match(why.steps[0].text, /Starting estimate: Said they evaluate limits/);
+
+    // Contestable like any estimate.
+    h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.45 });
+    assert.equal(h.state.mastery.limits.confidence, 0.45);
+  });
+
+  test('after a diagnostic, starting estimates are recorded as diagnostic evidence', () => {
+    const h = harness();
+    h.tutor({ type: 'give_diagnostic', topic: 'Calculus basics', items: DIAGNOSTIC });
+    h.learner({
+      type: 'answer_diagnostic',
+      diagnosticId: h.state.awaiting!.id,
+      answers: { q1: 1, q2: 1, q3: 0 },
+    });
+    h.tutor({
+      type: 'propose_plan',
+      goal: CALCULUS.goal,
+      nodes: [
+        { ...CALCULUS.nodes[0], startingEstimate: { value: 0.7, reason: 'Got the limit right' } },
+        CALCULUS.nodes[1],
+        CALCULUS.nodes[2],
+      ],
+    });
+    h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId });
+    const [entry] = h.state.mastery.limits.evidence;
+    assert.equal(entry.source, 'diagnostic');
+    assert.equal(entry.details, 'Starting estimate from the diagnostic: Got the limit right');
+    assert.equal(h.state.mastery.limits.confidence, 0.7);
+  });
+
+  test('a revision leaves topics with evidence of their own alone', () => {
+    const h = teaching();
+    master(h);
+    const earned = h.state.mastery.limits.confidence;
+    h.tutor({
+      type: 'propose_plan',
+      goal: CALCULUS.goal,
+      nodes: [
+        { ...CALCULUS.nodes[0], startingEstimate: { value: 0.4, reason: 'Guess' } },
+        { ...CALCULUS.nodes[1], startingEstimate: { value: 0.5, reason: 'Guess' } },
+        CALCULUS.nodes[2],
+      ],
+    });
+    h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId });
+    assert.equal(h.state.mastery.limits.confidence, earned);
+    assert.equal(h.state.mastery.derivatives.confidence, 0.5);
   });
 
   test('invalid plans come back with every problem', () => {
@@ -538,7 +623,7 @@ describe('evidence and misconceptions', () => {
         source: 'observation',
       }),
       'unknown_node',
-      /Valid topic ids: limits, derivatives, chain-rule/,
+      /valid topic ids: limits, derivatives, chain-rule/,
     );
     const [loose] = h.tutor({
       type: 'record_evidence',
@@ -560,10 +645,56 @@ describe('evidence and misconceptions', () => {
       source: 'learner_said' as const,
       setTo: 0.2,
     };
-    assertError(h.refuse({ ...cmd, source: 'observation' }), 'invalid_arguments');
-    assertError(teaching({ learnerModelEditable: false }).refuse(cmd), 'not_editable');
+    assertError(
+      teaching({ learnerModelEditable: false }).refuse(cmd),
+      'not_editable',
+      /without setTo/,
+    );
     h.tutor(cmd);
     assert.equal(h.state.mastery.limits.confidence, 0.2);
+  });
+
+  test('setTo on an observation does not apply, so it is ignored rather than refused', () => {
+    const h = teaching();
+    const [event] = h.tutor({
+      type: 'record_evidence',
+      kind: 'applied',
+      note: 'Solved one alone',
+      source: 'observation',
+      setTo: 0,
+    });
+    assert.ok(event.type === 'evidence_recorded');
+    assert.equal(event.setTo, undefined);
+    assert.equal(event.weight, 0.3);
+    assert.ok(h.state.mastery.limits.confidence > MASTERY_PRIOR);
+  });
+
+  test('a weight against its kind is refused with the fields and values to change', () => {
+    const h = teaching();
+    assertError(
+      h.refuse({
+        by: 'tutor',
+        type: 'record_evidence',
+        kind: 'applied',
+        note: 'n',
+        source: 'observation',
+        weight: -0.2,
+      }),
+      'invalid_arguments',
+      /Change weight to a number from 0 to 0\.7.*change kind to struggled/,
+    );
+    assertError(
+      h.refuse({
+        by: 'tutor',
+        type: 'record_evidence',
+        kind: 'struggled',
+        note: 'n',
+        source: 'observation',
+        weight: 0.2,
+      }),
+      'invalid_arguments',
+      /from -0\.5 to 0.*explained, applied, insight, partial/,
+    );
   });
 
   test('in the interlude, evidence needs an explicit topic', () => {
@@ -613,13 +744,14 @@ describe('evidence and misconceptions', () => {
     );
     h.tutor({ type: 'resolve_misconception', misconceptionId: first.misconceptionId });
     assert.equal(h.state.mastery.limits.misconceptions[0].resolvedBy, 'tutor');
-    assertError(
-      h.refuse({
+    assert.deepEqual(
+      h.decide({
         by: 'tutor',
         type: 'resolve_misconception',
         misconceptionId: first.misconceptionId,
       }),
-      'already_resolved',
+      { ok: true, events: [] },
+      'resolving a resolved misconception is accepted and changes nothing',
     );
     h.tutor({
       type: 'note_misconception',
@@ -747,8 +879,13 @@ describe('topics and phases', () => {
       'unknown_node',
       /limits/,
     );
+    assert.deepEqual(
+      h.decide({ by: 'tutor', type: 'start_topic', nodeId: 'limits' }),
+      { ok: true, events: [] },
+      'the tutor starting the topic in progress is accepted and changes nothing',
+    );
     assertError(
-      h.refuse({ by: 'tutor', type: 'start_topic', nodeId: 'limits' }),
+      h.refuse({ by: 'learner', type: 'start_topic', nodeId: 'limits' }),
       'already_current',
     );
     assertError(

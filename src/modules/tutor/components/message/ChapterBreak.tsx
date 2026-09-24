@@ -79,9 +79,10 @@ export function ChapterBreak({
   const answers =
     mastery?.evidence.filter(
       (e) =>
-        e.source === 'quiz' ||
-        e.source === 'diagnostic' ||
-        (!e.source && DEMONSTRATIONS.has(e.type)),
+        e.kind !== 'placement' &&
+        (e.source === 'quiz' ||
+          e.source === 'diagnostic' ||
+          (!e.source && DEMONSTRATIONS.has(e.type))),
     ).length ?? 0;
   const reopened = node.status !== 'completed';
   // The seam is open until the learner (or the tutor) starts what comes next.

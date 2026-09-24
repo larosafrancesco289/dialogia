@@ -16,8 +16,10 @@ import { nextReadyNode } from '@/modules/tutor/engine/plan';
 import {
   BUDGETS,
   LIMITS,
+  MASTERY_PRIOR,
   OBSERVATION_KINDS,
   READY,
+  STARTING_ESTIMATE_MAX,
   WEIGHT_MAX,
   WEIGHT_MIN,
   masteryBand,
@@ -123,6 +125,24 @@ const ARGS = {
             .array(z.string())
             .optional()
             .describe('Ids or names of other topics in this proposal that must come first.'),
+          startingEstimate: z
+            .object({
+              value: z
+                .number()
+                .min(0)
+                .max(STARTING_ESTIMATE_MAX)
+                .describe(
+                  `Where the topic's mastery starts, 0-${STARTING_ESTIMATE_MAX} (default ${MASTERY_PRIOR}).`,
+                ),
+              reason: z
+                .string()
+                .optional()
+                .describe('The evidence, in one short sentence the learner may read.'),
+            })
+            .optional()
+            .describe(
+              'Only when intake answers, a diagnostic, or the chat showed prior knowledge of this topic. Omit otherwise.',
+            ),
         }),
       )
       .min(LIMITS.planNodes.min)
@@ -143,7 +163,7 @@ const ARGS = {
       .max(WEIGHT_MAX)
       .optional()
       .describe(
-        'How far this moves the estimate. Omit for the default per kind (explained +0.2, applied +0.3, insight +0.3, partial +0.1, struggled -0.2).',
+        'How far this moves the estimate. Omit for the default per kind (explained +0.2, applied +0.3, insight +0.3, partial +0.1, struggled -0.2); its sign must match the kind.',
       ),
     source: z
       .enum(['observation', 'learner_said'])
@@ -154,7 +174,9 @@ const ARGS = {
       .min(0)
       .max(1)
       .optional()
-      .describe('learner_said only: the value the learner says their mastery should be (0-1).'),
+      .describe(
+        'Only with source learner_said, when the learner names a level: the value they say their mastery is (0-1). Omit otherwise.',
+      ),
   }),
   note_misconception: z.object({
     description: z.string().min(1).describe('The mistaken belief, stated plainly.'),
@@ -179,7 +201,7 @@ const ARGS = {
 const DESCRIPTIONS: Record<TutorToolName, string> = {
   ask_intake: `Show the learner a short intake card (${LIMITS.intakeQuestions.min}-${LIMITS.intakeQuestions.max} multiple-choice questions) about their goal, background, and constraints. Use at the start, before any plan, when you cannot infer these from the chat. Always include a "complete beginner" option when asking about prior knowledge. Do not use once a plan exists. Ends your turn: the learner answers on the card.`,
   give_diagnostic: `Show a short multiple-choice pre-assessment (${LIMITS.diagnosticItems.min}-${LIMITS.diagnosticItems.max} items) to check prior knowledge before planning, or before the next topic at a chapter break. The engine scores it and records the evidence. Use when the learner's level is unclear; skip it when they have told you plainly. At most ${BUDGETS.diagnosticsPerSession} per session. Ends your turn.`,
-  propose_plan: `Propose a learning plan, or a revision of the current one: the goal and ${LIMITS.planNodes.min}-${LIMITS.planNodes.max} topics in teaching order, each with objectives and prerequisites. The learner sees it as a card and approves or declines; nothing changes until they approve. In a revision, reuse existing topic ids to keep their progress. Propose at seams (after intake, at a chapter break, when the plan is done, or when the learner asks), not mid-explanation. Ends your turn.`,
+  propose_plan: `Propose a learning plan, or a revision of the current one: the goal and ${LIMITS.planNodes.min}-${LIMITS.planNodes.max} topics in teaching order, each with objectives and prerequisites. When the intake, a diagnostic or the chat showed what the learner already knows, give those topics a startingEstimate (at most ${percent(STARTING_ESTIMATE_MAX)}%, so you still check them); on approval it becomes evidence the learner sees and can contest. The learner sees the plan as a card and approves or declines; nothing changes until they approve. In a revision, reuse existing topic ids to keep their progress. Propose at seams (after intake, at a chapter break, when the plan is done, or when the learner asks), not mid-explanation. Ends your turn.`,
   give_quiz: `Show a multiple-choice quiz (${LIMITS.quizItems.min}-${LIMITS.quizItems.max} items) on the current topic. The engine grades each answer and updates mastery; do not record quiz results yourself. Use after teaching a piece of the topic to check it has landed. At most ${BUDGETS.quizzesPerTopic} per topic. Ends your turn.`,
   record_evidence: `Record what you observed in conversation about the learner's understanding of a topic: explained (they explained it back), applied (they used it correctly), insight (they went beyond what was taught), partial, or struggled. Also use source "learner_said" when the learner tells you about their own understanding. It updates the mastery estimate the learner sees. Do not use for quiz or diagnostic answers; the engine already scored those. Does not end your turn.`,
   note_misconception: `Note a specific mistaken belief the learner showed (not a slip). It is shown to the learner and blocks completing the topic as mastered until resolved. Noting the same description again counts another occurrence. Does not end your turn.`,
@@ -212,7 +234,12 @@ export function tutorToolDefinitions(state: TutorState, flags: TutorFlags): Tool
 // ---------------------------------------------------------------- parsing
 
 export type ParsedToolCall =
-  | { ok: true; command: TutorToolCommand }
+  | {
+      ok: true;
+      command: TutorToolCommand;
+      /** What parsing ignored or corrected, in words the model can read; absent when nothing. */
+      adjusted?: string[];
+    }
   | { ok: false; error: TutorError };
 
 function isToolName(name: string): name is TutorToolName {
@@ -246,23 +273,214 @@ export function parseTutorToolCall(name: string, rawArgs: unknown): ParsedToolCa
       };
     }
   }
-  const parsed = ARGS[name].safeParse(input);
+  const adjusted: string[] = [];
+  const loosened = relax(name, loosen(ARGS[name], input, [], adjusted), adjusted);
+  const parsed = ARGS[name].safeParse(loosened);
   if (!parsed.success) {
-    const issues = parsed.error.issues
-      .slice(0, 5)
-      .map(
-        (issue) => `${issue.path.length ? issue.path.join('.') : 'arguments'}: ${issue.message}`,
-      );
+    const issues = parsed.error.issues.slice(0, 5);
+    const where = (path: (string | number)[]) => (path.length ? path.join('.') : 'arguments');
+    const fields = [...new Set(issues.map((issue) => where(issue.path)))];
     return {
       ok: false,
       error: {
         code: 'invalid_arguments',
-        message: issues.join('; '),
-        hint: `Call ${name} again with arguments that match its schema.`,
+        message: issues.map((issue) => `${where(issue.path)}: ${issue.message}`).join('; '),
+        hint: `Change ${fields.join(', ')} as the message says and call ${name} again. Leave out any optional field you have no value for.`,
       },
     };
   }
-  return { ok: true, command: toCommand(name, parsed.data) };
+  const command = toCommand(name, parsed.data);
+  return adjusted.length ? { ok: true, command, adjusted } : { ok: true, command };
+}
+
+// ---------------------------------------------------------------- leniency
+//
+// A model that fills every optional field sends placeholders (null, "", 0)
+// and fields that do not apply to the call it is making. Refusing those
+// teaches it nothing: it retries the identical call. So before validation,
+// placeholders in optional fields are dropped, keys are matched loosely,
+// numbers written as strings are read as numbers, and fields that do not
+// apply are ignored and named back in the result. Only what changes a call's
+// meaning is refused.
+
+const PLACEHOLDER_WORDS = new Set(['none', 'null', 'n/a', 'na', 'undefined', 'nil']);
+
+/** Keys a model tends to use for a field the schema names differently. */
+const KEY_ALIASES: Record<string, string> = { nodeId: 'topicId', node: 'topicId' };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isPlaceholder(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'string') {
+    const word = value.trim().toLowerCase();
+    return word === '' || PLACEHOLDER_WORDS.has(word);
+  }
+  if (Array.isArray(value)) return value.length === 0;
+  if (isRecord(value)) return Object.values(value).every(isPlaceholder);
+  return false;
+}
+
+function unwrap(schema: z.ZodTypeAny): z.ZodTypeAny {
+  let inner = schema;
+  for (;;) {
+    if (inner instanceof z.ZodOptional || inner instanceof z.ZodNullable) inner = inner.unwrap();
+    else if (inner instanceof z.ZodDefault) inner = inner.removeDefault();
+    else if (inner instanceof z.ZodEffects) inner = inner.innerType();
+    else return inner;
+  }
+}
+
+const camelCase = (key: string) => key.replace(/[_-]([a-z])/g, (_, c: string) => c.toUpperCase());
+
+function schemaKey(key: string, shape: Record<string, z.ZodTypeAny>): string | undefined {
+  if (key in shape) return key;
+  const camel = camelCase(key);
+  if (camel in shape) return camel;
+  const alias = KEY_ALIASES[camel];
+  return alias && alias in shape ? alias : undefined;
+}
+
+/** The generic pass: placeholders, loose keys, numbers and booleans written as strings. */
+function loosen(schema: z.ZodTypeAny, value: unknown, path: string[], adjusted: string[]): unknown {
+  const inner = unwrap(schema);
+  if (inner instanceof z.ZodObject) {
+    if (!isRecord(value)) return value;
+    const shape = inner.shape as Record<string, z.ZodTypeAny>;
+    const out: Record<string, unknown> = {};
+    // Exact keys first, so an alias never overrides the field it stands for.
+    const entries = Object.entries(value).sort(
+      ([a], [b]) => Number(!(a in shape)) - Number(!(b in shape)),
+    );
+    for (const [raw, field] of entries) {
+      const key = schemaKey(raw, shape);
+      if (!key) {
+        if (!isPlaceholder(field))
+          adjusted.push(`ignored ${[...path, raw].join('.')}: not a field of this tool`);
+        continue;
+      }
+      if (key in out) continue;
+      const fieldSchema = shape[key];
+      if (fieldSchema.isOptional() && isPlaceholder(field)) continue;
+      out[key] = loosen(fieldSchema, field, [...path, key], adjusted);
+    }
+    return out;
+  }
+  if (inner instanceof z.ZodArray) {
+    if (!Array.isArray(value)) return value;
+    return value.map((item, i) => loosen(inner.element, item, [...path, String(i)], adjusted));
+  }
+  if (
+    inner instanceof z.ZodNumber &&
+    typeof value === 'string' &&
+    /^\s*-?\d+(\.\d+)?\s*$/.test(value)
+  ) {
+    return Number(value);
+  }
+  if (inner instanceof z.ZodBoolean && (value === 'true' || value === 'false')) {
+    return value === 'true';
+  }
+  return value;
+}
+
+/** A `correct` given as a letter ("B") or as the choice's own text, read as its index. */
+function correctIndex(item: unknown): unknown {
+  if (!isRecord(item) || typeof item.correct !== 'string' || !Array.isArray(item.choices)) {
+    return item;
+  }
+  const answer = item.correct.trim();
+  const byText = item.choices.findIndex(
+    (choice) => typeof choice === 'string' && choice.trim() === answer,
+  );
+  if (byText >= 0) return { ...item, correct: byText };
+  if (/^[A-Fa-f]$/.test(answer)) {
+    const index = answer.toUpperCase().charCodeAt(0) - 65;
+    if (index < item.choices.length) return { ...item, correct: index };
+  }
+  return item;
+}
+
+/** Per-tool rules: fields that do not apply to the call being made are ignored. */
+function relax(name: TutorToolName, value: unknown, adjusted: string[]): unknown {
+  if (!isRecord(value)) return value;
+  const args = { ...value };
+  switch (name) {
+    case 'give_quiz':
+    case 'give_diagnostic':
+      if (Array.isArray(args.items)) args.items = args.items.map(correctIndex);
+      return args;
+
+    case 'propose_plan':
+      if (!Array.isArray(args.topics)) return args;
+      args.topics = args.topics.map((topic, i) => {
+        if (!isRecord(topic)) return topic;
+        const next = { ...topic };
+        if (Array.isArray(next.prerequisites)) {
+          next.prerequisites = next.prerequisites.filter((p) => !isPlaceholder(p));
+        }
+        const estimate = next.startingEstimate;
+        if (isRecord(estimate)) {
+          let v = estimate.value;
+          if (typeof v === 'number' && v > 1 && v <= 100) v = v / 100;
+          if (typeof v !== 'number' || v <= 0) {
+            // No value, or zero: a placeholder, not a placement.
+            delete next.startingEstimate;
+          } else if (v > STARTING_ESTIMATE_MAX) {
+            adjusted.push(
+              `topics.${i}.startingEstimate capped at ${percent(STARTING_ESTIMATE_MAX)}%: the tutor still checks a topic before it counts as ready`,
+            );
+            next.startingEstimate = { ...estimate, value: STARTING_ESTIMATE_MAX };
+          } else {
+            next.startingEstimate = { ...estimate, value: v };
+          }
+        }
+        return next;
+      });
+      return args;
+
+    case 'record_evidence': {
+      if (args.weight === 0) delete args.weight;
+      const sources = ['observation', 'learner_said'];
+      if (
+        args.source !== undefined &&
+        !sources.includes(String(args.source)) &&
+        args.setTo === undefined
+      ) {
+        adjusted.push(`ignored source "${String(args.source)}": recorded as "observation"`);
+        delete args.source;
+      }
+      const learnerSaid = args.source === 'learner_said';
+      if (typeof args.setTo === 'number' && args.setTo > 1 && args.setTo <= 100) {
+        args.setTo = args.setTo / 100;
+      }
+      if (args.setTo !== undefined && !learnerSaid) {
+        adjusted.push(
+          'ignored setTo: it applies only with source "learner_said"; the weight moves the estimate',
+        );
+        delete args.setTo;
+      } else if (learnerSaid && args.setTo === 0 && typeof args.weight === 'number') {
+        // Both given and setTo zero: the zero is a placeholder.
+        delete args.setTo;
+      } else if (learnerSaid && typeof args.setTo === 'number' && typeof args.weight === 'number') {
+        adjusted.push('ignored weight: setTo places the estimate directly');
+        delete args.weight;
+      }
+      if (
+        typeof args.weight === 'number' &&
+        (args.weight > WEIGHT_MAX || args.weight < WEIGHT_MIN)
+      ) {
+        const clamped = Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, args.weight));
+        adjusted.push(`weight clamped to ${clamped}`);
+        args.weight = clamped;
+      }
+      return args;
+    }
+
+    default:
+      return args;
+  }
 }
 
 function toCommand(name: TutorToolName, data: unknown): TutorToolCommand {
@@ -321,6 +539,11 @@ export function tutorToolError(error: TutorError): ToolResult {
   return { ok: false, error: error.code, message: error.message, hint: error.hint };
 }
 
+/** A result with what parsing ignored or corrected, so the model knows what did not count. */
+export function withAdjustments(result: ToolResult, adjusted: readonly string[] | undefined) {
+  return adjusted?.length ? { ...result, adjusted: [...adjusted] } : result;
+}
+
 function topicSummary(state: TutorState, id: string) {
   const confidence = confidenceOf(state, id);
   return { id, mastery: percent(confidence), band: masteryBand(confidence) };
@@ -369,6 +592,13 @@ export function tutorToolResult(
         revision: proposal?.revision ?? false,
         topics: ids,
         ...(previous.size ? { keepsProgressFor: ids.filter((id) => previous.has(id)) } : {}),
+        ...(proposal?.startingEstimates
+          ? {
+              startingEstimates: Object.fromEntries(
+                Object.entries(proposal.startingEstimates).map(([id, e]) => [id, percent(e.value)]),
+              ),
+            }
+          : {}),
         note: 'The learner sees the proposal and will approve or decline it.',
       };
     }
@@ -395,7 +625,7 @@ export function tutorToolResult(
     case 'resolve_misconception':
       return event?.type === 'misconception_resolved'
         ? { ok: true, topic: event.nodeId, resolved: event.misconceptionId }
-        : { ok: true };
+        : { ok: true, note: 'It was already resolved; nothing changed.' };
     case 'complete_topic': {
       const nodeId = event?.type === 'topic_completed' ? event.nodeId : '';
       const next = after.phase === 'interlude' ? nextReadyNode(after.plan)?.id : undefined;
@@ -418,6 +648,7 @@ export function tutorToolResult(
         topic: node
           ? { ...topicSummary(after, node.id), name: node.name, objectives: node.objectives }
           : undefined,
+        ...(events.length ? {} : { note: 'It was already in progress; nothing changed.' }),
       };
     }
   }
