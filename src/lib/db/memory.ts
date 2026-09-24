@@ -110,9 +110,18 @@ export class InMemoryDialogiaDB {
   kv = new InMemoryTable<KVRecord>((record) => record.key);
   tutorEvents = new InMemoryTable<TutorEventRecord>((event) => event.id);
 
-  async transaction(_mode: 'r' | 'rw', ...args: unknown[]) {
+  /** Transactions run one after another, as IndexedDB runs overlapping read-write ones. */
+  private transactions: Promise<unknown> = Promise.resolve();
+
+  transaction(_mode: 'r' | 'rw', ...args: unknown[]): Promise<void> {
     const callback = args[args.length - 1];
-    if (typeof callback !== 'function') return;
+    if (typeof callback !== 'function') return Promise.resolve();
+    const run = this.transactions.then(() => this.runTransaction(callback));
+    this.transactions = run.catch(() => undefined);
+    return run;
+  }
+
+  private async runTransaction(callback: unknown) {
     const run = callback as (ctx: {
       table: <U>(name: string) => InMemoryTable<U>;
     }) => Promise<void> | void;

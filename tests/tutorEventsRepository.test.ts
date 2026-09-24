@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryDb } from '@/lib/db/memory';
-import { createRepository } from '@/lib/db/repository';
+import { createRepository, TutorLogConflictError } from '@/lib/db/repository';
 import { sanitizeTutorEventRecord } from '@/lib/db/sanitize';
 import type { Chat, Message, TutorEventRecord } from '@/lib/types';
 
@@ -121,6 +121,54 @@ test('an imported log replaces the chat’s local log instead of interleaving', 
   assert.deepEqual(
     events.map((e) => e.id),
     ['imported-1'],
+  );
+});
+
+test('an append at a position holding another event writes nothing and says so', async () => {
+  const repo = await seeded();
+  await repo.appendTutorEvents([event('a', 1), event('a', 2)]);
+  // The same events again are a no-op rewrite.
+  await repo.appendTutorEvents([event('a', 2)]);
+  await assert.rejects(
+    repo.appendTutorEvents([event('a', 3), event('a', 2, { id: 'other-tab' })]),
+    TutorLogConflictError,
+  );
+  assert.deepEqual(
+    (await repo.loadTutorEvents('a')).map((e) => e.id),
+    ['a-e1', 'a-e2'],
+    'not even the free position was written',
+  );
+  // Another chat's positions are its own.
+  await repo.appendTutorEvents([event('b', 1)]);
+});
+
+test('seeding a log writes only while it is empty', async () => {
+  const repo = await seeded();
+  assert.equal(await repo.seedTutorEvents('a', [event('a', 1, { id: 'first' })]), true);
+  assert.equal(await repo.seedTutorEvents('a', [event('a', 1, { id: 'second' })]), false);
+  assert.deepEqual(
+    (await repo.loadTutorEvents('a')).map((e) => e.id),
+    ['first'],
+  );
+});
+
+test('export leaves out events whose chat is gone, and import keeps one event per position', async () => {
+  const repo = await seeded();
+  await repo.appendTutorEvents([event('a', 1), event('deleted', 1)]);
+  const exported = await repo.exportAll();
+  assert.deepEqual(
+    exported.tutorEvents.map((e) => e.chatId),
+    ['a'],
+  );
+
+  const fresh = createRepository(createMemoryDb());
+  await fresh.importAll({
+    chats: [chat('a')],
+    tutorEvents: [event('a', 1), event('a', 1, { id: 'same-position' }), event('a', 2)],
+  });
+  assert.deepEqual(
+    (await fresh.loadTutorEvents('a')).map((e) => e.id),
+    ['a-e1', 'a-e2'],
   );
 });
 
