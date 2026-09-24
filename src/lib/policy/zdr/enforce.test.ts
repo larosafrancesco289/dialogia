@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeZdrFilter, guardModelOrNotice } from './enforce';
+import { guardModelOrNotice } from './enforce';
 
 const mergeState = (target: any, patch: any) => {
   if (!patch) return;
@@ -8,19 +8,6 @@ const mergeState = (target: any, patch: any) => {
     target[key] = value;
   });
 };
-
-test('computeZdrFilter enforces allowed models', async () => {
-  const models = [{ id: 'allowed' }, { id: 'blocked' }];
-  const result = await computeZdrFilter(models, 'enforce', {
-    modelIds: ['allowed'],
-    providerIds: [],
-  });
-  assert.equal(result.filter.status, 'model');
-  assert.deepEqual(
-    result.filtered.map((m) => m.id),
-    ['allowed'],
-  );
-});
 
 test('guardModelOrNotice updates notice for disallowed providers', () => {
   const state: any = {

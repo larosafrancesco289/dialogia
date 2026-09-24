@@ -83,12 +83,11 @@ Nothing is required. The variables below change client defaults, must start with
 **inlined into the bundle at build time**, so none of them may hold a secret. `.env.example` is the
 authoritative list, and `.env.local` is where your copy goes.
 
-| Variable                           | Default    | Effect                                                                     |
-| ---------------------------------- | ---------- | -------------------------------------------------------------------------- |
-| `VITE_OR_ZDR_ONLY_DEFAULT`         | `false`    | New sessions start with ZDR-only enforcement.                              |
-| `VITE_OR_ROUTE_PREFERENCE_DEFAULT` | `balanced` | `balanced` \| `speed` \| `cost`. Only the latter two send `provider.sort`. |
-| `VITE_APP_BASE_URL`                | none       | Absolute origin, sent to OpenRouter as the `HTTP-Referer` courtesy header. |
-| `VITE_LOG_LEVEL`                   | none       | Client log verbosity.                                                      |
+| Variable                   | Default | Effect                                                                     |
+| -------------------------- | ------- | -------------------------------------------------------------------------- |
+| `VITE_OR_ZDR_ONLY_DEFAULT` | `false` | New sessions start with ZDR-only enforcement.                              |
+| `VITE_APP_BASE_URL`        | none    | Absolute origin, sent to OpenRouter as the `HTTP-Referer` courtesy header. |
+| `VITE_LOG_LEVEL`           | none    | Client log verbosity.                                                      |
 
 There is deliberately **no provider key variable**, client-side or otherwise. Keys are pasted into
 the app and live in the browser that pasted them.

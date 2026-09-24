@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { linkCitationMarkers } from './Markdown';
+import { linkCitationMarkers } from '@/lib/markdown/citations';
 
 test('linkCitationMarkers links plain numbered source markers', () => {
   const result = linkCitationMarkers('Answer with sources [1][2].', [

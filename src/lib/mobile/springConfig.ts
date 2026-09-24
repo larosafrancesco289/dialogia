@@ -13,21 +13,6 @@ export const springs = {
   responsive: { type: 'spring', stiffness: 520, damping: 42, mass: 0.55 } as Transition,
 } as const;
 
-export const cssEasings = {
-  snappy: 'cubic-bezier(0.22, 1, 0.36, 1)',
-  smooth: 'cubic-bezier(0.25, 1, 0.5, 1)',
-  bouncy: 'cubic-bezier(0.22, 1, 0.36, 1)',
-  gentle: 'cubic-bezier(0.16, 1, 0.3, 1)',
-} as const;
-
-export const durations = {
-  instant: 120,
-  fast: 180,
-  normal: 280,
-  slow: 340,
-  deliberate: 420,
-} as const;
-
 export const variants = {
   fadeSlideUp: motionVariants.fadeLift,
   fadeSlideDown: {

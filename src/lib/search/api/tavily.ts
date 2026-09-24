@@ -81,21 +81,6 @@ const normalizeTavilyCountry = (value: unknown): string | undefined => {
   return COUNTRY_BY_CODE[normalized] ?? normalized;
 };
 
-export function buildTavilySearchParams(args: WebSearchArgs): URLSearchParams {
-  const query = normalizeTavilyQuery(args.query);
-  if (!query) throw new Error('tavily_missing_query');
-
-  const count = Math.min(Math.max(args.count ?? 5, 1), 10);
-  const params = new URLSearchParams();
-  params.set('q', query);
-  params.set('count', String(count));
-  if (args.freshness && args.freshness !== 'all') params.set('freshness', args.freshness);
-  if (args.country) params.set('country', args.country);
-  if (args.include_domains?.length) params.set('include_domains', args.include_domains.join(','));
-  if (args.exclude_domains?.length) params.set('exclude_domains', args.exclude_domains.join(','));
-  return params;
-}
-
 export function buildTavilySearchBody(args: WebSearchArgs): TavilySearchBody {
   const query = normalizeTavilyQuery(args.query);
   if (!query) throw new Error('tavily_missing_query');
@@ -133,25 +118,6 @@ const normalizeTavilyUrl = (value: unknown): string => {
     return '';
   }
 };
-
-export function buildTavilyExtractParams(args: WebFetchArgs): URLSearchParams {
-  const url = normalizeTavilyUrl(args.url);
-  if (!url) throw new Error('tavily_missing_url');
-
-  const params = new URLSearchParams();
-  params.set('url', url);
-  if (args.extract_depth) params.set('extract_depth', args.extract_depth);
-  if (args.format) params.set('format', args.format);
-  if (typeof args.include_images === 'boolean') {
-    params.set('include_images', args.include_images ? 'true' : 'false');
-  }
-  if (typeof args.include_favicon === 'boolean') {
-    params.set('include_favicon', args.include_favicon ? 'true' : 'false');
-  }
-  if (args.query) params.set('query', args.query.slice(0, MAX_TAVILY_EXTRACT_QUERY_LENGTH));
-  if (args.chunks_per_source) params.set('chunks_per_source', String(args.chunks_per_source));
-  return params;
-}
 
 export function buildTavilyExtractBody(args: WebFetchArgs): TavilyExtractBody {
   const url = normalizeTavilyUrl(args.url);

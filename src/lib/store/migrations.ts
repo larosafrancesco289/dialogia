@@ -1,13 +1,7 @@
 import type { PersistedStoreState } from '@/lib/store/types';
-import { isRecord } from '@/lib/utils/guards';
+import { isRecord, readBoolean, readString } from '@/lib/utils/guards';
 
 type PersistedState = Record<string, unknown>;
-
-const readBoolean = (value: unknown): boolean | undefined =>
-  typeof value === 'boolean' ? value : undefined;
-
-const readString = (value: unknown): string | undefined =>
-  typeof value === 'string' ? value : undefined;
 
 const stripDeprecatedUiFields = (ui: Record<string, unknown>): Record<string, unknown> => {
   const next = { ...ui };

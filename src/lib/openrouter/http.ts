@@ -1,25 +1,9 @@
 import { apiDefaults } from '@/lib/api/config';
 import { sendApiRequest } from '@/lib/api/http';
 import type { TransportAuth } from '@/lib/auth/transport';
-import type { ChatCompletionMessage, Usage } from '@/lib/transport/completions';
 import { getDefaultEndpoint } from '@/lib/transport/endpointRegistry';
 import { normalizeBaseUrl } from '@/lib/transport/endpoints';
 import type { OpenRouterChatRequest } from '@/lib/openrouter/types';
-
-export type SseDelta = {
-  id?: string;
-  object?: string;
-  model?: string;
-  created?: number;
-  choices?: Array<{
-    index?: number;
-    finish_reason?: string | null;
-    delta?: Partial<ChatCompletionMessage> & {
-      reasoning?: string;
-    };
-  }>;
-  usage?: Usage;
-};
 
 type OrFetchOptions = {
   method?: string;

@@ -2,7 +2,6 @@ import { lazy, memo, Suspense } from 'react';
 import type { MarkdownCitationSource } from '@/lib/markdown/citations';
 import { markdownToPlainText } from '@/lib/markdown/plainText';
 
-export { linkCitationMarkers } from '@/lib/markdown/citations';
 export type { MarkdownCitationSource } from '@/lib/markdown/citations';
 
 // react-markdown plus the remark/rehype/micromark chain is ~70 kB gz and nothing

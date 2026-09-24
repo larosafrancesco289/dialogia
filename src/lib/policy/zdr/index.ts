@@ -73,15 +73,6 @@ export function evaluateZdrModel(modelId: string, lists: ZdrLists): ZdrCheck {
   return { status: 'unknown' };
 }
 
-export async function checkZdrModelAllowance(
-  modelId: string,
-  existing?: { modelIds?: Iterable<string> | null; providerIds?: Iterable<string> | null },
-): Promise<{ lists: ZdrLists; check: ZdrCheck }> {
-  const lists = await ensureZdrLists(existing);
-  const check = evaluateZdrModel(modelId, lists);
-  return { lists, check };
-}
-
 export function filterZdrModels<T extends { id?: string }>(
   models: T[],
   lists: ZdrLists,
@@ -125,8 +116,3 @@ export function getZdrBlockNotice(modelId: string, reason: 'model' | 'provider')
 
 export const ZDR_UNAVAILABLE_NOTICE =
   'Could not fetch ZDR list; enable internet or disable ZDR-only to list all.';
-
-export const ZDR_NO_MATCH_NOTICE = 'ZDR-only is enabled. None of the selected models are ZDR.';
-
-export { computeZdrFilter, guardModelOrNotice, buildZdrNotice } from './enforce';
-export { computeZdrFilterCached, guardZdrOrNotifyCached, refreshZdrListsIfNeeded } from './cache';

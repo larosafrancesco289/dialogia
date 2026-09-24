@@ -16,7 +16,6 @@ import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { adjustActiveTurnCount } from '@/lib/ui/streaming';
 import { composeTurn } from '@/lib/agent/compose';
-import { planTurn } from '@/lib/agent/planning';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
@@ -261,7 +260,6 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
         controller,
         baseTurnContext,
         compose: async () => composition,
-        plan: (options) => planTurn({ ...options, pipeline }),
         streamFinal: (options) => streamFinal({ ...options, pipeline }),
         authResolver: () => turn.auth,
         hooks: lifecycle.hooks,

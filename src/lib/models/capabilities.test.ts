@@ -7,9 +7,12 @@ import {
   isReasoningSupported,
   isToolCallingSupported,
   isVisionSupported,
-  supportsXhighReasoningEffort,
+  getSelectableReasoningEfforts,
 } from '@/lib/models';
 import type { ModelDescriptor } from '@/lib/types';
+
+const supportsXhigh = (model: ModelDescriptor) =>
+  getSelectableReasoningEfforts(model).includes('xhigh');
 
 const RAW_SAMPLES = {
   supportedParams: {
@@ -59,52 +62,28 @@ test('capability inference reads output modalities for image generation', () => 
   assert.equal(isImageOutputSupported(imageModel), true);
 });
 
-test('supportsXhighReasoningEffort matches known model families', () => {
+test('xhigh is selectable for known model families known model families', () => {
   const reasoningRaw = { supported_parameters: ['reasoning'] };
 
-  assert.equal(
-    supportsXhighReasoningEffort(buildModel('anthropic-direct/claude-fable-5', reasoningRaw)),
-    true,
-  );
-  assert.equal(
-    supportsXhighReasoningEffort(buildModel('anthropic/claude-fable-5', reasoningRaw)),
-    true,
-  );
-  assert.equal(
-    supportsXhighReasoningEffort(buildModel('anthropic-direct/claude-opus-4-7', reasoningRaw)),
-    true,
-  );
-  assert.equal(
-    supportsXhighReasoningEffort(buildModel('anthropic/claude-opus-4-7', reasoningRaw)),
-    true,
-  );
-  assert.equal(
-    supportsXhighReasoningEffort(buildModel('anthropic-direct/claude-opus-4-8', reasoningRaw)),
-    true,
-  );
-  assert.equal(
-    supportsXhighReasoningEffort(buildModel('anthropic/claude-opus-4.8', reasoningRaw)),
-    true,
-  );
-  assert.equal(supportsXhighReasoningEffort(buildModel('openai/gpt-5.4', reasoningRaw)), true);
-  assert.equal(supportsXhighReasoningEffort(buildModel('openai/gpt-5-4', reasoningRaw)), true);
-  assert.equal(supportsXhighReasoningEffort(buildModel('openai/gpt-5.2', reasoningRaw)), true);
+  assert.equal(supportsXhigh(buildModel('anthropic-direct/claude-fable-5', reasoningRaw)), true);
+  assert.equal(supportsXhigh(buildModel('anthropic/claude-fable-5', reasoningRaw)), true);
+  assert.equal(supportsXhigh(buildModel('anthropic-direct/claude-opus-4-7', reasoningRaw)), true);
+  assert.equal(supportsXhigh(buildModel('anthropic/claude-opus-4-7', reasoningRaw)), true);
+  assert.equal(supportsXhigh(buildModel('anthropic-direct/claude-opus-4-8', reasoningRaw)), true);
+  assert.equal(supportsXhigh(buildModel('anthropic/claude-opus-4.8', reasoningRaw)), true);
+  assert.equal(supportsXhigh(buildModel('openai/gpt-5.4', reasoningRaw)), true);
+  assert.equal(supportsXhigh(buildModel('openai/gpt-5-4', reasoningRaw)), true);
+  assert.equal(supportsXhigh(buildModel('openai/gpt-5.2', reasoningRaw)), true);
 
-  assert.equal(supportsXhighReasoningEffort(buildModel('openai/gpt-5', reasoningRaw)), false);
-  assert.equal(
-    supportsXhighReasoningEffort(buildModel('anthropic/claude-opus-4-6', reasoningRaw)),
-    false,
-  );
+  assert.equal(supportsXhigh(buildModel('openai/gpt-5', reasoningRaw)), false);
+  assert.equal(supportsXhigh(buildModel('anthropic/claude-opus-4-6', reasoningRaw)), false);
   // Non-reasoning model short-circuits regardless of id
-  assert.equal(
-    supportsXhighReasoningEffort(buildModel('openai/gpt-5.4', { supported_parameters: [] })),
-    false,
-  );
+  assert.equal(supportsXhigh(buildModel('openai/gpt-5.4', { supported_parameters: [] })), false);
 });
 
-test('supportsXhighReasoningEffort honors metadata hint', () => {
+test('xhigh selectability honors metadata hint', () => {
   const model = buildModel('provider/experimental-reasoner', {
     supported_parameters: ['reasoning', 'reasoning_effort_xhigh'],
   });
-  assert.equal(supportsXhighReasoningEffort(model), true);
+  assert.equal(supportsXhigh(model), true);
 });

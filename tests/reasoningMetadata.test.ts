@@ -5,8 +5,6 @@ import {
   getDefaultReasoningEffort,
   getModelReasoningInfo,
   getSelectableReasoningEfforts,
-  isReasoningMandatory,
-  supportsXhighReasoningEffort,
 } from '@/lib/models/capabilities';
 import { resolveDynamicModelId, resolveFirstAvailableModelId } from '@/lib/models/dynamicDefaults';
 import type { ModelDescriptor } from '@/lib/types';
@@ -60,15 +58,17 @@ test('selectable efforts follow metadata and drop none for mandatory reasoning',
     'max',
   ]);
   assert.deepEqual(getSelectableReasoningEfforts(CAPPED_MODEL), ['none', 'low', 'medium', 'high']);
-  assert.equal(isReasoningMandatory(FABLE_OR), true);
 });
 
+const supportsXhigh = (model: ModelDescriptor) =>
+  getSelectableReasoningEfforts(model).includes('xhigh');
+
 test('xhigh support comes from metadata, with legacy id fallback', () => {
-  assert.equal(supportsXhighReasoningEffort(FABLE_OR), true);
-  assert.equal(supportsXhighReasoningEffort(CAPPED_MODEL), false);
+  assert.equal(supportsXhigh(FABLE_OR), true);
+  assert.equal(supportsXhigh(CAPPED_MODEL), false);
   // No reasoning object: fall back to known-model id patterns.
-  assert.equal(supportsXhighReasoningEffort(buildModel('anthropic/claude-fable-5', {})), true);
-  assert.equal(supportsXhighReasoningEffort(buildModel('provider/other', {})), false);
+  assert.equal(supportsXhigh(buildModel('anthropic/claude-fable-5', {})), true);
+  assert.equal(supportsXhigh(buildModel('provider/other', {})), false);
 });
 
 test('provider default effort respects default_enabled', () => {

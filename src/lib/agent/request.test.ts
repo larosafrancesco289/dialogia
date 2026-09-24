@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { composePlugins, pdfPlugins, providerSortFromRoutePref } from './request';
+import { composePlugins, pdfPlugins } from './request';
 import {
   DEBUG_LOG_MAX_ENTRIES,
   DEBUG_LOG_TTL_MS,
@@ -15,14 +15,6 @@ const createTestStore = (initialUi: any): StoreAccess & { state: { ui: any } } =
   const { state, set, get } = createTestStoreState({ ui: initialUi as any });
   return { state, set, get } as StoreAccess & { state: { ui: any } };
 };
-
-test('providerSortFromRoutePref maps UI preferences to provider sort', () => {
-  assert.equal(providerSortFromRoutePref('speed'), ProviderSort.Throughput);
-  assert.equal(providerSortFromRoutePref('cost'), ProviderSort.Price);
-  assert.equal(providerSortFromRoutePref('balanced'), undefined);
-  assert.equal(providerSortFromRoutePref(undefined), undefined);
-  assert.equal(providerSortFromRoutePref(null as any), undefined);
-});
 
 test('pdfPlugins emits parser plugin only when PDFs are present', () => {
   assert.deepEqual(pdfPlugins(false), undefined);

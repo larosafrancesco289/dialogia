@@ -8,11 +8,6 @@ export const DEFAULT_MODEL_ID = CURATED_DEFAULT_MODEL_ID;
 export const DEFAULT_MODEL_NAME = CURATED_DEFAULT_MODEL_NAME;
 export const DEFAULT_TUTOR_MODEL_ID = CURATED_DEFAULT_TUTOR_MODEL_ID;
 
-// UI layout constants
-export const HEADER_HEIGHT_PX = 56;
-
-// Streaming / UI tuning
-export const STREAM_SCROLL_THROTTLE_MS = 160;
 export const MAX_FALLBACK_RESULTS = 5;
 
 // Attachments limits

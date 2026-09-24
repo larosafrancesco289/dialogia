@@ -48,14 +48,17 @@ export function registerTool(name: string, entry: ToolRegistryEntry): void {
   REGISTRY.set(name, entry);
 }
 
+/** @internal Only the registry tests call this. */
 export function unregisterTool(name: string): void {
   REGISTRY.delete(name);
 }
 
+/** @internal Only the registry tests call this. */
 export function getTool(name: string): ToolRegistryEntry | undefined {
   return REGISTRY.get(name);
 }
 
+/** @internal Only the registry tests call this. */
 export function isRegisteredTool(name: string): boolean {
   return REGISTRY.has(name);
 }
@@ -67,6 +70,7 @@ const matches = (entry: ToolRegistryEntry, filter?: ToolFilter): boolean => {
   return true;
 };
 
+/** @internal Only the registry tests call this. */
 export function listTools(filter?: ToolFilter): string[] {
   const names: string[] = [];
   REGISTRY.forEach((entry, name) => {
@@ -75,24 +79,12 @@ export function listTools(filter?: ToolFilter): string[] {
   return names;
 }
 
-export function getToolDefinitions(filter?: ToolFilter): ToolDefinition[] {
-  const definitions: ToolDefinition[] = [];
-  REGISTRY.forEach((entry) => {
-    if (matches(entry, filter)) definitions.push(entry.definition);
-  });
-  return definitions;
-}
-
 export function getToolHandler(name: string): PlanningToolHandler | undefined {
   return REGISTRY.get(name)?.handler;
 }
 
 export function getToolKind(name: string): ToolKind | undefined {
   return REGISTRY.get(name)?.metadata.kind;
-}
-
-export function getToolModule(name: string): string | undefined {
-  return REGISTRY.get(name)?.metadata.module;
 }
 
 export function getToolLogCategory(name: string): ToolCallCategory {

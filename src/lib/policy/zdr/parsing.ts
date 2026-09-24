@@ -1,3 +1,5 @@
+import { isRecord } from '@/lib/utils/guards';
+
 export type ZdrEndpoint = {
   providerId?: string;
   id?: string;
@@ -8,11 +10,6 @@ export type ZdrEndpoint = {
 };
 
 type RecordValue = Record<string, unknown>;
-
-function asRecord(value: unknown): RecordValue | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as RecordValue;
-}
 
 function getString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
@@ -27,20 +24,19 @@ function readModelIds(value: unknown): string[] {
       if (trimmed) ids.push(trimmed);
       continue;
     }
-    const record = asRecord(entry);
-    const id = getString(record?.id);
+    const id = isRecord(entry) ? getString(entry.id) : undefined;
     if (id) ids.push(id);
   }
   return ids;
 }
 
 function resolveEndpointList(payload: unknown): RecordValue[] {
-  const record = asRecord(payload);
+  const record = isRecord(payload) ? payload : undefined;
   const data = record?.data;
-  if (Array.isArray(data)) return data.map(asRecord).filter(Boolean) as RecordValue[];
+  if (Array.isArray(data)) return data.filter(isRecord);
   const endpoints = record?.endpoints;
-  if (Array.isArray(endpoints)) return endpoints.map(asRecord).filter(Boolean) as RecordValue[];
-  if (Array.isArray(payload)) return payload.map(asRecord).filter(Boolean) as RecordValue[];
+  if (Array.isArray(endpoints)) return endpoints.filter(isRecord);
+  if (Array.isArray(payload)) return payload.filter(isRecord);
   return [];
 }
 
