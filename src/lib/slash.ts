@@ -36,7 +36,9 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
   }
 
   const matching = baseCommands.filter((command) => startsWith(command.key, cmd));
-  if (matching.length > 1 && arg === '') {
+  // Text that only starts with a slash ("/etc/hosts: …") is a message.
+  if (matching.length === 0) return suggestions;
+  if (arg === '' && !(matching.length === 1 && matching[0]?.key === cmd)) {
     for (const command of matching) push(`/${command.label}`, `/${command.key} `, command.help);
     return suggestions;
   }
@@ -44,16 +46,14 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
   if (cmd === 'search') {
     const options = ['on', 'off', 'toggle'];
     const filtered = options.filter((option) => option.startsWith(arg.toLowerCase()));
-    const values = filtered.length > 0 ? filtered : options;
-    for (const option of values) push(`/search ${option}`, `/search ${option}`);
+    for (const option of filtered) push(`/search ${option}`, `/search ${option}`);
     return suggestions;
   }
 
   if (cmd === 'reasoning') {
     const options = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
     const filtered = options.filter((option) => option.startsWith(arg.toLowerCase()));
-    const values = filtered.length > 0 ? filtered : options;
-    for (const option of values) push(`/reasoning ${option}`, `/reasoning ${option}`);
+    for (const option of filtered) push(`/reasoning ${option}`, `/reasoning ${option}`);
     return suggestions;
   }
 
@@ -74,11 +74,6 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
     return suggestions;
   }
 
-  if ('help'.startsWith(cmd)) {
-    push('/help', '/help', 'List supported slash commands');
-    return suggestions;
-  }
-
-  for (const command of baseCommands) push(`/${command.label}`, `/${command.key} `, command.help);
+  if (cmd === 'help' && arg === '') push('/help', '/help', 'List supported slash commands');
   return suggestions;
 }
