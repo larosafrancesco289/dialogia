@@ -348,7 +348,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
       },
     }));
 
-  callbacks?.onDone?.(full, {
+  await callbacks?.onDone?.(full, {
     usage,
     finishReason,
     stopDetails: rawStopDetails,

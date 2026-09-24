@@ -252,7 +252,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   }
 
   const toolCalls = buildToolCalls(toolCallAccumulator);
-  callbacks?.onDone?.(full, {
+  await callbacks?.onDone?.(full, {
     usage,
     annotations,
     finishReason,
