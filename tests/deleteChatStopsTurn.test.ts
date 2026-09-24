@@ -105,7 +105,6 @@ test('deleting a chat mid-reply aborts the turn and leaves no message row behind
       persistMessage: createMessagePersister(repository),
     },
     settings,
-    startBuffered: false,
     pipeline,
   });
 

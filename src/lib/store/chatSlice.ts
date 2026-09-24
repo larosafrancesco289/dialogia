@@ -5,6 +5,11 @@ import { repository } from '@/lib/db';
 import { bootstrapApp } from '@/lib/services/bootstrap';
 import { settingsEqual } from '@/lib/settings/equality';
 import { mergeChatDefaults } from '@/lib/settings/chatDefaults';
+import {
+  mergeChatSettingsPatch,
+  resetReasoningOnModelChange,
+  stickyDefaultsFromPatch,
+} from '@/lib/settings/patch';
 import type { PersistFragment, StoreSetter, StoreState } from '@/lib/store/types';
 import type * as TurnService from '@/lib/services/turns';
 import type { Chat, ChatSettingsPatch, Folder } from '@/lib/types';
@@ -375,71 +380,16 @@ export function createChatSlice(
       const before = get().chats.find((c) => c.id === id);
       if (!before) return;
 
-      const uiState = get().ui;
-      const fallbackUi = {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: true,
-      };
-      const fallbackFeatures = {
-        search: { enabled: false, provider: 'openrouter' as const },
-        tutor: { enabled: false },
-      };
-
-      const mergeSettings = (
-        base: Chat['settings'],
-        patch: ChatSettingsPatch,
-      ): Chat['settings'] => {
-        const baseGeneration = base.generation ?? {};
-        const baseUi = base.ui ?? fallbackUi;
-        const baseFeatures = base.features ?? fallbackFeatures;
-        const patchFeatures = patch.features;
-        const baseSearch = baseFeatures.search ?? fallbackFeatures.search;
-        const baseTutor = baseFeatures.tutor ?? fallbackFeatures.tutor;
-
-        return {
-          ...base,
-          ...patch,
-          generation: { ...baseGeneration, ...(patch.generation ?? {}) },
-          ui: { ...baseUi, ...(patch.ui ?? {}) },
-          features: {
-            ...baseFeatures,
-            search: { ...baseSearch, ...(patchFeatures?.search ?? {}) },
-            tutor: { ...baseTutor, ...(patchFeatures?.tutor ?? {}) },
-          },
-        };
-      };
-
-      let nextSettings = mergeSettings(before.settings, partial);
-
-      // Switching model returns reasoning to the new model's own default:
-      // an effort chosen for the previous model must not silently carry over
-      // to a model with different levels and defaults.
-      const hasOwn = (obj: object, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
-      const modelChanged =
-        hasOwn(partial, 'modelId') &&
-        typeof partial.modelId === 'string' &&
-        partial.modelId !== before.settings.modelId;
-      const patchSetsReasoning =
-        !!partial.generation &&
-        (hasOwn(partial.generation, 'reasoningEffort') ||
-          hasOwn(partial.generation, 'reasoningTokens'));
-      const resetReasoningForModelChange = modelChanged && !patchSetsReasoning;
-      if (resetReasoningForModelChange) {
-        nextSettings = {
-          ...nextSettings,
-          generation: {
-            ...nextSettings.generation,
-            reasoningEffort: undefined,
-            reasoningTokens: undefined,
-          },
-        };
-      }
+      const reasoning = resetReasoningOnModelChange(
+        before.settings.modelId,
+        partial,
+        mergeChatSettingsPatch(before.settings, partial),
+      );
+      let nextSettings = reasoning.settings;
 
       const withModuleDefaults = applyModuleSettingsDefaults({
         chat: { settings: nextSettings },
-        ui: uiState,
+        ui: get().ui,
         phase: 'write',
       });
       if (withModuleDefaults.changed) nextSettings = withModuleDefaults.nextSettings;
@@ -452,39 +402,12 @@ export function createChatSlice(
         { touch: false },
       );
 
-      // In-chat changes to model and reasoning become the sticky defaults for
-      // future chats, so a new chat continues where the user left off. Search
-      // intentionally does not stick: tool toggles reset per chat so a
-      // research session doesn't quietly add search cost to every future
-      // message. Tutor chats are excluded: their model is managed by tutor
-      // defaults and must not leak into regular chats.
-      const isTutorChat = nextSettings.features.tutor?.enabled;
-      const stickyGeneration = partial.generation
-        ? {
-            ...(hasOwn(partial.generation, 'reasoningEffort')
-              ? { reasoningEffort: nextSettings.generation.reasoningEffort }
-              : {}),
-            ...(hasOwn(partial.generation, 'reasoningTokens')
-              ? { reasoningTokens: nextSettings.generation.reasoningTokens }
-              : {}),
-          }
-        : resetReasoningForModelChange
-          ? // The model switch dropped the explicit effort; drop the sticky
-            // default too so future chats follow the new model's default.
-            { reasoningEffort: undefined, reasoningTokens: undefined }
-          : {};
-      const stickyDefaults = {
-        ...(!isTutorChat && hasOwn(partial, 'modelId') ? { modelId: nextSettings.modelId } : {}),
-        ...(Object.keys(stickyGeneration).length ? { generation: stickyGeneration } : {}),
-      };
-
+      const stickyDefaults = stickyDefaultsFromPatch(partial, nextSettings, reasoning.reset);
       set((s) => ({
         chats: s.chats.map((c) => (c.id === id ? updatedChat : c)),
         ui: {
           ...s.ui,
-          chatDefaults: Object.keys(stickyDefaults).length
-            ? mergeChatDefaults(s.ui.chatDefaults, stickyDefaults)
-            : s.ui.chatDefaults,
+          chatDefaults: mergeChatDefaults(s.ui.chatDefaults, stickyDefaults),
         },
       }));
 

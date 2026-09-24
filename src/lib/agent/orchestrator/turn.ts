@@ -45,7 +45,6 @@ export type RunTurnArgs = {
   attachmentPreparer?: AttachmentPreparer;
   fallbackAttachments?: PersistedAttachment[];
   hooks?: RunTurnHooks;
-  startBuffered?: boolean;
   pipeline?: PipelineClient;
 };
 
@@ -72,7 +71,6 @@ export const runTurn = async ({
   attachmentPreparer,
   fallbackAttachments,
   hooks,
-  startBuffered = false,
   pipeline,
 }: RunTurnArgs): Promise<RunTurnResult> => {
   const attachments = attachmentPreparer
@@ -118,7 +116,6 @@ export const runTurn = async ({
       plugins: composition.plugins,
       toolDefinition: composition.tools,
       ...(composition.refreshTools ? { refreshTools: composition.refreshTools } : {}),
-      startBuffered,
       userContent,
       combinedSystem: composition.system,
       systemStable: composition.systemStable,
@@ -149,7 +146,6 @@ export const runTurn = async ({
     settings: composition.settings,
     plugins: composition.plugins,
     toolDefinition: composition.tools,
-    startBuffered,
     systemStable: composition.systemStable,
     systemDynamic: composition.systemDynamic,
   });

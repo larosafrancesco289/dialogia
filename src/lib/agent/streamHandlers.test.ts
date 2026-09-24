@@ -62,3 +62,12 @@ test('a finished reply carries no cut-off mark', async () => {
   assert.equal(persisted.at(-1)?.cutOff, undefined);
   assert.equal(persisted.at(-1)?.finishReason, 'stop');
 });
+
+test('a finished reply is stored without the tool JSON a model echoed ahead of it', async () => {
+  const { callbacks, persisted, stored } = harness();
+  const full = '{"tool":"call","args":{"q":"x"}}\nThe answer.';
+  callbacks.onToken?.(full);
+  await callbacks.onDone?.(full, { finishReason: 'stop' });
+  assert.equal(stored()?.content, 'The answer.');
+  assert.equal(persisted.at(-1)?.content, 'The answer.');
+});

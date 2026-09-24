@@ -151,6 +151,34 @@ test('applyCacheBreakpoints marks no history when nothing precedes the only user
   assert.deepEqual(markers(noUser), [[0, 0]]);
 });
 
+test('applyCacheBreakpoints never marks an empty system prompt', () => {
+  for (const content of ['', '  ', null]) {
+    const result = applyCacheBreakpoints([
+      { role: 'system', content } as ModelMessage,
+      { role: 'user', content: 'Hi' },
+    ]);
+    assert.deepEqual(markers(result), []);
+    assert.equal(result[0].content, content);
+  }
+});
+
+test('applyCacheBreakpoints marks the last text block with text, not a trailing empty one', () => {
+  const result = applyCacheBreakpoints([
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Hello' },
+        { type: 'text', text: '' },
+      ],
+    },
+    { role: 'user', content: 'Well?' },
+  ]);
+  assert.deepEqual(result[0].content, [
+    { type: 'text', text: 'Hello', cache_control: EPHEMERAL },
+    { type: 'text', text: '' },
+  ]);
+});
+
 test('applyCacheBreakpoints never mutates its input', () => {
   const messages: ModelMessage[] = [
     { role: 'system', content: 'Be brief.' },
