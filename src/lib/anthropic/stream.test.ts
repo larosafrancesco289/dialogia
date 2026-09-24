@@ -2,6 +2,13 @@ import { ANTHROPIC_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { streamChatCompletion } from '@/lib/anthropic/stream';
+import {
+  applyStreamEvent,
+  createStreamTurn,
+  finishedToolCalls,
+  roundContent,
+} from '@/lib/anthropic/streamEvents';
+import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { buildTransportAuth } from '@/lib/auth/transport';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
 
@@ -312,4 +319,94 @@ test('streamChatCompletion keeps tool calls from both sides of a pause_turn apar
     },
   ]);
   assert.equal(new Set(namedIndices).size, 2, 'each tool call is announced under its own index');
+});
+
+test('applyStreamEvent folds a recorded stream without fetch', () => {
+  const turn = createStreamTurn();
+  const tokens: string[] = [];
+  const reasoning: string[] = [];
+  const named: Array<[number, string | undefined]> = [];
+  const emit = {
+    onToken: (delta: string) => tokens.push(delta),
+    onReasoningToken: (delta: string) => reasoning.push(delta),
+    onToolCallDelta: (deltas: Array<{ index: number; function?: { name?: string } }>) => {
+      for (const delta of deltas) named.push([delta.index, delta.function?.name]);
+    },
+  };
+  const events = [
+    { type: 'message_start', message: { usage: { input_tokens: 9, output_tokens: 1 } } },
+    { type: 'ping' },
+    { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Hmm, ' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'ok.' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'signature_delta', signature: 'sig' } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Let me ' } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'check.' } },
+    { type: 'content_block_stop', index: 1 },
+    {
+      type: 'content_block_start',
+      index: 2,
+      content_block: { type: 'tool_use', id: 'toolu_1', name: 'lookup', input: {} },
+    },
+    {
+      type: 'content_block_delta',
+      index: 2,
+      delta: { type: 'input_json_delta', partial_json: '{"q":' },
+    },
+    {
+      type: 'content_block_delta',
+      index: 2,
+      delta: { type: 'input_json_delta', partial_json: '"bayes"}' },
+    },
+    { type: 'content_block_stop', index: 2 },
+    {
+      type: 'message_delta',
+      delta: { stop_reason: 'tool_use', stop_sequence: null },
+      usage: { output_tokens: 20 },
+    },
+    { type: 'message_stop' },
+  ];
+  for (const event of events) applyStreamEvent(turn, event, emit);
+
+  assert.equal(turn.text, 'Let me check.');
+  assert.deepEqual(tokens, ['Let me ', 'check.']);
+  assert.deepEqual(reasoning, ['Hmm, ', 'ok.']);
+  assert.deepEqual(named, [[2, 'lookup']]);
+  assert.equal(turn.stopReason, 'tool_use');
+  assert.equal(turn.round.usage?.input_tokens, 9);
+  assert.equal(turn.round.usage?.output_tokens, 20);
+  assert.deepEqual(turn.thinkingBlocks, [
+    { type: 'thinking', thinking: 'Hmm, ok.', signature: 'sig' },
+  ]);
+  assert.deepEqual(finishedToolCalls(turn), [
+    { id: 'toolu_1', type: 'function', function: { name: 'lookup', arguments: '{"q":"bayes"}' } },
+  ]);
+  // What a continuation would send back: the blocks complete, the input parsed.
+  assert.deepEqual(roundContent(turn), [
+    { type: 'thinking', thinking: 'Hmm, ok.', signature: 'sig' },
+    { type: 'text', text: 'Let me check.' },
+    { type: 'tool_use', id: 'toolu_1', name: 'lookup', input: { q: 'bayes' } },
+  ]);
+});
+
+test('applyStreamEvent throws an error event as an ApiError', () => {
+  assert.throws(
+    () =>
+      applyStreamEvent(createStreamTurn(), {
+        type: 'error',
+        error: { type: 'rate_limit_error', message: 'Slow down' },
+      }),
+    (err) =>
+      isApiError(err) && err.code === API_ERROR_CODES.RATE_LIMITED && err.message === 'Slow down',
+  );
+  assert.throws(
+    () =>
+      applyStreamEvent(createStreamTurn(), { type: 'error', error: { type: 'overloaded_error' } }),
+    (err) =>
+      isApiError(err) &&
+      err.code === API_ERROR_CODES.PROVIDER_CHAT_FAILED &&
+      err.message === 'Anthropic stream error',
+  );
 });
