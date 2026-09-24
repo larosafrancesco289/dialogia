@@ -6,6 +6,7 @@
 import { useCallback } from 'react';
 import { useChatStore } from '@/lib/store';
 import { isChatStreaming } from '@/lib/ui/streaming';
+import { createSerialQueue } from '@/modules/tutor/lib/serial';
 
 /** Resolves once the chat has no reply streaming, so a line never cuts a reply short. */
 function whenIdle(chatId: string): Promise<void> {
@@ -25,7 +26,7 @@ function whenIdle(chatId: string): Promise<void> {
  * would otherwise both see the chat go idle at once and start two turns
  * side by side.
  */
-let queue: Promise<unknown> = Promise.resolve();
+const enqueue = createSerialQueue();
 
 /**
  * Sends a ledger line: a visible, quiet user message that starts the tutor's
@@ -39,13 +40,11 @@ export function useLedger(): (line: string) => Promise<void> {
     (line: string) => {
       const chatId = useChatStore.getState().selectedChatId;
       if (!chatId) return Promise.resolve();
-      const send = queue.then(async () => {
+      return enqueue(async () => {
         await whenIdle(chatId);
         if (useChatStore.getState().selectedChatId !== chatId) return;
         await sendUserMessage(line, { ledger: true });
       });
-      queue = send.catch(() => undefined);
-      return send;
     },
     [sendUserMessage],
   );

@@ -133,15 +133,18 @@ export function usePlanCallbacks(): PlanCallbacks {
 
   const onContestMastery = useCallback(
     async (nodeId: string, direction: 'up' | 'down') => {
+      // From the store at click time, not this render's state: a second click
+      // before the re-render must step from where the first one left it.
+      const latest = chatId ? useChatStore.getState().tutorSessions[chatId]?.state : undefined;
       const result = await dispatch({
         type: 'adjust_mastery',
         nodeId,
-        setTo: contestTarget(confidenceOf(state, nodeId), direction),
+        setTo: contestTarget(confidenceOf(latest ?? state, nodeId), direction),
         note: `You said the estimate was too ${direction === 'down' ? 'high' : 'low'}.`,
       });
       return result?.ok ? confidenceOf(result.state, nodeId) : undefined;
     },
-    [dispatch, state],
+    [chatId, dispatch, state],
   );
 
   const onResolveMisconceptionQuietly = useCallback(

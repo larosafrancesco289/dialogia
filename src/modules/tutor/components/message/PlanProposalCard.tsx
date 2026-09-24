@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
 import { PlanFeedbackModal } from '@/modules/tutor/components/plan/PlanFeedbackModal';
@@ -23,6 +23,9 @@ export function PlanProposalCard({
   const setUI = useChatStore((s) => s.setUI);
   const setNotice = useChatStore((s) => s.setNotice);
   const ledger = useLedger();
+  // A second click lands before the disabled state renders; without this it
+  // would find the proposal already approved and report a failure.
+  const acting = useRef(false);
   // Declining is negotiating the plan; a read-only plan only takes approval.
   const { revisePlan } = useTutorAffordances();
 
@@ -38,6 +41,8 @@ export function PlanProposalCard({
   };
 
   const handleApprove = async () => {
+    if (acting.current) return;
+    acting.current = true;
     setApproving(true);
     try {
       const result = await dispatchTutor(
@@ -61,6 +66,7 @@ export function PlanProposalCard({
     } catch {
       setNotice(NOTICE_PLAN_APPLY_FAILED);
     } finally {
+      acting.current = false;
       setApproving(false);
     }
   };
@@ -71,6 +77,8 @@ export function PlanProposalCard({
   };
 
   const handleFeedbackSubmit = async (feedback: string) => {
+    if (acting.current) return;
+    acting.current = true;
     setDeclining(true);
     try {
       const result = await dispatchTutor(
@@ -81,6 +89,7 @@ export function PlanProposalCard({
       if (!result.ok) return;
       await ledger(LEDGER.planDeclined(feedback));
     } finally {
+      acting.current = false;
       setDeclining(false);
     }
   };
