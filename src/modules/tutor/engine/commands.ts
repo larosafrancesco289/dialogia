@@ -267,7 +267,10 @@ export function gateTutorTool(
     return err('wrong_phase', `${tool} is not available in the ${phase} phase.`, PHASE_HINT[phase]);
   }
   const open = state.awaiting;
-  if (CARD_TOOLS.has(tool) && open && open.kind !== 'proposal') {
+  // A plan proposal closes an unanswered intake: a learner who would rather
+  // skip the questions, or answered them in chat, is not kept waiting on them.
+  const supersedes = tool === 'propose_plan' && open?.kind === 'intake';
+  if (CARD_TOOLS.has(tool) && open && open.kind !== 'proposal' && !supersedes) {
     return err(
       'card_open',
       `The learner has not finished the ${open.kind} you gave them.`,
@@ -488,6 +491,9 @@ function decideTutor(
           reason: text(estimate.reason),
         };
       });
+      if (state.awaiting?.kind === 'intake') {
+        out.push({ type: 'card_dismissed', card: 'intake', cardId: state.awaiting.id });
+      }
       out.push({
         type: 'plan_proposed',
         proposalId: ctx.idFactory(),

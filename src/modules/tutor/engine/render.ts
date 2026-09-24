@@ -122,7 +122,7 @@ function awaitingLine(state: TutorState): string | undefined {
   if (!open) return undefined;
   switch (open.kind) {
     case 'intake':
-      return 'Waiting on: the learner to answer your intake questions. No other card until they do.';
+      return "Waiting on: the learner to answer your intake questions. If they would rather skip them, or answered in chat, don't wait: propose_plan from what you know, which closes the card.";
     case 'diagnostic':
       return 'Waiting on: the learner to finish your diagnostic. No other card until they do.';
     case 'quiz': {

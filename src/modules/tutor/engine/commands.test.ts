@@ -83,6 +83,30 @@ describe('intake', () => {
     );
   });
 
+  test('a plan proposed over an unanswered intake closes it', () => {
+    const h = harness();
+    h.tutor({ type: 'ask_intake', questions: INTAKE }, 'm1');
+    const intakeId = h.state.awaiting!.id;
+    // "skip the questions pls": the tutor goes on from what it knows.
+    const events = h.tutor({ type: 'propose_plan', ...CALCULUS }, 'm2');
+    assert.deepEqual(types(events), ['card_dismissed:tutor', 'plan_proposed:tutor']);
+    assert.equal(h.state.intakes[intakeId].dismissed, true);
+    assert.equal(h.state.awaiting?.kind, 'proposal');
+    assertError(
+      h.refuse({
+        by: 'learner',
+        type: 'answer_intake',
+        intakeId,
+        responses: { q1: ['Curiosity'] },
+      }),
+      'card_closed',
+    );
+    // An open diagnostic still waits: its answers are evidence.
+    const d = harness();
+    d.tutor({ type: 'give_diagnostic', topic: 'Calculus basics', items: DIAGNOSTIC });
+    assertError(d.refuse({ by: 'tutor', type: 'propose_plan', ...CALCULUS }), 'card_open');
+  });
+
   test('answer_intake records trimmed responses once', () => {
     const h = harness();
     h.tutor({ type: 'ask_intake', questions: INTAKE });

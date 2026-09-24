@@ -38,7 +38,11 @@ test('availability follows phase, open card, flags and budget', () => {
       { question: 'b', options: [{ label: 'x' }, { label: 'y' }] },
     ],
   });
-  assert.deepEqual(available(h), [], 'an open card blocks every other card');
+  assert.deepEqual(
+    available(h),
+    ['propose_plan'],
+    'an open intake blocks every other card; a plan may close it',
+  );
 
   const p = harness();
   p.tutor({ type: 'propose_plan', ...CALCULUS });
