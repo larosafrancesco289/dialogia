@@ -76,12 +76,14 @@ export const EMPTY_MODEL_INDEX: ModelIndex = (() => {
 
 export { formatModelLabel, stripProviderPrefix } from '@/lib/models/labels';
 export {
-  DYNAMIC_MODEL_ALIASES,
-  getDynamicModelAlias,
+  aliasTargetOf,
+  getModelFamily,
   isDynamicModelId,
+  MODEL_FAMILIES,
   resolveDynamicModelId,
-  type DynamicModelAlias,
+  type ModelFamily,
 } from '@/lib/models/dynamicDefaults';
+export { resolveDefaultModelId, resolveTutorModelId } from '@/lib/models/defaultModels';
 export {
   clampReasoningEffort,
   getDefaultReasoningEffort,

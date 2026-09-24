@@ -6,19 +6,32 @@
 import { useMemo } from 'react';
 import { useChatStore } from '@/lib/store';
 import { CURATED_MODELS } from '@/data/curatedModels';
-import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { filterCuratedModelsByAvailability } from '@/lib/models/curatedAvailability';
-import { findModelById, isDynamicModelId, resolveDynamicModelId } from '@/lib/models';
+import {
+  aliasTargetOf,
+  findModelById,
+  formatModelLabel,
+  isDynamicModelId,
+  resolveDefaultModelId,
+  resolveDynamicModelId,
+} from '@/lib/models';
 import { hasAnyEndpoint, isModelEndpointAvailable } from '@/lib/policy/providerAvailability';
 
-/** Every loaded model whose endpoint is still configured. */
+/**
+ * Every loaded model whose endpoint is still configured. A provider's own
+ * alias entries ("GPT Sol Latest") are left out: the curated families stand
+ * for them, and a chat names the concrete model anyway.
+ */
 export function useAvailableModels() {
   const allModels = useChatStore((s) => s.models);
-  return useMemo(() => allModels.filter((model) => isModelEndpointAvailable(model)), [allModels]);
+  return useMemo(
+    () => allModels.filter((model) => isModelEndpointAvailable(model) && !aliasTargetOf(model)),
+    [allModels],
+  );
 }
 
 /**
- * The curated picks, with dynamic aliases resolved to the concrete model they
+ * The curated picks, with families resolved to the concrete model they
  * currently name so "latest" is never a mystery.
  */
 export function useCuratedModels() {
@@ -32,15 +45,15 @@ export function useCuratedModels() {
       if (!isDynamicModelId(entry.id)) return entry;
       const concreteId = resolveDynamicModelId(entry.id, allModels || []);
       const concrete = findModelById(allModels || [], concreteId);
-      const currentName = concrete?.name || concreteId;
+      const currentName = formatModelLabel({ model: concrete, fallbackId: concreteId });
       return {
         ...entry,
         id: concreteId,
         description: `${entry.description} · now ${currentName}`,
       };
     });
-    // An alias can resolve to a model that is also listed by name (GPT Latest
-    // is GPT-6 Luna today); the list shows it once, under its first entry.
+    // A family can resolve to a model that is also listed by name; the list
+    // shows it once, under its first entry.
     const seen = new Set<string>();
     const unique = resolved.filter((entry) => !seen.has(entry.id) && !!seen.add(entry.id));
     return filterCuratedModelsByAvailability(unique, availableIds);
@@ -50,5 +63,5 @@ export function useCuratedModels() {
 /** The concrete model a new chat starts with. */
 export function useDefaultModelId() {
   const allModels = useChatStore((s) => s.models);
-  return useMemo(() => resolveDynamicModelId(DEFAULT_MODEL_ID, allModels || []), [allModels]);
+  return useMemo(() => resolveDefaultModelId(allModels || []), [allModels]);
 }

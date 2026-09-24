@@ -8,7 +8,7 @@ import {
   isReasoningMandatory,
   supportsXhighReasoningEffort,
 } from '@/lib/models/capabilities';
-import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
+import { resolveDynamicModelId, resolveFirstAvailableModelId } from '@/lib/models/dynamicDefaults';
 import type { ModelDescriptor } from '@/lib/types';
 
 const buildModel = (id: string, raw: Record<string, unknown>): ModelDescriptor => ({
@@ -112,43 +112,89 @@ const orModel = (
   raw: { created: opts.created ?? 0 },
 });
 
-test('~anthropic/frontier prefers the Mythos-class family over pricier Opus', () => {
-  const models = [
-    orModel('anthropic/claude-opus-4-8', { completion: 0.00009, created: 200 }),
-    orModel('anthropic/claude-fable-5', { completion: 0.00005, created: 100 }),
-    orModel('anthropic/claude-haiku-4-5', { completion: 0.000005, created: 300 }),
-  ];
-  assert.equal(resolveDynamicModelId('~anthropic/frontier', models), 'anthropic/claude-fable-5');
+const alias = (id: string, target: string): ModelDescriptor => ({
+  id,
+  name: id,
+  raw: { alias_target: { slug: target, name: target } },
 });
 
-test('~openai/gpt-latest picks the newest mainline GPT, skipping pro and mini', () => {
+test("a family resolves to the model OpenRouter's alias points to", () => {
   const models = [
-    orModel('openai/gpt-5.5', { created: 100 }),
-    orModel('openai/gpt-6', { created: 300 }),
-    orModel('openai/gpt-6-pro', { created: 400 }),
-    orModel('openai/gpt-6-mini', { created: 350 }),
+    orModel('openai/gpt-6-sol', { created: 300 }),
+    orModel('openai/gpt-6-luna', { created: 301 }),
+    alias('~openai/gpt-sol-latest', 'openai/gpt-6-sol'),
   ];
-  assert.equal(resolveDynamicModelId('~openai/gpt-latest', models), 'openai/gpt-6');
+  assert.equal(resolveDynamicModelId('~openai/gpt-sol-latest', models), 'openai/gpt-6-sol');
 });
 
-test('~x-ai/grok-latest picks the newest mainline Grok, skipping fast and code variants', () => {
+test('without the alias entry, a family resolves by name to its newest member', () => {
   const models = [
-    orModel('x-ai/grok-4.3', { created: 100 }),
-    orModel('x-ai/grok-5', { created: 300 }),
-    orModel('x-ai/grok-5-fast', { created: 400 }),
-    orModel('x-ai/grok-5-code', { created: 350 }),
+    orModel('anthropic/claude-opus-5', { created: 100 }),
+    orModel('anthropic/claude-opus-5.5', { created: 300 }),
+    orModel('anthropic/claude-opus-5.5:batch', { created: 400 }),
+    orModel('anthropic/claude-fable-5.1', { created: 500 }),
+    orModel('openai/gpt-6-luna-pro', { created: 600 }),
+    orModel('openai/gpt-6-luna', { created: 200 }),
   ];
-  assert.equal(resolveDynamicModelId('~x-ai/grok-latest', models), 'x-ai/grok-5');
-});
-
-test('dynamic aliases fall back to their pins and pass concrete ids through', () => {
-  assert.equal(resolveDynamicModelId('~anthropic/frontier', []), 'anthropic/claude-fable-5');
-  assert.equal(resolveDynamicModelId('~openai/gpt-latest', []), 'openai/gpt-5.5');
-  assert.equal(resolveDynamicModelId('~x-ai/grok-latest', []), 'x-ai/grok-4.3');
-  assert.equal(resolveDynamicModelId('openai/gpt-5.5', []), 'openai/gpt-5.5');
-  // OpenRouter's own tilde alias models are real ids and pass through.
   assert.equal(
-    resolveDynamicModelId('~anthropic/claude-fable-latest', []),
-    '~anthropic/claude-fable-latest',
+    resolveDynamicModelId('~anthropic/claude-opus-latest', models),
+    'anthropic/claude-opus-5.5',
+  );
+  assert.equal(resolveDynamicModelId('~openai/gpt-luna-latest', models), 'openai/gpt-6-luna');
+});
+
+test('on a Claude API key a family resolves among its newest-first list', () => {
+  const direct = (id: string, created_at: string): ModelDescriptor => ({
+    id: `anthropic-direct/${id}`,
+    name: id,
+    raw: { created_at },
+  });
+  const models = [
+    direct('claude-opus-5-5', '2026-09-22T00:00:00Z'),
+    direct('claude-haiku-4-5-20251001', '2025-10-01T00:00:00Z'),
+    direct('claude-opus-5', '2026-07-24T00:00:00Z'),
+  ];
+  assert.equal(
+    resolveDynamicModelId('~anthropic/claude-opus-latest', models),
+    'anthropic-direct/claude-opus-5-5',
+  );
+  assert.equal(
+    resolveDynamicModelId('~anthropic/claude-haiku-latest', models),
+    'anthropic-direct/claude-haiku-4-5-20251001',
+  );
+});
+
+test("the app's retired aliases map to families, and pins cover an empty list", () => {
+  assert.equal(resolveDynamicModelId('~openai/gpt-latest', []), 'openai/gpt-6-luna');
+  assert.equal(resolveDynamicModelId('~anthropic/frontier', []), 'anthropic/claude-fable-5.1');
+  assert.equal(resolveDynamicModelId('~x-ai/grok-latest', []), 'x-ai/grok-4.7');
+  assert.equal(resolveDynamicModelId('openai/gpt-5.5', []), 'openai/gpt-5.5');
+  // An alias the app does not know is a provider's own requestable id.
+  assert.equal(
+    resolveDynamicModelId('~deepseek/deepseek-pro-latest', []),
+    '~deepseek/deepseek-pro-latest',
+  );
+});
+
+test('the first available preference wins, and a custom server is the last resort', () => {
+  const builtIn = (id: string) => id === 'openrouter' || id === 'anthropic';
+  const custom = { ...orModel('mine/local'), endpointId: 'mine' };
+  const opus = { ...orModel('anthropic-direct/claude-opus-5-5'), endpointId: 'anthropic' };
+  assert.equal(
+    resolveFirstAvailableModelId(
+      ['~openai/gpt-luna-latest', '~anthropic/claude-opus-latest'],
+      [custom, opus],
+      builtIn,
+    ),
+    'anthropic-direct/claude-opus-5-5',
+  );
+  const sonnet = { ...orModel('anthropic-direct/claude-sonnet-5'), endpointId: 'anthropic' };
+  assert.equal(
+    resolveFirstAvailableModelId(['~openai/gpt-luna-latest'], [custom, sonnet], builtIn),
+    'anthropic-direct/claude-sonnet-5',
+  );
+  assert.equal(
+    resolveFirstAvailableModelId(['~openai/gpt-luna-latest'], [custom], builtIn),
+    'mine/local',
   );
 });

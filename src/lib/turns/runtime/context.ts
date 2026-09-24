@@ -6,7 +6,7 @@ import type { DraftAttachment, PersistedAttachment, Chat, Message } from '@/lib/
 import type { StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
 import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelCapabilityFlags } from '@/lib/models';
-import { resolveDynamicModelId } from '@/lib/models';
+import { resolveDynamicModelId, resolveTutorModelId } from '@/lib/models';
 import type { Repository } from '@/lib/db/repository';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
@@ -76,27 +76,16 @@ export const prepareSendRuntime = async ({
         /* best effort */
       }
     }
-    // The tutor default may be a dynamic alias ('~anthropic/frontier'),
-    // which is never in the catalogue itself: resolve it first, or the
-    // check below mistook it for a missing model and fell back to whatever
-    // loaded first, so sessions silently ran on an unrelated model.
-    const preferredTutorModelId = resolveDynamicModelId(
+    // The chosen tutor model, else its pinned default, else GPT Luna's newest,
+    // else what new chats start with: never a model the catalogue lacks, and
+    // never whatever happened to load first.
+    const resolvedTutorModelId = resolveTutorModelId(
       ensured.preferredModelId ||
         chat.settings.features.tutor?.defaultModelId ||
         tutorDefaultModelId ||
-        DEFAULT_TUTOR_MODEL_ID,
+        undefined,
       modelIndex.all,
     );
-    let resolvedTutorModelId = preferredTutorModelId;
-    // A tutor model that is no longer in the catalogue falls back to whatever
-    // loaded first rather than sending a request that cannot succeed.
-    if (
-      modelIndex.all.length > 0 &&
-      resolvedTutorModelId &&
-      !modelIndex.get(resolvedTutorModelId)
-    ) {
-      resolvedTutorModelId = modelIndex.all[0]?.id ?? resolvedTutorModelId;
-    }
     tutorDefaultModelId = resolvedTutorModelId;
     if (
       resolvedTutorModelId &&

@@ -12,12 +12,29 @@ import {
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
 import { getDefaultEndpoint } from '@/lib/transport/endpointRegistry';
+import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
+import type { ModelDescriptor } from '@/lib/types';
 
-/** Cheap, fast models the built-in endpoints are known to serve. */
-const BUILT_IN_TITLE_MODELS: Record<string, string> = {
-  [OPENROUTER_ENDPOINT_ID]: 'openai/gpt-6-luna',
-  [ANTHROPIC_ENDPOINT_ID]: 'anthropic-direct/claude-haiku-4-5',
+/**
+ * The cheap, fast family each built-in endpoint titles with, and the model
+ * used while its list is not loaded. A family, so a retired Haiku never
+ * leaves titles failing.
+ */
+const BUILT_IN_TITLE_MODELS: Record<string, { family: string; pin: string }> = {
+  [OPENROUTER_ENDPOINT_ID]: { family: '~openai/gpt-luna-latest', pin: 'openai/gpt-6-luna' },
+  [ANTHROPIC_ENDPOINT_ID]: {
+    family: '~anthropic/claude-haiku-latest',
+    pin: 'anthropic-direct/claude-haiku-4-5',
+  },
 };
+
+function builtInTitleModel(endpointId: string, models: ModelDescriptor[]): string | undefined {
+  const entry = BUILT_IN_TITLE_MODELS[endpointId];
+  if (!entry) return undefined;
+  const own = models.filter((model) => model.endpointId === endpointId);
+  const resolved = resolveDynamicModelId(entry.family, own);
+  return own.some((model) => model.id === resolved) ? resolved : entry.pin;
+}
 
 const TITLE_MAX_TOKENS = 150;
 const TITLE_TIMEOUT_MS = 15_000;
@@ -56,10 +73,11 @@ const TITLE_SYSTEM_PROMPT = `You write titles for chats. Given the user's first 
 export function resolveTitleModelId(
   endpoint: ProviderEndpoint,
   chatModelId?: string,
+  models: ModelDescriptor[] = [],
 ): string | undefined {
   if (endpoint.disableTitleGeneration) return undefined;
   if (endpoint.titleModelId) return endpoint.titleModelId;
-  return BUILT_IN_TITLE_MODELS[endpoint.id] ?? chatModelId;
+  return builtInTitleModel(endpoint.id, models) ?? chatModelId;
 }
 
 /**
@@ -72,18 +90,19 @@ export async function generateChatTitle(
   endpoint: ProviderEndpoint = getDefaultEndpoint(),
   chatModelId?: string,
   zdrOnly = false,
+  models: ModelDescriptor[] = [],
 ): Promise<string | null> {
   if (!userMessage.trim()) {
     return null;
   }
 
-  const model = resolveTitleModelId(endpoint, chatModelId);
+  const model = resolveTitleModelId(endpoint, chatModelId, models);
   if (!model) return null;
 
   // A built-in title model is known to title well without thinking, which is
   // twice as fast and cannot spend the whole budget before writing a word. A
   // user's own model may require reasoning, so it keeps its default.
-  const disableReasoning = model === BUILT_IN_TITLE_MODELS[endpoint.id];
+  const disableReasoning = model === builtInTitleModel(endpoint.id, models);
 
   const messages: ModelMessage[] = [
     { role: 'system', content: TITLE_SYSTEM_PROMPT },
@@ -139,8 +158,9 @@ export function triggerAsyncTitleGeneration(
   endpoint?: ProviderEndpoint,
   zdrOnly = false,
   chatModelId?: string,
+  models: ModelDescriptor[] = [],
 ) {
-  generateChatTitle(userMessage, endpoint ?? getDefaultEndpoint(), chatModelId, zdrOnly)
+  generateChatTitle(userMessage, endpoint ?? getDefaultEndpoint(), chatModelId, zdrOnly, models)
     .catch((error) => {
       logger.error('[titleGenerator] Async title generation error', error);
       return null;

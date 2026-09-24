@@ -4,11 +4,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Repository } from '@/lib/db/repository';
 import type { Chat, Folder, Message, ModelDescriptor } from '@/lib/types';
-import { resolveDynamicModelId } from '@/lib/models';
+import { resolveDefaultModelId, resolveDynamicModelId } from '@/lib/models';
 import type { UIState } from '@/lib/store/types';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { resolveNewChatSettings } from '@/lib/settings/resolve';
-import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { decorateMessage } from '@/lib/messages/decorate';
 
 export const DEFAULT_CHAT_TITLE = 'New chat';
@@ -48,7 +47,7 @@ export class ChatService {
 
     const settings = resolveNewChatSettings({
       ui,
-      fallbackModelId: resolveDynamicModelId(DEFAULT_MODEL_ID, models),
+      fallbackModelId: resolveDefaultModelId(models),
       fallbackSystem: DEFAULT_BASE_SYSTEM,
       lastUsedModelId: lastUsedModel,
       defaults: ui.chatDefaults,
