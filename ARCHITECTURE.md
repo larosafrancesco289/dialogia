@@ -294,8 +294,13 @@ The tutor's state is one append-only event log per chat, folded by the pure engi
 `tutorSessions[chatId] = { events, state, loaded }` and has one mutation entry point,
 `dispatchTutor(chatId, command, { by, messageId })`, which runs the engine's `step`, appends the
 events in memory and then to Dexie. Dispatches for a chat run one after another, so a learner's
-click and the tutor's tool calls in the same turn can never decide against a stale state. The
-tutor's tools are the engine's; each handler parses the call into a command and dispatches it.
+click and the tutor's tool calls in the same turn can never decide against a stale state. A log
+position holds one event (a unique `[chatId+seq]` index): an append that meets a position another
+tab took writes nothing, and the slice reloads the log and decides the command again, once. A
+write that fails keeps its events in memory and sends them again, first, with the chat's next
+write, so the disk never has a hole under later events. A deleted chat's in-flight dispatch writes
+nothing more, and a backup import (which reruns bootstrap) forgets every session. The tutor's
+tools are the engine's; each handler parses the call into a command and dispatches it.
 The UI renders from the same log: cards from their `*_given` / `plan_proposed` events by message id,
 margin notes from a message's `evidence_recorded` events, a chapter break from its
 `topic_completed` event, "Why N%" from `explainTopic`. A learner action that needs the tutor's
@@ -315,7 +320,9 @@ later can refer to them, because nothing comes later. The reply is then rerun as
 (fresh state block, tools, agent loop), so a card comes back as a card. Branching copies the
 log's share of the copied messages to the branch (`branchEvents`): events of copied messages under
 the copies' ids, none of later messages, and unattached events (quiet corrections) up to the
-latest position a copied message accounts for; positions keep their numbers so `tutorSeq` holds.
+latest position a copied message accounts for, and never short of the legacy import; positions
+keep their numbers so `tutorSeq` holds. The legacy import belongs to no reply, so no retraction
+reaches it; a proposal still pending at import is a `plan_proposed` on its own reply.
 
 Cards (quiz, intake, diagnostic, plan proposal) are `content` tools that end the turn after text,
 so a card put up without a word gets one round to introduce it; state tools are `action` tools. Tool arguments are parsed leniently (`engine/tools.ts`): placeholders in
@@ -325,7 +332,9 @@ valid values. A plan's topics may carry a `startingEstimate` (capped below `READ
 a diagnostic, recorded as evidence when the learner approves the plan. Every tutor turn runs the
 agent loop, reads a state block rendered from the log, and records on its reply
 (`Message.tutorSeq`) the log position it saw, so the next turn can tell the tutor what the learner
-changed since.
+changed since. The tools offered follow the state, and the agent loop reads them again after each
+round (`ModuleComposeContribution.refreshTools`), so a topic started in one round can be quizzed in
+the next round of the same turn.
 
 ## Deployment
 
