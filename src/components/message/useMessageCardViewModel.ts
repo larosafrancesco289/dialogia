@@ -3,6 +3,7 @@ import { useChatStore } from '@/lib/store';
 import type { Chat, Message, ModelDescriptor } from '@/lib/types';
 import type { UIDebugState, UISearchState } from '@/lib/store/types';
 import { selectIsTutorEnabledForChat } from '@/lib/store/selectors';
+import { resolveDisplayPreferences } from '@/lib/settings/chatDefaults';
 const EMPTY_AUTO_REASONING: Record<string, boolean> = {};
 
 export type MessageCardViewModel = {
@@ -33,6 +34,7 @@ export function useMessageCardViewModel({
       state.messagesById[messageId]?.chatId === chatId ? state.messagesById[messageId] : undefined;
     const chat = state.chats.find((entry) => entry.id === chatId);
     const tutorEnabled = selectIsTutorEnabledForChat(chatId)(state);
+    const display = resolveDisplayPreferences(state.ui.chatDefaults);
 
     return {
       message,
@@ -42,9 +44,9 @@ export function useMessageCardViewModel({
       debugMode: !!state.ui.debug.mode,
       debugEntry: state.ui.debug.byMessageId?.[messageId],
       autoReasoningModelIds: state.ui.debug.autoReasoningModelIds ?? EMPTY_AUTO_REASONING,
-      showToolCallLog: !!chat?.settings?.ui.showToolCallLog,
-      showDebugRawJson: chat?.settings?.ui.showDebugRawJson ?? true,
-      showStats: chat?.settings?.ui.showStats ?? false,
+      showToolCallLog: display.showToolCallLog,
+      showDebugRawJson: display.showDebugRawJson,
+      showStats: display.showStats,
       tutorEnabled,
       // Explicitly track toolCalls length for reactivity
       toolCallsLength: message?.toolCalls?.length ?? 0,

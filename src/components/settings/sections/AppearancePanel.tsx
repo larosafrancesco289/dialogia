@@ -19,10 +19,31 @@ type AppearancePanelProps = {
   showStats: boolean;
   setShowThinking: (v: boolean) => void;
   setShowStats: (v: boolean) => void;
+  onShowIntro: () => void;
+  // Developer
+  showToolCallLog: boolean;
+  setShowToolCallLog: (v: boolean) => void;
+  debugMode: boolean;
+  setDebugMode: (v: boolean) => void;
+  showDebugRawJson: boolean;
+  setShowDebugRawJson: (v: boolean) => void;
 };
 
 export function AppearancePanel(props: AppearancePanelProps) {
-  const { renderSection, showThinking, showStats, setShowThinking, setShowStats } = props;
+  const {
+    renderSection,
+    showThinking,
+    showStats,
+    setShowThinking,
+    setShowStats,
+    onShowIntro,
+    showToolCallLog,
+    setShowToolCallLog,
+    debugMode,
+    setDebugMode,
+    showDebugRawJson,
+    setShowDebugRawJson,
+  } = props;
 
   // Shared theme state — stays in sync with the header and mobile toggles
   const [themeMode, setThemeMode] = useThemeMode();
@@ -91,6 +112,50 @@ export function AppearancePanel(props: AppearancePanelProps) {
             onChange={setShowStats}
             label="Show the colophon"
             description="A line under each reply: which model wrote it, how fast, and what it cost."
+          />
+          <div className="settings-row">
+            <div className="settings-row-label">
+              <div className="settings-row-label-text">The introduction</div>
+              <div className="settings-row-label-description">
+                The short tour from your first visit.
+              </div>
+            </div>
+            <div className="settings-row-control">
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                aria-label="Show the introduction again"
+                onClick={onShowIntro}
+              >
+                Show again
+              </button>
+            </div>
+          </div>
+        </SettingsSection>,
+      )}
+
+      {renderSection(
+        'appearance',
+        'developer',
+        <SettingsSection title="Developer">
+          <ToggleSwitch
+            checked={showToolCallLog}
+            onChange={setShowToolCallLog}
+            label="Tool-call log"
+            description="Above each reply that used tools, every call with its arguments and result."
+          />
+          <ToggleSwitch
+            checked={debugMode}
+            onChange={setDebugMode}
+            label="Request view"
+            description="Above each reply, the request that produced it. Captured from now on and kept until you reload."
+          />
+          <ToggleSwitch
+            checked={showDebugRawJson}
+            onChange={setShowDebugRawJson}
+            disabled={!debugMode}
+            label="Include the raw JSON"
+            description="The request exactly as sent, ready to copy."
           />
         </SettingsSection>,
       )}
