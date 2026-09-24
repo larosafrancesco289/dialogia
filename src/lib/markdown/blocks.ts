@@ -3,7 +3,11 @@
 // blocks plus a trailing in-progress block, so the UI can memoize completed
 // blocks and only re-parse the tail on each stream flush.
 
-const FENCE_RE = /^ {0,3}(```|~~~)/;
+// CommonMark fences: an opener is three or more of one character (a backtick
+// opener's info string holds no backtick); only a run of the same character,
+// at least as long, with nothing after it, closes it.
+const FENCE_OPEN_RE = /^ {0,3}(`{3,}(?=[^`]*$)|~{3,})/;
+const FENCE_CLOSE_RE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
 // Lines that continue a construct from the previous segment (lists, quotes,
 // tables, indented code). Splitting before these could change list numbering
 // or break tables, so such segments are merged into the previous block.
@@ -38,15 +42,15 @@ export function splitMarkdownBlocks(content: string): MarkdownBlockSplit {
 
     if (inFence) {
       current += withNewline;
-      const close = line.match(FENCE_RE);
-      if (close && close[1].startsWith(fenceMarker[0]) && close[1].length >= fenceMarker.length) {
+      const close = line.match(FENCE_CLOSE_RE);
+      if (close && close[1][0] === fenceMarker[0] && close[1].length >= fenceMarker.length) {
         inFence = false;
         fenceMarker = '';
       }
       continue;
     }
 
-    const open = line.match(FENCE_RE);
+    const open = line.match(FENCE_OPEN_RE);
     if (open) {
       current += withNewline;
       inFence = true;
