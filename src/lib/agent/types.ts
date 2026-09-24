@@ -53,22 +53,6 @@ export type TurnContext = {
 
 export type WebSearchArgs = SearchArgs;
 
-export type PlanTurnOptions = {
-  chat: Chat;
-  chatId: string;
-  assistantMessage: Message;
-  userContent: string;
-  combinedSystem?: string;
-  systemStable?: string;
-  systemDynamic?: string;
-  baseMessages: ModelMessage[];
-  toolDefinition?: ToolDefinition[];
-  controller: AbortController;
-  turn: TurnContext;
-  settings: ResolvedTurnSettings;
-  pipeline?: PipelineClient;
-};
-
 export type PlanTurnResult = {
   finalSystem: string;
   usedContentTool: boolean;
@@ -80,11 +64,6 @@ export type PlanTurnSideEffect = {
   chatId: string;
   messageId: string;
   content: string;
-};
-
-export type PlanTurnOutput = {
-  result: PlanTurnResult;
-  sideEffects: PlanTurnSideEffect[];
 };
 
 export type ComposeTurnArgs = {
@@ -125,6 +104,7 @@ export type TurnComposition = {
   refreshTools?: () => ToolDefinition[];
   plugins?: PluginConfig[];
   hasPdf: boolean;
+  /** Tool-based search is on: the turn drafts, runs the search tools, then answers. */
   shouldPlan: boolean;
   /** Set when an enabled module asked for the agent loop. */
   loop?: TurnLoopMode;

@@ -1,5 +1,3 @@
-import { parseJsonAfter } from '@/lib/tools/json';
-import { isRecord } from '@/lib/utils/guards';
 
 export type WebSearchArgs = {
   query: string;
@@ -95,56 +93,4 @@ export function normalizeWebFetchArgs(input: Record<string, unknown>): WebFetchA
   if (chunks_per_source != null) result.chunks_per_source = chunks_per_source;
   if (provider) result.provider = provider;
   return result;
-}
-
-export function parseWebSearchArgs(input: unknown): WebSearchArgs | null {
-  if (!isRecord(input)) return null;
-  const normalized = normalizeWebSearchArgs(input);
-  if (!normalized.query) return null;
-  return normalized;
-}
-
-export function parseWebFetchArgs(input: unknown): WebFetchArgs | null {
-  if (!isRecord(input)) return null;
-  const normalized = normalizeWebFetchArgs(input);
-  if (!normalized.url) return null;
-  return normalized;
-}
-
-export function extractWebSearchArgs(text: string): WebSearchArgs | null {
-  if (typeof text !== 'string' || !text) return null;
-  try {
-    const candidates: Array<Record<string, unknown>> = [];
-    for (let i = 0; i < text.length; i += 1) {
-      if (text[i] !== '{') continue;
-      const parsed = parseJsonAfter(text, i);
-      if (parsed && isRecord(parsed.value)) {
-        candidates.push(parsed.value);
-        i = parsed.endIndex;
-      }
-    }
-    for (const payload of candidates) {
-      const direct = parseWebSearchArgs(payload);
-      if (direct) return direct;
-      const payloadName = typeof payload.name === 'string' ? payload.name : '';
-      if (payloadName === 'web_search') {
-        const args = payload.arguments;
-        if (typeof args === 'string') {
-          try {
-            const inner = JSON.parse(args);
-            const nested = parseWebSearchArgs(inner);
-            if (nested) return nested;
-          } catch {
-            continue;
-          }
-        } else if (isRecord(args)) {
-          const nested = parseWebSearchArgs(args);
-          if (nested) return nested;
-        }
-      }
-    }
-  } catch {
-    return null;
-  }
-  return null;
 }

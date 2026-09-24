@@ -2,9 +2,9 @@
 // Responsibility: Build the per-turn PlanningContext. Gating and per-turn module
 // state come from the enabled modules; core only knows the ToolGate interface.
 
-import type { PlanTurnOptions, ToolDefinition } from '@/lib/agent/types';
+import type { ToolDefinition } from '@/lib/agent/types';
 import { loadedModuleRuntimes } from '@/lib/modules';
-import type { Message } from '@/lib/types';
+import type { Chat, Message } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import type { PlanningContext, ToolGate } from '@/lib/agent/planning/types';
 
@@ -26,7 +26,7 @@ const composeGates = (gates: ToolGate[]): ToolGate => {
 const ALLOW_ALL: ToolGate = { isAllowed: () => true };
 
 export function derivePlanningContext(args: {
-  chat: PlanTurnOptions['chat'];
+  chat: Chat;
   messagesForChat: Message[];
   ui?: UiSnapshot;
   toolDefinition?: ToolDefinition[];

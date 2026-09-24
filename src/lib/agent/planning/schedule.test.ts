@@ -1,9 +1,15 @@
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadModuleRuntimes } from '@/lib/modules';
-import { createToolCall } from '@/lib/agent/parsers';
 import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
 import type { ToolGate } from '@/lib/agent/planning/types';
+import type { ToolCall } from '@/lib/agent/types';
+
+const toolCall = (name: string, args: Record<string, unknown>, id: string): ToolCall => ({
+  id,
+  type: 'function',
+  function: { name, arguments: JSON.stringify(args) },
+});
 
 before(async () => {
   await loadModuleRuntimes();
@@ -16,8 +22,8 @@ const allowOnly = (allowed: string[], extra?: Partial<ToolGate>): ToolGate => ({
 
 test('schedulePlanningRound drops calls the gate refuses', () => {
   const toolCalls = [
-    createToolCall('quiz', { type: 'mcq', items: [] }, 'call-1'),
-    createToolCall('learning_plan', { plan: {} }, 'call-2'),
+    toolCall('quiz', { type: 'mcq', items: [] }, 'call-1'),
+    toolCall('learning_plan', { plan: {} }, 'call-2'),
   ];
 
   const scheduled = schedulePlanningRound({
@@ -35,8 +41,8 @@ test('schedulePlanningRound drops calls the gate refuses', () => {
 
 test('schedulePlanningRound stops the round when the gate says stop', () => {
   const toolCalls = [
-    createToolCall('quiz', { type: 'mcq', items: [] }, 'call-1'),
-    createToolCall('record_learning', {}, 'call-2'),
+    toolCall('quiz', { type: 'mcq', items: [] }, 'call-1'),
+    toolCall('record_learning', {}, 'call-2'),
   ];
 
   const scheduled = schedulePlanningRound({
@@ -53,8 +59,8 @@ test('schedulePlanningRound stops the round when the gate says stop', () => {
 
 test('schedulePlanningRound honours the per-turn cap and reports what it scheduled', () => {
   const toolCalls = [
-    createToolCall('record_learning', {}, 'call-1'),
-    createToolCall('quiz', { type: 'mcq', items: [] }, 'call-2'),
+    toolCall('record_learning', {}, 'call-1'),
+    toolCall('quiz', { type: 'mcq', items: [] }, 'call-2'),
   ];
   const seen: string[] = [];
 

@@ -31,4 +31,3 @@ export type {
   ToolExecutionContext,
   ToolResult,
 } from '@/lib/tools/execution';
-export { extractInlineToolCalls, parseJsonAfter } from '@/lib/tools/json';

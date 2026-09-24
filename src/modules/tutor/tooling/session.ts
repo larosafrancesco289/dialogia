@@ -7,7 +7,6 @@ import type { StoreApi } from 'zustand/vanilla';
 import { composeTurn } from '@/lib/agent/compose';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
-import { planTurn } from '@/lib/agent/planning';
 import { streamFinal } from '@/lib/agent/streaming';
 import {
   createPipelineClient,
@@ -250,7 +249,6 @@ export class HeadlessTutorSession {
           persistMessage: this.persistMessage,
         },
         compose: composeTurn,
-        plan: (options) => planTurn({ ...options, pipeline: this.pipeline }),
         streamFinal: (options) => streamFinal({ ...options, pipeline: this.pipeline }),
         authResolver: this.resolveAuth,
         hooks: lifecycle.hooks,
