@@ -27,18 +27,19 @@ const definition = (name: string): ToolDefinition => ({
 test("loadModuleRuntimes registers every enabled module's tools", () => {
   assert.ok(isRegisteredTool('web_search'));
   assert.ok(isRegisteredTool('web_fetch'));
-  assert.ok(isRegisteredTool('quiz'));
+  assert.ok(isRegisteredTool('give_quiz'));
 
   assert.deepEqual(listTools({ module: 'core' }).sort(), ['web_fetch', 'web_search']);
-  assert.ok(listTools({ module: 'tutor' }).includes('record_learning'));
+  assert.ok(listTools({ module: 'tutor' }).includes('record_evidence'));
 });
 
 test('kinds drive the scheduler predicates', () => {
   assert.equal(getToolKind('web_search'), 'action');
   assert.equal(isSearchTool('web_search'), true);
-  assert.equal(isContentTool('quiz'), true);
-  assert.equal(isMetaTool('record_learning'), true);
-  assert.equal(isContentTool('record_learning'), false);
+  assert.equal(isContentTool('give_quiz'), true);
+  assert.equal(getToolKind('record_evidence'), 'action');
+  assert.equal(isContentTool('record_evidence'), false);
+  assert.equal(isMetaTool('record_evidence'), false);
 });
 
 test('unknown names are inert rather than throwing', () => {

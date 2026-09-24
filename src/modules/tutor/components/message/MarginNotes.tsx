@@ -22,10 +22,13 @@ const pct = (value: number) => Math.round(value * 100);
 export function MarginNotes({
   message,
   changes,
+  reasons,
   summary,
 }: {
   message: Message;
   changes: MasteryChange[];
+  /** Why each topic moved, from its events; legacy turns read their snapshot instead. */
+  reasons?: Record<string, string>;
   summary?: string;
 }) {
   const { learningPlan, onContestMastery } = usePlanCallbacks();
@@ -45,6 +48,7 @@ export function MarginNotes({
     learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
 
   const reasonFor = (nodeId: string) => {
+    if (reasons?.[nodeId]) return reasons[nodeId];
     const evidence = message.learnerModel?.mastery?.[nodeId]?.evidence ?? [];
     const thisTurn = evidence.filter((e) => e.timestamp >= message.createdAt - TURN_SLACK_MS);
     const picked = thisTurn.length ? thisTurn : evidence.slice(-1);

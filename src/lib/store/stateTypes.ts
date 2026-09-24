@@ -14,11 +14,18 @@ import type { ModelSliceActions, ModelSliceState } from '@/lib/store/modelSlice'
 import type { UiSliceActions, UiSliceState } from '@/lib/store/uiSlice';
 import type { PersistedUiState } from '@/lib/store/uiTypes';
 
+/**
+ * State contributed by feature modules, augmented the same way as
+ * `ModuleStoreActions`. Session-scoped: none of it is persisted by core.
+ */
+export interface ModuleStoreState {}
+
 export type StoreDataState = ChatSliceState &
   EndpointSliceState &
   MessageSliceState &
   ModelSliceState &
-  UiSliceState;
+  UiSliceState &
+  ModuleStoreState;
 
 /**
  * Actions contributed by feature modules. A module augments this interface from its

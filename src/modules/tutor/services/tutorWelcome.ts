@@ -5,7 +5,7 @@ import type { LearningPlan, Message } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import type { Repository } from '@/lib/db/repository';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { getNextNode } from '@/modules/tutor/learning-plan/service';
+import { nextReadyNode } from '@/modules/tutor/engine';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { getMessagesForChat, setMessagesForChat } from '@/lib/messages/indexing';
 import { createTutorWelcomeMessage } from '@/lib/messages/createMessage';
@@ -16,7 +16,7 @@ export const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
     return "Welcome! Share what you want to learn and I'll build a personalized plan with adaptive mastery tracking. Feel free to upload any materials you have to help me understand your learning context.";
   }
 
-  const nextNode = getNextNode(plan);
+  const nextNode = plan.nodes.find((n) => n.status === 'in_progress') ?? nextReadyNode(plan);
   if (!nextNode) {
     return `Welcome back! You've completed the learning plan for \"${plan.goal}\". Let me know if you'd like to review or start a new goal. Feel free to upload any new materials if you have them.`;
   }
@@ -57,7 +57,9 @@ export async function prepareTutorWelcomeMessage({
   }
 
   const currentMessages = getMessagesForChat(state, chatId);
-  const planMessage = buildPlanWelcomeMessage(chat.settings.features.tutor?.learningPlan);
+  // Selecting a tutor chat lands here, so this is also where its session loads.
+  const session = await state.ensureTutorSession?.(chatId).catch(() => undefined);
+  const planMessage = buildPlanWelcomeMessage(session?.state.plan);
 
   const findWelcomeIndex = (list: Message[]) => {
     const flaggedIdx = list.findIndex((m) => m.role === 'assistant' && m.tutorWelcome);

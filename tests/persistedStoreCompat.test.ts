@@ -97,6 +97,13 @@ test('partialize emits the same key set the pre-refactor build wrote', () => {
     'tutor',
     'zdrOnly',
   ]);
+  // v8 dropped `contextMode` on purpose (the tutor no longer copies cards into
+  // history); the tutor keys that remain are the user's preferences.
+  assert.deepEqual(Object.keys(persisted.ui.tutor ?? {}).sort(), [
+    'autoScroll',
+    'defaultModelId',
+    'forceMode',
+  ]);
 });
 
 test('a persist round-trip is stable', () => {

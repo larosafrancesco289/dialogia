@@ -56,11 +56,7 @@ export async function executeStreamingTurn(
   let scheduled = scheduleTools(session, round.toolCalls);
   if (scheduled.length === 0) {
     const finalSystem = finalSystemFor(session);
-    const plan = emitPlanResult(session, finalSystem);
-    if (opts.shouldShortCircuit?.(plan)) {
-      finalizeShortCircuit(session, ui, round.content);
-      return buildResult(session, finalSystem, true);
-    }
+    emitPlanResult(session, finalSystem);
     ui.onDone?.(round.content, { finishReason: round.finishReason });
     return buildResult(session, finalSystem);
   }
@@ -187,10 +183,7 @@ async function streamFinalAnswer(
   const everyToolFailed =
     state.failedToolCallsThisTurn > 0 && state.successfulToolCallsThisTurn === 0;
 
-  if (
-    session.opts.shouldShortCircuit?.(plan) ||
-    (draftStands && (toolsAddedNothing || everyToolFailed))
-  ) {
+  if (draftStands && (toolsAddedNothing || everyToolFailed)) {
     finalizeShortCircuit(session, ui, draft);
     return buildResult(session, finalSystem, true);
   }

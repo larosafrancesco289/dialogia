@@ -2,7 +2,6 @@ import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadModuleRuntimes } from '@/lib/modules';
 import { schedulePlanningToolCalls } from '@/lib/agent/tools/scheduler';
-import { buildTutorContentPriority } from '@/modules/tutor/tools/contentPriority';
 import type { ToolCall } from '@/lib/agent/types';
 
 before(async () => {
@@ -15,34 +14,35 @@ const buildCall = (name: string, args = '{}', id = `${name}-1`): ToolCall => ({
   function: { name, arguments: args },
 });
 
-test('scheduler keeps meta, one search, and one prioritized content tool', () => {
-  const calls = [buildCall('web_search'), buildCall('quiz'), buildCall('record_learning')];
+test('scheduler keeps searches, then actions, then one content tool last', () => {
+  const calls = [
+    buildCall('give_quiz'),
+    buildCall('web_search'),
+    buildCall('start_topic'),
+    buildCall('ask_intake'),
+    buildCall('record_evidence'),
+  ];
 
-  const scheduled = schedulePlanningToolCalls(calls, {
-    contentPriority: buildTutorContentPriority({
-      phase: 'practice',
-      hasPlan: true,
-      hasActiveNode: true,
-    }),
-  });
+  const scheduled = schedulePlanningToolCalls(calls, {});
 
-  assert.equal(scheduled.length, 3);
+  // A card waits for the learner, so it runs after the round's state changes
+  // (start a topic, then quiz it); a second card in the round is dropped.
   assert.deepEqual(
     scheduled.map((c) => c.function.name),
-    ['record_learning', 'web_search', 'quiz'],
+    ['web_search', 'start_topic', 'record_evidence', 'give_quiz'],
   );
 });
 
 test('scheduler asks the active module which content tool wins', () => {
-  const calls = [buildCall('quiz'), buildCall('learning_plan')];
+  const calls = [buildCall('give_quiz'), buildCall('propose_plan')];
 
   const scheduled = schedulePlanningToolCalls(calls, {
-    contentPriority: (candidates) => [...candidates].sort(),
+    contentPriority: (candidates) => [...candidates].sort().reverse(),
   });
 
   assert.deepEqual(
     scheduled.map((c) => c.function.name),
-    ['learning_plan'],
+    ['propose_plan'],
   );
 });
 
@@ -66,8 +66,8 @@ test('scheduler keeps parallel searches up to the cap and dedupes identical quer
 test('scheduler drops content when already used and search disabled', () => {
   const calls = [
     buildCall('web_search'),
-    buildCall('create_diagnostic'),
-    buildCall('record_learning'),
+    buildCall('give_diagnostic'),
+    buildCall('record_evidence'),
   ];
 
   const scheduled = schedulePlanningToolCalls(calls, {
@@ -76,7 +76,7 @@ test('scheduler drops content when already used and search disabled', () => {
   });
 
   assert.equal(scheduled.length, 1);
-  assert.equal(scheduled[0].function.name, 'record_learning');
+  assert.equal(scheduled[0].function.name, 'record_evidence');
 });
 
 test('unregistered tools fall through as ordinary calls', () => {

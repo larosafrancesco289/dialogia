@@ -146,25 +146,6 @@ export type TutorGradingResult = {
   criteria?: string[];
 };
 
-export type TutorProfile = {
-  chatId: string;
-  updatedAt: number;
-  totalAnswered: number;
-  totalCorrect: number;
-  topics?: Record<string, { correct: number; wrong: number }>;
-  skills?: Record<string, { correct: number; wrong: number }>;
-  difficulty?: Record<'easy' | 'medium' | 'hard', { correct: number; wrong: number }>;
-};
-
-export type TutorEvent = {
-  kind: 'mcq' | 'flashcard';
-  itemId?: string;
-  correct?: boolean;
-  topic?: string;
-  skill?: string;
-  difficulty?: 'easy' | 'medium' | 'hard';
-};
-
 /**
  * A tutor event as the `tutorEvents` table stores it. The tutor module owns the
  * payload of each event type; core knows only the envelope, which is what it
@@ -194,16 +175,6 @@ export type LearnerModel = {
     accuracyRate: number; // Overall correctness
     averageConfidence: number; // Avg mastery across topics
   };
-};
-
-export type LearnerModelDebugSnapshot = {
-  nodeId: string;
-  nodeName?: string;
-  evidenceType?: Evidence['type'];
-  weight?: number;
-  oldConfidence?: number;
-  newConfidence?: number;
-  note?: string;
 };
 
 export type TopicMastery = {

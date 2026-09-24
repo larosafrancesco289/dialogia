@@ -4,7 +4,7 @@
 
 import type { PlanTurnOptions, ToolDefinition } from '@/lib/agent/types';
 import { loadedModuleRuntimes } from '@/lib/modules';
-import type { LearningPlan, Message } from '@/lib/types';
+import type { Message } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import type { PlanningContext, ToolGate } from '@/lib/agent/planning/types';
 
@@ -30,14 +30,13 @@ export function derivePlanningContext(args: {
   messagesForChat: Message[];
   ui?: UiSnapshot;
   toolDefinition?: ToolDefinition[];
-  currentPlan?: LearningPlan;
 }): PlanningContext {
-  const { chat, messagesForChat, ui, toolDefinition, currentPlan } = args;
+  const { chat, messagesForChat, ui, toolDefinition } = args;
 
   const gates: ToolGate[] = [];
   let moduleContext: Record<string, unknown> | undefined;
   for (const runtime of loadedModuleRuntimes()) {
-    const contribution = runtime.planning?.({ chat, messagesForChat, ui, currentPlan });
+    const contribution = runtime.planning?.({ chat, messagesForChat, ui });
     if (!contribution) continue;
     gates.push(contribution.gate);
     if (contribution.moduleContext) {

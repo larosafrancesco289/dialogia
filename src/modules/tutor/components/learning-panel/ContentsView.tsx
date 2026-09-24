@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { LearnerModel, LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
-import { isNodeReady } from '@/modules/tutor/learning-plan/service';
-import { explainMastery } from '@/modules/tutor/learner-model';
+import type { LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
+import { emptyTutorState, explainTopic, unmetPrerequisites } from '@/modules/tutor/engine';
 import { inSentence } from '@/modules/tutor/ui/text';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 
@@ -17,9 +16,12 @@ const isMeasured = (m: TopicMastery | undefined): m is TopicMastery =>
   !!m && (m.interactions > 0 || m.evidence.length > 0);
 
 /** The one definition of overall mastery: the mean over measured topics. */
-export function measuredMastery(plan: LearningPlan, model?: LearnerModel): number | undefined {
+export function measuredMastery(
+  plan: LearningPlan,
+  mastery?: Record<string, TopicMastery>,
+): number | undefined {
   const values = plan.nodes
-    .map((n) => model?.mastery?.[n.id])
+    .map((n) => mastery?.[n.id])
     .filter(isMeasured)
     .map((m) => m.confidence);
   return values.length ? values.reduce((sum, c) => sum + c, 0) / values.length : undefined;
@@ -50,12 +52,12 @@ export type ContentsCorrections = {
  */
 export function ContentsView({
   plan,
-  learnerModel,
+  mastery,
   affordances,
   corrections,
 }: {
   plan: LearningPlan;
-  learnerModel?: LearnerModel;
+  mastery?: Record<string, TopicMastery>;
   affordances: TutorAffordances;
   corrections: ContentsCorrections;
 }) {
@@ -65,7 +67,7 @@ export function ContentsView({
   useEffect(() => setOpenId(currentId), [currentId]);
 
   const done = plan.nodes.filter((n) => n.status === 'completed').length;
-  const average = measuredMastery(plan, learnerModel);
+  const average = measuredMastery(plan, mastery);
   const hours = plan.metadata?.estimatedHours;
   const meta = [
     `${done} of ${plan.nodes.length} done`,
@@ -87,7 +89,7 @@ export function ContentsView({
             node={node}
             number={index + 1}
             plan={plan}
-            mastery={learnerModel?.mastery?.[node.id]}
+            mastery={mastery?.[node.id]}
             affordances={affordances}
             corrections={corrections}
             open={openId === node.id}
@@ -119,7 +121,7 @@ function ContentsItem({
   onToggle: () => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const locked = node.status === 'not_started' && !isNodeReady(node.id, plan);
+  const locked = node.status === 'not_started' && unmetPrerequisites(plan, node).length > 0;
   const state =
     node.status === 'in_progress'
       ? 'is-current'
@@ -195,7 +197,7 @@ function ContentsItem({
             </ul>
           )}
 
-          {showMastery && <Why mastery={mastery!} />}
+          {showMastery && <Why nodeId={node.id} mastery={mastery!} />}
 
           {showMastery && affordances.correctMastery && (
             <p className="hub-contents__correct">
@@ -254,8 +256,17 @@ function ContentsItem({
 }
 
 /** Where the estimate started and what each piece of evidence did to it. */
-function Why({ mastery }: { mastery: TopicMastery }) {
-  const { start, steps } = explainMastery(mastery);
+function Why({ nodeId, mastery }: { nodeId: string; mastery: TopicMastery }) {
+  // B2: the Hub redesign reads `explainTopic` from the session state directly.
+  const explanation = explainTopic(
+    { ...emptyTutorState(), mastery: { [nodeId]: mastery } },
+    nodeId,
+  );
+  const start = explanation?.start ?? mastery.confidence;
+  const steps = (explanation?.steps ?? []).map((step) => ({
+    ...step,
+    evidence: mastery.evidence.find((entry) => entry.eventId === step.eventId),
+  }));
   const newest = [...steps].reverse();
   const shown = newest.slice(0, EVIDENCE_SHOWN);
   const hidden = newest.length - shown.length;
@@ -289,7 +300,11 @@ function Why({ mastery }: { mastery: TopicMastery }) {
           );
         })}
         {hidden > 0 && <li className="hub-contents__more">and {hidden} earlier</li>}
-        <li className="hub-contents__start">Started at {pct(start)}%, before any evidence</li>
+        <li className="hub-contents__start">
+          {mastery.baseline != null
+            ? `Carried over at ${pct(start)}% from before`
+            : `Started at ${pct(start)}%, before any evidence`}
+        </li>
       </ul>
     </div>
   );

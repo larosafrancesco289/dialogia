@@ -1,7 +1,5 @@
-import type { ChatDefaults, TutorProfile } from '@/lib/types';
+import type { ChatDefaults } from '@/lib/types';
 import type {
-  LearnerModelDebugEntry as ContractLearnerModelDebugEntry,
-  TutorToolUsageSnapshot,
   UiDebugSnapshot,
   UiFlagsSnapshot,
   UiMobileSnapshot,
@@ -11,9 +9,6 @@ import type {
   UiTutorSnapshot,
 } from '@/lib/contracts/ui';
 
-export type TutorToolUsage = TutorToolUsageSnapshot;
-export type LearnerModelDebugEntry = ContractLearnerModelDebugEntry;
-
 export type UIFlags = UiFlagsSnapshot;
 export type UIDebugState = UiDebugSnapshot;
 export type UISearchState = UiSearchSnapshot;
@@ -21,7 +16,6 @@ export type UIPlanState = UiPlanSnapshot;
 export type UIMobileState = UiMobileSnapshot;
 
 export type UITutorState = UiTutorSnapshot & {
-  profileByChatId?: Record<string, TutorProfile>;
   welcomeByChatId?: Record<
     string,
     {
@@ -38,7 +32,6 @@ export type UITutorState = UiTutorSnapshot & {
     generatedAt?: number;
   };
   greetedByChatId?: Record<string, boolean>;
-  contextMode?: 'summary' | 'full';
 };
 
 export type PersistedUiState = {
@@ -52,7 +45,7 @@ export type PersistedUiState = {
   chatDefaults?: ChatDefaults;
   flags?: Pick<UIFlags, 'experimentalTutor'>;
   debug?: Pick<UIDebugState, 'mode'>;
-  tutor?: Pick<UITutorState, 'contextMode' | 'defaultModelId' | 'forceMode' | 'autoScroll'>;
+  tutor?: Pick<UITutorState, 'defaultModelId' | 'forceMode' | 'autoScroll'>;
   plan?: Pick<UIPlanState, 'rightPanelOpen'>;
 };
 

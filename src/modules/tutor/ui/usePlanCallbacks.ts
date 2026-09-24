@@ -1,251 +1,156 @@
 import { useCallback, useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import {
-  calculatePlanProgress,
-  getNextNode,
-  updateNodeStatus,
-} from '@/modules/tutor/learning-plan/service';
-import { applyLearnerModelFeedback, resolveLearnerModel } from '@/modules/tutor/learner-model';
-import { selectCurrentChat, selectMessagesForCurrentChat } from '@/lib/store/selectors';
-import type { LearningPlan, LearnerModel } from '@/lib/types';
-import type { LearnerModelFeedback } from '@/modules/tutor/learner-model';
+import type { LearningPlan, TopicMastery } from '@/lib/types';
+import { confidenceOf, type LearnerCommand, type TutorState } from '@/modules/tutor/engine';
+import type { TutorDispatchResult } from '@/modules/tutor/store/tutorSlice';
+import { useTutorSession } from '@/modules/tutor/ui/useTutorSession';
 
-type PlanProgress = ReturnType<typeof calculatePlanProgress>;
+type PlanProgress = { completed: number; total: number; percentComplete: number };
+
+/** Distributes Omit over the command union, so a command is written without its actor. */
+type WithoutBy<T> = T extends unknown ? Omit<T, 'by'> : never;
+export type LearnerAction = WithoutBy<LearnerCommand>;
+
+// B2: "Too high / Too low" moves the estimate by this much; the Hub redesign
+// replaces it with a direct setting.
+const CONTEST_STEP = 0.15;
 
 export type PlanCallbacks = {
+  state: TutorState;
   learningPlan?: LearningPlan;
-  learnerModel?: LearnerModel;
+  mastery: Record<string, TopicMastery>;
   hasPlan: boolean;
   planProgress: PlanProgress | null;
   rightPanelOpen: boolean;
   rightPanelTab: 'plan' | 'progress';
-  onPlanUpdate: (plan: LearningPlan) => Promise<void>;
+  /** Runs a learner command through the engine; undefined when no chat is selected. */
+  dispatch: (
+    command: LearnerAction,
+    messageId?: string,
+  ) => Promise<TutorDispatchResult | undefined>;
   onStartLesson: (nodeId: string) => Promise<void>;
   onMarkKnown: (nodeId: string) => Promise<void>;
-  onLearnerModelFeedback: (feedback: LearnerModelFeedback) => Promise<void>;
   onToggleRightPanel: () => void;
   onOpenRightPanel: (tab?: 'plan' | 'progress') => void;
   onCloseRightPanel: () => void;
   onSendPlanFeedback: (message: string) => void;
-  onRequestMorePractice: (
-    completedNodeId: string,
-    startedNodeId?: string,
-    opts?: { adjustMastery?: boolean },
-  ) => Promise<void>;
+  onRequestMorePractice: (nodeId: string) => Promise<void>;
   onContestMastery: (nodeId: string, direction: 'up' | 'down') => Promise<number | undefined>;
   onResolveMisconceptionQuietly: (nodeId: string, misconceptionId: string) => Promise<void>;
   onReopenTopic: (nodeId: string) => Promise<void>;
 };
 
+/**
+ * The plan and learner model as the Hub, the header and the chapter breaks
+ * read them, and the learner's controls over them. Every change is a learner
+ * command through `dispatchTutor`. Quiet corrections only dispatch (the next
+ * turn's state block reports them); the ones that call for the tutor's reply
+ * also send a short message saying what the learner did.
+ */
 export function usePlanCallbacks(): PlanCallbacks {
-  const {
-    chat,
-    messages,
-    setUI,
-    updateChatSettings,
-    sendUserMessage,
-    applyLearnerModelFeedbackFromUser,
-    rightPanelOpen,
-    rightPanelTab,
-  } = useChatStore(
+  const { chatId, session } = useTutorSession();
+  const { setUI, sendUserMessage, dispatchTutor, rightPanelOpen, rightPanelTab } = useChatStore(
     (s) => ({
-      chat: selectCurrentChat(s),
-      messages: selectMessagesForCurrentChat(s),
       setUI: s.setUI,
-      updateChatSettings: s.updateChatSettings,
       sendUserMessage: s.sendUserMessage,
-      applyLearnerModelFeedbackFromUser: s.applyLearnerModelFeedbackFromUser,
+      dispatchTutor: s.dispatchTutor,
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
       rightPanelTab: s.ui.plan?.rightPanelTab ?? 'plan',
     }),
     shallow,
   );
 
-  const learningPlan = chat?.settings?.features.tutor?.learningPlan;
-  const hasPlan = !!learningPlan;
-  const planProgress = useMemo(
-    () => (learningPlan ? calculatePlanProgress(learningPlan) : null),
+  const state = session.state;
+  const learningPlan = state.plan;
+  const planProgress = useMemo((): PlanProgress | null => {
+    if (!learningPlan) return null;
+    const total = learningPlan.nodes.length;
+    const completed = learningPlan.nodes.filter((n) => n.status === 'completed').length;
+    return { completed, total, percentComplete: total ? Math.round((completed / total) * 100) : 0 };
+  }, [learningPlan]);
+
+  const dispatch = useCallback(
+    async (command: LearnerAction, messageId?: string) => {
+      if (!chatId) return undefined;
+      return dispatchTutor(chatId, { ...command, by: 'learner' } as LearnerCommand, {
+        by: 'learner',
+        ...(messageId ? { messageId } : {}),
+      });
+    },
+    [chatId, dispatchTutor],
+  );
+
+  const nameOf = useCallback(
+    (nodeId: string) => learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId,
     [learningPlan],
   );
 
-  const learnerModel = useMemo(
-    () => resolveLearnerModel(messages ?? [], chat?.settings?.features.tutor?.learnerModel),
-    [chat?.settings?.features.tutor?.learnerModel, messages],
-  );
-
-  const onPlanUpdate = useCallback(
-    async (updatedPlan: LearningPlan) => {
-      await updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
-    },
-    [updateChatSettings],
+  // B2: these become visible ledger lines; until then they are hidden user messages.
+  const tellTutor = useCallback(
+    (content: string, kind: string) =>
+      sendUserMessage(content, { metadata: { hiddenFromUser: true, kind } }),
+    [sendUserMessage],
   );
 
   const onStartLesson = useCallback(
     async (nodeId: string) => {
-      if (!learningPlan) return;
-      const node = learningPlan.nodes.find((n) => n.id === nodeId);
-      if (!node) return;
-      const isStartingLesson = node.status === 'not_started';
-
-      if (isStartingLesson) {
-        // One topic is live at a time: the one being set aside goes back to
-        // waiting, keeping its estimate and evidence.
-        let updatedPlan = learningPlan;
-        for (const other of learningPlan.nodes) {
-          if (other.status === 'in_progress') {
-            updatedPlan = updateNodeStatus(updatedPlan, other.id, 'not_started');
-          }
-        }
-        updatedPlan = updateNodeStatus(updatedPlan, nodeId, 'in_progress');
-        await updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
-        const prompt = `I am ready to start the topic '${node.name}'. Please introduce this concept and guide me through it.`;
-        await sendUserMessage(prompt, {
-          metadata: {
-            hiddenFromUser: true,
-            kind: 'tutor_start_lesson',
-          },
-        });
-      }
-
+      const result = await dispatch({ type: 'start_topic', nodeId });
       setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
+      if (result?.ok) await tellTutor(`Started ${nameOf(nodeId)}.`, 'tutor_start_lesson');
     },
-    [learningPlan, sendUserMessage, setUI, updateChatSettings],
+    [dispatch, nameOf, setUI, tellTutor],
   );
 
   const onMarkKnown = useCallback(
     async (nodeId: string) => {
-      if (!learningPlan) return;
-      const node = learningPlan.nodes.find((n) => n.id === nodeId);
-      if (!node) return;
-
-      // 1. Mark topic completed in plan + advance to next topic
-      let updatedPlan = updateNodeStatus(learningPlan, nodeId, 'completed');
-      const nextNode = getNextNode(updatedPlan);
-      if (nextNode && nextNode.status === 'not_started') {
-        updatedPlan = updateNodeStatus(updatedPlan, nextNode.id, 'in_progress');
-      }
-      await updateChatSettings({ features: { tutor: { learningPlan: updatedPlan } } });
-
-      // 2. Set confidence to 70% floor directly
-      void applyLearnerModelFeedbackFromUser({
-        nodeId,
-        estimatedConfidence: 0.7,
-        reason: `Student marked "${node.name}" as already known`,
-      });
-
-      // 3. Notify tutor (hidden from student)
-      await sendUserMessage(
-        `I already know the topic "${node.name}". Please skip teaching this and move to the next topic.`,
-        { metadata: { hiddenFromUser: true, kind: 'tutor_skip_topic' } },
-      );
+      await dispatch({ type: 'mark_known', nodeId });
     },
-    [learningPlan, sendUserMessage, updateChatSettings, applyLearnerModelFeedbackFromUser],
+    [dispatch],
   );
 
-  const onLearnerModelFeedback = useCallback(
-    (feedback: LearnerModelFeedback) => applyLearnerModelFeedbackFromUser(feedback),
-    [applyLearnerModelFeedbackFromUser],
-  );
-
-  // The learner's answer at a chapter end: "not yet". Reopens the finished
-  // topic, puts back the one the tutor had moved on to, and records the
-  // learner's own estimate below the advance threshold, as evidence, so the
-  // next turn neither re-advances nor forgets it.
   const onRequestMorePractice = useCallback(
-    async (completedNodeId: string, startedNodeId?: string, opts?: { adjustMastery?: boolean }) => {
-      if (!learningPlan) return;
-      const node = learningPlan.nodes.find((n) => n.id === completedNodeId);
-      if (!node) return;
-
-      let updatedPlan = updateNodeStatus(learningPlan, completedNodeId, 'in_progress');
-      const started = startedNodeId
-        ? learningPlan.nodes.find((n) => n.id === startedNodeId)
-        : undefined;
-      if (started?.status === 'in_progress') {
-        updatedPlan = updateNodeStatus(updatedPlan, started.id, 'not_started');
+    async (nodeId: string) => {
+      const result = await dispatch({ type: 'more_practice', nodeId });
+      if (result?.ok) {
+        await tellTutor(`Asked for more practice on ${nameOf(nodeId)}.`, 'tutor_more_practice');
       }
-
-      const current = learnerModel?.mastery?.[completedNodeId]?.confidence;
-      // Only where the learner may correct the model; a plan-only arm reopens
-      // the topic without touching the estimate.
-      const updatedModel =
-        learnerModel && opts?.adjustMastery !== false
-          ? applyLearnerModelFeedback(learnerModel, {
-              nodeId: completedNodeId,
-              direction: 'down',
-              estimatedConfidence: Math.min(current ?? 0.6, 0.6),
-              reason: `Learner asked for more practice on "${node.name}" at the end of the topic.`,
-            }).model
-          : undefined;
-
-      await updateChatSettings({
-        features: {
-          tutor: {
-            learningPlan: updatedPlan,
-            ...(updatedModel ? { learnerModel: updatedModel } : {}),
-          },
-        },
-      });
-      await sendUserMessage(
-        `I'm not ready to move on from "${node.name}" yet. Please give me more practice on it before we continue.`,
-        { metadata: { hiddenFromUser: true, kind: 'tutor_more_practice' } },
-      );
     },
-    [learningPlan, learnerModel, sendUserMessage, updateChatSettings],
+    [dispatch, nameOf, tellTutor],
   );
 
-  // A margin-note correction: the learner says an estimate is too high or
-  // too low. It is saved on the chat as self-reported evidence and reaches
-  // the tutor through its next turn's context, so it costs no turn of its
-  // own. Returns the new confidence.
   const onContestMastery = useCallback(
     async (nodeId: string, direction: 'up' | 'down') => {
-      if (!learnerModel) return undefined;
-      const name = learningPlan?.nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
-      const { model, to } = applyLearnerModelFeedback(learnerModel, {
+      const current = confidenceOf(state, nodeId);
+      const setTo =
+        Math.round(
+          Math.min(1, Math.max(0, current + (direction === 'up' ? CONTEST_STEP : -CONTEST_STEP))) *
+            100,
+        ) / 100;
+      const result = await dispatch({
+        type: 'adjust_mastery',
         nodeId,
-        direction,
-        reason: `Learner said the estimate for "${name}" was too ${direction === 'down' ? 'high' : 'low'}.`,
+        setTo,
+        note: `You said the estimate was too ${direction === 'down' ? 'high' : 'low'}.`,
       });
-      await updateChatSettings({ features: { tutor: { learnerModel: model } } });
-      return to ?? model.mastery[nodeId]?.confidence;
+      return result?.ok ? confidenceOf(result.state, nodeId) : undefined;
     },
-    [learnerModel, learningPlan, updateChatSettings],
+    [dispatch, state],
   );
 
-  // Resolving a misconception from the Learning Hub: saved on the chat as
-  // the learner's own correction, read by the tutor next turn; no turn spent.
   const onResolveMisconceptionQuietly = useCallback(
     async (nodeId: string, misconceptionId: string) => {
-      if (!learnerModel) return;
-      const { model } = applyLearnerModelFeedback(learnerModel, {
-        nodeId,
-        misconceptionId,
-        reason: 'Learner marked this misconception as resolved.',
-      });
-      await updateChatSettings({ features: { tutor: { learnerModel: model } } });
+      await dispatch({ type: 'resolve_misconception', nodeId, misconceptionId });
     },
-    [learnerModel, updateChatSettings],
+    [dispatch],
   );
 
-  // Revise plan: take a finished topic up again. A plan change only; the
-  // estimate stays as it is, and the tutor is told so it can pick it up.
   const onReopenTopic = useCallback(
     async (nodeId: string) => {
-      if (!learningPlan) return;
-      const node = learningPlan.nodes.find((n) => n.id === nodeId);
-      if (!node || node.status !== 'completed') return;
-      await updateChatSettings({
-        features: {
-          tutor: { learningPlan: updateNodeStatus(learningPlan, nodeId, 'in_progress') },
-        },
-      });
-      await sendUserMessage(`I'd like to revisit "${node.name}".`, {
-        metadata: { hiddenFromUser: true, kind: 'tutor_reopen_topic' },
-      });
+      const result = await dispatch({ type: 'reopen_topic', nodeId });
+      if (result?.ok) await tellTutor(`Reopened ${nameOf(nodeId)}.`, 'tutor_reopen_topic');
     },
-    [learningPlan, sendUserMessage, updateChatSettings],
+    [dispatch, nameOf, tellTutor],
   );
 
   const onToggleRightPanel = useCallback(() => {
@@ -278,16 +183,16 @@ export function usePlanCallbacks(): PlanCallbacks {
   );
 
   return {
+    state,
     learningPlan,
-    learnerModel,
-    hasPlan,
+    mastery: state.mastery,
+    hasPlan: !!learningPlan,
     planProgress,
     rightPanelOpen,
     rightPanelTab,
-    onPlanUpdate,
+    dispatch,
     onStartLesson,
     onMarkKnown,
-    onLearnerModelFeedback,
     onToggleRightPanel,
     onOpenRightPanel,
     onCloseRightPanel,

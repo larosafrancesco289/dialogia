@@ -21,6 +21,7 @@ export async function composeTurn({
   prior,
   newUser,
   attachments,
+  store,
 }: ComposeTurnArgs): Promise<TurnComposition> {
   const searchEnabled = settings.searchEnabled;
 
@@ -58,12 +59,14 @@ export async function composeTurn({
   let modulesRequirePlanning = false;
   let modulesReplaceBaseSystem = false;
   let modulesRequestAgentLoop = false;
+  let messagePatch: Partial<Message> | undefined;
   for (const runtime of await loadModuleRuntimes()) {
     const contribution = await runtime.compose?.({
       chat,
       ui,
       settings,
       priorMessages: priorMessages as Message[],
+      store,
     });
     if (!contribution) continue;
     if (contribution.tools?.length) moduleTools.push(...contribution.tools);
@@ -73,6 +76,9 @@ export async function composeTurn({
     if (contribution.requiresPlanning) modulesRequirePlanning = true;
     if (contribution.replacesBaseSystem) modulesReplaceBaseSystem = true;
     if (contribution.loop === 'agent') modulesRequestAgentLoop = true;
+    if (contribution.messagePatch) {
+      messagePatch = { ...(messagePatch ?? {}), ...contribution.messagePatch };
+    }
   }
   const tools = [...searchTools, ...moduleTools];
 
@@ -121,6 +127,6 @@ export async function composeTurn({
     shouldPlan,
     ...(modulesRequestAgentLoop ? { loop: 'agent' as const } : {}),
     settings,
-    consumedTutorNudge: settings.tutorEnabled ? settings.tutorNudge : undefined,
+    ...(messagePatch ? { messagePatch } : {}),
   };
 }

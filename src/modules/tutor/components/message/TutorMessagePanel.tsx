@@ -1,35 +1,29 @@
-import { shallow } from 'zustand/shallow';
+import { useMemo } from 'react';
 import { useChatStore } from '@/lib/store';
 import type { MessagePanelProps } from '@/lib/ui/panels';
-import { selectTutorEntry } from '@/lib/ui/tutorState';
 import { TutorPanel } from '@/modules/tutor/components/message/TutorPanel';
+import { useTutorSession } from '@/modules/tutor/ui/useTutorSession';
+import { cardsForMessage } from '@/modules/tutor/ui/messageViews';
 
 /**
- * The tutor module's `messagePanel` slot: the interactive widgets a tutor turn
- * produced. Resolves its own payload from the store so the shell passes only the
- * message.
+ * The tutor module's `messagePanel` slot: the cards a tutor turn put in front
+ * of the learner, read from the chat's event log by message id.
  */
 export function TutorMessagePanel({ message }: MessagePanelProps) {
-  const { tutorEntry, tutorGloballyEnabled, isLatestAssistant } = useChatStore(
-    (s) => ({
-      tutorEntry: selectTutorEntry(s.ui, message.id) ?? message.tutor,
-      tutorGloballyEnabled: !!s.ui.flags.experimentalTutor,
-      isLatestAssistant: (s.messageIdsByChatId[message.chatId] ?? []).at(-1) === message.id,
-    }),
-    shallow,
+  const { session } = useTutorSession();
+  const tutorGloballyEnabled = useChatStore((s) => !!s.ui.flags.experimentalTutor);
+  const isLatestAssistant = useChatStore(
+    (s) => (s.messageIdsByChatId[message.chatId] ?? []).at(-1) === message.id,
   );
+  const cards = useMemo(() => cardsForMessage(session, message.id), [session, message.id]);
 
-  if (!tutorGloballyEnabled || !tutorEntry) return null;
+  if (!tutorGloballyEnabled) return null;
 
   return (
     <TutorPanel
+      chatId={message.chatId}
       messageId={message.id}
-      title={tutorEntry.title}
-      mcq={tutorEntry.mcq}
-      questionnaire={tutorEntry.questionnaire}
-      diagnostic={tutorEntry.diagnostic}
-      planProposal={tutorEntry.planProposal}
-      planSuggestions={tutorEntry.planSuggestions}
+      cards={cards}
       isLatestAssistant={isLatestAssistant}
     />
   );

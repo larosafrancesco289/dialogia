@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { LearningPlan, LearningPlanNode } from '@/lib/types';
-import { isNodeReady } from '@/modules/tutor/learning-plan/service';
+import { unmetPrerequisites } from '@/modules/tutor/engine';
 import { inSentence } from '@/modules/tutor/ui/text';
 
 export type PlanRevisions = {
@@ -88,7 +88,7 @@ function ReviseItem({
   onStartNext: () => void;
   onReopen: () => void;
 }) {
-  const locked = node.status === 'not_started' && !isNodeReady(node.id, plan);
+  const locked = node.status === 'not_started' && unmetPrerequisites(plan, node).length > 0;
   const ready = node.status === 'not_started' && !locked;
   const state =
     node.status === 'in_progress'

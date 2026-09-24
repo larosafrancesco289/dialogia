@@ -7,9 +7,31 @@ import type {
 
 const REMOVED_MESSAGE_KEYS = ['deepResearch'] as const;
 
+const LEGACY_TUTOR_HIDDEN = /^\s*Tutor (Recap|Data JSON):/;
+
 export function sanitizeMessageRecord(message: Message): { next: Message; changed: boolean } {
   const next: Message = { ...message };
   let changed = false;
+
+  // The tutor used to copy its cards, answer keys included, into hiddenContent
+  // so the model would see them. Tool rounds replace that; the copy is derived
+  // from `tutor`, so dropping it loses nothing.
+  if (
+    next.tutor &&
+    typeof next.hiddenContent === 'string' &&
+    LEGACY_TUTOR_HIDDEN.test(next.hiddenContent)
+  ) {
+    delete next.hiddenContent;
+    changed = true;
+  }
+
+  if ('tutorSeq' in next) {
+    const seq = next.tutorSeq;
+    if (typeof seq !== 'number' || !Number.isInteger(seq) || seq < 0) {
+      delete next.tutorSeq;
+      changed = true;
+    }
+  }
 
   if (typeof next.hiddenContent === 'string') {
     const trimmed = next.hiddenContent.trim();

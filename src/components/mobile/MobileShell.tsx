@@ -7,7 +7,7 @@ import { MobileHeader } from '@/components/mobile/MobileHeader';
 import { MobileDrawer } from '@/components/mobile/MobileDrawer';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { selectCurrentChat } from '@/lib/store/selectors';
+import { selectRightPanelContent } from '@/lib/modules';
 import { useMobileDrawer } from '@/components/mobile/useMobileDrawer';
 import { useHaptics } from '@/lib/hooks/useHaptics';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
@@ -53,9 +53,7 @@ export function MobileShell() {
       introOpen: s.ui.introSeen !== true,
       selectedChatId: s.selectedChatId,
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
-      hasPanelContent:
-        !!selectCurrentChat(s)?.settings?.features.tutor?.learningPlan ||
-        !!s.ui.plan?.sheetPlanOverride,
+      hasPanelContent: selectRightPanelContent(s) || !!s.ui.plan?.sheetPlanOverride,
       setUI: s.setUI,
       newChat: s.newChat,
     }),

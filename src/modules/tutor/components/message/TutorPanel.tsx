@@ -1,54 +1,30 @@
 import { motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
-import type {
-  TutorDiagnostic,
-  TutorMCQItem,
-  TutorPlanProposal,
-  TutorPlanSuggestion,
-  TutorQuestionnaire,
-} from '@/lib/types';
 import { cardVariants } from '@/modules/tutor/components/message/shared';
 import { QuestionnaireCard } from '@/modules/tutor/components/message/QuestionnaireCard';
 import { PlanProposalCard } from '@/modules/tutor/components/message/PlanProposalCard';
-import { PlanSuggestionsCard } from '@/modules/tutor/components/message/PlanSuggestionsCard';
 import { DiagnosticCard } from '@/modules/tutor/components/message/DiagnosticCard';
-import { McqCard } from '@/modules/tutor/components/message/McqCard';
+import { QuizCard } from '@/modules/tutor/components/message/McqCard';
+import type { MessageCards } from '@/modules/tutor/ui/messageViews';
 
 // Mastery changes from assessments are not shown here: the margin notes
 // under the message state them once, with their reasons.
 export function TutorPanel(props: {
+  chatId: string;
   messageId: string;
-  title?: string;
-  mcq?: TutorMCQItem[];
-  questionnaire?: TutorQuestionnaire;
-  diagnostic?: TutorDiagnostic;
-  planProposal?: TutorPlanProposal;
-  planSuggestions?: TutorPlanSuggestion[];
+  cards: MessageCards;
   isLatestAssistant?: boolean;
 }) {
   const reduceMotion = useReducedMotion();
-
-  const {
-    messageId,
-    title,
-    mcq,
-    questionnaire,
-    diagnostic,
-    planProposal,
-    planSuggestions,
-    isLatestAssistant,
-  } = props;
+  const { chatId, messageId, cards, isLatestAssistant } = props;
+  const { intake, diagnostic, quiz, proposal } = cards;
 
   const shouldAnimate = !!isLatestAssistant && !reduceMotion;
-
   const hasAny =
-    (questionnaire && questionnaire.questions && questionnaire.questions.length > 0) ||
-    planProposal ||
-    (planSuggestions && planSuggestions.length > 0) ||
-    (diagnostic && diagnostic.items && diagnostic.items.length > 0) ||
-    (mcq && mcq.length > 0);
-
+    !!intake?.questions.length || !!proposal || !!diagnostic?.items.length || !!quiz?.items.length;
   if (!hasAny) return null;
+
+  const title = quiz?.title ?? intake?.title;
 
   return (
     <MotionConfig reducedMotion={shouldAnimate ? 'never' : 'always'}>
@@ -64,23 +40,18 @@ export function TutorPanel(props: {
             <span className="truncate">{title || 'Exercises'}</span>
           </div>
           <div className="exercise-sheet__body">
-            {questionnaire && questionnaire.questions?.length ? (
-              <QuestionnaireCard messageId={messageId} questionnaire={questionnaire} />
+            {intake && intake.questions.length ? (
+              <QuestionnaireCard chatId={chatId} messageId={messageId} intake={intake} />
             ) : null}
-            {planProposal ? (
-              <PlanProposalCard
-                messageId={messageId}
-                proposal={planProposal}
-                suggestions={planSuggestions}
-              />
+            {proposal ? (
+              <PlanProposalCard chatId={chatId} messageId={messageId} proposal={proposal} />
             ) : null}
-            {!planProposal && planSuggestions && planSuggestions.length > 0 ? (
-              <PlanSuggestionsCard suggestions={planSuggestions} />
+            {diagnostic && diagnostic.items.length ? (
+              <DiagnosticCard chatId={chatId} messageId={messageId} diagnostic={diagnostic} />
             ) : null}
-            {diagnostic && diagnostic.items?.length ? (
-              <DiagnosticCard messageId={messageId} diagnostic={diagnostic} />
-            ) : null}
-            {mcq && mcq.length > 0 && <McqCard messageId={messageId} items={mcq} />}
+            {quiz && quiz.items.length > 0 && (
+              <QuizCard chatId={chatId} messageId={messageId} quiz={quiz} />
+            )}
           </div>
         </motion.div>
       </div>

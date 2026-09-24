@@ -1,1 +1,1 @@
-export const STORE_MIGRATION_VERSION = 7;
+export const STORE_MIGRATION_VERSION = 8;

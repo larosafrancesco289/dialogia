@@ -17,7 +17,6 @@ export function buildPersistedUiState(ui: UIState): PersistedUiState {
     flags: { experimentalTutor: ui.flags.experimentalTutor },
     debug: { mode: ui.debug.mode },
     tutor: {
-      contextMode: ui.tutor?.contextMode,
       defaultModelId: ui.tutor?.defaultModelId,
       forceMode: ui.tutor?.forceMode,
       autoScroll: ui.tutor?.autoScroll,

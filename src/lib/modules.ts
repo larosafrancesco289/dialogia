@@ -13,21 +13,20 @@ import type { ToolDefinition } from '@/lib/transport/contracts';
 import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
 import type { ToolGate } from '@/lib/agent/planning/types';
 import type { ModuleTurnEffects, TurnEffectsContext } from '@/lib/agent/orchestrator/turnEffects';
-import type { PersistFragment, StoreGetter, StoreSetter } from '@/lib/store/stateTypes';
+import type { PersistFragment, StoreGetter, StoreSetter, StoreState } from '@/lib/store/stateTypes';
 import type { ModuleSettingsDefaults, ModuleSettingsPhase } from '@/lib/settings/moduleDefaults';
 import type { ModulePanels } from '@/lib/ui/panels';
-import type { Chat, LearningPlan, Message } from '@/lib/types';
+import type { TurnStore } from '@/lib/agent/contracts';
+import type { Chat, Message } from '@/lib/types';
 import { createTutorSlice } from '@/modules/tutor/store/tutorSlice';
-import { decorateTutorMessage } from '@/modules/tutor/lib/hiddenContent';
 import { tutorSettingsDefaults } from '@/modules/tutor/lib/defaults';
 import { tutorPanels } from '@/modules/tutor/panels';
-import { warmTutorProfile } from '@/modules/tutor/lib/bootstrap';
+import { hasTutorPlan } from '@/modules/tutor/store/selectors';
 
 export type ModulePlanningArgs = {
   chat: Chat;
   messagesForChat: Message[];
   ui?: UiSnapshot;
-  currentPlan?: LearningPlan;
 };
 
 export type ModulePlanningContribution = {
@@ -41,6 +40,12 @@ export type ModuleComposeArgs = {
   ui?: UiSnapshot;
   settings: ResolvedTurnSettings;
   priorMessages: Message[];
+  /**
+   * The turn's store. A module reads (and may first load) its own state here;
+   * the composed store carries the module's slice even though this type names
+   * only core fields.
+   */
+  store?: TurnStore;
 };
 
 export type ModuleComposeContribution = {
@@ -57,6 +62,8 @@ export type ModuleComposeContribution = {
   loop?: 'agent';
   /** The module's preamble is a complete system prompt; suppress the base one. */
   replacesBaseSystem?: boolean;
+  /** Fields to set on the turn's assistant message once the turn is composed. */
+  messagePatch?: Partial<Message>;
 };
 
 /** A module's turn-time half. Loaded on demand, never at boot. */
@@ -84,6 +91,8 @@ export type AppModule = {
   decorateMessage?(message: Message): Message;
   /** Components the shell mounts into its typed UI slots. Boot half. */
   panels?: ModulePanels;
+  /** Whether the module's `rightPanel` has something to show now. Boot half. */
+  hasRightPanelContent?(state: StoreState): boolean;
   /** Warms whatever the module needs after the store has hydrated. Boot half. */
   onBootstrap?(store: { get: StoreGetter; set: StoreSetter }): Promise<void> | void;
   /** Fills in the module's own chat-settings block. Boot half. */
@@ -107,14 +116,18 @@ const coreModule: AppModule = {
 const tutorModule: AppModule = {
   id: 'tutor',
   storeSlice: (set, get, store) => createTutorSlice(set, get, store),
-  decorateMessage: decorateTutorMessage,
   settingsDefaults: tutorSettingsDefaults,
   panels: tutorPanels,
-  onBootstrap: warmTutorProfile,
+  hasRightPanelContent: hasTutorPlan,
   load: async () => (await import('@/modules/tutor/moduleEntry')).tutorRuntime,
 };
 
 export const ENABLED_MODULES: AppModule[] = [coreModule, tutorModule];
+
+/** Whether any module's right panel has content for the current state. */
+export function selectRightPanelContent(state: StoreState): boolean {
+  return ENABLED_MODULES.some((appModule) => appModule.hasRightPanelContent?.(state) === true);
+}
 
 let loading: Promise<ModuleRuntime[]> | undefined;
 let loaded: ModuleRuntime[] = [];

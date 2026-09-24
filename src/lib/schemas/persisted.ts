@@ -185,5 +185,7 @@ export const MessageSchema = z
     // Shape-checked by `sanitizeMessageRecord`, which drops malformed rounds
     // rather than rejecting the whole message.
     toolRounds: z.custom<MessageToolRound[]>().optional(),
+    // Checked by `sanitizeMessageRecord`, which drops a malformed value.
+    tutorSeq: z.custom<number>().optional(),
   })
   .passthrough();

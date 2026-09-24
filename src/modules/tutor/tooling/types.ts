@@ -1,8 +1,6 @@
 import type { PlanTurnResult, TurnComposition } from '@/lib/agent/types';
 import type { StoreState } from '@/lib/store/types';
-import { selectTutorEntry } from '@/lib/ui/tutorState';
 import type { Message, MessageTutor, ToolCallLogEntry, PersistedAttachment } from '@/lib/types';
-import type { LearnerModelDebugEntry } from '@/lib/store/types';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 
 export type HeadlessTurnArtifacts = {
@@ -53,8 +51,8 @@ export type HeadlessTurnSnapshot = {
     systemSnapshot?: string;
     genSettings?: Message['genSettings'];
     debugRequestBody?: string;
-    tutorUi?: ReturnType<typeof selectTutorEntry>;
-    learnerModelDebug?: LearnerModelDebugEntry;
+    /** The cards this reply showed, read from the tutor's event log. */
+    tutorUi?: Record<string, unknown>;
   };
   composition: HeadlessTurnArtifacts['composition'];
   plan: PlanTurnResult;
@@ -84,7 +82,7 @@ export function buildHeadlessTurnSnapshot(
     throw new Error(`No user message found before assistant ${assistantMessageId}`);
   }
 
-  const tutorUi = selectTutorEntry(state.ui, assistantMessageId) ?? artifacts.tutorUi;
+  const tutorUi = artifacts.tutorUi;
   // Look up debug entry by exact messageId or by round-keyed entries (e.g. msgId_r0, msgId_r1)
   const debugMap = state.ui.debug.byMessageId ?? {};
   let debugEntry = debugMap[assistantMessageId];
@@ -97,7 +95,6 @@ export function buildHeadlessTurnSnapshot(
       debugEntry = roundEntries[roundEntries.length - 1][1];
     }
   }
-  const learnerModelDebug = state.ui.debug.learnerModelDebugByMessageId?.[assistantMessageId];
 
   return {
     chatId,
@@ -128,7 +125,6 @@ export function buildHeadlessTurnSnapshot(
       genSettings: assistant.genSettings,
       debugRequestBody: debugEntry?.body ?? artifacts.debugPayload,
       tutorUi,
-      learnerModelDebug,
     },
     composition: artifacts.composition,
     plan: artifacts.plan,

@@ -4,7 +4,7 @@ import { isNativeSearchMode } from '@/lib/search/providers/types';
 const FOLLOW_UP_WITH_SEARCH = 'Write the final answer. Cite sources inline as [n].';
 
 const FOLLOW_UP_DEFAULT =
-  'Continue the lesson concisely. Give brief guidance and a next step. Do not repeat items already rendered.';
+  'Continue your reply using the tool results above. Do not repeat what has already been shown.';
 
 export function followUpPrompt(args: {
   searchEnabled: boolean;

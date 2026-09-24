@@ -148,17 +148,31 @@ export type Message = {
     /** Legacy audio length retained for imported chats. */
     audioLengthMs?: number;
   };
-  // Optional: persisted tutor payload for interactive content and attempts
+  /**
+   * The tutor's cards and attempts from before its event log.
+   * @deprecated legacy: read by the import only. Cards now render from tutor events.
+   */
   tutor?: MessageTutor;
   tutorWelcome?: boolean;
-  // Learner Model (attached to assistant messages)
-  learnerModel?: LearnerModel; // Snapshot of learner model at this point
-  // Plan Updates (track what changed in this interaction)
+  /**
+   * A snapshot of the learner model after this turn, from before the event log.
+   * @deprecated legacy: read by the import only.
+   */
+  learnerModel?: LearnerModel;
+  /**
+   * What this turn changed in the plan and the learner model, from before the event log.
+   * @deprecated legacy: read by the import only (and old transcripts' margin notes).
+   */
   planUpdates?: {
     statusChanges?: { nodeId: string; from: string; to: string }[];
     masteryChanges?: { nodeId: string; from: number; to: number }[];
     summary?: string;
   };
+  /**
+   * The position in the chat's tutor event log that this assistant turn saw
+   * when it was composed. The next turn reports what the learner changed after it.
+   */
+  tutorSeq?: number;
   // Tool call transparency log for this assistant turn
   toolCalls?: ToolCallLogEntry[];
   // Ordered stream of model activity for this assistant turn.

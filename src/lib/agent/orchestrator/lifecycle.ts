@@ -1,4 +1,3 @@
-import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { snapshotGenSettings } from '@/lib/agent/generation';
 import type { RunTurnHooks } from './turn';
 import type { StoreGetter, StoreSetter, TurnComposition, PlanTurnResult } from '@/lib/agent/types';
@@ -26,7 +25,7 @@ export type TurnLifecycle = {
 };
 
 export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycle => {
-  const { isPrimary, set, updateMessage } = options;
+  const { updateMessage } = options;
 
   let latestComposition: TurnComposition | undefined;
   let latestPlan: PlanTurnResult | undefined;
@@ -44,9 +43,7 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
   const hooks: RunTurnHooks = {
     onComposition: (composition) => {
       latestComposition = composition;
-      if (isPrimary && composition.consumedTutorNudge) {
-        set((state) => ({ ui: resetEphemeralUi(state.ui) }));
-      }
+      if (composition.messagePatch) updateMessage(composition.messagePatch);
       effects.onComposition(composition);
     },
     onPlanResult: (plan) => {

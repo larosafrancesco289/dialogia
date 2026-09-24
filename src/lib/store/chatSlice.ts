@@ -15,7 +15,6 @@ import {
   setMessagesForChat,
 } from '@/lib/messages/indexing';
 import { hydrateMessageList } from '@/lib/services/hydrate';
-import { mergeTutorMap } from '@/lib/ui/tutorState';
 
 // Keeps the turn pipeline out of the boot bundle; welcome priming is user-triggered
 // and fire-and-forget, so the deferred load is invisible to callers.
@@ -192,13 +191,12 @@ export function createChatSlice(
       const load = (async () => {
         try {
           const list = await repository.loadMessagesForChat(chatId);
-          const { messages, tutorByMessageId } = hydrateMessageList(list);
+          const messages = hydrateMessageList(list);
           set((s) => ({
             // Merge instead of replace: messages sent while the load was in
             // flight must survive (append dedupes by id).
             ...appendMessagesToChat(s, chatId, messages),
             ...markChatLoaded(s, chatId),
-            ui: mergeTutorMap(s.ui, tutorByMessageId),
           }));
         } finally {
           inflightMessageLoads.delete(chatId);

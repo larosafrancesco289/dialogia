@@ -4,15 +4,9 @@
 
 import type { ModuleRuntime } from '@/lib/modules';
 import { buildTutorComposeContribution } from '@/modules/tutor/agent/compose';
-import { createTutorTurnEffects } from '@/modules/tutor/agent/turnEffects';
-import {
-  buildTutorPlanningContribution,
-  registerTutorTools,
-} from '@/modules/tutor/tools/moduleEntry';
+import { registerTutorTools } from '@/modules/tutor/tools/register';
 
 export const tutorRuntime: ModuleRuntime = {
   registerTools: registerTutorTools,
   compose: buildTutorComposeContribution,
-  planning: buildTutorPlanningContribution,
-  turnEffects: createTutorTurnEffects,
 };

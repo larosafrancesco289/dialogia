@@ -20,7 +20,7 @@ import {
 export function LearningPanel() {
   const {
     learningPlan,
-    learnerModel,
+    mastery,
     onStartLesson,
     onMarkKnown,
     onReopenTopic,
@@ -82,7 +82,7 @@ export function LearningPanel() {
         ) : (
           <ContentsView
             plan={plan}
-            learnerModel={learnerModel}
+            mastery={mastery}
             affordances={
               isPreviewingProposal ? { ...affordances, correctMastery: false } : affordances
             }
