@@ -52,6 +52,7 @@ export function ChatPanel(props: ChatPanelProps) {
   // and deleting asks once, inline, instead of through browser prompts.
   const [presetMode, setPresetMode] = useState<'idle' | 'save' | 'rename' | 'delete'>('idle');
   const [presetName, setPresetName] = useState('');
+  const [tokensInvalid, setTokensInvalid] = useState(false);
   const selectedPreset = presets.find((p) => p.id === selectedPresetId);
 
   const refreshPresets = async () => {
@@ -257,21 +258,37 @@ export function ChatPanel(props: ChatPanelProps) {
                 inputMode="numeric"
                 placeholder="Automatic"
                 value={reasoningTokensStr}
-                onChange={(e) => setReasoningTokensStr(e.target.value)}
+                aria-invalid={tokensInvalid || undefined}
+                aria-describedby="settings-reasoning-tokens-hint"
+                onChange={(e) => {
+                  setReasoningTokensStr(e.target.value);
+                  setTokensInvalid(false);
+                }}
                 onBlur={() => {
                   const value = reasoningTokensStr.trim();
                   if (value === '') {
                     setReasoningTokens(undefined);
                     return;
                   }
+                  // A request ignores anything but a positive whole number, so
+                  // saving one would change nothing and say it had.
                   const parsed = Number(value);
-                  if (!Number.isNaN(parsed)) setReasoningTokens(Math.floor(parsed));
+                  if (!Number.isInteger(parsed) || parsed < 1) {
+                    setTokensInvalid(true);
+                    return;
+                  }
+                  setReasoningTokens(parsed);
                 }}
                 onKeyDown={(e) => e.stopPropagation()}
               />
-              <div className="field__hint">
-                A cap on thinking tokens, for models that accept one. Leave it empty to let the
-                model decide.
+              <div
+                id="settings-reasoning-tokens-hint"
+                className="field__hint"
+                role={tokensInvalid ? 'alert' : undefined}
+              >
+                {tokensInvalid
+                  ? 'Enter a whole number of tokens above 0, or leave it empty. Not saved.'
+                  : 'A cap on thinking tokens, for models that accept one. Leave it empty to let the model decide.'}
               </div>
             </div>
           </div>

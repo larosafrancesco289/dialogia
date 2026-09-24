@@ -72,7 +72,13 @@ function CustomEndpointEditor({
           defaultValue={endpoint.baseUrl ?? ''}
           spellCheck={false}
           onBlur={(event) => {
-            updateEndpoint(endpoint.id, { baseUrl: event.target.value });
+            // A server needs an address: an emptied field goes back to the one
+            // it has, rather than showing blank over a URL still in use.
+            if (!event.target.value.trim()) {
+              event.target.value = endpoint.baseUrl ?? '';
+              return;
+            }
+            updateEndpoint(endpoint.id, { baseUrl: event.target.value.trim() });
             onChanged();
           }}
         />
@@ -92,12 +98,13 @@ function CustomEndpointEditor({
           spellCheck={false}
           placeholder="qwen3:8b, llama3.2"
           onBlur={(event) => {
-            updateEndpoint(endpoint.id, {
-              modelIds: event.target.value
-                .split(',')
-                .map((entry) => entry.trim())
-                .filter(Boolean),
-            });
+            const modelIds = event.target.value
+              .split(',')
+              .map((entry) => entry.trim())
+              .filter(Boolean);
+            // Show the list as it was saved.
+            event.target.value = modelIds.join(', ');
+            updateEndpoint(endpoint.id, { modelIds });
             onChanged();
           }}
         />

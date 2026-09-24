@@ -24,6 +24,13 @@ export function useEndpointProbe(endpoint: ProviderEndpoint): {
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 
+  // A result belongs to the address it tested; a new address starts over.
+  useEffect(() => {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    setState({ status: 'idle' });
+  }, [endpoint.baseUrl]);
+
   const cancel = useCallback(() => {
     controllerRef.current?.abort();
     controllerRef.current = null;
