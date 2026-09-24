@@ -8,7 +8,7 @@ import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
 import { persistMessages } from '@/lib/services/messagePersistence';
 import { appendMessagesToChat } from '@/lib/messages/indexing';
-import { adjustActiveTurnCount, clearActiveTurnCount } from '@/lib/ui/streaming';
+import { adjustActiveTurnCount } from '@/lib/ui/streaming';
 
 export type SpawnMessagesResult = {
   userMessage: Message;
@@ -83,8 +83,9 @@ export const spawnTurnMessages = async ({
   };
 
   const completeAll = () => {
+    const remaining = Math.max(0, pendingStreams);
     pendingStreams = 0;
-    set((state) => ({ ui: clearActiveTurnCount(state.ui, chatId) }));
+    set((state) => ({ ui: adjustActiveTurnCount(state.ui, chatId, -remaining) }));
     clearTurnController(chatId, masterController);
   };
 

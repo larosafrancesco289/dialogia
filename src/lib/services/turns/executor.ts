@@ -146,7 +146,7 @@ export const executeModelTurn = async ({
       return;
     }
   } catch (error: unknown) {
-    handleTurnApiError(error, set, get, runtime.chatId);
+    handleTurnApiError(error, get);
     controller.abort();
   } finally {
     masterController.signal.removeEventListener('abort', abortListener);

@@ -5,7 +5,7 @@ import { abortAllTurns, abortTurn } from '@/lib/turns/runtime/abortControllers';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
-import { clearActiveTurnCount, isChatStreaming } from '@/lib/ui/streaming';
+import { isChatStreaming } from '@/lib/ui/streaming';
 import { canRedoReply } from '@/lib/modules';
 import { notify } from '@/lib/store/notify';
 import { NOTICE_REPLY_IN_OTHER_TAB } from '@/lib/store/notices';
@@ -87,6 +87,9 @@ export function createMessageSlice(
       });
     },
 
+    // Aborting is the whole of it: each turn counts itself out as it ends.
+    // Zeroing the count here would let a stopped turn that ends later take a
+    // newer turn's share with it.
     stopStreaming() {
       const chatId = get().selectedChatId;
       if (chatId) {
@@ -94,9 +97,6 @@ export function createMessageSlice(
       } else {
         abortAllTurns();
       }
-      set((s) => ({
-        ui: clearActiveTurnCount(s.ui, chatId),
-      }));
     },
 
     async editUserMessage(messageId, newContent, opts) {

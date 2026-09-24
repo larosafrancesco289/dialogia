@@ -160,15 +160,6 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     genSettings: appliedGenSettings,
   });
 
-  set((state) => ({
-    messagesById: {
-      ...state.messagesById,
-      [original.id]: replacement,
-    },
-    ui: adjustActiveTurnCount(state.ui, chatId, 1),
-  }));
-  setTurnController(chatId, controller);
-
   // Until the new reply shows something, the old one stays on disk: a failed
   // or stopped attempt must not save its empty cut-off copy over the original.
   const persistMessage: typeof turn.persistMessage = (message) =>
@@ -217,6 +208,16 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     searchEnabled: settings.searchEnabled,
     searchProvider: settings.searchProvider,
   });
+
+  // Counted in only here, right before the try whose finally counts it out.
+  set((state) => ({
+    messagesById: {
+      ...state.messagesById,
+      [original.id]: replacement,
+    },
+    ui: adjustActiveTurnCount(state.ui, chatId, 1),
+  }));
+  setTurnController(chatId, controller);
 
   try {
     // Composed from today's state, after any module has let go of what the old

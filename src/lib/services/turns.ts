@@ -260,7 +260,7 @@ export async function regenerateTurn({
       overrideModelId,
     });
   } catch (error: unknown) {
-    handleTurnApiError(error, set, get, chatId);
+    handleTurnApiError(error, get);
     clearTurnController(chatId, controller);
   }
 }
