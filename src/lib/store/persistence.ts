@@ -41,10 +41,16 @@ export function mergePersistedState<T extends StoreDataState>(
 ): T {
   if (!persisted) return currentState;
   const raw = persisted as unknown as Record<string, unknown>;
+  // Only keys some fragment persists: a backup file is outside input, and any
+  // other key (chats, an action) would land straight on the live store.
+  const persistedKeys = new Set(
+    Object.keys(buildPersistedState(currentState as unknown as StoreState)),
+  );
+  const known = Object.fromEntries(Object.entries(raw).filter(([key]) => persistedKeys.has(key)));
   // Scalars land by key. A fragment with a merge() owns a nested shape, and must
-  // see the untouched current state — the blind spread above has already replaced
+  // see the untouched current state — the spread above has already replaced
   // its key with the partial persisted value.
-  let next = { ...currentState, ...persisted } as T;
+  let next = { ...currentState, ...known } as T;
   for (const fragment of persistFragments()) {
     if (!fragment.merge) continue;
     next = { ...next, ...fragment.merge(currentState as unknown as StoreState, raw) };

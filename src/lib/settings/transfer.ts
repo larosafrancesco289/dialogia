@@ -68,14 +68,21 @@ export async function importChatExport(
   } catch {
     return err('That file is not a Dialogia export: it is not valid JSON.');
   }
+  const version =
+    isRecord(data) && typeof data.persistedStoreVersion === 'number'
+      ? data.persistedStoreVersion
+      : STORE_MIGRATION_VERSION;
+  // Checked before anything is written: a newer build's settings are not ours
+  // to guess at, and half an import is worse than none.
+  if (version > STORE_MIGRATION_VERSION) {
+    return err(
+      'This backup was made by a newer version of Dialogia. Reload to update the app, then import it again.',
+    );
+  }
   try {
     await importAll(data as Parameters<typeof importAll>[0]);
 
     if (isRecord(data) && isRecord(data.persistedStore)) {
-      const version =
-        typeof data.persistedStoreVersion === 'number'
-          ? data.persistedStoreVersion
-          : STORE_MIGRATION_VERSION;
       const migrated = migrate(data.persistedStore, version);
       useChatStore.setState(mergePersistedState(useChatStore.getState(), migrated));
       await persistImportedStoreSnapshot();
