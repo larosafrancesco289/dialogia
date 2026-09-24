@@ -16,7 +16,8 @@ import {
 } from '@/lib/messages/indexing';
 import { hydrateMessageList } from '@/lib/services/hydrate';
 import { notifyChatBranched, notifyChatDeleted } from '@/lib/modules';
-import { isChatStreaming } from '@/lib/ui/streaming';
+import { clearActiveTurnCount, isChatStreaming } from '@/lib/ui/streaming';
+import { abortTurn } from '@/lib/turns/runtime/abortControllers';
 
 // Keeps the turn pipeline out of the boot bundle; welcome priming is user-triggered
 // and fire-and-forget, so the deferred load is invisible to callers.
@@ -308,6 +309,14 @@ export function createChatSlice(
     },
 
     async deleteChat(id: string) {
+      // A reply to a chat being deleted is spending the person's key on nothing.
+      // It stops, and its message leaves the store, before the rows go: nothing
+      // it saves on the way out can then land after the delete.
+      if (isChatStreaming(get().ui, id)) {
+        abortTurn(id);
+        set((s) => ({ ui: clearActiveTurnCount(s.ui, id) }));
+        set((s) => removeChatMessages(s, id));
+      }
       await ChatService.deleteChat(id, repository);
       notifyChatDeleted({ get }, id);
       set((s) => removeChatState(s, id));
