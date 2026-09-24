@@ -129,7 +129,7 @@ function scriptedTutor(params: TransportStreamParams): void {
     if (round === 2) return reply(params, '', [call('complete_topic', {})]);
     return reply(params, 'That closes inverse operations.');
   }
-  if (said.startsWith('Going on to '))
+  if (said.startsWith('Going on: '))
     return reply(params, 'Word problems: read the sentence first.');
   if (system.includes('Phase: intake')) {
     return reply(params, 'A couple of questions first.', [
@@ -289,7 +289,7 @@ test('a simulated session answers every card through learner commands, as the UI
   );
 
   // 5: at the chapter break the student pressed Go on; the tutor heard about the edit.
-  assert.equal(x[4].student.text, 'Going on to Word problems');
+  assert.equal(x[4].student.text, 'Going on: Word problems');
   assert.deepEqual(x[4].student.actions[0].action, {
     type: 'start_topic',
     nodeId: 'word-problems',

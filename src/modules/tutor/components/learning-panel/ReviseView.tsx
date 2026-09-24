@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { LearningPlan, LearningPlanNode } from '@/lib/types';
 import { unmetPrerequisites } from '@/modules/tutor/engine';
-import { inSentence } from '@/modules/tutor/lib/text';
 
 export type PlanRevisions = {
   onSkip: (nodeId: string) => Promise<unknown> | void;
@@ -101,7 +100,7 @@ function ReviseItem({
   const waitingOn = locked
     ? plan.nodes
         .filter((p) => node.prerequisites.includes(p.id) && p.status !== 'completed')
-        .map((p) => inSentence(p.name))
+        .map((p) => p.name)
     : [];
 
   return (
@@ -120,7 +119,7 @@ function ReviseItem({
             <span className="hub-contents__after">In progress</span>
           )}
           {locked && waitingOn.length > 0 && (
-            <span className="hub-contents__after">After {waitingOn.join(' and ')}</span>
+            <span className="hub-contents__after">After: {waitingOn.join(', ')}</span>
           )}
         </span>
       </div>

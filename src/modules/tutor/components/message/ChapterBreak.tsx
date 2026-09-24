@@ -5,7 +5,7 @@ import type { Message } from '@/lib/types';
 import { nextReadyNode, percent as toPercent } from '@/modules/tutor/engine';
 import { evidenceBehind, type Completion } from '@/modules/tutor/ui/messageViews';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
-import { countWord, inSentence } from '@/modules/tutor/lib/text';
+import { countWord } from '@/modules/tutor/lib/text';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
 
@@ -96,7 +96,7 @@ export function ChapterBreak({
                 disabled={busy}
                 onClick={() => run(() => onGoOn(next.id))}
               >
-                Go on to {inSentence(next.name)}
+                Go on: {next.name}
               </button>
             )}
             {canNegotiate && (
@@ -127,7 +127,7 @@ export function ChapterBreak({
             : percent != null
               ? `${percent}% mastery`
               : 'Completed'}
-          {!reopened && started ? ` · on to ${inSentence(started.name)}` : ''}
+          {!reopened && started ? ` · next: ${started.name}` : ''}
         </p>
       )}
     </section>
