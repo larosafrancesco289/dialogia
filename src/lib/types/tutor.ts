@@ -197,7 +197,15 @@ export type TopicMastery = {
   evidence: Evidence[]; // Supporting evidence for mastery estimate
   misconceptions: Misconception[]; // Identified errors
   needsReview?: boolean; // Flag for spaced repetition
+  /**
+   * The estimate carried over from before the tutor's event log. Replays of
+   * the logged evidence start here instead of at the prior.
+   */
+  baseline?: number;
 };
+
+/** Where a piece of evidence came from, as the tutor engine records it. */
+export type EvidenceSource = 'quiz' | 'diagnostic' | 'observation' | 'learner_said' | 'learner';
 
 export type Evidence = {
   timestamp: number;
@@ -219,6 +227,12 @@ export type Evidence = {
    * moved by `weight`. Recorded so the history replays to the real value.
    */
   setTo?: number;
+  /** The tutor event that recorded this. Entries from before the event log have none. */
+  eventId?: string;
+  source?: EvidenceSource;
+  /** The engine's own name for what happened; `type` is its legacy equivalent. */
+  kind?: string;
+  ref?: { quizId?: string; diagnosticId?: string; itemId?: string };
 };
 
 export type Misconception = {
@@ -229,4 +243,5 @@ export type Misconception = {
   resolved: boolean;
   severity?: string;
   examples?: string[];
+  resolvedBy?: 'tutor' | 'learner';
 };
