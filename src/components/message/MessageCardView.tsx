@@ -83,6 +83,19 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
 
   if (!message) return null;
 
+  // An action the learner took in the interface, recorded as a quiet line
+  // rather than a bubble: nothing to copy, edit or regenerate from.
+  if (message.role === 'user' && message.ledger) {
+    return (
+      <div className={cn(styles.messageCard, styles.ledger)} data-mid={message.id}>
+        <p className={styles.ledgerLine}>
+          <span className="sr-only">You: </span>
+          {message.content}
+        </p>
+      </div>
+    );
+  }
+
   const isAssistant = message.role === 'assistant';
   const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
 

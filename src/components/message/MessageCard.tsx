@@ -94,7 +94,8 @@ function MessageCardComponent({
   );
 
   const longPress = useLongPressSheet({
-    enabled: isMobile && !!message,
+    // A ledger line has no actions to offer.
+    enabled: isMobile && !!message && !message.ledger,
     onLongPress: () => {
       if (message) {
         onOpenMobileSheet({ id: message.id, role: message.role as 'assistant' | 'user' });

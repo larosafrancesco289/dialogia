@@ -160,6 +160,31 @@ function cardEvents(
   return { events, open };
 }
 
+/**
+ * A proposal the learner already answered, or one a later proposal replaced,
+ * as history its message can render. The pending one is the import's own.
+ */
+function resolvedProposal(
+  message: Message,
+  tutor: MessageTutor,
+  pendingMessageId: string | undefined,
+): Stamped | undefined {
+  const proposal = tutor.planProposal;
+  if (!proposal?.plan?.nodes?.length || message.id === pendingMessageId) return undefined;
+  const status = proposal.status === 'pending' ? 'replaced' : proposal.status;
+  return {
+    draft: {
+      type: 'proposal_imported',
+      proposalId: legacyId('proposal', message.id),
+      plan: proposal.plan,
+      ...(proposal.confirmationMessage ? { rationale: proposal.confirmationMessage } : {}),
+      status,
+    },
+    by: 'system',
+    messageId: message.id,
+  };
+}
+
 /** The latest proposal in the transcript, if the learner never answered it. */
 function pendingProposal(
   assistants: Message[],
@@ -179,9 +204,10 @@ function pendingProposal(
  * The events that stand for a chat's legacy tutor data, or none when it has
  * none. Cards come first, one message at a time, carrying their message id so
  * old transcripts render them from events; the `legacy_imported` event comes
- * last, so its position marks where imported history ends. Answers to old
- * quizzes and diagnostics add no evidence: the imported learner model already
- * counts them. Cards left unanswered before the last reply are closed, so an
+ * last, so its position marks where imported history ends. Answered and
+ * replaced proposals come back as history, so old plan cards still render.
+ * Answers to old quizzes and diagnostics add no evidence: the imported
+ * learner model already counts them, and the old quizzes spend no budget. Cards left unanswered before the last reply are closed, so an
  * abandoned card cannot hold the session open.
  */
 export function buildLegacyImport({ chat, messages, at, newId }: LegacyImportInput): TutorEvent[] {
@@ -199,6 +225,8 @@ export function buildLegacyImport({ chat, messages, at, newId }: LegacyImportInp
   const stamped: Stamped[] = [];
   for (const message of assistants) {
     if (!message.tutor) continue;
+    const history = resolvedProposal(message, message.tutor, proposal?.messageId);
+    if (history) stamped.push(history);
     const { events, open } = cardEvents(message, message.tutor, currentNodeId);
     stamped.push(...events);
     if (message.id === lastAssistantId) continue;

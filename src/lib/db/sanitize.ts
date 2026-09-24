@@ -93,6 +93,11 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
     }
   }
 
+  if ('ledger' in next && (next.ledger !== true || next.role !== 'user')) {
+    delete next.ledger;
+    changed = true;
+  }
+
   if (next.tutorWelcome === false) {
     delete next.tutorWelcome;
     changed = true;

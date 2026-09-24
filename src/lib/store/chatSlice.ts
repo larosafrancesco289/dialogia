@@ -15,6 +15,7 @@ import {
   setMessagesForChat,
 } from '@/lib/messages/indexing';
 import { hydrateMessageList } from '@/lib/services/hydrate';
+import { notifyChatDeleted } from '@/lib/modules';
 
 // Keeps the turn pipeline out of the boot bundle; welcome priming is user-triggered
 // and fire-and-forget, so the deferred load is invisible to callers.
@@ -226,6 +227,7 @@ export function createChatSlice(
 
     async deleteChat(id: string) {
       await ChatService.deleteChat(id, repository);
+      notifyChatDeleted({ get }, id);
       set((s) => {
         const chats = s.chats.filter((c) => c.id !== id);
         const deletingSelectedChat = s.selectedChatId === id;

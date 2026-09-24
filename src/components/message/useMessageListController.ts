@@ -83,7 +83,8 @@ export function useMessageListController(args: {
       if (idx === -1) return;
       for (let i = idx - 1; i >= 0; i -= 1) {
         if (messages[i].role === 'user') {
-          setEditingId(messages[i].id);
+          // A ledger line records a click, not words; there is nothing to reword.
+          if (!messages[i].ledger) setEditingId(messages[i].id);
           return;
         }
       }

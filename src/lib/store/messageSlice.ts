@@ -22,7 +22,12 @@ export type MessageSliceActions = {
   appendAssistantMessage: (content: string, opts?: { modelId?: string }) => Promise<void>;
   sendUserMessage: (
     content: string,
-    opts?: { attachments?: DraftAttachment[]; metadata?: Message['metadata'] },
+    opts?: {
+      attachments?: DraftAttachment[];
+      metadata?: Message['metadata'];
+      /** Records an interface action rather than typed words; see `Message.ledger`. */
+      ledger?: boolean;
+    },
   ) => Promise<void>;
   stopStreaming: () => void;
   editUserMessage: (
@@ -55,13 +60,7 @@ export function createMessageSlice(
       });
     },
 
-    async sendUserMessage(
-      content: string,
-      opts?: {
-        attachments?: import('@/lib/types').DraftAttachment[];
-        metadata?: import('@/lib/types').Message['metadata'];
-      },
-    ) {
+    async sendUserMessage(content, opts) {
       const chatId = get().selectedChatId;
       if (chatId) await get().ensureChatMessagesLoaded(chatId);
       const { sendUserTurn } = await loadTurnService();
@@ -69,6 +68,7 @@ export function createMessageSlice(
         content,
         attachments: opts?.attachments,
         metadata: opts?.metadata,
+        ledger: opts?.ledger,
         set,
         get,
         repository,
