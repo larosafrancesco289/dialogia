@@ -16,14 +16,17 @@ import {
   selectIsStreamingForChat,
   selectIsTutorEnabledForChat,
   selectMessagesForChat,
+  selectRepliesInOtherTab,
 } from '@/lib/store/selectors';
+import { replyInProgress } from '@/lib/ui/streaming';
 
 const EMPTY_MESSAGES: Message[] = [];
 export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
   const {
     allMessages,
     chat,
-    isStreaming,
+    isStreamingHere,
+    repliesInOtherTab,
     planGeneration,
     composerFocused,
     autoScrollPref,
@@ -32,7 +35,8 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     (state) => ({
       allMessages: selectMessagesForChat(chatId)(state) ?? EMPTY_MESSAGES,
       chat: state.chats.find((c) => c.id === chatId),
-      isStreaming: selectIsStreamingForChat(chatId)(state),
+      isStreamingHere: selectIsStreamingForChat(chatId)(state),
+      repliesInOtherTab: selectRepliesInOtherTab(chatId)(state),
       planGeneration: state.ui.plan?.generationByChatId?.[chatId],
       composerFocused: state.ui.mobile.composerFocused,
       autoScrollPref: selectIsTutorEnabledForChat(chatId)(state)
@@ -73,6 +77,14 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         });
     return base.filter((message) => !(message.role === 'user' && message.metadata?.hiddenFromUser));
   }, [allMessages, modelFilter]);
+  const lastMessageId = useMemo(() => messages[messages.length - 1]?.id, [messages]);
+  // A reply another tab is writing reads as in progress here too: its
+  // checkpoints on disk would otherwise show it as cut off.
+  const progress = useMemo(
+    () => replyInProgress(isStreamingHere, lastMessageId, repliesInOtherTab),
+    [isStreamingHere, lastMessageId, repliesInOtherTab],
+  );
+  const isStreaming = progress.busy;
 
   const { editUserMessage, editAssistantMessage } = useChatStore(
     (state) => ({
@@ -208,7 +220,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     const hasText = (last.content || '').length > 0 || (last.reasoning || '').length > 0;
     return !hasText;
   }, [isStreaming, messages]);
-  const lastMessageId = useMemo(() => messages[messages.length - 1]?.id, [messages]);
 
   return (
     <div ref={containerRef} className="scroll-area message-list h-full">
@@ -258,7 +269,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
               waitingForFirstToken={waitingForFirstToken && message.id === lastMessageId}
               lastMessageId={lastMessageId}
               showReasoningByDefault={showByDefault}
-              isStreaming={isStreaming && message.id === lastMessageId}
+              isStreaming={progress.isWriting(message.id)}
               isChatStreaming={isStreaming}
               onOpenMobileSheet={openMobileSheet}
               onBranch={branchFromMessage}

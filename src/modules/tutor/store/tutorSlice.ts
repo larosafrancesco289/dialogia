@@ -84,6 +84,11 @@ export type TutorStoreActions = {
     messageIds: Record<string, string>,
   ) => Promise<void>;
   /**
+   * Another tab changed the chat's stored log: a session in memory takes it,
+   * after its own queued changes. A chat never loaded here loads on demand.
+   */
+  refreshTutorSession: (chatId: string) => Promise<void>;
+  /**
    * Forgets a deleted chat's session. Its stored events go with the chat; a
    * dispatch still in flight for it writes nothing more.
    */
@@ -369,6 +374,22 @@ export function createTutorSlice(
 
     retractTutorReply(chatId, messageId) {
       return serialize(chatId, () => retract(chatId, messageId));
+    },
+
+    refreshTutorSession(chatId) {
+      return serialize(chatId, async () => {
+        const since = epoch;
+        await loads.get(chatId)?.catch(() => undefined);
+        if (!live(chatId, since) || !get().tutorSessions[chatId]?.loaded) return;
+        // This tab's unsaved events go first; on a conflict that reloads anyway.
+        await flush(chatId);
+        if (!live(chatId, since) || unsaved.has(chatId)) return;
+        const { events } = await readLog(chatId);
+        const held = get().tutorSessions[chatId]?.events ?? [];
+        const same =
+          held.length === events.length && held.every((event, i) => event.id === events[i].id);
+        if (!same && live(chatId, since)) publish(chatId, loadedSession(events));
+      });
     },
 
     async branchTutorSession(sourceChatId, chatId, messageIds) {
