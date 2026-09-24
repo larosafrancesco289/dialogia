@@ -5,6 +5,10 @@
      rows. A choice you pick is marked in ink; only grading brings colour
      (success or crimson). Gold never appears here: nothing is live. */
   .exercise-sheet {
+    min-width: 0;
+    /* A long formula in a question, a choice or its feedback wraps inside
+       the sheet rather than running out of it (or under its clipping). */
+    overflow-wrap: anywhere;
     margin: var(--space-4) 0 var(--space-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-editorial);
