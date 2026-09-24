@@ -233,9 +233,10 @@ export function Composer({
     const target = taRef.current;
     if (!target) return;
     // A desktop keeps focus through a reply, so the next message can be typed
-    // ahead; a phone drops its keyboard so the reply has the screen.
-    if (!canAutoFocus) target.blur();
-    else if (!isStreaming) target.focus({ preventScroll: true });
+    // ahead (the first message swaps the welcome composer for this one while
+    // the reply streams); a phone drops its keyboard so the reply has the screen.
+    if (canAutoFocus) target.focus({ preventScroll: true });
+    else target.blur();
   }, [canAutoFocus, isStreaming, selectedChatId]);
 
   const maxTextareaHeight = useMemo(() => {
