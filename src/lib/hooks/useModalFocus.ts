@@ -123,6 +123,11 @@ export function useModalFocus(
     if (initial && !container?.contains(document.activeElement)) {
       initial.focus({ preventScroll: true });
     }
-    return release;
+    return () => {
+      release();
+      // What opened it went with it (a row it deleted): the dialog beneath
+      // takes focus, so its Escape and Tab still work.
+      if (focusIsLost(container)) layers.top()?.container()?.focus({ preventScroll: true });
+    };
   }, [open, containerRef]);
 }
