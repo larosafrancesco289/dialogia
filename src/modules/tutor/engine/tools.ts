@@ -16,6 +16,7 @@ import { nextReadyNode } from '@/modules/tutor/engine/plan';
 import {
   BUDGETS,
   LIMITS,
+  MASTERY_EVIDENCE_MIN,
   MASTERY_PRIOR,
   OBSERVATION_KINDS,
   READY,
@@ -212,8 +213,8 @@ const DESCRIPTIONS: Record<TutorToolName, string> = {
   record_evidence: `Record what the conversation showed about the learner's understanding of a topic: explained (they explained it back), applied (they used it correctly), insight (they went beyond what was taught), partial, or struggled. Evidence is what they did on their own: set helped when you led them to it. At most one call per topic per turn, summing up the exchange. Use source "learner_said" when the learner tells you about their own understanding. Not for quiz or diagnostic answers; the engine scored those. Does not end your turn.`,
   note_misconception: `Note a specific mistaken belief the learner showed (not a slip). It is shown to the learner and blocks completing the topic as mastered until resolved. Noting the same description again counts another occurrence. Does not end your turn.`,
   resolve_misconception: `Mark an open misconception resolved once the learner has shown the correct understanding. Does not end your turn.`,
-  complete_topic: `Finish the current topic. With how "mastered" it needs mastery of at least ${percent(READY)}% and no open misconceptions. It does not start the next topic: the learner sees a chapter break and chooses what comes next. Use when the topic's objectives are met; do not use to move on while evidence is thin. Does not end your turn.`,
-  start_topic: `Start a topic whose prerequisites are done. Use at a chapter break when the learner says in chat that they want to go on (they may also press Go on themselves). Returns the topic's objectives. Does not end your turn.`,
+  complete_topic: `Finish the current topic. With how "mastered" it needs mastery of at least ${percent(READY)}%, at least ${MASTERY_EVIDENCE_MIN} pieces of evidence from the learner's work this session (quiz or diagnostic answers, or your observations; a starting estimate does not count), and no open misconceptions. It does not start the next topic: the learner sees a chapter break and chooses what comes next, so do not call start_topic in the same reply. Use when the topic's objectives are met; do not use to move on while evidence is thin. Does not end your turn.`,
+  start_topic: `Start a topic whose prerequisites are done. Use at a chapter break, in a later reply than the one that completed the topic, when the learner says in chat that they want to go on (they may also press Go on themselves). Returns the topic's objectives. Does not end your turn.`,
 };
 
 export const TUTOR_TOOLS: Record<TutorToolName, ToolDefinition> = Object.fromEntries(
@@ -664,7 +665,7 @@ export function tutorToolResult(
         note:
           after.phase === 'complete'
             ? 'Every topic in the plan is done.'
-            : 'The learner now sees a chapter break and chooses what comes next: go on, more practice, or change the path. Close the topic and let them choose; call start_topic only if they ask in chat to go on.',
+            : 'The learner now sees a chapter break and chooses what comes next: go on, more practice, or change the path. Close the topic with a short line and end your turn; do not start the next topic in this reply.',
       };
     }
     case 'start_topic': {

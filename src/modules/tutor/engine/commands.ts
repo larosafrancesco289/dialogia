@@ -26,6 +26,7 @@ import {
 } from '@/modules/tutor/engine/plan';
 import {
   LIMITS,
+  MASTERY_EVIDENCE_MIN,
   OBSERVATION_KINDS,
   OBSERVATION_SIGN,
   HELPED_FACTOR,
@@ -45,6 +46,7 @@ import {
 } from '@/modules/tutor/engine/rules';
 import {
   confidenceOf,
+  demonstratedEvidence,
   openMisconceptions,
   quizFinished,
   remainingBudgets,
@@ -70,6 +72,7 @@ export type TutorErrorCode =
   | 'already_current'
   | 'prerequisites_unmet'
   | 'not_ready'
+  | 'learner_chooses'
   | 'open_misconceptions'
   | 'unknown_misconception'
   | 'already_resolved'
@@ -634,6 +637,15 @@ function decideTutor(
               : 'Keep teaching, give a quiz, or record the evidence you have seen.',
           );
         }
+        const shown = demonstratedEvidence(state, node.id);
+        if (shown < MASTERY_EVIDENCE_MIN) {
+          const missing = MASTERY_EVIDENCE_MIN - shown;
+          return err(
+            'not_ready',
+            `${node.name} is at ${percent(confidence)}%, but only ${shown} of the ${MASTERY_EVIDENCE_MIN} pieces of evidence mastery needs come from the learner's work this session; a starting estimate does not count.`,
+            `Get ${missing} more: give_quiz, or record_evidence for something the learner did on their own. Then call complete_topic again.`,
+          );
+        }
         const open = openMisconceptions(state, node.id);
         if (open.length) {
           return err(
@@ -653,6 +665,15 @@ function decideTutor(
     }
 
     case 'start_topic':
+      // The chapter break is the learner's choice: the reply that closed a
+      // topic cannot also open the next one.
+      if (ctx.messageId && state.lastCompletedBy === ctx.messageId && state.phase === 'interlude') {
+        return err(
+          'learner_chooses',
+          'You completed a topic in this reply; the next one cannot start in the same reply.',
+          'The learner chooses what comes next at the chapter break. End this turn with a short closing line for the topic, and call start_topic only in a later turn if they ask to go on.',
+        );
+      }
       return startTopic(state, cmd.nodeId, 'tutor', out);
   }
 }

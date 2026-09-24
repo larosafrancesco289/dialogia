@@ -167,12 +167,14 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
         return node.status === 'in_progress' ? { ...node, status: 'not_started' } : node;
       });
 
-    case 'topic_completed':
-      return withNodes(state, (node) =>
+    case 'topic_completed': {
+      const completed = withNodes(state, (node) =>
         node.id === event.nodeId
           ? { ...node, status: 'completed', completedAt: event.at, completedHow: event.how }
           : node,
       );
+      return { ...completed, lastCompletedBy: event.messageId };
+    }
 
     case 'topic_reopened': {
       const reopened = withNodes(state, (node) => {

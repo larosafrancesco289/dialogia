@@ -374,7 +374,7 @@ test('concurrent dispatches for one chat run in turn and lose nothing', async ()
   const { id, store } = await teachingChat();
   const { dispatchTutor } = store.getState();
 
-  // Two tool calls in one turn, and a click racing them.
+  // Tool calls in one turn, and a click racing them.
   const results = await Promise.all([
     dispatchTutor(
       id,
@@ -383,6 +383,17 @@ test('concurrent dispatches for one chat run in turn and lose nothing', async ()
         type: 'record_evidence',
         kind: 'applied',
         note: 'Solved one',
+        source: 'observation',
+      },
+      { by: 'tutor', messageId: 'm2' },
+    ),
+    dispatchTutor(
+      id,
+      {
+        by: 'tutor',
+        type: 'record_evidence',
+        kind: 'explained',
+        note: 'Explained why',
         source: 'observation',
       },
       { by: 'tutor', messageId: 'm2' },
@@ -400,7 +411,7 @@ test('concurrent dispatches for one chat run in turn and lose nothing', async ()
   ]);
   assert.deepEqual(
     results.map((r) => r.ok),
-    [true, true, true],
+    [true, true, true, true],
   );
 
   const { events, state } = store.getState().tutorSessions[id];
@@ -414,12 +425,12 @@ test('concurrent dispatches for one chat run in turn and lose nothing', async ()
   // Each saw the one before: the learner's 90% let the topic complete as mastered.
   assert.deepEqual(
     state.mastery.limits.evidence.map((e) => e.kind),
-    ['applied', 'adjusted'],
+    ['applied', 'explained', 'adjusted'],
   );
   assert.equal(state.phase, 'interlude');
   // Every result's `before` is the state the previous dispatch produced.
   assert.ok(
-    results[1].ok && results[0].ok && results[1].before.lastSeq === results[0].state.lastSeq,
+    results[2].ok && results[1].ok && results[2].before.lastSeq === results[1].state.lastSeq,
   );
 
   // Memory and disk agree.
