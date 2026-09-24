@@ -233,7 +233,10 @@ A turn with tools runs one of two loops in `src/lib/agent/streaming/`.
   run whatever the finish reason says, and every call gets a result: a handler returns a
   model-facing `result` (`{ ok: true, ... }` or `{ ok: false, error, hint }`) that the model reads
   and can correct itself from. A handler that returns `endsTurn: true` stops the loop without
-  another model call. The loop is capped at `AGENT_MAX_ROUNDS`, and the last round is sent with
+  another model call. One that returns `endsTurn: 'after_text'` stops it the same way when the
+  turn already has visible text; when it has none, the model reads the handler's
+  `resultBeforeText` instead and gets one more round, with `tool_choice: 'none'`, to introduce
+  what it showed. The loop is capped at `AGENT_MAX_ROUNDS`, and the last round is sent with
   `tool_choice: 'none'`.
 
 A tool registered with `metadata.replay: true` has its agent-loop rounds stored on the assistant
@@ -256,7 +259,9 @@ A module has two halves.
   before a reply is regenerated, including an edit that reruns it), `onChatBranched` (awaited
   before a branch opens, with the source-to-copy message id map) and `latestExchangeOnly` (the
   module's record follows this chat's transcript, so regenerate and edit-and-rerun are offered
-  and accepted only in the latest exchange; see `canRedoReply`). It is statically imported.
+  and accepted only in the latest exchange; see `canRedoReply`) and `messageHasContent` (the
+  module shows something of its own with a reply, such as a card, so a reply with no text is
+  not empty). It is statically imported.
 - **The turn half** is `load()`, returning a `ModuleRuntime` with `registerTools`, `compose`,
   `planning` and `turnEffects`. It is loaded on demand with the turn pipeline. `compose` receives
   the turn's store, so a module can read (and first load) its own slice, and may return a
@@ -312,8 +317,8 @@ log's share of the copied messages to the branch (`branchEvents`): events of cop
 the copies' ids, none of later messages, and unattached events (quiet corrections) up to the
 latest position a copied message accounts for; positions keep their numbers so `tutorSeq` holds.
 
-Cards (quiz, intake, diagnostic, plan proposal) are `content` tools that end the turn; state tools
-are `action` tools. Tool arguments are parsed leniently (`engine/tools.ts`): placeholders in
+Cards (quiz, intake, diagnostic, plan proposal) are `content` tools that end the turn after text,
+so a card put up without a word gets one round to introduce it; state tools are `action` tools. Tool arguments are parsed leniently (`engine/tools.ts`): placeholders in
 optional fields and fields that do not apply are dropped and named back in the result as
 `adjusted`; only what changes a call's meaning is refused, with a hint naming the field and its
 valid values. A plan's topics may carry a `startingEstimate` (capped below `READY`) from intake or

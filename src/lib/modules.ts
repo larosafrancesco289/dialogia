@@ -23,7 +23,11 @@ import { inLatestExchange } from '@/lib/messages/latestExchange';
 import { createTutorSlice } from '@/modules/tutor/store/tutorSlice';
 import { tutorSettingsDefaults } from '@/modules/tutor/lib/defaults';
 import { tutorPanels } from '@/modules/tutor/panels';
-import { hasTutorPlan, tutorFollowsTranscript } from '@/modules/tutor/store/selectors';
+import {
+  hasTutorPlan,
+  messageCarriesTutorCard,
+  tutorFollowsTranscript,
+} from '@/modules/tutor/store/selectors';
 
 export type ModulePlanningArgs = {
   chat: Chat;
@@ -129,6 +133,11 @@ export type AppModule = {
    * and the transcript disagreeing. Boot half.
    */
   latestExchangeOnly?(state: StoreState, chatId: string): boolean;
+  /**
+   * The module shows something of its own with this assistant message (a
+   * card), so the reply is not empty even when it has no text. Boot half.
+   */
+  messageHasContent?(state: StoreState, message: Message): boolean;
   /** Fills in the module's own chat-settings block. Boot half. */
   settingsDefaults?(args: {
     chat: Pick<Chat, 'settings'>;
@@ -161,6 +170,7 @@ const tutorModule: AppModule = {
     await get().retractTutorReply(chatId, messageId);
   },
   latestExchangeOnly: tutorFollowsTranscript,
+  messageHasContent: messageCarriesTutorCard,
   load: async () => (await import('@/modules/tutor/moduleEntry')).tutorRuntime,
 };
 
@@ -207,6 +217,13 @@ export function canRedoReply(state: StoreState, chatId: string, messageId: strin
 export function latestExchangeOnly(state: StoreState, chatId: string): boolean {
   return ENABLED_MODULES.some(
     (appModule) => appModule.latestExchangeOnly?.(state, chatId) === true,
+  );
+}
+
+/** Whether some module shows content of its own with this message, text or not. */
+export function messageHasModuleContent(state: StoreState, message: Message): boolean {
+  return ENABLED_MODULES.some(
+    (appModule) => appModule.messageHasContent?.(state, message) === true,
   );
 }
 

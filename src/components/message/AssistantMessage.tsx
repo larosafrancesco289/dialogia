@@ -14,6 +14,8 @@ import { MessageModuleSlot } from '@/components/ModuleSlot';
 import { ActionButton, MessageEditBar } from '@/components/message/MessageActions';
 import { MessageColophon } from '@/components/message/MessageColophon';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
+import { useChatStore } from '@/lib/store';
+import { messageHasModuleContent } from '@/lib/modules';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import styles from './MessageCard.module.css';
 
@@ -115,6 +117,10 @@ export function AssistantMessage({
   citationSources,
 }: AssistantMessageProps) {
   const displayContent = message.content;
+  // A reply whose content is a module's (a card) is not empty, words or not.
+  const hasModuleContent = useChatStore((s) => messageHasModuleContent(s, message));
+  // A canned greeting was never generated: nothing to redo, branch from or edit.
+  const canned = !!message.tutorWelcome;
   const resolvedCitationSources = useMemo(() => {
     if (citationSources?.length) return citationSources;
     const fromAnnotations = annotationSources(message.annotations);
@@ -227,6 +233,7 @@ export function AssistantMessage({
         isLatestAssistant &&
         !isEditing &&
         !displayContent.trim() &&
+        !hasModuleContent &&
         message.finishReason !== 'content_filter' && (
           <div className="px-4 pb-2">
             <button className="btn-outline btn-sm" onClick={() => onChooseRegenerateModel()}>
@@ -260,17 +267,19 @@ export function AssistantMessage({
                 onClick={copyMessage}
                 showFeedback={copiedId === message.id}
               />
-              {canRedo && (
+              {canRedo && !canned && (
                 <RegenerateMenu onChoose={onChooseRegenerateModel} disabled={isChatStreaming} />
               )}
-              <ActionButton
-                icon={<ArrowUturnRightIcon className="h-4 w-4" />}
-                title="Continue in a new chat from here"
-                ariaLabel="Branch chat from here"
-                onClick={branchFromMessage}
-                disabled={isChatStreaming}
-              />
-              {!isChatStreaming && (
+              {!canned && (
+                <ActionButton
+                  icon={<ArrowUturnRightIcon className="h-4 w-4" />}
+                  title="Continue in a new chat from here"
+                  ariaLabel="Branch chat from here"
+                  onClick={branchFromMessage}
+                  disabled={isChatStreaming}
+                />
+              )}
+              {!isChatStreaming && !canned && (
                 <ActionButton
                   icon={<PencilSquareIcon className="h-4 w-4" />}
                   title="Edit"

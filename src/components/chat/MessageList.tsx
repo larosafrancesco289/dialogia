@@ -10,7 +10,7 @@ import { useMessageListWindow } from '@/components/message/hooks/useMessageListW
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { useMessageListController } from '@/components/message/useMessageListController';
-import { latestExchangeOnly } from '@/lib/modules';
+import { latestExchangeOnly, messageHasModuleContent } from '@/lib/modules';
 import {
   selectChatMessagesLoaded,
   selectIsStreamingForChat,
@@ -113,7 +113,13 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     const hasReasoning = !!(message.reasoning && message.reasoning.trim().length > 0);
     const hasAttachments = Array.isArray(message.attachments) && message.attachments.length > 0;
     const hasTutorPayload = !!(message.tutor || message.tutorWelcome);
-    return !hasContent && !hasReasoning && !hasAttachments && !hasTutorPayload;
+    return (
+      !hasContent &&
+      !hasReasoning &&
+      !hasAttachments &&
+      !hasTutorPayload &&
+      !messageHasModuleContent(useChatStore.getState(), message)
+    );
   }, []);
 
   const {

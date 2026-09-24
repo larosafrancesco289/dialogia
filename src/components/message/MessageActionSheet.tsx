@@ -55,6 +55,8 @@ export function MessageActionSheet({
   const message = mobileActionMessage;
   const isAssistant = mobileSheet?.role === 'assistant';
   const isEditingThis = !!message && editingId === message.id;
+  // A canned greeting was never generated: nothing to edit, redo or branch from.
+  const canned = !!message?.tutorWelcome;
 
   return (
     <>
@@ -79,7 +81,7 @@ export function MessageActionSheet({
           </SheetItem>
         )}
         {/* Editing a reply's text reruns nothing; editing a user message reruns its reply. */}
-        {message && (isAssistant || canRedo) && (
+        {message && !canned && (isAssistant || canRedo) && (
           <SheetItem
             icon={<PencilSquareIcon />}
             disabled={isEditingThis}
@@ -91,7 +93,7 @@ export function MessageActionSheet({
             {isEditingThis ? 'Editing…' : 'Edit'}
           </SheetItem>
         )}
-        {isAssistant && mobileSheet && (
+        {isAssistant && mobileSheet && !canned && (
           <>
             {canRedo && (
               <SheetItem
