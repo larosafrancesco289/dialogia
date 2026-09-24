@@ -1,6 +1,6 @@
 import { consumeSse } from '@/lib/api/stream';
 import { mergeUsage, normalizeUsage, sumUsage, type Usage } from '@/lib/api/normalizers';
-import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
+import { ApiError, API_ERROR_CODES, throwForStatus } from '@/lib/api/errors';
 import type { TransportStreamParams, FinishReason, ToolCallDelta } from '@/lib/transport/types';
 import type { ToolCall } from '@/lib/transport/contracts';
 import { isRecord } from '@/lib/utils/guards';
@@ -62,15 +62,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
         throw wrapAnthropicClientError(error, API_ERROR_CODES.PROVIDER_CHAT_FAILED);
       }
 
-      if (res.status === 401 || res.status === 403) {
-        throw await buildAnthropicError(res, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key');
-      }
-      if (res.status === 429) {
-        throw await buildAnthropicError(res, API_ERROR_CODES.RATE_LIMITED, 'Rate limited');
-      }
-      if (!res.ok) {
-        throw await buildAnthropicError(res, API_ERROR_CODES.PROVIDER_CHAT_FAILED);
-      }
+      await throwForStatus(res, buildAnthropicError, API_ERROR_CODES.PROVIDER_CHAT_FAILED);
 
       let requestUsage: Usage | undefined;
       const assistantBlocks: Array<Record<string, unknown> | undefined> = [];

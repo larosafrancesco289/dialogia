@@ -1,6 +1,6 @@
 import { buildChatBody } from '@/lib/openrouter/request';
 import { endpointBodyOptions, endpointWireModelId } from '@/lib/openrouter/endpointBody';
-import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
+import { ApiError, API_ERROR_CODES, throwForStatus } from '@/lib/api/errors';
 import { normalizeUsage, shouldIncludeUsage, type Usage } from '@/lib/api/normalizers';
 import { consumeSse, type SseEvent } from '@/lib/api/stream';
 import { orChatCompletions } from '@/lib/openrouter/http';
@@ -77,18 +77,10 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   } catch (error) {
     throw wrapOpenRouterClientError(error, API_ERROR_CODES.OPENROUTER_CHAT_FAILED);
   }
-
-  if (res.status === 401 || res.status === 403) {
-    throw await buildOpenRouterError(res, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key');
-  }
-  if (res.status === 429) {
-    throw await buildOpenRouterError(res, API_ERROR_CODES.RATE_LIMITED, 'Rate limited');
-  }
-  if (!res.ok) {
-    const error = await buildOpenRouterError(res, API_ERROR_CODES.OPENROUTER_CHAT_FAILED);
-    logger.error('[OpenRouter] Stream chat completion failed:', error.message);
-    throw error;
-  }
+  await throwForStatus(res, buildOpenRouterError, API_ERROR_CODES.OPENROUTER_CHAT_FAILED, {
+    onFailure: (error) =>
+      logger.error('[OpenRouter] Stream chat completion failed:', error.message),
+  });
 
   let full = '';
   let usage: Usage | undefined;

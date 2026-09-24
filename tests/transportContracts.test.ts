@@ -1,8 +1,9 @@
-import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
+import { ANTHROPIC_ENDPOINT, OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { openrouterTransport } from '@/lib/openrouter';
-import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
+import { clearOpenRouterCachesForTest, openrouterTransport } from '@/lib/openrouter';
+import { anthropicTransport } from '@/lib/anthropic';
+import { ApiError, API_ERROR_CODES, isApiError, throwForStatus } from '@/lib/api/errors';
 import type { TransportChatParams } from '@/lib/transport/types';
 import { buildTransportAuth } from '@/lib/auth/transport';
 import { mockFetch } from './helpers/mockFetch';
@@ -189,4 +190,130 @@ test('openrouter stream still ignores malformed chunks', async () => {
       assert.equal(full, 'Hi');
     },
   );
+});
+
+test('throwForStatus maps each status onto the shared codes', async () => {
+  const build = async (res: Response, code: string, message?: string) =>
+    new ApiError({ code, status: res.status, message: message ?? code });
+  const cases: Array<[number, { rateLimit?: boolean }, string | undefined, string | undefined]> = [
+    [200, {}, undefined, undefined],
+    [401, {}, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key'],
+    [403, {}, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key'],
+    [429, {}, API_ERROR_CODES.RATE_LIMITED, 'Rate limited'],
+    [429, { rateLimit: false }, 'failed', 'failed'],
+    [500, {}, 'failed', 'failed'],
+    [404, {}, 'failed', 'failed'],
+  ];
+  for (const [status, options, code, message] of cases) {
+    const failures: ApiError[] = [];
+    const result = throwForStatus(new Response(null, { status }), build, 'failed', {
+      ...options,
+      onFailure: (error) => failures.push(error),
+    });
+    if (!code) {
+      await result;
+      assert.equal(failures.length, 0);
+      continue;
+    }
+    await assert.rejects(result, (err) => {
+      assert.ok(isApiError(err));
+      assert.equal(err.code, code, `${status} code`);
+      assert.equal(err.message, message, `${status} message`);
+      return true;
+    });
+    assert.equal(failures.length, code === 'failed' ? 1 : 0, `${status} onFailure`);
+  }
+});
+
+test('every provider call keeps its own error codes for a failed status', async () => {
+  const anthropicAuth = buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' });
+  const chat: TransportChatParams = {
+    auth: anthropicAuth,
+    model: 'anthropic/claude-sonnet-4-6',
+    messages: [{ role: 'user', content: 'Hello' }],
+  };
+  const callers: Array<[string, () => Promise<unknown>, Record<number, string>]> = [
+    [
+      'anthropic chat',
+      () => anthropicTransport.chatCompletion(chat),
+      {
+        401: 'unauthorized',
+        403: 'unauthorized',
+        429: 'rate_limited',
+        500: 'provider_chat_failed',
+      },
+    ],
+    [
+      'anthropic stream',
+      () => anthropicTransport.streamChatCompletion(chat),
+      {
+        401: 'unauthorized',
+        403: 'unauthorized',
+        429: 'rate_limited',
+        500: 'provider_chat_failed',
+      },
+    ],
+    [
+      'anthropic models',
+      () => anthropicTransport.fetchModels(anthropicAuth),
+      {
+        401: 'unauthorized',
+        403: 'unauthorized',
+        429: 'rate_limited',
+        500: 'provider_models_failed',
+      },
+    ],
+    [
+      'openrouter chat',
+      () => openrouterTransport.chatCompletion(baseChatParams),
+      {
+        401: 'unauthorized',
+        403: 'unauthorized',
+        429: 'rate_limited',
+        500: 'openrouter_chat_failed',
+      },
+    ],
+    [
+      'openrouter stream',
+      () => openrouterTransport.streamChatCompletion(baseChatParams),
+      {
+        401: 'unauthorized',
+        403: 'unauthorized',
+        429: 'rate_limited',
+        500: 'openrouter_chat_failed',
+      },
+    ],
+    [
+      'openrouter models',
+      () => openrouterTransport.fetchModels(baseChatParams.auth),
+      {
+        401: 'unauthorized',
+        403: 'unauthorized',
+        // The models list has never told a rate limit apart.
+        429: 'openrouter_models_failed',
+        500: 'openrouter_models_failed',
+      },
+    ],
+  ];
+
+  for (const [name, call, expected] of callers) {
+    for (const [status, code] of Object.entries(expected)) {
+      clearOpenRouterCachesForTest();
+      await withMockFetch(
+        async () =>
+          new Response(JSON.stringify({ error: { message: 'nope' } }), {
+            status: Number(status),
+          }),
+        async () => {
+          await assert.rejects(call, (err) => {
+            assert.ok(isApiError(err), `${name} ${status}`);
+            assert.equal(err.code, code, `${name} ${status}`);
+            assert.equal(err.status, Number(status), `${name} ${status}`);
+            assert.match(err.message, new RegExp(`\\(${status}\\): nope`), `${name} ${status}`);
+            return true;
+          });
+        },
+      );
+    }
+  }
 });
