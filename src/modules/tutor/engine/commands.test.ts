@@ -644,7 +644,7 @@ describe('evidence and misconceptions', () => {
         note: 'x',
         source: 'observation',
       }),
-      'invalid_arguments',
+      'weight_against_kind',
       /negative/,
     );
     assertError(
@@ -705,7 +705,7 @@ describe('evidence and misconceptions', () => {
         note: 'Wrong answer',
         source: 'observation',
       }),
-      'invalid_arguments',
+      'weight_against_kind',
       /change kind to struggled if the answer was wrong/,
     );
   });
@@ -856,7 +856,7 @@ describe('evidence and misconceptions', () => {
         source: 'observation',
         weight: -0.2,
       }),
-      'invalid_arguments',
+      'weight_against_kind',
       /Change weight to a number from 0 to 0\.7.*change kind to struggled/,
     );
     assertError(
@@ -868,7 +868,7 @@ describe('evidence and misconceptions', () => {
         source: 'observation',
         weight: 0.2,
       }),
-      'invalid_arguments',
+      'weight_against_kind',
       /from -0\.5 to 0.*explained, applied, insight, partial/,
     );
   });
