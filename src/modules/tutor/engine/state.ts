@@ -13,6 +13,7 @@ import {
   MASTERY_EVIDENCE_MIN,
   MASTERY_PRIOR,
   READY,
+  reaches,
   STARTING_ESTIMATE_MAX,
   STARTING_ESTIMATE_SAID_MAX,
 } from '@/modules/tutor/engine/rules';
@@ -223,7 +224,7 @@ export function demonstratedEvidence(state: TutorState, nodeId: string): number 
  */
 export function readyToComplete(state: TutorState, nodeId: string): boolean {
   return (
-    confidenceOf(state, nodeId) >= READY &&
+    reaches(confidenceOf(state, nodeId), READY) &&
     demonstratedEvidence(state, nodeId) >= MASTERY_EVIDENCE_MIN &&
     openMisconceptions(state, nodeId).length === 0
   );

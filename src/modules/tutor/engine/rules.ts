@@ -188,11 +188,19 @@ export function contestTarget(confidence: number, direction: 'up' | 'down'): num
 export type MasteryBand = 'building' | 'practising' | 'ready';
 
 export function masteryBand(confidence: number): MasteryBand {
-  if (confidence >= READY) return 'ready';
-  if (confidence >= PRACTISING) return 'practising';
+  if (reaches(confidence, READY)) return 'ready';
+  if (reaches(confidence, PRACTISING)) return 'practising';
   return 'building';
 }
 
 export function percent(confidence: number): number {
   return Math.round(confidence * 100);
+}
+
+/**
+ * Whether a confidence meets a bar, judged on the percent everyone sees: a
+ * topic the Hub shows at 80% is at 80%, not refused for being 0.7999.
+ */
+export function reaches(confidence: number, bar: number): boolean {
+  return percent(confidence) >= percent(bar);
 }

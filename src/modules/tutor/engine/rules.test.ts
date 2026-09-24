@@ -10,6 +10,7 @@ import {
   markKnownTarget,
   masteryBand,
   quizWeight,
+  reaches,
 } from '@/modules/tutor/engine';
 
 test('the numbers the spec fixes', () => {
@@ -59,4 +60,10 @@ test('"Too high" and "Too low" move one step, to the whole percent, within 0 to 
   assert.equal(contestTarget(0.583, 'down'), 0.43);
   assert.equal(contestTarget(0.95, 'up'), 1);
   assert.equal(contestTarget(0.1, 'down'), 0);
+});
+
+test('the mastery bar is judged on the percent the learner sees', () => {
+  assert.equal(reaches(0.7996, READY), true);
+  assert.equal(masteryBand(0.7996), 'ready');
+  assert.equal(reaches(0.794, READY), false);
 });
