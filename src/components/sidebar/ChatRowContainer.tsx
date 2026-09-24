@@ -83,6 +83,7 @@ export function ChatRowContainer({
       <ChatRowView
         chatId={chat.id}
         title={chat.title}
+        isTutor={!!chat.settings?.features?.tutor?.enabled}
         depth={depth}
         collapsed={collapsed}
         isMobile={isMobile}

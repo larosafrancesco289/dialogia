@@ -1,11 +1,18 @@
 import type { PointerEvent } from 'react';
 import { IconButton } from '@/components/ui/IconButton';
-import { PencilSquareIcon, TrashIcon, FolderArrowDownIcon } from '@heroicons/react/24/outline';
+import {
+  AcademicCapIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  FolderArrowDownIcon,
+} from '@heroicons/react/24/outline';
 import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
 
 export type ChatRowViewProps = {
   chatId: string;
   title: string;
+  /** A tutoring session: marked with the tutor's cap, so it stands out. */
+  isTutor?: boolean;
   depth: number;
   collapsed: boolean;
   isMobile: boolean;
@@ -35,6 +42,7 @@ export const ROW_INDENT = 24;
 export function ChatRowView({
   chatId,
   title,
+  isTutor = false,
   depth,
   collapsed,
   isMobile,
@@ -106,7 +114,13 @@ export function ChatRowView({
           onCancel={onCancelEdit}
         />
       ) : showTitle ? (
-        <div className="flex-1 text-sm truncate">{title}</div>
+        <>
+          {isTutor && <AcademicCapIcon className="chat-item__kind" aria-hidden="true" />}
+          <div className="flex-1 text-sm truncate">
+            {isTutor && <span className="sr-only">Tutoring: </span>}
+            {title}
+          </div>
+        </>
       ) : null}
 
       {allowActions && (
