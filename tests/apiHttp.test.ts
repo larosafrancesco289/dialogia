@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildApiHeaders, sendApiRequest, toBodyInit, withAbortTimeout } from '@/lib/api/http';
+import { mockFetch } from './helpers/mockFetch';
 
 test('toBodyInit stringifies objects', () => {
   const body = toBodyInit({ hello: 'world' });
@@ -37,18 +38,17 @@ test('withAbortTimeout mirrors external abort signal', () => {
 });
 
 test('sendApiRequest keeps the caller signal linked while the body is read', async () => {
-  const original = globalThis.fetch;
   let seen: AbortSignal | undefined;
-  globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+  const restoreFetch = mockFetch(async (_url, init) => {
     seen = init?.signal ?? undefined;
     return new Response('streaming');
-  }) as typeof fetch;
+  });
   try {
     const controller = new AbortController();
     await sendApiRequest({ url: 'https://example.test', signal: controller.signal, timeoutMs: 50 });
     controller.abort();
     assert.equal(seen?.aborted, true);
   } finally {
-    globalThis.fetch = original;
+    restoreFetch();
   }
 });
