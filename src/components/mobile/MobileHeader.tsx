@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { Bars2Icon, PencilSquareIcon } from '@heroicons/react/24/outline';
@@ -15,10 +16,12 @@ export function MobileHeader({
   drawerOpen,
   onOpenDrawer,
   onNewChat,
+  menuButtonRef,
 }: {
   drawerOpen: boolean;
   onOpenDrawer: () => void;
   onNewChat: () => void;
+  menuButtonRef?: Ref<HTMLButtonElement>;
 }) {
   const { title, isStreaming, tutorActive } = useChatStore(
     (s) => ({
@@ -35,6 +38,7 @@ export function MobileHeader({
       {isStreaming && <div className={styles.activityBar} />}
 
       <button
+        ref={menuButtonRef}
         type="button"
         className={styles.iconButton}
         onClick={onOpenDrawer}
