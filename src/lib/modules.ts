@@ -162,6 +162,8 @@ const tutorModule: AppModule = {
   settingsDefaults: tutorSettingsDefaults,
   panels: tutorPanels,
   hasRightPanelContent: hasTutorPlan,
+  // Bootstrap also reruns after a backup import replaced the database.
+  onBootstrap: ({ get }) => get().resetTutorSessions(),
   onChatDeleted: ({ get }, chatId) => get().dropTutorSession(chatId),
   onChatBranched: async ({ get }, { sourceChatId, chatId, messageIds }) => {
     await get().branchTutorSession(sourceChatId, chatId, messageIds);

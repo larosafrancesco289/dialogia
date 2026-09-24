@@ -7,6 +7,7 @@ import { buildStoreInitializer } from '@/lib/store/createStore';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, LearnerModel, LearningPlan, Message, TopicMastery } from '@/lib/types';
 import {
+  ENABLED_MODULES,
   canRedoReply,
   messageHasModuleContent,
   notifyChatDeleted,
@@ -17,6 +18,7 @@ import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexin
 import { remainingBudgets } from '@/modules/tutor/engine';
 import { CALCULUS, QUIZ_ITEMS } from '@/modules/tutor/engine/testSupport';
 import { cardsForMessage } from '@/modules/tutor/ui/messageViews';
+import { TUTOR_SAVE_FAILED_NOTICE } from '@/modules/tutor/store/tutorSlice';
 
 const newStore = () =>
   createStore<StoreState>(buildStoreInitializer() as unknown as StateCreator<StoreState>);
@@ -798,4 +800,245 @@ test('branching a tutor chat copies its log up to the branch point', async () =>
   reloaded.setState({ chats: store.getState().chats });
   const again = await reloaded.getState().ensureTutorSession(branchId);
   assert.deepEqual(again.state, session.state);
+});
+
+// ---------------------------------------------------------------- persistence failures
+
+test('an imported backup replaces the tutor sessions held in memory', async () => {
+  const { id, store } = await teachingChat();
+  const tutor = ENABLED_MODULES.find((m) => m.id === 'tutor')!;
+  assert.ok(store.getState().tutorSessions[id].state.plan);
+
+  // The backup's log for this chat has only an intake card.
+  await repository.importAll({
+    chats: store.getState().chats,
+    tutorEvents: [
+      {
+        id: `${id}-backup-1`,
+        chatId: id,
+        seq: 1,
+        at: 1,
+        by: 'tutor',
+        type: 'intake_asked',
+        intakeId: 'i1',
+        questions: [
+          { id: 'q1', question: 'Goal?', options: [{ label: 'A' }, { label: 'B' }] },
+          { id: 'q2', question: 'Level?', options: [{ label: 'A' }, { label: 'B' }] },
+        ],
+      },
+    ],
+  });
+  // Bootstrap runs again after an import; the tutor forgets what it held.
+  await tutor.onBootstrap?.({ get: store.getState, set: store.setState });
+  assert.deepEqual(store.getState().tutorSessions, {});
+
+  const session = await store.getState().ensureTutorSession(id);
+  assert.equal(session.state.plan, undefined);
+  assert.deepEqual(session.state.awaiting, { kind: 'intake', id: 'i1' });
+  // And a dispatch decides against the imported log, not the old one.
+  const answered = await store
+    .getState()
+    .dispatchTutor(
+      id,
+      { by: 'learner', type: 'answer_intake', intakeId: 'i1', responses: { q1: ['A'] } },
+      { by: 'learner' },
+    );
+  assert.equal(answered.ok, true);
+  assert.deepEqual(
+    (await repository.loadTutorEvents(id)).map((e) => `${e.seq}:${e.type}`),
+    ['1:intake_asked', '2:intake_answered'],
+  );
+});
+
+test('a failed write is sent again with the next one, so the disk never has a hole', async () => {
+  const { id, store } = await teachingChat();
+  const { dispatchTutor } = store.getState();
+  const original = repository.appendTutorEvents;
+  let failing = 2;
+  repository.appendTutorEvents = async (events) => {
+    if (failing > 0) {
+      failing -= 1;
+      throw new Error('QuotaExceededError');
+    }
+    await original(events);
+  };
+  try {
+    const flag = (flagged: boolean) =>
+      dispatchTutor(
+        id,
+        { by: 'learner', type: 'flag_review', nodeId: 'limits', flagged },
+        { by: 'learner' },
+      );
+    assert.equal((await flag(true)).ok, true, 'the change stands in memory');
+    assert.equal(store.getState().ui.notice, undefined, 'one failure is not worth a notice');
+    assert.equal((await flag(false)).ok, true);
+    assert.equal(store.getState().ui.notice, TUTOR_SAVE_FAILED_NOTICE, 'a failed retry is');
+
+    // The next write carries both unsaved ones ahead of its own.
+    await dispatchTutor(
+      id,
+      {
+        by: 'tutor',
+        type: 'record_evidence',
+        kind: 'applied',
+        note: 'Solved',
+        source: 'observation',
+      },
+      { by: 'tutor', messageId: 'm2' },
+    );
+  } finally {
+    repository.appendTutorEvents = original;
+  }
+  const { events } = store.getState().tutorSessions[id];
+  const stored = await repository.loadTutorEvents(id);
+  assert.deepEqual(
+    stored.map((e) => e.seq),
+    events.map((e) => e.seq),
+  );
+  assert.deepEqual(
+    stored.map((e) => e.seq),
+    stored.map((_, i) => i + 1),
+    'gapless',
+  );
+});
+
+test('an unsaved write is retried on the next load of the session, with no new change', async () => {
+  const { id, store } = await teachingChat();
+  const original = repository.appendTutorEvents;
+  repository.appendTutorEvents = async () => {
+    throw new Error('disk full');
+  };
+  try {
+    await store
+      .getState()
+      .dispatchTutor(
+        id,
+        { by: 'learner', type: 'flag_review', nodeId: 'limits', flagged: true },
+        { by: 'learner' },
+      );
+  } finally {
+    repository.appendTutorEvents = original;
+  }
+  const inMemory = store.getState().tutorSessions[id].events.length;
+  assert.equal((await repository.loadTutorEvents(id)).length, inMemory - 1);
+  await store.getState().ensureTutorSession(id);
+  // Loading queued the retry; a dispatch queued after it (refused, so it writes nothing) waits for it.
+  await store
+    .getState()
+    .dispatchTutor(id, { by: 'tutor', type: 'start_topic', nodeId: 'nope' }, { by: 'tutor' });
+  assert.equal((await repository.loadTutorEvents(id)).length, inMemory);
+});
+
+// ---------------------------------------------------------------- two tabs
+
+test('two tabs loading one legacy chat import it once', async () => {
+  const id = chatId('two-tabs-import');
+  const { chat } = await seedLegacy(id);
+  const tabA = newStore();
+  const tabB = newStore();
+  tabA.setState({ chats: [chat] });
+  tabB.setState({ chats: [chat] });
+  const [a, b] = await Promise.all([
+    tabA.getState().ensureTutorSession(id),
+    tabB.getState().ensureTutorSession(id),
+  ]);
+  const stored = await repository.loadTutorEvents(id);
+  assert.equal(stored.length, a.events.length, 'one import on disk');
+  assert.deepEqual(
+    b.events.map((e) => e.id),
+    a.events.map((e) => e.id),
+    'both tabs hold the one that was written',
+  );
+});
+
+test('an append at a position another tab took reloads the log and decides again', async () => {
+  const { id, store: tabA } = await teachingChat();
+  const tabB = newStore();
+  tabB.setState({ chats: tabA.getState().chats });
+  await tabB.getState().ensureTutorSession(id);
+
+  await tabA.getState().dispatchTutor(
+    id,
+    {
+      by: 'tutor',
+      type: 'record_evidence',
+      kind: 'applied',
+      note: 'In A',
+      source: 'observation',
+    },
+    { by: 'tutor', messageId: 'm2' },
+  );
+  // Tab B still thinks the next position is free.
+  const result = await tabB.getState().dispatchTutor(
+    id,
+    {
+      by: 'tutor',
+      type: 'record_evidence',
+      kind: 'explained',
+      note: 'In B',
+      source: 'observation',
+    },
+    { by: 'tutor', messageId: 'm2' },
+  );
+  assert.equal(result.ok, true);
+
+  const stored = await repository.loadTutorEvents(id);
+  assert.deepEqual(
+    stored.map((e) => e.seq),
+    stored.map((_, i) => i + 1),
+    'one gapless log, no position written twice',
+  );
+  assert.deepEqual(
+    stored.filter((e) => e.type === 'evidence_recorded').map((e) => e.note),
+    ['In A', 'In B'],
+  );
+  assert.deepEqual(
+    tabB.getState().tutorSessions[id].events.map((e) => e.id),
+    stored.map((e) => e.id),
+    'tab B now holds what is on disk',
+  );
+});
+
+test('deleting a chat mid-dispatch leaves no events behind and refuses what was queued', async () => {
+  const { id, store } = await teachingChat();
+  await repository.saveChat(store.getState().chats[0]);
+  const original = repository.appendTutorEvents;
+  repository.appendTutorEvents = async (events) => {
+    // Slow enough that the chat is deleted before this lands.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await original(events);
+  };
+  try {
+    const { dispatchTutor } = store.getState();
+    const inFlight = dispatchTutor(
+      id,
+      {
+        by: 'tutor',
+        type: 'record_evidence',
+        kind: 'applied',
+        note: 'Late',
+        source: 'observation',
+      },
+      { by: 'tutor', messageId: 'm2' },
+    );
+    const queued = dispatchTutor(
+      id,
+      { by: 'learner', type: 'flag_review', nodeId: 'limits', flagged: true },
+      { by: 'learner' },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    await store.getState().deleteChat(id);
+    await inFlight;
+    const refused = await queued;
+    assert.equal(refused.ok, false);
+    assert.equal(!refused.ok && refused.error.code, 'chat_deleted');
+  } finally {
+    repository.appendTutorEvents = original;
+  }
+  // The sweep runs once the in-flight write has landed.
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.deepEqual(await repository.loadTutorEvents(id), []);
+  assert.equal(store.getState().tutorSessions[id], undefined);
+  const exported = await repository.exportAll();
+  assert.ok(!exported.tutorEvents.some((e) => e.chatId === id));
 });

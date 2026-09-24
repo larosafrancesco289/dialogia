@@ -83,7 +83,10 @@ export type TutorErrorCode =
   | 'incomplete_answers'
   | 'invalid_choice'
   | 'nothing_to_change'
-  | 'unknown_tool';
+  | 'unknown_tool'
+  // Raised by the store, not by `decide`: the chat is gone, or another tab won a race twice.
+  | 'chat_deleted'
+  | 'log_conflict';
 
 export type TutorError = { code: TutorErrorCode; message: string; hint: string };
 
