@@ -68,6 +68,13 @@ export const OBSERVATION_WEIGHTS: Record<ObservationKind, number> = {
   struggled: -0.2,
 };
 
+/**
+ * A step the tutor led the learner to (named the operation, gave a strong hint,
+ * started it for them) shows less than one they took alone, so its upward
+ * weight is scaled down.
+ */
+export const HELPED_FACTOR = 0.4;
+
 /** Which way each observation may move the estimate. `partial` may go either way. */
 export const OBSERVATION_SIGN: Record<ObservationKind, 1 | -1 | 0> = {
   explained: 1,

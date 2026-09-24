@@ -28,6 +28,7 @@ import {
   LIMITS,
   OBSERVATION_KINDS,
   OBSERVATION_SIGN,
+  HELPED_FACTOR,
   OBSERVATION_WEIGHTS,
   READY,
   STARTING_ESTIMATE_MAX,
@@ -99,6 +100,8 @@ export type TutorToolCommand =
       source: 'observation' | 'learner_said';
       kind: ObservationKind;
       weight?: number;
+      /** The tutor led them to it; an upward weight counts for less. */
+      helped?: boolean;
       setTo?: number;
       note: string;
     }
@@ -566,12 +569,13 @@ function decideTutor(
             : `Change weight to a number from ${WEIGHT_MIN} to 0 (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to one of ${upward} if the learner did well.`,
         );
       }
+      const scaled = cmd.helped && weight > 0 ? weight * HELPED_FACTOR : weight;
       out.push({
         type: 'evidence_recorded',
         nodeId: found.node.id,
         source: cmd.source === 'learner_said' ? 'learner_said' : 'observation',
         kind: cmd.kind,
-        weight: clampWeight(weight),
+        weight: clampWeight(scaled),
         note,
       });
       return null;
