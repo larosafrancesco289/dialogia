@@ -1,8 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { Chat, Message } from '@/lib/types';
+import type { Chat, LearningPlan, Message } from '@/lib/types';
 import { buildMessageIndex } from '@/lib/messages/indexing';
-import { prepareTutorWelcomeMessage } from '@/modules/tutor/services/tutorWelcome';
+import {
+  buildPlanWelcomeMessage,
+  prepareTutorWelcomeMessage,
+} from '@/modules/tutor/services/tutorWelcome';
 import { createTestStoreState } from './helpers/createTestStoreState';
 import type { Repository } from '@/lib/db/repository';
 
@@ -100,4 +103,61 @@ test('prepareTutorWelcomeMessage inserts before the first user message when need
   const second = state.messagesById[ids[1]];
   assert.equal(first.tutorWelcome, true);
   assert.equal(second.id, user.id);
+});
+
+const planWith = (goal: string, description?: string) =>
+  ({
+    goal,
+    generatedAt: 1,
+    updatedAt: 1,
+    nodes: [
+      {
+        id: 'bayes',
+        name: 'Bayes rule',
+        ...(description ? { description } : {}),
+        objectives: ['Apply it'],
+        prerequisites: [],
+        status: 'in_progress',
+      },
+    ],
+  }) as unknown as LearningPlan;
+
+test('the welcome never doubles the punctuation of the text it quotes', () => {
+  const text = buildPlanWelcomeMessage(
+    planWith('Solve conditional probability problems.', 'Updating beliefs with evidence.'),
+  );
+  assert.match(text, /"Solve conditional probability problems"\. /);
+  assert.match(text, /Bayes rule: Updating beliefs with evidence\. Ask/);
+  assert.doesNotMatch(text, /\.\.|\."\.|\?"\./);
+  assert.doesNotMatch(text, /—/);
+});
+
+test('a written welcome is frozen: the plan moving on does not rewrite it', async () => {
+  const chat = makeChat();
+  const welcome = makeMessage({
+    id: 'w1',
+    role: 'assistant',
+    createdAt: 1,
+    content: 'Welcome! Share what you want to learn.',
+    tutorWelcome: true,
+  });
+  const user = makeMessage({ id: 'u1', role: 'user', createdAt: 2, content: 'Bayes, please' });
+  const { messagesById, messageIdsByChatId } = buildMessageIndex({ [chat.id]: [welcome, user] });
+  const { state, set, get } = createTestStoreState({
+    chats: [chat],
+    selectedChatId: chat.id,
+    messagesById,
+    messageIdsByChatId,
+    ui: { flags: { experimentalTutor: true } },
+  });
+
+  const returned = await prepareTutorWelcomeMessage({
+    chatId: chat.id,
+    set,
+    get,
+    repository: createRepositoryStub(),
+  });
+
+  assert.equal(returned, 'Welcome! Share what you want to learn.');
+  assert.equal(state.messagesById.w1.content, 'Welcome! Share what you want to learn.');
 });

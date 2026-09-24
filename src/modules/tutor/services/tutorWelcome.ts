@@ -10,19 +10,34 @@ import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { getMessagesForChat, setMessagesForChat } from '@/lib/messages/indexing';
 import { createTutorWelcomeMessage } from '@/lib/messages/createMessage';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
+import { joinSentences, withoutEnd } from '@/modules/tutor/lib/text';
 
 export const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
   if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {
     return "Welcome! Share what you want to learn and I'll build a personalized plan with adaptive mastery tracking. Feel free to upload any materials you have to help me understand your learning context.";
   }
 
+  const goal = `"${withoutEnd(plan.goal)}"`;
   const nextNode = plan.nodes.find((n) => n.status === 'in_progress') ?? nextReadyNode(plan);
   if (!nextNode) {
-    return `Welcome back! You've completed the learning plan for \"${plan.goal}\". Let me know if you'd like to review or start a new goal. Feel free to upload any new materials if you have them.`;
+    return joinSentences(
+      'Welcome back!',
+      `You've completed the learning plan for ${goal}`,
+      "Let me know if you'd like to review or start a new goal",
+      'Feel free to upload any new materials if you have them',
+    );
   }
 
-  const description = nextNode.description ? ` — ${nextNode.description}` : '';
-  return `Welcome back! We're working toward \"${plan.goal}\". Our next focus is ${nextNode.name}${description}. Ask a question or request practice when you're ready. You can also upload any relevant materials to support your learning.`;
+  const description = nextNode.description?.trim();
+  return joinSentences(
+    'Welcome back!',
+    `We're working toward ${goal}`,
+    description
+      ? `Our next focus is ${nextNode.name}: ${description}`
+      : `Our next focus is ${nextNode.name}`,
+    "Ask a question or request practice when you're ready",
+    'You can also upload any relevant materials to support your learning',
+  );
 };
 
 export async function prepareTutorWelcomeMessage({
@@ -59,7 +74,12 @@ export async function prepareTutorWelcomeMessage({
   const currentMessages = getMessagesForChat(state, chatId);
   // Selecting a tutor chat lands here, so this is also where its session loads.
   const session = await state.ensureTutorSession?.(chatId).catch(() => undefined);
-  const planMessage = buildPlanWelcomeMessage(session?.state.plan);
+  // The greeting is frozen once written: the top of a transcript must not
+  // rewrite itself as the plan moves on.
+  const written = currentMessages.find((m) => m.role === 'assistant' && m.tutorWelcome);
+  const planMessage = written?.content.trim()
+    ? written.content
+    : buildPlanWelcomeMessage(session?.state.plan);
 
   const findWelcomeIndex = (list: Message[]) => {
     const flaggedIdx = list.findIndex((m) => m.role === 'assistant' && m.tutorWelcome);
