@@ -6,7 +6,12 @@ import { repository } from '@/lib/db';
 import { buildStoreInitializer } from '@/lib/store/createStore';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, LearnerModel, LearningPlan, Message, TopicMastery } from '@/lib/types';
-import { canRedoReply, notifyChatDeleted, notifyReplyRetracted } from '@/lib/modules';
+import {
+  canRedoReply,
+  messageHasModuleContent,
+  notifyChatDeleted,
+  notifyReplyRetracted,
+} from '@/lib/modules';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import { remainingBudgets } from '@/modules/tutor/engine';
@@ -515,6 +520,24 @@ test('a dispatch decides only after the one before it is on disk', async () => {
     'the log reaches disk in order',
   );
   assert.equal(written.length, 2);
+});
+
+test('a reply that put up a card has content even with no words; a retracted one does not', async () => {
+  const { id, store } = await teachingChat();
+  const reply = (messageId: string) =>
+    ({ id: messageId, chatId: id, role: 'assistant', content: '', createdAt: 1 }) as Message;
+  assert.equal(messageHasModuleContent(store.getState(), reply('m1')), true, 'the plan card');
+  assert.equal(messageHasModuleContent(store.getState(), reply('m2')), false);
+  await store
+    .getState()
+    .dispatchTutor(
+      id,
+      { by: 'tutor', type: 'give_quiz', items: QUIZ_ITEMS },
+      { by: 'tutor', messageId: 'm2' },
+    );
+  assert.equal(messageHasModuleContent(store.getState(), reply('m2')), true, 'the quiz card');
+  await notifyReplyRetracted({ get: store.getState }, { chatId: id, messageId: 'm2' });
+  assert.equal(messageHasModuleContent(store.getState(), reply('m2')), false);
 });
 
 // ---------------------------------------------------------------- retraction and deletion
