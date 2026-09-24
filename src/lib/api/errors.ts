@@ -37,3 +37,41 @@ export class ApiError extends Error {
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
+
+/** A provider's reader for a failed response: its error body into an ApiError. */
+type ResponseErrorBuilder = (
+  res: Response,
+  code: ApiErrorCode,
+  message?: string,
+) => Promise<ApiError>;
+
+type StatusOptions = {
+  /** Read 429 as a failure like any other, for a caller that never has. */
+  rateLimit?: boolean;
+  /** Sees the error for a failure other than auth or rate limit before it is thrown. */
+  onFailure?: (error: ApiError) => void;
+};
+
+/**
+ * Throws for a response that is not ok: 401 and 403 as unauthorized, 429 as
+ * rate limited, and anything else as `failureCode`. The codes are what the
+ * store and the turn's notices branch on, so every provider must agree.
+ */
+export async function throwForStatus(
+  res: Response,
+  build: ResponseErrorBuilder,
+  failureCode: ApiErrorCode,
+  options: StatusOptions = {},
+): Promise<void> {
+  if (res.status === 401 || res.status === 403) {
+    throw await build(res, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key');
+  }
+  if (res.status === 429 && options.rateLimit !== false) {
+    throw await build(res, API_ERROR_CODES.RATE_LIMITED, 'Rate limited');
+  }
+  if (!res.ok) {
+    const error = await build(res, failureCode);
+    options.onFailure?.(error);
+    throw error;
+  }
+}

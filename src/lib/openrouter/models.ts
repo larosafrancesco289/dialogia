@@ -1,6 +1,6 @@
 import type { TransportAuth } from '@/lib/auth/transport';
 import type { ModelDescriptor } from '@/lib/types';
-import { API_ERROR_CODES } from '@/lib/api/errors';
+import { API_ERROR_CODES, throwForStatus } from '@/lib/api/errors';
 import { orFetchModels } from '@/lib/openrouter/http';
 import type { TransportFetchModelsOptions } from '@/lib/transport/types';
 import { normalizeModelList } from '@/lib/models/normalization';
@@ -48,12 +48,9 @@ export async function fetchModels(
   } catch (error) {
     throw wrapOpenRouterClientError(error, API_ERROR_CODES.OPENROUTER_MODELS_FAILED);
   }
-  if (res.status === 401 || res.status === 403) {
-    throw await buildOpenRouterError(res, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key');
-  }
-  if (!res.ok) {
-    throw await buildOpenRouterError(res, API_ERROR_CODES.OPENROUTER_MODELS_FAILED);
-  }
+  await throwForStatus(res, buildOpenRouterError, API_ERROR_CODES.OPENROUTER_MODELS_FAILED, {
+    rateLimit: false,
+  });
   const data = await res.json().catch(() => null);
   const models = normalizeModelList(data, {
     endpointId: auth.endpoint.id,

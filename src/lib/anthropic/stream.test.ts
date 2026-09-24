@@ -2,6 +2,13 @@ import { ANTHROPIC_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { streamChatCompletion } from '@/lib/anthropic/stream';
+import {
+  applyStreamEvent,
+  createStreamTurn,
+  finishedToolCalls,
+  roundContent,
+} from '@/lib/anthropic/streamEvents';
+import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { buildTransportAuth } from '@/lib/auth/transport';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
 
@@ -212,4 +219,194 @@ test('streamChatCompletion maps refusal stop_reason to content_filter with stop_
 
   assert.equal(finishReason, 'content_filter');
   assert.deepEqual(stopDetails, { policy: 'cybersecurity' });
+});
+
+function toolUseRound(args: {
+  messageId: string;
+  text: string;
+  toolId: string;
+  toolName: string;
+  input: string;
+  stopReason: string;
+}): unknown[] {
+  return [
+    {
+      type: 'message_start',
+      message: { id: args.messageId, type: 'message', role: 'assistant', content: [] },
+    },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: args.text } },
+    { type: 'content_block_stop', index: 0 },
+    {
+      type: 'content_block_start',
+      index: 1,
+      content_block: { type: 'tool_use', id: args.toolId, name: args.toolName, input: {} },
+    },
+    {
+      type: 'content_block_delta',
+      index: 1,
+      delta: { type: 'input_json_delta', partial_json: args.input },
+    },
+    { type: 'content_block_stop', index: 1 },
+    { type: 'message_delta', delta: { stop_reason: args.stopReason, stop_sequence: null } },
+    { type: 'message_stop' },
+  ];
+}
+
+test('streamChatCompletion keeps tool calls from both sides of a pause_turn apart', async () => {
+  // Each continuation response numbers its content blocks from 0 again, so a
+  // tool_use at index 1 in the second round must not land on the first's.
+  let callCount = 0;
+  const restoreFetch = mockFetch(async () => {
+    callCount += 1;
+    return createSseResponse(
+      callCount === 1
+        ? toolUseRound({
+            messageId: 'msg_1',
+            text: 'First.',
+            toolId: 'toolu_first',
+            toolName: 'lookup',
+            input: '{"q":"one"}',
+            stopReason: 'pause_turn',
+          })
+        : toolUseRound({
+            messageId: 'msg_2',
+            text: ' Second.',
+            toolId: 'toolu_second',
+            toolName: 'fetch_page',
+            input: '{"url":"two"}',
+            stopReason: 'tool_use',
+          }),
+    );
+  });
+
+  const namedIndices: number[] = [];
+  let toolCalls: unknown;
+
+  try {
+    await streamChatCompletion({
+      auth: buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' }),
+      model: 'anthropic/claude-sonnet-4-6',
+      messages: [{ role: 'user', content: 'Look both up.' }],
+      tools: [
+        { type: 'function', function: { name: 'lookup', parameters: { type: 'object' } } },
+        { type: 'function', function: { name: 'fetch_page', parameters: { type: 'object' } } },
+      ],
+      callbacks: {
+        onToolCallDelta(deltas) {
+          for (const delta of deltas) if (delta.function?.name) namedIndices.push(delta.index);
+        },
+        onDone(_text, extras) {
+          toolCalls = extras?.toolCalls;
+        },
+      },
+    });
+  } finally {
+    restoreFetch();
+  }
+
+  assert.equal(callCount, 2);
+  assert.deepEqual(toolCalls, [
+    {
+      id: 'toolu_first',
+      type: 'function',
+      function: { name: 'lookup', arguments: '{"q":"one"}' },
+    },
+    {
+      id: 'toolu_second',
+      type: 'function',
+      function: { name: 'fetch_page', arguments: '{"url":"two"}' },
+    },
+  ]);
+  assert.equal(new Set(namedIndices).size, 2, 'each tool call is announced under its own index');
+});
+
+test('applyStreamEvent folds a recorded stream without fetch', () => {
+  const turn = createStreamTurn();
+  const tokens: string[] = [];
+  const reasoning: string[] = [];
+  const named: Array<[number, string | undefined]> = [];
+  const emit = {
+    onToken: (delta: string) => tokens.push(delta),
+    onReasoningToken: (delta: string) => reasoning.push(delta),
+    onToolCallDelta: (deltas: Array<{ index: number; function?: { name?: string } }>) => {
+      for (const delta of deltas) named.push([delta.index, delta.function?.name]);
+    },
+  };
+  const events = [
+    { type: 'message_start', message: { usage: { input_tokens: 9, output_tokens: 1 } } },
+    { type: 'ping' },
+    { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Hmm, ' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'ok.' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'signature_delta', signature: 'sig' } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Let me ' } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'check.' } },
+    { type: 'content_block_stop', index: 1 },
+    {
+      type: 'content_block_start',
+      index: 2,
+      content_block: { type: 'tool_use', id: 'toolu_1', name: 'lookup', input: {} },
+    },
+    {
+      type: 'content_block_delta',
+      index: 2,
+      delta: { type: 'input_json_delta', partial_json: '{"q":' },
+    },
+    {
+      type: 'content_block_delta',
+      index: 2,
+      delta: { type: 'input_json_delta', partial_json: '"bayes"}' },
+    },
+    { type: 'content_block_stop', index: 2 },
+    {
+      type: 'message_delta',
+      delta: { stop_reason: 'tool_use', stop_sequence: null },
+      usage: { output_tokens: 20 },
+    },
+    { type: 'message_stop' },
+  ];
+  for (const event of events) applyStreamEvent(turn, event, emit);
+
+  assert.equal(turn.text, 'Let me check.');
+  assert.deepEqual(tokens, ['Let me ', 'check.']);
+  assert.deepEqual(reasoning, ['Hmm, ', 'ok.']);
+  assert.deepEqual(named, [[2, 'lookup']]);
+  assert.equal(turn.stopReason, 'tool_use');
+  assert.equal(turn.round.usage?.input_tokens, 9);
+  assert.equal(turn.round.usage?.output_tokens, 20);
+  assert.deepEqual(turn.thinkingBlocks, [
+    { type: 'thinking', thinking: 'Hmm, ok.', signature: 'sig' },
+  ]);
+  assert.deepEqual(finishedToolCalls(turn), [
+    { id: 'toolu_1', type: 'function', function: { name: 'lookup', arguments: '{"q":"bayes"}' } },
+  ]);
+  // What a continuation would send back: the blocks complete, the input parsed.
+  assert.deepEqual(roundContent(turn), [
+    { type: 'thinking', thinking: 'Hmm, ok.', signature: 'sig' },
+    { type: 'text', text: 'Let me check.' },
+    { type: 'tool_use', id: 'toolu_1', name: 'lookup', input: { q: 'bayes' } },
+  ]);
+});
+
+test('applyStreamEvent throws an error event as an ApiError', () => {
+  assert.throws(
+    () =>
+      applyStreamEvent(createStreamTurn(), {
+        type: 'error',
+        error: { type: 'rate_limit_error', message: 'Slow down' },
+      }),
+    (err) =>
+      isApiError(err) && err.code === API_ERROR_CODES.RATE_LIMITED && err.message === 'Slow down',
+  );
+  assert.throws(
+    () =>
+      applyStreamEvent(createStreamTurn(), { type: 'error', error: { type: 'overloaded_error' } }),
+    (err) =>
+      isApiError(err) &&
+      err.code === API_ERROR_CODES.PROVIDER_CHAT_FAILED &&
+      err.message === 'Anthropic stream error',
+  );
 });
