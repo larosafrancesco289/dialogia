@@ -6,6 +6,7 @@ import {
   READY,
   applyEvidence,
   clampWeight,
+  contestTarget,
   diagnosticWeight,
   markKnownTarget,
   masteryBand,
@@ -55,4 +56,12 @@ test('bands: building below 50%, practising to 80%, ready from 80%', () => {
   assert.equal(masteryBand(0.5), 'practising');
   assert.equal(masteryBand(0.79), 'practising');
   assert.equal(masteryBand(0.8), 'ready');
+});
+
+test('"Too high" and "Too low" move one step, to the whole percent, within 0 to 1', () => {
+  assert.equal(contestTarget(0.5, 'up'), 0.65);
+  assert.equal(contestTarget(0.5, 'down'), 0.35);
+  assert.equal(contestTarget(0.583, 'down'), 0.43);
+  assert.equal(contestTarget(0.95, 'up'), 1);
+  assert.equal(contestTarget(0.1, 'down'), 0);
 });

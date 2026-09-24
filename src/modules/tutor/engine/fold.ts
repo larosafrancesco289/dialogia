@@ -13,10 +13,57 @@ import {
 import { emptyTutorState, freshMastery, type TutorState } from '@/modules/tutor/engine/state';
 
 export function fold(events: readonly TutorEvent[]): TutorState {
-  return [...events].sort((a, b) => a.seq - b.seq).reduce(apply, emptyTutorState());
+  const state = effectiveEvents(events).reduce(apply, emptyTutorState());
+  // Retracted events drop out, but their positions stay spent.
+  const lastSeq = events.reduce((max, event) => Math.max(max, event.seq), state.lastSeq);
+  return lastSeq === state.lastSeq ? state : { ...state, lastSeq };
 }
 
-/** Pure: returns a new state and never mutates its inputs. */
+/**
+ * The log in seq order without what a later `reply_retracted` took back:
+ * every event before it that carries the retracted reply's message id. A
+ * regenerated reply keeps its id, so events after the retraction count again.
+ */
+export function effectiveEvents(events: readonly TutorEvent[]): TutorEvent[] {
+  const sorted = [...events].sort((a, b) => a.seq - b.seq);
+  const retractedAt = new Map<string, number>();
+  for (const event of sorted) {
+    if (event.type === 'reply_retracted') retractedAt.set(event.replyId, event.seq);
+  }
+  if (!retractedAt.size) return sorted;
+  return sorted.filter((event) => {
+    if (!event.messageId) return true;
+    const at = retractedAt.get(event.messageId);
+    return at == null || event.seq > at;
+  });
+}
+
+/**
+ * The event that takes a reply back, or undefined when nothing in the log
+ * (still counting) belongs to it, so there is nothing to retract.
+ */
+export function retractReply(
+  events: readonly TutorEvent[],
+  replyId: string,
+  ctx: { chatId: string; at: number; id: string },
+): TutorEventOf<'reply_retracted'> | undefined {
+  if (!effectiveEvents(events).some((event) => event.messageId === replyId)) return undefined;
+  const seq = events.reduce((max, event) => Math.max(max, event.seq), 0) + 1;
+  return {
+    type: 'reply_retracted',
+    replyId,
+    id: ctx.id,
+    chatId: ctx.chatId,
+    seq,
+    at: ctx.at,
+    by: 'system',
+  };
+}
+
+/**
+ * Pure: returns a new state and never mutates its inputs. A `reply_retracted`
+ * cannot be applied step by step (it reaches back); `fold` honours it.
+ */
 export function apply(state: TutorState, event: TutorEvent): TutorState {
   const next = reduce({ ...state, lastSeq: Math.max(state.lastSeq, event.seq) }, event);
   const currentNodeId = next.plan?.nodes.find((n) => n.status === 'in_progress')?.id;
@@ -251,6 +298,10 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
         needsReview: event.flagged,
       }));
 
+    case 'reply_retracted':
+    case 'proposal_imported':
+      return state;
+
     case 'card_dismissed': {
       if (event.card === 'intake') {
         const intake = state.intakes[event.cardId];
@@ -354,6 +405,8 @@ function importLegacy(state: TutorState, event: TutorEventOf<'legacy_imported'>)
     }
     next = { ...next, plan, mastery };
   }
+  // Quizzes from before the log are history: they do not spend today's budget.
+  next = { ...next, counts: { ...next.counts, quizzesByNode: {} } };
   if (event.proposal) {
     next = {
       ...next,

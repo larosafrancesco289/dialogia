@@ -84,6 +84,24 @@ type Payloads = {
   review_flagged: { nodeId: string; flagged: boolean };
   /** The learner closed a card without finishing it. */
   card_dismissed: { card: CardKind; cardId: string };
+  /**
+   * An assistant reply was replaced (regenerated) or removed. Every earlier
+   * event carrying its message id stops counting: the tutor's own events of
+   * that turn, and the learner's answers to its cards. Only `fold` honours
+   * this; see `effectiveEvents`.
+   */
+  reply_retracted: { replyId: string };
+  /**
+   * A proposal from before the event log that the learner had already
+   * answered (or that a later one replaced). History only: it lets an old
+   * transcript render its plan card, and changes no state.
+   */
+  proposal_imported: {
+    proposalId: string;
+    plan: LearningPlan;
+    rationale?: string;
+    status: 'approved' | 'declined' | 'replaced';
+  };
 };
 
 export type TutorEventType = keyof Payloads;
