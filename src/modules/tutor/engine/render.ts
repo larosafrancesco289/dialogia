@@ -76,6 +76,47 @@ function diagnosticSummary(diagnostic: DiagnosticRecord): string | undefined {
   }.`;
 }
 
+/** How many questions the tutor is reminded of per topic: the most recent. */
+const ASKED_SHOWN = 6;
+
+/**
+ * The questions already put to the learner on a topic, in quizzes and
+ * diagnostics, most recent last, with how each went: the tutor's memory of
+ * practice, so it builds on them instead of asking them again.
+ */
+function askedOnTopic(state: TutorState, nodeId: string): string[] {
+  const asked: Array<{ seq: number; order: number; line: string }> = [];
+  for (const quiz of Object.values(state.quizzes)) {
+    if (quiz.nodeId !== nodeId) continue;
+    quiz.items.forEach((item, order) => {
+      const answer = quiz.answers[item.id];
+      const how = answer ? (answer.correct ? 'right' : 'wrong') : 'not answered';
+      asked.push({ seq: quiz.seq, order, line: `- ${quote(item.question, 70)} (quiz, ${how})` });
+    });
+  }
+  for (const diagnostic of Object.values(state.diagnostics)) {
+    diagnostic.items.forEach((item, order) => {
+      if (item.nodeId !== nodeId) return;
+      const choice = diagnostic.answers?.[item.id];
+      const how =
+        choice == null || typeof item.correct !== 'number'
+          ? 'not scored'
+          : choice === item.correct
+            ? 'right'
+            : 'wrong';
+      asked.push({
+        seq: diagnostic.seq,
+        order,
+        line: `- ${quote(item.question, 70)} (diagnostic, ${how})`,
+      });
+    });
+  }
+  return asked
+    .sort((a, b) => a.seq - b.seq || a.order - b.order)
+    .slice(-ASKED_SHOWN)
+    .map((entry) => entry.line);
+}
+
 function awaitingLine(state: TutorState): string | undefined {
   const open = state.awaiting;
   if (!open) return undefined;
@@ -126,6 +167,13 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
   if (current) {
     lines.push(`Current topic: ${current.name} [${current.id}]`);
     lines.push(`Objectives: ${current.objectives.join('; ')}`);
+    const asked = askedOnTopic(state, current.id);
+    if (asked.length) {
+      lines.push(
+        "Already asked on this topic (don't repeat them or reuse their numbers; build on them):",
+        ...asked,
+      );
+    }
   } else if (state.phase === 'interlude') {
     const next = nextReadyNode(plan);
     if (next) lines.push(`Next in the plan: ${next.name} [${next.id}]`);
