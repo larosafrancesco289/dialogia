@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { CheckIcon } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
 import type { IntakeQuestion } from '@/modules/tutor/engine';
-import type { MessageCards } from '@/modules/tutor/ui/messageViews';
+import type { IntakeView } from '@/modules/tutor/ui/messageViews';
+import { LEDGER, useLedger } from '@/modules/tutor/ui/ledger';
 import { contentVariants, safeKey } from '@/modules/tutor/components/message/shared';
 import { StepperDots } from '@/modules/tutor/components/message/StepperDots';
 import { useStepper } from '@/modules/tutor/components/message/hooks/useStepper';
@@ -18,49 +19,41 @@ export function QuestionnaireCard({
 }: {
   chatId: string;
   messageId: string;
-  intake: NonNullable<MessageCards['intake']>;
+  intake: IntakeView;
 }) {
-  // B2: the card reads the intake record directly; this keeps the old shape.
-  const questionnaire = useMemo(
-    () => ({
-      questions: intake.questions,
-      responses: intake.responses,
-      submittedAt: intake.answeredAt,
-    }),
-    [intake],
-  );
+  const { questions, responses, answeredAt } = intake;
   const initialSelections = useMemo(() => {
     const map: Record<string, string[]> = {};
-    for (const q of questionnaire.questions) {
-      const prev = questionnaire.responses?.[q.id];
+    for (const q of questions) {
+      const prev = responses?.[q.id];
       map[q.id] = Array.isArray(prev) ? prev : [];
     }
     return map;
-  }, [questionnaire]);
+  }, [questions, responses]);
   const [selections, setSelections] = useState<Record<string, string[]>>(initialSelections);
   const [submitting, setSubmitting] = useState(false);
   const dispatchTutor = useChatStore((s) => s.dispatchTutor);
-  const sendUserMessage = useChatStore((s) => s.sendUserMessage);
-  const isSubmitted = !!intake.responses;
-  const questionCount = questionnaire.questions.length;
+  const ledger = useLedger();
+  const isSubmitted = !!responses;
+  const questionCount = questions.length;
 
   const isPending = useCallback(
     (question: QuestionnaireItem) => !(selections[question.id] ?? []).length,
     [selections],
   );
   const { activeIndex, setActiveIndex, goToIndex, goPrevious, goNext, activeItem } = useStepper(
-    questionnaire.questions,
+    questions,
     isPending,
   );
 
   const firstIncompleteIndex = useMemo(() => {
-    for (let i = 0; i < questionnaire.questions.length; i += 1) {
-      const q = questionnaire.questions[i];
+    for (let i = 0; i < questions.length; i += 1) {
+      const q = questions[i];
       const existing = initialSelections[q.id];
       if (!existing || existing.length === 0) return i;
     }
     return 0;
-  }, [questionnaire.questions, initialSelections]);
+  }, [questions, initialSelections]);
 
   useEffect(() => {
     setSelections(initialSelections);
@@ -93,7 +86,7 @@ export function QuestionnaireCard({
     }
   };
 
-  const answeredCount = questionnaire.questions.reduce(
+  const answeredCount = questions.reduce(
     (count, q) => (selections[q.id]?.length ? count + 1 : count),
     0,
   );
@@ -113,13 +106,7 @@ export function QuestionnaireCard({
         { by: 'learner', messageId },
       );
       if (!result.ok) return;
-      // B2: a visible ledger line instead of a hidden message.
-      await sendUserMessage('Answered the intake questions.', {
-        metadata: {
-          hiddenFromUser: true,
-          kind: 'tutor_questionnaire_submission',
-        },
-      });
+      await ledger(LEDGER.intakeAnswered());
     } catch {
       // No-op
     } finally {
@@ -128,9 +115,7 @@ export function QuestionnaireCard({
   };
 
   const submittedTimestamp =
-    isSubmitted && questionnaire.submittedAt
-      ? new Date(questionnaire.submittedAt).toLocaleTimeString()
-      : null;
+    isSubmitted && answeredAt ? new Date(answeredAt).toLocaleTimeString() : null;
 
   return (
     <div className="exercise">
@@ -148,7 +133,7 @@ export function QuestionnaireCard({
           Question {activeIndex + 1} of {questionCount}
         </span>
         <StepperDots
-          items={questionnaire.questions}
+          items={questions}
           activeIndex={activeIndex}
           resolveStatus={(question) => {
             if (isSubmitted) return 'answered';

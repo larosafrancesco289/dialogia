@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import type { Evidence, Message } from '@/lib/types';
-import { nextReadyNode } from '@/modules/tutor/engine';
+import { nextReadyNode, percent as toPercent } from '@/modules/tutor/engine';
+import type { Completion } from '@/modules/tutor/ui/messageViews';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { inSentence } from '@/modules/tutor/ui/text';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
+import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
 
 const ORDINALS = [
   'one',
@@ -43,43 +45,37 @@ const countWord = (n: number) => (n <= ORDINALS.length ? ORDINALS[n - 1] : Strin
 /**
  * The seam at the end of a topic. Negotiating the plan here, rather than in
  * the middle of instruction, is what keeps agency from displacing teaching:
- * the tutor states its estimate and the learner agrees, asks for more
+ * the tutor states its estimate and the learner goes on, asks for more
  * practice, or goes to change the path. Only the newest seam is live; older
- * ones settle into a quiet record of the session.
+ * ones settle into a quiet record of the session. The estimate is the one the
+ * topic had when it finished, from the log, not today's.
  */
 export function ChapterBreak({
   message,
-  completedNodeId,
-  startedNodeId,
+  completion,
 }: {
   message: Message;
-  completedNodeId: string;
-  startedNodeId?: string;
+  completion: Completion;
 }) {
-  const [dismissed, setDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
   const isLatest = useChatStore((s) => {
     const messages = selectMessagesForCurrentChat(s);
     return messages[messages.length - 1]?.id === message.id;
   });
   const setUI = useChatStore((s) => s.setUI);
-  const { state, learningPlan, onRequestMorePractice, onStartLesson } = usePlanCallbacks();
+  const { state, learningPlan, onRequestMorePractice, onGoOn } = usePlanCallbacks();
   const affordances = useTutorAffordances();
 
-  const index = learningPlan?.nodes.findIndex((n) => n.id === completedNodeId) ?? -1;
+  const index = learningPlan?.nodes.findIndex((n) => n.id === completion.nodeId) ?? -1;
   const node = index >= 0 ? learningPlan!.nodes[index] : undefined;
   if (!node) return null;
-  // Legacy turns moved on by themselves; now the learner does, from here.
-  const next = startedNodeId
-    ? learningPlan!.nodes.find((n) => n.id === startedNodeId)
-    : nextReadyNode(learningPlan);
-  const goesOn = !startedNodeId && state.phase === 'interlude' && !!next;
 
-  // B2: the estimate at the break, from the event on this message, not today's.
-  const mastery =
-    message.learnerModel?.mastery?.[completedNodeId] ?? state.mastery[completedNodeId];
-  const percent =
-    affordances.showMastery && mastery ? Math.round(mastery.confidence * 100) : undefined;
+  const started = completion.nextNodeId
+    ? learningPlan!.nodes.find((n) => n.id === completion.nextNodeId)
+    : undefined;
+  const next = started ?? nextReadyNode(learningPlan);
+  const mastery = completion.mastery;
+  const percent = affordances.showMastery && mastery ? toPercent(mastery.confidence) : undefined;
   const answers =
     mastery?.evidence.filter(
       (e) =>
@@ -88,8 +84,19 @@ export function ChapterBreak({
         (!e.source && DEMONSTRATIONS.has(e.type)),
     ).length ?? 0;
   const reopened = node.status !== 'completed';
-  // The choices are about the plan, so a read-only plan has no live seam.
-  const live = affordances.revisePlan && isLatest && !dismissed && !reopened;
+  // The seam is open until the learner (or the tutor) starts what comes next.
+  const atSeam =
+    isLatest &&
+    !reopened &&
+    !started &&
+    (state.phase === 'interlude' || state.phase === 'complete');
+  // Going on follows the plan, so it is always offered; the other two change
+  // it, so a read-only plan leaves them out.
+  const { goOn: canGoOn, negotiate: canNegotiate } = seamChoices(affordances, {
+    phase: state.phase,
+    hasNext: !!next,
+  });
+  const live = atSeam && (canGoOn || canNegotiate);
 
   // The interface speaks here, not the tutor, so it reports the tutor's
   // estimate rather than voicing it; the question is the plan's.
@@ -99,6 +106,12 @@ export function ChapterBreak({
       : answers > 0
         ? `The tutor puts you at ${percent}%, from ${countWord(answers)} answer${answers === 1 ? '' : 's'}.`
         : `The tutor puts you at ${percent}%.`;
+  const question = canGoOn ? 'Ready to move on?' : 'That was the last topic in the plan.';
+
+  const run = (fn: () => Promise<void>) => {
+    setBusy(true);
+    void fn().finally(() => setBusy(false));
+  };
 
   return (
     <section
@@ -111,42 +124,38 @@ export function ChapterBreak({
       {live ? (
         <>
           <p className="chapter-break__estimate">
-            {estimate ? `${estimate} Ready to move on?` : 'Ready to move on?'}
+            {estimate ? `${estimate} ${question}` : question}
           </p>
           <div className="chapter-break__actions">
-            <button
-              type="button"
-              className="chapter-break__action chapter-break__action--primary"
-              disabled={busy}
-              onClick={() => {
-                if (!goesOn || !next) {
-                  setDismissed(true);
-                  return;
-                }
-                setBusy(true);
-                void onStartLesson(next.id).finally(() => setBusy(false));
-              }}
-            >
-              {next ? `Go on to ${inSentence(next.name)}` : 'Go on'}
-            </button>
-            <button
-              type="button"
-              className="chapter-break__action"
-              disabled={busy}
-              onClick={() => {
-                setBusy(true);
-                void onRequestMorePractice(completedNodeId).finally(() => setBusy(false));
-              }}
-            >
-              Not yet, more practice
-            </button>
-            <button
-              type="button"
-              className="chapter-break__action"
-              onClick={() => setUI({ plan: { rightPanelOpen: true, revising: true } })}
-            >
-              Change the path
-            </button>
+            {canGoOn && next && (
+              <button
+                type="button"
+                className="chapter-break__action chapter-break__action--primary"
+                disabled={busy}
+                onClick={() => run(() => onGoOn(next.id))}
+              >
+                Go on to {inSentence(next.name)}
+              </button>
+            )}
+            {canNegotiate && (
+              <>
+                <button
+                  type="button"
+                  className="chapter-break__action"
+                  disabled={busy}
+                  onClick={() => run(() => onRequestMorePractice(completion.nodeId))}
+                >
+                  Not yet, more practice
+                </button>
+                <button
+                  type="button"
+                  className="chapter-break__action"
+                  onClick={() => setUI({ plan: { rightPanelOpen: true, revising: true } })}
+                >
+                  Change the path
+                </button>
+              </>
+            )}
           </div>
         </>
       ) : (
@@ -156,7 +165,7 @@ export function ChapterBreak({
             : percent != null
               ? `${percent}% mastery`
               : 'Completed'}
-          {!reopened && next ? ` · on to ${inSentence(next.name)}` : ''}
+          {!reopened && started ? ` · on to ${inSentence(started.name)}` : ''}
         </p>
       )}
     </section>

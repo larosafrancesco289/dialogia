@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
-import { emptyTutorState, explainTopic, unmetPrerequisites } from '@/modules/tutor/engine';
+import { unmetPrerequisites, type TopicExplanation } from '@/modules/tutor/engine';
 import { inSentence } from '@/modules/tutor/ui/text';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 
@@ -39,6 +39,8 @@ function Meter({ value, weak }: { value: number; weak: boolean }) {
   );
 }
 
+type Explain = (nodeId: string) => TopicExplanation | undefined;
+
 export type ContentsCorrections = {
   onContestMastery: (nodeId: string, direction: 'up' | 'down') => Promise<unknown>;
   onResolveMisconception: (nodeId: string, misconceptionId: string) => Promise<unknown>;
@@ -53,11 +55,14 @@ export type ContentsCorrections = {
 export function ContentsView({
   plan,
   mastery,
+  explain,
   affordances,
   corrections,
 }: {
   plan: LearningPlan;
   mastery?: Record<string, TopicMastery>;
+  /** "Why N%": the engine's replay of the session's evidence for a topic. */
+  explain: Explain;
   affordances: TutorAffordances;
   corrections: ContentsCorrections;
 }) {
@@ -90,6 +95,7 @@ export function ContentsView({
             number={index + 1}
             plan={plan}
             mastery={mastery?.[node.id]}
+            explain={explain}
             affordances={affordances}
             corrections={corrections}
             open={openId === node.id}
@@ -106,6 +112,7 @@ function ContentsItem({
   number,
   plan,
   mastery,
+  explain,
   affordances,
   corrections,
   open,
@@ -115,6 +122,7 @@ function ContentsItem({
   number: number;
   plan: LearningPlan;
   mastery?: TopicMastery;
+  explain: Explain;
   affordances: TutorAffordances;
   corrections: ContentsCorrections;
   open: boolean;
@@ -197,7 +205,7 @@ function ContentsItem({
             </ul>
           )}
 
-          {showMastery && <Why nodeId={node.id} mastery={mastery!} />}
+          {showMastery && <Why mastery={mastery!} explanation={explain(node.id)} />}
 
           {showMastery && affordances.correctMastery && (
             <p className="hub-contents__correct">
@@ -256,12 +264,7 @@ function ContentsItem({
 }
 
 /** Where the estimate started and what each piece of evidence did to it. */
-function Why({ nodeId, mastery }: { nodeId: string; mastery: TopicMastery }) {
-  // B2: the Hub redesign reads `explainTopic` from the session state directly.
-  const explanation = explainTopic(
-    { ...emptyTutorState(), mastery: { [nodeId]: mastery } },
-    nodeId,
-  );
+function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: TopicExplanation }) {
   const start = explanation?.start ?? mastery.confidence;
   const steps = (explanation?.steps ?? []).map((step) => ({
     ...step,

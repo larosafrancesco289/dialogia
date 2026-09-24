@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { shallow } from 'zustand/shallow';
+import { explainTopic } from '@/modules/tutor/engine';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { useChatStore } from '@/lib/store';
@@ -20,8 +21,8 @@ import {
 export function LearningPanel() {
   const {
     learningPlan,
-    mastery,
-    onStartLesson,
+    state,
+    onStartNext,
     onMarkKnown,
     onReopenTopic,
     onContestMastery,
@@ -74,7 +75,7 @@ export function LearningPanel() {
             plan={plan}
             revisions={{
               onSkip: onMarkKnown,
-              onStartNext: onStartLesson,
+              onStartNext,
               onReopen: onReopenTopic,
               onDiscuss: () => setFeedbackContext({ type: 'general' }),
             }}
@@ -82,7 +83,8 @@ export function LearningPanel() {
         ) : (
           <ContentsView
             plan={plan}
-            mastery={mastery}
+            mastery={state.mastery}
+            explain={(nodeId) => explainTopic(state, nodeId)}
             affordances={
               isPreviewingProposal ? { ...affordances, correctMastery: false } : affordances
             }

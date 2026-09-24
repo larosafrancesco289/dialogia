@@ -111,20 +111,12 @@ export function AssistantMessage({
   tutorPanelNode,
   citationSources,
 }: AssistantMessageProps) {
-  const normalizeSummaryText = (value: string) => value.trim().replace(/\s+/g, ' ');
-
   const displayContent = message.content;
   const resolvedCitationSources = useMemo(() => {
     if (citationSources?.length) return citationSources;
     const fromAnnotations = annotationSources(message.annotations);
     return fromAnnotations.length ? fromAnnotations : undefined;
   }, [citationSources, message.annotations]);
-
-  const shouldHideDuplicateSummaryContent = useMemo(() => {
-    const summary = message.planUpdates?.summary;
-    if (!summary || !displayContent) return false;
-    return normalizeSummaryText(displayContent) === normalizeSummaryText(summary);
-  }, [displayContent, message.planUpdates?.summary]);
 
   let messageBody: ReactNode = null;
   if (isEditing) {
@@ -156,14 +148,10 @@ export function AssistantMessage({
         <span className={styles.typingBar} />
       </div>
     );
-  } else if (!shouldHideDuplicateSummaryContent) {
-    if (isStreaming && isLatestAssistant) {
-      messageBody = (
-        <StreamingMarkdown content={displayContent} sources={resolvedCitationSources} />
-      );
-    } else {
-      messageBody = <Markdown content={displayContent} sources={resolvedCitationSources} />;
-    }
+  } else if (isStreaming && isLatestAssistant) {
+    messageBody = <StreamingMarkdown content={displayContent} sources={resolvedCitationSources} />;
+  } else {
+    messageBody = <Markdown content={displayContent} sources={resolvedCitationSources} />;
   }
 
   return (
