@@ -22,9 +22,8 @@ test('only an exact old default is upgraded; anything edited is left alone', () 
 });
 
 test('chat settings records carrying the old default migrate to the current one', () => {
-  const { next, changed } = migrateChatSettingsRecord({ modelId: 'm', system: LEGACY });
+  const next = migrateChatSettingsRecord({ modelId: 'm', system: LEGACY });
   assert.equal((next as { system?: string }).system, DEFAULT_BASE_SYSTEM);
-  assert.equal(changed, true);
 });
 
 test('saved chat defaults with the old default upgrade on rehydrate', () => {

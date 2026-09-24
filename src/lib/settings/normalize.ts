@@ -38,7 +38,7 @@ export function normalizeChatSettings(
   const fallbackSystem = opts.fallbackSystem ?? DEFAULT_BASE_SYSTEM;
   const fallbackTutorModelId =
     opts.fallbackTutorModelId ?? resolveDynamicModelId(DEFAULT_TUTOR_MODEL_ID, []);
-  const { next } = migrateChatSettingsRecord(input);
+  const next = migrateChatSettingsRecord(input);
   const record = isRecord(next) ? next : {};
 
   const modelId =

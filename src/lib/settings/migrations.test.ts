@@ -67,12 +67,23 @@ test('migrateGenSettingsRecord leaves a current snapshot and non-records unchang
     searchProvider: 'openrouter',
   };
   assert.deepEqual(migrateGenSettingsRecord(current), { next: current, changed: false });
+  // The same snapshot saved with its keys in another order is no change either.
+  const reordered = {
+    searchProvider: 'openrouter',
+    reasoningEffort: 'medium',
+    maxTokens: 100,
+    searchEnabled: true,
+    temperature: 0.2,
+  };
+  assert.equal(migrateGenSettingsRecord(reordered).changed, false);
+  // A key the snapshot does not keep is.
+  assert.equal(migrateGenSettingsRecord({ ...current, top_p: 0.5 }).changed, true);
   assert.deepEqual(migrateGenSettingsRecord(undefined), { next: undefined, changed: false });
   assert.deepEqual(migrateGenSettingsRecord('x'), { next: 'x', changed: false });
 });
 
 test('migrateChatSettingsRecord lifts a legacy flat snake_case record into the nested shape', () => {
-  const { next, changed } = migrateChatSettingsRecord({
+  const next = migrateChatSettingsRecord({
     model_id: 'openai/gpt-4o',
     system: 'Be brief.',
     temperature: 0.3,
@@ -85,7 +96,6 @@ test('migrateChatSettingsRecord lifts a legacy flat snake_case record into the n
     tutor_default_model: 'provider/tutor',
     show_stats: true,
   });
-  assert.equal(changed, true);
   assert.deepEqual(next, {
     modelId: 'openai/gpt-4o',
     system: 'Be brief.',
@@ -110,10 +120,10 @@ test('migrateChatSettingsRecord lifts a legacy flat snake_case record into the n
 });
 
 test('migrateChatSettingsRecord reads nested reasoning.max_tokens and generation snake_case', () => {
-  const { next } = migrateChatSettingsRecord({
+  const next = migrateChatSettingsRecord({
     model: 'provider/model',
     generation: { top_p: 0.4, reasoning: { effort: 'high', max_tokens: 4096 } },
-  }) as { next: { modelId: string; generation: Record<string, unknown> } };
+  }) as { modelId: string; generation: Record<string, unknown> };
   assert.equal(next.modelId, 'provider/model');
   assert.deepEqual(next.generation, { topP: 0.4, reasoningEffort: 'high', reasoningTokens: 4096 });
 });
@@ -122,10 +132,10 @@ test('migrateChatSettingsRecord maps a stored brave provider to tavily and defau
   const brave = migrateChatSettingsRecord({
     modelId: 'm',
     features: { search: { enabled: true, provider: 'brave' } },
-  }).next as { features: { search: unknown } };
+  }) as { features: { search: unknown } };
   assert.deepEqual(brave.features.search, { enabled: true, provider: 'tavily' });
 
-  const unnamed = migrateChatSettingsRecord({ modelId: 'm' }).next as {
+  const unnamed = migrateChatSettingsRecord({ modelId: 'm' }) as {
     features: { search: unknown; tutor: unknown };
   };
   assert.deepEqual(unnamed.features.search, { enabled: false, provider: 'openrouter' });
@@ -140,9 +150,6 @@ test('migrateChatSettingsRecord keeps current settings as they are', () => {
       features: { tutor: { enabled: true, planEditable: false } },
     },
   }).settings;
-  const { next } = migrateChatSettingsRecord(settings);
-  assert.deepEqual(next, settings);
-  // Migrating its own output again reports no change.
-  assert.equal(migrateChatSettingsRecord(next).changed, false);
-  assert.deepEqual(migrateChatSettingsRecord(null), { next: null, changed: false });
+  assert.deepEqual(migrateChatSettingsRecord(settings), settings);
+  assert.equal(migrateChatSettingsRecord(null), null);
 });

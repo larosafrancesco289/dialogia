@@ -5,7 +5,7 @@ import { NATIVE_SEARCH_MODE, ReasoningEffortEnum } from '@/lib/types/enums';
 
 type UnknownRecord = Record<string, unknown>;
 
-export type MigrationResult<T> = { next: T; changed: boolean };
+type MigrationResult<T> = { next: T; changed: boolean };
 
 const readRecord = (value: unknown): UnknownRecord | undefined =>
   isRecord(value) ? value : undefined;
@@ -19,6 +19,17 @@ const readReasoningEffort = (value: unknown): ReasoningEffort | undefined =>
   Object.values(ReasoningEffortEnum).includes(value as ReasoningEffort)
     ? (value as ReasoningEffort)
     : undefined;
+
+// Key order is not a change: a current snapshot saved with its keys in another
+// order must not read as one that needs rewriting. Every value `next` holds is
+// a primitive, so a nested legacy value on the same key compares unequal.
+const sameFlatRecord = (a: UnknownRecord, b: UnknownRecord): boolean => {
+  const keys = Object.keys(a);
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every((key) => Object.hasOwn(b, key) && Object.is(a[key], b[key]))
+  );
+};
 
 const compactRecord = <T extends UnknownRecord>(input: T): T | undefined => {
   const entries = Object.entries(input).filter(([, value]) => value !== undefined);
@@ -70,12 +81,12 @@ export function migrateGenSettingsRecord(input: unknown): MigrationResult<unknow
       tutorEnabled,
     }) ?? {};
 
-  const changed = JSON.stringify(record) !== JSON.stringify(next);
-  return { next, changed };
+  return { next, changed: !sameFlatRecord(record, next) };
 }
 
-export function migrateChatSettingsRecord(input: unknown): MigrationResult<unknown> {
-  if (!isRecord(input)) return { next: input, changed: false };
+/** Lifts any legacy spelling of a chat's settings into the current nested shape. */
+export function migrateChatSettingsRecord(input: unknown): unknown {
+  if (!isRecord(input)) return input;
   const settings = input as UnknownRecord;
 
   const generation = readRecord(settings.generation);
@@ -235,6 +246,5 @@ export function migrateChatSettingsRecord(input: unknown): MigrationResult<unkno
   if (modelId !== undefined) next.modelId = modelId;
   if (system !== undefined) next.system = system;
 
-  const changed = JSON.stringify(settings) !== JSON.stringify(next);
-  return { next, changed };
+  return next;
 }
