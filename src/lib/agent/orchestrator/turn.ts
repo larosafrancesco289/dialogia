@@ -137,6 +137,7 @@ export const runTurn = async ({
       settings: composition.settings,
       plugins: composition.plugins,
       toolDefinition: composition.tools,
+      ...(composition.refreshTools ? { refreshTools: composition.refreshTools } : {}),
       startBuffered,
       userContent,
       combinedSystem: composition.system,

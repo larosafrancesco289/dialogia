@@ -120,7 +120,13 @@ const reply = (
 
 async function runAgentTurn(
   script: Script,
-  options: { controller?: AbortController; viaRunTurn?: boolean } = {},
+  options: {
+    controller?: AbortController;
+    viaRunTurn?: boolean;
+    /** Tool names offered on the first round; every test tool by default. */
+    tools?: string[];
+    refreshTools?: () => ToolDefinition[];
+  } = {},
 ) {
   const chatId = `chat-agent-${Math.random().toString(36).slice(2)}`;
   const model: ModelDescriptor = {
@@ -200,9 +206,10 @@ async function runAgentTurn(
     { role: 'system', content: 'You are an agent.' },
     { role: 'user', content: 'Go.' },
   ];
-  const tools = [TOOL_NOTE, TOOL_CARD, TOOL_STRICT, TOOL_LOOKUP, TOOL_STOP, TOOL_SHOWN].map(
-    definition,
-  );
+  const tools = (
+    options.tools ?? [TOOL_NOTE, TOOL_CARD, TOOL_STRICT, TOOL_LOOKUP, TOOL_STOP, TOOL_SHOWN]
+  ).map(definition);
+  const { refreshTools } = options;
   const run = options.viaRunTurn
     ? runTurn({
         chat,
@@ -223,6 +230,7 @@ async function runAgentTurn(
           hasPdf: false,
           shouldPlan: false,
           loop: 'agent',
+          ...(refreshTools ? { refreshTools } : {}),
           settings,
         }),
         plan: async () => assert.fail('the agent loop never runs the legacy planner'),
@@ -244,6 +252,7 @@ async function runAgentTurn(
         combinedSystem: 'You are an agent.',
         pipeline,
         loop: 'agent',
+        ...(refreshTools ? { refreshTools } : {}),
       });
 
   return {
@@ -540,4 +549,48 @@ test('a composition asking for the agent loop routes the turn into it', async ()
   assert.equal(result.shortCircuited, false);
   assert.equal(turn.requests.length, 2);
   assert.equal(turn.message()?.content, 'One.\n\nTwo.');
+});
+
+const offeredNames = (params: TransportStreamParams) =>
+  (params.tools ?? []).map((tool) => tool.function.name);
+
+test('a turn whose tools can be refreshed offers them as they stand after each round', async () => {
+  for (const viaRunTurn of [false, true]) {
+    // What the tools allow changes when round one's call runs (a topic starts, say).
+    let offered = [TOOL_NOTE];
+    let refreshed = 0;
+    const turn = await runAgentTurn(
+      (round, callbacks) => {
+        if (round === 1) return reply(callbacks, 'Starting.', [call(TOOL_NOTE)]);
+        return reply(callbacks, 'Now a check.', [call(TOOL_CARD)]);
+      },
+      {
+        viaRunTurn,
+        tools: [TOOL_NOTE],
+        refreshTools: () => {
+          refreshed += 1;
+          offered = [TOOL_NOTE, TOOL_CARD];
+          return offered.map(definition);
+        },
+      },
+    );
+    await turn.run;
+    assert.deepEqual(offeredNames(turn.requests[0]), [TOOL_NOTE]);
+    assert.deepEqual(offeredNames(turn.requests[1]), [TOOL_NOTE, TOOL_CARD]);
+    assert.equal(refreshed, 1, 'read once, between the rounds; the card ended the turn');
+  }
+});
+
+test("without a refresh, or with an empty one, the first round's tools stay offered", async () => {
+  for (const refreshTools of [undefined, () => []]) {
+    const turn = await runAgentTurn(
+      (round, callbacks) => {
+        if (round === 1) return reply(callbacks, 'One.', [call(TOOL_NOTE)]);
+        return reply(callbacks, 'Two.');
+      },
+      { tools: [TOOL_NOTE, TOOL_LOOKUP], ...(refreshTools ? { refreshTools } : {}) },
+    );
+    await turn.run;
+    assert.deepEqual(offeredNames(turn.requests[1]), [TOOL_NOTE, TOOL_LOOKUP]);
+  }
 });

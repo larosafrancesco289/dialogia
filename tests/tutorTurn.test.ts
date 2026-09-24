@@ -350,6 +350,26 @@ test('a tutoring session runs intake, plan, teaching and a chapter break through
   );
   // Replayed history never carries an answer key or a failed call's secrets.
   assert.ok(!JSON.stringify(breakRequest.messages).includes('"correct"'));
+
+  // ---- Turn 4, one turn: start the next topic, then quiz it. The quiz is offered once it starts.
+  const fourth = await s.turn('Go on.', (round, cb) => {
+    if (round === 1) {
+      reply(cb, 'On to derivatives.', [call('start_topic', { nodeId: 'derivatives' }, 'c4')]);
+      return;
+    }
+    reply(cb, 'A quick check first.', [
+      call(
+        'give_quiz',
+        { items: [{ question: 'd/dx x^2?', choices: ['x', '2x'], correct: 1 }] },
+        'c5',
+      ),
+    ]);
+  });
+  assert.equal(fourth.requests.length, 2);
+  assert.ok(!toolNames(fourth.requests[0]).includes('give_quiz'));
+  assert.ok(toolNames(fourth.requests[1]).includes('give_quiz'), 'offered after start_topic ran');
+  assert.equal(s.tutor().state.currentNodeId, 'derivatives');
+  assert.equal(s.tutor().state.awaiting?.kind, 'quiz');
 });
 
 test('regenerating a tutor reply reruns the whole turn, so its card comes back as a card', async () => {

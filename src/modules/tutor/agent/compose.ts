@@ -12,7 +12,7 @@ import {
   type TutorEvent,
 } from '@/modules/tutor/engine';
 import { TUTOR_SYSTEM_PROMPT } from '@/modules/tutor/agent/systemPrompt';
-import { tutorStore } from '@/modules/tutor/store/access';
+import { currentTutorSession, tutorStore } from '@/modules/tutor/store/access';
 import { EMPTY_TUTOR_SESSION } from '@/modules/tutor/store/tutorSlice';
 
 /**
@@ -47,6 +47,10 @@ export async function buildTutorComposeContribution({
 
   return {
     tools: tutorToolDefinitions(state, flags),
+    // The tools the engine would accept after this turn's calls so far, so
+    // "start_topic, then give_quiz" can happen in one turn.
+    refreshTools: () =>
+      tutorToolDefinitions(currentTutorSession(store?.get, chat.id)?.state ?? state, flags),
     stablePreambles: [TUTOR_SYSTEM_PROMPT],
     dynamicPreambles: [
       renderStateBlock(state, { flags, learnerChanges: learnerChangesSince(state, events, since) }),
