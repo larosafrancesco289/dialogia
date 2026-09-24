@@ -143,10 +143,6 @@ export function getDefaultReasoningEffort(
   return documentedAuthorDefaultEffort(model) ?? info.defaultEffort;
 }
 
-export function isReasoningMandatory(model?: ModelDescriptor | null): boolean {
-  return getModelReasoningInfo(model)?.mandatory === true;
-}
-
 /**
  * Clamp an effort to the nearest level the model supports (preferring the
  * next level down). Returns the input unchanged when support is unknown.
@@ -176,17 +172,6 @@ function legacySupportsXhigh(model?: ModelDescriptor | null): boolean {
   if (supported.includes('reasoning_effort_xhigh') || supported.includes('xhigh')) return true;
   const id = String(model?.id || '').toLowerCase();
   return XHIGH_MODEL_ID_PATTERNS.some((re) => re.test(id));
-}
-
-export function supportsXhighReasoningEffort(model?: ModelDescriptor | null): boolean {
-  if (!isReasoningSupported(model)) return false;
-  const info = getModelReasoningInfo(model);
-  if (info) {
-    if (info.supportedEfforts) return info.supportedEfforts.includes('xhigh');
-    // Reasoning object present with unconstrained efforts: all gateway values accepted.
-    return true;
-  }
-  return legacySupportsXhigh(model);
 }
 
 const KNOWN_TOOL_CALLING_PROVIDERS = ['anthropic/', 'openai/', 'google/', 'x-ai/', 'meta-llama/'];
