@@ -10,7 +10,9 @@ import type {
 } from '@/modules/tutor/engine/events';
 import {
   BUDGETS,
+  MASTERY_EVIDENCE_MIN,
   MASTERY_PRIOR,
+  READY,
   STARTING_ESTIMATE_MAX,
   STARTING_ESTIMATE_SAID_MAX,
 } from '@/modules/tutor/engine/rules';
@@ -60,12 +62,13 @@ export type PendingProposal = {
  * What the tutor's latest reply has recorded so far, per topic: its own
  * evidence (the estimate before and after it) and the misconceptions it noted.
  * One reply records at most one piece of evidence per topic, and a reply that
- * notes a misconception on a topic gains nothing on it.
+ * notes a misconception the answer it responds to showed gains nothing on its topic.
  */
 export type ReplyRecord = {
   messageId: string;
   /** By topic: the reply's evidence event, and the estimate before it and after the reply's last. */
   evidence: Record<string, { eventId: string; before: number; after: number }>;
+  /** Topics with a misconception the answer this reply responds to showed; not an earlier answer's. */
   misconceptions: string[];
 };
 
@@ -165,6 +168,24 @@ export function replyRecord(state: TutorState, messageId: string | undefined) {
 }
 
 /**
+ * Whether the log holds a mistake on the topic from before `messageId`'s
+ * reply: a wrong quiz or diagnostic answer, or an observation that lowered
+ * the estimate. A misconception said to show in an earlier answer must have
+ * such an answer behind it; otherwise the answer the reply responds to is the
+ * only one that could have shown it.
+ */
+export function earlierMistake(
+  state: TutorState,
+  nodeId: string,
+  messageId: string | undefined,
+): boolean {
+  const own = replyRecord(state, messageId)?.evidence[nodeId]?.eventId;
+  return (state.mastery[nodeId]?.evidence ?? []).some(
+    (entry) => entry.weight < 0 && (!own || entry.eventId !== own),
+  );
+}
+
+/**
  * Evidence recorded in this session that the learner can do it: a correct
  * quiz or diagnostic answer, or something right the tutor observed, since the
  * topic was last reopened. Not a starting estimate, a placement, a learner's
@@ -192,4 +213,18 @@ export function demonstratedEvidence(state: TutorState, nodeId: string): number 
           entry.source === 'diagnostic' ||
           entry.source === 'observation'),
     ).length;
+}
+
+/**
+ * Whether the topic may be completed as mastered: at READY, on enough of the
+ * learner's own work since it was opened, with no open misconception. The
+ * engine's one readiness rule; `complete_topic` refuses with a reason for
+ * whichever part is missing.
+ */
+export function readyToComplete(state: TutorState, nodeId: string): boolean {
+  return (
+    confidenceOf(state, nodeId) >= READY &&
+    demonstratedEvidence(state, nodeId) >= MASTERY_EVIDENCE_MIN &&
+    openMisconceptions(state, nodeId).length === 0
+  );
 }

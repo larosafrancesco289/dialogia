@@ -86,7 +86,7 @@ function createHandler(name: TutorToolName): PlanningToolHandler {
     if (!outcome.ok) return refuse(outcome.error);
 
     const result = withAdjustments(
-      tutorToolResult(name, outcome.before, outcome.state, outcome.events),
+      tutorToolResult(name, outcome.before, outcome.state, outcome.events, parsed.command),
       parsed.adjusted,
     ) as ToolResult;
     log.success(result, roundMeta ? { ...roundMeta } : undefined);

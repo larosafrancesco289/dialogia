@@ -189,7 +189,7 @@ const ARGS = {
       .boolean()
       .optional()
       .describe(
-        'true when your message just before gave, named or hinted at the step they took, or they finished a step you started or repeated your correction back. Not for a fresh problem you only posed. The estimate then moves less (partial: not at all).',
+        'true when your message just before told them the move they then made: what to do on this problem, the part to fix, the answer as one of two options, the explanation they are giving back, or the correction they are repeating. false when you only asked and the move was theirs, even right after you corrected or explained the rule. The estimate then moves less (partial: not at all).',
       ),
     source: z
       .enum(['observation', 'learner_said'])
@@ -199,6 +199,12 @@ const ARGS = {
   note_misconception: z.object({
     description: z.string().min(1).describe('The mistaken belief, stated plainly.'),
     topicId: topicId.optional().describe('Defaults to the current topic.'),
+    shownBy: z
+      .enum(['latest_answer', 'earlier_answer'])
+      .default('latest_answer')
+      .describe(
+        'Which answer showed it. latest_answer: the one you are responding to, which then earns nothing on the topic. earlier_answer: an answer before it that was already recorded as a mistake, when their latest answer is right; the latest answer keeps its credit.',
+      ),
   }),
   resolve_misconception: z.object({
     misconceptionId: z.string().min(1).describe('Id as listed under open misconceptions.'),
@@ -223,8 +229,8 @@ const DESCRIPTIONS: Record<TutorToolName, string> = {
   give_diagnostic: `Show a short multiple-choice pre-assessment (${LIMITS.diagnosticItems.min}-${LIMITS.diagnosticItems.max} items) to check prior knowledge before planning, or before the next topic at a chapter break. The engine scores it and records the evidence. Use when the learner's level is unclear; skip it when they have told you plainly. At most ${BUDGETS.diagnosticsPerSession} per session. Ends your turn.`,
   propose_plan: `Propose a learning plan, or a revision: the goal and ${LIMITS.planNodes.min}-${LIMITS.planNodes.max} topics in teaching order, each with objectives and prerequisites. startingEstimate only for a topic the learner said they know or a diagnostic tested, not for knowing its prerequisites (at most ${percent(STARTING_ESTIMATE_SAID_MAX)}% on their word, ${percent(STARTING_ESTIMATE_MAX)}% after a diagnostic); on approval it becomes evidence they can contest. Closes an unanswered intake, so propose when they would rather skip the questions. The learner approves or declines the card; nothing changes until they approve. In a revision, reuse topic ids to keep their progress. Propose at seams (after intake, at a chapter break, when the plan is done, or when asked), not mid-explanation. Ends your turn.`,
   give_quiz: `Show a multiple-choice quiz (${LIMITS.quizItems.min}-${LIMITS.quizItems.max} items) on the current topic. The engine grades each answer and updates mastery; do not record quiz results yourself. Use after teaching a piece of the topic to check it has landed. At most ${BUDGETS.quizzesPerTopic} per topic. Ends your turn.`,
-  record_evidence: `Record what the conversation showed about the learner's grasp of a topic, judged from their own words: struggled (an answer with an error in it, even if part was right, or stuck), partial (right as far as it went, but incomplete), applied (used it correctly), explained (explained it back), insight (went beyond what was taught). Set helped when your message just before gave, named or hinted at it, or they repeat your correction back. One call per topic per reply, summing up the exchange; a reply that notes a misconception on a topic gains nothing on it. Source "learner_said" when they tell you about their own understanding. Not for quiz or diagnostic answers. Does not end your turn.`,
-  note_misconception: `Note a specific mistaken belief the learner showed (not a slip). It is shown to the learner and blocks completing the topic as mastered until resolved. Noting the same description again counts another occurrence. Does not end your turn.`,
+  record_evidence: `Record what the conversation showed about the learner's grasp of a topic, judged from their own words: struggled (an answer with an error in it, even if part was right, or stuck), partial (right as far as it went, but incomplete), applied (used it correctly), explained (explained it back), insight (went beyond what was taught). helped: when your last message told them the move they made; not when you only asked. One call per topic per reply, summing up the exchange; a reply that notes a misconception on a topic gains nothing on it. Source "learner_said" when they tell you about their own understanding. Not for quiz or diagnostic answers. Does not end your turn.`,
+  note_misconception: `Note a specific mistaken belief the learner showed (not a slip). It is shown to the learner and blocks completing the topic as mastered until resolved. Noting the same description again counts another occurrence. Say which answer showed it: the latest one earns nothing on the topic this reply; an earlier one, already recorded as a mistake, leaves the latest answer's credit standing. Does not end your turn.`,
   resolve_misconception: `Mark an open misconception resolved once the learner has shown the correct understanding. Does not end your turn.`,
   complete_topic: `Finish the current topic. With how "mastered" it needs mastery of at least ${percent(READY)}%, at least ${MASTERY_EVIDENCE_MIN} pieces of evidence from the learner's work this session (quiz or diagnostic answers, or your observations; a starting estimate does not count), and no open misconceptions. It does not start the next topic: the learner sees a chapter break and chooses what comes next, so do not call start_topic in the same reply. Use when the topic's objectives are met; do not use to move on while evidence is thin. Does not end your turn.`,
   start_topic: `Start a topic whose prerequisites are done. Use at a chapter break, in a later reply than the one that completed the topic, when the learner says in chat that they want to go on (they may also press Go on themselves). Returns the topic's objectives. Does not end your turn.`,
@@ -585,7 +591,7 @@ export function withAdjustments(result: ToolResult, adjusted: readonly string[] 
 /** Why an observation moved nothing, for the tutor to learn from. */
 function noGainReason(before: TutorState, event: TutorEventOf<'evidence_recorded'>): string {
   if (replyRecord(before, event.messageId)?.misconceptions.includes(event.nodeId)) {
-    return `No gain: you noted a misconception on ${event.nodeId} in this reply, and an answer that shows a misconception earns nothing on its topic. Record a wrong answer as struggled.`;
+    return `No gain: you noted a misconception on ${event.nodeId} in this reply that their latest answer showed, and an answer that shows a misconception earns nothing on its topic. Record a wrong answer as struggled.`;
   }
   return 'No gain: a partly right answer you led them to shows nothing of their own yet.';
 }
@@ -604,6 +610,7 @@ export function tutorToolResult(
   before: TutorState,
   after: TutorState,
   events: readonly TutorEvent[],
+  command?: TutorToolCommand,
 ): ToolResult {
   const event = events[0];
   switch (name) {
@@ -672,11 +679,19 @@ export function tutorToolResult(
         (x) => x.id === event.misconceptionId,
       );
       const takenBack = events.some((e) => e.type === 'evidence_recorded');
+      const claimedEarlier =
+        command?.type === 'note_misconception' && command.shownBy === 'earlier_answer';
       return {
         ok: true,
         topic: event.nodeId,
         misconceptionId: event.misconceptionId,
         occurrences: m?.occurrences ?? 1,
+        shownBy: event.shownBy ?? 'latest_answer',
+        ...(claimedEarlier && !event.shownBy
+          ? {
+              shownByNote: `Taken as shown by their latest answer: no earlier mistake on ${event.nodeId} is recorded, so no earlier answer could have shown it.`,
+            }
+          : {}),
         ...(takenBack
           ? {
               mastery: percent(confidenceOf(after, event.nodeId)),
