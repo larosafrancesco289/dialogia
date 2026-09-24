@@ -1,8 +1,17 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["tests/**/*.test.ts", "src/**/*.test.ts"],
-  "project": ["src/**/*.{ts,tsx}", "*.{ts,js}"],
+  "entry": [
+    "src/modules/tutor/tooling/simulate.ts!",
+    "tests/**/*.test.ts",
+    "src/**/*.test.ts",
+    "tests/helpers/**/*.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}!", "!src/lib/html.ts!", "!src/**/testSupport.ts!", "*.{ts,js}"],
   "ignoreExportsUsedInFile": true,
+  "ignoreIssues": {
+    "src/lib/keys/store.ts": ["exports"],
+    "src/lib/transport/registry.ts": ["exports"]
+  },
   "ignoreDependencies": [
     "@fontsource-variable/newsreader",
     "@fontsource-variable/plus-jakarta-sans",

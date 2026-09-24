@@ -25,13 +25,19 @@ defaults.
 | `bun run test`       | Node's test runner over `tests/**/*.test.ts` and `src/**/*.test.ts`.    |
 | `bun run lint`       | ESLint, including the layer boundaries.                                 |
 | `bun run format`     | Prettier.                                                               |
-| `bun run knip`       | Dead-code gate. A file or dependency with no importers fails it.        |
+| `bun run knip`       | Dead-code gate. See below.                                              |
 | `scripts/ci.sh`      | All of the above, in the order CI runs them.                            |
 
 **`bun run test` always runs the whole suite.** Passing a file path does not filter it. The suite
 takes a few seconds, so run all of it.
 
 Run `scripts/ci.sh` before asking for review. It must be green.
+
+**The dead-code gate runs knip twice.** The first run counts tests as importers and fails on any
+file, dependency or export that nothing imports. The second is `--production`: tests do not count,
+so production code that only a test reaches fails too. An export that exists for tests, such as a
+cache reset or a registry read, says so with a `/** @internal */` JSDoc tag, which the production
+run accepts. Anything else only a test uses should be deleted along with its test.
 
 ### A note on `bun start`
 
@@ -94,8 +100,8 @@ catch on their own.
 
 ## Testing
 
-Plain `node:test` with `assert/strict`, run through `tsx`. Files are named `*.test.ts(x)` and live
-either in `tests/` or beside the code they cover.
+Plain `node:test` with `assert/strict`, run through `tsx`. Files are named `*.test.ts`, the only
+pattern the runner and knip match, and live either in `tests/` or beside the code they cover.
 
 - **No network in tests.** Stub `fetch` with `tests/helpers/mockFetch.ts`.
 - Build store state from `buildStoreInitializer()` rather than hand-writing a state literal. There
