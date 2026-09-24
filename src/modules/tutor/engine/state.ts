@@ -70,6 +70,8 @@ export type TutorState = {
   phase: TutorPhase;
   awaiting?: Awaiting;
   currentNodeId?: string;
+  /** The reply that last completed a topic, so that reply cannot also start the next one. */
+  lastCompletedBy?: string;
 };
 
 export function emptyTutorState(): TutorState {
@@ -121,4 +123,19 @@ export function remainingBudgets(state: TutorState): Budgets {
   if (!id) return { diagnosticsLeft };
   const used = state.counts.quizzesByNode[id] ?? 0;
   return { diagnosticsLeft, quizzesLeft: Math.max(0, BUDGETS.quizzesPerTopic - used) };
+}
+
+/**
+ * Evidence recorded in this session from what the learner did (a quiz or
+ * diagnostic answer, or something the tutor observed), as opposed to a
+ * starting estimate, a placement, a learner's own correction, or history
+ * imported from before the log. Mastery must rest on this.
+ */
+export function demonstratedEvidence(state: TutorState, nodeId: string): number {
+  return (state.mastery[nodeId]?.evidence ?? []).filter(
+    (entry) =>
+      !!entry.eventId &&
+      entry.kind !== 'placement' &&
+      (entry.source === 'quiz' || entry.source === 'diagnostic' || entry.source === 'observation'),
+  ).length;
 }

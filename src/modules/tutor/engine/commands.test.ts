@@ -5,6 +5,7 @@ import {
   MASTERY_PRIOR,
   MORE_PRACTICE_CAP,
   READY,
+  decide,
   explainTopic,
   step,
   type TutorError,
@@ -832,6 +833,64 @@ describe('topics and phases', () => {
       }),
       'not_editable',
     );
+  });
+
+  test('mastered needs two pieces of the learner’s own work, not a starting estimate and one answer', () => {
+    const h = harness();
+    h.tutor({
+      type: 'propose_plan',
+      ...CALCULUS,
+      nodes: CALCULUS.nodes.map((node, i) =>
+        i === 0 ? { ...node, startingEstimate: { value: 0.75, reason: 'Said so' } } : node,
+      ),
+    });
+    h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId });
+    h.tutor({ type: 'give_quiz', items: QUIZ_ITEMS.slice(0, 1) });
+    h.learner({ type: 'answer_quiz_item', quizId: h.state.awaiting!.id, itemId: 'q1', choice: 0 });
+    assert.ok(h.state.mastery.limits.confidence >= READY, 'high enough on the number alone');
+
+    const thin = h.refuse({ by: 'tutor', type: 'complete_topic', how: 'mastered' });
+    assertError(thin, 'not_ready', /only 1 of the 2 pieces of evidence/);
+    assert.match(thin.hint, /1 more/);
+    assert.match(thin.hint, /give_quiz|record_evidence/);
+
+    // A learner's own correction is theirs to make, but it is not evidence of mastery.
+    h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.95 });
+    assertError(h.refuse({ by: 'tutor', type: 'complete_topic', how: 'mastered' }), 'not_ready');
+
+    h.tutor({
+      type: 'record_evidence',
+      kind: 'applied',
+      note: 'Solved one alone',
+      source: 'observation',
+    });
+    h.tutor({ type: 'complete_topic', how: 'mastered' });
+    assert.equal(h.state.phase, 'interlude');
+    // Skipping is the learner's call and needs no evidence.
+    const skip = teaching();
+    skip.tutor({ type: 'complete_topic', how: 'skipped' });
+    assert.equal(skip.state.plan!.nodes[0].completedHow, 'skipped');
+  });
+
+  test('the reply that completes a topic cannot start the next: the learner chooses', () => {
+    const h = teaching();
+    master(h);
+    h.tutor({ type: 'complete_topic', how: 'mastered' }, 'reply-1');
+    const same = decide(
+      h.state,
+      { by: 'tutor', type: 'start_topic', nodeId: 'derivatives' },
+      h.ctx('reply-1'),
+    );
+    assert.equal(same.ok, false);
+    const error = (same as { ok: false; error: TutorError }).error;
+    assertError(error, 'learner_chooses', /same reply/);
+    assert.match(error.hint, /chapter break/);
+    assert.match(error.hint, /closing line/);
+    assert.equal(h.state.phase, 'interlude');
+
+    // A later reply, say after the learner types "let's go on", may start it.
+    h.tutor({ type: 'start_topic', nodeId: 'derivatives' }, 'reply-2');
+    assert.equal(h.state.currentNodeId, 'derivatives');
   });
 
   test('the full arc: intake, proposal, teaching, interlude, complete, and re-planning after', () => {

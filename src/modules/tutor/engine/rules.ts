@@ -9,6 +9,13 @@ export const MASTERY_PRIOR = 0.3;
 /** The one readiness threshold: completing as mastered, the "ready" band, the mark-known floor. */
 export const READY = 0.8;
 
+/**
+ * Completing a topic as mastered needs at least this many pieces of evidence
+ * from this session's work on it (answers or observations), so a starting
+ * estimate plus one lucky answer is never "mastered".
+ */
+export const MASTERY_EVIDENCE_MIN = 2;
+
 /** Below this a topic is still being built; between it and READY it is being practised. */
 export const PRACTISING = 0.5;
 
