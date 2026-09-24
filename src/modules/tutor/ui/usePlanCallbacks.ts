@@ -116,9 +116,13 @@ export function usePlanCallbacks(): PlanCallbacks {
     [act, setUI],
   );
 
+  // Quiet: the learner's own call about what they know needs no reply; the
+  // next turn's state block tells the tutor.
   const onMarkKnown = useCallback(
-    (nodeId: string) => act({ type: 'mark_known', nodeId }, LEDGER.markedKnown),
-    [act],
+    async (nodeId: string) => {
+      await dispatch({ type: 'mark_known', nodeId });
+    },
+    [dispatch],
   );
 
   const onReopenTopic = useCallback(
