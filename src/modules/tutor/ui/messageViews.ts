@@ -2,7 +2,7 @@
 // Responsibility: what one assistant message's tutor surfaces show, read from the event log:
 // its cards, and what its events changed (margin notes, a finished chapter).
 
-import type { LearningPlan, TopicMastery } from '@/lib/types';
+import type { Evidence, LearningPlan, TopicMastery } from '@/lib/types';
 import {
   apply,
   confidenceOf,
@@ -15,6 +15,7 @@ import {
   type TutorEvent,
 } from '@/modules/tutor/engine';
 import type { TutorSession } from '@/modules/tutor/store/tutorSlice';
+import { countWord, joinSentences, listInProse } from '@/modules/tutor/lib/text';
 
 export type ProposalView = {
   proposalId: string;
@@ -43,7 +44,11 @@ function latestFor<T extends { messageId?: string; seq: number }>(
   return found;
 }
 
-/** The message's proposal and what became of it; a later proposal replaces an unanswered one. */
+/**
+ * The message's proposal and what became of it. A later proposal replaces it
+ * when it was still waiting, or answers it when the learner asked for changes:
+ * either way the card then points at the revision below.
+ */
 function proposalFor(events: readonly TutorEvent[], messageId: string): ProposalView | undefined {
   let view: ProposalView | undefined;
   for (const event of events) {
@@ -55,7 +60,7 @@ function proposalFor(events: readonly TutorEvent[], messageId: string): Proposal
           ...(event.rationale ? { rationale: event.rationale } : {}),
           status: 'pending',
         };
-      } else if (view?.status === 'pending') {
+      } else if (view?.status === 'pending' || view?.status === 'declined') {
         view = { ...view, status: 'replaced' };
       }
     } else if (event.type === 'proposal_imported' && event.messageId === messageId) {
@@ -103,6 +108,20 @@ export function cardsForMessage(session: TutorSession, messageId: string): Messa
 
 /** One topic's movement from a message's evidence, with the notes that moved it. */
 export type MasteryChange = { nodeId: string; from: number; to: number; notes: string[] };
+
+/** A margin note's reasons folded to this many (the latest); the rest wait behind "+N more". */
+const REASONS_SHOWN = 2;
+
+/**
+ * The reason a margin note gives: every note that moved the estimate, as
+ * sentences, or (folded) the latest two and how many more there are. Nothing
+ * is ever dropped silently.
+ */
+export function marginReason(notes: string[], unfolded: boolean): { text: string; more: number } {
+  const clean = notes.map((note) => note.trim()).filter(Boolean);
+  const shown = unfolded ? clean : clean.slice(-REASONS_SHOWN);
+  return { text: joinSentences(...shown), more: clean.length - shown.length };
+}
 
 /** A topic the message's events completed, as it stood at that moment. */
 export type Completion = {
@@ -163,4 +182,64 @@ export function effectsByMessage(events: readonly TutorEvent[]): Map<string, Mes
   }
   effectsCache.set(events, out);
   return out;
+}
+
+// Legacy entries carry no source; these types were the learner's own work.
+const LEGACY_ANSWERS = new Set<Evidence['type']>([
+  'correct_answer',
+  'incorrect_answer',
+  'partial_answer',
+  'insight_demonstrated',
+]);
+
+type EvidenceGroup = 'answer' | 'observation' | 'said' | 'correction' | 'estimate' | 'earlier';
+
+const GROUP_WORDS: Record<EvidenceGroup, (n: number) => string> = {
+  answer: (n) => `${countWord(n)} answer${n === 1 ? '' : 's'}`,
+  observation: (n) => `${countWord(n)} observation${n === 1 ? '' : 's'}`,
+  said: (n) =>
+    n === 1 ? 'something you told the tutor' : `${countWord(n)} things you told the tutor`,
+  correction: (n) => (n === 1 ? 'your correction' : `${countWord(n)} corrections of yours`),
+  estimate: (n) => (n === 1 ? 'a starting estimate' : `${countWord(n)} starting estimates`),
+  earlier: (n) => `${countWord(n)} earlier note${n === 1 ? '' : 's'}`,
+};
+
+function groupOf(entry: Evidence): EvidenceGroup {
+  if (entry.kind === 'placement' || entry.source === 'placement') return 'estimate';
+  switch (entry.source) {
+    case 'quiz':
+    case 'diagnostic':
+      return 'answer';
+    case 'observation':
+      return 'observation';
+    case 'learner_said':
+      return 'said';
+    case 'learner':
+      return 'correction';
+    default:
+      return LEGACY_ANSWERS.has(entry.type) ? 'answer' : 'earlier';
+  }
+}
+
+/**
+ * Everything a topic's estimate rests on, in words: "one answer, two
+ * observations and a starting estimate". Every piece counts, whatever its
+ * source, so the sentence never claims less than stands behind the number.
+ */
+export function evidenceBehind(evidence: readonly Evidence[]): string | undefined {
+  const counts = new Map<EvidenceGroup, number>();
+  for (const entry of evidence) {
+    const group = groupOf(entry);
+    counts.set(group, (counts.get(group) ?? 0) + 1);
+  }
+  const order: EvidenceGroup[] = [
+    'answer',
+    'observation',
+    'said',
+    'correction',
+    'earlier',
+    'estimate',
+  ];
+  const parts = order.filter((g) => counts.has(g)).map((g) => GROUP_WORDS[g](counts.get(g)!));
+  return parts.length ? listInProse(parts) : undefined;
 }
