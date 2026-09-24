@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+/**
+ * Where a card opens: on its first unanswered item, or on its last when every
+ * item is answered (so a reload shows where the learner left off, not item 1).
+ * -1 when there are no items.
+ */
+export function resumeIndex<T>(items: T[], isPending: (item: T, index: number) => boolean): number {
+  for (let i = 0; i < items.length; i += 1) {
+    const item = items[i];
+    if (item && isPending(item, i)) return i;
+  }
+  return items.length - 1;
+}
+
 export function useStepper<T>(items: T[], isPending: (item: T, index: number) => boolean) {
   const total = items.length;
-  const firstPendingIndex = useMemo(() => {
-    for (let i = 0; i < total; i += 1) {
-      const item = items[i];
-      if (!item) continue;
-      if (isPending(item, i)) return i;
-    }
-    return total > 0 ? 0 : -1;
-  }, [items, total, isPending]);
+  const firstPendingIndex = useMemo(() => resumeIndex(items, isPending), [items, isPending]);
 
   const [activeIndex, setActiveIndex] = useState(() =>
     firstPendingIndex >= 0 ? firstPendingIndex : 0,
