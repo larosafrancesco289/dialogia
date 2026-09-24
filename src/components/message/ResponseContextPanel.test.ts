@@ -4,7 +4,8 @@ import {
   buildOrderedResponseActivity,
   currentThoughtLine,
   formatThinkingTime,
-} from './ResponseContextPanel';
+  summarizeActivity,
+} from '@/lib/ui/responseActivity';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
 
 test('keeps persisted tool calls visible when reasoning activity already exists', () => {
@@ -99,4 +100,66 @@ test('thinking time reads in words', () => {
   assert.equal(formatThinkingTime(8_400), '8 seconds');
   assert.equal(formatThinkingTime(60_000), '1 minute');
   assert.equal(formatThinkingTime(72_000), '1 minute 12 seconds');
+});
+
+test('the summary at rest counts thinking time and searches', () => {
+  const orderedActivity = buildOrderedResponseActivity({
+    activity: [
+      {
+        id: 'thought-1',
+        type: 'reasoning',
+        text: 'Look it up.',
+        timestamp: 100,
+        status: 'done',
+        duration: 8_400,
+      },
+    ],
+    reasoning: '',
+    toolCalls: [
+      {
+        id: 'tool-1',
+        name: 'web_search',
+        timestamp: 200,
+        status: 'success',
+        input: { query: 'memory' },
+      },
+    ],
+  });
+  const summary = summarizeActivity({
+    orderedActivity,
+    toolCalls: [],
+    reasoning: '',
+    isLive: false,
+  });
+  assert.equal(summary, '8 seconds, 1 search');
+});
+
+test('the summary names a running tool and, while live, the line of thought', () => {
+  const pending: ToolCallLogEntry = {
+    id: 'tool-1',
+    name: 'web_search',
+    timestamp: 200,
+    status: 'pending',
+    input: { query: 'memory' },
+  };
+  const withTool = buildOrderedResponseActivity({ reasoning: '', toolCalls: [pending] });
+  assert.equal(
+    summarizeActivity({
+      orderedActivity: withTool,
+      toolCalls: [pending],
+      reasoning: '',
+      isLive: true,
+    }),
+    'Searching the web',
+  );
+  const thinking = buildOrderedResponseActivity({ reasoning: 'First point. Second' });
+  assert.equal(
+    summarizeActivity({
+      orderedActivity: thinking,
+      toolCalls: [],
+      reasoning: 'First point. Second',
+      isLive: true,
+    }),
+    'First point.',
+  );
 });
