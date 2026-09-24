@@ -94,13 +94,14 @@ export function PlanProposalCard({
     }
   };
 
+  // Settled for good once answered: a revision that arrives later is "below".
   const resolvedLabel =
     proposal.status === 'approved'
-      ? 'Plan adopted'
+      ? 'Approved'
       : proposal.status === 'declined'
-        ? 'Awaiting revisions'
+        ? 'Changes requested'
         : proposal.status === 'replaced'
-          ? 'Replaced'
+          ? 'Revised below'
           : null;
 
   return (

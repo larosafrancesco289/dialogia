@@ -1,46 +1,13 @@
 import { useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { selectMessagesForCurrentChat } from '@/lib/store/selectors';
-import type { Evidence, Message } from '@/lib/types';
+import type { Message } from '@/lib/types';
 import { nextReadyNode, percent as toPercent } from '@/modules/tutor/engine';
-import type { Completion } from '@/modules/tutor/ui/messageViews';
+import { evidenceBehind, type Completion } from '@/modules/tutor/ui/messageViews';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
-import { inSentence } from '@/modules/tutor/lib/text';
+import { countWord, inSentence } from '@/modules/tutor/lib/text';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
-
-const ORDINALS = [
-  'one',
-  'two',
-  'three',
-  'four',
-  'five',
-  'six',
-  'seven',
-  'eight',
-  'nine',
-  'ten',
-  'eleven',
-  'twelve',
-  'thirteen',
-  'fourteen',
-  'fifteen',
-  'sixteen',
-  'seventeen',
-  'eighteen',
-  'nineteen',
-  'twenty',
-];
-
-// Evidence the learner produced, as opposed to hints or requests.
-const DEMONSTRATIONS = new Set<Evidence['type']>([
-  'correct_answer',
-  'incorrect_answer',
-  'partial_answer',
-  'insight_demonstrated',
-]);
-
-const countWord = (n: number) => (n <= ORDINALS.length ? ORDINALS[n - 1] : String(n));
 
 /**
  * The seam at the end of a topic. Negotiating the plan here, rather than in
@@ -76,14 +43,7 @@ export function ChapterBreak({
   const next = started ?? nextReadyNode(learningPlan);
   const mastery = completion.mastery;
   const percent = affordances.showMastery && mastery ? toPercent(mastery.confidence) : undefined;
-  const answers =
-    mastery?.evidence.filter(
-      (e) =>
-        e.kind !== 'placement' &&
-        (e.source === 'quiz' ||
-          e.source === 'diagnostic' ||
-          (!e.source && DEMONSTRATIONS.has(e.type))),
-    ).length ?? 0;
+  const behind = mastery ? evidenceBehind(mastery.evidence) : undefined;
   const reopened = node.status !== 'completed';
   // The seam is open until the learner (or the tutor) starts what comes next.
   const atSeam =
@@ -104,8 +64,8 @@ export function ChapterBreak({
   const estimate =
     percent == null
       ? null
-      : answers > 0
-        ? `The tutor puts you at ${percent}%, from ${countWord(answers)} answer${answers === 1 ? '' : 's'}.`
+      : behind
+        ? `The tutor puts you at ${percent}%, from ${behind}.`
         : `The tutor puts you at ${percent}%.`;
   const question = canGoOn ? 'Ready to move on?' : 'That was the last topic in the plan.';
 

@@ -117,12 +117,38 @@
     margin: 0;
   }
   .margin-note__topic {
+    min-width: 0;
     font-weight: 500;
     color: var(--color-fg);
   }
+  /* "30 → 60" is one reading: it never breaks across lines. */
   .margin-note__delta {
+    flex: none;
+    white-space: nowrap;
     font-variant-numeric: tabular-nums;
     color: var(--color-fg-muted);
+  }
+  .margin-note__more {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-style: normal;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+    text-decoration: underline;
+    text-decoration-color: var(--rule-light);
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .margin-note__more:hover {
+    color: var(--color-fg);
+    text-decoration-color: currentColor;
+  }
+  .margin-note__more:focus-visible {
+    outline: none;
+    border-radius: 2px;
+    box-shadow: 0 0 0 2px var(--focus-ring);
   }
   .margin-note__reason {
     margin: 0.15em 0 0;

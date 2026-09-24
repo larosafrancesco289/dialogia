@@ -1,16 +1,8 @@
 import { useState } from 'react';
 import { percent } from '@/modules/tutor/engine';
-import type { MasteryChange } from '@/modules/tutor/ui/messageViews';
+import { marginReason, type MasteryChange } from '@/modules/tutor/ui/messageViews';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
-
-/** The event notes behind a change, as one short reason. */
-const reasonOf = (notes: string[]) =>
-  notes
-    .map((note) => note.trim().replace(/\.$/, ''))
-    .filter(Boolean)
-    .slice(-2)
-    .join('; ');
 
 /**
  * Mastery changes annotated beside the exchange that earned them. The number
@@ -23,6 +15,7 @@ export function MarginNotes({ changes }: { changes: MasteryChange[] }) {
   const { correctMastery } = useTutorAffordances();
   const [adjusted, setAdjusted] = useState<Record<string, number>>({});
   const [contesting, setContesting] = useState<string | null>(null);
+  const [unfolded, setUnfolded] = useState<Record<string, boolean>>({});
 
   if (!changes.length) return null;
   const nameOf = (nodeId: string) =>
@@ -45,8 +38,7 @@ export function MarginNotes({ changes }: { changes: MasteryChange[] }) {
   return (
     <aside className="margin-notes" aria-label="What the tutor noted">
       {changes.map((change) => {
-        const reason = reasonOf(change.notes);
-        const rose = change.to >= change.from;
+        const reason = marginReason(change.notes, !!unfolded[change.nodeId]);
         const corrected = adjusted[change.nodeId];
         const answerable = correctMastery && current(change.nodeId) === change.to;
         return (
@@ -57,11 +49,26 @@ export function MarginNotes({ changes }: { changes: MasteryChange[] }) {
                 className="margin-note__delta"
                 aria-label={`${percent(change.from)} to ${percent(change.to)} percent`}
               >
-                {percent(change.from)} <span aria-hidden="true">{rose ? '→' : '↘'}</span>{' '}
-                {percent(change.to)}
+                {percent(change.from)} <span aria-hidden="true">→</span> {percent(change.to)}
               </span>
             </p>
-            {reason && <p className="margin-note__reason">{reason}.</p>}
+            {reason.text && (
+              <p className="margin-note__reason">
+                {reason.text}
+                {reason.more > 0 && (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      className="margin-note__more"
+                      onClick={() => setUnfolded((prev) => ({ ...prev, [change.nodeId]: true }))}
+                    >
+                      +{reason.more} more
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
             {corrected != null ? (
               <p className="margin-note__answer">Now {percent(corrected)}%, from your correction</p>
             ) : answerable ? (
