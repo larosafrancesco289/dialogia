@@ -2,7 +2,9 @@ import { ANTHROPIC_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chatCompletion } from '@/lib/anthropic/chat';
+import { mapStopReason } from '@/lib/anthropic/continuation';
 import { buildTransportAuth } from '@/lib/auth/transport';
+import { mockFetch } from '../../../tests/helpers/mockFetch';
 
 test('chatCompletion continues Anthropic pause_turn responses', async () => {
   const originalFetch = globalThis.fetch;
@@ -75,4 +77,46 @@ test('chatCompletion continues Anthropic pause_turn responses', async () => {
   assert.equal(secondMessages.at(-1)?.role, 'assistant');
   assert.equal(Array.isArray(secondMessages.at(-1)?.content), true);
   assert.equal((secondMessages.at(-1)?.content as Array<unknown>).length, 3);
+});
+
+test('mapStopReason gives chat and stream one reading of stop_reason', () => {
+  const cases: Array<[unknown, string | undefined]> = [
+    ['end_turn', 'stop'],
+    ['stop_sequence', 'stop'],
+    ['tool_use', 'tool_calls'],
+    ['max_tokens', 'length'],
+    ['model_context_window_exceeded', 'length'],
+    ['pause_turn', 'length'],
+    ['refusal', 'content_filter'],
+    // A stream cut off before message_delta did not end cleanly.
+    [undefined, undefined],
+    ['some_future_reason', undefined],
+  ];
+  for (const [raw, expected] of cases) {
+    assert.equal(mapStopReason(raw), expected, String(raw));
+  }
+});
+
+test('chatCompletion leaves finish_reason null for a stop_reason it does not know', async () => {
+  const restoreFetch = mockFetch(
+    async () =>
+      new Response(
+        JSON.stringify({
+          id: 'msg_x',
+          stop_reason: 'some_future_reason',
+          content: [{ type: 'text', text: 'Hi' }],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+  );
+  try {
+    const response = await chatCompletion({
+      auth: buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' }),
+      model: 'anthropic/claude-sonnet-4-6',
+      messages: [{ role: 'user', content: 'Hello' }],
+    });
+    assert.equal(response.choices[0]?.finish_reason, null);
+  } finally {
+    restoreFetch();
+  }
 });
