@@ -36,6 +36,8 @@ const ADVISORY_ERRORS = new Set([
   'open_misconceptions',
   'already_current',
   'nothing_to_change',
+  'already_recorded',
+  'weight_against_kind',
 ]);
 
 const CARD_EVENT = {
@@ -185,7 +187,7 @@ function evidenceOncePerAnswer(run: SimulationRun): CheckResult {
   const problems: string[] = [];
   const seen = new Map<string, number>();
   for (const e of run.events) {
-    if (e.type !== 'evidence_recorded' || !e.ref) continue;
+    if (e.type !== 'evidence_recorded' || !(e.ref?.quizId || e.ref?.diagnosticId)) continue;
     if (e.source !== 'quiz' && e.source !== 'diagnostic') {
       problems.push(`seq ${e.seq}: ${e.source} evidence points at a card answer`);
     }
@@ -224,6 +226,39 @@ function masteryInRange(run: SimulationRun): CheckResult {
     }
   }
   return result('mastery_in_range', problems, 'Mastery stayed within [0, 1] after every event.');
+}
+
+/**
+ * A reply that noted a misconception on a topic gained nothing on it: the
+ * answer that showed the misconception is not progress, whatever else it got
+ * right. Measured on the estimate, from the reply's own evidence.
+ */
+function noGainWithMisconception(run: SimulationRun): CheckResult {
+  const problems: string[] = [];
+  const moved = new Map<string, number>();
+  const noted = new Set<string>();
+  let state = emptyTutorState();
+  for (const event of [...run.events].sort((a, b) => a.seq - b.seq)) {
+    const before = state;
+    state = apply(state, event);
+    if (event.by !== 'tutor' || !event.messageId) continue;
+    const key = `${event.messageId} on ${'nodeId' in event ? event.nodeId : ''}`;
+    if (event.type === 'misconception_noted') noted.add(key);
+    if (event.type !== 'evidence_recorded') continue;
+    const delta =
+      (state.mastery[event.nodeId]?.confidence ?? 0) -
+      (before.mastery[event.nodeId]?.confidence ?? 0);
+    moved.set(key, (moved.get(key) ?? 0) + delta);
+  }
+  for (const key of noted) {
+    const gain = moved.get(key) ?? 0;
+    if (gain > 0.005) problems.push(`reply ${key}: +${Math.round(gain * 100)} points`);
+  }
+  return result(
+    'no_gain_with_misconception',
+    problems,
+    'No reply gained on a topic it noted a misconception on.',
+  );
 }
 
 /**
@@ -300,6 +335,7 @@ export function checkRun(
     learnerCommandsOk(run),
     evidenceOncePerAnswer(run),
     masteryInRange(run),
+    noGainWithMisconception(run),
     noAnswerKeysReplayed(run),
     planApprovedWithin(run, options.planWithin),
     topicCompletedWithin(run, options.topicWithin),

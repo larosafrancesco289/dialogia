@@ -5,7 +5,7 @@ import type { Message } from '@/lib/types';
 import { nextReadyNode, percent as toPercent } from '@/modules/tutor/engine';
 import { evidenceBehind, type Completion } from '@/modules/tutor/ui/messageViews';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
-import { countWord, inSentence } from '@/modules/tutor/lib/text';
+import { countWord } from '@/modules/tutor/lib/text';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
 
@@ -15,7 +15,8 @@ import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
  * the tutor states its estimate and the learner goes on, asks for more
  * practice, or goes to change the path. Only the newest seam is live; older
  * ones settle into a quiet record of the session. The estimate is the one the
- * topic had when it finished, from the log, not today's.
+ * topic had when it finished, and what came next is what the learner chose at
+ * this seam, both from the log: a topic finished again later has its own.
  */
 export function ChapterBreak({
   message,
@@ -44,7 +45,7 @@ export function ChapterBreak({
   const mastery = completion.mastery;
   const percent = affordances.showMastery && mastery ? toPercent(mastery.confidence) : undefined;
   const behind = mastery ? evidenceBehind(mastery.evidence) : undefined;
-  const reopened = node.status !== 'completed';
+  const reopened = !!completion.reopened;
   // The seam is open until the learner (or the tutor) starts what comes next.
   const atSeam =
     isLatest &&
@@ -95,7 +96,7 @@ export function ChapterBreak({
                 disabled={busy}
                 onClick={() => run(() => onGoOn(next.id))}
               >
-                Go on to {inSentence(next.name)}
+                Go on: {next.name}
               </button>
             )}
             {canNegotiate && (
@@ -126,7 +127,7 @@ export function ChapterBreak({
             : percent != null
               ? `${percent}% mastery`
               : 'Completed'}
-          {!reopened && started ? ` · on to ${inSentence(started.name)}` : ''}
+          {!reopened && started ? ` · next: ${started.name}` : ''}
         </p>
       )}
     </section>

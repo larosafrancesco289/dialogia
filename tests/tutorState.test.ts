@@ -466,7 +466,7 @@ test('concurrent dispatches for one chat run in turn and lose nothing', async ()
   const { id, store } = await teachingChat();
   const { dispatchTutor } = store.getState();
 
-  // Tool calls in one turn, and a click racing them.
+  // Tool calls of two replies, and a click racing them.
   const results = await Promise.all([
     dispatchTutor(
       id,
@@ -477,7 +477,7 @@ test('concurrent dispatches for one chat run in turn and lose nothing', async ()
         note: 'Solved one',
         source: 'observation',
       },
-      { by: 'tutor', messageId: 'm2' },
+      { by: 'tutor', messageId: 'm1' },
     ),
     dispatchTutor(
       id,
@@ -978,7 +978,7 @@ test('an append at a position another tab took reloads the log and decides again
       note: 'In B',
       source: 'observation',
     },
-    { by: 'tutor', messageId: 'm2' },
+    { by: 'tutor', messageId: 'm3' },
   );
   assert.equal(result.ok, true);
 

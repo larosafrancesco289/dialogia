@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  emptyTutorState,
   TOOL_ENDS_TURN,
   TUTOR_TOOLS,
   TUTOR_TOOL_NAMES,
@@ -37,7 +38,11 @@ test('availability follows phase, open card, flags and budget', () => {
       { question: 'b', options: [{ label: 'x' }, { label: 'y' }] },
     ],
   });
-  assert.deepEqual(available(h), [], 'an open card blocks every other card');
+  assert.deepEqual(
+    available(h),
+    ['propose_plan'],
+    'an open intake blocks every other card; a plan may close it',
+  );
 
   const p = harness();
   p.tutor({ type: 'propose_plan', ...CALCULUS });
@@ -329,7 +334,7 @@ test('results carry what the model needs and never an answer key', () => {
 });
 
 test('parsing is lenient about placeholders and fields that do not apply', () => {
-  // What GPT-6 Luna sent: every optional field filled, setTo on an observation.
+  // What GPT-6 Luna sent: every optional field filled, and record_evidence's retired setTo.
   const luna = parseTutorToolCall('record_evidence', {
     kind: 'applied',
     note: 'Solved 3x + 5 = 20 alone',
@@ -348,7 +353,10 @@ test('parsing is lenient about placeholders and fields that do not apply', () =>
     note: 'Solved 3x + 5 = 20 alone',
     source: 'observation',
   });
-  assert.ok(luna.adjusted?.some((line) => /setTo/.test(line) && /learner_said/.test(line)));
+  assert.ok(
+    !luna.adjusted?.some((line) => /setTo/.test(line)),
+    'a retired field is dropped quietly',
+  );
   assert.ok(luna.adjusted?.some((line) => /confidence/.test(line)));
   const h = teaching();
   const events = h.tutor(luna.command);
@@ -368,16 +376,15 @@ test('parsing is lenient about placeholders and fields that do not apply', () =>
   assert.equal(nulls.adjusted, undefined, 'placeholders are dropped silently');
 
   const said = parseTutorToolCall('record_evidence', {
-    kind: 'partial',
-    note: 'Says about 60%',
+    kind: 'struggled',
+    note: 'Says they never understood it',
     source: 'learner_said',
-    setTo: '60',
-    weight: 0.1,
+    set_to: '20',
   });
   assert.ok(said.ok && said.command.type === 'record_evidence');
-  assert.equal(said.command.setTo, 0.6, 'a percentage and a numeric string are read');
-  assert.equal(said.command.weight, undefined);
-  assert.ok(said.adjusted?.some((line) => /weight/.test(line)));
+  assert.equal('setTo' in said.command, false, 'setTo places nothing any more');
+  assert.equal(said.command.source, 'learner_said');
+  assert.equal(said.adjusted, undefined);
 
   const clamped = parseTutorToolCall('record_evidence', {
     kind: 'insight',
@@ -434,11 +441,28 @@ test('plan topics take a starting estimate, read leniently and capped below READ
   assert.ok(parsed.adjusted?.some((line) => /capped at 75%/.test(line)));
   assert.deepEqual(c.startingEstimate, { value: 0.5 });
 
-  const h = harness();
-  const before = h.state;
-  const events = h.tutor(parsed.command);
-  const result = tutorToolResult('propose_plan', before, h.state, events);
-  assert.deepEqual(result.startingEstimates, { b: 75, c: 50 });
+  // On the learner's word alone, no higher than practising; after a diagnostic, up to 75%.
+  const said = harness();
+  const events = said.tutor(parsed.command);
+  const result = tutorToolResult('propose_plan', emptyTutorState(), said.state, events);
+  assert.deepEqual(result.startingEstimates, { b: 50, c: 50 });
+  assert.match(String(result.startingEstimatesNote), /no higher than 50%/);
+  const tested = harness();
+  tested.tutor({
+    type: 'give_diagnostic',
+    topic: 't',
+    items: [0, 1, 2].map((i) => ({ question: `q${i}`, choices: ['a', 'b'], correct: 0 })),
+  });
+  tested.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: tested.state.awaiting!.id,
+    answers: { q1: 0, q2: 0, q3: 1 },
+  });
+  const before = tested.state;
+  const afterDiagnostic = tested.tutor(parsed.command);
+  const diagnosed = tutorToolResult('propose_plan', before, tested.state, afterDiagnostic);
+  assert.deepEqual(diagnosed.startingEstimates, { b: 75, c: 50 });
+  assert.equal(diagnosed.startingEstimatesNote, undefined);
   assert.match(TUTOR_TOOLS.propose_plan.function.description ?? '', /startingEstimate/);
 });
 

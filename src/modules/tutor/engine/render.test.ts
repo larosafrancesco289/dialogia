@@ -146,14 +146,12 @@ test('learnerChangesSince describes only learner events after the given seq', ()
   h.learner({ type: 'flag_review', nodeId: 'derivatives', flagged: true });
   h.learner({ type: 'mark_known', nodeId: 'derivatives' });
   h.learner({ type: 'reopen_topic', nodeId: 'derivatives' });
-  h.learner({ type: 'more_practice', nodeId: 'derivatives' });
   const lines = learnerChangesSince(h.state, h.events, since);
   assert.deepEqual(lines, [
     'Set Limits to 62% (was 89%).',
     'Flagged Derivatives for review.',
     'Marked Derivatives as already known (now 80%).',
     'Reopened Derivatives for more practice.',
-    'Set Derivatives to 60% by asking for more practice (was 80%).',
   ]);
   assert.deepEqual(learnerChangesSince(h.state, h.events, h.state.lastSeq), []);
 });
@@ -210,7 +208,7 @@ test('once intake is answered, the block tells the tutor it may give starting es
   });
   assert.match(
     render(h),
-    /Starting estimates: in propose_plan, give .* startingEstimate \(up to 75%\)/,
+    /Starting estimates: in propose_plan, give a startingEstimate \(up to 50%\) .* not to the topics built on it/,
   );
   h.tutor({ type: 'propose_plan', ...CALCULUS });
   assert.doesNotMatch(render(h), /Starting estimates/, 'not while a proposal waits');
@@ -299,4 +297,36 @@ test('diagnostic items tied to the current topic are remembered with their resul
   assert.match(block, /^- "A derivative question\?" \(diagnostic, right\)$/m);
   assert.match(block, /^- "Another derivative question\?" \(diagnostic, wrong\)$/m);
   assert.doesNotMatch(block, /A chain rule question/);
+});
+
+test('the tutor is reminded of the answers it recorded on the current topic since it opened', () => {
+  const h = teaching();
+  assert.doesNotMatch(render(h), /recent answers/);
+  const record = (kind: 'struggled' | 'applied', note: string, messageId: string) =>
+    h.tutor({ type: 'record_evidence', kind, note, source: 'observation' }, messageId);
+  record('struggled', 'Said the left side stays', 'r1');
+  record('applied', 'Said equal midpoint means found', 'r2');
+  h.tutor(
+    {
+      type: 'record_evidence',
+      nodeId: 'derivatives',
+      kind: 'applied',
+      note: 'Elsewhere',
+      source: 'observation',
+    },
+    'r2',
+  );
+  const block = render(h);
+  assert.match(block, /recent answers you recorded on this topic/);
+  assert.match(
+    block,
+    /^- struggled: "Said the left side stays"\n- applied: "Said equal midpoint means found"$/m,
+  );
+  assert.doesNotMatch(block, /Elsewhere/, 'only the current topic');
+
+  // A topic taken up again starts a fresh memory, like its quiz budget.
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.9 });
+  h.tutor({ type: 'complete_topic', how: 'skipped' });
+  h.learner({ type: 'reopen_topic', nodeId: 'limits' });
+  assert.doesNotMatch(render(h), /recent answers/);
 });

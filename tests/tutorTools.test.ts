@@ -206,7 +206,7 @@ test('a quiz replays without its answer keys', async () => {
 test('two state tools in one round both land, in order', async () => {
   const t = await teaching();
   // Enough evidence to complete as mastered: the second call must see the first.
-  await t.call('record_evidence', { kind: 'applied', note: 'Applied it', weight: 0.7 });
+  await t.call('record_evidence', { kind: 'applied', note: 'Applied it', weight: 0.7 }, 'reply-0');
   const [evidence, complete] = await Promise.all([
     t.call('record_evidence', { kind: 'insight', note: 'Saw why', weight: 0.5 }),
     t.call('complete_topic', {}),

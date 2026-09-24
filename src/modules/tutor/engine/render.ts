@@ -10,7 +10,6 @@ import {
   MASTERY_PRIOR,
   PRACTISING,
   READY,
-  STARTING_ESTIMATE_MAX,
   masteryBand,
   percent,
 } from '@/modules/tutor/engine/rules';
@@ -19,6 +18,7 @@ import {
   currentNode,
   openMisconceptions,
   remainingBudgets,
+  startingEstimateCap,
   type DiagnosticRecord,
   type TutorPhase,
   type TutorState,
@@ -117,12 +117,35 @@ function askedOnTopic(state: TutorState, nodeId: string): string[] {
     .map((entry) => entry.line);
 }
 
+/** How many of the learner's recorded answers on the current topic the tutor is reminded of. */
+const ANSWERS_SHOWN = 4;
+
+/**
+ * What the tutor last recorded of the learner's own answers on a topic since
+ * it was (re)opened, most recent last: the conversation's memory of practice,
+ * as `askedOnTopic` is the cards', so a question they have answered is not put
+ * to them again in new words.
+ */
+function shownOnTopic(state: TutorState, nodeId: string): string[] {
+  const since = state.counts.evidenceAtReopen[nodeId] ?? 0;
+  return (state.mastery[nodeId]?.evidence ?? [])
+    .slice(since)
+    .filter(
+      (entry) =>
+        !!entry.eventId &&
+        entry.kind !== 'misconception' &&
+        (entry.source === 'observation' || entry.source === 'learner_said'),
+    )
+    .slice(-ANSWERS_SHOWN)
+    .map((entry) => `- ${entry.kind ?? 'observed'}: ${quote(entry.details, 100)}`);
+}
+
 function awaitingLine(state: TutorState): string | undefined {
   const open = state.awaiting;
   if (!open) return undefined;
   switch (open.kind) {
     case 'intake':
-      return 'Waiting on: the learner to answer your intake questions. No other card until they do.';
+      return "Waiting on: the learner to answer your intake questions. If they would rather skip them, or answered in chat, don't wait: propose_plan from what you know, which closes the card.";
     case 'diagnostic':
       return 'Waiting on: the learner to finish your diagnostic. No other card until they do.';
     case 'quiz': {
@@ -172,6 +195,13 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
       lines.push(
         "Already asked on this topic (don't repeat them or reuse their numbers; build on them):",
         ...asked,
+      );
+    }
+    const shown = shownOnTopic(state, current.id);
+    if (shown.length) {
+      lines.push(
+        "Their recent answers you recorded on this topic (don't ask for these again, reworded or not; build past them):",
+        ...shown,
       );
     }
   } else if (state.phase === 'interlude') {
@@ -226,8 +256,9 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
     Object.values(state.intakes).some((i) => !!i.responses) ||
     Object.values(state.diagnostics).some((d) => !!d.answers);
   if (!plan && !state.proposal && heardBack) {
+    const cap = percent(startingEstimateCap(state));
     lines.push(
-      `Starting estimates: in propose_plan, give each topic these answers show the learner already knows a startingEstimate (up to ${percent(STARTING_ESTIMATE_MAX)}%) with a one-line reason; the rest start at ${percent(MASTERY_PRIOR)}%.`,
+      `Starting estimates: in propose_plan, give a startingEstimate (up to ${cap}%) with a one-line reason only to a topic these answers show the learner already knows, not to the topics built on it; the rest start at ${percent(MASTERY_PRIOR)}%.`,
     );
   }
 

@@ -45,8 +45,45 @@ export type PlanCallbacks = {
   onToggleRightPanel: () => void;
   onOpenRightPanel: (tab?: 'plan' | 'progress') => void;
   onCloseRightPanel: () => void;
-  onSendPlanFeedback: (message: string) => void;
+  /** Revise's "Discuss the plan with the tutor". */
+  onRequestPlanChanges: (feedback: string) => Promise<void>;
 };
+
+/** The proposal a request for changes answers: a card's own, or whichever is waiting. */
+type ProposalRef = { proposalId: string; messageId?: string };
+
+/**
+ * Asking the tutor to change the plan, from a plan card or from the Hub: one
+ * path, so both leave the same quiet ledger line. A proposal still waiting is
+ * declined with the feedback first, as the card's "Suggest changes" does; with
+ * none waiting, the line alone asks for a revision. Resolves false when the
+ * engine refused, and nothing was sent.
+ */
+export function useRequestPlanChanges(): (
+  feedback: string,
+  proposal?: ProposalRef,
+) => Promise<boolean> {
+  const dispatchTutor = useChatStore((s) => s.dispatchTutor);
+  const ledger = useLedger();
+  return useCallback(
+    async (feedback: string, proposal?: ProposalRef) => {
+      const chatId = useChatStore.getState().selectedChatId;
+      if (!chatId) return false;
+      const pending = proposal ?? useChatStore.getState().tutorSessions[chatId]?.state.proposal;
+      if (pending) {
+        const result = await dispatchTutor(
+          chatId,
+          { by: 'learner', type: 'decline_plan', proposalId: pending.proposalId, feedback },
+          { by: 'learner', ...(pending.messageId ? { messageId: pending.messageId } : {}) },
+        );
+        if (!result.ok) return false;
+      }
+      await ledger(LEDGER.planDeclined(feedback));
+      return true;
+    },
+    [dispatchTutor, ledger],
+  );
+}
 
 /**
  * The plan and learner model as the Hub, the header and the chapter breaks
@@ -57,10 +94,9 @@ export type PlanCallbacks = {
  */
 export function usePlanCallbacks(): PlanCallbacks {
   const { chatId, session } = useTutorSession();
-  const { setUI, sendUserMessage, dispatchTutor, rightPanelOpen, rightPanelTab } = useChatStore(
+  const { setUI, dispatchTutor, rightPanelOpen, rightPanelTab } = useChatStore(
     (s) => ({
       setUI: s.setUI,
-      sendUserMessage: s.sendUserMessage,
       dispatchTutor: s.dispatchTutor,
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
       rightPanelTab: s.ui.plan?.rightPanelTab ?? 'plan',
@@ -68,6 +104,7 @@ export function usePlanCallbacks(): PlanCallbacks {
     shallow,
   );
   const ledger = useLedger();
+  const requestPlanChanges = useRequestPlanChanges();
 
   const state = session.state;
   const learningPlan = state.plan;
@@ -179,12 +216,13 @@ export function usePlanCallbacks(): PlanCallbacks {
     setUI({ plan: { rightPanelOpen: false, sheetPlanOverride: null } });
   }, [setUI]);
 
-  const onSendPlanFeedback = useCallback(
-    (message: string) => {
-      void sendUserMessage(message);
-      setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
+  const onRequestPlanChanges = useCallback(
+    async (feedback: string) => {
+      if (await requestPlanChanges(feedback)) {
+        setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
+      }
     },
-    [sendUserMessage, setUI],
+    [requestPlanChanges, setUI],
   );
 
   return {
@@ -206,6 +244,6 @@ export function usePlanCallbacks(): PlanCallbacks {
     onToggleRightPanel,
     onOpenRightPanel,
     onCloseRightPanel,
-    onSendPlanFeedback,
+    onRequestPlanChanges,
   };
 }

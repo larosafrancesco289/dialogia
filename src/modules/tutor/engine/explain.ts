@@ -47,11 +47,13 @@ function describe(entry: Evidence, before: number, after: number): string {
   const label = entry.source ? SOURCE_LABEL[entry.source] : 'Evidence';
   const head = label ? (entry.details ? `${label}: ${entry.details}` : label) : entry.details;
   const move =
-    typeof entry.setTo === 'number'
-      ? 'set directly'
-      : entry.weight >= 0
-        ? `+${percent(entry.weight)}% of the gap to 100%`
-        : `-${percent(-entry.weight)}% of the estimate`;
+    entry.kind === 'misconception'
+      ? 'gain taken back'
+      : typeof entry.setTo === 'number'
+        ? 'set directly'
+        : entry.weight >= 0
+          ? `+${percent(entry.weight)}% of the gap to 100%`
+          : `-${percent(-entry.weight)}% of the estimate`;
   return `${head} (${move}): ${percent(before)}% -> ${percent(after)}%`;
 }
 
@@ -86,12 +88,10 @@ export function explainTopic(state: TutorState, nodeId: string): TopicExplanatio
     });
     current = after;
   }
-  const settledAt = steps.reduce(
-    (latest, step, index) =>
-      typeof mastery.evidence.find((e) => e.eventId === step.eventId)?.setTo === 'number'
-        ? index
-        : latest,
-    -1,
-  );
+  // A take-back lands on an exact value but resets nothing: the steps before it still count.
+  const settledAt = steps.reduce((latest, step, index) => {
+    const entry = mastery.evidence.find((e) => e.eventId === step.eventId);
+    return typeof entry?.setTo === 'number' && entry.kind !== 'misconception' ? index : latest;
+  }, -1);
   return { nodeId, name, start, startText, steps, settledAt, confidence: current };
 }

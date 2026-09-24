@@ -20,14 +20,19 @@ export const MASTERY_EVIDENCE_MIN = 2;
 export const PRACTISING = 0.5;
 
 /**
- * The highest starting estimate a plan may give a topic from intake or
- * diagnostic evidence: below READY, so the tutor still checks the topic before
+ * The highest starting estimate a plan may give a topic once a diagnostic has
+ * tested the learner: below READY, so the tutor still checks the topic before
  * it counts as ready. A learner who knows a topic can mark it known.
  */
 export const STARTING_ESTIMATE_MAX = Math.round((READY - 0.05) * 100) / 100;
 
-/** "More practice" pulls an estimate down to at most this. */
-export const MORE_PRACTICE_CAP = Math.round((READY - 0.2) * 100) / 100;
+/**
+ * The highest starting estimate that rests on what the learner said (intake,
+ * chat) with no diagnostic behind it: the start of practising. A tutor that
+ * reads "I know the basics" as knowing the topic built on them can place it
+ * only this high, and the learner's own "I know this" is still there.
+ */
+export const STARTING_ESTIMATE_SAID_MAX = PRACTISING;
 
 /** "Too high" / "Too low" on an estimate moves it by this much, as a direct setting. */
 export const CONTEST_STEP = 0.15;
@@ -66,7 +71,11 @@ export const OBSERVATION_KINDS = [
 ] as const;
 export type ObservationKind = (typeof OBSERVATION_KINDS)[number];
 
-/** Default weight per observation, used when the tutor gives none. */
+/**
+ * Default weight per observation, used when the tutor gives none. A wrong
+ * answer is `struggled`; `partial` is an answer that was partly right, so it
+ * never lowers an estimate and raises it only a little.
+ */
 export const OBSERVATION_WEIGHTS: Record<ObservationKind, number> = {
   explained: 0.2,
   applied: 0.3,
@@ -82,20 +91,33 @@ export const OBSERVATION_WEIGHTS: Record<ObservationKind, number> = {
  */
 export const HELPED_FACTOR = 0.4;
 
-/** Which way each observation may move the estimate. `partial` may go either way. */
-export const OBSERVATION_SIGN: Record<ObservationKind, 1 | -1 | 0> = {
+/** Which way each observation may move the estimate. Only `struggled` goes down. */
+export const OBSERVATION_SIGN: Record<ObservationKind, 1 | -1> = {
   explained: 1,
   applied: 1,
   insight: 1,
-  partial: 0,
+  partial: 1,
   struggled: -1,
 };
+
+/**
+ * The weight an observation carries once `helped` is taken into account. A
+ * step the tutor led them to counts for less; a partly right answer the tutor
+ * led them to shows nothing of their own, so it counts for nothing.
+ */
+export function observationWeight(kind: ObservationKind, weight: number, helped: boolean): number {
+  if (!helped || weight <= 0) return weight;
+  return kind === 'partial' ? 0 : weight * HELPED_FACTOR;
+}
 
 export type EvidenceKind =
   | 'correct_answer'
   | 'incorrect_answer'
   | ObservationKind
+  // The engine taking back a reply's gain on a topic once the same reply noted a misconception on it.
+  | 'misconception'
   | 'marked_known'
+  // Only in older logs: asking for more practice used to cap the estimate.
   | 'more_practice'
   | 'adjusted'
   | 'placement';
@@ -108,6 +130,7 @@ const LEGACY_TYPE: Record<EvidenceKind, Evidence['type']> = {
   insight: 'insight_demonstrated',
   partial: 'partial_answer',
   struggled: 'hint_needed',
+  misconception: 'misconception_detected',
   marked_known: 'self_report',
   more_practice: 'self_report',
   adjusted: 'self_report',
@@ -154,11 +177,6 @@ export function diagnosticWeight(correct: boolean): number {
 /** "I know this": a floor at READY. It never lowers an estimate. */
 export function markKnownTarget(confidence: number): number {
   return Math.max(confidence, READY);
-}
-
-/** "I need more practice": a cap below READY. It never raises an estimate. */
-export function morePracticeTarget(confidence: number): number {
-  return Math.min(confidence, MORE_PRACTICE_CAP);
 }
 
 /** Where "Too high" / "Too low" puts an estimate: one step, to the whole percent. */

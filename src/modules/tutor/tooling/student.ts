@@ -218,7 +218,7 @@ export class SimulatedStudent {
     estimate?: number,
   ): Promise<ChapterChoice> {
     const parsed = await this.ask(
-      `A chapter break appeared: "${completed}" is finished${estimate !== undefined ? ` and the tutor puts you at ${estimate}%` : ''}. You can press "${next ? `Go on to ${next}` : 'Go on'}", press "Not yet, more practice", or type a message instead.\n\nReply with JSON only: {"choice": "go_on" | "more_practice" | "type", "message": "<only when you type>"}`,
+      `A chapter break appeared: "${completed}" is finished${estimate !== undefined ? ` and the tutor puts you at ${estimate}%` : ''}. You can press "${next ? `Go on: ${next}` : 'Go on'}", press "Not yet, more practice", or type a message instead.\n\nReply with JSON only: {"choice": "go_on" | "more_practice" | "type", "message": "<only when you type>"}`,
     );
     const choice = parsed?.choice;
     if (choice === 'more_practice') return { choice };

@@ -36,6 +36,9 @@ export function QuestionnaireCard({
   const dispatchTutor = useChatStore((s) => s.dispatchTutor);
   const ledger = useLedger();
   const isSubmitted = !!responses;
+  // Closed unanswered: the tutor went on without it (the learner skipped it in chat).
+  const isClosed = !isSubmitted && !!intake.dismissed;
+  const isLocked = isSubmitted || isClosed;
   const questionCount = questions.length;
 
   const isPending = useCallback(
@@ -62,7 +65,7 @@ export function QuestionnaireCard({
   }, [initialSelections, firstIncompleteIndex, setActiveIndex]);
 
   const handleToggle = (questionId: string, choice: string, allowMultiple: boolean) => {
-    if (isSubmitted) return;
+    if (isLocked) return;
     setSelections((prev) => {
       const current = prev[questionId] ?? [];
       if (allowMultiple) {
@@ -77,7 +80,7 @@ export function QuestionnaireCard({
         [questionId]: [choice],
       };
     });
-    if (!allowMultiple && !isSubmitted) {
+    if (!allowMultiple && !isLocked) {
       window.setTimeout(() => {
         setActiveIndex((prev) => {
           if (prev >= questionCount - 1) return prev;
@@ -98,7 +101,7 @@ export function QuestionnaireCard({
   const allowMultiple = !!activeItem.allowMultiple;
 
   const handleSubmit = async () => {
-    if (!allAnswered || submitting) return;
+    if (!allAnswered || submitting || isLocked) return;
     setSubmitting(true);
     try {
       const result = await dispatchTutor(
@@ -125,7 +128,9 @@ export function QuestionnaireCard({
         <p className="exercise__meta">
           {isSubmitted
             ? 'Thank you. The plan will be shaped around this.'
-            : 'Choose the options that fit you best.'}
+            : isClosed
+              ? 'Skipped. The tutor went on without these answers.'
+              : 'Choose the options that fit you best.'}
         </p>
       </div>
 
@@ -171,14 +176,14 @@ export function QuestionnaireCard({
             <div className="exercise__choices">
               {activeItem.options.map((option, idx) => {
                 const isSelected = activeSelected.includes(option.label);
-                const state = isSelected ? 'is-picked' : isSubmitted ? 'is-muted' : '';
+                const state = isSelected ? 'is-picked' : isLocked ? 'is-muted' : '';
                 return (
                   <button
                     key={safeKey(option.label, idx, activeItem.id)}
                     type="button"
                     className={`choice ${state}`.trim()}
                     onClick={() => handleToggle(activeItem.id, option.label, allowMultiple)}
-                    disabled={isSubmitted}
+                    disabled={isLocked}
                     aria-pressed={isSelected}
                   >
                     <span className="choice__body">
@@ -209,6 +214,8 @@ export function QuestionnaireCard({
           <CheckIcon />
           Answers sent{submittedTimestamp ? ` · ${submittedTimestamp}` : ''}
         </motion.p>
+      ) : isClosed ? (
+        <p className="exercise__done">Skipped</p>
       ) : (
         <div className="exercise__nav">
           <span className="exercise__count">

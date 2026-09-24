@@ -29,17 +29,15 @@ import {
   MASTERY_EVIDENCE_MIN,
   OBSERVATION_KINDS,
   OBSERVATION_SIGN,
-  HELPED_FACTOR,
   OBSERVATION_WEIGHTS,
   READY,
-  STARTING_ESTIMATE_MAX,
   WEIGHT_MAX,
   WEIGHT_MIN,
   clamp01,
   clampWeight,
   diagnosticWeight,
   markKnownTarget,
-  morePracticeTarget,
+  observationWeight,
   percent,
   quizWeight,
   type ObservationKind,
@@ -48,8 +46,11 @@ import {
   confidenceOf,
   demonstratedEvidence,
   openMisconceptions,
+  diagnosed,
   quizFinished,
   remainingBudgets,
+  replyRecord,
+  startingEstimateCap,
   type TutorPhase,
   type TutorState,
 } from '@/modules/tutor/engine/state';
@@ -83,6 +84,8 @@ export type TutorErrorCode =
   | 'incomplete_answers'
   | 'invalid_choice'
   | 'nothing_to_change'
+  | 'already_recorded'
+  | 'weight_against_kind'
   | 'unknown_tool'
   // Raised by the store, not by `decide`: the chat is gone, or another tab won a race twice.
   | 'chat_deleted'
@@ -108,7 +111,6 @@ export type TutorToolCommand =
       weight?: number;
       /** The tutor led them to it; an upward weight counts for less. */
       helped?: boolean;
-      setTo?: number;
       note: string;
     }
   | { by: 'tutor'; type: 'note_misconception'; nodeId?: string; description: string }
@@ -266,7 +268,10 @@ export function gateTutorTool(
     return err('wrong_phase', `${tool} is not available in the ${phase} phase.`, PHASE_HINT[phase]);
   }
   const open = state.awaiting;
-  if (CARD_TOOLS.has(tool) && open && open.kind !== 'proposal') {
+  // A plan proposal closes an unanswered intake: a learner who would rather
+  // skip the questions, or answered them in chat, is not kept waiting on them.
+  const supersedes = tool === 'propose_plan' && open?.kind === 'intake';
+  if (CARD_TOOLS.has(tool) && open && open.kind !== 'proposal' && !supersedes) {
     return err(
       'card_open',
       `The learner has not finished the ${open.kind} you gave them.`,
@@ -477,15 +482,19 @@ function decideTutor(
         );
       }
       const startingEstimates: Record<string, StartingEstimate> = {};
+      const cap = startingEstimateCap(state);
       cmd.nodes.forEach((node, i) => {
         const estimate = node.startingEstimate;
         const id = built.plan.nodes[i]?.id;
         if (!id || !estimate || !Number.isFinite(estimate.value) || estimate.value <= 0) return;
         startingEstimates[id] = {
-          value: Math.min(STARTING_ESTIMATE_MAX, clamp01(estimate.value)),
+          value: Math.min(cap, clamp01(estimate.value)),
           reason: text(estimate.reason),
         };
       });
+      if (state.awaiting?.kind === 'intake') {
+        out.push({ type: 'card_dismissed', card: 'intake', cardId: state.awaiting.id });
+      }
       out.push({
         type: 'plan_proposed',
         proposalId: ctx.idFactory(),
@@ -523,6 +532,7 @@ function decideTutor(
     case 'record_evidence': {
       const found = resolveNode(state, cmd.nodeId, true);
       if (found.error) return found.error;
+      const node = found.node;
       if (!OBSERVATION_KINDS.includes(cmd.kind)) {
         return invalid(
           `Unknown kind "${cmd.kind}".`,
@@ -536,30 +546,13 @@ function decideTutor(
           'Set note to one short sentence about what the learner did, and call record_evidence again.',
         );
       }
-      // setTo means "the learner says it is here"; on any other source it does not apply.
-      if (typeof cmd.setTo === 'number' && cmd.source === 'learner_said') {
-        if (!ctx.flags.learnerModelEditable) {
-          return err(
-            'not_editable',
-            'The learner cannot correct the learner model in this session.',
-            'Call record_evidence again without setTo (a weight moves the estimate instead), or leave the estimate as it is.',
-          );
-        }
-        if (!Number.isFinite(cmd.setTo) || cmd.setTo < 0 || cmd.setTo > 1) {
-          return invalid(
-            'setTo must be between 0 and 1.',
-            'Set setTo to a fraction between 0 and 1 (0.6 for 60%), or leave it out.',
-          );
-        }
-        out.push({
-          type: 'evidence_recorded',
-          nodeId: found.node.id,
-          source: 'learner_said',
-          kind: cmd.kind,
-          setTo: cmd.setTo,
-          note,
-        });
-        return null;
+      const reply = replyRecord(state, ctx.messageId);
+      if (reply?.evidence[node.id]) {
+        return err(
+          'already_recorded',
+          `You already recorded evidence on ${node.name} in this reply.`,
+          'One piece of evidence per topic per reply, summing up the exchange. Nothing more to record on it now.',
+        );
       }
       const weight = cmd.weight ?? OBSERVATION_WEIGHTS[cmd.kind];
       if (!Number.isFinite(weight)) {
@@ -567,21 +560,25 @@ function decideTutor(
       }
       const sign = OBSERVATION_SIGN[cmd.kind];
       if ((sign > 0 && weight < 0) || (sign < 0 && weight > 0)) {
-        const upward = OBSERVATION_KINDS.filter((k) => OBSERVATION_SIGN[k] >= 0).join(', ');
-        return invalid(
+        const upward = OBSERVATION_KINDS.filter((k) => OBSERVATION_SIGN[k] > 0).join(', ');
+        // Its own code: the call contradicts itself, and one right answer is to record nothing.
+        return err(
+          'weight_against_kind',
           `${cmd.kind} evidence must have a ${sign > 0 ? 'positive' : 'negative'} weight; got ${weight}.`,
           sign > 0
-            ? `Change weight to a number from 0 to ${WEIGHT_MAX} (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to struggled or partial if the learner went backwards.`
+            ? `Change weight to a number from 0 to ${WEIGHT_MAX} (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to struggled if the answer was wrong. If they have not answered yet, there is nothing to record.`
             : `Change weight to a number from ${WEIGHT_MIN} to 0 (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to one of ${upward} if the learner did well.`,
         );
       }
-      const scaled = cmd.helped && weight > 0 ? weight * HELPED_FACTOR : weight;
+      const scaled = observationWeight(cmd.kind, weight, !!cmd.helped);
+      // A reply that noted a misconception on the topic gains nothing on it.
+      const gains = scaled > 0 && !reply?.misconceptions.includes(node.id);
       out.push({
         type: 'evidence_recorded',
-        nodeId: found.node.id,
+        nodeId: node.id,
         source: cmd.source === 'learner_said' ? 'learner_said' : 'observation',
         kind: cmd.kind,
-        weight: clampWeight(scaled),
+        weight: gains || scaled < 0 ? clampWeight(scaled) : 0,
         note,
       });
       return null;
@@ -604,6 +601,7 @@ function decideTutor(
         misconceptionId,
         description: same?.description ?? description,
       });
+      takeBackGain(state, found.node.id, same?.description ?? description, ctx, out);
       return null;
     }
 
@@ -718,6 +716,33 @@ function startTopic(
   }
   out.push({ type: 'topic_started', nodeId: node.id });
   return null;
+}
+
+/**
+ * A misconception noted after the same reply recorded a gain on its topic:
+ * the answer that showed it earns nothing, so the gain is taken back, exactly
+ * (the log is append-only), and the evidence it came from stops counting
+ * toward mastery (`demonstratedEvidence`).
+ */
+function takeBackGain(
+  state: TutorState,
+  nodeId: string,
+  description: string,
+  ctx: CommandContext,
+  out: Emitter,
+): void {
+  const recorded = replyRecord(state, ctx.messageId)?.evidence[nodeId];
+  if (!recorded || recorded.after - recorded.before < 0.005) return;
+  const now = confidenceOf(state, nodeId);
+  out.push({
+    type: 'evidence_recorded',
+    nodeId,
+    source: 'observation',
+    kind: 'misconception',
+    setTo: clamp01(now - (recorded.after - recorded.before)),
+    note: `No gain from this answer: it showed a misconception (${shorten(description, 120)})`,
+    ref: { eventId: recorded.eventId },
+  });
 }
 
 function resolveMisconception(
@@ -1005,7 +1030,13 @@ function decideLearner(
       return null;
     }
 
-    case 'reopen_topic': {
+    // "Not yet, more practice" at a chapter break and "Take it up again" in
+    // Revise are one choice: the topic comes back with its estimate as it
+    // stands (asking to practise is not evidence; "Too high" is the learner's
+    // way to disagree with a number), and completing it again as mastered
+    // needs fresh work, counted from the reopening.
+    case 'reopen_topic':
+    case 'more_practice': {
       if (!flags.planEditable) return notEditable('Reopening a topic');
       const found = resolveNode(state, cmd.nodeId, false);
       if (found.error) return found.error;
@@ -1017,39 +1048,6 @@ function decideLearner(
         );
       }
       out.push({ type: 'topic_reopened', nodeId: found.node.id });
-      return null;
-    }
-
-    case 'more_practice': {
-      const found = resolveNode(state, cmd.nodeId, false);
-      if (found.error) return found.error;
-      const node = found.node;
-      const confidence = confidenceOf(state, node.id);
-      const cap = morePracticeTarget(confidence);
-      const lowers = flags.learnerModelEditable && cap !== confidence;
-      if (node.status === 'completed') {
-        if (!flags.planEditable) return notEditable('Reopening a topic');
-        out.push({ type: 'topic_reopened', nodeId: node.id });
-      } else {
-        if (!flags.learnerModelEditable) return notEditable('Correcting the learner model');
-        if (!lowers) {
-          return err(
-            'nothing_to_change',
-            `${node.name} is already at ${percent(confidence)}%, below the practice cap.`,
-            'Nothing to do.',
-          );
-        }
-      }
-      if (lowers) {
-        out.push({
-          type: 'evidence_recorded',
-          nodeId: node.id,
-          source: 'learner',
-          kind: 'more_practice',
-          setTo: cap,
-          note: 'Asked for more practice.',
-        });
-      }
       return null;
     }
 
@@ -1134,11 +1132,11 @@ function decideLearner(
 function placeStartingEstimates(before: TutorState, after: TutorState, out: Emitter): void {
   const estimates = before.proposal?.startingEstimates;
   if (!estimates) return;
-  const fromDiagnostic = Object.values(before.diagnostics).some((d) => !!d.answers);
+  const fromDiagnostic = diagnosed(before);
   for (const [nodeId, estimate] of Object.entries(estimates)) {
     const topic = after.mastery[nodeId];
     if (!topic || topic.evidence.length > 0) continue;
-    const setTo = Math.min(STARTING_ESTIMATE_MAX, clamp01(estimate.value));
+    const setTo = Math.min(startingEstimateCap(before), clamp01(estimate.value));
     if (setTo === topic.confidence) continue;
     const reason = estimate.reason || 'From what the learner said before the plan';
     out.push(
