@@ -98,6 +98,9 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   try {
     let continuations = 0;
     let rawStopReason: unknown;
+    // A continuation numbers its content blocks from 0 again. Tool calls
+    // outlive their round, so they are keyed past every earlier round's blocks.
+    let toolCallBase = 0;
 
     while (true) {
       let res: Response;
@@ -165,7 +168,8 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
           assistantBlocks[index] = { ...block };
 
           if (block.type === 'tool_use') {
-            const existing = toolCalls.get(index) ?? {
+            const key = toolCallBase + index;
+            const existing = toolCalls.get(key) ?? {
               type: 'function' as const,
               function: { name: '', arguments: '' },
             };
@@ -176,9 +180,9 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
                 name: block.name,
                 arguments: existing.function?.arguments ?? '',
               };
-              emitToolCallName(index, block.name);
+              emitToolCallName(key, block.name);
             }
-            toolCalls.set(index, existing);
+            toolCalls.set(key, existing);
             if (isRecord(block.input) && Object.keys(block.input).length > 0) {
               const args = JSON.stringify(block.input);
               existing.function = {
@@ -264,14 +268,14 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
             block.input = parsedArgs;
           }
 
-          const existingToolCall = toolCalls.get(index);
+          const existingToolCall = toolCalls.get(toolCallBase + index);
           if (existingToolCall) {
             existingToolCall.function = {
               ...(existingToolCall.function ?? { name: '' }),
               name: existingToolCall.function?.name ?? '',
               arguments: JSON.stringify(parsedArgs),
             };
-            toolCalls.set(index, existingToolCall);
+            toolCalls.set(toolCallBase + index, existingToolCall);
           }
           return;
         }
@@ -321,6 +325,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
       }
       body = nextBody;
       continuations += 1;
+      toolCallBase += assistantBlocks.length;
     }
   } catch (error) {
     const apiError =

@@ -213,3 +213,103 @@ test('streamChatCompletion maps refusal stop_reason to content_filter with stop_
   assert.equal(finishReason, 'content_filter');
   assert.deepEqual(stopDetails, { policy: 'cybersecurity' });
 });
+
+function toolUseRound(args: {
+  messageId: string;
+  text: string;
+  toolId: string;
+  toolName: string;
+  input: string;
+  stopReason: string;
+}): unknown[] {
+  return [
+    {
+      type: 'message_start',
+      message: { id: args.messageId, type: 'message', role: 'assistant', content: [] },
+    },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: args.text } },
+    { type: 'content_block_stop', index: 0 },
+    {
+      type: 'content_block_start',
+      index: 1,
+      content_block: { type: 'tool_use', id: args.toolId, name: args.toolName, input: {} },
+    },
+    {
+      type: 'content_block_delta',
+      index: 1,
+      delta: { type: 'input_json_delta', partial_json: args.input },
+    },
+    { type: 'content_block_stop', index: 1 },
+    { type: 'message_delta', delta: { stop_reason: args.stopReason, stop_sequence: null } },
+    { type: 'message_stop' },
+  ];
+}
+
+test('streamChatCompletion keeps tool calls from both sides of a pause_turn apart', async () => {
+  // Each continuation response numbers its content blocks from 0 again, so a
+  // tool_use at index 1 in the second round must not land on the first's.
+  let callCount = 0;
+  const restoreFetch = mockFetch(async () => {
+    callCount += 1;
+    return createSseResponse(
+      callCount === 1
+        ? toolUseRound({
+            messageId: 'msg_1',
+            text: 'First.',
+            toolId: 'toolu_first',
+            toolName: 'lookup',
+            input: '{"q":"one"}',
+            stopReason: 'pause_turn',
+          })
+        : toolUseRound({
+            messageId: 'msg_2',
+            text: ' Second.',
+            toolId: 'toolu_second',
+            toolName: 'fetch_page',
+            input: '{"url":"two"}',
+            stopReason: 'tool_use',
+          }),
+    );
+  });
+
+  const namedIndices: number[] = [];
+  let toolCalls: unknown;
+
+  try {
+    await streamChatCompletion({
+      auth: buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' }),
+      model: 'anthropic/claude-sonnet-4-6',
+      messages: [{ role: 'user', content: 'Look both up.' }],
+      tools: [
+        { type: 'function', function: { name: 'lookup', parameters: { type: 'object' } } },
+        { type: 'function', function: { name: 'fetch_page', parameters: { type: 'object' } } },
+      ],
+      callbacks: {
+        onToolCallDelta(deltas) {
+          for (const delta of deltas) if (delta.function?.name) namedIndices.push(delta.index);
+        },
+        onDone(_text, extras) {
+          toolCalls = extras?.toolCalls;
+        },
+      },
+    });
+  } finally {
+    restoreFetch();
+  }
+
+  assert.equal(callCount, 2);
+  assert.deepEqual(toolCalls, [
+    {
+      id: 'toolu_first',
+      type: 'function',
+      function: { name: 'lookup', arguments: '{"q":"one"}' },
+    },
+    {
+      id: 'toolu_second',
+      type: 'function',
+      function: { name: 'fetch_page', arguments: '{"url":"two"}' },
+    },
+  ]);
+  assert.equal(new Set(namedIndices).size, 2, 'each tool call is announced under its own index');
+});
