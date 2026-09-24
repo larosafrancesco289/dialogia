@@ -85,6 +85,7 @@ export type TutorErrorCode =
   | 'invalid_choice'
   | 'nothing_to_change'
   | 'already_recorded'
+  | 'weight_against_kind'
   | 'unknown_tool'
   // Raised by the store, not by `decide`: the chat is gone, or another tab won a race twice.
   | 'chat_deleted'
@@ -560,10 +561,12 @@ function decideTutor(
       const sign = OBSERVATION_SIGN[cmd.kind];
       if ((sign > 0 && weight < 0) || (sign < 0 && weight > 0)) {
         const upward = OBSERVATION_KINDS.filter((k) => OBSERVATION_SIGN[k] > 0).join(', ');
-        return invalid(
+        // Its own code: the call contradicts itself, and one right answer is to record nothing.
+        return err(
+          'weight_against_kind',
           `${cmd.kind} evidence must have a ${sign > 0 ? 'positive' : 'negative'} weight; got ${weight}.`,
           sign > 0
-            ? `Change weight to a number from 0 to ${WEIGHT_MAX} (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to struggled if the answer was wrong.`
+            ? `Change weight to a number from 0 to ${WEIGHT_MAX} (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to struggled if the answer was wrong. If they have not answered yet, there is nothing to record.`
             : `Change weight to a number from ${WEIGHT_MIN} to 0 (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to one of ${upward} if the learner did well.`,
         );
       }

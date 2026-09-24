@@ -37,6 +37,7 @@ const ADVISORY_ERRORS = new Set([
   'already_current',
   'nothing_to_change',
   'already_recorded',
+  'weight_against_kind',
 ]);
 
 const CARD_EVENT = {
