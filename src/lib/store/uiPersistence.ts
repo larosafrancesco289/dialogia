@@ -33,6 +33,9 @@ export function mergePersistedUiState(
   return {
     ...current,
     ...persisted,
+    // Still written (the key is part of the persisted shape), never restored:
+    // a load, or another tab's last write, must not open Settings by itself.
+    showSettings: current.showSettings,
     chatDefaults: mergeChatDefaults(
       current.chatDefaults,
       upgradeChatDefaults(persisted.chatDefaults),
