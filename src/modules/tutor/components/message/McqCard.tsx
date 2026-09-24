@@ -12,7 +12,8 @@ import { contentVariants } from '@/modules/tutor/components/message/shared';
 import { StepperDots } from '@/modules/tutor/components/message/StepperDots';
 import { useStepper } from '@/modules/tutor/components/message/hooks/useStepper';
 import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
-import { LEDGER, useLedger } from '@/modules/tutor/ui/ledger';
+import { LEDGER } from '@/modules/tutor/lib/ledger';
+import { useLedger } from '@/modules/tutor/ui/ledger';
 
 export type McqItem = Omit<QuizItem, 'correct'> & { correct?: number };
 export type McqAttempts = Record<string, { choice: number; correct: boolean }>;

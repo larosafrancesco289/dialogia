@@ -109,7 +109,7 @@ function scriptedTutor(params: TransportStreamParams): void {
   if (said.startsWith('Answered the intake')) {
     return reply(params, 'Here is a plan.', [call('propose_plan', PLAN)]);
   }
-  if (said === 'Approved the plan.') {
+  if (said === 'Approved the plan') {
     return reply(params, 'First, a quick check on inverse operations.', [
       call('give_quiz', {
         items: [
@@ -130,7 +130,8 @@ function scriptedTutor(params: TransportStreamParams): void {
     if (round === 2) return reply(params, '', [call('complete_topic', {})]);
     return reply(params, 'That closes inverse operations.');
   }
-  if (said.startsWith('Started ')) return reply(params, 'Word problems: read the sentence first.');
+  if (said.startsWith('Going on to '))
+    return reply(params, 'Word problems: read the sentence first.');
   if (system.includes('Phase: intake')) {
     return reply(params, 'A couple of questions first.', [
       call('ask_intake', {
@@ -194,7 +195,11 @@ function chat(): Chat {
   };
 }
 
-async function simulate(): Promise<{ run: SimulationRun; requests: TransportStreamParams[] }> {
+async function simulate(): Promise<{
+  run: SimulationRun;
+  requests: TransportStreamParams[];
+  session: HeadlessTutorSession;
+}> {
   const requests: TransportStreamParams[] = [];
   const session = new HeadlessTutorSession({
     chat: chat(),
@@ -216,7 +221,7 @@ async function simulate(): Promise<{ run: SimulationRun; requests: TransportStre
     learnerEdits: true,
     meta: { tutorModel: TUTOR, studentModel: 'provider/student', seed: 1 },
   });
-  return { run, requests };
+  return { run, requests, session };
 }
 
 const lastUserText = (params: TransportStreamParams) => {
@@ -225,9 +230,17 @@ const lastUserText = (params: TransportStreamParams) => {
 };
 
 test('a simulated session answers every card through learner commands, as the UI does', async () => {
-  const { run, requests } = await simulate();
+  const { run, requests, session } = await simulate();
   const x = run.exchanges;
   assert.equal(x.length, 6);
+
+  // Card and chapter-break actions went out as visible ledger lines, as the UI sends them.
+  const users = session.messages().filter((m) => m.role === 'user');
+  assert.deepEqual(
+    users.map((m) => m.ledger === true),
+    x.map((e) => e.student.kind === 'ledger'),
+  );
+  assert.ok(users.every((m) => !m.metadata?.hiddenFromUser));
 
   // 1: the opening; the tutor asks intake questions and the card ends the turn.
   assert.equal(x[0].student.kind, 'typed');
@@ -239,7 +252,7 @@ test('a simulated session answers every card through learner commands, as the UI
 
   // 2: the intake was answered by command, then the UI's line went to the tutor.
   assert.equal(x[1].student.kind, 'ledger');
-  assert.equal(x[1].student.text, 'Answered the intake questions.');
+  assert.equal(x[1].student.text, 'Answered the intake questions');
   assert.deepEqual(
     x[1].student.actions.map((a) => [a.action.type, a.ok]),
     [['answer_intake', true]],
@@ -247,13 +260,13 @@ test('a simulated session answers every card through learner commands, as the UI
   assert.equal(x[1].after.phase, 'proposal');
 
   // 3: approved on the card; the engine started the first topic; a quiz follows.
-  assert.equal(x[2].student.text, 'Approved the plan.');
+  assert.equal(x[2].student.text, 'Approved the plan');
   assert.equal(x[2].student.actions[0].action.type, 'approve_plan');
   assert.equal(x[2].after.awaiting?.kind, 'quiz');
 
   // 4: both items answered one by one, graded by the engine; the tutor's bad topic id
   // came back as an error it fixed in the next round.
-  assert.equal(x[3].student.text, 'Answered the quiz: 2 of 2 right.');
+  assert.equal(x[3].student.text, 'Answered the quiz: 2 of 2 right');
   assert.deepEqual(
     x[3].student.actions.map((a) => a.action.type),
     ['answer_quiz_item', 'answer_quiz_item'],
@@ -278,7 +291,7 @@ test('a simulated session answers every card through learner commands, as the UI
   );
 
   // 5: at the chapter break the student pressed Go on; the tutor heard about the edit.
-  assert.equal(x[4].student.text, 'Started Word problems.');
+  assert.equal(x[4].student.text, 'Going on to Word problems');
   assert.deepEqual(x[4].student.actions[0].action, {
     type: 'start_topic',
     nodeId: 'word-problems',

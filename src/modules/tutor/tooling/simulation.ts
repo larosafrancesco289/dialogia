@@ -14,7 +14,7 @@ import {
   type TutorFlags,
   type TutorState,
 } from '@/modules/tutor/engine';
-import { LEDGER, type LedgerLine } from '@/modules/tutor/tooling/ledger';
+import { LEDGER } from '@/modules/tutor/lib/ledger';
 import { matchKnown } from '@/modules/tutor/tooling/scenarios';
 import type {
   HeadlessTutorSession,
@@ -43,7 +43,7 @@ export type LearnerActionRecord = {
 };
 
 export type StudentTurn = {
-  /** `ledger`: the message the UI sends for a card or chapter-break action. */
+  /** `ledger`: the ledger line the UI sends for a card or chapter-break action. */
   kind: 'typed' | 'ledger';
   text: string;
   actions: LearnerActionRecord[];
@@ -112,8 +112,6 @@ export type SimulationOptions = {
   maxDeclines?: number;
   onExchange?: (exchange: ExchangeRecord) => void;
 };
-
-type Move = StudentTurn & { metadata?: LedgerLine['metadata'] };
 
 function summarizeTurn(turn: TurnRecord): ExchangeRecord['tutor'] {
   const usage = turn.assistant.usage as Usage | undefined;
@@ -247,23 +245,21 @@ export async function runSimulation(options: SimulationOptions): Promise<Simulat
     return result.ok;
   };
 
-  const ledger = (line: LedgerLine, actions: LearnerActionRecord[]): Move => {
-    student.did(line.content);
-    return {
-      kind: 'ledger',
-      text: line.content,
-      actions,
-      ...(line.metadata ? { metadata: line.metadata } : {}),
-    };
+  const ledger = (line: string, actions: LearnerActionRecord[]): StudentTurn => {
+    student.did(line);
+    return { kind: 'ledger', text: line, actions };
   };
 
-  const typed = async (actions: LearnerActionRecord[], text?: string): Promise<Move> => {
+  const typed = async (actions: LearnerActionRecord[], text?: string): Promise<StudentTurn> => {
     if (text) student.did(text);
     return { kind: 'typed', text: text ?? (await student.reply()), actions };
   };
 
   /** The open card, answered the way its component answers it. */
-  const answerCard = async (state: TutorState, open: Awaiting): Promise<Move | undefined> => {
+  const answerCard = async (
+    state: TutorState,
+    open: Awaiting,
+  ): Promise<StudentTurn | undefined> => {
     const actions: LearnerActionRecord[] = [];
     switch (open.kind) {
       case 'intake': {
@@ -325,7 +321,7 @@ export async function runSimulation(options: SimulationOptions): Promise<Simulat
         const after = session.tutor().state.quizzes[quiz.quizId];
         if (failed || !after) return typed(actions);
         const right = after.items.filter((item) => after.answers[item.id]?.correct).length;
-        return ledger(LEDGER.quizAnswered(right, after.items.length), actions);
+        return ledger(LEDGER.quizFinished(right, after.items.length), actions);
       }
       case 'proposal': {
         const proposal = state.proposal;
@@ -356,7 +352,7 @@ export async function runSimulation(options: SimulationOptions): Promise<Simulat
   };
 
   /** The live chapter break (only when the plan is editable, as in the UI). */
-  const atChapterBreak = async (state: TutorState): Promise<Move | undefined> => {
+  const atChapterBreak = async (state: TutorState): Promise<StudentTurn | undefined> => {
     const completed = lastCompleted(session.tutor().events);
     const node = state.plan?.nodes.find((n) => n.id === completed?.nodeId);
     if (!completed || !node) return undefined;
@@ -375,7 +371,7 @@ export async function runSimulation(options: SimulationOptions): Promise<Simulat
     }
     if (!next) return typed(actions);
     if (await act(actions, { type: 'start_topic', nodeId: next.id })) {
-      return ledger(LEDGER.topicStarted(next.name), actions);
+      return ledger(LEDGER.goingOn(next.name), actions);
     }
     return typed(actions);
   };
@@ -405,14 +401,13 @@ export async function runSimulation(options: SimulationOptions): Promise<Simulat
     return actions;
   };
 
-  let move: Move = { kind: 'typed', text: await student.opening(), actions: [] };
+  let move: StudentTurn = { kind: 'typed', text: await student.opening(), actions: [] };
   for (let index = 1; index <= options.exchanges; index += 1) {
-    const turn = await session.runTurn(move.text, move.metadata);
+    const turn = await session.runTurn(move.text, { ledger: move.kind === 'ledger' });
     const state = session.tutor().state;
-    const { metadata: _metadata, ...studentTurn } = move;
     const record: ExchangeRecord = {
       index,
-      student: studentTurn,
+      student: move,
       tutor: summarizeTurn(turn),
       after: snapshot(state),
       quietEdits: [],

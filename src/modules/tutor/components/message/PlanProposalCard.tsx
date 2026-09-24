@@ -3,7 +3,8 @@ import { useChatStore } from '@/lib/store';
 import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
 import { PlanFeedbackModal } from '@/modules/tutor/components/plan/PlanFeedbackModal';
 import type { ProposalView } from '@/modules/tutor/ui/messageViews';
-import { LEDGER, useLedger } from '@/modules/tutor/ui/ledger';
+import { LEDGER } from '@/modules/tutor/lib/ledger';
+import { useLedger } from '@/modules/tutor/ui/ledger';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 
 export function PlanProposalCard({

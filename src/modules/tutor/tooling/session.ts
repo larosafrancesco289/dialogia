@@ -181,8 +181,11 @@ export class HeadlessTutorSession {
       });
   }
 
-  /** Sends a user message and runs the tutor's turn to its end, as the composer would. */
-  async runTurn(content: string, metadata?: Message['metadata']): Promise<TurnRecord> {
+  /**
+   * Sends a user message and runs the tutor's turn to its end, as the composer
+   * would; with `ledger`, as the UI sends a card or chapter-break action.
+   */
+  async runTurn(content: string, options: { ledger?: boolean } = {}): Promise<TurnRecord> {
     await this.store.getState().ensureTutorSession(this.chatId);
     const chat = this.chat;
     const modelId = chat.settings.modelId;
@@ -195,7 +198,7 @@ export class HeadlessTutorSession {
       chatId: this.chatId,
       content,
       createdAt: (this.clock += 1),
-      ...(metadata ? { metadata } : {}),
+      ...(options.ledger ? { ledger: true } : {}),
     });
     const assistant = createAssistantMessage({
       chatId: this.chatId,

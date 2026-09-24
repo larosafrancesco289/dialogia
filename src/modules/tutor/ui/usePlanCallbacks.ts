@@ -9,7 +9,8 @@ import {
   type TutorState,
 } from '@/modules/tutor/engine';
 import type { TutorDispatchResult } from '@/modules/tutor/store/tutorSlice';
-import { LEDGER, useLedger } from '@/modules/tutor/ui/ledger';
+import { LEDGER } from '@/modules/tutor/lib/ledger';
+import { useLedger } from '@/modules/tutor/ui/ledger';
 import { useTutorSession } from '@/modules/tutor/ui/useTutorSession';
 
 type PlanProgress = { completed: number; total: number; percentComplete: number };

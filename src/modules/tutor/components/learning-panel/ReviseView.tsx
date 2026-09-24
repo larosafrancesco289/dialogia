@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { LearningPlan, LearningPlanNode } from '@/lib/types';
 import { unmetPrerequisites } from '@/modules/tutor/engine';
-import { inSentence } from '@/modules/tutor/ui/text';
+import { inSentence } from '@/modules/tutor/lib/text';
 
 export type PlanRevisions = {
   onSkip: (nodeId: string) => Promise<unknown> | void;

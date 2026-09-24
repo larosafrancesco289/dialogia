@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import type { DiagnosticRecord } from '@/modules/tutor/engine';
 import { McqCard, type McqAttempts } from '@/modules/tutor/components/message/McqCard';
-import { LEDGER, useLedger } from '@/modules/tutor/ui/ledger';
+import { LEDGER } from '@/modules/tutor/lib/ledger';
+import { useLedger } from '@/modules/tutor/ui/ledger';
 
 /**
  * A diagnostic: answers are held here until every item has one, then go to
