@@ -22,19 +22,23 @@ function toContentBlocks(content: string | ModelContentBlock[] | null): ModelCon
   return [{ type: 'text', text: content }];
 }
 
+const isNonEmptyText = (block: ModelContentBlock): boolean =>
+  block.type === 'text' && block.text.trim().length > 0;
+
 function hasText(content: string | ModelContentBlock[] | null): boolean {
   if (typeof content === 'string') return content.trim().length > 0;
   if (!Array.isArray(content)) return false;
-  return content.some((block) => block.type === 'text' && block.text.trim().length > 0);
+  return content.some(isNonEmptyText);
 }
 
 /**
- * Return a copy of `blocks` with `cache_control` set on the last text block.
+ * Return a copy of `blocks` with `cache_control` set on the last text block
+ * that has text: the API rejects a marker on an empty one.
  */
 function markLastTextBlock(blocks: ModelContentBlock[]): ModelContentBlock[] {
   const result = blocks.map((b) => ({ ...b }));
   for (let i = result.length - 1; i >= 0; i--) {
-    if (result[i].type === 'text') {
+    if (isNonEmptyText(result[i])) {
       result[i] = { ...result[i], cache_control: EPHEMERAL } as ModelContentBlock;
       break;
     }
@@ -101,7 +105,7 @@ export function applyCacheBreakpoints(messages: ModelMessage[]): ModelMessage[] 
   for (let i = 0; i < result.length; i++) {
     if (result[i].role === 'system') {
       const sys = result[i] as SystemModelMessage;
-      if (!Array.isArray(sys.content)) {
+      if (!Array.isArray(sys.content) && hasText(sys.content)) {
         result[i] = { role: 'system', content: markLastTextBlock(toContentBlocks(sys.content)) };
       }
       break;
@@ -121,8 +125,8 @@ export function applyCacheBreakpoints(messages: ModelMessage[]): ModelMessage[] 
     for (let i = lastUserIdx - 1; i >= 0; i--) {
       const msg = result[i];
       if (msg.role !== 'user' && msg.role !== 'assistant') continue;
-      // A replayed tool call can carry no text; a marker on an empty text block
-      // is rejected, so the breakpoint moves to the nearest message with text.
+      // A replayed tool call can carry no text, so the breakpoint moves to the
+      // nearest message with text.
       if (!hasText(msg.content)) continue;
       const blocks = markLastTextBlock(toContentBlocks(msg.content));
       result[i] = { ...msg, content: blocks } as ModelMessage;

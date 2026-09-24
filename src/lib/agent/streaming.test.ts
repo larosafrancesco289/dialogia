@@ -74,7 +74,6 @@ test('streamFinal rebuilds multipart system prompt when stable split is provided
       timestampsEnabled: false,
       system: chat.settings.system,
     },
-    startBuffered: false,
     systemStable,
     systemDynamic,
     pipeline,
