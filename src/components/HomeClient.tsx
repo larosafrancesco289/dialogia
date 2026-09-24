@@ -67,11 +67,6 @@ export function HomeClient() {
   // Track which chat has already auto-opened the panel (respect manual collapse)
   const autoOpenedChatIdRef = useRef<string | null>(null);
 
-  // Auto-collapse sidebar when tutor activates (desktop only)
-  useEffect(() => {
-    if (tutorActive && !isMobile) setUI({ sidebarCollapsed: true });
-  }, [tutorActive, isMobile, setUI]);
-
   // Auto-open right panel once per chat when a plan exists (desktop only)
   useEffect(() => {
     if (!chatId) {

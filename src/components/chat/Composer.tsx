@@ -122,7 +122,7 @@ export function Composer({
     removeAttachment,
     resetAttachments,
     replaceAttachments,
-  } = useComposerAttachments({ canVision, canAudio });
+  } = useComposerAttachments({ canVision, canAudio, onSkipped: setNotice });
 
   // Sync focus state to store for mobile tab bar visibility
   useEffect(() => {
