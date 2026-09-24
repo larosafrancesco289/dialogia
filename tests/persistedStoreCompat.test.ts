@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import { createStore } from 'zustand/vanilla';
 import type { StateCreator } from 'zustand';
 import { buildStoreInitializer } from '@/lib/store/createStore';
-import { buildPersistedState, mergePersistedState } from '@/lib/store/persistence';
+import {
+  adoptPersistedState,
+  buildPersistedState,
+  mergePersistedState,
+  readPersistedSnapshot,
+} from '@/lib/store/persistence';
 import { migrate } from '@/lib/store/migrations';
 import type { PersistedStoreState, StoreState } from '@/lib/store/types';
 
@@ -114,4 +119,41 @@ test('a persist round-trip is stable', () => {
     mergePersistedState(freshState(), first as PersistedStoreState) as StoreState,
   );
   assert.deepEqual(second, first);
+});
+
+test("another tab's preferences are adopted, this window's view is kept", () => {
+  const current = freshState();
+  current.selectedChatId = 'mine';
+  current.ui = { ...current.ui, showSettings: true, sidebarCollapsed: false };
+  const other = buildPersistedState({
+    ...freshState(),
+    selectedChatId: 'theirs',
+    favoriteModelIds: ['openai/gpt-6-luna'],
+    ui: { ...freshState().ui, showSettings: false, sidebarCollapsed: true, zdrOnly: true },
+  });
+
+  const adopted = adoptPersistedState(current, other);
+
+  assert.deepEqual(adopted.favoriteModelIds, ['openai/gpt-6-luna']);
+  assert.equal(adopted.ui.zdrOnly, true);
+  assert.equal(adopted.selectedChatId, 'mine');
+  assert.equal(adopted.ui.showSettings, true);
+  assert.equal(adopted.ui.sidebarCollapsed, false);
+});
+
+test('a snapshot from another tab is read, migrated, or refused', () => {
+  const state = buildPersistedState(freshState());
+  const identity = (s: unknown) => s;
+  const raw = (version: number) => JSON.stringify({ state, version });
+
+  assert.deepEqual(readPersistedSnapshot(raw(8), 8, identity), JSON.parse(JSON.stringify(state)));
+  assert.equal(readPersistedSnapshot(raw(9), 8, identity), undefined);
+  assert.equal(readPersistedSnapshot('not json', 8, identity), undefined);
+  assert.equal(readPersistedSnapshot(JSON.stringify({ version: 8 }), 8, identity), undefined);
+  let migratedFrom: number | undefined;
+  readPersistedSnapshot(raw(6), 8, (s, from) => {
+    migratedFrom = from;
+    return s;
+  });
+  assert.equal(migratedFrom, 6);
 });

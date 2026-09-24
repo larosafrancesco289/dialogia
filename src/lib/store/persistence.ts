@@ -51,3 +51,45 @@ export function mergePersistedState<T extends StoreDataState>(
   }
   return next;
 }
+
+/**
+ * Another tab wrote its preferences: take them, but keep what this window is
+ * showing. Without this each tab writes its own stale copy over the others', and
+ * a server added in one tab vanishes the next time another tab saves anything.
+ */
+export function adoptPersistedState<T extends StoreState>(
+  current: T,
+  persisted: PersistedStoreState,
+): T {
+  const merged = mergePersistedState(current, persisted);
+  return {
+    ...merged,
+    selectedChatId: current.selectedChatId,
+    ui: {
+      ...merged.ui,
+      showSettings: current.ui.showSettings,
+      sidebarCollapsed: current.ui.sidebarCollapsed,
+      plan: current.ui.plan,
+    },
+  };
+}
+
+/** The persisted blob another tab wrote, or undefined when this build cannot read it. */
+export function readPersistedSnapshot(
+  raw: string,
+  version: number,
+  migrate: (state: unknown, fromVersion: number) => unknown,
+): PersistedStoreState | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+  if (!parsed || typeof parsed !== 'object') return undefined;
+  const { state, version: written } = parsed as { state?: unknown; version?: unknown };
+  if (!state || typeof state !== 'object' || typeof written !== 'number') return undefined;
+  // A newer build in another tab: its shape is not ours to guess at.
+  if (written > version) return undefined;
+  return (written < version ? migrate(state, written) : state) as PersistedStoreState;
+}
