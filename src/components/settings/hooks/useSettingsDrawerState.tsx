@@ -87,7 +87,9 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     showStats,
     setShowStats,
     showToolCallLog,
+    setShowToolCallLog,
     showDebugRawJson,
+    setShowDebugRawJson,
     presets,
     setPresets,
     selectedPresetId,
@@ -126,6 +128,13 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     void flushPendingSave();
     setClosing(true);
     window.setTimeout(() => setUI({ showSettings: false }), 190);
+  }, [flushPendingSave, setUI]);
+
+  // The tour opens as Settings finishes closing, so the two never stack.
+  const showIntro = useCallback(() => {
+    void flushPendingSave();
+    setClosing(true);
+    window.setTimeout(() => setUI({ showSettings: false, introSeen: false }), 190);
   }, [flushPendingSave, setUI]);
 
   // Prevent background scroll while drawer is open
@@ -237,6 +246,16 @@ export function useSettingsDrawerState(): SettingsDrawerState {
         showStats={showStats}
         setShowThinking={createAutoSaveSetter(setShowThinking)}
         setShowStats={createAutoSaveSetter(setShowStats)}
+        onShowIntro={showIntro}
+        showToolCallLog={showToolCallLog}
+        setShowToolCallLog={createAutoSaveSetter(setShowToolCallLog)}
+        debugMode={!!ui?.debug?.mode}
+        setDebugMode={(value: boolean) => {
+          setUI({ debug: { mode: value } });
+          markDirty();
+        }}
+        showDebugRawJson={showDebugRawJson}
+        setShowDebugRawJson={createAutoSaveSetter(setShowDebugRawJson)}
       />
     ),
     data: (

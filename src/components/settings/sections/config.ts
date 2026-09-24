@@ -14,7 +14,7 @@ export const TAB_SECTIONS: Record<TabId, SectionId[]> = {
   models: ['default-model', 'favorites', 'privacy'],
   chat: ['general', 'reasoning'],
   tutor: ['tutor'],
-  appearance: ['theme', 'display'],
+  appearance: ['theme', 'display', 'developer'],
   data: ['data'],
 };
 
@@ -30,6 +30,7 @@ export const SECTION_TITLES: Record<SectionId, string> = {
   tutor: 'Tutor',
   theme: 'Theme',
   display: 'Display',
+  developer: 'Developer',
   data: 'Import and export',
 };
 
@@ -45,7 +46,8 @@ export const SECTION_KEYWORDS: Record<SectionId, string> = {
   reasoning: 'reasoning effort thinking tokens budget',
   tutor: 'tutor learning plan learner model teaching',
   theme: 'theme dark light auto color colour scheme',
-  display: 'thinking stats colophon display',
+  display: 'thinking stats colophon display introduction intro tour welcome help',
+  developer: 'developer debug request raw json tool call log calls inspect',
   data: 'export import json backup data',
 };
 
