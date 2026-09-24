@@ -308,6 +308,10 @@ pre {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+/* A dialog holding focus as the place it opened on is not a control to ring. */
+[role='dialog'][tabindex='-1']:focus-visible {
+  outline: none;
+}
 
 /* Feedback states for interactive tutor elements */
 .feedback-correct {
