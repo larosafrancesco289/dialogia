@@ -3,18 +3,9 @@ import { requireEndpointAuth } from '@/lib/auth/require';
 import { loadKeys } from '@/lib/keys/store';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
 import { computeZdrFilterCached } from '@/lib/policy/zdr/cache';
-import { DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
 import type { ModelIndex } from '@/lib/models';
-import {
-  createModelIndex,
-  EMPTY_MODEL_INDEX,
-  findModelById,
-  formatModelLabel,
-  isDynamicModelId,
-  resolveDefaultModelId,
-  resolveDynamicModelId,
-} from '@/lib/models';
-import { CURATED_MODELS } from '@/data/curatedModels';
+import { createModelIndex, EMPTY_MODEL_INDEX, resolveDefaultModelId } from '@/lib/models';
+import { reconcileModelDefaults } from '@/lib/models/defaultResolutions';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { getTransportClient } from '@/lib/transport/registry';
@@ -89,8 +80,6 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
           const zdrOnly = get().ui.zdrOnly === true;
           const modelsByEndpoint = new Map<string, StoreState['models']>();
           const noticeSegments: string[] = [];
-          let fallbackModelId: string | undefined;
-          let defaultModelAvailable = false;
 
           let zdrUnavailable = false;
           let hadUnauthorizedFailure = false;
@@ -148,60 +137,14 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
           const mergedModels = authEntries.flatMap(
             ([endpoint]) => modelsByEndpoint.get(endpoint.id) ?? [],
           );
-          const availableIds = new Set(mergedModels.map((model) => model.id));
-          // Tell the user when a family starts naming a new release, so the
-          // model new chats start with never moves silently. Chats already
-          // under way keep the model they started with.
-          const families = CURATED_MODELS.filter((entry) => isDynamicModelId(entry.id));
-          if (mergedModels.length > 0) {
-            const previous = get().ui.dynamicDefaultResolutions ?? {};
-            const next: Record<string, string> = { ...previous };
-            for (const family of families) {
-              const resolved = resolveDynamicModelId(family.id, mergedModels);
-              if (!availableIds.has(resolved)) continue;
-              next[family.id] = resolved;
-              const prior = previous[family.id];
-              if (prior && prior !== resolved) {
-                const name = formatModelLabel({
-                  model: findModelById(mergedModels, resolved),
-                  fallbackId: resolved,
-                });
-                noticeSegments.push(
-                  `${family.name} is now ${name}: new chats use it, chats under way keep theirs.`,
-                );
-              }
-            }
-            if (families.some((family) => previous[family.id] !== next[family.id])) {
-              set((s) => ({ ui: { ...s.ui, dynamicDefaultResolutions: next } }));
-            }
-          }
-
-          defaultModelAvailable = availableIds.has(
-            resolveDynamicModelId(DEFAULT_MODEL_ID, mergedModels),
+          const defaults = reconcileModelDefaults(
+            mergedModels,
+            get().ui.dynamicDefaultResolutions ?? {},
           );
-          if (!defaultModelAvailable && mergedModels.length > 0 && !fallbackModelId) {
-            const fallback =
-              findModelById(mergedModels, resolveDefaultModelId(mergedModels)) ?? mergedModels[0];
-            fallbackModelId = fallback.id;
-            // Say so once per fallback, not on every load: the record keeps
-            // the last one announced beside the alias resolutions.
-            const announcedKey = `fallback:${DEFAULT_MODEL_ID}`;
-            const resolutions = get().ui.dynamicDefaultResolutions ?? {};
-            if (resolutions[announcedKey] !== fallback.id) {
-              const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
-              noticeSegments.push(
-                `${DEFAULT_MODEL_NAME} is not offered by your providers, so new chats start with ${fallbackLabel}.`,
-              );
-              set((s) => ({
-                ui: {
-                  ...s.ui,
-                  dynamicDefaultResolutions: {
-                    ...(s.ui.dynamicDefaultResolutions ?? {}),
-                    [announcedKey]: fallback.id,
-                  },
-                },
-              }));
-            }
+          const { resolutions, fallbackModelId } = defaults;
+          noticeSegments.push(...defaults.notices);
+          if (resolutions) {
+            set((s) => ({ ui: { ...s.ui, dynamicDefaultResolutions: resolutions } }));
           }
 
           if (mergedModels.length === 0) {
