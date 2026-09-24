@@ -118,12 +118,16 @@ test('a card applies through the engine, ends the turn, and belongs to the reply
 
   assert.equal(outcome.usedTool, true);
   assert.equal(outcome.usedContentTool, true);
-  assert.equal(outcome.endsTurn, true);
+  assert.equal(outcome.endsTurn, 'after_text');
   assert.deepEqual(outcome.result, {
     ok: true,
     shown: 'intake',
     note: 'The learner sees your questions. Wait for their answers.',
   });
+  // Put up without a word, the card asks the tutor to introduce it.
+  assert.equal(outcome.resultBeforeText?.shown, 'intake');
+  assert.match(String(outcome.resultBeforeText?.note), /introducing it/);
+  assert.match(String(outcome.resultBeforeText?.note), /Do not call tools/);
   const [event] = t.session().events;
   assert.equal(event.type, 'intake_asked');
   assert.equal(event.by, 'tutor');
@@ -172,6 +176,7 @@ test('a state tool returns the new estimate and does not end the turn', async ()
   assert.equal(outcome.usedTool, true);
   assert.equal(outcome.usedContentTool, false);
   assert.equal(outcome.endsTurn, false);
+  assert.equal(outcome.resultBeforeText, undefined);
   assert.deepEqual(outcome.result, {
     ok: true,
     id: 'limits',
@@ -188,7 +193,7 @@ test('a quiz replays without its answer keys', async () => {
       { question: 'lim x->0 of x?', choices: ['0', '1'], correct: 0, explanation: 'It is 0' },
     ],
   });
-  assert.equal(outcome.endsTurn, true);
+  assert.equal(outcome.endsTurn, 'after_text');
   assert.deepEqual(outcome.replay?.arguments, {
     items: [{ question: 'lim x->0 of x?', choices: ['0', '1'] }],
   });

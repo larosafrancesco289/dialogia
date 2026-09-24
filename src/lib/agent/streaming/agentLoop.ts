@@ -3,9 +3,11 @@
 // Every round streams into the same reply (successive rounds set off by a blank
 // line); when a round calls tools they run, their results go back to the model,
 // and the next round streams. The loop ends when the model stops calling tools,
-// when a handler says the turn ends (a card now waits for the user), or at the
-// round cap, whose last round is sent with tool_choice 'none'. There is no draft
-// clearing, no silent round, no short-circuit and no follow-up nudge here.
+// when a handler says the turn ends (a card now waits for the user; a handler
+// ending it 'after_text' in a turn with no words yet gets one more round, with
+// tool_choice 'none', to introduce the card), or at the round cap, whose last
+// round is sent with tool_choice 'none'. There is no draft clearing, no silent
+// round, no short-circuit and no follow-up nudge here.
 
 import { cleanStreamedText, type MessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { sumUsage } from '@/lib/api/normalizers';
@@ -52,11 +54,13 @@ export async function runAgentLoop(session: TurnSession): Promise<StreamingTurnR
   const replay = createReplayRecorder();
   const repeats = createRepeatWatch();
   let extras: StreamDoneExtras | undefined;
+  // Set when a card went up in a turn with no words yet: one more round, no tools.
+  let introducing = false;
 
   try {
     for (let round = 1; round <= AGENT_MAX_ROUNDS; round += 1) {
       if (controller.signal.aborted) throw abortError();
-      const lastRound = round === AGENT_MAX_ROUNDS;
+      const lastRound = round === AGENT_MAX_ROUNDS || introducing;
       if (round > 1) ui.beginRound();
       // Stream indices restart every round; so does the pre-log bookkeeping.
       session.preLoggedToolIndices.clear();
@@ -70,10 +74,13 @@ export async function runAgentLoop(session: TurnSession): Promise<StreamingTurnR
       // providers report 'stop' alongside calls.
       if (lastRound || capture.toolCalls.length === 0) break;
 
-      const outcomes = repeats.check(session.convo, await runToolRound(session, round, capture));
+      let outcomes = repeats.check(session.convo, await runToolRound(session, round, capture));
+      const ending = turnEnding(outcomes);
+      introducing = ending === 'after_text' && !texts.some(Boolean);
+      if (introducing) outcomes = askForIntroduction(session.convo, outcomes);
       replay.record(text, outcomes);
       storeToolRounds(session, replay.rounds());
-      if (outcomes.some((outcome) => outcome.endsTurn)) break;
+      if (ending === 'now' || (ending === 'after_text' && !introducing)) break;
     }
   } catch (error) {
     // A stream that fails or is stopped has already told the UI callbacks,
@@ -195,6 +202,32 @@ async function runToolRound(
   // in the ledger forever; executed calls have resolved by now.
   removeOrphanPendingToolCalls({ set: turn.set, chatId, messageId: assistantMessage.id });
   return outcomes;
+}
+
+// ── Ending the turn ─────────────────────────────────────────────────────────
+
+/** How the round's calls end the turn: now, once it has text, or not at all. */
+function turnEnding(outcomes: ToolCallOutcome[]): 'now' | 'after_text' | undefined {
+  if (outcomes.some((outcome) => outcome.endsTurn === true)) return 'now';
+  if (outcomes.some((outcome) => outcome.endsTurn === 'after_text')) return 'after_text';
+  return undefined;
+}
+
+/**
+ * The turn put something in front of the user without a word: the calls that
+ * end it after text answer with their `contentBeforeText`, which asks the
+ * model to introduce what it showed in the one round still to come.
+ */
+function askForIntroduction(convo: ModelMessage[], outcomes: ToolCallOutcome[]): ToolCallOutcome[] {
+  return outcomes.map((outcome) => {
+    if (outcome.endsTurn !== 'after_text' || !outcome.contentBeforeText) return outcome;
+    const content = outcome.contentBeforeText;
+    const message = convo.find(
+      (entry) => entry.role === 'tool' && entry.tool_call_id === outcome.call.id,
+    );
+    if (message) message.content = content;
+    return { ...outcome, content };
+  });
 }
 
 // ── Repeated failures ───────────────────────────────────────────────────────

@@ -539,6 +539,27 @@ function toCommand(name: TutorToolName, data: unknown): TutorToolCommand {
 
 // ---------------------------------------------------------------- results
 
+const CARD_NAMES: Partial<Record<TutorToolName, string>> = {
+  ask_intake: 'Your intake questions are',
+  give_diagnostic: 'Your diagnostic is',
+  give_quiz: 'Your quiz is',
+  propose_plan: 'Your plan proposal is',
+};
+
+/**
+ * What a card's call reads when the tutor put it up without writing a word:
+ * the turn gets one more round, without tools, for the introduction every
+ * card needs. Only cards (tools that end the turn) have one.
+ */
+export function cardIntroduction(name: TutorToolName, result: ToolResult): ToolResult | undefined {
+  const card = CARD_NAMES[name];
+  if (!card || !TOOL_ENDS_TURN[name]) return undefined;
+  return {
+    ...result,
+    note: `${card} on the learner's screen now, below your reply, but you have not written anything this turn. Write one or two sentences introducing it: what it is for and what to do with it. Do not call tools, and do not repeat its questions or hint at answers.`,
+  };
+}
+
 export type ToolResult = Record<string, unknown>;
 
 export function tutorToolError(error: TutorError): ToolResult {
