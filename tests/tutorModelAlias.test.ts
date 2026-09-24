@@ -1,29 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { Chat } from '@/lib/types';
 import type { Repository } from '@/lib/db/repository';
 import { createModelIndex } from '@/lib/models';
 import { prepareSendRuntime } from '@/lib/turns/runtime';
 import { createTestStoreState } from './helpers/createTestStoreState';
+import { makeChat } from './helpers/makeChat';
 
-const tutorChat = (): Chat =>
-  ({
-    id: 'chat-1',
+const tutorChat = () =>
+  makeChat({
     title: 'Probability',
-    createdAt: 1,
-    updatedAt: 1,
-    settings: {
-      modelId: 'openai/gpt-6-luna',
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: false,
-      },
-      features: { search: { enabled: false, provider: 'openrouter' }, tutor: { enabled: true } },
-    },
-  }) as Chat;
+    settings: { modelId: 'openai/gpt-6-luna', features: { tutor: { enabled: true } } },
+  });
 
 const model = (id: string) => ({
   id,

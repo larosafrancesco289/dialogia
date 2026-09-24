@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import { streamFinal } from './streaming';
 import { createPipelineClient } from './pipelineClient';
 import { createTestStoreState } from '../../../tests/helpers/createTestStoreState';
+import { makeChat } from '../../../tests/helpers/makeChat';
 import { buildTransportAuth } from '@/lib/auth/transport';
-import type { Chat, Message } from '@/lib/types';
+import type { Message } from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
 
 test('streamFinal rebuilds multipart system prompt when stable split is provided', async () => {
@@ -18,26 +19,11 @@ test('streamFinal rebuilds multipart system prompt when stable split is provided
     createdAt: Date.now(),
   };
 
-  const chat: Chat = {
+  const chat = makeChat({
     id: chatId,
     title: 'Cache test',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    settings: {
-      modelId: 'openrouter/test-model',
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: false,
-      },
-      features: {
-        search: { enabled: false, provider: 'openrouter' },
-        tutor: { enabled: true },
-      },
-    },
-  };
+    settings: { modelId: 'openrouter/test-model', features: { tutor: { enabled: true } } },
+  });
 
   const { state, set, get } = createTestStoreState({
     messagesById: { [assistantMessage.id]: assistantMessage },

@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { Chat } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
+import { makeChat } from '../../../tests/helpers/makeChat';
 
 const baseUi = (overrides?: Partial<UiSnapshot>): UiSnapshot => ({
   showSettings: false,
@@ -19,26 +19,8 @@ const baseUi = (overrides?: Partial<UiSnapshot>): UiSnapshot => ({
   ...overrides,
 });
 
-const baseChat = (tutorMode: boolean): Chat => ({
-  id: 'chat-1',
-  title: 'Chat',
-  createdAt: 0,
-  updatedAt: 0,
-  settings: {
-    modelId: 'provider/model',
-    generation: {},
-    ui: {
-      showThinkingByDefault: false,
-      showStats: false,
-      showToolCallLog: false,
-      showDebugRawJson: true,
-    },
-    features: {
-      search: { enabled: false, provider: 'openrouter' },
-      tutor: { enabled: tutorMode },
-    },
-  },
-});
+const baseChat = (tutorMode: boolean) =>
+  makeChat({ settings: { features: { tutor: { enabled: tutorMode } } } });
 
 test('tutor runtime respects the global tutor flag', () => {
   const uiDisabled = baseUi({ flags: { experimentalTutor: false } });

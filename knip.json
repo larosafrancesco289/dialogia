@@ -8,10 +8,6 @@
   ],
   "project": ["src/**/*.{ts,tsx}!", "!src/lib/html.ts!", "!src/**/testSupport.ts!", "*.{ts,js}"],
   "ignoreExportsUsedInFile": true,
-  "ignoreIssues": {
-    "src/lib/keys/store.ts": ["exports"],
-    "src/lib/transport/registry.ts": ["exports"]
-  },
   "ignoreDependencies": [
     "@fontsource-variable/newsreader",
     "@fontsource-variable/plus-jakarta-sans",

@@ -12,16 +12,14 @@ const message = (overrides: Partial<Message> = {}): Message => ({
   ...overrides,
 });
 
-test('updateMessageById returns undefined when chat is missing', () => {
+test('updateMessageById returns undefined when the chat or message is missing', () => {
   const state = {
     messagesById: { m1: message() },
     messageIdsByChatId: { c1: ['m1'] },
   };
-  const result = updateMessageById(state, 'c2', 'm1', (msg) => ({
-    ...msg,
-    content: 'next',
-  }));
-  assert.equal(result, undefined);
+  const edit = (msg: Message) => ({ ...msg, content: 'next' });
+  assert.equal(updateMessageById(state, 'c2', 'm1', edit), undefined);
+  assert.equal(updateMessageById(state, 'c1', 'missing', edit), undefined);
 });
 
 test('updateMessageById returns undefined when updater makes no changes', () => {
@@ -47,7 +45,11 @@ test('updateMessageById replaces the matching message', () => {
   }));
   assert.ok(result);
   assert.equal(result?.messagesById?.m1?.content, 'updated');
+  assert.equal(result?.messagesById?.m2, state.messagesById.m2);
   assert.equal(result?.messageIdsByChatId, undefined);
+  // The input state is left untouched.
+  assert.notEqual(result?.messagesById, state.messagesById);
+  assert.equal(state.messagesById.m1.content, 'hi');
 });
 
 test('updateMessageById guards against identity changes', () => {

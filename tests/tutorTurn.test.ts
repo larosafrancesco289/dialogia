@@ -3,8 +3,6 @@
 
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore } from 'zustand/vanilla';
-import type { StateCreator } from 'zustand';
 import { composeTurn } from '@/lib/agent/compose';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
@@ -17,13 +15,13 @@ import { createAssistantMessage, createUserMessage } from '@/lib/messages/create
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
-import { buildStoreInitializer } from '@/lib/store/createStore';
-import type { StoreState } from '@/lib/store/types';
 import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import type { StreamCallbacks, TransportStreamParams } from '@/lib/transport/types';
 import type { ModelMessage, ToolCall } from '@/lib/agent/types';
-import type { Chat, Message, ModelDescriptor } from '@/lib/types';
+import type { Message, ModelDescriptor } from '@/lib/types';
 import { TUTOR_SYSTEM_PROMPT } from '@/modules/tutor/agent/systemPrompt';
+import { createTestStore } from './helpers/createTestStoreState';
+import { makeChat } from './helpers/makeChat';
 
 before(async () => {
   await loadModuleRuntimes();
@@ -91,30 +89,16 @@ function toolExchanges(params: TransportStreamParams) {
 
 function session() {
   const chatId = `chat-turn-${Math.random().toString(36).slice(2)}`;
-  const chat: Chat = {
+  const chat = makeChat({
     id: chatId,
     title: 'Calculus',
-    createdAt: 1,
-    updatedAt: 1,
     settings: {
       modelId: model.id,
       system: 'You are a helpful assistant.',
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: false,
-      },
-      features: {
-        search: { enabled: false, provider: 'openrouter' },
-        tutor: { enabled: true, defaultModelId: model.id },
-      },
+      features: { tutor: { enabled: true, defaultModelId: model.id } },
     },
-  };
-  const store = createStore<StoreState>(
-    buildStoreInitializer() as unknown as StateCreator<StoreState>,
-  );
+  });
+  const store = createTestStore();
   store.setState({
     chats: [chat],
     selectedChatId: chatId,

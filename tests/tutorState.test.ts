@@ -1,11 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore } from 'zustand/vanilla';
-import type { StateCreator } from 'zustand';
 import { repository } from '@/lib/db';
-import { buildStoreInitializer } from '@/lib/store/createStore';
-import type { StoreState } from '@/lib/store/types';
-import type { Chat, LearnerModel, LearningPlan, Message, TopicMastery } from '@/lib/types';
+import type { LearnerModel, LearningPlan, Message, TopicMastery, TutorSettings } from '@/lib/types';
 import {
   ENABLED_MODULES,
   canRedoReply,
@@ -20,35 +16,18 @@ import { remainingBudgets } from '@/modules/tutor/engine';
 import { CALCULUS, QUIZ_ITEMS } from '@/modules/tutor/engine/testSupport';
 import { cardsForMessage } from '@/modules/tutor/ui/messageViews';
 import { TUTOR_SAVE_FAILED_NOTICE } from '@/modules/tutor/store/tutorSlice';
-
-const newStore = () =>
-  createStore<StoreState>(buildStoreInitializer() as unknown as StateCreator<StoreState>);
+import { makeChat } from './helpers/makeChat';
+import { createTestStore } from './helpers/createTestStoreState';
 
 let chatCounter = 0;
 const chatId = (label: string) => `chat-${label}-${(chatCounter += 1)}`;
 
-function makeChat(id: string, tutor: NonNullable<Chat['settings']['features']['tutor']> = {}) {
-  return {
+const tutorChat = (id: string, tutor: TutorSettings = {}) =>
+  makeChat({
     id,
     title: 'Calculus',
-    createdAt: 1,
-    updatedAt: 1,
-    settings: {
-      modelId: 'provider/model',
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: false,
-      },
-      features: {
-        search: { enabled: false, provider: 'openrouter' },
-        tutor: { enabled: true, ...tutor },
-      },
-    },
-  } satisfies Chat;
-}
+    settings: { features: { tutor: { enabled: true, ...tutor } } },
+  });
 
 // ---------------------------------------------------------------- legacy fixtures
 
@@ -115,7 +94,7 @@ const assistant = (id: string, createdAt: number, extra: Partial<Message>): Mess
 
 /** A pre-rebuild tutor chat: every kind of card, a stale chat-level model, one card still open. */
 function legacyChat(id: string) {
-  const chat = makeChat(id, { learningPlan: legacyPlan(), learnerModel: model(1_000, 0.45) });
+  const chat = tutorChat(id, { learningPlan: legacyPlan(), learnerModel: model(1_000, 0.45) });
   const messages: Message[] = [
     assistant('a1', 1, {
       tutor: {
@@ -191,7 +170,7 @@ function legacyChat(id: string) {
 async function seedLegacy(id: string) {
   const { chat, messages } = legacyChat(id);
   for (const message of messages) await repository.saveMessage(message);
-  const store = newStore();
+  const store = createTestStore();
   store.setState({ chats: [chat] });
   return { store, chat, messages };
 }
@@ -264,7 +243,7 @@ test('legacy import turns a pre-rebuild tutor chat into one log, read once', asy
   assert.deepEqual(store.getState().chats[0].settings.features.tutor, chat.settings.features.tutor);
 
   // A second load reads the log and does not import again.
-  const again = newStore();
+  const again = createTestStore();
   again.setState({ chats: [chat] });
   const reloaded = await again.getState().ensureTutorSession(id);
   assert.deepEqual(
@@ -275,7 +254,7 @@ test('legacy import turns a pre-rebuild tutor chat into one log, read once', asy
 
 test('a pending legacy proposal comes back as the pending proposal on its message', async () => {
   const id = chatId('proposal');
-  const chat = makeChat(id);
+  const chat = tutorChat(id);
   const plan = legacyPlan();
   plan.nodes = plan.nodes.map((n) => ({ ...n, status: 'not_started' as const }));
   await repository.saveMessage({
@@ -291,7 +270,7 @@ test('a pending legacy proposal comes back as the pending proposal on its messag
     }),
     chatId: id,
   });
-  const store = newStore();
+  const store = createTestStore();
   store.setState({ chats: [chat] });
 
   const { state, events } = await store.getState().ensureTutorSession(id);
@@ -318,7 +297,7 @@ test('a pending legacy proposal comes back as the pending proposal on its messag
 
 test('regenerating the reply with a pending legacy revision takes back only the revision', async () => {
   const id = chatId('legacy-retract');
-  const chat = makeChat(id, { learningPlan: legacyPlan(), learnerModel: model(1_000, 0.6) });
+  const chat = tutorChat(id, { learningPlan: legacyPlan(), learnerModel: model(1_000, 0.6) });
   const revised = legacyPlan();
   revised.nodes.push({
     id: 'integrals',
@@ -333,7 +312,7 @@ test('regenerating the reply with a pending legacy revision takes back only the 
     }),
     chatId: id,
   });
-  const store = newStore();
+  const store = createTestStore();
   store.setState({ chats: [chat] });
   const before = await store.getState().ensureTutorSession(id);
   assert.equal(before.state.proposal?.messageId, 'r1');
@@ -368,8 +347,8 @@ test('branching an imported legacy chat keeps the imported plan and mastery', as
 test('a branch whose share of the log is empty never imports the settings it copied', async () => {
   const id = chatId('stale-branch');
   // Legacy fields still on the chat, but its log already exists (it was imported long ago).
-  const chat = makeChat(id, { learningPlan: legacyPlan(), learnerModel: model(1_000, 0.6) });
-  const store = newStore();
+  const chat = tutorChat(id, { learningPlan: legacyPlan(), learnerModel: model(1_000, 0.6) });
+  const store = createTestStore();
   store.setState({ chats: [chat] });
   const early = [
     createUserMessage({ id: `${id}-u1`, chatId: id, content: 'Hi', createdAt: 1 }),
@@ -411,8 +390,8 @@ test('a chat with no tutor history gets an empty log and no import', async () =>
     content: 'hi',
     createdAt: 1,
   });
-  const store = newStore();
-  store.setState({ chats: [makeChat(id)] });
+  const store = createTestStore();
+  store.setState({ chats: [tutorChat(id)] });
   const session = await store.getState().ensureTutorSession(id);
   assert.equal(session.loaded, true);
   assert.deepEqual(session.events, []);
@@ -436,8 +415,8 @@ test('malformed stored events are dropped on load, never folded', async () => {
       flagged: true,
     },
   ]);
-  const store = newStore();
-  store.setState({ chats: [makeChat(id)] });
+  const store = createTestStore();
+  store.setState({ chats: [tutorChat(id)] });
   const session = await store.getState().ensureTutorSession(id);
   assert.deepEqual(
     session.events.map((e) => e.id),
@@ -449,8 +428,8 @@ test('malformed stored events are dropped on load, never folded', async () => {
 
 async function teachingChat() {
   const id = chatId('teaching');
-  const store = newStore();
-  store.setState({ chats: [makeChat(id)] });
+  const store = createTestStore();
+  store.setState({ chats: [tutorChat(id)] });
   const { dispatchTutor } = store.getState();
   const proposed = await dispatchTutor(
     id,
@@ -551,8 +530,8 @@ test('a dispatch before the first load waits for it instead of racing it', async
       ],
     },
   ]);
-  const store = newStore();
-  store.setState({ chats: [makeChat(id)] });
+  const store = createTestStore();
+  store.setState({ chats: [tutorChat(id)] });
   const result = await store
     .getState()
     .dispatchTutor(
@@ -670,7 +649,7 @@ test('retracting a reply through the module hook takes back its quiz and answers
   assert.equal(remainingBudgets(state).quizzesLeft, 3);
 
   // On disk too, so a reload folds to the same state.
-  const reloaded = newStore();
+  const reloaded = createTestStore();
   reloaded.setState({ chats: store.getState().chats });
   const again = await reloaded.getState().ensureTutorSession(id);
   assert.deepEqual(again.state, state);
@@ -755,7 +734,7 @@ test('in a tutor chat only the latest exchange can be regenerated or edited and 
   assert.equal(store.getState().messagesById.u1.content, 'Teach me');
 
   // An ordinary chat keeps redo everywhere.
-  const plain = makeChat(chatId('plain'), { enabled: false });
+  const plain = tutorChat(chatId('plain'), { enabled: false });
   store.setState((s) => ({
     chats: [...s.chats, plain],
     ...appendMessagesToChat(s, plain.id, [
@@ -797,7 +776,7 @@ test('branching a tutor chat copies its log up to the branch point', async () =>
   assert.ok(session.events.some((e) => e.messageId === m1Copy.id));
 
   // On disk, so the branch reloads to the same state.
-  const reloaded = newStore();
+  const reloaded = createTestStore();
   reloaded.setState({ chats: store.getState().chats });
   const again = await reloaded.getState().ensureTutorSession(branchId);
   assert.deepEqual(again.state, session.state);
@@ -935,8 +914,8 @@ test('an unsaved write is retried on the next load of the session, with no new c
 test('two tabs loading one legacy chat import it once', async () => {
   const id = chatId('two-tabs-import');
   const { chat } = await seedLegacy(id);
-  const tabA = newStore();
-  const tabB = newStore();
+  const tabA = createTestStore();
+  const tabB = createTestStore();
   tabA.setState({ chats: [chat] });
   tabB.setState({ chats: [chat] });
   const [a, b] = await Promise.all([
@@ -954,7 +933,7 @@ test('two tabs loading one legacy chat import it once', async () => {
 
 test('an append at a position another tab took reloads the log and decides again', async () => {
   const { id, store: tabA } = await teachingChat();
-  const tabB = newStore();
+  const tabB = createTestStore();
   tabB.setState({ chats: tabA.getState().chats });
   await tabB.getState().ensureTutorSession(id);
 
@@ -1002,7 +981,7 @@ test('an append at a position another tab took reloads the log and decides again
 
 test('another tab’s append is read into a loaded session when that tab announces it', async () => {
   const { id, store: tabA } = await teachingChat();
-  const tabB = newStore();
+  const tabB = createTestStore();
   tabB.setState({ chats: tabA.getState().chats });
   const before = await tabB.getState().ensureTutorSession(id);
 
@@ -1026,7 +1005,7 @@ test('another tab’s append is read into a loaded session when that tab announc
   );
 
   // A chat this tab never opened is left to load on demand.
-  const unseen = newStore();
+  const unseen = createTestStore();
   await notifyEventsChangedElsewhere({ get: unseen.getState }, id);
   assert.equal(unseen.getState().tutorSessions[id], undefined);
 });

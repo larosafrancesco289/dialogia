@@ -1,112 +1,85 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { composeTurn } from '@/lib/agent/compose';
-import { createStore } from 'zustand/vanilla';
-import type { StateCreator } from 'zustand';
-import type { Chat, Message, PersistedAttachment } from '@/lib/types';
-import type { ModelIndex } from '@/lib/models';
-import { buildStoreInitializer } from '@/lib/store/createStore';
-import type { StoreState } from '@/lib/store/types';
+import type { Message, PersistedAttachment } from '@/lib/types';
+import { createModelIndex } from '@/lib/models';
 import { TUTOR_SYSTEM_PROMPT } from '@/modules/tutor/agent/systemPrompt';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { deleteKey, setKey } from '@/lib/keys/store';
+import { createTestStore } from './helpers/createTestStoreState';
+import { makeChat } from './helpers/makeChat';
 
-const baseChat = (): Chat => ({
-  id: 'chat-1',
-  title: 'Algebra session',
-  createdAt: Date.now() - 1000,
-  updatedAt: Date.now() - 500,
-  settings: {
-    modelId: 'provider/model-alpha',
-    system: 'Always respond enthusiastically.',
-    generation: {
-      temperature: 0.2,
-      topP: 0.9,
-      maxTokens: 256,
-      reasoningEffort: 'none',
-      reasoningTokens: 0,
-    },
-    ui: {
-      showThinkingByDefault: false,
-      showStats: false,
-      showToolCallLog: false,
-      showDebugRawJson: true,
-    },
-    features: {
-      search: { enabled: true, provider: 'tavily' },
-      tutor: {
-        enabled: true,
-        defaultModelId: 'provider/model-alpha',
-        learningPlan: {
-          goal: 'Master algebra fundamentals',
-          generatedAt: Date.now() - 10,
-          updatedAt: Date.now() - 10,
-          version: 1,
-          nodes: [
-            {
-              id: 'linear-equations',
-              name: 'Linear Equations',
-              description: 'Solve and graph linear equations and inequalities.',
-              objectives: ['Solve linear equations', 'Interpret slope and intercept'],
-              prerequisites: [],
-              status: 'in_progress',
-              estimatedMinutes: 45,
-            },
-            {
-              id: 'systems',
-              name: 'Systems of Equations',
-              description: 'Solve systems using substitution and elimination.',
-              objectives: ['Solve systems by substitution', 'Solve systems by elimination'],
-              prerequisites: ['linear-equations'],
-              status: 'not_started',
-              estimatedMinutes: 60,
-            },
-          ],
+const baseChat = () =>
+  makeChat({
+    title: 'Algebra session',
+    settings: {
+      modelId: 'provider/model-alpha',
+      system: 'Always respond enthusiastically.',
+      generation: {
+        temperature: 0.2,
+        topP: 0.9,
+        maxTokens: 256,
+        reasoningEffort: 'none',
+        reasoningTokens: 0,
+      },
+      features: {
+        search: { enabled: true, provider: 'tavily' },
+        tutor: {
+          enabled: true,
+          defaultModelId: 'provider/model-alpha',
+          learningPlan: {
+            goal: 'Master algebra fundamentals',
+            generatedAt: Date.now() - 10,
+            updatedAt: Date.now() - 10,
+            version: 1,
+            nodes: [
+              {
+                id: 'linear-equations',
+                name: 'Linear Equations',
+                description: 'Solve and graph linear equations and inequalities.',
+                objectives: ['Solve linear equations', 'Interpret slope and intercept'],
+                prerequisites: [],
+                status: 'in_progress',
+                estimatedMinutes: 45,
+              },
+              {
+                id: 'systems',
+                name: 'Systems of Equations',
+                description: 'Solve systems using substitution and elimination.',
+                objectives: ['Solve systems by substitution', 'Solve systems by elimination'],
+                prerequisites: ['linear-equations'],
+                status: 'not_started',
+                estimatedMinutes: 60,
+              },
+            ],
+          },
+          planGenerated: true,
+          enableLearnerModel: true,
         },
-        planGenerated: true,
-        enableLearnerModel: true,
       },
     },
-  },
-});
+  });
 
-const modelIndexStub: ModelIndex = {
-  all: [
-    {
-      id: 'provider/model-alpha',
-      name: 'Model Alpha',
-      context_length: 8000,
-      pricing: { prompt: 1, completion: 1, currency: 'usd' },
-    },
-  ],
-  byId: new Map([
-    [
-      'provider/model-alpha',
-      {
-        id: 'provider/model-alpha',
-        name: 'Model Alpha',
-        context_length: 8000,
-        pricing: { prompt: 1, completion: 1, currency: 'usd' },
-      },
-    ],
-  ]),
-  get: () => undefined,
-  caps: () => ({ canReason: false, canSee: false, canAudio: false, canImageOut: false }),
-  label: () => 'Model Alpha',
+const modelIndex = createModelIndex([
+  {
+    id: 'provider/model-alpha',
+    name: 'Model Alpha',
+    context_length: 8000,
+    pricing: { prompt: 1, completion: 1, currency: 'usd' },
+  },
+]);
+
+const uiWithTutor = (experimentalTutor: boolean) => {
+  const ui = createTestStore().getState().ui;
+  return { ...ui, flags: { ...ui.flags, experimentalTutor } };
 };
 
 test('composeTurn merges tutor and search context with plugins and tools', async () => {
   await setKey('tavily', 'tvly-test');
   const chat = baseChat();
-  const store = createStore<StoreState>(
-    buildStoreInitializer() as unknown as StateCreator<StoreState>,
-  );
+  const store = createTestStore();
   store.setState({ chats: [chat] });
-  const ui = {
-    flags: { experimentalTutor: true },
-    tutor: { forceMode: false },
-    routePreference: 'speed',
-  } as any;
+  const ui = uiWithTutor(true);
   const prior: Message[] = [
     {
       id: 'msg-user-1',
@@ -130,14 +103,14 @@ test('composeTurn merges tutor and search context with plugins and tools', async
     const settings = resolveTurnSettings({
       chat,
       ui,
-      modelIndex: modelIndexStub,
+      modelIndex: modelIndex,
       modelId: chat.settings.modelId,
     });
     const result = await composeTurn({
       chat,
       ui,
       settings,
-      modelIndex: modelIndexStub,
+      modelIndex: modelIndex,
       prior,
       newUser: { content: 'Here are my notes.', attachments },
       attachments,
@@ -175,23 +148,18 @@ test('composeTurn merges tutor and search context with plugins and tools', async
 test('composeTurn uses tool-based search when the provider has a key', async () => {
   await setKey('tavily', 'tvly-test');
   const chat = baseChat();
-  chat.settings.features.search.provider = 'tavily';
-  const ui = {
-    flags: { experimentalTutor: false },
-    tutor: { forceMode: false },
-    routePreference: 'speed',
-  } as any;
+  const ui = uiWithTutor(false);
   const settings = resolveTurnSettings({
     chat,
     ui,
-    modelIndex: modelIndexStub,
+    modelIndex: modelIndex,
     modelId: chat.settings.modelId,
   });
   const result = await composeTurn({
     chat,
     ui,
     settings,
-    modelIndex: modelIndexStub,
+    modelIndex: modelIndex,
     prior: [],
     newUser: { content: 'Hello' },
     attachments: [],
@@ -205,23 +173,18 @@ test('composeTurn uses tool-based search when the provider has a key', async () 
 
 test('composeTurn degrades to native search when the provider has no key', async () => {
   const chat = baseChat();
-  chat.settings.features.search.provider = 'tavily';
-  const ui = {
-    flags: { experimentalTutor: false },
-    tutor: { forceMode: false },
-    routePreference: 'speed',
-  } as any;
+  const ui = uiWithTutor(false);
   const settings = resolveTurnSettings({
     chat,
     ui,
-    modelIndex: modelIndexStub,
+    modelIndex: modelIndex,
     modelId: chat.settings.modelId,
   });
   const result = await composeTurn({
     chat,
     ui,
     settings,
-    modelIndex: modelIndexStub,
+    modelIndex: modelIndex,
     prior: [],
     newUser: { content: 'Hello' },
     attachments: [],

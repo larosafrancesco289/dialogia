@@ -5,16 +5,15 @@ import { openrouterTransport } from '@/lib/openrouter';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import type { TransportChatParams } from '@/lib/transport/types';
 import { buildTransportAuth } from '@/lib/auth/transport';
+import { mockFetch } from './helpers/mockFetch';
 
 const encoder = new TextEncoder();
-const originalFetch = globalThis.fetch;
-
 async function withMockFetch(mock: typeof fetch, fn: () => Promise<void>) {
-  globalThis.fetch = mock;
+  const restoreFetch = mockFetch(mock);
   try {
     await fn();
   } finally {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
   }
 }
 

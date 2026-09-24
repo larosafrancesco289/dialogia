@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { streamChatCompletion } from '@/lib/anthropic/stream';
 import { buildTransportAuth } from '@/lib/auth/transport';
+import { mockFetch } from '../../../tests/helpers/mockFetch';
 
 function createSseResponse(events: unknown[]): Response {
   const payload = events
@@ -24,11 +25,10 @@ function createSseResponse(events: unknown[]): Response {
 }
 
 test('streamChatCompletion continues pause_turn streams for Anthropic web search', async () => {
-  const originalFetch = globalThis.fetch;
   const requestBodies: Array<Record<string, unknown>> = [];
   let callCount = 0;
 
-  globalThis.fetch = async (_input, init) => {
+  const restoreFetch = mockFetch(async (_input, init) => {
     requestBodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
     callCount += 1;
 
@@ -131,7 +131,7 @@ test('streamChatCompletion continues pause_turn streams for Anthropic web search
       },
       { type: 'message_stop' },
     ]);
-  };
+  });
 
   let full = '';
   let finishReason: string | undefined;
@@ -153,7 +153,7 @@ test('streamChatCompletion continues pause_turn streams for Anthropic web search
       },
     });
   } finally {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
   }
 
   assert.equal(callCount, 2);
@@ -165,9 +165,7 @@ test('streamChatCompletion continues pause_turn streams for Anthropic web search
 });
 
 test('streamChatCompletion maps refusal stop_reason to content_filter with stop_details', async () => {
-  const originalFetch = globalThis.fetch;
-
-  globalThis.fetch = async () =>
+  const restoreFetch = mockFetch(async () =>
     createSseResponse([
       {
         type: 'message_start',
@@ -190,7 +188,8 @@ test('streamChatCompletion maps refusal stop_reason to content_filter with stop_
         usage: { input_tokens: 12, output_tokens: 0 },
       },
       { type: 'message_stop' },
-    ]);
+    ]),
+  );
 
   let finishReason: string | undefined;
   let stopDetails: unknown;
@@ -208,7 +207,7 @@ test('streamChatCompletion maps refusal stop_reason to content_filter with stop_
       },
     });
   } finally {
-    globalThis.fetch = originalFetch;
+    restoreFetch();
   }
 
   assert.equal(finishReason, 'content_filter');

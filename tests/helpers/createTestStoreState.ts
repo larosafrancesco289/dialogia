@@ -8,16 +8,18 @@ type StoreStateOverrides = Omit<Partial<StoreState>, 'ui'> & {
   ui?: Partial<StoreState['ui']>;
 };
 
+/** A real zustand store built from the app's slices, without persistence. */
+export function createTestStore() {
+  return createStore<StoreState>(buildStoreInitializer() as unknown as StateCreator<StoreState>);
+}
+
 /**
  * Builds a store from the real slices, so a new field or action needs no edit here.
  * The returned `state` is a mutable plain object (not the zustand store) because the
  * units under test take `{ set, get }` and assert against the object directly.
  */
 export function createTestStoreState(overrides: StoreStateOverrides = {}) {
-  const initializer = buildStoreInitializer() as unknown as StateCreator<StoreState>;
-  const store = createStore<StoreState>(initializer);
-
-  const initial = store.getState();
+  const initial = createTestStore().getState();
   const state: StoreState = {
     ...initial,
     ...overrides,
