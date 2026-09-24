@@ -43,3 +43,10 @@ test('renders reasoning panel once actual reasoning text exists', () => {
   assert.equal(state.shouldRender, true);
   assert.equal(state.shouldStream, true);
 });
+
+test('a reply cost reads in dollars, and a tiny one says so', async () => {
+  const { formatCost } = await import('@/components/message/MessageColophon');
+  assert.equal(formatCost(0.00002, 'usd'), 'under $0.0001');
+  assert.equal(formatCost(0.0021, 'USD'), '$0.0021');
+  assert.equal(formatCost(0.341, 'usd'), '$0.34');
+});

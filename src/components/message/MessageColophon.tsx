@@ -32,10 +32,17 @@ export function MessageColophon({
       completionTokens: out,
       usage: message.usage,
     });
-    if (total && total > 0) parts.push(`${currency} ${total.toFixed(4)}`);
+    if (total && total > 0) parts.push(formatCost(total, currency ?? 'USD'));
   }
 
   return <p className="message-colophon">{parts.join(' · ')}</p>;
+}
+
+/** "$0.0021", "$0.34", or "under $0.0001" for a reply too cheap to show. */
+export function formatCost(total: number, currency: string): string {
+  const symbol = currency.toUpperCase() === 'USD' ? '$' : `${currency} `;
+  if (total < 0.0001) return `under ${symbol}0.0001`;
+  return `${symbol}${total.toFixed(total < 0.01 ? 4 : 2)}`;
 }
 
 function formatSeconds(ms: number) {

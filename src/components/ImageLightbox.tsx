@@ -82,14 +82,16 @@ export function ImageLightbox({
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <button
-          className="lightbox__btn lightbox__nav mr-3"
-          onClick={() => setIndex((i) => Math.max(0, i - 1))}
-          disabled={index <= 0}
-          aria-label="Previous"
-        >
-          ‹
-        </button>
+        {images.length > 1 && (
+          <button
+            className="lightbox__btn lightbox__nav mr-3"
+            onClick={() => setIndex((i) => Math.max(0, i - 1))}
+            disabled={index <= 0}
+            aria-label="Previous"
+          >
+            ‹
+          </button>
+        )}
         <div className="relative h-[85vh] w-[85vw]">
           <img
             src={current.src}
@@ -97,14 +99,16 @@ export function ImageLightbox({
             className="absolute inset-0 h-full w-full object-contain"
           />
         </div>
-        <button
-          className="lightbox__btn lightbox__nav ml-3"
-          onClick={() => setIndex((i) => Math.min(images.length - 1, i + 1))}
-          disabled={index >= images.length - 1}
-          aria-label="Next"
-        >
-          ›
-        </button>
+        {images.length > 1 && (
+          <button
+            className="lightbox__btn lightbox__nav ml-3"
+            onClick={() => setIndex((i) => Math.min(images.length - 1, i + 1))}
+            disabled={index >= images.length - 1}
+            aria-label="Next"
+          >
+            ›
+          </button>
+        )}
       </div>
     </div>,
     document.body,
