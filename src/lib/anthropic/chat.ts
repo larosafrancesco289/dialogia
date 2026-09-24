@@ -1,10 +1,10 @@
-import { logger } from '@/lib/logger';
 import { normalizeUsage, sumUsage } from '@/lib/api/normalizers';
 import { API_ERROR_CODES } from '@/lib/api/errors';
 import type { TransportChatParams } from '@/lib/transport/types';
 import type { ChatCompletion } from '@/lib/transport/completions';
 import { anMessages } from '@/lib/anthropic/http';
-import { buildAnthropicBody } from '@/lib/anthropic/request';
+import { bodyFromParams } from '@/lib/anthropic/request';
+import { pickThinkingBlocks, toReasoningDetails } from '@/lib/anthropic/messages';
 import type { AnthropicMessagesRequest } from '@/lib/anthropic/wire';
 import {
   appendContinuationMessage,
@@ -13,29 +13,6 @@ import {
 } from '@/lib/anthropic/continuation';
 import { buildAnthropicError, wrapAnthropicClientError } from '@/lib/anthropic/errors';
 import { isRecord } from '@/lib/utils/guards';
-
-function buildReasoningDetails(content: unknown) {
-  if (!Array.isArray(content)) return undefined;
-  const thinkingBlocks = content
-    .map((entry) => {
-      if (!isRecord(entry)) return null;
-      if (entry.type !== 'thinking') return null;
-      if (typeof entry.signature !== 'string') return null;
-      return {
-        type: 'thinking',
-        thinking: typeof entry.thinking === 'string' ? entry.thinking : '',
-        signature: entry.signature,
-      };
-    })
-    .filter(
-      (entry): entry is { type: 'thinking'; thinking: string; signature: string } => entry !== null,
-    );
-  if (thinkingBlocks.length === 0) return undefined;
-  return {
-    provider: 'anthropic',
-    thinkingBlocks,
-  };
-}
 
 function buildToolCalls(content: unknown) {
   if (!Array.isArray(content)) return undefined;
@@ -76,7 +53,6 @@ async function requestAnthropicMessageSequence(args: {
   origin?: string;
 }): Promise<Record<string, unknown>> {
   let body = args.body;
-  let finalData: Record<string, unknown> | undefined;
   let continuations = 0;
   let combinedUsage: ReturnType<typeof normalizeUsage> | undefined;
 
@@ -105,21 +81,12 @@ async function requestAnthropicMessageSequence(args: {
 
     const data = (await res.json()) as Record<string, unknown>;
     combinedUsage = sumUsage(combinedUsage, normalizeUsage(data.usage as Record<string, number>));
-    finalData = data;
-    if (data.stop_reason !== 'pause_turn') {
-      if (combinedUsage) finalData = { ...finalData, usage: combinedUsage };
-      return finalData;
-    }
-
-    if (continuations >= MAX_PAUSE_TURN_CONTINUATIONS) {
-      if (combinedUsage) finalData = { ...finalData, usage: combinedUsage };
-      return finalData;
-    }
-
-    const nextBody = appendContinuationMessage(body, data.content);
+    const nextBody =
+      data.stop_reason === 'pause_turn' && continuations < MAX_PAUSE_TURN_CONTINUATIONS
+        ? appendContinuationMessage(body, data.content)
+        : body;
     if (nextBody === body) {
-      if (combinedUsage) finalData = { ...finalData, usage: combinedUsage };
-      return finalData;
+      return combinedUsage ? { ...data, usage: combinedUsage } : data;
     }
     body = nextBody;
     continuations += 1;
@@ -132,7 +99,7 @@ function mapAnthropicResponseToChatCompletion(
 ): ChatCompletion {
   const content = Array.isArray(data.content) ? data.content : [];
   const toolCalls = buildToolCalls(content);
-  const reasoningDetails = buildReasoningDetails(content);
+  const reasoningDetails = toReasoningDetails(pickThinkingBlocks(content));
 
   return {
     id: typeof data.id === 'string' ? data.id : '',
@@ -156,23 +123,7 @@ function mapAnthropicResponseToChatCompletion(
 }
 
 export async function chatCompletion(params: TransportChatParams): Promise<ChatCompletion> {
-  const body = buildAnthropicBody({
-    model: params.model,
-    messages: params.messages,
-    stream: false,
-    temperature: params.temperature,
-    topP: params.topP,
-    maxTokens: params.maxTokens,
-    reasoningEffort: params.reasoningEffort,
-    reasoningTokens: params.reasoningTokens,
-    disableReasoning: params.disableReasoning,
-    tools: params.tools,
-    toolChoice: params.toolChoice,
-    plugins: params.plugins,
-    enableAutomaticCaching: true,
-    onUnsupportedContent: (kinds) =>
-      logger.warn(`[Anthropic] Dropped unsupported content: ${kinds.join(', ')}`),
-  });
+  const body = bodyFromParams(params, false);
   const data = await requestAnthropicMessageSequence({
     auth: params.auth,
     body,

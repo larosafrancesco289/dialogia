@@ -1,4 +1,3 @@
-import { logger } from '@/lib/logger';
 import { consumeSse } from '@/lib/api/stream';
 import { mergeUsage, normalizeUsage, sumUsage, type Usage } from '@/lib/api/normalizers';
 import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
@@ -6,7 +5,9 @@ import type { TransportStreamParams, FinishReason, ToolCallDelta } from '@/lib/t
 import type { ToolCall } from '@/lib/transport/contracts';
 import { isRecord } from '@/lib/utils/guards';
 import { anMessages } from '@/lib/anthropic/http';
-import { buildAnthropicBody } from '@/lib/anthropic/request';
+import { bodyFromParams } from '@/lib/anthropic/request';
+import { parseToolInput, toReasoningDetails } from '@/lib/anthropic/messages';
+import type { AnthropicThinkingBlock } from '@/lib/anthropic/wire';
 import {
   appendContinuationMessage,
   mapStopReason,
@@ -19,42 +20,16 @@ type PendingThinkingBlock = {
   signature?: string;
 };
 
-function safeParseObject(value: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(value);
-    return isRecord(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
 export async function streamChatCompletion(params: TransportStreamParams): Promise<void> {
   const callbacks = params.callbacks;
-  let body = buildAnthropicBody({
-    model: params.model,
-    messages: params.messages,
-    stream: true,
-    temperature: params.temperature,
-    topP: params.topP,
-    maxTokens: params.maxTokens,
-    reasoningEffort: params.reasoningEffort,
-    reasoningTokens: params.reasoningTokens,
-    disableReasoning: params.disableReasoning,
-    tools: params.tools,
-    toolChoice: params.toolChoice,
-    plugins: params.plugins,
-    enableAutomaticCaching: true,
-    onUnsupportedContent: (kinds) =>
-      logger.warn(`[Anthropic] Dropped unsupported content: ${kinds.join(', ')}`),
-  });
+  let body = bodyFromParams(params, true);
 
   let full = '';
   let usage: Usage | undefined;
   let finishReason: FinishReason | undefined;
   let rawStopDetails: unknown;
   const toolCalls = new Map<number, Partial<ToolCall>>();
-  const completedThinkingBlocks: Array<{ type: 'thinking'; thinking: string; signature: string }> =
-    [];
+  const completedThinkingBlocks: AnthropicThinkingBlock[] = [];
   let started = false;
 
   const emitToolCallName = (index: number, name?: string) => {
@@ -233,7 +208,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
             thinkingBlocks.delete(index);
           }
 
-          const parsedArgs = safeParseObject(toolInputBuffers.get(index) ?? '');
+          const parsedArgs = parseToolInput(toolInputBuffers.get(index));
           const block = assistantBlocks[index];
           if (isRecord(block) && (block.type === 'tool_use' || block.type === 'server_tool_use')) {
             block.input = parsedArgs;
@@ -329,12 +304,6 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
     finishReason,
     stopDetails: rawStopDetails,
     toolCalls: finalizedToolCalls.length > 0 ? finalizedToolCalls : undefined,
-    reasoningDetails:
-      completedThinkingBlocks.length > 0
-        ? {
-            provider: 'anthropic',
-            thinkingBlocks: completedThinkingBlocks,
-          }
-        : undefined,
+    reasoningDetails: toReasoningDetails(completedThinkingBlocks),
   });
 }
