@@ -51,6 +51,19 @@ export type PendingProposal = {
   messageId?: string;
 };
 
+/**
+ * What the tutor's latest reply has recorded so far, per topic: its own
+ * evidence (the estimate before and after it) and the misconceptions it noted.
+ * One reply records at most one piece of evidence per topic, and a reply that
+ * notes a misconception on a topic gains nothing on it.
+ */
+export type ReplyRecord = {
+  messageId: string;
+  /** By topic: the reply's evidence event, and the estimate before it and after the reply's last. */
+  evidence: Record<string, { eventId: string; before: number; after: number }>;
+  misconceptions: string[];
+};
+
 export type TutorState = {
   lastSeq: number;
   /** The approved plan. Node statuses are derived from topic events. */
@@ -77,6 +90,7 @@ export type TutorState = {
   currentNodeId?: string;
   /** The reply that last completed a topic, so that reply cannot also start the next one. */
   lastCompletedBy?: string;
+  reply?: ReplyRecord;
 };
 
 export function emptyTutorState(): TutorState {
@@ -130,21 +144,34 @@ export function remainingBudgets(state: TutorState): Budgets {
   return { diagnosticsLeft, quizzesLeft: Math.max(0, BUDGETS.quizzesPerTopic - used) };
 }
 
+/** The record of `messageId`'s reply so far, or undefined when it has recorded nothing yet. */
+export function replyRecord(state: TutorState, messageId: string | undefined) {
+  return messageId && state.reply?.messageId === messageId ? state.reply : undefined;
+}
+
 /**
  * Evidence recorded in this session that the learner can do it: a correct
  * quiz or diagnostic answer, or something right the tutor observed, since the
  * topic was last reopened. Not a starting estimate, a placement, a learner's
- * own correction, history imported from before the log, a mistake, or what
- * they showed before the topic had to be reopened. Mastery must rest on this.
+ * own correction, history imported from before the log, a mistake, a partly
+ * right answer, an answer whose gain was taken back for showing a
+ * misconception, or what they showed before the topic had to be reopened.
+ * Mastery must rest on this.
  */
 export function demonstratedEvidence(state: TutorState, nodeId: string): number {
   const since = state.counts.evidenceAtReopen[nodeId] ?? 0;
-  return (state.mastery[nodeId]?.evidence ?? [])
+  const evidence = state.mastery[nodeId]?.evidence ?? [];
+  const takenBack = new Set(
+    evidence.filter((entry) => entry.kind === 'misconception').map((entry) => entry.ref?.eventId),
+  );
+  return evidence
     .slice(since)
     .filter(
       (entry) =>
         !!entry.eventId &&
+        !takenBack.has(entry.eventId) &&
         entry.kind !== 'placement' &&
+        entry.kind !== 'partial' &&
         entry.weight > 0 &&
         (entry.source === 'quiz' ||
           entry.source === 'diagnostic' ||

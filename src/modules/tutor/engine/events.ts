@@ -43,7 +43,13 @@ export type CompletionHow = 'mastered' | 'known' | 'skipped';
 
 export type CardKind = 'intake' | 'diagnostic' | 'quiz';
 
-export type EvidenceRef = { quizId?: string; diagnosticId?: string; itemId?: string };
+export type EvidenceRef = {
+  quizId?: string;
+  diagnosticId?: string;
+  itemId?: string;
+  /** On a take-back (kind `misconception`): the evidence whose gain it takes back. */
+  eventId?: string;
+};
 
 /** A proposal's starting estimate for a topic, applied as evidence when the plan is approved. */
 export type StartingEstimate = { value: number; reason: string };

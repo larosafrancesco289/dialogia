@@ -169,6 +169,7 @@ const PAYLOADS: Record<TutorEventType, z.ZodTypeAny> = {
         quizId: z.string().optional(),
         diagnosticId: z.string().optional(),
         itemId: z.string().optional(),
+        eventId: z.string().optional(),
       })
       .optional(),
   }),

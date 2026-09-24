@@ -329,7 +329,7 @@ test('results carry what the model needs and never an answer key', () => {
 });
 
 test('parsing is lenient about placeholders and fields that do not apply', () => {
-  // What GPT-6 Luna sent: every optional field filled, setTo on an observation.
+  // What GPT-6 Luna sent: every optional field filled, and record_evidence's retired setTo.
   const luna = parseTutorToolCall('record_evidence', {
     kind: 'applied',
     note: 'Solved 3x + 5 = 20 alone',
@@ -348,7 +348,10 @@ test('parsing is lenient about placeholders and fields that do not apply', () =>
     note: 'Solved 3x + 5 = 20 alone',
     source: 'observation',
   });
-  assert.ok(luna.adjusted?.some((line) => /setTo/.test(line) && /learner_said/.test(line)));
+  assert.ok(
+    !luna.adjusted?.some((line) => /setTo/.test(line)),
+    'a retired field is dropped quietly',
+  );
   assert.ok(luna.adjusted?.some((line) => /confidence/.test(line)));
   const h = teaching();
   const events = h.tutor(luna.command);
@@ -368,16 +371,15 @@ test('parsing is lenient about placeholders and fields that do not apply', () =>
   assert.equal(nulls.adjusted, undefined, 'placeholders are dropped silently');
 
   const said = parseTutorToolCall('record_evidence', {
-    kind: 'partial',
-    note: 'Says about 60%',
+    kind: 'struggled',
+    note: 'Says they never understood it',
     source: 'learner_said',
-    setTo: '60',
-    weight: 0.1,
+    set_to: '20',
   });
   assert.ok(said.ok && said.command.type === 'record_evidence');
-  assert.equal(said.command.setTo, 0.6, 'a percentage and a numeric string are read');
-  assert.equal(said.command.weight, undefined);
-  assert.ok(said.adjusted?.some((line) => /weight/.test(line)));
+  assert.equal('setTo' in said.command, false, 'setTo places nothing any more');
+  assert.equal(said.command.source, 'learner_said');
+  assert.equal(said.adjusted, undefined);
 
   const clamped = parseTutorToolCall('record_evidence', {
     kind: 'insight',
