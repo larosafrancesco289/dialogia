@@ -659,38 +659,170 @@ describe('evidence and misconceptions', () => {
     assert.ok(loose.type === 'evidence_recorded' && loose.nodeId === 'chain-rule');
   });
 
-  test('learner_said may set the estimate, only when the learner model is editable', () => {
+  test('a partly right answer never lowers an estimate, and led to, moves nothing', () => {
     const h = teaching();
-    const cmd = {
-      by: 'tutor' as const,
-      type: 'record_evidence' as const,
-      kind: 'partial' as const,
-      note: 'Says they are shaky',
-      source: 'learner_said' as const,
-      setTo: 0.2,
-    };
+    const [alone] = h.tutor({
+      type: 'record_evidence',
+      kind: 'partial',
+      note: 'Set up the equation, slipped on the sign',
+      source: 'observation',
+    });
+    assert.ok(alone.type === 'evidence_recorded' && alone.weight === 0.1);
+    const [led] = h.tutor({
+      type: 'record_evidence',
+      kind: 'partial',
+      helped: true,
+      note: 'Half of it once I named the step',
+      source: 'observation',
+    });
+    assert.ok(led.type === 'evidence_recorded' && led.weight === 0);
     assertError(
-      teaching({ learnerModelEditable: false }).refuse(cmd),
-      'not_editable',
-      /without setTo/,
+      h.refuse({
+        by: 'tutor',
+        type: 'record_evidence',
+        kind: 'partial',
+        weight: -0.1,
+        note: 'Wrong answer',
+        source: 'observation',
+      }),
+      'invalid_arguments',
+      /change kind to struggled if the answer was wrong/,
     );
-    h.tutor(cmd);
-    assert.equal(h.state.mastery.limits.confidence, 0.2);
   });
 
-  test('setTo on an observation does not apply, so it is ignored rather than refused', () => {
+  test('partly right answers are not the evidence mastery rests on', () => {
     const h = teaching();
-    const [event] = h.tutor({
-      type: 'record_evidence',
-      kind: 'applied',
-      note: 'Solved one alone',
-      source: 'observation',
-      setTo: 0,
-    });
-    assert.ok(event.type === 'evidence_recorded');
-    assert.equal(event.setTo, undefined);
-    assert.equal(event.weight, 0.3);
-    assert.ok(h.state.mastery.limits.confidence > MASTERY_PRIOR);
+    h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.85 });
+    for (const note of ['One half', 'Another half']) {
+      h.tutor({ type: 'record_evidence', kind: 'partial', note, source: 'observation' });
+    }
+    assertError(
+      h.refuse({ by: 'tutor', type: 'complete_topic', how: 'mastered' }),
+      'not_ready',
+      /only 0 of the 2/,
+    );
+  });
+
+  test('one piece of evidence per topic per reply', () => {
+    const h = teaching();
+    h.tutor(
+      { type: 'record_evidence', kind: 'applied', note: 'Solved it', source: 'observation' },
+      'reply-1',
+    );
+    const again = decide(
+      h.state,
+      {
+        by: 'tutor',
+        type: 'record_evidence',
+        kind: 'explained',
+        note: 'And explained it',
+        source: 'observation',
+      },
+      h.ctx('reply-1'),
+    );
+    assert.ok(!again.ok);
+    assertError(again.error, 'already_recorded', /limits|Limits/);
+    // Another topic, or the next reply, is fine.
+    h.tutor(
+      {
+        type: 'record_evidence',
+        nodeId: 'derivatives',
+        kind: 'struggled',
+        note: 'Not yet',
+        source: 'observation',
+      },
+      'reply-1',
+    );
+    h.tutor(
+      { type: 'record_evidence', kind: 'explained', note: 'Explained it', source: 'observation' },
+      'reply-2',
+    );
+  });
+
+  test('a reply that notes a misconception on a topic gains nothing on it, in either order', () => {
+    const noted = teaching();
+    noted.tutor({ type: 'note_misconception', description: 'Sensitivity is P(D|+)' }, 'reply-1');
+    const before = noted.state.mastery.limits.confidence;
+    const [zero] = noted.tutor(
+      {
+        type: 'record_evidence',
+        kind: 'partial',
+        note: 'Said above 50% because the test is 90% accurate',
+        source: 'observation',
+      },
+      'reply-1',
+    );
+    assert.ok(zero.type === 'evidence_recorded' && zero.weight === 0);
+    assert.equal(noted.state.mastery.limits.confidence, before);
+    // A wrong answer still counts against them.
+    noted.tutor(
+      {
+        type: 'record_evidence',
+        nodeId: 'derivatives',
+        kind: 'struggled',
+        note: 'n',
+        source: 'observation',
+      },
+      'reply-1',
+    );
+    noted.tutor({ type: 'note_misconception', nodeId: 'derivatives', description: 'x' }, 'reply-1');
+    assert.ok(noted.state.mastery.derivatives.confidence < MASTERY_PRIOR);
+
+    // Low enough that no single weight could take the gain back: the take-back is exact.
+    const recorded = teaching();
+    recorded.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.15 });
+    const start = recorded.state.mastery.limits.confidence;
+    recorded.tutor(
+      {
+        type: 'record_evidence',
+        kind: 'insight',
+        weight: 0.7,
+        note: 'The left side',
+        source: 'observation',
+      },
+      'reply-1',
+    );
+    assert.ok(recorded.state.mastery.limits.confidence > start);
+    const events = recorded.tutor(
+      { type: 'note_misconception', description: 'Discards the wrong half' },
+      'reply-1',
+    );
+    assert.deepEqual(
+      events.map((e) => e.type),
+      ['misconception_noted', 'evidence_recorded'],
+    );
+    assert.ok(Math.abs(recorded.state.mastery.limits.confidence - start) < 1e-9);
+    const taken = events[1];
+    assert.ok(taken.type === 'evidence_recorded' && taken.kind === 'misconception');
+    assert.equal(taken.ref?.eventId, recorded.state.mastery.limits.evidence[1].eventId);
+    const why = explainTopic(recorded.state, 'limits')!;
+    assert.equal(why.settledAt, 0, 'a take-back resets no history; the correction before it does');
+    assert.match(why.steps[2].text, /gain taken back/);
+    // The answer it took back is not evidence mastery can rest on.
+    recorded.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.9 });
+    recorded.tutor(
+      { type: 'record_evidence', kind: 'applied', note: 'Solved one', source: 'observation' },
+      'reply-0',
+    );
+    assertError(
+      recorded.refuse({ by: 'tutor', type: 'complete_topic', how: 'mastered' }),
+      'not_ready',
+      /only 1 of the 2/,
+    );
+    // Noting it again takes nothing more back.
+    assert.equal(
+      recorded.tutor(
+        { type: 'note_misconception', description: 'Discards the wrong half' },
+        'reply-1',
+      ).length,
+      1,
+    );
+    // The next reply gains again.
+    recorded.tutor(
+      { type: 'record_evidence', kind: 'applied', note: 'Right half', source: 'observation' },
+      'reply-2',
+    );
+    assert.ok(recorded.state.mastery.limits.confidence > start);
   });
 
   test('a weight against its kind is refused with the fields and values to change', () => {

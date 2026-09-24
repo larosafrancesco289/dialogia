@@ -13,7 +13,7 @@ import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import type { ModelMessage, ToolCall } from '@/lib/transport/contracts';
 import type { TransportStreamParams } from '@/lib/transport/types';
 import type { Chat, ModelDescriptor } from '@/lib/types';
-import { DEFAULT_TUTOR_FLAGS, type TutorEvent } from '@/modules/tutor/engine';
+import { DEFAULT_TUTOR_FLAGS, type TutorEvent, type TutorEventOf } from '@/modules/tutor/engine';
 import { checkRun } from '@/modules/tutor/tooling/check';
 import { runTutorSimulationCli } from '@/modules/tutor/tooling/cli';
 import type { Scenario } from '@/modules/tutor/tooling/scenarios';
@@ -123,7 +123,6 @@ function scriptedTutor(params: TransportStreamParams): void {
     if (round === 1) {
       return reply(params, 'You undo each step in reverse.', [
         call('record_evidence', { kind: 'applied', note: 'Undid a step', weight: 0.7 }),
-        call('record_evidence', { kind: 'explained', note: 'Explained why', weight: 0.7 }),
         call('complete_topic', { topicId: 'inverse-ops-typo' }),
       ]);
     }
@@ -275,7 +274,6 @@ test('a simulated session answers every card through learner commands, as the UI
     x[3].tutor.toolCalls.map((c) => [c.name, c.ok, c.code ?? null]),
     [
       ['record_evidence', true, null],
-      ['record_evidence', true, null],
       ['complete_topic', false, 'unknown_node'],
       ['complete_topic', true, null],
     ],
@@ -339,6 +337,22 @@ test('the checks fail a session that breaks the protocol', async () => {
     (e) => e.type === 'evidence_recorded' && e.source === 'quiz',
   ) as TutorEvent;
   broken.events.push({ ...evidence, id: 'dup', seq: broken.state.lastSeq + 1 });
+  // A reply that gained on a topic it also noted a misconception on (an old engine allowed it).
+  const observed = broken.events.find(
+    (e) => e.type === 'evidence_recorded' && e.source === 'observation',
+  ) as TutorEventOf<'evidence_recorded'>;
+  broken.events.push({
+    id: 'misconception',
+    chatId: observed.chatId,
+    seq: broken.state.lastSeq + 2,
+    at: observed.at,
+    by: 'tutor',
+    messageId: observed.messageId,
+    type: 'misconception_noted',
+    nodeId: observed.nodeId,
+    misconceptionId: 'm',
+    description: 'm',
+  });
   // A card the learner never got to answer.
   x[2].student.actions = [];
   // A replayed quiz that still carries its key.
@@ -380,6 +394,7 @@ test('the checks fail a session that breaks the protocol', async () => {
     'cards_answerable',
     'evidence_once_per_answer',
     'no_answer_keys_replayed',
+    'no_gain_with_misconception',
     'plan_approved_within',
     'state_block_every_request',
     'tool_errors_recovered',
@@ -417,7 +432,7 @@ test('the CLI writes the transcript and report, and --check sets the exit code',
   assert.equal(written.exchanges.length, 5);
   assert.ok(Array.isArray(written.events) && written.state.plan);
   assert.ok(written.checks.every((c: { ok: boolean }) => c.ok));
-  assert.ok(lines.join('\n').includes('Checks: 10 of 10 passed'));
+  assert.ok(lines.join('\n').includes('Checks: 11 of 11 passed'));
 
   // A tutor that only chats never gets a plan approved.
   const chatty = await runTutorSimulationCli(

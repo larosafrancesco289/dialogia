@@ -270,15 +270,33 @@ test('a tutoring session runs intake, plan, teaching and a chapter break through
     );
   assert.equal(approved.ok, true);
   assert.equal(s.tutor().state.currentNodeId, 'limits');
+  // Work shown before this turn: one reply records one piece of evidence per topic.
+  const earlier = await s.store.getState().dispatchTutor(
+    s.chatId,
+    {
+      by: 'tutor',
+      type: 'record_evidence',
+      kind: 'applied',
+      note: 'Evaluated a limit',
+      weight: 0.7,
+      source: 'observation',
+    },
+    { by: 'tutor', messageId: planMessage.id },
+  );
+  assert.equal(earlier.ok, true);
 
   // ---- Turn 2, teaching: evidence and completion in one round, then a closing line.
   const second = await s.turn('Approved the plan.', (round, cb) => {
     if (round === 1) {
       reply(cb, 'You have limits down: you applied them and saw why.', [
-        call('record_evidence', { kind: 'applied', note: 'Evaluated a limit', weight: 0.7 }, 'c1'),
         call(
           'record_evidence',
           { kind: 'insight', note: 'Explained continuity', weight: 0.5 },
+          'c1',
+        ),
+        call(
+          'record_evidence',
+          { topicId: 'derivatives', kind: 'explained', note: 'Guessed the slope idea' },
           'c2',
         ),
         call('complete_topic', { note: 'Solid on limits' }, 'c3'),
@@ -316,8 +334,8 @@ test('a tutoring session runs intake, plan, teaching and a chapter break through
       ['complete_topic', true],
     ],
   );
-  assert.equal(results[0].result.mastery, 79);
-  assert.equal(results[1].result.mastery, 90);
+  assert.equal(results[0].result.mastery, 90);
+  assert.equal(results[1].result.mastery, 44);
   assert.equal(results[2].result.phase, 'interlude');
 
   const teachMessage = second.message();
@@ -331,7 +349,7 @@ test('a tutoring session runs intake, plan, teaching and a chapter break through
     ['evidence_recorded', 'evidence_recorded', 'topic_completed'],
   );
   assert.equal(s.tutor().state.phase, 'interlude');
-  assert.equal(teachMessage.tutorSeq, approved.ok ? approved.state.lastSeq : -1);
+  assert.equal(teachMessage.tutorSeq, earlier.ok ? earlier.state.lastSeq : -1);
 
   // ---- Turn 3, the chapter break: the next request carries the interlude and every round.
   const third = await s.turn('What comes next?', (_, cb) =>

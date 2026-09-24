@@ -10,7 +10,7 @@ import {
   type TutorToolCommand,
   type TutorToolName,
 } from '@/modules/tutor/engine/commands';
-import type { TutorEvent } from '@/modules/tutor/engine/events';
+import type { TutorEvent, TutorEventOf } from '@/modules/tutor/engine/events';
 import type { TutorFlags } from '@/modules/tutor/engine/flags';
 import { nextReadyNode } from '@/modules/tutor/engine/plan';
 import {
@@ -19,6 +19,7 @@ import {
   MASTERY_EVIDENCE_MIN,
   MASTERY_PRIOR,
   OBSERVATION_KINDS,
+  OBSERVATION_WEIGHTS,
   READY,
   STARTING_ESTIMATE_MAX,
   WEIGHT_MAX,
@@ -26,7 +27,12 @@ import {
   masteryBand,
   percent,
 } from '@/modules/tutor/engine/rules';
-import { confidenceOf, remainingBudgets, type TutorState } from '@/modules/tutor/engine/state';
+import {
+  confidenceOf,
+  remainingBudgets,
+  replyRecord,
+  type TutorState,
+} from '@/modules/tutor/engine/state';
 
 export const TUTOR_TOOL_NAMES: readonly TutorToolName[] = [
   'ask_intake',
@@ -54,6 +60,8 @@ export const TOOL_ENDS_TURN: Record<TutorToolName, boolean> = {
 };
 
 // ---------------------------------------------------------------- schemas
+
+const signed = (weight: number) => (weight > 0 ? `+${weight}` : String(weight));
 
 const topicId = z.string().describe('Topic id exactly as shown in [brackets] in the tutor state.');
 
@@ -155,8 +163,17 @@ const ARGS = {
     items: z.array(choiceItem).min(LIMITS.quizItems.min).max(LIMITS.quizItems.max),
   }),
   record_evidence: z.object({
-    kind: z.enum(OBSERVATION_KINDS),
-    note: z.string().min(1).describe('What you saw, in one short sentence the learner may read.'),
+    kind: z
+      .enum(OBSERVATION_KINDS)
+      .describe(
+        'struggled: an answer with an error in it, or stuck. partial: right as far as it went, but incomplete. applied, explained, insight: right, on their own.',
+      ),
+    note: z
+      .string()
+      .min(1)
+      .describe(
+        'What the learner said or did, quoting or paraphrasing their answer, in one short sentence they may read. Not what you said.',
+      ),
     topicId: topicId.optional().describe('Defaults to the current topic.'),
     weight: z
       .number()
@@ -164,26 +181,18 @@ const ARGS = {
       .max(WEIGHT_MAX)
       .optional()
       .describe(
-        'How far this moves the estimate. Omit for the default per kind (explained +0.2, applied +0.3, insight +0.3, partial +0.1, struggled -0.2); its sign must match the kind.',
+        `How far this moves the estimate. Omit for the default per kind (${OBSERVATION_KINDS.map((k) => `${k} ${signed(OBSERVATION_WEIGHTS[k])}`).join(', ')}); its sign must match the kind.`,
       ),
     helped: z
       .boolean()
       .optional()
       .describe(
-        'true when you named the step, gave a strong hint, or they finished a step you started; the estimate then moves less.',
+        'true when your previous message gave, named or hinted at what they then said, or they finished a step you started or repeated your correction back. The estimate then moves less (partial: not at all).',
       ),
     source: z
       .enum(['observation', 'learner_said'])
       .default('observation')
       .describe('learner_said: the learner told you about their own understanding.'),
-    setTo: z
-      .number()
-      .min(0)
-      .max(1)
-      .optional()
-      .describe(
-        'Only with source learner_said, when the learner names a level: the value they say their mastery is (0-1). Omit otherwise.',
-      ),
   }),
   note_misconception: z.object({
     description: z.string().min(1).describe('The mistaken belief, stated plainly.'),
@@ -210,7 +219,7 @@ const DESCRIPTIONS: Record<TutorToolName, string> = {
   give_diagnostic: `Show a short multiple-choice pre-assessment (${LIMITS.diagnosticItems.min}-${LIMITS.diagnosticItems.max} items) to check prior knowledge before planning, or before the next topic at a chapter break. The engine scores it and records the evidence. Use when the learner's level is unclear; skip it when they have told you plainly. At most ${BUDGETS.diagnosticsPerSession} per session. Ends your turn.`,
   propose_plan: `Propose a learning plan, or a revision of the current one: the goal and ${LIMITS.planNodes.min}-${LIMITS.planNodes.max} topics in teaching order, each with objectives and prerequisites. Give a startingEstimate (at most ${percent(STARTING_ESTIMATE_MAX)}%) only to topics the intake, a diagnostic or the chat showed you; omit it elsewhere. On approval it becomes evidence the learner can contest. The learner sees the plan as a card and approves or declines; nothing changes until they approve. In a revision, reuse existing topic ids to keep their progress. Propose at seams (after intake, at a chapter break, when the plan is done, or when the learner asks), not mid-explanation. Ends your turn.`,
   give_quiz: `Show a multiple-choice quiz (${LIMITS.quizItems.min}-${LIMITS.quizItems.max} items) on the current topic. The engine grades each answer and updates mastery; do not record quiz results yourself. Use after teaching a piece of the topic to check it has landed. At most ${BUDGETS.quizzesPerTopic} per topic. Ends your turn.`,
-  record_evidence: `Record what the conversation showed about the learner's understanding of a topic: explained (they explained it back), applied (they used it correctly), insight (they went beyond what was taught), partial, or struggled. Evidence is what they did on their own: set helped when you led them to it. At most one call per topic per turn, summing up the exchange. Use source "learner_said" when the learner tells you about their own understanding. Not for quiz or diagnostic answers; the engine scored those. Does not end your turn.`,
+  record_evidence: `Record what the conversation showed about the learner's grasp of a topic, judged from their own words: struggled (an answer with an error in it, even if part was right, or stuck), partial (right as far as it went, but incomplete), applied (used it correctly), explained (explained it back), insight (went beyond what was taught). Set helped when your previous message gave, named or hinted at it, or they repeat your correction back. One call per topic per reply, summing up the exchange; a reply that notes a misconception on a topic gains nothing on it. Source "learner_said" when they tell you about their own understanding. Not for quiz or diagnostic answers. Does not end your turn.`,
   note_misconception: `Note a specific mistaken belief the learner showed (not a slip). It is shown to the learner and blocks completing the topic as mastered until resolved. Noting the same description again counts another occurrence. Does not end your turn.`,
   resolve_misconception: `Mark an open misconception resolved once the learner has shown the correct understanding. Does not end your turn.`,
   complete_topic: `Finish the current topic. With how "mastered" it needs mastery of at least ${percent(READY)}%, at least ${MASTERY_EVIDENCE_MIN} pieces of evidence from the learner's work this session (quiz or diagnostic answers, or your observations; a starting estimate does not count), and no open misconceptions. It does not start the next topic: the learner sees a chapter break and chooses what comes next, so do not call start_topic in the same reply. Use when the topic's objectives are met; do not use to move on while evidence is thin. Does not end your turn.`,
@@ -281,7 +290,7 @@ export function parseTutorToolCall(name: string, rawArgs: unknown): ParsedToolCa
     }
   }
   const adjusted: string[] = [];
-  const loosened = relax(name, loosen(ARGS[name], input, [], adjusted), adjusted);
+  const loosened = relax(name, loosen(ARGS[name], retire(name, input), [], adjusted), adjusted);
   const parsed = ARGS[name].safeParse(loosened);
   if (!parsed.success) {
     const issues = parsed.error.issues.slice(0, 5);
@@ -311,6 +320,23 @@ export function parseTutorToolCall(name: string, rawArgs: unknown): ParsedToolCa
 // meaning is refused.
 
 const PLACEHOLDER_WORDS = new Set(['none', 'null', 'n/a', 'na', 'undefined', 'nil']);
+
+/**
+ * Fields a tool no longer has. A model that still sends one (GPT-6 Luna sent
+ * record_evidence's old setTo on every call) has it dropped without a word:
+ * naming it back on every call would teach nothing.
+ */
+const RETIRED_FIELDS: Partial<Record<TutorToolName, readonly string[]>> = {
+  record_evidence: ['setTo'],
+};
+
+function retire(name: TutorToolName, input: unknown): unknown {
+  const retired = RETIRED_FIELDS[name];
+  if (!retired || !isRecord(input)) return input;
+  return Object.fromEntries(
+    Object.entries(input).filter(([key]) => !retired.includes(camelCase(key))),
+  );
+}
 
 /** Keys a model tends to use for a field the schema names differently. */
 const KEY_ALIASES: Record<string, string> = { nodeId: 'topicId', node: 'topicId' };
@@ -450,29 +476,9 @@ function relax(name: TutorToolName, value: unknown, adjusted: string[]): unknown
     case 'record_evidence': {
       if (args.weight === 0) delete args.weight;
       const sources = ['observation', 'learner_said'];
-      if (
-        args.source !== undefined &&
-        !sources.includes(String(args.source)) &&
-        args.setTo === undefined
-      ) {
+      if (args.source !== undefined && !sources.includes(String(args.source))) {
         adjusted.push(`ignored source "${String(args.source)}": recorded as "observation"`);
         delete args.source;
-      }
-      const learnerSaid = args.source === 'learner_said';
-      if (typeof args.setTo === 'number' && args.setTo > 1 && args.setTo <= 100) {
-        args.setTo = args.setTo / 100;
-      }
-      if (args.setTo !== undefined && !learnerSaid) {
-        adjusted.push(
-          'ignored setTo: it applies only with source "learner_said"; the weight moves the estimate',
-        );
-        delete args.setTo;
-      } else if (learnerSaid && args.setTo === 0 && typeof args.weight === 'number') {
-        // Both given and setTo zero: the zero is a placeholder.
-        delete args.setTo;
-      } else if (learnerSaid && typeof args.setTo === 'number' && typeof args.weight === 'number') {
-        adjusted.push('ignored weight: setTo places the estimate directly');
-        delete args.weight;
       }
       if (
         typeof args.weight === 'number' &&
@@ -572,6 +578,14 @@ export function withAdjustments(result: ToolResult, adjusted: readonly string[] 
   return adjusted?.length ? { ...result, adjusted: [...adjusted] } : result;
 }
 
+/** Why an observation moved nothing, for the tutor to learn from. */
+function noGainReason(before: TutorState, event: TutorEventOf<'evidence_recorded'>): string {
+  if (replyRecord(before, event.messageId)?.misconceptions.includes(event.nodeId)) {
+    return `No gain: you noted a misconception on ${event.nodeId} in this reply, and an answer that shows a misconception earns nothing on its topic. Record a wrong answer as struggled.`;
+  }
+  return 'No gain: a partly right answer you led them to shows nothing of their own yet.';
+}
+
 function topicSummary(state: TutorState, id: string) {
   const confidence = confidenceOf(state, id);
   return { id, mastery: percent(confidence), band: masteryBand(confidence) };
@@ -631,11 +645,13 @@ export function tutorToolResult(
       };
     }
     case 'record_evidence': {
-      const nodeId = event?.type === 'evidence_recorded' ? event.nodeId : '';
+      if (event?.type !== 'evidence_recorded') return { ok: true };
+      const nodeId = event.nodeId;
       return {
         ok: true,
         ...topicSummary(after, nodeId),
         was: percent(confidenceOf(before, nodeId)),
+        ...(event.weight === 0 ? { note: noGainReason(before, event) } : {}),
       };
     }
     case 'note_misconception': {
@@ -643,11 +659,19 @@ export function tutorToolResult(
       const m = after.mastery[event.nodeId]?.misconceptions.find(
         (x) => x.id === event.misconceptionId,
       );
+      const takenBack = events.some((e) => e.type === 'evidence_recorded');
       return {
         ok: true,
         topic: event.nodeId,
         misconceptionId: event.misconceptionId,
         occurrences: m?.occurrences ?? 1,
+        ...(takenBack
+          ? {
+              mastery: percent(confidenceOf(after, event.nodeId)),
+              was: percent(confidenceOf(before, event.nodeId)),
+              note: `The gain you recorded on ${event.nodeId} earlier in this reply was taken back: an answer that shows a misconception earns nothing on its topic. Record a wrong answer as struggled.`,
+            }
+          : {}),
       };
     }
     case 'resolve_misconception':

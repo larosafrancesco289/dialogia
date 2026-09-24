@@ -66,7 +66,11 @@ export const OBSERVATION_KINDS = [
 ] as const;
 export type ObservationKind = (typeof OBSERVATION_KINDS)[number];
 
-/** Default weight per observation, used when the tutor gives none. */
+/**
+ * Default weight per observation, used when the tutor gives none. A wrong
+ * answer is `struggled`; `partial` is an answer that was partly right, so it
+ * never lowers an estimate and raises it only a little.
+ */
 export const OBSERVATION_WEIGHTS: Record<ObservationKind, number> = {
   explained: 0.2,
   applied: 0.3,
@@ -82,19 +86,31 @@ export const OBSERVATION_WEIGHTS: Record<ObservationKind, number> = {
  */
 export const HELPED_FACTOR = 0.4;
 
-/** Which way each observation may move the estimate. `partial` may go either way. */
-export const OBSERVATION_SIGN: Record<ObservationKind, 1 | -1 | 0> = {
+/** Which way each observation may move the estimate. Only `struggled` goes down. */
+export const OBSERVATION_SIGN: Record<ObservationKind, 1 | -1> = {
   explained: 1,
   applied: 1,
   insight: 1,
-  partial: 0,
+  partial: 1,
   struggled: -1,
 };
+
+/**
+ * The weight an observation carries once `helped` is taken into account. A
+ * step the tutor led them to counts for less; a partly right answer the tutor
+ * led them to shows nothing of their own, so it counts for nothing.
+ */
+export function observationWeight(kind: ObservationKind, weight: number, helped: boolean): number {
+  if (!helped || weight <= 0) return weight;
+  return kind === 'partial' ? 0 : weight * HELPED_FACTOR;
+}
 
 export type EvidenceKind =
   | 'correct_answer'
   | 'incorrect_answer'
   | ObservationKind
+  // The engine taking back a reply's gain on a topic once the same reply noted a misconception on it.
+  | 'misconception'
   | 'marked_known'
   | 'more_practice'
   | 'adjusted'
@@ -108,6 +124,7 @@ const LEGACY_TYPE: Record<EvidenceKind, Evidence['type']> = {
   insight: 'insight_demonstrated',
   partial: 'partial_answer',
   struggled: 'hint_needed',
+  misconception: 'misconception_detected',
   marked_known: 'self_report',
   more_practice: 'self_report',
   adjusted: 'self_report',

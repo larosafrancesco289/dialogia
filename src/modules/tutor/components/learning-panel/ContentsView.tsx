@@ -267,7 +267,7 @@ type WhyStep = TopicExplanation['steps'][number] & { evidence?: TopicMastery['ev
 
 /** One line of "Why N%": what a piece of evidence did, or where it set the estimate. */
 function WhyLine({ step: { evidence, before, after } }: { step: WhyStep }) {
-  if (!evidence || typeof evidence.setTo === 'number') {
+  if (!evidence || (typeof evidence.setTo === 'number' && evidence.kind !== 'misconception')) {
     return (
       <li>
         <span className="hub-contents__sign">=</span>

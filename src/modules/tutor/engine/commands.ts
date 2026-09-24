@@ -29,7 +29,6 @@ import {
   MASTERY_EVIDENCE_MIN,
   OBSERVATION_KINDS,
   OBSERVATION_SIGN,
-  HELPED_FACTOR,
   OBSERVATION_WEIGHTS,
   READY,
   STARTING_ESTIMATE_MAX,
@@ -40,6 +39,7 @@ import {
   diagnosticWeight,
   markKnownTarget,
   morePracticeTarget,
+  observationWeight,
   percent,
   quizWeight,
   type ObservationKind,
@@ -50,6 +50,7 @@ import {
   openMisconceptions,
   quizFinished,
   remainingBudgets,
+  replyRecord,
   type TutorPhase,
   type TutorState,
 } from '@/modules/tutor/engine/state';
@@ -83,6 +84,7 @@ export type TutorErrorCode =
   | 'incomplete_answers'
   | 'invalid_choice'
   | 'nothing_to_change'
+  | 'already_recorded'
   | 'unknown_tool'
   // Raised by the store, not by `decide`: the chat is gone, or another tab won a race twice.
   | 'chat_deleted'
@@ -108,7 +110,6 @@ export type TutorToolCommand =
       weight?: number;
       /** The tutor led them to it; an upward weight counts for less. */
       helped?: boolean;
-      setTo?: number;
       note: string;
     }
   | { by: 'tutor'; type: 'note_misconception'; nodeId?: string; description: string }
@@ -523,6 +524,7 @@ function decideTutor(
     case 'record_evidence': {
       const found = resolveNode(state, cmd.nodeId, true);
       if (found.error) return found.error;
+      const node = found.node;
       if (!OBSERVATION_KINDS.includes(cmd.kind)) {
         return invalid(
           `Unknown kind "${cmd.kind}".`,
@@ -536,30 +538,13 @@ function decideTutor(
           'Set note to one short sentence about what the learner did, and call record_evidence again.',
         );
       }
-      // setTo means "the learner says it is here"; on any other source it does not apply.
-      if (typeof cmd.setTo === 'number' && cmd.source === 'learner_said') {
-        if (!ctx.flags.learnerModelEditable) {
-          return err(
-            'not_editable',
-            'The learner cannot correct the learner model in this session.',
-            'Call record_evidence again without setTo (a weight moves the estimate instead), or leave the estimate as it is.',
-          );
-        }
-        if (!Number.isFinite(cmd.setTo) || cmd.setTo < 0 || cmd.setTo > 1) {
-          return invalid(
-            'setTo must be between 0 and 1.',
-            'Set setTo to a fraction between 0 and 1 (0.6 for 60%), or leave it out.',
-          );
-        }
-        out.push({
-          type: 'evidence_recorded',
-          nodeId: found.node.id,
-          source: 'learner_said',
-          kind: cmd.kind,
-          setTo: cmd.setTo,
-          note,
-        });
-        return null;
+      const reply = replyRecord(state, ctx.messageId);
+      if (reply?.evidence[node.id]) {
+        return err(
+          'already_recorded',
+          `You already recorded evidence on ${node.name} in this reply.`,
+          'One piece of evidence per topic per reply, summing up the exchange. Nothing more to record on it now.',
+        );
       }
       const weight = cmd.weight ?? OBSERVATION_WEIGHTS[cmd.kind];
       if (!Number.isFinite(weight)) {
@@ -567,21 +552,23 @@ function decideTutor(
       }
       const sign = OBSERVATION_SIGN[cmd.kind];
       if ((sign > 0 && weight < 0) || (sign < 0 && weight > 0)) {
-        const upward = OBSERVATION_KINDS.filter((k) => OBSERVATION_SIGN[k] >= 0).join(', ');
+        const upward = OBSERVATION_KINDS.filter((k) => OBSERVATION_SIGN[k] > 0).join(', ');
         return invalid(
           `${cmd.kind} evidence must have a ${sign > 0 ? 'positive' : 'negative'} weight; got ${weight}.`,
           sign > 0
-            ? `Change weight to a number from 0 to ${WEIGHT_MAX} (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to struggled or partial if the learner went backwards.`
+            ? `Change weight to a number from 0 to ${WEIGHT_MAX} (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to struggled if the answer was wrong.`
             : `Change weight to a number from ${WEIGHT_MIN} to 0 (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to one of ${upward} if the learner did well.`,
         );
       }
-      const scaled = cmd.helped && weight > 0 ? weight * HELPED_FACTOR : weight;
+      const scaled = observationWeight(cmd.kind, weight, !!cmd.helped);
+      // A reply that noted a misconception on the topic gains nothing on it.
+      const gains = scaled > 0 && !reply?.misconceptions.includes(node.id);
       out.push({
         type: 'evidence_recorded',
-        nodeId: found.node.id,
+        nodeId: node.id,
         source: cmd.source === 'learner_said' ? 'learner_said' : 'observation',
         kind: cmd.kind,
-        weight: clampWeight(scaled),
+        weight: gains || scaled < 0 ? clampWeight(scaled) : 0,
         note,
       });
       return null;
@@ -604,6 +591,7 @@ function decideTutor(
         misconceptionId,
         description: same?.description ?? description,
       });
+      takeBackGain(state, found.node.id, same?.description ?? description, ctx, out);
       return null;
     }
 
@@ -718,6 +706,33 @@ function startTopic(
   }
   out.push({ type: 'topic_started', nodeId: node.id });
   return null;
+}
+
+/**
+ * A misconception noted after the same reply recorded a gain on its topic:
+ * the answer that showed it earns nothing, so the gain is taken back, exactly
+ * (the log is append-only), and the evidence it came from stops counting
+ * toward mastery (`demonstratedEvidence`).
+ */
+function takeBackGain(
+  state: TutorState,
+  nodeId: string,
+  description: string,
+  ctx: CommandContext,
+  out: Emitter,
+): void {
+  const recorded = replyRecord(state, ctx.messageId)?.evidence[nodeId];
+  if (!recorded || recorded.after - recorded.before < 0.005) return;
+  const now = confidenceOf(state, nodeId);
+  out.push({
+    type: 'evidence_recorded',
+    nodeId,
+    source: 'observation',
+    kind: 'misconception',
+    setTo: clamp01(now - (recorded.after - recorded.before)),
+    note: `No gain from this answer: it showed a misconception (${shorten(description, 120)})`,
+    ref: { eventId: recorded.eventId },
+  });
 }
 
 function resolveMisconception(
