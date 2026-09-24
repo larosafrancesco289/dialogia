@@ -1,5 +1,5 @@
 import type { ChatDefaults, ChatUiSettings } from '@/lib/types';
-import { upgradeLegacyBaseSystem } from '@/lib/agent/prompts/baseSystem';
+import { upgradeLegacyBaseSystem } from '@/lib/settings/baseSystem';
 
 /** Saved defaults still wearing an old built-in prompt move to the current one. */
 export function upgradeChatDefaults(defaults?: ChatDefaults): ChatDefaults | undefined {

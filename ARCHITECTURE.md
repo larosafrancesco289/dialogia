@@ -43,9 +43,8 @@ specification, and this list is the summary. A violation fails `bun run lint` ev
 | ----------------------------------------------- | ----------------------------------------------------- |
 | `src/lib/db/**`                                 | agent, store, components                              |
 | `src/lib/agent/**`                              | UI components, `src/lib/services/**`                  |
-| `src/lib/transport/**`, `src/lib/openrouter/**` | `src/lib/agent/**`                                    |
+| `src/lib/transport/**` and the provider clients | `src/lib/agent/**`                                    |
 | `src/components/**`                             | transport clients, `rehype-raw`                       |
-| core tool plumbing                              | any feature module                                    |
 | everything outside `src/lib/modules.ts`         | `@/modules/*`, statically, dynamically, or relatively |
 
 Two consequences are worth knowing in advance.

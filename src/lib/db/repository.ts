@@ -7,7 +7,7 @@ import { ChatSchema, MessageSchema } from '@/lib/schemas/persisted';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 import { isRecord } from '@/lib/utils/guards';
-import { upgradeLegacyBaseSystem } from '@/lib/agent/prompts/baseSystem';
+import { upgradeLegacyBaseSystem } from '@/lib/settings/baseSystem';
 
 // Chats store their prompt text, so one still wearing an old built-in default
 // picks up the current one on load; the next save writes it back.

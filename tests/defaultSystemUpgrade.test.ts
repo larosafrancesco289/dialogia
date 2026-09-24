@@ -4,7 +4,7 @@ import {
   DEFAULT_BASE_SYSTEM,
   LEGACY_BASE_SYSTEMS,
   upgradeLegacyBaseSystem,
-} from '@/lib/agent/prompts/baseSystem';
+} from '@/lib/settings/baseSystem';
 import { createRepository, type DialogiaDbLike } from '@/lib/db/repository';
 import { migrateChatSettingsRecord } from '@/lib/settings/migrations';
 import { mergePersistedUiState } from '@/lib/store/uiPersistence';
