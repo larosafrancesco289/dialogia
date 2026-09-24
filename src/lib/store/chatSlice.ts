@@ -16,6 +16,7 @@ import {
 } from '@/lib/messages/indexing';
 import { hydrateMessageList } from '@/lib/services/hydrate';
 import { notifyChatBranched, notifyChatDeleted } from '@/lib/modules';
+import { isChatStreaming } from '@/lib/ui/streaming';
 
 // Keeps the turn pipeline out of the boot bundle; welcome priming is user-triggered
 // and fire-and-forget, so the deferred load is invisible to callers.
@@ -36,6 +37,8 @@ export type ChatSliceState = {
   /** The saved chats have been read from the database (ephemeral). Before
    *  that there is no chat to show, which is not the same as an empty one. */
   hydrated: boolean;
+  /** Replies another tab says it is writing, by chat (ephemeral; see `store/tabSync`). */
+  repliesInOtherTabs: Record<string, string[]>;
 };
 
 export type ChatSliceActions = {
@@ -44,6 +47,13 @@ export type ChatSliceActions = {
   selectChat: (id: string) => void;
   ensureChatMessagesLoaded: (chatId: string) => Promise<void>;
   ensureAllChatMessagesLoaded: () => Promise<void>;
+  /**
+   * Another tab saved these messages: a chat whose messages are in memory
+   * takes the stored rows (a missing row was deleted); one not loaded yet only
+   * notes that it has messages. Resolves false, changing nothing, while this
+   * tab is writing a reply in the chat.
+   */
+  adoptStoredMessages: (chatId: string, ids: string[]) => Promise<boolean>;
   renameChat: (id: string, title: string) => Promise<void>;
   deleteChat: (id: string) => Promise<void>;
   clearChatMessages: (chatId?: string) => void;
@@ -73,6 +83,41 @@ export function neighbourChatId(chats: Chat[], id: string): string | undefined {
   };
   const siblings = chats.filter((c) => c.id === id || c.folderId === deleted?.folderId);
   return (siblings.length > 1 ? pick(siblings) : undefined) ?? pick(chats);
+}
+
+/**
+ * The store without a deleted chat: its messages and bookkeeping go, and if it
+ * was open its neighbour opens instead (see `neighbourChatId`).
+ */
+export function removeChatState(s: StoreState, id: string): Partial<StoreState> {
+  const deletingSelectedChat = s.selectedChatId === id;
+  const loadedMessageChatIds = { ...(s.loadedMessageChatIds ?? {}) };
+  delete loadedMessageChatIds[id];
+  const nonEmptyChatIds = { ...(s.nonEmptyChatIds ?? {}) };
+  delete nonEmptyChatIds[id];
+  const repliesInOtherTabs = { ...s.repliesInOtherTabs };
+  delete repliesInOtherTabs[id];
+  return {
+    chats: s.chats.filter((c) => c.id !== id),
+    selectedChatId: deletingSelectedChat ? neighbourChatId(s.chats, id) : s.selectedChatId,
+    loadedMessageChatIds,
+    nonEmptyChatIds,
+    repliesInOtherTabs,
+    ...removeChatMessages(s, id),
+    ...(deletingSelectedChat
+      ? {
+          ui: {
+            ...s.ui,
+            plan: {
+              ...s.ui.plan,
+              rightPanelOpen: false,
+              sheetOpen: false,
+              sheetPlanOverride: null,
+            },
+          },
+        }
+      : {}),
+  };
 }
 
 export function createChatSlice(
@@ -109,6 +154,7 @@ export function createChatSlice(
     loadedMessageChatIds: {},
     nonEmptyChatIds: {},
     hydrated: false,
+    repliesInOtherTabs: {},
 
     async initializeApp() {
       await bootstrapApp(set, get);
@@ -216,6 +262,42 @@ export function createChatSlice(
       }
     },
 
+    async adoptStoredMessages(chatId: string, ids: string[]) {
+      // A load already under way may have read the table before this write.
+      await inflightMessageLoads.get(chatId)?.catch(() => undefined);
+      if (!get().loadedMessageChatIds[chatId]) {
+        if (ids.length && !get().nonEmptyChatIds[chatId]) {
+          set((s) => ({ nonEmptyChatIds: { ...s.nonEmptyChatIds, [chatId]: true as const } }));
+        }
+        return true;
+      }
+      if (isChatStreaming(get().ui, chatId)) return false;
+      const stored = hydrateMessageList(
+        (await repository.loadMessages(ids)).filter((message) => message.chatId === chatId),
+      );
+      let adopted = true;
+      set((s) => {
+        if (!s.loadedMessageChatIds[chatId]) return {};
+        if (isChatStreaming(s.ui, chatId)) {
+          adopted = false;
+          return {};
+        }
+        const byId = new Map(stored.map((message) => [message.id, message]));
+        const kept = getMessagesForChat(s, chatId).filter(
+          (message) => byId.has(message.id) || !ids.includes(message.id),
+        );
+        const merged = new Map(kept.map((message) => [message.id, message]));
+        for (const message of stored) merged.set(message.id, message);
+        return {
+          ...setMessagesForChat(s, chatId, [...merged.values()]),
+          ...(merged.size
+            ? { nonEmptyChatIds: { ...s.nonEmptyChatIds, [chatId]: true as const } }
+            : {}),
+        };
+      });
+      return adopted;
+    },
+
     async renameChat(id: string, title: string) {
       const chat = get().chats.find((c) => c.id === id);
       if (!chat) return;
@@ -228,37 +310,7 @@ export function createChatSlice(
     async deleteChat(id: string) {
       await ChatService.deleteChat(id, repository);
       notifyChatDeleted({ get }, id);
-      set((s) => {
-        const chats = s.chats.filter((c) => c.id !== id);
-        const deletingSelectedChat = s.selectedChatId === id;
-        const selectedChatId = deletingSelectedChat
-          ? neighbourChatId(s.chats, id)
-          : s.selectedChatId;
-        const loadedMessageChatIds = { ...(s.loadedMessageChatIds ?? {}) };
-        delete loadedMessageChatIds[id];
-        const nonEmptyChatIds = { ...(s.nonEmptyChatIds ?? {}) };
-        delete nonEmptyChatIds[id];
-        return {
-          chats,
-          selectedChatId,
-          loadedMessageChatIds,
-          nonEmptyChatIds,
-          ...removeChatMessages(s, id),
-          ...(deletingSelectedChat
-            ? {
-                ui: {
-                  ...s.ui,
-                  plan: {
-                    ...s.ui.plan,
-                    rightPanelOpen: false,
-                    sheetOpen: false,
-                    sheetPlanOverride: null,
-                  },
-                },
-              }
-            : {}),
-        };
-      });
+      set((s) => removeChatState(s, id));
       // Falling back to another chat after deletion may select one whose
       // messages have not been loaded yet.
       const nextSelected = get().selectedChatId;
