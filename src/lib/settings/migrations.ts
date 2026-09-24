@@ -1,17 +1,11 @@
 import type { ReasoningEffort, SearchMode } from '@/lib/types/enums';
-import { asNumber, isRecord } from '@/lib/utils/guards';
+import { asNumber, isRecord, readBoolean, readString } from '@/lib/utils/guards';
 import { upgradeLegacyBaseSystem } from '@/lib/settings/baseSystem';
 import { NATIVE_SEARCH_MODE, ReasoningEffortEnum } from '@/lib/types/enums';
 
 type UnknownRecord = Record<string, unknown>;
 
 export type MigrationResult<T> = { next: T; changed: boolean };
-
-const readBoolean = (value: unknown): boolean | undefined =>
-  typeof value === 'boolean' ? value : undefined;
-
-const readString = (value: unknown): string | undefined =>
-  typeof value === 'string' ? value : undefined;
 
 const readRecord = (value: unknown): UnknownRecord | undefined =>
   isRecord(value) ? value : undefined;
