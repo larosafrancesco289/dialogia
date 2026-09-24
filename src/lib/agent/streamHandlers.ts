@@ -44,7 +44,6 @@ export type MessageStreamOptions = {
   assistantMessage: Message;
   set: StoreSetter;
   get: StoreGetter;
-  startBuffered?: boolean;
   autoReasoningEligible?: boolean;
   modelIdUsed?: string;
   clearController?: () => void;
@@ -77,15 +76,12 @@ export function createMessageStreamCallbacks(
     assistantMessage,
     set,
     get,
-    startBuffered,
     autoReasoningEligible,
     modelIdUsed,
     clearController,
     persistMessage,
   } = options;
 
-  let startedStreaming = startBuffered ? false : true;
-  let leadingBuffer = '';
   let firstTokenAt: number | undefined;
   let reasoningActivityId: string | undefined;
 
@@ -281,27 +277,7 @@ export function createMessageStreamCallbacks(
     },
     onToken: (delta: string) => {
       if (firstTokenAt == null) firstTokenAt = performance.now();
-      if (!startedStreaming) {
-        leadingBuffer += delta;
-        const trimmed = leadingBuffer.trimStart();
-        const looksStructured = trimmed.startsWith('{') || trimmed.startsWith('```');
-        if (looksStructured) {
-          const stripped = stripLeadingToolJson(leadingBuffer);
-          const rest = stripped.trimStart();
-          if (rest && !(rest.startsWith('{') || rest.startsWith('```'))) {
-            startedStreaming = true;
-            leadingBuffer = '';
-            pushContent(stripped);
-          }
-        } else if (leadingBuffer.length > 512) {
-          startedStreaming = true;
-          const toEmit = leadingBuffer;
-          leadingBuffer = '';
-          pushContent(toEmit);
-        }
-      } else {
-        pushContent(delta);
-      }
+      pushContent(delta);
     },
     onReasoningToken: (delta: string) => {
       // Thinking is timed on the reasoning line; the colophon's "first word"
