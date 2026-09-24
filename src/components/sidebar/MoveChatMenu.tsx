@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { FolderPlusIcon } from '@heroicons/react/24/outline';
 import type { Folder } from '@/lib/types';
 import { useMenuKeyboard } from '@/lib/hooks/useMenuKeyboard';
+import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 import { buildFolderOptions } from '@/components/MoveChatSheet';
 import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
 
@@ -44,18 +45,17 @@ export function MoveChatMenu({
     setPosition({ left, top: Math.max(8, top) });
   }, [anchor, options.length, naming]);
 
-  useEffect(() => {
-    const onPointerDown = (event: PointerEvent) => {
-      if (menuRef.current?.contains(event.target as Node)) return;
+  useDismissOnOutside({
+    open: true,
+    insideRefs: [menuRef],
+    onOutsidePress: () => {
       // Clicking away keeps a folder name being typed, as every rename in
       // the app does: the field's blur creates it (an empty one cancels).
       const active = document.activeElement;
       if (active instanceof HTMLElement && menuRef.current?.contains(active)) active.blur();
       onClose();
-    };
-    document.addEventListener('pointerdown', onPointerDown, true);
-    return () => document.removeEventListener('pointerdown', onPointerDown, true);
-  }, [onClose]);
+    },
+  });
 
   // Naming given up with Escape: back to the item that started it.
   useEffect(() => {

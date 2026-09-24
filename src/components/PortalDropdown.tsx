@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 
 export type PortalDropdownProps = {
   open: boolean;
@@ -16,25 +16,12 @@ export function PortalDropdown({
   contentRef,
   ignoreOutsideRefs,
 }: PortalDropdownProps) {
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (contentRef?.current && contentRef.current.contains(target)) return;
-      if (ignoreOutsideRefs?.some((ref) => ref.current && ref.current.contains(target))) return;
-      onClose();
-    };
-    document.addEventListener('keydown', onKeyDown, true);
-    document.addEventListener('pointerdown', onPointerDown, true);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown, true);
-      document.removeEventListener('pointerdown', onPointerDown, true);
-    };
-  }, [open, onClose, contentRef, ignoreOutsideRefs]);
+  useDismissOnOutside({
+    open,
+    insideRefs: [...(contentRef ? [contentRef] : []), ...(ignoreOutsideRefs ?? [])],
+    onOutsidePress: onClose,
+    onEscape: onClose,
+  });
 
   if (!open || typeof document === 'undefined') return null;
   return createPortal(children, document.body);
