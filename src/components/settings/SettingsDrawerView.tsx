@@ -74,9 +74,13 @@ function SettingsPhoneView({
   useBackToClose(searching, () => setSearchQuery(''));
   const tabLabel = TAB_LIST.find((tab) => tab.id === activeTab)?.label ?? 'Settings';
 
-  // Each page opens at its top.
+  // Each page opens at its top, holding focus: the row or Back that opened it
+  // is gone, and focus dropped on the page would leave Escape nowhere to go.
   useEffect(() => {
-    drawerRef.current?.scrollTo({ top: 0 });
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+    drawer.scrollTo({ top: 0 });
+    if (!drawer.contains(document.activeElement)) drawer.focus({ preventScroll: true });
   }, [page, activeTab, drawerRef]);
 
   const pageMotion = reducedMotion
