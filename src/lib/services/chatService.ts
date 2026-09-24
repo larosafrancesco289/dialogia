@@ -6,7 +6,7 @@ import type { Repository } from '@/lib/db/repository';
 import type { Chat, Folder, Message, ModelDescriptor } from '@/lib/types';
 import { resolveDefaultModelId, resolveDynamicModelId } from '@/lib/models';
 import type { UIState } from '@/lib/store/types';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/settings/baseSystem';
 import { resolveNewChatSettings } from '@/lib/settings/resolve';
 import { decorateMessage } from '@/lib/messages/decorate';
 

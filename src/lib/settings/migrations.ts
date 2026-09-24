@@ -1,6 +1,6 @@
 import type { ReasoningEffort, SearchMode } from '@/lib/types/enums';
 import { asNumber, isRecord } from '@/lib/utils/guards';
-import { upgradeLegacyBaseSystem } from '@/lib/agent/prompts/baseSystem';
+import { upgradeLegacyBaseSystem } from '@/lib/settings/baseSystem';
 import { NATIVE_SEARCH_MODE, ReasoningEffortEnum } from '@/lib/types/enums';
 
 type UnknownRecord = Record<string, unknown>;

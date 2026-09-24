@@ -14,7 +14,7 @@ import { clearTurnController, startToolCallLogEntry } from '@/lib/turns/runtime'
 import { getToolLogCategory } from '@/lib/tools';
 import { formatSourcesBlock } from '@/lib/search';
 import { combineSystem } from '@/lib/agent/system';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/settings/baseSystem';
 import { shouldAppendSources } from '@/lib/agent/policy';
 import { loadModuleRuntimes } from '@/lib/modules';
 import { derivePlanningContext } from '@/lib/agent/planning/context';

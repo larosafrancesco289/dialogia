@@ -4,7 +4,7 @@ import { ChatService } from '@/lib/services/chatService';
 import { createChatSlice } from '@/lib/store/chatSlice';
 import { useChatStore } from '@/lib/store';
 import { buildDefaultUIState } from '@/lib/ui/defaults';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/settings/baseSystem';
 import { buildChatExport, importChatExport } from '@/lib/settings/transfer';
 import { buildSettingsSavePatch } from '@/components/settings/saveSettings';
 import { settingsEqual } from '@/lib/settings/equality';

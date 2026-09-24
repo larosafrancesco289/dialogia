@@ -17,7 +17,7 @@ import { selectSearchMode } from '@/lib/policy/provider';
 import { NATIVE_SEARCH_MODE } from '@/lib/types/enums';
 import { readNextOverrides } from '@/lib/ui/next';
 import { DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/settings/baseSystem';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { normalizeChatSettings } from '@/lib/settings/normalize';
 import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';

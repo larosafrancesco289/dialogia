@@ -1,6 +1,6 @@
 import type { ChatSettings, TutorSettings, TutorToolBudget } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/settings/baseSystem';
 import { DEFAULT_MODEL_ID, DEFAULT_TUTOR_MODEL_ID } from '@/lib/constants';
 import { migrateChatSettingsRecord } from '@/lib/settings/migrations';
 import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';

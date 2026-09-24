@@ -3,7 +3,7 @@
 
 import { formatSourcesBlock } from '@/lib/search';
 import { MAX_PLANNING_ROUNDS, shouldAppendSources } from '@/lib/agent/policy';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
+import { DEFAULT_BASE_SYSTEM } from '@/lib/settings/baseSystem';
 import { followUpPrompt } from '@/lib/agent/prompts/followUp';
 import { combineSystem } from '@/lib/agent/system';
 import { buildSystemMessage } from '@/lib/agent/cache';
