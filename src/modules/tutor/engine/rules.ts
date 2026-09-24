@@ -26,9 +26,6 @@ export const PRACTISING = 0.5;
  */
 export const STARTING_ESTIMATE_MAX = Math.round((READY - 0.05) * 100) / 100;
 
-/** "More practice" pulls an estimate down to at most this. */
-export const MORE_PRACTICE_CAP = Math.round((READY - 0.2) * 100) / 100;
-
 /** "Too high" / "Too low" on an estimate moves it by this much, as a direct setting. */
 export const CONTEST_STEP = 0.15;
 
@@ -112,6 +109,7 @@ export type EvidenceKind =
   // The engine taking back a reply's gain on a topic once the same reply noted a misconception on it.
   | 'misconception'
   | 'marked_known'
+  // Only in older logs: asking for more practice used to cap the estimate.
   | 'more_practice'
   | 'adjusted'
   | 'placement';
@@ -171,11 +169,6 @@ export function diagnosticWeight(correct: boolean): number {
 /** "I know this": a floor at READY. It never lowers an estimate. */
 export function markKnownTarget(confidence: number): number {
   return Math.max(confidence, READY);
-}
-
-/** "I need more practice": a cap below READY. It never raises an estimate. */
-export function morePracticeTarget(confidence: number): number {
-  return Math.min(confidence, MORE_PRACTICE_CAP);
 }
 
 /** Where "Too high" / "Too low" puts an estimate: one step, to the whole percent. */

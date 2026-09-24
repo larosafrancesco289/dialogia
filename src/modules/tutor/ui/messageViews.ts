@@ -194,7 +194,14 @@ const LEGACY_ANSWERS = new Set<Evidence['type']>([
   'insight_demonstrated',
 ]);
 
-type EvidenceGroup = 'answer' | 'observation' | 'said' | 'correction' | 'estimate' | 'earlier';
+type EvidenceGroup =
+  | 'answer'
+  | 'observation'
+  | 'said'
+  | 'correction'
+  | 'practice'
+  | 'estimate'
+  | 'earlier';
 
 const GROUP_WORDS: Record<EvidenceGroup, (n: number) => string> = {
   answer: (n) => `${countWord(n)} answer${n === 1 ? '' : 's'}`,
@@ -202,12 +209,16 @@ const GROUP_WORDS: Record<EvidenceGroup, (n: number) => string> = {
   said: (n) =>
     n === 1 ? 'something you told the tutor' : `${countWord(n)} things you told the tutor`,
   correction: (n) => (n === 1 ? 'your correction' : `${countWord(n)} corrections of yours`),
+  practice: (n) =>
+    n === 1 ? 'your request for more practice' : `${countWord(n)} requests for more practice`,
   estimate: (n) => (n === 1 ? 'a starting estimate' : `${countWord(n)} starting estimates`),
   earlier: (n) => `${countWord(n)} earlier note${n === 1 ? '' : 's'}`,
 };
 
 function groupOf(entry: Evidence): EvidenceGroup {
   if (entry.kind === 'placement' || entry.source === 'placement') return 'estimate';
+  // Older logs: asking for more practice used to cap the estimate. It corrected nothing.
+  if (entry.kind === 'more_practice') return 'practice';
   switch (entry.source) {
     case 'quiz':
     case 'diagnostic':
@@ -239,6 +250,7 @@ export function evidenceBehind(evidence: readonly Evidence[]): string | undefine
     'observation',
     'said',
     'correction',
+    'practice',
     'earlier',
     'estimate',
   ];

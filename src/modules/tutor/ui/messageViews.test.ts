@@ -123,3 +123,20 @@ test('a topic taken up again from Revise settles its break before any later choi
   assert.equal(completed.reopened, true);
   assert.equal(completed.nextNodeId, undefined);
 });
+
+test('what a break says the estimate rests on names a request for practice as one', () => {
+  const entry = (kind: string, source: 'learner' | 'quiz') => ({
+    timestamp: 0,
+    type: 'self_report' as const,
+    details: '',
+    weight: 0,
+    source,
+    kind,
+    eventId: kind,
+  });
+  assert.equal(
+    evidenceBehind([entry('correct_answer', 'quiz'), entry('more_practice', 'learner')]),
+    'one answer and your request for more practice',
+  );
+  assert.equal(evidenceBehind([entry('adjusted', 'learner')]), 'your correction');
+});

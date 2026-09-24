@@ -146,14 +146,12 @@ test('learnerChangesSince describes only learner events after the given seq', ()
   h.learner({ type: 'flag_review', nodeId: 'derivatives', flagged: true });
   h.learner({ type: 'mark_known', nodeId: 'derivatives' });
   h.learner({ type: 'reopen_topic', nodeId: 'derivatives' });
-  h.learner({ type: 'more_practice', nodeId: 'derivatives' });
   const lines = learnerChangesSince(h.state, h.events, since);
   assert.deepEqual(lines, [
     'Set Limits to 62% (was 89%).',
     'Flagged Derivatives for review.',
     'Marked Derivatives as already known (now 80%).',
     'Reopened Derivatives for more practice.',
-    'Set Derivatives to 60% by asking for more practice (was 80%).',
   ]);
   assert.deepEqual(learnerChangesSince(h.state, h.events, h.state.lastSeq), []);
 });

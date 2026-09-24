@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {
   HELPED_FACTOR,
   MASTERY_PRIOR,
-  MORE_PRACTICE_CAP,
   READY,
   decide,
   explainTopic,
@@ -1237,34 +1236,30 @@ describe('learner controls', () => {
     assert.equal(again.state.plan!.nodes[0].completedHow, 'mastered');
   });
 
-  test('more_practice reopens a completed topic and caps it below READY', () => {
-    const h = teaching();
-    master(h);
-    const before = h.state.mastery.limits.confidence;
-    h.tutor({ type: 'complete_topic', how: 'mastered' });
-    const events = h.learner({ type: 'more_practice', nodeId: 'limits' });
-    assert.deepEqual(types(events), ['topic_reopened:learner', 'evidence_recorded:learner']);
-    assert.ok(before > MORE_PRACTICE_CAP);
-    assert.equal(h.state.mastery.limits.confidence, MORE_PRACTICE_CAP);
-    assert.equal(h.state.phase, 'teaching');
-
-    assertError(
-      h.refuse({ by: 'learner', type: 'more_practice', nodeId: 'limits' }),
-      'nothing_to_change',
-    );
-    const low = teaching();
-    low.learner({ type: 'skip_topic', nodeId: 'limits' });
-    assert.deepEqual(types(low.learner({ type: 'more_practice', nodeId: 'limits' })), [
-      'topic_reopened:learner',
-    ]);
-    assertError(
-      teaching({ learnerModelEditable: false }).refuse({
-        by: 'learner',
-        type: 'more_practice',
-        nodeId: 'limits',
-      }),
-      'not_editable',
-    );
+  test('more practice and taking a topic up again both reopen it, estimate kept', () => {
+    for (const type of ['more_practice', 'reopen_topic'] as const) {
+      const h = teaching();
+      master(h);
+      const before = h.state.mastery.limits.confidence;
+      h.tutor({ type: 'complete_topic', how: 'mastered' });
+      assert.deepEqual(types(h.learner({ type, nodeId: 'limits' })), ['topic_reopened:learner']);
+      assert.equal(h.state.mastery.limits.confidence, before);
+      assert.equal(h.state.phase, 'teaching');
+      // Mastered again only on fresh work.
+      assertError(
+        h.refuse({ by: 'tutor', type: 'complete_topic', how: 'mastered' }),
+        'not_ready',
+        /only 0 of the 2/,
+      );
+      assertError(h.refuse({ by: 'learner', type, nodeId: 'limits' }), 'topic_not_completed');
+      // It changes the plan, not the learner model.
+      const locked = teaching({ planEditable: false });
+      assertError(locked.refuse({ by: 'learner', type, nodeId: 'limits' }), 'not_editable');
+    }
+    const readOnlyModel = teaching({ learnerModelEditable: false });
+    readOnlyModel.learner({ type: 'skip_topic', nodeId: 'limits' });
+    readOnlyModel.learner({ type: 'more_practice', nodeId: 'limits' });
+    assert.equal(readOnlyModel.state.currentNodeId, 'limits');
   });
 
   test('adjust_mastery sets an absolute value', () => {

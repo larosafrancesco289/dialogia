@@ -294,6 +294,8 @@ function WhyLine({ step: { evidence, before, after } }: { step: WhyStep }) {
 /** What the latest direct setting was, to head the history before it. */
 function beforeLabel(evidence: WhyStep['evidence']): string {
   if (evidence?.kind === 'placement') return 'Before the starting estimate';
+  if (evidence?.kind === 'more_practice') return 'Before you asked for more practice';
+  if (evidence?.kind === 'marked_known') return 'Before you marked it known';
   if (evidence?.source === 'learner') return 'Before your correction';
   if (evidence?.source === 'learner_said') return 'Before what you told the tutor';
   return 'Before it was set';
@@ -344,7 +346,9 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
               onClick={() => setShowEarlier((open) => !open)}
             >
               {beforeLabel(steps[settledAt]?.evidence)}
-              {earlier.length ? ` (${earlier.length})` : ''}
+              {earlier.length
+                ? ` · ${earlier.length} earlier step${earlier.length === 1 ? '' : 's'}`
+                : ''}
             </button>
             {showEarlier && (
               <ul>
