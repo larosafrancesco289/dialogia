@@ -298,3 +298,35 @@ test('diagnostic items tied to the current topic are remembered with their resul
   assert.match(block, /^- "Another derivative question\?" \(diagnostic, wrong\)$/m);
   assert.doesNotMatch(block, /A chain rule question/);
 });
+
+test('the tutor is reminded of the answers it recorded on the current topic since it opened', () => {
+  const h = teaching();
+  assert.doesNotMatch(render(h), /recent answers/);
+  const record = (kind: 'struggled' | 'applied', note: string, messageId: string) =>
+    h.tutor({ type: 'record_evidence', kind, note, source: 'observation' }, messageId);
+  record('struggled', 'Said the left side stays', 'r1');
+  record('applied', 'Said equal midpoint means found', 'r2');
+  h.tutor(
+    {
+      type: 'record_evidence',
+      nodeId: 'derivatives',
+      kind: 'applied',
+      note: 'Elsewhere',
+      source: 'observation',
+    },
+    'r2',
+  );
+  const block = render(h);
+  assert.match(block, /recent answers you recorded on this topic/);
+  assert.match(
+    block,
+    /^- struggled: "Said the left side stays"\n- applied: "Said equal midpoint means found"$/m,
+  );
+  assert.doesNotMatch(block, /Elsewhere/, 'only the current topic');
+
+  // A topic taken up again starts a fresh memory, like its quiz budget.
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.9 });
+  h.tutor({ type: 'complete_topic', how: 'skipped' });
+  h.learner({ type: 'reopen_topic', nodeId: 'limits' });
+  assert.doesNotMatch(render(h), /recent answers/);
+});
