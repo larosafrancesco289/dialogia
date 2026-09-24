@@ -5,27 +5,14 @@ import type { TransportChatParams } from '@/lib/transport/types';
 import type { ChatCompletion } from '@/lib/transport/completions';
 import { anMessages } from '@/lib/anthropic/http';
 import { buildAnthropicBody } from '@/lib/anthropic/request';
-import type {
-  AnthropicAssistantMessageContent,
-  AnthropicMessagesRequest,
-} from '@/lib/anthropic/wire';
+import type { AnthropicMessagesRequest } from '@/lib/anthropic/wire';
+import {
+  appendContinuationMessage,
+  mapStopReason,
+  MAX_PAUSE_TURN_CONTINUATIONS,
+} from '@/lib/anthropic/continuation';
 import { buildAnthropicError, wrapAnthropicClientError } from '@/lib/anthropic/errors';
 import { isRecord } from '@/lib/utils/guards';
-
-const MAX_PAUSE_TURN_CONTINUATIONS = 5;
-
-function mapStopReason(value: unknown): string {
-  if (value === 'tool_use') return 'tool_calls';
-  if (
-    value === 'max_tokens' ||
-    value === 'model_context_window_exceeded' ||
-    value === 'pause_turn'
-  ) {
-    return 'length';
-  }
-  if (value === 'refusal') return 'content_filter';
-  return 'stop';
-}
 
 function buildReasoningDetails(content: unknown) {
   if (!Array.isArray(content)) return undefined;
@@ -80,23 +67,6 @@ function buildTextContent(content: unknown): string {
     )
     .map((entry) => entry.text)
     .join('');
-}
-
-function appendContinuationMessage(
-  body: AnthropicMessagesRequest,
-  content: unknown,
-): AnthropicMessagesRequest {
-  if (!Array.isArray(content) || content.length === 0) return body;
-  return {
-    ...body,
-    messages: [
-      ...body.messages,
-      {
-        role: 'assistant',
-        content: content as AnthropicAssistantMessageContent,
-      },
-    ],
-  };
 }
 
 async function requestAnthropicMessageSequence(args: {
@@ -172,7 +142,7 @@ function mapAnthropicResponseToChatCompletion(
     choices: [
       {
         index: 0,
-        finish_reason: mapStopReason(data.stop_reason),
+        finish_reason: mapStopReason(data.stop_reason) ?? null,
         message: {
           role: 'assistant',
           content: buildTextContent(content),

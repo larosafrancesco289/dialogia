@@ -7,18 +7,17 @@ import type { ToolCall } from '@/lib/transport/contracts';
 import { isRecord } from '@/lib/utils/guards';
 import { anMessages } from '@/lib/anthropic/http';
 import { buildAnthropicBody } from '@/lib/anthropic/request';
-import type {
-  AnthropicAssistantMessageContent,
-  AnthropicMessagesRequest,
-} from '@/lib/anthropic/wire';
+import {
+  appendContinuationMessage,
+  mapStopReason,
+  MAX_PAUSE_TURN_CONTINUATIONS,
+} from '@/lib/anthropic/continuation';
 import { buildAnthropicError, wrapAnthropicClientError } from '@/lib/anthropic/errors';
 
 type PendingThinkingBlock = {
   thinking: string;
   signature?: string;
 };
-
-const MAX_PAUSE_TURN_CONTINUATIONS = 5;
 
 function safeParseObject(value: string): Record<string, unknown> {
   try {
@@ -27,34 +26,6 @@ function safeParseObject(value: string): Record<string, unknown> {
   } catch {
     return {};
   }
-}
-
-function mapStopReason(value: unknown): FinishReason | undefined {
-  if (value === 'tool_use') return 'tool_calls';
-  if (
-    value === 'max_tokens' ||
-    value === 'model_context_window_exceeded' ||
-    value === 'pause_turn'
-  ) {
-    return 'length';
-  }
-  if (value === 'refusal') return 'content_filter';
-  if (value === 'end_turn' || value === 'stop_sequence') return 'stop';
-  return undefined;
-}
-
-function appendContinuationMessage(
-  body: AnthropicMessagesRequest,
-  content: Array<Record<string, unknown>>,
-): AnthropicMessagesRequest {
-  if (content.length === 0) return body;
-  return {
-    ...body,
-    messages: [
-      ...body.messages,
-      { role: 'assistant', content: content as AnthropicAssistantMessageContent },
-    ],
-  };
 }
 
 export async function streamChatCompletion(params: TransportStreamParams): Promise<void> {
