@@ -265,10 +265,7 @@ export function createMessageStreamCallbacks(
           prev.some((attachment) => attachment.kind === 'image' && attachment.dataURL === dataUrl)
         )
           return msg;
-        const mime = (() => {
-          const slice = dataUrl.slice(5, dataUrl.indexOf(';'));
-          return slice || 'image/png';
-        })();
+        const mime = /^data:([^;,]+)/.exec(dataUrl)?.[1] || 'image/png';
         const next = [
           ...prev,
           {
