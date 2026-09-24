@@ -117,6 +117,11 @@ export type AppModule = {
   /** A chat was deleted; drop anything held for it in memory. Boot half. */
   onChatDeleted?(store: { get: StoreGetter }, chatId: string): void;
   /**
+   * Another tab changed this chat's stored event log (`tutorEvents`); read it
+   * again rather than decide against a stale copy. Boot half.
+   */
+  onEventsChangedElsewhere?(store: { get: StoreGetter }, chatId: string): Promise<void> | void;
+  /**
    * A chat was branched: the branch has copies of the source's messages up to
    * the branch point, under new ids. Whatever the module recorded for those
    * messages should come along. Core awaits this before the branch opens.
@@ -171,6 +176,7 @@ const tutorModule: AppModule = {
   // Bootstrap also reruns after a backup import replaced the database.
   onBootstrap: ({ get }) => get().resetTutorSessions(),
   onChatDeleted: ({ get }, chatId) => get().dropTutorSession(chatId),
+  onEventsChangedElsewhere: ({ get }, chatId) => get().refreshTutorSession(chatId),
   onChatBranched: async ({ get }, { sourceChatId, chatId, messageIds }) => {
     await get().branchTutorSession(sourceChatId, chatId, messageIds);
   },
@@ -197,6 +203,16 @@ export function notifyChatDeleted(store: { get: StoreGetter }, chatId: string): 
       // One module's cleanup must not stop another's.
     }
   }
+}
+
+/** Every module's `onEventsChangedElsewhere`, awaited; one failing never stops another. */
+export async function notifyEventsChangedElsewhere(
+  store: { get: StoreGetter },
+  chatId: string,
+): Promise<void> {
+  await Promise.allSettled(
+    ENABLED_MODULES.map(async (appModule) => appModule.onEventsChangedElsewhere?.(store, chatId)),
+  );
 }
 
 /** Every module's `onChatBranched`, awaited; a failing module never blocks the branch. */
