@@ -124,7 +124,8 @@ export const runTurn = async ({
   // Use unified streaming turn when planning is needed and tools are available
   // This replaces the two-phase plan+stream approach with a single streaming call
   const hasTools = Array.isArray(composition.tools) && composition.tools.length > 0;
-  if (composition.shouldPlan && hasTools) {
+  const agentLoop = composition.loop === 'agent';
+  if ((composition.shouldPlan || agentLoop) && hasTools) {
     hooks?.beforeStream?.({ composition, plan: undefined });
 
     const streamingResult = await executeStreamingTurn({
@@ -143,6 +144,7 @@ export const runTurn = async ({
       systemStable: composition.systemStable,
       systemDynamic: composition.systemDynamic,
       pipeline,
+      loop: composition.loop,
       onPlanResult: hooks?.onPlanResult,
       onPlanSideEffects: hooks?.onPlanSideEffects,
       shouldShortCircuit,

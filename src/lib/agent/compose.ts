@@ -57,6 +57,7 @@ export async function composeTurn({
   const moduleTools: ToolDefinition[] = [];
   let modulesRequirePlanning = false;
   let modulesReplaceBaseSystem = false;
+  let modulesRequestAgentLoop = false;
   for (const runtime of await loadModuleRuntimes()) {
     const contribution = await runtime.compose?.({
       chat,
@@ -71,6 +72,7 @@ export async function composeTurn({
       dynamicPreambles.push(...contribution.dynamicPreambles);
     if (contribution.requiresPlanning) modulesRequirePlanning = true;
     if (contribution.replacesBaseSystem) modulesReplaceBaseSystem = true;
+    if (contribution.loop === 'agent') modulesRequestAgentLoop = true;
   }
   const tools = [...searchTools, ...moduleTools];
 
@@ -117,6 +119,7 @@ export async function composeTurn({
     plugins: Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined,
     hasPdf,
     shouldPlan,
+    ...(modulesRequestAgentLoop ? { loop: 'agent' as const } : {}),
     settings,
     consumedTutorNudge: settings.tutorEnabled ? settings.tutorNudge : undefined,
   };

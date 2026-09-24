@@ -6,11 +6,16 @@ export class TokenBudgeter {
     private readonly reservedForCompletion: number = 1024,
   ) {}
 
-  public budget(messages: { role: 'user' | 'assistant'; content: string }[]): number[] {
+  /**
+   * Keeps the newest messages that fit, oldest dropped first. Each entry is
+   * kept or dropped whole: `extraTokens` counts what travels with a message
+   * (its replayed tool rounds), so a tool result never outlives its call.
+   */
+  public budget(messages: { content: string; extraTokens?: number }[]): number[] {
     const limit = Math.max(512, this.maxTokens - this.reservedForCompletion);
     const withTokens = messages.map((m, i) => ({
       originalIndex: i,
-      tokens: estimateTokens(m.content) ?? 1,
+      tokens: (estimateTokens(m.content) ?? 1) + (m.extraTokens ?? 0),
     }));
 
     let running = 0;

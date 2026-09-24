@@ -49,6 +49,12 @@ export type ModuleComposeContribution = {
   dynamicPreambles?: string[];
   /** The module needs the turn to run the multi-round planning loop. */
   requiresPlanning?: boolean;
+  /**
+   * Run the turn as a visible agent loop: every round streams into the reply,
+   * tool results go back to the model, and a handler can end the turn. See
+   * `agent/streaming/agentLoop.ts`.
+   */
+  loop?: 'agent';
   /** The module's preamble is a complete system prompt; suppress the base one. */
   replacesBaseSystem?: boolean;
 };

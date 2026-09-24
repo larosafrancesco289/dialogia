@@ -10,6 +10,7 @@ export {
   clearToolCallLogs,
   findPendingToolCallEntry,
   removeOrphanPendingToolCalls,
+  settlePendingToolCalls,
   startToolCallLogEntry,
   updateToolCallLogEntry,
 } from '@/lib/turns/runtime/toolCallLog';

@@ -53,7 +53,20 @@ export type MessageStreamOptions = {
 
 export type MessageStreamCallbacks = StreamCallbacks & {
   discardPendingText: () => void;
+  /**
+   * Starts another round of the same reply (agent mode): its thinking gets a
+   * reasoning entry of its own, and its text is set off from what is already on
+   * screen by a blank line.
+   */
+  beginRound: () => void;
 };
+
+/** The reply text as stored: no leading tool JSON, no echoed timestamp, trimmed. */
+export function cleanStreamedText(text: string, timestamps: boolean): string {
+  const raw = stripLeadingToolJson(text || '');
+  const cleaned = timestamps ? stripLeadingTimestamp(raw) : raw;
+  return cleaned?.trim() || '';
+}
 
 export function createMessageStreamCallbacks(
   options: MessageStreamOptions,
@@ -138,6 +151,21 @@ export function createMessageStreamCallbacks(
 
   const contentAccumulator = createStreamAccumulator(flushDelta);
 
+  // Set by `beginRound`: the next visible text starts a new paragraph, unless
+  // nothing is on screen yet. Whitespace a round opens with is dropped.
+  let roundSeparatorPending = false;
+  const emitContent = (text: string) => {
+    if (!roundSeparatorPending) {
+      contentAccumulator.push(text);
+      return;
+    }
+    const lead = text.trimStart();
+    if (!lead) return;
+    roundSeparatorPending = false;
+    const onScreen = get().messagesById[assistantMessage.id]?.content ?? '';
+    contentAccumulator.push(onScreen.trim() ? `\n\n${lead}` : lead);
+  };
+
   // When timestamps are enabled the model occasionally echoes the
   // "[YYYY-MM-DD HH:MM] " prefix despite being told not to. Hold back the
   // first few tokens while they could still be that prefix, then either drop
@@ -150,7 +178,7 @@ export function createMessageStreamCallbacks(
       timestampGateOpen = true;
     }
     if (timestampGateOpen) {
-      contentAccumulator.push(text);
+      emitContent(text);
       return;
     }
     timestampHold += text;
@@ -158,7 +186,7 @@ export function createMessageStreamCallbacks(
     if (stripped === timestampHold && isPartialTimestampPrefix(timestampHold)) return;
     timestampGateOpen = true;
     timestampHold = '';
-    if (stripped) contentAccumulator.push(stripped);
+    if (stripped) emitContent(stripped);
   };
 
   const releaseTimestampHold = () => {
@@ -166,7 +194,7 @@ export function createMessageStreamCallbacks(
     timestampGateOpen = true;
     const toEmit = stripLeadingTimestamp(timestampHold);
     timestampHold = '';
-    if (toEmit) contentAccumulator.push(toEmit);
+    if (toEmit) emitContent(toEmit);
   };
 
   const updateReasoning = (delta: string) => {
@@ -297,10 +325,7 @@ export function createMessageStreamCallbacks(
         finishedAt,
         usage: extras?.usage,
       });
-      const rawContent = stripLeadingToolJson(full || '');
-      const cleaned =
-        state.ui.messageTimestamps === true ? stripLeadingTimestamp(rawContent) : rawContent;
-      const content = cleaned?.trim() || '';
+      const content = cleanStreamedText(full, state.ui.messageTimestamps === true);
       const finalMessage: Message = {
         ...assistantMessage,
         content,
@@ -312,6 +337,7 @@ export function createMessageStreamCallbacks(
         tutor: current?.tutor,
         hiddenContent: current?.hiddenContent,
         toolCalls: current?.toolCalls ?? assistantMessage.toolCalls,
+        toolRounds: current?.toolRounds,
         metrics,
         usage: extras?.usage,
         tokensIn: metrics.promptTokens,
@@ -345,6 +371,16 @@ export function createMessageStreamCallbacks(
     discardPendingText: () => {
       timestampHold = '';
       contentAccumulator.cancel();
+    },
+    beginRound: () => {
+      releaseTimestampHold();
+      reasoningAccumulator.flush();
+      contentAccumulator.flush();
+      settleReasoning();
+      reasoningActivityId = undefined;
+      // Each round may echo the timestamp prefix again; hold it back as on the first.
+      timestampGateOpen = false;
+      roundSeparatorPending = true;
     },
   };
 

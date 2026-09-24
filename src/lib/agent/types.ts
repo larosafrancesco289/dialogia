@@ -118,6 +118,14 @@ export type ComposeTurnArgs = {
   attachments?: PersistedAttachment[];
 };
 
+/**
+ * How a turn with tools runs. 'default' drafts, runs tools silently, then
+ * streams a closing answer (search). 'agent' streams every round visibly into
+ * the one reply and runs until the model stops calling tools, a tool ends the
+ * turn, or the round cap is reached.
+ */
+export type TurnLoopMode = 'default' | 'agent';
+
 export type TurnComposition = {
   system?: string;
   /** Stable portion of the system prompt (cacheable across turns). */
@@ -129,6 +137,8 @@ export type TurnComposition = {
   plugins?: PluginConfig[];
   hasPdf: boolean;
   shouldPlan: boolean;
+  /** Set when an enabled module asked for the agent loop. */
+  loop?: TurnLoopMode;
   settings: ResolvedTurnSettings;
   consumedTutorNudge?: UiNextOverrides['tutorNudge'];
 };

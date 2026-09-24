@@ -6,6 +6,7 @@ import type {
 } from '@/lib/transport/contracts';
 import type { TransportChatParams } from '@/lib/transport/types';
 import { isRecord } from '@/lib/utils/guards';
+import { withoutToolHistory } from '@/lib/transport/toolHistory';
 import {
   ANTHROPIC_DEFAULT_MAX_TOKENS,
   ANTHROPIC_MIN_THINKING_BUDGET,
@@ -350,15 +351,26 @@ function convertMessages(
       continue;
     }
 
-    flushToolResults();
-
     if (message.role === 'user') {
-      converted.push({
-        role: 'user',
-        content: convertUserContent(message.content, unsupported),
-      });
+      const content = convertUserContent(message.content, unsupported);
+      if (pendingToolResults.length > 0) {
+        // Tool results and the user's next words share one user turn, results
+        // first, as the Messages API expects.
+        const blocks: AnthropicUserContentBlock[] =
+          typeof content === 'string'
+            ? content.trim()
+              ? [{ type: 'text', text: content }]
+              : []
+            : content;
+        converted.push({ role: 'user', content: [...pendingToolResults, ...blocks] });
+        pendingToolResults = [];
+        continue;
+      }
+      converted.push({ role: 'user', content });
       continue;
     }
+
+    flushToolResults();
 
     converted.push({
       role: 'assistant',
@@ -506,7 +518,13 @@ export function buildAnthropicBody(
   }
 
   const unsupported = new Set<UnsupportedContentKind>();
-  const { system, messages } = convertMessages(params.messages, unsupported);
+  const functionTools = mapToolDefinitions(params.tools) ?? [];
+  // The Messages API refuses tool_use and tool_result blocks in a request that
+  // defines no tools, so replayed tool rounds fold to their text then.
+  const { system, messages } = convertMessages(
+    functionTools.length > 0 ? params.messages : withoutToolHistory(params.messages),
+    unsupported,
+  );
   const body: AnthropicMessagesRequest = {
     model: resolvedModel,
     messages,
@@ -527,7 +545,7 @@ export function buildAnthropicBody(
   if (system !== undefined) body.system = system;
 
   const tools: Array<AnthropicToolDefinition | AnthropicWebSearchToolDefinition> =
-    mapToolDefinitions(params.tools) ?? [];
+    functionTools.slice();
   if (hasWebPlugin(params.plugins)) {
     tools.push(ANTHROPIC_WEB_SEARCH_TOOL);
   }

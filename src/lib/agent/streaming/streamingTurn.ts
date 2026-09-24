@@ -2,93 +2,46 @@
 // Responsibility: A turn that streams and calls tools in one loop. The first
 // round paints the UI as it streams; when the model asks for tools, the draft is
 // cleared, the tools run, and the model streams again, up to MAX_PLANNING_ROUNDS,
-// before a final tool-free stream produces the visible answer.
+// before a final tool-free stream produces the visible answer. A module that
+// asks for `loop: 'agent'` gets the visible agent loop in `agentLoop.ts` instead.
 
-import {
-  createMessageStreamCallbacks,
-  type MessageStreamCallbacks,
-} from '@/lib/agent/streamHandlers';
-import { isToolCallingSupported } from '@/lib/models';
-import { logger } from '@/lib/logger';
-import {
-  clearTurnController,
-  removeOrphanPendingToolCalls,
-  startToolCallLogEntry,
-} from '@/lib/turns/runtime';
-import { getToolLogCategory } from '@/lib/tools';
-import { formatSourcesBlock } from '@/lib/search';
-import { combineSystem } from '@/lib/agent/system';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
-import { MAX_PLANNING_ROUNDS, shouldAppendSources } from '@/lib/agent/policy';
-import { loadModuleRuntimes } from '@/lib/modules';
-import { derivePlanningContext } from '@/lib/agent/planning/context';
-import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
+import type { MessageStreamCallbacks } from '@/lib/agent/streamHandlers';
+import { removeOrphanPendingToolCalls } from '@/lib/turns/runtime';
+import { MAX_PLANNING_ROUNDS } from '@/lib/agent/policy';
 import { applyToolExecutions } from '@/lib/agent/planning/apply';
 import { followUpPrompt } from '@/lib/agent/prompts/followUp';
-import { getMessagesForChat } from '@/lib/messages/indexing';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { applyCacheBreakpoints, buildSystemMessage } from '@/lib/agent/cache';
-import { resolveModelTransportKind } from '@/lib/providers';
-import type {
-  ModelMessage,
-  PlanTurnResult,
-  PlanTurnSideEffect,
-  StreamFinalOptions,
-  ToolCall,
-  ToolDefinition,
-} from '@/lib/agent/types';
-import type { ToolGate } from '@/lib/agent/planning/types';
-import { createPlanningExecutionState } from '@/lib/agent/planning/types';
-import type { PlanningExecutionState } from '@/lib/agent/planning/types';
-import { readContentModuleResult } from '@/lib/agent/planning/moduleResult';
-import type { ToolCallDelta } from '@/lib/transport/types';
+import type { ModelMessage, PlanTurnSideEffect, ToolCall } from '@/lib/agent/types';
 import { chooseFinalDraft, looksIncomplete } from '@/lib/agent/streaming/draft';
 import {
   captureRound,
-  createStreamCallContext,
   executeStreamCall,
   roundWantsTools,
   type RoundCapture,
-  type StreamCallContext,
 } from '@/lib/agent/streaming/streamCall';
+import {
+  buildResult,
+  createUiCallbacks,
+  emitPlanResult,
+  finalSystemFor,
+  openSession,
+  preLogToolCalls,
+  scheduleTools,
+  type StreamingTurnOptions,
+  type StreamingTurnResult,
+  type TurnSession,
+} from '@/lib/agent/streaming/session';
+import { runAgentLoop } from '@/lib/agent/streaming/agentLoop';
 
-export type StreamingTurnOptions = StreamFinalOptions & {
-  userContent: string;
-  combinedSystem?: string;
-  onPlanResult?: (plan: PlanTurnResult) => void;
-  onPlanSideEffects?: (effects: PlanTurnSideEffect[]) => void;
-  shouldShortCircuit?: (plan: PlanTurnResult) => boolean;
-};
-
-export type StreamingTurnResult = PlanTurnResult & {
-  sideEffects: PlanTurnSideEffect[];
-  shortCircuited?: boolean;
-};
-
-/** Everything a turn accumulates between rounds. */
-type TurnSession = {
-  opts: StreamingTurnOptions;
-  call: StreamCallContext;
-  /** Tools the model may call this turn; undefined when it cannot call any. */
-  tools?: ToolDefinition[];
-  gate: ToolGate;
-  convo: ModelMessage[];
-  state: PlanningExecutionState;
-  sideEffects: PlanTurnSideEffect[];
-  /** Text the model wrote before tool rounds, kept as a candidate final answer. */
-  draft: string;
-  searchEnabled: boolean;
-  searchProvider: string;
-  /** Anthropic reads tool results without a nudge; other transports need one. */
-  appendToolFollowUp: boolean;
-  preLoggedToolIndices: Set<number>;
-};
+export type { StreamingTurnOptions, StreamingTurnResult } from '@/lib/agent/streaming/session';
 
 export async function executeStreamingTurn(
   opts: StreamingTurnOptions,
 ): Promise<StreamingTurnResult> {
   const session = await openSession(opts);
   if (!session.tools) return streamWithoutTools(session);
+  if (opts.loop === 'agent') return runAgentLoop(session);
 
   const ui = createUiCallbacks(session);
   let round = await streamFirstRound(session, ui);
@@ -142,74 +95,6 @@ export async function executeStreamingTurn(
   }
 
   return streamFinalAnswer(session, ui, rounds);
-}
-
-async function openSession(opts: StreamingTurnOptions): Promise<TurnSession> {
-  await loadModuleRuntimes();
-  const { chat, chatId, turn, settings, toolDefinition, combinedSystem } = opts;
-  const storeState = turn.get?.();
-  const currentPlan = chat.settings.features.tutor?.learningPlan;
-
-  const { toolDefinitions, gate } = derivePlanningContext({
-    chat,
-    messagesForChat: storeState ? getMessagesForChat(storeState, chatId) : [],
-    ui: storeState?.ui,
-    toolDefinition,
-    currentPlan,
-  });
-
-  const modelMeta = settings.modelMeta ?? turn.modelIndex.get(settings.modelId);
-  const caps = settings.caps ?? turn.modelIndex.caps(settings.modelId);
-  const planningSystem = buildSystemMessage({
-    combinedSystem,
-    systemStable: opts.systemStable,
-    systemDynamic: opts.systemDynamic,
-  });
-
-  return {
-    opts,
-    call: createStreamCallContext(opts, caps),
-    tools: usableTools(settings.modelId, modelMeta, toolDefinitions),
-    gate,
-    convo: planningSystem
-      ? [planningSystem, ...opts.messages.filter((m) => m.role !== 'system')]
-      : opts.messages.slice(),
-    state: createPlanningExecutionState({
-      moduleState: currentPlan ? { contentModule: { currentPlan } } : {},
-    }),
-    sideEffects: [],
-    draft: '',
-    searchEnabled: settings.searchEnabled,
-    searchProvider: settings.searchProvider || 'openrouter',
-    appendToolFollowUp: resolveModelTransportKind(settings.modelId, modelMeta) !== 'anthropic',
-    preLoggedToolIndices: new Set(),
-  };
-}
-
-/**
- * The gated tool list, or undefined when this model cannot call tools. A model
- * with no metadata at all is assumed capable: dropping the tools silently would
- * hide the tutor from every user-configured endpoint.
- */
-function usableTools(
-  modelId: string,
-  modelMeta: ReturnType<StreamFinalOptions['turn']['modelIndex']['get']>,
-  tools: ToolDefinition[] | undefined,
-): ToolDefinition[] | undefined {
-  if (!Array.isArray(tools) || tools.length === 0) return undefined;
-  if (isToolCallingSupported(modelMeta)) return tools;
-  if (!modelMeta) {
-    logger.warn(
-      `Tool calling check failed for ${modelId} (no modelMeta). ` +
-        `Assuming tool support since ${tools.length} tools are defined.`,
-    );
-    return tools;
-  }
-  logger.warn(
-    `Tool calling not supported for ${modelId} per metadata. ` +
-      `${tools.length} tool definitions will be dropped.`,
-  );
-  return undefined;
 }
 
 // ── Rounds ──────────────────────────────────────────────────────────────────
@@ -323,17 +208,6 @@ async function streamFinalAnswer(
 
 // ── Tool rounds ─────────────────────────────────────────────────────────────
 
-function scheduleTools(session: TurnSession, toolCalls: ToolCall[]): ToolCall[] {
-  return schedulePlanningRound({
-    toolCalls,
-    gate: session.gate,
-    usedContentTool: session.state.usedContentTool,
-    searchEnabled: session.searchEnabled,
-    searchProvider: session.searchProvider,
-    toolsUsedThisTurn: session.state.toolsUsedThisTurn,
-  });
-}
-
 /** Records the model's tool request in the conversation, runs the tools, and appends their results. */
 async function runToolRound(
   session: TurnSession,
@@ -406,41 +280,7 @@ async function runToolRound(
   }
 }
 
-/** Shows a tool call as pending the moment its name arrives, before its arguments finish streaming. */
-function preLogToolCalls(session: TurnSession, deltas: ToolCallDelta[]): void {
-  const { turn, chatId, assistantMessage } = session.opts;
-  for (const delta of deltas) {
-    if (session.preLoggedToolIndices.has(delta.index)) continue;
-    const name = delta.function?.name;
-    if (!name) continue;
-    session.preLoggedToolIndices.add(delta.index);
-    startToolCallLogEntry({
-      set: turn.set,
-      chatId,
-      messageId: assistantMessage.id,
-      name,
-      input: {},
-      category: getToolLogCategory(name),
-    });
-  }
-}
-
 // ── Message shaping ─────────────────────────────────────────────────────────
-
-/** The system prompt for the closing stream: the turn's system plus any search sources. */
-function finalSystemFor(session: TurnSession): string {
-  const { combinedSystem, settings } = session.opts;
-  const baseSystem = combinedSystem?.trim()
-    ? combinedSystem
-    : settings.system?.trim()
-      ? settings.system
-      : DEFAULT_BASE_SYSTEM;
-  const results = session.state.aggregatedResults;
-  const sources = shouldAppendSources(results)
-    ? formatSourcesBlock(results, session.searchProvider)
-    : undefined;
-  return combineSystem(baseSystem, [], sources) ?? baseSystem;
-}
 
 function finalMessagesFor(session: TurnSession, finalSystem: string): ModelMessage[] {
   const system = buildSystemMessage({
@@ -453,24 +293,6 @@ function finalMessagesFor(session: TurnSession, finalSystem: string): ModelMessa
 }
 
 // ── UI and store effects ────────────────────────────────────────────────────
-
-function createUiCallbacks(session: TurnSession): MessageStreamCallbacks {
-  const { chatId, assistantMessage, turn, startBuffered, settings, controller } = session.opts;
-  return createMessageStreamCallbacks(
-    {
-      chatId,
-      assistantMessage,
-      set: turn.set,
-      get: turn.get,
-      startBuffered,
-      autoReasoningEligible: session.call.disableReasoning,
-      modelIdUsed: settings.modelId,
-      clearController: () => clearTurnController(chatId, controller),
-      persistMessage: turn.persistMessage,
-    },
-    { startedAt: performance.now() },
-  );
-}
 
 /** Ends the turn without a closing stream, keeping the best of the visible text and the draft. */
 function finalizeShortCircuit(
@@ -524,38 +346,4 @@ function appendActivityReasoning(session: TurnSession, text: string, round?: num
 function emitSideEffect(session: TurnSession, effect: PlanTurnSideEffect, applyNow: boolean) {
   session.sideEffects.push(effect);
   if (applyNow) session.opts.onPlanSideEffects?.([effect]);
-}
-
-// ── Results ─────────────────────────────────────────────────────────────────
-
-function buildPlanResult(session: TurnSession, finalSystem: string): PlanTurnResult {
-  const { state } = session;
-  const moduleResult = readContentModuleResult(state);
-  return {
-    finalSystem,
-    usedContentTool: state.usedContentTool,
-    hasSearchResults: shouldAppendSources(state.aggregatedResults),
-    learnerModel: moduleResult.learnerModel,
-    planUpdates: moduleResult.planUpdates,
-    updatedPlan: moduleResult.updatedPlan,
-    learnerModelDebug: moduleResult.learnerModelDebug,
-  };
-}
-
-function emitPlanResult(session: TurnSession, finalSystem: string): PlanTurnResult {
-  const plan = buildPlanResult(session, finalSystem);
-  session.opts.onPlanResult?.(plan);
-  return plan;
-}
-
-function buildResult(
-  session: TurnSession,
-  finalSystem: string,
-  shortCircuited = false,
-): StreamingTurnResult {
-  return {
-    ...buildPlanResult(session, finalSystem),
-    sideEffects: session.sideEffects,
-    shortCircuited,
-  };
 }

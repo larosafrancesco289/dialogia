@@ -8,7 +8,7 @@ import {
   ToolCallStatusEnum,
 } from '@/lib/types/enums';
 import { LearningPlanSchema } from '@/lib/schemas/learningPlan';
-import type { LearnerModel, MessageMetrics, MessageTutor } from '@/lib/types';
+import type { LearnerModel, MessageMetrics, MessageToolRound, MessageTutor } from '@/lib/types';
 import type { Usage } from '@/lib/api/normalizers';
 
 export const GenerationSettingsSchema = z
@@ -182,5 +182,8 @@ export const MessageSchema = z
       })
       .optional(),
     toolCalls: z.array(ToolCallLogEntrySchema).optional(),
+    // Shape-checked by `sanitizeMessageRecord`, which drops malformed rounds
+    // rather than rejecting the whole message.
+    toolRounds: z.custom<MessageToolRound[]>().optional(),
   })
   .passthrough();

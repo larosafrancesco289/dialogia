@@ -88,6 +88,27 @@ export type MessageActivityItem =
       round?: number;
     };
 
+/** One call of a replayable tool, kept so later turns can see it as a real tool call. */
+export type MessageToolRoundCall = {
+  /** Provider tool-call id; sanitized and made unique again when replayed. */
+  id: string;
+  name: string;
+  /** The call's arguments as a JSON string. */
+  arguments: string;
+  /** The tool message content the model read back (compact JSON). */
+  result: string;
+};
+
+/**
+ * One round of an agent-mode turn that called replayable tools: the text the
+ * model wrote before calling them, then the calls. The message's `content` is
+ * every round's text joined by blank lines, followed by the closing text.
+ */
+export type MessageToolRound = {
+  text: string;
+  calls: MessageToolRoundCall[];
+};
+
 export type Message = {
   id: string;
   chatId: string;
@@ -142,4 +163,6 @@ export type Message = {
   toolCalls?: ToolCallLogEntry[];
   // Ordered stream of model activity for this assistant turn.
   activity?: MessageActivityItem[];
+  // Rounds of replayable tool calls, replayed to the model as real tool messages.
+  toolRounds?: MessageToolRound[];
 };
