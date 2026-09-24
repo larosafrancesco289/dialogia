@@ -1066,6 +1066,45 @@ describe('learner controls', () => {
     );
   });
 
+  test('mastered counts only correct work, and only since the topic was last reopened', () => {
+    // Two mistakes are evidence, but not of mastery.
+    const h = teaching();
+    h.tutor({
+      type: 'record_evidence',
+      kind: 'struggled',
+      note: 'Sign slip',
+      source: 'observation',
+    });
+    h.tutor({ type: 'record_evidence', kind: 'struggled', note: 'Stuck', source: 'observation' });
+    h.tutor({
+      type: 'record_evidence',
+      kind: 'applied',
+      note: 'Solved one',
+      source: 'observation',
+    });
+    h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.95 });
+    assertError(
+      h.refuse({ by: 'tutor', type: 'complete_topic', how: 'mastered' }),
+      'not_ready',
+      /only 1 of the 2/,
+    );
+
+    // Work from before a reopen showed what the learner could do then.
+    const again = teaching();
+    master(again);
+    again.tutor({ type: 'complete_topic', how: 'mastered' });
+    again.learner({ type: 'reopen_topic', nodeId: 'limits' });
+    again.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.95 });
+    assertError(
+      again.refuse({ by: 'tutor', type: 'complete_topic', how: 'mastered' }),
+      'not_ready',
+      /only 0 of the 2/,
+    );
+    master(again);
+    again.tutor({ type: 'complete_topic', how: 'mastered' });
+    assert.equal(again.state.plan!.nodes[0].completedHow, 'mastered');
+  });
+
   test('more_practice reopens a completed topic and caps it below READY', () => {
     const h = teaching();
     master(h);

@@ -66,6 +66,11 @@ export type TutorState = {
     diagnostics: number;
     /** Quizzes given per topic since it was last reopened. */
     quizzesByNode: Record<string, number>;
+    /**
+     * How many evidence entries a topic had when it was last reopened: what
+     * came before shows what the learner could do then, not now.
+     */
+    evidenceAtReopen: Record<string, number>;
   };
   phase: TutorPhase;
   awaiting?: Awaiting;
@@ -81,7 +86,7 @@ export function emptyTutorState(): TutorState {
     intakes: {},
     diagnostics: {},
     quizzes: {},
-    counts: { diagnostics: 0, quizzesByNode: {} },
+    counts: { diagnostics: 0, quizzesByNode: {}, evidenceAtReopen: {} },
     phase: 'intake',
   };
 }
@@ -126,16 +131,23 @@ export function remainingBudgets(state: TutorState): Budgets {
 }
 
 /**
- * Evidence recorded in this session from what the learner did (a quiz or
- * diagnostic answer, or something the tutor observed), as opposed to a
- * starting estimate, a placement, a learner's own correction, or history
- * imported from before the log. Mastery must rest on this.
+ * Evidence recorded in this session that the learner can do it: a correct
+ * quiz or diagnostic answer, or something right the tutor observed, since the
+ * topic was last reopened. Not a starting estimate, a placement, a learner's
+ * own correction, history imported from before the log, a mistake, or what
+ * they showed before the topic had to be reopened. Mastery must rest on this.
  */
 export function demonstratedEvidence(state: TutorState, nodeId: string): number {
-  return (state.mastery[nodeId]?.evidence ?? []).filter(
-    (entry) =>
-      !!entry.eventId &&
-      entry.kind !== 'placement' &&
-      (entry.source === 'quiz' || entry.source === 'diagnostic' || entry.source === 'observation'),
-  ).length;
+  const since = state.counts.evidenceAtReopen[nodeId] ?? 0;
+  return (state.mastery[nodeId]?.evidence ?? [])
+    .slice(since)
+    .filter(
+      (entry) =>
+        !!entry.eventId &&
+        entry.kind !== 'placement' &&
+        entry.weight > 0 &&
+        (entry.source === 'quiz' ||
+          entry.source === 'diagnostic' ||
+          entry.source === 'observation'),
+    ).length;
 }
