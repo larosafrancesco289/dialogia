@@ -141,6 +141,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* Your own words keep your typeface when they head a sheet. */
+  .bottom-sheet__title--voice {
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+  }
   .bottom-sheet__body {
     overflow-y: auto;
     overscroll-behavior: contain;
