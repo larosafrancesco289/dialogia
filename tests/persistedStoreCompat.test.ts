@@ -121,6 +121,17 @@ test('a persist round-trip is stable', () => {
   assert.deepEqual(second, first);
 });
 
+test('an open Settings drawer is not restored on load', () => {
+  const merged = mergePersistedState(
+    freshState(),
+    migrate(
+      { ...preRefactorBlob, ui: { ...preRefactorBlob.ui, showSettings: true } },
+      6,
+    ) as PersistedStoreState,
+  );
+  assert.equal(merged.ui.showSettings, false);
+});
+
 test("another tab's preferences are adopted, this window's view is kept", () => {
   const current = freshState();
   current.selectedChatId = 'mine';
