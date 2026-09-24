@@ -5,7 +5,7 @@
 
 import { buildChatCompletionMessages } from '@/lib/agent/prompt-builder';
 import { composePlugins } from '@/lib/agent/request';
-import type { Chat, GenSettingsSnapshot, ReasoningEffort } from '@/lib/types';
+import type { Chat, GenSettingsSnapshot, Message, ReasoningEffort } from '@/lib/types';
 import { ReasoningEffortEnum } from '@/lib/types';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { ModelMessage, RegenerateOptions, SearchMode } from '@/lib/agent/types';
@@ -169,6 +169,14 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   }));
   setTurnController(chatId, controller);
 
+  // Until the new reply shows something, the old one stays on disk: a failed
+  // or stopped attempt must not save its empty cut-off copy over the original.
+  const persistMessage: typeof turn.persistMessage = (message) =>
+    message.id === original.id && message.cutOff && !hasOutput(message)
+      ? Promise.resolve()
+      : turn.persistMessage(message);
+  const regenTurn = { ...turn, persistMessage };
+
   const nextSettings: Chat['settings'] = {
     ...chat.settings,
     modelId: modelIdForTurn,
@@ -239,7 +247,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
               state,
           ),
       });
-      const { auth: _auth, ...baseTurnContext } = turn;
+      const { auth: _auth, ...baseTurnContext } = regenTurn;
       await runTurn({
         chat: chatForStream,
         chatId,
@@ -267,19 +275,33 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
       assistantMessage: replacement,
       messages: convo,
       controller,
-      turn,
+      turn: regenTurn,
       settings,
       plugins,
       toolDefinition: undefined,
       startBuffered: false,
       pipeline,
     });
+  } catch (error) {
+    // Nothing of the new reply arrived, so the original comes back on screen.
+    set((state) => {
+      const current = state.messagesById[original.id];
+      if (!current || hasOutput(current)) return {};
+      return { messagesById: { ...state.messagesById, [original.id]: original } };
+    });
+    throw error;
   } finally {
     set((state) => ({
       ui: adjustActiveTurnCount(state.ui, chatId, -1),
     }));
   }
 }
+
+const hasOutput = (message: Message): boolean =>
+  !!message.content?.trim() ||
+  !!message.reasoning?.trim() ||
+  !!message.toolCalls?.length ||
+  !!message.attachments?.length;
 
 const isReasoningEffort = (
   value: unknown,
