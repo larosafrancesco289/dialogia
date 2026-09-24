@@ -7,6 +7,7 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useCuratedModels, useDefaultModelId } from '@/lib/hooks/useModelCatalog';
 import type { ModelDescriptor } from '@/lib/types';
 import { useMenuKeyboard } from '@/lib/hooks/useMenuKeyboard';
+import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { focusComposer } from '@/lib/ui/focus';
@@ -51,22 +52,8 @@ export function RegenerateMenu({
     if (!acc.find((x) => x.id === m.id)) acc.push(m);
     return acc;
   }, []);
-  // Close when clicking outside
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (e: PointerEvent) => {
-      const target = e.target as Node | null;
-      const root = rootRef.current;
-      const menu = menuRef.current;
-      if ((root && target && root.contains(target)) || (menu && target && menu.contains(target)))
-        return;
-      setOpen(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown, true);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown, true);
-    };
-  }, [open]);
+  // Escape is the menu keyboard's, which also hands focus back.
+  useDismissOnOutside({ open, insideRefs: [rootRef, menuRef], onOutsidePress: closeMenu });
 
   // Fixed-position portal coordinates to avoid stacking-context issues
   const [coords, setCoords] = useState<{ left: number; top: number; placement: 'up' | 'down' }>({

@@ -2,11 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   CheckIcon,
   ChevronDownIcon,
-  EyeIcon,
-  LightBulbIcon,
   MagnifyingGlassIcon,
-  PhotoIcon,
-  ShieldCheckIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { formatModelLabel } from '@/lib/models';
@@ -17,12 +13,16 @@ import { isBuiltInEndpointId } from '@/lib/transport/endpoints';
 import {
   buildModelSearchResult,
   buildModelSearchResults,
-  getHighlightSegments,
   normalizeModelQuery,
   splitModelQuery,
   type ModelSearchResult,
 } from '@/lib/models/search';
 import { PortalDropdown } from '@/components/PortalDropdown';
+import {
+  HighlightedText,
+  ModelCapabilities,
+  ModelRowFacts,
+} from '@/components/model-picker/ModelRow';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useModelPickerController } from '@/components/model-picker/useModelPickerController';
 import { useReturnFocus } from '@/lib/hooks/useModalFocus';
@@ -49,36 +49,6 @@ type PickerRow = {
 type PickerSection = { title: string; rows: PickerRow[] };
 
 const POPOVER_WIDTH = 440;
-
-function Capabilities({ result }: { result?: ModelSearchResult }) {
-  if (!result) return null;
-  const { reasoning, vision, image, zdr } = result.capabilities;
-  if (!reasoning && !vision && !image && !zdr) return null;
-  return (
-    <span className="model-row__caps">
-      {reasoning && <LightBulbIcon title="Reasoning" />}
-      {vision && <EyeIcon title="Vision" />}
-      {image && <PhotoIcon title="Image output" />}
-      {zdr && <ShieldCheckIcon title="Zero data retention" />}
-    </span>
-  );
-}
-
-function Highlighted({ text, words }: { text: string; words: string[] }) {
-  return (
-    <>
-      {getHighlightSegments(text, words).map((segment, index) =>
-        segment.highlight ? (
-          <mark key={index} className="model-row__match">
-            {segment.text}
-          </mark>
-        ) : (
-          <span key={index}>{segment.text}</span>
-        ),
-      )}
-    </>
-  );
-}
 
 /**
  * The model picker: a popover under the model's name (a sheet on phones).
@@ -332,25 +302,17 @@ export function ModelPicker({
                   >
                     <span className="model-row__main">
                       <span className="model-row__name">
-                        <Highlighted text={row.name} words={queryWords} />
+                        <HighlightedText text={row.name} words={queryWords} />
                       </span>
                       <span className="model-row__meta">
                         {row.note ? (
                           <span className="model-row__note">{row.note}</span>
                         ) : (
-                          <>
-                            {row.result?.providerLabel && <span>{row.result.providerLabel}</span>}
-                            {row.result?.contextLength && (
-                              <span>
-                                {Intl.NumberFormat().format(row.result.contextLength)} tokens
-                              </span>
-                            )}
-                            {row.result?.price && <span>{row.result.price}</span>}
-                          </>
+                          row.result && <ModelRowFacts result={row.result} />
                         )}
                       </span>
                     </span>
-                    <Capabilities result={row.result} />
+                    <ModelCapabilities result={row.result} />
                     {isSelected ? (
                       <CheckIcon className="model-row__check" aria-label="Selected" />
                     ) : row.removable ? (
