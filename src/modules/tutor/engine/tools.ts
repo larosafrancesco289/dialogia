@@ -165,6 +165,12 @@ const ARGS = {
       .describe(
         'How far this moves the estimate. Omit for the default per kind (explained +0.2, applied +0.3, insight +0.3, partial +0.1, struggled -0.2); its sign must match the kind.',
       ),
+    helped: z
+      .boolean()
+      .optional()
+      .describe(
+        'true when you named the step, gave a strong hint, or they finished a step you started; the estimate then moves less.',
+      ),
     source: z
       .enum(['observation', 'learner_said'])
       .default('observation')
@@ -203,7 +209,7 @@ const DESCRIPTIONS: Record<TutorToolName, string> = {
   give_diagnostic: `Show a short multiple-choice pre-assessment (${LIMITS.diagnosticItems.min}-${LIMITS.diagnosticItems.max} items) to check prior knowledge before planning, or before the next topic at a chapter break. The engine scores it and records the evidence. Use when the learner's level is unclear; skip it when they have told you plainly. At most ${BUDGETS.diagnosticsPerSession} per session. Ends your turn.`,
   propose_plan: `Propose a learning plan, or a revision of the current one: the goal and ${LIMITS.planNodes.min}-${LIMITS.planNodes.max} topics in teaching order, each with objectives and prerequisites. Give a startingEstimate (at most ${percent(STARTING_ESTIMATE_MAX)}%) only to topics the intake, a diagnostic or the chat showed you; omit it elsewhere. On approval it becomes evidence the learner can contest. The learner sees the plan as a card and approves or declines; nothing changes until they approve. In a revision, reuse existing topic ids to keep their progress. Propose at seams (after intake, at a chapter break, when the plan is done, or when the learner asks), not mid-explanation. Ends your turn.`,
   give_quiz: `Show a multiple-choice quiz (${LIMITS.quizItems.min}-${LIMITS.quizItems.max} items) on the current topic. The engine grades each answer and updates mastery; do not record quiz results yourself. Use after teaching a piece of the topic to check it has landed. At most ${BUDGETS.quizzesPerTopic} per topic. Ends your turn.`,
-  record_evidence: `Record what you observed in conversation about the learner's understanding of a topic: explained (they explained it back), applied (they used it correctly), insight (they went beyond what was taught), partial, or struggled. Also use source "learner_said" when the learner tells you about their own understanding. It updates the mastery estimate the learner sees. Do not use for quiz or diagnostic answers; the engine already scored those. Does not end your turn.`,
+  record_evidence: `Record what the conversation showed about the learner's understanding of a topic: explained (they explained it back), applied (they used it correctly), insight (they went beyond what was taught), partial, or struggled. Evidence is what they did on their own: set helped when you led them to it. At most one call per topic per turn, summing up the exchange. Use source "learner_said" when the learner tells you about their own understanding. Not for quiz or diagnostic answers; the engine scored those. Does not end your turn.`,
   note_misconception: `Note a specific mistaken belief the learner showed (not a slip). It is shown to the learner and blocks completing the topic as mastered until resolved. Noting the same description again counts another occurrence. Does not end your turn.`,
   resolve_misconception: `Mark an open misconception resolved once the learner has shown the correct understanding. Does not end your turn.`,
   complete_topic: `Finish the current topic. With how "mastered" it needs mastery of at least ${percent(READY)}% and no open misconceptions. It does not start the next topic: the learner sees a chapter break and chooses what comes next. Use when the topic's objectives are met; do not use to move on while evidence is thin. Does not end your turn.`,

@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  HELPED_FACTOR,
   MASTERY_PRIOR,
   MORE_PRACTICE_CAP,
   READY,
@@ -567,6 +568,28 @@ describe('quizzes', () => {
 });
 
 describe('evidence and misconceptions', () => {
+  test('record_evidence counts a step the tutor led them to for less, and never softens a struggle', () => {
+    const h = teaching();
+    const [a] = h.tutor({
+      type: 'record_evidence',
+      kind: 'applied',
+      helped: true,
+      note: 'Subtracted 5 once I named the step',
+      source: 'observation',
+    });
+    assert.ok(
+      a.type === 'evidence_recorded' && Math.abs((a.weight ?? 0) - 0.3 * HELPED_FACTOR) < 1e-9,
+    );
+    const [b] = h.tutor({
+      type: 'record_evidence',
+      kind: 'struggled',
+      helped: true,
+      note: 'Stuck even with a hint',
+      source: 'observation',
+    });
+    assert.ok(b.type === 'evidence_recorded' && b.weight === -0.2);
+  });
+
   test('record_evidence uses per-kind defaults, checks direction, and clamps', () => {
     const h = teaching();
     const [a] = h.tutor({
