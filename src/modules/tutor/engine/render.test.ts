@@ -38,6 +38,10 @@ test('while teaching: goal, current topic with objectives, bands, misconceptions
       'Phase: teaching',
       'Current topic: Limits [limits]',
       'Objectives: Evaluate simple limits',
+      "Already asked on this topic (don't repeat them or reuse their numbers; build on them):",
+      '- "lim x->0 of x?" (quiz, right)',
+      '- "lim x->1 of 2x?" (quiz, not answered)',
+      '- "lim x->2 of x^2?" (quiz, not answered)',
       'Topics (building < 50%, practising 50-79%, ready >= 80%):',
       '- Limits [limits]: in progress; practising 58%',
       '- Derivatives [derivatives]: not started; building 30%; needs limits',
@@ -210,4 +214,89 @@ test('once intake is answered, the block tells the tutor it may give starting es
   );
   h.tutor({ type: 'propose_plan', ...CALCULUS });
   assert.doesNotMatch(render(h), /Starting estimates/, 'not while a proposal waits');
+});
+
+test('the tutor remembers the latest questions asked on the current topic, and only that topic', () => {
+  const h = harness();
+  h.tutor({
+    type: 'give_diagnostic',
+    topic: 'Limits and derivatives',
+    items: [
+      { question: 'Diagnostic on limits?', choices: ['a', 'b'], correct: 0 },
+      { question: 'Diagnostic on derivatives?', choices: ['a', 'b'], correct: 0 },
+      { question: 'Another on derivatives?', choices: ['a', 'b'], correct: 1 },
+    ],
+  });
+  const diagnosticId = h.state.awaiting!.id;
+  h.learner({ type: 'answer_diagnostic', diagnosticId, answers: { q1: 0, q2: 0, q3: 0 } });
+  h.tutor({ type: 'propose_plan', ...CALCULUS });
+  h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId });
+  // Diagnostic items are tied to topics only once a plan exists, so this one names none.
+  assert.doesNotMatch(render(h), /Already asked/);
+
+  const quiz = (n: number) =>
+    Array.from({ length: 4 }, (_, i) => ({
+      question: `Quiz ${n} question ${i + 1}?`,
+      choices: ['a', 'b'],
+      correct: 0,
+    }));
+  h.tutor({ type: 'give_quiz', items: quiz(1) });
+  const first = h.state.awaiting!.id;
+  ['q1', 'q2', 'q3', 'q4'].forEach((itemId, i) =>
+    h.learner({ type: 'answer_quiz_item', quizId: first, itemId, choice: i % 2 }),
+  );
+  h.tutor({ type: 'give_quiz', items: quiz(2).slice(0, 3) });
+  h.learner({ type: 'answer_quiz_item', quizId: h.state.awaiting!.id, itemId: 'q1', choice: 1 });
+
+  const block = render(h);
+  const asked = block.split('\n').filter((line) => /^- ".*" \((quiz|diagnostic), /.test(line));
+  assert.deepEqual(asked, [
+    '- "Quiz 1 question 2?" (quiz, wrong)',
+    '- "Quiz 1 question 3?" (quiz, right)',
+    '- "Quiz 1 question 4?" (quiz, wrong)',
+    '- "Quiz 2 question 1?" (quiz, wrong)',
+    '- "Quiz 2 question 2?" (quiz, not answered)',
+    '- "Quiz 2 question 3?" (quiz, not answered)',
+  ]);
+  assert.match(block, /^Already asked on this topic \(don't repeat them/m);
+
+  // Moving on, the next topic starts with a clean slate.
+  const open = h.state.awaiting!.id;
+  h.learner({ type: 'answer_quiz_item', quizId: open, itemId: 'q2', choice: 0 });
+  h.learner({ type: 'answer_quiz_item', quizId: open, itemId: 'q3', choice: 0 });
+  master(h);
+  h.tutor({ type: 'complete_topic', how: 'mastered' });
+  h.tutor({ type: 'start_topic', nodeId: 'derivatives' });
+  assert.doesNotMatch(render(h), /Already asked/);
+});
+
+test('diagnostic items tied to the current topic are remembered with their result', () => {
+  const h = teaching();
+  h.learner({ type: 'mark_known', nodeId: 'limits' });
+  h.tutor({
+    type: 'give_diagnostic',
+    topic: 'Where you are',
+    items: [
+      {
+        question: 'A derivative question?',
+        choices: ['a', 'b'],
+        correct: 0,
+        nodeId: 'derivatives',
+      },
+      { question: 'A chain rule question?', choices: ['a', 'b'], correct: 0, nodeId: 'chain-rule' },
+      {
+        question: 'Another derivative question?',
+        choices: ['a', 'b'],
+        correct: 1,
+        nodeId: 'derivatives',
+      },
+    ],
+  });
+  const diagnosticId = h.state.awaiting!.id;
+  h.learner({ type: 'answer_diagnostic', diagnosticId, answers: { q1: 0, q2: 0, q3: 0 } });
+  h.learner({ type: 'start_topic', nodeId: 'derivatives' });
+  const block = render(h);
+  assert.match(block, /^- "A derivative question\?" \(diagnostic, right\)$/m);
+  assert.match(block, /^- "Another derivative question\?" \(diagnostic, wrong\)$/m);
+  assert.doesNotMatch(block, /A chain rule question/);
 });
