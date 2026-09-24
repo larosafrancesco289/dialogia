@@ -49,7 +49,7 @@ export async function executeStreamingTurn(
     round = await streamFirstRound(session, ui);
   }
   if (!roundWantsTools(round)) {
-    completeVisibleRound(session, ui, round);
+    await completeVisibleRound(session, ui, round);
     return buildResult(session, finalSystemFor(session));
   }
 
@@ -57,7 +57,7 @@ export async function executeStreamingTurn(
   if (scheduled.length === 0) {
     const finalSystem = finalSystemFor(session);
     emitPlanResult(session, finalSystem);
-    ui.onDone?.(round.content, { finishReason: round.finishReason });
+    await ui.onDone?.(round.content, { finishReason: round.finishReason });
     return buildResult(session, finalSystem);
   }
 
@@ -140,13 +140,13 @@ function shouldRetryFirstRound(session: TurnSession, round: RoundCapture): boole
 }
 
 /** Ends a first round that produced an answer rather than tool calls. */
-function completeVisibleRound(
+async function completeVisibleRound(
   session: TurnSession,
   ui: MessageStreamCallbacks,
   round: RoundCapture,
-): void {
+): Promise<void> {
   emitPlanResult(session, finalSystemFor(session));
-  ui.onDone?.(round.full, round.extras);
+  await ui.onDone?.(round.full, round.extras);
 }
 
 /** Streams with tools offered and nothing painted; used between tool rounds. */
@@ -184,7 +184,7 @@ async function streamFinalAnswer(
     state.failedToolCallsThisTurn > 0 && state.successfulToolCallsThisTurn === 0;
 
   if (draftStands && (toolsAddedNothing || everyToolFailed)) {
-    finalizeShortCircuit(session, ui, draft);
+    await finalizeShortCircuit(session, ui, draft);
     return buildResult(session, finalSystem, true);
   }
 
@@ -288,15 +288,15 @@ function finalMessagesFor(session: TurnSession, finalSystem: string): ModelMessa
 // ── UI and store effects ────────────────────────────────────────────────────
 
 /** Ends the turn without a closing stream, keeping the best of the visible text and the draft. */
-function finalizeShortCircuit(
+async function finalizeShortCircuit(
   session: TurnSession,
   ui: MessageStreamCallbacks,
   fallback: string,
-): void {
+): Promise<void> {
   const { turn, assistantMessage } = session.opts;
   const current = turn.get?.()?.messagesById?.[assistantMessage.id];
   const visible = typeof current?.content === 'string' ? current.content : '';
-  ui.onDone?.(chooseFinalDraft(visible, fallback), { finishReason: 'tool_calls' });
+  await ui.onDone?.(chooseFinalDraft(visible, fallback), { finishReason: 'tool_calls' });
 }
 
 function clearVisibleDraft(session: TurnSession, ui?: MessageStreamCallbacks): void {

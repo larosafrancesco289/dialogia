@@ -9,7 +9,7 @@ import { computeMetrics } from '@/lib/turns/runtime';
 import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { notify } from '@/lib/store/notify';
-import { describeErrorNotice, isAbortLike } from '@/lib/store/notices';
+import { NOTICE_SAVE_FAILED, describeErrorNotice, isAbortLike } from '@/lib/store/notices';
 import { isRecord } from '@/lib/utils/guards';
 
 type MessageUpdater = (message: Message) => Message;
@@ -360,8 +360,14 @@ export function createMessageStreamCallbacks(
             : undefined,
       };
       applyMessageUpdate(set, chatId, assistantMessage.id, () => finalMessage);
-      await persistMessage(finalMessage);
-      clearController?.();
+      try {
+        await persistMessage(finalMessage);
+      } catch {
+        // The row stays at its last checkpoint; the person should know why.
+        notify(get, NOTICE_SAVE_FAILED);
+      } finally {
+        clearController?.();
+      }
     },
     onError: (error: Error) => {
       releaseTimestampHold();

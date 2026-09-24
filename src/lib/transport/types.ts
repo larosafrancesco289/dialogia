@@ -40,7 +40,8 @@ export type StreamCallbacks = {
   onImage?: (dataUrl: string) => void;
   onAnnotations?: (annotations: unknown) => void;
   onToolCallDelta?: (deltas: ToolCallDelta[]) => void;
-  onDone?: (full: string, extras?: StreamDoneExtras) => void;
+  /** Settles once the reply is saved; a transport awaits it before it resolves. */
+  onDone?: (full: string, extras?: StreamDoneExtras) => void | Promise<void>;
   onError?: (err: Error) => void;
 };
 
