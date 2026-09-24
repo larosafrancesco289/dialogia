@@ -59,6 +59,7 @@ export function TutorPanel(props: TutorPanelProps) {
                 </label>
                 <ModelSearch
                   placeholder="Search models"
+                  ariaLabel="Search for a tutor model"
                   selectedIds={tutorDefaultModel ? [tutorDefaultModel] : []}
                   actionLabel="Use"
                   selectedLabel="Selected"
