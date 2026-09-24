@@ -5,6 +5,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { SettingsSearch } from '@/components/settings/SettingsSearch';
 import { springs, variants } from '@/lib/mobile/springConfig';
 import { DialogOverlay, DialogPortal } from '@/components/ui/Dialog';
+import { useModalFocus } from '@/lib/hooks/useModalFocus';
 
 type SettingsDrawerShellProps = {
   closing: boolean;
@@ -29,6 +30,9 @@ export function SettingsDrawerShell({
   title = 'Settings',
   onBack,
 }: SettingsDrawerShellProps) {
+  // Escape is the drawer's own (below), so a field inside can claim it first.
+  useModalFocus(!closing, drawerRef);
+
   return (
     <AnimatePresence>
       {!closing && (
