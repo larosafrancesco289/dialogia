@@ -229,9 +229,10 @@ function masteryInRange(run: SimulationRun): CheckResult {
 }
 
 /**
- * A reply that noted a misconception on a topic gained nothing on it: the
- * answer that showed the misconception is not progress, whatever else it got
- * right. Measured on the estimate, from the reply's own evidence.
+ * A reply that noted a misconception its answer showed gained nothing on the
+ * topic: the answer that showed the misconception is not progress, whatever
+ * else it got right. One an earlier answer showed leaves the reply's gain
+ * standing. Measured on the estimate, from the reply's own evidence.
  */
 function noGainWithMisconception(run: SimulationRun): CheckResult {
   const problems: string[] = [];
@@ -243,7 +244,7 @@ function noGainWithMisconception(run: SimulationRun): CheckResult {
     state = apply(state, event);
     if (event.by !== 'tutor' || !event.messageId) continue;
     const key = `${event.messageId} on ${'nodeId' in event ? event.nodeId : ''}`;
-    if (event.type === 'misconception_noted') noted.add(key);
+    if (event.type === 'misconception_noted' && event.shownBy !== 'earlier_answer') noted.add(key);
     if (event.type !== 'evidence_recorded') continue;
     const delta =
       (state.mastery[event.nodeId]?.confidence ?? 0) -

@@ -90,7 +90,18 @@ type Payloads = {
     note: string;
     ref?: EvidenceRef;
   };
-  misconception_noted: { nodeId: string; misconceptionId: string; description: string };
+  misconception_noted: {
+    nodeId: string;
+    misconceptionId: string;
+    description: string;
+    /**
+     * `earlier_answer`: shown by an answer before the one this reply responds
+     * to, already recorded as a mistake, so the reply's own evidence on the
+     * topic stands. Absent (every older event): shown by the answer the reply
+     * responds to, which then earns nothing on the topic.
+     */
+    shownBy?: 'earlier_answer';
+  };
   misconception_resolved: { nodeId: string; misconceptionId: string; note?: string };
   review_flagged: { nodeId: string; flagged: boolean };
   /** The learner closed a card without finishing it. */

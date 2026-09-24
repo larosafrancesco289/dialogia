@@ -484,3 +484,30 @@ test('an accepted no-op says nothing changed', () => {
   assert.deepEqual(withAdjustments({ ok: true }, []), { ok: true });
   assert.deepEqual(withAdjustments({ ok: true }, ['x']), { ok: true, adjusted: ['x'] });
 });
+
+test('a misconception said to show in an earlier answer says what the engine made of it', () => {
+  const h = teaching();
+  const note = (shownBy?: string) => {
+    const parsed = parseTutorToolCall('note_misconception', {
+      description: 'Thinks the stop is included',
+      ...(shownBy ? { shownBy } : {}),
+    });
+    assert.ok(parsed.ok);
+    const before = h.state;
+    const events = h.tutor(parsed.command, 'reply-2');
+    return tutorToolResult('note_misconception', before, h.state, events, parsed.command);
+  };
+  assert.equal(note().shownBy, 'latest_answer');
+  // No mistake on the topic yet: only the latest answer can have shown it.
+  const unfounded = note('earlier_answer');
+  assert.equal(unfounded.shownBy, 'latest_answer');
+  assert.match(String(unfounded.shownByNote), /no earlier mistake on limits/);
+
+  h.tutor(
+    { type: 'record_evidence', kind: 'struggled', note: 'Said 1 to 5', source: 'observation' },
+    'reply-3',
+  );
+  const founded = note('earlier_answer');
+  assert.equal(founded.shownBy, 'earlier_answer');
+  assert.equal(founded.shownByNote, undefined);
+});

@@ -402,6 +402,32 @@ test('the checks fail a session that breaks the protocol', async () => {
   ]);
 });
 
+test('a misconception an earlier answer showed does not count against the reply’s gain', async () => {
+  const { run } = await simulate();
+  const observed = run.events.find(
+    (e) => e.type === 'evidence_recorded' && e.source === 'observation',
+  ) as TutorEventOf<'evidence_recorded'>;
+  const noted = (id: string, seq: number, shownBy?: 'earlier_answer'): TutorEvent => ({
+    id,
+    chatId: observed.chatId,
+    seq,
+    at: observed.at,
+    by: 'tutor',
+    messageId: observed.messageId,
+    type: 'misconception_noted',
+    nodeId: observed.nodeId,
+    misconceptionId: 'm',
+    description: 'm',
+    ...(shownBy ? { shownBy } : {}),
+  });
+  const verdict = (event: TutorEvent) =>
+    checkRun({ ...run, events: [...run.events, event] }).find(
+      (c) => c.id === 'no_gain_with_misconception',
+    )?.ok;
+  assert.equal(verdict(noted('earlier', run.state.lastSeq + 1, 'earlier_answer')), true);
+  assert.equal(verdict(noted('latest', run.state.lastSeq + 1)), false);
+});
+
 test('the CLI writes the transcript and report, and --check sets the exit code', async () => {
   const out = await fs.mkdtemp(path.join(os.tmpdir(), 'tutor-sim-'));
   const lines: string[] = [];
