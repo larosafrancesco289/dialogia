@@ -118,6 +118,11 @@ export type TurnComposition = {
   systemDynamic?: string;
   messages: ModelMessage[];
   tools?: ToolDefinition[];
+  /**
+   * The turn's tools read again, for the agent loop to offer between rounds.
+   * Set only when a module can refresh its tools.
+   */
+  refreshTools?: () => ToolDefinition[];
   plugins?: PluginConfig[];
   hasPdf: boolean;
   shouldPlan: boolean;

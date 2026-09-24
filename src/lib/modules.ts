@@ -56,6 +56,12 @@ export type ModuleComposeArgs = {
 
 export type ModuleComposeContribution = {
   tools?: ToolDefinition[];
+  /**
+   * The module's tools as they stand now. An agent-loop turn calls it after
+   * each round's tool calls have run and offers the result in place of
+   * `tools`, so what the model may call follows what those calls changed.
+   */
+  refreshTools?: () => ToolDefinition[];
   stablePreambles?: string[];
   dynamicPreambles?: string[];
   /** The module needs the turn to run the multi-round planning loop. */

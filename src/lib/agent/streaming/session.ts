@@ -42,6 +42,8 @@ export type StreamingTurnOptions = StreamFinalOptions & {
   combinedSystem?: string;
   /** 'agent' streams every round visibly into one reply; see `agentLoop.ts`. */
   loop?: TurnLoopMode;
+  /** The turn's tools read again between agent-loop rounds (`TurnComposition.refreshTools`). */
+  refreshTools?: () => ToolDefinition[];
   onPlanResult?: (plan: PlanTurnResult) => void;
   onPlanSideEffects?: (effects: PlanTurnSideEffect[]) => void;
 };
@@ -132,6 +134,21 @@ function usableTools(
       `${tools.length} tool definitions will be dropped.`,
   );
   return undefined;
+}
+
+/**
+ * Offers the turn's tools as they stand after a round's calls ran, when the
+ * turn can read them again; otherwise leaves them as they are. A request that
+ * carries tool calls must still define tools, so an empty list changes nothing.
+ */
+export function refreshSessionTools(session: TurnSession): void {
+  const next = session.opts.refreshTools?.();
+  if (!next || !session.tools) return;
+  const offered = next.filter((def) => {
+    const name = def.function?.name;
+    return !!name && session.gate.isAllowed(name);
+  });
+  if (offered.length) session.tools = offered;
 }
 
 export function scheduleTools(session: TurnSession, toolCalls: ToolCall[]): ToolCall[] {

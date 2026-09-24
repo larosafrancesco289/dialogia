@@ -56,6 +56,9 @@ export async function composeTurn({
 
   const searchTools: ToolDefinition[] = toolSearch ? getSearchToolDefinition(searchProvider) : [];
   const moduleTools: ToolDefinition[] = [];
+  // Per module: its tools now, read again on each call when it can refresh them.
+  const moduleToolSources: Array<() => ToolDefinition[]> = [];
+  let refreshable = false;
   let modulesRequirePlanning = false;
   let modulesReplaceBaseSystem = false;
   let modulesRequestAgentLoop = false;
@@ -70,6 +73,9 @@ export async function composeTurn({
     });
     if (!contribution) continue;
     if (contribution.tools?.length) moduleTools.push(...contribution.tools);
+    const { tools: composed = [], refreshTools } = contribution;
+    if (refreshTools) refreshable = true;
+    moduleToolSources.push(refreshTools ?? (() => composed));
     if (contribution.stablePreambles?.length) stablePreambles.push(...contribution.stablePreambles);
     if (contribution.dynamicPreambles?.length)
       dynamicPreambles.push(...contribution.dynamicPreambles);
@@ -81,6 +87,9 @@ export async function composeTurn({
     }
   }
   const tools = [...searchTools, ...moduleTools];
+  const refreshTools = refreshable
+    ? () => [...searchTools, ...moduleToolSources.flatMap((source) => source())]
+    : undefined;
 
   const baseSystem =
     !modulesReplaceBaseSystem && typeof settings.system === 'string' ? settings.system : undefined;
@@ -126,6 +135,7 @@ export async function composeTurn({
     hasPdf,
     shouldPlan,
     ...(modulesRequestAgentLoop ? { loop: 'agent' as const } : {}),
+    ...(refreshTools ? { refreshTools } : {}),
     settings,
     ...(messagePatch ? { messagePatch } : {}),
   };

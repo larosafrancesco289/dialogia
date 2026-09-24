@@ -109,9 +109,12 @@ let registered = false;
 
 /**
  * Cards (a tool that ends the turn) are `content`: at most one per round, and
- * run after the round's state tools, so "start the topic, then quiz it" works
- * in one round. State tools are `action`: any number per round, in the order
- * the model called them. Every round is replayed on later turns.
+ * run after the round's state tools. The tools offered follow the phase, and
+ * the agent loop reads them again after every round (`refreshTools` in the
+ * tutor's compose), so "start the topic, then quiz it" works in one turn: the
+ * quiz is offered in the round after the topic starts. State tools are
+ * `action`: any number per round, in the order the model called them. Every
+ * round is replayed on later turns.
  */
 export function registerTutorTools(): void {
   if (registered) return;

@@ -6,8 +6,10 @@
 // when a handler says the turn ends (a card now waits for the user; a handler
 // ending it 'after_text' in a turn with no words yet gets one more round, with
 // tool_choice 'none', to introduce the card), or at the round cap, whose last
-// round is sent with tool_choice 'none'. There is no draft clearing, no silent
-// round, no short-circuit and no follow-up nudge here.
+// round is sent with tool_choice 'none'. Between rounds the tools are read
+// again when a module can refresh them, so a call that changed what is
+// possible (starting a topic) opens the tools that follow from it. There is no
+// draft clearing, no silent round, no short-circuit and no follow-up nudge here.
 
 import { cleanStreamedText, type MessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { sumUsage } from '@/lib/api/normalizers';
@@ -31,6 +33,7 @@ import {
   emitPlanResult,
   finalSystemFor,
   preLogToolCalls,
+  refreshSessionTools,
   scheduleTools,
   type StreamingTurnResult,
   type TurnSession,
@@ -81,6 +84,8 @@ export async function runAgentLoop(session: TurnSession): Promise<StreamingTurnR
       replay.record(text, outcomes);
       storeToolRounds(session, replay.rounds());
       if (ending === 'now' || (ending === 'after_text' && !introducing)) break;
+      // What the calls changed may change what the model can call next.
+      refreshSessionTools(session);
     }
   } catch (error) {
     // A stream that fails or is stopped has already told the UI callbacks,
