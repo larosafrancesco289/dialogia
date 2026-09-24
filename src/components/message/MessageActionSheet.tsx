@@ -9,6 +9,7 @@ import {
 import type { Message } from '@/lib/types';
 import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 import { Markdown } from '@/components/Markdown';
+import { plainExcerpt } from '@/lib/markdown/plainText';
 
 export type MessageActionSheetProps = {
   isMobile: boolean;
@@ -57,12 +58,21 @@ export function MessageActionSheet({
   const isEditingThis = !!message && editingId === message.id;
   // A canned greeting was never generated: nothing to edit, redo or branch from.
   const canned = !!message?.tutorWelcome;
+  // Headed, like a chat's sheet, by what it acts on: the message's opening
+  // words, in the voice they were written in.
+  const excerpt = message?.content ? plainExcerpt(message.content) : '';
+  const title = (
+    <span className={isAssistant ? undefined : 'bottom-sheet__title--voice'}>
+      {excerpt || (isAssistant ? 'Reply' : 'Your message')}
+    </span>
+  );
 
   return (
     <>
       <BottomSheet
         open={!!mobileSheet && !selecting}
         label={isAssistant ? 'Reply actions' : 'Message actions'}
+        title={title}
         onClose={onClose}
       >
         <SheetItem

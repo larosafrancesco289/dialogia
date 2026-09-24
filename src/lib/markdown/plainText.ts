@@ -67,3 +67,12 @@ export function markdownToPlainText(markdown: string): string {
 
   return out.join('\n').replace(/\n{3,}/g, '\n\n');
 }
+
+/** A one-line opening of the text, for a heading that names a message. */
+export function plainExcerpt(markdown: string, maxChars = 80): string {
+  const text = markdownToPlainText(markdown).replace(/\s+/g, ' ').trim();
+  if (text.length <= maxChars) return text;
+  const cut = text.slice(0, maxChars);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${(lastSpace > maxChars / 2 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}

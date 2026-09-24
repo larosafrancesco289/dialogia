@@ -1,6 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { markdownToPlainText } from './plainText';
+import { markdownToPlainText, plainExcerpt } from './plainText';
+
+test('an excerpt is the opening words on one line, without syntax', () => {
+  assert.equal(
+    plainExcerpt('## Plan\n\n**Step one:** mix the\nbatter.'),
+    'Plan Step one: mix the batter.',
+  );
+});
+
+test('a long excerpt ends at a word, with an ellipsis', () => {
+  const excerpt = plainExcerpt('word '.repeat(40), 30);
+  assert.ok(excerpt.endsWith('word…'), excerpt);
+  assert.ok(excerpt.length <= 31);
+});
 
 test('emphasis, strikethrough and inline code lose their markers', () => {
   assert.equal(
@@ -18,7 +31,9 @@ test('headings, quotes, bullets and rules read as prose', () => {
 
 test('links and images keep their words, not their targets', () => {
   assert.equal(
-    markdownToPlainText('See [the docs](https://x.dev/a) and ![a chart](c.png) or <https://x.dev>.'),
+    markdownToPlainText(
+      'See [the docs](https://x.dev/a) and ![a chart](c.png) or <https://x.dev>.',
+    ),
     'See the docs and a chart or https://x.dev.',
   );
 });
