@@ -5,7 +5,6 @@ import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { composeTurn } from '@/lib/agent/compose';
-import { planTurn } from '@/lib/agent/planning';
 import { applyPlanSideEffects } from '@/lib/agent/planning/sideEffects';
 import { streamFinal } from '@/lib/agent/streaming';
 import type { Repository } from '@/lib/db/repository';
@@ -124,7 +123,6 @@ export const executeModelTurn = async ({
       controller,
       baseTurnContext,
       compose: composeTurn,
-      plan: planTurn,
       streamFinal,
       authResolver: () => modelContext.auth,
       attachmentPreparer: async () => attachments,

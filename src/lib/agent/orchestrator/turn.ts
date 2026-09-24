@@ -2,11 +2,8 @@ import type { Chat, Message, PersistedAttachment } from '@/lib/types';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import type {
   ComposeTurnArgs,
-  ModelMessage,
-  PlanTurnOptions,
   PlanTurnResult,
   PlanTurnSideEffect,
-  PlanTurnOutput,
   TurnComposition,
   TurnContext,
   StreamFinalOptions,
@@ -17,7 +14,6 @@ import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import { executeStreamingTurn } from '@/lib/agent/streaming/streamingTurn';
 
 type ComposeFn = (args: ComposeTurnArgs) => Promise<TurnComposition>;
-type PlanFn = (args: PlanTurnOptions) => Promise<PlanTurnOutput>;
 type StreamFn = (args: StreamFinalOptions) => Promise<void>;
 type BaseTurnContext = Omit<TurnContext, 'auth'>;
 
@@ -44,7 +40,6 @@ export type RunTurnArgs = {
   controller: AbortController;
   baseTurnContext: BaseTurnContext;
   compose: ComposeFn;
-  plan: PlanFn;
   streamFinal: StreamFn;
   authResolver: AuthResolver;
   attachmentPreparer?: AttachmentPreparer;
@@ -60,17 +55,6 @@ export type RunTurnResult = {
   shortCircuited: boolean;
 };
 
-const buildStreamMessages = (
-  composition: TurnComposition,
-  plan?: PlanTurnResult,
-): ModelMessage[] => {
-  if (composition.shouldPlan && plan?.finalSystem) {
-    const withoutSystem = composition.messages.filter((msg) => msg.role !== 'system');
-    return [{ role: 'system', content: plan.finalSystem } as ModelMessage, ...withoutSystem];
-  }
-  return composition.messages;
-};
-
 export const runTurn = async ({
   chat,
   chatId,
@@ -83,7 +67,6 @@ export const runTurn = async ({
   controller,
   baseTurnContext,
   compose,
-  plan,
   streamFinal,
   authResolver,
   attachmentPreparer,
@@ -117,11 +100,8 @@ export const runTurn = async ({
     auth,
   };
 
-  let planResult: PlanTurnResult | undefined;
-  let planSideEffects: PlanTurnSideEffect[] = [];
-
-  // Use unified streaming turn when planning is needed and tools are available
-  // This replaces the two-phase plan+stream approach with a single streaming call
+  // Tool search and agent-loop modules run as one streaming call that drafts,
+  // runs tools and answers; everything else is a plain stream.
   const hasTools = Array.isArray(composition.tools) && composition.tools.length > 0;
   const agentLoop = composition.loop === 'agent';
   if ((composition.shouldPlan || agentLoop) && hasTools) {
@@ -149,44 +129,21 @@ export const runTurn = async ({
       onPlanSideEffects: hooks?.onPlanSideEffects,
     });
 
-    planResult = {
+    const plan: PlanTurnResult = {
       finalSystem: streamingResult.finalSystem,
       usedContentTool: streamingResult.usedContentTool,
       hasSearchResults: streamingResult.hasSearchResults,
     };
-    return { composition, plan: planResult, shortCircuited: !!streamingResult.shortCircuited };
+    return { composition, plan, shortCircuited: !!streamingResult.shortCircuited };
   }
 
-  // Legacy path: use old plan+stream when planning without tools, or no planning needed
-  if (composition.shouldPlan) {
-    const planOutput = await plan({
-      chat,
-      chatId,
-      assistantMessage,
-      userContent,
-      combinedSystem: composition.system,
-      systemStable: composition.systemStable,
-      systemDynamic: composition.systemDynamic,
-      baseMessages: composition.messages,
-      toolDefinition: composition.tools,
-      controller,
-      turn: turnContext,
-      settings: composition.settings,
-    });
-    planResult = planOutput.result;
-    planSideEffects = planOutput.sideEffects;
-    hooks?.onPlanResult?.(planResult);
-    hooks?.onPlanSideEffects?.(planSideEffects);
-  }
+  hooks?.beforeStream?.({ composition });
 
-  hooks?.beforeStream?.({ composition, plan: planResult });
-
-  const messages = buildStreamMessages(composition, planResult);
   await streamFinal({
     chat,
     chatId,
     assistantMessage,
-    messages,
+    messages: composition.messages,
     controller,
     turn: turnContext,
     settings: composition.settings,
@@ -197,5 +154,5 @@ export const runTurn = async ({
     systemDynamic: composition.systemDynamic,
   });
 
-  return { composition, plan: planResult, shortCircuited: false };
+  return { composition, shortCircuited: false };
 };
