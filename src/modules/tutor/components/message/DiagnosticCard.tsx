@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import type { DiagnosticRecord } from '@/modules/tutor/engine';
@@ -22,6 +22,9 @@ export function DiagnosticCard({
   const dispatchTutor = useChatStore((s) => s.dispatchTutor);
   const ledger = useLedger();
   const [draft, setDraft] = useState<Record<string, number>>({});
+  // The latest answers, so two quick clicks never read the same render's draft.
+  const answersRef = useRef<Record<string, number>>({});
+  const submitting = useRef(false);
   const submitted = diagnostic.answers;
   const choices = submitted ?? draft;
 
@@ -42,10 +45,12 @@ export function DiagnosticCard({
   const scorePercent = scored.length ? Math.round((right / scored.length) * 100) : 0;
 
   const onAnswer = async (itemId: string, choice: number) => {
-    if (submitted || itemId in draft) return;
-    const next = { ...draft, [itemId]: choice };
+    if (submitted || submitting.current || itemId in answersRef.current) return;
+    const next = { ...answersRef.current, [itemId]: choice };
+    answersRef.current = next;
     setDraft(next);
     if (Object.keys(next).length < total) return;
+    submitting.current = true;
     const result = await dispatchTutor(
       chatId,
       {
@@ -55,7 +60,9 @@ export function DiagnosticCard({
         answers: next,
       },
       { by: 'learner', messageId },
-    );
+    ).finally(() => {
+      submitting.current = false;
+    });
     if (!result.ok) return;
     const correct = scored.filter((item) => next[item.id] === item.correct).length;
     await ledger(LEDGER.diagnosticFinished(correct, scored.length));
