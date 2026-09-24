@@ -21,7 +21,6 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     settings,
     plugins,
     toolDefinition,
-    startBuffered,
     systemStable,
     systemDynamic,
   } = opts;
@@ -87,7 +86,6 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
       assistantMessage,
       set,
       get,
-      startBuffered,
       autoReasoningEligible: disableReasoning,
       modelIdUsed,
       clearController: () => clearTurnController(chatId, controller),

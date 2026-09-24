@@ -111,7 +111,6 @@ export type StreamFinalOptions = {
   settings: ResolvedTurnSettings;
   plugins?: PluginConfig[];
   toolDefinition?: ToolDefinition[];
-  startBuffered: boolean;
   pipeline?: PipelineClient;
   systemStable?: string;
   systemDynamic?: string;

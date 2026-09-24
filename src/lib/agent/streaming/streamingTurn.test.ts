@@ -58,12 +58,10 @@ async function runTurn({
   rounds,
   model = OPENROUTER_MODEL,
   endpoint = OPENROUTER_ENDPOINT,
-  startBuffered = false,
 }: {
   rounds: Round[];
   model?: ModelDescriptor;
   endpoint?: typeof OPENROUTER_ENDPOINT;
-  startBuffered?: boolean;
 }) {
   const chatId = `chat-streaming-${Math.random().toString(36).slice(2)}`;
   const chat = makeChat({
@@ -130,7 +128,6 @@ async function runTurn({
       system: undefined,
     },
     toolDefinition: TOOLS,
-    startBuffered,
     userContent,
     combinedSystem: 'You are a tutor.',
     pipeline,
@@ -165,7 +162,6 @@ test('executeStreamingTurn keeps the pre-tool draft and skips final overwrite fo
 
 test('executeStreamingTurn prefers complete fallback draft over incomplete current content', async () => {
   const run = await runTurn({
-    startBuffered: true,
     rounds: [
       draftThenTool(GOOD_DRAFT, 'advance_topic'),
       ({ callbacks, get, set, assistantId }) => {

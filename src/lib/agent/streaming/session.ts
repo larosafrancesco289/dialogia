@@ -197,14 +197,13 @@ export function finalSystemFor(session: TurnSession): string {
 }
 
 export function createUiCallbacks(session: TurnSession): MessageStreamCallbacks {
-  const { chatId, assistantMessage, turn, startBuffered, settings, controller } = session.opts;
+  const { chatId, assistantMessage, turn, settings, controller } = session.opts;
   return createMessageStreamCallbacks(
     {
       chatId,
       assistantMessage,
       set: turn.set,
       get: turn.get,
-      startBuffered,
       autoReasoningEligible: session.call.disableReasoning,
       modelIdUsed: settings.modelId,
       clearController: () => clearTurnController(chatId, controller),

@@ -165,7 +165,6 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
       settings,
       plugins,
       toolDefinition: undefined,
-      startBuffered: false,
       pipeline,
     });
   } catch (error) {

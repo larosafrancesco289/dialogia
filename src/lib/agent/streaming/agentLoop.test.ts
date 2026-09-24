@@ -231,7 +231,6 @@ async function runAgentTurn(
         turn: { ...baseTurnContext, auth },
         settings,
         toolDefinition: tools,
-        startBuffered: false,
         userContent: 'Go.',
         combinedSystem: 'You are an agent.',
         pipeline,
