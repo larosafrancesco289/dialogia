@@ -90,6 +90,7 @@ There are three separate stores, deliberately.
 | Data                                 | Where                         | Versioned by              |
 | ------------------------------------ | ----------------------------- | ------------------------- |
 | Chats, messages, folders, KV records | IndexedDB `dialogia` (Dexie)  | `DB_SCHEMA_VERSION`       |
+| Tutor event logs (`tutorEvents`)     | IndexedDB `dialogia` (Dexie)  | `DB_SCHEMA_VERSION`       |
 | UI preferences, endpoint configs     | `localStorage['dialogia-ui']` | `STORE_MIGRATION_VERSION` |
 | Provider and search API keys         | IndexedDB `dialogia-keys`     | its own Dexie version     |
 
@@ -197,7 +198,8 @@ The tool registry (`src/lib/tools/registry.ts`) is open and keyed by string. An 
 `{ definition, metadata, handler? }`, and `metadata.kind` is what the scheduler reads.
 
 - `action` is ordinary. Any number may run per round (`web_search`, `web_fetch`).
-- `content` runs at most once per round.
+- `content` runs at most once per round, after the round's other calls: it puts something in
+  front of the user, so it should see the round's other changes.
 - `meta` is always scheduled first.
 
 Core owns the container and the kind vocabulary. A module owns its tools, registers them from its
@@ -249,9 +251,11 @@ one. Removing a feature is deleting its directory and its entry in that file.
 A module has two halves.
 
 - **The boot half** is `storeSlice`, `persistFragment`, `decorateMessage`, `settingsDefaults`,
-  `panels` and `onBootstrap`. It is statically imported.
+  `panels`, `hasRightPanelContent` and `onBootstrap`. It is statically imported.
 - **The turn half** is `load()`, returning a `ModuleRuntime` with `registerTools`, `compose`,
-  `planning` and `turnEffects`. It is loaded on demand with the turn pipeline.
+  `planning` and `turnEffects`. It is loaded on demand with the turn pipeline. `compose` receives
+  the turn's store, so a module can read (and first load) its own slice, and may return a
+  `messagePatch` that core sets on the turn's assistant message.
 
 Two things must not be undone.
 
@@ -267,8 +271,25 @@ one combined patch, so a module never has to care whether `onPlanResult` or `bef
 first.
 
 `src/lib/types/tutor.ts` and `src/lib/types/learningPlan.ts` stay in core by design. Core declares
-the shapes it persists through the optional `Message.tutor` and `ChatSettings.features.tutor`
-fields, and the module owns all behaviour.
+the shapes it persists: `TutorEventRecord`, the envelope of a row in the `tutorEvents` table (the
+repository validates only that), `Message.tutorSeq`, and the pre-rebuild fields
+(`Message.tutor`, `Message.learnerModel`, `Message.planUpdates`, the plan and learner model in
+`ChatSettings.features.tutor`), which are kept readable but are read only by the tutor's one-time
+legacy import. The module owns all behaviour.
+
+### The tutor
+
+The tutor's state is one append-only event log per chat, folded by the pure engine in
+`src/modules/tutor/engine/` (`state = fold(events)`). The store slice keeps
+`tutorSessions[chatId] = { events, state, loaded }` and has one mutation entry point,
+`dispatchTutor(chatId, command, { by, messageId })`, which runs the engine's `step`, appends the
+events in memory and then to Dexie. Dispatches for a chat run one after another, so a learner's
+click and the tutor's tool calls in the same turn can never decide against a stale state. The
+tutor's tools are the engine's; each handler parses the call into a command and dispatches it.
+Cards (quiz, intake, diagnostic, plan proposal) are `content` tools that end the turn; state tools
+are `action` tools. Every tutor turn runs the agent loop, reads a state block rendered from the log,
+and records on its reply (`Message.tutorSeq`) the log position it saw, so the next turn can tell the
+tutor what the learner changed since.
 
 ## Deployment
 
