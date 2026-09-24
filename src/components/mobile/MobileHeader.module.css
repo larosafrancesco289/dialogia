@@ -88,6 +88,8 @@
 }
 
 .modelPicker :global(.model-picker-trigger__name) {
+  /* The desktop name fills its row; here it sits centred beside its chevron. */
+  flex: 0 1 auto;
   font-family: var(--font-sans);
   font-size: 0.8125rem;
   font-weight: 400;
