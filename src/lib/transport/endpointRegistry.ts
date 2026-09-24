@@ -27,10 +27,6 @@ export function listEndpoints(): ProviderEndpoint[] {
   return [...BUILT_IN_ENDPOINTS, ...customEndpoints];
 }
 
-export function listCustomEndpoints(): ProviderEndpoint[] {
-  return customEndpoints;
-}
-
 export function getEndpoint(id?: string): ProviderEndpoint | undefined {
   if (!id) return undefined;
   return listEndpoints().find((endpoint) => endpoint.id === id);
@@ -102,6 +98,7 @@ export function resolveModelEndpoint(
   throw unknownEndpoint(modelId ?? '', scoped?.endpointId ?? '');
 }
 
+/** @internal Test seam: resets module state between tests. */
 export function resetEndpointRegistryForTest(): void {
   customEndpoints = [];
 }

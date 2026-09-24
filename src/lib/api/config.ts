@@ -38,5 +38,3 @@ export const apiDefaults = Object.freeze({
     chat: 45_000,
   }),
 });
-
-export type ApiTimeoutKey = keyof typeof apiDefaults.timeouts;

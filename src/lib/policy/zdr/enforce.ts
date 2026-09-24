@@ -1,15 +1,11 @@
 import {
-  ensureZdrLists,
   evaluateZdrModel,
-  filterZdrModels,
   getZdrBlockNotice,
   toZdrState,
   ZDR_UNAVAILABLE_NOTICE,
-  type ZdrFetchers,
   type ZdrLists,
 } from './index';
 import type { StoreSetter as ContractStoreSetter } from '@/lib/contracts/store';
-import type { EnsureListsResult, ZdrFilterMode } from './types';
 
 // Minimal state type for ZDR enforcement
 type ZdrEnforceState = {
@@ -20,18 +16,6 @@ type ZdrEnforceState = {
 };
 
 type StoreSetter<S extends ZdrEnforceState = ZdrEnforceState> = ContractStoreSetter<S>;
-
-export async function computeZdrFilter<T extends { id?: string }>(
-  models: T[],
-  mode: ZdrFilterMode = 'informational',
-  existing?: { modelIds?: Iterable<string> | null; providerIds?: Iterable<string> | null },
-  fetchers?: ZdrFetchers,
-): Promise<EnsureListsResult<T>> {
-  const lists = await ensureZdrLists(existing, fetchers);
-  const filter = filterZdrModels(models, lists);
-  const filtered = mode === 'enforce' ? filter.models : models;
-  return { lists, filter, filtered };
-}
 
 export function buildZdrNotice(
   modelId: string,

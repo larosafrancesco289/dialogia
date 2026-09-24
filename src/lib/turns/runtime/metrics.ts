@@ -29,13 +29,3 @@ export function computeMetrics(args: ComputeMetricsArgs): TurnMetrics {
       : undefined;
   return { ttftMs, completionMs, promptTokens, completionTokens, tokensPerSec };
 }
-
-export function formatMetricsForDisplay(metrics?: TurnMetrics): string[] {
-  if (!metrics) return [];
-  const labels: string[] = [];
-  if (metrics.ttftMs != null) labels.push(`TTFT ${metrics.ttftMs} ms`);
-  if (metrics.promptTokens != null) labels.push(`in ${metrics.promptTokens}`);
-  if (metrics.completionTokens != null) labels.push(`out ${metrics.completionTokens}`);
-  if (metrics.tokensPerSec != null) labels.push(`${metrics.tokensPerSec} tok/s`);
-  return labels;
-}

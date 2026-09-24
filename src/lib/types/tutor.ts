@@ -125,27 +125,6 @@ export type MessageTutor = {
   };
 };
 
-// Tutor session and grading metadata (ephemeral; UI/agent coordination only)
-export type TutorSession = {
-  goal?: string;
-  duration_min?: number;
-  stage?: 'baseline' | 'teach' | 'practice' | 'reflect' | 'review';
-  focus?: string;
-  next?: string;
-  skills?: string[];
-};
-
-export type TutorRecommendation = {
-  reason?: string;
-  recommendation?: 'more_practice' | 'harder' | 'easier' | 'review_mistakes' | 'new_concept';
-};
-
-export type TutorGradingResult = {
-  score?: number; // 0..1 normalized or percentage scaled later
-  feedback: string;
-  criteria?: string[];
-};
-
 /**
  * A tutor event as the `tutorEvents` table stores it. The tutor module owns the
  * payload of each event type; core knows only the envelope, which is what it

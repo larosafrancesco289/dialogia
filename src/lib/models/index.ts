@@ -74,29 +74,23 @@ export const EMPTY_MODEL_INDEX: ModelIndex = (() => {
   } satisfies ModelIndex;
 })();
 
-export { formatModelLabel, stripProviderPrefix } from '@/lib/models/labels';
+export { formatModelLabel } from '@/lib/models/labels';
 export {
   aliasTargetOf,
-  getModelFamily,
   isDynamicModelId,
-  MODEL_FAMILIES,
   resolveDynamicModelId,
-  type ModelFamily,
 } from '@/lib/models/dynamicDefaults';
 export { resolveDefaultModelId, resolveTutorModelId } from '@/lib/models/defaultModels';
 export {
   clampReasoningEffort,
   getDefaultReasoningEffort,
-  getModelCapabilities,
-  getModelReasoningInfo,
   getSelectableReasoningEfforts,
-  getSupportedParameters,
   isAudioInputSupported,
   isImageOutputSupported,
   isReasoningSupported,
   isToolCallingSupported,
   isVisionSupported,
-  REASONING_EFFORT_ORDER,
   type ModelCapabilityFlags,
-  type ModelReasoningInfo,
 } from '@/lib/models/capabilities';
+/** @internal The capability tests read the aggregate through this barrel. */
+export { getModelCapabilities } from '@/lib/models/capabilities';

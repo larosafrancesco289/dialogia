@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getSearchToolDefinition, mergeSearchResults, formatSourcesBlock } from './index';
-import { tavilySearchProvider } from '@/lib/search/providers';
+import { tavilySearchProvider } from '@/lib/search/providers/tavily';
 import type { SearchResult } from '@/lib/search/types';
 import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
 import { mockFetch } from '../../../tests/helpers/mockFetch';

@@ -15,6 +15,7 @@ export type MessageIndexState = {
   messageIdsByChatId: Record<string, string[]>;
 };
 
+/** @internal Tests build store message indexes with this. */
 export function buildMessageIndex(messages: Record<string, Message[]>): MessageIndexState {
   const messagesById: Record<string, Message> = {};
   const messageIdsByChatId: Record<string, string[]> = {};

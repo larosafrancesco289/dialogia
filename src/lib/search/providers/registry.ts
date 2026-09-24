@@ -41,7 +41,3 @@ export function buildSearchContext(
 export function listReadySearchProviders(): SearchProvider[] {
   return listSearchProviders().filter(isSearchProviderReady);
 }
-
-export function resetSearchProvidersForTest(): void {
-  providers.clear();
-}

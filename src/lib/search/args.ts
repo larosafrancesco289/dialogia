@@ -1,4 +1,3 @@
-
 export type WebSearchArgs = {
   query: string;
   count?: number;
@@ -8,8 +7,6 @@ export type WebSearchArgs = {
   exclude_domains?: string[];
   provider?: 'tavily';
 };
-
-export type WebSearchToolArgs = WebSearchArgs;
 
 export type WebFetchArgs = {
   url: string;
@@ -21,8 +18,6 @@ export type WebFetchArgs = {
   chunks_per_source?: number;
   provider?: 'tavily';
 };
-
-export type WebFetchToolArgs = WebFetchArgs;
 
 const normalizeDomainList = (value: unknown): string[] | undefined => {
   if (!Array.isArray(value)) return undefined;
