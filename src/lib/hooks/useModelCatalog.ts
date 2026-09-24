@@ -49,7 +49,8 @@ export function useCuratedModels() {
       return {
         ...entry,
         id: concreteId,
-        description: `${entry.description} · now ${currentName}`,
+        // What it names today leads: a long description is cut at the end.
+        description: `${currentName} · ${entry.description}`,
       };
     });
     // A family can resolve to a model that is also listed by name; the list
