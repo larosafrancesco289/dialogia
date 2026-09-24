@@ -16,6 +16,7 @@ import { createPortal } from 'react-dom';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useAvailableModels } from '@/lib/hooks/useModelCatalog';
+import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 import {
   buildModelSearchResults,
   getHighlightSegments,
@@ -219,18 +220,12 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
       };
     }, [normalizedQuery, closeDropdown]);
 
-    useEffect(() => {
-      if (!normalizedQuery) return;
-      const onPointerDown = (event: PointerEvent) => {
-        const target = event.target as Node | null;
-        if (!target) return;
-        if (inputRef.current && inputRef.current.contains(target)) return;
-        if (dropdownRef.current && dropdownRef.current.contains(target)) return;
-        closeDropdown();
-      };
-      document.addEventListener('pointerdown', onPointerDown, true);
-      return () => document.removeEventListener('pointerdown', onPointerDown, true);
-    }, [normalizedQuery, closeDropdown, dropdownRef]);
+    // Escape belongs to the field, which only sees it while focused.
+    useDismissOnOutside({
+      open: Boolean(normalizedQuery),
+      insideRefs: [inputRef, dropdownRef],
+      onOutsidePress: closeDropdown,
+    });
 
     useEffect(() => {
       if (!results.length) {

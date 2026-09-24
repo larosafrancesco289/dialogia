@@ -19,42 +19,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { springs } from '@/lib/mobile/springConfig';
 import type { ReasoningEffort } from '@/lib/types';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
+import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reasoning effort: "Lightbulb, off to radiant". The icon fills in along the
 // effort scale (off, outline, bold outline, solid, larger solid), in ink.
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** Close a composer popover on an outside pointer press or Escape. */
-function useDismissOnOutside(
-  open: boolean,
-  setOpen: (open: boolean) => void,
-  menuRef: RefObject<HTMLElement | null>,
-  triggerRef: RefObject<HTMLElement | null>,
-) {
-  useEffect(() => {
-    if (!open) return;
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      const inMenu = !!(menuRef.current && target && menuRef.current.contains(target));
-      const inTrigger = !!(triggerRef.current && target && triggerRef.current.contains(target));
-      if (!inMenu && !inTrigger) setOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpen(false);
-        // Focus goes back to the button that opened it, not to the page.
-        triggerRef.current?.focus();
-      }
-    };
-    document.addEventListener('pointerdown', handlePointerDown, true);
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown, true);
-      document.removeEventListener('keydown', handleKeyDown, true);
-    };
-  }, [open, setOpen, menuRef, triggerRef]);
-}
 
 const effortLabel = (e: ReasoningEffort) =>
   e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra high' : e.charAt(0).toUpperCase() + e.slice(1);
@@ -341,8 +311,25 @@ export function ComposerActions({
   // here until a reload.
   useProviderKeys();
 
-  useDismissOnOutside(reasoningOpen, setReasoningOpen, reasoningMenuRef, reasoningButtonRef);
-  useDismissOnOutside(searchMenuOpen, setSearchMenuOpen, searchMenuRef, searchButtonRef);
+  useDismissOnOutside({
+    open: reasoningOpen,
+    insideRefs: [reasoningMenuRef, reasoningButtonRef],
+    onOutsidePress: () => setReasoningOpen(false),
+    onEscape: () => {
+      setReasoningOpen(false);
+      // Focus goes back to the button that opened it, not to the page.
+      reasoningButtonRef.current?.focus();
+    },
+  });
+  useDismissOnOutside({
+    open: searchMenuOpen,
+    insideRefs: [searchMenuRef, searchButtonRef],
+    onOutsidePress: () => setSearchMenuOpen(false),
+    onEscape: () => {
+      setSearchMenuOpen(false);
+      searchButtonRef.current?.focus();
+    },
+  });
 
   if (isStreaming) {
     return (
