@@ -386,13 +386,15 @@ export function ResponseContextPanel({
           ) : (
             <LightBulbIcon className="response-ledger__glyph" />
           )}
-          <span className="response-ledger__title">Reasoning</span>
-          {summary && (
-            // Keyed while live so each new line of thought fades in.
-            <span key={isLive ? summary : 'rest'} className="response-ledger__summary">
-              {summary}
-            </span>
-          )}
+          <span className="response-ledger__label">
+            <span className="response-ledger__title">Reasoning</span>
+            {summary && (
+              // Keyed while live so each new line of thought fades in.
+              <span key={isLive ? summary : 'rest'} className="response-ledger__summary">
+                {summary}
+              </span>
+            )}
+          </span>
           {hasSearchError && !expanded && (
             <span className="response-ledger__error">
               <ExclamationCircleIcon className="h-3.5 w-3.5" />
