@@ -1,8 +1,9 @@
-import type { PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { IconButton } from '@/components/ui/IconButton';
 import { ChevronRightIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
 import { ROW_INDENT } from '@/components/sidebar/ChatRowView';
+import { createSingleClickDeferral } from '@/lib/ui/clickIntent';
 
 export type FolderRowViewProps = {
   folderId: string;
@@ -57,6 +58,13 @@ export function FolderRowView({
   onPointerUp,
   onPointerCancel,
 }: FolderRowViewProps) {
+  // A double click renames; folding waits to be sure it was a single click,
+  // so the folder does not open and shut again before the name field shows.
+  const toggleRef = useRef(onToggleExpanded);
+  toggleRef.current = onToggleExpanded;
+  const [clicks] = useState(() => createSingleClickDeferral(() => toggleRef.current()));
+  useEffect(() => clicks.cancel, [clicks]);
+
   return (
     <div
       className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item folder-row${
@@ -81,11 +89,18 @@ export function FolderRowView({
       data-folder-id={folderId}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      onClick={() => {
-        if (isEditing) return;
-        if (!isMobile) onToggleExpanded();
+      onClick={(event) => {
+        if (isEditing || isMobile) return;
+        clicks.click(event.detail);
       }}
-      onDoubleClick={!isMobile && !isEditing ? onStartEdit : undefined}
+      onDoubleClick={
+        !isMobile && !isEditing
+          ? () => {
+              clicks.cancel();
+              onStartEdit();
+            }
+          : undefined
+      }
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
