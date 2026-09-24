@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { deleteKey, setKey } from '@/lib/keys/store';
 import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 // Component: ApiKeyField
 // Responsibility: Paste, replace, or remove one stored key. The stored value is
@@ -17,6 +18,8 @@ export function ApiKeyField(props: {
   const { hasKey, describeKey } = useProviderKeys();
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  // A key cannot be read back once removed, so removing one asks first.
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const stored = hasKey(keyRef);
 
   const save = async () => {
@@ -32,6 +35,7 @@ export function ApiKeyField(props: {
   };
 
   const remove = async () => {
+    setConfirmingRemove(false);
     setBusy(true);
     try {
       await deleteKey(keyRef);
@@ -68,7 +72,7 @@ export function ApiKeyField(props: {
           <button
             className="btn-ghost btn-sm"
             disabled={busy}
-            onClick={() => void remove()}
+            onClick={() => setConfirmingRemove(true)}
             aria-label={`Remove the ${label}`}
           >
             Remove
@@ -76,6 +80,14 @@ export function ApiKeyField(props: {
         )}
       </div>
       {helpText && <p className="field__hint">{helpText}</p>}
+      <ConfirmDialog
+        open={confirmingRemove}
+        title={`Remove the ${label}?`}
+        description="It is deleted from this browser. To use it again you will have to paste it again."
+        confirmLabel="Remove"
+        onConfirm={() => void remove()}
+        onCancel={() => setConfirmingRemove(false)}
+      />
     </div>
   );
 }

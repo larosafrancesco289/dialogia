@@ -15,7 +15,7 @@ export type UseAutoSaveReturn = {
   status: AutoSaveStatus;
   /** Mark the form as dirty, triggering a debounced save */
   markDirty: () => void;
-  /** Force an immediate save */
+  /** Save now if a change is waiting; nothing to save is not a save. */
   forceSave: () => Promise<void>;
   /** Reset status to idle */
   reset: () => void;
@@ -26,6 +26,9 @@ export function useAutoSave(options: UseAutoSaveOptions): UseAutoSaveReturn {
 
   const [status, setStatus] = useState<AutoSaveStatus>('idle');
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  // A change not yet saved. Closing Settings, or it unmounting from under the
+  // debounce (a reload, the header toggle), must not drop it.
+  const pendingRef = useRef(false);
   const isMountedRef = useRef(true);
   const onSaveRef = useRef(onSave);
   const onErrorRef = useRef(onError);
@@ -44,11 +47,20 @@ export function useAutoSave(options: UseAutoSaveOptions): UseAutoSaveReturn {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
+      if (pendingRef.current) {
+        pendingRef.current = false;
+        void Promise.resolve()
+          .then(() => onSaveRef.current())
+          .catch((err) =>
+            onErrorRef.current?.(err instanceof Error ? err : new Error('Save failed')),
+          );
+      }
     };
   }, []);
 
   const performSave = useCallback(async () => {
     if (!isMountedRef.current) return;
+    pendingRef.current = false;
 
     setStatus('saving');
 
@@ -72,6 +84,7 @@ export function useAutoSave(options: UseAutoSaveOptions): UseAutoSaveReturn {
     }
 
     // Set pending status while waiting for debounce
+    pendingRef.current = true;
     setStatus('idle');
 
     // Schedule the save
@@ -85,6 +98,7 @@ export function useAutoSave(options: UseAutoSaveOptions): UseAutoSaveReturn {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
+    if (!pendingRef.current) return;
 
     await performSave();
   }, [performSave]);
@@ -93,6 +107,7 @@ export function useAutoSave(options: UseAutoSaveOptions): UseAutoSaveReturn {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
+    pendingRef.current = false;
     setStatus('idle');
   }, []);
 

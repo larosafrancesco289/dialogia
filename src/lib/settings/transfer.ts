@@ -62,9 +62,14 @@ export async function buildChatExport(): Promise<
 export async function importChatExport(
   payload: string,
 ): Promise<Result<{ imported: true }, string>> {
+  let data: unknown;
   try {
-    const data = JSON.parse(payload);
-    await importAll(data);
+    data = JSON.parse(payload);
+  } catch {
+    return err('That file is not a Dialogia export: it is not valid JSON.');
+  }
+  try {
+    await importAll(data as Parameters<typeof importAll>[0]);
 
     if (isRecord(data) && isRecord(data.persistedStore)) {
       const version =

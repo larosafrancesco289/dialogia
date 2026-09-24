@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { RenderSection } from '@/components/settings/types';
 
 type DataPanelProps = {
@@ -9,6 +11,9 @@ type DataPanelProps = {
 
 /** Data: every chat and setting as one JSON file, out and back in. */
 export function DataPanel({ renderSection, onExport, onImportPicked }: DataPanelProps) {
+  // An import writes over chats and settings with the same ids, and cannot be
+  // undone, so a picked file is named and confirmed first.
+  const [pending, setPending] = useState<File | null>(null);
   return (
     <>
       {renderSection(
@@ -29,10 +34,9 @@ export function DataPanel({ renderSection, onExport, onImportPicked }: DataPanel
                   type="file"
                   accept="application/json"
                   className="sr-only"
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0] || null;
-                    await onImportPicked(f ?? null);
-                    if (e.target) (e.target as HTMLInputElement).value = '';
+                  onChange={(e) => {
+                    setPending(e.target.files?.[0] ?? null);
+                    e.target.value = '';
                   }}
                 />
               </label>
@@ -43,6 +47,19 @@ export function DataPanel({ renderSection, onExport, onImportPicked }: DataPanel
           </div>
         </SettingsSection>,
       )}
+      <ConfirmDialog
+        open={!!pending}
+        title={`Import ${pending?.name ?? 'this file'}?`}
+        description="Chats in the file replace chats here with the same id, and its settings replace yours: servers, favourites and chat defaults. Everything else here is kept. Export first if you may want to go back."
+        confirmLabel="Import"
+        tone="default"
+        onConfirm={() => {
+          const file = pending;
+          setPending(null);
+          void onImportPicked(file);
+        }}
+        onCancel={() => setPending(null)}
+      />
     </>
   );
 }
