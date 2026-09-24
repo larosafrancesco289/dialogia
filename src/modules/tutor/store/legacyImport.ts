@@ -203,9 +203,11 @@ function pendingProposal(
 /**
  * The events that stand for a chat's legacy tutor data, or none when it has
  * none. Cards come first, one message at a time, carrying their message id so
- * old transcripts render them from events; the `legacy_imported` event comes
- * last, so its position marks where imported history ends. Answered and
- * replaced proposals come back as history, so old plan cards still render.
+ * old transcripts render them from events; a proposal still waiting comes back
+ * as a `plan_proposed` on its message; the `legacy_imported` event (plan and
+ * learner model, on no message) comes last, so its position marks where
+ * imported history ends. Answered and replaced proposals come back as
+ * history, so old plan cards still render.
  * Answers to old quizzes and diagnostics add no evidence: the imported
  * learner model already counts them, and the old quizzes spend no budget. Cards left unanswered before the last reply are closed, so an
  * abandoned card cannot hold the session open.
@@ -269,24 +271,37 @@ export function buildLegacyImport({ chat, messages, at, newId }: LegacyImportInp
       by: 'system',
       ...part,
     });
-  const parts = {
-    ...(plan && valid({ plan }) ? { plan } : {}),
-    ...(learnerModel && valid({ learnerModel }) ? { learnerModel } : {}),
-    ...(proposal &&
-    valid({ proposal: { proposalId: legacyId('proposal', proposal.messageId), ...proposal } })
-      ? {
-          proposal: {
-            proposalId: legacyId('proposal', proposal.messageId),
-            plan: proposal.plan,
-            ...(proposal.rationale ? { rationale: proposal.rationale } : {}),
-          },
-        }
-      : {}),
-  };
+  const importedPlan = plan && valid({ plan }) ? plan : undefined;
+  const importedModel = learnerModel && valid({ learnerModel }) ? learnerModel : undefined;
+
+  // The pending proposal belongs to its reply, so regenerating that reply
+  // takes back the proposal alone; the plan and mastery below belong to no
+  // reply and survive it.
+  if (proposal) {
+    const event = stamp({
+      draft: {
+        type: 'plan_proposed',
+        proposalId: legacyId('proposal', proposal.messageId),
+        plan: proposal.plan,
+        ...(proposal.rationale ? { rationale: proposal.rationale } : {}),
+        revision: !!importedPlan,
+      },
+      by: 'system',
+      messageId: proposal.messageId,
+    });
+    if (event) {
+      seq += 1;
+      out.push(event);
+    }
+  }
+
   const imported = stamp({
-    draft: { type: 'legacy_imported', ...parts },
+    draft: {
+      type: 'legacy_imported',
+      ...(importedPlan ? { plan: importedPlan } : {}),
+      ...(importedModel ? { learnerModel: importedModel } : {}),
+    },
     by: 'system',
-    ...(parts.proposal && proposal ? { messageId: proposal.messageId } : {}),
   });
   if (imported) out.push(imported);
   return out;

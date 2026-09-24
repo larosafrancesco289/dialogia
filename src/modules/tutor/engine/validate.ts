@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import type { TutorEvent, TutorEventType } from '@/modules/tutor/engine/events';
+import { MASTERY_PRIOR } from '@/modules/tutor/engine/rules';
 
 const id = z.string().min(1);
 
@@ -51,6 +52,39 @@ const plan = z
   })
   .passthrough();
 
+/**
+ * The entries of an array that parse; the rest are dropped one by one, so a
+ * single bad entry costs only itself. Anything that is not an array is empty.
+ */
+const eachValid = <T extends z.ZodTypeAny>(entry: T) =>
+  z
+    .array(z.unknown())
+    .catch([])
+    .transform((items) =>
+      items.flatMap((item) => {
+        const parsed = entry.safeParse(item);
+        return parsed.success ? [parsed.data as z.output<T>] : [];
+      }),
+    );
+
+/** Like `eachValid`, for a record keyed by id. */
+const eachValidIn = <T extends z.ZodTypeAny>(entry: T) =>
+  z
+    .record(z.unknown())
+    .catch({})
+    .transform((record) => {
+      const out: Record<string, z.output<T>> = {};
+      for (const [key, value] of Object.entries(record)) {
+        const parsed = entry.safeParse(value);
+        if (parsed.success) out[key] = parsed.data as z.output<T>;
+      }
+      return out;
+    });
+
+// Pre-rebuild learner models were never range-checked, and a JSON backup
+// turns a stored NaN into null. Each topic is repaired where it can be and
+// dropped only when it is not a topic at all, so one bad number never costs
+// the learner the rest of their model.
 const misconception = z
   .object({
     id,
@@ -61,29 +95,27 @@ const misconception = z
   })
   .passthrough();
 
+const evidenceEntry = z
+  .object({ weight: z.number().finite(), details: z.string().catch('') })
+  .passthrough();
+
 const mastery = z
   .object({
     nodeId: z.string().optional(),
-    confidence: z.number(),
+    confidence: z.number().finite().catch(MASTERY_PRIOR),
     interactions: z.number().catch(0),
     lastInteraction: z.number().catch(0),
-    evidence: z.array(
-      z.object({ weight: z.number(), details: z.string().catch('') }).passthrough(),
-    ),
-    misconceptions: z.array(misconception).catch([]),
+    evidence: eachValid(evidenceEntry),
+    misconceptions: eachValid(misconception),
   })
   .passthrough();
 
-const learnerModel = z.object({ mastery: z.record(mastery) }).passthrough();
+const learnerModel = z.object({ mastery: eachValidIn(mastery) }).passthrough();
 
 const PAYLOADS: Record<TutorEventType, z.ZodTypeAny> = {
   legacy_imported: z.object({
     plan: plan.optional(),
     learnerModel: learnerModel.optional(),
-    proposal: z
-      .object({ proposalId: id, plan, rationale: z.string().optional() })
-      .passthrough()
-      .optional(),
   }),
   intake_asked: z.object({
     intakeId: id,

@@ -70,12 +70,6 @@ function proposalFor(events: readonly TutorEvent[], messageId: string): Proposal
         ...(event.rationale ? { rationale: event.rationale } : {}),
         status: event.status,
       };
-    } else if (
-      event.type === 'legacy_imported' &&
-      event.proposal &&
-      event.messageId === messageId
-    ) {
-      view = { ...event.proposal, status: 'pending' };
     } else if (view && event.type === 'plan_approved' && event.proposalId === view.proposalId) {
       view = { ...view, status: 'approved' };
     } else if (view && event.type === 'plan_declined' && event.proposalId === view.proposalId) {
