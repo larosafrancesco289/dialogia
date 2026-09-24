@@ -79,7 +79,10 @@ export async function consumeSse(response: Response, handlers: SseHandlers): Pro
     if (receivedDone) break;
   }
 
-  if (!receivedDone) {
+  if (receivedDone) {
+    // A server may hold the connection open after [DONE]; nothing more is read from it.
+    void reader.cancel().catch(() => undefined);
+  } else {
     // A stream that ends without a terminating blank line still has one event left.
     if (buffer.trim()) consumeLine(buffer);
     dispatchEvent();
