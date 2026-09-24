@@ -60,6 +60,13 @@ export type AssistantMessageProps = {
   citationSources?: MarkdownCitationSource[];
 };
 
+// A reply that ended early says so, instead of reading as finished mid-sentence.
+const CUT_OFF_NOTES: Record<NonNullable<Message['cutOff']>, string> = {
+  stopped: 'Stopped before the end.',
+  failed: 'Cut off by an error before the end.',
+  interrupted: 'Cut off: the page closed while this was being written.',
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -185,6 +192,10 @@ export function AssistantMessage({
             }}
           />
         </div>
+      )}
+
+      {!isStreaming && !isEditing && message.cutOff && displayContent.trim() && (
+        <p className="px-4 pb-2 text-xs italic text-fg-muted">{CUT_OFF_NOTES[message.cutOff]}</p>
       )}
 
       {!isStreaming && !isEditing && message.finishReason === 'content_filter' && (

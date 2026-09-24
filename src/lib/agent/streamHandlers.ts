@@ -9,7 +9,7 @@ import { computeMetrics } from '@/lib/turns/runtime';
 import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { notify } from '@/lib/store/notify';
-import { describeErrorNotice } from '@/lib/store/notices';
+import { describeErrorNotice, isAbortLike } from '@/lib/store/notices';
 import { isRecord } from '@/lib/utils/guards';
 
 type MessageUpdater = (message: Message) => Message;
@@ -102,11 +102,13 @@ export function createMessageStreamCallbacks(
     }
   };
 
-  const persistCheckpoint = () => {
+  // On disk a checkpoint says it is one: if the page closes now, the reply
+  // reads as cut off rather than finished. The final write clears the mark.
+  const persistCheckpoint = (cutOff: NonNullable<Message['cutOff']> = 'interrupted') => {
     if (turnFinished) return;
     const current = get().messagesById[assistantMessage.id];
     if (!current) return;
-    void Promise.resolve(persistMessage(current)).catch(() => undefined);
+    void Promise.resolve(persistMessage({ ...current, cutOff })).catch(() => undefined);
   };
 
   const scheduleCheckpoint = () => {
@@ -346,6 +348,7 @@ export function createMessageStreamCallbacks(
         tokensOut: metrics.completionTokens,
         annotations: current?.annotations ?? extras?.annotations,
         finishReason: extras?.finishReason,
+        cutOff: undefined,
         stopPolicy:
           extras?.finishReason === 'content_filter'
             ? extractStopPolicy(extras?.stopDetails)
@@ -363,8 +366,10 @@ export function createMessageStreamCallbacks(
       settleReasoning();
       clearCheckpointTimer();
       // Persist whatever partial content made it into the store so the user
-      // does not lose it on reload after a failed stream.
-      persistCheckpoint();
+      // does not lose it on reload after a failed stream, marked as cut off.
+      const cutOff = isAbortLike(error) ? 'stopped' : 'failed';
+      applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({ ...msg, cutOff }));
+      persistCheckpoint(cutOff);
       turnFinished = true;
       const noticeMessage = describeErrorNotice(error);
       if (noticeMessage) notify(get, noticeMessage);
