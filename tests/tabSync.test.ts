@@ -9,7 +9,8 @@ import { connectTabSync, OTHER_TAB_REPLY_TIMEOUT_MS } from '@/lib/store/tabSync'
 import { createTabChannel, type TabAnnouncement } from '@/lib/sync/tabChannel';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
-import { adjustActiveTurnCount, clearActiveTurnCount } from '@/lib/ui/streaming';
+import { adjustActiveTurnCount, clearActiveTurnCount, replyInProgress } from '@/lib/ui/streaming';
+import { NOTICE_REPLY_IN_OTHER_TAB } from '@/lib/store/notices';
 import type { Chat, Message } from '@/lib/types';
 import { createFakeBus } from './helpers/fakeTabBus';
 
@@ -278,6 +279,48 @@ test('a chat deleted in another tab goes, and selection moves as a local delete 
       [first.id, next.id],
     );
     assert.equal(b.selectedChatId, next.id);
+  } finally {
+    tabs.close();
+  }
+});
+
+test('a reply another tab is writing shows as in progress, never as cut off, and blocks sending', async () => {
+  const chat = await savedChat();
+  const tabs = twoTabs([chat]);
+  tabs.b.store.setState({ selectedChatId: chat.id });
+  try {
+    const question = createUserMessage({ chatId: chat.id, content: 'why?', createdAt: 1 });
+    const reply = createAssistantMessage({ chatId: chat.id, content: '', createdAt: 2 });
+    startTurn(tabs.a.store, chat.id, [question, reply]);
+    await repository.saveMessages([question, reply]);
+    tabs.a.channel.post({ kind: 'messages', chatId: chat.id, ids: [question.id, reply.id] });
+    await tabs.settle();
+    assert.deepEqual(tabs.b.store.getState().repliesInOtherTabs[chat.id], [reply.id]);
+
+    // A checkpoint: on disk it says "interrupted" in case the writing tab dies.
+    await repository.saveMessage({ ...reply, content: 'Because', cutOff: 'interrupted' });
+    tabs.a.channel.post({ kind: 'messages', chatId: chat.id, ids: [reply.id] });
+    await tabs.settle();
+    const b = tabs.b.store.getState();
+    assert.equal(b.messagesById[reply.id].content, 'Because');
+    const progress = replyInProgress(false, reply.id, b.repliesInOtherTabs[chat.id] ?? []);
+    assert.equal(progress.busy, true);
+    assert.equal(progress.isWriting(reply.id), true, 'rendered as streaming: no cut-off note');
+    assert.equal(progress.isWriting(question.id), false);
+
+    await tabs.b.store.getState().sendUserMessage('me too');
+    assert.deepEqual(messageIds(tabs.b.store, chat.id), [question.id, reply.id], 'not sent');
+    assert.equal(tabs.b.store.getState().ui.notice, NOTICE_REPLY_IN_OTHER_TAB);
+
+    // The reply finishes: saved without the mark, then the turn ends.
+    await repository.saveMessage({ ...reply, content: 'Because.', cutOff: undefined });
+    tabs.a.channel.post({ kind: 'messages', chatId: chat.id, ids: [reply.id] });
+    endTurn(tabs.a.store, chat.id);
+    await tabs.settle();
+    const after = tabs.b.store.getState();
+    assert.equal(after.repliesInOtherTabs[chat.id], undefined);
+    assert.equal(after.messagesById[reply.id].content, 'Because.');
+    assert.equal(after.messagesById[reply.id].cutOff, undefined);
   } finally {
     tabs.close();
   }

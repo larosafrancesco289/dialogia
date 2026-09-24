@@ -290,6 +290,11 @@ function SearchGlobeIcon({ enabled, size = 16 }: { enabled: boolean; size?: numb
 
 export type ComposerActionsProps = {
   isStreaming: boolean;
+  /**
+   * Another tab is writing a reply in this chat. Sending here would interleave
+   * a second turn with it, and this tab cannot stop it, so there is no button.
+   */
+  writingInOtherTab?: boolean;
   onStop: () => void;
   onSend: () => void;
   openFilePicker: () => void;
@@ -309,6 +314,7 @@ export type ComposerActionsProps = {
 
 export function ComposerActions({
   isStreaming,
+  writingInOtherTab,
   onStop,
   onSend,
   openFilePicker,
@@ -351,6 +357,14 @@ export function ComposerActions({
         >
           <StopIcon className="h-4 w-4" />
         </button>
+      </div>
+    );
+  }
+
+  if (writingInOtherTab) {
+    return (
+      <div className="composer-tools" role="status">
+        <span className="composer-tools__status">Writing in another tab…</span>
       </div>
     );
   }
