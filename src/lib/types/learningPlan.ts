@@ -21,6 +21,8 @@ export type LearningPlanNode = {
   status: 'not_started' | 'in_progress' | 'completed';
   startedAt?: number; // When first worked on
   completedAt?: number; // When marked complete
+  /** How a completed topic was closed: shown mastery, declared known, or skipped. */
+  completedHow?: 'mastered' | 'known' | 'skipped';
   estimatedMinutes?: number; // Time estimate
   resources?: {
     // Optional learning materials
