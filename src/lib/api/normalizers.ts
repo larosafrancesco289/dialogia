@@ -1,4 +1,5 @@
 import type { Usage } from '@/lib/transport/completions';
+import { isRecord } from '@/lib/utils/guards';
 
 const toNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value)
@@ -29,10 +30,6 @@ const NUMERIC_USAGE_KEYS = [
   'cost',
   'cache_discount',
 ] as const;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function normalizeRecord(value: unknown): Record<string, unknown> | undefined {
   if (!isRecord(value)) return undefined;

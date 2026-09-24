@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import type { ToolDefinition } from '@/lib/transport/contracts';
 import { toJsonSchema } from '@/lib/schemas/jsonSchema';
+import { isRecord } from '@/lib/utils/guards';
 import {
   gateTutorTool,
   type TutorError,
@@ -350,10 +351,6 @@ function retire(name: TutorToolName, input: unknown): unknown {
 
 /** Keys a model tends to use for a field the schema names differently. */
 const KEY_ALIASES: Record<string, string> = { nodeId: 'topicId', node: 'topicId' };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
 
 function isPlaceholder(value: unknown): boolean {
   if (value === null || value === undefined) return true;
