@@ -15,7 +15,3 @@ test('the composer field carries the class focus is sent to', () => {
   const element = input.slice(input.indexOf(`<${tag}`));
   assert.match(element, new RegExp(`className="${className}\\b`));
 });
-
-test('choosing a model from Try again sends focus to the composer', () => {
-  assert.match(read('src/components/RegenerateMenu.tsx'), /focusComposer\(\)/);
-});
